@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "description": "Future executable scenarios. Structural checking is not execution.",
+  "description": "End-to-end scenario specifications with partial executable model evidence where noted. Structural checking is not execution.",
   "scenarios": [
     {
       "id": "SCN-001",
@@ -38,7 +38,7 @@
       "id": "SCN-002",
       "title": "Atomic cross-post and duplicate acceptance",
       "milestone": "M1",
-      "status": "specified",
+      "status": "validated",
       "requirements": [
         "OBJ-001",
         "OBJ-002",
@@ -56,7 +56,11 @@
         "Retries allocate no numbers and do not overwrite accepted bytes.",
         "Message-ID comparison is exact."
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "execution_scope": "Validated at the abstract logical boundary by acceptance and node assertion books, including cross-post publication, exact retries/conflicts, and numbering."
     },
     {
       "id": "SCN-003",
@@ -81,7 +85,11 @@
         "No partial transaction is published.",
         "Uncertainty fences mutations; platform assumptions are recorded."
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "execution_scope": "Partial: journal slot/barrier crash experiments and node uncertainty/recovery traces; no composed physical persistence matrix."
     },
     {
       "id": "SCN-004",
@@ -168,7 +176,11 @@
         "Local archive pins do not expire automatically.",
         "One release does not discharge unrelated obligations."
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "execution_scope": "Partial: finite abstract charge/refusal/release-history scenarios, no clock expiry path. Byte accounting and release authority integration remain open."
     },
     {
       "id": "SCN-008",
@@ -190,7 +202,11 @@
         "Only matching sufficient authorized evidence permits discharge.",
         "Socket ACKs and transmission reports do not release obligations."
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "execution_scope": "Partial: mismatched evidence and independent pin tests only; peer receipt regeneration/durable restart is not implemented."
     },
     {
       "id": "SCN-009",
@@ -213,7 +229,11 @@
         "Incomplete dependency closure has no complete-acceptance receipt.",
         "Local policies/numbers may differ and conflict evidence persists."
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "execution_scope": "Partial: four-node validated fact merging and conflicts; resumable bytes and incomplete dependency closure remain open."
     },
     {
       "id": "SCN-010",
@@ -303,7 +323,11 @@
         "Resource checks precede allocation; input is never evaluated as Lisp.",
         "Unknown schemas cannot establish semantic authority."
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "execution_scope": "Partial: uint32/byte-string primitive vectors; full schemas/preimages, maps, and independent full-profile codec checking remain open."
     },
     {
       "id": "SCN-014",
@@ -327,7 +351,11 @@
         "Cursor/errors follow the checklist.",
         "Socket partitions do not change meaning; rejected body tails do not become commands."
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "execution_scope": "Partial: reader subset transcripts, real sockets, independent nntplib; complete READER, ranges/wildmat/date profile and posting remain open."
     },
     {
       "id": "SCN-015",
@@ -351,7 +379,11 @@
         "Finishing writes does not rerun semantic transitions.",
         "Effects remain bounded and the same core/declared trust boundary is used."
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "execution_scope": "Partial: actual-core simulator/reader, stale transaction events and disconnect behavior; real persistence effects/backpressure qualification remain open."
     },
     {
       "id": "SCN-016",

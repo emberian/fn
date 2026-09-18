@@ -45,6 +45,7 @@ DEFAULT_BOOKS = (
     "books/retention",
     "tests/acl2/retention-tests",
     "books/node",
+    "books/node-invariants",
     "tests/acl2/node-tests",
     "books/journal",
     "tests/acl2/journal-tests",

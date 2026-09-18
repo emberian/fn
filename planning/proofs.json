@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "description": "Planned targets, not ACL2 events or certified theorems. Paths are repository-relative.",
+  "description": "Broad proof targets with incremental certified component evidence. An in-progress target is not fully certified. Paths are repository-relative.",
   "proofs": [
     {
       "id": "PRF-001",
@@ -16,9 +16,22 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "planned",
-      "events": [],
-      "evidence": []
+      "status": "in-progress",
+      "events": [
+        "fn-prepare-preserves-state",
+        "fn-complete-preserves-state",
+        "fn-recover-preserves-state",
+        "fn-node-prepare-preserves-state",
+        "fn-node-complete-preserves-state",
+        "fn-node-recover-preserves-state"
+      ],
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json",
+        "books/acceptance-invariants.lisp",
+        "books/node-invariants.lisp"
+      ],
+      "progress_note": "Acceptance and composed-node one-step preservation certified. Full trace/system/refinement target remains open."
     },
     {
       "id": "PRF-002",
@@ -34,9 +47,19 @@
         "PRF-001"
       ],
       "assumptions": [],
-      "status": "planned",
-      "events": [],
-      "evidence": []
+      "status": "in-progress",
+      "events": [
+        "fn-durable-completion-installs-exact-pending-article",
+        "fn-complete-preserves-local-number-uniqueness",
+        "fn-recover-preserves-local-number-uniqueness"
+      ],
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json",
+        "books/acceptance-invariants.lisp",
+        "books/acceptance.lisp"
+      ],
+      "progress_note": "Atomic logical publication and stable number/binding lemmas; persistent/reclamation integration remains open."
     },
     {
       "id": "PRF-003",
@@ -55,9 +78,19 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "planned",
-      "events": [],
-      "evidence": []
+      "status": "in-progress",
+      "events": [
+        "fn-duplicate-accepted-prepare-is-no-op",
+        "fn-complete-preserves-existing-message-id-binding",
+        "fn-recover-preserves-existing-message-id-binding"
+      ],
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json",
+        "books/acceptance-invariants.lisp",
+        "books/acceptance.lisp"
+      ],
+      "progress_note": "Exact logical identity bindings and retries covered; native identities, signatures, and durable protocol retry path remain open."
     },
     {
       "id": "PRF-004",
@@ -75,9 +108,20 @@
       "assumptions": [
         "A-POLICY"
       ],
-      "status": "planned",
-      "events": [],
-      "evidence": []
+      "status": "in-progress",
+      "events": [
+        "fn-retain-admit-preserves-statep",
+        "fn-retain-wrong-evidence-does-not-release",
+        "fn-retain-known-obligation-id-is-not-reused",
+        "fn-node-capacity-refusal-is-no-op"
+      ],
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json",
+        "books/node.lisp",
+        "books/retention.lisp"
+      ],
+      "progress_note": "Finite abstract reservations and composed admission covered. General release preservation, authorized evidence validation, and byte-accurate charging remain open."
     },
     {
       "id": "PRF-005",
@@ -91,9 +135,18 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "planned",
-      "events": [],
-      "evidence": []
+      "status": "in-progress",
+      "events": [
+        "fn-cbor-uint32-round-trip",
+        "fn-cbor-byte-encoding-fits-input-bound",
+        "fn-cbor-byte-encoding-are-octets"
+      ],
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json",
+        "books/cbor-invariants.lisp"
+      ],
+      "progress_note": "Complete uint32 round trip certified. Byte-string round trip, canonical uniqueness, versioned schemas, and signature preimages remain open."
     },
     {
       "id": "PRF-006",
@@ -107,9 +160,19 @@
         "PRF-016"
       ],
       "assumptions": [],
-      "status": "planned",
-      "events": [],
-      "evidence": []
+      "status": "in-progress",
+      "events": [
+        "fn-wire-unstuff-stuff-line",
+        "fn-wire-feed-proper-append",
+        "fn-wire-feed-byte-preserves-statep",
+        "fn-wire-next-closed-noop"
+      ],
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json",
+        "books/wire.lisp"
+      ],
+      "progress_note": "Fixed-mode proper-input composition and per-byte state bounds certified; session-sensitive global refinement and work bounds remain open."
     },
     {
       "id": "PRF-007",
@@ -131,9 +194,19 @@
         "A-DURABILITY",
         "A-WRITE-ISOLATION"
       ],
-      "status": "planned",
-      "events": [],
-      "evidence": []
+      "status": "in-progress",
+      "events": [
+        "fn-journal-known-abort-has-no-marker",
+        "fn-journal-scan-missing-dependency-fault",
+        "fn-journal-scan-commit-gap-fault",
+        "fn-journal-recover-torn-anchored-commit-fault"
+      ],
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json",
+        "books/journal.lisp"
+      ],
+      "progress_note": "Logical slot/scanner properties and small crash experiments only. General acknowledged-history survival, byte frames, protected anchor realization, and physical adapter remain open."
     },
     {
       "id": "PRF-008",
@@ -214,9 +287,18 @@
         "A-CRYPTO",
         "A-POLICY"
       ],
-      "status": "planned",
-      "events": [],
-      "evidence": []
+      "status": "in-progress",
+      "events": [
+        "fn-exchange-merge-idempotent",
+        "fn-exchange-merge-commutative-member",
+        "fn-exchange-admitted-order-member"
+      ],
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json",
+        "books/exchange.lisp"
+      ],
+      "progress_note": "Whole validated fact batches under stated admission/capacity hypotheses. Resumable object/dependency closure and durable replication remain open."
     },
     {
       "id": "PRF-012",
@@ -306,9 +388,17 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "planned",
-      "events": [],
-      "evidence": []
+      "status": "in-progress",
+      "events": [
+        "fn-nntp-unknown-group-preserves-session",
+        "fn-nntp-msgid-preserves-session"
+      ],
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json",
+        "books/nntp.lisp"
+      ],
+      "progress_note": "Reader subset helper properties and independent transcripts; complete command/session refinement, injection, and posting remain open."
     },
     {
       "id": "PRF-016",
@@ -323,9 +413,19 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "planned",
-      "events": [],
-      "evidence": []
+      "status": "in-progress",
+      "events": [
+        "fn-wire-initial-state-is-state",
+        "fn-wire-feed-byte-preserves-statep",
+        "fn-cbor-byte-encoding-fits-input-bound"
+      ],
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json",
+        "books/cbor-invariants.lisp",
+        "books/wire.lisp"
+      ],
+      "progress_note": "Declared wire retained-state bounds and primitive byte bounds covered. General parser work, queues/staging, and full resource profile remain open."
     },
     {
       "id": "PRF-017",

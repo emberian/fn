@@ -10,7 +10,7 @@ ACL2 events, not a separate specification implemented again in the host.
 | `wire` | Incremental CRLF framing, dot transformation, event-yield boundary |
 | `cbor`, `cbor-invariants` | Bounded experimental CBOR primitives and representation lemmas |
 | `retention` | Finite reservation ledger with permanent history and explicit release evidence |
-| `node` | Transactional composition of acceptance, reservations, and article-to-pin bindings |
+| `node`, `node-invariants` | Transactional composition and preservation of acceptance, reservations, and article-to-pin bindings |
 | `journal` | Abstract isolated slots, barriers, crash images, recovery experiments |
 | `exchange` | Portable immutable facts, admissible bounded batches, conflict-preserving merge |
 | `nntp` | Laboratory reader commands and session state over committed acceptance state |
