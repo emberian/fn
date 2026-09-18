@@ -6,6 +6,7 @@
 ; actual idle node over the same txid.  The host supplies only the reservation
 ; identity; it cannot supply either component's resolution result.
 (defun fn-sn-refuse-reservation-enabledp (s txid)
+  (declare (xargs :guard t :verify-guards nil))
   (and (fn-sn-statep s)
        (equal (fn-sf-phase (fn-sn-files s)) :reserved)
        (natp txid)
@@ -13,7 +14,10 @@
        (fn-replay-advance-okp
         (fn-sn-node s) (fn-sf-frontier (fn-sn-files s)))))
 
+(verify-guards fn-sn-refuse-reservation-enabledp)
+
 (defun fn-sn-refuse-reservation (s txid)
+  (declare (xargs :guard t :verify-guards nil))
   (if (fn-sn-refuse-reservation-enabledp s txid)
       (fn-sn-update
        s
@@ -22,10 +26,13 @@
         (fn-sn-node s) (fn-sf-frontier (fn-sn-files s))))
     s))
 
+(verify-guards fn-sn-refuse-reservation)
+
 ; Only a proposal whose immutable publication has not been attempted has a
 ; known-absent resolution.  Exact sequence, txid, generation, and record data
 ; come from the bound candidate rather than from a host completion claim.
 (defun fn-sn-known-abort-enabledp (s)
+  (declare (xargs :guard t :verify-guards nil))
   (let ((files (fn-sn-files s)))
     (and (fn-sn-statep s)
          (or (equal (fn-sf-phase files) :record-staged)
@@ -33,18 +40,29 @@
          (fn-sn-record-bindsp
           (fn-sn-node s) (fn-sf-record-candidate files)))))
 
+(verify-guards fn-sn-known-abort-enabledp)
+
 (defun fn-sn-known-abort-file-start (files)
+  (declare (xargs :guard t :verify-guards nil))
   (if (equal (fn-sf-phase files) :record-staged)
       (fn-sf-record-file-result files :known-fail)
     (fn-sf-prepublish-abort files)))
 
+(verify-guards fn-sn-known-abort-file-start)
+
+; The public known-abort gate establishes a valid record candidate before
+; calling this helper; its guard requires only the proper-list representation.
 (defun fn-sn-known-abort-files (files)
+  (declare (xargs :guard (true-listp (fn-sf-record-candidate files)) :verify-guards nil))
   (let* ((record (fn-sf-record-candidate files))
          (aborting (fn-sn-known-abort-file-start files)))
     (fn-sf-abort-completion
      aborting (fn-record-sequence record) (fn-record-txid record) :matching)))
 
+(verify-guards fn-sn-known-abort-files)
+
 (defun fn-sn-known-abort (s)
+  (declare (xargs :guard t :verify-guards nil))
   (if (fn-sn-known-abort-enabledp s)
       (let* ((files (fn-sn-files s))
              (record (fn-sf-record-candidate files))
@@ -53,6 +71,11 @@
                     (fn-record-generation record) :aborted)))
         (fn-sn-update s (fn-sn-known-abort-files files) node))
     s))
+
+(verify-guards fn-sn-known-abort
+  :hints (("Goal" :in-theory
+           (disable fn-sn-statep fn-sf-statep fn-node-statep
+                    fn-node-pending-matchesp fn-sn-pending-record))))
 
 (local (in-theory
         (disable fn-sn-statep fn-sf-statep fn-node-statep fn-record-p

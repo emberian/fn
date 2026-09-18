@@ -190,18 +190,17 @@ class StoreCorruptionTests(unittest.TestCase):
             # publication must not replace the already existing final name.
             os.link(first, collision)
             txid = bridge.next_txid()
-            self.assertEqual(store.advance_frontier(txid), txid + 1)
+            self.assertEqual(store.advance_frontier(bridge, txid), txid + 1)
             self.assertEqual(bridge.prepare(b"<collision-tail@example.invalid>", b"tail", [0, 1],
                                             b"archive:collision-tail", b"sha256:collision-tail",
                                             b"unsigned-legacy-v0", 2), "prepared")
             with self.assertRaises(StoreIndeterminate):
-                store.publish(1, bridge.pending_record())
+                store.publish(bridge, 1, bridge.pending_record())
             self.assertTrue(store.fenced)
             self.assertEqual(collision.read_bytes(), original)
-            self.assertEqual(bridge.complete("indeterminate"), "indeterminate")
-            with self.assertRaises(StoreFault):
-                store.recover(bridge)
-            self.assertTrue(store.fenced)
+            # A link collision is publication ambiguity.  The old bridge has
+            # no durable-status completion to submit; fresh observed recovery
+            # below diagnoses the corrupted final namespace.
         self.assertEqual(first.read_bytes(), original)
         self.assertEqual(collision.read_bytes(), original)
         self.assert_unusable(path, "record sequence does not match immutable filename")

@@ -151,3 +151,24 @@ the same refusal/uncertainty rules; they never authorize deleting retained posts
 Native signatures, gateway attestation, authenticated release, POST injection,
 and a production service remain separate work. This local persistence experiment
 does not relabel unsigned data as author-signed content.
+
+## Composed adapter and completion ownership
+
+The current adapter sends allocator file/replace/directory, transaction
+file/link/directory, and recovery-barrier observations to the executable
+`fn-sn` composition through `host/store-node-host.lisp`. Reopening uses
+`fn-sn-open-observed`, with decoded records and the observed frontier, followed
+by five real barriers. Refusal and known prepublication abort call the proved
+resolution operations; the host does not reconstruct node semantics.
+
+The host closes its mutation gate before uncertain callbacks. A successful
+transaction-directory observation grants one local completion opportunity.
+`Store.finish` consumes it before calling actual `fn-sn-finish`; a rejected or
+lost reply cannot be retried to bypass recovery, even when the core has already
+completed. A lost directory callback grants no completion opportunity. Recovery
+and closing the owner clear it. This is effect-delivery bookkeeping, not a
+substitute for the core's pending-record binding or completion decision.
+
+Fault tests exercise lost callbacks at allocator start/file/replacement/directory
+and record file/link/directory, repeated completion rejection, and actual replay
+before later mutation. Process deaths remain distinct from hardware power loss.

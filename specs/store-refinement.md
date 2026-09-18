@@ -6,8 +6,8 @@ extends step/crash preservation to arbitrary finite histories and retains prior
 acknowledged records under its stated premises. The [live composition](store-node.md)
 uses actual node completion and replay; its mixed-trace proof is now separately
 certified. The [54-root checkpoint](../tests/evidence/2026-09-18-assurance.md)
-records the frozen subset before that last mixed-trace addition. Actual adapter
-adoption, byte/effect correspondence and platform qualification remain work;
+records the frozen subset before that last mixed-trace addition. Actual adapter adoption is now implemented and undergoing combined validation;
+byte/effect correspondence and platform qualification remain work;
 no checkpoint or experimental disk-format change follows from these proofs.
 
 ## Why the isolated-slot journal is not the adapter model
@@ -47,7 +47,7 @@ as parameters. A matching live core completion remains an explicit observation.
 The separate `store-node` composition now carries fixed configuration and an
 actual live node, closing that matching-completion premise through executable
 node transitions. The [composition contract](store-node.md) describes its phase
-relation and general trace proof; host adoption is a distinct integration step.
+relation and general trace proof; host adoption now sends physical observations through that composition.
 
 The machine state contains:
 

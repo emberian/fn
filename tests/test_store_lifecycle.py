@@ -28,9 +28,9 @@ class StoreLifecycleTests(unittest.TestCase):
                         try:
                             with self.assertRaises(run_store.StoreError):
                                 if operation == "allocate":
-                                    store.advance_frontier(0)
+                                    store.advance_frontier(None, 0)
                                 else:
-                                    store.publish(0, b"not-admitted")
+                                    store.publish(None, 0, b"not-admitted")
                             self.assertEqual(store.frontier_path.read_bytes(), frontier)
                             self.assertEqual(list(store.transactions.iterdir()), [])
                             self.assertEqual(list(store.staging.iterdir()), [])
