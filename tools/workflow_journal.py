@@ -34,6 +34,7 @@ KINDS = {
     "transport": 4,
     "receipt-intent": 5,
     "outcome": 6,
+    "retry-request": 7,
 }
 KIND_NAMES = {value: key for key, value in KINDS.items()}
 
@@ -64,6 +65,8 @@ FIELDS = {
                        ("terms-id", "text")),
     "outcome": (("txid", "nat"), ("tx-generation", "nat"),
                 ("phase", "phase"), ("result", "result")),
+    "retry-request": (("work-id", "text"), ("attempt-id", "text"),
+                      ("attempt-generation", "nat"), ("policy-id", "text")),
 }
 STATUSES = {name: number for number, name in enumerate((
     "intent", "bpa-submit-replied", "bpa-accepted", "attempted", "forwarded",
@@ -244,12 +247,17 @@ class WorkflowJournal:
             fcntl.flock(self.lock_fd, fcntl.LOCK_UN)
             os.close(self.lock_fd); self.lock_fd=None
 
-    def publish(self, kind: str, values: dict[str, object], fault: str | None=None) -> Published:
+    def publish(self, kind: str, values: dict[str, object], fault: str | None=None,
+                replay_image: bool=True) -> Published:
         if self.fenced: raise JournalFault("journal is fenced")
+        encoded=encode_record(kind, values)
+        record=(kind, values)
+        if kind != "config" and hasattr(self.replay, "preflight"):
+            if self.replay.preflight(record) is not True:
+                raise JournalError("ACL2 rejected workflow record before publication")
         entries=list(self.records.iterdir())
         sequence=len(entries)
         if sequence >= MAX_RECORDS: raise JournalFault("record count")
-        encoded=encode_record(kind, values)
         # Refuse before staging when the image would exceed its own reopen cap.
         # Existing records remain authoritative; refusal cannot expire work or
         # release any application/archive obligation.
@@ -290,13 +298,21 @@ class WorkflowJournal:
         published=Published(sequence, final)
         # Publication is only storage completion.  Rebuild through ACL2 before
         # the caller can observe an acknowledgement or invoke the BPA.
-        try:
-            ordered=sorted(self.records.iterdir())
-            self.image=self.replay(tuple(decode_record(path.read_bytes())
-                                         for path in ordered))
-        except Exception:
-            self.fenced=True
-            raise
+        if hasattr(self.replay, "apply_record") and kind != "config":
+            try:
+                self.replay.apply_record(record)
+                self.image=self.replay
+            except Exception:
+                self.fenced=True
+                raise
+        elif replay_image:
+            try:
+                ordered=sorted(self.records.iterdir())
+                self.image=self.replay(tuple(decode_record(path.read_bytes())
+                                             for path in ordered))
+            except Exception:
+                self.fenced=True
+                raise
         return published
 
     def publish_intent(self, kind: str, values: dict[str, object],
@@ -311,7 +327,24 @@ class WorkflowJournal:
             raise JournalFault("record count lacks resolution headroom")
         if aggregate + len(encoded) + MAX_RECORD > MAX_AGGREGATE:
             raise JournalFault("aggregate lacks resolution headroom")
-        return self.publish(kind, values, fault)
+        return self.publish(kind, values, fault, replay_image=False)
+
+    def publish_outcome(self, txid: int, generation: int, phase: str,
+                        result: str, fault: str | None=None) -> Published:
+        return self.publish("outcome", {"txid": txid, "tx-generation": generation,
+                            "phase": phase, "result": result}, fault)
+
+    def abort_intent(self, values: dict[str, object]) -> Published:
+        """Persist a known abort; the reserved pair remains consumed in ACL2."""
+        return self.publish_outcome(values["txid"], values["tx-generation"],
+                                    "ordinary", "aborted")
+
+    def recover_intent(self, values: dict[str, object], result: str) -> Published:
+        """Persist inspection of a previously unresolved durable intent."""
+        if result not in {"committed", "absent"}:
+            raise JournalError("invalid recovery result")
+        return self.publish_outcome(values["txid"], values["tx-generation"],
+                                    "recovery", result)
 
     def initialize(self, config: dict[str, object]) -> Published:
         """Create the sole first CONFIG record and install its ACL2 image."""
@@ -321,6 +354,11 @@ class WorkflowJournal:
 
     def persist_attempt_then_call(self, values: dict[str, object], bpa_call: Callable[[], object]) -> object:
         self.publish_intent("attempt", values)
+        self.publish_outcome(values["txid"], values["tx-generation"],
+                             "ordinary", "durable")
+        if hasattr(self.replay, "take_submit") and self.replay.take_submit(values) is not True:
+            self.fenced=True
+            raise JournalFault("ACL2 did not grant current submit permission")
         return bpa_call()
 
     def persist_enqueue(self, values: dict[str, object],
@@ -332,7 +370,9 @@ class WorkflowJournal:
         """
         if durable_node_binding(values) is not True:
             raise JournalError("enqueue lacks durable node article binding")
-        return self.publish_intent("enqueue", values)
+        self.publish_intent("enqueue", values)
+        return self.publish_outcome(values["txid"], values["tx-generation"],
+                                    "ordinary", "durable")
 
     def stage_inbound(self, bid: str, inventory: Callable[[], Iterable[str]],
                       download: Callable[[str], bytes],

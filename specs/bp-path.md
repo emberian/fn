@@ -50,8 +50,9 @@ durably recorded application evidence reaches the obligation-release decision.
 ## State that belongs to fn
 
 The existing article-only transaction format is insufficient for this path.
-The next local experiment therefore needs a versioned durable workflow journal,
-without pretending that it freezes the eventual native/portable object format.
+The [sender workflow adapter](bp-workflow-host.md) therefore uses a versioned
+durable journal alongside article storage. Its local records do not freeze the
+eventual native/portable object format.
 
 - **Enqueue transaction:** bind a work identity to an already committed article
   and its immutable subject/archive obligation, a configured peer endpoint,

@@ -640,9 +640,10 @@
         "tests/evidence/2026-09-18-fields-transfer.md",
         "tests/evidence/2026-09-18-fields-transfer.json",
         "tests/evidence/2026-09-18-assurance.md",
-        "tests/evidence/2026-09-18-assurance.json"
+        "tests/evidence/2026-09-18-assurance.json",
+        "tests/evidence/2026-09-18-bp-workflow.md"
       ],
-      "implementation_note": "Volatile staging has general reserve/add preservation, exact capacity/count accounting, candidate-byte and gap correctness, and polynomial costed hot-path bounds. Portable encoding, dependency closure, persistent progress and receipts remain open. A06 now places BPv7 integration, durable workflow records and application receipts on the active path; current design/exit is specs/bp-path.md. This is an assignment, not completion evidence."
+      "implementation_note": "Volatile staging has general reserve/add preservation, exact capacity/count accounting, candidate-byte and gap correctness, and polynomial costed hot-path bounds. Portable encoding, dependency closure, persistent progress and receipts remain open. A06 now places BPv7 integration, durable workflow records and application receipts on the active path; current design/exit is specs/bp-path.md. This is an assignment, not completion evidence. The experimental ADU codec and actual durable sender workflow journal are integrated with scoped certification and 33 host tests. Real BPA sender/returned-receipt composition remains open."
     },
     {
       "id": "REP-004",
@@ -672,8 +673,10 @@
         "proof",
         "scenario"
       ],
-      "evidence": [],
-      "implementation_note": " A06 now places BPv7 integration, durable workflow records and application receipts on the active path; current design/exit is specs/bp-path.md. This is an assignment, not completion evidence."
+      "evidence": [
+        "tests/evidence/2026-09-18-bp-workflow.md"
+      ],
+      "implementation_note": " A06 now places BPv7 integration, durable workflow records and application receipts on the active path; current design/exit is specs/bp-path.md. This is an assignment, not completion evidence. The experimental ADU codec and actual durable sender workflow journal are integrated with scoped certification and 33 host tests. Real BPA sender/returned-receipt composition remains open."
     },
     {
       "id": "REP-006",
@@ -693,9 +696,10 @@
         "tests/evidence/2026-09-18-bpv7-transport.md",
         "specs/bp-path.md",
         "tests/evidence/2026-09-18-bp-ingress.md",
-        "tests/evidence/2026-09-18-bpa-boundary.md"
+        "tests/evidence/2026-09-18-bpa-boundary.md",
+        "tests/evidence/2026-09-18-bp-workflow.md"
       ],
-      "implementation_note": "BPv7 is active M4 work alongside M3. Pinned dtn7-rs transport tests cover disconnection, clean restarts, duplicate suppression, non-destructive inbox staging and expiry. Actual fn workflow/receipt composition and LTP profiles remain open. The actual BP receiver now invokes ACL2 parsing/routing and composed Store publication; a distinct-BID retry preserves one article/archive pin after reopen. The sender in this test is a BPA fixture; durable sender work/receipts remain open."
+      "implementation_note": "BPv7 is active M4 work alongside M3. Pinned dtn7-rs transport tests cover disconnection, clean restarts, duplicate suppression, non-destructive inbox staging and expiry. Actual fn workflow/receipt composition and LTP profiles remain open. The actual BP receiver now invokes ACL2 parsing/routing and composed Store publication; a distinct-BID retry preserves one article/archive pin after reopen. The sender in this test is a BPA fixture; durable sender work/receipts remain open. The experimental ADU codec and actual durable sender workflow journal are integrated with scoped certification and 33 host tests. Real BPA sender/returned-receipt composition remains open."
     },
     {
       "id": "NNT-001",

@@ -166,3 +166,9 @@ The [bounded BPA receive boundary](../tests/evidence/2026-09-18-bpa-boundary.md)
 is integrated: capped HTTP inventory/raw download, pinned upstream payload
 extractor, eight mock cases and the repeated real acceptance/duplicate lab pass.
 Sender workflow preflight and restart fencing fixes are being integrated next.
+
+The [sender workflow/ADU batch](../tests/evidence/2026-09-18-bp-workflow.md)
+is integrated with five scoped certified roots and 33 host checks. Live ACL2
+preflight precedes publication, recovered intents require explicit recovery,
+and submit permission is consumed once. Receiver request/decision persistence
+and the actual BP return receipt are the next complete integration exit.
