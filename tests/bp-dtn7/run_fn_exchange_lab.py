@@ -29,7 +29,7 @@ def receive_request(bpa, run, bid):
     from tools.run_bp_receive import receive_bpa_request
     return receive_bpa_request(
         store_root=run / 'b-store', inbox_root=run / 'b-inbox',
-        receipt_root=run / 'b-receipts', bid=bid,
+        receipt_root=run / 'b-receipts', bid=bid, source_eid='dtn://bp-a',
         inventory=bpa.client.inventory, download=bpa.download, delete=bpa.client.delete,
         local_policy_authorized=True)
 
@@ -78,14 +78,24 @@ def main():
         with Sender(run / 'a-store', run / 'a-workflow') as sender:
             assert sender.outstanding()
             assert not sender.bridge.fenced()
+            # BPA inventory presence does not prove forwarding eligibility.
+            # The pinned BPA can restart between initial persistence and its
+            # DispatchPending/ForwardPending update. fn owns recovery: record
+            # an explicit retry and submit identical application work anew.
+            sender.request_retry(previous_generation=0)
+            resumed_bid, resumed_request = sender.submit(
+                a, txid=12, generation=1, label='request-after-restart')
+        assert resumed_bid != first_bid and resumed_request == request
+        a.wait_for(resumed_bid)
         checks['durable_sender_work_and_bundle_survive_contact_outage_and_restart'] = True
+        checks['explicit_durable_retry_recovers_uncertain_bpa_forwarding'] = True
         report['sender_before_receipt'] = article_snapshot(run / 'a-store')
 
         b.start()
-        b.wait_for(first_bid)
-        first = receive_request(b, run, first_bid)
+        b.wait_for(resumed_bid)
+        first = receive_request(b, run, resumed_bid)
         assert first.outcome == 'accepted' and first.receipt_adu
-        assert first_bid not in b.client.inventory()
+        assert resumed_bid not in b.client.inventory()
         report['receiver_first'] = article_snapshot(run / 'b-store')
         receipts_before = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
                            for p in (run / 'b-receipts/records').iterdir()}
@@ -96,8 +106,9 @@ def main():
 
         with Sender(run / 'a-store', run / 'a-workflow') as sender:
             assert sender.outstanding()
-            retry_bid, retry_request = sender.submit(a, txid=12, generation=1, label='request-retry')
-        assert retry_bid != first_bid and retry_request == request
+            sender.request_retry(previous_generation=1)
+            retry_bid, retry_request = sender.submit(a, txid=13, generation=2, label='request-retry')
+        assert retry_bid not in (first_bid, resumed_bid) and retry_request == request
         b.wait_for(retry_bid)
         second = receive_request(b, run, retry_bid)
         assert second.outcome == 'duplicate' and second.receipt_adu == lost_receipt
@@ -133,7 +144,7 @@ def main():
         checks['return_receipt_traverses_actual_bp_and_commits_sender_decision'] = True
         checks['sender_decision_survives_reopen_and_preserves_independent_archive'] = True
         checks['all_bpa_listeners_ipv6_loopback'] = True
-        report.update(status='passed', request_bid=first_bid, retry_bid=retry_bid,
+        report.update(status='passed', request_bid=first_bid, resumed_bid=resumed_bid, retry_bid=retry_bid,
                       receipt_bid=receipt_bid, request_sha256=hashlib.sha256(request).hexdigest(),
                       receipt_sha256=hashlib.sha256(receipt).hexdigest(),
                       article_sha256=hashlib.sha256(ARTICLE).hexdigest())
@@ -148,6 +159,7 @@ def main():
         if not report['sources_unchanged']:
             report.update(status='failed', error='sources changed during exchange')
         report['limitations'] = [
+            'BPA inventory alone does not establish forwarding readiness; fn explicitly retries after sender restart. The original bundle may remain inert or arrive as another duplicate.',
             'Explicit trusted local A-POLICY; no authenticated remote peer or author signature.',
             'No LTP, multi-relay/contact-schedule liveness, private encryption, or mission qualification.',
             'Real local process/file recovery; no hardware power-loss or physical media qualification.',

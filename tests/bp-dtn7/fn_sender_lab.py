@@ -96,6 +96,11 @@ class Sender:
             'attempt-generation': generation, 'status': 'bpa-submit-replied'})
         return bid, projected[0]
 
+    def request_retry(self, previous_generation: int):
+        self.journal.publish("retry-request", {
+            "work-id": WORK_ID, "attempt-id": f"attempt:{previous_generation}",
+            "attempt-generation": previous_generation, "policy-id": CONFIG["policy-id"]})
+
     def accept_receipt(self, adu: bytes, txid=20):
         if not isinstance(adu, bytes) or len(adu) > 65538:
             raise ValueError('receipt ADU outside lab profile')

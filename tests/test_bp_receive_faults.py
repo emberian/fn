@@ -1,0 +1,164 @@
+"""Receiver crash-cut tests over the real FNBI, Store, FNRJ, and ACL2 bridges."""
+
+from __future__ import annotations
+
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+from tools import run_bp_ingress, run_bp_receive, run_store
+
+
+class ReceiveFaultTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory(prefix="fn-bp-receive-fault-")
+        base = Path(self.temp.name)
+        self.store = base / "store"
+        self.inbox = base / "inbox"
+        self.receipts = base / "receipts"
+        run_store.Store(self.store, True).initialize()
+        self.inventory: dict[str, bytes] = {}
+        self.deleted: list[str] = []
+
+    def tearDown(self) -> None:
+        self.temp.cleanup()
+
+    @staticmethod
+    def article(name: str) -> bytes:
+        return (f"Message-ID: <{name}@fn.example>\r\nNewsgroups: fn.letters\r\n\r\n"
+                f"body for {name}\r\n").encode("ascii")
+
+    def request(self, name: str, *, destination: bytes = b"dtn://fn.lab/inbox",
+                policy: bytes = b"bp-lab-policy-v0") -> bytes:
+        article = self.article(name)
+        bridge = run_bp_ingress.Acl2BpIngress()
+        try:
+            bridge.call('(include-book "books/bp-adu")')
+            msgid = bridge.extract_message_id(article)
+            _, subject, _ = run_store.metadata(msgid, article)
+
+            def text(value: bytes) -> str:
+                return "(fn-store-octets->string '" + bridge.literal(value) + ")"
+
+            fields = [f"work:{name}".encode(), subject, b"dtn://sender.lab",
+                      destination, policy, b"origin:1", b"wire-auth", b"terms:1"]
+            form = "(fn-bpa-encode (fn-bpa-make-request " + " ".join(
+                text(value) for value in fields) + " '" + bridge.literal(article) + "))"
+            return run_store.acl2_octets(bridge.call(form))
+        finally:
+            bridge.close()
+
+    def receive(self, bid: str, *, delete=None, **kwargs):
+        def default_delete(found: str) -> None:
+            self.deleted.append(found)
+            self.inventory.pop(found)
+
+        return run_bp_receive.receive_bpa_request(
+            store_root=self.store, inbox_root=self.inbox, receipt_root=self.receipts,
+            bid=bid, source_eid="dtn://sender.lab", inventory=lambda: list(self.inventory),
+            download=lambda found: self.inventory[found],
+            delete=default_delete if delete is None else delete, **kwargs)
+
+    def recovered_counts(self) -> tuple[int, int, int]:
+        store, bridge, records = run_bp_ingress.open_live_bp_store(self.store, False)
+        try:
+            return len(records), bridge.article_count(), bridge.pin_count()
+        finally:
+            bridge.close()
+            store.close()
+
+    def test_fnbi_durable_cut_reopens_same_adu_once(self) -> None:
+        self.inventory["bid-fnbi"] = self.request("fnbi")
+        with mock.patch.object(run_bp_receive.run_bp_ingress, "open_live_bp_store",
+                               side_effect=OSError("cut after FNBI")):
+            with self.assertRaises(OSError):
+                self.receive("bid-fnbi")
+        self.assertIn("bid-fnbi", self.inventory)
+        self.assertEqual(len(list((self.inbox / "inbound").glob("*.bp"))), 1)
+        self.assertEqual(self.deleted, [])
+
+        self.assertEqual(self.receive("bid-fnbi").outcome, "accepted")
+        self.assertEqual(self.recovered_counts(), (1, 1, 1))
+
+    def test_article_commit_before_context_reopens_without_second_charge(self) -> None:
+        self.inventory["bid-article"] = self.request("article")
+        with mock.patch.object(run_bp_receive.ReceiptJournal, "accept_request",
+                               side_effect=OSError("cut before context")):
+            with self.assertRaises(OSError):
+                self.receive("bid-article")
+        self.assertIn("bid-article", self.inventory)
+        self.assertEqual(self.deleted, [])
+        self.assertEqual(self.recovered_counts(), (1, 1, 1))
+
+        self.assertEqual(self.receive("bid-article").outcome, "accepted")
+        self.assertEqual(self.recovered_counts(), (1, 1, 1))
+
+    def test_context_before_intent_reopens_without_second_charge(self) -> None:
+        self.inventory["bid-context"] = self.request("context")
+        with mock.patch.object(run_bp_receive.ReceiptJournal, "prepare_receipt",
+                               side_effect=OSError("cut before intent")):
+            with self.assertRaises(OSError):
+                self.receive("bid-context")
+        self.assertIn("bid-context", self.inventory)
+        self.assertEqual(self.deleted, [])
+        self.assertEqual(self.recovered_counts(), (1, 1, 1))
+
+        self.assertEqual(self.receive("bid-context").outcome, "duplicate")
+        self.assertEqual(self.recovered_counts(), (1, 1, 1))
+
+    def test_intent_before_decision_requires_recovery_without_second_charge(self) -> None:
+        self.inventory["bid-intent"] = self.request("intent")
+        with mock.patch.object(run_bp_receive.ReceiptJournal, "commit_receipt",
+                               side_effect=OSError("cut before decision")):
+            with self.assertRaises(OSError):
+                self.receive("bid-intent")
+        self.assertIn("bid-intent", self.inventory)
+        self.assertEqual(self.deleted, [])
+        self.assertEqual(self.recovered_counts(), (1, 1, 1))
+
+        with self.assertRaises(run_bp_receive.BpReceiveError):
+            self.receive("bid-intent")
+        recovered = self.receive("bid-intent", pending_outcome="committed")
+        self.assertEqual(recovered.outcome, "duplicate")
+        self.assertEqual(self.recovered_counts(), (1, 1, 1))
+
+    def test_decision_before_lost_delete_retries_same_adu_without_charge(self) -> None:
+        self.inventory["bid-delete"] = self.request("delete")
+        with self.assertRaises(run_bp_receive.BpReceiveDeletePending):
+            self.receive("bid-delete", delete=lambda found: (_ for _ in ()).throw(
+                OSError("BPA delete completion lost")))
+        self.assertIn("bid-delete", self.inventory)
+        self.assertEqual(self.deleted, [])
+        self.assertEqual(self.recovered_counts(), (1, 1, 1))
+
+        self.assertEqual(self.receive("bid-delete").outcome, "duplicate")
+        self.assertEqual(self.deleted, ["bid-delete"])
+        self.assertEqual(self.recovered_counts(), (1, 1, 1))
+
+    def test_wrong_policy_or_destination_never_publishes_store_record(self) -> None:
+        self.inventory["bid-destination"] = self.request(
+            "destination", destination=b"dtn://wrong.lab/inbox")
+        self.inventory["bid-policy"] = self.request("policy", policy=b"wrong-policy")
+        for bid in ("bid-destination", "bid-policy"):
+            with self.subTest(bid=bid), self.assertRaises(run_bp_receive.BpReceiveError):
+                self.receive(bid)
+        self.assertEqual(self.deleted, [])
+        self.assertEqual(set(self.inventory), {"bid-destination", "bid-policy"})
+        self.assertEqual(self.recovered_counts(), (0, 0, 0))
+
+    def test_capacity_refusal_preserves_prior_article_and_pin(self) -> None:
+        self.inventory["bid-prior"] = self.request("prior")
+        self.assertEqual(self.receive("bid-prior").outcome, "accepted")
+        self.inventory["bid-full"] = self.request("full")
+        with mock.patch.object(run_bp_receive.run_store, "conservative_charge",
+                               return_value=run_store.DEFAULT_CONFIG["capacity"] + 1):
+            with self.assertRaises(run_bp_receive.BpReceiveError):
+                self.receive("bid-full")
+        self.assertIn("bid-full", self.inventory)
+        self.assertEqual(self.deleted, ["bid-prior"])
+        self.assertEqual(self.recovered_counts(), (1, 1, 1))
+
+
+if __name__ == "__main__":
+    unittest.main()

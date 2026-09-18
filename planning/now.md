@@ -147,37 +147,35 @@ select a signing grammar or cryptographic suite.
 Private-group cryptography remains a separate requirements/research track.
 Shared community groups come first; MLS is a candidate, not a commitment.
 
-Actual [BP-to-fn receiver ingress](../tests/evidence/2026-09-18-bp-ingress.md)
-now passes with real loopback BPAs, restart, durable article acceptance and
-new-BID duplicate recognition. The shared receiver uses the real parser and
-composed Store. Inbox-only mode explicitly refuses a nonempty workflow history.
-Sender workflow integration is closing permanent transaction-pair reservation
-and durable prepare/outcome replay; the portable experimental ADU codec carries
-request/receipt context without changing article bytes. These are active tasks,
-not completed retention-handoff or authentication claims.
+The [actual BP application exchange](../tests/evidence/2026-09-18-bp-exchange.md)
+now passes: durable sender work, contact outage and process restart, explicit
+retry, receiver acceptance/receipt decision, lost receipt, receiver restart,
+distinct-BID duplicate, identical receipt regeneration and real BP return into a
+durable sender decision. Both nodes retain exactly one article/archive pin.
+The current combined Python suite passed **132 tests**. Nine scoped ACL2 roots
+passed for outbound projection, corrected receiver/journal and sender proofs;
+this is separate from the earlier 75-root full integration checkpoint.
 
+Finite sender event traces preserve state and the exact node; transport traces
+preserve receipt decisions. Full-history preflight prevents publication of a
+record accepted only through transient restart state. Recovered receiver context
+uses authoritative ready Store records and bindings, not transient success history.
+Seven new receiver exception/reopen fault cases cover each application boundary,
+wrong context and capacity refusal; existing process-death tests remain separate.
+
+A pinned BPA restart window can leave a stored bundle without forwarding state.
+The failed run is retained. The actual exchange now exercises recovery through
+fn's explicit durable retry policy, which resubmits the same application work.
+No API reply, bundle inventory, expiry or transport delivery discharges fn work.
+
+Current next M4 work: a joint durable/pending-work-to-node invariant and general
+receiver trace/replay argument; contact-plan/relay/carried-media composition with
+expiry, reorder and staging exhaustion; and the D01/D09 identity and authenticated
+receipt design. Scheduling fairness/LTP/physical power-loss qualification remain
+explicit. The first loop's local A-POLICY is trusted and receipts are unsigned.
+D01/D09 are not silently selected by the experimental CBOR ADU.
 
 The [article work batch](../tests/evidence/2026-09-18-article-work.md) passed all
 seven new roots. Complete public parser value correspondence and structural-work
-bounds now include malformed inputs and repeated prefix copies. Original parser
+bounds include malformed inputs and repeated prefix copies. Original parser
 sources are unchanged; physical allocation/runtime costs remain separate.
-
-The [bounded BPA receive boundary](../tests/evidence/2026-09-18-bpa-boundary.md)
-is integrated: capped HTTP inventory/raw download, pinned upstream payload
-extractor, eight mock cases and the repeated real acceptance/duplicate lab pass.
-Sender workflow preflight and restart fencing fixes are being integrated next.
-
-The [sender workflow/ADU batch](../tests/evidence/2026-09-18-bp-workflow.md)
-is integrated with five scoped certified roots and 33 host checks. Live ACL2
-preflight precedes publication, recovered intents require explicit recovery,
-and submit permission is consumed once. Receiver request/decision persistence
-and the actual BP return receipt are the next complete integration exit.
-
-Receiver context/decision journal and outbound ADU projection are now in the
-shared integration tree. Scoped certifications and host tests passed, but the
-full-reopen receiver test exposed reliance on transient Store success history.
-The corrected authoritative-record/ready-state predicate and the article-commit
-before-context crash cut are being integrated before claiming the full BP loop.
-The actual fn sender alone has queued through a BPA outage/restart successfully.
-The new exchange laboratory driver is a development checkpoint until its complete
-run and evidence record pass.

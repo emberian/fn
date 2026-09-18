@@ -473,13 +473,27 @@
         "A-DURABILITY"
       ],
       "status": "in-progress",
-      "events": [],
+      "events": [
+        "fn-bp-step-preserves-state",
+        "fn-bp-trace-preserves-state",
+        "fn-bp-step-preserves-node",
+        "fn-bp-trace-preserves-node",
+        "fn-bp-transport-step-preserves-receipt",
+        "fn-bp-transport-trace-preserves-receipt",
+        "fn-bp-unchecked-receipt-is-no-op",
+        "fn-bpo-receipt-success-requires-local-policy",
+        "fn-bpo-receipt-success-is-actual-journal-preparation"
+      ],
       "evidence": [
         "books/bp-workflow.lisp",
         "tests/acl2/bp-workflow-records-tests.lisp",
-        "tests/evidence/2026-09-18-bp-workflow.md"
+        "tests/evidence/2026-09-18-bp-workflow.md",
+        "books/bp-workflow-invariants.lisp",
+        "books/bp-workflow-transport-invariants.lisp",
+        "books/bp-outbound.lisp",
+        "tests/evidence/2026-09-18-bp-exchange.md"
       ],
-      "progress_note": "Executable sender work and matching receipt context are integrated with durable intent/outcome replay and concrete stale/retry/recovery assertions. General trace preservation, receiver durable receipt regeneration, real return transport and authenticated authorization remain separate work; no handoff theorem completion claimed."
+      "progress_note": "Certified finite sender event traces preserve state and exact accepted node; transport traces preserve recorded receipts. Outbound projection checks actual article binding and local-policy-authorized receipt preparation. Real durable receiver regeneration and BP return transport passed in the trusted loopback profile. Joint durable/pending work-to-node induction, general receiver trace/journal refinement, authenticated cooperative-peer handoff and physical durability remain open; no complete handoff theorem is claimed."
     },
     {
       "id": "PRF-013",

@@ -1,6 +1,7 @@
 """Bridge validated local journal fields into the same live ACL2 workflow model."""
 from tools.run_store import Acl2Store, acl2_boolean, acl2_result, acl2_symbol
-from tools.workflow_journal import JournalFault, encode_record
+from tools.workflow_journal import JournalFault
+from tools.workflow_journal import encode_record
 
 _FIXED = {"config": ":config", "enqueue": ":enqueue", "attempt": ":attempt",
           "transport": ":transport", "receipt-intent": ":receipt-intent"}
@@ -25,7 +26,6 @@ def _value(name, value):
 def records_form(records):
     rows=[]
     for kind, values in records:
-        # Validate enums, integer types and bounds before constructing fixed Lisp forms.
         encode_record(kind, values)
         if kind not in _ORDER or set(values) != set(_ORDER[kind]):
             raise JournalFault("ACL2 bridge record shape")
@@ -57,6 +57,9 @@ class Acl2WorkflowReplay:
     def preflight(self, record):
         return acl2_symbol(self.store.call("(fn-workflow-preflight-record "+
                            record_form(record)+" state)")) == "ready"
+    def history_preflight(self, records):
+        return acl2_symbol(self.store.call("(fn-workflow-preflight-history "+
+                           records_form(records)+" state)")) == "ready"
     def apply_record(self, record):
         outcome=acl2_symbol(self.store.call("(fn-workflow-apply-record "+
                             record_form(record)+" state)"))

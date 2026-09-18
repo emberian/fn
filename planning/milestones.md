@@ -139,8 +139,16 @@ Incremental evidence: the [object assembly experiment](../specs/transfer-experim
 stages out-of-order fragments with declared-byte and metadata-slot reservations,
 exact duplicates, missing ranges, conservative overlap conflicts, and explicit
 unverified candidates. It now has general reserve/add preservation, exact accounting, candidate/gap
-correctness, costed hot-path bounds and boundary vectors. Persistent transfer, complete-object/dependency validation,
-portable batches, receipts, and transport remain open.
+correctness, costed hot-path bounds and boundary vectors. The
+[actual BP application exchange](../tests/evidence/2026-09-18-bp-exchange.md)
+adds durable sender/receiver journals, explicit retry after uncertain BPA restart,
+lost-receipt regeneration and return transport with independent archive retention.
+Finite sender state/node and transport receipt preservation are certified.
+Persistent fragmented transfer, complete dependency validation, portable batches,
+authenticated handoff, multi-relay/carried-media contact plans and conditional
+progress remain open. Next complete M4 steps are authenticated identity/receipt
+design (D01/D09), the joint work/node and receiver replay proof boundaries, and
+an interrupted relay/contact-plan experiment with expiry and staging exhaustion.
 
 ## M5: bounded long-lived operation
 

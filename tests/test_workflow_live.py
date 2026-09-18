@@ -43,20 +43,33 @@ class WorkflowLiveTests(unittest.TestCase):
     self.assertEqual(tuple((p.name,p.read_bytes()) for p in journal.records.iterdir()),before)
     self.assertEqual(called,["submit"])
     journal.publish("transport",{"work-id":"work:a","attempt-id":"attempt:1",
-     "attempt-generation":0,"status":"expired"})
-    self.assertEqual(bridge.work_status("work:a"),"expired")
+     "attempt-generation":0,"status":"bpa-submit-replied"})
     journal.close(); journal=WorkflowJournal(Path(d)/"workflow",bridge); journal.open()
-    self.assertEqual(bridge.work_status("work:a"),"expired")
+    self.assertEqual(bridge.work_status("work:a"),"restart-observed")
     self.assertFalse(bridge.fenced())
-    journal.publish_intent("attempt",{**attempt,"txid":12,"attempt-id":"attempt:2",
-                                      "attempt-generation":1})
+    attempt2={**attempt,"txid":12,"attempt-id":"attempt:2","attempt-generation":1}
+    before=tuple((p.name,p.read_bytes()) for p in journal.records.iterdir())
+    with self.assertRaisesRegex(JournalError,"durable history"):
+     journal.persist_attempt_then_call(attempt2,lambda: called.append("unrecorded-restart"))
+    self.assertEqual(tuple((p.name,p.read_bytes()) for p in journal.records.iterdir()),before)
+    self.assertEqual(called,["submit"])
+    journal.publish("retry-request",{"work-id":"work:a","attempt-id":"attempt:1",
+     "attempt-generation":0,"policy-id":"policy:1"})
+    journal.persist_attempt_then_call(attempt2,lambda: called.append("submit-2"))
+    self.assertEqual(called,["submit","submit-2"])
+    journal.close(); journal=WorkflowJournal(Path(d)/"workflow",bridge); journal.open()
+    self.assertEqual(bridge.work_status("work:a"),"restart-observed")
+    journal.publish("retry-request",{"work-id":"work:a","attempt-id":"attempt:2",
+     "attempt-generation":1,"policy-id":"policy:1"})
+    journal.publish_intent("attempt",{**attempt,"txid":13,"attempt-id":"attempt:3",
+                                      "attempt-generation":2})
     journal.close(); journal=WorkflowJournal(Path(d)/"workflow",bridge); journal.open()
     self.assertTrue(bridge.fenced())
     before=tuple((p.name,p.read_bytes()) for p in journal.records.iterdir())
     with self.assertRaisesRegex(JournalError,"ACL2 rejected"):
-     journal.publish_outcome(12,0,"ordinary","durable")
+     journal.publish_outcome(13,0,"ordinary","durable")
     self.assertEqual(tuple((p.name,p.read_bytes()) for p in journal.records.iterdir()),before)
-    journal.recover_intent({"txid":12,"tx-generation":0},"absent")
+    journal.recover_intent({"txid":13,"tx-generation":0},"absent")
     self.assertFalse(bridge.fenced())
     journal.close()
    finally: acl2.close(); store.close()

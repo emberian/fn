@@ -1,0 +1,191 @@
+#!/usr/bin/env python3
+"""Durable receiver path for one staged portable fn-bpa request ADU.
+
+FNBI staging retains the full wrapper ADU.  ACL2 alone unwraps its exact legacy
+article, validates request context, and drives Store/receiver-journal decisions.
+No receipt is signed or transmitted here; a committed canonical ADU is returned.
+"""
+from __future__ import annotations
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Callable, Iterable
+import sys
+
+from tools import run_bp_ingress, run_store, workflow_journal
+from tools.receipt_bridge import Acl2ReceiptBridge
+from tools.receipt_journal import ReceiptJournal, JournalError, JournalFault, JournalUncertain
+
+DESTINATION = "dtn://fn.lab/inbox"
+POLICY_ID = "bp-lab-policy-v0"
+ISSUER = "dtn://fn.lab/issuer"
+LIFETIME = 300
+
+class BpReceiveError(RuntimeError): pass
+class BpReceiveDeletePending(BpReceiveError): pass
+@dataclass(frozen=True)
+class ReceiveResult:
+    outcome: str
+    receipt_adu: bytes
+    staged_path: Path
+
+
+def _defer_delete(_bid):
+    raise OSError("defer BPA deletion until receipt decision commits")
+
+def _stage(inbox_root, bid, inventory, download):
+    journal = workflow_journal.WorkflowJournal(Path(inbox_root), lambda records: () if not records else (_ for _ in ()).throw(BpReceiveError("nonempty sender workflow journal")))
+    journal.open()
+    try:
+        try:
+            journal.stage_inbound(bid, inventory, download, _defer_delete)
+        except workflow_journal.InboundDeletePending:
+            journal.close(); journal.open()
+            for found, path in journal.inbound_items:
+                if found == bid: return journal, path
+            raise BpReceiveError("durably staged BID was not recovered")
+        raise BpReceiveError("staging deleted BPA before receiver decision")
+    except BaseException:
+        journal.close(); raise
+
+def _acl2_octets(bridge, form):
+    return run_store.acl2_octets(bridge.call(form))
+def _acl2_bool(bridge, form):
+    return run_store.acl2_boolean(bridge.call(form))
+def _request_status(bridge, request_adu):
+    body = run_store.acl2_result(bridge.call(
+        "(fn-bpreq-request-status '" + bridge.literal(request_adu) + " state)")).upper()
+    statuses = {b":NEW": "new", b":COMMITTED": "committed",
+                b":CONTEXT": "context", b":PENDING": "pending",
+                b":CONFLICT": "conflict", b":MALFORMED": "malformed",
+                b":REFUSED": "refused", b":BLOCKED": "blocked"}
+    if body not in statuses:
+        raise BpReceiveError("ACL2 request-status boundary")
+    return statuses[body]
+
+def _receipt_identity(bridge, request_adu):
+    work_id = _acl2_octets(bridge, "(fn-bpreq-work-id '" + bridge.literal(request_adu) + " state)")
+    if not work_id:
+        raise BpReceiveError("ACL2 request work-id boundary")
+    receipt_id = b"receipt:" + work_id
+    if len(receipt_id) > 256:
+        raise BpReceiveError("receipt id boundary")
+    try:
+        return work_id.decode("ascii"), receipt_id.decode("ascii")
+    except UnicodeDecodeError as error:
+        raise BpReceiveError("ACL2 request metadata encoding") from error
+
+def _durably_decide(receipt_journal, bridge, request_adu):
+    work_id, receipt_id = _receipt_identity(bridge, request_adu)
+    receipt_journal.prepare_receipt(work_id, receipt_id)
+    receipt_journal.commit_receipt(work_id, receipt_id, "committed")
+    receipt = receipt_journal.receipt_adu(request_adu)
+    if not receipt:
+        raise BpReceiveError("receipt decision did not regenerate canonical ADU")
+    return receipt
+
+def _delete_after_decision(delete, bid):
+    try:
+        delete(bid)
+    except Exception as error:
+        raise BpReceiveDeletePending("committed receipt awaits BPA delete") from error
+
+def receive_bpa_request(*, store_root, inbox_root, receipt_root, bid, inventory,
+                        download, delete, source_eid, local_policy_authorized=True,
+                        pending_outcome=None):
+    """Stage, accept, decide, and regenerate one portable request receipt.
+
+    The explicit Boolean is a trusted local lab A_POLICY input.  Request wire
+    `authorization-context` is retained by ACL2 but never substitutes for it.
+    """
+    if local_policy_authorized is not True:
+        raise BpReceiveError("local A_POLICY did not authorize receiver request")
+    if not isinstance(bid, str) or not bid or len(bid.encode("ascii", "strict")) > 512:
+        raise BpReceiveError("BPA BID boundary")
+    source_bytes = run_bp_ingress.bounded_ascii_text(source_eid, "observed BPA source EID")
+    inbox, staged = _stage(inbox_root, bid, inventory, download)
+    store = bridge = receipt_journal = None
+    try:
+        staged_bid, request_adu = workflow_journal.decode_inbound(staged.read_bytes())
+        if staged_bid != bid or len(request_adu) > 65538:
+            raise BpReceiveError("staged request boundary")
+        store, bridge, records = run_bp_ingress.open_live_bp_store(Path(store_root), writable=True)
+        bridge.call('(ld "host/bp-receive-host.lisp" :ld-error-action :return :ld-error-triples t)')
+        receipt_bridge = Acl2ReceiptBridge(bridge)
+        receipt_journal = ReceiptJournal(Path(receipt_root), receipt_bridge)
+        receipt_journal.open()
+        if not list(receipt_journal.records.iterdir()):
+            receipt_journal.initialize({"destination-eid": DESTINATION, "policy-id": POLICY_ID,
+                                        "issuer-eid": ISSUER})
+        # The journal-owned ACL2 state is queried before Store mutation.  A
+        # same work with different exact request bytes is a conflict; an exact
+        # committed retry only regenerates the already-durable receipt.
+        status = _request_status(bridge, request_adu)
+        if status == "conflict":
+            raise BpReceiveError("conflicting request context")
+        if status in {"malformed", "refused"}:
+            raise BpReceiveError("request context is not safely reusable")
+        if status == "blocked":
+            raise BpReceiveError("another receipt intent is pending recovery")
+        if status == "pending":
+            if pending_outcome not in {"committed", "absent"}:
+                raise BpReceiveError("pending receipt needs explicit recovery outcome")
+            work_id, receipt_id = _receipt_identity(bridge, request_adu)
+            receipt_journal.commit_receipt(work_id, receipt_id, pending_outcome)
+            if pending_outcome == "absent":
+                # The durable intent has been resolved absent, but the BPA
+                # request remains for a later explicit receiver action.
+                return ReceiveResult("pending-absent", b"", staged)
+            receipt = receipt_journal.receipt_adu(request_adu)
+            if not receipt:
+                raise BpReceiveError("committed recovery did not regenerate receipt")
+            _delete_after_decision(delete, bid)
+            return ReceiveResult("duplicate", receipt, staged)
+        if status == "committed":
+            prior = receipt_journal.receipt_adu(request_adu)
+            if not prior:
+                raise BpReceiveError("committed request did not regenerate receipt")
+            _delete_after_decision(delete, bid)
+            return ReceiveResult("duplicate", prior, staged)
+        if status == "context":
+            receipt = _durably_decide(receipt_journal, bridge, request_adu)
+            _delete_after_decision(delete, bid)
+            return ReceiveResult("duplicate", receipt, staged)
+        existing_record = _acl2_octets(
+            bridge, "(fn-bpreq-existing-record '" + bridge.literal(request_adu) + " state)")
+        if existing_record:
+            # Store publication may have completed before FNRJ context
+            # publication.  Bind only ACL2's recovered exact record; do not
+            # allocate a replacement transaction or charge a second article.
+            receipt_journal.accept_request(bid, request_adu, existing_record,
+                                           policy_authorized=True)
+            receipt = _durably_decide(receipt_journal, bridge, request_adu)
+            _delete_after_decision(delete, bid)
+            return ReceiveResult("accepted", receipt, staged)
+        article = _acl2_octets(bridge, "(fn-bpreq-article '" + bridge.literal(request_adu) + " state)")
+        if not article or len(article) > run_store.DEFAULT_CONFIG["max_payload_bytes"]:
+            raise BpReceiveError("ACL2 rejected request/article boundary")
+        msgid = bridge.extract_message_id(article)
+        if not msgid: raise BpReceiveError("ACL2 rejected article Message-ID")
+        archive, subject, evidence = run_store.metadata(msgid, article)
+        if not _acl2_bool(bridge, "(fn-bpreq-subject-matchp '" + bridge.literal(request_adu) +
+                           " '" + bridge.literal(subject) + " state)"):
+            raise BpReceiveError("request subject disagrees with accepted-article subject")
+        # Store mutation follows the same actual allocator/publication path as
+        # raw ingress, but only for the article extracted by ACL2 from FNBI.
+        store.advance_frontier(bridge, bridge.next_txid())
+        action = bridge.ingress_prepare(DESTINATION.encode(), source_bytes, bid.encode(), LIFETIME,
+                                        archive, subject, evidence, run_store.conservative_charge(article), article)
+        if action != "prepared":
+            run_bp_ingress._consume_reserved_refusal(store, bridge)
+            raise BpReceiveError("ACL2 Store refused request article")
+        record = bridge.pending_record()
+        run_bp_ingress._publish_accepted(store, bridge, records, record)
+        receipt_journal.accept_request(bid, request_adu, record, policy_authorized=True)
+        receipt = _durably_decide(receipt_journal, bridge, request_adu)
+        _delete_after_decision(delete, bid)
+        return ReceiveResult("accepted", receipt, staged)
+    finally:
+        if receipt_journal is not None: receipt_journal.close()
+        if bridge is not None: bridge.close()
+        if store is not None: store.close()
+        inbox.close()

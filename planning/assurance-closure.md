@@ -123,3 +123,16 @@ Sol lane owns the actual workflow journal and crash-tested ACL2 bridge. This
 activates the previously unassigned scheduler/receipt/storage seams; it does not
 claim their implementation or certification is already complete. The
 [BP path](../specs/bp-path.md) supplies the first two-node exit and fault cuts.
+
+
+The [complete BP application slice](../tests/evidence/2026-09-18-bp-exchange.md)
+now passed real return transport with lost receipt and restart. The sender's
+finite trace state/node invariants and finite transport receipt preservation are
+certified. The 132-test combined host suite includes seven new receiver
+exception/reopen cuts. This closes the initial actual sender/receiver/receipt
+composition experiment, not the wider M4 handoff theorem. Remaining closure:
+joint pending/durable-work binding, general receiver trace and journal refinement,
+authenticated policy binding, relay/contact/carried-media/expiry/reorder/quota
+experiments, and progress/physical durability assumptions. A pinned BPA inert
+bundle restart window is retained in the evidence and exercised via explicit fn
+retry; inventory is never used as an application acceptance claim.

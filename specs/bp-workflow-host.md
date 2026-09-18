@@ -19,7 +19,9 @@ Intent and outcome are separate durable records. An intent permanently consumes
 its local transaction/generation pair, including after abort or restart. Before
 intent publication, the host reserves two slots and one maximum-sized resolution
 record of byte headroom. ACL2 preflight checks context and identity before bytes
-are written. The host writes/fsyncs a temporary file, links the immutable record
+are written, against both live state and the complete durable history plus the
+candidate record. The history check is pure: it installs no state or effects.
+The host writes/fsyncs a temporary file, links the immutable record
 name and fsyncs the records directory, then applies that record to live ACL2 state.
 Ambiguous publication fences the owner.
 
@@ -34,6 +36,12 @@ or reply remains uncertainty. Delivery, deletion, expiry and contact observation
 cannot release an archive pin or create application evidence. An explicit
 policy-matching retry request permits another attempt after delivery if the
 application receipt was lost.
+
+Restart may change the live attempt status to `:restart-observed`; that status
+is not itself a journal record. Before another attempt, persist an explicit
+policy-matching retry request. Otherwise an attempt accepted only because of
+the transient restart status would be unreplayable from durable history. The
+history preflight rejects that attempt before publication or any BPA call.
 
 ## Authority and trust
 
