@@ -59,8 +59,11 @@ and retain concise evidence summaries and exact source hashes in the repository.
 
 The next active batch implements the [local persistence experiment](../specs/store-experiment.md):
 bounded transaction-record bytes, validated replay into the actual node, and a
-small real filesystem adapter/CLI with injected failures. Codec invariant work
-continues alongside it. The completed checkpoint above remains the latest
+small real filesystem adapter/CLI with injected failures. Primitive codec and
+full variable-record round-trip proofs are now certified individually. Current
+convergence adds durable allocation across aborted process lifetimes, bounded
+recovery, and a read-only NNTP view of the recovered store. The completed
+checkpoint above remains the latest
 integrated evidence until this new batch passes its own checks.
 
 Next: compose real bounded article injection and provenance with the reader;

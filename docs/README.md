@@ -21,6 +21,10 @@ larger specification and its remaining proof, storage, and service work.
 9. [Proof strategy](proofs.md), [validation](../tests/README.md), and
    [milestones](../planning/milestones.md): how to establish the claims.
 
+For concrete representation discussions, see the proposed
+[article-byte examples](article-byte-examples.md). For the current local adapter,
+see the [persistence experiment](../specs/store-experiment.md).
+
 ## Sources of truth
 
 | Question | Authoritative location |

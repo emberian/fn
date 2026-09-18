@@ -59,6 +59,8 @@ keeps the eventual group-encryption protocol choice open.
 
 We need a concrete example containing native author data, generated injection
 fields, relay-mutated headers, an unknown header, and a legacy unsigned article.
+The [article-byte examples](../docs/article-byte-examples.md) now supply those
+views and two candidate signing preimages; they remain proposals for discussion.
 Specify which exact bytes are signed and how an ordinary reader sees the article.
 Do not settle this by saying “canonicalize headers”: that hides the difficult
 part. Acceptance must still handle ordinary NNTP clients without fn extensions.
