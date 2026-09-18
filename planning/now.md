@@ -87,29 +87,29 @@ UTF-8/parser/DP correspondence, transfer state/assembly/hot-path work, record
 canonicality and all CBOR/record guards are integrated. Fault coverage includes
 47 injected rows, six process-death cuts and 211-state/9,038-edge exploration.
 
-The next closure batch is already progressing. One writer owns each file set;
-root integrates a frozen union. Targeted results below are not retroactively
-part of the 54-root evidence.
+The seventh [composed-store checkpoint](../tests/evidence/2026-09-18-composed-store.md)
+passed 75 roots, the simulator and 67 Python tests at `80afcbe`, with unchanged
+inputs. Independent client traffic over reopened state also passed. These results
+are separate from the earlier 54-root record.
 
 | Owner | Current closure target and state |
 | --- | --- |
 | Astra | Mixed live file/node and refusal/abort trace relation certified; observed-image exact replay and five-barrier recovery gate certified |
-| Root | Integrating 75 certification roots, the composed physical adapter and 533 guard-verified functions across 15 base books |
-| Terra | Composed store/reader adapter merged; one-use completion gate fixes passed targeted regressions, combined run pending |
+| Root | 75-root/67-test integration passed; 533 guarded functions across 15 base books |
+| Terra | Composed store/reader adapter merged; one-use completion gate fixes passed targeted regressions, combined run passed |
 | Luna | Arbitrary finite actual node traces preserve state and prior article/archive bindings; successful publication assertions passed |
 | Sol + Astra | Full implemented NNTP command/step effect typing and arbitrary finite session/cursor preservation certified |
-| Terra | Exchange ingest and policy-changing traces preserve state/conflicting facts; guard graph underway |
+| Terra | Exchange ingest and policy-changing traces preserve state/conflicting facts; all 40 guards certified and integrated |
 | Sol + Terra | Full public missing-range value correspondence and hypothesis-free polynomial work bound certified, including structural equality |
 | Terra | Wildmat matcher whole-operation work bound and all 54 guards certified |
-| Sol + Astra | NNTP guard graph in isolated implementation |
-| Terra | Article-field guard graph in isolated implementation |
+| Sol + Astra | NNTP guard graph certified in isolation; queued for root integration |
+| Terra | Article-field guard graph certified in isolation; queued for root integration |
 
 The runtime graphs cover acceptance (63), wire (38), wildmat (54), article (45),
 retention (35), node (30), replay (13), CBOR (21), records (45), file kernel (47),
 store wrappers/resolution/observed opening (40), transfer (62), and exchange (40): 533 guard-verified functions.
 All 452 pre-existing logical function bodies in the newly integrated graphs
-are unchanged; 15 proved executable/domain helpers were added. The combined source set still needs the frozen
-batch run; these counts do not include unfinished isolated patches.
+are unchanged; 15 proved executable/domain helpers were added. The frozen combined run passed; these counts exclude subsequent isolated patches.
 
 The [closure inventory](assurance-closure.md) retains the finite exit criteria.
 No completed helper is being used to close a wider unfinished row. Work proceeds
@@ -121,10 +121,16 @@ bounded transaction bytes, replay, allocation across aborted process lifetimes,
 fault tests, and a read-only NNTP view. The [walkthrough](../docs/local-experiment.md)
 makes this checkpoint executable without treating it as the final news service.
 
-Next: finish the frozen composed-adapter/guard batch. Independent work now
-implements checkpoint-plus-suffix equivalence (Sol), rebuildable group/range
-index soundness and completeness (Luna), and the remaining runtime guards.
-Then integrate article injection/provenance and
+The user has promoted BPv7 to the active architectural path. Coordinated
+lanes now implement an existing BPA integration (Terra), durable outbox/attempt/
+receipt semantics and trace proofs (Sol), and the actual workflow journal/ACL2
+bridge with crash tests (Sol), and actual legacy-article ingress (Terra). The [BP path](../specs/bp-path.md) requires a real
+interrupted two-node exchange; these lanes do not wait for indexes, compaction
+or a complete NNTP profile.
+
+The frozen composed-adapter/guard batch passed; record and integrate subsequent bounded artifacts while those lanes progress.
+Checkpoint-plus-suffix equivalence, corrected index completeness, article work
+and remaining runtime guards continue independently. Integrate article injection/provenance and
 complete the selected reader profile. The isolated-slot journal is not the real
 adapter model; store-files/store-node are the selected refinement path.
 The next user-facing design discussion has

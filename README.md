@@ -18,10 +18,12 @@ The local CLI now persists articles and archive obligations, and a loopback
 reader serves the recovered store through the actual ACL2 core. Follow the
 [local walkthrough](docs/local-experiment.md) to post, reopen, and read it.
 Network POST and native signatures remain unfinished. The
-[latest assurance evidence](tests/evidence/2026-09-18-assurance.md) records
-54 certified roots, 45 filesystem/socket/tooling tests, and 38 independent CBOR
-cases. It adds finite crash-trace preservation, live completion correspondence,
-codec guards/canonicality, parser/matcher properties, and transfer correctness.
+[latest assurance evidence](tests/evidence/2026-09-18-composed-store.md) records
+75 certified roots and 67 filesystem/socket/tooling tests, plus independent NNTP
+client traffic. The physical adapter now uses the composed storage core, with
+mixed crash/recovery traces and 533 guard-verified functions across 15 base books.
+BPv7 is a [current architectural path](specs/bp-path.md), developed alongside
+the local news service.
 The [closure inventory](planning/assurance-closure.md) tracks the next obligations.
 Earlier evidence retains independent NNTP client traffic and maximum-profile replay.
 

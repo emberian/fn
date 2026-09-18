@@ -520,7 +520,8 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [],
+      "implementation_note": " A06 now places BPv7 integration, durable workflow records and application receipts on the active path; current design/exit is specs/bp-path.md. This is an assignment, not completion evidence."
     },
     {
       "id": "RET-004",
@@ -543,7 +544,7 @@
         "tests/evidence/2026-09-18-articles.md",
         "tests/evidence/2026-09-18-articles.json"
       ],
-      "implementation_note": "Exact supplied evidence gates ledger release; general release preserves valid accounting, unrelated pins, and known identities. Real authorization, committed-receipt verification, and durable node-level release remain open."
+      "implementation_note": "Exact supplied evidence gates ledger release; general release preserves valid accounting, unrelated pins, and known identities. Real authorization, committed-receipt verification, and durable node-level release remain open. A06 now places BPv7 integration, durable workflow records and application receipts on the active path; current design/exit is specs/bp-path.md. This is an assignment, not completion evidence."
     },
     {
       "id": "RET-005",
@@ -636,7 +637,7 @@
         "tests/evidence/2026-09-18-assurance.md",
         "tests/evidence/2026-09-18-assurance.json"
       ],
-      "implementation_note": "Volatile staging has general reserve/add preservation, exact capacity/count accounting, candidate-byte and gap correctness, and polynomial costed hot-path bounds. Portable encoding, dependency closure, persistent progress and receipts remain open."
+      "implementation_note": "Volatile staging has general reserve/add preservation, exact capacity/count accounting, candidate-byte and gap correctness, and polynomial costed hot-path bounds. Portable encoding, dependency closure, persistent progress and receipts remain open. A06 now places BPv7 integration, durable workflow records and application receipts on the active path; current design/exit is specs/bp-path.md. This is an assignment, not completion evidence."
     },
     {
       "id": "REP-004",
@@ -666,7 +667,8 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [],
+      "implementation_note": " A06 now places BPv7 integration, durable workflow records and application receipts on the active path; current design/exit is specs/bp-path.md. This is an assignment, not completion evidence."
     },
     {
       "id": "REP-006",
@@ -682,7 +684,8 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [],
+      "implementation_note": " A06 now places BPv7 integration, durable workflow records and application receipts on the active path; current design/exit is specs/bp-path.md. This is an assignment, not completion evidence."
     },
     {
       "id": "NNT-001",

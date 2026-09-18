@@ -4,15 +4,13 @@ fn has executable ACL2 components and a deterministic simulator. It is still an
 experimental implementation: the components are not yet a durable, authenticated
 news service. The broader contracts in `specs/` remain the target.
 
-The latest [assurance checkpoint](../tests/evidence/2026-09-18-assurance.md)
-records 54 certified roots, the actual-core simulator and 45 passing Python tests,
-plus 38 independent CBOR cases. It closes finite file-trace preservation,
-actual live completion/replay correspondence, record canonicality/codec guards,
-article output recognition, wildcard correspondence, and transfer correctness.
-The record preserves the initial stale test expectations and their corrected
-recheck. Earlier records retain independent NNTP and maximum-profile replay
-experiments. The [closure queue](../planning/assurance-closure.md) names current
-owners and exit criteria for further work.
+The latest [composed-store checkpoint](../tests/evidence/2026-09-18-composed-store.md)
+passed 75 ACL2 roots, the actual-core simulator and 67 Python tests with unchanged
+inputs, plus an independent client over the reopened store. The physical adapter
+now uses the composed storage machine and its observed-image recovery gate.
+Earlier evidence retains the independent CBOR and other interoperability cases.
+The [closure queue](../planning/assurance-closure.md) tracks remaining work;
+[BPv7 integration](../specs/bp-path.md) is an active architectural path.
 
 ## Current components
 
@@ -31,7 +29,7 @@ owners and exit criteria for further work.
 | [Replay](../books/replay.lisp) and [invariants](../books/replay-invariants.lisp) | Contiguous committed records rebuild the actual node, obligations, and allocations; counter advance preserves invariants; replay has typed success/fault results from valid configurations | A last-good prefix on fault is diagnostic only; no checkpoint, rollback detection, or disk refinement claim |
 | [Local store](../tools/run_store.py) | Immutable framed transaction files, data/directory barriers, locking, exact ACL2 replay, injected I/O failures | Development experiment; no qualified power-loss profile, independent freshness anchor, or byte-accurate physical reservations |
 | [File-publication kernel](../books/store-files.lisp) and [invariants](../books/store-files-invariants.lisp) | One-use allocator reservations, immutable publication, actual replay and recovery gates; transition/crash preservation, stable-prefix and one-crash success retention proved | Finite file traces preserve state/history/successes; live node composition is separately proved; the physical adapter uses the composed kernel; physical syscall refinement remains conditional |
-| [Live file/node composition](../books/store-node.lisp) | Fixed configuration, exact pending-record binding, actual node completion before acknowledgement and full-node replay extension | Mixed traces including refusal/abort and observed-image recovery gates certified in targeted runs; the physical adapter now reports its I/O observations through this composition; combined validation pending |
+| [Live file/node composition](../books/store-node.lisp) | Fixed configuration, exact pending-record binding, actual node completion before acknowledgement and full-node replay extension | Mixed traces including refusal/abort and observed-image recovery gates certified in targeted runs; the physical adapter now reports its I/O observations through this composition; combined 75-root/67-test validation passed |
 | [Journal](../books/journal.lisp) | Isolated record slots, barriers, surviving/torn volatile writes, explicit recovery faults | Integrity tags and a protected durable anchor are assumptions; no byte format, actual disk adapter, or general recovery theorem |
 | [Exchange](../books/exchange.lisp) | Bounded atomic admission of immutable fact sets; duplicate/reordered merging and conflict evidence | Authorization is supplied; no serialized/resumable transfer, signatures, or durable scheduler |
 | [Object assembly](../books/transfer.lisp) | Declared-byte and metadata reservations, out-of-order fragments, exact duplicates, missing ranges, and unverified complete candidates | General state/accounting and assembly/gap correctness plus hot-path work proved; full public validation/lookup/missing-range work bound certified in a targeted run; durable progress, validation and receipts remain open |

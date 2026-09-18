@@ -53,7 +53,8 @@
         "tests/evidence/2026-09-18-assurance.md",
         "tests/evidence/2026-09-18-assurance.json",
         "books/node-traces.lisp",
-        "books/store-node-resolution-traces.lisp"
+        "books/store-node-resolution-traces.lisp",
+        "tests/evidence/2026-09-18-composed-store.md"
       ],
       "progress_note": "Actual finite node traces preserve state and prior bindings; mixed live file/node traces including refusal, known abort and recovery preserve the phase/history relation. Provenance, complete runtime guards and physical refinement remain open."
     },
@@ -311,9 +312,10 @@
         "tests/evidence/2026-09-18-assurance.json",
         "books/store-node-resolution-traces.lisp",
         "books/store-observed.lisp",
-        "tests/acl2/store-observed-tests.lisp"
+        "tests/acl2/store-observed-tests.lisp",
+        "tests/evidence/2026-09-18-composed-store.md"
       ],
-      "progress_note": "Arbitrary mixed live/file traces including refusal/abort preserve exact ready-state replay and prior acknowledged records, conditional on the kernel crash model. Observed-image opening uses actual recovery with no fabricated acknowledgements or barriers; zero through four barriers remain gated, the fifth opens ready. Host adoption, physical byte correspondence, freshness and platform qualification remain separate from these targeted proofs."
+      "progress_note": "Arbitrary mixed live/file traces including refusal/abort preserve exact ready-state replay and prior acknowledged records, conditional on the kernel crash model. Observed-image opening uses actual recovery with no fabricated acknowledgements or barriers; zero through four barriers remain gated, the fifth opens ready. Host adoption passed the integrated suite; physical byte correspondence, freshness and platform qualification remain separate from these targeted proofs."
     },
     {
       "id": "PRF-008",
@@ -518,9 +520,10 @@
         "tests/acl2/store-node-guards-tests.lisp",
         "books/transfer.lisp",
         "books/exchange.lisp",
-        "tests/acl2/exchange-guards-tests.lisp"
+        "tests/acl2/exchange-guards-tests.lisp",
+        "tests/evidence/2026-09-18-composed-store.md"
       ],
-      "progress_note": "Fifteen base books have targeted guard certification: acceptance63, wire38, wildmat54, article45, retention35, node30, replay13, CBOR21, records45, store-files47, store-node22, resolution6, observed12, transfer62, exchange40 (533 functions). All 452 pre-existing logical bodies in the added graphs are unchanged; 15 helpers and MBE equality obligations are proved. Physical adapter now calls the composed transitions; combined batch pending. NNTP and semantic fields graphs remain active; host/physical assumptions are separate."
+      "progress_note": "Fifteen base books have targeted guard certification: acceptance63, wire38, wildmat54, article45, retention35, node30, replay13, CBOR21, records45, store-files47, store-node22, resolution6, observed12, transfer62, exchange40 (533 functions). All 452 pre-existing logical bodies in the added graphs are unchanged; 15 helpers and MBE equality obligations are proved. Physical adapter now calls the composed transitions; combined 75-root/67-test batch passed. NNTP and semantic fields graphs remain active; host/physical assumptions are separate."
     },
     {
       "id": "PRF-015",
@@ -637,7 +640,8 @@
         "books/wildmat-work.lisp",
         "books/transfer-public-work.lisp",
         "books/transfer-public-bound.lisp",
-        "specs/transfer-public-bound.md"
+        "specs/transfer-public-bound.md",
+        "tests/evidence/2026-09-18-composed-store.md"
       ],
       "progress_note": "Article/UTF-8/wildmat output recognizers and DP correspondence are certified. Whole matcher work has a value-corresponding polynomial bound; public transfer missing-range work has a hypothesis-free bound covering malformed validation, structural label equality, lookup and traversal. These declared operation costs exclude numeric bit complexity/runtime allocation. Other parser work, peak allocation and physical capacity remain open."
     },
