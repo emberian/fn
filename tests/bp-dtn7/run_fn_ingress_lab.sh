@@ -7,8 +7,10 @@ export no_proxy='*'
 
 SCRIPT=${0:A}
 ROOT=${SCRIPT:h}
+BPA_ROOT=${BPA_ROOT:-"$ROOT/../.."}
 REPO=${DTN7_REPO:-"$ROOT/../../build/bp-dtn7/dtn7-rs"}
 BIN="$REPO/target/release"
+DTN7_REPO="$REPO" "$ROOT/build_payload_extractor.sh"
 INGRESS_ROOT=${BP_INGRESS_ROOT:-"$ROOT/../.."}
 WORKFLOW_JOURNAL=${BP_WORKFLOW_JOURNAL:-"$INGRESS_ROOT/tools/workflow_journal.py"}
 RUN_BASE=${BP_FN_INGRESS_RUN_BASE:-"$INGRESS_ROOT/build/bp-dtn7-fn-ingress"}
@@ -115,21 +117,16 @@ stop_b() { kill "$B_PID"; wait "$B_PID" 2>/dev/null || true; B_PID=""; }
 
 start_a
 assert_loopback_listeners "$A_PID" "$PA" "$CA" "$ART/a-listeners.txt"
-cat > "$ART/legacy-article.adu" <<'EOF_ADU'
-Message-ID: <bp-loopback@fn.example>
-Newsgroups: fn.letters
-Subject: BP loopback ingress lab
-From: bp sender <sender@bp.example>
-Date: Thu, 01 Jan 2026 00:00:00 +0000
-
-Exact legacy article ADU over BPv7.
-EOF_ADU
-# zsh heredoc uses literal CRLF only through this conversion; the original ADU
-# is retained byte-for-byte and checked by the real Store lookup.
 python3 - "$ART/legacy-article.adu" <<'PY'
 from pathlib import Path
-p = Path(__import__('sys').argv[1])
-p.write_bytes(p.read_bytes().replace(b'\\r\\n', b'\r\n'))
+import sys
+Path(sys.argv[1]).write_bytes(
+    b"Message-ID: <bp-loopback@fn.example>\r\n"
+    b"Newsgroups: fn.letters\r\n"
+    b"Subject: BP loopback ingress lab\r\n"
+    b"From: bp sender <sender@bp.example>\r\n"
+    b"Date: Thu, 01 Jan 2026 00:00:00 +0000\r\n\r\n"
+    b"Exact legacy article ADU over BPv7.\r\n")
 PY
 shasum -a 256 "$ART/legacy-article.adu" > "$ART/legacy-article.sha256"
 "$BIN/dtnsend" -6 -p "$PA" -r dtn://fn.lab/inbox -l 300 "$ART/legacy-article.adu" | tee "$ART/submit.txt"
@@ -149,7 +146,7 @@ wait_for_id "$PB" "$BID" "$ART/b-after-restart.txt"
 SOURCE_EID=${BID%/*}
 python3 "$ROOT/bp_fn_ingress_driver.py" \
   --ingress-root "$INGRESS_ROOT" --workflow-journal "$WORKFLOW_JOURNAL" \
-  --store "$RUN/store" --journal "$RUN/workflow" --bpa-bin "$BIN" --bpa-port "$PB" \
+  --store "$RUN/store" --journal "$RUN/workflow" --bpa-bin "$BIN" --bpa-port "$PB" --bpa-tools "$BPA_ROOT/tools" --bpa-extractor "$BIN/fn_bpa_payload_extract" \
   --bid "$BID" --expected-adu "$ART/legacy-article.adu" \
   --expected-msgid '<bp-loopback@fn.example>' --destination dtn://fn.lab/inbox \
   --source-eid "$SOURCE_EID" --lifetime 300 --artifact-dir "$ART" --phase accept \
@@ -164,7 +161,7 @@ DUPLICATE_BID=$(awk '/^Bundle-Id:/ {print $2}' "$ART/duplicate-submit.txt")
 wait_for_id "$PB" "$DUPLICATE_BID" "$ART/b-before-duplicate.txt"
 python3 "$ROOT/bp_fn_ingress_driver.py" \
   --ingress-root "$INGRESS_ROOT" --workflow-journal "$WORKFLOW_JOURNAL" \
-  --store "$RUN/store" --journal "$RUN/workflow" --bpa-bin "$BIN" --bpa-port "$PB" \
+  --store "$RUN/store" --journal "$RUN/workflow" --bpa-bin "$BIN" --bpa-port "$PB" --bpa-tools "$BPA_ROOT/tools" --bpa-extractor "$BIN/fn_bpa_payload_extract" \
   --bid "$DUPLICATE_BID" --expected-adu "$ART/legacy-article.adu" \
   --expected-msgid '<bp-loopback@fn.example>' --destination dtn://fn.lab/inbox \
   --source-eid "$SOURCE_EID" --lifetime 300 --artifact-dir "$ART" --phase duplicate \
