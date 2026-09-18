@@ -5,6 +5,11 @@ are central to fn, not an optional late interface. This changes sequencing;
 it does not select a cryptographic suite, native signing grammar, production
 BP implementation, endpoint namespace, or flight qualification profile.
 
+The first [actual BPv7 transport experiment](../tests/evidence/2026-09-18-bpv7-transport.md)
+has passed with a pinned dtn7-rs build. It queued through disconnection, survived
+clean restart, rediscovered inbound storage, and exercised non-destructive staging
+and explicit deletion. Application workflow/receipt integration is still active.
+
 ## Product shape
 
 NNTP is a local human/agent interface. The fn core owns article identity,
@@ -97,6 +102,7 @@ test is not proof of arbitrary topology, liveness, or mission operation.
   Terra host lane.
 - Executable ACL2 job/attempt/evidence state and trace invariants: Sol core lane.
 - Actual workflow journal, replay bridge and crash/fault harness: Sol host lane.
+- Legacy article parsing, configured routing and actual store ingress: Terra lane.
 - Integration, contract alignment and registry accuracy: root.
 
 Required safety results include state/accounting preservation; durable intent
