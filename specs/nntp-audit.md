@@ -78,3 +78,11 @@ An actual step fold preserves it over arbitrary finite event lists, including
 malformed events and events after QUIT. This is a state/cursor theorem, not a
 proof of every response byte, effect type, RFC clause or future mutable-archive
 policy. The broad conformance rows above therefore remain separately audited.
+
+The companion [`nntp-effects`](../books/nntp-effects.lisp) now proves
+`fn-nntp-command-effects-well-formed` for every dispatcher branch under a valid
+archive projection, and `fn-nntp-step-effects-well-formed` for valid sessions and
+arbitrary wire events. Replies contain proper octet lists; close effects have
+the exact declared shape. Closed sessions emit no effects. These are effect
+shape theorems, separate from byte-for-byte RFC response conformance and runtime
+work bounds.

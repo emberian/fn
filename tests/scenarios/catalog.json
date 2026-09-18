@@ -99,9 +99,12 @@
         "tests/evidence/2026-09-18-fields-transfer.md",
         "tests/evidence/2026-09-18-fields-transfer.json",
         "tests/evidence/2026-09-18-assurance.md",
-        "tests/evidence/2026-09-18-assurance.json"
+        "tests/evidence/2026-09-18-assurance.json",
+        "books/store-node-resolution-traces.lisp",
+        "books/store-observed.lisp",
+        "tests/test_store_corruption.py"
       ],
-      "execution_scope": "Partial: arbitrary finite file-kernel trace/prefix/success retention, 211-state/9038-edge exhaustive bounded exploration, 47 injected adapter rows and six real process-death boundaries with duplicate retries. Actual live completion/replay correspondence is proved separately; full adapter adoption and power-loss qualification remain open."
+      "execution_scope": "Mixed actual node/file trace retention and observed replay/barrier gates have targeted certification. Forty-seven injection rows, six process-death cuts and sixteen malformed-image cases exercise the adapter. These finite tests do not qualify physical power loss or whole-store rollback."
     },
     {
       "id": "SCN-004",
@@ -394,9 +397,12 @@
         "tests/evidence/2026-09-18-articles.md",
         "tests/evidence/2026-09-18-articles.json",
         "tests/evidence/2026-09-18-wildmat-storage.md",
-        "tests/evidence/2026-09-18-wildmat-storage.json"
+        "tests/evidence/2026-09-18-wildmat-storage.json",
+        "books/nntp-invariants.lisp",
+        "books/nntp-effects.lisp",
+        "tests/test_reader_partitions.py"
       ],
-      "execution_scope": "Partial: reader subset, framing/isolation, recovered-store projection, LISTGROUP, filtered ACTIVE/NEWSGROUPS, malformed UTF8/BOM and length/keyword boundaries, independent nntplib traffic. Full READER/POST/OVER remains open."
+      "execution_scope": "Implemented reader session/cursor and effect shape have general proofs; exact ACL2 bridge input partitions and real reconnects have targeted tests. Full READER/POST and complete RFC byte-response conformance remain open."
     },
     {
       "id": "SCN-015",
@@ -432,9 +438,12 @@
         "tests/evidence/2026-09-18-fields-transfer.md",
         "tests/evidence/2026-09-18-fields-transfer.json",
         "tests/evidence/2026-09-18-assurance.md",
-        "tests/evidence/2026-09-18-assurance.json"
+        "tests/evidence/2026-09-18-assurance.json",
+        "books/node-traces.lisp",
+        "tests/acl2/node-traces-tests.lisp",
+        "books/store-node-resolution-traces.lisp"
       ],
-      "execution_scope": "Partial: actual-core bridge/replay, rejected/lost completion gates, recovery fences and ownership lifecycle tests; arbitrary file traces and actual composed node completion/replay proofs. Complete live adapter adoption, scheduling/backpressure and byte/effect refinement remain open."
+      "execution_scope": "Arbitrary finite actual node and mixed storage traces preserve state and prior bindings/acknowledgements. Successful prepare/durable publication, refusal, stale completion, indeterminate/committed/absent resolution and later retry vectors pass; physical adapter correspondence remains a separately validated layer."
     },
     {
       "id": "SCN-016",

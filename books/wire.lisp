@@ -93,22 +93,46 @@
       (equal x :article)
       (equal x :closed)))
 
-(defun fn-wire-state-mode (x) (car x))
-(defun fn-wire-state-line-rev (x) (car (cdr x)))
-(defun fn-wire-state-body-rev (x) (car (cdr (cdr x))))
-(defun fn-wire-state-pending-crp (x) (car (cdr (cdr (cdr x)))))
-(defun fn-wire-state-body-size (x) (car (cdr (cdr (cdr (cdr x))))))
-(defun fn-wire-state-line-limit (x) (car (cdr (cdr (cdr (cdr (cdr x)))))))
-(defun fn-wire-state-body-limit (x) (car (cdr (cdr (cdr (cdr (cdr (cdr x))))))))
+(defun fn-wire-state-mode (x)
+  (declare (xargs :guard (true-listp x) :verify-guards nil))
+  (car x))
+
+(defun fn-wire-state-line-rev (x)
+  (declare (xargs :guard (true-listp x) :verify-guards nil))
+  (car (cdr x)))
+
+(defun fn-wire-state-body-rev (x)
+  (declare (xargs :guard (true-listp x) :verify-guards nil))
+  (car (cdr (cdr x))))
+
+(defun fn-wire-state-pending-crp (x)
+  (declare (xargs :guard (true-listp x) :verify-guards nil))
+  (car (cdr (cdr (cdr x)))))
+
+(defun fn-wire-state-body-size (x)
+  (declare (xargs :guard (true-listp x) :verify-guards nil))
+  (car (cdr (cdr (cdr (cdr x))))))
+
+(defun fn-wire-state-line-limit (x)
+  (declare (xargs :guard (true-listp x) :verify-guards nil))
+  (car (cdr (cdr (cdr (cdr (cdr x)))))))
+
+(defun fn-wire-state-body-limit (x)
+  (declare (xargs :guard (true-listp x) :verify-guards nil))
+  (car (cdr (cdr (cdr (cdr (cdr (cdr x))))))))
 
 (defun fn-wire-make-state (mode line-rev body-rev pending-crp body-size
                                  line-limit body-limit)
   (list mode line-rev body-rev pending-crp body-size line-limit body-limit))
 
 (defun fn-wire-line-cost (line)
+  (declare (xargs :guard (fn-wire-octet-listp line)
+                  :verify-guards nil))
   (+ 2 (len line)))
 
 (defun fn-wire-lines-size (lines)
+  (declare (xargs :guard (fn-wire-octet-linesp lines)
+                  :verify-guards nil))
   (if (consp lines)
       (+ (fn-wire-line-cost (car lines))
          (fn-wire-lines-size (cdr lines)))
@@ -152,8 +176,15 @@
            (fn-wire-statep (fn-wire-initial-state line-limit body-limit)))
   :hints (("Goal" :in-theory (enable fn-wire-initial-state fn-wire-statep))))
 
-(defun fn-wire-result-state (x) (car x))
-(defun fn-wire-result-events (x) (cdr x))
+(defun fn-wire-result-state (x)
+  (declare (xargs :guard (or (consp x) (null x))
+                  :verify-guards nil))
+  (car x))
+
+(defun fn-wire-result-events (x)
+  (declare (xargs :guard (or (consp x) (null x))
+                  :verify-guards nil))
+  (cdr x))
 
 (defun fn-wire-make-result (wire-state events)
   (cons wire-state events))
@@ -168,6 +199,8 @@
   (list :reject reason))
 
 (defun fn-wire-close (wire-state reason)
+  (declare (xargs :guard (fn-wire-statep wire-state)
+                  :verify-guards nil))
   (fn-wire-make-result
    (fn-wire-make-state :closed nil nil nil 0
                        (fn-wire-state-line-limit wire-state)
@@ -190,6 +223,9 @@
 ; One-byte input and incremental feeding
 
 (defun fn-wire-after-line (wire-state line)
+  (declare (xargs :guard (and (fn-wire-statep wire-state)
+                              (fn-wire-octet-listp line))
+                  :verify-guards nil))
   (if (equal (fn-wire-state-mode wire-state) :command)
       (fn-wire-make-result
        (fn-wire-make-state :command nil nil nil 0
@@ -272,7 +308,10 @@
                                       fn-wire-statep))))
 
 (defun fn-wire-feed-proper (wire-state octets)
-  (declare (xargs :measure (acl2-count octets)))
+  (declare (xargs :guard (and (fn-wire-statep wire-state)
+                              (fn-wire-octet-listp octets))
+                  :verify-guards nil
+                  :measure (acl2-count octets)))
   ; The public wrapper establishes fn-wire-octet-listp before calling this
   ; worker.  Once a boundary failure closes the connection, do not walk any
   ; arbitrary suffix that followed it.
@@ -299,6 +338,8 @@
         (fn-wire-close wire-state :malformed)))))
 
 (defun fn-wire-continue (result octets)
+  (declare (xargs :guard (true-listp result)
+                  :verify-guards nil))
   (let ((next (fn-wire-feed (fn-wire-result-state result) octets)))
     (fn-wire-make-result (fn-wire-result-state next)
                          (append (fn-wire-result-events result)
@@ -310,9 +351,17 @@
 ; the host-dispatch API; fn-wire-feed remains a fixed-mode composition helper.
 ; Result fields are (state event unconsumed-octets), where event is NIL when
 ; the supplied octets contain no complete event.
-(defun fn-wire-next-state (x) (car x))
-(defun fn-wire-next-event (x) (car (cdr x)))
-(defun fn-wire-next-unconsumed (x) (car (cdr (cdr x))))
+(defun fn-wire-next-state (x)
+  (declare (xargs :guard (true-listp x) :verify-guards nil))
+  (car x))
+
+(defun fn-wire-next-event (x)
+  (declare (xargs :guard (true-listp x) :verify-guards nil))
+  (car (cdr x)))
+
+(defun fn-wire-next-unconsumed (x)
+  (declare (xargs :guard (true-listp x) :verify-guards nil))
+  (car (cdr (cdr x))))
 
 (defun fn-wire-make-next (wire-state event unconsumed)
   (list wire-state event unconsumed))
@@ -364,3 +413,45 @@
                    (fn-wire-feed-proper
                     (fn-wire-result-state (fn-wire-feed-proper wire-state left))
                     right))))))
+
+; -----------------------------------------------------------------------------
+; Executable guard closure
+
+(verify-guards fn-wire-octetp)
+(verify-guards fn-wire-octet-listp)
+(verify-guards fn-wire-octet-linesp)
+(verify-guards fn-wire-stuff-line)
+(verify-guards fn-wire-unstuff-line)
+(verify-guards fn-wire-reverse-octets-aux)
+(verify-guards fn-wire-reverse-octets)
+(verify-guards fn-wire-modep)
+(verify-guards fn-wire-state-mode)
+(verify-guards fn-wire-state-line-rev)
+(verify-guards fn-wire-state-body-rev)
+(verify-guards fn-wire-state-pending-crp)
+(verify-guards fn-wire-state-body-size)
+(verify-guards fn-wire-state-line-limit)
+(verify-guards fn-wire-state-body-limit)
+(verify-guards fn-wire-make-state)
+(verify-guards fn-wire-line-cost)
+(verify-guards fn-wire-lines-size)
+(verify-guards fn-wire-statep)
+(verify-guards fn-wire-initial-state)
+(verify-guards fn-wire-result-state)
+(verify-guards fn-wire-result-events)
+(verify-guards fn-wire-make-result)
+(verify-guards fn-wire-command-event)
+(verify-guards fn-wire-article-event)
+(verify-guards fn-wire-reject-event)
+(verify-guards fn-wire-close)
+(verify-guards fn-wire-begin-article)
+(verify-guards fn-wire-after-line)
+(verify-guards fn-wire-feed-byte)
+(verify-guards fn-wire-feed-proper)
+(verify-guards fn-wire-feed)
+(verify-guards fn-wire-continue)
+(verify-guards fn-wire-next-state)
+(verify-guards fn-wire-next-event)
+(verify-guards fn-wire-next-unconsumed)
+(verify-guards fn-wire-make-next)
+(verify-guards fn-wire-next)

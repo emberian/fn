@@ -41,23 +41,30 @@
 ; implementation.
 (defun fn-wildmat-octetp (x) (fn-cbor-octetp x))
 (defun fn-wildmat-octet-listp (xs) (fn-cbor-octet-listp xs))
-(defun fn-wildmat-at-mostp (xs bound) (fn-cbor-at-mostp xs bound))
+(defun fn-wildmat-at-mostp (xs bound)
+  (declare (xargs :guard (natp bound) :verify-guards nil))
+  (fn-cbor-at-mostp xs bound))
 
 (defun fn-wildmat-ok (value) (list :ok value))
 (defun fn-wildmat-error (reason) (list :error reason))
 (defun fn-wildmat-result-okp (result)
   (and (consp result) (equal (car result) :ok)))
-(defun fn-wildmat-result-value (result) (car (cdr result)))
+(defun fn-wildmat-result-value (result)
+  (declare (xargs :guard (true-listp result) :verify-guards nil))
+  (car (cdr result)))
 
 ; A UTF-8 step includes its unconsumed input so decoding can be structural and
 ; does not need indexing or an unbounded numeric conversion.
 (defun fn-wildmat-utf8-ok (codepoint rest) (list :ok codepoint rest))
-(defun fn-wildmat-utf8-rest (result) (car (cdr (cdr result))))
+(defun fn-wildmat-utf8-rest (result)
+  (declare (xargs :guard (true-listp result) :verify-guards nil))
+  (car (cdr (cdr result))))
 
 (defun fn-wildmat-utf8-tailp (byte)
   (and (integerp byte) (<= 128 byte) (<= byte 191)))
 
 (defun fn-wildmat-utf8-2p (xs)
+  (declare (xargs :guard (and (consp xs) (integerp (car xs))) :verify-guards nil))
   (and (consp xs) (consp (cdr xs))
        (<= 194 (car xs)) (<= (car xs) 223)
        (fn-wildmat-utf8-tailp (car (cdr xs)))))
@@ -75,15 +82,30 @@
        (fn-wildmat-utf8-tailp (car (cdr (cdr (cdr xs)))))))
 
 (defun fn-wildmat-utf8-2-value (xs)
+  (declare (xargs :guard (and (consp xs) (consp (cdr xs))
+                              (integerp (car xs))
+                              (integerp (car (cdr xs)))) :verify-guards nil))
   (+ (* 64 (- (car xs) 192))
      (- (car (cdr xs)) 128)))
 
 (defun fn-wildmat-utf8-3-value (xs)
+  (declare (xargs :guard (and (consp xs) (consp (cdr xs))
+                              (consp (cdr (cdr xs)))
+                              (integerp (car xs))
+                              (integerp (car (cdr xs)))
+                              (integerp (car (cdr (cdr xs))))) :verify-guards nil))
   (+ (* 4096 (- (car xs) 224))
      (* 64 (- (car (cdr xs)) 128))
      (- (car (cdr (cdr xs))) 128)))
 
 (defun fn-wildmat-utf8-4-value (xs)
+  (declare (xargs :guard (and (consp xs) (consp (cdr xs))
+                              (consp (cdr (cdr xs)))
+                              (consp (cdr (cdr (cdr xs))))
+                              (integerp (car xs))
+                              (integerp (car (cdr xs)))
+                              (integerp (car (cdr (cdr xs))))
+                              (integerp (car (cdr (cdr (cdr xs)))))) :verify-guards nil))
   (+ (* 262144 (- (car xs) 240))
      (* 4096 (- (car (cdr xs)) 128))
      (* 64 (- (car (cdr (cdr xs))) 128))
@@ -124,7 +146,9 @@
               (fn-wildmat-error :malformed-utf8))))))))
 
 (defun fn-wildmat-decode-aux (octets codepoints-rev)
-  (declare (xargs :measure (acl2-count octets)))
+  (declare (xargs :measure (acl2-count octets)
+                  :guard (true-listp codepoints-rev)
+                  :verify-guards nil))
   (if (consp octets)
       (let ((next (fn-wildmat-utf8-next octets)))
         (if (fn-wildmat-result-okp next)
@@ -176,9 +200,14 @@
 
 (defun fn-wildmat-make-pattern (positivep items)
   (list (if positivep :positive :negative) items))
-(defun fn-wildmat-pattern-sign (pattern) (car pattern))
-(defun fn-wildmat-pattern-items (pattern) (car (cdr pattern)))
+(defun fn-wildmat-pattern-sign (pattern)
+  (declare (xargs :guard (true-listp pattern) :verify-guards nil))
+  (car pattern))
+(defun fn-wildmat-pattern-items (pattern)
+  (declare (xargs :guard (true-listp pattern) :verify-guards nil))
+  (car (cdr pattern)))
 (defun fn-wildmat-pattern-positivep (pattern)
+  (declare (xargs :guard (true-listp pattern) :verify-guards nil))
   (equal (fn-wildmat-pattern-sign pattern) :positive))
 (defun fn-wildmat-patternp (pattern)
   (and (true-listp pattern)
@@ -199,7 +228,9 @@
 ; or an error.  The parser only ever calls this after the optional negation
 ; marker has been consumed, so `!` cannot be an item in any position.
 (defun fn-wildmat-scan-pattern (codepoints items-rev)
-  (declare (xargs :measure (acl2-count codepoints)))
+  (declare (xargs :measure (acl2-count codepoints)
+                  :guard (true-listp items-rev)
+                  :verify-guards nil))
   (if (consp codepoints)
       (if (equal (car codepoints) 44)
           (if (consp items-rev)
@@ -217,15 +248,21 @@
   (and (consp scan) (equal (car scan) :end)))
 (defun fn-wildmat-scan-morep (scan)
   (and (consp scan) (equal (car scan) :more)))
-(defun fn-wildmat-scan-items (scan) (car (cdr scan)))
-(defun fn-wildmat-scan-rest (scan) (car (cdr (cdr scan))))
+(defun fn-wildmat-scan-items (scan)
+  (declare (xargs :guard (true-listp scan) :verify-guards nil))
+  (car (cdr scan)))
+(defun fn-wildmat-scan-rest (scan)
+  (declare (xargs :guard (true-listp scan) :verify-guards nil))
+  (car (cdr (cdr scan))))
 
 (defun fn-wildmat-parse-one (codepoints positivep fuel)
   ; Every recursive call follows a nonempty constituent and one comma.  Fuel
   ; makes that finite grammar recursion explicit to ACL2 without relying on a
   ; theorem about the scanner's returned suffix.  The public entry supplies the
   ; fixed input bound, so valid inputs cannot exhaust it.
-  (declare (xargs :measure (nfix fuel)))
+  (declare (xargs :measure (nfix fuel)
+                  :guard (natp fuel)
+                  :verify-guards nil))
   (if (zp fuel)
       (fn-wildmat-error :limit)
     (let ((scan (fn-wildmat-scan-pattern codepoints nil)))
@@ -282,6 +319,10 @@
       nil)))
 
 (defun fn-wildmat-step-character-aux (target previous item)
+  (declare (xargs :guard (and (true-listp target)
+                              (true-listp previous)
+                              (equal (len previous) (1+ (len target))))
+                  :verify-guards nil))
   (if (consp target)
       (cons (if (and (consp previous)
                      (fn-wildmat-item-character-matchp item (car target)))
@@ -291,11 +332,19 @@
     nil))
 
 (defun fn-wildmat-step-character (target previous item)
+  (declare (xargs :guard (and (true-listp target)
+                              (true-listp previous)
+                              (equal (len previous) (1+ (len target))))
+                  :verify-guards nil))
   (cons nil (fn-wildmat-step-character-aux target previous item)))
 
 ; For a star, next[j] = previous[j] OR next[j-1].  `carry` is next[j-1], and
 ; the tail of previous starts at previous[j], making this a single row scan.
 (defun fn-wildmat-step-star-aux (target previous-tail carry)
+  (declare (xargs :guard (and (true-listp target)
+                              (true-listp previous-tail)
+                              (equal (len previous-tail) (len target)))
+                  :verify-guards nil))
   (if (consp target)
       (let ((next (fn-wildmat-bool-or (car previous-tail) carry)))
         (cons next (fn-wildmat-step-star-aux (cdr target)
@@ -303,10 +352,19 @@
     nil))
 
 (defun fn-wildmat-step-star (target previous)
+  (declare (xargs :guard (and (true-listp target)
+                              (true-listp previous)
+                              (equal (len previous) (1+ (len target))))
+                  :verify-guards nil))
   (cons (car previous)
         (fn-wildmat-step-star-aux target (cdr previous) (car previous))))
 
 (defun fn-wildmat-pattern-row (items target row)
+  (declare (xargs :guard (and (true-listp items)
+                              (true-listp target)
+                              (true-listp row)
+                              (equal (len row) (1+ (len target))))
+                  :verify-guards nil))
   (if (consp items)
       (fn-wildmat-pattern-row
        (cdr items) target
@@ -316,11 +374,15 @@
     row))
 
 (defun fn-wildmat-row-last (row)
+  (declare (xargs :guard (and (true-listp row) (consp row))
+                  :verify-guards nil))
   (if (consp (cdr row))
       (fn-wildmat-row-last (cdr row))
     (car row)))
 
 (defun fn-wildmat-pattern-matchp (items target)
+  (declare (xargs :guard (and (true-listp items) (true-listp target))
+                  :verify-guards nil))
   (if (fn-wildmat-row-last
        (fn-wildmat-pattern-row items target (fn-wildmat-initial-row target)))
       t
@@ -329,6 +391,9 @@
 ; Search from the right recursively.  The returned pattern record is always a
 ; nonempty list, so NIL remains an unambiguous "no pattern matched" marker.
 (defun fn-wildmat-rightmost-match (patterns target)
+  (declare (xargs :guard (and (fn-wildmat-pattern-listp patterns)
+                              (true-listp target))
+                  :verify-guards nil))
   (if (consp patterns)
       (let ((right (fn-wildmat-rightmost-match (cdr patterns) target)))
         (if right
@@ -340,6 +405,9 @@
     nil))
 
 (defun fn-wildmat-match-codepoints (patterns target)
+  (declare (xargs :guard (and (fn-wildmat-pattern-listp patterns)
+                              (true-listp target))
+                  :verify-guards nil))
   (let ((rightmost (fn-wildmat-rightmost-match patterns target)))
     (if rightmost
         (if (fn-wildmat-pattern-positivep rightmost) t nil)
@@ -366,3 +434,143 @@
 ; proof, which remains future bounded-parser evidence.
 (defthm fn-wildmat-star-matches-empty
   (equal (fn-wildmat-pattern-matchp '(42) nil) t))
+
+; Guard support for the row-shape contract.  These are ordinary ACL2
+; theorems about the unchanged logical DP definitions.
+(defthm fn-wildmat-guard-step-character-aux-length
+  (equal (len (fn-wildmat-step-character-aux target previous item))
+         (len target))
+  :hints (("Goal" :induct (fn-wildmat-step-character-aux target previous item)
+           :in-theory (enable fn-wildmat-step-character-aux))))
+
+(defthm fn-wildmat-guard-step-character-length
+  (equal (len (fn-wildmat-step-character target previous item))
+         (1+ (len target)))
+  :hints (("Goal" :in-theory (enable fn-wildmat-step-character))))
+
+(defthm fn-wildmat-guard-step-star-aux-length
+  (equal (len (fn-wildmat-step-star-aux target previous-tail carry))
+         (len target))
+  :hints (("Goal" :induct (fn-wildmat-step-star-aux target previous-tail carry)
+           :in-theory (enable fn-wildmat-step-star-aux))))
+
+(defthm fn-wildmat-guard-step-star-length
+  (equal (len (fn-wildmat-step-star target previous))
+         (1+ (len target)))
+  :hints (("Goal" :in-theory (enable fn-wildmat-step-star))))
+
+(defthm fn-wildmat-guard-pattern-row-length
+  (implies (equal (len row) (1+ (len target)))
+           (equal (len (fn-wildmat-pattern-row items target row))
+                  (1+ (len target))))
+  :hints (("Goal" :induct (fn-wildmat-pattern-row items target row)
+           :in-theory (enable fn-wildmat-pattern-row))))
+
+(defthm fn-wildmat-guard-items-p-true-listp
+  (implies (fn-wildmat-items-p items)
+           (true-listp items))
+  :hints (("Goal" :induct (fn-wildmat-items-p items)
+           :in-theory (enable fn-wildmat-items-p))))
+
+(defthm fn-wildmat-guard-octet-listp-true-listp
+  (implies (fn-wildmat-octet-listp octets)
+           (true-listp octets))
+  :hints (("Goal" :induct (fn-cbor-octet-listp octets)
+           :in-theory (enable fn-wildmat-octet-listp fn-cbor-octet-listp))))
+
+(defthm fn-wildmat-guard-utf8-next-success-rest-true-listp
+  (implies (and (true-listp octets)
+                (fn-wildmat-result-okp (fn-wildmat-utf8-next octets)))
+           (true-listp
+            (fn-wildmat-utf8-rest (fn-wildmat-utf8-next octets))))
+  :hints (("Goal"
+           :in-theory (enable fn-wildmat-utf8-next
+                               fn-wildmat-result-okp
+                               fn-wildmat-utf8-rest
+                               fn-wildmat-utf8-ok
+                               fn-wildmat-error))))
+
+(defthm fn-wildmat-guard-decode-aux-success-true-listp
+  (implies (and (true-listp octets)
+                (true-listp codepoints-rev)
+                (fn-wildmat-result-okp
+                 (fn-wildmat-decode-aux octets codepoints-rev)))
+           (true-listp
+            (fn-wildmat-result-value
+             (fn-wildmat-decode-aux octets codepoints-rev))))
+  :hints (("Goal"
+           :induct (fn-wildmat-decode-aux octets codepoints-rev)
+           :in-theory (enable fn-wildmat-decode-aux
+                               fn-wildmat-result-okp
+                               fn-wildmat-result-value))))
+
+(defthm fn-wildmat-guard-decode-success-true-listp
+  (implies (and (fn-wildmat-octet-listp octets)
+                (fn-wildmat-result-okp (fn-wildmat-decode octets)))
+           (true-listp (fn-wildmat-result-value (fn-wildmat-decode octets))))
+  :hints (("Goal"
+           :use ((:instance fn-wildmat-guard-octet-listp-true-listp)
+                 (:instance fn-wildmat-guard-decode-aux-success-true-listp
+                            (codepoints-rev nil)))
+           :in-theory (enable fn-wildmat-decode
+                               fn-wildmat-result-okp
+                               fn-wildmat-result-value))))
+
+; Isolated guard-graph probe.
+(verify-guards fn-wildmat-octetp)
+(verify-guards fn-wildmat-octet-listp)
+(verify-guards fn-wildmat-at-mostp)
+(verify-guards fn-wildmat-ok)
+(verify-guards fn-wildmat-error)
+(verify-guards fn-wildmat-result-okp)
+(verify-guards fn-wildmat-result-value)
+(verify-guards fn-wildmat-utf8-ok)
+(verify-guards fn-wildmat-utf8-rest)
+(verify-guards fn-wildmat-utf8-tailp)
+(verify-guards fn-wildmat-utf8-2p)
+(verify-guards fn-wildmat-utf8-3-tailsp)
+(verify-guards fn-wildmat-utf8-4-tailsp)
+(verify-guards fn-wildmat-utf8-2-value)
+(verify-guards fn-wildmat-utf8-3-value)
+(verify-guards fn-wildmat-utf8-4-value)
+(verify-guards fn-wildmat-utf8-next)
+(verify-guards fn-wildmat-decode-aux)
+(verify-guards fn-wildmat-decode)
+(verify-guards fn-wildmat-codepointp)
+(verify-guards fn-wildmat-codepoint-listp)
+(verify-guards fn-wildmat-exactp)
+(verify-guards fn-wildmat-itemp)
+(verify-guards fn-wildmat-items-p)
+(verify-guards fn-wildmat-make-pattern)
+(verify-guards fn-wildmat-pattern-sign)
+(verify-guards fn-wildmat-pattern-items)
+(verify-guards fn-wildmat-pattern-positivep)
+(verify-guards fn-wildmat-patternp)
+(verify-guards fn-wildmat-pattern-listp)
+(verify-guards fn-wildmat-parsedp)
+(verify-guards fn-wildmat-scan-pattern)
+(verify-guards fn-wildmat-scan-endp)
+(verify-guards fn-wildmat-scan-morep)
+(verify-guards fn-wildmat-scan-items)
+(verify-guards fn-wildmat-scan-rest)
+(verify-guards fn-wildmat-parse-one)
+(verify-guards fn-wildmat-parse-codepoints)
+(verify-guards fn-wildmat-parse)
+(verify-guards fn-wildmat-false-row)
+(verify-guards fn-wildmat-initial-row)
+(verify-guards fn-wildmat-bool-or)
+(verify-guards fn-wildmat-item-character-matchp)
+(verify-guards fn-wildmat-step-character-aux)
+(verify-guards fn-wildmat-step-character)
+(verify-guards fn-wildmat-step-star-aux)
+(verify-guards fn-wildmat-step-star)
+(verify-guards fn-wildmat-pattern-row)
+(verify-guards fn-wildmat-row-last)
+(verify-guards fn-wildmat-pattern-matchp)
+(verify-guards fn-wildmat-rightmost-match)
+(verify-guards fn-wildmat-match-codepoints)
+(verify-guards fn-wildmat-match-parsed
+  :hints (("Goal"
+           :use ((:instance fn-wildmat-guard-decode-success-true-listp
+                            (octets target-octets))))))
+(verify-guards fn-wildmat-match)

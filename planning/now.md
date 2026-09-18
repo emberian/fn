@@ -93,18 +93,22 @@ part of the 54-root evidence.
 
 | Owner | Current closure target and state |
 | --- | --- |
-| Astra | Mixed live file/node trace relation certified; extending it through Sol's pure refusal and known-abort transitions |
-| Sol | Pure refusal/abort transitions preserve live history, frontier and acknowledgements; article guard patch passed in isolation |
-| Terra | Real store/reader adapter uses the proved composition; fix and test callback uncertainty, stale finish and same-owner refusal/retry |
-| Terra | Observed-image loader certifies exact replay and zero fabricated recovery barriers; needed by host adoption |
-| Luna | Arbitrary finite node events preserve article bindings, local numbers and archive pins |
-| Terra | Implemented NNTP command/step and arbitrary finite session traces preserve recognizer/cursor consistency; targeted certification passed; effect typing continues |
-| Terra | Exchange ingest/count/refusal/evidence and policy-changing finite traces certified, with capacity-order counterexample |
-| Sol + Terra | Public transfer missing-range value projections certified; raw-input/profile polynomial bound in progress |
-| Terra | Actual wildmat DP cost correspondence and polynomial bound |
-| Sol | Wire guard graph certified in isolation, queued for next integrated batch |
-| Terra | Sixteen malformed-store/namespace/uncertain-tail cases pass; adapt to composed host before next batch |
-| Luna | Exact bridge partitions and real adapter reconnect cases pass; root review corrected socket-coalescing coverage |
+| Astra | Mixed live file/node and refusal/abort trace relation certified; observed-image exact replay and five-barrier recovery gate certified |
+| Root | Integrating 73 certification roots and seven complete guard graphs, with all 273 original logical bodies unchanged and five proved executable helpers |
+| Terra | Composed store/reader adapter: final full fault/corruption/lifecycle/process/socket suite before integration |
+| Luna | Arbitrary finite actual node traces preserve state and prior article/archive bindings; successful publication assertions passed |
+| Sol + Astra | Full implemented NNTP command/step effect typing and arbitrary finite session/cursor preservation certified |
+| Terra | Exchange ingest and policy-changing traces preserve state/conflicting facts; guard graph underway |
+| Sol + Terra | Full public missing-range value correspondence and hypothesis-free polynomial work bound certified, including structural equality |
+| Terra | Wildmat matcher whole-operation work bound and all 54 guards certified |
+| Sol + Astra | Remaining actual storage file/wrapper, transfer and NNTP guard graphs in isolated implementation |
+| Terra | Article-field guard graph in isolated implementation |
+
+The seven newly integrated guard graphs cover acceptance (63), wire (38),
+wildmat (54), article (45), retention (35), node (30), and replay (13). Together
+with the previous CBOR (21) and record (45) graphs, 344 functions have targeted
+guard-certification evidence. The combined source set still needs the frozen
+batch run; these counts do not include unfinished isolated patches.
 
 The [closure inventory](assurance-closure.md) retains the finite exit criteria.
 No completed helper is being used to close a wider unfinished row. Work proceeds
@@ -117,7 +121,7 @@ fault tests, and a read-only NNTP view. The [walkthrough](../docs/local-experime
 makes this checkpoint executable without treating it as the final news service.
 
 Next: finish adoption of the composed immutable-file/node kernel, its failure
-traces and guard/work closure. Then integrate article injection/provenance and
+traces and remaining guard/work closure. Then integrate article injection/provenance and
 complete the selected reader profile. The isolated-slot journal is not the real
 adapter model; store-files/store-node are the selected refinement path.
 The next user-facing design discussion has

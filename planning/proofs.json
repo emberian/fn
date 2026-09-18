@@ -32,7 +32,10 @@
         "fn-sf-run-events-preserves-state",
         "fn-sn-prepare-preserves-state",
         "fn-sn-finish-preserves-state",
-        "fn-sn-recover-preserves-state"
+        "fn-sn-recover-preserves-state",
+        "fn-node-trace-preserves-state",
+        "fn-node-trace-preserves-old-bindings",
+        "fn-snrt-mixed-trace-preserves-live-history-relation"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -48,9 +51,11 @@
         "books/store-files-traces.lisp",
         "books/store-node-invariants.lisp",
         "tests/evidence/2026-09-18-assurance.md",
-        "tests/evidence/2026-09-18-assurance.json"
+        "tests/evidence/2026-09-18-assurance.json",
+        "books/node-traces.lisp",
+        "books/store-node-resolution-traces.lisp"
       ],
-      "progress_note": "General acceptance/node/replay and file-kernel transition preservation now extend to arbitrary finite file traces. The live file/node wrapper has structural preservation and exact completion/replay correspondence. System-wide provenance, full guards, mixed live traces and physical refinement remain separate work."
+      "progress_note": "Actual finite node traces preserve state and prior bindings; mixed live file/node traces including refusal, known abort and recovery preserve the phase/history relation. Provenance, complete runtime guards and physical refinement remain open."
     },
     {
       "id": "PRF-002",
@@ -274,7 +279,13 @@
         "fn-sf-stable-records-prefix-of-run-events",
         "fn-sf-prior-emitted-success-retained-by-run-trace",
         "fn-sn-new-success-requires-actual-matching-durable-node-completion",
-        "fn-sn-extended-history-equals-live-completion"
+        "fn-sn-extended-history-equals-live-completion",
+        "fn-snrt-mixed-trace-ready-node-is-exact-replay",
+        "fn-snrt-acknowledged-history-retained-through-mixed-trace",
+        "fn-snrt-new-success-is-actual-matching-durable-completion",
+        "fn-sn-open-observed-success-exact-history",
+        "fn-sn-open-observed-not-ready-before-five-barriers",
+        "fn-sn-open-observed-five-barriers-open-ready"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -297,9 +308,12 @@
         "tests/test_store_fault_matrix.py",
         "tests/test_store_process_crash.py",
         "tests/evidence/2026-09-18-assurance.md",
-        "tests/evidence/2026-09-18-assurance.json"
+        "tests/evidence/2026-09-18-assurance.json",
+        "books/store-node-resolution-traces.lisp",
+        "books/store-observed.lisp",
+        "tests/acl2/store-observed-tests.lisp"
       ],
-      "progress_note": "Arbitrary finite file-kernel traces preserve state, stable history and prior successes, with an explicit emitted-to-ghost-history premise for external acknowledgements. Bounded exploration exhausts 211 states/9038 edges. The live composition proves actual completion before acknowledgement and full-node replay-extension equality. Forty-seven injected rows and six process-death boundaries pass. Mixed live traces, actual adapter adoption/refinement, freshness anchoring and platform qualification remain distinct follow-on obligations."
+      "progress_note": "Arbitrary mixed live/file traces including refusal/abort preserve exact ready-state replay and prior acknowledged records, conditional on the kernel crash model. Observed-image opening uses actual recovery with no fabricated acknowledgements or barriers; zero through four barriers remain gated, the fifth opens ready. Host adoption, physical byte correspondence, freshness and platform qualification remain separate from these targeted proofs."
     },
     {
       "id": "PRF-008",
@@ -390,7 +404,10 @@
         "fn-transfer-add-chunk-preserves-statep",
         "fn-transfer-complete-entry-candidate-correct",
         "fn-transfer-complete-entry-candidate-byte-agreement",
-        "fn-transfer-missing-ranges-is-correct"
+        "fn-transfer-missing-ranges-is-correct",
+        "fn-exchange-policy-ingest-trace-preserves-statep",
+        "fn-exchange-policy-ingest-trace-preserves-facts",
+        "fn-exchange-admitted-ingest-retains-conflicting-evidence"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -403,9 +420,11 @@
         "books/transfer-invariants.lisp",
         "books/transfer-assembly-invariants.lisp",
         "tests/evidence/2026-09-18-assurance.md",
-        "tests/evidence/2026-09-18-assurance.json"
+        "tests/evidence/2026-09-18-assurance.json",
+        "books/exchange-invariants.lisp",
+        "tests/acl2/exchange-invariants-tests.lisp"
       ],
-      "progress_note": "Whole validated fact batches retain their stated merge results. Volatile transfer staging now has general reserve/add preservation and exact byte accounting, complete-candidate length/octet/retained-byte agreement and missing-range correctness. Dependency validation, persistent progress, portable batches and acceptance receipts remain open."
+      "progress_note": "Admissible ingest and arbitrary policy-changing traces preserve state and conflicting facts. Capacity-limited admission is intentionally not order-independent. Transfer staging correctness/work is proved separately; persistent progress, dependency authority, portable batches and receipts remain open."
     },
     {
       "id": "PRF-012",
@@ -482,9 +501,18 @@
         "books/records.lisp",
         "books/store-node-invariants.lisp",
         "tests/evidence/2026-09-18-assurance.md",
-        "tests/evidence/2026-09-18-assurance.json"
+        "tests/evidence/2026-09-18-assurance.json",
+        "books/acceptance.lisp",
+        "books/wire.lisp",
+        "books/wildmat.lisp",
+        "books/article.lisp",
+        "books/retention.lisp",
+        "books/node.lisp",
+        "books/replay.lisp",
+        "tests/acl2/acceptance-guards-tests.lisp",
+        "tests/acl2/replay-guards-tests.lisp"
       ],
-      "progress_note": "All 21 fn-cbor and 45 fn-record definitions have verified guards. Total public encoder/decoder guards remain T; internal helper guards state structural domains. The live wrapper uses actual node completion/replay and proves correspondence. Other runtime graphs, host byte/effect refinement and platform assumptions remain open; admission is not being reported as guard verification."
+      "progress_note": "Nine complete graphs have targeted guard certification: acceptance63, wire38, wildmat54, article45, retention35, node30, replay13, CBOR21, records45 (344 functions). All 273 original logical bodies in the seven added graphs are unchanged; safe MBE branches have proved equality. Remaining storage wrappers, semantic fields, NNTP and transfer runtime graphs are active; host/physical correspondence remains a separate trust boundary."
     },
     {
       "id": "PRF-015",
@@ -512,7 +540,13 @@
       "events": [
         "fn-nntp-unknown-group-preserves-session",
         "fn-nntp-msgid-preserves-session",
-        "fn-nntp-listgroup-unknown-preserves-session"
+        "fn-nntp-listgroup-unknown-preserves-session",
+        "fn-nntp-step-preserves-consistent-session",
+        "fn-nntp-finite-trace-preserves-consistent-session",
+        "fn-nntp-initialized-finite-trace-is-consistent",
+        "fn-nntp-command-effects-well-formed",
+        "fn-nntp-step-effects-well-formed",
+        "fn-nntp-closed-step-has-no-effects"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -522,9 +556,12 @@
         "tests/evidence/2026-09-18-articles.json",
         "tests/evidence/2026-09-18-wildmat-storage.md",
         "tests/evidence/2026-09-18-wildmat-storage.json",
-        "books/wildmat.lisp"
+        "books/wildmat.lisp",
+        "books/nntp-invariants.lisp",
+        "books/nntp-effects.lisp",
+        "tests/test_reader_partitions.py"
       ],
-      "progress_note": "Reader subset helper properties/transcripts include LISTGROUP and filtered LIST variants, keyword/argument/line boundaries, socket and independent client traffic. Full command/session refinement, injection, and posting remain open."
+      "progress_note": "Actual implemented command/step and arbitrary finite raw event traces preserve session/cursor consistency under a valid archive projection. All dispatcher branches produce typed reply octets/close effects; closed sessions emit none. Exact bridge partitions and reconnect cases pass targeted tests. Full RFC responses/READER bundle, injection/POST and effects-to-I/O refinement remain open."
     },
     {
       "id": "PRF-016",
@@ -557,7 +594,10 @@
         "fn-wildmat-successful-parse-parsedp",
         "fn-transfer-entry-candidate-work-value",
         "fn-transfer-entry-candidate-work-cost-bound",
-        "fn-transfer-missing-work-cost-bound"
+        "fn-transfer-missing-work-cost-bound",
+        "fn-wm-pattern-match-work-cost",
+        "fn-wm-match-codepoints-work-cost-bound",
+        "fn-transfer-missing-ranges-work-public-bound"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -585,9 +625,13 @@
         "books/wildmat-matcher-invariants.lisp",
         "books/transfer-work.lisp",
         "tests/evidence/2026-09-18-assurance.md",
-        "tests/evidence/2026-09-18-assurance.json"
+        "tests/evidence/2026-09-18-assurance.json",
+        "books/wildmat-work.lisp",
+        "books/transfer-public-work.lisp",
+        "books/transfer-public-bound.lisp",
+        "specs/transfer-public-bound.md"
       ],
-      "progress_note": "Successful article parsing establishes syntax recognition and source/header/body/field limits; UTF-8 success establishes scalar/progress/length safety; wildmat parsing and DP matching have recognizer/reference correspondence. Transfer reserve/add preservation, capacity/count bounds and value-corresponding costed hot-path polynomial bounds are certified. Public validation/lookup work, other parser/runtime allocation costs and physical accounting remain open."
+      "progress_note": "Article/UTF-8/wildmat output recognizers and DP correspondence are certified. Whole matcher work has a value-corresponding polynomial bound; public transfer missing-range work has a hypothesis-free bound covering malformed validation, structural label equality, lookup and traversal. These declared operation costs exclude numeric bit complexity/runtime allocation. Other parser work, peak allocation and physical capacity remain open."
     },
     {
       "id": "PRF-017",
