@@ -6,7 +6,7 @@ with Luna/Sol/Astra work and convergence in batches. Routine reversible choices
 are owned by the implementation team; public byte formats, cryptographic suites,
 and deployment remain explicitly separate decisions.
 
-## Completed integrated checkpoint
+## Completed integrated checkpoints
 
 - Acceptance has certified initial-state, transition-preservation, immutable
   binding, and local-number uniqueness results. The theorem hypotheses retain
@@ -22,9 +22,14 @@ and deployment remain explicitly separate decisions.
 - Review repairs strengthened wire-state bounds, distinguished journal sequence
   from transaction identity, and hardened NNTP numeric/projection handling.
 
-`make test` passed the complete 19-book certification set, simulator, and nine
-Python tests. The [evidence record](../tests/evidence/2026-09-18-integrated.md)
-states exact source hashes, outcomes, proof scope, and remaining limitations.
+The first [checkpoint](../tests/evidence/2026-09-18-integrated.md) covered 19
+certified roots and nine Python tests. The later
+[storage batch](../tests/evidence/2026-09-18-storage.md) passed `make test` with
+25 roots, the simulator, and 26 Python tests. It adds complete primitive and
+record round trips, typed replay proofs, a real immutable-file store with durable
+allocation, and a reader over recovered state. Independent NNTP client traffic
+and maximum-profile 128-article replay also passed. Both records retain exact
+source hashes, outcomes, proof scope, and remaining limitations.
 
 See [implementation status](../docs/implementation.md), the
 [proof registry](proofs.json), and [milestones](milestones.md) for scope. A
@@ -57,22 +62,21 @@ and retain concise evidence summaries and exact source hashes in the repository.
 
 ## Next substantial work
 
-The next active batch implements the [local persistence experiment](../specs/store-experiment.md):
-bounded transaction-record bytes, validated replay into the actual node, and a
-small real filesystem adapter/CLI with injected failures. Primitive codec and
-full variable-record round-trip proofs are now certified individually. Current
-convergence adds durable allocation across aborted process lifetimes, bounded
-recovery, and a read-only NNTP view of the recovered store. The completed
-checkpoint above remains the latest
-integrated evidence until this new batch passes its own checks.
+The [local persistence experiment](../specs/store-experiment.md) is integrated:
+bounded transaction bytes, replay, allocation across aborted process lifetimes,
+fault tests, and a read-only NNTP view. The [walkthrough](../docs/local-experiment.md)
+makes this checkpoint executable without treating it as the final news service.
 
-Next: compose real bounded article injection and provenance with the reader;
-develop versioned storage bytes and a qualified disk adapter from the crash model;
-lift invariants through journal integration, finite traces, and guards. The
+Next: compose bounded article parsing, injection, and provenance with the reader;
+complete the selected reader command profile; qualify/refine the existing disk
+adapter against the crash model; lift invariants through journal integration,
+finite traces, and guards. The
 current node and journal are separate models: connecting them is a real next
 implementation task, not something implied by having certified both books.
-The next user-facing design discussion should use concrete native-versus-legacy
-article/signature byte examples (D01), then principal/key custody (D09).
+The next user-facing design discussion has
+[concrete native-versus-legacy byte examples](../docs/article-byte-examples.md)
+for D01, followed by principal/key custody (D09). These proposals do not silently
+select a signing grammar or cryptographic suite.
 
 Private-group cryptography remains a separate requirements/research track.
 Shared community groups come first; MLS is a candidate, not a commitment.

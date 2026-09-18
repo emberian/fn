@@ -100,6 +100,13 @@ must also restrict new publication, so the adapter does not create a store it
 would refuse to reopen. Staging orphans remain outside recovery authority;
 best-effort cleanup after a completed commit does not revoke that commit.
 
+The tested development profile fixes two groups (`fn.letters`, `fn.test`), 128
+transactions, 32,768 payload octets per article, 65,538 encoded record octets,
+and 8,388,864 aggregate record octets on recovery. Configuration is checksummed
+and exact-versioned; the adapter refuses other profiles rather than silently
+using host defaults. The aggregate cap bounds the temporary all-record replay
+input. A future streaming/checkpoint implementation requires its own argument.
+
 An integrity trailer detects the classes of damage covered by its primitive
 assumption. It cannot detect replacement by an older entirely valid store.
 The earlier journal book's independent acknowledgement anchor is not silently

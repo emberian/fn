@@ -70,6 +70,13 @@ Exit: acceptance survives the specified crash matrix; uncertain results force
 recovery; no partial cross-post is published. Publish the exact supported fault
 and platform profile. Compaction/expiry can remain disabled with bounded admission.
 
+Incremental evidence: the [storage experiment](../specs/store-experiment.md) now
+has complete record round-trip and typed replay proofs, real file/barrier/lock
+operations, persistent allocation across abort/reopen, and failure-injection
+tests. The [integrated record](../tests/evidence/2026-09-18-storage.md) includes a
+maximum-profile reopen test. Journal refinement, full recovery proofs, checkpoints,
+physical accounting, and platform qualification keep M2 open.
+
 ## M3: first usable local news service
 
 - Implement the complete selected NNTP profile, including article injection,

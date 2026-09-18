@@ -4,9 +4,11 @@ fn has executable ACL2 components and a deterministic simulator. It is still an
 experimental implementation: the components are not yet a durable, authenticated
 news service. The broader contracts in `specs/` remain the target.
 
-The [2026-09-18 integrated evidence](../tests/evidence/2026-09-18-integrated.md)
-records 19 certified logical/assertion books, the actual-core simulator, nine
-passing tooling/socket tests, and independent `nntplib` interoperability.
+The latest [storage integration evidence](../tests/evidence/2026-09-18-storage.md)
+records 25 certified logical/assertion books, the actual-core simulator, 26
+passing tooling/socket/filesystem tests, independent stored-reader `nntplib`
+interoperability, and a maximum-profile store/reopen probe. The
+[first batch](../tests/evidence/2026-09-18-integrated.md) is retained separately.
 
 ## Current components
 
@@ -19,7 +21,7 @@ passing tooling/socket tests, and independent `nntplib` interoperability.
 | [Transaction records](../books/records.lisp) and [invariants](../books/records-invariants.lisp) | Bounded schema-0 grammar, exact octet/string fields, variable group lists, complete record round-trip proof | Provisional local format; record-level reverse canonicality and native signature preimages remain open |
 | [Retention](../books/retention.lisp) | Finite abstract accounting, distinct archive/forward pins, evidence-gated release, permanent duplicate history | Evidence is already authorized input; charging units are abstract, not measured physical bytes |
 | [Node composition](../books/node.lisp) and [invariants](../books/node-invariants.lisp) | One transaction stages acceptance and its reservation; completion publishes both with permanent article-to-pin bindings; general transition preservation proved | Disk completion is still abstract; node release and journal integration remain open |
-| [Replay](../books/replay.lisp) | Contiguous committed records rebuild the actual node, obligations, and allocations; known-aborted transaction-ID gaps are distinct from journal gaps | A last-good prefix on fault is diagnostic only; no checkpoint, rollback detection, or disk refinement claim |
+| [Replay](../books/replay.lisp) and [invariants](../books/replay-invariants.lisp) | Contiguous committed records rebuild the actual node, obligations, and allocations; counter advance preserves invariants; replay has typed success/fault results from valid configurations | A last-good prefix on fault is diagnostic only; no checkpoint, rollback detection, or disk refinement claim |
 | [Local store](../tools/run_store.py) | Immutable framed transaction files, data/directory barriers, locking, exact ACL2 replay, injected I/O failures | Development experiment; no qualified power-loss profile, independent freshness anchor, or byte-accurate physical reservations |
 | [Journal](../books/journal.lisp) | Isolated record slots, barriers, surviving/torn volatile writes, explicit recovery faults | Integrity tags and a protected durable anchor are assumptions; no byte format, actual disk adapter, or general recovery theorem |
 | [Exchange](../books/exchange.lisp) | Bounded atomic admission of immutable fact sets; duplicate/reordered merging and conflict evidence | Authorization is supplied; no serialized/resumable transfer, signatures, or durable scheduler |
@@ -42,11 +44,19 @@ simulator emits traces and result records from those same logical functions.
 These commands have different meanings; none is a substitute for the others.
 
 The local reader experiment uses a persistent ACL2 process and listens only on
-loopback. It serves a seeded in-memory article; it accepts no posts. Start it with
+loopback. Its default mode serves a seeded in-memory article; it accepts no posts. Start it with
 `python3 tools/run_reader.py --port 8119`. Port `0` selects an available port and
 prints it. Use `--once` to exit after one connection. Reader socket tests start
 and stop their own listeners. The optional `tests/interop_nntplib.py` probe uses
 the independent standard-library NNTP client available in Python 3.9–3.12.
+
+With `--store PATH`, it instead replays the local store into that same ACL2 process
+and serves its validated NNTP projection. It holds a shared lock until exit, so
+CLI writers are refused during that snapshot's lifetime. See the
+[local walkthrough](local-experiment.md) for init/post/recover/inspect commands,
+and the [store experiment](../specs/store-experiment.md) for publication and
+durable allocation rules. `tests/store_capacity_probe.py` exercises the configured
+128-record, 32-KiB-per-payload maximum without changing the retained data policy.
 
 ## Toolchain and evidence
 

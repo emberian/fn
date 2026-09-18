@@ -6,8 +6,10 @@ end-to-end tests with stable IDs; partial model traces do not make those entire
 system scenarios pass. See [implementation status](../docs/implementation.md).
 
 Use `make test` for the current combined batch. The
-[integrated evidence record](evidence/2026-09-18-integrated.md) captures the first
-passing source set and its precise scope. Individual commands are:
+[storage integration record](evidence/2026-09-18-storage.md) captures the latest
+passing source set and its precise scope; the
+[first batch](evidence/2026-09-18-integrated.md) remains a historical snapshot.
+Individual commands are:
 
 ```sh
 make check
