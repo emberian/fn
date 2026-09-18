@@ -24,6 +24,8 @@ larger specification and its remaining proof, storage, and service work.
 For concrete representation discussions, see the proposed
 [article-byte examples](article-byte-examples.md). For the current local adapter,
 see the [persistence experiment](../specs/store-experiment.md).
+The [local walkthrough](local-experiment.md) exercises CLI posting, reopen, and
+reading stored articles over loopback NNTP.
 
 ## Sources of truth
 

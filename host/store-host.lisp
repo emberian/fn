@@ -72,7 +72,7 @@
           :bad))
     (if (null octet-records) nil :bad)))
 
-(defun fn-store-recover (octet-records state)
+(defun fn-store-recover (octet-records allocation-frontier state)
   (declare (xargs :stobjs state :mode :program))
   (let ((records (fn-store-decode-records octet-records)))
     (if (equal records :bad)
@@ -80,16 +80,28 @@
           (value :fault))
       (let ((result (fn-replay *fn-store-groups* *fn-store-capacity* records)))
         (if (and (consp result) (equal (car result) :ok))
-            (let* ((node (car (cdr result)))
+            (let* ((replayed-node (car (cdr result)))
                    (next (car (cdr (cdr result))))
-                   (state (f-put-global 'fn-store-node node state))
-                   (state (f-put-global 'fn-store-records records state))
-                   (state (f-put-global 'fn-store-next-sequence next state))
-                   (state (f-put-global 'fn-store-action :ready state))
-                   (state (f-put-global 'fn-store-pending-record nil state))
-                   (state (f-put-global 'fn-store-pending-txid nil state))
-                   (state (f-put-global 'fn-store-pending-generation nil state)))
-              (value :ready))
+                   ; The durable allocator frontier records IDs consumed by
+                   ; known aborts which have no commit record.  Replay owns
+                   ; the only state reconstruction; this call only advances
+                   ; an idle, unfenced replay result through its ACL2 helper.
+                   (node (if (fn-replay-advance-okp replayed-node allocation-frontier)
+                             (fn-replay-advance-txid replayed-node allocation-frontier)
+                           nil)))
+              (if (and node
+                       (equal (fn-state-next-txid (fn-node-acceptance node))
+                              allocation-frontier))
+                  (let* ((state (f-put-global 'fn-store-node node state))
+                         (state (f-put-global 'fn-store-records records state))
+                         (state (f-put-global 'fn-store-next-sequence next state))
+                         (state (f-put-global 'fn-store-action :ready state))
+                         (state (f-put-global 'fn-store-pending-record nil state))
+                         (state (f-put-global 'fn-store-pending-txid nil state))
+                         (state (f-put-global 'fn-store-pending-generation nil state)))
+                    (value :ready))
+                (let ((state (f-put-global 'fn-store-action :fault state)))
+                  (value :fault))))
           (let ((state (f-put-global 'fn-store-action :fault state)))
             (value :fault)))))))
 
@@ -101,6 +113,26 @@
         (fn-record-sequence (car (cdr decoded)))
       -1)))
 
+(defun fn-store-record-txid (octets)
+  (declare (xargs :mode :program))
+  (let ((decoded (fn-record-decode-exact octets)))
+    (if (and (consp decoded) (equal (car decoded) :ok)
+             (consp (cdr decoded)) (fn-record-p (car (cdr decoded))))
+        (fn-record-txid (car (cdr decoded)))
+      -1)))
+
+(defun fn-store-advance-frontier (frontier state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((node (fn-replay-advance-txid
+               (f-get-global 'fn-store-node state) frontier)))
+    (if (and (fn-node-statep node)
+             (equal (fn-state-next-txid (fn-node-acceptance node)) frontier))
+        (let* ((state (f-put-global 'fn-store-node node state))
+               (state (f-put-global 'fn-store-action :ready state)))
+          (value :ready))
+      (let ((state (f-put-global 'fn-store-action :fault state)))
+        (value :fault)))))
+
 (defun fn-store-article-match (msgid payload groups node)
   (let ((article (fn-find-article msgid
                                   (fn-state-articles (fn-node-acceptance node)))))
@@ -110,6 +142,18 @@
             :duplicate
           :conflict)
       nil)))
+
+(defun fn-store-existing-action (msgid-octets payload group-codes state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((groups (fn-store-groups-from-codes group-codes)))
+    (if (or (not (fn-store-msgid-octetsp msgid-octets))
+            (not (fn-octet-listp payload))
+            (equal groups :bad) (null groups))
+        (value :absent)
+      (let ((action (fn-store-article-match
+                     (fn-store-octets->string msgid-octets) payload groups
+                     (f-get-global 'fn-store-node state))))
+        (value (if action action :absent))))))
 
 (defun fn-store-prepare (msgid-octets payload group-codes id-octets
                           subject-octets evidence-octets charge state)
@@ -132,7 +176,9 @@
               (value existing))
           (let* ((sequence (f-get-global 'fn-store-next-sequence state))
                  (txid (fn-state-next-txid (fn-node-acceptance node)))
-                 (generation sequence)
+                 ; Generation follows the durable allocator identity, not the
+                 ; contiguous journal sequence (which excludes known aborts).
+                 (generation txid)
                  (id (fn-store-octets->string id-octets))
                  (subject (fn-store-octets->string subject-octets))
                  (evidence (fn-store-octets->string evidence-octets))
@@ -156,30 +202,38 @@
 
 (defun fn-store-complete (status state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((record (f-get-global 'fn-store-pending-record state)))
+  (let* ((record (f-get-global 'fn-store-pending-record state))
+         (before (f-get-global 'fn-store-node state)))
     (if (or (null record)
             (not (or (equal status :durable) (equal status :aborted)
                      (equal status :indeterminate))))
         (let ((state (f-put-global 'fn-store-action :fault state))) (value :fault))
       (let* ((txid (f-get-global 'fn-store-pending-txid state))
              (generation (f-get-global 'fn-store-pending-generation state))
-             (node (fn-node-complete (f-get-global 'fn-store-node state)
-                                     txid generation status))
-             (state (f-put-global 'fn-store-node node state))
-             (state (if (equal status :durable)
-                        (f-put-global 'fn-store-records
-                                      (append (f-get-global 'fn-store-records state)
-                                              (list record)) state)
-                      state))
-             (state (if (equal status :durable)
-                        (f-put-global 'fn-store-next-sequence
-                                      (1+ (f-get-global 'fn-store-next-sequence state)) state)
-                      state))
-             (state (f-put-global 'fn-store-pending-record nil state))
-             (state (f-put-global 'fn-store-pending-txid nil state))
-             (state (f-put-global 'fn-store-pending-generation nil state))
-             (state (f-put-global 'fn-store-action status state)))
-        (value status)))))
+             (node (fn-node-complete before txid generation status)))
+        ; Completion is an observation about this exact staged transition, not
+        ; an instruction to echo.  A stale/fenced/core-refused event leaves the
+        ; pending metadata intact for recovery diagnostics.
+        (if (or (not (fn-node-pending-matchesp before txid generation))
+                (not (fn-node-statep node))
+                (equal node before))
+            (let ((state (f-put-global 'fn-store-action :fault state)))
+              (value :fault))
+          (let* ((state (f-put-global 'fn-store-node node state))
+                 (state (if (equal status :durable)
+                            (f-put-global 'fn-store-records
+                                          (append (f-get-global 'fn-store-records state)
+                                                  (list record)) state)
+                          state))
+                 (state (if (equal status :durable)
+                            (f-put-global 'fn-store-next-sequence
+                                          (1+ (f-get-global 'fn-store-next-sequence state)) state)
+                          state))
+                 (state (f-put-global 'fn-store-pending-record nil state))
+                 (state (f-put-global 'fn-store-pending-txid nil state))
+                 (state (f-put-global 'fn-store-pending-generation nil state))
+                 (state (f-put-global 'fn-store-action status state)))
+            (value status)))))))
 
 (defun fn-store-pending-octets (state)
   (declare (xargs :stobjs state :mode :program))
@@ -190,6 +244,11 @@
   (declare (xargs :stobjs state :mode :program))
   (value (len (fn-state-articles
                (fn-node-acceptance (f-get-global 'fn-store-node state))))))
+
+(defun fn-store-next-txid (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-state-next-txid
+          (fn-node-acceptance (f-get-global 'fn-store-node state)))))
 
 (defun fn-store-group-next (code state)
   (declare (xargs :stobjs state :mode :program))
@@ -220,3 +279,13 @@
                     (fn-state-articles
                      (fn-node-acceptance (f-get-global 'fn-store-node state))))))
       (value (if article (fn-article-payload article) nil)))))
+
+(defun fn-store-lookup-foundp (msgid-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (not (fn-store-msgid-octetsp msgid-octets))
+      (value nil)
+    (value (if (fn-find-article
+                (fn-store-octets->string msgid-octets)
+                (fn-state-articles
+                 (fn-node-acceptance (f-get-global 'fn-store-node state))))
+               t nil))))
