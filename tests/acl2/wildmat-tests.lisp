@@ -2,6 +2,14 @@
 (in-package "ACL2")
 (include-book "../../books/wildmat")
 
+; Internal next-step success must also exclude non-octet leading values.  The
+; public decoder already rejects these during its bounded octet preflight.
+(assert-event
+ (and (not (fn-wildmat-result-okp (fn-wildmat-utf8-next '(-1))))
+      (not (fn-wildmat-result-okp (fn-wildmat-utf8-next '(1/2))))
+      (not (fn-wildmat-result-okp (fn-wildmat-utf8-next '(389/2 128))))
+      (not (fn-wildmat-result-okp (fn-wildmat-utf8-next '(word))))))
+
 (defun fn-wildmat-test-repeat (n byte)
   (if (zp n)
       nil

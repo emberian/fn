@@ -93,7 +93,10 @@
 ; The leading-byte-specific second-byte ranges reject overlong forms,
 ; surrogates, and values above U+10FFFF before a scalar value is returned.
 (defun fn-wildmat-utf8-next (octets)
-  (if (not (consp octets))
+  ; The public decoder preflights its whole octet list.  Keep this internal
+  ; step's successful-result contract sound on arbitrary ACL2 arguments too.
+  (if (not (and (consp octets)
+                (fn-wildmat-octetp (car octets))))
       (fn-wildmat-error :malformed-utf8)
     (let ((first (car octets)))
       (if (< first 128)

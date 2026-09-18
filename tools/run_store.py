@@ -482,20 +482,21 @@ class Store:
             # the process-wide lock prevents a concurrent allocation update.
             self._load_config()
             self._load_frontier()
-        except StoreFault:
-            self.close()
-            raise
-        except StoreError:
+        except BaseException:
+            # Metadata syscalls and interruption can fail outside StoreError.
+            # Acquisition must not leak ownership when no Store is returned.
             self.close()
             raise
 
     def close(self):
         if self.lock_fd is not None:
+            fd, self.lock_fd = self.lock_fd, None
             try:
-                fcntl.flock(self.lock_fd, fcntl.LOCK_UN)
+                fcntl.flock(fd, fcntl.LOCK_UN)
             finally:
-                os.close(self.lock_fd)
-                self.lock_fd = None
+                # A failed close may already have released/reused the number.
+                # Retire it before the call so a retry cannot close another FD.
+                os.close(fd)
 
     def transaction_files(self):
         files = []
