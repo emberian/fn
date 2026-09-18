@@ -62,6 +62,11 @@ and retain concise evidence summaries and exact source hashes in the repository.
 
 ## Next substantial work
 
+The active next batch implements a bounded article syntax parser, LISTGROUP and
+article-range handling, and a general retention-release preservation proof.
+These are independent owned areas. The storage evidence below remains the latest
+frozen integrated source set until this batch has its own certification/tests.
+
 The [local persistence experiment](../specs/store-experiment.md) is integrated:
 bounded transaction bytes, replay, allocation across aborted process lifetimes,
 fault tests, and a read-only NNTP view. The [walkthrough](../docs/local-experiment.md)

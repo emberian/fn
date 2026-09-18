@@ -37,10 +37,16 @@ class ReaderProcess:
                     return self
             if self.proc.poll() is not None:
                 break
-        stderr = self.proc.stderr.read().decode("utf-8", "replace")
         if self.proc.poll() is None:
             self.proc.terminate()
-            self.proc.wait(timeout=3)
+            try:
+                self.proc.wait(timeout=8)
+            except subprocess.TimeoutExpired:
+                self.proc.kill()
+                self.proc.wait(timeout=3)
+        stderr = self.proc.stderr.read().decode("utf-8", "replace")
+        self.proc.stdout.close()
+        self.proc.stderr.close()
         raise RuntimeError("reader did not listen: " + stderr)
 
     def __exit__(self, *unused):
@@ -100,6 +106,14 @@ class ReaderSocketTests(unittest.TestCase):
         self.reader.assert_bytes(sock, b"205 closing connection\r\n")
         self.assertEqual(sock.recv(1), b"")
         sock.close()
+
+    def test_listgroup_filtered_empty_response_still_selects_first_article(self):
+        sock = self.reader.connect()
+        self.addCleanup(sock.close)
+        sock.sendall(b"LISTGROUP fn.letters 2-\r\nSTAT\r\nLISTGROUP\r\n")
+        self.reader.assert_bytes(sock, b"211 1 1 1 fn.letters list follows\r\n.\r\n")
+        self.reader.assert_bytes(sock, b"223 1 <reader@example.invalid> retrieved\r\n")
+        self.reader.assert_bytes(sock, b"211 1 1 1 fn.letters list follows\r\n1\r\n.\r\n")
 
     def test_malformed_and_overlimit_input_close(self):
         for payload in (b"STAT\n", b"A" * 513 + b"\r\n"):

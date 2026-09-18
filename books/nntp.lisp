@@ -140,6 +140,38 @@
        (let ((number (fn-nntp-decimal-value token)))
          (and (<= 1 number) (<= number 2147483647)))))
 
+; RFC 3977 section 9.2 defines range as article-number ["-"
+; [article-number]].  The parser returns (:ok low high), where an open end is
+; represented by the RFC's maximum article number; a reversed closed range is
+; syntactically valid and filters to no articles.
+(defun fn-nntp-range-parse-aux (token prefix-rev)
+  (if (consp token)
+      (if (equal (car token) 45)
+          (let ((low-token (reverse prefix-rev))
+                (high-token (cdr token)))
+            (if (and (fn-nntp-number-tokenp low-token)
+                     (or (null high-token)
+                         (fn-nntp-number-tokenp high-token)))
+                (list :ok (fn-nntp-decimal-value low-token)
+                      (if (null high-token) 2147483647
+                        (fn-nntp-decimal-value high-token)))
+              (list :error)))
+        (fn-nntp-range-parse-aux (cdr token) (cons (car token) prefix-rev)))
+    (let ((number-token (reverse prefix-rev)))
+      (if (fn-nntp-number-tokenp number-token)
+          (list :ok (fn-nntp-decimal-value number-token)
+                (fn-nntp-decimal-value number-token))
+        (list :error)))))
+
+(defun fn-nntp-parse-range (token)
+  (if (fn-nntp-printable-tokenp token)
+      (fn-nntp-range-parse-aux token nil)
+    (list :error)))
+
+(defun fn-nntp-range-okp (range) (equal (car range) :ok))
+(defun fn-nntp-range-low (range) (car (cdr range)))
+(defun fn-nntp-range-high (range) (car (cdr (cdr range))))
+
 (defun fn-nntp-message-id-tailp (tail)
   (if (consp tail)
       (if (null (cdr tail))
@@ -221,6 +253,14 @@
    session
    (list (fn-nntp-reply-effect
           (append (fn-nntp-crlf (fn-nntp-string-octets initial))
+                  (fn-nntp-stuff-lines lines)
+                  '(46 13 10))))))
+
+(defun fn-nntp-multi-octets (session initial lines)
+  (fn-nntp-make-result
+   session
+   (list (fn-nntp-reply-effect
+          (append (fn-nntp-crlf initial)
                   (fn-nntp-stuff-lines lines)
                   '(46 13 10))))))
 
@@ -358,6 +398,20 @@
           (fn-nntp-group-numbers group (cdr articles))))
     nil))
 
+(defun fn-nntp-range-numbers (numbers low high)
+  (if (consp numbers)
+      (if (and (<= low (car numbers)) (<= (car numbers) high))
+          (cons (car numbers)
+                (fn-nntp-range-numbers (cdr numbers) low high))
+        (fn-nntp-range-numbers (cdr numbers) low high))
+    nil))
+
+(defun fn-nntp-number-lines (numbers)
+  (if (consp numbers)
+      (cons (fn-nntp-decimal (car numbers))
+            (fn-nntp-number-lines (cdr numbers)))
+    nil))
+
 (defun fn-nntp-next-number (current numbers)
   (if (consp numbers)
       (if (< current (car numbers))
@@ -408,6 +462,51 @@
   (implies (not (member-equal group (fn-state-groups archive)))
            (equal (fn-nntp-result-session (fn-nntp-group-result session archive group))
                   session)))
+
+(defun fn-nntp-listgroup-initial (archive group)
+  (append (fn-nntp-group-initial archive group)
+          (fn-nntp-string-octets " list follows")))
+
+(defun fn-nntp-listgroup-result (session archive group range)
+  (if (member-equal group (fn-state-groups archive))
+      (let* ((numbers (fn-nntp-group-numbers group (fn-state-articles archive)))
+             (current (if (consp numbers) (car numbers) nil))
+             (next-session (fn-nntp-set-cursor session group current))
+             (shown (fn-nntp-range-numbers numbers
+                                           (fn-nntp-range-low range)
+                                           (fn-nntp-range-high range))))
+        (fn-nntp-multi-octets next-session
+                              (fn-nntp-listgroup-initial archive group)
+                              (fn-nntp-number-lines shown)))
+    (fn-nntp-single session "411 no such newsgroup")))
+
+(defthm fn-nntp-listgroup-unknown-preserves-session
+  (implies (not (member-equal group (fn-state-groups archive)))
+           (equal (fn-nntp-result-session
+                   (fn-nntp-listgroup-result session archive group range))
+                  session)))
+
+(defun fn-nntp-listgroup-command (session archive args)
+  (let ((all-range (list :ok 1 2147483647)))
+    (if (null args)
+        (let ((group (fn-nntp-session-group session)))
+          (if (null group)
+              (fn-nntp-single session "412 no newsgroup selected")
+            (if (member-equal group (fn-state-groups archive))
+                (fn-nntp-listgroup-result session archive group all-range)
+              (fn-nntp-single session "412 no newsgroup selected"))))
+      (if (and (consp args) (null (cdr args))
+               (fn-nntp-printable-tokenp (car args)))
+          (fn-nntp-listgroup-result session archive
+                                    (fn-nntp-token-string (car args)) all-range)
+        (if (and (consp args) (consp (cdr args)) (null (cdr (cdr args)))
+                 (fn-nntp-printable-tokenp (car args)))
+            (let ((range (fn-nntp-parse-range (car (cdr args)))))
+              (if (fn-nntp-range-okp range)
+                  (fn-nntp-listgroup-result session archive
+                                            (fn-nntp-token-string (car args)) range)
+                (fn-nntp-single session "501 syntax error")))
+          (fn-nntp-single session "501 syntax error"))))))
 
 ; -----------------------------------------------------------------------------
 ; Command responses
@@ -587,6 +686,8 @@
       (if (and (consp args) (null (cdr args)) (fn-nntp-printable-tokenp (car args)))
           (fn-nntp-group-result session archive (fn-nntp-token-string (car args)))
         (fn-nntp-single session "501 syntax error")))
+     ((fn-nntp-keywordp keyword "LISTGROUP")
+      (fn-nntp-listgroup-command session archive args))
      ((fn-nntp-keywordp keyword "LIST") (fn-nntp-list-response session archive args))
      ((fn-nntp-keywordp keyword "NEXT")
       (if (null args) (fn-nntp-next-or-last session archive :next)
