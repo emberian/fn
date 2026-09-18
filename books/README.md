@@ -9,11 +9,17 @@ ACL2 events, not a separate specification implemented again in the host.
 | `acceptance-invariants` | General acceptance state/binding/number preservation |
 | `wire` | Incremental CRLF framing, dot transformation, event-yield boundary |
 | `cbor`, `cbor-invariants` | Bounded experimental CBOR primitives and representation lemmas |
-| `retention` | Finite reservation ledger with permanent history and explicit release evidence |
+| `records`, `records-invariants` | Provisional transaction-record codec and full value round trip |
+| `article`, `article-invariants` | Bounded syntax views and exact successful-parse source preservation |
+| `article-fields` | Exact Message-ID and Newsgroups semantics over preserved article views; narrow proto-article routing checks |
+| `wildmat` | Bounded UTF-8 grammar and dynamic-programming matching |
+| `retention`, `retention-invariants` | Finite reservation ledger, permanent history, explicit release evidence, and release preservation |
 | `node`, `node-invariants` | Transactional composition and preservation of acceptance, reservations, and article-to-pin bindings |
+| `replay`, `replay-invariants` | Actual-node record replay, monotone transaction counter advance, typed success/fault results |
 | `journal` | Abstract isolated slots, barriers, crash images, recovery experiments |
+| `store-files`, `store-files-invariants` | Immutable-file allocator/publication kernel, transition/crash preservation, stable-prefix and one-crash success retention |
 | `exchange` | Portable immutable facts, admissible bounded batches, conflict-preserving merge |
-| `nntp` | Laboratory reader commands and session state over committed acceptance state |
+| `nntp` | Laboratory reader, LISTGROUP ranges and filtered LIST variants over committed acceptance state |
 
 `make certify` lists the current integrated dependency order explicitly. A
 subsystem can be certified separately with, for example:

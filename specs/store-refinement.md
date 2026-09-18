@@ -3,8 +3,10 @@
 Status: refinement design with a first executable publication/allocator kernel
 in [store-files.lisp](../books/store-files.lisp). The kernel uses actual
 `fn-replay`, explicit crash choices, one-use reservations, completion gating,
-and five recovery barriers. General start-frontier preservation and fence/gate
-lemmas are proved; full transition/crash/acknowledged-history preservation and
+and five recovery barriers. The [invariant book](../books/store-files-invariants.lisp)
+now proves transition/crash recognizer preservation, stable-record prefix
+preservation, exact candidate survival with frontier dominance, and one-crash
+acknowledged-record retention. Arbitrary traces, live node composition, and
 the physical adapter correspondence remain open. It does not qualify a platform,
 add checkpoints, or change the experimental disk format.
 
