@@ -735,8 +735,17 @@ def command_post(args):
         if outcome == "known-abort":
             bridge.complete("aborted")
             raise StoreError("injected known abort before publication")
-        if bridge.complete("durable") != "durable":
+        # The file is already published. A rejected completion or a lost core
+        # reply must retain the host fence even if this one-shot CLI then exits.
+        # Only matching completion permits further mutation without recovery.
+        store.fenced = True
+        try:
+            completion = bridge.complete("durable")
+        except (StoreError, OSError) as error:
+            raise StoreIndeterminate("ACL2 completion failed after publication") from error
+        if completion != "durable":
             raise StoreIndeterminate("ACL2 rejected durable completion after publication")
+        store.fenced = False
         print("committed sequence={} charge={}".format(len(records), charge))
         return 0
     finally:
