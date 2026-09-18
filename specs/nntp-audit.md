@@ -66,3 +66,15 @@ forms before advertising READER. POST additionally needs the injection/provenanc
 profile and actual durable transaction path; a successful storage CLI command
 does not establish a successful POST implementation. OVER requires exact header
 and metadata behavior, not only tab-separated formatting.
+
+## Session preservation evidence
+
+[`books/nntp-invariants.lisp`](../books/nntp-invariants.lisp) proves the implemented
+command and wire-event dispatchers preserve the session recognizer and cursor
+consistency relative to an immutable valid archive projection. Selected groups
+are configured, and a non-NIL current number resolves in the selected group;
+a NIL current number is permitted. The initial session satisfies the relation.
+An actual step fold preserves it over arbitrary finite event lists, including
+malformed events and events after QUIT. This is a state/cursor theorem, not a
+proof of every response byte, effect type, RFC clause or future mutable-archive
+policy. The broad conformance rows above therefore remain separately audited.

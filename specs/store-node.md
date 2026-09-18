@@ -146,9 +146,38 @@ the assertion vectors. The additional
 unused allocator ID, acknowledged reopen, and a later uncertain publication
 that recovers content without inventing an acknowledgement.
 
-The trace event vocabulary covers prepare, exposed file I/O, finish, crash,
-and replay recovery. Additional wrapper APIs require their own preservation
-steps before joining this theorem. Host adoption, observed-image loader
+The resolution operations in
+[`books/store-node-resolution.lisp`](../books/store-node-resolution.lisp)
+close the consumed-reservation paths. `fn-sn-refuse-reservation` resolves only
+the exact reserved transaction and advances the actual idle node to the durable
+frontier. `fn-sn-known-abort` derives the transaction and generation from the
+bound candidate and calls actual aborted node completion. It applies only
+before immutable publication is attempted, in the record-staged or
+record-data-durable phases. Stale, repeated, and post-publication requests are
+no-ops; publication uncertainty requires crash/recovery. Neither operation can
+add an acknowledgement, and both preserve `fn-snt-relation`.
+
+[`books/store-node-resolution-traces.lisp`](../books/store-node-resolution-traces.lisp)
+extends the actual trace dispatcher with these refusal and known-abort
+operations. `fn-snrt-mixed-trace-preserves-live-history-relation` and its
+initialized corollary cover arbitrary finite mixtures of preparation, exposed
+file I/O, finish, refusal, known abort, crash, and recovery.
+`fn-snrt-mixed-trace-ready-node-is-exact-replay` and
+`fn-snrt-acknowledged-history-retained-through-mixed-trace` carry the exact replay
+and acknowledged-record retention guarantees through this larger vocabulary.
+`fn-snrt-new-success-is-actual-matching-durable-completion` additionally proves
+that every step changing acknowledgement history is an actual matching durable
+finish that installs the exact article and retention obligation. The
+[resolution trace assertions](../tests/acl2/store-node-resolution-traces-tests.lisp)
+exercise both abort phases, refusal and abort transaction-ID gaps before
+publication, post-publication abort rejection, and later refusal/abort/recovery
+that retains a prior acknowledgement.
+
+These are logical refinement results. Semantic refusal and known prepublication
+absence are host classifications at this layer; the proofs do not establish
+that a physical adapter classified an error correctly or that OS, fsync, and
+link behavior meets the model. Additional wrapper APIs require preservation
+steps before joining the trace theorem. Host adoption, observed-image loader
 composition, byte codecs, POSIX refinement, guard verification, physical storage
 accounting, and platform durability remain separate work. No signature or
 content-hash correctness is asserted.
