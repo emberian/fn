@@ -1,0 +1,745 @@
+{
+  "schema_version": 1,
+  "description": "Design requirements, not implemented/proved claims. Paths are repository-relative.",
+  "requirements": [
+    {
+      "id": "OBJ-001",
+      "title": "Immutable content and explicit digest conflicts",
+      "specification": "specs/objects.md#logical-records",
+      "milestone": "M1",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-001",
+        "PRF-003"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "OBJ-002",
+      "title": "Distinct exact Message-ID and content/local identities",
+      "specification": "specs/objects.md#logical-records",
+      "milestone": "M1",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-001",
+        "PRF-003"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "OBJ-003",
+      "title": "Preserved source variants and honest provenance",
+      "specification": "specs/objects.md#logical-records",
+      "milestone": "M1",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-013"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "OBJ-004",
+      "title": "Conflicting evidence is not resolved by arrival time",
+      "specification": "specs/objects.md#logical-records",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-011"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "OBJ-005",
+      "title": "Atomic local memberships and non-reused article numbers",
+      "specification": "specs/objects.md#logical-records",
+      "milestone": "M1",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-001",
+        "PRF-002"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "OBJ-006",
+      "title": "Origin identity/incarnation independent of wall-clock order",
+      "specification": "specs/objects.md#logical-records",
+      "milestone": "M1",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-017"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "OBJ-007",
+      "title": "Native author signatures, legacy provenance, scoped authority",
+      "specification": "specs/objects.md#authority",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-013"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "ENC-001",
+      "title": "Deterministic encoding and value round trips",
+      "specification": "specs/encoding.md#layers",
+      "milestone": "M2",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-005"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "ENC-002",
+      "title": "Bounded parsing without Lisp evaluation",
+      "specification": "specs/encoding.md#layers",
+      "milestone": "M2",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-016"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "ENC-003",
+      "title": "Versioned domain-separated hash/signature preimages",
+      "specification": "specs/encoding.md#layers",
+      "milestone": "M2",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-005"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "ENC-004",
+      "title": "Explicit schema evolution and opaque unknown objects",
+      "specification": "specs/encoding.md#layers",
+      "milestone": "M2",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-005",
+        "PRF-013"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "STO-001",
+      "title": "Authoritative committed state and complete derived indexes",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M2",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-010"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "STO-002",
+      "title": "Atomic acceptance includes memberships and obligations",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M1",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-001",
+        "PRF-002",
+        "PRF-003"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "STO-003",
+      "title": "Success follows a matching durable commit",
+      "specification": "specs/storage.md#commit-protocol",
+      "milestone": "M2",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-007"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "STO-004",
+      "title": "Uncertain persistence fences mutations pending recovery",
+      "specification": "specs/storage.md#commit-protocol",
+      "milestone": "M2",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-007"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "STO-005",
+      "title": "Recovery preserves acknowledged commits without partial transactions",
+      "specification": "specs/storage.md#recovery",
+      "milestone": "M2",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-007"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "STO-006",
+      "title": "Checkpoints preserve complete future-relevant state",
+      "specification": "specs/storage.md#checkpointing-and-compaction",
+      "milestone": "M2",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-008"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "STO-007",
+      "title": "Compaction preserves protected content across crashes",
+      "specification": "specs/storage.md#checkpointing-and-compaction",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-009"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "STO-008",
+      "title": "Detected corruption has an explicit fault and repair path",
+      "specification": "specs/storage.md#checkpointing-and-compaction",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [],
+      "verification": [
+        "integration",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "FLR-001",
+      "title": "Crash model includes torn/reordered writes and explicit barriers",
+      "specification": "specs/failures.md#crash-only-storage-model",
+      "milestone": "M2",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-007"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "FLR-002",
+      "title": "Known abort, uncertainty, and lost volatile state are distinct",
+      "specification": "specs/failures.md#crash-only-storage-model",
+      "milestone": "M2",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-007"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "FLR-003",
+      "title": "Media corruption and node loss have separately scoped claims",
+      "specification": "specs/failures.md#beyond-crash-only",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [],
+      "verification": [
+        "integration",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "FLR-004",
+      "title": "Delay, replay, clock error, and liveness assumptions are explicit",
+      "specification": "specs/failures.md#beyond-crash-only",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-017",
+        "PRF-018"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "RET-001",
+      "title": "Persist scoped accepted obligations before receipts",
+      "specification": "specs/retention.md#acceptance-is-a-resource-decision",
+      "milestone": "M1",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-001",
+        "PRF-004"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "RET-002",
+      "title": "Reserve capacity and refuse unaffordable obligations",
+      "specification": "specs/retention.md#acceptance-is-a-resource-decision",
+      "milestone": "M1",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-004",
+        "PRF-016"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "RET-003",
+      "title": "Receipts distinguish transmission, retention, and delivery",
+      "specification": "specs/retention.md#receipts-and-release",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-012"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "RET-004",
+      "title": "Release requires matching committed authorized evidence",
+      "specification": "specs/retention.md#receipts-and-release",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-004",
+        "PRF-012",
+        "PRF-013"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "RET-005",
+      "title": "Reclamation preserves every protected dependency closure",
+      "specification": "specs/retention.md#reclamation-roots",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-009"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "RET-006",
+      "title": "History pruning has explicit duplicate/resurrection semantics",
+      "specification": "specs/retention.md#reclamation-roots",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-009"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "REP-001",
+      "title": "Exchange portable facts rather than local database identity",
+      "specification": "specs/replication.md#portable-input",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-011"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "REP-002",
+      "title": "Duplicate/reordered ingestion converges within stated scope",
+      "specification": "specs/replication.md#portable-input",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-011"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "REP-003",
+      "title": "Resumable bounded batches validate complete dependencies",
+      "specification": "specs/replication.md#batches",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-011",
+        "PRF-016"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "REP-004",
+      "title": "Useful transfer without interactive inventory discovery",
+      "specification": "specs/replication.md#batches",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-018"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "REP-005",
+      "title": "Durable scheduling with resource and fairness policy",
+      "specification": "specs/replication.md#scheduling-and-transport",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-018"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "REP-006",
+      "title": "BP/LTP preserves fn application acceptance semantics",
+      "specification": "specs/replication.md#scheduling-and-transport",
+      "milestone": "M6",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-012",
+        "PRF-018"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "NNT-001",
+      "title": "Advertised capabilities match fully audited bundles",
+      "specification": "specs/nntp.md#planned-surface",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-015"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "NNT-002",
+      "title": "NNTP cursor transitions and error semantics",
+      "specification": "specs/nntp.md#sessions-and-framing",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-015"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "NNT-003",
+      "title": "Bounded framing independent of socket chunk boundaries",
+      "specification": "specs/nntp.md#sessions-and-framing",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-006"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "NNT-004",
+      "title": "Article injection and provenance follow the selected profile",
+      "specification": "specs/nntp.md#posting-and-projection",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-013",
+        "PRF-015"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "NNT-005",
+      "title": "POST success is durable retained acceptance with safe retries",
+      "specification": "specs/nntp.md#posting-and-projection",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-003",
+        "PRF-015"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "NNT-006",
+      "title": "NNTP views reflect complete committed membership",
+      "specification": "specs/nntp.md#posting-and-projection",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-002",
+        "PRF-010",
+        "PRF-015"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "HST-001",
+      "title": "Host executes the proved core or a justified refinement",
+      "specification": "specs/host.md#core-interface",
+      "milestone": "M1",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-014"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "HST-002",
+      "title": "Identified completions, serialization, bounded effects",
+      "specification": "specs/host.md#core-interface",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-015",
+        "PRF-016"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "HST-003",
+      "title": "Platform adapter meets the persistence contract",
+      "specification": "specs/host.md#core-interface",
+      "milestone": "M2",
+      "status": "specified",
+      "proof_targets": [],
+      "verification": [
+        "integration",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "HST-004",
+      "title": "Certification and host trust boundaries are explicit",
+      "specification": "specs/host.md#core-interface",
+      "milestone": "M1",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-014"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "SEC-001",
+      "title": "Explicit private-profile trust and metadata boundaries",
+      "specification": "specs/privacy.md#boundaries-to-preserve-now",
+      "milestone": "M1",
+      "status": "specified",
+      "proof_targets": [],
+      "verification": [
+        "design-review",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "SEC-002",
+      "title": "Separate ciphertext retention, archives, and secret state",
+      "specification": "specs/privacy.md#boundaries-to-preserve-now",
+      "milestone": "M1",
+      "status": "specified",
+      "proof_targets": [],
+      "verification": [
+        "design-review",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "SEC-003",
+      "title": "Explicit private authorship and equality-leakage policy",
+      "specification": "specs/privacy.md#boundaries-to-preserve-now",
+      "milestone": "M1",
+      "status": "specified",
+      "proof_targets": [],
+      "verification": [
+        "design-review",
+        "scenario"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "SEC-004",
+      "title": "Evaluate established group crypto against disconnection and recovery",
+      "specification": "specs/privacy.md#boundaries-to-preserve-now",
+      "milestone": "M1",
+      "status": "specified",
+      "proof_targets": [],
+      "verification": [
+        "design-review",
+        "scenario"
+      ],
+      "evidence": []
+    }
+  ]
+}

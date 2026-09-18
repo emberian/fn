@@ -1,0 +1,51 @@
+# Project guide
+
+fn is currently a design scaffold. Nothing in the specifications is implemented
+or mechanically proved yet. The first task is to turn a small part of this design
+into an executable, admitted ACL2 model while resolving the decisions it needs.
+
+## Reading order
+
+1. [Architecture](architecture.md): purpose, boundaries, and system composition.
+2. [Terminology](glossary.md): distinctions shared by every subsystem.
+3. [Letter lifecycle](../specs/lifecycle.md): the end-to-end design example.
+4. [Objects and identities](../specs/objects.md): what the system represents.
+5. [Storage](../specs/storage.md) and [failure model](../specs/failures.md): what
+   local acceptance means and what its durability argument assumes.
+6. [Retention](../specs/retention.md) and [replication](../specs/replication.md):
+   what survives disconnection and how information moves.
+7. [Privacy and encryption](../specs/privacy.md): threat boundaries, protocol
+   candidates, archives, and the open private-group decision.
+8. [NNTP](../specs/nntp.md), [encoding](../specs/encoding.md), and
+   [host boundary](../specs/host.md): external interfaces and representation.
+9. [Proof strategy](proofs.md), [validation](../tests/README.md), and
+   [milestones](../planning/milestones.md): how to establish the claims.
+
+## Sources of truth
+
+| Question | Authoritative location |
+| --- | --- |
+| What has been decided? | [Decision register](../planning/decisions.md) |
+| What behavior is required? | [Requirement registry](../planning/requirements.json), with links to the detailed specs |
+| What is to be proved? | [Proof registry](../planning/proofs.json), interpreted by the proof strategy |
+| What should happen next? | [Milestones](../planning/milestones.md) |
+| Which examples must be exercised? | [Scenario catalog](../tests/scenarios/catalog.json) |
+| Which standards support the design? | [References](references.md) |
+
+The registries track requirement and proof status. Narrative documents explain
+contracts rather than maintain competing completion counts. Scenario entries are
+test specifications, not a test runner. A scenario may span several milestones;
+its milestone is when its full executable form is expected.
+
+## Design language
+
+An **agreed direction** is a project choice established in the conversation.
+A **proposal** is a concrete recommendation still subject to design work.
+An **open decision** names a question and the milestone it blocks.
+A **requirement** is intended fn behavior, even when its implementation is pending.
+An **assumption** identifies an external condition needed by a particular claim.
+
+Reserve RFC normative meanings for statements attributed to an RFC. fn's stronger
+acceptance and retention contracts are project requirements, not assertions that
+NNTP or BP already provides them. Dependencies on cryptography, disk semantics,
+and cooperative peers belong in theorem hypotheses and evidence descriptions.

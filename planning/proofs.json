@@ -1,0 +1,374 @@
+{
+  "schema_version": 1,
+  "description": "Planned targets, not ACL2 events or certified theorems. Paths are repository-relative.",
+  "proofs": [
+    {
+      "id": "PRF-001",
+      "title": "Reachable-state invariant preservation",
+      "statement": "Every permitted transition preserves a meaningful invariant from valid initial/reachable states.",
+      "milestone": "M1",
+      "requirements": [
+        "OBJ-001",
+        "OBJ-002",
+        "OBJ-005",
+        "STO-002",
+        "RET-001"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": []
+    },
+    {
+      "id": "PRF-002",
+      "title": "Atomic allocation and stable numbering",
+      "statement": "Acceptance publishes all intended local memberships together and never reuses an allocated number for another article.",
+      "milestone": "M1",
+      "requirements": [
+        "OBJ-005",
+        "STO-002",
+        "NNT-006"
+      ],
+      "depends_on": [
+        "PRF-001"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": []
+    },
+    {
+      "id": "PRF-003",
+      "title": "Identity and idempotent acceptance",
+      "statement": "Retrying an accepted identity preserves its binding and introduces no duplicate allocation or obligation.",
+      "milestone": "M1",
+      "requirements": [
+        "OBJ-001",
+        "OBJ-002",
+        "STO-002",
+        "NNT-005"
+      ],
+      "depends_on": [
+        "PRF-001"
+      ],
+      "assumptions": [
+        "A-CRYPTO"
+      ],
+      "status": "planned",
+      "events": [],
+      "evidence": []
+    },
+    {
+      "id": "PRF-004",
+      "title": "Reservation and release safety",
+      "statement": "Accepted obligations are accounted for and discharge requires the specified predicate over committed authorized evidence.",
+      "milestone": "M1",
+      "requirements": [
+        "RET-001",
+        "RET-002",
+        "RET-004"
+      ],
+      "depends_on": [
+        "PRF-001"
+      ],
+      "assumptions": [
+        "A-POLICY"
+      ],
+      "status": "planned",
+      "events": [],
+      "evidence": []
+    },
+    {
+      "id": "PRF-005",
+      "title": "Codec and identity preimages",
+      "statement": "Accepted values round-trip; deterministic encodings and domain-separated preimages have the specified uniqueness and version boundaries.",
+      "milestone": "M2",
+      "requirements": [
+        "ENC-001",
+        "ENC-003",
+        "ENC-004"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": []
+    },
+    {
+      "id": "PRF-006",
+      "title": "NNTP framing independence",
+      "statement": "Parsing valid octets in different socket partitions yields the same events; dot-stuffing round-trips the specified domain.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-003"
+      ],
+      "depends_on": [
+        "PRF-016"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": []
+    },
+    {
+      "id": "PRF-007",
+      "title": "Conditional crash recovery",
+      "statement": "Under the disk model, recovery retains acknowledged commits, may retain complete unacknowledged commits, and exposes no partial transaction.",
+      "milestone": "M2",
+      "requirements": [
+        "STO-003",
+        "STO-004",
+        "STO-005",
+        "FLR-001",
+        "FLR-002"
+      ],
+      "depends_on": [
+        "PRF-001",
+        "PRF-005"
+      ],
+      "assumptions": [
+        "A-DURABILITY",
+        "A-WRITE-ISOLATION"
+      ],
+      "status": "planned",
+      "events": [],
+      "evidence": []
+    },
+    {
+      "id": "PRF-008",
+      "title": "Checkpoint equivalence",
+      "statement": "Checkpoint plus suffix recovery preserves the required logical state of full committed-history replay.",
+      "milestone": "M2",
+      "requirements": [
+        "STO-006"
+      ],
+      "depends_on": [
+        "PRF-007"
+      ],
+      "assumptions": [
+        "A-DURABILITY",
+        "A-WRITE-ISOLATION"
+      ],
+      "status": "planned",
+      "events": [],
+      "evidence": []
+    },
+    {
+      "id": "PRF-009",
+      "title": "Compaction and protected closure",
+      "statement": "Reclamation and crash-interrupted compaction preserve every dependency rooted by policy and obligations.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-007",
+        "RET-005",
+        "RET-006"
+      ],
+      "depends_on": [
+        "PRF-004",
+        "PRF-007",
+        "PRF-008"
+      ],
+      "assumptions": [
+        "A-DURABILITY",
+        "A-WRITE-ISOLATION",
+        "A-POLICY"
+      ],
+      "status": "planned",
+      "events": [],
+      "evidence": []
+    },
+    {
+      "id": "PRF-010",
+      "title": "Index soundness and completeness",
+      "statement": "Concrete/rebuilt indexes correspond to authoritative state, including all required range-query results.",
+      "milestone": "M2",
+      "requirements": [
+        "STO-001",
+        "NNT-006"
+      ],
+      "depends_on": [
+        "PRF-001"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": []
+    },
+    {
+      "id": "PRF-011",
+      "title": "Validated fact-set merge",
+      "statement": "Under fixed validation hypotheses, immutable fact-set merge is associative, commutative, and idempotent; incomplete input has no complete-acceptance effects.",
+      "milestone": "M4",
+      "requirements": [
+        "OBJ-004",
+        "REP-001",
+        "REP-002",
+        "REP-003"
+      ],
+      "depends_on": [
+        "PRF-003",
+        "PRF-005"
+      ],
+      "assumptions": [
+        "A-CRYPTO",
+        "A-POLICY"
+      ],
+      "status": "planned",
+      "events": [],
+      "evidence": []
+    },
+    {
+      "id": "PRF-012",
+      "title": "Conditional responsibility handoff",
+      "statement": "Sender discharge requires committed evidence of a matching successor undertaking under the cooperative-peer model.",
+      "milestone": "M4",
+      "requirements": [
+        "RET-003",
+        "RET-004",
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-004",
+        "PRF-007"
+      ],
+      "assumptions": [
+        "A-PEER",
+        "A-CRYPTO",
+        "A-POLICY",
+        "A-DURABILITY"
+      ],
+      "status": "planned",
+      "events": [],
+      "evidence": []
+    },
+    {
+      "id": "PRF-013",
+      "title": "Authority and provenance confinement",
+      "statement": "Signatures, unknown schemas, legacy headers, and replays confer only authority allowed by recorded policy.",
+      "milestone": "M3",
+      "requirements": [
+        "OBJ-003",
+        "OBJ-007",
+        "ENC-004",
+        "NNT-004",
+        "RET-004"
+      ],
+      "depends_on": [
+        "PRF-005"
+      ],
+      "assumptions": [
+        "A-CRYPTO",
+        "A-POLICY"
+      ],
+      "status": "planned",
+      "events": [],
+      "evidence": []
+    },
+    {
+      "id": "PRF-014",
+      "title": "Guard and execution correspondence",
+      "statement": "Guard-verified concrete operations used by the host implement their logical counterparts on the stated domains.",
+      "milestone": "M1",
+      "requirements": [
+        "HST-001",
+        "HST-004"
+      ],
+      "depends_on": [
+        "PRF-001"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "planned",
+      "events": [],
+      "evidence": []
+    },
+    {
+      "id": "PRF-015",
+      "title": "NNTP session refinement",
+      "statement": "Session transitions implement the audited command-specific cursor, error, and publication rules.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-001",
+        "NNT-002",
+        "NNT-004",
+        "NNT-005",
+        "NNT-006",
+        "HST-002"
+      ],
+      "depends_on": [
+        "PRF-002",
+        "PRF-003",
+        "PRF-006",
+        "PRF-007"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "planned",
+      "events": [],
+      "evidence": []
+    },
+    {
+      "id": "PRF-016",
+      "title": "Bounded parsing and staging",
+      "statement": "For the resource profile, parsing and modeled staging terminate within declared length, nesting, allocation, and work bounds.",
+      "milestone": "M2",
+      "requirements": [
+        "ENC-002",
+        "REP-003",
+        "HST-002",
+        "RET-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "events": [],
+      "evidence": []
+    },
+    {
+      "id": "PRF-017",
+      "title": "Origin sequence non-reuse",
+      "statement": "Within the specified restore/incarnation discipline, different events cannot silently share an origin/incarnation/sequence identity.",
+      "milestone": "M1",
+      "requirements": [
+        "OBJ-006",
+        "FLR-004"
+      ],
+      "depends_on": [
+        "PRF-001"
+      ],
+      "assumptions": [
+        "A-IDENTITY"
+      ],
+      "status": "planned",
+      "events": [],
+      "evidence": []
+    },
+    {
+      "id": "PRF-018",
+      "title": "Conditional delivery progress",
+      "statement": "The scheduling/transport model progresses obligations only under explicit eventual-contact, capacity, route, and retry assumptions.",
+      "milestone": "M6",
+      "requirements": [
+        "FLR-004",
+        "REP-004",
+        "REP-005",
+        "REP-006"
+      ],
+      "depends_on": [
+        "PRF-011",
+        "PRF-012"
+      ],
+      "assumptions": [
+        "A-FAIRNESS",
+        "A-PEER",
+        "A-HOST"
+      ],
+      "status": "planned",
+      "events": [],
+      "evidence": []
+    }
+  ]
+}
