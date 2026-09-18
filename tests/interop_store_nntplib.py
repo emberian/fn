@@ -39,6 +39,12 @@ def main():
         assert numbers == ["1"]
         _, groups = client.list()
         assert {g.group for g in groups} == {"fn.letters", "fn.test"}
+        # nntplib's generic multiline path keeps this independent of fn's
+        # ACL2-to-socket bridge while exercising filtered ACTIVE/NEWSGROUPS.
+        _, active = client._longcmdstring("LIST ACTIVE fn.test")
+        assert active == ["fn.test 1 1 y"]
+        _, descriptions = client._longcmdstring("LIST NEWSGROUPS fn.letters")
+        assert descriptions == ["fn.letters fn experimental group"]
         assert client.quit().startswith("205 ")
     print(json.dumps({"status": "passed", "client": "stdlib nntplib",
                       "python": platform.python_version(), "mode": "recovered-store",

@@ -71,7 +71,9 @@
 (defun fn-reader-reset (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-reader-wire
-                               (fn-wire-initial-state 512 8192) state))
+                               ; RFC 3977's 512 includes CRLF; wire state holds
+                               ; only content before that delimiter.
+                               (fn-wire-initial-state 510 8192) state))
          (state (f-put-global 'fn-reader-session (fn-nntp-initial-session) state))
          (state (f-put-global 'fn-reader-suffix nil state))
          (state (fn-reader-install-effects

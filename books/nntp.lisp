@@ -10,6 +10,13 @@
 (in-package "ACL2")
 (include-book "acceptance")
 (include-book "wire")
+(include-book "wildmat")
+
+; RFC 3977 section 3.1 counts the terminating CRLF in its 512-octet command
+; limit.  A fn-wire command event excludes that pair, hence 510 here.  The
+; 497-octet argument limit is retained independently at this core boundary.
+(defconst *fn-nntp-max-command-octets* 510)
+(defconst *fn-nntp-max-argument-octets* 497)
 
 ; -----------------------------------------------------------------------------
 ; Octet and command syntax helpers
@@ -19,13 +26,37 @@
 
 (defun fn-nntp-command-bytep (byte)
   (or (fn-nntp-space-or-tabp byte)
-      (and (integerp byte) (<= 33 byte) (<= byte 126))))
+      (and (integerp byte) (<= 33 byte) (<= byte 255))))
 
 (defun fn-nntp-command-linep (line)
   (if (consp line)
       (and (fn-nntp-command-bytep (car line))
            (fn-nntp-command-linep (cdr line)))
     (null line)))
+
+; U+FEFF is prohibited in command lines by RFC 3977 section 3.1 wherever
+; non-ASCII is permitted.  This is a command-boundary check; the generic
+; wildmat component correctly preserves a BOM when used outside NNTP commands.
+(defun fn-nntp-bom-at-startp (bytes)
+  (and (consp bytes) (consp (cdr bytes)) (consp (cdr (cdr bytes)))
+       (equal (car bytes) 239)
+       (equal (car (cdr bytes)) 187)
+       (equal (car (cdr (cdr bytes))) 191)))
+
+(defun fn-nntp-contains-bomp (bytes)
+  (if (consp bytes)
+      (or (fn-nntp-bom-at-startp bytes)
+          (fn-nntp-contains-bomp (cdr bytes)))
+    nil))
+
+; This bounded shape/byte preflight happens before tokenization.  The later
+; command-specific checks decide which positions may contain validated UTF-8:
+; only LIST ACTIVE/NEWSGROUPS wildmats in this profile.  Keywords, group names,
+; ranges, Message-IDs, and all legacy arguments remain printable US-ASCII.
+(defun fn-nntp-command-inputp (line)
+  (and (fn-cbor-at-mostp line *fn-nntp-max-command-octets*)
+       (fn-nntp-command-linep line)
+       (not (fn-nntp-contains-bomp line))))
 
 (defun fn-nntp-last (xs)
   (if (consp (cdr xs))
@@ -105,9 +136,35 @@
     t))
 
 (defun fn-nntp-keyword-tokenp (token)
+  ; RFC 3977 section 9.8: keyword = ALPHA 2*(ALPHA / DIGIT / "." / "-").
   (and (consp token)
+       (consp (cdr token))
+       (consp (cdr (cdr token)))
        (fn-nntp-keyword-first-bytep (car token))
        (fn-nntp-keyword-tailp (cdr token))))
+
+(defun fn-nntp-argument-tokens (tokens)
+  ; LIST and MODE have a second command keyword (RFC 3977 section 3.1), not a
+  ; first argument.  MODE is unimplemented but the common boundary rule still
+  ; keeps a future MODE variant from accidentally consuming its keyword budget.
+  (if (and (consp tokens)
+           (or (fn-nntp-keywordp (car tokens) "LIST")
+               (fn-nntp-keywordp (car tokens) "MODE")))
+      (cdr (cdr tokens))
+    (cdr tokens)))
+
+(defun fn-nntp-each-token-at-mostp (tokens bound)
+  (if (consp tokens)
+      (and (<= (len (car tokens)) bound)
+           (fn-nntp-each-token-at-mostp (cdr tokens) bound))
+    (null tokens)))
+
+(defun fn-nntp-command-arguments-at-mostp (tokens)
+  ; The 510-octet command preflight independently bounds the complete line.
+  ; This applies the 497-octet §3.1 limit to each actual argument token, after
+  ; excluding the LIST/MODE variant keyword rather than counting separators.
+  (fn-nntp-each-token-at-mostp (fn-nntp-argument-tokens tokens)
+                               *fn-nntp-max-argument-octets*))
 
 (defun fn-nntp-printable-tokenp (token)
   (if (consp token)
@@ -335,6 +392,7 @@
 ; broader durable acceptance domain.
 (defun fn-nntp-safe-string-tokenp (text)
   (and (stringp text)
+       (<= (len (fn-nntp-string-octets text)) *fn-wildmat-max-octets*)
        (fn-nntp-printable-tokenp (fn-nntp-string-octets text))))
 
 (defun fn-nntp-safe-string-listp (texts)
@@ -636,19 +694,96 @@
             (fn-nntp-newsgroup-lines (cdr groups)))
     nil))
 
+; `patterns` is an internal successful `fn-wildmat-parse` result, never an
+; externally supplied representation.  Group names are projection-guarded
+; printable ASCII and no longer than the local wildmat target cap, so their
+; UTF-8 decoding is exact and bounded before the DP match is called.
+(defun fn-nntp-group-matches-parsed-wildmatp (patterns group)
+  (let ((decoded (fn-wildmat-decode (fn-nntp-string-octets group))))
+    (and (fn-wildmat-result-okp decoded)
+         (fn-wildmat-match-codepoints patterns
+                                      (fn-wildmat-result-value decoded)))))
+
+(defun fn-nntp-filter-groups-by-wildmat (patterns groups)
+  (if (consp groups)
+      (if (fn-nntp-group-matches-parsed-wildmatp patterns (car groups))
+          (cons (car groups)
+                (fn-nntp-filter-groups-by-wildmat patterns (cdr groups)))
+        (fn-nntp-filter-groups-by-wildmat patterns (cdr groups)))
+    nil))
+
+(defun fn-nntp-list-active (session archive groups)
+  (fn-nntp-multi session "215 list of active newsgroups follows"
+                 (fn-nntp-active-lines archive groups)))
+
+(defun fn-nntp-list-newsgroups (session groups)
+  (fn-nntp-multi session "215 list of newsgroups follows"
+                 (fn-nntp-newsgroup-lines groups)))
+
+(defun fn-nntp-list-filtered-response (session archive kind wildmat)
+  ; Parse once per LIST command, then reuse that parsed value for every group.
+  (let ((parsed (fn-wildmat-parse wildmat)))
+    (if (fn-wildmat-result-okp parsed)
+        (let ((groups (fn-nntp-filter-groups-by-wildmat
+                       (fn-wildmat-result-value parsed)
+                       (fn-state-groups archive))))
+          (if (equal kind :active)
+              (fn-nntp-list-active session archive groups)
+            (fn-nntp-list-newsgroups session groups)))
+      (fn-nntp-single session "501 syntax error"))))
+
+(defun fn-nntp-list-active-or-newsgroups (session archive kind args)
+  (if (null args)
+      (if (equal kind :active)
+          (fn-nntp-list-active session archive (fn-state-groups archive))
+        (fn-nntp-list-newsgroups session (fn-state-groups archive)))
+    (if (and (consp args) (null (cdr args)))
+        (fn-nntp-list-filtered-response session archive kind (car args))
+      (fn-nntp-single session "501 syntax error"))))
+
+(defun fn-nntp-list-wildmat-argumentp (args)
+  (if (null args)
+      t
+    (if (and (consp args) (null (cdr args)))
+        (fn-wildmat-result-okp (fn-wildmat-parse (car args)))
+      nil)))
+
+(defun fn-nntp-list-unmaintained-response (session keyword args)
+  ; RFC 3977 sections 7.6.4/7.6.5, 8.4, 8.6, and 9.6 specify these arities.
+  ; A syntactically valid request for a recognized but unmaintained item is
+  ; 503; an argument forbidden by that item's grammar remains 501.
+  (if (fn-nntp-keywordp keyword "ACTIVE.TIMES")
+      (if (fn-nntp-list-wildmat-argumentp args)
+          (fn-nntp-single session "503 data item not stored")
+        (fn-nntp-single session "501 syntax error"))
+    (if (fn-nntp-keywordp keyword "DISTRIB.PATS")
+        (if (null args)
+            (fn-nntp-single session "503 data item not stored")
+          (fn-nntp-single session "501 syntax error"))
+      (if (fn-nntp-keywordp keyword "OVERVIEW.FMT")
+          (if (null args)
+              (fn-nntp-single session "503 data item not stored")
+            (fn-nntp-single session "501 syntax error"))
+        (if (fn-nntp-keywordp keyword "HEADERS")
+            (if (or (null args)
+                    (and (consp args) (null (cdr args))
+                         (or (fn-nntp-keywordp (car args) "MSGID")
+                             (fn-nntp-keywordp (car args) "RANGE"))))
+                (fn-nntp-single session "503 data item not stored")
+              (fn-nntp-single session "501 syntax error"))
+          (fn-nntp-single session "501 unsupported LIST variant"))))))
+
 (defun fn-nntp-list-response (session archive args)
   (if (null args)
-      (fn-nntp-multi session "215 list of active newsgroups follows"
-                     (fn-nntp-active-lines archive (fn-state-groups archive)))
-    (if (null (cdr args))
-        (if (fn-nntp-keywordp (car args) "ACTIVE")
-            (fn-nntp-multi session "215 list of active newsgroups follows"
-                           (fn-nntp-active-lines archive (fn-state-groups archive)))
-          (if (fn-nntp-keywordp (car args) "NEWSGROUPS")
-              (fn-nntp-multi session "215 list of newsgroups follows"
-                             (fn-nntp-newsgroup-lines (fn-state-groups archive)))
-            (fn-nntp-single session "501 unsupported LIST variant")))
-      (fn-nntp-single session "501 syntax error"))))
+      (fn-nntp-list-active session archive (fn-state-groups archive))
+    (let ((keyword (car args)) (arguments (cdr args)))
+      (if (not (fn-nntp-keyword-tokenp keyword))
+          (fn-nntp-single session "501 syntax error")
+        (if (fn-nntp-keywordp keyword "ACTIVE")
+            (fn-nntp-list-active-or-newsgroups session archive :active arguments)
+          (if (fn-nntp-keywordp keyword "NEWSGROUPS")
+              (fn-nntp-list-active-or-newsgroups session archive :newsgroups arguments)
+            (fn-nntp-list-unmaintained-response session keyword arguments)))))))
 
 (defun fn-nntp-capabilities (session)
   ; No READER, POST, TLS, authentication, compression, or cryptographic
@@ -660,11 +795,13 @@
 (defun fn-nntp-help (session)
   (fn-nntp-multi session "100 help text follows"
                  (list (fn-nntp-string-octets "CAPABILITIES HEAD HELP QUIT STAT")
-                       (fn-nntp-string-octets "GROUP ARTICLE BODY NEXT LAST LIST"))))
+                       (fn-nntp-string-octets "GROUP ARTICLE BODY NEXT LAST LIST LISTGROUP"))))
 
 (defun fn-nntp-command (session archive tokens)
   (let ((keyword (car tokens)) (args (cdr tokens)))
-    (cond
+    (if (not (fn-nntp-keyword-tokenp keyword))
+        (fn-nntp-single session "501 syntax error")
+      (cond
      ((fn-nntp-keywordp keyword "CAPABILITIES")
       (if (or (null args)
               (and (consp args) (null (cdr args))
@@ -699,7 +836,7 @@
      ((fn-nntp-keywordp keyword "HEAD") (fn-nntp-retrieval session archive :head args))
      ((fn-nntp-keywordp keyword "BODY") (fn-nntp-retrieval session archive :body args))
      ((fn-nntp-keywordp keyword "STAT") (fn-nntp-retrieval session archive :stat args))
-     (t (fn-nntp-single session "500 command not recognized")))))
+     (t (fn-nntp-single session "500 command not recognized"))))))
 
 ; A single command event is the integration boundary.  Other wire events are
 ; rejected as syntax, and a closed session produces no further effects.
@@ -713,8 +850,12 @@
                (equal (car wire-event) :command)
                (consp (cdr wire-event))
                (null (cdr (cdr wire-event))))
-          (let ((tokens (fn-nntp-tokenize (car (cdr wire-event)))))
-            (if (consp tokens)
-                (fn-nntp-command session archive tokens)
-              (fn-nntp-single session "501 syntax error")))
+          (let ((line (car (cdr wire-event))))
+            (if (not (fn-nntp-command-inputp line))
+                (fn-nntp-single session "501 syntax error")
+              (let ((tokens (fn-nntp-tokenize line)))
+                (if (and (consp tokens)
+                         (fn-nntp-command-arguments-at-mostp tokens))
+                    (fn-nntp-command session archive tokens)
+                  (fn-nntp-single session "501 syntax error")))))
         (fn-nntp-single session "501 syntax error")))))

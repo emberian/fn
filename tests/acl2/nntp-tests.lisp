@@ -97,8 +97,25 @@
  (equal (fn-nntp-result-effects
          (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* '(:command (83 84 65 84 32 48))))
         '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
+; RFC 3977 section 9.8 keywords contain at least three ASCII characters.
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* '(:command (78 79))))
+        '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* '(:command (67 65 80 65 66 73 76 73 84 73 69 83 32 65))))
+        '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* '(:command (67 65 80 65 66 73 76 73 84 73 69 83 32 65 66))))
+        '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
 (defconst *fn-nntp-caps*
   (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* '(:command (67 65 80 65 66 73 76 73 84 73 69 83))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* '(:command (67 65 80 65 66 73 76 73 84 73 69 83 32 70 79 79))))
+        (fn-nntp-result-effects *fn-nntp-caps*)))
 (assert-event
  (equal (fn-nntp-result-effects *fn-nntp-caps*)
         '((:reply (49 48 49 32 99 97 112 97 98 105 108 105 116 121 32 108 105 115 116 32 102 111 108 108 111 119 115 13 10
@@ -144,6 +161,109 @@
  (equal (fn-nntp-result-effects
          (fn-nntp-step *fn-nntp-session0* *fn-nntp-unsafe-payload-archive* '(:command (65 82 84 73 67 76 69))))
         '((:reply (53 48 51 32 97 114 99 104 105 118 101 32 112 114 111 106 101 99 116 105 111 110 32 117 110 97 118 97 105 108 97 98 108 101 13 10)))))
+
+; RFC 3977 sections 4 and 7.6: LIST defaults to ACTIVE; its two locally
+; supported variants accept one parsed wildmat and preserve session state.
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* '(:command (76 73 83 84))))
+        '((:reply (50 49 53 32 108 105 115 116 32 111 102 32 97 99 116 105 118 101 32 110 101 119 115 103 114 111 117 112 115 32 102 111 108 108 111 119 115 13 10
+                   102 110 46 108 101 116 116 101 114 115 32 49 32 49 32 121 13 10
+                   102 110 46 101 109 112 116 121 32 48 32 49 32 121 13 10 46 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive*
+                       '(:command (76 73 83 84 32 65 67 84 73 86 69 32 102 110 46 101 109 112 116 121))))
+        '((:reply (50 49 53 32 108 105 115 116 32 111 102 32 97 99 116 105 118 101 32 110 101 119 115 103 114 111 117 112 115 32 102 111 108 108 111 119 115 13 10
+                   102 110 46 101 109 112 116 121 32 48 32 49 32 121 13 10 46 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive*
+                       '(:command (76 73 83 84 32 78 69 87 83 71 82 79 85 80 83 32 102 110 46 108 101 116 116 101 114 115))))
+        '((:reply (50 49 53 32 108 105 115 116 32 111 102 32 110 101 119 115 103 114 111 117 112 115 32 102 111 108 108 111 119 115 13 10
+                   102 110 46 108 101 116 116 101 114 115 32 102 110 32 101 120 112 101 114 105 109 101 110 116 97 108 32 103 114 111 117 112 13 10 46 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive*
+                       '(:command (76 73 83 84 32 65 67 84 73 86 69 32 110 111 46 42))))
+        '((:reply (50 49 53 32 108 105 115 116 32 111 102 32 97 99 116 105 118 101 32 110 101 119 115 103 114 111 117 112 115 32 102 111 108 108 111 119 115 13 10 46 13 10)))))
+
+; The pattern is parsed once before it is applied to configured groups.  Bad
+; UTF-8, a command-line BOM, reserved wildmat punctuation, and non-ASCII in a
+; command keyword all reject without changing an already selected session.
+(defconst *fn-nntp-list-invalid*
+  (fn-nntp-step (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive*
+                '(:command (76 73 83 84 32 65 67 84 73 86 69 32 91))))
+(assert-event (equal (fn-nntp-result-session *fn-nntp-list-invalid*)
+                     (fn-nntp-result-session *fn-nntp-group*)))
+(assert-event
+ (equal (fn-nntp-result-effects *fn-nntp-list-invalid*)
+        '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive*
+                       '(:command (76 73 83 84 32 65 67 84 73 86 69 32 192 160))))
+        '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive*
+                       '(:command (76 73 83 84 32 65 67 84 73 86 69 32 239 187 191 42))))
+        '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* '(:command (195 163 66 67))))
+        '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* '(:command (71 82 79 85 80 32 194 163))))
+        '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
+
+; Unknown LIST variants are 501.  Known but unmaintained variants use 503 only
+; for their RFC 3977 section 9.6 arity; forbidden/malformed arguments remain
+; syntax errors.
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* '(:command (76 73 83 84 32 88 46 68 65 84 65))))
+        '((:reply (53 48 49 32 117 110 115 117 112 112 111 114 116 101 100 32 76 73 83 84 32 118 97 114 105 97 110 116 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* '(:command (76 73 83 84 32 65 67 84 73 86 69 46 84 73 77 69 83 32 102 110 46 42))))
+        '((:reply (53 48 51 32 100 97 116 97 32 105 116 101 109 32 110 111 116 32 115 116 111 114 101 100 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* '(:command (76 73 83 84 32 68 73 83 84 82 73 66 46 80 65 84 83 32 120))))
+        '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* '(:command (76 73 83 84 32 72 69 65 68 69 82 83 32 77 83 71 73 68))))
+        '((:reply (53 48 51 32 100 97 116 97 32 105 116 101 109 32 110 111 116 32 115 116 111 114 101 100 13 10)))))
+
+; Core-side line and argument caps protect direct callers as well as the wire
+; adapter.  LIST ACTIVE's second token is a variant keyword, not part of the
+; argument budget: a 497-octet pattern fits its 511-octet CRLF-framed command;
+; 498 is still under the total command cap but is rejected by wildmat parsing.
+(defun fn-nntp-test-repeat (n byte)
+  (if (zp n) nil
+    (cons byte (fn-nntp-test-repeat (1- n) byte))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive*
+                       (list :command
+                             (append '(76 73 83 84 32 65 67 84 73 86 69 32)
+                                     (fn-nntp-test-repeat 497 97)))))
+        '((:reply (50 49 53 32 108 105 115 116 32 111 102 32 97 99 116 105 118 101 32 110 101 119 115 103 114 111 117 112 115 32 102 111 108 108 111 119 115 13 10 46 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive*
+                       (list :command
+                             (append '(76 73 83 84 32 65 67 84 73 86 69 32)
+                                     (fn-nntp-test-repeat 498 97)))))
+        '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive*
+                       (list :command (fn-nntp-test-repeat 511 65))))
+        '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
 
 ; NEXT at the only article and QUIT have defined state/effect behavior.
 (assert-event
