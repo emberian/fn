@@ -98,7 +98,7 @@ part of the 54-root evidence.
 | Terra | Real store/reader adapter uses the proved composition; fix and test callback uncertainty, stale finish and same-owner refusal/retry |
 | Terra | Observed-image loader certifies exact replay and zero fabricated recovery barriers; needed by host adoption |
 | Luna | Arbitrary finite node events preserve article bindings, local numbers and archive pins |
-| Terra | Full implemented NNTP dispatcher preserves session/cursor consistency; final proof composition underway |
+| Terra | Implemented NNTP command/step and arbitrary finite session traces preserve recognizer/cursor consistency; targeted certification passed; effect typing continues |
 | Terra | Exchange ingest/count/refusal/evidence and policy-changing finite traces certified, with capacity-order counterexample |
 | Sol + Terra | Public transfer missing-range value projections certified; raw-input/profile polynomial bound in progress |
 | Terra | Actual wildmat DP cost correspondence and polynomial bound |
