@@ -75,14 +75,16 @@ and retain concise evidence summaries and exact source hashes in the repository.
 The article/parser/release batch and wildmat/file-kernel batch are integrated.
 The next independent owned areas are:
 
-- Terra: article Message-ID/Newsgroups field grammar and bounded proto-article
-  identity/routing checks, without claiming complete injection or choosing a
-  native signing format.
+- Terra's article Message-ID/Newsgroups grammar and bounded proto-article
+  identity/routing checks have passed targeted certification and batch review.
+  They do not claim complete injection or choose a native signing format.
 - Terra: bounded out-of-order object assembly, exact-duplicate handling, missing
   ranges, and unverified completion candidates for disconnected exchange.
-- Sol: general file-kernel crash/transition preservation and stable-prefix
-  invariants, with physical correspondence still separate.
-- Terra: schema-0 record accepted-input canonicality, beyond value round trip.
+- Sol's general file-kernel crash/transition preservation, stable-prefix, and
+  one-crash success-retention invariants have passed targeted certification.
+  Arbitrary traces and physical correspondence remain separate work.
+- Sol is finishing schema-0 record accepted-input canonicality, beyond value
+  round trip, using the earlier Terra draft and root's composition work.
   Its group-list reconstruction lemma has passed an ACL2 proof event, but the
   whole new book is not certified or included in the default roots; final
   sequential composition remains open.
@@ -94,8 +96,9 @@ next integration batch, not the historical 33-root source set.
 
 The [refinement contract](../specs/store-refinement.md) now has a first executable
 immutable-file kernel. It accounts for hard-link publication and allocator
-replacement, unlike the isolated-slot journal. Full transition/crash preservation,
-live node composition, and physical adapter correspondence are next proof work.
+replacement, unlike the isolated-slot journal. Transition/crash preservation has
+passed targeted certification; arbitrary traces, live node composition, and
+physical adapter correspondence are next proof work.
 Root records exact frozen batches; later work does not rewrite prior evidence.
 
 The [local persistence experiment](../specs/store-experiment.md) is integrated:
