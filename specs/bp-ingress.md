@@ -1,6 +1,7 @@
 # Experimental legacy-article BP ingress
 
-Status: isolated executable ACL2 composition experiment. It admits one bounded,
+Status: executable ACL2 composition with a local host and actual BPA experiment.
+It admits one bounded,
 exact legacy NNTP article ADU through the existing article parser, semantic
 field extractor, and Store-node acceptance model. It does not select a portable
 BP/native fn envelope, a signature, receipt format, or D01 wire contract.
@@ -76,18 +77,25 @@ field rejection, and unknown-group rejection. These are ACL2 executable
 assertions over the same parser and acceptance definitions; no Python parser
 participates.
 
-## Isolated host bridge
+## Experimental host bridge
 
 `host/bp-ingress-host.lisp` loads the certified ingress book alongside the
 existing Store host wrapper. `tools/run_bp_ingress.py` passes decimal ADU octets
 and bounded observed destination EID, source EID, BID, and lifetime into that
 ACL2 wrapper. The static lab policy is explicit in the wrapper: destination
 `dtn://fn.lab/inbox`, groups `fn.letters` and `fn.test`, and named lab
-policy/terms/issuer metadata. The Python bridge never parses Message-ID or
-Newsgroups and never derives an article from the BP envelope.
+policy/terms/issuer metadata. Before Store reservation, the ACL2 wrapper alone
+extracts the exact Message-ID; Python passes that ACL2 result and the exact ADU
+to the existing `run_store.metadata` domain-separated payload hash constructor
+and `conservative_charge`. The resulting archive obligation, immutable subject,
+evidence, and charge are supplied back to ACL2 as the per-ADU policy. Python
+never parses Message-ID or Newsgroups and never derives an article from the BP
+envelope.
 
 The bridge imports the coordinated `workflow_journal.py` by an explicit path;
-it does not copy or reimplement that journal. It deliberately invokes
+it does not copy or reimplement that journal. Until its ACL2 workflow replay
+bridge is available, this ingress accepts only an empty workflow-record
+namespace and refuses a nonempty one. It deliberately invokes
 `stage_inbound` with a deferred-delete callback, handles the journal's durable
 `InboundDeletePending` result, closes and reopens the journal to validate the
 published inbound item, and only then reads the journal's framed ADU. A parser,
@@ -99,10 +107,15 @@ exact staged ADU and compares its identity, bytes, groups, archive obligation,
 and subject with the recovered node binding. Only that exact prior acceptance
 permits a retry delete without allocating a second Store transaction.
 
-`tests/test_bp-ingress-host.py` runs this path against temporary real files,
-the coordinated workflow journal candidate, and an interpreted ACL2 Store. It
-covers one accepted ADU and exact lookup, a failed BPA delete followed by
-fresh journal/Store recovery and duplicate deletion with one transaction, and
-malformed/unknown-group ADUs that remain staged and unaccepted. It is a local
+`tests/test_bp_ingress_host.py` runs this path against temporary real files,
+the shared workflow inbox implementation, and an interpreted ACL2 Store. It
+covers two distinct accepted ADUs in one Store with distinct recovered
+bindings/pins, an immutable same-Message-ID/different-byte conflict, a failed
+BPA delete followed by fresh journal/Store recovery and duplicate deletion with
+one transaction, and malformed/unknown-group ADUs that remain staged and
+unaccepted. It is a local
 host experiment; POSIX fsync behavior and the supplied BPA adapter remain host
 assumptions, and no receipt is emitted.
+
+The [integrated BP ingress evidence](../tests/evidence/2026-09-18-bp-ingress.md)
+records actual receiver restart, acceptance and new-BID duplicate behavior.

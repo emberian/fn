@@ -15,3 +15,10 @@ retention release.
 This optional test requires Cargo, Git, zsh, Python, curl, ripgrep and lsof.
 Fixed loopback ports 32101/32102/32111/32112 must be available. The exact
 recorded run is [transport evidence](../evidence/2026-09-18-bpv7-transport.md).
+
+`DTN7_REPO=/absolute/path/to/pinned/dtn7-rs ./run_fn_ingress_lab.sh` additionally
+exercises the current repository's actual fn receiver, including restart and
+new-bundle/same-article duplicate recognition. It uses ports
+32301/32302/32311/32312 and requires the fn ACL2 books to have been certified.
+See [fn ingress evidence](../evidence/2026-09-18-bp-ingress.md). Its sender is a
+BPA with a fixture file; durable fn sender jobs and receipts are separate work.

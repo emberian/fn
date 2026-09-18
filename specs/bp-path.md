@@ -9,6 +9,10 @@ The first [actual BPv7 transport experiment](../tests/evidence/2026-09-18-bpv7-t
 has passed with a pinned dtn7-rs build. It queued through disconnection, survived
 clean restart, rediscovered inbound storage, and exercised non-destructive staging
 and explicit deletion. Application workflow/receipt integration is still active.
+The next [actual BP-to-fn receiver test](../tests/evidence/2026-09-18-bp-ingress.md)
+also passed: receiver restart, exact article acceptance and a new-BID duplicate
+leave one recovered article/archive pin. Its sender is still a BPA fixture;
+durable fn sender work and receipt regeneration remain the next integration.
 
 ## Product shape
 

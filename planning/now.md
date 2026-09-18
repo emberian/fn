@@ -147,6 +147,15 @@ select a signing grammar or cryptographic suite.
 Private-group cryptography remains a separate requirements/research track.
 Shared community groups come first; MLS is a candidate, not a commitment.
 
+Actual [BP-to-fn receiver ingress](../tests/evidence/2026-09-18-bp-ingress.md)
+now passes with real loopback BPAs, restart, durable article acceptance and
+new-BID duplicate recognition. The shared receiver uses the real parser and
+composed Store. Inbox-only mode explicitly refuses a nonempty workflow history.
+Sender workflow integration is closing permanent transaction-pair reservation
+and durable prepare/outcome replay; the portable experimental ADU codec carries
+request/receipt context without changing article bytes. These are active tasks,
+not completed retention-handoff or authentication claims.
+
 
 The [article work batch](../tests/evidence/2026-09-18-article-work.md) passed all
 seven new roots. Complete public parser value correspondence and structural-work
