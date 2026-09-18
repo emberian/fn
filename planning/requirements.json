@@ -40,7 +40,9 @@
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "books/article-fields.lisp",
-        "tests/acl2/article-fields-tests.lisp"
+        "tests/acl2/article-fields-tests.lisp",
+        "tests/evidence/2026-09-18-fields-transfer.md",
+        "tests/evidence/2026-09-18-fields-transfer.json"
       ],
       "implementation_note": "Exact Message-ID strings, content subjects and local numbers remain distinct. Article-field extraction validates the RFC identifier grammar, preserves exact octets and reports duplicates explicitly; native identity/signature composition remains open."
     },
@@ -267,7 +269,9 @@
         "tests/evidence/2026-09-18-storage.json",
         "tests/evidence/2026-09-18-wildmat-storage.md",
         "tests/evidence/2026-09-18-wildmat-storage.json",
-        "books/store-files-invariants.lisp"
+        "books/store-files-invariants.lisp",
+        "tests/evidence/2026-09-18-fields-transfer.md",
+        "tests/evidence/2026-09-18-fields-transfer.json"
       ],
       "implementation_note": "Real barriers precede matching core completion and success. File-kernel transition/crash preservation and one-crash success retention are certified; arbitrary traces and physical adapter correspondence remain open."
     },
@@ -290,7 +294,9 @@
         "tests/evidence/2026-09-18-storage.md",
         "tests/evidence/2026-09-18-storage.json",
         "books/store-files-invariants.lisp",
-        "tests/test_store.py"
+        "tests/test_store.py",
+        "tests/evidence/2026-09-18-fields-transfer.md",
+        "tests/evidence/2026-09-18-fields-transfer.json"
       ],
       "implementation_note": "Host closes the mutation gate before recovery scanning and reopens it only after successful replay/rebarriers. Read-error, frontier, publication and completion failures preserve fencing. Model transition/crash preservation is certified; physical refinement remains open."
     },
@@ -312,7 +318,9 @@
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-storage.md",
         "tests/evidence/2026-09-18-storage.json",
-        "books/store-files-invariants.lisp"
+        "books/store-files-invariants.lisp",
+        "tests/evidence/2026-09-18-fields-transfer.md",
+        "tests/evidence/2026-09-18-fields-transfer.json"
       ],
       "implementation_note": "Actual record replay/reopen fault tests plus modeled stable-prefix, exact candidate survival, and one-crash acknowledged-record retention. Arbitrary-history survival, adapter refinement and hardware fault qualification remain open."
     },
@@ -603,7 +611,9 @@
       "evidence": [
         "books/transfer.lisp",
         "tests/acl2/transfer-tests.lisp",
-        "specs/transfer-experiment.md"
+        "specs/transfer-experiment.md",
+        "tests/evidence/2026-09-18-fields-transfer.md",
+        "tests/evidence/2026-09-18-fields-transfer.json"
       ],
       "implementation_note": "Bounded volatile object assembly reserves declared bytes and metadata slots, handles reordered fragments/duplicates/gaps/conflicts, and returns unverified candidates. Portable encoding, dependency closure, persistent progress and acceptance/receipt integration remain open."
     },
@@ -731,7 +741,9 @@
       "evidence": [
         "books/article-fields.lisp",
         "tests/acl2/article-fields-tests.lisp",
-        "specs/article-fields.md"
+        "specs/article-fields.md",
+        "tests/evidence/2026-09-18-fields-transfer.md",
+        "tests/evidence/2026-09-18-fields-transfer.json"
       ],
       "implementation_note": "A narrow proto-article subset checks Message-ID/Newsgroups multiplicity/grammar and absence of Injection-Info/Xref while preserving source field views. Full injection, gateway provenance, dates, native signatures and authority policy remain open."
     },

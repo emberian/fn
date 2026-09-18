@@ -262,7 +262,9 @@
         "tests/evidence/2026-09-18-wildmat-storage.json",
         "books/store-files.lisp",
         "specs/store-refinement.md",
-        "books/store-files-invariants.lisp"
+        "books/store-files-invariants.lisp",
+        "tests/evidence/2026-09-18-fields-transfer.md",
+        "tests/evidence/2026-09-18-fields-transfer.json"
       ],
       "progress_note": "Logical journal/scanner facts and typed replay are certified. The file kernel now has transition/crash recognizer preservation, stable-prefix retention, exact candidate survival/frontier dominance, and one-crash success retention. Real completion/frontier/recovery-read faults are tested. Arbitrary traces, live pending-node composition, physical adapter correspondence, freshness anchoring, and platform qualification remain open."
     },
@@ -357,7 +359,9 @@
         "tests/evidence/2026-09-18-integrated.json",
         "books/exchange.lisp",
         "books/transfer.lisp",
-        "tests/acl2/transfer-tests.lisp"
+        "tests/acl2/transfer-tests.lisp",
+        "tests/evidence/2026-09-18-fields-transfer.md",
+        "tests/evidence/2026-09-18-fields-transfer.json"
       ],
       "progress_note": "Whole validated fact batches have merge results under stated admission/capacity hypotheses. A separate bounded volatile assembly kernel stages out-of-order bytes with exact duplicates and unverified candidates; no dependency validation, acceptance receipts, persistent transfer, or general assembly correctness proof yet."
     },
@@ -508,7 +512,9 @@
         "books/wildmat.lisp",
         "books/article-fields.lisp",
         "books/transfer.lisp",
-        "tests/acl2/transfer-tests.lisp"
+        "tests/acl2/transfer-tests.lisp",
+        "tests/evidence/2026-09-18-fields-transfer.md",
+        "tests/evidence/2026-09-18-fields-transfer.json"
       ],
       "progress_note": "Wire/primitive/record bounds have component proofs; article syntax has exact source preservation and bounded semantic field extraction. Wildmat uses bounded preflight and DP but lacks general work/correspondence proofs. Transfer enforces declared-byte, fragment-count, and reservation-count budgets including zero/empty limits, with initial/no-overwrite lemmas and assertion vectors. General parser/staging work bounds, output recognizers, and physical accounting remain open."
     },

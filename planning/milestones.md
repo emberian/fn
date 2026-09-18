@@ -1,7 +1,8 @@
 # Development milestones
 
-Current stage: parallel executable M1/M2 components, with implementation and batch
-review authorized. Initial component books certify; no full implementation/proof
+Current stage: an assurance-closure wave over the executable M1/M2/M3/M4
+components. The user prioritized general preservation, crash traces, systematic
+fault injection, and mechanized correspondence. No full implementation/proof
 milestone is complete. See
 [current work](now.md) for scope and ownership. Remaining decisions in the
 [workbook](decisions.md) are a backlog; they do not all block this abstract model.

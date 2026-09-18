@@ -95,7 +95,9 @@
         "tests/evidence/2026-09-18-wildmat-storage.md",
         "tests/evidence/2026-09-18-wildmat-storage.json",
         "books/store-files-invariants.lisp",
-        "tests/test_store.py"
+        "tests/test_store.py",
+        "tests/evidence/2026-09-18-fields-transfer.md",
+        "tests/evidence/2026-09-18-fields-transfer.json"
       ],
       "execution_scope": "Partial: journal experiments, file-kernel crash forks and general step preservation, stable-prefix and one-crash success retention, plus actual publication/frontier/completion/recovery-read failures. Arbitrary traces, live node composition and physical power-loss qualification remain open."
     },
@@ -248,7 +250,9 @@
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
-        "tests/acl2/transfer-tests.lisp"
+        "tests/acl2/transfer-tests.lisp",
+        "tests/evidence/2026-09-18-fields-transfer.md",
+        "tests/evidence/2026-09-18-fields-transfer.json"
       ],
       "execution_scope": "Partial: four-node validated fact merging/conflicts plus bounded volatile object assembly with reordered fragments, duplicates, gaps, conservative overlap conflict, byte/fragment/metadata limits and explicit empty candidates. No persistent transfer, selected portable batch grammar, dependency closure or acceptance receipts."
     },
@@ -350,7 +354,9 @@
         "tests/evidence/2026-09-18-wildmat-storage.md",
         "tests/evidence/2026-09-18-wildmat-storage.json",
         "tests/acl2/article-fields-tests.lisp",
-        "tests/acl2/transfer-tests.lisp"
+        "tests/acl2/transfer-tests.lisp",
+        "tests/evidence/2026-09-18-fields-transfer.md",
+        "tests/evidence/2026-09-18-fields-transfer.json"
       ],
       "execution_scope": "Partial: primitive/record vectors, full round trips, primitive canonicality, malformed stored bytes, exact article source preservation, semantic identity/routing field vectors and bounded UTF8 wildmat. Transfer zero/count/byte limits are exercised. No native/batch schema, complete resource proof or record canonicality composition yet."
     },
@@ -418,7 +424,9 @@
         "tests/evidence/2026-09-18-wildmat-storage.md",
         "tests/evidence/2026-09-18-wildmat-storage.json",
         "books/store-files-invariants.lisp",
-        "tests/test_store.py"
+        "tests/test_store.py",
+        "tests/evidence/2026-09-18-fields-transfer.md",
+        "tests/evidence/2026-09-18-fields-transfer.json"
       ],
       "execution_scope": "Partial: actual-core bridge/replay, stale/refused/lost completion handling, recovery-read/frontier fencing, file-kernel transition/crash proofs and snapshot reader locking. Live owner scheduling, complete backpressure model and adapter refinement remain open."
     },

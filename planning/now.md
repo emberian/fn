@@ -70,39 +70,41 @@ and retain concise evidence summaries and exact source hashes in the repository.
 - Experimental CBOR uint32/byte-string primitives; no persistent/native schema
   frozen by their existence.
 
-## Next substantial work
+## Active assurance-closure wave
 
-The article/parser/release batch and wildmat/file-kernel batch are integrated.
-The next independent owned areas are:
+On 2026-09-18 the user explicitly prioritized burning down the remaining hard
+assurance work rather than continuing to widen prototype surface area. The fifth
+[fields/transfer/storage batch](../tests/evidence/2026-09-18-fields-transfer.md)
+has passed with 38 certified roots, the actual-core simulator and 32 Python tests.
+Source hashes were unchanged. Semantic fields, bounded transfer staging,
+file-kernel step/crash preservation and the real recovery-read fence are integrated.
 
-- Terra's article Message-ID/Newsgroups grammar and bounded proto-article
-  identity/routing checks have passed targeted certification and batch review.
-  They do not claim complete injection or choose a native signing format.
-- Terra's bounded out-of-order object assembly, exact duplicates, missing ranges,
-  and unverified candidates have passed targeted certification. Batch review
-  repaired zero-fragment limits and added an explicit reservation-count budget,
-  including for empty objects. General preservation and durable transfer remain
-  open.
-- Sol's general file-kernel crash/transition preservation, stable-prefix, and
-  one-crash success-retention invariants have passed targeted certification.
-  Arbitrary traces and physical correspondence remain separate work.
-- Sol is finishing schema-0 record accepted-input canonicality, beyond value
-  round trip, using the earlier Terra draft and root's composition work.
-  Its group-list reconstruction lemma has passed an ACL2 proof event, but the
-  whole new book is not certified or included in the default roots; final
-  sequential composition remains open.
+The current wave uses all 13 available slots (root plus 12 workers). One writer
+owns each new file set; shared base definitions remain stable unless root
+coordinates a concrete counterexample repair. Targeted certifications may run in
+parallel on independent new roots; root freezes and certifies their union once.
 
-Root also closes the real host mutation gate before recovery scanning, covering
-unexpected transaction-read errors as well as explicit parser/replay faults.
-The focused real-file failure/recovery regression passes; it belongs to the
-next integration batch, not the historical 33-root source set.
+| Owner/task | Completion criterion for this wave |
+| --- | --- |
+| Sol: record canonicality | General successful exact record decoding re-encodes the original bytes |
+| Sol: file traces | Arbitrary finite kernel traces preserve state, stable history and earlier acknowledged records, including repeated crash/recovery |
+| Terra: adapter fault matrix | Enumerated before/after-effect syscall failures preserve prior commits, classify uncertainty correctly and fence/recover allocation |
+| Luna: process crashes | Deterministic actual process deaths at persistence boundaries preserve prior commits and identity allocation on reopen |
+| Terra: transfer preservation | General reserve/add-chunk transitions preserve state and capacity/count invariants |
+| Terra: transfer assembly | Complete candidates have exact declared length and agree with all retained chunk bytes |
+| Terra: article postconditions | Successful parsing establishes output recognizer and meaningful source/header/field bounds |
+| Terra: wire event API | Production event-yield step preserves state and accounts for consumed/unconsumed input |
+| Terra: NNTP sessions | General implemented dispatcher preserves the session recognizer and stated cursor consistency |
+| Terra: UTF-8/parser | Successful decode establishes scalar validity/progress/output bounds; parsed wildmat recognizer |
+| Astra: matcher correspondence | Actual DP wildcard matcher agrees with independent anchored semantics |
+| Luna: obligation map | Finite actionable inventory tying remaining claims to PRF/REQ/SCN IDs and closure criteria |
 
-The [refinement contract](../specs/store-refinement.md) now has a first executable
-immutable-file kernel. It accounts for hard-link publication and allocator
-replacement, unlike the isolated-slot journal. Transition/crash preservation has
-passed targeted certification; arbitrary traces, live node composition, and
-physical adapter correspondence are next proof work.
-Root records exact frozen batches; later work does not rewrite prior evidence.
+Root records evidence, fixes concrete integration/adapter findings, and updates
+registries. An assignment is not a proof or a completion claim. General guards,
+work bounds, live pending-node/file composition, actual adapter correspondence,
+physical qualification, authorization/signatures, and persistent exchange remain
+visible obligations; the inventory determines subsequent closure waves. No new
+permission ceremony or serial review chain is introduced.
 
 The [local persistence experiment](../specs/store-experiment.md) is integrated:
 bounded transaction bytes, replay, allocation across aborted process lifetimes,
