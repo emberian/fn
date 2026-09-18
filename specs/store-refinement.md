@@ -6,7 +6,7 @@ extends step/crash preservation to arbitrary finite histories and retains prior
 acknowledged records under its stated premises. The [live composition](store-node.md)
 uses actual node completion and replay; its mixed-trace proof is now separately
 certified. The [54-root checkpoint](../tests/evidence/2026-09-18-assurance.md)
-records the frozen subset before that last mixed-trace addition. Actual adapter adoption is now implemented and undergoing combined validation;
+records the frozen subset before that last mixed-trace addition. Actual adapter adoption passed the [75-root/67-test batch](../tests/evidence/2026-09-18-composed-store.md);
 byte/effect correspondence and platform qualification remain work;
 no checkpoint or experimental disk-format change follows from these proofs.
 

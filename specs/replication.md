@@ -1,7 +1,9 @@
 # Replication and disconnected operation
 
 Status: transport-independent batches agreed. Exchange schema and authorization
-profile depend on D01, D02, D08–D12, and D15.
+profile depend on D01, D02, D08–D12, and D15. BPv7 is an active architectural
+path, per the user's A06 clarification; the [BP path](bp-path.md) defines its
+current implementation lanes and end-to-end experimental exit.
 
 ## Portable input
 

@@ -89,8 +89,9 @@ crash choices, actual replay, and initial fence/gate proofs. The subsequent
 [invariant book](../books/store-files-invariants.lisp) proves step/crash
 preservation, stable-prefix retention, and one-crash success retention. The [assurance checkpoint](../tests/evidence/2026-09-18-assurance.md) extends
 this to arbitrary finite file traces and actual live completion/replay
-correspondence, with systematic fault/process testing. Mixed live traces have
-since passed targeted certification; actual host adoption and physical
+correspondence, with systematic fault/process testing. The subsequent [composed-store checkpoint](../tests/evidence/2026-09-18-composed-store.md)
+passed mixed live/refusal/recovery traces, actual host adoption and 533 base
+function guards in a 75-root/67-test batch. Physical refinement and platform
 qualification remain work.
 
 ## M3: first usable local news service
@@ -119,6 +120,9 @@ complete READER, overview, provenance, and signatures remain open.
 
 ## M4: disconnected exchange
 
+- BPv7 is an active architectural path, developed alongside M3; it does not
+  depend on completing M5 or M6. Use an existing pinned BPA for actual two-node
+  queued delivery, restart, inbound staging and application receipt tests.
 - Resolve portable D10/D11, D12 receipt details, and D15 batch behavior.
 - Implement batches, bounded resumable ingestion, inventories, authorization,
   receipt regeneration, persistent transfer work, and restore/incarnation handling.
@@ -150,10 +154,11 @@ portable batches, receipts, and transport remain open.
 Exit: finite-resource operation is explicit and tested; pruning/compaction do not
 quietly weaken acceptance or replay guarantees.
 
-## M6: additional interfaces and DTN
+## M6: additional interfaces and mission profiles
 
-- Integrate portable batches with an existing BP implementation and selected
-  convergence layers. Keep BP lifetime and fn obligation terms distinct.
+- Extend the already exercised BP path with additional convergence-layer and
+  deployment profiles. BP lifetime and fn obligation terms remain distinct;
+  initial BP integration belongs to the active M3/M4 path.
 - Simulate long/asymmetric contacts, interrupted transfers, clock uncertainty,
   quota pressure, and eventual-contact assumptions.
 - Build the chosen human web interface; explore 9p projections and submission

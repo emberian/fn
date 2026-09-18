@@ -18,19 +18,21 @@
         "REP-001",
         "REP-003",
         "REP-005",
-        "NNT-005"
+        "NNT-005",
+        "REP-006"
       ],
       "steps": [
         "Prepare a native signed letter offline with a stable Message-ID and two groups.",
         "Accept locally, lose the reply, and retry.",
-        "Transfer to relay-a, lose its application receipt, and restart it.",
+        "Durably queue work for relay-a. Exercise an actual BPv7 contact outage and sender restart; restore contact, lose the application receipt, restart the receiver, and retry.",
         "Resume through relay-b and carried media; import overlapping batches.",
         "Commit matching release evidence while retaining independent archive pins."
       ],
       "expected": [
         "One article and one allocation per intended local membership.",
         "Recovery restores obligations and permits receipt regeneration.",
-        "Local numbers may differ; transport reception does not imply human reading."
+        "Local numbers may differ; transport reception does not imply human reading.",
+        "Bundle lifetime, expiry and transport status cannot release an fn application or archive obligation; destructive BPA deletion occurs only after durable fn staging."
       ],
       "evidence": []
     },

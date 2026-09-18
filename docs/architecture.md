@@ -57,6 +57,12 @@ numbers or install snapshots. Only one shared-state transaction commits at a tim
 Read responses observe a committed version; their referenced objects stay pinned
 until the host finishes or cancels the response.
 
+BPv7 is an active inter-node communication path, developed alongside the local
+NNTP service. Its adapter separates protocol implementation and trust boundaries;
+it does not postpone disconnected operation. Durable fn jobs, attempt identities,
+inbound staging and application receipts are part of this path. See the
+[BP integration contract](../specs/bp-path.md).
+
 ## Three representations
 
 The logical model uses finite maps, records, sets, natural numbers, and octets.
@@ -84,10 +90,10 @@ context of acceptance must be recoverable.
 ## Product boundaries
 
 The first usable site has configured unmoderated groups, a complete planned
-NNTP reader/posting surface, and all accepted visible articles retained. A web
-reader, 9p views, private correspondence, moderation, and DTN adapters are later
-interfaces or policy features. Their eventual addition must reuse acceptance
-and retention contracts.
+NNTP reader/posting surface, and all accepted visible articles retained. BP-backed disconnected exchange
+proceeds alongside this local service under the same acceptance and retention
+contracts. A web reader, 9p views, private correspondence and moderation are
+later interfaces or policy features.
 
 Human/agent identity is a principal with recorded provenance and authorization.
 The `From` header is presentation content, not authentication. The first deployment

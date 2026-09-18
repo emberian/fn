@@ -19,7 +19,7 @@ user-facing tradeoffs forward with concrete examples as they become relevant.
 | A03 | Build a specialized persistent store: immutable objects, local transactions, recoverable state. |
 | A04 | Represent retention/delivery obligations explicitly and persist them alongside content. |
 | A05 | Sites remain independently useful while disconnected; batches can travel by network or carried media. |
-| A06 | Design for eventual BP/LTP integration and long delays, with explicit limits and assumptions. |
+| A06 | BPv7 disconnected exchange is a current architectural path; integrate it early with durable fn work and receipts. LTP/long-delay profiles and mission qualification retain explicit limits and assumptions. |
 | A07 | Do substantial design up front, implement in stages, and keep evidence distinct from intent. |
 
 These record the user's architectural choices. Exact schemas, cryptographic
@@ -172,3 +172,13 @@ Evaluate the requirements and relevant established or research protocols before
 selecting a private-group system. Do not equate an interesting ePrint proposal
 with a production-ready implementation or invent a new ratchet in the meantime.
 This resolves release scope, not D09's cryptographic profiles or key management.
+
+### 2026-09-18: A06 — BP is central to the active path
+
+The user corrected the placement of BP as a future additional interface: its
+disconnected store-and-forward capabilities are central to fn. BPv7 integration,
+durable transfer work and application receipts now proceed alongside local
+service development. They do not wait for complete NNTP, compaction, indexes or
+UI work. This selects architectural priority, not a particular BPA, EID scheme,
+cryptographic suite, portable encoding or qualified mission profile. The
+[BP path](../specs/bp-path.md) defines the first complete experimental slice.
