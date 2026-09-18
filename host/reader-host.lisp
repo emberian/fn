@@ -45,12 +45,34 @@
                               (fn-reader-close-effectsp effects) state)))
     state))
 
+; Archive selection happens once before a listener accepts clients.  A reset
+; starts a fresh wire/session pair but keeps the selected immutable snapshot.
+; The store variant reads only the ACL2 node reconstructed by store-host.
+(defun fn-reader-use-seed (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((state (f-put-global 'fn-reader-archive *fn-reader-archive* state))
+         (state (f-put-global 'fn-reader-action :ready state)))
+    (value :ready)))
+
+(defun fn-reader-use-store (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((node (f-get-global 'fn-store-node state)))
+    (if (fn-node-statep node)
+        (let ((archive (fn-node-acceptance node)))
+          (if (fn-nntp-projectionp archive)
+              (let* ((state (f-put-global 'fn-reader-archive archive state))
+                     (state (f-put-global 'fn-reader-action :ready state)))
+                (value :ready))
+            (let ((state (f-put-global 'fn-reader-action :refused state)))
+              (value :refused))))
+      (let ((state (f-put-global 'fn-reader-action :refused state)))
+        (value :refused)))))
+
 (defun fn-reader-reset (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-reader-wire
                                (fn-wire-initial-state 512 8192) state))
          (state (f-put-global 'fn-reader-session (fn-nntp-initial-session) state))
-         (state (f-put-global 'fn-reader-archive *fn-reader-archive* state))
          (state (f-put-global 'fn-reader-suffix nil state))
          (state (fn-reader-install-effects
                  (list (fn-nntp-reply-effect *fn-reader-greeting*)) state)))

@@ -24,14 +24,17 @@ ROOT = Path(__file__).resolve().parent.parent
 PROMPT = b"ACL2 !>"
 MAX_ACL2_OUTPUT = 4 * 1024 * 1024
 MAX_TRANSACTION_COUNT = 128
-MAX_RECOVERY_RECORD_BYTES = MAX_TRANSACTION_COUNT * 32768
+MAX_RECOVERY_RECORD_BYTES = MAX_TRANSACTION_COUNT * 65538
+UINT32_MAX = (1 << 32) - 1
 DEFAULT_CONFIG = {
-    "format": "fn-store-experiment-1",
+    "format": "fn-store-experiment-2",
     "groups": ["fn.letters", "fn.test"],
     "capacity": 1048576,
-    "max_record_bytes": 32768,
+    "max_payload_bytes": 32768,
+    "max_record_bytes": 65538,
     "max_recovery_record_bytes": MAX_RECOVERY_RECORD_BYTES,
     "max_transactions": MAX_TRANSACTION_COUNT,
+    "allocation_frontier_format": "fn-store-allocation-frontier-1",
 }
 MAGIC = b"FNST\x01"
 TRAILER_BYTES = 32
@@ -192,7 +195,7 @@ def acl2_octets(output):
 def acl2_symbol(output):
     body = acl2_result(output).upper()
     if body not in {b":READY", b":PREPARED", b":DURABLE", b":ABORTED",
-                    b":INDETERMINATE", b":DUPLICATE", b":CONFLICT", b":INVALID",
+                    b":INDETERMINATE", b":DUPLICATE", b":CONFLICT", b":ABSENT", b":INVALID",
                     b":REFUSED", b":FAULT"}:
         raise StoreError("unexpected ACL2 action: {}".format(body.decode("ascii", "replace")))
     return body.decode("ascii").lower()[1:]
@@ -203,6 +206,15 @@ def acl2_nat(output):
     if not re.fullmatch(rb"[0-9]+", body):
         raise StoreError("ACL2 returned a non-natural")
     return int(body)
+
+
+def acl2_boolean(output):
+    body = acl2_result(output).upper()
+    if body == b"T":
+        return True
+    if body == b"NIL":
+        return False
+    raise StoreError("ACL2 returned a non-boolean")
 
 
 class Acl2Store:
@@ -246,15 +258,26 @@ class Acl2Store:
     def record_sequence(self, record):
         return acl2_nat(self.call("(fn-store-record-sequence '" + self.literal(record) + ")"))
 
-    def recover(self, records):
+    def record_txid(self, record):
+        return acl2_nat(self.call("(fn-store-record-txid '" + self.literal(record) + ")"))
+
+    def recover(self, records, frontier):
         literal = "(" + " ".join(self.literal(record) for record in records) + ")"
-        return acl2_symbol(self.call("(fn-store-recover '" + literal + " state)"))
+        return acl2_symbol(self.call("(fn-store-recover '" + literal + " " + str(frontier) + " state)"))
+
+    def advance_frontier(self, frontier):
+        return acl2_symbol(self.call("(fn-store-advance-frontier {} state)".format(frontier)))
 
     def prepare(self, msgid, payload, group_codes, obligation_id, subject, evidence, charge):
         form = "(fn-store-prepare '" + self.literal(msgid) + " '" + self.literal(payload)
         form += " '" + self.numeric_list(group_codes) + " '" + self.literal(obligation_id)
         form += " '" + self.literal(subject) + " '" + self.literal(evidence)
         form += " " + str(charge) + " state)"
+        return acl2_symbol(self.call(form))
+
+    def existing_action(self, msgid, payload, group_codes):
+        form = "(fn-store-existing-action '" + self.literal(msgid)
+        form += " '" + self.literal(payload) + " '" + self.numeric_list(group_codes) + " state)"
         return acl2_symbol(self.call(form))
 
     def pending_record(self):
@@ -265,6 +288,9 @@ class Acl2Store:
 
     def article_count(self):
         return acl2_nat(self.call("(fn-store-article-count state)"))
+
+    def next_txid(self):
+        return acl2_nat(self.call("(fn-store-next-txid state)"))
 
     def group_next(self, code):
         return acl2_nat(self.call("(fn-store-group-next {} state)".format(code)))
@@ -277,6 +303,9 @@ class Acl2Store:
 
     def lookup(self, msgid):
         return acl2_octets(self.call("(fn-store-lookup '" + self.literal(msgid) + " state)"))
+
+    def lookup_found(self, msgid):
+        return acl2_boolean(self.call("(fn-store-lookup-foundp '" + self.literal(msgid) + " state)"))
 
     def close(self):
         if self.proc is None:
@@ -310,6 +339,7 @@ class Store:
         self.writable = writable
         self.lock_fd = None
         self.config = None
+        self.frontier = None
         self.fenced = False
 
     @property
@@ -320,6 +350,14 @@ class Store:
     def staging(self): return self.root / "staging"
     @property
     def lock_path(self): return self.root / "writer.lock"
+    @property
+    def frontier_path(self): return self.root / "allocation-frontier.json"
+
+    @staticmethod
+    def _frontier_with_checksum(next_txid):
+        body = {"format": "fn-store-allocation-frontier-1", "next_txid": next_txid}
+        body["checksum"] = hashlib.sha256(canonical_json(body)).hexdigest()
+        return body
 
     def _open_lock(self, exclusive, create):
         flags = os.O_RDWR if exclusive else os.O_RDONLY
@@ -369,14 +407,38 @@ class Store:
                 fd = os.open(self.config_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
             except FileExistsError:
                 self._load_config()
-                return
+            else:
+                try:
+                    write_all(fd, raw)
+                    fsync_file(fd)
+                finally:
+                    os.close(fd)
+                fsync_dir(self.root)
+                self.config = config
+            frontier = self._frontier_with_checksum(0)
+            encoded_frontier = canonical_json(frontier) + b"\n"
             try:
-                write_all(fd, raw)
-                fsync_file(fd)
-            finally:
-                os.close(fd)
+                fd = os.open(self.frontier_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            except FileExistsError:
+                self._load_frontier()
+            else:
+                # A missing allocator alongside committed history would permit
+                # reuse of an aborted ID.  It is a fault, never an implicit 0.
+                if self.transaction_files():
+                    os.close(fd)
+                    raise StoreFault("refusing missing allocator frontier with committed history")
+                try:
+                    write_all(fd, encoded_frontier)
+                    fsync_file(fd)
+                finally:
+                    os.close(fd)
+                fsync_dir(self.root)
+                self.frontier = 0
+            fsync_regular(self.config_path)
+            fsync_regular(self.frontier_path)
+            fsync_dir(self.transactions)
             fsync_dir(self.root)
-            self.config = config
+            fsync_dir(self.root.parent)
         finally:
             fcntl.flock(lock_fd, fcntl.LOCK_UN)
             os.close(lock_fd)
@@ -394,13 +456,32 @@ class Store:
             raise StoreFault("unsupported store configuration")
         self.config = config
 
+    def _load_frontier(self):
+        check_regular(self.frontier_path)
+        try:
+            raw = read_regular_bounded(self.frontier_path, 4096)
+            frontier = json.loads(raw)
+        except (OSError, ValueError, UnicodeDecodeError) as error:
+            raise StoreFault("invalid durable allocation frontier: {}".format(error)) from error
+        if not isinstance(frontier, dict):
+            raise StoreFault("allocation frontier must be an object")
+        next_txid = frontier.get("next_txid")
+        if (frontier != self._frontier_with_checksum(next_txid)
+                or not isinstance(next_txid, int) or isinstance(next_txid, bool)
+                or not 0 <= next_txid <= UINT32_MAX):
+            raise StoreFault("allocation frontier checksum or range mismatch")
+        self.frontier = next_txid
+
     def acquire(self):
         self._safe_directory(self.root)
         self._safe_directory(self.transactions)
         self._safe_directory(self.staging)
-        self._load_config()
         try:
             self.lock_fd = self._open_lock(exclusive=self.writable, create=self.writable)
+            # Frontiers are mutable writer-owned state.  Read them only after
+            # the process-wide lock prevents a concurrent allocation update.
+            self._load_config()
+            self._load_frontier()
         except StoreFault:
             self.close()
             raise
@@ -456,7 +537,7 @@ class Store:
     def recover(self, acl2):
         try:
             records = self.durable_records(acl2)
-            if acl2.recover(records) != "ready":
+            if acl2.recover(records, self.frontier) != "ready":
                 raise StoreFault("ACL2 replay rejected committed transaction history")
         except StoreError:
             self.fenced = True
@@ -466,6 +547,7 @@ class Store:
         # frontier before treating it as a usable durable state.
         try:
             fsync_regular(self.config_path)
+            fsync_regular(self.frontier_path)
             fsync_dir(self.transactions)
             fsync_dir(self.root)
             fsync_dir(self.root.parent)
@@ -474,6 +556,37 @@ class Store:
             raise StoreIndeterminate("cannot establish recovered namespace frontier") from error
         self.fenced = False
         return records
+
+    def advance_frontier(self, current_txid):
+        """Durably consume one local transaction ID before it reaches ACL2."""
+        if self.fenced:
+            raise StoreIndeterminate("store is fenced pending recovery")
+        if current_txid != self.frontier:
+            self.fenced = True
+            raise StoreFault("ACL2 allocator and durable frontier disagree")
+        if not isinstance(current_txid, int) or current_txid < 0 or current_txid >= UINT32_MAX:
+            raise StoreError("finite transaction-ID domain exhausted")
+        next_frontier = current_txid + 1
+        contents = canonical_json(self._frontier_with_checksum(next_frontier)) + b"\n"
+        stage = self.staging / (".allocation-{}-{}".format(os.getpid(), os.urandom(12).hex()))
+        publication_attempted = False
+        try:
+            fd = os.open(stage, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            try:
+                write_all(fd, contents)
+                fsync_file(fd)
+            finally:
+                os.close(fd)
+            publication_attempted = True
+            os.replace(stage, self.frontier_path)
+            fsync_dir(self.root)
+            self.frontier = next_frontier
+            return next_frontier
+        except OSError as error:
+            if publication_attempted:
+                self.fenced = True
+                raise StoreIndeterminate("allocation-frontier update is indeterminate") from error
+            raise StoreError("known pre-publication allocator failure: {}".format(error)) from error
 
     def publish(self, sequence, record, fault=None):
         if self.fenced:
@@ -543,6 +656,17 @@ def conservative_charge(payload):
     return max(1, 1 + (len(payload) + 4095) // 4096)
 
 
+def validate_post_boundary(msgid, payload, groups, charge, config):
+    if not (0 < len(msgid) <= 250 and all(octet <= 127 for octet in msgid)):
+        raise StoreError("Message-ID must be 1 through 250 ASCII octets")
+    if len(payload) > config["max_payload_bytes"]:
+        raise StoreError("payload exceeds configured bound")
+    if not 0 < len(groups) <= 16:
+        raise StoreError("group count exceeds codec bound")
+    if not isinstance(charge, int) or isinstance(charge, bool) or not 0 < charge <= UINT32_MAX:
+        raise StoreError("charge must be a positive uint32")
+
+
 def command_init(args):
     store = Store(args.store, writable=True)
     try:
@@ -570,20 +694,31 @@ def open_live_store(path, writable):
 
 def command_post(args):
     msgid = args.message_id.encode("ascii")
-    payload = read_regular_bounded(args.payload, DEFAULT_CONFIG["max_record_bytes"])
+    payload = read_regular_bounded(args.payload, DEFAULT_CONFIG["max_payload_bytes"])
     store, bridge, records = open_live_store(args.store, writable=True)
     try:
-        if len(records) >= store.config["max_transactions"]:
-            raise StoreError("transaction count has reached configured bound")
-        obligation, subject, evidence = metadata(msgid, payload)
+        codes = group_codes(args.group, store.config)
         charge = args.charge if args.charge is not None else conservative_charge(payload)
-        action = bridge.prepare(msgid, payload, group_codes(args.group, store.config), obligation,
-                                subject, evidence, charge)
-        if action == "duplicate":
+        validate_post_boundary(msgid, payload, codes, charge, store.config)
+        existing = bridge.existing_action(msgid, payload, codes)
+        if existing == "duplicate":
             print("duplicate")
             return 0
-        if action == "conflict":
+        if existing == "conflict":
             raise StoreError("conflicting immutable Message-ID")
+        if len(records) >= store.config["max_transactions"]:
+            raise StoreError("transaction count has reached configured bound")
+        current_txid = bridge.next_txid()
+        next_frontier = store.advance_frontier(current_txid)
+        obligation, subject, evidence = metadata(msgid, payload)
+        action = bridge.prepare(msgid, payload, codes, obligation,
+                                subject, evidence, charge)
+        if action != "prepared":
+            # The durable allocator intentionally reserves this identity even
+            # for duplicate or refused attempts.  ACL2 performs the matching
+            # monotone advance; Python never edits node state.
+            if bridge.advance_frontier(next_frontier) != "ready":
+                raise StoreIndeterminate("ACL2 could not advance consumed transaction ID")
         if action != "prepared":
             raise StoreError("ACL2 refused post: {}".format(action))
         record = bridge.pending_record()
@@ -633,9 +768,10 @@ def command_status(args):
 def command_inspect(args):
     store, bridge, unused_records = open_live_store(args.store, writable=False)
     try:
-        payload = bridge.lookup(args.message_id.encode("ascii"))
-        if not payload:
+        msgid = args.message_id.encode("ascii")
+        if not bridge.lookup_found(msgid):
             return 1
+        payload = bridge.lookup(msgid)
         sys.stdout.buffer.write(payload)
         return 0
     finally:

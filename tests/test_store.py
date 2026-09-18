@@ -12,7 +12,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import run_store  # noqa: E402
-from run_store import Acl2Store, Store, StoreFault, StoreIndeterminate  # noqa: E402
+from run_store import Acl2Store, Store, StoreFault, StoreIndeterminate, unframe  # noqa: E402
 
 
 class StoreTests(unittest.TestCase):
@@ -110,6 +110,11 @@ class StoreTests(unittest.TestCase):
         self.assertIn(b"known abort", aborted.stderr)
         self.invoke("recover")
         self.assertEqual(list((self.path / "transactions").iterdir()), [])
+        self.post("<after-abort@example.invalid>", b"after-abort")
+        with self.recovered_bridge() as bridge:
+            # The post after reopen uses txid 1, never the aborted txid 0.
+            raw = (self.path / "transactions" / "00000000000000000000.txn").read_bytes()
+            self.assertEqual(bridge.record_txid(unframe(raw, 32768)), 1)
 
         uncertain = self.post("<uncertain@example.invalid>", b"uncertain", ("fn.letters",),
                               "--inject-fault", "postpublish", expected=2)
@@ -117,7 +122,7 @@ class StoreTests(unittest.TestCase):
         # A complete but unacknowledged final file may survive; reopening does
         # exact decode, replay, and directory barriers before becoming usable.
         recovered = self.invoke("recover")
-        self.assertIn(b"transactions=1 articles=1", recovered.stdout)
+        self.assertIn(b"transactions=2 articles=2", recovered.stdout)
 
     def test_writer_lock_refuses_concurrent_mutator(self):
         holder = Store(self.path, writable=True)
@@ -156,6 +161,25 @@ class StoreTests(unittest.TestCase):
                 bridge.close()
             store.close()
 
+    def test_rejected_completion_keeps_pending_metadata_and_allocation(self):
+        bridge = Acl2Store()
+        try:
+            self.assertEqual(bridge.prepare(b"<pending@example.invalid>", b"pending", [0],
+                                            b"archive:pending", b"sha256:pending",
+                                            b"unsigned-legacy-v0", 1), "prepared")
+            pending = bridge.pending_record()
+            next_txid = bridge.next_txid()
+            self.assertEqual(bridge.complete("unexpected"), "fault")
+            self.assertEqual(bridge.pending_record(), pending)
+            self.assertEqual(bridge.next_txid(), next_txid)
+            self.assertEqual(bridge.complete("aborted"), "aborted")
+            self.assertEqual(bridge.next_txid(), next_txid)
+            # A stale completion cannot be echoed as another durable event.
+            self.assertEqual(bridge.complete("durable"), "fault")
+            self.assertEqual(bridge.next_txid(), next_txid)
+        finally:
+            bridge.close()
+
     def test_recovery_limits_and_barrier_failure_fence_until_success(self):
         self.post("<limit@example.invalid>", b"limit")
         store = Store(self.path, writable=True)
@@ -189,6 +213,9 @@ class StoreTests(unittest.TestCase):
             with self.assertRaises(OSError):
                 initial.initialize()
         self.assertTrue((path / "config.json").is_file())
+        # Retrying initialization under its writer lock completes the missing
+        # allocator file; recovery below establishes the observed config name.
+        initial.initialize()
 
         store = Store(path, writable=True)
         bridge = None

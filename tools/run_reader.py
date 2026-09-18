@@ -10,6 +10,8 @@ import subprocess
 import sys
 import time
 
+from run_store import Acl2Store, Store
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROMPT = b"ACL2 !>"
 MAX_READ = 512
@@ -64,29 +66,47 @@ def acl2_boolean(output):
     raise RuntimeError("unexpected ACL2 boolean result")
 
 
+def acl2_archive_action(output):
+    match = re.fullmatch(rb"\s*:(READY|REFUSED)\s*ACL2 !>", output.upper())
+    if not match:
+        raise RuntimeError("unexpected ACL2 archive-selection result")
+    return match.group(1).lower()
+
+
 class Acl2Reader:
     """A fixed-call bridge: socket input reaches ACL2 only as octet literals."""
 
-    def __init__(self):
+    def __init__(self, store_bridge=None):
+        self.store_bridge = store_bridge
+        self.owns_process = store_bridge is None
         self.proc = None
         env = os.environ.copy()
         env["ACL2_CUSTOMIZATION"] = "NONE"
         try:
-            self.proc = subprocess.Popen(
-                [env.get("FN_ACL2", "acl2")], cwd=ROOT,
-                stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT, env=env)
-            read_prompt(self.proc, timeout=15)
+            if self.owns_process:
+                self.proc = subprocess.Popen(
+                    [env.get("FN_ACL2", "acl2")], cwd=ROOT,
+                    stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT, env=env)
+                read_prompt(self.proc, timeout=15)
+            else:
+                self.proc = store_bridge.proc
+            self._load('(include-book "books/node")')
             self._load('(include-book "books/nntp")')
             self._load('(ld "host/reader-host.lisp" :ld-error-action :return :ld-error-triples t)')
+            selection = "(fn-reader-use-seed state)" if self.owns_process else "(fn-reader-use-store state)"
+            if acl2_archive_action(self.call(selection)) != b"ready":
+                raise RuntimeError("reader archive is not NNTP-projectable")
         except BaseException:
             self.close()
             raise
 
     def _load(self, text):
-        fail_on_acl2_error(form(self.proc, text))
+        self.call(text)
 
     def call(self, text):
+        if self.store_bridge is not None:
+            return self.store_bridge.call(text)
         return fail_on_acl2_error(form(self.proc, text))
 
     def reset(self):
@@ -104,7 +124,7 @@ class Acl2Reader:
         return reply, closing, suffix
 
     def close(self):
-        if self.proc is None:
+        if self.proc is None or not self.owns_process:
             return
         try:
             if self.proc.poll() is None and self.proc.stdin and not self.proc.stdin.closed:
@@ -171,13 +191,25 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=8119)
     parser.add_argument("--once", action="store_true")
+    parser.add_argument("--store", help="durable store snapshot to serve")
     args = parser.parse_args()
     if not 0 <= args.port <= 65535:
         parser.error("--port must be from 0 through 65535")
 
     reader = None
+    store = None
+    store_bridge = None
     try:
-        reader = Acl2Reader()
+        if args.store:
+            # A shared lock fixes this recovered snapshot; posting needs the
+            # incompatible exclusive writer lock and is therefore refused.
+            store = Store(args.store, writable=False)
+            store.acquire()
+            store_bridge = Acl2Store()
+            store.recover(store_bridge)
+            reader = Acl2Reader(store_bridge)
+        else:
+            reader = Acl2Reader()
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
             listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             listener.bind(("127.0.0.1", args.port))
@@ -191,4 +223,8 @@ def main():
     finally:
         if reader is not None:
             reader.close()
+        if store_bridge is not None:
+            store_bridge.close()
+        if store is not None:
+            store.close()
 if __name__=='__main__': main()
