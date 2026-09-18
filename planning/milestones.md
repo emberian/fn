@@ -84,8 +84,10 @@ physical accounting, and platform qualification keep M2 open.
 
 The [reader/storage batch](../tests/evidence/2026-09-18-wildmat-storage.md) adds a
 dedicated immutable-file publication kernel with one-use allocator reservations,
-crash choices, actual replay, and initial fence/gate proofs. The complete adapter
-refinement and acknowledged-history crash theorem remain open.
+crash choices, actual replay, and initial fence/gate proofs. The subsequent
+[invariant book](../books/store-files-invariants.lisp) proves step/crash
+preservation, stable-prefix retention, and one-crash success retention. Arbitrary
+traces, live node composition, and complete adapter refinement remain open.
 
 ## M3: first usable local news service
 
@@ -106,7 +108,9 @@ release does not yet claim disconnected peering or remote delivery.
 Incremental evidence: CLI-persisted articles can be reopened and served over
 loopback NNTP. LISTGROUP ranges/cursors now have logical, socket, and independent
 client checks; bounded UTF-8 wildmat and filtered listings are also integrated.
-Bounded syntax parsing is separate from injection; live POST,
+The [semantic field layer](../specs/article-fields.md) now adds bounded exact
+Message-ID and Newsgroups checks over preserved article views. It remains a
+narrow proto-article subset, separate from complete injection; live POST,
 complete READER, overview, provenance, and signatures remain open.
 
 ## M4: disconnected exchange
@@ -122,6 +126,13 @@ complete READER, overview, provenance, and signatures remain open.
 
 Exit: interrupted exchange and restart preserve accepted responsibilities;
 application acceptance remains distinguishable from transport delivery.
+
+Incremental evidence: the [object assembly experiment](../specs/transfer-experiment.md)
+stages out-of-order fragments with declared-byte and metadata-slot reservations,
+exact duplicates, missing ranges, conservative overlap conflicts, and explicit
+unverified candidates. It has certified definitions, initial/no-overwrite lemmas,
+and boundary vectors. Persistent transfer, complete-object/dependency validation,
+portable batches, receipts, and transport remain open.
 
 ## M5: bounded long-lived operation
 
