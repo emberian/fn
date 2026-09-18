@@ -44,7 +44,8 @@ before/after-effect coverage. Real process death retains OS caches and is not a
 power-loss experiment.
 
 An independent `cbor2` 6.1.4 run passed 38 cases against the now guard-verified
-ACL2 codecs. Its complete manifest is embedded in the evidence JSON. This covers
+ACL2 codecs. Its outcome manifest is embedded in the evidence JSON; large values use exact
+content digests, and the full raw manifest has its own recorded digest. This covers
 the declared primitive/schema-0 composition, not a native signed-object format.
 Previous independent NNTP-client and maximum-profile replay evidence remains in
 the earlier records.
