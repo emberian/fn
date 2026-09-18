@@ -1,0 +1,73 @@
+{
+  "artifact": "/Users/ember/dev/fn/build/bp-spike-work/candidate-runs/bpv7.Z6GW6s/artifacts",
+  "assertions": {
+    "duplicate_suppressed": true,
+    "endpoint_empty_after_restart": {
+      "exit": 23,
+      "text": "Nothing to fetch."
+    },
+    "endpoint_pop_destructive": true,
+    "expiry_absent_after_contact": {
+      "interval_ms": 100,
+      "samples": 20
+    },
+    "explicit_delete_after_stage": true,
+    "inbound_inventory_after_restart": true,
+    "inbox_directory_fsync_after_rename": true,
+    "inbox_file_fsync": true,
+    "live_binary_delivery": true,
+    "loopback_only": true,
+    "non_destructive_download": true,
+    "outbound_clean_restart": true,
+    "outbound_queue_disconnected": true,
+    "restored_contact": true,
+    "schema": 1
+  },
+  "bundle_ids": {
+    "cla": "[::1]:32111,[::1]:32112",
+    "control": "[::1]:32101,[::1]:32102",
+    "db": "sled",
+    "expiry_bid": "dtn://bp-a/-843048509006-0",
+    "invocation": "./run_two_node.sh",
+    "live_bid": "dtn://bp-a/-843048508809-0",
+    "queued_bid": "dtn://bp-a/-843048507478-0",
+    "source_revision": "4daf02d7ea927e9293753b2a5c4497457f6e5a40",
+    "transport": "tcp convergence layer over IPv6 loopback only"
+  },
+  "commands": [
+    "./run_two_node.sh",
+    "cargo build --release --locked"
+  ],
+  "created_utc": "2026-09-18T12:08:34.632374Z",
+  "digests_sha256": {
+    "cargo_lock": "ceeb4a9057389e602e2bf3361080a2f9b9dd5d927c73cdcad964c920564552ee",
+    "dtnd": "c467b3ece8c55d2aeee0cd17b8670e0015729479a006c0fed5e369b6a26d590c",
+    "dtnquery": "9eb380b2063c1de26cfdc34ca892595ba81d27d67d4138464240c4973955afc0",
+    "dtnrecv": "29605a5572479327101e4ef10ffb097816fd0cc1f59437381be5e43fa9bde169",
+    "dtnsend": "1b23f8b4eaa6e201727d3c238d1c9ca45725b5fdfaba5905a76a9252ee1c0144",
+    "harness": "98dd1b846fa037d232f660acddb00c0525164e5c94ff49d7b2184f0c01d5b5d0"
+  },
+  "limits": [
+    "A dtn7-rs /insert reply is only an asynchronous submission reply, not BPA custody.",
+    "Clean restart is observed; power-loss, quota, fairness, and delivery durability are unproven.",
+    "Copied inbox file fsync plus renamed-inbox directory fsync stages bytes only; it is not fn validation, acceptance, receipt, or retention release.",
+    "Endpoint pop is destructive and is deliberately excluded from the safe ingress branch."
+  ],
+  "pin": {
+    "build_command": [
+      "cargo",
+      "build",
+      "--release",
+      "--locked"
+    ],
+    "revision": "4daf02d7ea927e9293753b2a5c4497457f6e5a40",
+    "upstream": "https://github.com/dtn7/dtn7-rs"
+  },
+  "schema": 1,
+  "versions": {
+    "cargo": "cargo 1.98.0-nightly (a595d0da2 2026-06-20)",
+    "dtnd": "dtn7-rs 0.21.0",
+    "dtnsend": "dtn7 0.21.0",
+    "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O"
+  }
+}

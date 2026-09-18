@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/dtn7/dtn7-rs",
+  "revision": "4daf02d7ea927e9293753b2a5c4497457f6e5a40",
+  "release_version": "0.21.0",
+  "build": ["cargo", "build", "--release", "--locked"],
+  "transport": "dtn7-rs tcp convergence layer over IPv6 loopback",
+  "listeners": ["[::1]:32101", "[::1]:32102", "[::1]:32111", "[::1]:32112"]
+}
