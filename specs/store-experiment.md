@@ -14,6 +14,12 @@ The initial configuration identifies groups and reservation capacity explicitly.
 Recovery must rebuild both articles and their archive obligations using the same
 ACL2 definitions used in the logical proofs.
 
+A separately persisted local allocation frontier records the next unused
+transaction ID. Reserving an ID advances that frontier durably before the core
+prepares a post. An aborted or refused attempt may leave a gap; reopening cannot
+reuse the reservation. This is local transaction identity, not a portable origin
+sequence or an author identity. Exhaustion refuses new attempts.
+
 Local transaction records use an experimental schema 0. Their codec is a bounded
 fixed sequence of deterministic CBOR primitives: a magic byte string, schema
 version, journal sequence, acceptance transaction ID, generation, Message-ID,
@@ -54,6 +60,14 @@ file mediates cooperating writers; its pathname must not be replaced to evade
 an existing lock. Locking is an adapter ownership mechanism, not proof against
 an administrator modifying the store behind its back.
 
+The bounded, checksummed allocation frontier is replaced atomically only after
+its new file data barrier; its directory barrier precedes use of the reserved
+ID. A possibly completed replacement is indeterminate on error. Recovery must
+reject a frontier behind committed history, restore the node's next transaction
+counter through `fn-replay-advance-txid`, and establish the observed frontier's
+data and namespace barriers before allowing another preparation. The adapter
+uses the reserved transaction ID as its completion generation.
+
 ## Recovery
 
 Read only bounded files in the final namespace. Reject symlinks, inconsistent
@@ -74,6 +88,17 @@ proof. Validate the observed history, then complete the necessary directory
 barrier before calling the recovered frontier durable and resuming acceptance.
 An unacknowledged complete transaction can become committed through that path.
 Retrying it must preserve the existing article and obligation.
+
+Initialization can fail after leaving parseable configuration or visible
+directories. Recovery therefore re-establishes configuration/frontier data and
+store-parent namespace prerequisites as well as the transaction directory
+barrier; merely validating their bytes does not settle an earlier I/O failure.
+
+The initial adapter bounds the number and aggregate bytes of recovered records
+before building the process input. These are provisional operational limits and
+must also restrict new publication, so the adapter does not create a store it
+would refuse to reopen. Staging orphans remain outside recovery authority;
+best-effort cleanup after a completed commit does not revoke that commit.
 
 An integrity trailer detects the classes of damage covered by its primitive
 assumption. It cannot detect replacement by an older entirely valid store.
