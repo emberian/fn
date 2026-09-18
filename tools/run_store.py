@@ -23,11 +23,15 @@ import time
 ROOT = Path(__file__).resolve().parent.parent
 PROMPT = b"ACL2 !>"
 MAX_ACL2_OUTPUT = 4 * 1024 * 1024
+MAX_TRANSACTION_COUNT = 128
+MAX_RECOVERY_RECORD_BYTES = MAX_TRANSACTION_COUNT * 32768
 DEFAULT_CONFIG = {
     "format": "fn-store-experiment-1",
     "groups": ["fn.letters", "fn.test"],
     "capacity": 1048576,
     "max_record_bytes": 32768,
+    "max_recovery_record_bytes": MAX_RECOVERY_RECORD_BYTES,
+    "max_transactions": MAX_TRANSACTION_COUNT,
 }
 MAGIC = b"FNST\x01"
 TRAILER_BYTES = 32
@@ -109,6 +113,17 @@ def read_regular_bounded(path, maximum):
         if len(data) > maximum:
             raise StoreFault("store file exceeds bound: {}".format(path))
         return data
+    finally:
+        os.close(fd)
+
+
+def fsync_regular(path):
+    """Barrier one verified regular file without following a replacement link."""
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            raise StoreFault("refusing non-regular store file: {}".format(path))
+        os.fsync(fd)
     finally:
         os.close(fd)
 
@@ -254,6 +269,12 @@ class Acl2Store:
     def group_next(self, code):
         return acl2_nat(self.call("(fn-store-group-next {} state)".format(code)))
 
+    def pin_count(self):
+        return acl2_nat(self.call("(fn-store-pin-count state)"))
+
+    def reserved(self):
+        return acl2_nat(self.call("(fn-store-reserved state)"))
+
     def lookup(self, msgid):
         return acl2_octets(self.call("(fn-store-lookup '" + self.literal(msgid) + " state)"))
 
@@ -300,40 +321,65 @@ class Store:
     @property
     def lock_path(self): return self.root / "writer.lock"
 
+    def _open_lock(self, exclusive, create):
+        flags = os.O_RDWR if exclusive else os.O_RDONLY
+        if create:
+            flags |= os.O_CREAT
+        flags |= getattr(os, "O_NOFOLLOW", 0)
+        fd = None
+        try:
+            fd = os.open(self.lock_path, flags, 0o600)
+            if not stat.S_ISREG(os.fstat(fd).st_mode):
+                os.close(fd)
+                fd = None
+                raise StoreFault("refusing non-regular writer lock")
+            fcntl.flock(fd, (fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH) | fcntl.LOCK_NB)
+            return fd
+        except StoreFault:
+            raise
+        except (OSError, BlockingIOError) as error:
+            if fd is not None:
+                os.close(fd)
+            if error.errno == errno.ELOOP:
+                raise StoreFault("refusing writer-lock symlink") from error
+            raise StoreError("store is already locked") from error
+
     def _safe_directory(self, path, create=False):
-        if create and not path.exists():
-            path.mkdir(mode=0o700)
-            fsync_dir(path.parent)
         try:
             st = os.lstat(path)
         except FileNotFoundError:
-            raise StoreFault("missing store directory: {}".format(path))
-        if not path.is_dir() or os.path.islink(path):
+            if not create:
+                raise StoreFault("missing store directory: {}".format(path))
+            path.mkdir(mode=0o700)
+            fsync_dir(path.parent)
+            st = os.lstat(path)
+        if not stat.S_ISDIR(st.st_mode) or stat.S_ISLNK(st.st_mode):
             raise StoreFault("refusing non-directory store path: {}".format(path))
         return st
 
     def initialize(self):
-        if self.root.exists():
-            self._safe_directory(self.root)
-        else:
-            self.root.mkdir(mode=0o700, parents=False)
-            fsync_dir(self.root.parent)
-        self._safe_directory(self.transactions, create=True)
-        self._safe_directory(self.staging, create=True)
-        config = config_with_checksum(DEFAULT_CONFIG)
-        raw = canonical_json(config) + b"\n"
+        self._safe_directory(self.root, create=True)
+        lock_fd = self._open_lock(exclusive=True, create=True)
         try:
-            fd = os.open(self.config_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        except FileExistsError:
-            self._load_config()
-            return
-        try:
-            write_all(fd, raw)
-            fsync_file(fd)
+            self._safe_directory(self.transactions, create=True)
+            self._safe_directory(self.staging, create=True)
+            config = config_with_checksum(DEFAULT_CONFIG)
+            raw = canonical_json(config) + b"\n"
+            try:
+                fd = os.open(self.config_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            except FileExistsError:
+                self._load_config()
+                return
+            try:
+                write_all(fd, raw)
+                fsync_file(fd)
+            finally:
+                os.close(fd)
+            fsync_dir(self.root)
+            self.config = config
         finally:
-            os.close(fd)
-        fsync_dir(self.root)
-        self.config = config
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            os.close(lock_fd)
 
     def _load_config(self):
         check_regular(self.config_path)
@@ -353,13 +399,14 @@ class Store:
         self._safe_directory(self.transactions)
         self._safe_directory(self.staging)
         self._load_config()
-        flags = os.O_RDWR | os.O_CREAT if self.writable else os.O_RDONLY
         try:
-            self.lock_fd = os.open(self.lock_path, flags, 0o600)
-            fcntl.flock(self.lock_fd, (fcntl.LOCK_EX if self.writable else fcntl.LOCK_SH) | fcntl.LOCK_NB)
-        except (OSError, BlockingIOError) as error:
+            self.lock_fd = self._open_lock(exclusive=self.writable, create=self.writable)
+        except StoreFault:
             self.close()
-            raise StoreError("store is already locked") from error
+            raise
+        except StoreError:
+            self.close()
+            raise
 
     def close(self):
         if self.lock_fd is not None:
@@ -372,15 +419,18 @@ class Store:
     def transaction_files(self):
         files = []
         try:
-            entries = list(os.scandir(self.transactions))
+            entries = os.scandir(self.transactions)
         except OSError as error:
             raise StoreFault("cannot enumerate transactions") from error
-        for entry in entries:
-            if not SEQ_NAME.fullmatch(entry.name):
-                raise StoreFault("unexpected final-namespace entry: {}".format(entry.name))
-            if entry.is_symlink() or not entry.is_file(follow_symlinks=False):
-                raise StoreFault("refusing transaction symlink or non-file")
-            files.append((int(entry.name[:20]), Path(entry.path)))
+        with entries:
+            for entry in entries:
+                if len(files) >= self.config["max_transactions"]:
+                    raise StoreFault("transaction count exceeds configured bound")
+                if not SEQ_NAME.fullmatch(entry.name):
+                    raise StoreFault("unexpected final-namespace entry: {}".format(entry.name))
+                if entry.is_symlink() or not entry.is_file(follow_symlinks=False):
+                    raise StoreFault("refusing transaction symlink or non-file")
+                files.append((int(entry.name[:20]), Path(entry.path)))
         files.sort()
         for expected, (sequence, _) in enumerate(files):
             if sequence != expected:
@@ -389,28 +439,40 @@ class Store:
 
     def durable_records(self, acl2):
         records = []
+        aggregate = 0
         for sequence, path in self.transaction_files():
             check_regular(path)
             raw = read_regular_bounded(
                 path, len(MAGIC) + 4 + self.config["max_record_bytes"] + TRAILER_BYTES)
             record = unframe(raw, self.config["max_record_bytes"])
+            aggregate += len(record)
+            if aggregate > self.config["max_recovery_record_bytes"]:
+                raise StoreFault("transaction recovery input exceeds configured bound")
             if acl2.record_sequence(record) != sequence:
                 raise StoreFault("record sequence does not match immutable filename")
             records.append(record)
         return records
 
     def recover(self, acl2):
-        records = self.durable_records(acl2)
-        if acl2.recover(records) != "ready":
-            raise StoreFault("ACL2 replay rejected committed transaction history")
+        try:
+            records = self.durable_records(acl2)
+            if acl2.recover(records) != "ready":
+                raise StoreFault("ACL2 replay rejected committed transaction history")
+        except StoreError:
+            self.fenced = True
+            raise
         # A directory-barrier failure may have left an observed link in cache.
         # Validate and replay first, then establish the recovered namespace
         # frontier before treating it as a usable durable state.
         try:
+            fsync_regular(self.config_path)
             fsync_dir(self.transactions)
             fsync_dir(self.root)
+            fsync_dir(self.root.parent)
         except OSError as error:
+            self.fenced = True
             raise StoreIndeterminate("cannot establish recovered namespace frontier") from error
+        self.fenced = False
         return records
 
     def publish(self, sequence, record, fault=None):
@@ -422,6 +484,7 @@ class Store:
         final = self.transactions / name
         stage = self.staging / (".stage-{}-{}".format(os.getpid(), os.urandom(12).hex()))
         data = frame(record)
+        publication_attempted = False
         try:
             fd = os.open(stage, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
             try:
@@ -433,6 +496,7 @@ class Store:
                 os.unlink(stage)
                 fsync_dir(self.staging)
                 return "known-abort"
+            publication_attempted = True
             os.link(stage, final)
             if fault == "postpublish":
                 self.fenced = True
@@ -440,18 +504,19 @@ class Store:
             fsync_dir(self.transactions)
             # Staging files are ignored by recovery.  Their best-effort cleanup
             # occurs only after the final namespace barrier succeeded.
-            os.unlink(stage)
-            fsync_dir(self.staging)
+            try:
+                os.unlink(stage)
+                fsync_dir(self.staging)
+            except OSError:
+                pass
             return "durable"
-        except FileExistsError as error:
-            self.fenced = True
-            raise StoreIndeterminate("immutable transaction name was unexpectedly occupied") from error
         except StoreIndeterminate:
             raise
         except OSError as error:
-            # Once a final link could possibly have been installed, the host
-            # cannot classify ordinary I/O failure as a known abort.
-            if final.exists():
+            # The link invocation itself can have reached the filesystem even
+            # when no final name is observable afterward.  Absence is not a
+            # proof of non-publication under this failure model.
+            if publication_attempted:
                 self.fenced = True
                 raise StoreIndeterminate("transaction publication outcome is indeterminate") from error
             raise StoreError("known pre-publication store failure: {}".format(error)) from error
@@ -505,11 +570,11 @@ def open_live_store(path, writable):
 
 def command_post(args):
     msgid = args.message_id.encode("ascii")
-    payload = Path(args.payload).read_bytes()
-    if len(payload) > DEFAULT_CONFIG["max_record_bytes"]:
-        raise StoreError("payload exceeds fixed experimental bound")
+    payload = read_regular_bounded(args.payload, DEFAULT_CONFIG["max_record_bytes"])
     store, bridge, records = open_live_store(args.store, writable=True)
     try:
+        if len(records) >= store.config["max_transactions"]:
+            raise StoreError("transaction count has reached configured bound")
         obligation, subject, evidence = metadata(msgid, payload)
         charge = args.charge if args.charge is not None else conservative_charge(payload)
         action = bridge.prepare(msgid, payload, group_codes(args.group, store.config), obligation,

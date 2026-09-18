@@ -1,8 +1,10 @@
 # Host and execution boundary
 
 Status: ACL2 8.7/SBCL 2.6.8 development model and interpreted simulator are present.
-An experimental subprocess/socket bridge is being integrated. The production
-Common Lisp packaging/guard boundary remains D07; no durable adapter is present.
+An experimental subprocess/socket bridge runs the reader. A local file adapter
+now executes the [persistence experiment](store-experiment.md) through the same
+ACL2 node and record/replay definitions. The production Common Lisp packaging,
+guard boundary, and platform qualification remain open.
 
 ## Core interface
 
