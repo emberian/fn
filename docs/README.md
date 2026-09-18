@@ -1,8 +1,8 @@
 # Project guide
 
-fn is currently a design scaffold. Nothing in the specifications is implemented
-or mechanically proved yet. The first task is to turn a small part of this design
-into an executable, admitted ACL2 model while resolving the decisions it needs.
+fn now has executable ACL2 components and mechanically checked results. The
+[implementation status](implementation.md) distinguishes those results from the
+larger specification and its remaining proof, storage, and service work.
 
 ## Reading order
 

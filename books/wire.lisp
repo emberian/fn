@@ -197,13 +197,19 @@
                 (fn-wire-close wire-state :line-overlimit)))))))))
 
 (defun fn-wire-feed (wire-state octets)
-  (if (consp octets)
-      (let* ((first (fn-wire-feed-byte wire-state (car octets)))
-             (rest (fn-wire-feed (fn-wire-result-state first) (cdr octets))))
-        (fn-wire-make-result (fn-wire-result-state rest)
-                             (append (fn-wire-result-events first)
-                                     (fn-wire-result-events rest))))
-    (fn-wire-make-result wire-state nil)))
+  (declare (xargs :measure (acl2-count octets)))
+  ; Once a boundary failure closes the connection, do not walk arbitrary input
+  ; that followed it.  This is both the safe protocol boundary and the stated
+  ; work bound for rejected data.
+  (if (or (not (consp octets))
+          (and (fn-wire-statep wire-state)
+               (equal (fn-wire-state-mode wire-state) :closed)))
+      (fn-wire-make-result wire-state nil)
+    (let* ((first (fn-wire-feed-byte wire-state (car octets)))
+           (rest (fn-wire-feed (fn-wire-result-state first) (cdr octets))))
+      (fn-wire-make-result (fn-wire-result-state rest)
+                           (append (fn-wire-result-events first)
+                                   (fn-wire-result-events rest))))))
 
 (defun fn-wire-continue (result octets)
   (let ((next (fn-wire-feed (fn-wire-result-state result) octets)))
@@ -211,9 +217,47 @@
                          (append (fn-wire-result-events result)
                                  (fn-wire-result-events next)))))
 
+; Pull exactly one framing event.  Unlike fn-wire-feed, this leaves every
+; octet after that event unconsumed, so a host can process a POST-like command,
+; switch to article mode, and then resume on the same socket chunk.  This is
+; the host-dispatch API; fn-wire-feed remains a fixed-mode composition helper.
+; Result fields are (state event unconsumed-octets), where event is NIL when
+; the supplied octets contain no complete event.
+(defun fn-wire-next-state (x) (car x))
+(defun fn-wire-next-event (x) (car (cdr x)))
+(defun fn-wire-next-unconsumed (x) (car (cdr (cdr x))))
+
+(defun fn-wire-make-next (wire-state event unconsumed)
+  (list wire-state event unconsumed))
+
+(defun fn-wire-next (wire-state octets)
+  (declare (xargs :measure (acl2-count octets)))
+  (if (or (not (consp octets))
+          (and (fn-wire-statep wire-state)
+               (equal (fn-wire-state-mode wire-state) :closed)))
+      (fn-wire-make-next wire-state nil octets)
+    (let ((one (fn-wire-feed-byte wire-state (car octets))))
+      (if (consp (fn-wire-result-events one))
+          (fn-wire-make-next (fn-wire-result-state one)
+                             (car (fn-wire-result-events one))
+                             (cdr octets))
+        (fn-wire-next (fn-wire-result-state one) (cdr octets))))))
+
 (defthm fn-wire-feed-empty
   (equal (fn-wire-feed wire-state nil)
          (fn-wire-make-result wire-state nil)))
+
+(defthm fn-wire-feed-closed-noop
+  (implies (and (fn-wire-statep wire-state)
+                (equal (fn-wire-state-mode wire-state) :closed))
+           (equal (fn-wire-feed wire-state octets)
+                  (fn-wire-make-result wire-state nil))))
+
+(defthm fn-wire-next-closed-noop
+  (implies (and (fn-wire-statep wire-state)
+                (equal (fn-wire-state-mode wire-state) :closed))
+           (equal (fn-wire-next wire-state octets)
+                  (fn-wire-make-next wire-state nil octets))))
 
 (defthm fn-wire-feed-append
   (equal (fn-wire-feed wire-state (append left right))

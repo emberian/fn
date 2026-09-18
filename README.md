@@ -8,9 +8,11 @@ The design centers on an executable ACL2 core, a specialized persistent object
 store, and explicit records of what each node has promised to retain or deliver.
 NNTP supplies the first reader and posting interface.
 
-**Status: design scaffold.** There is no server, storage implementation, certified
-ACL2 book, or deployment yet. The specifications contain requirements and open
-design questions, not claims of implemented or proved behavior.
+**Status: executable ACL2 development.** The first acceptance, framing, encoding,
+and retention components have certified books and executable scenarios. A
+deterministic simulator runs the same acceptance functions. This is not yet a
+durable news service. See [implementation status](docs/implementation.md) for
+the exact scope and remaining proof/integration boundaries.
 
 Start with the [project guide](docs/README.md), then the
 [architecture](docs/architecture.md) and [development plan](planning/milestones.md).
@@ -21,16 +23,17 @@ Selected so far: native author signatures with explicit legacy gateway provenanc
 and local retention until authorized release without automatic expiry. Shared
 community groups come first; the [privacy note](specs/privacy.md) keeps the later
 cryptosystem open. The [current work page](planning/now.md) tracks the first
-executable acceptance cycle and its independent review.
+implementation batches and their review.
 
 ```text
 docs/                 architecture, terminology, references, proof strategy
 specs/                behavioral contracts and representation requirements
 planning/             milestones, decisions, requirement and proof registries
-books/                reserved for executable ACL2 definitions and proofs
-host/                 reserved for the Common Lisp I/O adapter
+books/                executable ACL2 definitions and proofs
+host/                 simulator and host integration
+tests/acl2/           executable assertions certified by ACL2
 tests/scenarios/      specified scenarios; not executable system tests yet
-tools/                development checks
+tools/                checks, certification runner, and simulator launcher
 rfc*.txt              original reference documents
 ```
 
@@ -41,6 +44,14 @@ make check
 # or: python3 tools/check_scaffold.py
 ```
 
-This checks document links and planning/scenario consistency. It does not run
-ACL2, test a server, or establish RFC conformance. ACL2 and the host Lisp will be
-pinned during [M1](planning/milestones.md#m1-executable-model).
+This checks document links and planning/scenario consistency. To certify books
+and execute model traces with ACL2 8.7 / SBCL 2.6.8 installed:
+
+```sh
+make certify
+python3 tools/run_simulator.py
+```
+
+See [implementation status](docs/implementation.md) for toolchain configuration
+and evidence locations. Model certification is not an RFC conformance audit or
+a physical durability test.

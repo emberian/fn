@@ -1,7 +1,8 @@
 # Development milestones
 
-Current stage: first bounded M1 acceptance cycle, with implementation and independent
-review authorized. No implementation or proof milestone is complete. See
+Current stage: parallel executable M1/M2 components, with implementation and batch
+review authorized. Initial component books certify; no full implementation/proof
+milestone is complete. See
 [current work](now.md) for scope and ownership. Remaining decisions in the
 [workbook](decisions.md) are a backlog; they do not all block this abstract model.
 

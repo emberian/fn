@@ -44,7 +44,12 @@ substantial changes. Then read the specification for the affected subsystem.
 
 ## Evidence and handoff
 
-- `make check` is the current executable check. It verifies scaffolding only.
+- `make check` verifies scaffolding only. `make certify` invokes real ACL2 for
+  the current integrated book/test batch; `python3 tools/run_simulator.py` runs
+  deterministic scenarios against the same acceptance definitions.
+- Certify only owned book roots during parallel edits. Root coordinates a frozen
+  integrated batch. Review coherent batches once, fix concrete defects, and keep
+  independent implementation work moving; do not create serial review loops.
 - Add substantive model, codec, fault, and interoperability tests as those layers
   appear. The [validation plan](tests/README.md) defines the intended evidence.
 - Record exact tool versions, invocation, input revision/content digest, result,

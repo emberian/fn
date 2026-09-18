@@ -1,0 +1,108 @@
+; Independent expected transcripts for the experimental reader-only session.
+(in-package "ACL2")
+(include-book "../../books/nntp")
+
+(defconst *fn-nntp-groups* '("fn.letters" "fn.empty"))
+(defconst *fn-nntp-id* "<Case@Id.invalid>")
+(defconst *fn-nntp-payload*
+  '(77 101 115 115 97 103 101 45 73 68 58 32 60 67 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62 13 10
+    83 117 98 106 101 99 116 58 32 84 101 115 116 13 10 13 10
+    72 101 108 108 111 13 10 46 100 111 116 13 10))
+(defconst *fn-nntp-empty-archive* (fn-initial-state *fn-nntp-groups*))
+(defconst *fn-nntp-prepared*
+  (fn-accept-prepare *fn-nntp-empty-archive* 1 *fn-nntp-id* *fn-nntp-payload* '("fn.letters")))
+(defconst *fn-nntp-archive* (fn-accept-complete *fn-nntp-prepared* 0 1 :durable))
+(defconst *fn-nntp-session0* (fn-nntp-initial-session))
+(assert-event (fn-statep *fn-nntp-archive*))
+(assert-event (fn-nntp-sessionp *fn-nntp-session0*))
+
+; Exact selected-group transcript; mixed case changes only the command keyword.
+(defconst *fn-nntp-group*
+  (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive*
+                '(:command (103 82 111 85 112 32 102 110 46 108 101 116 116 101 114 115))))
+(assert-event
+ (equal (fn-nntp-result-effects *fn-nntp-group*)
+        '((:reply (50 49 49 32 49 32 49 32 49 32 102 110 46 108 101 116 116 101 114 115 13 10)))))
+(assert-event (equal (fn-nntp-session-group (fn-nntp-result-session *fn-nntp-group*)) "fn.letters"))
+(assert-event (equal (fn-nntp-session-current (fn-nntp-result-session *fn-nntp-group*)) 1))
+
+; HEAD excludes the separator and BODY excludes it, while BODY dot-stuffs the
+; stored dot-prefixed line.  Their expected wire octets include every CRLF.
+(defconst *fn-nntp-head*
+  (fn-nntp-step (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive*
+                '(:command (72 69 65 68))))
+(assert-event
+ (equal (fn-nntp-result-effects *fn-nntp-head*)
+        '((:reply (50 50 49 32 49 32 60 67 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62 32 104 101 97 100 101 114 115 32 102 111 108 108 111 119 13 10
+                   77 101 115 115 97 103 101 45 73 68 58 32 60 67 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62 13 10
+                   83 117 98 106 101 99 116 58 32 84 101 115 116 13 10 46 13 10)))))
+(defconst *fn-nntp-body*
+  (fn-nntp-step (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive*
+                '(:command (66 79 68 89))))
+(assert-event
+ (equal (fn-nntp-result-effects *fn-nntp-body*)
+        '((:reply (50 50 50 32 49 32 60 67 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62 32 98 111 100 121 32 102 111 108 108 111 119 115 13 10
+                   72 101 108 108 111 13 10 46 46 100 111 116 13 10 46 13 10)))))
+
+; Message-ID is exact-case and leaves group/cursor unchanged; numeric retrieval
+; without a group is 412, and no-current is 420.
+(defconst *fn-nntp-by-id*
+  (fn-nntp-step (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive*
+                '(:command (83 84 65 84 32 60 67 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62))))
+(assert-event (equal (fn-nntp-result-session *fn-nntp-by-id*)
+                     (fn-nntp-result-session *fn-nntp-group*)))
+(assert-event
+ (equal (fn-nntp-result-effects *fn-nntp-by-id*)
+        '((:reply (50 50 51 32 48 32 60 67 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62 32 114 101 116 114 105 101 118 101 100 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive*
+                       '(:command (83 84 65 84 32 60 99 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62))))
+        '((:reply (52 51 48 32 110 111 32 97 114 116 105 99 108 101 32 119 105 116 104 32 116 104 97 116 32 109 101 115 115 97 103 101 45 105 100 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* '(:command (83 84 65 84 32 49))))
+        '((:reply (52 49 50 32 110 111 32 110 101 119 115 103 114 111 117 112 32 115 101 108 101 99 116 101 100 13 10)))))
+(defconst *fn-nntp-empty-group*
+  (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive*
+                '(:command (71 82 79 85 80 32 102 110 46 101 109 112 116 121))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step (fn-nntp-result-session *fn-nntp-empty-group*) *fn-nntp-archive* '(:command (83 84 65 84))))
+        '((:reply (52 50 48 32 110 111 32 99 117 114 114 101 110 116 32 97 114 116 105 99 108 101 13 10)))))
+
+; Error and capability transcript: no READER/POST/TLS/auth claim; bad syntax is
+; 501 and recognized but unsupported POST is 500.
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* '(:command (80 79 83 84))))
+        '((:reply (53 48 48 32 99 111 109 109 97 110 100 32 110 111 116 32 114 101 99 111 103 110 105 122 101 100 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* '(:command (71 82 79 85 80 32))))
+        '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* '(:command (32 71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115))))
+        '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* '(:command (83 84 65 84 32 48))))
+        '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
+(defconst *fn-nntp-caps*
+  (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* '(:command (67 65 80 65 66 73 76 73 84 73 69 83))))
+(assert-event
+ (equal (fn-nntp-result-effects *fn-nntp-caps*)
+        '((:reply (49 48 49 32 99 97 112 97 98 105 108 105 116 121 32 108 105 115 116 32 102 111 108 108 111 119 115 13 10
+                   86 69 82 83 73 79 78 32 50 13 10 73 77 80 76 69 77 69 78 84 65 84 73 79 78 32 102 110 45 110 110 116 112 45 108 97 98 13 10 46 13 10)))))
+
+; NEXT at the only article and QUIT have defined state/effect behavior.
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* '(:command (78 69 88 84))))
+        '((:reply (52 50 49 32 110 111 32 110 101 120 116 32 97 114 116 105 99 108 101 13 10)))))
+(defconst *fn-nntp-quit*
+  (fn-nntp-step (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* '(:command (81 85 73 84))))
+(assert-event (equal (fn-nntp-result-effects *fn-nntp-quit*)
+                     '((:reply (50 48 53 32 99 108 111 115 105 110 103 32 99 111 110 110 101 99 116 105 111 110 13 10)) (:close))))
+(assert-event (equal (fn-nntp-session-openp (fn-nntp-result-session *fn-nntp-quit*)) nil))

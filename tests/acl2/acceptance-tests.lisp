@@ -13,6 +13,7 @@
 (assert-event (equal (fn-state-articles *test-empty*) nil))
 (assert-event (not (fn-statep '(nil nil nil 0))))
 (assert-event (not (fn-statep (append *test-empty* '(hidden-field)))))
+(assert-event (not (fn-statep '(nil nil nil 0 nil nil . hidden-tail))))
 
 ; Input policy rejects the entire local cross-post.
 (assert-event
@@ -35,6 +36,9 @@
                      (fn-state-nexts *test-empty*)))
 (assert-event (equal (fn-state-next-txid *test-prepared*) 1))
 (assert-event
+ (not (fn-pendingp *test-groups* (fn-state-nexts *test-empty*) 1
+                   (append (fn-state-pending *test-prepared*) 'hidden-tail))))
+(assert-event
  (equal (fn-pending-memberships (fn-state-pending *test-prepared*))
         '(("fn.letters" . 1) ("fn.test" . 1))))
 
@@ -49,6 +53,10 @@
 (defconst *test-committed* (fn-accept-complete *test-prepared* 0 7 :durable))
 (assert-event (fn-statep *test-committed*))
 (assert-event (equal (len (fn-state-articles *test-committed*)) 1))
+(assert-event
+ (not (fn-articlep *test-groups*
+                   (append (car (fn-state-articles *test-committed*))
+                           'hidden-tail))))
 (assert-event
  (equal (fn-article-memberships
          (fn-find-article *test-id-a* (fn-state-articles *test-committed*)))
@@ -132,6 +140,18 @@
 (assert-event (fn-statep *test-aborted*))
 (assert-event (equal (fn-state-next-txid *test-aborted*) 1))
 (assert-event (equal (fn-state-articles *test-aborted*) nil))
+(defconst *test-after-abort*
+  (fn-accept-prepare *test-aborted* 7 *test-id-b* *test-payload* '("fn.test")))
+(assert-event (fn-statep *test-after-abort*))
+(assert-event (equal (fn-pending-txid (fn-state-pending *test-after-abort*)) 1))
+(assert-event
+ (equal (fn-accept-complete *test-after-abort* 0 7 :durable) *test-after-abort*))
+(assert-event
+ (equal (fn-article-memberships
+         (fn-find-article *test-id-b*
+                          (fn-state-articles
+                           (fn-accept-complete *test-after-abort* 1 7 :durable))))
+        '(("fn.test" . 1))))
 
 ; Case in a Message-ID is significant, including its domain-looking part.
 (defconst *test-case-prepared*

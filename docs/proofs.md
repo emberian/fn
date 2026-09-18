@@ -1,7 +1,10 @@
 # Proof strategy and evidence
 
-Status: all targets planned. [The proof registry](../planning/proofs.json) is the
-authoritative status ledger; none is currently admitted or certified.
+Status: component theorems are being certified as implementation advances. The
+[proof registry](../planning/proofs.json) is the authoritative ledger for the
+larger targets, which remain open until their complete statements are supported.
+See [implementation status](implementation.md) for executable scope. Partial
+lemmas do not close an entire subsystem proof target.
 
 ## Refinement ladder
 

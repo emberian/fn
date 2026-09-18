@@ -48,7 +48,7 @@
   (fn-retain-release *retention-two-pins* "forward-1" "object-a" :forward
                      "receipt-from-successor"))
 (assert-event (fn-retain-statep *retention-forward-released*))
-(assert-event (equal (fn-retain-reserved *retention-forward-released*) 6))
+(assert-event (equal (fn-retain-reserved *retention-forward-released*) 7))
 (assert-event (equal (len (fn-retain-pins *retention-forward-released*)) 1))
 (assert-event (equal (len (fn-retain-releases *retention-forward-released*)) 1))
 
@@ -63,5 +63,34 @@
   (fn-retain-release *retention-forward-released* "archive-1" "object-a"
                      :archive "operator-release-a"))
 (assert-event (fn-retain-statep *retention-all-released*))
-(assert-event (equal (fn-retain-reserved *retention-all-released*) 0))
+(assert-event (equal (fn-retain-reserved *retention-all-released*) 2))
 (assert-event (equal (len (fn-retain-pins *retention-all-released*)) 0))
+
+; A charge of one is a history-only obligation: release retains that unit.  At
+; fixed capacity, repeated admissions and releases eventually refuse new work.
+(defconst *retention-history-empty* (fn-retain-initial-state 3))
+(defconst *retention-history-one*
+  (fn-retain-admit *retention-history-empty* "history-1" "object-1" :archive
+                   "release-1" 1))
+(defconst *retention-history-one-released*
+  (fn-retain-release *retention-history-one* "history-1" "object-1" :archive
+                     "release-1"))
+(assert-event (equal (fn-retain-reserved *retention-history-one-released*) 1))
+(defconst *retention-history-two*
+  (fn-retain-admit *retention-history-one-released* "history-2" "object-2"
+                   :archive "release-2" 1))
+(defconst *retention-history-two-released*
+  (fn-retain-release *retention-history-two* "history-2" "object-2" :archive
+                     "release-2"))
+(defconst *retention-history-three*
+  (fn-retain-admit *retention-history-two-released* "history-3" "object-3"
+                   :archive "release-3" 1))
+(defconst *retention-history-full*
+  (fn-retain-release *retention-history-three* "history-3" "object-3" :archive
+                     "release-3"))
+(assert-event (fn-retain-statep *retention-history-full*))
+(assert-event (equal (fn-retain-reserved *retention-history-full*) 3))
+(assert-event
+ (equal (fn-retain-admit *retention-history-full* "history-4" "object-4"
+                        :archive "release-4" 1)
+        *retention-history-full*))
