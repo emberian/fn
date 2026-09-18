@@ -1,11 +1,13 @@
 """Real-directory tests for the experimental ACL2-backed transaction store."""
 import contextlib
 import errno
+import io
 import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest import mock
 
@@ -253,6 +255,44 @@ class StoreTests(unittest.TestCase):
             if bridge is not None:
                 bridge.close()
             store.close()
+
+    def test_published_post_with_failed_core_reply_stays_fenced_and_recovers(self):
+        for index, failure in enumerate(("rejected", "failed", "lost")):
+            with self.subTest(failure=failure):
+                message_id = "<completion-{}@example.invalid>".format(failure)
+                payload = failure.encode("ascii")
+                self.payload.write_bytes(payload)
+                store, bridge, records = run_store.open_live_store(self.path, writable=True)
+                real_complete = bridge.complete
+
+                def completion(outcome):
+                    if failure == "rejected":
+                        return "fault"
+                    if failure == "lost":
+                        self.assertEqual(real_complete(outcome), "durable")
+                    raise run_store.StoreFault("injected core reply failure")
+
+                args = SimpleNamespace(store=self.path, message_id=message_id,
+                                       payload=self.payload, group=["fn.letters"],
+                                       charge=None, inject_fault=None)
+                output = io.StringIO()
+                with mock.patch("run_store.open_live_store", return_value=(store, bridge, records)), \
+                     mock.patch.object(bridge, "complete", side_effect=completion), \
+                     contextlib.redirect_stdout(output):
+                    with self.assertRaises(StoreIndeterminate):
+                        run_store.command_post(args)
+                self.assertEqual(output.getvalue(), "")
+                self.assertTrue(store.fenced)
+                with self.assertRaises(StoreIndeterminate):
+                    store.advance_frontier(store.frontier)
+                # Actual publication survives both a rejected completion and
+                # a lost reply after the core completed. Recovery, not rollback,
+                # reconciles the same retained article and obligation.
+                with self.recovered_bridge() as recovered:
+                    self.assertEqual(recovered.article_count(), index + 1)
+                    self.assertEqual(recovered.pin_count(), index + 1)
+                self.assertEqual(self.invoke("inspect", "--message-id", message_id).stdout,
+                                 payload)
 
     def test_allocator_replace_error_and_frontier_replay_boundaries(self):
         store = Store(self.path, writable=True)
