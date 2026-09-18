@@ -567,6 +567,7 @@ class Store:
 
     def advance_frontier(self, current_txid):
         """Durably consume one local transaction ID before it reaches ACL2."""
+        self._require_writer()
         if self.fenced:
             raise StoreIndeterminate("store is fenced pending recovery")
         if current_txid != self.frontier:
@@ -597,6 +598,7 @@ class Store:
             raise StoreError("known pre-publication allocator failure: {}".format(error)) from error
 
     def publish(self, sequence, record, fault=None):
+        self._require_writer()
         if self.fenced:
             raise StoreIndeterminate("store is fenced pending recovery")
         if len(record) > self.config["max_record_bytes"]:
@@ -641,6 +643,10 @@ class Store:
                 self.fenced = True
                 raise StoreIndeterminate("transaction publication outcome is indeterminate") from error
             raise StoreError("known pre-publication store failure: {}".format(error)) from error
+
+    def _require_writer(self):
+        if not self.writable or self.lock_fd is None:
+            raise StoreError("mutation requires a live exclusive store owner")
 
 
 def metadata(msgid, payload):
