@@ -165,6 +165,15 @@
       "sha256": "87a1a4d6953ac2392a41e792728f98fa3570c1fbeb3fcf7f0fb8abf8ac3a3da2"
     }
   ],
+  "full_python_suite": {
+    "command": "python3 -m unittest discover -s tests -v",
+    "count": 108,
+    "log_sha256": "313d77ff06fd2e2d5cee3872bcea36d8fe64f784b3eaa1970777d6bfe24f3eab",
+    "recorded_implementation_sources_unchanged": true,
+    "revision": "67c320f",
+    "seconds": 105.023,
+    "status": "passed"
+  },
   "host_tests": {
     "command": "python3 -m unittest tests.test_workflow_journal tests.test_workflow_process_crash tests.test_workflow_faults tests.test_workflow_live tests.test_workflow_boundary tests.test_bp_ingress_host -v",
     "count": 33,

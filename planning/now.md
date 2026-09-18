@@ -172,3 +172,12 @@ is integrated with five scoped certified roots and 33 host checks. Live ACL2
 preflight precedes publication, recovered intents require explicit recovery,
 and submit permission is consumed once. Receiver request/decision persistence
 and the actual BP return receipt are the next complete integration exit.
+
+Receiver context/decision journal and outbound ADU projection are now in the
+shared integration tree. Scoped certifications and host tests passed, but the
+full-reopen receiver test exposed reliance on transient Store success history.
+The corrected authoritative-record/ready-state predicate and the article-commit
+before-context crash cut are being integrated before claiming the full BP loop.
+The actual fn sender alone has queued through a BPA outage/restart successfully.
+The new exchange laboratory driver is a development checkpoint until its complete
+run and evidence record pass.

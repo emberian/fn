@@ -74,6 +74,12 @@ ACL2_BOOKS ?= books/acceptance \
 	books/bp-workflow \
 	books/bp-workflow-records \
 	tests/acl2/bp-workflow-records-tests \
+	books/bp-receipt \
+	tests/acl2/bp-receipt-tests \
+	books/bp-receipt-records \
+	tests/acl2/bp-receipt-records-tests \
+	books/bp-outbound \
+	tests/acl2/bp-outbound-tests \
 	books/journal \
 	tests/acl2/journal-tests \
 	books/exchange \

@@ -35,3 +35,7 @@ active integration work. General workflow trace invariants are another artifact.
 The host framing/hash/UTF-8 and filesystem operations remain explicit assumptions;
 these results establish no authenticated remote receipt, physical power-loss
 guarantee, or full M4 completion.
+
+A subsequent full Python suite at `67c320f` passed all **108 tests** in
+105.023 seconds. Recorded implementation source hashes still matched. This is
+the host regression suite, not a new all-roots ACL2 certification.
