@@ -91,9 +91,11 @@
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-storage.md",
-        "tests/evidence/2026-09-18-storage.json"
+        "tests/evidence/2026-09-18-storage.json",
+        "tests/evidence/2026-09-18-wildmat-storage.md",
+        "tests/evidence/2026-09-18-wildmat-storage.json"
       ],
-      "execution_scope": "Partial: logical crash experiments plus real adapter injected prepublish/attempted-link/postpublish/allocator/barrier failures and reopen. Not exhaustive hardware power-loss faults or a general recovery proof."
+      "execution_scope": "Partial: isolated journal experiments plus dedicated file-kernel crash forks/one-use reservations/recovery gates, real prepublish/link/postpublish/allocator/barrier failures and rejected/lost completion replies. Same-object recovery reloads observed frontier. No exhaustive hardware power-loss qualification or full crash/refinement theorem."
     },
     {
       "id": "SCN-004",
@@ -341,9 +343,11 @@
         "tests/evidence/2026-09-18-storage.md",
         "tests/evidence/2026-09-18-storage.json",
         "tests/evidence/2026-09-18-articles.md",
-        "tests/evidence/2026-09-18-articles.json"
+        "tests/evidence/2026-09-18-articles.json",
+        "tests/evidence/2026-09-18-wildmat-storage.md",
+        "tests/evidence/2026-09-18-wildmat-storage.json"
       ],
-      "execution_scope": "Partial: primitive/record accepted-rejected vectors, full round trips, primitive canonicality, stored malformed bytes, and bounded article syntax with successful-parse exact source preservation. No native signature/batch schema or complete resource proof yet."
+      "execution_scope": "Partial: primitive/record vectors, full round trips, primitive canonicality, malformed stored bytes, source-preserving article syntax, bounded UTF8 wildmat grammar/matching vectors. No native/batch schema or complete resource proof; record canonicality composition remains open."
     },
     {
       "id": "SCN-014",
@@ -373,9 +377,11 @@
         "tests/evidence/2026-09-18-storage.md",
         "tests/evidence/2026-09-18-storage.json",
         "tests/evidence/2026-09-18-articles.md",
-        "tests/evidence/2026-09-18-articles.json"
+        "tests/evidence/2026-09-18-articles.json",
+        "tests/evidence/2026-09-18-wildmat-storage.md",
+        "tests/evidence/2026-09-18-wildmat-storage.json"
       ],
-      "execution_scope": "Partial: laboratory reader subset, framing/isolation, recovered-store projection and independent nntplib client, now including LISTGROUP ranges/empty results/cursors. Full READER/POST/OVER profile remains open."
+      "execution_scope": "Partial: reader subset, framing/isolation, recovered-store projection, LISTGROUP, filtered ACTIVE/NEWSGROUPS, malformed UTF8/BOM and length/keyword boundaries, independent nntplib traffic. Full READER/POST/OVER remains open."
     },
     {
       "id": "SCN-015",
@@ -403,9 +409,11 @@
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-storage.md",
-        "tests/evidence/2026-09-18-storage.json"
+        "tests/evidence/2026-09-18-storage.json",
+        "tests/evidence/2026-09-18-wildmat-storage.md",
+        "tests/evidence/2026-09-18-wildmat-storage.json"
       ],
-      "execution_scope": "Partial: interpreted actual-core bridge, real replay/frontier/stale completion tests and snapshot reader locking. Concurrent live state-owner scheduling and full backpressure/resource model remain open."
+      "execution_scope": "Partial: actual-core bridge/replay, stale/refused/lost completion handling, recovery fence/frontier tests, immutable-file gate model, and snapshot reader locking. Live owner scheduling, complete backpressure model and adapter refinement remain open."
     },
     {
       "id": "SCN-016",

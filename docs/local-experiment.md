@@ -57,6 +57,10 @@ Connect a client to `127.0.0.1:8119`. The supported subset includes `CAPABILITIE
 chooses an available port and prints it. Omit `--store` to run the separate seeded
 reader experiment used by `tests/interop_nntplib.py`.
 
+`LIST ACTIVE fn.*,!fn.test` and `LIST NEWSGROUPS fn.letters` filter through the
+ACL2 wildmat matcher. Matching is anchored, and the rightmost matching pattern
+decides inclusion. These listings preserve the selected group and cursor.
+
 The stored reader holds a shared lock for its lifetime and serves the recovered
 snapshot. Posting through the CLI is refused while that reader is running;
 stop it, post, and restart to see additional articles. This deliberately simple

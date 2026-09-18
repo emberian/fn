@@ -1,8 +1,12 @@
 # Immutable-file store refinement contract
 
-Status: design for the next executable storage model, connecting the current
-one-file-per-transaction experiment to `fn-replay` and the composed node. It does
-not qualify a platform, add checkpoints, or change the experimental disk format.
+Status: refinement design with a first executable publication/allocator kernel
+in [store-files.lisp](../books/store-files.lisp). The kernel uses actual
+`fn-replay`, explicit crash choices, one-use reservations, completion gating,
+and five recovery barriers. General start-frontier preservation and fence/gate
+lemmas are proved; full transition/crash/acknowledged-history preservation and
+the physical adapter correspondence remain open. It does not qualify a platform,
+add checkpoints, or change the experimental disk format.
 
 ## Why the isolated-slot journal is not the adapter model
 
@@ -34,10 +38,17 @@ Add one logical book, provisionally `books/store-files.lisp`. Keep it free of ra
 I/O. Its values are records already accepted by `fn-record-p`; byte/frame
 validation remains a separate refinement premise.
 
+The current kernel implements the publication/allocator phases below without
+storing a live pending node or fixed configuration in its state. It uses the
+existing replay functions for semantic admission/recovery, with groups/capacity
+as parameters. A matching live core completion remains an explicit observation.
+The complete state and correspondence below are therefore further work, not
+properties implied by the kernel's initial certification.
+
 The machine state contains:
 
 ```text
-mode             : ready | preparing | completing | fenced | recovering | fault
+mode             : ready | reserved | preparing | completing | fenced | recovering | fault
 config           : fixed groups, capacity, and bounds
 stable-frontier  : next unused acceptance txid
 frontier-update  : none | (old, new, staged | attempted | visible)
@@ -79,11 +90,14 @@ Use explicit result events rather than an event called simply `commit`:
 7. `reserve-replace-attempt(result)` records that namespace publication was
    attempted. Every error from or after this event is uncertain and fences.
 8. `reserve-dir-barrier(ok | uncertain)` makes `f+1` the stable frontier only on
-   success. Preparation is forbidden before this success.
+   success, and enters `reserved` with a one-use preparation token. Preparation
+   is forbidden before this success and without that token.
 9. `core-prepare(record | refused)` invokes the existing node. The record must
    have sequence `len(stable-records)`, txid `f`, generation `f`, and fields equal
    to the pending node proposal. Refusal is followed by the existing logical
-   frontier advance to `f+1`; it creates no record or obligation.
+   frontier advance to `f+1`; it creates no record or obligation. Refusal or
+   abort consumes the reservation. Recovery returns ready without restoring it;
+   another preparation requires a fresh durable allocator advance.
 10. `record-write(result)` creates an exclusive staging file. Write/create/file
     barrier failures before a final-name operation are known aborts. After a
     successful file barrier the candidate is `data-durable`.
