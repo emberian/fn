@@ -60,7 +60,9 @@ class WorkflowJournalTests(unittest.TestCase):
         self.assertEqual(list(self.journal.records.iterdir()), [])
         published=self.journal.persist_enqueue(ENQUEUE, lambda values: True)
         self.assertTrue(published.path.exists())
-        self.assertEqual(decode_record(published.path.read_bytes()), ("enqueue", ENQUEUE))
+        self.assertEqual(decode_record(published.path.read_bytes()),
+                         ("outcome", {"txid":7, "tx-generation":3,
+                                      "phase":"ordinary", "result":"durable"}))
 
     def test_uncertain_publication_fences_and_does_not_call_bpa(self):
         called=[]
@@ -115,6 +117,12 @@ class WorkflowJournalTests(unittest.TestCase):
                 self.journal.publish("attempt", {**ATTEMPT, "attempt-id":"attempt:a:2"})
         self.assertEqual(published.path.read_bytes(), before)
         self.assertEqual(len(list(self.journal.records.iterdir())), 1)
+
+    def test_intent_refused_before_publication_without_outcome_headroom(self):
+        with mock.patch("tools.workflow_journal.MAX_RECORDS", 1):
+            with self.assertRaisesRegex(JournalFault, "resolution headroom"):
+                self.journal.persist_attempt_then_call(ATTEMPT, self.fail)
+        self.assertEqual(list(self.journal.records.iterdir()), [])
 
     def test_inbound_inventory_download_fsync_then_explicit_delete(self):
         order=[]

@@ -69,6 +69,11 @@ ACL2_BOOKS ?= books/acceptance \
 	tests/acl2/index-tests \
 	books/bp-ingress \
 	tests/acl2/bp-ingress-tests \
+	books/bp-adu \
+	tests/acl2/bp-adu-tests \
+	books/bp-workflow \
+	books/bp-workflow-records \
+	tests/acl2/bp-workflow-records-tests \
 	books/journal \
 	tests/acl2/journal-tests \
 	books/exchange \

@@ -177,7 +177,9 @@
         "fn-cbor-accepted-input-is-canonical",
         "fn-record-round-trip",
         "fn-article-successful-parse-preserves-source",
-        "fn-record-accepted-input-is-canonical"
+        "fn-record-accepted-input-is-canonical",
+        "fn-bpa-round-trip",
+        "fn-bpa-success-is-canonical"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -192,9 +194,11 @@
         "books/records-canonicality.lisp",
         "tests/interop_cbor.py",
         "tests/evidence/2026-09-18-assurance.md",
-        "tests/evidence/2026-09-18-assurance.json"
+        "tests/evidence/2026-09-18-assurance.json",
+        "books/bp-adu.lisp",
+        "tests/evidence/2026-09-18-bp-workflow.md"
       ],
-      "progress_note": "Primitive and full schema-0 value round trips and accepted-input canonicality are certified. Exact article source preservation remains checked. An independent cbor2 6.1.4 run passed 38 cases. Native/batch/signature schemas and domain-separated preimages remain open."
+      "progress_note": "Primitive and full schema-0 value round trips and accepted-input canonicality are certified. Exact article source preservation remains checked. An independent cbor2 6.1.4 run passed 38 cases. Native/batch/signature schemas and domain-separated preimages remain open. Experimental BP request/receipt ADU roundtrip and exact accepted-input canonicality are also certified, without selecting D01/D09."
     },
     {
       "id": "PRF-006",
@@ -468,9 +472,14 @@
         "A-POLICY",
         "A-DURABILITY"
       ],
-      "status": "planned",
+      "status": "in-progress",
       "events": [],
-      "evidence": []
+      "evidence": [
+        "books/bp-workflow.lisp",
+        "tests/acl2/bp-workflow-records-tests.lisp",
+        "tests/evidence/2026-09-18-bp-workflow.md"
+      ],
+      "progress_note": "Executable sender work and matching receipt context are integrated with durable intent/outcome replay and concrete stale/retry/recovery assertions. General trace preservation, receiver durable receipt regeneration, real return transport and authenticated authorization remain separate work; no handoff theorem completion claimed."
     },
     {
       "id": "PRF-013",
