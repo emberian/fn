@@ -14,6 +14,12 @@ deterministic simulator runs the same acceptance functions. This is not yet a
 durable news service. See [implementation status](docs/implementation.md) for
 the exact scope and remaining proof/integration boundaries.
 
+A loopback-only experimental reader now serves a seeded article through the
+actual ACL2 core. Run `python3 tools/run_reader.py --port 8119` after certification.
+It supports reading, not posting or persistent storage. The
+[integrated evidence](tests/evidence/2026-09-18-integrated.md) records certification,
+socket tests, and an independent NNTP client probe.
+
 Start with the [project guide](docs/README.md), then the
 [architecture](docs/architecture.md) and [development plan](planning/milestones.md).
 The [decision register](planning/decisions.md) distinguishes agreed direction
@@ -50,6 +56,8 @@ and execute model traces with ACL2 8.7 / SBCL 2.6.8 installed:
 ```sh
 make certify
 python3 tools/run_simulator.py
+# or run certification, the simulator, and all Python tests together:
+make test
 ```
 
 See [implementation status](docs/implementation.md) for toolchain configuration

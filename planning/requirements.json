@@ -16,7 +16,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Logical payload bindings are immutable; real digest binding/collision handling remains open."
     },
     {
       "id": "OBJ-002",
@@ -32,7 +36,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Exact Message-ID strings, explicit node content subjects and local numbers are distinct in the models."
     },
     {
       "id": "OBJ-003",
@@ -62,7 +70,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Exchange retains competing content/provenance facts and reports conflict without arrival-time selection."
     },
     {
       "id": "OBJ-005",
@@ -78,7 +90,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Logical acceptance has atomic membership and general number/binding preservation proofs."
     },
     {
       "id": "OBJ-006",
@@ -123,7 +139,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Experimental CBOR primitives and vectors exist; all uint32 round trips are certified, byte-string proof remains open."
     },
     {
       "id": "ENC-002",
@@ -138,7 +158,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Bounded primitive decoder and wire retained-state checks exist; complete resource/work proof remains open."
     },
     {
       "id": "ENC-003",
@@ -201,7 +225,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Composed node publishes memberships and archive reservation together under an abstract durable event."
     },
     {
       "id": "STO-003",
@@ -216,7 +244,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Logical completions match transaction/generation; no actual persistence adapter yet."
     },
     {
       "id": "STO-004",
@@ -231,7 +263,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Acceptance and node models fence after uncertainty and require matching recovery."
     },
     {
       "id": "STO-005",
@@ -246,7 +282,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Journal crash experiments and scanner fault lemmas exist; no general recovery guarantee or physical store."
     },
     {
       "id": "STO-006",
@@ -304,7 +344,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Isolated-slot model includes barriers, lost/torn/reversed volatile writes; limited small-state subset traces."
     },
     {
       "id": "FLR-002",
@@ -319,7 +363,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Known absence versus uncertainty and stale completion traces are executable; real restart integration pending."
     },
     {
       "id": "FLR-003",
@@ -364,7 +412,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Pins participate in composite logical acceptance; on-disk obligation persistence pending."
     },
     {
       "id": "RET-002",
@@ -380,7 +432,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Abstract ledger and node refuse unaffordable obligations, including permanent history units; byte-accurate charging pending."
     },
     {
       "id": "RET-003",
@@ -412,7 +468,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Exact supplied evidence gates ledger release; real authorization and committed-receipt verification pending."
     },
     {
       "id": "RET-005",
@@ -457,7 +517,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Portable immutable fact model avoids local NNTP identity; no batch serialization yet."
     },
     {
       "id": "REP-002",
@@ -472,7 +536,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Duplicate/reordered whole-batch fact merging is tested/proved under explicit capacity/validation conditions."
     },
     {
       "id": "REP-003",
@@ -549,7 +617,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Laboratory reader advertises VERSION/IMPLEMENTATION only; complete planned bundle audit pending."
     },
     {
       "id": "NNT-002",
@@ -564,7 +636,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Reader subset implements cursor/error rules with fixed transcripts and helper proofs; full session refinement pending."
     },
     {
       "id": "NNT-003",
@@ -579,7 +655,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Bounded wire-state preservation, fixed-mode partition theorem, and event-yield/socket boundary tests exist."
     },
     {
       "id": "NNT-004",
@@ -628,7 +708,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Experimental reader projects committed acceptance state; complete reader ranges/index/durability integration pending."
     },
     {
       "id": "HST-001",
@@ -643,7 +727,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Simulator and loopback reader execute actual ACL2 definitions through a controlled subprocess; raw guard correspondence open."
     },
     {
       "id": "HST-002",
@@ -659,7 +747,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Single-owner logical transactions and bounded serial loopback bridge exercised; durable effects/production concurrency open."
     },
     {
       "id": "HST-003",
@@ -687,7 +779,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-integrated.md",
+        "tests/evidence/2026-09-18-integrated.json"
+      ],
+      "implementation_note": "Logical certification excludes program-mode host helpers; evidence documents trusted ACL2/runtime/adapter boundaries."
     },
     {
       "id": "SEC-001",

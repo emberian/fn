@@ -4,6 +4,10 @@ fn has executable ACL2 components and a deterministic simulator. It is still an
 experimental implementation: the components are not yet a durable, authenticated
 news service. The broader contracts in `specs/` remain the target.
 
+The [2026-09-18 integrated evidence](../tests/evidence/2026-09-18-integrated.md)
+records 19 certified logical/assertion books, the actual-core simulator, nine
+passing tooling/socket tests, and independent `nntplib` interoperability.
+
 ## Current components
 
 | Component | Executable scope | Remaining boundary |
@@ -13,13 +17,14 @@ news service. The broader contracts in `specs/` remain the target.
 | [Wire framing](../books/wire.lisp) | Incremental CRLF lines, dot stuffing, article terminators, bounded retained input | Session dispatch and command conformance are separate; the bulk feed helper alone cannot decide when to enter article mode |
 | [CBOR primitives](../books/cbor.lisp) | Deterministic uint32 and definite byte strings, canonicality checks, bounded decoding | No native object, signature, batch, or disk schema is frozen |
 | [Retention](../books/retention.lisp) | Finite abstract accounting, distinct archive/forward pins, evidence-gated release, permanent duplicate history | Evidence is already authorized input; charging units are abstract, not measured physical bytes |
-| [Node composition](../books/node.lisp) | One transaction stages acceptance and its reservation; completion publishes both with permanent article-to-pin bindings | Disk completion is still abstract; node release and journal integration remain open |
+| [Node composition](../books/node.lisp) and [invariants](../books/node-invariants.lisp) | One transaction stages acceptance and its reservation; completion publishes both with permanent article-to-pin bindings; general transition preservation proved | Disk completion is still abstract; node release and journal integration remain open |
 | [Journal](../books/journal.lisp) | Isolated record slots, barriers, surviving/torn volatile writes, explicit recovery faults | Integrity tags and a protected durable anchor are assumptions; no byte format, actual disk adapter, or general recovery theorem |
 | [Exchange](../books/exchange.lisp) | Bounded atomic admission of immutable fact sets; duplicate/reordered merging and conflict evidence | Authorization is supplied; no serialized/resumable transfer, signatures, or durable scheduler |
 | [NNTP reader](../books/nntp.lisp) | Experimental reader commands over committed state with independent response transcripts | Incomplete READER bundle, no POST, authentication, or signed injection |
 | [Simulator](../host/simulator.lisp) | Fixed traces executing the actual acceptance functions in ACL2 | No shadow semantics, network listener, or real disk adapter |
 
-Run the current integrated checks from the repository root:
+Run the integrated checks from the repository root with `make test`, or run
+their components separately:
 
 ```sh
 make check
@@ -73,6 +78,8 @@ contract has been established. Read theorem hypotheses as part of each claim.
 - There is no production deployment or flight qualification. The selected
   native-signature capability remains a requirement for the first usable release.
 
-The [current work page](../planning/now.md) records the active implementation
-batch. The [proof registry](../planning/proofs.json) keeps larger proof targets
-open while component results accumulate.
+The [current work page](../planning/now.md) records the checkpoint and next work.
+The [proof registry](../planning/proofs.json) keeps larger proof targets open
+while component results accumulate. Requirement entries retain `specified`
+where their complete contract is not implemented; `implementation_note` and
+evidence fields identify the actual partial progress.

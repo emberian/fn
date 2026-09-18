@@ -6,7 +6,7 @@ with Luna/Sol/Astra work and convergence in batches. Routine reversible choices
 are owned by the implementation team; public byte formats, cryptographic suites,
 and deployment remain explicitly separate decisions.
 
-## Current batch
+## Completed integrated checkpoint
 
 - Acceptance has certified initial-state, transition-preservation, immutable
   binding, and local-number uniqueness results. The theorem hypotheses retain
@@ -15,10 +15,16 @@ and deployment remain explicitly separate decisions.
   disconnected fact exchange, and an experimental NNTP reader have executable
   books and assertion tests. Their full subsystem contracts are still open.
 - The acceptance simulator executes the actual definitions in ACL2.
-- Current integration work connects retention to acceptance in one transaction
-  and runs the reader over a real loopback socket via an ACL2 process.
-- The current review repairs strengthen wire-state bounds, distinguish journal
-  sequence from transaction identity, and harden NNTP numeric/projection handling.
+- The node now connects retention and acceptance in one transaction, with
+  general transition preservation and article-to-pin binding proofs.
+- The reader runs over a real loopback socket via a persistent ACL2 process;
+  independent `nntplib` client traffic and the socket regression suite passed.
+- Review repairs strengthened wire-state bounds, distinguished journal sequence
+  from transaction identity, and hardened NNTP numeric/projection handling.
+
+`make test` passed the complete 19-book certification set, simulator, and nine
+Python tests. The [evidence record](../tests/evidence/2026-09-18-integrated.md)
+states exact source hashes, outcomes, proof scope, and remaining limitations.
 
 See [implementation status](../docs/implementation.md), the
 [proof registry](proofs.json), and [milestones](milestones.md) for scope. A
@@ -51,9 +57,11 @@ and retain concise evidence summaries and exact source hashes in the repository.
 
 ## Next substantial work
 
-After this integrated checkpoint: compose real bounded article injection and
-provenance with the reader; develop versioned storage bytes and a qualified disk
-adapter from the crash model; lift invariants through integration and guards.
+Next: compose real bounded article injection and provenance with the reader;
+develop versioned storage bytes and a qualified disk adapter from the crash model;
+lift invariants through journal integration, finite traces, and guards. The
+current node and journal are separate models: connecting them is a real next
+implementation task, not something implied by having certified both books.
 The next user-facing design discussion should use concrete native-versus-legacy
 article/signature byte examples (D01), then principal/key custody (D09).
 

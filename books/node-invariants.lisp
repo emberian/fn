@@ -113,3 +113,77 @@
   :hints (("Goal"
            :use fn-node-install-stage-preserves-state
            :in-theory (disable fn-install-pending))))
+
+(defthm fn-node-state-has-committed-archive-pins
+  (implies (fn-node-statep s)
+           (fn-node-articles-have-archive-bindingsp
+            (fn-state-articles (fn-node-acceptance s))
+            (fn-node-bindings s)
+            (fn-retain-pins (fn-node-retention s)))))
+
+(defthm fn-node-prepare-preserves-committed-archive-pins
+  (implies (fn-node-statep s)
+           (fn-node-articles-have-archive-bindingsp
+            (fn-state-articles
+             (fn-node-acceptance
+              (fn-node-prepare s generation msgid payload groups
+                               obligation-id subject evidence charge)))
+            (fn-node-bindings
+             (fn-node-prepare s generation msgid payload groups
+                              obligation-id subject evidence charge))
+            (fn-retain-pins
+             (fn-node-retention
+              (fn-node-prepare s generation msgid payload groups
+                               obligation-id subject evidence charge)))))
+  :hints (("Goal" :in-theory '(fn-node-prepare-preserves-state
+                               fn-node-state-has-committed-archive-pins))))
+
+(defthm fn-node-complete-preserves-committed-archive-pins
+  (implies (fn-node-statep s)
+           (fn-node-articles-have-archive-bindingsp
+            (fn-state-articles
+             (fn-node-acceptance (fn-node-complete s txid generation completion-status)))
+            (fn-node-bindings (fn-node-complete s txid generation completion-status))
+            (fn-retain-pins
+             (fn-node-retention (fn-node-complete s txid generation completion-status)))))
+  :hints (("Goal" :in-theory '(fn-node-complete-preserves-state
+                               fn-node-state-has-committed-archive-pins))))
+
+(defthm fn-node-recover-preserves-committed-archive-pins
+  (implies (fn-node-statep s)
+           (fn-node-articles-have-archive-bindingsp
+            (fn-state-articles
+             (fn-node-acceptance (fn-node-recover s txid generation recovery-result)))
+            (fn-node-bindings (fn-node-recover s txid generation recovery-result))
+            (fn-retain-pins
+             (fn-node-retention (fn-node-recover s txid generation recovery-result)))))
+  :hints (("Goal" :in-theory '(fn-node-recover-preserves-state
+                               fn-node-state-has-committed-archive-pins))))
+
+(defthm fn-node-find-binding-absent
+  (implies (not (member-equal msgid (fn-node-binding-msgids bindings)))
+           (equal (fn-node-find-binding msgid bindings) nil)))
+
+(defthm fn-node-prepare-preserves-bindings
+  (equal (fn-node-bindings
+          (fn-node-prepare s generation msgid payload groups
+                           obligation-id subject evidence charge))
+         (fn-node-bindings s)))
+
+(defthm fn-node-complete-preserves-existing-binding
+  (implies (and (fn-node-statep s)
+                (member-equal msgid (fn-node-binding-msgids (fn-node-bindings s))))
+           (equal (fn-node-find-binding
+                   msgid (fn-node-bindings
+                          (fn-node-complete s txid generation completion-status)))
+                  (fn-node-find-binding msgid (fn-node-bindings s))))
+  :hints (("Goal" :in-theory (disable fn-install-pending))))
+
+(defthm fn-node-recover-preserves-existing-binding
+  (implies (and (fn-node-statep s)
+                (member-equal msgid (fn-node-binding-msgids (fn-node-bindings s))))
+           (equal (fn-node-find-binding
+                   msgid (fn-node-bindings
+                          (fn-node-recover s txid generation recovery-result)))
+                  (fn-node-find-binding msgid (fn-node-bindings s))))
+  :hints (("Goal" :in-theory (disable fn-install-pending))))
