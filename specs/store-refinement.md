@@ -236,13 +236,15 @@ survives recovery, link `EIO` with no visible final name and fencing, allocator
 replace error, frontier ahead/behind history, failed recovery barrier followed by
 rebarrier, incomplete initialization recovery, staging orphans, bounds, sequence
 gaps, truncation/checksum/schema faults, symlinks, and writer-lock contention.
+An allocator directory-barrier failure after a successful replacement is also
+covered: recovery through the same Store object reloads the observed on-disk
+frontier, so the recovered core does not use its cached pre-error value.
 The completion-gate regression also covers rejection, a failed reply before core
 completion, and a lost reply after actual core completion: each leaves the host
 fenced and emits no success, while reopening retains the published article/pin.
 
 The executable model and its tests still need crash choices at every allocator
-and transaction step; allocator directory-barrier failure after a successful
-replace; transaction directory-barrier failure after a successful link; short
+and transaction step; transaction directory-barrier failure after a successful link; short
 writes and staging-file barrier failures; final-name collision; frontier
 truncation/checksum/symlink faults; filename/decoded-sequence mismatch; lost
 success followed by duplicate retry; multiple prior commits plus one uncertain

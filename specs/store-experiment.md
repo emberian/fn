@@ -79,6 +79,9 @@ reject a frontier behind committed history, restore the node's next transaction
 counter through `fn-replay-advance-txid`, and establish the observed frontier's
 data and namespace barriers before allowing another preparation. The adapter
 uses the reserved transaction ID as its completion generation.
+Recovery rereads the on-disk frontier while holding the store lock, including
+recovery through the same host object after an uncertain update. A cached
+pre-error frontier cannot substitute for the observed replacement.
 
 ## Recovery
 
