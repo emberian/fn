@@ -74,7 +74,7 @@ def local_include_books(book: str, source: Path) -> list[str]:
         reference, suffix = match.groups()
         # :dir selects an ACL2 system/project book, which is outside the local
         # source closure.  A bare include-book is local and must be pinned.
-        if re.search(r"\b:dir\b", suffix, re.IGNORECASE):
+        if re.search(r"(?<![A-Za-z0-9_-]):dir(?![A-Za-z0-9_-])", suffix, re.IGNORECASE):
             continue
         dependency_source = (source.parent / reference).with_suffix(".lisp").resolve()
         if not dependency_source.is_relative_to(ROOT):

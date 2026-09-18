@@ -1,7 +1,8 @@
 ; fn M1 retention ledger: executable, finite-capacity obligation accounting.
 ;
-; A pin charges capacity once per obligation.  This is intentionally
-; conservative: it does not deduplicate bytes shared by several obligations.
+; A pin charges capacity once per obligation, including one permanent abstract
+; history unit for the release record.  This is intentionally conservative: it
+; does not deduplicate bytes shared by several obligations.
 ; An implementation that deduplicates needs a correspondence argument before it
 ; can replace this ledger.  Evidence equality is an executable stand-in for an
 ; already authenticated and locally committed authorization event; this book
@@ -29,6 +30,8 @@
     t))
 
 ; Obligation: (identity immutable-subject kind required-evidence charge).
+; A positive charge includes at least one permanent history unit; the remaining
+; charge is active content/evidence retained while the obligation is pinned.
 (defun fn-retain-obligation-id (x) (car x))
 (defun fn-retain-obligation-subject (x) (car (cdr x)))
 (defun fn-retain-obligation-kind (x) (car (cdr (cdr x))))
@@ -117,7 +120,9 @@
 ; Ledger state and transitions
 
 ; State: (finite-capacity reserved active-pins release-records).  `reserved`
-; is stored explicitly and must equal the active per-obligation charge sum.
+; is stored explicitly and equals active charges plus one unit for every
+; permanent release record.  This ledger unit is not yet a byte-accurate
+; metadata layout, but it prevents unbounded release history at fixed capacity.
 (defun fn-retain-capacity (s) (car s))
 (defun fn-retain-reserved (s) (car (cdr s)))
 (defun fn-retain-pins (s) (car (cdr (cdr s))))
@@ -142,7 +147,8 @@
                                 (fn-retain-release-ids
                                  (fn-retain-releases s))))
        (equal (fn-retain-reserved s)
-              (fn-retain-sum (fn-retain-pins s)))
+              (+ (fn-retain-sum (fn-retain-pins s))
+                 (len (fn-retain-releases s))))
        (<= (fn-retain-reserved s) (fn-retain-capacity s))))
 
 (defun fn-retain-initial-state (capacity)
@@ -181,6 +187,7 @@
 ; The caller supplies evidence only after its authentication/authorization and
 ; durable-commit boundary.  A forwarding receipt and a local archive release
 ; have distinct kind/evidence values, so either cannot discharge the other.
+; Release retains the one-unit history charge; a charge of one frees no space.
 (defun fn-retain-release (s id subject kind evidence)
   (if (not (fn-retain-statep s))
       s
@@ -188,7 +195,7 @@
       (if (fn-retain-matching-releasep pin id subject kind evidence)
           (fn-retain-make-state
            (fn-retain-capacity s)
-           (- (fn-retain-reserved s) (fn-retain-obligation-charge pin))
+           (+ 1 (- (fn-retain-reserved s) (fn-retain-obligation-charge pin)))
            (fn-retain-remove-id id (fn-retain-pins s))
            (cons (fn-retain-make-release id subject kind evidence)
                  (fn-retain-releases s)))
@@ -224,6 +231,14 @@
                    (fn-retain-admit s id subject kind evidence charge))
                   (+ (fn-retain-reserved s) charge)))
   :hints (("Goal" :in-theory (enable fn-retain-admit))))
+
+(defthm fn-retain-admit-preserves-statep
+  (implies (fn-retain-statep s)
+           (fn-retain-statep
+            (fn-retain-admit s id subject kind evidence charge)))
+  :hints (("Goal" :in-theory (enable fn-retain-admit
+                                      fn-retain-admissiblep
+                                      fn-retain-statep))))
 
 (defthm fn-retain-admission-binds-subject-immutably
   (implies (fn-retain-admissiblep s id subject kind evidence charge)

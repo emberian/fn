@@ -79,10 +79,16 @@
         (mod n 256)))
 
 (defun fn-cbor-u32-bytes (n)
-  (list (floor n 16777216)
-        (mod (floor n 65536) 256)
-        (mod (floor n 256) 256)
-        (mod n 256)))
+  ; Successive quotient/remainder steps are extensionally the usual big-endian
+  ; base-256 decomposition.  Keeping the quotient chain explicit also gives
+  ; the executable definition a direct reconstruction proof.
+  (let* ((q0 (floor n 256))
+         (q1 (floor q0 256))
+         (q2 (floor q1 256)))
+    (list q2
+          (mod q1 256)
+          (mod q0 256)
+          (mod n 256))))
 
 (defun fn-cbor-u16-from (xs)
   (+ (* 256 (car xs))

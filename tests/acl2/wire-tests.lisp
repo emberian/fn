@@ -48,6 +48,13 @@
          (fn-wire-feed (fn-wire-result-state *fn-wire-overlong*) '(81 13 10)))
         nil))
 
+; A closed input state is an immediate no-op even when handed an arbitrary
+; suffix.  This checks that rejection does not cause unbounded tail traversal.
+(assert-event
+ (equal (fn-wire-feed (fn-wire-result-state *fn-wire-overlong*)
+                      '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16))
+        (fn-wire-make-result (fn-wire-result-state *fn-wire-overlong*) nil)))
+
 ; Bare LF and CR followed by a non-LF are malformed and close rather than
 ; resynchronizing to a body or command boundary.
 (defconst *fn-wire-bare-lf* (fn-wire-feed *fn-wire-empty* '(72 10 73 13 10)))
@@ -73,3 +80,23 @@
    (fn-wire-feed *fn-wire-article-start* '(120 13))
    '(10 46 13 10)))
 (assert-event (equal *fn-wire-partition-whole* *fn-wire-partition-split*))
+
+; A pull caller can stop after POST, change framing mode, and resume on the
+; unconsumed bytes of that exact socket chunk.  Thus POST's following article
+; cannot be misread as ordinary command text merely because both arrived at
+; once.  (POST itself remains outside this reader-only wire model.)
+(defconst *fn-wire-post-and-article*
+  '(80 79 83 84 13 10 72 105 13 10 46 13 10))
+(defconst *fn-wire-post-whole*
+  (fn-wire-next *fn-wire-empty* *fn-wire-post-and-article*))
+(assert-event (equal (fn-wire-next-event *fn-wire-post-whole*)
+                     '(:command (80 79 83 84))))
+(defconst *fn-wire-post-article-whole*
+  (fn-wire-next (fn-wire-begin-article (fn-wire-next-state *fn-wire-post-whole*))
+                (fn-wire-next-unconsumed *fn-wire-post-whole*)))
+(defconst *fn-wire-post-split*
+  (fn-wire-next *fn-wire-empty* '(80 79 83 84 13 10)))
+(defconst *fn-wire-post-article-split*
+  (fn-wire-next (fn-wire-begin-article (fn-wire-next-state *fn-wire-post-split*))
+                '(72 105 13 10 46 13 10)))
+(assert-event (equal *fn-wire-post-article-whole* *fn-wire-post-article-split*))
