@@ -12,7 +12,8 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import run_store  # noqa: E402
-from run_store import Acl2Store, Store, StoreFault, StoreIndeterminate, unframe  # noqa: E402
+from run_store import (Acl2Store, Store, StoreFault, StoreIndeterminate, frame,
+                       unframe)  # noqa: E402
 
 
 class StoreTests(unittest.TestCase):
@@ -65,6 +66,14 @@ class StoreTests(unittest.TestCase):
         inspected = self.invoke("inspect", "--message-id", "<literal@example.invalid>")
         self.assertEqual(inspected.stdout, payload)
 
+    def test_empty_payload_is_present_and_orphan_staging_is_ignored(self):
+        self.post("<empty@example.invalid>", b"")
+        (self.path / "staging" / ".orphan").write_bytes(b"not a transaction")
+        inspected = self.invoke("inspect", "--message-id", "<empty@example.invalid>")
+        self.assertEqual(inspected.returncode, 0)
+        self.assertEqual(inspected.stdout, b"")
+        self.assertIn(b"transactions=1 articles=1", self.invoke("status").stdout)
+
     def test_two_group_post_replays_both_allocations_and_one_pin(self):
         self.post("<two@example.invalid>", b"two", ("fn.letters", "fn.test"))
         with self.recovered_bridge() as bridge:
@@ -83,6 +92,23 @@ class StoreTests(unittest.TestCase):
         self.assertIn(b"conflicting immutable Message-ID", conflict.stderr)
         inspected = self.invoke("inspect", "--message-id", "<same@example.invalid>")
         self.assertEqual(inspected.stdout, original)
+
+    def test_duplicate_is_detected_before_full_transaction_limit(self):
+        self.post("<bound-duplicate@example.invalid>", b"same")
+        store = Store(self.path, writable=True)
+        bridge = None
+        try:
+            store.acquire()
+            bridge = Acl2Store()
+            store.recover(bridge)
+            store.config["max_transactions"] = 1
+            self.assertEqual(bridge.existing_action(b"<bound-duplicate@example.invalid>",
+                                                    b"same", [0]), "duplicate")
+            self.assertEqual(len(store.transaction_files()), 1)
+        finally:
+            if bridge is not None:
+                bridge.close()
+            store.close()
 
     def test_corruption_truncation_and_gap_fault_instead_of_prefix_recovery(self):
         self.post("<zero@example.invalid>", b"zero")
@@ -103,6 +129,28 @@ class StoreTests(unittest.TestCase):
                              cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
         self.assertEqual(gap.returncode, 2)
         self.assertIn(b"sequence gap", gap.stderr)
+
+    def test_checksum_unknown_schema_and_final_symlink_fault(self):
+        self.post("<flip@example.invalid>", b"flip")
+        transaction = self.path / "transactions" / "00000000000000000000.txn"
+        raw = bytearray(transaction.read_bytes())
+        raw[-1] ^= 1
+        transaction.write_bytes(raw)
+        self.assertIn(b"integrity", self.invoke("recover", expected=2).stderr)
+
+        other = Path(self.temp.name) / "unknown"
+        subprocess.run([sys.executable, "tools/run_store.py", "--store", str(other), "init"],
+                       cwd=ROOT, check=True, stdout=subprocess.PIPE)
+        (other / "transactions" / "00000000000000000000.txn").write_bytes(frame(b"unknown-schema"))
+        unknown = subprocess.run([sys.executable, "tools/run_store.py", "--store", str(other), "recover"],
+                                  cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+        self.assertEqual(unknown.returncode, 2)
+        (other / "transactions" / "00000000000000000000.txn").unlink()
+        os.symlink(other / "config.json", other / "transactions" / "00000000000000000000.txn")
+        symlink = subprocess.run([sys.executable, "tools/run_store.py", "--store", str(other), "recover"],
+                                  cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+        self.assertEqual(symlink.returncode, 2)
+        self.assertIn(b"symlink", symlink.stderr)
 
     def test_known_abort_before_publication_and_indeterminate_after_publication(self):
         aborted = self.post("<abort@example.invalid>", b"abort", ("fn.letters",),
@@ -205,6 +253,45 @@ class StoreTests(unittest.TestCase):
             if bridge is not None:
                 bridge.close()
             store.close()
+
+    def test_allocator_replace_error_and_frontier_replay_boundaries(self):
+        store = Store(self.path, writable=True)
+        try:
+            store.acquire()
+            with mock.patch("run_store.os.replace", side_effect=OSError(errno.EIO, "replace")):
+                with self.assertRaises(StoreIndeterminate):
+                    store.advance_frontier(0)
+            self.assertTrue(store.fenced)
+        finally:
+            store.close()
+
+        ahead = Store(self.path, writable=True)
+        ahead.initialize()
+        contents = ahead._frontier_with_checksum(3)
+        (self.path / "allocation-frontier.json").write_bytes(run_store.canonical_json(contents) + b"\n")
+        bridge = None
+        try:
+            ahead.acquire()
+            bridge = Acl2Store()
+            ahead.recover(bridge)
+            self.assertEqual(bridge.next_txid(), 3)
+        finally:
+            if bridge is not None:
+                bridge.close()
+            ahead.close()
+
+        (self.path / "allocation-frontier.json").write_bytes(
+            run_store.canonical_json(ahead._frontier_with_checksum(0)) + b"\n")
+        self.post("<frontier@example.invalid>", b"frontier")
+        (self.path / "allocation-frontier.json").write_bytes(
+            run_store.canonical_json(ahead._frontier_with_checksum(0)) + b"\n")
+        self.assertIn(b"rejected", self.invoke("recover", expected=2).stderr)
+
+    def test_initialize_refuses_missing_frontier_when_history_exists(self):
+        self.post("<history@example.invalid>", b"history")
+        (self.path / "allocation-frontier.json").unlink()
+        with self.assertRaises(StoreFault):
+            Store(self.path, writable=True).initialize()
 
     def test_failed_config_file_barrier_is_reestablished_during_recovery(self):
         path = Path(self.temp.name) / "init-barrier"
