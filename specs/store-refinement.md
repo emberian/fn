@@ -253,6 +253,8 @@ gaps, truncation/checksum/schema faults, symlinks, and writer-lock contention.
 An allocator directory-barrier failure after a successful replacement is also
 covered: recovery through the same Store object reloads the observed on-disk
 frontier, so the recovered core does not use its cached pre-error value.
+An injected transaction-read I/O error also leaves the recovery gate closed
+until a later complete scan/replay/rebarrier succeeds on the same object.
 The completion-gate regression also covers rejection, a failed reply before core
 completion, and a lost reply after actual core completion: each leaves the host
 fenced and emits no success, while reopening retains the published article/pin.

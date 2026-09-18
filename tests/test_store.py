@@ -294,6 +294,32 @@ class StoreTests(unittest.TestCase):
                 self.assertEqual(self.invoke("inspect", "--message-id", message_id).stdout,
                                  payload)
 
+    def test_recovery_scan_io_failure_keeps_gate_closed_until_success(self):
+        self.post("<scan@example.invalid>", b"retained")
+        store, bridge, _ = run_store.open_live_store(self.path, writable=True)
+        real_read = run_store.read_regular_bounded
+
+        def fail_transaction_read(path, maximum):
+            if Path(path).suffix == ".txn":
+                raise OSError(errno.EIO, "injected transaction read failure")
+            return real_read(path, maximum)
+
+        try:
+            self.assertFalse(store.fenced)
+            with mock.patch("run_store.read_regular_bounded", side_effect=fail_transaction_read):
+                with self.assertRaises(OSError):
+                    store.recover(bridge)
+            self.assertTrue(store.fenced)
+            with self.assertRaises(StoreIndeterminate):
+                store.advance_frontier(store.frontier)
+            store.recover(bridge)
+            self.assertFalse(store.fenced)
+            self.assertEqual(bridge.article_count(), 1)
+            self.assertEqual(bridge.pin_count(), 1)
+        finally:
+            bridge.close()
+            store.close()
+
     def test_allocator_replace_error_and_frontier_replay_boundaries(self):
         store = Store(self.path, writable=True)
         try:

@@ -535,6 +535,9 @@ class Store:
         return records
 
     def recover(self, acl2):
+        # Recovery owns the mutation gate from the start of scanning through
+        # the final barrier, including unexpected read/runtime failures.
+        self.fenced = True
         try:
             # A replacement may have become visible before its directory
             # barrier failed. Recover the observed frontier under the held
