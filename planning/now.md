@@ -79,44 +79,47 @@ has passed with 38 certified roots, the actual-core simulator and 32 Python test
 Source hashes were unchanged. Semantic fields, bounded transfer staging,
 file-kernel step/crash preservation and the real recovery-read fence are integrated.
 
-The current wave uses all 13 available slots (root plus 12 workers). One writer
-owns each new file set; shared base definitions remain stable unless root
-coordinates a concrete counterexample repair. Targeted certifications may run in
-parallel on independent new roots; root freezes and certifies their union once.
+The sixth [assurance checkpoint](../tests/evidence/2026-09-18-assurance.md)
+now records 54 certified roots, the simulator, 45 passing Python tests and 38
+independent CBOR cases. It retains the initial stale test expectations and their
+corrected recheck. General finite file traces, article recognizer/bounds,
+UTF-8/parser/DP correspondence, transfer state/assembly/hot-path work, record
+canonicality and all CBOR/record guards are integrated. Fault coverage includes
+47 injected rows, six process-death cuts and 211-state/9,038-edge exploration.
 
-| Owner/task | Completion criterion for this wave |
+The next closure batch is already progressing. One writer owns each file set;
+root integrates a frozen union. Targeted results below are not retroactively
+part of the 54-root evidence.
+
+| Owner | Current closure target and state |
 | --- | --- |
-| Sol: record canonicality | General successful exact record decoding re-encodes the original bytes |
-| Sol: file traces | Arbitrary finite kernel traces preserve state, stable history and earlier acknowledged records, including repeated crash/recovery |
-| Terra: adapter fault matrix | Enumerated before/after-effect syscall failures preserve prior commits, classify uncertainty correctly and fence/recover allocation |
-| Luna: process crashes | Deterministic actual process deaths at persistence boundaries preserve prior commits and identity allocation on reopen |
-| Terra: transfer preservation | General reserve/add-chunk transitions preserve state and capacity/count invariants |
-| Terra: transfer assembly | Complete candidates have exact declared length and agree with all retained chunk bytes |
-| Terra: article postconditions | Successful parsing establishes output recognizer and meaningful source/header/field bounds |
-| Terra: wire event API | Production event-yield step preserves state and accounts for consumed/unconsumed input |
-| Terra: NNTP sessions | General implemented dispatcher preserves the session recognizer and stated cursor consistency |
-| Terra: UTF-8/parser | Successful decode establishes scalar validity/progress/output bounds; parsed wildmat recognizer |
-| Astra: matcher correspondence | Actual DP wildcard matcher agrees with independent anchored semantics |
-| Luna: obligation map | Finite actionable inventory tying remaining claims to PRF/REQ/SCN IDs and closure criteria |
+| Astra | Mixed live file/node trace relation certified; extending it through Sol's pure refusal and known-abort transitions |
+| Sol | Pure refusal/abort transitions preserve live history, frontier and acknowledgements; article guard patch passed in isolation |
+| Terra | Real store/reader adapter uses the proved composition; fix and test callback uncertainty, stale finish and same-owner refusal/retry |
+| Terra | Observed-image loader certifies exact replay and zero fabricated recovery barriers; needed by host adoption |
+| Luna | Arbitrary finite node events preserve article bindings, local numbers and archive pins |
+| Terra | Full implemented NNTP dispatcher preserves session/cursor consistency; final proof composition underway |
+| Terra | Exchange ingest/count/refusal/evidence and policy-changing finite traces certified, with capacity-order counterexample |
+| Sol + Terra | Public transfer missing-range value projections certified; raw-input/profile polynomial bound in progress |
+| Terra | Actual wildmat DP cost correspondence and polynomial bound |
+| Sol | Wire guard graph certified in isolation, queued for next integrated batch |
+| Terra | Sixteen malformed-store/namespace/uncertain-tail cases pass; adapt to composed host before next batch |
+| Luna | Exact bridge partitions and real adapter reconnect cases pass; root review corrected socket-coalescing coverage |
 
-Root records evidence, fixes concrete integration/adapter findings, and updates
-registries. An assignment is not a proof or a completion claim. General guards,
-work bounds, live pending-node/file composition, actual adapter correspondence,
-physical qualification, authorization/signatures, and persistent exchange remain
-visible obligations; the inventory determines subsequent closure waves. No new
-permission ceremony or serial review chain is introduced.
+The [closure inventory](assurance-closure.md) retains the finite exit criteria.
+No completed helper is being used to close a wider unfinished row. Work proceeds
+through complete proof/integration tasks, with harder proof composition assigned
+to Sol/Astra and independent Terra/Luna work continuing.
 
 The [local persistence experiment](../specs/store-experiment.md) is integrated:
 bounded transaction bytes, replay, allocation across aborted process lifetimes,
 fault tests, and a read-only NNTP view. The [walkthrough](../docs/local-experiment.md)
 makes this checkpoint executable without treating it as the final news service.
 
-Next: compose bounded article parsing, injection, and provenance with the reader;
-complete the selected reader command profile; qualify/refine the existing disk
-adapter against the crash model; lift invariants through journal integration,
-finite traces, and guards. The
-current node and journal are separate models: connecting them is a real next
-implementation task, not something implied by having certified both books.
+Next: finish adoption of the composed immutable-file/node kernel, its failure
+traces and guard/work closure. Then integrate article injection/provenance and
+complete the selected reader profile. The isolated-slot journal is not the real
+adapter model; store-files/store-node are the selected refinement path.
 The next user-facing design discussion has
 [concrete native-versus-legacy byte examples](../docs/article-byte-examples.md)
 for D01, followed by principal/key custody (D09). These proposals do not silently

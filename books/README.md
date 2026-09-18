@@ -7,19 +7,20 @@ ACL2 events, not a separate specification implemented again in the host.
 | --- | --- |
 | `acceptance` | Local articles, group allocation, pending transactions, uncertainty fencing |
 | `acceptance-invariants` | General acceptance state/binding/number preservation |
-| `wire` | Incremental CRLF framing, dot transformation, event-yield boundary |
+| `wire`, `wire-invariants` | Incremental CRLF framing, dot transformation, event-yield state/suffix accounting |
 | `cbor`, `cbor-invariants` | Bounded experimental CBOR primitives and representation lemmas |
-| `records`, `records-invariants` | Provisional transaction-record codec and full value round trip |
-| `article`, `article-invariants` | Bounded syntax views and exact successful-parse source preservation |
+| `records`, `records-invariants`, `records-canonicality` | Guard-verified provisional codec, full value round trip and accepted-input canonicality |
+| `article`, `article-invariants`, `article-properties` | Syntax views, exact source preservation, successful-output recognizer and component bounds |
 | `article-fields` | Exact Message-ID and Newsgroups semantics over preserved article views; narrow proto-article routing checks |
-| `wildmat` | Bounded UTF-8 grammar and dynamic-programming matching |
+| `wildmat` and UTF-8/parser/matcher invariant books | Bounded grammar, scalar/progress safety, output recognition and DP/reference correspondence |
 | `retention`, `retention-invariants` | Finite reservation ledger, permanent history, explicit release evidence, and release preservation |
 | `node`, `node-invariants` | Transactional composition and preservation of acceptance, reservations, and article-to-pin bindings |
 | `replay`, `replay-invariants` | Actual-node record replay, monotone transaction counter advance, typed success/fault results |
 | `journal` | Abstract isolated slots, barriers, crash images, recovery experiments |
-| `store-files`, `store-files-invariants` | Immutable-file allocator/publication kernel, transition/crash preservation, stable-prefix and one-crash success retention |
+| `store-files`, `store-files-invariants`, `store-files-traces` | Immutable publication/allocator kernel, arbitrary finite trace state/history/success preservation |
+| `store-node`, `store-node-invariants` | Fixed configuration and actual node completion before acknowledgement, exact replay-extension correspondence |
 | `exchange` | Portable immutable facts, admissible bounded batches, conflict-preserving merge |
-| `transfer` | Reservation-bounded out-of-order octet staging, missing ranges, exact duplicates and unverified completion candidates |
+| `transfer` and invariant/assembly/work books | Reserved out-of-order staging, state/accounting and assembly/gap correctness, polynomial hot-path work |
 | `nntp` | Laboratory reader, LISTGROUP ranges and filtered LIST variants over committed acceptance state |
 
 `make certify` lists the current integrated dependency order explicitly. A

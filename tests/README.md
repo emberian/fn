@@ -6,8 +6,9 @@ end-to-end tests with stable IDs; partial model traces do not make those entire
 system scenarios pass. See [implementation status](../docs/implementation.md).
 
 Use `make test` for the current combined batch. The
-[fields/transfer/storage integration record](evidence/2026-09-18-fields-transfer.md) captures the latest
-passing source set and its precise scope; the
+[assurance checkpoint](evidence/2026-09-18-assurance.md) captures 54 passing
+certification roots, the simulator and 45 passing Python tests, including the
+original stale-test failure and its corrected recheck; the
 [first batch](evidence/2026-09-18-integrated.md) remains a historical snapshot.
 Individual commands are:
 

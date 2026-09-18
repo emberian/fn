@@ -32,7 +32,7 @@ probes supply different evidence from those pure transcripts.
 | §7.3, §7.5 | NEWGROUPS time forms, GMT/local semantics, group creation metadata | Unimplemented; requires persisted group creation/configuration facts, not invented dates |
 | §7.4 | NEWNEWS filtering/time forms | Deferred; no capability claim |
 | §7.6.1 | LIST defaults, keyword variants, syntax/availability errors, no state changes | Default, ACTIVE, NEWSGROUPS and filtered forms implemented; known unmaintained variants distinguish valid-arity 503 from malformed/unknown 501; general session refinement remains open |
-| §4, §§7.6.3/7.6.6 | Wildmat grammar/semantics and filtered ACTIVE/NEWSGROUPS | Bounded strict UTF-8 parser and dynamic-programming matcher integrated; RFC, malformed, boundary, socket and independent-client cases pass; general matcher/complexity proofs remain open |
+| §4, §§7.6.3/7.6.6 | Wildmat grammar/semantics and filtered ACTIVE/NEWSGROUPS | Bounded strict UTF-8 parser and dynamic-programming matcher integrated; RFC, malformed, boundary, socket and independent-client cases pass; general DP/reference equivalence, UTF-8 progress/scalar bounds and parser-output recognition are proved; work/guard and complete protocol refinements remain open |
 | §§8.1–8.4 | OVER by range/Message-ID/current, missing fields, byte/line metadata, OVERVIEW.FMT | Unimplemented; depends on the parsed article view and exact projection/metadata contract |
 | §§8.5–8.6 | HDR and LIST HEADERS | Deferred; no capability claim |
 

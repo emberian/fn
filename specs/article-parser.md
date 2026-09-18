@@ -81,5 +81,9 @@ parser reconstruction lemmas establish this by induction, beyond the constructor
 relation `source = header ++ CRLF ++ body`. The test suite also checks mixed
 folded/binary inputs and rejection boundaries. The
 [integrated evidence](../tests/evidence/2026-09-18-articles.md) records certification.
-The general output-recognizer theorem and work/allocation proofs remain open.
+The [property book](../books/article-properties.lisp) additionally proves that
+successful parsing establishes `fn-article-syntax-p`, source/body length at most
+32,768, header length at most 8,192 and at most 64 fields, from the sole success
+hypothesis. These results are in the [assurance checkpoint](../tests/evidence/2026-09-18-assurance.md).
+Full parser work/allocation proofs and other semantic fields remain open.
 None of these properties establishes full RFC article validity.
