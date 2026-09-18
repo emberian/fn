@@ -97,9 +97,12 @@ unknown or malformed LIST variants return 501.
 `tests/acl2/wildmat-tests.lisp` covers the §4.4 examples, whole-character
 multibyte `?`, negative/rightmost precedence, empty-star anchoring, grammar
 rejections, reserved punctuation, profile boundary lengths, a many-star input,
-and invalid UTF-8 classes.  The book contains the small certified fact that a
-star matches an empty target.  It does not yet prove the full parser grammar,
-UTF-8 decoder, DP recurrence, resource bound, or NNTP session refinement.
+and invalid UTF-8 classes.  The UTF-8/parser/matcher invariant books now prove successful-step Unicode
+scalar validity and strict progress, decoded output bounds, successful parser
+recognition, and actual DP equivalence to independent anchored semantics with
+rightmost precedence. These results are in the
+[assurance checkpoint](../tests/evidence/2026-09-18-assurance.md). Complete
+parser/matcher work bounds, guards and NNTP session refinement are separate work.
 
 `tests/acl2/nntp-tests.lisp`, socket tests, and the recovered-store independent
 `nntplib` probe add LIST filtering, malformed command, boundary, and session

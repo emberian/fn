@@ -9,8 +9,12 @@ experimental primitives. `books/cbor-invariants.lisp` proves full value round
 trips and exact accepted-input re-encoding for both supported types.
 `books/records.lisp` composes them into the provisional schema-0 transaction
 grammar described in the [storage experiment](store-experiment.md); its invariant
-book proves the full variable-record round trip. Record-level accepted-input
-canonicality and native/signature schemas remain open. The
+book proves the full variable-record round trip, and
+[record canonicality](../books/records-canonicality.lisp) proves every successful
+exact decode re-encodes the same octets. All 21 CBOR and 45 record functions have
+verified guards; public encode/decode boundaries retain guard T. The independent
+[CBOR probe](../docs/cbor-interop.md) covers 38 cases with cbor2. Native/signature
+schemas remain open. The
 primitive limits are local experiment bounds, not a permanent format decision.
 
 ## Layers

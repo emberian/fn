@@ -18,11 +18,12 @@ The local CLI now persists articles and archive obligations, and a loopback
 reader serves the recovered store through the actual ACL2 core. Follow the
 [local walkthrough](docs/local-experiment.md) to post, reopen, and read it.
 Network POST and native signatures remain unfinished. The
-[latest integration evidence](tests/evidence/2026-09-18-fields-transfer.md) records
-38 certified roots and 32 filesystem/socket/tooling tests. Earlier evidence
-retains independent NNTP client traffic, including LISTGROUP and filtered LIST.
-The current batch adds semantic article fields, bounded object assembly, and
-file-model step/crash preservation and one-crash retention proofs.
+[latest assurance evidence](tests/evidence/2026-09-18-assurance.md) records
+54 certified roots, 45 filesystem/socket/tooling tests, and 38 independent CBOR
+cases. It adds finite crash-trace preservation, live completion correspondence,
+codec guards/canonicality, parser/matcher properties, and transfer correctness.
+The [closure inventory](planning/assurance-closure.md) tracks the next obligations.
+Earlier evidence retains independent NNTP client traffic and maximum-profile replay.
 
 Start with the [project guide](docs/README.md), then the
 [architecture](docs/architecture.md) and [development plan](planning/milestones.md).

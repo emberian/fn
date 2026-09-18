@@ -97,9 +97,11 @@
         "books/store-files-invariants.lisp",
         "tests/test_store.py",
         "tests/evidence/2026-09-18-fields-transfer.md",
-        "tests/evidence/2026-09-18-fields-transfer.json"
+        "tests/evidence/2026-09-18-fields-transfer.json",
+        "tests/evidence/2026-09-18-assurance.md",
+        "tests/evidence/2026-09-18-assurance.json"
       ],
-      "execution_scope": "Partial: journal experiments, file-kernel crash forks and general step preservation, stable-prefix and one-crash success retention, plus actual publication/frontier/completion/recovery-read failures. Arbitrary traces, live node composition and physical power-loss qualification remain open."
+      "execution_scope": "Partial: arbitrary finite file-kernel trace/prefix/success retention, 211-state/9038-edge exhaustive bounded exploration, 47 injected adapter rows and six real process-death boundaries with duplicate retries. Actual live completion/replay correspondence is proved separately; full adapter adoption and power-loss qualification remain open."
     },
     {
       "id": "SCN-004",
@@ -356,9 +358,11 @@
         "tests/acl2/article-fields-tests.lisp",
         "tests/acl2/transfer-tests.lisp",
         "tests/evidence/2026-09-18-fields-transfer.md",
-        "tests/evidence/2026-09-18-fields-transfer.json"
+        "tests/evidence/2026-09-18-fields-transfer.json",
+        "tests/evidence/2026-09-18-assurance.md",
+        "tests/evidence/2026-09-18-assurance.json"
       ],
-      "execution_scope": "Partial: primitive/record vectors, full round trips, primitive canonicality, malformed stored bytes, exact article source preservation, semantic identity/routing field vectors and bounded UTF8 wildmat. Transfer zero/count/byte limits are exercised. No native/batch schema, complete resource proof or record canonicality composition yet."
+      "execution_scope": "Partial: primitive/schema-0 round trips and accepted-input canonicality, 38 independent cbor2 cases, malformed-store vectors, exact article preservation/recognized bounded syntax, semantic fields, UTF-8/wildmat correspondence, and CBOR/record guards. Native/batch/signature schema and full public resource proofs remain open."
     },
     {
       "id": "SCN-014",
@@ -426,9 +430,11 @@
         "books/store-files-invariants.lisp",
         "tests/test_store.py",
         "tests/evidence/2026-09-18-fields-transfer.md",
-        "tests/evidence/2026-09-18-fields-transfer.json"
+        "tests/evidence/2026-09-18-fields-transfer.json",
+        "tests/evidence/2026-09-18-assurance.md",
+        "tests/evidence/2026-09-18-assurance.json"
       ],
-      "execution_scope": "Partial: actual-core bridge/replay, stale/refused/lost completion handling, recovery-read/frontier fencing, file-kernel transition/crash proofs and snapshot reader locking. Live owner scheduling, complete backpressure model and adapter refinement remain open."
+      "execution_scope": "Partial: actual-core bridge/replay, rejected/lost completion gates, recovery fences and ownership lifecycle tests; arbitrary file traces and actual composed node completion/replay proofs. Complete live adapter adoption, scheduling/backpressure and byte/effect refinement remain open."
     },
     {
       "id": "SCN-016",

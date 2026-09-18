@@ -283,7 +283,10 @@ class StoreTests(unittest.TestCase):
                         run_store.command_post(args)
                 self.assertEqual(output.getvalue(), "")
                 self.assertTrue(store.fenced)
-                with self.assertRaises(StoreIndeterminate):
+                # command_post closes its owner even when completion fails.
+                # The ownership guard rejects this before the recovery fence.
+                self.assertIsNone(store.lock_fd)
+                with self.assertRaisesRegex(run_store.StoreError, "live exclusive store owner"):
                     store.advance_frontier(store.frontier)
                 # Actual publication survives both a rejected completion and
                 # a lost reply after the core completed. Recovery, not rollback,

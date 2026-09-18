@@ -111,11 +111,44 @@ acknowledged reopen, and both uncertain-link crash outcomes. Recovery of a
 present record creates content without inventing an acknowledgement; recovery
 of an absent record retains the consumed transaction frontier.
 
-The remaining global composition theorem is an inductive history/live-node
-relation covering every reachable mixed wrapper trace, including all allocator
-and uncertain-publication states. The general replay-extension theorem and
-actual-completion gate supplied here are its semantic steps, not a claim that
-this larger induction has already been certified. Host adoption, byte codec
-composition, POSIX refinement, guard verification, physical storage accounting,
-and platform durability remain separate work. No signature or content-hash
-correctness is asserted.
+The global history/live-node induction is now certified in
+[`books/store-node-traces.lisp`](../books/store-node-traces.lisp).
+`fn-snt-relation` strengthens the structural invariant according to phase:
+
+- Ready, allocator, and completed recovery phases have the exact replayed node
+  at the live frontier. A newly reserved transaction still has the preceding
+  frontier until actual preparation consumes its ID.
+- Before record publication, the actual pending node's abort resolution equals
+  current-history replay and its durable resolution equals extended-history
+  replay. The pending record binds all acceptance and retention fields.
+- After publication, actual durable completion equals replay of the now-durable
+  history, and the exact matching completion gate is enabled.
+- During `:replaying`, the process node is explicitly only a fresh diagnostic
+  node; successful recovery replaces it with actual replay. Fenced allocator,
+  record, and recovery states retain their corresponding relation. An
+  unrecoverable `:fault` is unreachable from this invariant under the kernel's
+  permitted crash model and admitted histories.
+
+Every exposed wrapper operation separately preserves this relation.
+`fn-snt-mixed-trace-preserves-live-history-relation` proves preservation by an
+arbitrary finite mixed trace of those actual operations, and
+`fn-snt-initialized-mixed-trace-has-live-history-relation` establishes the
+initialized case. The dispatcher only chooses existing wrapper operations;
+no transition tests the proposed relation of its output.
+
+`fn-snt-mixed-trace-ready-node-is-exact-replay` identifies the actual ready or
+recovered node with replay of its exact surviving history and frontier.
+`fn-snt-acknowledged-history-retained-through-mixed-trace` proves that every
+prior acknowledged pair remains acknowledged and has a covering durable record
+after the trace. These statements cover arbitrary finite sequences, not only
+the assertion vectors. The additional
+[`mixed-trace tests`](../tests/acl2/store-node-traces-tests.lisp) exercise an
+unused allocator ID, acknowledged reopen, and a later uncertain publication
+that recovers content without inventing an acknowledgement.
+
+The trace event vocabulary covers prepare, exposed file I/O, finish, crash,
+and replay recovery. Additional wrapper APIs require their own preservation
+steps before joining this theorem. Host adoption, observed-image loader
+composition, byte codecs, POSIX refinement, guard verification, physical storage
+accounting, and platform durability remain separate work. No signature or
+content-hash correctness is asserted.

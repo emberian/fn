@@ -92,11 +92,12 @@ under its own capacity/commit rules. The later persistence refinement must not
 infer durable fragment progress from a transport acknowledgement or in-memory
 state update.
 
-The current theorem scope is deliberately small: initialization produces a
-well-formed empty state, and invalid-state, invalid-chunk, and exact-duplicate
-paths preserve the prior state. The executable assertion book covers reordered
-fragments, duplicates, gaps, a conservative overlap conflict, boundaries,
-capacity/fragment-count limits, the explicit empty object, and Lisp-looking
-octets. These checks do not prove all transition preservation, bounded runtime
-on an ACL2 host, persistence, codec correctness, cryptography, or an
-interoperable transfer format.
+The [preservation book](../books/transfer-invariants.lisp) proves general reserve
+and add-chunk state/accounting preservation, including refusal paths. The
+[assembly book](../books/transfer-assembly-invariants.lisp) proves candidate
+length/octet/retained-byte agreement and exact missing positions. The
+[work contract](transfer-work.md) gives value-corresponding costed hot-path
+polynomial bounds; public validation/lookup and host runtime costs are separate.
+Assertion vectors cover reorder, duplicates, gaps, overlap, capacity/count
+limits, empty objects and Lisp-looking bytes. Persistence, codec/cryptographic
+validation and an interoperable transfer format remain composition work.

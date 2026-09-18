@@ -147,9 +147,11 @@
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-storage.md",
-        "tests/evidence/2026-09-18-storage.json"
+        "tests/evidence/2026-09-18-storage.json",
+        "tests/evidence/2026-09-18-assurance.md",
+        "tests/evidence/2026-09-18-assurance.json"
       ],
-      "implementation_note": "Full primitive and schema-0 variable-record round trips certified; primitive exact-input canonicality certified. Native schemas and record-level reverse canonicality remain open."
+      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Native schemas/signature preimages remain open."
     },
     {
       "id": "ENC-002",
@@ -172,9 +174,11 @@
         "tests/evidence/2026-09-18-articles.md",
         "tests/evidence/2026-09-18-articles.json",
         "tests/evidence/2026-09-18-wildmat-storage.md",
-        "tests/evidence/2026-09-18-wildmat-storage.json"
+        "tests/evidence/2026-09-18-wildmat-storage.json",
+        "tests/evidence/2026-09-18-assurance.md",
+        "tests/evidence/2026-09-18-assurance.json"
       ],
-      "implementation_note": "Bounded octet preflights and numeric-octet host marshalling; article source preservation; strict UTF8 wildmat grammar/DP matching and malformed/boundary vectors. Stored malformed data and caps tested. General work/allocation, decoder/matcher correspondence and output-recognizer proofs remain open."
+      "implementation_note": "Wire event accounting, article syntax recognition/component bounds, UTF-8 scalar/progress bounds, wildmat parser/matcher correspondence, and CBOR/record guard verification are certified. Untrusted input still uses bounded octet marshalling. Full parser work/allocation and host graph guards remain open."
     },
     {
       "id": "ENC-003",
@@ -271,9 +275,11 @@
         "tests/evidence/2026-09-18-wildmat-storage.json",
         "books/store-files-invariants.lisp",
         "tests/evidence/2026-09-18-fields-transfer.md",
-        "tests/evidence/2026-09-18-fields-transfer.json"
+        "tests/evidence/2026-09-18-fields-transfer.json",
+        "tests/evidence/2026-09-18-assurance.md",
+        "tests/evidence/2026-09-18-assurance.json"
       ],
-      "implementation_note": "Real barriers precede matching core completion and success. File-kernel transition/crash preservation and one-crash success retention are certified; arbitrary traces and physical adapter correspondence remain open."
+      "implementation_note": "Actual file/kernel completion ordering and arbitrary finite stable-history/success-prefix proofs are certified; composed live completion calls actual node semantics before acknowledgement. Real syscall/process-death tests pass. Full adapter adoption/refinement and qualified physical persistence remain open."
     },
     {
       "id": "STO-004",
@@ -296,9 +302,11 @@
         "books/store-files-invariants.lisp",
         "tests/test_store.py",
         "tests/evidence/2026-09-18-fields-transfer.md",
-        "tests/evidence/2026-09-18-fields-transfer.json"
+        "tests/evidence/2026-09-18-fields-transfer.json",
+        "tests/evidence/2026-09-18-assurance.md",
+        "tests/evidence/2026-09-18-assurance.json"
       ],
-      "implementation_note": "Host closes the mutation gate before recovery scanning and reopens it only after successful replay/rebarriers. Read-error, frontier, publication and completion failures preserve fencing. Model transition/crash preservation is certified; physical refinement remains open."
+      "implementation_note": "Recovery/read/publication/completion faults fence mutations; 47 injected cases and six process-death boundaries preserve the applicable obligations. Closed/read-only owners now reject mutation and lock lifecycle regressions pass. Live wrapper adoption and physical refinement remain open."
     },
     {
       "id": "STO-005",
@@ -320,9 +328,11 @@
         "tests/evidence/2026-09-18-storage.json",
         "books/store-files-invariants.lisp",
         "tests/evidence/2026-09-18-fields-transfer.md",
-        "tests/evidence/2026-09-18-fields-transfer.json"
+        "tests/evidence/2026-09-18-fields-transfer.json",
+        "tests/evidence/2026-09-18-assurance.md",
+        "tests/evidence/2026-09-18-assurance.json"
       ],
-      "implementation_note": "Actual record replay/reopen fault tests plus modeled stable-prefix, exact candidate survival, and one-crash acknowledged-record retention. Arbitrary-history survival, adapter refinement and hardware fault qualification remain open."
+      "implementation_note": "General finite file traces retain earlier acknowledged records under named stable-storage and ghost-history premises; 211-state/9038-edge bounded exploration, fault injection and actual process reopen/lost-success retries pass. Freshness, host composition and platform qualification remain open."
     },
     {
       "id": "STO-006",
@@ -613,9 +623,11 @@
         "tests/acl2/transfer-tests.lisp",
         "specs/transfer-experiment.md",
         "tests/evidence/2026-09-18-fields-transfer.md",
-        "tests/evidence/2026-09-18-fields-transfer.json"
+        "tests/evidence/2026-09-18-fields-transfer.json",
+        "tests/evidence/2026-09-18-assurance.md",
+        "tests/evidence/2026-09-18-assurance.json"
       ],
-      "implementation_note": "Bounded volatile object assembly reserves declared bytes and metadata slots, handles reordered fragments/duplicates/gaps/conflicts, and returns unverified candidates. Portable encoding, dependency closure, persistent progress and acceptance/receipt integration remain open."
+      "implementation_note": "Volatile staging has general reserve/add preservation, exact capacity/count accounting, candidate-byte and gap correctness, and polynomial costed hot-path bounds. Portable encoding, dependency closure, persistent progress and receipts remain open."
     },
     {
       "id": "REP-004",
@@ -844,9 +856,11 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-storage.md",
-        "tests/evidence/2026-09-18-storage.json"
+        "tests/evidence/2026-09-18-storage.json",
+        "tests/evidence/2026-09-18-assurance.md",
+        "tests/evidence/2026-09-18-assurance.json"
       ],
-      "implementation_note": "Experimental POSIX adapter implements explicit barriers, locking, allocation frontier, and uncertainty recovery with fault tests. Platform durability qualification remains open."
+      "implementation_note": "POSIX adapter has 47 enumerated syscall/completion fault rows, six process-death boundaries, ownership/lifecycle regressions and actual ACL2 reopen. Logical file and live completion correspondence are certified components. Hardware durability and complete host refinement remain open."
     },
     {
       "id": "HST-004",

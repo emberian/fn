@@ -87,8 +87,11 @@ The [reader/storage batch](../tests/evidence/2026-09-18-wildmat-storage.md) adds
 dedicated immutable-file publication kernel with one-use allocator reservations,
 crash choices, actual replay, and initial fence/gate proofs. The subsequent
 [invariant book](../books/store-files-invariants.lisp) proves step/crash
-preservation, stable-prefix retention, and one-crash success retention. Arbitrary
-traces, live node composition, and complete adapter refinement remain open.
+preservation, stable-prefix retention, and one-crash success retention. The [assurance checkpoint](../tests/evidence/2026-09-18-assurance.md) extends
+this to arbitrary finite file traces and actual live completion/replay
+correspondence, with systematic fault/process testing. Mixed live traces have
+since passed targeted certification; actual host adoption and physical
+qualification remain work.
 
 ## M3: first usable local news service
 
@@ -131,8 +134,8 @@ application acceptance remains distinguishable from transport delivery.
 Incremental evidence: the [object assembly experiment](../specs/transfer-experiment.md)
 stages out-of-order fragments with declared-byte and metadata-slot reservations,
 exact duplicates, missing ranges, conservative overlap conflicts, and explicit
-unverified candidates. It has certified definitions, initial/no-overwrite lemmas,
-and boundary vectors. Persistent transfer, complete-object/dependency validation,
+unverified candidates. It now has general reserve/add preservation, exact accounting, candidate/gap
+correctness, costed hot-path bounds and boundary vectors. Persistent transfer, complete-object/dependency validation,
 portable batches, receipts, and transport remain open.
 
 ## M5: bounded long-lived operation

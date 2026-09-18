@@ -1,14 +1,14 @@
 # Immutable-file store refinement contract
 
-Status: refinement design with a first executable publication/allocator kernel
-in [store-files.lisp](../books/store-files.lisp). The kernel uses actual
-`fn-replay`, explicit crash choices, one-use reservations, completion gating,
-and five recovery barriers. The [invariant book](../books/store-files-invariants.lisp)
-now proves transition/crash recognizer preservation, stable-record prefix
-preservation, exact candidate survival with frontier dominance, and one-crash
-acknowledged-record retention. Arbitrary traces, live node composition, and
-the physical adapter correspondence remain open. It does not qualify a platform,
-add checkpoints, or change the experimental disk format.
+Status: executable file publication/allocator and live-node composition, with
+conditional proofs and real adapter fault tests. The [file trace book](../books/store-files-traces.lisp)
+extends step/crash preservation to arbitrary finite histories and retains prior
+acknowledged records under its stated premises. The [live composition](store-node.md)
+uses actual node completion and replay; its mixed-trace proof is now separately
+certified. The [54-root checkpoint](../tests/evidence/2026-09-18-assurance.md)
+records the frozen subset before that last mixed-trace addition. Actual adapter
+adoption, byte/effect correspondence and platform qualification remain work;
+no checkpoint or experimental disk-format change follows from these proofs.
 
 ## Why the isolated-slot journal is not the adapter model
 
@@ -34,18 +34,20 @@ recovery rebarriers. Current journal theorems therefore do not establish adapter
 recovery. The smallest extension is a dedicated immutable-file machine; do not
 redesign the node, record codec, or `fn-replay`.
 
-## Proposed executable machine
+## Executable machine and composition
 
-Add one logical book, provisionally `books/store-files.lisp`. Keep it free of raw
-I/O. Its values are records already accepted by `fn-record-p`; byte/frame
-validation remains a separate refinement premise.
+`books/store-files.lisp` is the logical file kernel, free of raw I/O. Its values
+are records accepted by `fn-record-p`; byte/frame validation remains a separate
+refinement premise.
 
 The current kernel implements the publication/allocator phases below without
 storing a live pending node or fixed configuration in its state. It uses the
 existing replay functions for semantic admission/recovery, with groups/capacity
 as parameters. A matching live core completion remains an explicit observation.
-The complete state and correspondence below are therefore further work, not
-properties implied by the kernel's initial certification.
+The separate `store-node` composition now carries fixed configuration and an
+actual live node, closing that matching-completion premise through executable
+node transitions. The [composition contract](store-node.md) describes its phase
+relation and general trace proof; host adoption is a distinct integration step.
 
 The machine state contains:
 
@@ -261,12 +263,16 @@ The completion-gate regression also covers rejection, a failed reply before core
 completion, and a lost reply after actual core completion: each leaves the host
 fenced and emits no success, while reopening retains the published article/pin.
 
-The executable model and its tests still need crash choices at every allocator
-and transaction step; transaction directory-barrier failure after a successful link; short
-writes and staging-file barrier failures; final-name collision; frontier
-truncation/checksum/symlink faults; filename/decoded-sequence mismatch; lost
-success followed by duplicate retry; multiple prior commits plus one uncertain
-tail; and general trace proofs for the tested completion failures.
+The [fault matrix](store-fault-matrix.md) now covers 47 before/after-effect
+filesystem/completion rows, including partial/zero writes and all recovery
+barriers. Actual process deaths cover six publication/allocation/completion
+boundaries with lost-success duplicate retries. The [bounded explorer](store-exploration.md)
+exhausts 211 states and 9,038 edges, including allocator/record crash choices and
+recovery barrier counts. The [corruption matrix](store-corruption-matrix.md)
+adds malformed frontier/frame/namespace cases and multiple prior commits plus
+an uncertain tail. Its independent targeted result is subsequent to the frozen
+54-root checkpoint. Physical power-loss outcomes, freshness and all possible
+host/namespace interleavings are not established by these finite tests.
 
 For a rejected or lost durable completion, the adapter must close its mutation
 gate before calling the core and clear it only after the exact matching success.
