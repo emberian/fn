@@ -1,0 +1,10 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.venv/
+.cache/
+build/
+var/
+*.cert
+*.port
+*.fasl

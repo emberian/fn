@@ -1,0 +1,425 @@
+{
+  "schema_version": 1,
+  "description": "Future executable scenarios. Structural checking is not execution.",
+  "scenarios": [
+    {
+      "id": "SCN-001",
+      "title": "Letter through two relays and carried media",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "OBJ-003",
+        "OBJ-005",
+        "STO-002",
+        "STO-003",
+        "RET-001",
+        "RET-003",
+        "RET-004",
+        "REP-001",
+        "REP-003",
+        "REP-005",
+        "NNT-005"
+      ],
+      "steps": [
+        "Prepare a native signed letter offline with a stable Message-ID and two groups.",
+        "Accept locally, lose the reply, and retry.",
+        "Transfer to relay-a, lose its application receipt, and restart it.",
+        "Resume through relay-b and carried media; import overlapping batches.",
+        "Commit matching release evidence while retaining independent archive pins."
+      ],
+      "expected": [
+        "One article and one allocation per intended local membership.",
+        "Recovery restores obligations and permits receipt regeneration.",
+        "Local numbers may differ; transport reception does not imply human reading."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "SCN-002",
+      "title": "Atomic cross-post and duplicate acceptance",
+      "milestone": "M1",
+      "status": "specified",
+      "requirements": [
+        "OBJ-001",
+        "OBJ-002",
+        "OBJ-005",
+        "STO-002",
+        "NNT-005",
+        "NNT-006"
+      ],
+      "steps": [
+        "Prepare a two-group acceptance and observe before/after commit.",
+        "Retry the same identity and attempt a conflicting binding."
+      ],
+      "expected": [
+        "No partial membership is visible.",
+        "Retries allocate no numbers and do not overwrite accepted bytes.",
+        "Message-ID comparison is exact."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "SCN-003",
+      "title": "Crash matrix around durable acceptance",
+      "milestone": "M2",
+      "status": "specified",
+      "requirements": [
+        "STO-003",
+        "STO-004",
+        "STO-005",
+        "FLR-001",
+        "FLR-002",
+        "HST-003"
+      ],
+      "steps": [
+        "Crash at each object-write, namespace/barrier, commit-record, publication, and reply boundary.",
+        "Allow unsynced writes to tear/reorder within the selected model.",
+        "Recover and retry."
+      ],
+      "expected": [
+        "Modeled acknowledged commits survive; complete unacknowledged commits may survive.",
+        "No partial transaction is published.",
+        "Uncertainty fences mutations; platform assumptions are recorded."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "SCN-004",
+      "title": "Checkpoint and complete index reconstruction",
+      "milestone": "M2",
+      "status": "specified",
+      "requirements": [
+        "STO-001",
+        "STO-006",
+        "NNT-006"
+      ],
+      "steps": [
+        "Commit articles, allocations, obligations, receipts, and policy context.",
+        "Checkpoint and replay its suffix; rebuild indexes.",
+        "Compare exact lookups and ranges with full replay."
+      ],
+      "expected": [
+        "All future-relevant state is preserved.",
+        "Range results are complete, not just individually valid.",
+        "Checkpoint choice does not depend on wall-clock recency."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "SCN-005",
+      "title": "Interrupted compaction with active readers",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-007",
+        "RET-005",
+        "RET-006"
+      ],
+      "steps": [
+        "Create independent roots and pin a read on an old segment.",
+        "Compact under temporary-space pressure.",
+        "Crash around replacement publication and old-segment reclamation."
+      ],
+      "expected": [
+        "Protected dependencies and evidence survive.",
+        "No-space causes safe refusal, not forced deletion.",
+        "Active readers retain required bytes; history policy persists."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "SCN-006",
+      "title": "Corruption and old valid snapshots",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-008",
+        "FLR-003"
+      ],
+      "steps": [
+        "Inject detectable corruption in referenced content and committed metadata.",
+        "Attempt reading/recovery.",
+        "Separately replace the whole store by an older internally valid snapshot."
+      ],
+      "expected": [
+        "Detected damage follows an explicit fault/repair path.",
+        "Damaged content cannot generate fresh success.",
+        "Rollback detection is claimed only with an independent freshness anchor."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "SCN-007",
+      "title": "Capacity refusal and indefinite local retention",
+      "milestone": "M1",
+      "status": "specified",
+      "requirements": [
+        "RET-001",
+        "RET-002",
+        "RET-005"
+      ],
+      "steps": [
+        "Fill the configured article/metadata reservation budget.",
+        "Attempt new work.",
+        "Advance wall time without authorization, then release one eligible archive pin."
+      ],
+      "expected": [
+        "Unaffordable work is refused before acceptance.",
+        "Local archive pins do not expire automatically.",
+        "One release does not discharge unrelated obligations."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "SCN-008",
+      "title": "Lost, stale, and mismatched receipts",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "RET-003",
+        "RET-004",
+        "FLR-002"
+      ],
+      "steps": [
+        "Persist a successor undertaking and drop its reply.",
+        "Restart, retry, and regenerate the receipt.",
+        "Inject duplicates and wrong-subject/issuer/incarnation receipts."
+      ],
+      "expected": [
+        "Undertakings do not multiply or vanish on restart.",
+        "Only matching sufficient authorized evidence permits discharge.",
+        "Socket ACKs and transmission reports do not release obligations."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "SCN-009",
+      "title": "Reordered overlapping partial batches",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "OBJ-004",
+        "REP-001",
+        "REP-002",
+        "REP-003"
+      ],
+      "steps": [
+        "Import overlapping batches in several orders with duplicates.",
+        "Delay dependencies and resume partial objects.",
+        "Include competing claims under one news identity."
+      ],
+      "expected": [
+        "Validated fact sets converge under stated hypotheses.",
+        "Incomplete dependency closure has no complete-acceptance receipt.",
+        "Local policies/numbers may differ and conflict evidence persists."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "SCN-010",
+      "title": "Long asymmetric contacts and clock jumps",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "FLR-004",
+        "REP-004",
+        "REP-005",
+        "REP-006"
+      ],
+      "steps": [
+        "Queue letters and receipts during a long outage.",
+        "Offer a brief one-way contact using cached inventory, then a return contact.",
+        "Jump wall time and vary permitted capacity/fairness."
+      ],
+      "expected": [
+        "Useful bounded batches need no preliminary dialogue.",
+        "Clock jumps do not discharge promises or prove non-delivery.",
+        "Progress assumptions and BP/fn lifetime distinctions are explicit."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "SCN-011",
+      "title": "Restore incarnations and forks",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "OBJ-006",
+        "FLR-004"
+      ],
+      "steps": [
+        "Issue origin events and retain an older backup.",
+        "Restore/clone that backup after more events circulate.",
+        "Attempt issuance and exchange competing histories."
+      ],
+      "expected": [
+        "Restore discipline prevents unrecognized identity reuse under A-IDENTITY.",
+        "Fork evidence remains; timestamps do not settle authority."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "SCN-012",
+      "title": "Source variants, signatures, and authority",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "OBJ-003",
+        "OBJ-004",
+        "OBJ-007",
+        "ENC-003",
+        "NNT-004"
+      ],
+      "steps": [
+        "Import native signed content, gateway provenance, and legacy wire variants.",
+        "Change trace fields and separately change signed source content.",
+        "Present unrelated signatures and forged administrative requests."
+      ],
+      "expected": [
+        "Provenance categories remain distinct.",
+        "Signatures use the specified preimage.",
+        "Relay mutation and authored conflict are distinguished; unrelated signers gain no authority."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "SCN-013",
+      "title": "Codec vectors and hostile declarations",
+      "milestone": "M2",
+      "status": "specified",
+      "requirements": [
+        "ENC-001",
+        "ENC-002",
+        "ENC-003",
+        "ENC-004"
+      ],
+      "steps": [
+        "Round-trip schema boundary values.",
+        "Supply duplicate keys, alternate encodings, truncation, huge lengths, deep nesting, and unknown versions.",
+        "Compare bytes with an independent implementation."
+      ],
+      "expected": [
+        "Accepted values have the specified deterministic encodings.",
+        "Resource checks precede allocation; input is never evaluated as Lisp.",
+        "Unknown schemas cannot establish semantic authority."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "SCN-014",
+      "title": "NNTP cursor, capabilities, and framing",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "NNT-001",
+        "NNT-002",
+        "NNT-003",
+        "NNT-004",
+        "NNT-006"
+      ],
+      "steps": [
+        "Exercise advertised forms with a real reader and independent transcripts.",
+        "Partition CRLF, dot terminators, and articles across socket chunks.",
+        "Exercise empty/missing groups, IDs, cursors, ranges, wildmat, failed selection, and oversized input."
+      ],
+      "expected": [
+        "Capability claims match the audited profile.",
+        "Cursor/errors follow the checklist.",
+        "Socket partitions do not change meaning; rejected body tails do not become commands."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "SCN-015",
+      "title": "Host replay, stale completion, and backpressure",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "HST-001",
+        "HST-002",
+        "HST-003",
+        "HST-004",
+        "STO-003"
+      ],
+      "steps": [
+        "Replay traces in the model simulator and core/host integration.",
+        "Deliver stale/duplicate completions.",
+        "Force partial output and stalled readers."
+      ],
+      "expected": [
+        "Stale completions cannot publish another transaction.",
+        "Finishing writes does not rerun semantic transitions.",
+        "Effects remain bounded and the same core/declared trust boundary is used."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "SCN-016",
+      "title": "History pruning and ancient reimport",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "RET-005",
+        "RET-006",
+        "OBJ-005"
+      ],
+      "steps": [
+        "Release an eligible archive pin while retaining history.",
+        "Apply selected pruning rules and reimport old carried media.",
+        "Try to reuse an allocated local article number."
+      ],
+      "expected": [
+        "Reimport follows the explicit resurrection/admissibility policy.",
+        "No other article reuses an allocation.",
+        "Independent obligations and evidence survive visibility changes."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "SCN-017",
+      "title": "BP adapter acceptance separation",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "REP-003",
+        "REP-006",
+        "RET-003"
+      ],
+      "steps": [
+        "Carry a real versioned batch through a selected BP implementation.",
+        "Observe transport status before application acceptance.",
+        "Expire a bundle or interrupt its path and retry."
+      ],
+      "expected": [
+        "Transport status is not a retention undertaking.",
+        "Only validated complete application inputs receive matching receipts.",
+        "Adapter version, lifetime profile, and interoperability evidence are recorded."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "SCN-018",
+      "title": "Private-profile design and crypto integration exercise",
+      "milestone": "M1",
+      "status": "specified",
+      "requirements": [
+        "SEC-001",
+        "SEC-002",
+        "SEC-003",
+        "SEC-004"
+      ],
+      "steps": [
+        "Model trusted endpoints, opaque relay storage, and exposed metadata.",
+        "Walk through partitioned membership changes, delayed epochs, archive recovery, and secret-state rollback.",
+        "Compare candidate protocol requirements; later repeat using the selected implementation before shipping privacy."
+      ],
+      "expected": [
+        "D04/D09 choices have an explicit threat model and no invented ratchet construction.",
+        "Ciphertext obligations do not require indefinite retention of all group secrets.",
+        "Membership ordering, signatures, archive recovery, and metadata leakage have separate stated semantics.",
+        "M1 evidence is a design exercise only; actual private-profile integration remains a later release gate."
+      ],
+      "evidence": []
+    }
+  ]
+}
