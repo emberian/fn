@@ -13,6 +13,9 @@ The next [actual BP-to-fn receiver test](../tests/evidence/2026-09-18-bp-ingress
 also passed: receiver restart, exact article acceptance and a new-BID duplicate
 leave one recovered article/archive pin. Its sender is still a BPA fixture;
 durable fn sender work and receipt regeneration remain the next integration.
+The [bounded BPA boundary](../tests/evidence/2026-09-18-bpa-boundary.md) now caps
+raw downloads and extracted ADUs before the article path; the pinned upstream
+BP decoder remains an explicit trusted component.
 
 ## Product shape
 

@@ -1,38 +1,27 @@
 #!/usr/bin/env python3
 """Drive one real BPA bundle through the isolated ACL2 ingress host twice.
 
-The dtn7-rs CLI is used only as the bounded BPA adapter: inventory, a
-non-destructive BID download, and the explicit delete callback required by the
-existing ingress host.  Article interpretation and Store admission remain in
-run_bp_ingress's ACL2 path.
+The bounded local HTTP client downloads a raw bundle non-destructively. A small
+helper uses the pinned upstream BP decoder to extract its ADU. Article
+interpretation and Store admission remain in run_bp_ingress's ACL2 path.
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
 import json
-import os
 from pathlib import Path
-import re
 import subprocess
 import sys
 import tempfile
 
-MAX_BPA_INVENTORY = 8192
+
 MAX_BID_OCTETS = 512
-MAX_ADU_BYTES = 4 * 1024 * 1024
+MAX_ADU_BYTES = 32768
 
 
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-def run(command: list[str], *, output: Path | None = None) -> str:
-    completed = subprocess.run(command, check=True, text=True, stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE, env={**os.environ, "NO_PROXY": "*", "no_proxy": "*"})
-    if output is not None:
-        output.write_text(completed.stdout + completed.stderr)
-    return completed.stdout
 
 
 def load_ingress(path: Path):
@@ -50,6 +39,8 @@ def main() -> int:
     parser.add_argument("--store", required=True, type=Path)
     parser.add_argument("--journal", required=True, type=Path)
     parser.add_argument("--bpa-bin", required=True, type=Path)
+    parser.add_argument("--bpa-tools", required=True, type=Path)
+    parser.add_argument("--bpa-extractor", required=True, type=Path)
     parser.add_argument("--bpa-port", required=True, type=int)
     parser.add_argument("--bid", required=True)
     parser.add_argument("--expected-adu", required=True, type=Path)
@@ -70,44 +61,40 @@ def main() -> int:
     expected = args.expected_adu.read_bytes()
     if not expected or len(expected) > MAX_ADU_BYTES:
         raise ValueError("legacy article ADU exceeds lab boundary")
+    sys.path.insert(0, str(args.bpa_tools.resolve()))
+    import bpa_dtn7
     ingress = load_ingress(args.ingress_root.resolve())
     # The ingress bridge recovers an existing concrete Store image.  This lab
     # owns only the initial empty-image setup; every subsequent open, recovery,
     # allocation, and acceptance decision is the existing Store/ACL2 path.
     if not args.store.exists():
         ingress.run_store.Store(args.store, writable=True).initialize()
-    bpa = args.bpa_bin.resolve()
     args.artifact_dir.mkdir(parents=True, exist_ok=True)
 
+    client = bpa_dtn7.BpaDtn7Client(args.bpa_port, max_bundle_bytes=64 * 1024)
+
     def inventory() -> list[str]:
-        text = run([str(bpa / "dtnquery"), "-6", "-p", str(args.bpa_port), "bundles"])
-        begin = text.find("[")
-        if begin < 0:
-            raise RuntimeError("BPA inventory has no JSON list")
-        values = json.loads(text[begin:])
-        if (not isinstance(values, list) or len(values) > MAX_BPA_INVENTORY or
-                any(not isinstance(value, str) or not value or
-                    len(value.encode("ascii", "strict")) > MAX_BID_OCTETS for value in values)):
-            raise RuntimeError("BPA inventory violates lab bounds")
-        return values
+        return list(client.inventory())
 
     def download(bid: str) -> bytes:
-        # dtnrecv --bid maps to dtn7-rs /download and leaves the BPA copy in
-        # inventory.  The ingress journal itself owns durable inbox staging.
+        # Network response is bounded before allocation by bpa_dtn7.  The
+        # pinned helper then uses the same upstream bp7 parser as dtnrecv on
+        # an already bounded local raw file; it does not implement a codec.
         with tempfile.TemporaryDirectory(prefix="fn-bp-download-", dir=args.artifact_dir) as temporary:
-            target = Path(temporary) / "download.adu"
-            run([str(bpa / "dtnrecv"), "-6", "-p", str(args.bpa_port), "-b", bid,
-                 "-o", str(target)])
-            value = target.read_bytes()
-            if not value or len(value) > MAX_ADU_BYTES:
-                raise RuntimeError("BPA download violates ADU lab bound")
+            root = Path(temporary); raw_path = root / "bundle.cbor"; adu_path = root / "adu.bin"
+            raw_path.write_bytes(client.download_bundle(bid))
+            completed = subprocess.run([str(args.bpa_extractor), "--input", str(raw_path),
+                                        "--output", str(adu_path), "--max-payload", "32768"],
+                                       stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=10)
+            if completed.returncode != 0:
+                raise RuntimeError("pinned BP payload extractor refused downloaded bundle")
+            value = adu_path.read_bytes()
+            if not value or len(value) > 32768:
+                raise RuntimeError("extracted ADU violates ingress bound")
             return value
 
     def delete(bid: str) -> None:
-        # The ingress host calls this only after its journal reopen and ACL2
-        # durable success/duplicate predicate.  It is intentionally not an
-        # endpoint dequeue/pop operation.
-        run([str(bpa / "dtnrecv"), "-6", "-p", str(args.bpa_port), "-d", bid])
+        client.delete(bid)
 
     def state_snapshot(label: str) -> dict[str, object]:
         store, bridge, records = ingress.open_live_bp_store(args.store, writable=False)

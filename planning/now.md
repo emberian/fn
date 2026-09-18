@@ -161,3 +161,8 @@ The [article work batch](../tests/evidence/2026-09-18-article-work.md) passed al
 seven new roots. Complete public parser value correspondence and structural-work
 bounds now include malformed inputs and repeated prefix copies. Original parser
 sources are unchanged; physical allocation/runtime costs remain separate.
+
+The [bounded BPA receive boundary](../tests/evidence/2026-09-18-bpa-boundary.md)
+is integrated: capped HTTP inventory/raw download, pinned upstream payload
+extractor, eight mock cases and the repeated real acceptance/duplicate lab pass.
+Sender workflow preflight and restart fencing fixes are being integrated next.

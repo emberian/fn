@@ -692,7 +692,8 @@
       "evidence": [
         "tests/evidence/2026-09-18-bpv7-transport.md",
         "specs/bp-path.md",
-        "tests/evidence/2026-09-18-bp-ingress.md"
+        "tests/evidence/2026-09-18-bp-ingress.md",
+        "tests/evidence/2026-09-18-bpa-boundary.md"
       ],
       "implementation_note": "BPv7 is active M4 work alongside M3. Pinned dtn7-rs transport tests cover disconnection, clean restarts, duplicate suppression, non-destructive inbox staging and expiry. Actual fn workflow/receipt composition and LTP profiles remain open. The actual BP receiver now invokes ACL2 parsing/routing and composed Store publication; a distinct-BID retry preserves one article/archive pin after reopen. The sender in this test is a BPA fixture; durable sender work/receipts remain open."
     },

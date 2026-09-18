@@ -22,3 +22,10 @@ new-bundle/same-article duplicate recognition. It uses ports
 32301/32302/32311/32312 and requires the fn ACL2 books to have been certified.
 See [fn ingress evidence](../evidence/2026-09-18-bp-ingress.md). Its sender is a
 BPA with a fixture file; durable fn sender jobs and receipts are separate work.
+
+The fn ingress runner builds a small extra binary with
+`build_payload_extractor.sh`, using the pinned checkout's existing BP decoder.
+Its receive path uses `tools/bpa_dtn7.py` for bounded non-destructive HTTP
+download, then extracts the ADU from that local raw bundle. The
+[boundary evidence](../evidence/2026-09-18-bpa-boundary.md) records the byte caps,
+timeouts, mock HTTP cases and repeated real-BPA acceptance/duplicate test.

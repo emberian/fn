@@ -1,0 +1,122 @@
+{
+  "accepted": {
+    "bid": "dtn://bp-a/-843050573801-0",
+    "destination": "dtn://fn.lab/inbox",
+    "endpoint_pop_used": false,
+    "expected_adu_sha256": "86c9c00365a63022dec3ecc083a34b260146243772ded7b79213a0b0e806fff5",
+    "ingress_tool_sha256": "deaef5a4b218fd239cec5c8ce92e5fc8da6998d4119b21f221659193e85d242d",
+    "lifetime": 300,
+    "outcome": "accepted",
+    "phase": "accept",
+    "receipt_emitted": false,
+    "schema": 1,
+    "source_eid": "dtn://bp-a",
+    "state": {
+      "articles": 1,
+      "label": "accept",
+      "payload_matches": true,
+      "payload_sha256": "86c9c00365a63022dec3ecc083a34b260146243772ded7b79213a0b0e806fff5",
+      "pins": 1,
+      "records": 1
+    },
+    "workflow_journal_sha256": "bc0d039cdc671b945911920b7b01795f4301b2f37bcaf8b44b3b00426a006658"
+  },
+  "assertions": {
+    "distinct_real_transport_bids": true,
+    "endpoint_pop_used": false,
+    "first_acl2_outcome_accepted": true,
+    "receipt_emitted": false,
+    "receiver_restart_before_first_ingress": true,
+    "same_article_count": true,
+    "same_article_record_count": true,
+    "same_exact_adu_digest": true,
+    "same_retention_pin_count": true,
+    "second_acl2_outcome_duplicate": true
+  },
+  "bids": {
+    "accepted": "dtn://bp-a/-843050573801-0",
+    "duplicate_transport": "dtn://bp-a/-843050575874-0"
+  },
+  "bounds": {
+    "adu_octets": 32768,
+    "bid_octets": 512,
+    "extractor_timeout_seconds": 10,
+    "host": "::1",
+    "inventory_count": 8192,
+    "inventory_response_octets": 4210688,
+    "raw_bundle_octets": 65536,
+    "socket_timeout_seconds": 2
+  },
+  "commands": [
+    "DTN7_REPO=\"$PWD/build/bp-spike-work/dtn7-rs\" tests/bp-dtn7/run_fn_ingress_lab.sh",
+    "cargo build --release --locked -p dtn7 --bin fn_bpa_payload_extract",
+    "python3 -m unittest discover -s tests -p test_bpa_dtn7.py -v"
+  ],
+  "dtn7_revision": "4daf02d7ea927e9293753b2a5c4497457f6e5a40",
+  "duplicate": {
+    "bid": "dtn://bp-a/-843050575874-0",
+    "destination": "dtn://fn.lab/inbox",
+    "endpoint_pop_used": false,
+    "expected_adu_sha256": "86c9c00365a63022dec3ecc083a34b260146243772ded7b79213a0b0e806fff5",
+    "ingress_tool_sha256": "deaef5a4b218fd239cec5c8ce92e5fc8da6998d4119b21f221659193e85d242d",
+    "lifetime": 300,
+    "outcome": "duplicate",
+    "phase": "duplicate",
+    "receipt_emitted": false,
+    "schema": 1,
+    "source_eid": "dtn://bp-a",
+    "state": {
+      "articles": 1,
+      "label": "duplicate",
+      "payload_matches": true,
+      "payload_sha256": "86c9c00365a63022dec3ecc083a34b260146243772ded7b79213a0b0e806fff5",
+      "pins": 1,
+      "records": 1
+    },
+    "workflow_journal_sha256": "bc0d039cdc671b945911920b7b01795f4301b2f37bcaf8b44b3b00426a006658"
+  },
+  "fn_revision": "27071be6437758c4f4047a90d9431298574ecd9f",
+  "helper_binary_sha256": "baa1487dd4156ee0c75338b369b3d3541a5dae40f33bd4e132ebce63b355baf0",
+  "limitations": [
+    "The second operation is a new BP bundle containing byte-identical legacy article bytes; BPA BID is transport provenance, not article identity.",
+    "The exposed dtn7-rs /insert endpoint is an outbound send API, not an inbound raw-bundle injection interface.",
+    "The BPA endpoint dequeue/pop API was not used; no application receipt is created or implied.",
+    "This is a loopback lab profile and does not establish power-loss durability, authenticated transport, or receipt semantics.",
+    "Socket timeout bounds an individual blocking I/O operation, not an adversarially slow entire transfer.",
+    "The upstream BP decoder remains a trusted native parser; byte/output/time caps do not prove its allocation or CPU behavior.",
+    "Sender is a BPA fixture; this run has no fn sender workflow or application receipt."
+  ],
+  "mock_tests": {
+    "count": 8,
+    "seconds": 4.043,
+    "status": "passed"
+  },
+  "schema": 1,
+  "source_sha256": {
+    "host/bp-ingress-host.lisp": "6355579265f017144a99ed1b998d175f390bac15dea235abaf6ee3244960cf9c",
+    "tests/bp-dtn7/bp_fn_ingress_driver.py": "4007b45f39ac71e3311a6871703bddf93428ab130e6638f2d7d29b3e145da0f1",
+    "tests/bp-dtn7/build_payload_extractor.sh": "f742195d89b35af067adcb3a7c8aa2ad43ebb0f880623743ad99d446ac7ca1bf",
+    "tests/bp-dtn7/run_fn_ingress_lab.sh": "4d7eb0ebe4bc23c76d7ad598ea8e224e0cf5bb14d2506d174bb5823ef8e3bc4b",
+    "tests/test_bpa_dtn7.py": "24b7cd2965c2db039a738bf318b61b6ed000091c4d9f7fc65add9a97f40f0684",
+    "tools/bpa_dtn7.py": "24d974580666e74287c9f087f7f0ce47d499b20508c502495de1186b9449ce60",
+    "tools/bpa_payload_extract.rs": "4e6eee36bd65793cb7d229104059a59d26391ad682a65820e433cfd6a7f40881",
+    "tools/run_bp_ingress.py": "deaef5a4b218fd239cec5c8ce92e5fc8da6998d4119b21f221659193e85d242d",
+    "tools/workflow_journal.py": "bc0d039cdc671b945911920b7b01795f4301b2f37bcaf8b44b3b00426a006658"
+  },
+  "sources_sha256": {
+    "/Users/ember/dev/fn/tests/bp-dtn7/../../host/bp-ingress-host.lisp": "6355579265f017144a99ed1b998d175f390bac15dea235abaf6ee3244960cf9c",
+    "/Users/ember/dev/fn/tests/bp-dtn7/../../tools/run_bp_ingress.py": "deaef5a4b218fd239cec5c8ce92e5fc8da6998d4119b21f221659193e85d242d",
+    "/Users/ember/dev/fn/tests/bp-dtn7/../../tools/workflow_journal.py": "bc0d039cdc671b945911920b7b01795f4301b2f37bcaf8b44b3b00426a006658",
+    "/Users/ember/dev/fn/tests/bp-dtn7/bp_fn_ingress_driver.py": "4007b45f39ac71e3311a6871703bddf93428ab130e6638f2d7d29b3e145da0f1",
+    "/Users/ember/dev/fn/tests/bp-dtn7/run_fn_ingress_lab.sh": "4d7eb0ebe4bc23c76d7ad598ea8e224e0cf5bb14d2506d174bb5823ef8e3bc4b"
+  },
+  "status": "passed",
+  "versions": {
+    "cargo-version.txt": "cargo 1.98.0-nightly (a595d0da2 2026-06-20)",
+    "dtnd-version.txt": "dtn7-rs 0.21.0",
+    "dtnquery-version.txt": "dtn7 0.21.0",
+    "dtnrecv-version.txt": "dtn7 0.21.0",
+    "dtnsend-version.txt": "dtn7 0.21.0",
+    "python-version.txt": "Python 3.14.7"
+  }
+}
