@@ -167,3 +167,173 @@
                               fn-cbor-u16-from
                               fn-cbor-u32-bytes
                               fn-cbor-u32-from)))))
+
+(defthm fn-cbor-take-whole-list
+  (implies (true-listp xs)
+           (equal (take (len xs) xs) xs))
+  :hints (("Goal" :induct (len xs))))
+
+(defthm fn-cbor-nthcdr-whole-list
+  (implies (true-listp xs)
+           (equal (nthcdr (len xs) xs) nil))
+  :hints (("Goal" :induct (len xs))))
+
+(defthm fn-cbor-u16-prefix-fields
+  (and (consp (append (fn-cbor-u16-bytes n) xs))
+       (consp (cdr (append (fn-cbor-u16-bytes n) xs)))
+       (equal (cddr (append (fn-cbor-u16-bytes n) xs)) xs)
+       (equal (fn-cbor-u16-from (append (fn-cbor-u16-bytes n) xs))
+              (fn-cbor-u16-from (fn-cbor-u16-bytes n))))
+  :hints (("Goal" :in-theory (disable floor mod))))
+
+(defthm fn-cbor-byte-string-round-trip
+  (implies (and (fn-cbor-octet-listp xs)
+                (<= (len xs) *fn-cbor-max-bytes*))
+           (equal (fn-cbor-decode-exact
+                   (fn-cbor-encode (cons :bytes xs)))
+                  (fn-cbor-ok (cons :bytes xs) nil)))
+  :hints (("Goal"
+           :cases ((< (len xs) 24) (< (len xs) 256))
+           :use ((:instance fn-cbor-byte-encoding-fits-input-bound)
+                 (:instance fn-cbor-byte-encoding-are-octets))
+           :in-theory (disable fn-cbor-u16-bytes fn-cbor-u16-from
+                               fn-cbor-at-mostp fn-cbor-octet-listp
+                               take nthcdr))))
+
+(defthm fn-cbor-value-round-trip
+  (implies (fn-cbor-valuep value)
+           (equal (fn-cbor-decode-exact (fn-cbor-encode value))
+                  (fn-cbor-ok value nil)))
+  :hints (("Goal"
+           :use ((:instance fn-cbor-uint32-round-trip (n (cdr value)))
+                 (:instance fn-cbor-byte-string-round-trip (xs (cdr value))))
+           :in-theory (disable fn-cbor-encode fn-cbor-decode-exact))))
+
+; Local arithmetic normalization supports the inverse base-256 direction.
+(local (include-book "arithmetic/top" :dir :system))
+
+(defthm fn-cbor-u16-to-from-octets
+  (implies (and (fn-cbor-octet-listp xs)
+                (consp xs) (consp (cdr xs)))
+           (equal (fn-cbor-u16-bytes (fn-cbor-u16-from xs))
+                  (list (car xs) (cadr xs))))
+  :hints (("Goal"
+           :expand ((fn-cbor-octet-listp xs) (fn-cbor-octet-listp (cdr xs)))
+           :in-theory (e/d (associativity-of-* distributivity) (floor mod))
+           :nonlinearp t)))
+
+(defthm fn-cbor-u32-to-from-octets
+  (implies (and (fn-cbor-octet-listp xs)
+                (consp xs) (consp (cdr xs))
+                (consp (cddr xs)) (consp (cdddr xs)))
+           (equal (fn-cbor-u32-bytes (fn-cbor-u32-from xs))
+                  (list (car xs) (cadr xs) (caddr xs) (cadddr xs))))
+  :hints (("Goal"
+           :expand ((fn-cbor-octet-listp xs) (fn-cbor-octet-listp (cdr xs))
+                    (fn-cbor-octet-listp (cddr xs)) (fn-cbor-octet-listp (cdddr xs)))
+           :in-theory (e/d (associativity-of-* distributivity)
+                           (floor mod floor-floor-integer))
+           :nonlinearp t)))
+
+(defthm fn-cbor-take-and-rest-reconstruct
+  (implies (and (natp n) (<= n (len xs)))
+           (equal (append (take n xs) (nthcdr n xs)) xs))
+  :hints (("Goal" :induct (take n xs))))
+
+(defthm fn-cbor-take-has-length
+  (implies (natp n)
+           (equal (len (take n xs)) n))
+  :hints (("Goal" :induct (take n xs))))
+
+(defthm fn-cbor-take-preserves-octets
+  (implies (and (fn-cbor-octet-listp xs) (natp n) (<= n (len xs)))
+           (fn-cbor-octet-listp (take n xs)))
+  :hints (("Goal" :induct (take n xs))))
+
+(defthm fn-cbor-u16-from-bounds
+  (implies (and (fn-cbor-octet-listp xs)
+                (consp xs) (consp (cdr xs)))
+           (and (natp (fn-cbor-u16-from xs))
+                (< (fn-cbor-u16-from xs) 65536)))
+  :hints (("Goal"
+           :expand ((fn-cbor-octet-listp xs) (fn-cbor-octet-listp (cdr xs))))))
+
+(defthm fn-cbor-u32-from-bounds
+  (implies (and (fn-cbor-octet-listp xs)
+                (consp xs) (consp (cdr xs))
+                (consp (cddr xs)) (consp (cdddr xs)))
+           (and (natp (fn-cbor-u32-from xs))
+                (<= (fn-cbor-u32-from xs) *fn-cbor-max-uint*)))
+  :hints (("Goal"
+           :expand ((fn-cbor-octet-listp xs) (fn-cbor-octet-listp (cdr xs))
+                    (fn-cbor-octet-listp (cddr xs)) (fn-cbor-octet-listp (cdddr xs))))))
+
+(defthm fn-cbor-u16-from-upper-bound
+  (implies (and (fn-cbor-octet-listp xs)
+                (consp xs) (consp (cdr xs)))
+           (< (fn-cbor-u16-from xs) 65536))
+  :rule-classes :linear
+  :hints (("Goal" :use fn-cbor-u16-from-bounds)))
+
+(defthm fn-cbor-u32-from-upper-bound
+  (implies (and (fn-cbor-octet-listp xs)
+                (consp xs) (consp (cdr xs))
+                (consp (cddr xs)) (consp (cdddr xs)))
+           (<= (fn-cbor-u32-from xs) *fn-cbor-max-uint*))
+  :rule-classes :linear
+  :hints (("Goal" :use fn-cbor-u32-from-bounds)))
+
+(defthm fn-cbor-unsigned-reencode-prefix
+  (implies (and (fn-cbor-octet-listp tail)
+                (natp additional) (< additional 32)
+                (fn-cbor-result-okp (fn-cbor-decode-unsigned additional tail)))
+           (equal (append (fn-cbor-encode
+                           (fn-cbor-result-value
+                            (fn-cbor-decode-unsigned additional tail)))
+                          (fn-cbor-result-rest
+                           (fn-cbor-decode-unsigned additional tail)))
+                  (cons additional tail)))
+  :hints (("Goal" :in-theory (disable fn-cbor-u16-bytes fn-cbor-u16-from
+                                      fn-cbor-u32-bytes fn-cbor-u32-from))))
+
+(defthm fn-cbor-bytes-reencode-prefix
+  (implies (and (fn-cbor-octet-listp tail)
+                (natp additional) (< additional 32)
+                (fn-cbor-result-okp (fn-cbor-decode-bytes additional tail)))
+           (equal (append (fn-cbor-encode
+                           (fn-cbor-result-value
+                            (fn-cbor-decode-bytes additional tail)))
+                          (fn-cbor-result-rest
+                           (fn-cbor-decode-bytes additional tail)))
+                  (cons (+ 64 additional) tail)))
+  :hints (("Goal" :in-theory (disable fn-cbor-u16-bytes fn-cbor-u16-from
+                                      fn-cbor-u32-bytes fn-cbor-u32-from
+                                      take nthcdr))))
+
+; Successful streaming parses reconstruct exactly the consumed prefix and its
+; untouched remainder.  This covers arbitrary accepted input, not only encoder
+; output, so non-minimal representations cannot pass unnoticed.
+(defthm fn-cbor-decode-reencode-prefix
+  (implies (fn-cbor-result-okp (fn-cbor-decode octets))
+           (equal (append (fn-cbor-encode
+                           (fn-cbor-result-value (fn-cbor-decode octets)))
+                          (fn-cbor-result-rest (fn-cbor-decode octets)))
+                  octets))
+  :hints (("Goal"
+           :use ((:instance fn-cbor-unsigned-reencode-prefix
+                  (additional (car octets)) (tail (cdr octets)))
+                 (:instance fn-cbor-bytes-reencode-prefix
+                  (additional (- (car octets) 64)) (tail (cdr octets))))
+           :in-theory (disable fn-cbor-decode-unsigned fn-cbor-decode-bytes
+                               fn-cbor-encode fn-cbor-at-mostp))))
+
+(defthm fn-cbor-encoding-is-true-list
+  (true-listp (fn-cbor-encode value)))
+
+(defthm fn-cbor-accepted-input-is-canonical
+  (implies (fn-cbor-result-okp (fn-cbor-decode-exact octets))
+           (equal (fn-cbor-encode
+                   (fn-cbor-result-value (fn-cbor-decode-exact octets)))
+                  octets))
+  :hints (("Goal" :use fn-cbor-decode-reencode-prefix
+           :in-theory (disable fn-cbor-decode fn-cbor-encode))))
