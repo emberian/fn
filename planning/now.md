@@ -57,6 +57,12 @@ and retain concise evidence summaries and exact source hashes in the repository.
 
 ## Next substantial work
 
+The next active batch implements the [local persistence experiment](../specs/store-experiment.md):
+bounded transaction-record bytes, validated replay into the actual node, and a
+small real filesystem adapter/CLI with injected failures. Codec invariant work
+continues alongside it. The completed checkpoint above remains the latest
+integrated evidence until this new batch passes its own checks.
+
 Next: compose real bounded article injection and provenance with the reader;
 develop versioned storage bytes and a qualified disk adapter from the crash model;
 lift invariants through journal integration, finite traces, and guards. The
