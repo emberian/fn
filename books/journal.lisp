@@ -14,9 +14,10 @@
 ; survive intact and in order.  Volatile slots may be absent, torn, and appear
 ; in a different order.  This is not a claim about a real device.
 ;
-; The anchor is deliberately small: it names the greatest transaction for which
-; the host has already emitted success.  Thus a torn/missing acknowledged commit
-; is a recovery fault, while a complete but unanchored commit may be published.
+; The anchor is deliberately small: it names the latest (sequence . acceptance
+; txid) for which the host has already emitted success.  Thus a torn/missing
+; acknowledged commit is a recovery fault, while a complete but unanchored
+; commit may be published.
 ; No recovery rule consults a magical on-disk "acknowledged" flag.
 
 (in-package "ACL2")
@@ -39,7 +40,10 @@
     (null xs)))
 
 ; Live slots have an implementation-only durability field:
-; (:object txid object-id durability), (:commit txid referenced-object-ids durability).
+; (:object acceptance-txid object-id durability),
+; (:commit journal-sequence (acceptance-txid . referenced-object-ids) durability).
+; Journal sequence numbers order commit markers; acceptance txids are external
+; allocation metadata and may contain gaps after a known abort.
 (defun fn-journal-live-kind (slot) (car slot))
 (defun fn-journal-live-txid (slot) (car (cdr slot)))
 (defun fn-journal-live-data (slot) (car (cdr (cdr slot))))
@@ -48,8 +52,14 @@
 (defun fn-journal-make-live-object (txid object-id durability)
   (list :object txid object-id durability))
 
-(defun fn-journal-make-live-commit (txid refs durability)
-  (list :commit txid refs durability))
+(defun fn-journal-make-live-commit (sequence txid refs durability)
+  (list :commit sequence (cons txid refs) durability))
+
+(defun fn-journal-live-commit-txid (slot)
+  (car (fn-journal-live-data slot)))
+
+(defun fn-journal-live-commit-refs (slot)
+  (cdr (fn-journal-live-data slot)))
 
 (defun fn-journal-live-slotp (slot)
   (and (true-listp slot)
@@ -59,7 +69,9 @@
        (if (equal (fn-journal-live-kind slot) :object)
            (natp (fn-journal-live-data slot))
          (and (equal (fn-journal-live-kind slot) :commit)
-              (fn-journal-id-listp (fn-journal-live-data slot))))))
+              (consp (fn-journal-live-data slot))
+              (natp (fn-journal-live-commit-txid slot))
+              (fn-journal-id-listp (fn-journal-live-commit-refs slot))))))
 
 (defun fn-journal-live-listp (slots)
   (if (consp slots)
@@ -76,8 +88,14 @@
 (defun fn-journal-make-physical-object (txid object-id integrity)
   (list :object txid object-id integrity))
 
-(defun fn-journal-make-physical-commit (txid refs integrity)
-  (list :commit txid refs integrity))
+(defun fn-journal-make-physical-commit (sequence txid refs integrity)
+  (list :commit sequence (cons txid refs) integrity))
+
+(defun fn-journal-physical-commit-txid (slot)
+  (car (fn-journal-physical-data slot)))
+
+(defun fn-journal-physical-commit-refs (slot)
+  (cdr (fn-journal-physical-data slot)))
 
 (defun fn-journal-physical-slotp (slot)
   (and (true-listp slot)
@@ -87,7 +105,9 @@
        (if (equal (fn-journal-physical-kind slot) :object)
            (natp (fn-journal-physical-data slot))
          (and (equal (fn-journal-physical-kind slot) :commit)
-              (fn-journal-id-listp (fn-journal-physical-data slot))))))
+              (consp (fn-journal-physical-data slot))
+              (natp (fn-journal-physical-commit-txid slot))
+              (fn-journal-id-listp (fn-journal-physical-commit-refs slot))))))
 
 (defun fn-journal-materialize (slot integrity)
   (if (equal (fn-journal-live-kind slot) :object)
@@ -95,7 +115,8 @@
                                        (fn-journal-live-data slot)
                                        integrity)
     (fn-journal-make-physical-commit (fn-journal-live-txid slot)
-                                     (fn-journal-live-data slot)
+                                     (fn-journal-live-commit-txid slot)
+                                     (fn-journal-live-commit-refs slot)
                                      integrity)))
 
 ; -----------------------------------------------------------------------------
@@ -112,7 +133,8 @@
                      (fn-journal-live-data (car slots)) :durable)
                   (fn-journal-make-live-commit
                    (fn-journal-live-txid (car slots))
-                   (fn-journal-live-data (car slots)) :durable))
+                   (fn-journal-live-commit-txid (car slots))
+                   (fn-journal-live-commit-refs (car slots)) :durable))
               (car slots))
             (fn-journal-set-durable (cdr slots)))
     nil))
@@ -140,20 +162,55 @@
            (fn-journal-durable-referencesp txid (cdr refs) slots))
     t))
 
-(defun fn-journal-durable-commitp (txid slots)
+(defun fn-journal-durable-sequencep (sequence slots)
   (if (consp slots)
       (or (and (equal (fn-journal-live-kind (car slots)) :commit)
-               (equal txid (fn-journal-live-txid (car slots)))
-               (equal (fn-journal-live-durability (car slots)) :durable))
-          (fn-journal-durable-commitp txid (cdr slots)))
+               (equal sequence (fn-journal-live-txid (car slots)))
+               (equal (fn-journal-live-durability (car slots)) :durable)
+               (fn-journal-durable-referencesp
+                (fn-journal-live-commit-txid (car slots))
+                (fn-journal-live-commit-refs (car slots)) slots))
+          (fn-journal-durable-sequencep sequence (cdr slots)))
     nil))
 
-(defun fn-journal-commit-seenp (txid slots)
+(defun fn-journal-durable-sequence-prefixp (sequence slots)
+  (if (zp sequence)
+      t
+    (and (fn-journal-durable-sequencep (1- sequence) slots)
+         (fn-journal-durable-sequence-prefixp (1- sequence) slots))))
+
+(defun fn-journal-durable-commitp (sequence txid slots)
   (if (consp slots)
       (or (and (equal (fn-journal-live-kind (car slots)) :commit)
-               (equal txid (fn-journal-live-txid (car slots))))
-          (fn-journal-commit-seenp txid (cdr slots)))
+               (equal sequence (fn-journal-live-txid (car slots)))
+               (equal txid (fn-journal-live-commit-txid (car slots)))
+               (equal (fn-journal-live-durability (car slots)) :durable)
+               (fn-journal-durable-referencesp txid
+                                                (fn-journal-live-commit-refs (car slots))
+                                                slots)
+               (fn-journal-durable-sequence-prefixp sequence slots))
+          (fn-journal-durable-commitp sequence txid (cdr slots)))
     nil))
+
+(defun fn-journal-commit-seenp (sequence slots)
+  (if (consp slots)
+      (or (and (equal (fn-journal-live-kind (car slots)) :commit)
+               (equal sequence (fn-journal-live-txid (car slots))))
+          (fn-journal-commit-seenp sequence (cdr slots)))
+    nil))
+
+(defun fn-journal-commit-txid-seenp (txid slots)
+  (if (consp slots)
+      (or (and (equal (fn-journal-live-kind (car slots)) :commit)
+               (equal txid (fn-journal-live-commit-txid (car slots))))
+          (fn-journal-commit-txid-seenp txid (cdr slots)))
+    nil))
+
+(defun fn-journal-count-commits (slots)
+  (if (consp slots)
+      (+ (if (equal (fn-journal-live-kind (car slots)) :commit) 1 0)
+         (fn-journal-count-commits (cdr slots)))
+    0))
 
 (defun fn-journal-stage-object (slots txid object-id)
   (if (and (fn-journal-live-listp slots)
@@ -164,12 +221,14 @@
 
 ; A commit marker cannot even be staged until all of its named objects have
 ; crossed an earlier barrier.  A second barrier is needed before acknowledgement.
-(defun fn-journal-stage-commit (slots txid refs)
+(defun fn-journal-stage-commit (slots sequence txid refs)
   (if (and (fn-journal-live-listp slots)
-           (natp txid) (fn-journal-id-listp refs)
+           (natp sequence) (natp txid) (fn-journal-id-listp refs)
+           (equal sequence (fn-journal-count-commits slots))
            (fn-journal-durable-referencesp txid refs slots)
-           (not (fn-journal-commit-seenp txid slots)))
-      (append slots (list (fn-journal-make-live-commit txid refs :volatile)))
+           (not (fn-journal-commit-seenp sequence slots))
+           (not (fn-journal-commit-txid-seenp txid slots)))
+      (append slots (list (fn-journal-make-live-commit sequence txid refs :volatile)))
     slots))
 
 (defun fn-journal-barrier (slots)
@@ -186,14 +245,15 @@
 (defun fn-journal-host-statusp (x)
   (or (equal x :durable) (equal x :aborted) (equal x :indeterminate)))
 
-(defun fn-journal-completion-action (slots txid status)
+(defun fn-journal-completion-action (slots sequence txid status)
   (if (not (fn-journal-host-statusp status))
       :ignore
     (if (equal status :indeterminate)
         :recover
       (if (equal status :aborted)
           :known-abort
-        (if (and (natp txid) (fn-journal-durable-commitp txid slots))
+        (if (and (natp sequence) (natp txid)
+                 (fn-journal-durable-commitp sequence txid slots))
             :acknowledge
           :ignore)))))
 
@@ -269,12 +329,14 @@
 
 ; -----------------------------------------------------------------------------
 ; Recovery.  A durable anchor is `:none` before any acknowledgement, otherwise
-; a natural transaction number.  It is supplied by the recovery environment,
-; not inferred from the success process's RAM.  A real adapter needs a separate
-; protected anchor/generation mechanism before it may instantiate this model.
+; (journal-sequence . acceptance-txid).  It is supplied by the recovery
+; environment, not inferred from the success process's RAM.  A real adapter
+; needs a separately protected anchor/generation mechanism before it may
+; instantiate this model.
 
 (defun fn-journal-anchorp (x)
-  (or (equal x :none) (natp x)))
+  (or (equal x :none)
+      (and (consp x) (natp (car x)) (natp (cdr x)))))
 
 (defun fn-journal-object-seenp (txid object-id objects)
   (if (consp objects)
@@ -289,8 +351,8 @@
            (fn-journal-references-seenp txid (cdr refs) objects))
     t))
 
-(defun fn-journal-result-ok (txids)
-  (list :ok txids))
+(defun fn-journal-result-ok (commits)
+  (list :ok commits))
 
 (defun fn-journal-result-fault (code)
   (list :fault code))
@@ -298,19 +360,19 @@
 (defun fn-journal-result-okp (x)
   (and (true-listp x) (equal (len x) 2) (equal (car x) :ok)))
 
-(defun fn-journal-result-txids (x) (car (cdr x)))
+(defun fn-journal-result-commits (x) (car (cdr x)))
 
-; `next` enforces whole, contiguous transactions.  Torn slots can be ignored
+; `next` enforces whole, contiguous journal sequences.  Torn slots can be ignored
 ; only because a surviving later commit must still pass this gap/dependency
 ; check.  An intact duplicate object is reported as corruption, never silently
 ; selected by a last-writer-wins rule.
-(defun fn-journal-scan (image next objects txids)
+(defun fn-journal-scan (image next objects commits)
   (if (consp image)
       (let ((slot (car image)))
         (if (not (fn-journal-physical-slotp slot))
             (fn-journal-result-fault :malformed-slot)
           (if (equal (fn-journal-physical-integrity slot) :torn)
-              (fn-journal-scan (cdr image) next objects txids)
+              (fn-journal-scan (cdr image) next objects commits)
             (if (equal (fn-journal-physical-kind slot) :object)
                 (if (fn-journal-object-seenp (fn-journal-physical-txid slot)
                                             (fn-journal-physical-data slot)
@@ -320,20 +382,24 @@
                    (cdr image) next
                    (cons (cons (fn-journal-physical-txid slot)
                                (fn-journal-physical-data slot)) objects)
-                   txids))
+                   commits))
               (if (not (equal (fn-journal-physical-txid slot) next))
                   (fn-journal-result-fault :commit-gap)
                 (if (fn-journal-references-seenp
-                     next (fn-journal-physical-data slot) objects)
-                    (fn-journal-scan (cdr image) (1+ next) objects
-                                     (append txids (list next)))
+                     (fn-journal-physical-commit-txid slot)
+                     (fn-journal-physical-commit-refs slot) objects)
+                    (fn-journal-scan
+                     (cdr image) (1+ next) objects
+                     (append commits
+                             (list (cons next
+                                         (fn-journal-physical-commit-txid slot)))))
                   (fn-journal-result-fault :missing-dependency)))))))
-    (fn-journal-result-ok txids)))
+    (fn-journal-result-ok commits)))
 
-(defun fn-journal-anchor-satisfiedp (anchor txids)
+(defun fn-journal-anchor-satisfiedp (anchor commits)
   (if (equal anchor :none)
       t
-    (member-equal anchor txids)))
+    (member-equal anchor commits)))
 
 (defun fn-journal-recover (image anchor)
   (if (not (fn-journal-anchorp anchor))
@@ -341,7 +407,7 @@
     (let ((answer (fn-journal-scan image 0 nil nil)))
       (if (and (fn-journal-result-okp answer)
                (fn-journal-anchor-satisfiedp anchor
-                                             (fn-journal-result-txids answer)))
+                                             (fn-journal-result-commits answer)))
           answer
         (if (fn-journal-result-okp answer)
             (fn-journal-result-fault :ack-gap)
@@ -356,7 +422,7 @@
 (defun fn-journal-no-published-txsp (answers)
   (if (consp answers)
       (and (or (not (fn-journal-result-okp (car answers)))
-               (equal (fn-journal-result-txids (car answers)) nil))
+               (equal (fn-journal-result-commits (car answers)) nil))
            (fn-journal-no-published-txsp (cdr answers)))
     t))
 
@@ -369,37 +435,53 @@
          (fn-journal-result-ok nil)))
 
 (defthm fn-journal-indeterminate-forces-recovery
-  (equal (fn-journal-completion-action slots txid :indeterminate)
+  (equal (fn-journal-completion-action slots sequence txid :indeterminate)
          :recover))
 
+(defthm fn-journal-durable-marker-can-acknowledge
+  (implies (and (natp sequence) (natp txid)
+                (fn-journal-durable-commitp sequence txid slots))
+           (equal (fn-journal-completion-action slots sequence txid :durable)
+                  :acknowledge)))
+
+(defthm fn-journal-recover-accepts-anchored-scan
+  (implies (and (fn-journal-anchorp anchor)
+                (equal (fn-journal-scan image 0 nil nil)
+                       (fn-journal-result-ok commits))
+                (fn-journal-anchor-satisfiedp anchor commits))
+           (equal (fn-journal-recover image anchor)
+                  (fn-journal-result-ok commits))))
+
 (defthm fn-journal-scan-missing-dependency-fault
-  (implies (and (natp txid)
+  (implies (and (natp sequence) (natp txid)
                 (fn-journal-id-listp refs)
                 (not (fn-journal-references-seenp txid refs objects)))
            (equal (fn-journal-scan
-                   (list (fn-journal-make-physical-commit txid refs :intact))
-                   txid objects txids)
+                   (list (fn-journal-make-physical-commit sequence txid refs :intact))
+                   sequence objects commits)
                   (fn-journal-result-fault :missing-dependency))))
 
 (defthm fn-journal-scan-commit-gap-fault
-  (implies (and (natp txid) (natp next) (not (equal txid next)))
+  (implies (and (natp sequence) (natp txid) (natp next)
+                (not (equal sequence next)))
            (equal (fn-journal-scan
-                   (list (fn-journal-make-physical-commit txid nil :intact))
-                   next objects txids)
+                   (list (fn-journal-make-physical-commit sequence txid nil :intact))
+                   next objects commits)
                   (fn-journal-result-fault :commit-gap))))
 
 (defthm fn-journal-recover-torn-anchored-commit-fault
-  (implies (natp txid)
+  (implies (and (natp sequence) (natp txid))
            (equal (fn-journal-recover
-                   (list (fn-journal-make-physical-commit txid nil :torn))
-                   txid)
+                   (list (fn-journal-make-physical-commit sequence txid nil :torn))
+                   (cons sequence txid))
                   (fn-journal-result-fault :ack-gap))))
 
 (defthm fn-journal-scan-valid-single-commit
-  (implies (and (natp txid)
+  (implies (and (natp sequence) (natp txid)
                 (fn-journal-id-listp refs)
                 (fn-journal-references-seenp txid refs objects))
            (equal (fn-journal-scan
-                   (list (fn-journal-make-physical-commit txid refs :intact))
-                   txid objects txids)
-                  (fn-journal-result-ok (append txids (list txid))))))
+                   (list (fn-journal-make-physical-commit sequence txid refs :intact))
+                   sequence objects commits)
+                  (fn-journal-result-ok
+                   (append commits (list (cons sequence txid)))))))

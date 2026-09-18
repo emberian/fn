@@ -1,7 +1,8 @@
 # Host and execution boundary
 
-Status: Common Lisp host proposed; implementation/version and integration path
-are D07. No host adapter is present.
+Status: ACL2 8.7/SBCL 2.6.8 development model and interpreted simulator are present.
+An experimental subprocess/socket bridge is being integrated. The production
+Common Lisp packaging/guard boundary remains D07; no durable adapter is present.
 
 ## Core interface
 

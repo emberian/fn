@@ -1,51 +1,61 @@
-# Current work: first executable acceptance cycle
+# Current work: executable components and integration
 
-The full [decision workbook](decisions.md) is a backlog, not a questionnaire that
-must be completed before coding. The current bounded experiment needs no further
-product decisions. Open byte-format and cryptographic choices remain open.
+The [decision workbook](decisions.md) is a backlog, not a questionnaire that must
+be completed before coding. The user authorized broad Terra implementation waves
+with Luna/Sol/Astra work and convergence in batches. Routine reversible choices
+are owned by the implementation team; public byte formats, cryptographic suites,
+and deployment remain explicitly separate decisions.
 
-## Outcome
+## Current batch
 
-Build and actually run a small ACL2 model of local acceptance: one immutable
-article, two configured groups, one pending transaction, a retained archive pin,
-and publication only after a matching abstract durable-completion event.
-Exercise retries, wrong/stale completions, and indeterminate persistence results.
-Obtain the first meaningful mechanically checked results if the toolchain can
-be established. Report precisely which properties and guards were checked.
+- Acceptance has certified initial-state, transition-preservation, immutable
+  binding, and local-number uniqueness results. The theorem hypotheses retain
+  the abstract durable-completion/recovery boundary.
+- Wire framing, CBOR primitives, retention accounting, journal crash experiments,
+  disconnected fact exchange, and an experimental NNTP reader have executable
+  books and assertion tests. Their full subsystem contracts are still open.
+- The acceptance simulator executes the actual definitions in ACL2.
+- Current integration work connects retention to acceptance in one transaction
+  and runs the reader over a real loopback socket via an ACL2 process.
+- The current review repairs strengthen wire-state bounds, distinguish journal
+  sequence from transaction identity, and harden NNTP numeric/projection handling.
 
-This is a portion of M1. A simulated durable-completion event is an environmental
-contract, not a proof of filesystem durability. No cryptographic primitive,
-native article serialization, NNTP wire codec, or public service is in this cycle.
+See [implementation status](../docs/implementation.md), the
+[proof registry](proofs.json), and [milestones](milestones.md) for scope. A
+certified component does not close a complete milestone or prove the host/disk.
 
-## Swarm cycle authorized on 2026-09-18
+## Working rhythm
 
-| Role | Bounded responsibility |
-| --- | --- |
-| Luna | Executable ACL2 acceptance definitions and first theorem attempts |
-| Terra | Reproducible ACL2 toolchain and truthful certification/test runner |
-| Sol | Independent adversarial design and code/proof review |
-| Astra | Integrate, resolve routine choices, check evidence, maintain project state |
+One writer owns each area. Agents certify their own roots while independent
+areas advance. Root integrates a frozen batch, runs the combined suite, records
+evidence, and updates the registries. Review each coherent batch once; repair
+correctness findings, track remaining proof scope, then advance.
 
-One writer owns each implementation area. Review findings return to the owning
-agent for repair. Completion requires actual execution evidence and review of
-the resulting artifact; the existence of a theorem form is insufficient.
+The user requested frequent local checkpoint commits on 2026-09-18. Commits are
+for synchronization and may include unfinished work; a commit is not evidence
+of passing tests. Keep generated logs/certificates under ignored build paths,
+and retain concise evidence summaries and exact source hashes in the repository.
 
-## Deliberate abstraction choices
+## Current engineering choices
 
-- Exact Message-ID strings and payload octets; no native signing preimage yet.
-- Configured local groups; a post naming an unknown group rejects atomically.
-- Indefinite local archive pin, matching the selected D03 policy.
-- One owner and one pending transaction; independent I/O is represented by events.
-- Explicitly distinct prepared, committed, and uncertain states/results.
-- No automatic expiry, release, or history pruning in this slice.
+- ACL2 8.7 on SBCL 2.6.8 for the development model, with Python tooling.
+- Interpreted ACL2 bridge for the first host experiment; raw Common Lisp calls
+  to unguarded logical functions are not the integration argument.
+- One owner and one shared-state transaction pending at a time.
+- Exact octet payloads and exact Message-ID strings; no native signing preimage.
+- Local cross-post names must all be configured; failure is atomic.
+- No automatic expiry or history pruning. Resource charges include retained
+  history, and inadequate capacity rejects new obligations.
+- Experimental CBOR uint32/byte-string primitives; no persistent/native schema
+  frozen by their existence.
 
-These choices bound the experiment; they do not freeze future persistent schemas
-or the host integration ABI. An outcome/evidence link will be added here when the
-cycle completes.
+## Next substantial work
 
-## Decisions to discuss next
+After this integrated checkpoint: compose real bounded article injection and
+provenance with the reader; develop versioned storage bytes and a qualified disk
+adapter from the crash model; lift invariants through integration and guards.
+The next user-facing design discussion should use concrete native-versus-legacy
+article/signature byte examples (D01), then principal/key custody (D09).
 
-Bring concrete examples instead of the entire backlog: first the immutable native
-article/signature boundary (D01), then principal/key custody and rotation (D09).
-Group encryption selection is a separate research/design track. Shared community
-groups come first; MLS is one candidate, with no commitment to its architecture.
+Private-group cryptography remains a separate requirements/research track.
+Shared community groups come first; MLS is a candidate, not a commitment.
