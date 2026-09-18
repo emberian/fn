@@ -155,3 +155,99 @@
 (assert-event (equal (fn-nntp-result-effects *fn-nntp-quit*)
                      '((:reply (50 48 53 32 99 108 111 115 105 110 103 32 99 111 110 110 101 99 116 105 111 110 13 10)) (:close))))
 (assert-event (equal (fn-nntp-session-openp (fn-nntp-result-session *fn-nntp-quit*)) nil))
+
+; RFC 3977 section 6.1.2 LISTGROUP selects the current group when omitted and
+; resets its cursor to the group's first article even when a range excludes it.
+(defconst *fn-nntp-listgroup-current*
+  (fn-nntp-step (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive*
+                '(:command (76 73 83 84 71 82 79 85 80))))
+(assert-event
+ (equal (fn-nntp-result-effects *fn-nntp-listgroup-current*)
+        '((:reply (50 49 49 32 49 32 49 32 49 32 102 110 46 108 101 116 116 101 114 115 32 108 105 115 116 32 102 111 108 108 111 119 115 13 10 49 13 10 46 13 10)))))
+(assert-event (equal (fn-nntp-session-current
+                      (fn-nntp-result-session *fn-nntp-listgroup-current*)) 1))
+(defconst *fn-nntp-listgroup-open-empty*
+  (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive*
+                '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115 32 50 45))))
+(assert-event
+ (equal (fn-nntp-result-effects *fn-nntp-listgroup-open-empty*)
+        '((:reply (50 49 49 32 49 32 49 32 49 32 102 110 46 108 101 116 116 101 114 115 32 108 105 115 116 32 102 111 108 108 111 119 115 13 10 46 13 10)))))
+(assert-event (equal (fn-nntp-session-current
+                      (fn-nntp-result-session *fn-nntp-listgroup-open-empty*)) 1))
+(defconst *fn-nntp-listgroup-empty-group*
+  (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive*
+                '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 101 109 112 116 121))))
+(assert-event
+ (equal (fn-nntp-result-effects *fn-nntp-listgroup-empty-group*)
+        '((:reply (50 49 49 32 48 32 49 32 48 32 102 110 46 101 109 112 116 121 32 108 105 115 116 32 102 111 108 108 111 119 115 13 10 46 13 10)))))
+(assert-event (equal (fn-nntp-session-current
+                      (fn-nntp-result-session *fn-nntp-listgroup-empty-group*)) nil))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* '(:command (76 73 83 84 71 82 79 85 80))))
+        '((:reply (52 49 50 32 110 111 32 110 101 119 115 103 114 111 117 112 32 115 101 108 101 99 116 101 100 13 10)))))
+(defconst *fn-nntp-listgroup-unknown*
+  (fn-nntp-step (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive*
+                '(:command (76 73 83 84 71 82 79 85 80 32 110 111 46 115 117 99 104))))
+(assert-event (equal (fn-nntp-result-session *fn-nntp-listgroup-unknown*)
+                     (fn-nntp-result-session *fn-nntp-group*)))
+(assert-event
+ (equal (fn-nntp-result-effects *fn-nntp-listgroup-unknown*)
+        '((:reply (52 49 49 32 110 111 32 115 117 99 104 32 110 101 119 115 103 114 111 117 112 13 10)))))
+(defconst *fn-nntp-stale-session* (fn-nntp-make-session t "gone.group" 1))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-stale-session* *fn-nntp-archive* '(:command (76 73 83 84 71 82 79 85 80))))
+        '((:reply (52 49 50 32 110 111 32 110 101 119 115 103 114 111 117 112 32 115 101 108 101 99 116 101 100 13 10)))))
+; There is no bare-range LISTGROUP form: the one argument is a group name.
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* '(:command (76 73 83 84 71 82 79 85 80 32 49 45))))
+        '((:reply (52 49 49 32 110 111 32 115 117 99 104 32 110 101 119 115 103 114 111 117 112 13 10)))))
+
+; Sparse local allocation remains scoped to fn.sparse and is filtered
+; inclusively by the requested range.
+(defconst *fn-nntp-sparse-groups* '("fn.sparse"))
+(defconst *fn-nntp-sparse-a1*
+  (fn-make-article "<one@sparse.invalid>" *fn-nntp-payload* '("fn.sparse")
+                   '(("fn.sparse" . 1)) t))
+(defconst *fn-nntp-sparse-a3*
+  (fn-make-article "<three@sparse.invalid>" *fn-nntp-payload* '("fn.sparse")
+                   '(("fn.sparse" . 3)) t))
+(defconst *fn-nntp-sparse-archive*
+  (fn-make-state *fn-nntp-sparse-groups* '(("fn.sparse" . 4))
+                 (list *fn-nntp-sparse-a3* *fn-nntp-sparse-a1*) 0 nil nil))
+(assert-event (fn-statep *fn-nntp-sparse-archive*))
+(defconst *fn-nntp-listgroup-sparse*
+  (fn-nntp-step *fn-nntp-session0* *fn-nntp-sparse-archive*
+                '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 115 112 97 114 115 101 32 50 45 51))))
+(assert-event
+ (equal (fn-nntp-result-effects *fn-nntp-listgroup-sparse*)
+        '((:reply (50 49 49 32 50 32 49 32 51 32 102 110 46 115 112 97 114 115 101 32 108 105 115 116 32 102 111 108 108 111 119 115 13 10 51 13 10 46 13 10)))))
+(assert-event (equal (fn-nntp-session-current
+                      (fn-nntp-result-session *fn-nntp-listgroup-sparse*)) 1))
+(defconst *fn-nntp-listgroup-reversed*
+  (fn-nntp-step *fn-nntp-session0* *fn-nntp-sparse-archive*
+                '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 115 112 97 114 115 101 32 51 45 49))))
+(assert-event
+ (equal (fn-nntp-result-effects *fn-nntp-listgroup-reversed*)
+        '((:reply (50 49 49 32 50 32 49 32 51 32 102 110 46 115 112 97 114 115 101 32 108 105 115 116 32 102 111 108 108 111 119 115 13 10 46 13 10)))))
+
+; Parser boundaries: single, open, leading-zero, reversed-empty, malformed,
+; and excess-argument forms.  12/120 protect the decimal accumulator regression.
+(assert-event (equal (fn-nntp-parse-range '(49 50)) '(:ok 12 12)))
+(assert-event (equal (fn-nntp-parse-range '(49 50 48 45)) '(:ok 120 2147483647)))
+(assert-event (equal (fn-nntp-parse-range '(48 48 49 50 45 49 50)) '(:ok 12 12)))
+(assert-event (equal (fn-nntp-parse-range '(57 45 49)) '(:ok 9 1)))
+(assert-event (not (fn-nntp-range-okp (fn-nntp-parse-range '(45 49)))))
+(assert-event (not (fn-nntp-range-okp (fn-nntp-parse-range '(49 45 50 45 51)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive*
+                       '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115 32 45 49))))
+        '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive*
+                       '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115 32 49 32 50))))
+        '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))

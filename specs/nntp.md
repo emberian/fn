@@ -22,6 +22,8 @@ of every applicable RFC branch, argument form, response, and state effect.
 Ranges, wildmat, dates, optional arguments, error precedence, and pipelining are
 part of that work. A command name appearing in this table is not conformance.
 Use RFC 3977 §§3.4 and 3.4.2, command sections, and Appendix B as the baseline.
+The [implementation checklist](nntp-audit.md) tracks branches and remaining work;
+it is not a completed conformance audit.
 
 ## Sessions and framing
 

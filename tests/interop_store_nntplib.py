@@ -29,13 +29,21 @@ def main():
                                   b"", b"A stored letter."]
         _, info = client.body(message_id)
         assert info.lines == [b"A stored letter."]
+        # nntplib has no public LISTGROUP helper. Its generic multiline command
+        # parser still supplies independent framing/response decoding here.
+        response, numbers = client._longcmdstring("LISTGROUP fn.letters 2-")
+        assert response.startswith("211 1 1 1 fn.letters ") and numbers == []
+        _, number, found_id = client.stat()
+        assert (number, found_id) == (1, message_id)
+        _, numbers = client._longcmdstring("LISTGROUP")
+        assert numbers == ["1"]
         _, groups = client.list()
         assert {g.group for g in groups} == {"fn.letters", "fn.test"}
         assert client.quit().startswith("205 ")
     print(json.dumps({"status": "passed", "client": "stdlib nntplib",
                       "python": platform.python_version(), "mode": "recovered-store",
                       "commands": ["CAPABILITIES", "GROUP", "STAT", "ARTICLE",
-                                   "BODY", "LIST", "QUIT"]}, sort_keys=True))
+                                   "BODY", "LISTGROUP", "LIST", "QUIT"]}, sort_keys=True))
 
 
 if __name__ == "__main__":
