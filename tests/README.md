@@ -1,8 +1,20 @@
 # Validation plan
 
-Only scaffold checks are executable today. The
-[scenario catalog](scenarios/catalog.json) specifies future tests with stable IDs,
-requirements, and expected outcomes. It is not a passing test suite.
+Executable ACL2 assertion books now exercise the components in `tests/acl2/`.
+The [scenario catalog](scenarios/catalog.json) still specifies the broader
+end-to-end tests with stable IDs; partial model traces do not make those entire
+system scenarios pass. See [implementation status](../docs/implementation.md).
+
+```sh
+make check
+make certify
+python3 tools/run_simulator.py
+python3 -m unittest discover -s tests -p test_certify_runner.py -v
+```
+
+Certification covers the explicitly listed logical books and assertion events.
+The simulator runs the same acceptance functions. The Python tests exercise
+evidence-runner failure boundaries, not the correctness of the ACL2 definitions.
 
 ## Evidence by layer
 

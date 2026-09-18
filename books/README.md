@@ -1,14 +1,33 @@
-# ACL2 books
+# Executable ACL2 books
 
-Reserved for executable definitions and their proofs. No ACL2 books are present
-yet. The [M1 plan](../planning/milestones.md#m1-executable-model) first pins the
-toolchain and defines the logical records/event interface.
+These books define the core behavior being executed and proved. They use ordinary
+ACL2 events, not a separate specification implemented again in the host.
 
-Proposed dependency order: data recognizers and identity domains; local article
-acceptance and allocation; obligations; transitions and trace invariants; codecs;
-storage/recovery; NNTP; replication; GC/compaction; concrete refinements. Split
-books by actual dependencies as the definitions emerge rather than creating an
-empty file per possible subsystem.
+| Book | Responsibility |
+| --- | --- |
+| `acceptance` | Local articles, group allocation, pending transactions, uncertainty fencing |
+| `acceptance-invariants` | General acceptance state/binding/number preservation |
+| `wire` | Incremental CRLF framing, dot transformation, event-yield boundary |
+| `cbor`, `cbor-invariants` | Bounded experimental CBOR primitives and representation lemmas |
+| `retention` | Finite reservation ledger with permanent history and explicit release evidence |
+| `node` | Transactional composition of acceptance, reservations, and article-to-pin bindings |
+| `journal` | Abstract isolated slots, barriers, crash images, recovery experiments |
+| `exchange` | Portable immutable facts, admissible bounded batches, conflict-preserving merge |
+| `nntp` | Laboratory reader commands and session state over committed acceptance state |
 
-Use the [proof registry](../planning/proofs.json) to map targets to real theorem
-events when introduced. Keep pure certification independent of raw host adapters.
+`make certify` lists the current integrated dependency order explicitly. A
+subsystem can be certified separately with, for example:
+
+```sh
+python3 tools/certify_books.py books/acceptance books/acceptance-invariants tests/acl2/acceptance-tests
+```
+
+Dependencies must already have valid certificates or precede their dependents in
+that invocation. The runner fingerprints the requested local source closure and
+requires real ACL2 success. The `cbor-invariants` book also includes ACL2's
+`ihs/quotient-remainder-lemmas` community book.
+
+The [proof registry](../planning/proofs.json) tracks broader targets. A certified
+book does not imply full guard verification, all promised properties, a frozen
+storage schema, or a physical durability guarantee. The
+[implementation status](../docs/implementation.md) records these boundaries.
