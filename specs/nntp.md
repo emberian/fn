@@ -1,7 +1,9 @@
 # NNTP projection and article acceptance
 
-Status: proposed first usable profile; no implemented commands or conformance
-claim. Resolve D05 and complete the clause-level audit before advertising it.
+Status: the first usable profile below is still proposed. An experimental reader
+subset now exists in `books/nntp.lisp`; it advertises VERSION/IMPLEMENTATION only,
+without READER or POST. Resolve D05 and finish the clause-level audit before
+claiming the complete profile. See [implementation status](../docs/implementation.md).
 
 ## Planned surface
 

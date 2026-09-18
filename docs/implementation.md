@@ -13,6 +13,10 @@ news service. The broader contracts in `specs/` remain the target.
 | [Wire framing](../books/wire.lisp) | Incremental CRLF lines, dot stuffing, article terminators, bounded retained input | Session dispatch and command conformance are separate; the bulk feed helper alone cannot decide when to enter article mode |
 | [CBOR primitives](../books/cbor.lisp) | Deterministic uint32 and definite byte strings, canonicality checks, bounded decoding | No native object, signature, batch, or disk schema is frozen |
 | [Retention](../books/retention.lisp) | Finite abstract accounting, distinct archive/forward pins, evidence-gated release, permanent duplicate history | Evidence is already authorized input; charging units are abstract, not measured physical bytes |
+| [Node composition](../books/node.lisp) | One transaction stages acceptance and its reservation; completion publishes both with permanent article-to-pin bindings | Disk completion is still abstract; node release and journal integration remain open |
+| [Journal](../books/journal.lisp) | Isolated record slots, barriers, surviving/torn volatile writes, explicit recovery faults | Integrity tags and a protected durable anchor are assumptions; no byte format, actual disk adapter, or general recovery theorem |
+| [Exchange](../books/exchange.lisp) | Bounded atomic admission of immutable fact sets; duplicate/reordered merging and conflict evidence | Authorization is supplied; no serialized/resumable transfer, signatures, or durable scheduler |
+| [NNTP reader](../books/nntp.lisp) | Experimental reader commands over committed state with independent response transcripts | Incomplete READER bundle, no POST, authentication, or signed injection |
 | [Simulator](../host/simulator.lisp) | Fixed traces executing the actual acceptance functions in ACL2 | No shadow semantics, network listener, or real disk adapter |
 
 Run the current integrated checks from the repository root:
@@ -21,12 +25,20 @@ Run the current integrated checks from the repository root:
 make check
 make certify
 python3 tools/run_simulator.py
+python3 -m unittest discover -s tests -v
 ```
 
 `make check` validates documents and registries. `make certify` invokes real ACL2
 and certifies the explicitly listed books and executable assertion books. The
 simulator emits traces and result records from those same logical functions.
 These commands have different meanings; none is a substitute for the others.
+
+The local reader experiment uses a persistent ACL2 process and listens only on
+loopback. It serves a seeded in-memory article; it accepts no posts. Start it with
+`python3 tools/run_reader.py --port 8119`. Port `0` selects an available port and
+prints it. Use `--once` to exit after one connection. Reader socket tests start
+and stop their own listeners. The optional `tests/interop_nntplib.py` probe uses
+the independent standard-library NNTP client available in Python 3.9–3.12.
 
 ## Toolchain and evidence
 
@@ -47,8 +59,12 @@ contract has been established. Read theorem hypotheses as part of each claim.
 - The acceptance model stores exact Message-ID strings and octet payloads. It
   does not yet validate RFC article syntax, sign native messages, or distinguish
   duplicate versus conflicting-ID rejection in its return value.
-- The boolean acceptance pin and the richer retention ledger are currently
-  separate components. Their transactional composition requires its own checks.
+- The composed node ties each article to an independently charged archive pin.
+  Retention release is tested separately and is not yet a node deletion API.
+- CBOR's complete uint32 round trip is certified; the full byte-string round
+  trip and accepted-input canonical uniqueness remain open.
+- Wire state bounds and one-byte preservation are certified; parser complexity,
+  complete session refinement, and raw-execution guards remain open.
 - Limits in the byte primitives are experimental local bounds. They do not
   select a permanent interoperable format or deployment resource profile.
 - Cryptographic verification, peer honesty, physical persistence, backup

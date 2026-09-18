@@ -206,6 +206,14 @@
           (fn-journal-commit-txid-seenp txid (cdr slots)))
     nil))
 
+(defun fn-journal-matching-commitp (sequence txid slots)
+  (if (consp slots)
+      (or (and (equal (fn-journal-live-kind (car slots)) :commit)
+               (equal sequence (fn-journal-live-txid (car slots)))
+               (equal txid (fn-journal-live-commit-txid (car slots))))
+          (fn-journal-matching-commitp sequence txid (cdr slots)))
+    nil))
+
 (defun fn-journal-count-commits (slots)
   (if (consp slots)
       (+ (if (equal (fn-journal-live-kind (car slots)) :commit) 1 0)
@@ -237,21 +245,28 @@
     slots))
 
 ; Host completions are inputs, never inferred from a socket write.  A known
-; abort authorizes no success reply.  An indeterminate completion authorizes no
-; further mutation: the caller must crash/recover using a physical image.  A
+; abort is possible only before its commit marker is staged.  Once a matching
+; marker exists, even a reported abort is ambiguous: a volatile marker can
+; survive a crash, so the caller must recover rather than clear the proposal.
+; An indeterminate completion likewise authorizes no further mutation: the
+; caller must crash/recover using a physical image.  A
 ; `:durable` report is accepted only for an already barrier-protected marker.
 ; The returned `:acknowledge` is where the host must durably advance the anchor
 ; before reporting application success; this book does not supply that adapter.
+; This isolated journal does not yet compose with the acceptance-state machine;
+; that integration must preserve this recovery fence.
 (defun fn-journal-host-statusp (x)
   (or (equal x :durable) (equal x :aborted) (equal x :indeterminate)))
 
 (defun fn-journal-completion-action (slots sequence txid status)
   (if (not (fn-journal-host-statusp status))
       :ignore
-    (if (equal status :indeterminate)
+      (if (equal status :indeterminate)
         :recover
       (if (equal status :aborted)
-          :known-abort
+          (if (fn-journal-matching-commitp sequence txid slots)
+              :recover
+            :known-abort)
         (if (and (natp sequence) (natp txid)
                  (fn-journal-durable-commitp sequence txid slots))
             :acknowledge
@@ -443,6 +458,11 @@
                 (fn-journal-durable-commitp sequence txid slots))
            (equal (fn-journal-completion-action slots sequence txid :durable)
                   :acknowledge)))
+
+(defthm fn-journal-known-abort-has-no-marker
+  (implies (equal (fn-journal-completion-action slots sequence txid :aborted)
+                  :known-abort)
+           (not (fn-journal-matching-commitp sequence txid slots))))
 
 (defthm fn-journal-recover-accepts-anchored-scan
   (implies (and (fn-journal-anchorp anchor)

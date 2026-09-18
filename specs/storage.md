@@ -1,6 +1,7 @@
 # Persistent storage
 
-Status: specialized storage direction agreed; crash algorithm and byte layouts
+Status: specialized storage direction agreed; an executable isolated-slot crash
+experiment exists in `books/journal.lisp`. Production recovery and byte layouts
 await D06–D09 and D14 in the [decision workbook](../planning/decisions.md).
 
 ## Authority and layout
@@ -69,6 +70,13 @@ detected damage to committed data have different handling. Quarantine/report
 detected corruption; do not silently reinterpret it as successful rollback.
 Detecting rollback of an entire otherwise valid store requires an independent
 trusted anchor and is outside the crash-only claim until D14 supplies one.
+
+The current journal experiment distinguishes contiguous journal sequence from
+acceptance transaction IDs, which are consumed even on a known abort. Its
+durable acknowledgement anchor is an explicit assumed input, not a mechanism
+implemented by the book. A staged marker makes an abort uncertain because the
+marker could survive; recovery must resolve it. The journal and composed node
+have not yet been connected to each other or to physical files.
 
 Object bytes may survive without a committing reference. Such orphans are not
 visible articles and are reclaimable only after transaction/recovery roots are

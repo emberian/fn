@@ -44,6 +44,12 @@ terms, D13's initial history rule, resource bounds in D16, and proof scope D18.
   and the first guard/correspondence obligations. Record actual theorem names.
 - Supply a deterministic simulator host; no network deployment is needed.
 
+Incremental evidence: the acceptance and node components now have executable
+traces and preservation work, and the deterministic simulator runs in ACL2.
+Byte primitives, crash experiments, exchange, and a loopback reader are being
+integrated in parallel. Guard verification, provenance/signature modeling,
+system integration, and the remaining M1 contracts keep this milestone open.
+
 Exit: admitted executable definitions, certified initial theorems, meaningful
 scenario checks, and a written boundary between proved logic and assumed commit
 events. An abstract commit event is not yet a disk recovery proof.

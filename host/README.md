@@ -2,7 +2,9 @@
 
 The deterministic [simulator](simulator.lisp) executes the actual acceptance
 definitions in ACL2. Run it with `python3 tools/run_simulator.py` after certification.
-The local reader bridge is being integrated separately. Read the
+The [local reader bridge](reader-host.lisp) runs a seeded reader through a
+persistent ACL2 subprocess. Start `python3 tools/run_reader.py --port 8119`;
+it binds only to `127.0.0.1`. Read the
 [host contract](../specs/host.md) before changing packaging or an event loop.
 
 The first socket experiment is a loopback-only, seeded in-memory reader. It is
