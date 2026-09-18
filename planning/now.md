@@ -73,10 +73,24 @@ and retain concise evidence summaries and exact source hashes in the repository.
 ## Next substantial work
 
 The article/parser/release batch and wildmat/file-kernel batch are integrated.
-Terra is still working independently on schema-0 record accepted-input
-canonicality, beyond value round trip. Its group-list reconstruction lemma has
-passed an ACL2 proof event, but the whole new book is not certified or included
-in the default roots; the final composition theorem remains open.
+The next independent owned areas are:
+
+- Terra: article Message-ID/Newsgroups field grammar and bounded proto-article
+  identity/routing checks, without claiming complete injection or choosing a
+  native signing format.
+- Terra: bounded out-of-order object assembly, exact-duplicate handling, missing
+  ranges, and unverified completion candidates for disconnected exchange.
+- Sol: general file-kernel crash/transition preservation and stable-prefix
+  invariants, with physical correspondence still separate.
+- Terra: schema-0 record accepted-input canonicality, beyond value round trip.
+  Its group-list reconstruction lemma has passed an ACL2 proof event, but the
+  whole new book is not certified or included in the default roots; final
+  sequential composition remains open.
+
+Root also closes the real host mutation gate before recovery scanning, covering
+unexpected transaction-read errors as well as explicit parser/replay faults.
+The focused real-file failure/recovery regression passes; it belongs to the
+next integration batch, not the historical 33-root source set.
 
 The [refinement contract](../specs/store-refinement.md) now has a first executable
 immutable-file kernel. It accounts for hard-link publication and allocator

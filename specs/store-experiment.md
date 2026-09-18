@@ -85,6 +85,10 @@ pre-error frontier cannot substitute for the observed replacement.
 
 ## Recovery
 
+Recovery closes the host mutation gate before scanning and opens it only after
+validation, replay, and all required barriers succeed. An unexpected file-read
+or runtime exception cannot leave a previously usable host object unfenced.
+
 Read only bounded files in the final namespace. Reject symlinks, inconsistent
 names, malformed frames, integrity failures, unknown versions, sequence gaps,
 and any decoded record that the core cannot replay. Staging orphans are not
