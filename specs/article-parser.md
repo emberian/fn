@@ -75,9 +75,11 @@ Message-ID/Date/address/Newsgroups grammar, MIME semantics, proto-article
 trace-field restrictions, injection, authorization, provenance, or durable
 acceptance.  Those remain separate parser, policy, and node work.
 
-The book proves the general source-view relation `source = header ++ CRLF ++
-body` and the general physical-header-line reverse/recomposition step used by
-the parser.  The test suite checks exact input retention on mixed folded and
-binary examples; a full induction that every successful parse reconstructs its
-arbitrary input remains proof work.  None of these properties establishes RFC
-article validity.
+The invariant book proves `fn-article-successful-parse-preserves-source`: every
+successful parse reconstructs its exact arbitrary input. Scanner partition and
+parser reconstruction lemmas establish this by induction, beyond the constructor
+relation `source = header ++ CRLF ++ body`. The test suite also checks mixed
+folded/binary inputs and rejection boundaries. The
+[integrated evidence](../tests/evidence/2026-09-18-articles.md) records certification.
+The general output-recognizer theorem and work/allocation proofs remain open.
+None of these properties establishes full RFC article validity.

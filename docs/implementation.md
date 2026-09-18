@@ -4,11 +4,13 @@ fn has executable ACL2 components and a deterministic simulator. It is still an
 experimental implementation: the components are not yet a durable, authenticated
 news service. The broader contracts in `specs/` remain the target.
 
-The latest [storage integration evidence](../tests/evidence/2026-09-18-storage.md)
-records 25 certified logical/assertion books, the actual-core simulator, 26
-passing tooling/socket/filesystem tests, independent stored-reader `nntplib`
-interoperability, and a maximum-profile store/reopen probe. The
-[first batch](../tests/evidence/2026-09-18-integrated.md) is retained separately.
+The latest [article integration evidence](../tests/evidence/2026-09-18-articles.md)
+records 29 certified logical/assertion books, the actual-core simulator, 27
+passing tooling/socket/filesystem tests, and independent stored-reader `nntplib`
+interoperability including LISTGROUP. The earlier
+[storage batch](../tests/evidence/2026-09-18-storage.md) retains the maximum-profile
+store/reopen probe; the [first batch](../tests/evidence/2026-09-18-integrated.md)
+is also preserved separately.
 
 ## Current components
 
@@ -18,14 +20,15 @@ interoperability, and a maximum-profile store/reopen probe. The
 | [Acceptance invariants](../books/acceptance-invariants.lisp) | Mechanically checked preservation lemmas over the acceptance definitions | See the proof registry and certification evidence for the exact current theorem scope |
 | [Wire framing](../books/wire.lisp) | Incremental CRLF lines, dot stuffing, article terminators, bounded retained input | Session dispatch and command conformance are separate; the bulk feed helper alone cannot decide when to enter article mode |
 | [CBOR primitives](../books/cbor.lisp) | Deterministic uint32 and definite byte strings, canonicality checks, bounded decoding | No native object, signature, batch, or disk schema is frozen |
+| [Article syntax](../books/article.lisp) and [invariants](../books/article-invariants.lisp) | Bounded header/body views preserve folding, unknown fields, and opaque body bytes; every successful parse provably reconstructs its exact source | Required-field semantics, full RFC validation, injection, output recognizer, and work/allocation proofs remain open |
 | [Transaction records](../books/records.lisp) and [invariants](../books/records-invariants.lisp) | Bounded schema-0 grammar, exact octet/string fields, variable group lists, complete record round-trip proof | Provisional local format; record-level reverse canonicality and native signature preimages remain open |
-| [Retention](../books/retention.lisp) | Finite abstract accounting, distinct archive/forward pins, evidence-gated release, permanent duplicate history | Evidence is already authorized input; charging units are abstract, not measured physical bytes |
+| [Retention](../books/retention.lisp) and [invariants](../books/retention-invariants.lisp) | Finite abstract accounting, distinct archive/forward pins, evidence-gated release, permanent duplicate history; general release preservation and independent-pin/identity preservation | Evidence is already authorized input; charging units are abstract, not measured physical bytes |
 | [Node composition](../books/node.lisp) and [invariants](../books/node-invariants.lisp) | One transaction stages acceptance and its reservation; completion publishes both with permanent article-to-pin bindings; general transition preservation proved | Disk completion is still abstract; node release and journal integration remain open |
 | [Replay](../books/replay.lisp) and [invariants](../books/replay-invariants.lisp) | Contiguous committed records rebuild the actual node, obligations, and allocations; counter advance preserves invariants; replay has typed success/fault results from valid configurations | A last-good prefix on fault is diagnostic only; no checkpoint, rollback detection, or disk refinement claim |
 | [Local store](../tools/run_store.py) | Immutable framed transaction files, data/directory barriers, locking, exact ACL2 replay, injected I/O failures | Development experiment; no qualified power-loss profile, independent freshness anchor, or byte-accurate physical reservations |
 | [Journal](../books/journal.lisp) | Isolated record slots, barriers, surviving/torn volatile writes, explicit recovery faults | Integrity tags and a protected durable anchor are assumptions; no byte format, actual disk adapter, or general recovery theorem |
 | [Exchange](../books/exchange.lisp) | Bounded atomic admission of immutable fact sets; duplicate/reordered merging and conflict evidence | Authorization is supplied; no serialized/resumable transfer, signatures, or durable scheduler |
-| [NNTP reader](../books/nntp.lisp) | Experimental reader commands over committed state with independent response transcripts | Incomplete READER bundle, no POST, authentication, or signed injection |
+| [NNTP reader](../books/nntp.lisp) | Experimental reader commands including LISTGROUP ranges/cursors over committed state, with independent response transcripts | Incomplete READER bundle, no POST, authentication, or signed injection |
 | [Simulator](../host/simulator.lisp) | Fixed traces executing the actual acceptance functions in ACL2 | No shadow semantics, network listener, or real disk adapter |
 
 Run the integrated checks from the repository root with `make test`, or run

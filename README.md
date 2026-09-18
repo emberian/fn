@@ -18,8 +18,10 @@ The local CLI now persists articles and archive obligations, and a loopback
 reader serves the recovered store through the actual ACL2 core. Follow the
 [local walkthrough](docs/local-experiment.md) to post, reopen, and read it.
 Network POST and native signatures remain unfinished. The
-[storage integration evidence](tests/evidence/2026-09-18-storage.md) records
-certification, filesystem/socket tests, and independent NNTP client traffic.
+[latest integration evidence](tests/evidence/2026-09-18-articles.md) records
+29 certified roots, filesystem/socket tests, and independent NNTP client traffic,
+including LISTGROUP. The bounded article parser now has an exact source
+preservation proof.
 
 Start with the [project guide](docs/README.md), then the
 [architecture](docs/architecture.md) and [development plan](planning/milestones.md).

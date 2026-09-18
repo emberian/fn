@@ -28,8 +28,12 @@ certified roots and nine Python tests. The later
 25 roots, the simulator, and 26 Python tests. It adds complete primitive and
 record round trips, typed replay proofs, a real immutable-file store with durable
 allocation, and a reader over recovered state. Independent NNTP client traffic
-and maximum-profile 128-article replay also passed. Both records retain exact
-source hashes, outcomes, proof scope, and remaining limitations.
+and maximum-profile 128-article replay also passed. The third
+[article batch](../tests/evidence/2026-09-18-articles.md) passed with 29 roots,
+the simulator, and 27 Python tests. It adds exact successful-parse input
+preservation, general retention-release invariants, and LISTGROUP ranges/cursors;
+independent client traffic also passed. Each record retains exact source hashes,
+outcomes, proof scope, and remaining limitations.
 
 See [implementation status](../docs/implementation.md), the
 [proof registry](proofs.json), and [milestones](milestones.md) for scope. A
@@ -62,10 +66,17 @@ and retain concise evidence summaries and exact source hashes in the repository.
 
 ## Next substantial work
 
-The active next batch implements a bounded article syntax parser, LISTGROUP and
-article-range handling, and a general retention-release preservation proof.
-These are independent owned areas. The storage evidence below remains the latest
-frozen integrated source set until this batch has its own certification/tests.
+The article parser, LISTGROUP/ranges, and general retention-release preservation
+are integrated. The next parallel batch owns three independent areas:
+
+- Terra: bounded UTF-8 wildmat matching and integration with filtered LIST
+  ACTIVE/NEWSGROUPS, including command-byte limits and socket coverage.
+- Terra: schema-0 record accepted-input canonicality, beyond value round trip.
+- Sol: the concrete abstraction relation and next executable proof/model steps
+  between the file adapter, journal, replay, and durable allocation.
+
+Root records evidence and converges these components in a frozen batch. Their
+work does not change what the historical 29-root checkpoint establishes.
 
 The [local persistence experiment](../specs/store-experiment.md) is integrated:
 bounded transaction bytes, replay, allocation across aborted process lifetimes,
