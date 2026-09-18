@@ -4,13 +4,15 @@ fn has executable ACL2 components and a deterministic simulator. It is still an
 experimental implementation: the components are not yet a durable, authenticated
 news service. The broader contracts in `specs/` remain the target.
 
-The latest [reader/storage evidence](../tests/evidence/2026-09-18-wildmat-storage.md)
-records 33 certified logical/assertion books, the actual-core simulator, 31
-passing tooling/socket/filesystem tests, and independent stored-reader `nntplib`
-interoperability including LISTGROUP and filtered LIST variants. The earlier
+The latest [fields/transfer/storage evidence](../tests/evidence/2026-09-18-fields-transfer.md)
+records 38 certified logical/assertion books, the actual-core simulator, and 32
+passing tooling/socket/filesystem tests. It adds semantic identity/routing fields,
+bounded resumable-object staging, and general file-kernel step/crash preservation
+with one-crash success retention. The previous
+[reader/storage batch](../tests/evidence/2026-09-18-wildmat-storage.md) retains
+independent stored-reader `nntplib` interoperability; the earlier
 [storage batch](../tests/evidence/2026-09-18-storage.md) retains the maximum-profile
-store/reopen probe; the [first batch](../tests/evidence/2026-09-18-integrated.md)
-is also preserved separately.
+store/reopen probe. Historical evidence is preserved separately.
 
 ## Current components
 

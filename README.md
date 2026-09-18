@@ -18,11 +18,11 @@ The local CLI now persists articles and archive obligations, and a loopback
 reader serves the recovered store through the actual ACL2 core. Follow the
 [local walkthrough](docs/local-experiment.md) to post, reopen, and read it.
 Network POST and native signatures remain unfinished. The
-[latest integration evidence](tests/evidence/2026-09-18-wildmat-storage.md) records
-33 certified roots, 31 filesystem/socket/tooling tests, and independent NNTP
-client traffic, including LISTGROUP and filtered LIST variants. The bounded
-article parser has an exact source preservation proof; an executable file
-publication model now accompanies the disk experiment.
+[latest integration evidence](tests/evidence/2026-09-18-fields-transfer.md) records
+38 certified roots and 32 filesystem/socket/tooling tests. Earlier evidence
+retains independent NNTP client traffic, including LISTGROUP and filtered LIST.
+The current batch adds semantic article fields, bounded object assembly, and
+file-model step/crash preservation and one-crash retention proofs.
 
 Start with the [project guide](docs/README.md), then the
 [architecture](docs/architecture.md) and [development plan](planning/milestones.md).
