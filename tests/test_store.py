@@ -333,6 +333,35 @@ class StoreTests(unittest.TestCase):
         with self.assertRaises(StoreFault):
             Store(self.path, writable=True).initialize()
 
+    def test_allocator_barrier_failure_recovers_observed_frontier_on_same_object(self):
+        store, bridge, _ = run_store.open_live_store(self.path, writable=True)
+        try:
+            with mock.patch("run_store.fsync_dir", side_effect=OSError(errno.EIO, "allocator barrier")):
+                with self.assertRaises(StoreIndeterminate):
+                    store.advance_frontier(0)
+            self.assertTrue(store.fenced)
+            self.assertEqual(store.frontier, 0)  # only the cached observation
+            store.recover(bridge)
+            self.assertFalse(store.fenced)
+            self.assertEqual(store.frontier, 1)
+            self.assertEqual(bridge.next_txid(), 1)
+
+            store.advance_frontier(1)
+            self.assertEqual(bridge.prepare(b"<after-barrier@example.invalid>", b"kept", [0],
+                                            b"archive:after-barrier", b"sha256:kept",
+                                            b"unsigned-legacy-v0", 1), "prepared")
+            record = bridge.pending_record()
+            self.assertEqual(bridge.record_txid(record), 1)
+            self.assertEqual(store.publish(0, record), "durable")
+            self.assertEqual(bridge.complete("durable"), "durable")
+        finally:
+            bridge.close()
+            store.close()
+        with self.recovered_bridge() as recovered:
+            self.assertEqual(recovered.next_txid(), 2)
+            self.assertEqual(recovered.article_count(), 1)
+            self.assertEqual(recovered.pin_count(), 1)
+
     def test_failed_config_file_barrier_is_reestablished_during_recovery(self):
         path = Path(self.temp.name) / "init-barrier"
         initial = Store(path, writable=True)

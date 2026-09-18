@@ -536,6 +536,10 @@ class Store:
 
     def recover(self, acl2):
         try:
+            # A replacement may have become visible before its directory
+            # barrier failed. Recover the observed frontier under the held
+            # store lock, never a cached pre-error allocation value.
+            self._load_frontier()
             records = self.durable_records(acl2)
             if acl2.recover(records, self.frontier) != "ready":
                 raise StoreFault("ACL2 replay rejected committed transaction history")
