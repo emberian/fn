@@ -1,0 +1,704 @@
+; Reverse canonicality for the experimental local schema-0 transaction record.
+;
+; This lifts the primitive CBOR accepted-input canonicality theorem through the
+; record parser.  It concerns only a successful exact parse of schema 0; it
+; does not make a persistence, guard-verification, or physical-storage claim.
+(in-package "ACL2")
+(include-book "records-invariants")
+
+(defthm fn-record-read-uint-reencode-prefix
+  (implies (fn-record-parse-okp (fn-record-read-uint octets))
+           (equal (append (fn-cbor-encode
+                           (cons :uint
+                                 (fn-record-parse-value
+                                  (fn-record-read-uint octets))))
+                          (fn-record-parse-rest
+                           (fn-record-read-uint octets)))
+                  octets))
+  :hints (("Goal"
+           :use ((:instance fn-cbor-decode-reencode-prefix
+                  (octets octets)))
+           :in-theory (enable fn-record-read-uint
+                              fn-record-parse-okp
+                              fn-record-parse-value
+                              fn-record-parse-rest))))
+
+(defthm fn-record-read-bytes-reencode-prefix
+  (implies (fn-record-parse-okp (fn-record-read-bytes octets))
+           (equal (append (fn-cbor-encode
+                           (cons :bytes
+                                 (fn-record-parse-value
+                                  (fn-record-read-bytes octets))))
+                          (fn-record-parse-rest
+                           (fn-record-read-bytes octets)))
+                  octets))
+  :hints (("Goal"
+           :use ((:instance fn-cbor-decode-reencode-prefix
+                  (octets octets)))
+           :in-theory (enable fn-record-read-bytes
+                              fn-record-parse-okp
+                              fn-record-parse-value
+                              fn-record-parse-rest))))
+
+(defthm fn-record-octets-chars-are-characters
+  (implies (fn-cbor-octet-listp octets)
+           (character-listp (fn-record-octets-chars octets)))
+  :hints (("Goal"
+           :induct (fn-record-octets-chars octets)
+           :in-theory (enable fn-cbor-octet-listp
+                              fn-record-octets-chars))))
+
+(defthm fn-record-string-octets-aux-of-octets-chars
+  (implies (fn-cbor-octet-listp octets)
+           (equal (fn-record-string-octets-aux
+                   (fn-record-octets-chars octets))
+                  octets))
+  :hints (("Goal"
+           :induct (fn-record-octets-chars octets)
+           :in-theory (enable fn-cbor-octet-listp
+                              fn-cbor-octetp
+                              fn-record-octets-chars
+                              fn-record-string-octets-aux))))
+
+(defthm fn-record-string-octets-of-octets-string
+  (implies (fn-cbor-octet-listp octets)
+           (equal (fn-record-string-octets (fn-record-octets-string octets))
+                  octets))
+  :hints (("Goal"
+           :use ((:instance coerce-inverse-1
+                  (x (fn-record-octets-chars octets)))
+                 (:instance fn-record-octets-chars-are-characters
+                  (octets octets))
+                 (:instance fn-record-string-octets-aux-of-octets-chars
+                  (octets octets)))
+           :in-theory (enable fn-record-octets-string
+                              fn-record-string-octets))))
+
+(defthm fn-record-read-bytes-value-are-octets
+  (implies (fn-record-parse-okp (fn-record-read-bytes octets))
+           (fn-cbor-octet-listp
+            (fn-record-parse-value (fn-record-read-bytes octets))))
+  :hints (("Goal"
+           :in-theory (enable fn-record-read-bytes
+                              fn-record-parse-okp
+                              fn-record-parse-value))))
+
+(defthm fn-record-read-uint-value-is-natural
+  (implies (fn-record-parse-okp (fn-record-read-uint octets))
+           (natp (fn-record-parse-value (fn-record-read-uint octets))))
+  :hints (("Goal"
+           :in-theory (enable fn-record-read-uint
+                              fn-record-parse-okp
+                              fn-record-parse-value))))
+
+; The final charge has no following field.  State that exact-rest consequence
+; directly so the tail composition does not have to turn a propositional NIL
+; fact into an append rewrite while all parser accessors are disabled.
+(defthm fn-record-read-uint-reencode-exact
+  (implies (and (fn-record-parse-okp (fn-record-read-uint octets))
+                (null (fn-record-parse-rest
+                       (fn-record-read-uint octets))))
+           (equal (fn-cbor-encode
+                   (cons :uint
+                         (fn-record-parse-value
+                          (fn-record-read-uint octets))))
+                  octets))
+  :hints (("Goal"
+           :use ((:instance fn-record-read-uint-reencode-prefix))
+           :in-theory (disable fn-record-read-uint
+                               fn-record-parse-okp
+                               fn-record-parse-value
+                               fn-record-parse-rest
+                               fn-cbor-encode))))
+
+(defthm fn-record-parse-groups-reencode-prefix
+  (implies (fn-record-parse-okp (fn-record-parse-groups count octets))
+           (equal (append
+                   (fn-record-encode-groups
+                    (fn-record-parse-value
+                     (fn-record-parse-groups count octets)))
+                   (fn-record-parse-rest
+                    (fn-record-parse-groups count octets)))
+                  octets))
+  :hints (("Goal"
+           :induct (fn-record-parse-groups count octets)
+           :in-theory (enable fn-record-parse-groups
+                              fn-record-parse-okp
+                              fn-record-parse-value
+                              fn-record-parse-rest
+                              fn-record-encode-groups)
+           :do-not '(generalize fertilize))))
+
+(defthm fn-record-parse-groups-value-length
+  (implies (fn-record-parse-okp (fn-record-parse-groups count octets))
+           (equal (len (fn-record-parse-value
+                        (fn-record-parse-groups count octets)))
+                  (nfix count)))
+  :hints (("Goal"
+           :induct (fn-record-parse-groups count octets)
+           :in-theory (enable fn-record-parse-groups
+                              fn-record-parse-okp
+                              fn-record-parse-value))))
+
+; Preserve parser-result abstractions during sequential composition.  Expanding
+; CADR/CADDR before the typed read lemmas can match loses their useful vocabulary.
+(defthm fn-record-parse-ok-is-success
+  (fn-record-parse-okp (fn-record-parse-ok value rest)))
+
+(defthm fn-record-parse-ok-has-value
+  (equal (fn-record-parse-value (fn-record-parse-ok value rest)) value))
+
+(defthm fn-record-parse-ok-has-rest
+  (equal (fn-record-parse-rest (fn-record-parse-ok value rest)) rest))
+
+(defthm fn-record-parse-error-is-failure
+  (not (fn-record-parse-okp (fn-record-parse-error code)))
+  :hints (("Goal"
+           :in-theory (enable fn-record-parse-error
+                              fn-record-parse-okp))))
+
+; This is the non-parsing part of the lift: once each sequential field has
+; reconstructed its source prefix, their append equations compose into the
+; complete record encoding.  Keeping it separate prevents the tail theorem
+; from unfolding the CBOR decoder while proving an append identity.
+(defthm fn-record-component-prefixes-compose
+  (implies
+   (and (fn-record-p
+         (fn-record-make sequence txid generation msgid payload groups
+                         obligation-id content-subject release-evidence charge))
+        (equal count (len groups))
+        (equal (append (fn-cbor-encode (cons :uint count)) after-count) octets)
+        (equal (append (fn-record-encode-groups groups) after-groups) after-count)
+        (equal (append
+                (fn-cbor-encode
+                 (cons :bytes (fn-record-string-octets obligation-id)))
+                after-id)
+               after-groups)
+        (equal (append
+                (fn-cbor-encode
+                 (cons :bytes (fn-record-string-octets content-subject)))
+                after-subject)
+               after-id)
+        (equal (append
+                (fn-cbor-encode
+                 (cons :bytes (fn-record-string-octets release-evidence)))
+                after-evidence)
+               after-subject)
+        (equal (append (fn-cbor-encode (cons :uint charge)) nil) after-evidence)
+        (fn-cbor-at-mostp
+         (append
+          (fn-cbor-encode (cons :bytes *fn-record-magic*))
+          (fn-cbor-encode (cons :uint *fn-record-schema-version*))
+          (fn-cbor-encode (cons :uint sequence))
+          (fn-cbor-encode (cons :uint txid))
+          (fn-cbor-encode (cons :uint generation))
+          (fn-cbor-encode (cons :bytes (fn-record-string-octets msgid)))
+          (fn-cbor-encode (cons :bytes payload))
+          octets)
+         *fn-record-max-octets*))
+   (equal
+    (fn-record-encode
+     (fn-record-make sequence txid generation msgid payload groups
+                     obligation-id content-subject release-evidence charge))
+    (append
+     (fn-cbor-encode (cons :bytes *fn-record-magic*))
+     (fn-cbor-encode (cons :uint *fn-record-schema-version*))
+     (fn-cbor-encode (cons :uint sequence))
+     (fn-cbor-encode (cons :uint txid))
+     (fn-cbor-encode (cons :uint generation))
+     (fn-cbor-encode (cons :bytes (fn-record-string-octets msgid)))
+     (fn-cbor-encode (cons :bytes payload))
+     octets)))
+  :hints (("Goal"
+           :in-theory
+           (e/d (fn-record-encode
+                 fn-record-make
+                 fn-record-sequence
+                 fn-record-txid
+                 fn-record-generation
+                 fn-record-msgid
+                 fn-record-payload
+                 fn-record-groups
+                 fn-record-obligation-id
+                 fn-record-content-subject
+                 fn-record-release-evidence
+                 fn-record-charge)
+                (fn-cbor-encode
+                 fn-cbor-at-mostp
+                 fn-record-encode-groups
+                 fn-record-string-octets
+                 fn-record-p)))))
+
+; A small append-only bridge for the five fields parsed before decode-tail.
+; Keeping this algebra separate prevents the header proof from opening CBOR.
+(defthm fn-record-five-prefixes-compose
+  (implies (and (equal (append p1 after1) input)
+                (equal (append p2 after2) after1)
+                (equal (append p3 after3) after2)
+                (equal (append p4 after4) after3)
+                (equal (append p5 tail) after4))
+           (equal (append p1 p2 p3 p4 p5 tail) input)))
+
+(defthm fn-record-two-prefixes-compose
+  (implies (and (equal (append p1 after1) input)
+                (equal (append p2 tail) after1))
+           (equal (append p1 p2 tail) input)))
+
+; Success of the sequential header decoder gives the success hypotheses needed
+; by each primitive inverse.  Isolating this control-flow fact keeps ACL2 from
+; opening the CBOR decoder while relieving those hypotheses later.
+(defthm fn-record-decode-after-header-successes
+  (implies
+   (fn-record-parse-okp (fn-record-decode-after-header octets))
+   (and
+    (fn-record-parse-okp (fn-record-read-uint octets))
+    (fn-record-parse-okp
+     (fn-record-read-uint
+      (fn-record-parse-rest (fn-record-read-uint octets))))
+    (fn-record-parse-okp
+     (fn-record-read-uint
+      (fn-record-parse-rest
+       (fn-record-read-uint
+        (fn-record-parse-rest (fn-record-read-uint octets))))))
+    (fn-record-parse-okp
+     (fn-record-read-bytes
+      (fn-record-parse-rest
+       (fn-record-read-uint
+        (fn-record-parse-rest
+         (fn-record-read-uint
+          (fn-record-parse-rest (fn-record-read-uint octets))))))))
+    (fn-record-parse-okp
+     (fn-record-read-bytes
+      (fn-record-parse-rest
+       (fn-record-read-bytes
+        (fn-record-parse-rest
+         (fn-record-read-uint
+          (fn-record-parse-rest
+           (fn-record-read-uint
+            (fn-record-parse-rest (fn-record-read-uint octets))))))))))
+    (fn-record-parse-okp
+     (fn-record-decode-tail
+      (fn-record-parse-value (fn-record-read-uint octets))
+      (fn-record-parse-value
+       (fn-record-read-uint
+        (fn-record-parse-rest (fn-record-read-uint octets))))
+      (fn-record-parse-value
+       (fn-record-read-uint
+        (fn-record-parse-rest
+         (fn-record-read-uint
+          (fn-record-parse-rest (fn-record-read-uint octets))))))
+      (fn-record-octets-string
+       (fn-record-parse-value
+        (fn-record-read-bytes
+         (fn-record-parse-rest
+          (fn-record-read-uint
+           (fn-record-parse-rest
+            (fn-record-read-uint
+             (fn-record-parse-rest (fn-record-read-uint octets)))))))))
+      (fn-record-parse-value
+       (fn-record-read-bytes
+        (fn-record-parse-rest
+         (fn-record-read-bytes
+          (fn-record-parse-rest
+           (fn-record-read-uint
+            (fn-record-parse-rest
+             (fn-record-read-uint
+              (fn-record-parse-rest (fn-record-read-uint octets))))))))))
+      (fn-record-parse-rest
+       (fn-record-read-bytes
+        (fn-record-parse-rest
+         (fn-record-read-bytes
+          (fn-record-parse-rest
+           (fn-record-read-uint
+            (fn-record-parse-rest
+             (fn-record-read-uint
+              (fn-record-parse-rest
+               (fn-record-read-uint octets))))))))))))))
+  :hints (("Goal"
+           :in-theory
+           (union-theories
+            (theory 'minimal-theory)
+            '(fn-record-decode-after-header
+              fn-record-parse-error-is-failure
+              (:executable-counterpart not))))))
+
+(defthm fn-record-decode-tail-reencode
+  (implies (and
+            (fn-record-parse-okp
+             (fn-record-decode-tail sequence txid generation msgid payload octets))
+            (fn-cbor-at-mostp
+             (append
+              (fn-cbor-encode (cons :bytes *fn-record-magic*))
+              (fn-cbor-encode (cons :uint *fn-record-schema-version*))
+              (fn-cbor-encode (cons :uint sequence))
+              (fn-cbor-encode (cons :uint txid))
+              (fn-cbor-encode (cons :uint generation))
+              (fn-cbor-encode (cons :bytes (fn-record-string-octets msgid)))
+              (fn-cbor-encode (cons :bytes payload))
+              octets)
+             *fn-record-max-octets*))
+           (equal
+            (fn-record-encode
+             (fn-record-parse-value
+              (fn-record-decode-tail sequence txid generation msgid payload octets)))
+            (append
+             (fn-cbor-encode (cons :bytes *fn-record-magic*))
+             (fn-cbor-encode (cons :uint *fn-record-schema-version*))
+             (fn-cbor-encode (cons :uint sequence))
+             (fn-cbor-encode (cons :uint txid))
+             (fn-cbor-encode (cons :uint generation))
+             (fn-cbor-encode (cons :bytes (fn-record-string-octets msgid)))
+             (fn-cbor-encode (cons :bytes payload))
+             octets)))
+  :hints (("Goal"
+           :use ((:instance fn-record-read-uint-value-is-natural
+                            (octets octets))
+                 (:instance fn-record-component-prefixes-compose
+             (count (fn-record-parse-value (fn-record-read-uint octets)))
+             (groups (fn-record-parse-value (fn-record-parse-groups (fn-record-parse-value (fn-record-read-uint octets)) (fn-record-parse-rest (fn-record-read-uint octets)))))
+             (obligation-id (fn-record-octets-string (fn-record-parse-value (fn-record-read-bytes (fn-record-parse-rest (fn-record-parse-groups (fn-record-parse-value (fn-record-read-uint octets)) (fn-record-parse-rest (fn-record-read-uint octets))))))))
+             (content-subject (fn-record-octets-string (fn-record-parse-value (fn-record-read-bytes (fn-record-parse-rest (fn-record-read-bytes (fn-record-parse-rest (fn-record-parse-groups (fn-record-parse-value (fn-record-read-uint octets)) (fn-record-parse-rest (fn-record-read-uint octets))))))))))
+             (release-evidence (fn-record-octets-string (fn-record-parse-value (fn-record-read-bytes (fn-record-parse-rest (fn-record-read-bytes (fn-record-parse-rest (fn-record-read-bytes (fn-record-parse-rest (fn-record-parse-groups (fn-record-parse-value (fn-record-read-uint octets)) (fn-record-parse-rest (fn-record-read-uint octets))))))))))))
+             (charge (fn-record-parse-value (fn-record-read-uint (fn-record-parse-rest (fn-record-read-bytes (fn-record-parse-rest (fn-record-read-bytes (fn-record-parse-rest (fn-record-read-bytes (fn-record-parse-rest (fn-record-parse-groups (fn-record-parse-value (fn-record-read-uint octets)) (fn-record-parse-rest (fn-record-read-uint octets)))))))))))))
+             (after-count (fn-record-parse-rest (fn-record-read-uint octets)))
+             (after-groups (fn-record-parse-rest (fn-record-parse-groups (fn-record-parse-value (fn-record-read-uint octets)) (fn-record-parse-rest (fn-record-read-uint octets)))))
+             (after-id (fn-record-parse-rest (fn-record-read-bytes (fn-record-parse-rest (fn-record-parse-groups (fn-record-parse-value (fn-record-read-uint octets)) (fn-record-parse-rest (fn-record-read-uint octets)))))))
+             (after-subject (fn-record-parse-rest (fn-record-read-bytes (fn-record-parse-rest (fn-record-read-bytes (fn-record-parse-rest (fn-record-parse-groups (fn-record-parse-value (fn-record-read-uint octets)) (fn-record-parse-rest (fn-record-read-uint octets)))))))))
+             (after-evidence (fn-record-parse-rest (fn-record-read-bytes (fn-record-parse-rest (fn-record-read-bytes (fn-record-parse-rest (fn-record-read-bytes (fn-record-parse-rest (fn-record-parse-groups (fn-record-parse-value (fn-record-read-uint octets)) (fn-record-parse-rest (fn-record-read-uint octets)))))))))))
+             ))
+           :in-theory
+           (e/d (fn-record-decode-tail)
+                (fn-record-parse-okp
+                 fn-record-parse-ok
+                 fn-record-parse-value
+                 fn-record-parse-rest
+                 fn-record-make
+                 fn-record-component-prefixes-compose
+                 fn-record-read-uint
+                 fn-record-read-bytes
+                 fn-record-parse-groups
+                 fn-record-encode-groups
+                 fn-cbor-encode
+                 fn-record-encode
+                 fn-record-p
+                 fn-record-octets-string
+                 fn-record-string-octets)))))
+
+(defthm fn-record-decode-after-header-reencode
+  (implies (and
+            (fn-record-parse-okp (fn-record-decode-after-header octets))
+            (fn-cbor-at-mostp
+             (append
+              (fn-cbor-encode (cons :bytes *fn-record-magic*))
+              (fn-cbor-encode (cons :uint *fn-record-schema-version*))
+              octets)
+             *fn-record-max-octets*))
+           (equal
+            (fn-record-encode
+             (fn-record-parse-value (fn-record-decode-after-header octets)))
+            (append
+             (fn-cbor-encode (cons :bytes *fn-record-magic*))
+             (fn-cbor-encode (cons :uint *fn-record-schema-version*))
+             octets)))
+  :hints (("Goal"
+           :use
+           ((:instance fn-record-decode-after-header-successes)
+            (:instance fn-record-read-uint-reencode-prefix
+             (octets octets))
+            (:instance fn-record-read-uint-reencode-prefix
+             (octets
+              (fn-record-parse-rest (fn-record-read-uint octets))))
+            (:instance fn-record-read-uint-reencode-prefix
+             (octets
+              (fn-record-parse-rest
+               (fn-record-read-uint
+                (fn-record-parse-rest (fn-record-read-uint octets))))))
+            (:instance fn-record-read-bytes-reencode-prefix
+             (octets
+              (fn-record-parse-rest
+               (fn-record-read-uint
+                (fn-record-parse-rest
+                 (fn-record-read-uint
+                  (fn-record-parse-rest
+                   (fn-record-read-uint octets))))))))
+            (:instance fn-record-read-bytes-reencode-prefix
+             (octets
+              (fn-record-parse-rest
+               (fn-record-read-bytes
+                (fn-record-parse-rest
+                 (fn-record-read-uint
+                  (fn-record-parse-rest
+                   (fn-record-read-uint
+                    (fn-record-parse-rest
+                     (fn-record-read-uint octets))))))))))
+            (:instance fn-record-read-bytes-value-are-octets
+             (octets
+              (fn-record-parse-rest
+               (fn-record-read-uint
+                (fn-record-parse-rest
+                 (fn-record-read-uint
+                  (fn-record-parse-rest
+                   (fn-record-read-uint octets))))))))
+            (:instance fn-record-string-octets-of-octets-string
+             (octets
+              (fn-record-parse-value
+               (fn-record-read-bytes
+                (fn-record-parse-rest
+                 (fn-record-read-uint
+                  (fn-record-parse-rest
+                   (fn-record-read-uint
+                    (fn-record-parse-rest
+                     (fn-record-read-uint octets))))))))))
+            (:instance fn-record-five-prefixes-compose
+             (p1
+              (fn-cbor-encode
+               (cons :uint
+                     (fn-record-parse-value
+                      (fn-record-read-uint octets)))))
+             (after1
+              (fn-record-parse-rest (fn-record-read-uint octets)))
+             (p2
+              (fn-cbor-encode
+               (cons :uint
+                     (fn-record-parse-value
+                      (fn-record-read-uint
+                       (fn-record-parse-rest
+                        (fn-record-read-uint octets)))))))
+             (after2
+              (fn-record-parse-rest
+               (fn-record-read-uint
+                (fn-record-parse-rest (fn-record-read-uint octets)))))
+             (p3
+              (fn-cbor-encode
+               (cons :uint
+                     (fn-record-parse-value
+                      (fn-record-read-uint
+                       (fn-record-parse-rest
+                        (fn-record-read-uint
+                         (fn-record-parse-rest
+                          (fn-record-read-uint octets)))))))))
+             (after3
+              (fn-record-parse-rest
+               (fn-record-read-uint
+                (fn-record-parse-rest
+                 (fn-record-read-uint
+                  (fn-record-parse-rest
+                   (fn-record-read-uint octets)))))))
+             (p4
+              (fn-cbor-encode
+               (cons :bytes
+                     (fn-record-parse-value
+                      (fn-record-read-bytes
+                       (fn-record-parse-rest
+                        (fn-record-read-uint
+                         (fn-record-parse-rest
+                          (fn-record-read-uint
+                           (fn-record-parse-rest
+                            (fn-record-read-uint octets)))))))))))
+             (after4
+              (fn-record-parse-rest
+               (fn-record-read-bytes
+                (fn-record-parse-rest
+                 (fn-record-read-uint
+                  (fn-record-parse-rest
+                   (fn-record-read-uint
+                    (fn-record-parse-rest
+                     (fn-record-read-uint octets)))))))))
+             (p5
+              (fn-cbor-encode
+               (cons :bytes
+                     (fn-record-parse-value
+                      (fn-record-read-bytes
+                       (fn-record-parse-rest
+                        (fn-record-read-bytes
+                         (fn-record-parse-rest
+                          (fn-record-read-uint
+                           (fn-record-parse-rest
+                            (fn-record-read-uint
+                             (fn-record-parse-rest
+                              (fn-record-read-uint octets)))))))))))))
+             (tail
+              (fn-record-parse-rest
+               (fn-record-read-bytes
+                (fn-record-parse-rest
+                 (fn-record-read-bytes
+                  (fn-record-parse-rest
+                   (fn-record-read-uint
+                    (fn-record-parse-rest
+                     (fn-record-read-uint
+                      (fn-record-parse-rest
+                       (fn-record-read-uint octets)))))))))))
+             (input octets))
+            (:instance fn-record-decode-tail-reencode
+             (sequence
+              (fn-record-parse-value (fn-record-read-uint octets)))
+             (txid
+              (fn-record-parse-value
+               (fn-record-read-uint
+                (fn-record-parse-rest (fn-record-read-uint octets)))))
+             (generation
+              (fn-record-parse-value
+               (fn-record-read-uint
+                (fn-record-parse-rest
+                 (fn-record-read-uint
+                  (fn-record-parse-rest
+                   (fn-record-read-uint octets)))))))
+             (msgid
+              (fn-record-octets-string
+               (fn-record-parse-value
+                (fn-record-read-bytes
+                 (fn-record-parse-rest
+                  (fn-record-read-uint
+                   (fn-record-parse-rest
+                    (fn-record-read-uint
+                     (fn-record-parse-rest
+                      (fn-record-read-uint octets))))))))))
+             (payload
+              (fn-record-parse-value
+               (fn-record-read-bytes
+                (fn-record-parse-rest
+                 (fn-record-read-bytes
+                  (fn-record-parse-rest
+                   (fn-record-read-uint
+                    (fn-record-parse-rest
+                     (fn-record-read-uint
+                      (fn-record-parse-rest
+                       (fn-record-read-uint octets)))))))))))
+             (octets
+              (fn-record-parse-rest
+               (fn-record-read-bytes
+                (fn-record-parse-rest
+                 (fn-record-read-bytes
+                  (fn-record-parse-rest
+                   (fn-record-read-uint
+                    (fn-record-parse-rest
+                     (fn-record-read-uint
+                      (fn-record-parse-rest
+                       (fn-record-read-uint octets)))))))))))))
+           :in-theory
+           (union-theories
+            (theory 'minimal-theory)
+            '(fn-record-decode-after-header
+              fn-record-parse-error-is-failure
+              fn-record-decode-after-header-successes
+              fn-record-parse-ok-is-success
+              fn-record-parse-ok-has-value
+              fn-record-parse-ok-has-rest
+              fn-record-append-associative
+              fn-record-length-append
+              fn-record-at-most-is-length-bound
+              (:executable-counterpart equal)
+              (:executable-counterpart not)
+              (:executable-counterpart consp)
+              (:executable-counterpart car)
+              (:executable-counterpart cdr))))))
+
+(defthm fn-record-result-okp-is-parse-okp
+  (equal (fn-record-result-okp result)
+         (fn-record-parse-okp result))
+  :hints (("Goal"
+           :in-theory (enable fn-record-result-okp
+                              fn-record-parse-okp))))
+
+(defthm fn-record-final-ok-is-success
+  (fn-record-result-okp (list :ok record))
+  :hints (("Goal"
+           :in-theory (enable fn-record-result-okp))))
+
+(defthm fn-record-final-ok-has-record
+  (equal (fn-record-result-record (list :ok record)) record)
+  :hints (("Goal"
+           :in-theory (enable fn-record-result-record))))
+
+; The exact decoder's successful control-flow facts, without opening either
+; primitive CBOR read.  These facts are the complete adapter from its two
+; header reads to the already-proved after-header inverse.
+(defthm fn-record-decode-exact-successes
+  (implies
+   (fn-record-result-okp (fn-record-decode-exact octets))
+   (and
+    (fn-cbor-at-mostp octets *fn-record-max-octets*)
+    (fn-record-parse-okp (fn-record-read-bytes octets))
+    (equal (fn-record-parse-value (fn-record-read-bytes octets))
+           *fn-record-magic*)
+    (fn-record-parse-okp
+     (fn-record-read-uint
+      (fn-record-parse-rest (fn-record-read-bytes octets))))
+    (equal
+     (fn-record-parse-value
+      (fn-record-read-uint
+       (fn-record-parse-rest (fn-record-read-bytes octets))))
+     *fn-record-schema-version*)
+    (fn-record-parse-okp
+     (fn-record-decode-after-header
+      (fn-record-parse-rest
+       (fn-record-read-uint
+        (fn-record-parse-rest (fn-record-read-bytes octets))))))
+    (equal
+     (fn-record-result-record (fn-record-decode-exact octets))
+     (fn-record-parse-value
+      (fn-record-decode-after-header
+       (fn-record-parse-rest
+        (fn-record-read-uint
+         (fn-record-parse-rest (fn-record-read-bytes octets)))))))))
+  :hints (("Goal"
+           :in-theory
+           (union-theories
+            (theory 'minimal-theory)
+            '(fn-record-decode-exact
+              fn-record-result-okp-is-parse-okp
+              fn-record-parse-error-is-failure
+              fn-record-final-ok-is-success
+              fn-record-final-ok-has-record
+              fn-record-parse-ok-has-value
+              (:executable-counterpart equal)
+              (:executable-counterpart not))))))
+
+; Every accepted exact schema-0 record is already its deterministic encoding.
+; The hypothesis is only parser success: the decoder itself establishes the
+; byte domain, input cap, schema checks, field domains, group uniqueness, and
+; absence of trailing octets.
+(defthm fn-record-accepted-input-is-canonical
+  (implies (fn-record-result-okp (fn-record-decode-exact octets))
+           (equal (fn-record-encode
+                   (fn-record-result-record (fn-record-decode-exact octets)))
+                  octets))
+  :hints (("Goal"
+           :use
+           ((:instance fn-record-decode-exact-successes)
+            (:instance fn-record-read-bytes-reencode-prefix
+             (octets octets))
+            (:instance fn-record-read-uint-reencode-prefix
+             (octets
+              (fn-record-parse-rest (fn-record-read-bytes octets))))
+            (:instance fn-record-two-prefixes-compose
+             (p1
+              (fn-cbor-encode
+               (cons :bytes
+                     (fn-record-parse-value
+                      (fn-record-read-bytes octets)))))
+             (after1
+              (fn-record-parse-rest (fn-record-read-bytes octets)))
+             (p2
+              (fn-cbor-encode
+               (cons :uint
+                     (fn-record-parse-value
+                      (fn-record-read-uint
+                       (fn-record-parse-rest
+                        (fn-record-read-bytes octets)))))))
+             (tail
+              (fn-record-parse-rest
+               (fn-record-read-uint
+                (fn-record-parse-rest (fn-record-read-bytes octets)))))
+             (input octets))
+            (:instance fn-record-decode-after-header-reencode
+             (octets
+              (fn-record-parse-rest
+               (fn-record-read-uint
+                (fn-record-parse-rest (fn-record-read-bytes octets)))))))
+           :in-theory
+           (union-theories
+            (theory 'minimal-theory)
+            '(fn-record-decode-exact-successes
+              fn-record-append-associative
+              (:executable-counterpart equal))))))

@@ -13,6 +13,30 @@ import run_store  # noqa: E402
 
 
 class StoreLifecycleTests(unittest.TestCase):
+    def test_mutation_requires_a_live_exclusive_owner(self):
+        for mode in ("reader", "closed-writer"):
+            for operation in ("allocate", "publish"):
+                with self.subTest(mode=mode, operation=operation):
+                    with tempfile.TemporaryDirectory(prefix="fn-owner-") as temporary:
+                        path = Path(temporary) / "store"
+                        run_store.Store(path, writable=True).initialize()
+                        store = run_store.Store(path, writable=(mode != "reader"))
+                        store.acquire()
+                        if mode == "closed-writer":
+                            store.close()
+                        frontier = store.frontier_path.read_bytes()
+                        try:
+                            with self.assertRaises(run_store.StoreError):
+                                if operation == "allocate":
+                                    store.advance_frontier(0)
+                                else:
+                                    store.publish(0, b"not-admitted")
+                            self.assertEqual(store.frontier_path.read_bytes(), frontier)
+                            self.assertEqual(list(store.transactions.iterdir()), [])
+                            self.assertEqual(list(store.staging.iterdir()), [])
+                        finally:
+                            store.close()
+
     def test_acquire_metadata_io_error_releases_writer_lock(self):
         with tempfile.TemporaryDirectory(prefix="fn-lock-error-") as temporary:
             path = Path(temporary) / "store"
