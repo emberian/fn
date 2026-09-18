@@ -65,6 +65,9 @@
 (assert-event
  (not (fn-af-message-idp
        (append '(60 97 64) (fn-af-test-repeat 247 98) '(62)))))
+; Guard-T standalone grammar entry points retain their malformed-input result
+; behavior for improper lists; no host guard fault is part of that contract.
+(assert-event (not (fn-af-message-idp '(60 . 62))))
 
 ; Newsgroups preserves order and accepts RFC FWS, while rejecting empty dots,
 ; reserved punctuation, and a dangling comma without changing any field bytes.
@@ -83,6 +86,8 @@
 (assert-event
  (equal (fn-af-newsgroup-list-parse (fn-af-test-octets "fn.letters,"))
         '(:error :invalid-newsgroups)))
+(assert-event (equal (fn-af-newsgroup-list-parse '(102 . 110))
+                     '(:error :limit)))
 
 ; Folded Message-ID is invalid for its *WSP grammar; duplicate semantic fields
 ; are classified and are never reduced to a first field.

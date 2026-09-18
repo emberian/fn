@@ -102,14 +102,20 @@ are separate from the earlier 54-root record.
 | Terra | Exchange ingest and policy-changing traces preserve state/conflicting facts; all 40 guards certified and integrated |
 | Sol + Terra | Full public missing-range value correspondence and hypothesis-free polynomial work bound certified, including structural equality |
 | Terra | Wildmat matcher whole-operation work bound and all 54 guards certified |
-| Sol + Astra | NNTP guard graph certified in isolation; queued for root integration |
-| Terra | Article-field guard graph certified in isolation; queued for root integration |
+| Sol + Astra | All 115 NNTP guards integrated, with 17 socket/partition tests and independent client passing |
+| Terra | All 30 article-field guards integrated; exact legacy BP article ingress model certified |
 
-The runtime graphs cover acceptance (63), wire (38), wildmat (54), article (45),
+The 75-root checkpoint runtime graphs cover acceptance (63), wire (38), wildmat (54), article (45),
 retention (35), node (30), replay (13), CBOR (21), records (45), file kernel (47),
 store wrappers/resolution/observed opening (40), transfer (62), and exchange (40): 533 guard-verified functions.
+The subsequent [reader/checkpoint/index batch](../tests/evidence/2026-09-18-reader-checkpoint-index.md)
+adds NNTP115 and semantic fields30, making 678 functions in those 17 base graphs;
+the derived index separately guards 20 functions. Logical checkpoint equivalence
+and derived index correctness are integrated, while physical checkpoint/index
+adoption remains open.
+
 All 452 pre-existing logical function bodies in the newly integrated graphs
-are unchanged; 15 proved executable/domain helpers were added. The frozen combined run passed; these counts exclude subsequent isolated patches.
+are unchanged; 15 proved executable/domain helpers were added. The 75-root frozen combined run passed; the follow-on record describes the later changed roots and reader tests.
 
 The [closure inventory](assurance-closure.md) retains the finite exit criteria.
 No completed helper is being used to close a wider unfinished row. Work proceeds
@@ -140,3 +146,9 @@ select a signing grammar or cryptographic suite.
 
 Private-group cryptography remains a separate requirements/research track.
 Shared community groups come first; MLS is a candidate, not a commitment.
+
+
+The [article work batch](../tests/evidence/2026-09-18-article-work.md) passed all
+seven new roots. Complete public parser value correspondence and structural-work
+bounds now include malformed inputs and repeated prefix copies. Original parser
+sources are unchanged; physical allocation/runtime costs remain separate.

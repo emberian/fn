@@ -37,8 +37,21 @@
     rev-bytes))
 
 (defun fn-af-trim-wsp (bytes)
+  (declare (xargs :guard (true-listp bytes) :verify-guards nil))
   (reverse (fn-af-trim-trailing-wsp-rev
             (reverse (fn-af-skip-wsp bytes)))))
+
+(defthm fn-af-guard-skip-wsp-true-listp
+  (implies (true-listp bytes)
+           (true-listp (fn-af-skip-wsp bytes)))
+  :hints (("Goal" :induct (fn-af-skip-wsp bytes)
+           :in-theory (enable fn-af-skip-wsp))))
+
+(defthm fn-af-guard-trim-trailing-wsp-rev-true-listp
+  (implies (true-listp bytes)
+           (true-listp (fn-af-trim-trailing-wsp-rev bytes)))
+  :hints (("Goal" :induct (fn-af-trim-trailing-wsp-rev bytes)
+           :in-theory (enable fn-af-trim-trailing-wsp-rev))))
 
 ; RFC 5322 atext, imported by RFC 5536 section 3.1.3's dot-atom-text.
 (defun fn-af-atextp (byte)
@@ -88,6 +101,7 @@
 ; bracketed id-right is consequently preserved rather than mistaken for a
 ; separator.
 (defun fn-af-msg-id-core-aux (bytes left-rev)
+  (declare (xargs :guard (true-listp left-rev) :verify-guards nil))
   (if (consp bytes)
       (if (equal (car bytes) 64)
           (and (fn-af-dot-atom-textp (reverse left-rev))
@@ -99,6 +113,7 @@
   (fn-af-msg-id-core-aux bytes nil))
 
 (defun fn-af-msg-id-closep (bytes core-rev)
+  (declare (xargs :guard (true-listp core-rev) :verify-guards nil))
   (if (consp bytes)
       (if (equal (car bytes) 62)
           (and (null (cdr bytes))
@@ -146,17 +161,29 @@
   (or (fn-af-newsgroup-component-charp byte) (equal byte 46)))
 
 (defun fn-af-take-newsgroup-token (bytes rev-token)
+  (declare (xargs :guard (true-listp rev-token) :verify-guards nil))
   ; (:ok name rest), with no allocation before the caller's bounded field
   ; preflight.  A delimiter is retained in rest for the list grammar.
   (if (and (consp bytes) (fn-af-newsgroup-token-charp (car bytes)))
       (fn-af-take-newsgroup-token (cdr bytes) (cons (car bytes) rev-token))
     (list :ok (reverse rev-token) bytes)))
 
+(defthm fn-af-guard-take-newsgroup-token-rest-true-listp
+  (implies (true-listp bytes)
+           (true-listp
+            (car (cdr (cdr (fn-af-take-newsgroup-token bytes rev-token))))))
+  :hints (("Goal" :induct (fn-af-take-newsgroup-token bytes rev-token)
+           :in-theory (enable fn-af-take-newsgroup-token))))
+
 (defun fn-af-newsgroup-list-parse-aux (bytes names-rev need-name fuel)
   ; One fuel unit is spent for every name/separator decision.  The 8,192-octet
   ; preflight supplies enough fuel while making termination independent of a
   ; caller's list shape.
-  (declare (xargs :measure (nfix fuel)))
+  (declare (xargs :measure (nfix fuel)
+                  :guard (and (true-listp bytes)
+                              (true-listp names-rev)
+                              (natp fuel))
+                  :verify-guards nil))
   (if (zp fuel)
       (list :error :limit)
     (if need-name
@@ -194,6 +221,7 @@
 ; keeping raw lines and source provenance available to the injector.
 
 (defun fn-af-message-id-field-value (field)
+  (declare (xargs :guard (fn-article-fieldp field) :verify-guards nil))
   ; message-id = "Message-ID:" SP *WSP msg-id *WSP CRLF.  Its specific grammar
   ; has WSP, not FWS, so a folded field is not a valid Message-ID field here.
   (let ((raw-lines (fn-article-field-raw-lines field))
@@ -205,6 +233,7 @@
       nil)))
 
 (defun fn-af-newsgroups-field-value (field)
+  (declare (xargs :guard (fn-article-fieldp field) :verify-guards nil))
   ; newsgroups = "Newsgroups:" SP newsgroup-list CRLF.  Newsgroup-list allows
   ; FWS around commas; the syntax parser has already unfolded it to WSP.
   (let ((value (fn-article-field-unfolded-value field)))
@@ -213,6 +242,7 @@
       (list :error :invalid-newsgroups))))
 
 (defun fn-af-message-id-status (article)
+  (declare (xargs :guard (fn-article-syntax-p article) :verify-guards nil))
   ; (:missing) | (:duplicate fields) | (:invalid field) | (:single id field)
   (let ((fields (fn-article-get-headers article *fn-af-message-id-name*)))
     (if (null fields)
@@ -225,6 +255,7 @@
             (list :invalid (car fields))))))))
 
 (defun fn-af-newsgroups-status (article)
+  (declare (xargs :guard (fn-article-syntax-p article) :verify-guards nil))
   ; (:missing) | (:duplicate fields) | (:invalid field) | (:single names field)
   (let ((fields (fn-article-get-headers article *fn-af-newsgroups-name*)))
     (if (null fields)
@@ -236,11 +267,18 @@
               (list :single (car (cdr parsed)) (car fields))
             (list :invalid (car fields))))))))
 
-(defun fn-af-status-kind (status) (car status))
-(defun fn-af-status-value (status) (car (cdr status)))
-(defun fn-af-status-field (status) (car (cdr (cdr status))))
+(defun fn-af-status-kind (status)
+  (declare (xargs :guard (true-listp status) :verify-guards nil))
+  (car status))
+(defun fn-af-status-value (status)
+  (declare (xargs :guard (true-listp status) :verify-guards nil))
+  (car (cdr status)))
+(defun fn-af-status-field (status)
+  (declare (xargs :guard (true-listp status) :verify-guards nil))
+  (car (cdr (cdr status))))
 
 (defun fn-af-proto-article-check (article)
+  (declare (xargs :guard (fn-article-syntax-p article) :verify-guards nil))
   ; RFC 5537 section 3.4.1 subset.  A valid supplied Message-ID is retained
   ; exactly; absence is accepted for a later injector to generate.  Neither
   ; generated fields nor configuration/admission decisions occur here.
@@ -274,3 +312,43 @@
   (implies (and (fn-af-message-idp left) (fn-af-message-idp right))
            (iff (fn-af-message-id-equalp left right)
                 (equal left right))))
+
+(defthm fn-af-guard-get-headers-aux-car-fieldp
+  (implies (and (fn-article-field-listp fields)
+                (consp (fn-article-get-headers-aux fields name)))
+           (fn-article-fieldp
+            (car (fn-article-get-headers-aux fields name))))
+  :hints (("Goal" :induct (fn-article-get-headers-aux fields name)
+           :in-theory (enable fn-article-get-headers-aux))))
+
+; Isolated complete guard graph.
+(verify-guards fn-af-wspp)
+(verify-guards fn-af-skip-wsp)
+(verify-guards fn-af-trim-trailing-wsp-rev)
+(verify-guards fn-af-trim-wsp)
+(verify-guards fn-af-atextp)
+(verify-guards fn-af-dot-atom-text-aux)
+(verify-guards fn-af-dot-atom-textp)
+(verify-guards fn-af-mdtextp)
+(verify-guards fn-af-no-fold-literal-restp)
+(verify-guards fn-af-id-rightp)
+(verify-guards fn-af-msg-id-core-aux)
+(verify-guards fn-af-msg-id-corep)
+(verify-guards fn-af-msg-id-closep)
+(verify-guards fn-af-message-idp)
+(verify-guards fn-af-message-id-equalp)
+(verify-guards fn-af-newsgroup-component-charp)
+(verify-guards fn-af-newsgroup-name-aux)
+(verify-guards fn-af-newsgroup-namep)
+(verify-guards fn-af-newsgroup-token-charp)
+(verify-guards fn-af-take-newsgroup-token)
+(verify-guards fn-af-newsgroup-list-parse-aux)
+(verify-guards fn-af-newsgroup-list-parse)
+(verify-guards fn-af-message-id-field-value)
+(verify-guards fn-af-newsgroups-field-value)
+(verify-guards fn-af-message-id-status)
+(verify-guards fn-af-newsgroups-status)
+(verify-guards fn-af-status-kind)
+(verify-guards fn-af-status-value)
+(verify-guards fn-af-status-field)
+(verify-guards fn-af-proto-article-check)

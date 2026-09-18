@@ -356,7 +356,12 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "books/checkpoint.lisp",
+        "tests/acl2/checkpoint-tests.lisp",
+        "specs/checkpoint.md"
+      ],
+      "implementation_note": "Logical checkpoint plus suffix replay equivalence is implemented; persisted checkpoint bytes, generation publication, crash selection and freshness remain open."
     },
     {
       "id": "STO-007",
@@ -674,7 +679,7 @@
       "id": "REP-006",
       "title": "BP/LTP preserves fn application acceptance semantics",
       "specification": "specs/replication.md#scheduling-and-transport",
-      "milestone": "M6",
+      "milestone": "M4",
       "status": "specified",
       "proof_targets": [
         "PRF-012",
@@ -684,8 +689,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": [],
-      "implementation_note": " A06 now places BPv7 integration, durable workflow records and application receipts on the active path; current design/exit is specs/bp-path.md. This is an assignment, not completion evidence."
+      "evidence": [
+        "tests/evidence/2026-09-18-bpv7-transport.md",
+        "specs/bp-path.md"
+      ],
+      "implementation_note": "BPv7 is active M4 work alongside M3. Pinned dtn7-rs transport tests cover disconnection, clean restarts, duplicate suppression, non-destructive inbox staging and expiry. Actual fn workflow/receipt composition and LTP profiles remain open."
     },
     {
       "id": "NNT-001",

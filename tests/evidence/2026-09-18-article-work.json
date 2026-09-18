@@ -1,0 +1,162 @@
+{
+  "status": "passed",
+  "command": [
+    "python3",
+    "tools/certify_books.py",
+    "books/article-work-primitives",
+    "books/article-work-scanners",
+    "books/article-work",
+    "books/article-work-budget",
+    "books/article-public-work",
+    "books/article-public-bound",
+    "tests/acl2/article-work-tests"
+  ],
+  "certification": {
+    "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+    "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+    "acl2_exit_codes": {
+      "books/article-public-bound": 0,
+      "books/article-public-work": 0,
+      "books/article-work": 0,
+      "books/article-work-budget": 0,
+      "books/article-work-primitives": 0,
+      "books/article-work-scanners": 0,
+      "tests/acl2/article-work-tests": 0
+    },
+    "acl2_version": "ACL2 Version 8.7",
+    "acl2_version_probe_exit_code": 0,
+    "certificate_digests_sha256": {
+      "books/article-public-bound": "1c6b1a4f096352b9a4bba583d8eed5066f4081364ae2a1d8caa29a458b4ac441",
+      "books/article-public-work": "bcd7bafce695dfed43bf116959e97cd095e12fe3fa670983389b175d5fbd4369",
+      "books/article-work": "3c0763174deed60c95404951f7a89e9b6a2df245be99eead353959e5271fbed5",
+      "books/article-work-budget": "977d6c99d119e44bfe2379b46fa7c029c8b88a0b1add84bd52e77e7ce4b7f394",
+      "books/article-work-primitives": "baaadacc33d19836f7f1bda9ef7b34720ede7ca7aa0c709f8cafb7f1a313af1e",
+      "books/article-work-scanners": "0f941fc2a93f9fad92934122bcf2958f5424e1fb4f8bf9529916c9c0f34221aa",
+      "tests/acl2/article-work-tests": "e925c2e5e671f4b24f6aec353274fe95e460ba9f7ae41db28ca1cc8a0baeb962"
+    },
+    "command": [
+      "acl2"
+    ],
+    "driver_digests_sha256": {
+      "books/article-public-bound": "ee36794bf97e2948eab4e483a602b12c56ccf5d778e98ce9c6256f5eded39c71",
+      "books/article-public-work": "8a915fc12b61201e7d97cba9e0ac6560607fdb8dcd71dad654d276dbfc35fb6e",
+      "books/article-work": "f629fcd86f2601edf80d12fdf7039297a825d5b380d2eb232f53479cf65172ef",
+      "books/article-work-budget": "7e016ab7f8e448d15cce7c795810df085cd4661ee05d8356afda8a877e16976c",
+      "books/article-work-primitives": "9241147d6fdae81e73aa800a683d5a69667f5139c5abace4061ffbf31de4f430",
+      "books/article-work-scanners": "ae68e02720e75051f70b53e377683b6d8236900f1ec95bf372383a0c60f5edd7",
+      "tests/acl2/article-work-tests": "ce2cff6c60271d81998639dbdd59f8e7b494b41eec11ca5d62bbae171de2e938"
+    },
+    "environment": {
+      "ACL2_CUSTOMIZATION": "NONE",
+      "ACL2_SYSTEM_BOOKS": null
+    },
+    "expected_success_markers": [
+      "FN_CERTIFY_SUCCESS 23a8c7219161e0872fe35b4ff72799dd 55dfe6942d2e",
+      "FN_CERTIFY_SUCCESS 23a8c7219161e0872fe35b4ff72799dd f1e638318568",
+      "FN_CERTIFY_SUCCESS 23a8c7219161e0872fe35b4ff72799dd e0f9f50438b9",
+      "FN_CERTIFY_SUCCESS 23a8c7219161e0872fe35b4ff72799dd ebe43d88d7ef",
+      "FN_CERTIFY_SUCCESS 23a8c7219161e0872fe35b4ff72799dd c067ac036a79",
+      "FN_CERTIFY_SUCCESS 23a8c7219161e0872fe35b4ff72799dd 2c8ae2e991cd",
+      "FN_CERTIFY_SUCCESS 23a8c7219161e0872fe35b4ff72799dd f8a1393e7ba4"
+    ],
+    "failure_markers": [],
+    "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+    "local_source_audit": {
+      "findings": {},
+      "forbidden_facilities": [
+        "defaxiom",
+        "defttag",
+        "include-raw",
+        "set-raw-mode",
+        "skip-proofs"
+      ],
+      "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+      "scope": "local source closure only; installed ACL2/system books remain trusted"
+    },
+    "observed_success_markers": [
+      "FN_CERTIFY_SUCCESS 23a8c7219161e0872fe35b4ff72799dd 55dfe6942d2e",
+      "FN_CERTIFY_SUCCESS 23a8c7219161e0872fe35b4ff72799dd f1e638318568",
+      "FN_CERTIFY_SUCCESS 23a8c7219161e0872fe35b4ff72799dd e0f9f50438b9",
+      "FN_CERTIFY_SUCCESS 23a8c7219161e0872fe35b4ff72799dd ebe43d88d7ef",
+      "FN_CERTIFY_SUCCESS 23a8c7219161e0872fe35b4ff72799dd c067ac036a79",
+      "FN_CERTIFY_SUCCESS 23a8c7219161e0872fe35b4ff72799dd 2c8ae2e991cd",
+      "FN_CERTIFY_SUCCESS 23a8c7219161e0872fe35b4ff72799dd f8a1393e7ba4"
+    ],
+    "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+    "python": "3.14.7",
+    "requested_books": [
+      "books/article-work-primitives",
+      "books/article-work-scanners",
+      "books/article-work",
+      "books/article-work-budget",
+      "books/article-public-work",
+      "books/article-public-bound",
+      "tests/acl2/article-work-tests"
+    ],
+    "runner_sha256": "dd444d5cc83bfc60b75020e9aea69fdfcdda9135872cd1392e3ab53c6ff1a3d7",
+    "runner_unchanged": true,
+    "source_digests_sha256": {
+      "books/article-invariants.lisp": "3ed30e0a402f28f80074166fd7fa09dbc1e6839e33d0e14b190d906a1e837395",
+      "books/article-properties.lisp": "b92a7443e840565325e39f463894b3928c72ebc78e82611b75ec30fcbf92e81f",
+      "books/article-public-bound.lisp": "c6ab0d8b24f6f981c0d5467d9d831637183ef40597201ab1dd7b538e035cd180",
+      "books/article-public-work.lisp": "8122c57492615af7b24a752ac8637114ec4afb2e4bcb0a3f973e7ac49fa4b5ea",
+      "books/article-work-budget.lisp": "58af99b59ce0b756e01e2afd11aaffb72e937214164f79c2b0965fc5c26575bd",
+      "books/article-work-primitives.lisp": "324de5853de59a5b82aa13800d7cbc2dafe13982d0cadf75d39542188d896ca1",
+      "books/article-work-scanners.lisp": "cf9f3e57dbf93251adce18d1e165b90cf605b12c377ee64944b5dd8cf1612c1c",
+      "books/article-work.lisp": "1f274dddebd024eab8a87d4eb21d36791ab58872b2d5f36c610e863038d34637",
+      "books/article.lisp": "97571867dbfad8a6892319f36a0b5523be216199a6f7b90e6e4eaa9976d18d8d",
+      "books/cbor.lisp": "5f1bda9c6c67a77d78bcbed67f7d6dc487192e1a3bb65359ea47b9ad300b3323",
+      "tests/acl2/article-work-tests.lisp": "10424fd3c7011b219cb934790696622cafcdcd28a3fd26d4868f1249a3bd2f4b"
+    },
+    "source_digests_sha256_after": {
+      "books/article-invariants.lisp": "3ed30e0a402f28f80074166fd7fa09dbc1e6839e33d0e14b190d906a1e837395",
+      "books/article-properties.lisp": "b92a7443e840565325e39f463894b3928c72ebc78e82611b75ec30fcbf92e81f",
+      "books/article-public-bound.lisp": "c6ab0d8b24f6f981c0d5467d9d831637183ef40597201ab1dd7b538e035cd180",
+      "books/article-public-work.lisp": "8122c57492615af7b24a752ac8637114ec4afb2e4bcb0a3f973e7ac49fa4b5ea",
+      "books/article-work-budget.lisp": "58af99b59ce0b756e01e2afd11aaffb72e937214164f79c2b0965fc5c26575bd",
+      "books/article-work-primitives.lisp": "324de5853de59a5b82aa13800d7cbc2dafe13982d0cadf75d39542188d896ca1",
+      "books/article-work-scanners.lisp": "cf9f3e57dbf93251adce18d1e165b90cf605b12c377ee64944b5dd8cf1612c1c",
+      "books/article-work.lisp": "1f274dddebd024eab8a87d4eb21d36791ab58872b2d5f36c610e863038d34637",
+      "books/article.lisp": "97571867dbfad8a6892319f36a0b5523be216199a6f7b90e6e4eaa9976d18d8d",
+      "books/cbor.lisp": "5f1bda9c6c67a77d78bcbed67f7d6dc487192e1a3bb65359ea47b9ad300b3323",
+      "tests/acl2/article-work-tests.lisp": "10424fd3c7011b219cb934790696622cafcdcd28a3fd26d4868f1249a3bd2f4b"
+    },
+    "status": "passed",
+    "timeout_seconds": 600
+  },
+  "audit": {
+    "scope": "new books/test/spec only; all original logical parser sources unchanged",
+    "source_sha256": {
+      "books/article-work-primitives.lisp": "324de5853de59a5b82aa13800d7cbc2dafe13982d0cadf75d39542188d896ca1",
+      "books/article-work-scanners.lisp": "cf9f3e57dbf93251adce18d1e165b90cf605b12c377ee64944b5dd8cf1612c1c",
+      "books/article-work.lisp": "1f274dddebd024eab8a87d4eb21d36791ab58872b2d5f36c610e863038d34637",
+      "books/article-work-budget.lisp": "58af99b59ce0b756e01e2afd11aaffb72e937214164f79c2b0965fc5c26575bd",
+      "books/article-public-work.lisp": "8122c57492615af7b24a752ac8637114ec4afb2e4bcb0a3f973e7ac49fa4b5ea",
+      "books/article-public-bound.lisp": "c6ab0d8b24f6f981c0d5467d9d831637183ef40597201ab1dd7b538e035cd180",
+      "tests/acl2/article-work-tests.lisp": "10424fd3c7011b219cb934790696622cafcdcd28a3fd26d4868f1249a3bd2f4b",
+      "specs/article-work.md": "1124af56957a7174538bc15969d7accf370e7a2b633c5780e68252d835d4031c"
+    },
+    "dependencies": {
+      "books/cbor.lisp": "5f1bda9c6c67a77d78bcbed67f7d6dc487192e1a3bb65359ea47b9ad300b3323",
+      "books/cbor.lisp_matches_shared_source": true,
+      "books/article.lisp": "97571867dbfad8a6892319f36a0b5523be216199a6f7b90e6e4eaa9976d18d8d",
+      "books/article.lisp_matches_shared_source": true,
+      "books/article-invariants.lisp": "3ed30e0a402f28f80074166fd7fa09dbc1e6839e33d0e14b190d906a1e837395",
+      "books/article-invariants.lisp_matches_shared_source": true,
+      "books/article-properties.lisp": "b92a7443e840565325e39f463894b3928c72ebc78e82611b75ec30fcbf92e81f",
+      "books/article-properties.lisp_matches_shared_source": true
+    },
+    "certification_manifest": "build/acl2/certify-20260918T121514Z-94241/manifest.json",
+    "certification_status": "passed",
+    "acl2_version": "ACL2 Version 8.7",
+    "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+    "source_closure_unchanged": true,
+    "forbidden_facility_findings": {}
+  },
+  "claim": "Exact complete fn-article-parse value projection and unconditional structural-work bound including malformed input.",
+  "limits": [
+    "Not wall-clock, heap bytes, integer bit complexity or GC.",
+    "Work witnesses are not separately guard verified.",
+    "PRF-016 also covers other parsers, allocation and staging and remains in progress."
+  ]
+}

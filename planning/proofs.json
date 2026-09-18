@@ -332,9 +332,19 @@
         "A-DURABILITY",
         "A-WRITE-ISOLATION"
       ],
-      "status": "planned",
-      "events": [],
-      "evidence": []
+      "status": "in-progress",
+      "events": [
+        "fn-checkpoint-plus-suffix-equals-full-replay",
+        "fn-checkpoint-admissible-capture-is-exact",
+        "fn-checkpoint-admissible-capture-value-is-valid"
+      ],
+      "evidence": [
+        "books/checkpoint.lisp",
+        "tests/acl2/checkpoint-tests.lisp",
+        "specs/checkpoint.md",
+        "tests/evidence/2026-09-18-reader-checkpoint-index.md"
+      ],
+      "progress_note": "Logical capture stores the exact prefix node; restore runs the actual suffix loop without prefix input. General admissible-split equivalence includes consumed allocator gaps and final frontier normalization. Physical encoding/publication/generation selection and freshness remain open."
     },
     {
       "id": "PRF-009",
@@ -373,9 +383,19 @@
         "PRF-001"
       ],
       "assumptions": [],
-      "status": "planned",
-      "events": [],
-      "evidence": []
+      "status": "in-progress",
+      "events": [
+        "fn-index-build-correspondence",
+        "fn-index-rebuild-correspondence",
+        "fn-index-range-query-correct"
+      ],
+      "evidence": [
+        "books/index.lisp",
+        "tests/acl2/index-tests.lisp",
+        "specs/index.md",
+        "tests/evidence/2026-09-18-reader-checkpoint-index.md"
+      ],
+      "progress_note": "A derived group/local-number/message-id list is sound and complete against source memberships; its independent query agrees with authoritative source range enumeration for rebuilt indexes. The malformed public query refuses. Host adoption, persistent representation and indexing performance remain open."
     },
     {
       "id": "PRF-011",
@@ -521,9 +541,10 @@
         "books/transfer.lisp",
         "books/exchange.lisp",
         "tests/acl2/exchange-guards-tests.lisp",
-        "tests/evidence/2026-09-18-composed-store.md"
+        "tests/evidence/2026-09-18-composed-store.md",
+        "tests/evidence/2026-09-18-reader-checkpoint-index.md"
       ],
-      "progress_note": "Fifteen base books have targeted guard certification: acceptance63, wire38, wildmat54, article45, retention35, node30, replay13, CBOR21, records45, store-files47, store-node22, resolution6, observed12, transfer62, exchange40 (533 functions). All 452 pre-existing logical bodies in the added graphs are unchanged; 15 helpers and MBE equality obligations are proved. Physical adapter now calls the composed transitions; combined 75-root/67-test batch passed. NNTP and semantic fields graphs remain active; host/physical assumptions are separate."
+      "progress_note": "Composed storage host adoption passed the 75-root/67-test batch. Seventeen existing base graphs now have 678 guarded functions, adding NNTP115 and semantic fields30 with unchanged existing logic; the derived index separately has 20 guarded functions. NNTP retains one explicit EC-CALL for total wildcard behavior. The host uses interpreted ACL2; full physical byte/effect correspondence and platform qualification remain open."
     },
     {
       "id": "PRF-015",
@@ -570,7 +591,8 @@
         "books/wildmat.lisp",
         "books/nntp-invariants.lisp",
         "books/nntp-effects.lisp",
-        "tests/test_reader_partitions.py"
+        "tests/test_reader_partitions.py",
+        "tests/evidence/2026-09-18-reader-checkpoint-index.md"
       ],
       "progress_note": "Actual implemented command/step and arbitrary finite raw event traces preserve session/cursor consistency under a valid archive projection. All dispatcher branches produce typed reply octets/close effects; closed sessions emit none. Exact bridge partitions and reconnect cases pass targeted tests. Full RFC responses/READER bundle, injection/POST and effects-to-I/O refinement remain open."
     },
@@ -608,7 +630,10 @@
         "fn-transfer-missing-work-cost-bound",
         "fn-wm-pattern-match-work-cost",
         "fn-wm-match-codepoints-work-cost-bound",
-        "fn-transfer-missing-ranges-work-public-bound"
+        "fn-transfer-missing-ranges-work-public-bound",
+        "fn-article-parse-work-value",
+        "fn-article-parse-work-input-bound",
+        "fn-article-parse-work-profile-bound"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -641,9 +666,13 @@
         "books/transfer-public-work.lisp",
         "books/transfer-public-bound.lisp",
         "specs/transfer-public-bound.md",
-        "tests/evidence/2026-09-18-composed-store.md"
+        "tests/evidence/2026-09-18-composed-store.md",
+        "books/article-public-work.lisp",
+        "books/article-public-bound.lisp",
+        "specs/article-work.md",
+        "tests/evidence/2026-09-18-article-work.md"
       ],
-      "progress_note": "Article/UTF-8/wildmat output recognizers and DP correspondence are certified. Whole matcher work has a value-corresponding polynomial bound; public transfer missing-range work has a hypothesis-free bound covering malformed validation, structural label equality, lookup and traversal. These declared operation costs exclude numeric bit complexity/runtime allocation. Other parser work, peak allocation and physical capacity remain open."
+      "progress_note": "Article/UTF-8/wildmat output recognizers and DP correspondence are certified. Whole matcher work has a value-corresponding polynomial bound; public transfer missing-range work has a hypothesis-free bound covering malformed validation, structural label equality, lookup and traversal. These declared operation costs exclude numeric bit complexity/runtime allocation. Other parser work, peak allocation and physical capacity remain open. Complete public article parsing now has unconditional exact value correspondence and structural-work input/profile bounds, including malformed inputs and repeated folds. This closes the article parser traversal-cost gap, not peak allocation or runtime costs."
     },
     {
       "id": "PRF-017",
