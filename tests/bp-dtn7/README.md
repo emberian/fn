@@ -29,3 +29,22 @@ Its receive path uses `tools/bpa_dtn7.py` for bounded non-destructive HTTP
 download, then extracts the ADU from that local raw bundle. The
 [boundary evidence](../evidence/2026-09-18-bpa-boundary.md) records the byte caps,
 timeouts, mock HTTP cases and repeated real-BPA acceptance/duplicate test.
+
+The complete application exchange now runs with:
+
+```sh
+python3 tests/bp-dtn7/run_fn_exchange_lab.py --dtn7-repo /absolute/path/to/pinned/dtn7-rs
+```
+
+Run from the repository root with the current ACL2 books certified. It uses
+ports 32401/32402/32411/32412 and writes its exact source/version/results record
+under `build/bp-fn-exchange/`. It connects actual fn sender work and receiver
+acceptance through BP, omits a receipt, restarts, regenerates on a distinct-BID
+retry and returns the receipt through BP into durable sender state. All authority
+is trusted local test policy; this is not authenticated peering.
+
+The [exchange evidence](../evidence/2026-09-18-bp-exchange.md) retains a pinned
+BPA restart window in which stored inventory does not resume forwarding. The
+driver uses explicit durable fn retry after sender restart, without assuming
+that an API reply or inventory appearance makes the BPA reliable. It records
+process-stop signals and any SIGKILL fallback. No physical power-loss claim follows.

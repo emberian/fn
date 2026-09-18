@@ -250,12 +250,16 @@ class WorkflowJournal:
     def publish(self, kind: str, values: dict[str, object], fault: str | None=None,
                 replay_image: bool=True) -> Published:
         if self.fenced: raise JournalFault("journal is fenced")
-        encoded=encode_record(kind, values)
         record=(kind, values)
+        encoded=encode_record(kind, values)
+        entries=sorted(self.records.iterdir())
+        if kind != "config" and hasattr(self.replay, "history_preflight"):
+            history=tuple(decode_record(path.read_bytes()) for path in entries)
+            if self.replay.history_preflight(history+(record,)) is not True:
+                raise JournalError("ACL2 rejected workflow durable history before publication")
         if kind != "config" and hasattr(self.replay, "preflight"):
             if self.replay.preflight(record) is not True:
                 raise JournalError("ACL2 rejected workflow record before publication")
-        entries=list(self.records.iterdir())
         sequence=len(entries)
         if sequence >= MAX_RECORDS: raise JournalFault("record count")
         # Refuse before staging when the image would exceed its own reopen cap.

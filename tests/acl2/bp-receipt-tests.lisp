@@ -88,3 +88,26 @@
 (assert-event (equal (car (fn-bpr-accept-request *bpr-receipt-pending* *bpr-store*
                                                   *bpr-record* *bpr-request* t))
                      :refused))
+
+; A recovered article/binding alone is not enough while recovery barriers are
+; incomplete.  Once the observed file machine is ready, the exact durable
+; record list and rebuilt node support replay of the receiver request context.
+(defun bpr-ready-after-barriers (s n)
+  (if (zp n) s
+    (bpr-ready-after-barriers (fn-sn-io s :recovery-barrier :ok) (1- n))))
+(defconst *bpr-recovering-store*
+  (fn-sn-recover (fn-sn-crash *bpr-store* :old :present)))
+(assert-event (equal (fn-sf-phase (fn-sn-files *bpr-recovering-store*))
+                     :recovering))
+(assert-event (not (fn-bpr-store-record-acceptedp *bpr-recovering-store*
+                                                   *bpr-record*)))
+(defconst *bpr-recovered-ready-store*
+  (bpr-ready-after-barriers *bpr-recovering-store* 5))
+(assert-event (equal (fn-sf-phase (fn-sn-files *bpr-recovered-ready-store*))
+                     :ready))
+(assert-event (fn-bpr-store-record-acceptedp *bpr-recovered-ready-store*
+                                              *bpr-record*))
+(assert-event (equal
+ (car (fn-bpr-accept-request *bpr-initial* *bpr-recovered-ready-store*
+                             *bpr-record* *bpr-request* t))
+ :accepted))

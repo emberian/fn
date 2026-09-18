@@ -114,3 +114,20 @@ The [proof registry](../planning/proofs.json) keeps larger proof targets open
 while component results accumulate. Requirement entries retain `specified`
 where their complete contract is not implemented; `implementation_note` and
 evidence fields identify the actual partial progress.
+
+
+## Actual disconnected BP application path
+
+The [BP exchange checkpoint](../tests/evidence/2026-09-18-bp-exchange.md) connects
+actual fn sender and receiver journals through a pinned BPA. It covers outage,
+process restart, explicit retry, lost application receipt, duplicate recognition,
+identical receipt regeneration and durable sender acceptance of the BP return.
+Both nodes retain one article/archive pin. The complete Python suite passed 132
+tests; nine scoped ACL2 roots cover receiver correction, outbound projection and
+finite sender state/node/transport-receipt proofs. This is separate from the
+historical all-roots runs above.
+
+A recorded BPA restart window leaves inventory without forwarding progress;
+fn's durable retry handles this uncertainty. Authentication, receiver general
+trace/refinement, joint pending/durable-work binding, multi-relay/carried-media
+contact plans, LTP, fairness and physical power-loss qualification remain open.

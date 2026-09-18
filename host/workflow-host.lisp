@@ -28,6 +28,13 @@
                 (f-get-global 'fn-workflow-state state) record)))
   (value (if (car answer) :ready :fault))))
 
+(defun fn-workflow-preflight-history (records state)
+ (declare (xargs :stobjs state :mode :program))
+ (let* ((sn (f-get-global 'fn-store-sn state))
+        (node (and sn (fn-sn-node sn)))
+        (answer (fn-bp-replay-journal node records)))
+  (value (if (car answer) :ready :fault))))
+
 (defun fn-workflow-apply-record (record state)
  (declare (xargs :stobjs state :mode :program))
  (let ((answer (fn-bp-apply-journal-record

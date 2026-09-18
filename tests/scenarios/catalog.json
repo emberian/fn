@@ -35,8 +35,10 @@
         "Bundle lifetime, expiry and transport status cannot release an fn application or archive obligation; destructive BPA deletion occurs only after durable fn staging."
       ],
       "evidence": [
-        "tests/evidence/2026-09-18-bp-workflow.md"
-      ]
+        "tests/evidence/2026-09-18-bp-workflow.md",
+        "tests/evidence/2026-09-18-bp-exchange.md"
+      ],
+      "execution_scope": "Partial: actual two-node fn/BPv7 letter and return-receipt exchange, outage/restart, lost receipt and distinct-BID duplicate with one article/pin per node. Native signatures, two relays and carried-media composition remain open."
     },
     {
       "id": "SCN-002",
@@ -206,9 +208,10 @@
         "tests/evidence/2026-09-18-storage.json",
         "tests/evidence/2026-09-18-articles.md",
         "tests/evidence/2026-09-18-articles.json",
-        "tests/evidence/2026-09-18-bp-workflow.md"
+        "tests/evidence/2026-09-18-bp-workflow.md",
+        "tests/evidence/2026-09-18-bp-exchange.md"
       ],
-      "execution_scope": "Partial: finite ledger admission/release invariants, independent-pin preservation, real adapter bounds, duplicate-at-capacity, and maximum-profile 128-record replay. No durable node release or byte-accurate disk reservation/compaction proof."
+      "execution_scope": "Partial: ledger and node retention proofs, real adapter bounds/maximum-profile replay, and BP receiver capacity refusal preserving prior article/archive pin. No durable deletion/compaction or physical disk-reservation proof."
     },
     {
       "id": "SCN-008",
@@ -233,9 +236,10 @@
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
-        "tests/evidence/2026-09-18-bp-workflow.md"
+        "tests/evidence/2026-09-18-bp-workflow.md",
+        "tests/evidence/2026-09-18-bp-exchange.md"
       ],
-      "execution_scope": "Partial: mismatched evidence and independent pin tests only; peer receipt regeneration/durable restart is not implemented."
+      "execution_scope": "Partial: actual receiver undertaking and receipt decision survive reopen; a new-BID duplicate regenerates identical receipt, then real BP returns it to a durably reopened sender. Stale/wrong-context/unauthorized model tests and sender trace proofs are integrated. Authenticated remote evidence and general receiver trace/refinement remain open."
     },
     {
       "id": "SCN-009",
@@ -289,8 +293,10 @@
         "Progress assumptions and BP/fn lifetime distinctions are explicit."
       ],
       "evidence": [
-        "tests/evidence/2026-09-18-bp-workflow.md"
-      ]
+        "tests/evidence/2026-09-18-bp-workflow.md",
+        "tests/evidence/2026-09-18-bp-exchange.md"
+      ],
+      "execution_scope": "Partial: real queued BP delivery after contact outage and process restart, sender retry semantics and finite transport-safety proofs. Asymmetric scheduled windows, wall-clock jumps, LTP and fairness/liveness remain open."
     },
     {
       "id": "SCN-011",

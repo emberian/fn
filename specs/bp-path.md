@@ -8,14 +8,22 @@ BP implementation, endpoint namespace, or flight qualification profile.
 The first [actual BPv7 transport experiment](../tests/evidence/2026-09-18-bpv7-transport.md)
 has passed with a pinned dtn7-rs build. It queued through disconnection, survived
 clean restart, rediscovered inbound storage, and exercised non-destructive staging
-and explicit deletion. Application workflow/receipt integration is still active.
+and explicit deletion. This first run covered transport rather than application acceptance.
 The next [actual BP-to-fn receiver test](../tests/evidence/2026-09-18-bp-ingress.md)
 also passed: receiver restart, exact article acceptance and a new-BID duplicate
-leave one recovered article/archive pin. Its sender is still a BPA fixture;
-durable fn sender work and receipt regeneration remain the next integration.
+leave one recovered article/archive pin. That earlier run used a BPA fixture sender; the later complete experiment below
+adds durable fn sender work and receipt regeneration.
 The [bounded BPA boundary](../tests/evidence/2026-09-18-bpa-boundary.md) now caps
 raw downloads and extracted ADUs before the article path; the pinned upstream
 BP decoder remains an explicit trusted component.
+
+The [complete application exchange](../tests/evidence/2026-09-18-bp-exchange.md)
+now passes with actual durable fn sender work, receiver acceptance and decision,
+lost receipt, process restart, duplicate recognition, receipt regeneration and
+real BP return transport. Both nodes retain one article/archive pin. Explicit
+fn retry also recovers uncertain BPA forwarding after restart; inventory alone
+does not prove forwarding readiness. These results supersede the fixture-sender
+boundary above, within the unsigned trusted-loopback profile.
 
 ## Product shape
 

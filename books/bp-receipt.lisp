@@ -104,10 +104,21 @@
 
 ; The explicit A-POLICY value is trusted laboratory input.  Request wire fields
 ; are checked for exact contextual agreement but never authorize acceptance.
+(defun fn-bpr-store-record-acceptedp (store record)
+  ; Store file completion history is deliberately transient: recovery rebuilds
+  ; the durable node from its published namespace and bindings.  Receiver
+  ; context replay therefore grounds acceptance in that recovered durable
+  ; article/archive binding and authoritative recovered record list, rather
+  ; than in a pre-crash success observation.  A non-ready file machine cannot
+  ; issue a receiver receipt, even if its node still has a matching article.
+  (and (fn-sn-statep store) (fn-record-p record)
+       (equal (fn-sf-phase (fn-sn-files store)) :ready)
+       (member-equal record (fn-sf-records (fn-sn-files store)))
+       (fn-bpi-node-record-committedp (fn-sn-node store) record)))
 (defun fn-bpr-request-acceptablep (store config record request policy-authorizedp)
   (and (equal policy-authorizedp t) (fn-bpr-configp config)
        (fn-bpa-requestp request) (fn-record-p record)
-       (fn-bpi-durably-acceptedp store record)
+       (fn-bpr-store-record-acceptedp store record)
        (equal (fn-bpa-request-destination-eid request)
               (fn-bpr-config-destination config))
        (equal (fn-bpa-request-policy-id request)
