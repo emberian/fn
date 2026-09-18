@@ -80,6 +80,17 @@ class ReaderProcess:
         if received != expected:
             raise AssertionError("expected {!r}, received {!r}".format(expected, received))
 
+    @staticmethod
+    def assert_closed(sock):
+        try:
+            received = sock.recv(1)
+        except ConnectionResetError:
+            # The ACL2 bridge closes after a framing rejection.  TCP may expose
+            # that close as EOF or a reset depending on buffered peer input.
+            received = b""
+        if received != b"":
+            raise AssertionError("expected closed socket, received {!r}".format(received))
+
 
 class ReaderSocketTests(unittest.TestCase):
     def setUp(self):
@@ -116,13 +127,39 @@ class ReaderSocketTests(unittest.TestCase):
         self.reader.assert_bytes(sock, b"211 1 1 1 fn.letters list follows\r\n1\r\n.\r\n")
 
     def test_malformed_and_overlimit_input_close(self):
-        for payload in (b"STAT\n", b"A" * 513 + b"\r\n"):
+        for payload in (b"STAT\n", b"A" * 511 + b"\r\n"):
             with self.subTest(payload=payload[:8]):
                 sock = self.reader.connect()
                 sock.sendall(payload)
                 self.reader.assert_bytes(sock, b"501 syntax error\r\n")
-                self.assertEqual(sock.recv(1), b"")
+                self.reader.assert_closed(sock)
                 sock.close()
+
+    def test_list_wildmat_filters_in_acl2_and_preserves_session_on_syntax_error(self):
+        sock = self.reader.connect()
+        self.addCleanup(sock.close)
+        sock.sendall(b"GROUP fn.letters\r\nLIST ACTIVE fn.letters\r\n"
+                     b"LIST NEWSGROUPS no.*\r\nLIST ACTIVE [\r\nSTAT\r\n")
+        self.reader.assert_bytes(sock, b"211 1 1 1 fn.letters\r\n")
+        self.reader.assert_bytes(
+            sock, b"215 list of active newsgroups follows\r\n"
+            b"fn.letters 1 1 y\r\n.\r\n")
+        self.reader.assert_bytes(sock, b"215 list of newsgroups follows\r\n.\r\n")
+        self.reader.assert_bytes(sock, b"501 syntax error\r\n")
+        self.reader.assert_bytes(sock, b"223 1 <reader@example.invalid> retrieved\r\n")
+
+    def test_exact_510_octet_command_is_framed_but_511_octets_closes(self):
+        accepted = self.reader.connect()
+        accepted.sendall(b"X" * 510 + b"\r\nSTAT\r\n")
+        self.reader.assert_bytes(accepted, b"500 command not recognized\r\n")
+        self.reader.assert_bytes(accepted, b"412 no newsgroup selected\r\n")
+        accepted.close()
+
+        rejected = self.reader.connect()
+        rejected.sendall(b"X" * 511 + b"\r\n")
+        self.reader.assert_bytes(rejected, b"501 syntax error\r\n")
+        self.reader.assert_closed(rejected)
+        rejected.close()
 
     def test_sessions_do_not_leak_selected_group(self):
         first = self.reader.connect()
