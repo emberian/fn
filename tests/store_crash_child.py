@@ -111,15 +111,15 @@ def _install_boundary(point, store_root, control_fd):
         return
 
     if point == "core-durable":
-        real_complete = run_store.Acl2Store.complete
+        real_finish = run_store.Acl2Store.finish
 
-        def complete(bridge, status):
-            result = real_complete(bridge, status)
-            if status == "durable" and result == "durable":
+        def finish(bridge):
+            result = real_finish(bridge)
+            if result == "durable":
                 _pause(control_fd, point)
             return result
 
-        run_store.Acl2Store.complete = complete
+        run_store.Acl2Store.finish = finish
         return
 
     raise ValueError("unknown crash point: {}".format(point))

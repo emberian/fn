@@ -1,5 +1,6 @@
 ; Trusted experimental adapter helpers.  ACL2 owns wire/session/archive state.
 (in-package "ACL2")
+(include-book "../books/store-node")
 
 (defconst *fn-reader-groups* '("fn.letters"))
 (defconst *fn-reader-id* "<reader@example.invalid>")
@@ -47,7 +48,8 @@
 
 ; Archive selection happens once before a listener accepts clients.  A reset
 ; starts a fresh wire/session pair but keeps the selected immutable snapshot.
-; The store variant reads only the ACL2 node reconstructed by store-host.
+; The store variant reads only the actual-node projection of the composed
+; file/node state reconstructed by the store adapter.
 (defun fn-reader-use-seed (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-reader-archive *fn-reader-archive* state))
@@ -56,15 +58,16 @@
 
 (defun fn-reader-use-store (state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((node (f-get-global 'fn-store-node state)))
-    (if (fn-node-statep node)
+  (let ((store (f-get-global 'fn-store-sn state)))
+    (if (fn-sn-statep store)
+        (let ((node (fn-sn-node store)))
         (let ((archive (fn-node-acceptance node)))
           (if (fn-nntp-projectionp archive)
               (let* ((state (f-put-global 'fn-reader-archive archive state))
                      (state (f-put-global 'fn-reader-action :ready state)))
                 (value :ready))
             (let ((state (f-put-global 'fn-reader-action :refused state)))
-              (value :refused))))
+              (value :refused)))))
       (let ((state (f-put-global 'fn-reader-action :refused state)))
         (value :refused)))))
 

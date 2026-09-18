@@ -14,39 +14,73 @@
 
 ; The host-facing tagged boundary.  It exposes a recovering node/file state or
 ; a refusal code; callers never inspect an intermediate replay result.
-(defun fn-sn-open-ok (st) (list :ok st))
-(defun fn-sn-open-error (code) (list :error code))
-(defun fn-sn-open-kind (result) (car result))
-(defun fn-sn-open-state (result) (cadr result))
-(defun fn-sn-open-code (result) (cadr result))
+(defun fn-sn-open-ok (st) (declare (xargs :guard t :verify-guards nil))
+  (list :ok st))
+
+(verify-guards fn-sn-open-ok)
+(defun fn-sn-open-error (code) (declare (xargs :guard t :verify-guards nil))
+  (list :error code))
+
+(verify-guards fn-sn-open-error)
+(defun fn-sn-open-kind (result) (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car result)
+       :exec (fn-ag-car result)))
+
+(verify-guards fn-sn-open-kind)
+(defun fn-sn-open-state (result) (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (cadr result)
+       :exec (fn-ag-car (fn-ag-cdr result))))
+
+(verify-guards fn-sn-open-state)
+(defun fn-sn-open-code (result) (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (cadr result)
+       :exec (fn-ag-car (fn-ag-cdr result))))
+
+(verify-guards fn-sn-open-code)
 (defun fn-sn-open-okp (result)
+  (declare (xargs :guard t :verify-guards nil))
   (and (true-listp result) (equal (len result) 2)
        (equal (fn-sn-open-kind result) :ok)
        (fn-sn-statep (fn-sn-open-state result))))
+
+(verify-guards fn-sn-open-okp)
 (defun fn-sn-open-errorp (result)
+  (declare (xargs :guard t :verify-guards nil))
   (and (true-listp result) (equal (len result) 2)
        (equal (fn-sn-open-kind result) :error)))
 
+(verify-guards fn-sn-open-errorp)
+
 (defun fn-sn-observed-configurationp (groups capacity)
+  (declare (xargs :guard t :verify-guards nil))
   (and (fn-string-listp groups)
        (fn-no-duplicatesp groups)
        (natp capacity)))
 
+(verify-guards fn-sn-observed-configurationp)
+
 ; A seed contains only image facts: no reservation/candidate/completion state,
 ; no success history from another process, and zero completed recovery barriers.
 (defun fn-sn-observed-seed (groups capacity frontier records)
+  (declare (xargs :guard t :verify-guards nil))
   (fn-sn-make groups capacity
               (fn-sf-make :replaying frontier nil records nil nil nil 0)
               (fn-node-initial-state groups capacity)))
 
+(verify-guards fn-sn-observed-seed)
+
 (defun fn-sn-observed-historyp (frontier records)
+  (declare (xargs :guard t :verify-guards nil))
   (and (fn-record-uint32p frontier)
        (fn-sf-record-listp records 0 0 frontier)))
+
+(verify-guards fn-sn-observed-historyp)
 
 ; Structural checks precede replay.  A structurally valid but semantically
 ; unreplayable history reaches the actual recovery transition and returns the
 ; distinct :replay refusal below.
 (defun fn-sn-open-observed (groups capacity frontier records)
+  (declare (xargs :guard t :verify-guards nil))
   (if (not (fn-sn-observed-configurationp groups capacity))
       (fn-sn-open-error :configuration)
     (if (not (fn-record-uint32p frontier))
@@ -64,6 +98,8 @@
                        (equal (fn-sf-phase (fn-sn-files opened)) :recovering))
                   (fn-sn-open-ok opened)
                 (fn-sn-open-error :replay)))))))))
+
+(verify-guards fn-sn-open-observed)
 
 (defthm fn-sn-observed-seed-is-state
   (implies (and (fn-sn-observed-configurationp groups capacity)
@@ -105,11 +141,17 @@
 ; These calls are the existing host-I/O path.  The helper is only notation for
 ; finite proof/test sequences; it does not write a barrier directly.
 (defun fn-sn-observed-rebarrier (st count)
-  (declare (xargs :measure (nfix count)))
-  (if (zp count)
+  (declare (xargs :guard t :verify-guards nil :measure (nfix count)))
+  (mbe :logic (if (zp count)
       st
     (fn-sn-observed-rebarrier
-     (fn-sn-io st :recovery-barrier :ok) (1- count))))
+     (fn-sn-io st :recovery-barrier :ok) (1- count)))
+       :exec (if (not (posp count))
+      st
+    (fn-sn-observed-rebarrier
+     (fn-sn-io st :recovery-barrier :ok) (1- count)))))
+
+(verify-guards fn-sn-observed-rebarrier)
 
 (defthm fn-sn-statep-implies-files-statep
   (implies (fn-sn-statep st)

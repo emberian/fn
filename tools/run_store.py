@@ -196,7 +196,11 @@ def acl2_symbol(output):
     body = acl2_result(output).upper()
     if body not in {b":READY", b":PREPARED", b":DURABLE", b":ABORTED",
                     b":INDETERMINATE", b":DUPLICATE", b":CONFLICT", b":ABSENT", b":INVALID",
-                    b":REFUSED", b":FAULT"}:
+                    b":REFUSED", b":FAULT", b":RECOVERING",
+                    b":FRONTIER-STAGED", b":FRONTIER-DATA-DURABLE", b":FRONTIER-ATTEMPTED",
+                    b":RECORD-STAGED", b":RECORD-DATA-DURABLE", b":RECORD-ATTEMPTED",
+                    b":RESERVED", b":ABORTING", b":COMPLETING", b":FENCED-FRONTIER", b":FENCED-RECORD",
+                    b":FENCED-RECOVERY"}:
         raise StoreError("unexpected ACL2 action: {}".format(body.decode("ascii", "replace")))
     return body.decode("ascii").lower()[1:]
 
@@ -230,6 +234,7 @@ class Acl2Store:
             read_prompt(self.proc, 30)
             self.call('(include-book "books/replay")')
             self.call('(ld "host/store-host.lisp" :ld-error-action :return :ld-error-triples t)')
+            self.call('(ld "host/store-node-host.lisp" :ld-error-action :return :ld-error-triples t)')
             self.reset()
         except BaseException:
             self.close()
@@ -253,7 +258,7 @@ class Acl2Store:
         return "(" + " ".join(str(value) for value in values) + ")"
 
     def reset(self):
-        return acl2_symbol(self.call("(fn-store-reset state)"))
+        return acl2_symbol(self.call("(fn-store-sn-reset state)"))
 
     def record_sequence(self, record):
         return acl2_nat(self.call("(fn-store-record-sequence '" + self.literal(record) + ")"))
@@ -263,49 +268,55 @@ class Acl2Store:
 
     def recover(self, records, frontier):
         literal = "(" + " ".join(self.literal(record) for record in records) + ")"
-        return acl2_symbol(self.call("(fn-store-recover '" + literal + " " + str(frontier) + " state)"))
+        return acl2_symbol(self.call("(fn-store-sn-recover '" + literal + " " + str(frontier) + " state)"))
 
-    def advance_frontier(self, frontier):
-        return acl2_symbol(self.call("(fn-store-advance-frontier {} state)".format(frontier)))
+    def io(self, operation, result="ok"):
+        return acl2_symbol(self.call("(fn-store-sn-io :{} :{} state)".format(operation, result)))
 
     def prepare(self, msgid, payload, group_codes, obligation_id, subject, evidence, charge):
-        form = "(fn-store-prepare '" + self.literal(msgid) + " '" + self.literal(payload)
+        form = "(fn-store-sn-prepare '" + self.literal(msgid) + " '" + self.literal(payload)
         form += " '" + self.numeric_list(group_codes) + " '" + self.literal(obligation_id)
         form += " '" + self.literal(subject) + " '" + self.literal(evidence)
         form += " " + str(charge) + " state)"
         return acl2_symbol(self.call(form))
 
     def existing_action(self, msgid, payload, group_codes):
-        form = "(fn-store-existing-action '" + self.literal(msgid)
+        form = "(fn-store-sn-existing-action '" + self.literal(msgid)
         form += " '" + self.literal(payload) + " '" + self.numeric_list(group_codes) + " state)"
         return acl2_symbol(self.call(form))
 
     def pending_record(self):
-        return acl2_octets(self.call("(fn-store-pending-octets state)"))
+        return acl2_octets(self.call("(fn-store-sn-pending-octets state)"))
 
-    def complete(self, status):
-        return acl2_symbol(self.call("(fn-store-complete :{} state)".format(status)))
+    def known_abort(self):
+        return acl2_symbol(self.call("(fn-store-sn-known-abort state)"))
+
+    def refuse_reservation(self):
+        return acl2_symbol(self.call("(fn-store-sn-refuse-reservation state)"))
+
+    def finish(self):
+        return acl2_symbol(self.call("(fn-store-sn-finish state)"))
 
     def article_count(self):
-        return acl2_nat(self.call("(fn-store-article-count state)"))
+        return acl2_nat(self.call("(fn-store-sn-article-count state)"))
 
     def next_txid(self):
-        return acl2_nat(self.call("(fn-store-next-txid state)"))
+        return acl2_nat(self.call("(fn-store-sn-next-txid state)"))
 
     def group_next(self, code):
-        return acl2_nat(self.call("(fn-store-group-next {} state)".format(code)))
+        return acl2_nat(self.call("(fn-store-sn-group-next {} state)".format(code)))
 
     def pin_count(self):
-        return acl2_nat(self.call("(fn-store-pin-count state)"))
+        return acl2_nat(self.call("(fn-store-sn-pin-count state)"))
 
     def reserved(self):
-        return acl2_nat(self.call("(fn-store-reserved state)"))
+        return acl2_nat(self.call("(fn-store-sn-reserved state)"))
 
     def lookup(self, msgid):
-        return acl2_octets(self.call("(fn-store-lookup '" + self.literal(msgid) + " state)"))
+        return acl2_octets(self.call("(fn-store-sn-lookup '" + self.literal(msgid) + " state)"))
 
     def lookup_found(self, msgid):
-        return acl2_boolean(self.call("(fn-store-lookup-foundp '" + self.literal(msgid) + " state)"))
+        return acl2_boolean(self.call("(fn-store-sn-lookup-foundp '" + self.literal(msgid) + " state)"))
 
     def close(self):
         if self.proc is None:
@@ -341,6 +352,11 @@ class Store:
         self.config = None
         self.frontier = None
         self.fenced = False
+        # This is a one-use host gate, not a second completion model.  It is
+        # minted only after the ACL2 file kernel acknowledged the exact
+        # record-directory -> :completing observation.  Any uncertainty means
+        # recovered observation, rather than a retry against a stale core.
+        self.completion_pending = False
 
     @property
     def config_path(self): return self.root / "config.json"
@@ -489,6 +505,9 @@ class Store:
             raise
 
     def close(self):
+        # Retire a completion opportunity with its owner.  A future owner must
+        # reconstruct state through observed recovery before it can mutate.
+        self.completion_pending = False
         if self.lock_fd is not None:
             fd, self.lock_fd = self.lock_fd, None
             try:
@@ -539,13 +558,14 @@ class Store:
         # Recovery owns the mutation gate from the start of scanning through
         # the final barrier, including unexpected read/runtime failures.
         self.fenced = True
+        self.completion_pending = False
         try:
             # A replacement may have become visible before its directory
             # barrier failed. Recover the observed frontier under the held
             # store lock, never a cached pre-error allocation value.
             self._load_frontier()
             records = self.durable_records(acl2)
-            if acl2.recover(records, self.frontier) != "ready":
+            if acl2.recover(records, self.frontier) != "recovering":
                 raise StoreFault("ACL2 replay rejected committed transaction history")
         except StoreError:
             self.fenced = True
@@ -554,19 +574,32 @@ class Store:
         # Validate and replay first, then establish the recovered namespace
         # frontier before treating it as a usable durable state.
         try:
-            fsync_regular(self.config_path)
-            fsync_regular(self.frontier_path)
-            fsync_dir(self.transactions)
-            fsync_dir(self.root)
-            fsync_dir(self.root.parent)
+            for barrier in (
+                    lambda: fsync_regular(self.config_path),
+                    lambda: fsync_regular(self.frontier_path),
+                    lambda: fsync_dir(self.transactions),
+                    lambda: fsync_dir(self.root),
+                    lambda: fsync_dir(self.root.parent)):
+                try:
+                    barrier()
+                except OSError:
+                    # A failed barrier is an uncertain persistence observation;
+                    # place that fact in the file kernel before fencing the host.
+                    self._observe(acl2, "recovery-barrier", "uncertain")
+                    raise
+                phase = self._observe(acl2, "recovery-barrier", "ok")
+                if phase not in {"recovering", "ready"}:
+                    raise StoreFault("ACL2 rejected recovered barrier ordering")
+            if phase != "ready":
+                raise StoreFault("ACL2 did not complete all recovery barriers")
         except OSError as error:
             self.fenced = True
             raise StoreIndeterminate("cannot establish recovered namespace frontier") from error
         self.fenced = False
         return records
 
-    def advance_frontier(self, current_txid):
-        """Durably consume one local transaction ID before it reaches ACL2."""
+    def advance_frontier(self, acl2, current_txid):
+        """Report each allocator observation to the file kernel in order."""
         self._require_writer()
         if self.fenced:
             raise StoreIndeterminate("store is fenced pending recovery")
@@ -580,24 +613,57 @@ class Store:
         stage = self.staging / (".allocation-{}-{}".format(os.getpid(), os.urandom(12).hex()))
         publication_attempted = False
         try:
+            # A bridge reply is an observation boundary even before any
+            # physical write.  A lost reply leaves logical state unknown and
+            # must therefore fence this owner for observed recovery.
+            if self._observe(acl2, "start-frontier") != "frontier-staged":
+                self.fenced = True
+                raise StoreFault("ACL2 rejected allocator start")
             fd = os.open(stage, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
             try:
                 write_all(fd, contents)
                 fsync_file(fd)
             finally:
                 os.close(fd)
+            # A real file barrier has happened.  If the bridge reply is lost,
+            # do not continue as though its logical observation were known.
+            self.fenced = True
+            if self._observe(acl2, "frontier-file", "ok") != "frontier-data-durable":
+                raise StoreFault("ACL2 rejected durable allocator file")
             publication_attempted = True
-            os.replace(stage, self.frontier_path)
-            fsync_dir(self.root)
+            # Replacement is a namespace attempt; close the mutation gate
+            # before both the syscall and its corresponding ACL2 observation.
+            self.fenced = True
+            try:
+                os.replace(stage, self.frontier_path)
+            except OSError:
+                self._observe(acl2, "frontier-replace", "error")
+                raise
+            if self._observe(acl2, "frontier-replace", "ok") != "frontier-attempted":
+                raise StoreFault("ACL2 rejected allocator replacement")
+            self.fenced = True
+            try:
+                fsync_dir(self.root)
+            except OSError:
+                self._observe(acl2, "frontier-directory", "error")
+                raise
+            if self._observe(acl2, "frontier-directory", "ok") != "reserved":
+                raise StoreFault("ACL2 rejected durable allocator frontier")
+            # The exact file-kernel reservation is installed.  Preparation
+            # remains the next ACL2 gate while the writer lock is still held.
+            self.fenced = False
             self.frontier = next_frontier
             return next_frontier
         except OSError as error:
             if publication_attempted:
                 self.fenced = True
                 raise StoreIndeterminate("allocation-frontier update is indeterminate") from error
+            # Before final-name replacement, the staged file does not make a
+            # reservation visible.  The kernel returns to :ready explicitly.
+            self._observe(acl2, "frontier-file", "known-fail")
             raise StoreError("known pre-publication allocator failure: {}".format(error)) from error
 
-    def publish(self, sequence, record, fault=None):
+    def publish(self, acl2, sequence, record, fault=None):
         self._require_writer()
         if self.fenced:
             raise StoreIndeterminate("store is fenced pending recovery")
@@ -615,16 +681,36 @@ class Store:
                 fsync_file(fd)
             finally:
                 os.close(fd)
+            self.fenced = True
+            if self._observe(acl2, "record-file", "ok") != "record-data-durable":
+                raise StoreFault("ACL2 rejected durable record file")
             if fault == "prepublish":
                 os.unlink(stage)
                 fsync_dir(self.staging)
+                self.fenced = False
                 return "known-abort"
             publication_attempted = True
-            os.link(stage, final)
+            self.fenced = True
+            try:
+                os.link(stage, final)
+            except OSError:
+                self._observe(acl2, "record-link", "error")
+                raise
+            if self._observe(acl2, "record-link", "ok") != "record-attempted":
+                raise StoreFault("ACL2 rejected record publication")
             if fault == "postpublish":
                 self.fenced = True
                 raise StoreIndeterminate("indeterminate injected failure after final publication")
-            fsync_dir(self.transactions)
+            try:
+                fsync_dir(self.transactions)
+            except OSError:
+                self._observe(acl2, "record-directory", "error")
+                raise
+            if self._observe(acl2, "record-directory", "ok") != "completing":
+                raise StoreFault("ACL2 rejected record directory barrier")
+            # The directory barrier and its ACL2 reply were both observed.
+            # This sole opportunity is consumed before any finish call.
+            self.completion_pending = True
             # Staging files are ignored by recovery.  Their best-effort cleanup
             # occurs only after the final namespace barrier succeeded.
             try:
@@ -642,11 +728,44 @@ class Store:
             if publication_attempted:
                 self.fenced = True
                 raise StoreIndeterminate("transaction publication outcome is indeterminate") from error
+            # No final namespace attempt occurred.  Do not first manufacture
+            # an :aborting file event here: the proved fn-sn-known-abort
+            # transition consumes the exact staged/data-durable candidate and
+            # advances the matching live node through its real abort branch.
             raise StoreError("known pre-publication store failure: {}".format(error)) from error
+
+    def finish(self, acl2):
+        """Open the writer gate only after exact fn-sn durable completion."""
+        self._require_writer()
+        if not self.fenced or not self.completion_pending:
+            raise StoreIndeterminate("durable completion was not pending")
+        # Consume before the ACL2 call: a rejected or lost reply cannot be
+        # retried on this owner, even if the core completed before its reply.
+        self.completion_pending = False
+        try:
+            completion = acl2.finish()
+        except (StoreError, OSError) as error:
+            self.fenced = True
+            raise StoreIndeterminate("ACL2 completion failed after publication") from error
+        if completion != "durable":
+            self.fenced = True
+            raise StoreIndeterminate("ACL2 rejected durable completion after publication")
+        self.fenced = False
+        return completion
 
     def _require_writer(self):
         if not self.writable or self.lock_fd is None:
             raise StoreError("mutation requires a live exclusive store owner")
+
+    def _observe(self, acl2, operation, result="ok"):
+        """Submit one already-observed filesystem result and keep failure fenced."""
+        try:
+            return acl2.io(operation, result)
+        except (StoreError, OSError) as error:
+            self.fenced = True
+            self.completion_pending = False
+            raise StoreIndeterminate(
+                "ACL2 could not record {} observation".format(operation)) from error
 
 
 def metadata(msgid, payload):
@@ -723,43 +842,42 @@ def command_post(args):
         if len(records) >= store.config["max_transactions"]:
             raise StoreError("transaction count has reached configured bound")
         current_txid = bridge.next_txid()
-        next_frontier = store.advance_frontier(current_txid)
+        next_frontier = store.advance_frontier(bridge, current_txid)
         obligation, subject, evidence = metadata(msgid, payload)
         action = bridge.prepare(msgid, payload, codes, obligation,
                                 subject, evidence, charge)
         if action != "prepared":
-            # The durable allocator intentionally reserves this identity even
-            # for duplicate or refused attempts.  ACL2 performs the matching
-            # monotone advance; Python never edits node state.
-            if bridge.advance_frontier(next_frontier) != "ready":
-                raise StoreIndeterminate("ACL2 could not advance consumed transaction ID")
-        if action != "prepared":
+            # The allocator reservation is durable even for a synchronous
+            # semantic refusal.  The file kernel consumes it; Python only
+            # reports the already-observed allocator sequence.
+            store.fenced = True
+            if bridge.refuse_reservation() != "refused":
+                raise StoreIndeterminate("ACL2 could not consume refused reservation")
             raise StoreError("ACL2 refused post: {}".format(action))
         record = bridge.pending_record()
         try:
-            outcome = store.publish(len(records), record, args.inject_fault)
+            outcome = store.publish(bridge, len(records), record, args.inject_fault)
         except StoreIndeterminate:
-            bridge.complete("indeterminate")
             raise
         except StoreError:
-            # The final namespace was not observed, so this is a known abort
-            # in the matching ACL2 node rather than an inferred rollback.
-            bridge.complete("aborted")
+            # A pre-publication staging failure has no final-name event.  Its
+            # exact candidate is resolved through fn-sf/fn-node; a bridge
+            # inconsistency stays fenced for observed replay.
+            if not store.fenced:
+                store.fenced = True
+                if bridge.known_abort() != "aborted":
+                    raise StoreIndeterminate("ACL2 rejected known pre-publication abort")
             raise
         if outcome == "known-abort":
-            bridge.complete("aborted")
+            store.fenced = True
+            if bridge.known_abort() != "aborted":
+                raise StoreIndeterminate("ACL2 rejected injected known abort")
             raise StoreError("injected known abort before publication")
-        # The file is already published. A rejected completion or a lost core
-        # reply must retain the host fence even if this one-shot CLI then exits.
-        # Only matching completion permits further mutation without recovery.
+        # Final-name publication and its directory barrier have put the file
+        # kernel in :completing.  Only fn-sn-finish performs the exact actual
+        # node durable completion; there is no host durable-status string.
         store.fenced = True
-        try:
-            completion = bridge.complete("durable")
-        except (StoreError, OSError) as error:
-            raise StoreIndeterminate("ACL2 completion failed after publication") from error
-        if completion != "durable":
-            raise StoreIndeterminate("ACL2 rejected durable completion after publication")
-        store.fenced = False
+        completion = store.finish(bridge)
         print("committed sequence={} charge={}".format(len(records), charge))
         return 0
     finally:

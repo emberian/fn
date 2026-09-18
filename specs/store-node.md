@@ -4,9 +4,8 @@ Status: executable logical composition in [`books/store-node.lisp`](../books/sto
 with correspondence theorems in
 [`books/store-node-invariants.lisp`](../books/store-node-invariants.lisp).
 This closes the file kernel's trusted `:matching` reply premise for the new
-composition's acknowledgement operation. It does not establish that the host
-adapter uses this composition, or that physical file operations implement the
-kernel's observations.
+composition's acknowledgement operation. The experimental host now uses this composition. Proofs of logical transitions
+remain conditional on the physical adapter faithfully supplying observations.
 
 ## State and submission
 
@@ -176,9 +175,10 @@ These are logical refinement results. Semantic refusal and known prepublication
 absence are host classifications at this layer; the proofs do not establish
 that a physical adapter classified an error correctly or that OS, fsync, and
 link behavior meets the model. Additional wrapper APIs require preservation
-steps before joining the trace theorem. Host adoption, observed-image loader
-composition, byte codecs, POSIX refinement, guard verification, physical storage
-accounting, and platform durability remain separate work. No signature or
+steps before joining the trace theorem. The observed-image loader and all 40 wrapper/loader guards are now certified
+in targeted runs. The adopted adapter is being checked as a combined batch;
+byte-to-image correspondence, POSIX refinement, physical storage accounting
+and platform durability remain separate work. No signature or
 content-hash correctness is asserted.
 
 ## Observed physical image entry

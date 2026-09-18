@@ -55,12 +55,14 @@ ACL2_BOOKS ?= books/acceptance \
 	tests/acl2/store-node-resolution-traces-tests \
 	books/store-observed \
 	tests/acl2/store-observed-tests \
+	tests/acl2/store-node-guards-tests \
 	books/journal \
 	tests/acl2/journal-tests \
 	books/exchange \
 	tests/acl2/exchange-tests \
 	books/exchange-invariants \
 	tests/acl2/exchange-invariants-tests \
+	tests/acl2/exchange-guards-tests \
 	books/transfer \
 	books/transfer-invariants \
 	books/transfer-assembly-invariants \

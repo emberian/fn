@@ -277,9 +277,12 @@
         "tests/evidence/2026-09-18-fields-transfer.md",
         "tests/evidence/2026-09-18-fields-transfer.json",
         "tests/evidence/2026-09-18-assurance.md",
-        "tests/evidence/2026-09-18-assurance.json"
+        "tests/evidence/2026-09-18-assurance.json",
+        "books/store-node-resolution-traces.lisp",
+        "books/store-observed.lisp",
+        "tests/test_store_node_host.py"
       ],
-      "implementation_note": "Actual file/kernel completion ordering and arbitrary finite stable-history/success-prefix proofs are certified; composed live completion calls actual node semantics before acknowledgement. Real syscall/process-death tests pass. Full adapter adoption/refinement and qualified physical persistence remain open."
+      "implementation_note": "Actual file/kernel completion ordering and arbitrary finite stable-history/success-prefix proofs are certified; composed live completion calls actual node semantics before acknowledgement. Real syscall/process-death tests pass. Full adapter adoption/refinement and qualified physical persistence remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open."
     },
     {
       "id": "STO-004",
@@ -304,9 +307,12 @@
         "tests/evidence/2026-09-18-fields-transfer.md",
         "tests/evidence/2026-09-18-fields-transfer.json",
         "tests/evidence/2026-09-18-assurance.md",
-        "tests/evidence/2026-09-18-assurance.json"
+        "tests/evidence/2026-09-18-assurance.json",
+        "books/store-node-resolution-traces.lisp",
+        "books/store-observed.lisp",
+        "tests/test_store_node_host.py"
       ],
-      "implementation_note": "Recovery/read/publication/completion faults fence mutations; 47 injected cases and six process-death boundaries preserve the applicable obligations. Closed/read-only owners now reject mutation and lock lifecycle regressions pass. Live wrapper adoption and physical refinement remain open."
+      "implementation_note": "Recovery/read/publication/completion faults fence mutations; 47 injected cases and six process-death boundaries preserve the applicable obligations. Closed/read-only owners now reject mutation and lock lifecycle regressions pass. Live wrapper adoption and physical refinement remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open."
     },
     {
       "id": "STO-005",
@@ -330,9 +336,12 @@
         "tests/evidence/2026-09-18-fields-transfer.md",
         "tests/evidence/2026-09-18-fields-transfer.json",
         "tests/evidence/2026-09-18-assurance.md",
-        "tests/evidence/2026-09-18-assurance.json"
+        "tests/evidence/2026-09-18-assurance.json",
+        "books/store-node-resolution-traces.lisp",
+        "books/store-observed.lisp",
+        "tests/test_store_node_host.py"
       ],
-      "implementation_note": "General finite file traces retain earlier acknowledged records under named stable-storage and ghost-history premises; 211-state/9038-edge bounded exploration, fault injection and actual process reopen/lost-success retries pass. Freshness, host composition and platform qualification remain open."
+      "implementation_note": "General finite file traces retain earlier acknowledged records under named stable-storage and ghost-history premises; 211-state/9038-edge bounded exploration, fault injection and actual process reopen/lost-success retries pass. Freshness, host composition and platform qualification remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open."
     },
     {
       "id": "STO-006",
@@ -858,9 +867,12 @@
         "tests/evidence/2026-09-18-storage.md",
         "tests/evidence/2026-09-18-storage.json",
         "tests/evidence/2026-09-18-assurance.md",
-        "tests/evidence/2026-09-18-assurance.json"
+        "tests/evidence/2026-09-18-assurance.json",
+        "books/store-node-resolution-traces.lisp",
+        "books/store-observed.lisp",
+        "tests/test_store_node_host.py"
       ],
-      "implementation_note": "POSIX adapter has 47 enumerated syscall/completion fault rows, six process-death boundaries, ownership/lifecycle regressions and actual ACL2 reopen. Logical file and live completion correspondence are certified components. Hardware durability and complete host refinement remain open."
+      "implementation_note": "POSIX adapter has 47 enumerated syscall/completion fault rows, six process-death boundaries, ownership/lifecycle regressions and actual ACL2 reopen. Logical file and live completion correspondence are certified components. Hardware durability and complete host refinement remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open."
     },
     {
       "id": "HST-004",

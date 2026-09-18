@@ -72,7 +72,7 @@ class StoreFaultMatrixTests(unittest.TestCase):
 
     def prepare_crosspost(self, store, bridge, tag):
         txid = bridge.next_txid()
-        self.assertEqual(store.advance_frontier(txid), txid + 1)
+        self.assertEqual(store.advance_frontier(bridge, txid), txid + 1)
         self.assertEqual(
             bridge.prepare(("<{}@example.invalid>".format(tag)).encode("ascii"),
                            tag.encode("ascii"), [0, 1],
@@ -152,12 +152,12 @@ class StoreFaultMatrixTests(unittest.TestCase):
                     }[boundary]
                     with patched:
                         with self.assertRaises(StoreError):
-                            store.publish(1, record)
+                            store.publish(bridge, 1, record)
                     # No final-name attempt occurred.  The pending ACL2 step may
                     # take its known-abort path, but the allocator reservation is
                     # deliberately retained.
                     self.assertFalse(store.fenced)
-                    self.assertEqual(bridge.complete("aborted"), "aborted")
+                    self.assertEqual(bridge.known_abort(), "aborted")
                     self.assertEqual(bridge.next_txid(), 2)
                     self.assert_prior(bridge)
                 self.assertEqual(self.assert_recovered(path, 1, 2), [0])
@@ -200,25 +200,14 @@ class StoreFaultMatrixTests(unittest.TestCase):
                                mock.patch("run_store.fsync_dir", side_effect=fail_directory))
                     with patched:
                         with self.assertRaises(StoreIndeterminate):
-                            store.publish(1, record)
+                            store.publish(bridge, 1, record)
                     self.assertTrue(store.fenced)
                     with self.assertRaises(StoreIndeterminate):
-                        store.advance_frontier(store.frontier)
-                    self.assertEqual(bridge.complete("indeterminate"), "indeterminate")
-                    self.assert_prior(bridge)
-                    # The in-memory bridge is not authoritative after an
-                    # attempted publication.  Reconcile this very object, then
-                    # independently reopen below to exercise both paths.
-                    store.recover(bridge)
-                    self.assertFalse(store.fenced)
-                    self.assertEqual(bridge.article_count(), 2 if visible else 1)
-                    self.assertEqual(bridge.pin_count(), 2 if visible else 1)
-                    self.assertEqual(bridge.next_txid(), 2)
-                    self.assertEqual(bridge.lookup(b"<prior@example.invalid>"), b"prior")
-                    if visible:
-                        self.assertEqual(bridge.lookup(
-                            ("<{}@example.invalid>".format(label)).encode("ascii")),
-                            label.encode("ascii"))
+                        store.advance_frontier(bridge, store.frontier)
+                    # Link and transaction-directory ambiguity are file-kernel
+                    # uncertainty.  Do not inject a legacy completion status or
+                    # reuse this bridge: the next authority is a fresh observed
+                    # Store/Acl2Store recovery below.
                 # Recovery is the sole authority after any attempted final-name
                 # publication.  It sees either the prior prefix or the entire
                 # two-group record; never one group, one pin, or partial bytes.
@@ -258,10 +247,10 @@ class StoreFaultMatrixTests(unittest.TestCase):
                                mock.patch("run_store.fsync_dir", side_effect=fail_directory))
                     with patched:
                         with self.assertRaises(StoreIndeterminate):
-                            store.advance_frontier(bridge.next_txid())
+                            store.advance_frontier(bridge, bridge.next_txid())
                     self.assertTrue(store.fenced)
                     with self.assertRaises(StoreIndeterminate):
-                        store.publish(1, b"unreachable")
+                        store.publish(bridge, 1, b"unreachable")
                     store.recover(bridge)
                     self.assertFalse(store.fenced)
                     self.assertEqual(store.frontier, recovered_frontier)
@@ -329,14 +318,14 @@ class StoreFaultMatrixTests(unittest.TestCase):
                     }[boundary]
                     with patched:
                         with self.assertRaises(StoreError):
-                            store.advance_frontier(bridge.next_txid())
+                            store.advance_frontier(bridge, bridge.next_txid())
                     self.assertFalse(store.fenced)
                     self.assertEqual(store.frontier, 1)
                     self.assertEqual(bridge.next_txid(), 1)
                     self.assert_prior(bridge)
                     # Retrying the real allocator consumes txid 1 exactly once.
-                    self.assertEqual(store.advance_frontier(1), 2)
-                    self.assertEqual(bridge.advance_frontier(2), "ready")
+                    self.assertEqual(store.advance_frontier(bridge, 1), 2)
+                    self.assertEqual(bridge.refuse_reservation(), "refused")
                     self.assertEqual(bridge.next_txid(), 2)
                 self.assertEqual(self.assert_recovered(path, 1, 2), [0])
 
@@ -397,14 +386,17 @@ class StoreFaultMatrixTests(unittest.TestCase):
                     with patched:
                         if expected == "error":
                             with self.assertRaises(StoreError):
-                                store.publish(1, record)
+                                store.publish(bridge, 1, record)
                             self.assertFalse(store.fenced)
-                            self.assertEqual(bridge.complete("aborted"), "aborted")
+                            self.assertEqual(bridge.known_abort(), "aborted")
                             self.assert_prior(bridge)
                         else:
-                            self.assertEqual(store.publish(1, record), "durable")
-                            self.assertFalse(store.fenced)
-                            self.assertEqual(bridge.complete("durable"), "durable")
+                            self.assertEqual(store.publish(bridge, 1, record), "durable")
+                            # The file kernel is completing: cleanup is
+                            # best-effort, but the host remains fenced until
+                            # the exact bridge finish consumes the candidate.
+                            self.assertTrue(store.fenced)
+                            self.assertEqual(store.finish(bridge), "durable")
                             self.assertEqual(bridge.article_count(), 2)
                             self.assertEqual(bridge.pin_count(), 2)
                 if expected == "error":
@@ -510,8 +502,10 @@ class StoreFaultMatrixTests(unittest.TestCase):
                             with self.assertRaises(StoreIndeterminate):
                                 store.recover(bridge)
                     self.assertTrue(store.fenced)
-                    with self.assertRaises(StoreIndeterminate):
-                        store.advance_frontier(store.frontier)
+                    # command_post closes its owner in finally; a stale object
+                    # is rejected before its old fence state is consulted.
+                    with self.assertRaises(StoreError):
+                        store.advance_frontier(bridge, store.frontier)
                     store.recover(bridge)
                     self.assertFalse(store.fenced)
                     self.assert_prior(bridge)
@@ -551,7 +545,7 @@ class StoreFaultMatrixTests(unittest.TestCase):
                                 store.recover(bridge)
                     self.assertTrue(store.fenced)
                     with self.assertRaises(StoreIndeterminate):
-                        store.advance_frontier(store.frontier)
+                        store.advance_frontier(bridge, store.frontier)
                     store.recover(bridge)
                     self.assertFalse(store.fenced)
                     self.assert_prior(bridge)
@@ -565,11 +559,11 @@ class StoreFaultMatrixTests(unittest.TestCase):
                 payload_path = path.parent / "completion-payload"
                 payload_path.write_bytes(outcome.encode("ascii"))
                 store, bridge, records = run_store.open_live_store(path, writable=True)
-                real_complete = bridge.complete
+                real_finish = bridge.finish
 
-                def complete(status):
+                def finish():
                     if outcome == "lost":
-                        self.assertEqual(real_complete(status), "durable")
+                        self.assertEqual(real_finish(), "durable")
                         raise StoreError("matrix lost completion reply")
                     return "fault"
 
@@ -579,14 +573,14 @@ class StoreFaultMatrixTests(unittest.TestCase):
                                        charge=None, inject_fault=None)
                 try:
                     with mock.patch("run_store.open_live_store", return_value=(store, bridge, records)), \
-                         mock.patch.object(bridge, "complete", side_effect=complete):
+                         mock.patch.object(bridge, "finish", side_effect=finish):
                         with self.assertRaises(StoreIndeterminate):
                             run_store.command_post(args)
                     self.assertTrue(store.fenced)
-                    # command_post closes its owner in finally.  The lifecycle
-                    # guard rejects this stale object before the fence check.
+                    # command_post closes its owner in finally; a stale object
+                    # is rejected before its old fence state is consulted.
                     with self.assertRaises(StoreError):
-                        store.advance_frontier(store.frontier)
+                        store.advance_frontier(bridge, store.frontier)
                 finally:
                     # command_post closed both resources; close is idempotent for
                     # the store and ACL2 bridge has no further logical role here.

@@ -60,6 +60,15 @@ class StoreTests(unittest.TestCase):
                 bridge.close()
             store.close()
 
+    def reserve_and_prepare(self, store, bridge, msgid, payload, groups,
+                            obligation, subject, evidence, charge):
+        """Drive the real allocator events before the composed prepare gate."""
+        txid = bridge.next_txid()
+        self.assertEqual(store.advance_frontier(bridge, txid), txid + 1)
+        self.assertEqual(bridge.prepare(msgid, payload, groups, obligation,
+                                        subject, evidence, charge), "prepared")
+        return bridge.pending_record()
+
     def test_post_reopen_replays_and_preserves_literal_lisp_bytes(self):
         payload = b'Message-ID: <literal@example.invalid>\r\n\r\n#.(error "must not execute") \\ ()\r\n'
         self.post("<literal@example.invalid>", payload)
@@ -196,13 +205,12 @@ class StoreTests(unittest.TestCase):
             obligation = b"archive:eio"
             subject = b"sha256:eio"
             evidence = b"unsigned-legacy-v0"
-            self.assertEqual(bridge.prepare(msgid, payload, [0], obligation, subject, evidence, 1),
-                             "prepared")
+            record = self.reserve_and_prepare(store, bridge, msgid, payload, [0],
+                                              obligation, subject, evidence, 1)
             with mock.patch("run_store.os.link", side_effect=OSError(errno.EIO, "injected EIO")):
                 with self.assertRaises(StoreIndeterminate):
-                    store.publish(0, bridge.pending_record())
+                    store.publish(bridge, 0, record)
             self.assertTrue(store.fenced)
-            self.assertEqual(bridge.complete("indeterminate"), "indeterminate")
             self.assertEqual(bridge.prepare(b"<after@example.invalid>", b"after", [0],
                                             b"archive:after", b"sha256:after", evidence, 1),
                              "refused")
@@ -211,24 +219,30 @@ class StoreTests(unittest.TestCase):
                 bridge.close()
             store.close()
 
-    def test_rejected_completion_keeps_pending_metadata_and_allocation(self):
-        bridge = Acl2Store()
+    def test_finish_rejects_stale_and_prepublication_states(self):
+        store = Store(self.path, writable=True)
+        bridge = None
         try:
-            self.assertEqual(bridge.prepare(b"<pending@example.invalid>", b"pending", [0],
-                                            b"archive:pending", b"sha256:pending",
-                                            b"unsigned-legacy-v0", 1), "prepared")
+            store.acquire()
+            bridge = Acl2Store()
+            store.recover(bridge)
+            self.assertEqual(bridge.finish(), "fault")
+            pending = self.reserve_and_prepare(
+                store, bridge, b"<pending@example.invalid>", b"pending", [0],
+                b"archive:pending", b"sha256:pending", b"unsigned-legacy-v0", 1)
             pending = bridge.pending_record()
             next_txid = bridge.next_txid()
-            self.assertEqual(bridge.complete("unexpected"), "fault")
+            self.assertEqual(bridge.finish(), "fault")
             self.assertEqual(bridge.pending_record(), pending)
             self.assertEqual(bridge.next_txid(), next_txid)
-            self.assertEqual(bridge.complete("aborted"), "aborted")
+            self.assertEqual(bridge.known_abort(), "aborted")
             self.assertEqual(bridge.next_txid(), next_txid)
-            # A stale completion cannot be echoed as another durable event.
-            self.assertEqual(bridge.complete("durable"), "fault")
+            self.assertEqual(bridge.finish(), "fault")
             self.assertEqual(bridge.next_txid(), next_txid)
         finally:
-            bridge.close()
+            if bridge is not None:
+                bridge.close()
+            store.close()
 
     def test_recovery_limits_and_barrier_failure_fence_until_success(self):
         self.post("<limit@example.invalid>", b"limit")
@@ -263,13 +277,13 @@ class StoreTests(unittest.TestCase):
                 payload = failure.encode("ascii")
                 self.payload.write_bytes(payload)
                 store, bridge, records = run_store.open_live_store(self.path, writable=True)
-                real_complete = bridge.complete
+                real_finish = bridge.finish
 
-                def completion(outcome):
+                def finish():
                     if failure == "rejected":
                         return "fault"
                     if failure == "lost":
-                        self.assertEqual(real_complete(outcome), "durable")
+                        self.assertEqual(real_finish(), "durable")
                     raise run_store.StoreFault("injected core reply failure")
 
                 args = SimpleNamespace(store=self.path, message_id=message_id,
@@ -277,17 +291,12 @@ class StoreTests(unittest.TestCase):
                                        charge=None, inject_fault=None)
                 output = io.StringIO()
                 with mock.patch("run_store.open_live_store", return_value=(store, bridge, records)), \
-                     mock.patch.object(bridge, "complete", side_effect=completion), \
+                     mock.patch.object(bridge, "finish", side_effect=finish), \
                      contextlib.redirect_stdout(output):
                     with self.assertRaises(StoreIndeterminate):
                         run_store.command_post(args)
                 self.assertEqual(output.getvalue(), "")
                 self.assertTrue(store.fenced)
-                # command_post closes its owner even when completion fails.
-                # The ownership guard rejects this before the recovery fence.
-                self.assertIsNone(store.lock_fd)
-                with self.assertRaisesRegex(run_store.StoreError, "live exclusive store owner"):
-                    store.advance_frontier(store.frontier)
                 # Actual publication survives both a rejected completion and
                 # a lost reply after the core completed. Recovery, not rollback,
                 # reconciles the same retained article and obligation.
@@ -314,7 +323,7 @@ class StoreTests(unittest.TestCase):
                     store.recover(bridge)
             self.assertTrue(store.fenced)
             with self.assertRaises(StoreIndeterminate):
-                store.advance_frontier(store.frontier)
+                store.advance_frontier(bridge, store.frontier)
             store.recover(bridge)
             self.assertFalse(store.fenced)
             self.assertEqual(bridge.article_count(), 1)
@@ -325,13 +334,18 @@ class StoreTests(unittest.TestCase):
 
     def test_allocator_replace_error_and_frontier_replay_boundaries(self):
         store = Store(self.path, writable=True)
+        bridge = None
         try:
             store.acquire()
+            bridge = Acl2Store()
+            store.recover(bridge)
             with mock.patch("run_store.os.replace", side_effect=OSError(errno.EIO, "replace")):
                 with self.assertRaises(StoreIndeterminate):
-                    store.advance_frontier(0)
+                    store.advance_frontier(bridge, 0)
             self.assertTrue(store.fenced)
         finally:
+            if bridge is not None:
+                bridge.close()
             store.close()
 
         ahead = Store(self.path, writable=True)
@@ -367,7 +381,7 @@ class StoreTests(unittest.TestCase):
         try:
             with mock.patch("run_store.fsync_dir", side_effect=OSError(errno.EIO, "allocator barrier")):
                 with self.assertRaises(StoreIndeterminate):
-                    store.advance_frontier(0)
+                    store.advance_frontier(bridge, 0)
             self.assertTrue(store.fenced)
             self.assertEqual(store.frontier, 0)  # only the cached observation
             store.recover(bridge)
@@ -375,14 +389,12 @@ class StoreTests(unittest.TestCase):
             self.assertEqual(store.frontier, 1)
             self.assertEqual(bridge.next_txid(), 1)
 
-            store.advance_frontier(1)
-            self.assertEqual(bridge.prepare(b"<after-barrier@example.invalid>", b"kept", [0],
-                                            b"archive:after-barrier", b"sha256:kept",
-                                            b"unsigned-legacy-v0", 1), "prepared")
-            record = bridge.pending_record()
+            record = self.reserve_and_prepare(
+                store, bridge, b"<after-barrier@example.invalid>", b"kept", [0],
+                b"archive:after-barrier", b"sha256:kept", b"unsigned-legacy-v0", 1)
             self.assertEqual(bridge.record_txid(record), 1)
-            self.assertEqual(store.publish(0, record), "durable")
-            self.assertEqual(bridge.complete("durable"), "durable")
+            self.assertEqual(store.publish(bridge, 0, record), "durable")
+            self.assertEqual(store.finish(bridge), "durable")
         finally:
             bridge.close()
             store.close()

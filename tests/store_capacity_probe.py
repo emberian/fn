@@ -36,11 +36,11 @@ def main():
             for sequence in range(count):
                 msgid = ("<capacity-%d@example.invalid>" % sequence).encode("ascii")
                 obligation, subject, evidence = metadata(msgid, payload)
-                store.advance_frontier(bridge.next_txid())
+                store.advance_frontier(bridge, bridge.next_txid())
                 assert bridge.prepare(msgid, payload, [0, 1], obligation, subject,
                                       evidence, conservative_charge(payload)) == "prepared"
-                assert store.publish(sequence, bridge.pending_record()) == "durable"
-                assert bridge.complete("durable") == "durable"
+                assert store.publish(bridge, sequence, bridge.pending_record()) == "durable"
+                assert store.finish(bridge) == "durable"
                 result["transactions"] = sequence + 1
             result["commit_seconds"] = time.monotonic() - started
             bridge.close()
@@ -67,7 +67,7 @@ def main():
             result["elapsed_seconds"] = time.monotonic() - started
             result["runtime_source_sha256"] = {
                 name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-                for name in ("tools/run_store.py", "host/store-host.lisp",
+                for name in ("tools/run_store.py", "host/store-node-host.lisp",
                              "tests/store_capacity_probe.py")}
             output.write_text(json.dumps(result, indent=2) + "\n")
             print(json.dumps(result, sort_keys=True))

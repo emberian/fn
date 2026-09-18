@@ -15,22 +15,54 @@
 ; State layout:
 ; (:store-files phase frontier frontier-candidate records record-candidate
 ;               completion-pair successes recovery-barriers)
-(defun fn-sf-phase (s) (car (cdr s)))
-(defun fn-sf-frontier (s) (car (cdr (cdr s))))
-(defun fn-sf-frontier-candidate (s) (car (cdr (cdr (cdr s)))))
-(defun fn-sf-records (s) (car (cdr (cdr (cdr (cdr s))))))
-(defun fn-sf-record-candidate (s) (car (cdr (cdr (cdr (cdr (cdr s)))))))
-(defun fn-sf-completion (s) (car (cdr (cdr (cdr (cdr (cdr (cdr s))))))))
-(defun fn-sf-successes (s) (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr s)))))))))
+(defun fn-sf-phase (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr s)) :exec (fn-ag-car (fn-ag-cdr s))))
+(defun fn-sf-frontier (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr s)))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr s)))))
+(defun fn-sf-frontier-candidate (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr (cdr s))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s))))))
+(defun fn-sf-records (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr (cdr (cdr s)))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s)))))))
+(defun fn-sf-record-candidate (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr s))))))
+       :exec (fn-ag-car
+              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
+                                      (fn-ag-cdr (fn-ag-cdr s))))))))
+(defun fn-sf-completion (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr s)))))))
+       :exec (fn-ag-car
+              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
+                         (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s)))))))))
+(defun fn-sf-successes (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr s))))))))
+       :exec (fn-ag-car
+              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
+                         (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s))))))))))
 (defun fn-sf-barriers (s)
-  (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr s))))))))))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr s)))))))))
+       :exec (fn-ag-car
+              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
+                         (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s)))))))))))
 
 (defun fn-sf-make (phase frontier frontier-candidate records record-candidate
                          completion successes barriers)
+  (declare (xargs :guard t :verify-guards nil))
   (list :store-files phase frontier frontier-candidate records record-candidate
         completion successes barriers))
 
 (defun fn-sf-phasep (x)
+  (declare (xargs :guard t :verify-guards nil))
   (member-equal x
                 '(:ready :reserved
                   :frontier-staged :frontier-data-durable :frontier-attempted
@@ -42,18 +74,35 @@
                   :fenced-core :fenced-recovery)))
 
 (defun fn-sf-fencedp (s)
+  (declare (xargs :guard t :verify-guards nil))
   (member-equal (fn-sf-phase s)
                 '(:fenced-frontier :fenced-reservation
                   :fenced-before-record :fenced-record
                   :fenced-core :fenced-recovery)))
 
 (defun fn-sf-pairp (x)
+  (declare (xargs :guard t :verify-guards nil))
   (and (consp x) (natp (car x)) (natp (cdr x))))
 
 (defun fn-sf-record-pair (record)
-  (cons (fn-record-sequence record) (fn-record-txid record)))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (cons (fn-record-sequence record) (fn-record-txid record))
+       :exec (cons (fn-ag-car record)
+                   (fn-ag-car (fn-ag-cdr record)))))
+
+; Internal guard domain for the txid fold.  It adds no semantic validity rule;
+; the stronger ordered record-list predicate remains the storage invariant.
+(defun fn-sf-record-valuesp (records)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp records)
+      (and (fn-record-p (car records))
+           (fn-sf-record-valuesp (cdr records)))
+    (null records)))
 
 (defun fn-sf-next-lower (records lower)
+  (declare (xargs :guard (and (fn-sf-record-valuesp records)
+                              (natp lower))
+                  :verify-guards nil))
   (if (consp records)
       (fn-sf-next-lower (cdr records) (1+ (fn-record-txid (car records))))
     lower))
@@ -61,6 +110,8 @@
 ; Sequence numbers are contiguous.  Acceptance txids are strictly increasing,
 ; may have gaps, and are all below the durable allocator frontier.
 (defun fn-sf-record-listp (records sequence lower frontier)
+  (declare (xargs :guard (and (natp sequence) (natp lower) (natp frontier))
+                  :verify-guards nil))
   (if (consp records)
       (let ((record (car records)))
         (and (fn-record-p record)
@@ -73,6 +124,9 @@
     (null records)))
 
 (defun fn-sf-candidatep (record records frontier)
+  (declare (xargs :guard (and (fn-sf-record-valuesp records)
+                              (natp frontier))
+                  :verify-guards nil))
   (and (fn-record-p record)
        (equal (fn-record-sequence record) (len records))
        (equal (1+ (fn-record-txid record)) frontier)
@@ -80,12 +134,14 @@
        (equal (fn-record-generation record) (fn-record-txid record))))
 
 (defun fn-sf-record-has-pairp (pair records)
+  (declare (xargs :guard t :verify-guards nil))
   (if (consp records)
       (or (equal pair (fn-sf-record-pair (car records)))
           (fn-sf-record-has-pairp pair (cdr records)))
     nil))
 
 (defun fn-sf-success-listp (successes records)
+  (declare (xargs :guard t :verify-guards nil))
   (if (consp successes)
       (and (fn-sf-pairp (car successes))
            (fn-sf-record-has-pairp (car successes) records)
@@ -93,19 +149,30 @@
     (null successes)))
 
 (defun fn-sf-frontier-phasep (phase)
+  (declare (xargs :guard t :verify-guards nil))
   (member-equal phase
                 '(:frontier-staged :frontier-data-durable
                   :frontier-attempted :fenced-frontier)))
 
 (defun fn-sf-record-phasep (phase)
+  (declare (xargs :guard t :verify-guards nil))
   (member-equal phase
                 '(:record-staged :record-data-durable :aborting
                   :record-attempted :fenced-before-record :fenced-record)))
 
 (defun fn-sf-completion-phasep (phase)
+  (declare (xargs :guard t :verify-guards nil))
   (member-equal phase '(:completing :completed :fenced-core)))
 
 (defun fn-sf-phase-shapep (s)
+  (declare
+   (xargs :guard
+          (and (fn-sf-phasep (fn-sf-phase s))
+               (fn-record-uint32p (fn-sf-frontier s))
+               (fn-sf-record-listp (fn-sf-records s) 0 0
+                                   (fn-sf-frontier s))
+               (natp (fn-sf-barriers s)))
+          :verify-guards nil))
   (let ((phase (fn-sf-phase s))
         (fc (fn-sf-frontier-candidate s))
         (rc (fn-sf-record-candidate s))
@@ -149,6 +216,7 @@
      (t nil))))
 
 (defun fn-sf-statep (s)
+  (declare (xargs :guard t :verify-guards nil))
   (and (true-listp s) (equal (len s) 9) (equal (car s) :store-files)
        (fn-sf-phasep (fn-sf-phase s))
        (fn-record-uint32p (fn-sf-frontier s))
@@ -159,6 +227,7 @@
        (fn-sf-phase-shapep s)))
 
 (defun fn-sf-initial-state ()
+  (declare (xargs :guard t :verify-guards nil))
   (fn-sf-make :ready 0 nil nil nil nil nil
               *fn-sf-recovery-barrier-count*))
 
@@ -166,6 +235,7 @@
 ; Durable allocator replacement.
 
 (defun fn-sf-start-frontier (s)
+  (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :ready)
            (< (fn-sf-frontier s) *fn-sf-max-uint*))
       (fn-sf-make :frontier-staged (fn-sf-frontier s)
@@ -174,6 +244,7 @@
     s))
 
 (defun fn-sf-frontier-file-result (s result)
+  (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :frontier-staged))
       (cond
        ((equal result :ok)
@@ -187,6 +258,7 @@
     s))
 
 (defun fn-sf-frontier-replace-result (s result)
+  (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s)
            (equal (fn-sf-phase s) :frontier-data-durable))
       (cond
@@ -202,6 +274,7 @@
     s))
 
 (defun fn-sf-frontier-dir-result (s result)
+  (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :frontier-attempted))
       (cond
        ((equal result :ok)
@@ -219,6 +292,7 @@
 ; Whole-record publication.  Replay is the semantic admission check.
 
 (defun fn-sf-replay-node (groups capacity records frontier)
+  (declare (xargs :guard t :verify-guards nil))
   (let ((answer (fn-replay groups capacity records)))
     (if (and (fn-replay-okp answer)
              (fn-replay-advance-okp (fn-replay-result-node answer) frontier))
@@ -226,6 +300,7 @@
       nil)))
 
 (defun fn-sf-history-recoverablep (groups capacity records frontier)
+  (declare (xargs :guard t :verify-guards nil))
   (let ((node (fn-sf-replay-node groups capacity records frontier)))
     (and (consp node) (fn-node-statep node)
          (equal (fn-state-next-txid (fn-node-acceptance node)) frontier))))
@@ -235,6 +310,7 @@
 ; reply fences; crash/recovery will use the durable frontier without restoring a
 ; reservation token.
 (defun fn-sf-refuse-reservation (s txid result)
+  (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :reserved)
            (natp txid) (equal (1+ txid) (fn-sf-frontier s)))
       (cond
@@ -249,6 +325,7 @@
     s))
 
 (defun fn-sf-prepare-record (s record groups capacity)
+  (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :reserved)
            (fn-sf-candidatep record (fn-sf-records s) (fn-sf-frontier s))
            (fn-sf-history-recoverablep
@@ -259,6 +336,7 @@
     s))
 
 (defun fn-sf-record-file-result (s result)
+  (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :record-staged))
       (cond
        ((equal result :ok)
@@ -273,6 +351,7 @@
     s))
 
 (defun fn-sf-prepublish-abort (s)
+  (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s)
            (equal (fn-sf-phase s) :record-data-durable))
       (fn-sf-make :aborting (fn-sf-frontier s) nil (fn-sf-records s)
@@ -281,6 +360,7 @@
     s))
 
 (defun fn-sf-abort-completion (s sequence txid result)
+  (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :aborting)
            (equal (cons sequence txid)
                   (fn-sf-record-pair (fn-sf-record-candidate s))))
@@ -296,6 +376,7 @@
     s))
 
 (defun fn-sf-record-link-result (s result)
+  (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s)
            (equal (fn-sf-phase s) :record-data-durable))
       (cond
@@ -311,6 +392,7 @@
     s))
 
 (defun fn-sf-record-dir-result (s result)
+  (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :record-attempted))
       (cond
        ((equal result :ok)
@@ -329,6 +411,7 @@
 ; The adapter's mutation gate is already closed in :completing.  Only the exact
 ; matching reply opens an acknowledgement decision; lost/rejected replies fence.
 (defun fn-sf-core-completion (s sequence txid result)
+  (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :completing)
            (equal (cons sequence txid) (fn-sf-completion s)))
       (cond
@@ -344,6 +427,7 @@
     s))
 
 (defun fn-sf-emit-success (s sequence txid)
+  (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :completed)
            (equal (cons sequence txid) (fn-sf-completion s)))
       (fn-sf-make :ready (fn-sf-frontier s) nil (fn-sf-records s) nil nil
@@ -352,6 +436,7 @@
     s))
 
 (defun fn-sf-lose-success (s sequence txid)
+  (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :completed)
            (equal (cons sequence txid) (fn-sf-completion s)))
       (fn-sf-make :ready (fn-sf-frontier s) nil (fn-sf-records s) nil nil
@@ -363,16 +448,20 @@
 ; the assumed atomic old/new replacement and absent/exact-link publication.
 
 (defun fn-sf-crash-choicep (frontier-choice record-choice)
+  (declare (xargs :guard t :verify-guards nil))
   (and (or (equal frontier-choice :old) (equal frontier-choice :new))
        (or (equal record-choice :absent) (equal record-choice :present))))
 
 (defun fn-sf-frontier-new-visiblep (s)
+  (declare (xargs :guard t :verify-guards nil))
   (member-equal (fn-sf-phase s) '(:frontier-attempted :fenced-frontier)))
 
 (defun fn-sf-record-present-visiblep (s)
+  (declare (xargs :guard t :verify-guards nil))
   (member-equal (fn-sf-phase s) '(:record-attempted :fenced-record)))
 
 (defun fn-sf-crash (s frontier-choice record-choice)
+  (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s)
            (fn-sf-crash-choicep frontier-choice record-choice))
       (let* ((frontier
@@ -393,6 +482,7 @@
 ; Recovery uses the observed frontier in the crash image.  No process-cached
 ; pre-error frontier is an argument to replay.
 (defun fn-sf-recover (s groups capacity)
+  (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :replaying))
       (if (fn-sf-history-recoverablep groups capacity (fn-sf-records s)
                                       (fn-sf-frontier s))
@@ -403,6 +493,7 @@
     s))
 
 (defun fn-sf-recovery-barrier (s result)
+  (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :recovering))
       (cond
        ((equal result :ok)
@@ -417,6 +508,90 @@
                     (fn-sf-barriers s)))
        (t s))
     s))
+
+; Guard-only list facts expose the domains already established by the storage
+; recognizer.  They add no transition precondition or executable filter.
+(local
+ (defthm fn-sfg-record-values-are-a-true-list
+   (implies (fn-sf-record-valuesp records)
+            (true-listp records))))
+
+(local
+ (defthm fn-sfg-record-list-implies-values
+   (implies (fn-sf-record-listp records sequence lower frontier)
+            (fn-sf-record-valuesp records))
+   :hints (("Goal" :induct (fn-sf-record-listp
+                             records sequence lower frontier)))))
+
+(local
+ (defthm fn-sfg-success-list-is-a-true-list
+   (implies (fn-sf-success-listp successes records)
+            (true-listp successes))))
+
+(local
+ (defthm fn-sfg-state-records-have-guard-domain
+   (implies (fn-sf-statep s)
+            (and (fn-sf-record-valuesp (fn-sf-records s))
+                 (true-listp (fn-sf-records s))
+                 (true-listp (fn-sf-successes s))))
+   :hints (("Goal" :in-theory (enable fn-sf-statep)))))
+
+; The complete executable file kernel is guard verified.  Selectors preserve
+; their original total ACL2 semantics through the guarded acceptance helpers.
+(verify-guards fn-sf-phase)
+(verify-guards fn-sf-frontier)
+(verify-guards fn-sf-frontier-candidate)
+(verify-guards fn-sf-records)
+(verify-guards fn-sf-record-candidate)
+(verify-guards fn-sf-completion)
+(verify-guards fn-sf-successes)
+(verify-guards fn-sf-barriers)
+(verify-guards fn-sf-make)
+(verify-guards fn-sf-phasep)
+(verify-guards fn-sf-fencedp)
+(verify-guards fn-sf-pairp)
+(verify-guards fn-sf-record-pair)
+(verify-guards fn-sf-record-valuesp)
+(verify-guards fn-sf-next-lower)
+(verify-guards fn-sf-record-listp)
+(verify-guards fn-sf-candidatep
+ :hints (("Goal" :use fn-sfg-record-values-are-a-true-list)))
+(verify-guards fn-sf-record-has-pairp)
+(verify-guards fn-sf-success-listp)
+(verify-guards fn-sf-frontier-phasep)
+(verify-guards fn-sf-record-phasep)
+(verify-guards fn-sf-completion-phasep)
+(verify-guards fn-sf-phase-shapep
+ :hints (("Goal" :use fn-sfg-record-list-implies-values)))
+(verify-guards fn-sf-statep
+ :hints (("Goal" :use fn-sfg-record-list-implies-values)))
+(verify-guards fn-sf-initial-state)
+(verify-guards fn-sf-start-frontier)
+(verify-guards fn-sf-frontier-file-result)
+(verify-guards fn-sf-frontier-replace-result)
+(verify-guards fn-sf-frontier-dir-result)
+(verify-guards fn-sf-replay-node)
+(verify-guards fn-sf-history-recoverablep)
+(verify-guards fn-sf-refuse-reservation)
+(verify-guards fn-sf-prepare-record
+ :hints (("Goal" :use fn-sfg-state-records-have-guard-domain)))
+(verify-guards fn-sf-record-file-result)
+(verify-guards fn-sf-prepublish-abort)
+(verify-guards fn-sf-abort-completion)
+(verify-guards fn-sf-record-link-result)
+(verify-guards fn-sf-record-dir-result
+ :hints (("Goal" :use fn-sfg-state-records-have-guard-domain)))
+(verify-guards fn-sf-core-completion)
+(verify-guards fn-sf-emit-success
+ :hints (("Goal" :use fn-sfg-state-records-have-guard-domain)))
+(verify-guards fn-sf-lose-success)
+(verify-guards fn-sf-crash-choicep)
+(verify-guards fn-sf-frontier-new-visiblep)
+(verify-guards fn-sf-record-present-visiblep)
+(verify-guards fn-sf-crash
+ :hints (("Goal" :use fn-sfg-state-records-have-guard-domain)))
+(verify-guards fn-sf-recover)
+(verify-guards fn-sf-recovery-barrier)
 
 ; -----------------------------------------------------------------------------
 ; Initial general facts for the kernel.

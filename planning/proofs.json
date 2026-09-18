@@ -510,9 +510,17 @@
         "books/node.lisp",
         "books/replay.lisp",
         "tests/acl2/acceptance-guards-tests.lisp",
-        "tests/acl2/replay-guards-tests.lisp"
+        "tests/acl2/replay-guards-tests.lisp",
+        "books/store-files.lisp",
+        "books/store-node.lisp",
+        "books/store-node-resolution.lisp",
+        "books/store-observed.lisp",
+        "tests/acl2/store-node-guards-tests.lisp",
+        "books/transfer.lisp",
+        "books/exchange.lisp",
+        "tests/acl2/exchange-guards-tests.lisp"
       ],
-      "progress_note": "Nine complete graphs have targeted guard certification: acceptance63, wire38, wildmat54, article45, retention35, node30, replay13, CBOR21, records45 (344 functions). All 273 original logical bodies in the seven added graphs are unchanged; safe MBE branches have proved equality. Remaining storage wrappers, semantic fields, NNTP and transfer runtime graphs are active; host/physical correspondence remains a separate trust boundary."
+      "progress_note": "Fifteen base books have targeted guard certification: acceptance63, wire38, wildmat54, article45, retention35, node30, replay13, CBOR21, records45, store-files47, store-node22, resolution6, observed12, transfer62, exchange40 (533 functions). All 452 pre-existing logical bodies in the added graphs are unchanged; 15 helpers and MBE equality obligations are proved. Physical adapter now calls the composed transitions; combined batch pending. NNTP and semantic fields graphs remain active; host/physical assumptions are separate."
     },
     {
       "id": "PRF-015",
