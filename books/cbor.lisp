@@ -36,15 +36,21 @@
            (fn-cbor-octet-listp (cdr xs)))
     (null xs)))
 
+(verify-guards fn-cbor-octetp)
+(verify-guards fn-cbor-octet-listp)
+
 ; This preflight examines no more than `bound + 1` cons cells.  It comes
 ; before octet validation, so a remote overlong list cannot make the decoder
 ; traverse or allocate in proportion to its unbounded claimed size.
 (defun fn-cbor-at-mostp (xs bound)
+  (declare (xargs :guard (natp bound)))
   (if (consp xs)
       (if (zp bound)
           nil
         (fn-cbor-at-mostp (cdr xs) (1- bound)))
     t))
+
+(verify-guards fn-cbor-at-mostp)
 
 (defun fn-cbor-valuep (x)
   (or (and (consp x)
@@ -56,6 +62,8 @@
            (fn-cbor-octet-listp (cdr x))
            (<= (len (cdr x)) *fn-cbor-max-bytes*))))
 
+(verify-guards fn-cbor-valuep)
+
 (defun fn-cbor-ok (value rest)
   (list :ok value rest))
 
@@ -66,19 +74,29 @@
   (and (consp x) (equal (car x) :ok)))
 
 (defun fn-cbor-result-value (x)
+  (declare (xargs :guard (true-listp x)))
   (car (cdr x)))
 
 (defun fn-cbor-result-rest (x)
+  (declare (xargs :guard (true-listp x)))
   (car (cdr (cdr x))))
+
+(verify-guards fn-cbor-ok)
+(verify-guards fn-cbor-error)
+(verify-guards fn-cbor-result-okp)
+(verify-guards fn-cbor-result-value)
+(verify-guards fn-cbor-result-rest)
 
 ; -----------------------------------------------------------------------------
 ; Big-endian arguments and deterministic heads
 
 (defun fn-cbor-u16-bytes (n)
+  (declare (xargs :guard (and (natp n) (<= n *fn-cbor-max-uint*))))
   (list (floor n 256)
         (mod n 256)))
 
 (defun fn-cbor-u32-bytes (n)
+  (declare (xargs :guard (and (natp n) (<= n *fn-cbor-max-uint*))))
   ; Successive quotient/remainder steps are extensionally the usual big-endian
   ; base-256 decomposition.  Keeping the quotient chain explicit also gives
   ; the executable definition a direct reconstruction proof.
@@ -91,14 +109,25 @@
           (mod n 256))))
 
 (defun fn-cbor-u16-from (xs)
+  (declare (xargs :guard (and (fn-cbor-octet-listp xs)
+                              (consp xs) (consp (cdr xs)))))
   (+ (* 256 (car xs))
      (car (cdr xs))))
 
 (defun fn-cbor-u32-from (xs)
+  (declare (xargs :guard (and (fn-cbor-octet-listp xs)
+                              (consp xs) (consp (cdr xs))
+                              (consp (cdr (cdr xs)))
+                              (consp (cdr (cdr (cdr xs)))))))
   (+ (* 16777216 (car xs))
      (* 65536 (car (cdr xs)))
      (* 256 (car (cdr (cdr xs))))
      (car (cdr (cdr (cdr xs))))))
+
+(verify-guards fn-cbor-u16-bytes)
+(verify-guards fn-cbor-u32-bytes)
+(verify-guards fn-cbor-u16-from)
+(verify-guards fn-cbor-u32-from)
 
 ; `major` is intentionally an internal numeric argument (0 or 2 here).
 (defun fn-cbor-encode-argument (major n)
@@ -119,11 +148,15 @@
 ; The argument length selected by the deterministic encoder.  It is used by
 ; the decoder as a direct, executable canonicality check.
 (defun fn-cbor-canonical-argumentp (additional n)
+  (declare (xargs :guard (and (natp additional) (natp n))))
   (or (and (< n 24) (equal additional n))
       (and (equal additional 24) (<= 24 n) (< n 256))
       (and (equal additional 25) (<= 256 n) (< n 65536))
       (and (equal additional 26) (<= 65536 n)
            (<= n *fn-cbor-max-uint*))))
+
+(verify-guards fn-cbor-encode-argument)
+(verify-guards fn-cbor-canonical-argumentp)
 
 ; -----------------------------------------------------------------------------
 ; Encoder
@@ -136,6 +169,8 @@
       (append (fn-cbor-encode-argument 2 (len (cdr value)))
               (cdr value)))))
 
+(verify-guards fn-cbor-encode)
+
 ; -----------------------------------------------------------------------------
 ; Decoder
 
@@ -144,6 +179,8 @@
 ; forms are outside the bounded profile; callers distinguish truncation before
 ; declaring a syntactically present form unsupported.
 (defun fn-cbor-decode-argument (additional xs)
+  (declare (xargs :guard (and (natp additional)
+                              (fn-cbor-octet-listp xs))))
   (if (< additional 24)
       (fn-cbor-ok additional xs)
     (if (equal additional 24)
@@ -163,7 +200,11 @@
               (fn-cbor-error :truncated))
           (fn-cbor-error :unsupported))))))
 
+(verify-guards fn-cbor-decode-argument)
+
 (defun fn-cbor-decode-unsigned (additional tail)
+  (declare (xargs :guard (and (natp additional)
+                              (fn-cbor-octet-listp tail))))
   (let ((argument (fn-cbor-decode-argument additional tail)))
     (if (not (fn-cbor-result-okp argument))
         argument
@@ -173,7 +214,11 @@
         (fn-cbor-ok (cons :uint (fn-cbor-result-value argument))
                     (fn-cbor-result-rest argument))))))
 
+(verify-guards fn-cbor-decode-unsigned)
+
 (defun fn-cbor-decode-bytes (additional tail)
+  (declare (xargs :guard (and (natp additional)
+                              (fn-cbor-octet-listp tail))))
   (let ((argument (fn-cbor-decode-argument additional tail)))
     (if (not (fn-cbor-result-okp argument))
         argument
@@ -187,6 +232,8 @@
                 (fn-cbor-ok (cons :bytes (take length content))
                             (nthcdr length content))
               (fn-cbor-error :truncated))))))))
+
+(verify-guards fn-cbor-decode-bytes)
 
 ; A one-item streaming decoder.  Its explicit input maximum gives a fixed
 ; bound on list traversal, decoded byte allocation, and returned remainder.
@@ -204,6 +251,8 @@
                 (fn-cbor-decode-bytes (- head 64) (cdr octets))
               (fn-cbor-error :unsupported))))))))
 
+(verify-guards fn-cbor-decode)
+
 ; Object/frame fields normally require exactly one item, so do not let a caller
 ; accidentally disregard a concatenated second CBOR item.
 (defun fn-cbor-decode-exact (octets)
@@ -213,6 +262,7 @@
       (if (null (fn-cbor-result-rest result))
           result
         (fn-cbor-error :trailing)))))
+(verify-guards fn-cbor-decode-exact)
 
 ; -----------------------------------------------------------------------------
 ; Certified primitive properties.  The initial theorems cover the one-octet

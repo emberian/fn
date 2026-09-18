@@ -44,6 +44,7 @@
 ; Exact string/octet domains
 
 (defun fn-record-string-octets-aux (chars)
+  (declare (xargs :guard (character-listp chars)))
   (if (consp chars)
       (cons (char-code (car chars))
             (fn-record-string-octets-aux (cdr chars)))
@@ -55,6 +56,7 @@
     nil))
 
 (defun fn-record-octets-chars (octets)
+  (declare (xargs :guard (fn-cbor-octet-listp octets)))
   (if (consp octets)
       (cons (code-char (car octets))
             (fn-record-octets-chars (cdr octets)))
@@ -83,6 +85,7 @@
        (fn-cbor-octet-listp (fn-record-string-octets text))))
 
 (defun fn-record-nonempty-at-mostp (xs bound)
+  (declare (xargs :guard (natp bound)))
   (and (consp xs) (<= (len xs) bound)))
 
 (defun fn-record-msgidp (text)
@@ -100,6 +103,7 @@
                                     *fn-record-max-group-name*)))
 
 (defun fn-record-no-duplicatesp (xs)
+  (declare (xargs :guard (true-listp xs)))
   (if (consp xs)
       (and (not (member-equal (car xs) (cdr xs)))
            (fn-record-no-duplicatesp (cdr xs)))
@@ -131,19 +135,23 @@
 ; -----------------------------------------------------------------------------
 ; Logical record and field accessors
 
-(defun fn-record-sequence (record) (car record))
-(defun fn-record-txid (record) (car (cdr record)))
-(defun fn-record-generation (record) (car (cdr (cdr record))))
-(defun fn-record-msgid (record) (car (cdr (cdr (cdr record)))))
-(defun fn-record-payload (record) (car (cdr (cdr (cdr (cdr record))))))
-(defun fn-record-groups (record) (car (cdr (cdr (cdr (cdr (cdr record)))))))
+(defun fn-record-sequence (record) (declare (xargs :guard (true-listp record))) (car record))
+(defun fn-record-txid (record) (declare (xargs :guard (true-listp record))) (car (cdr record)))
+(defun fn-record-generation (record) (declare (xargs :guard (true-listp record))) (car (cdr (cdr record))))
+(defun fn-record-msgid (record) (declare (xargs :guard (true-listp record))) (car (cdr (cdr (cdr record)))))
+(defun fn-record-payload (record) (declare (xargs :guard (true-listp record))) (car (cdr (cdr (cdr (cdr record))))))
+(defun fn-record-groups (record) (declare (xargs :guard (true-listp record))) (car (cdr (cdr (cdr (cdr (cdr record)))))))
 (defun fn-record-obligation-id (record)
+  (declare (xargs :guard (true-listp record)))
   (car (cdr (cdr (cdr (cdr (cdr (cdr record))))))))
 (defun fn-record-content-subject (record)
+  (declare (xargs :guard (true-listp record)))
   (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr record)))))))))
 (defun fn-record-release-evidence (record)
+  (declare (xargs :guard (true-listp record)))
   (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr record))))))))))
 (defun fn-record-charge (record)
+  (declare (xargs :guard (true-listp record)))
   (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr record)))))))))))
 
 (defun fn-record-make (sequence txid generation msgid payload groups
@@ -218,9 +226,11 @@
   (and (consp result) (equal (car result) :ok)))
 
 (defun fn-record-parse-value (result)
+  (declare (xargs :guard (true-listp result)))
   (car (cdr result)))
 
 (defun fn-record-parse-rest (result)
+  (declare (xargs :guard (true-listp result)))
   (car (cdr (cdr result))))
 
 ; Public final-result helpers.  A successful final result contains a
@@ -229,9 +239,12 @@
   (and (consp result) (equal (car result) :ok)))
 
 (defun fn-record-result-record (result)
+  (declare (xargs :guard (true-listp result)))
   (car (cdr result)))
 
 (defun fn-record-read-uint (octets)
+  (declare (xargs :guard (fn-cbor-octet-listp octets)
+                  :verify-guards nil))
   (let ((decoded (fn-cbor-decode octets)))
     (if (not (fn-cbor-result-okp decoded))
         (fn-record-parse-error (car (cdr decoded)))
@@ -241,6 +254,8 @@
           (fn-record-parse-error :field-type))))))
 
 (defun fn-record-read-bytes (octets)
+  (declare (xargs :guard (fn-cbor-octet-listp octets)
+                  :verify-guards nil))
   (let ((decoded (fn-cbor-decode octets)))
     (if (not (fn-cbor-result-okp decoded))
         (fn-record-parse-error (car (cdr decoded)))
@@ -250,6 +265,8 @@
           (fn-record-parse-error :field-type))))))
 
 (defun fn-record-parse-groups (count octets)
+  (declare (xargs :guard (and (natp count) (fn-cbor-octet-listp octets))
+                  :verify-guards nil))
   (if (zp count)
       (fn-record-parse-ok nil octets)
     (let ((first (fn-record-read-bytes octets)))
@@ -269,6 +286,13 @@
                    (fn-record-parse-rest tail)))))))))))
 
 (defun fn-record-decode-tail (sequence txid generation msgid payload octets)
+  (declare (xargs :guard (and (fn-record-uint32p sequence)
+                              (fn-record-uint32p txid)
+                              (fn-record-uint32p generation)
+                              (fn-record-msgidp msgid)
+                              (fn-record-payloadp payload)
+                              (fn-cbor-octet-listp octets))
+                  :verify-guards nil))
   (let ((count-result (fn-record-read-uint octets)))
     (if (not (fn-record-parse-okp count-result))
         (fn-record-parse-error :group-count)
@@ -317,6 +341,8 @@
                                     (fn-record-parse-error :invalid)))))))))))))))))))
 
 (defun fn-record-decode-after-header (octets)
+  (declare (xargs :guard (fn-cbor-octet-listp octets)
+                  :verify-guards nil))
   (let ((sequence-result (fn-record-read-uint octets)))
     (if (not (fn-record-parse-okp sequence-result))
         sequence-result
@@ -376,6 +402,351 @@
                     (if (fn-record-parse-okp parsed)
                         (list :ok (fn-record-parse-value parsed))
                       parsed)))))))))))
+
+(verify-guards fn-record-string-octets-aux)
+(verify-guards fn-record-string-octets)
+(verify-guards fn-record-octets-chars)
+(verify-guards fn-record-octets-string)
+(verify-guards fn-record-ascii-octetp)
+(verify-guards fn-record-ascii-octet-listp)
+(verify-guards fn-record-ascii-stringp)
+(verify-guards fn-record-octet-stringp)
+(verify-guards fn-record-nonempty-at-mostp)
+(verify-guards fn-record-msgidp)
+(verify-guards fn-record-payloadp)
+(verify-guards fn-record-group-namep)
+(verify-guards fn-record-no-duplicatesp)
+(verify-guards fn-record-group-listp)
+(verify-guards fn-record-groupsp)
+(verify-guards fn-record-groups-validp)
+(verify-guards fn-record-metadata-bytes-p)
+(verify-guards fn-record-uint32p)
+(verify-guards fn-record-sequence)
+(verify-guards fn-record-txid)
+(verify-guards fn-record-generation)
+(verify-guards fn-record-msgid)
+(verify-guards fn-record-payload)
+(verify-guards fn-record-groups)
+(verify-guards fn-record-obligation-id)
+(verify-guards fn-record-content-subject)
+(verify-guards fn-record-release-evidence)
+(verify-guards fn-record-charge)
+(verify-guards fn-record-make)
+(verify-guards fn-record-p)
+(verify-guards fn-record-encode-groups)
+(defthm fn-record-cbor-octet-list-true-listp
+  (implies (fn-cbor-octet-listp xs)
+           (true-listp xs))
+  :hints (("Goal" :induct (fn-cbor-octet-listp xs))))
+
+(verify-guards fn-record-encode
+  :hints (("Goal" :use fn-record-cbor-octet-list-true-listp)))
+(verify-guards fn-record-parse-ok)
+(verify-guards fn-record-parse-error)
+(verify-guards fn-record-parse-okp)
+(verify-guards fn-record-parse-value)
+(verify-guards fn-record-parse-rest)
+(verify-guards fn-record-result-okp)
+(verify-guards fn-record-result-record)
+
+; Successful CBOR streaming decodes retain an octet-list remainder.  Keeping
+; these lemmas at the codec boundary prevents later record-parser guard proofs
+; from unfolding the complete bounded CBOR decoder.
+(defthm fn-record-cbor-octet-listp-of-nthcdr
+  (implies (and (natp n) (fn-cbor-octet-listp xs))
+           (fn-cbor-octet-listp (nthcdr n xs)))
+  :hints (("Goal" :induct (nthcdr n xs)
+           :in-theory (enable fn-cbor-octet-listp))))
+
+(defthm fn-record-cbor-octet-listp-of-take
+  (implies (and (natp n)
+                (<= n (len xs))
+                (fn-cbor-octet-listp xs))
+           (fn-cbor-octet-listp (take n xs)))
+  :hints (("Goal" :induct (take n xs)
+           :in-theory (enable fn-cbor-octet-listp))))
+
+(defthm fn-record-len-of-take-within-list
+  (implies (and (natp n) (<= n (len xs)))
+           (equal (len (take n xs)) n))
+  :hints (("Goal" :induct (take n xs))))
+
+(defthm fn-record-cbor-result-okp-of-ok
+  (fn-cbor-result-okp (fn-cbor-ok value rest))
+  :hints (("Goal" :in-theory (enable fn-cbor-result-okp fn-cbor-ok))))
+
+(defthm fn-record-cbor-result-value-of-ok
+  (equal (fn-cbor-result-value (fn-cbor-ok value rest)) value)
+  :hints (("Goal" :in-theory (enable fn-cbor-result-value fn-cbor-ok))))
+
+(defthm fn-record-cbor-result-rest-of-ok
+  (equal (fn-cbor-result-rest (fn-cbor-ok value rest)) rest)
+  :hints (("Goal" :in-theory (enable fn-cbor-result-rest fn-cbor-ok))))
+
+(defthm fn-record-cbor-decode-argument-success-domain
+  (implies
+   (and (natp additional)
+        (fn-cbor-octet-listp xs)
+        (fn-cbor-result-okp (fn-cbor-decode-argument additional xs)))
+   (and (natp (fn-cbor-result-value
+               (fn-cbor-decode-argument additional xs)))
+        (fn-cbor-octet-listp
+         (fn-cbor-result-rest
+          (fn-cbor-decode-argument additional xs)))))
+  :hints (("Goal"
+           :in-theory (enable fn-cbor-decode-argument
+                              fn-cbor-result-okp
+                              fn-cbor-result-value
+                              fn-cbor-result-rest
+                              fn-cbor-ok fn-cbor-error
+                              fn-cbor-octet-listp))))
+
+(defthm fn-record-cbor-decode-unsigned-success-domain
+  (implies
+   (and (natp additional)
+        (fn-cbor-octet-listp tail)
+        (fn-cbor-result-okp (fn-cbor-decode-unsigned additional tail)))
+   (and (consp (fn-cbor-result-value
+                (fn-cbor-decode-unsigned additional tail)))
+        (equal (car (fn-cbor-result-value
+                     (fn-cbor-decode-unsigned additional tail)))
+               :uint)
+        (natp (cdr (fn-cbor-result-value
+                    (fn-cbor-decode-unsigned additional tail))))
+        (<= (cdr (fn-cbor-result-value
+                  (fn-cbor-decode-unsigned additional tail)))
+            *fn-cbor-max-uint*)
+        (fn-cbor-octet-listp
+         (fn-cbor-result-rest
+          (fn-cbor-decode-unsigned additional tail)))))
+  :hints (("Goal"
+           :use ((:instance
+                  fn-record-cbor-decode-argument-success-domain
+                  (xs tail)))
+           :in-theory (e/d (fn-cbor-decode-unsigned
+                              fn-cbor-result-okp
+                              fn-cbor-canonical-argumentp)
+                             (fn-cbor-decode-argument
+                              fn-cbor-result-value
+                              fn-cbor-result-rest
+                              fn-cbor-ok fn-cbor-error)))))
+
+(defthm fn-record-cbor-decode-bytes-success-domain
+  (implies
+   (and (natp additional)
+        (fn-cbor-octet-listp tail)
+        (fn-cbor-result-okp (fn-cbor-decode-bytes additional tail)))
+   (and (consp (fn-cbor-result-value
+                (fn-cbor-decode-bytes additional tail)))
+        (equal (car (fn-cbor-result-value
+                     (fn-cbor-decode-bytes additional tail)))
+               :bytes)
+        (fn-cbor-octet-listp
+         (cdr (fn-cbor-result-value
+               (fn-cbor-decode-bytes additional tail))))
+        (<= (len (cdr (fn-cbor-result-value
+                       (fn-cbor-decode-bytes additional tail))))
+            *fn-cbor-max-bytes*)
+        (fn-cbor-octet-listp
+         (fn-cbor-result-rest
+          (fn-cbor-decode-bytes additional tail)))))
+  :hints (("Goal"
+           :use ((:instance
+                  fn-record-cbor-decode-argument-success-domain
+                  (xs tail)))
+           :in-theory (e/d (fn-cbor-decode-bytes
+                              fn-cbor-result-okp
+                              fn-cbor-canonical-argumentp)
+                             (fn-cbor-decode-argument
+                              fn-cbor-result-value
+                              fn-cbor-result-rest
+                              fn-cbor-ok fn-cbor-error
+                              take nthcdr)))))
+
+(defthm fn-record-cbor-decode-success-domain
+  (implies
+   (and (fn-cbor-octet-listp octets)
+        (fn-cbor-result-okp (fn-cbor-decode octets)))
+   (and (fn-cbor-valuep
+         (fn-cbor-result-value (fn-cbor-decode octets)))
+        (fn-cbor-octet-listp
+         (fn-cbor-result-rest (fn-cbor-decode octets)))))
+  :hints (("Goal"
+           :use ((:instance
+                  fn-record-cbor-decode-unsigned-success-domain
+                  (additional (car octets)) (tail (cdr octets)))
+                 (:instance
+                  fn-record-cbor-decode-bytes-success-domain
+                  (additional (- (car octets) 64)) (tail (cdr octets))))
+           :in-theory (e/d (fn-cbor-decode fn-cbor-valuep)
+                            (fn-cbor-decode-unsigned
+                             fn-cbor-decode-bytes
+                             fn-cbor-result-value
+                             fn-cbor-result-rest)))))
+
+(defthm fn-record-read-uint-is-true-list
+  (true-listp (fn-record-read-uint octets))
+  :hints (("Goal"
+           :in-theory (enable fn-record-read-uint
+                              fn-record-parse-ok fn-record-parse-error))))
+
+(defthm fn-record-read-bytes-is-true-list
+  (true-listp (fn-record-read-bytes octets))
+  :hints (("Goal"
+           :in-theory (enable fn-record-read-bytes
+                              fn-record-parse-ok fn-record-parse-error))))
+
+(defthm fn-record-parse-okp-of-ok
+  (fn-record-parse-okp (fn-record-parse-ok value rest))
+  :hints (("Goal" :in-theory (enable fn-record-parse-okp
+                                      fn-record-parse-ok))))
+
+(defthm fn-record-parse-value-of-ok
+  (equal (fn-record-parse-value (fn-record-parse-ok value rest)) value)
+  :hints (("Goal" :in-theory (enable fn-record-parse-value
+                                      fn-record-parse-ok))))
+
+(defthm fn-record-parse-rest-of-ok
+  (equal (fn-record-parse-rest (fn-record-parse-ok value rest)) rest)
+  :hints (("Goal" :in-theory (enable fn-record-parse-rest
+                                      fn-record-parse-ok))))
+
+(defthm fn-record-read-uint-success-domain
+  (implies
+   (and (fn-cbor-octet-listp octets)
+        (fn-record-parse-okp (fn-record-read-uint octets)))
+   (and (natp (fn-record-parse-value (fn-record-read-uint octets)))
+        (<= (fn-record-parse-value (fn-record-read-uint octets))
+            *fn-cbor-max-uint*)
+        (fn-cbor-octet-listp
+         (fn-record-parse-rest (fn-record-read-uint octets)))))
+  :hints (("Goal"
+           :use ((:instance fn-record-cbor-decode-success-domain))
+           :in-theory (e/d (fn-record-read-uint
+                              fn-record-parse-okp
+                              fn-record-parse-value fn-record-parse-rest
+                              fn-record-parse-ok fn-record-parse-error
+                              fn-cbor-valuep)
+                             (fn-cbor-decode)))))
+
+(defthm fn-record-read-uint-success-is-rational
+  (implies
+   (and (fn-cbor-octet-listp octets)
+        (fn-record-parse-okp (fn-record-read-uint octets)))
+   (rationalp (fn-record-parse-value (fn-record-read-uint octets))))
+  :hints (("Goal"
+           :use ((:instance fn-record-read-uint-success-domain))
+           :in-theory (disable fn-record-read-uint
+                               fn-record-parse-okp
+                               fn-record-parse-value
+                               fn-cbor-octet-listp))))
+
+(defthm fn-record-read-uint-success-is-uint32
+  (implies
+   (and (fn-cbor-octet-listp octets)
+        (fn-record-parse-okp (fn-record-read-uint octets)))
+   (fn-record-uint32p
+    (fn-record-parse-value (fn-record-read-uint octets))))
+  :hints (("Goal"
+           :use ((:instance fn-record-read-uint-success-domain))
+           :in-theory (e/d (fn-record-uint32p)
+                            (fn-record-read-uint
+                             fn-record-parse-okp
+                             fn-record-parse-value
+                             fn-cbor-octet-listp)))))
+
+(defthm fn-record-read-bytes-success-domain
+  (implies
+   (and (fn-cbor-octet-listp octets)
+        (fn-record-parse-okp (fn-record-read-bytes octets)))
+   (and (fn-cbor-octet-listp
+         (fn-record-parse-value (fn-record-read-bytes octets)))
+        (fn-cbor-octet-listp
+         (fn-record-parse-rest (fn-record-read-bytes octets)))))
+  :hints (("Goal"
+           :use ((:instance fn-record-cbor-decode-success-domain))
+           :in-theory (e/d (fn-record-read-bytes
+                              fn-record-parse-okp
+                              fn-record-parse-value fn-record-parse-rest
+                              fn-record-parse-ok fn-record-parse-error
+                              fn-cbor-valuep)
+                             (fn-cbor-decode)))))
+
+(defthm fn-record-parse-groups-is-true-list
+  (true-listp (fn-record-parse-groups count octets))
+  :hints (("Goal" :induct (fn-record-parse-groups count octets)
+           :in-theory (enable fn-record-parse-groups
+                              fn-record-parse-ok fn-record-parse-error))))
+
+(defthm fn-record-parse-groups-success-domain
+  (implies
+   (and (natp count)
+        (fn-cbor-octet-listp octets)
+        (fn-record-parse-okp (fn-record-parse-groups count octets)))
+   (and (true-listp
+         (fn-record-parse-value (fn-record-parse-groups count octets)))
+        (fn-cbor-octet-listp
+         (fn-record-parse-rest (fn-record-parse-groups count octets)))))
+  :hints (("Goal" :induct (fn-record-parse-groups count octets)
+           :in-theory
+           (e/d (fn-record-parse-groups fn-record-parse-okp)
+                (fn-record-read-bytes fn-record-octets-string
+                 fn-record-group-namep fn-record-parse-value
+                 fn-record-parse-rest fn-record-parse-ok
+                 fn-record-parse-error)))))
+
+(verify-guards fn-record-read-uint
+  :hints (("Goal" :use fn-record-cbor-decode-success-domain)))
+(verify-guards fn-record-read-bytes
+  :hints (("Goal" :use fn-record-cbor-decode-success-domain)))
+(verify-guards fn-record-parse-groups
+  :hints (("Goal"
+           :in-theory (disable fn-record-read-bytes
+                               fn-record-octets-string
+                               fn-record-group-namep
+                               fn-record-parse-okp
+                               fn-record-parse-value
+                               fn-record-parse-rest
+                               fn-record-uint32p
+                               fn-record-msgidp
+                               fn-record-payloadp
+                               fn-cbor-octet-listp
+                               true-listp))))
+(verify-guards fn-record-decode-tail
+  :hints (("Goal"
+           :in-theory (disable fn-record-read-uint fn-record-read-bytes
+                               fn-record-parse-groups
+                               fn-record-octets-string
+                               fn-record-parse-okp
+                               fn-record-parse-value
+                               fn-record-parse-rest
+                               fn-record-uint32p
+                               fn-record-msgidp
+                               fn-record-payloadp
+                               fn-cbor-octet-listp
+                               true-listp))))
+(verify-guards fn-record-decode-after-header
+  :hints (("Goal"
+           :in-theory (disable fn-record-read-uint fn-record-read-bytes
+                               fn-record-decode-tail
+                               fn-record-octets-string
+                               fn-record-parse-okp
+                               fn-record-parse-value
+                               fn-record-parse-rest
+                               fn-record-uint32p
+                               fn-record-msgidp
+                               fn-record-payloadp
+                               fn-cbor-octet-listp
+                               true-listp))))
+(verify-guards fn-record-decode-exact
+  :hints (("Goal"
+           :in-theory (disable fn-record-read-uint fn-record-read-bytes
+                               fn-record-decode-after-header
+                               fn-record-parse-okp
+                               fn-record-parse-value
+                               fn-record-parse-rest
+                               fn-cbor-octet-listp
+                               true-listp))))
 
 ; A certified end-to-end schema-0 vector.  The broader all-record round-trip
 ; property remains proof work because it includes the exact ACL2 string/octet
