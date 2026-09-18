@@ -28,6 +28,8 @@ Its [refinement contract](../specs/store-refinement.md) separates the executable
 storage model and its current proofs from the remaining physical correspondence.
 The [article-field contract](../specs/article-fields.md) describes semantic
 identity/routing checks over the preserved source views.
+The [resumable-object experiment](../specs/transfer-experiment.md) stages bounded
+fragments without treating assembled bytes as accepted messages.
 The [local walkthrough](local-experiment.md) exercises CLI posting, reopen, and
 reading stored articles over loopback NNTP.
 

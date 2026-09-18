@@ -19,6 +19,7 @@ ACL2 events, not a separate specification implemented again in the host.
 | `journal` | Abstract isolated slots, barriers, crash images, recovery experiments |
 | `store-files`, `store-files-invariants` | Immutable-file allocator/publication kernel, transition/crash preservation, stable-prefix and one-crash success retention |
 | `exchange` | Portable immutable facts, admissible bounded batches, conflict-preserving merge |
+| `transfer` | Reservation-bounded out-of-order octet staging, missing ranges, exact duplicates and unverified completion candidates |
 | `nntp` | Laboratory reader, LISTGROUP ranges and filtered LIST variants over committed acceptance state |
 
 `make certify` lists the current integrated dependency order explicitly. A
