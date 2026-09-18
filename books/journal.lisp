@@ -166,10 +166,7 @@
   (if (consp slots)
       (or (and (equal (fn-journal-live-kind (car slots)) :commit)
                (equal sequence (fn-journal-live-txid (car slots)))
-               (equal (fn-journal-live-durability (car slots)) :durable)
-               (fn-journal-durable-referencesp
-                (fn-journal-live-commit-txid (car slots))
-                (fn-journal-live-commit-refs (car slots)) slots))
+               (equal (fn-journal-live-durability (car slots)) :durable))
           (fn-journal-durable-sequencep sequence (cdr slots)))
     nil))
 
@@ -179,7 +176,7 @@
     (and (fn-journal-durable-sequencep (1- sequence) slots)
          (fn-journal-durable-sequence-prefixp (1- sequence) slots))))
 
-(defun fn-journal-durable-commitp (sequence txid slots)
+(defun fn-journal-durable-commit-in (sequence txid slots all-slots)
   (if (consp slots)
       (or (and (equal (fn-journal-live-kind (car slots)) :commit)
                (equal sequence (fn-journal-live-txid (car slots)))
@@ -187,10 +184,13 @@
                (equal (fn-journal-live-durability (car slots)) :durable)
                (fn-journal-durable-referencesp txid
                                                 (fn-journal-live-commit-refs (car slots))
-                                                slots)
-               (fn-journal-durable-sequence-prefixp sequence slots))
-          (fn-journal-durable-commitp sequence txid (cdr slots)))
+                                                all-slots)
+               (fn-journal-durable-sequence-prefixp sequence all-slots))
+          (fn-journal-durable-commit-in sequence txid (cdr slots) all-slots))
     nil))
+
+(defun fn-journal-durable-commitp (sequence txid slots)
+  (fn-journal-durable-commit-in sequence txid slots slots))
 
 (defun fn-journal-commit-seenp (sequence slots)
   (if (consp slots)

@@ -100,3 +100,24 @@
   (fn-wire-next (fn-wire-begin-article (fn-wire-next-state *fn-wire-post-split*))
                 '(72 105 13 10 46 13 10)))
 (assert-event (equal *fn-wire-post-article-whole* *fn-wire-post-article-split*))
+
+; A coalesced complete article produces one explicit article event, leaves no
+; socket remainder for the pull caller, and returns command framing mode.
+(defconst *fn-wire-coalesced-article*
+  (fn-wire-next *fn-wire-article-start* '(72 105 13 10 46 13 10)))
+(assert-event (equal (fn-wire-next-event *fn-wire-coalesced-article*)
+                     '(:article ((72 105)))))
+(assert-event (equal (fn-wire-next-unconsumed *fn-wire-coalesced-article*) nil))
+(assert-event (equal (fn-wire-state-mode
+                      (fn-wire-next-state *fn-wire-coalesced-article*))
+                     :command))
+
+; The public full-chunk API rejects improper ACL2 list structure rather than
+; treating it as a completed socket chunk.  The pull API rejects when it reaches
+; the improper tail and never presents that atom as an octet command suffix.
+(assert-event
+ (equal (fn-wire-result-events (fn-wire-feed *fn-wire-empty* '(72 . 105)))
+        '((:reject :malformed))))
+(assert-event
+ (equal (fn-wire-next-event (fn-wire-next *fn-wire-empty* '(72 . 105)))
+        '(:reject :malformed)))

@@ -16,6 +16,14 @@
 (assert-event (fn-statep *fn-nntp-archive*))
 (assert-event (fn-nntp-sessionp *fn-nntp-session0*))
 
+; Decimal parsing is left-to-right: 12 is twelve, not twenty-one.  Leading
+; zeroes are accepted, and the RFC 3977 maximum is the last accepted value.
+(assert-event (equal (fn-nntp-decimal-value '(49 50)) 12))
+(assert-event (equal (fn-nntp-decimal-value '(49 50 48)) 120))
+(assert-event (equal (fn-nntp-decimal-value '(48 48 49 50)) 12))
+(assert-event (fn-nntp-number-tokenp '(50 49 52 55 52 56 51 54 52 55)))
+(assert-event (not (fn-nntp-number-tokenp '(50 49 52 55 52 56 51 54 52 56))))
+
 ; Exact selected-group transcript; mixed case changes only the command keyword.
 (defconst *fn-nntp-group*
   (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive*
@@ -95,6 +103,47 @@
  (equal (fn-nntp-result-effects *fn-nntp-caps*)
         '((:reply (49 48 49 32 99 97 112 97 98 105 108 105 116 121 32 108 105 115 116 32 102 111 108 108 111 119 115 13 10
                    86 69 82 83 73 79 78 32 50 13 10 73 77 80 76 69 77 69 78 84 65 84 73 79 78 32 102 110 45 110 110 116 112 45 108 97 98 13 10 46 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive*
+                       '(:command (67 65 80 65 66 73 76 73 84 73 69 83 32 65 85 84 79 85 80 68 65 84 69))))
+        (fn-nntp-result-effects *fn-nntp-caps*)))
+
+; acceptance permits opaque strings and bytes.  The NNTP projection refuses
+; unsafe committed data before it can interpolate CRLF into any response line.
+(defconst *fn-nntp-unsafe-id*
+  (coerce (list (code-char 60) (code-char 120) (code-char 62)
+                (code-char 13) (code-char 10) (code-char 50) (code-char 48) (code-char 53))
+          'string))
+(defconst *fn-nntp-unsafe-id-prepared*
+  (fn-accept-prepare *fn-nntp-empty-archive* 2 *fn-nntp-unsafe-id*
+                     *fn-nntp-payload* '("fn.letters")))
+(defconst *fn-nntp-unsafe-id-archive*
+  (fn-accept-complete *fn-nntp-unsafe-id-prepared* 0 2 :durable))
+(defconst *fn-nntp-unsafe-group*
+  (coerce (list (code-char 102) (code-char 110) (code-char 13) (code-char 10)
+                (code-char 50) (code-char 48) (code-char 53)) 'string))
+(defconst *fn-nntp-unsafe-group-archive* (fn-initial-state (list *fn-nntp-unsafe-group*)))
+(defconst *fn-nntp-unsafe-payload-prepared*
+  (fn-accept-prepare *fn-nntp-empty-archive* 3 "<payload@invalid>"
+                     '(72 101 97 100 58 32 120 13 10 13 10 66) '("fn.letters")))
+(defconst *fn-nntp-unsafe-payload-archive*
+  (fn-accept-complete *fn-nntp-unsafe-payload-prepared* 0 3 :durable))
+(assert-event (fn-statep *fn-nntp-unsafe-id-archive*))
+(assert-event (fn-statep *fn-nntp-unsafe-group-archive*))
+(assert-event (fn-statep *fn-nntp-unsafe-payload-archive*))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-unsafe-id-archive* '(:command (83 84 65 84))))
+        '((:reply (53 48 51 32 97 114 99 104 105 118 101 32 112 114 111 106 101 99 116 105 111 110 32 117 110 97 118 97 105 108 97 98 108 101 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-unsafe-group-archive* '(:command (76 73 83 84))))
+        '((:reply (53 48 51 32 97 114 99 104 105 118 101 32 112 114 111 106 101 99 116 105 111 110 32 117 110 97 118 97 105 108 97 98 108 101 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-unsafe-payload-archive* '(:command (65 82 84 73 67 76 69))))
+        '((:reply (53 48 51 32 97 114 99 104 105 118 101 32 112 114 111 106 101 99 116 105 111 110 32 117 110 97 118 97 105 108 97 98 108 101 13 10)))))
 
 ; NEXT at the only article and QUIT have defined state/effect behavior.
 (assert-event
