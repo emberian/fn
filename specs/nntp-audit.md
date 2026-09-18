@@ -6,9 +6,9 @@ The [NNTP contract](nntp.md) describes the intended usable profile. Capability
 advertisement remains VERSION/IMPLEMENTATION until complete bundles have their
 own evidence; a command name alone does not close its row.
 
-The latest frozen [article batch](../tests/evidence/2026-09-18-articles.md) covers
-the reader subset including LISTGROUP, socket tests, and an independent stored
-reader probe. Current assertion tests live in
+The latest frozen [reader/storage batch](../tests/evidence/2026-09-18-wildmat-storage.md)
+covers LISTGROUP, filtered LIST variants, command limits, socket tests, and an
+independent stored-reader probe. Current assertion tests live in
 [nntp-tests.lisp](../tests/acl2/nntp-tests.lisp); socket tests and independent client
 probes supply different evidence from those pure transcripts.
 
@@ -31,8 +31,8 @@ probes supply different evidence from those pure transcripts.
 | §7.2 | HELP multiline response, unsupported arguments | Implemented/tested; help text must track actual command subset |
 | §7.3, §7.5 | NEWGROUPS time forms, GMT/local semantics, group creation metadata | Unimplemented; requires persisted group creation/configuration facts, not invented dates |
 | §7.4 | NEWNEWS filtering/time forms | Deferred; no capability claim |
-| §7.6.1 | LIST defaults, keyword variants, syntax/availability errors, no state changes | Default, ACTIVE, and NEWSGROUPS implemented without optional wildmat; recognized-but-unmaintained variants and complete 501/503 distinction remain to audit |
-| §4, §§7.6.3/7.6.6 | Wildmat grammar/semantics and filtered ACTIVE/NEWSGROUPS | Unimplemented; requires explicit bounded matching work, not uncontrolled backtracking |
+| §7.6.1 | LIST defaults, keyword variants, syntax/availability errors, no state changes | Default, ACTIVE, NEWSGROUPS and filtered forms implemented; known unmaintained variants distinguish valid-arity 503 from malformed/unknown 501; general session refinement remains open |
+| §4, §§7.6.3/7.6.6 | Wildmat grammar/semantics and filtered ACTIVE/NEWSGROUPS | Bounded strict UTF-8 parser and dynamic-programming matcher integrated; RFC, malformed, boundary, socket and independent-client cases pass; general matcher/complexity proofs remain open |
 | §§8.1–8.4 | OVER by range/Message-ID/current, missing fields, byte/line metadata, OVERVIEW.FMT | Unimplemented; depends on the parsed article view and exact projection/metadata contract |
 | §§8.5–8.6 | HDR and LIST HEADERS | Deferred; no capability claim |
 

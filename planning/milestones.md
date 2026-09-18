@@ -82,6 +82,11 @@ tests. The [integrated record](../tests/evidence/2026-09-18-storage.md) includes
 maximum-profile reopen test. Journal refinement, full recovery proofs, checkpoints,
 physical accounting, and platform qualification keep M2 open.
 
+The [reader/storage batch](../tests/evidence/2026-09-18-wildmat-storage.md) adds a
+dedicated immutable-file publication kernel with one-use allocator reservations,
+crash choices, actual replay, and initial fence/gate proofs. The complete adapter
+refinement and acknowledged-history crash theorem remain open.
+
 ## M3: first usable local news service
 
 - Implement the complete selected NNTP profile, including article injection,
@@ -100,7 +105,8 @@ release does not yet claim disconnected peering or remote delivery.
 
 Incremental evidence: CLI-persisted articles can be reopened and served over
 loopback NNTP. LISTGROUP ranges/cursors now have logical, socket, and independent
-client checks. Bounded syntax parsing is separate from injection; live POST,
+client checks; bounded UTF-8 wildmat and filtered listings are also integrated.
+Bounded syntax parsing is separate from injection; live POST,
 complete READER, overview, provenance, and signatures remain open.
 
 ## M4: disconnected exchange

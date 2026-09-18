@@ -166,9 +166,11 @@
         "tests/evidence/2026-09-18-storage.md",
         "tests/evidence/2026-09-18-storage.json",
         "tests/evidence/2026-09-18-articles.md",
-        "tests/evidence/2026-09-18-articles.json"
+        "tests/evidence/2026-09-18-articles.json",
+        "tests/evidence/2026-09-18-wildmat-storage.md",
+        "tests/evidence/2026-09-18-wildmat-storage.json"
       ],
-      "implementation_note": "Bounded wire/CBOR/record/article decoders and numeric-octet host marshalling; article syntax parsing preserves exact successful input, including opaque body bytes. Store tests enforce count/byte caps and reject malformed records. General work/allocation and output-recognizer proofs remain open."
+      "implementation_note": "Bounded octet preflights and numeric-octet host marshalling; article source preservation; strict UTF8 wildmat grammar/DP matching and malformed/boundary vectors. Stored malformed data and caps tested. General work/allocation, decoder/matcher correspondence and output-recognizer proofs remain open."
     },
     {
       "id": "ENC-003",
@@ -260,9 +262,11 @@
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-storage.md",
-        "tests/evidence/2026-09-18-storage.json"
+        "tests/evidence/2026-09-18-storage.json",
+        "tests/evidence/2026-09-18-wildmat-storage.md",
+        "tests/evidence/2026-09-18-wildmat-storage.json"
       ],
-      "implementation_note": "CLI success follows tested file/directory barriers and matching actual-node completion; durable allocator prevents reuse across aborted process lifetimes. Platform qualification and full service acceptance remain open."
+      "implementation_note": "Real file and allocator barriers precede core durable completion and success. Failed/lost core completion leaves host fenced; same-object recovery rereads observed disk frontier. A dedicated file-publication kernel has initial gate/fence lemmas, but complete crash/adapter refinement remains open."
     },
     {
       "id": "STO-004",
@@ -391,9 +395,11 @@
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-storage.md",
-        "tests/evidence/2026-09-18-storage.json"
+        "tests/evidence/2026-09-18-storage.json",
+        "tests/evidence/2026-09-18-wildmat-storage.md",
+        "tests/evidence/2026-09-18-wildmat-storage.json"
       ],
-      "implementation_note": "Tests distinguish pre-publication abort from attempted-publication uncertainty and recover complete unacknowledged records. Durable allocation survives known abort/reopen."
+      "implementation_note": "Attempted-publication and completion uncertainty fence mutation; real rejected/lost completion and allocator-barrier recovery tests pass. File-kernel traces model absent/exact and old/new crash choices; general trace refinement remains open."
     },
     {
       "id": "FLR-003",
@@ -672,9 +678,11 @@
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-articles.md",
-        "tests/evidence/2026-09-18-articles.json"
+        "tests/evidence/2026-09-18-articles.json",
+        "tests/evidence/2026-09-18-wildmat-storage.md",
+        "tests/evidence/2026-09-18-wildmat-storage.json"
       ],
-      "implementation_note": "Reader subset now includes LISTGROUP ranges, empty results, group-wide summaries, and cursor reset; logical transcripts, helper proofs, socket tests, and independent-client probes cover these branches. Full session refinement remains open."
+      "implementation_note": "Reader subset includes LISTGROUP ranges/cursors, filtered ACTIVE/NEWSGROUPS, empty results, syntax/availability errors and explicit command bounds. Logical, socket and independent-client cases pass. Full session refinement remains open."
     },
     {
       "id": "NNT-003",
@@ -748,9 +756,11 @@
         "tests/evidence/2026-09-18-storage.md",
         "tests/evidence/2026-09-18-storage.json",
         "tests/evidence/2026-09-18-articles.md",
-        "tests/evidence/2026-09-18-articles.json"
+        "tests/evidence/2026-09-18-articles.json",
+        "tests/evidence/2026-09-18-wildmat-storage.md",
+        "tests/evidence/2026-09-18-wildmat-storage.json"
       ],
-      "implementation_note": "Recovered stored articles and both local memberships are served by the actual NNTP core; LISTGROUP returns sorted available numbers with tested range semantics. Complete reader/overview/profile guarantees remain open."
+      "implementation_note": "Actual recovered memberships feed LISTGROUP and filtered ACTIVE/NEWSGROUPS through ACL2. Independent client tests exact stored views. Complete reader/overview/profile guarantees remain open."
     },
     {
       "id": "HST-001",

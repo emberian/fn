@@ -35,6 +35,12 @@ preservation, general retention-release invariants, and LISTGROUP ranges/cursors
 independent client traffic also passed. Each record retains exact source hashes,
 outcomes, proof scope, and remaining limitations.
 
+The fourth [reader/storage batch](../tests/evidence/2026-09-18-wildmat-storage.md)
+passed with 33 roots, the simulator, and 31 Python tests plus the independent
+client. It adds UTF-8 wildmat/filtering, explicit command bounds, two real recovery
+hardening fixes, and an executable file-publication kernel with initial fence/gate
+proofs and crash traces. It does not close full adapter refinement.
+
 See [implementation status](../docs/implementation.md), the
 [proof registry](proofs.json), and [milestones](milestones.md) for scope. A
 certified component does not close a complete milestone or prove the host/disk.
@@ -66,23 +72,17 @@ and retain concise evidence summaries and exact source hashes in the repository.
 
 ## Next substantial work
 
-The article parser, LISTGROUP/ranges, and general retention-release preservation
-are integrated. The next parallel batch owns three independent areas:
+The article/parser/release batch and wildmat/file-kernel batch are integrated.
+Terra is still working independently on schema-0 record accepted-input
+canonicality, beyond value round trip. Its group-list reconstruction lemma has
+passed an ACL2 proof event, but the whole new book is not certified or included
+in the default roots; the final composition theorem remains open.
 
-- Terra: bounded UTF-8 wildmat matching and integration with filtered LIST
-  ACTIVE/NEWSGROUPS, including command-byte limits and socket coverage.
-- Terra: schema-0 record accepted-input canonicality, beyond value round trip.
-- Sol: the concrete abstraction relation and next executable proof/model steps
-  between the file adapter, journal, replay, and durable allocation.
-
-Sol's [refinement contract](../specs/store-refinement.md) is now written. It calls
-for a dedicated immutable-file machine because the isolated-slot journal does
-not model hard-link publication and allocator replacement. Root also hardened
-post-publication core-completion failures: the host stays fenced through failed
-or lost replies, and real-file reopen tests preserve the article and its pin.
-
-Root records evidence and converges these components in a frozen batch. Their
-work does not change what the historical 29-root checkpoint establishes.
+The [refinement contract](../specs/store-refinement.md) now has a first executable
+immutable-file kernel. It accounts for hard-link publication and allocator
+replacement, unlike the isolated-slot journal. Full transition/crash preservation,
+live node composition, and physical adapter correspondence are next proof work.
+Root records exact frozen batches; later work does not rewrite prior evidence.
 
 The [local persistence experiment](../specs/store-experiment.md) is integrated:
 bounded transaction bytes, replay, allocation across aborted process lifetimes,
