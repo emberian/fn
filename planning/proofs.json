@@ -238,7 +238,17 @@
         "fn-sf-incomplete-recovery-barrier-is-not-ready",
         "fn-sf-fenced-rejects-success",
         "fn-sf-frontier-replace-error-fences",
-        "fn-sf-lost-core-completion-fences"
+        "fn-sf-lost-core-completion-fences",
+        "fn-sf-crash-preserves-state",
+        "fn-sf-stable-records-prefix-of-crash",
+        "fn-sf-surviving-candidate-is-exact-and-dominated",
+        "fn-sf-prior-success-has-record-after-one-crash",
+        "fn-sf-frontier-dir-result-preserves-state",
+        "fn-sf-record-dir-result-preserves-state",
+        "fn-sf-core-completion-preserves-state",
+        "fn-sf-emit-success-preserves-state",
+        "fn-sf-recover-preserves-state",
+        "fn-sf-recovery-barrier-preserves-state"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -251,9 +261,10 @@
         "tests/evidence/2026-09-18-wildmat-storage.md",
         "tests/evidence/2026-09-18-wildmat-storage.json",
         "books/store-files.lisp",
-        "specs/store-refinement.md"
+        "specs/store-refinement.md",
+        "books/store-files-invariants.lisp"
       ],
-      "progress_note": "Logical journal/scanner facts and typed replay are certified. The dedicated file kernel adds explicit crash choices, actual replay, one-use reservations, and initial fence/completion/rebarrier lemmas with traces. Real completion/frontier recovery faults are tested. Full transition/crash/acknowledged-history preservation, physical adapter correspondence, freshness anchoring, and platform qualification remain open."
+      "progress_note": "Logical journal/scanner facts and typed replay are certified. The file kernel now has transition/crash recognizer preservation, stable-prefix retention, exact candidate survival/frontier dominance, and one-crash success retention. Real completion/frontier/recovery-read faults are tested. Arbitrary traces, live pending-node composition, physical adapter correspondence, freshness anchoring, and platform qualification remain open."
     },
     {
       "id": "PRF-008",
@@ -338,14 +349,17 @@
       "events": [
         "fn-exchange-merge-idempotent",
         "fn-exchange-merge-commutative-member",
-        "fn-exchange-admitted-order-member"
+        "fn-exchange-admitted-order-member",
+        "fn-transfer-exact-duplicate-no-overwrite"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
-        "books/exchange.lisp"
+        "books/exchange.lisp",
+        "books/transfer.lisp",
+        "tests/acl2/transfer-tests.lisp"
       ],
-      "progress_note": "Whole validated fact batches under stated admission/capacity hypotheses. Resumable object/dependency closure and durable replication remain open."
+      "progress_note": "Whole validated fact batches have merge results under stated admission/capacity hypotheses. A separate bounded volatile assembly kernel stages out-of-order bytes with exact duplicates and unverified candidates; no dependency validation, acceptance receipts, persistent transfer, or general assembly correctness proof yet."
     },
     {
       "id": "PRF-012",
@@ -473,7 +487,9 @@
         "fn-cbor-byte-encoding-fits-input-bound",
         "fn-record-cbor-byte-encoding-bound",
         "fn-record-group-encoding-bound",
-        "fn-article-successful-parse-preserves-source"
+        "fn-article-successful-parse-preserves-source",
+        "fn-transfer-initial-statep",
+        "fn-transfer-invalid-chunk-no-overwrite"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -489,9 +505,12 @@
         "books/article-invariants.lisp",
         "tests/evidence/2026-09-18-wildmat-storage.md",
         "tests/evidence/2026-09-18-wildmat-storage.json",
-        "books/wildmat.lisp"
+        "books/wildmat.lisp",
+        "books/article-fields.lisp",
+        "books/transfer.lisp",
+        "tests/acl2/transfer-tests.lisp"
       ],
-      "progress_note": "Wire/primitive/record bounds have component proofs; article syntax has exact source preservation. Wildmat has bounded preflight, polynomial DP implementation and vectors but no general work/correspondence proof. Real adapter count/byte limits and recovery faults tested. General parser work, output recognizers, queues/staging and physical accounting remain open."
+      "progress_note": "Wire/primitive/record bounds have component proofs; article syntax has exact source preservation and bounded semantic field extraction. Wildmat uses bounded preflight and DP but lacks general work/correspondence proofs. Transfer enforces declared-byte, fragment-count, and reservation-count budgets including zero/empty limits, with initial/no-overwrite lemmas and assertion vectors. General parser/staging work bounds, output recognizers, and physical accounting remain open."
     },
     {
       "id": "PRF-017",
