@@ -24,6 +24,8 @@ larger specification and its remaining proof, storage, and service work.
 For concrete representation discussions, see the proposed
 [article-byte examples](article-byte-examples.md). For the current local adapter,
 see the [persistence experiment](../specs/store-experiment.md).
+Its [refinement contract](../specs/store-refinement.md) states the next executable
+storage model, abstraction relation, and conditional crash proof obligations.
 The [local walkthrough](local-experiment.md) exercises CLI posting, reopen, and
 reading stored articles over loopback NNTP.
 

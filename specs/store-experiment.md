@@ -35,6 +35,11 @@ complete transaction carries its article once even when it names several groups.
 
 ## Publication boundary
 
+The [refinement contract](store-refinement.md) defines the next dedicated
+immutable-file model and its relationship to the actual replay/node functions.
+It explains why the separate isolated-slot journal model does not yet prove
+this adapter's behavior.
+
 The intended adapter sequence is:
 
 1. Hold exclusive ownership of the store. Recover and validate its committed
@@ -54,6 +59,13 @@ staging names are never recovery authority. A failed or interrupted publication
 attempt, or failed final directory barrier, is indeterminate: fence mutation and
 reconcile through recovery. Do not derive a known abort merely from an exception.
 An existing final name is not permission to overwrite it.
+
+After publication, the host also remains fenced until the matching ACL2 durable
+completion succeeds. A rejected completion or missing reply requires recovery,
+even when the core may already have completed and the transaction file is
+durable. It must not produce a success reply or permit another mutation through
+the same host object. Recovery reconciles the retained transaction; it does not
+silently discard it to match an older in-memory view.
 
 Configuration creation also needs data and namespace barriers. A stable lock
 file mediates cooperating writers; its pathname must not be replaced to evade
