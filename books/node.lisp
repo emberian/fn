@@ -16,18 +16,43 @@
 ; Stage: (message-id generation obligation-id immutable-content-subject
 ;         release-evidence charge prospective-retention-state).  The explicit content subject is not a
 ; Message-ID and this model makes no claim that it is a verified hash.
-(defun fn-node-stage-msgid (x) (car x))
-(defun fn-node-stage-generation (x) (car (cdr x)))
-(defun fn-node-stage-id (x) (car (cdr (cdr x))))
-(defun fn-node-stage-subject (x) (car (cdr (cdr (cdr x)))))
-(defun fn-node-stage-evidence (x) (car (cdr (cdr (cdr (cdr x))))))
-(defun fn-node-stage-charge (x) (car (cdr (cdr (cdr (cdr (cdr x)))))))
-(defun fn-node-stage-retention (x) (car (cdr (cdr (cdr (cdr (cdr (cdr x))))))))
+(defun fn-node-stage-msgid (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car x) :exec (fn-ag-car x)))
+(defun fn-node-stage-generation (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
+(defun fn-node-stage-id (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr x)))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
+(defun fn-node-stage-subject (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr (cdr x))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
+(defun fn-node-stage-evidence (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr (cdr (cdr x)))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
+(defun fn-node-stage-charge (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr x))))))
+       :exec (fn-ag-car
+              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
+                                      (fn-ag-cdr (fn-ag-cdr x))))))))
+(defun fn-node-stage-retention (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr x)))))))
+       :exec (fn-ag-car
+              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
+                         (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))))
 
 (defun fn-node-make-stage (msgid generation id subject evidence charge retention)
+  (declare (xargs :guard t :verify-guards nil))
   (list msgid generation id subject evidence charge retention))
 
 (defun fn-node-stagep (acceptance committed x)
+  (declare (xargs :guard t :verify-guards nil))
   (and (true-listp x)
        (equal (len x) 7)
        (stringp (fn-node-stage-msgid x))
@@ -57,30 +82,43 @@
 
 ; Binding: (message-id immutable-content-subject archive-obligation-id).  This
 ; persists the article-to-archive relationship after the pending stage clears.
-(defun fn-node-binding-msgid (x) (car x))
-(defun fn-node-binding-subject (x) (car (cdr x)))
-(defun fn-node-binding-id (x) (car (cdr (cdr x))))
-(defun fn-node-make-binding (msgid subject id) (list msgid subject id))
+(defun fn-node-binding-msgid (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car x) :exec (fn-ag-car x)))
+(defun fn-node-binding-subject (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
+(defun fn-node-binding-id (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr x)))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
+(defun fn-node-make-binding (msgid subject id)
+  (declare (xargs :guard t :verify-guards nil))
+  (list msgid subject id))
 
 (defun fn-node-bindingp (x)
+  (declare (xargs :guard t :verify-guards nil))
   (and (true-listp x) (equal (len x) 3)
        (stringp (fn-node-binding-msgid x))
        (stringp (fn-node-binding-subject x))
        (stringp (fn-node-binding-id x))))
 
 (defun fn-node-binding-msgids (xs)
+  (declare (xargs :guard t :verify-guards nil))
   (if (consp xs)
       (cons (fn-node-binding-msgid (car xs))
             (fn-node-binding-msgids (cdr xs)))
     nil))
 
 (defun fn-node-binding-ids (xs)
+  (declare (xargs :guard t :verify-guards nil))
   (if (consp xs)
       (cons (fn-node-binding-id (car xs))
             (fn-node-binding-ids (cdr xs)))
     nil))
 
 (defun fn-node-binding-listp (xs)
+  (declare (xargs :guard t :verify-guards nil))
   (if (consp xs)
       (and (fn-node-bindingp (car xs))
            (not (member-equal (fn-node-binding-msgid (car xs))
@@ -91,6 +129,7 @@
     (null xs)))
 
 (defun fn-node-find-binding (msgid xs)
+  (declare (xargs :guard t :verify-guards nil))
   (if (consp xs)
       (if (equal msgid (fn-node-binding-msgid (car xs)))
           (car xs)
@@ -98,6 +137,10 @@
     nil))
 
 (defun fn-node-articles-have-archive-bindingsp (articles bindings pins)
+  (declare
+   (xargs :guard (and (fn-node-binding-listp bindings)
+                      (fn-retain-obligation-listp pins))
+          :verify-guards nil))
   (if (consp articles)
       (let ((binding (fn-node-find-binding (fn-article-msgid (car articles))
                                            bindings)))
@@ -115,15 +158,27 @@
 
 ; State: (committed-acceptance committed-retention pending-retention-stage
 ;         committed-article-to-archive-bindings).
-(defun fn-node-acceptance (s) (car s))
-(defun fn-node-retention (s) (car (cdr s)))
-(defun fn-node-stage (s) (car (cdr (cdr s))))
-(defun fn-node-bindings (s) (car (cdr (cdr (cdr s)))))
+(defun fn-node-acceptance (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car s) :exec (fn-ag-car s)))
+(defun fn-node-retention (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr s)) :exec (fn-ag-car (fn-ag-cdr s))))
+(defun fn-node-stage (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr s)))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr s)))))
+(defun fn-node-bindings (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr (cdr s))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s))))))
 
 (defun fn-node-make-state (acceptance retention stage bindings)
+  (declare (xargs :guard t :verify-guards nil))
   (list acceptance retention stage bindings))
 
 (defun fn-node-statep (s)
+  (declare (xargs :guard t :verify-guards nil))
   (and (true-listp s)
        (equal (len s) 4)
        (fn-statep (fn-node-acceptance s))
@@ -149,11 +204,13 @@
            (consp (fn-node-stage s)))))
 
 (defun fn-node-initial-state (groups capacity)
+  (declare (xargs :guard t :verify-guards nil))
   (fn-node-make-state (fn-initial-state groups)
                       (fn-retain-initial-state capacity)
                       nil nil))
 
 (defun fn-node-pending-matchesp (s txid generation)
+  (declare (xargs :guard t :verify-guards nil))
   (and (fn-node-statep s)
        (equal (fn-state-fenced (fn-node-acceptance s)) nil)
        (consp (fn-node-stage s))
@@ -168,6 +225,7 @@
 ; history unit.  No cryptographic verification occurs in this machine.
 (defun fn-node-prepare (s generation msgid payload groups
                           obligation-id subject evidence charge)
+  (declare (xargs :guard t :verify-guards nil))
   (if (not (fn-node-statep s))
       s
     (if (not (fn-retain-admissiblep (fn-node-retention s)
@@ -193,6 +251,7 @@
              (fn-node-bindings s))))))))
 
 (defun fn-node-complete (s txid generation completion-status)
+  (declare (xargs :guard t :verify-guards nil))
   (if (not (fn-node-pending-matchesp s txid generation))
       s
     (if (equal completion-status :durable)
@@ -220,6 +279,7 @@
           s)))))
 
 (defun fn-node-recover (s txid generation recovery-result)
+  (declare (xargs :guard t :verify-guards nil))
   (if (or (not (fn-node-statep s))
           (not (equal (fn-state-fenced (fn-node-acceptance s)) t))
           (not (consp (fn-node-stage s))
@@ -244,6 +304,54 @@
            (fn-node-retention s)
            nil (fn-node-bindings s))
         s))))
+
+; Typed search results bridge the precise raw guards in the retention helpers.
+(local
+ (defthm fn-node-guard-find-retention-is-true-list
+   (implies (fn-retain-obligation-listp pins)
+            (true-listp (fn-retain-find-id id pins)))))
+
+(local
+ (defthm fn-node-guard-find-retention-is-obligation
+   (implies (and (fn-retain-obligation-listp pins)
+                 (consp (fn-retain-find-id id pins)))
+            (fn-retain-obligationp (fn-retain-find-id id pins)))))
+
+; Verify every executable node definition, including all three public
+; acceptance/retention transaction transitions.
+(verify-guards fn-node-stage-msgid)
+(verify-guards fn-node-stage-generation)
+(verify-guards fn-node-stage-id)
+(verify-guards fn-node-stage-subject)
+(verify-guards fn-node-stage-evidence)
+(verify-guards fn-node-stage-charge)
+(verify-guards fn-node-stage-retention)
+(verify-guards fn-node-make-stage)
+(verify-guards fn-node-stagep)
+(verify-guards fn-node-binding-msgid)
+(verify-guards fn-node-binding-subject)
+(verify-guards fn-node-binding-id)
+(verify-guards fn-node-make-binding)
+(verify-guards fn-node-bindingp)
+(verify-guards fn-node-binding-msgids)
+(verify-guards fn-node-binding-ids)
+(verify-guards fn-node-binding-listp)
+(verify-guards fn-node-find-binding)
+(verify-guards fn-node-articles-have-archive-bindingsp
+ :hints (("Goal"
+          :use ((:instance fn-node-guard-find-retention-is-true-list)
+                (:instance fn-node-guard-find-retention-is-obligation)))))
+(verify-guards fn-node-acceptance)
+(verify-guards fn-node-retention)
+(verify-guards fn-node-stage)
+(verify-guards fn-node-bindings)
+(verify-guards fn-node-make-state)
+(verify-guards fn-node-statep)
+(verify-guards fn-node-initial-state)
+(verify-guards fn-node-pending-matchesp)
+(verify-guards fn-node-prepare)
+(verify-guards fn-node-complete)
+(verify-guards fn-node-recover)
 
 ; -----------------------------------------------------------------------------
 ; Composite proof events.  They establish only correspondence among these

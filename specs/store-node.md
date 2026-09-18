@@ -80,9 +80,8 @@ existing `fn-sf-replay-node`, which calls the actual node preparation/completion
 semantics for every accepted record and reconstructs the durable transaction
 frontier. Recovery preserves the fixed configuration and creates no new
 acknowledgement. All five file-kernel recovery barriers must still complete
-before ordinary preparation can resume. This narrow composition uses recovery
-after a failed publication; it does not expose the kernel's optional in-process
-prepublication-abort optimization.
+before ordinary preparation can resume. Known prepublication absence also has the explicit resolution operations
+described below; uncertain publication still requires recovery.
 
 `fn-sn-replay-loop-append` proves sequential composition of the actual replay
 interpreter. `fn-sn-extended-history-equals-live-completion` then proves that,
@@ -181,3 +180,15 @@ steps before joining the trace theorem. Host adoption, observed-image loader
 composition, byte codecs, POSIX refinement, guard verification, physical storage
 accounting, and platform durability remain separate work. No signature or
 content-hash correctness is asserted.
+
+## Observed physical image entry
+
+[`store-observed`](../books/store-observed.lisp) validates decoded configuration,
+frontier and contiguous history before calling actual `fn-sn-recover`.
+`fn-sn-open-observed-success-exact-history` establishes exact records/frontier,
+actual replayed node and an empty fresh-process acknowledgement history.
+The opening path creates no barrier observations. General theorems over the
+actual `fn-sn-io` operation show zero through four successful recovery barriers
+remain `:recovering`; the fifth reaches `:ready`. The host must supply those
+results only after the corresponding physical fsync returns successfully.
+Exact frame decoding and truthful physical observations remain adapter premises.

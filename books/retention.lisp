@@ -14,16 +14,19 @@
 ; Records and finite-list utilities
 
 (defun fn-retain-kindp (kind)
+  (declare (xargs :guard t))
   (or (equal kind :archive)
       (equal kind :forward)))
 
 (defun fn-retain-string-listp (xs)
+  (declare (xargs :guard t))
   (if (consp xs)
       (and (stringp (car xs))
            (fn-retain-string-listp (cdr xs)))
     (null xs)))
 
 (defun fn-retain-no-duplicatesp (xs)
+  (declare (xargs :guard (true-listp xs)))
   (if (consp xs)
       (and (not (member-equal (car xs) (cdr xs)))
            (fn-retain-no-duplicatesp (cdr xs)))
@@ -32,16 +35,28 @@
 ; Obligation: (identity immutable-subject kind required-evidence charge).
 ; A positive charge includes at least one permanent history unit; the remaining
 ; charge is active content/evidence retained while the obligation is pinned.
-(defun fn-retain-obligation-id (x) (car x))
-(defun fn-retain-obligation-subject (x) (car (cdr x)))
-(defun fn-retain-obligation-kind (x) (car (cdr (cdr x))))
-(defun fn-retain-obligation-evidence (x) (car (cdr (cdr (cdr x)))))
-(defun fn-retain-obligation-charge (x) (car (cdr (cdr (cdr (cdr x))))))
+(defun fn-retain-obligation-id (x)
+  (declare (xargs :guard (true-listp x)))
+  (car x))
+(defun fn-retain-obligation-subject (x)
+  (declare (xargs :guard (true-listp x)))
+  (car (cdr x)))
+(defun fn-retain-obligation-kind (x)
+  (declare (xargs :guard (true-listp x)))
+  (car (cdr (cdr x))))
+(defun fn-retain-obligation-evidence (x)
+  (declare (xargs :guard (true-listp x)))
+  (car (cdr (cdr (cdr x)))))
+(defun fn-retain-obligation-charge (x)
+  (declare (xargs :guard (true-listp x)))
+  (car (cdr (cdr (cdr (cdr x))))))
 
 (defun fn-retain-make-obligation (id subject kind evidence charge)
+  (declare (xargs :guard t))
   (list id subject kind evidence charge))
 
 (defun fn-retain-obligationp (x)
+  (declare (xargs :guard t))
   (and (true-listp x)
        (equal (len x) 5)
        (stringp (fn-retain-obligation-id x))
@@ -51,24 +66,28 @@
        (posp (fn-retain-obligation-charge x))))
 
 (defun fn-retain-obligation-listp (xs)
+  (declare (xargs :guard t))
   (if (consp xs)
       (and (fn-retain-obligationp (car xs))
            (fn-retain-obligation-listp (cdr xs)))
     (null xs)))
 
 (defun fn-retain-obligation-ids (xs)
+  (declare (xargs :guard (fn-retain-obligation-listp xs)))
   (if (consp xs)
       (cons (fn-retain-obligation-id (car xs))
             (fn-retain-obligation-ids (cdr xs)))
     nil))
 
 (defun fn-retain-sum (pins)
+  (declare (xargs :guard (fn-retain-obligation-listp pins)))
   (if (consp pins)
       (+ (fn-retain-obligation-charge (car pins))
          (fn-retain-sum (cdr pins)))
     0))
 
 (defun fn-retain-find-id (id pins)
+  (declare (xargs :guard (fn-retain-obligation-listp pins)))
   (if (consp pins)
       (if (equal id (fn-retain-obligation-id (car pins)))
           (car pins)
@@ -76,6 +95,7 @@
     nil))
 
 (defun fn-retain-remove-id (id pins)
+  (declare (xargs :guard (fn-retain-obligation-listp pins)))
   (if (consp pins)
       (if (equal id (fn-retain-obligation-id (car pins)))
           (cdr pins)
@@ -84,15 +104,25 @@
 
 ; A release record preserves the identity, subject, kind, and evidence that
 ; authorized the decision.  It is distinct from an active obligation.
-(defun fn-retain-release-id (x) (car x))
-(defun fn-retain-release-subject (x) (car (cdr x)))
-(defun fn-retain-release-kind (x) (car (cdr (cdr x))))
-(defun fn-retain-release-evidence (x) (car (cdr (cdr (cdr x)))))
+(defun fn-retain-release-id (x)
+  (declare (xargs :guard (true-listp x)))
+  (car x))
+(defun fn-retain-release-subject (x)
+  (declare (xargs :guard (true-listp x)))
+  (car (cdr x)))
+(defun fn-retain-release-kind (x)
+  (declare (xargs :guard (true-listp x)))
+  (car (cdr (cdr x))))
+(defun fn-retain-release-evidence (x)
+  (declare (xargs :guard (true-listp x)))
+  (car (cdr (cdr (cdr x)))))
 
 (defun fn-retain-make-release (id subject kind evidence)
+  (declare (xargs :guard t))
   (list id subject kind evidence))
 
 (defun fn-retain-releasep (x)
+  (declare (xargs :guard t))
   (and (true-listp x)
        (equal (len x) 4)
        (stringp (fn-retain-release-id x))
@@ -101,18 +131,22 @@
        (stringp (fn-retain-release-evidence x))))
 
 (defun fn-retain-release-listp (xs)
+  (declare (xargs :guard t))
   (if (consp xs)
       (and (fn-retain-releasep (car xs))
            (fn-retain-release-listp (cdr xs)))
     (null xs)))
 
 (defun fn-retain-release-ids (xs)
+  (declare (xargs :guard (fn-retain-release-listp xs)))
   (if (consp xs)
       (cons (fn-retain-release-id (car xs))
             (fn-retain-release-ids (cdr xs)))
     nil))
 
 (defun fn-retain-known-idp (id pins releases)
+  (declare (xargs :guard (and (fn-retain-obligation-listp pins)
+                              (fn-retain-release-listp releases))))
   (or (member-equal id (fn-retain-obligation-ids pins))
       (member-equal id (fn-retain-release-ids releases))))
 
@@ -123,15 +157,25 @@
 ; is stored explicitly and equals active charges plus one unit for every
 ; permanent release record.  This ledger unit is not yet a byte-accurate
 ; metadata layout, but it prevents unbounded release history at fixed capacity.
-(defun fn-retain-capacity (s) (car s))
-(defun fn-retain-reserved (s) (car (cdr s)))
-(defun fn-retain-pins (s) (car (cdr (cdr s))))
-(defun fn-retain-releases (s) (car (cdr (cdr (cdr s)))))
+(defun fn-retain-capacity (s)
+  (declare (xargs :guard (true-listp s)))
+  (car s))
+(defun fn-retain-reserved (s)
+  (declare (xargs :guard (true-listp s)))
+  (car (cdr s)))
+(defun fn-retain-pins (s)
+  (declare (xargs :guard (true-listp s)))
+  (car (cdr (cdr s))))
+(defun fn-retain-releases (s)
+  (declare (xargs :guard (true-listp s)))
+  (car (cdr (cdr (cdr s)))))
 
 (defun fn-retain-make-state (capacity reserved pins releases)
+  (declare (xargs :guard t))
   (list capacity reserved pins releases))
 
 (defun fn-retain-statep (s)
+  (declare (xargs :guard t))
   (and (true-listp s)
        (equal (len s) 4)
        (natp (fn-retain-capacity s))
@@ -152,9 +196,11 @@
        (<= (fn-retain-reserved s) (fn-retain-capacity s))))
 
 (defun fn-retain-initial-state (capacity)
+  (declare (xargs :guard t))
   (fn-retain-make-state capacity 0 nil nil))
 
 (defun fn-retain-admissiblep (s id subject kind evidence charge)
+  (declare (xargs :guard t))
   (and (fn-retain-statep s)
        (stringp id)
        (stringp subject)
@@ -168,6 +214,7 @@
 
 ; Refusal occurs before creating any pin or reservation.
 (defun fn-retain-admit (s id subject kind evidence charge)
+  (declare (xargs :guard t))
   (if (fn-retain-admissiblep s id subject kind evidence charge)
       (fn-retain-make-state
        (fn-retain-capacity s)
@@ -178,17 +225,31 @@
     s))
 
 (defun fn-retain-matching-releasep (pin id subject kind evidence)
+  (declare (xargs :guard (or (not (consp pin))
+                             (fn-retain-obligationp pin))))
   (and (consp pin)
        (equal id (fn-retain-obligation-id pin))
        (equal subject (fn-retain-obligation-subject pin))
        (equal kind (fn-retain-obligation-kind pin))
        (equal evidence (fn-retain-obligation-evidence pin))))
 
+(local
+ (defthm fn-retain-guard-find-is-obligation
+   (implies (and (fn-retain-obligation-listp pins)
+                 (consp (fn-retain-find-id id pins)))
+            (fn-retain-obligationp (fn-retain-find-id id pins)))))
+
 ; The caller supplies evidence only after its authentication/authorization and
 ; durable-commit boundary.  A forwarding receipt and a local archive release
 ; have distinct kind/evidence values, so either cannot discharge the other.
 ; Release retains the one-unit history charge; a charge of one frees no space.
 (defun fn-retain-release (s id subject kind evidence)
+  (declare
+   (xargs :guard t
+          :guard-hints
+          (("Goal"
+            :use ((:instance fn-retain-guard-find-is-obligation
+                             (pins (fn-retain-pins s))))))))
   (if (not (fn-retain-statep s))
       s
     (let ((pin (fn-retain-find-id id (fn-retain-pins s))))
@@ -200,6 +261,44 @@
            (cons (fn-retain-make-release id subject kind evidence)
                  (fn-retain-releases s)))
         s))))
+
+; Verify the complete executable retention graph.  Public recognizers and
+; transitions remain total; structural accessors and folds require typed lists.
+(verify-guards fn-retain-kindp)
+(verify-guards fn-retain-string-listp)
+(verify-guards fn-retain-no-duplicatesp)
+(verify-guards fn-retain-obligation-id)
+(verify-guards fn-retain-obligation-subject)
+(verify-guards fn-retain-obligation-kind)
+(verify-guards fn-retain-obligation-evidence)
+(verify-guards fn-retain-obligation-charge)
+(verify-guards fn-retain-make-obligation)
+(verify-guards fn-retain-obligationp)
+(verify-guards fn-retain-obligation-listp)
+(verify-guards fn-retain-obligation-ids)
+(verify-guards fn-retain-sum)
+(verify-guards fn-retain-find-id)
+(verify-guards fn-retain-remove-id)
+(verify-guards fn-retain-release-id)
+(verify-guards fn-retain-release-subject)
+(verify-guards fn-retain-release-kind)
+(verify-guards fn-retain-release-evidence)
+(verify-guards fn-retain-make-release)
+(verify-guards fn-retain-releasep)
+(verify-guards fn-retain-release-listp)
+(verify-guards fn-retain-release-ids)
+(verify-guards fn-retain-known-idp)
+(verify-guards fn-retain-capacity)
+(verify-guards fn-retain-reserved)
+(verify-guards fn-retain-pins)
+(verify-guards fn-retain-releases)
+(verify-guards fn-retain-make-state)
+(verify-guards fn-retain-statep)
+(verify-guards fn-retain-initial-state)
+(verify-guards fn-retain-admissiblep)
+(verify-guards fn-retain-admit)
+(verify-guards fn-retain-matching-releasep)
+(verify-guards fn-retain-release)
 
 ; -----------------------------------------------------------------------------
 ; Mechanical safety properties for the abstract ledger.

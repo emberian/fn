@@ -14,14 +14,14 @@ ACL2 events, not a separate specification implemented again in the host.
 | `article-fields` | Exact Message-ID and Newsgroups semantics over preserved article views; narrow proto-article routing checks |
 | `wildmat` and UTF-8/parser/matcher invariant books | Bounded grammar, scalar/progress safety, output recognition and DP/reference correspondence |
 | `retention`, `retention-invariants` | Finite reservation ledger, permanent history, explicit release evidence, and release preservation |
-| `node`, `node-invariants` | Transactional composition and preservation of acceptance, reservations, and article-to-pin bindings |
+| `node`, `node-invariants`, `node-traces` | Transactional composition and preservation of acceptance, reservations, and article-to-pin bindings |
 | `replay`, `replay-invariants` | Actual-node record replay, monotone transaction counter advance, typed success/fault results |
 | `journal` | Abstract isolated slots, barriers, crash images, recovery experiments |
 | `store-files`, `store-files-invariants`, `store-files-traces` | Immutable publication/allocator kernel, arbitrary finite trace state/history/success preservation |
-| `store-node`, `store-node-invariants` | Fixed configuration and actual node completion before acknowledgement, exact replay-extension correspondence |
-| `exchange` | Portable immutable facts, admissible bounded batches, conflict-preserving merge |
-| `transfer` and invariant/assembly/work books | Reserved out-of-order staging, state/accounting and assembly/gap correctness, polynomial hot-path work |
-| `nntp` | Laboratory reader, LISTGROUP ranges and filtered LIST variants over committed acceptance state |
+| `store-node`, invariant/trace/resolution books, `store-observed` | Fixed configuration and actual node completion before acknowledgement, exact replay-extension and arbitrary mixed-trace correspondence, observed-image recovery gates |
+| `exchange`, `exchange-invariants` | Portable immutable facts, admissible bounded batches, conflict-preserving merge |
+| `transfer` and invariant/assembly/work books | Reserved out-of-order staging, state/accounting and assembly/gap correctness, polynomial public-operation work including validation and structural equality |
+| `nntp`, `nntp-invariants`, `nntp-effects` | Reader commands, arbitrary finite session/cursor preservation and proper reply/close effects |
 
 `make certify` lists the current integrated dependency order explicitly. A
 subsystem can be certified separately with, for example:
