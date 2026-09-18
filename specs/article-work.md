@@ -1,0 +1,106 @@
+# Received-article parser work correspondence
+
+This specification closes the structural-work part of PRF-016 for the complete
+public `fn-article-parse` operation in `books/article.lisp`. The grammar, limits,
+error precedence and malformed-input behavior remain those of
+[the parser specification](article-parser.md). No RFC interpretation changes.
+
+## Instrumentation and cost units
+
+`fn-aw-parse` returns `(value work)`. `fn-aw-v` and `fn-aw-c` select its value and
+work. The worker follows the actual parser's short-circuit call graph. It charges
+one unit for each recursive list-walk activation, including the terminating
+activation, and one unit for each bounded scalar/control/constructor block in a
+composite worker. A block contains a fixed number of scalar tests, selectors,
+arithmetic operations, tag comparisons and fixed-arity constructors. A unit is
+not a CPU instruction or a time measurement.
+
+Every input-dependent traversal called by the parser has a costed counterpart:
+
+- The bounded source-length preflight and subsequent octet validation are
+  separate passes, including malformed-input and early-exit cases.
+- Physical-line and colon scans include their accumulated-prefix reversals.
+- Field-name validation, value-byte validation, visible-character scanning and
+  name downcasing are separate passes, with the original short-circuit order.
+- Both occurrences of a line-length calculation and the conditional field-count
+  calculation are charged independently.
+- Each fold copies the old raw-line-list prefix and the old unfolded-value
+  prefix. Both copies are charged on every continuation.
+- Header accumulation charges line reversal and both append prefixes. It does
+  not scan the existing header suffix: the actual append does not scan it.
+- Final header/field reversals and the complete body CRLF scan are charged.
+
+The paired-result plumbing and arithmetic that maintain the cost counter are
+instrumentation, not additional parser work. The parser's tag comparisons are
+against fixed atoms; it performs no equality comparison between two unbounded
+structures. `fn-article-fieldp`, `fn-article-lower-namep`, and
+`fn-article-syntax-p` are not called by this parser body. Their use in verified
+helper guards does not add repeated recognition passes to this algorithm. This
+book does not bound separately requested field lookup or semantic validation.
+
+The public execution reaches only proper-list reversals. The total reverse
+worker also preserves ACL2's string case for its unconditional helper value
+correspondence; that branch is outside the public parser path.
+
+The model excludes integer bit complexity, memory allocator behavior/allocation
+bytes, garbage collection, cache/stack effects, ACL2 evaluator/guard-checking
+bookkeeping, compiler costs and host I/O. It is a structural algorithmic work
+bound with fixed-size primitive blocks, not a wall-clock, heap-byte, or host
+runtime theorem. The original public parser has guard `T`; its verified internal
+guards justify its executable list operations without changing its logical
+malformed-input behavior. The new paired work functions are logical proof
+witnesses; this task does not claim separate guard verification or native-runtime
+performance for the instrumentation itself.
+
+## Certified correspondence and bounds
+
+`fn-article-parse-work-value` proves, for **every ACL2 input**, that
+
+```
+(fn-aw-v (fn-aw-parse octets)) = (fn-article-parse octets).
+```
+
+Let `N = min(len(octets), 32768)` and define the envelope
+
+```
+B(0, n, s) = 1
+B(k, n, s) = 32*(n+s+1) + B(k-1, n, s+2*n+4),  k > 0.
+```
+
+`fn-aw-budget-polynomial` proves the natural-argument closed form
+
+```
+B(k, n, s) = 1 + 32*k*(n+s+1) + 32*(n+2)*k*(k-1).
+```
+
+`fn-article-parse-work-input-bound` proves **without hypotheses**:
+
+```
+work(fn-aw-parse octets) <= 3 + 2*N + B(129, N, 0).
+```
+
+`fn-article-parse-work-profile-bound` proves the corresponding fixed-profile
+bound, also without hypotheses: **17,450,479,652 work units**. This is a
+conservative envelope, not a tight estimate. It follows the actual 129-step
+header fuel, including the separator step, and the actual 32768-cell preflight.
+No successful-parse premise, cost recognizer, prevalidated-input premise, or
+post-hoc output filter is assumed.
+
+The loop induction uses a size measure consisting of the reversed field count,
+reversed header length, current field's raw-line count, and current field's
+unfolded-value length. Scanner results do not exceed remaining input length;
+each recursive state grows this measure by at most `2*n+4`. Local work is bounded
+by `32*(n+s+1)`. Certified monotonicity composes these facts across both new-field
+and continuation branches. Malformed input and all early returns are included.
+
+## Books and regression evidence
+
+The proof layers are `article-work-primitives`, `article-work-scanners`,
+`article-work` (field workers), `article-work-budget`, `article-public-work`
+(complete value correspondence) and `article-public-bound` (complete work bound).
+`tests/acl2/article-work-tests.lisp` checks exact charges for malformed atoms,
+improper spines, nested non-octets, empty articles and prefix-copy helpers; it
+also exercises exact source, line, field-count and continuation-count limits,
+including rejection before octet validation and opaque binary body bytes.
+The general public theorems provide the all-input evidence; the examples do not
+replace them. No trust tag, axiom, or skipped proof is used.

@@ -39,3 +39,10 @@ The [proof registry](../planning/proofs.json) tracks broader targets. A certifie
 book does not imply full guard verification, all promised properties, a frozen
 storage schema, or a physical durability guarantee. The
 [implementation status](../docs/implementation.md) records these boundaries.
+
+
+The follow-on [checkpoint](../specs/checkpoint.md), [derived index](../specs/index.md)
+and [legacy BP ingress](../specs/bp-ingress.md) books have executable assertions
+and scoped proofs; they are not physical checkpoint publication, an adopted host
+index, or a signed receipt protocol. NNTP and article-fields now have complete
+base guard graphs. See the [batch evidence](../tests/evidence/2026-09-18-reader-checkpoint-index.md).

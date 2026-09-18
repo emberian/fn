@@ -30,6 +30,10 @@ The [article-field contract](../specs/article-fields.md) describes semantic
 identity/routing checks over the preserved source views.
 The [resumable-object experiment](../specs/transfer-experiment.md) stages bounded
 fragments without treating assembled bytes as accepted messages.
+The [BP path](../specs/bp-path.md) is current disconnected-exchange work; its
+[transport experiment](../tests/evidence/2026-09-18-bpv7-transport.md) has actual
+BPA interoperability evidence. The [checkpoint](../specs/checkpoint.md) and
+[index](../specs/index.md) contracts describe the current logical artifacts.
 The [local walkthrough](local-experiment.md) exercises CLI posting, reopen, and
 reading stored articles over loopback NNTP.
 

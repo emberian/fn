@@ -20,6 +20,13 @@ ACL2_BOOKS ?= books/acceptance \
 	books/article-invariants \
 	books/article-properties \
 	tests/acl2/article-tests \
+	books/article-work-primitives \
+	books/article-work-scanners \
+	books/article-work \
+	books/article-work-budget \
+	books/article-public-work \
+	books/article-public-bound \
+	tests/acl2/article-work-tests \
 	books/article-fields \
 	tests/acl2/article-fields-tests \
 	books/retention \
@@ -56,6 +63,12 @@ ACL2_BOOKS ?= books/acceptance \
 	books/store-observed \
 	tests/acl2/store-observed-tests \
 	tests/acl2/store-node-guards-tests \
+	books/checkpoint \
+	tests/acl2/checkpoint-tests \
+	books/index \
+	tests/acl2/index-tests \
+	books/bp-ingress \
+	tests/acl2/bp-ingress-tests \
 	books/journal \
 	tests/acl2/journal-tests \
 	books/exchange \
