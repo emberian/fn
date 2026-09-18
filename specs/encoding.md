@@ -4,6 +4,11 @@ Status: requirements with a proposed restricted deterministic CBOR profile.
 The byte grammar is not frozen. Resolve D01, D08, and D09 before publishing
 persistent or interoperable formats.
 
+`books/cbor.lisp` currently implements uint32 and definite byte strings as
+experimental primitives. `books/cbor-invariants.lisp` proves the full uint32
+round trip; byte-string round-trip proof and native schemas remain open. The
+primitive limits are local experiment bounds, not a permanent format decision.
+
 ## Layers
 
 Keep three grammars separate: NNTP wire bytes, portable fn objects/statements,

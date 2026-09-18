@@ -1,0 +1,194 @@
+#!/usr/bin/env python3
+"""Experimental loopback-only ACL2 NNTP reader; never parses client Lisp."""
+import argparse
+import os
+import re
+import select
+import signal
+import socket
+import subprocess
+import sys
+import time
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROMPT = b"ACL2 !>"
+MAX_READ = 512
+MAX_ACL2_OUTPUT = 1024 * 1024
+
+def read_prompt(proc, timeout=5):
+    out = b""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        ready,_,_=select.select([proc.stdout],[],[],.1)
+        if ready:
+            chunk = os.read(proc.stdout.fileno(), 4096)
+            if not chunk:
+                raise RuntimeError("ACL2 exited before producing a prompt")
+            out += chunk
+            if len(out) > MAX_ACL2_OUTPUT:
+                raise RuntimeError("ACL2 output exceeded bridge limit")
+            if out.rstrip().endswith(PROMPT):
+                return out
+    raise RuntimeError("ACL2 prompt timeout")
+
+def form(proc, text):
+    proc.stdin.write((text+"\n").encode()); proc.stdin.flush()
+    return read_prompt(proc)
+
+def fail_on_acl2_error(output):
+    if any(marker in output.upper() for marker in
+           (b"ACL2 ERROR", b"HARD ACL2 ERROR", b"******** FAILED ********")):
+        raise RuntimeError(output.decode("utf-8", "replace"))
+    return output
+
+
+def acl2_octet_list(output):
+    """Accept only ACL2's printed NIL or a proper list of decimal octets."""
+    match = re.fullmatch(rb"(?:NIL|\((?:\s*[0-9]+)*\s*\))\s*ACL2 !>", output)
+    if not match:
+        raise RuntimeError("unexpected ACL2 octet-list result")
+    body = output.split(b"ACL2 !>", 1)[0].strip()
+    if body == b"NIL":
+        return []
+    values = [int(token) for token in body[1:-1].split()]
+    if any(value > 255 for value in values):
+        raise RuntimeError("ACL2 emitted a non-octet bridge result")
+    return values
+
+
+def acl2_boolean(output):
+    if re.fullmatch(rb"T\s*ACL2 !>", output):
+        return True
+    if re.fullmatch(rb"NIL\s*ACL2 !>", output):
+        return False
+    raise RuntimeError("unexpected ACL2 boolean result")
+
+
+class Acl2Reader:
+    """A fixed-call bridge: socket input reaches ACL2 only as octet literals."""
+
+    def __init__(self):
+        self.proc = None
+        env = os.environ.copy()
+        env["ACL2_CUSTOMIZATION"] = "NONE"
+        try:
+            self.proc = subprocess.Popen(
+                [env.get("FN_ACL2", "acl2")], cwd=ROOT,
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, env=env)
+            read_prompt(self.proc, timeout=15)
+            self._load('(include-book "books/nntp")')
+            self._load('(ld "host/reader-host.lisp" :ld-error-action :return :ld-error-triples t)')
+        except BaseException:
+            self.close()
+            raise
+
+    def _load(self, text):
+        fail_on_acl2_error(form(self.proc, text))
+
+    def call(self, text):
+        return fail_on_acl2_error(form(self.proc, text))
+
+    def reset(self):
+        self.call("(fn-reader-reset state)")
+        return bytes(acl2_octet_list(self.call("(@ fn-reader-output)")))
+
+    def chunk(self, octets):
+        if not octets:
+            return b"", False, []
+        literal = "(" + " ".join(str(byte) for byte in octets) + ")"
+        self.call("(fn-reader-chunk '" + literal + " state)")
+        reply = bytes(acl2_octet_list(self.call("(@ fn-reader-output)")))
+        closing = acl2_boolean(self.call("(@ fn-reader-closep)"))
+        suffix = acl2_octet_list(self.call("(@ fn-reader-suffix)"))
+        return reply, closing, suffix
+
+    def close(self):
+        if self.proc is None:
+            return
+        try:
+            if self.proc.poll() is None and self.proc.stdin and not self.proc.stdin.closed:
+                try:
+                    self.proc.stdin.write(b"(quit)\n")
+                    self.proc.stdin.flush()
+                except (BrokenPipeError, OSError):
+                    pass
+            if self.proc.poll() is None:
+                try:
+                    self.proc.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    self.proc.terminate()
+                    try:
+                        self.proc.wait(timeout=3)
+                    except subprocess.TimeoutExpired:
+                        self.proc.kill()
+                        self.proc.wait(timeout=3)
+        finally:
+            for stream in (self.proc.stdin, self.proc.stdout):
+                if stream and not stream.closed:
+                    stream.close()
+
+
+def serve_client(reader, client):
+    """Serve one connection; a broken peer cannot end the listener."""
+    with client:
+        try:
+            client.settimeout(10)
+            client.sendall(reader.reset())
+            pending = []
+            while True:
+                try:
+                    incoming = client.recv(MAX_READ)
+                except socket.timeout:
+                    return
+                if not incoming:
+                    return
+                pending.extend(incoming)
+                while pending:
+                    try:
+                        reply, closing, pending = reader.chunk(pending)
+                    except RuntimeError:
+                        # An invalid bridge result is not a protocol reply.
+                        # Do not retain this connection's input for reuse.
+                        return
+                    if reply:
+                        client.sendall(reply)
+                    if closing:
+                        return
+                    # No complete wire event consumed this input.  The retained
+                    # ACL2 wire state holds the bounded prefix.
+                    if not pending:
+                        break
+        except (RuntimeError, ConnectionError, OSError):
+            return
+
+
+def terminate_on_signal(signum, unused_frame):
+    raise SystemExit(128 + signum)
+
+def main():
+    signal.signal(signal.SIGTERM, terminate_on_signal)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port", type=int, default=8119)
+    parser.add_argument("--once", action="store_true")
+    args = parser.parse_args()
+    if not 0 <= args.port <= 65535:
+        parser.error("--port must be from 0 through 65535")
+
+    reader = None
+    try:
+        reader = Acl2Reader()
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+            listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            listener.bind(("127.0.0.1", args.port))
+            listener.listen(1)
+            print("LISTENING {}".format(listener.getsockname()[1]), flush=True)
+            while True:
+                client, _ = listener.accept()
+                serve_client(reader, client)
+                if args.once:
+                    break
+    finally:
+        if reader is not None:
+            reader.close()
+if __name__=='__main__': main()

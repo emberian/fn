@@ -68,9 +68,26 @@
        (stringp (fn-node-binding-subject x))
        (stringp (fn-node-binding-id x))))
 
+(defun fn-node-binding-msgids (xs)
+  (if (consp xs)
+      (cons (fn-node-binding-msgid (car xs))
+            (fn-node-binding-msgids (cdr xs)))
+    nil))
+
+(defun fn-node-binding-ids (xs)
+  (if (consp xs)
+      (cons (fn-node-binding-id (car xs))
+            (fn-node-binding-ids (cdr xs)))
+    nil))
+
 (defun fn-node-binding-listp (xs)
   (if (consp xs)
-      (and (fn-node-bindingp (car xs)) (fn-node-binding-listp (cdr xs)))
+      (and (fn-node-bindingp (car xs))
+           (not (member-equal (fn-node-binding-msgid (car xs))
+                              (fn-node-binding-msgids (cdr xs))))
+           (not (member-equal (fn-node-binding-id (car xs))
+                              (fn-node-binding-ids (cdr xs))))
+           (fn-node-binding-listp (cdr xs)))
     (null xs)))
 
 (defun fn-node-find-binding (msgid xs)
@@ -112,6 +129,13 @@
        (fn-statep (fn-node-acceptance s))
        (fn-retain-statep (fn-node-retention s))
        (fn-node-binding-listp (fn-node-bindings s))
+       ; No orphan binding can preempt a later article or obligation identity.
+       (fn-subsetp (fn-node-binding-msgids (fn-node-bindings s))
+                   (fn-article-msgids (fn-state-articles (fn-node-acceptance s))))
+       (fn-subsetp (fn-node-binding-ids (fn-node-bindings s))
+                   (fn-retain-obligation-ids (fn-retain-pins (fn-node-retention s))))
+       (equal (null (fn-node-stage s))
+              (null (fn-state-pending (fn-node-acceptance s))))
        (fn-node-articles-have-archive-bindingsp
         (fn-state-articles (fn-node-acceptance s))
         (fn-node-bindings s)

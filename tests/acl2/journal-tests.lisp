@@ -39,8 +39,10 @@
 (assert-event (equal (fn-journal-completion-action *journal-marker-staged* 0 1 :durable)
                      :ignore))
 (assert-event (equal (fn-journal-completion-action *journal-marker-staged* 0 1 :aborted)
-                     :known-abort))
+                     :recover))
 (assert-event (equal (fn-journal-completion-action *journal-marker-staged* 0 1 :indeterminate)
+                     :recover))
+(assert-event (equal (fn-journal-completion-action *journal-acked-live* 0 1 :aborted)
                      :recover))
 
 ; There are no outstanding writes after the second barrier.  Any supplied

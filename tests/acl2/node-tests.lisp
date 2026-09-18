@@ -121,3 +121,43 @@
                        (fn-retain-pins
                         (fn-node-retention *node-recovered-committed*))))
                      "content-b"))
+
+; Recognizer boundaries: the two proposals exist together, and each committed
+; article has its own charged archive obligation and unique Message-ID binding.
+(assert-event
+ (not (fn-node-statep
+       (fn-node-make-state (fn-node-acceptance *node-prepared*)
+                           (fn-node-retention *node-prepared*) nil nil))))
+(assert-event
+ (not (fn-node-statep
+       (fn-node-make-state (fn-node-acceptance *node-empty*)
+                           (fn-node-retention *node-empty*)
+                           (fn-node-stage *node-prepared*) nil))))
+(assert-event
+ (not (fn-node-statep
+       (fn-node-make-state
+        (fn-node-acceptance *node-recovered-committed*)
+        (fn-node-retention *node-recovered-committed*) nil
+        (list (fn-node-make-binding "<a@example.invalid>" "content-a" "archive-a")
+              (fn-node-make-binding "<b@example.invalid>" "content-a" "archive-a"))))))
+(assert-event
+ (not (fn-node-statep
+       (fn-node-make-state
+        (fn-node-acceptance *node-committed*)
+        (fn-node-retention *node-committed*) nil
+        (append (fn-node-bindings *node-committed*)
+                (fn-node-bindings *node-committed*))))))
+(assert-event
+ (not (fn-node-statep
+       (fn-node-make-state
+        (fn-node-acceptance *node-empty*)
+        (fn-node-retention *node-empty*) nil
+        (list (fn-node-make-binding "<orphan@example.invalid>" "content" "pin"))))))
+(assert-event
+ (not (fn-node-binding-listp
+       (list (fn-node-make-binding "<same>" "content-a" "archive-a")
+             (fn-node-make-binding "<same>" "content-b" "archive-b")))))
+(assert-event
+ (not (fn-node-binding-listp
+       (list (fn-node-make-binding "<a>" "content-a" "same-pin")
+             (fn-node-make-binding "<b>" "content-a" "same-pin")))))
