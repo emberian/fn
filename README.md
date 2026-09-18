@@ -24,6 +24,9 @@ client traffic. The physical adapter now uses the composed storage core, with
 mixed crash/recovery traces and 533 guard-verified functions across 15 base books.
 BPv7 is a [current architectural path](specs/bp-path.md), developed alongside
 the local news service.
+An [actual BP-to-fn receiver](tests/evidence/2026-09-18-bp-ingress.md) now passes
+restart and duplicate-delivery tests with real loopback BPAs. Durable sender jobs
+and application receipts remain active work.
 The [closure inventory](planning/assurance-closure.md) tracks the next obligations.
 Earlier evidence retains independent NNTP client traffic and maximum-profile replay.
 
