@@ -36,6 +36,45 @@
       (cdr line)
     line))
 
+(defun fn-wire-reverse-octets-aux (octets accumulator)
+  (if (consp octets)
+      (fn-wire-reverse-octets-aux (cdr octets) (cons (car octets) accumulator))
+    accumulator))
+
+(defun fn-wire-reverse-octets (octets)
+  (fn-wire-reverse-octets-aux octets nil))
+
+(defthm fn-wire-reverse-octets-preserves-octet-listp
+  (implies (and (fn-wire-octet-listp octets)
+                (fn-wire-octet-listp accumulator))
+           (fn-wire-octet-listp
+            (fn-wire-reverse-octets-aux octets accumulator))))
+
+(defthm fn-wire-reverse-octets-octet-listp
+  (implies (fn-wire-octet-listp octets)
+           (fn-wire-octet-listp (fn-wire-reverse-octets octets)))
+  :hints (("Goal" :in-theory (enable fn-wire-reverse-octets))))
+
+(defthm fn-wire-octet-listp-cdr
+  (implies (fn-wire-octet-listp octets)
+           (fn-wire-octet-listp (cdr octets))))
+
+(defthm fn-wire-reverse-octets-aux-cdr-octet-listp
+  (implies (fn-wire-octet-listp octets)
+           (fn-wire-octet-listp
+            (cdr (fn-wire-reverse-octets-aux octets nil))))
+  :hints (("Goal" :use ((:instance fn-wire-reverse-octets-preserves-octet-listp
+                                    (accumulator nil))))))
+
+(defthm fn-wire-octet-listp-unstuff-line
+  (implies (fn-wire-octet-listp line)
+           (fn-wire-octet-listp (fn-wire-unstuff-line line))))
+
+(defthm fn-wire-unstuff-reversed-octet-listp
+  (implies (fn-wire-octet-listp octets)
+           (fn-wire-octet-listp
+            (fn-wire-unstuff-line (fn-wire-reverse-octets octets)))))
+
 (defthm fn-wire-unstuff-stuff-line
   (equal (fn-wire-unstuff-line (fn-wire-stuff-line line)) line))
 
@@ -66,6 +105,19 @@
                                  line-limit body-limit)
   (list mode line-rev body-rev pending-crp body-size line-limit body-limit))
 
+(defun fn-wire-line-cost (line)
+  (+ 2 (len line)))
+
+(defun fn-wire-lines-size (lines)
+  (if (consp lines)
+      (+ (fn-wire-line-cost (car lines))
+         (fn-wire-lines-size (cdr lines)))
+    0))
+
+(defthm fn-wire-lines-size-cons
+  (equal (fn-wire-lines-size (cons line lines))
+         (+ (fn-wire-line-cost line) (fn-wire-lines-size lines))))
+
 (defun fn-wire-statep (x)
   (and (true-listp x)
        (equal (len x) 7)
@@ -76,12 +128,29 @@
            (null (fn-wire-state-pending-crp x)))
        (natp (fn-wire-state-body-size x))
        (posp (fn-wire-state-line-limit x))
-       (posp (fn-wire-state-body-limit x))))
+       (posp (fn-wire-state-body-limit x))
+       (<= (len (fn-wire-state-line-rev x))
+           (fn-wire-state-line-limit x))
+       (equal (fn-wire-state-body-size x)
+              (fn-wire-lines-size (fn-wire-state-body-rev x)))
+       (<= (fn-wire-state-body-size x)
+           (fn-wire-state-body-limit x))
+       (or (equal (fn-wire-state-mode x) :article)
+           (and (null (fn-wire-state-body-rev x))
+                (equal (fn-wire-state-body-size x) 0)))
+       (or (not (equal (fn-wire-state-mode x) :closed))
+           (and (null (fn-wire-state-line-rev x))
+                (null (fn-wire-state-pending-crp x))))))
 
 (defun fn-wire-initial-state (line-limit body-limit)
   (if (and (posp line-limit) (posp body-limit))
       (fn-wire-make-state :command nil nil nil 0 line-limit body-limit)
     nil))
+
+(defthm fn-wire-initial-state-is-state
+  (implies (and (posp line-limit) (posp body-limit))
+           (fn-wire-statep (fn-wire-initial-state line-limit body-limit)))
+  :hints (("Goal" :in-theory (enable fn-wire-initial-state fn-wire-statep))))
 
 (defun fn-wire-result-state (x) (car x))
 (defun fn-wire-result-events (x) (cdr x))
@@ -119,9 +188,6 @@
 
 ; -----------------------------------------------------------------------------
 ; One-byte input and incremental feeding
-
-(defun fn-wire-line-cost (line)
-  (+ 2 (len line)))
 
 (defun fn-wire-after-line (wire-state line)
   (if (equal (fn-wire-state-mode wire-state) :command)
@@ -169,7 +235,7 @@
                                      (fn-wire-state-body-size wire-state)
                                      (fn-wire-state-line-limit wire-state)
                                      (fn-wire-state-body-limit wire-state))
-                 (reverse (fn-wire-state-line-rev wire-state)))
+                 (fn-wire-reverse-octets (fn-wire-state-line-rev wire-state)))
               (fn-wire-close wire-state :malformed))
           (if (equal byte 13)
               (fn-wire-make-result
@@ -196,20 +262,41 @@
                    nil)
                 (fn-wire-close wire-state :line-overlimit)))))))))
 
-(defun fn-wire-feed (wire-state octets)
+(defthm fn-wire-feed-byte-preserves-statep
+  (implies (fn-wire-statep wire-state)
+           (fn-wire-statep
+            (fn-wire-result-state (fn-wire-feed-byte wire-state byte))))
+  :hints (("Goal" :in-theory (enable fn-wire-feed-byte
+                                      fn-wire-after-line
+                                      fn-wire-close
+                                      fn-wire-statep))))
+
+(defun fn-wire-feed-proper (wire-state octets)
   (declare (xargs :measure (acl2-count octets)))
-  ; Once a boundary failure closes the connection, do not walk arbitrary input
-  ; that followed it.  This is both the safe protocol boundary and the stated
-  ; work bound for rejected data.
+  ; The public wrapper establishes fn-wire-octet-listp before calling this
+  ; worker.  Once a boundary failure closes the connection, do not walk any
+  ; arbitrary suffix that followed it.
   (if (or (not (consp octets))
           (and (fn-wire-statep wire-state)
                (equal (fn-wire-state-mode wire-state) :closed)))
       (fn-wire-make-result wire-state nil)
     (let* ((first (fn-wire-feed-byte wire-state (car octets)))
-           (rest (fn-wire-feed (fn-wire-result-state first) (cdr octets))))
+           (rest (fn-wire-feed-proper (fn-wire-result-state first) (cdr octets))))
       (fn-wire-make-result (fn-wire-result-state rest)
                            (append (fn-wire-result-events first)
                                    (fn-wire-result-events rest))))))
+
+; The host boundary supplies proper octet lists.  A malformed/improper ACL2
+; list is rejected before it is treated as a completed socket chunk.  The
+; closed-state branch comes first, so rejected data is never scanned again.
+(defun fn-wire-feed (wire-state octets)
+  (if (not (fn-wire-statep wire-state))
+      (fn-wire-make-result wire-state nil)
+    (if (equal (fn-wire-state-mode wire-state) :closed)
+        (fn-wire-make-result wire-state nil)
+      (if (fn-wire-octet-listp octets)
+          (fn-wire-feed-proper wire-state octets)
+        (fn-wire-close wire-state :malformed)))))
 
 (defun fn-wire-continue (result octets)
   (let ((next (fn-wire-feed (fn-wire-result-state result) octets)))
@@ -232,16 +319,23 @@
 
 (defun fn-wire-next (wire-state octets)
   (declare (xargs :measure (acl2-count octets)))
-  (if (or (not (consp octets))
+  (if (or (not (fn-wire-statep wire-state))
           (and (fn-wire-statep wire-state)
                (equal (fn-wire-state-mode wire-state) :closed)))
       (fn-wire-make-next wire-state nil octets)
-    (let ((one (fn-wire-feed-byte wire-state (car octets))))
-      (if (consp (fn-wire-result-events one))
-          (fn-wire-make-next (fn-wire-result-state one)
-                             (car (fn-wire-result-events one))
-                             (cdr octets))
-        (fn-wire-next (fn-wire-result-state one) (cdr octets))))))
+    (if (null octets)
+        (fn-wire-make-next wire-state nil nil)
+      (if (not (consp octets))
+          (let ((rejected (fn-wire-close wire-state :malformed)))
+            (fn-wire-make-next (fn-wire-result-state rejected)
+                               (car (fn-wire-result-events rejected)) nil))
+        (let ((one (fn-wire-feed-byte wire-state (car octets))))
+          (if (consp (fn-wire-result-events one))
+              (fn-wire-make-next (fn-wire-result-state one)
+                                 (car (fn-wire-result-events one))
+                                 (cdr octets))
+            (fn-wire-next (fn-wire-result-state one) (cdr octets)))))))
+)
 
 (defthm fn-wire-feed-empty
   (equal (fn-wire-feed wire-state nil)
@@ -259,6 +353,14 @@
            (equal (fn-wire-next wire-state octets)
                   (fn-wire-make-next wire-state nil octets))))
 
-(defthm fn-wire-feed-append
-  (equal (fn-wire-feed wire-state (append left right))
-         (fn-wire-continue (fn-wire-feed wire-state left) right)))
+(defthm fn-wire-feed-proper-append
+  (equal (fn-wire-feed-proper wire-state (append left right))
+         (fn-wire-make-result
+          (fn-wire-result-state
+           (fn-wire-feed-proper
+            (fn-wire-result-state (fn-wire-feed-proper wire-state left)) right))
+          (append (fn-wire-result-events (fn-wire-feed-proper wire-state left))
+                  (fn-wire-result-events
+                   (fn-wire-feed-proper
+                    (fn-wire-result-state (fn-wire-feed-proper wire-state left))
+                    right))))))

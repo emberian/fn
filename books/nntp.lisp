@@ -89,6 +89,26 @@
 (defun fn-nntp-keywordp (token text)
   (equal (fn-nntp-upcase-keyword token) (fn-nntp-string-octets text)))
 
+(defun fn-nntp-keyword-first-bytep (byte)
+  (or (and (integerp byte) (<= 65 byte) (<= byte 90))
+      (and (integerp byte) (<= 97 byte) (<= byte 122))))
+
+(defun fn-nntp-keyword-rest-bytep (byte)
+  (or (fn-nntp-keyword-first-bytep byte)
+      (and (integerp byte) (<= 48 byte) (<= byte 57))
+      (equal byte 46) (equal byte 45)))
+
+(defun fn-nntp-keyword-tailp (token)
+  (if (consp token)
+      (and (fn-nntp-keyword-rest-bytep (car token))
+           (fn-nntp-keyword-tailp (cdr token)))
+    t))
+
+(defun fn-nntp-keyword-tokenp (token)
+  (and (consp token)
+       (fn-nntp-keyword-first-bytep (car token))
+       (fn-nntp-keyword-tailp (cdr token))))
+
 (defun fn-nntp-printable-tokenp (token)
   (if (consp token)
       (and (integerp (car token)) (<= 33 (car token)) (<= (car token) 126)
@@ -104,10 +124,14 @@
            (fn-nntp-decimal-tokenp (cdr token)))
     t))
 
-(defun fn-nntp-decimal-value (token)
+(defun fn-nntp-decimal-value-aux (token accumulator)
   (if (consp token)
-      (+ (* 10 (fn-nntp-decimal-value (cdr token))) (- (car token) 48))
-    0))
+      (fn-nntp-decimal-value-aux
+       (cdr token) (+ (* 10 accumulator) (- (car token) 48)))
+    accumulator))
+
+(defun fn-nntp-decimal-value (token)
+  (fn-nntp-decimal-value-aux token 0))
 
 (defun fn-nntp-number-tokenp (token)
   (and (consp token)
@@ -116,11 +140,20 @@
        (let ((number (fn-nntp-decimal-value token)))
          (and (<= 1 number) (<= number 2147483647)))))
 
+(defun fn-nntp-message-id-tailp (tail)
+  (if (consp tail)
+      (if (null (cdr tail))
+          (equal (car tail) 62)
+        (and (not (equal (car tail) 62))
+             (fn-nntp-message-id-tailp (cdr tail))))
+    nil))
+
 (defun fn-nntp-message-id-tokenp (token)
   (and (fn-nntp-printable-tokenp token)
        (<= 3 (len token))
+       (<= (len token) 250)
        (equal (car token) 60)
-       (equal (fn-nntp-last token) 62)))
+       (fn-nntp-message-id-tailp (cdr token))))
 
 (defun fn-nntp-decimal-rev (number)
   (if (natp number)
@@ -255,6 +288,39 @@
                 (fn-nntp-crlf-lines (fn-nntp-split-head split))
               (fn-nntp-crlf-lines (fn-nntp-split-body split)))
           (list :error))))))
+
+; acceptance.lisp intentionally permits opaque strings and payload octets.  An
+; NNTP projection must be stricter before interpolating any stored field into a
+; response line.  These checks are local projection guards, not a change to the
+; broader durable acceptance domain.
+(defun fn-nntp-safe-string-tokenp (text)
+  (and (stringp text)
+       (fn-nntp-printable-tokenp (fn-nntp-string-octets text))))
+
+(defun fn-nntp-safe-string-listp (texts)
+  (if (consp texts)
+      (and (fn-nntp-safe-string-tokenp (car texts))
+           (fn-nntp-safe-string-listp (cdr texts)))
+    (null texts)))
+
+(defun fn-nntp-projection-articlep (article)
+  (let ((payload (fn-article-payload article)))
+    (and (fn-nntp-message-id-tokenp
+          (fn-nntp-string-octets (fn-article-msgid article)))
+         (fn-nntp-safe-string-listp (fn-article-groups article))
+         (equal (car (fn-nntp-crlf-lines payload)) :ok)
+         (fn-nntp-split-okp (fn-nntp-split-article payload)))))
+
+(defun fn-nntp-projection-articlesp (articles)
+  (if (consp articles)
+      (and (fn-nntp-projection-articlep (car articles))
+           (fn-nntp-projection-articlesp (cdr articles)))
+    (null articles)))
+
+(defun fn-nntp-projectionp (archive)
+  (and (fn-statep archive)
+       (fn-nntp-safe-string-listp (fn-state-groups archive))
+       (fn-nntp-projection-articlesp (fn-state-articles archive))))
 
 ; -----------------------------------------------------------------------------
 ; Projection from the committed acceptance state
@@ -501,7 +567,10 @@
   (let ((keyword (car tokens)) (args (cdr tokens)))
     (cond
      ((fn-nntp-keywordp keyword "CAPABILITIES")
-      (if (null args) (fn-nntp-capabilities session)
+      (if (or (null args)
+              (and (consp args) (null (cdr args))
+                   (fn-nntp-keyword-tokenp (car args))))
+          (fn-nntp-capabilities session)
         (fn-nntp-single session "501 syntax error")))
      ((fn-nntp-keywordp keyword "HELP")
       (if (null args) (fn-nntp-help session) (fn-nntp-single session "501 syntax error")))
@@ -537,8 +606,8 @@
   (if (or (not (fn-nntp-sessionp session))
           (not (equal (fn-nntp-session-openp session) t)))
       (fn-nntp-make-result session nil)
-    (if (not (fn-statep archive))
-        (fn-nntp-single session "503 archive unavailable")
+    (if (not (fn-nntp-projectionp archive))
+        (fn-nntp-single session "503 archive projection unavailable")
       (if (and (consp wire-event)
                (equal (car wire-event) :command)
                (consp (cdr wire-event))
