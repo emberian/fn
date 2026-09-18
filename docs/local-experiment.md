@@ -40,8 +40,8 @@ python3 tools/run_store.py --store "$fn_demo_root/store" inspect \
 
 Each CLI invocation starts a fresh ACL2 process and recovers the store. Repeating
 the exact post reports a duplicate and preserves the original memberships and
-archive obligation. Reusing its Message-ID with different payload or group-list
-bytes is refused by this experimental profile. The CLI's Message-ID and group
+archive obligation. Reusing its Message-ID with a different payload or group list
+is refused by this experimental profile. The CLI's Message-ID and group
 arguments are not yet checked against article headers by a complete injector;
 keep them consistent in examples.
 

@@ -14,11 +14,12 @@ deterministic simulator runs the same acceptance functions. This is not yet a
 durable news service. See [implementation status](docs/implementation.md) for
 the exact scope and remaining proof/integration boundaries.
 
-A loopback-only experimental reader now serves a seeded article through the
-actual ACL2 core. Run `python3 tools/run_reader.py --port 8119` after certification.
-It supports reading, not posting or persistent storage. The
-[integrated evidence](tests/evidence/2026-09-18-integrated.md) records certification,
-socket tests, and an independent NNTP client probe.
+The local CLI now persists articles and archive obligations, and a loopback
+reader serves the recovered store through the actual ACL2 core. Follow the
+[local walkthrough](docs/local-experiment.md) to post, reopen, and read it.
+Network POST and native signatures remain unfinished. The
+[storage integration evidence](tests/evidence/2026-09-18-storage.md) records
+certification, filesystem/socket tests, and independent NNTP client traffic.
 
 Start with the [project guide](docs/README.md), then the
 [architecture](docs/architecture.md) and [development plan](planning/milestones.md).

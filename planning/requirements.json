@@ -141,9 +141,11 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
-        "tests/evidence/2026-09-18-integrated.json"
+        "tests/evidence/2026-09-18-integrated.json",
+        "tests/evidence/2026-09-18-storage.md",
+        "tests/evidence/2026-09-18-storage.json"
       ],
-      "implementation_note": "Experimental CBOR primitives and vectors exist; all uint32 round trips are certified, byte-string proof remains open."
+      "implementation_note": "Full primitive and schema-0 variable-record round trips certified; primitive exact-input canonicality certified. Native schemas and record-level reverse canonicality remain open."
     },
     {
       "id": "ENC-002",
@@ -160,9 +162,11 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
-        "tests/evidence/2026-09-18-integrated.json"
+        "tests/evidence/2026-09-18-integrated.json",
+        "tests/evidence/2026-09-18-storage.md",
+        "tests/evidence/2026-09-18-storage.json"
       ],
-      "implementation_note": "Bounded primitive decoder and wire retained-state checks exist; complete resource/work proof remains open."
+      "implementation_note": "Bounded wire/CBOR/record decoders and numeric-octet host marshalling; store tests preserve literal Lisp-looking payloads, enforce count/byte caps, and reject malformed records. General work/allocation proof remains open."
     },
     {
       "id": "ENC-003",
@@ -208,7 +212,11 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-storage.md",
+        "tests/evidence/2026-09-18-storage.json"
+      ],
+      "implementation_note": "Immutable local transaction files are replayed by ACL2 into complete node articles, memberships, and pins. No disk indexes/checkpoints or full correspondence proof yet."
     },
     {
       "id": "STO-002",
@@ -227,9 +235,11 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
-        "tests/evidence/2026-09-18-integrated.json"
+        "tests/evidence/2026-09-18-integrated.json",
+        "tests/evidence/2026-09-18-storage.md",
+        "tests/evidence/2026-09-18-storage.json"
       ],
-      "implementation_note": "Composed node publishes memberships and archive reservation together under an abstract durable event."
+      "implementation_note": "Actual CLI persists one complete cross-post with archive obligation, then publishes through the same ACL2 node. General physical transaction/refinement theorem remains open."
     },
     {
       "id": "STO-003",
@@ -246,9 +256,11 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
-        "tests/evidence/2026-09-18-integrated.json"
+        "tests/evidence/2026-09-18-integrated.json",
+        "tests/evidence/2026-09-18-storage.md",
+        "tests/evidence/2026-09-18-storage.json"
       ],
-      "implementation_note": "Logical completions match transaction/generation; no actual persistence adapter yet."
+      "implementation_note": "CLI success follows tested file/directory barriers and matching actual-node completion; durable allocator prevents reuse across aborted process lifetimes. Platform qualification and full service acceptance remain open."
     },
     {
       "id": "STO-004",
@@ -265,9 +277,11 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
-        "tests/evidence/2026-09-18-integrated.json"
+        "tests/evidence/2026-09-18-integrated.json",
+        "tests/evidence/2026-09-18-storage.md",
+        "tests/evidence/2026-09-18-storage.json"
       ],
-      "implementation_note": "Acceptance and node models fence after uncertainty and require matching recovery."
+      "implementation_note": "Host/core uncertainty fencing tested, including a failed publication attempt with no visible final file. Recovery revalidates and barriers the observed frontier before use."
     },
     {
       "id": "STO-005",
@@ -284,9 +298,11 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
-        "tests/evidence/2026-09-18-integrated.json"
+        "tests/evidence/2026-09-18-integrated.json",
+        "tests/evidence/2026-09-18-storage.md",
+        "tests/evidence/2026-09-18-storage.json"
       ],
-      "implementation_note": "Journal crash experiments and scanner fault lemmas exist; no general recovery guarantee or physical store."
+      "implementation_note": "Actual record replay and reopen tests cover successful and unacknowledged complete files, gaps/corruption/refusal; general acknowledged-history survival theorem and hardware fault profile remain open."
     },
     {
       "id": "STO-006",
@@ -329,7 +345,11 @@
         "integration",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-storage.md",
+        "tests/evidence/2026-09-18-storage.json"
+      ],
+      "implementation_note": "Real frame checksum/truncation/schema/namespace faults refuse normal recovery. Repair workflow and old-valid-store rollback detection remain open."
     },
     {
       "id": "FLR-001",
@@ -346,9 +366,11 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
-        "tests/evidence/2026-09-18-integrated.json"
+        "tests/evidence/2026-09-18-integrated.json",
+        "tests/evidence/2026-09-18-storage.md",
+        "tests/evidence/2026-09-18-storage.json"
       ],
-      "implementation_note": "Isolated-slot model includes barriers, lost/torn/reversed volatile writes; limited small-state subset traces."
+      "implementation_note": "Abstract isolated-slot model plus real adapter barriers and injected failures. No claim that the slot model is already a proved refinement of this adapter or a qualified power-loss model."
     },
     {
       "id": "FLR-002",
@@ -365,9 +387,11 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
-        "tests/evidence/2026-09-18-integrated.json"
+        "tests/evidence/2026-09-18-integrated.json",
+        "tests/evidence/2026-09-18-storage.md",
+        "tests/evidence/2026-09-18-storage.json"
       ],
-      "implementation_note": "Known absence versus uncertainty and stale completion traces are executable; real restart integration pending."
+      "implementation_note": "Tests distinguish pre-publication abort from attempted-publication uncertainty and recover complete unacknowledged records. Durable allocation survives known abort/reopen."
     },
     {
       "id": "FLR-003",
@@ -414,9 +438,11 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
-        "tests/evidence/2026-09-18-integrated.json"
+        "tests/evidence/2026-09-18-integrated.json",
+        "tests/evidence/2026-09-18-storage.md",
+        "tests/evidence/2026-09-18-storage.json"
       ],
-      "implementation_note": "Pins participate in composite logical acceptance; on-disk obligation persistence pending."
+      "implementation_note": "Real local records persist the archive obligation with content; recovered article-to-pin relations checked. Forwarding receipts remain unimplemented."
     },
     {
       "id": "RET-002",
@@ -434,9 +460,11 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
-        "tests/evidence/2026-09-18-integrated.json"
+        "tests/evidence/2026-09-18-integrated.json",
+        "tests/evidence/2026-09-18-storage.md",
+        "tests/evidence/2026-09-18-storage.json"
       ],
-      "implementation_note": "Abstract ledger and node refuse unaffordable obligations, including permanent history units; byte-accurate charging pending."
+      "implementation_note": "Abstract reservations compose with acceptance; local adapter also refuses configured bounds and tests duplicates at capacity. Physical-space reservation accounting remains open."
     },
     {
       "id": "RET-003",
@@ -710,9 +738,11 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
-        "tests/evidence/2026-09-18-integrated.json"
+        "tests/evidence/2026-09-18-integrated.json",
+        "tests/evidence/2026-09-18-storage.md",
+        "tests/evidence/2026-09-18-storage.json"
       ],
-      "implementation_note": "Experimental reader projects committed acceptance state; complete reader ranges/index/durability integration pending."
+      "implementation_note": "Recovered stored articles and both local memberships are served by the actual NNTP core; cursor/range/profile completeness remains open."
     },
     {
       "id": "HST-001",
@@ -729,9 +759,11 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
-        "tests/evidence/2026-09-18-integrated.json"
+        "tests/evidence/2026-09-18-integrated.json",
+        "tests/evidence/2026-09-18-storage.md",
+        "tests/evidence/2026-09-18-storage.json"
       ],
-      "implementation_note": "Simulator and loopback reader execute actual ACL2 definitions through a controlled subprocess; raw guard correspondence open."
+      "implementation_note": "Simulator, socket reader, and file-store bridge invoke actual ACL2 definitions. Raw-execution guards and production host packaging remain open."
     },
     {
       "id": "HST-002",
@@ -764,7 +796,11 @@
         "integration",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-storage.md",
+        "tests/evidence/2026-09-18-storage.json"
+      ],
+      "implementation_note": "Experimental POSIX adapter implements explicit barriers, locking, allocation frontier, and uncertainty recovery with fault tests. Platform durability qualification remains open."
     },
     {
       "id": "HST-004",

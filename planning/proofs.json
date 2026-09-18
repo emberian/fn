@@ -23,15 +23,21 @@
         "fn-recover-preserves-state",
         "fn-node-prepare-preserves-state",
         "fn-node-complete-preserves-state",
-        "fn-node-recover-preserves-state"
+        "fn-node-recover-preserves-state",
+        "fn-replay-advance-preserves-node-statep",
+        "fn-replay-loop-result-is-typed",
+        "fn-replay-result-is-typed-from-valid-configuration"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "books/acceptance-invariants.lisp",
-        "books/node-invariants.lisp"
+        "books/node-invariants.lisp",
+        "tests/evidence/2026-09-18-storage.md",
+        "tests/evidence/2026-09-18-storage.json",
+        "books/replay-invariants.lisp"
       ],
-      "progress_note": "Acceptance and composed-node one-step preservation certified. Full trace/system/refinement target remains open."
+      "progress_note": "Acceptance/node transition invariants and typed logical replay results are certified. Full-system reachable-state/trace invariants, provenance, and physical refinement remain open."
     },
     {
       "id": "PRF-002",
@@ -139,14 +145,22 @@
       "events": [
         "fn-cbor-uint32-round-trip",
         "fn-cbor-byte-encoding-fits-input-bound",
-        "fn-cbor-byte-encoding-are-octets"
+        "fn-cbor-byte-encoding-are-octets",
+        "fn-cbor-byte-string-round-trip",
+        "fn-cbor-value-round-trip",
+        "fn-cbor-decode-reencode-prefix",
+        "fn-cbor-accepted-input-is-canonical",
+        "fn-record-round-trip"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
-        "books/cbor-invariants.lisp"
+        "books/cbor-invariants.lisp",
+        "tests/evidence/2026-09-18-storage.md",
+        "tests/evidence/2026-09-18-storage.json",
+        "books/records-invariants.lisp"
       ],
-      "progress_note": "Complete uint32 round trip certified. Byte-string round trip, canonical uniqueness, versioned schemas, and signature preimages remain open."
+      "progress_note": "Both primitive types have complete round-trip and accepted-input re-encoding proofs; variable schema-0 records round-trip. Record-level reverse canonicality, native schemas, and signature preimages remain open."
     },
     {
       "id": "PRF-006",
@@ -199,14 +213,21 @@
         "fn-journal-known-abort-has-no-marker",
         "fn-journal-scan-missing-dependency-fault",
         "fn-journal-scan-commit-gap-fault",
-        "fn-journal-recover-torn-anchored-commit-fault"
+        "fn-journal-recover-torn-anchored-commit-fault",
+        "fn-replay-advance-preserves-node-statep",
+        "fn-replay-apply-record-non-nil-is-node-state",
+        "fn-replay-loop-result-is-typed"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
-        "books/journal.lisp"
+        "books/journal.lisp",
+        "tests/evidence/2026-09-18-storage.md",
+        "tests/evidence/2026-09-18-storage.json",
+        "books/replay-invariants.lisp",
+        "tools/run_store.py"
       ],
-      "progress_note": "Logical slot/scanner properties and small crash experiments only. General acknowledged-history survival, byte frames, protected anchor realization, and physical adapter remain open."
+      "progress_note": "Logical journal/scanner facts and typed actual-node replay are certified. Real immutable-file and allocator-frontier fault tests pass. General acknowledged-history survival, adapter-to-journal refinement, protected anchor realization, and platform qualification remain open."
     },
     {
       "id": "PRF-008",
@@ -417,15 +438,20 @@
       "events": [
         "fn-wire-initial-state-is-state",
         "fn-wire-feed-byte-preserves-statep",
-        "fn-cbor-byte-encoding-fits-input-bound"
+        "fn-cbor-byte-encoding-fits-input-bound",
+        "fn-record-cbor-byte-encoding-bound",
+        "fn-record-group-encoding-bound"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "books/cbor-invariants.lisp",
-        "books/wire.lisp"
+        "books/wire.lisp",
+        "tests/evidence/2026-09-18-storage.md",
+        "tests/evidence/2026-09-18-storage.json",
+        "books/records-invariants.lisp"
       ],
-      "progress_note": "Declared wire retained-state bounds and primitive byte bounds covered. General parser work, queues/staging, and full resource profile remain open."
+      "progress_note": "Wire/primitive/record bounds have component proofs. Real adapter count/byte limits and maximum-profile replay tested; general parser work, full queues/staging, and physical resource accounting remain open."
     },
     {
       "id": "PRF-017",
