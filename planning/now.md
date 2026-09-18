@@ -75,6 +75,12 @@ are integrated. The next parallel batch owns three independent areas:
 - Sol: the concrete abstraction relation and next executable proof/model steps
   between the file adapter, journal, replay, and durable allocation.
 
+Sol's [refinement contract](../specs/store-refinement.md) is now written. It calls
+for a dedicated immutable-file machine because the isolated-slot journal does
+not model hard-link publication and allocator replacement. Root also hardened
+post-publication core-completion failures: the host stays fenced through failed
+or lost replies, and real-file reopen tests preserve the article and its pin.
+
 Root records evidence and converges these components in a frozen batch. Their
 work does not change what the historical 29-root checkpoint establishes.
 
