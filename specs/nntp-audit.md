@@ -6,8 +6,9 @@ The [NNTP contract](nntp.md) describes the intended usable profile. Capability
 advertisement remains VERSION/IMPLEMENTATION until complete bundles have their
 own evidence; a command name alone does not close its row.
 
-The latest frozen [storage batch](../tests/evidence/2026-09-18-storage.md) covers
-the reader subset before LISTGROUP. Current assertion tests live in
+The latest frozen [article batch](../tests/evidence/2026-09-18-articles.md) covers
+the reader subset including LISTGROUP, socket tests, and an independent stored
+reader probe. Current assertion tests live in
 [nntp-tests.lisp](../tests/acl2/nntp-tests.lisp); socket tests and independent client
 probes supply different evidence from those pure transcripts.
 
@@ -21,7 +22,7 @@ probes supply different evidence from those pure transcripts.
 | §5.3 | MODE READER and possible mode/capability transitions | Unimplemented; not an advertised mode-switching server |
 | §5.4 | QUIT, argument errors, 205 then connection close | Pure transcript and real EOF checks exist |
 | §6.1.1 | GROUP success, nonexistent group, empty group, counts/low/high, cursor | Implemented/tested; general session refinement and later group removal/expiry policy remain open |
-| §6.1.2 | LISTGROUP current/explicit group, optional range, sparse/empty output, sorted numbers, cursor reset | Active implementation batch; details below are the contract, not completed evidence |
+| §6.1.2 | LISTGROUP current/explicit group, optional range, sparse/empty output, sorted numbers, cursor reset | Implemented with ACL2 transcripts, socket tests, independent client traffic, and unknown-group session preservation; general refinement remains open |
 | §§6.1.3–6.1.4 | LAST/NEXT, 412/420, boundary 421/422, gaps, successful 223 | Implemented subset with transcript coverage; later cursor invalidation and complete error-precedence audit remain open |
 | §§6.2.1–6.2.4 | ARTICLE/HEAD/BODY/STAT by current number, explicit number, Message-ID; 412/420/423/430 | Implemented/tested; Message-ID lookup leaves session unchanged and returns allowed number 0; complete Message-ID grammar and all stale-cursor branches remain open |
 | §6.3.1; RFC 5536/5537 | POST handshake, proto-article validation/injection, durable result, retry/conflict behavior | Unimplemented on the network. CLI storage is not article injection and does not imply POST support |
@@ -35,7 +36,7 @@ probes supply different evidence from those pure transcripts.
 | §§8.1–8.4 | OVER by range/Message-ID/current, missing fields, byte/line metadata, OVERVIEW.FMT | Unimplemented; depends on the parsed article view and exact projection/metadata contract |
 | §§8.5–8.6 | HDR and LIST HEADERS | Deferred; no capability claim |
 
-## LISTGROUP contract for the active batch
+## Implemented LISTGROUP contract
 
 RFC 3977 §6.1.2.2 makes LISTGROUP select the group as GROUP does, then return the
 available numbers as a numerically ordered multiline block. The initial 211

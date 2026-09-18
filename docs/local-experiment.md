@@ -52,7 +52,7 @@ python3 tools/run_reader.py --store "$fn_demo_root/store" --port 8119
 ```
 
 Connect a client to `127.0.0.1:8119`. The supported subset includes `CAPABILITIES`,
-`GROUP fn.letters`, `ARTICLE 1`, `HEAD`, `BODY`, `STAT`, `NEXT`, `LAST`, `LIST`,
+`GROUP fn.letters`, `LISTGROUP fn.letters 1-`, `ARTICLE 1`, `HEAD`, `BODY`, `STAT`, `NEXT`, `LAST`, `LIST`,
 `HELP`, and `QUIT`; it does not advertise a complete READER bundle. Port `0`
 chooses an available port and prints it. Omit `--store` to run the separate seeded
 reader experiment used by `tests/interop_nntplib.py`.

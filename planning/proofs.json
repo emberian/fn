@@ -119,15 +119,21 @@
         "fn-retain-admit-preserves-statep",
         "fn-retain-wrong-evidence-does-not-release",
         "fn-retain-known-obligation-id-is-not-reused",
-        "fn-node-capacity-refusal-is-no-op"
+        "fn-node-capacity-refusal-is-no-op",
+        "fn-retain-release-preserves-statep",
+        "fn-retain-release-preserves-independent-pin",
+        "fn-retain-release-preserves-known-identity"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "books/node.lisp",
-        "books/retention.lisp"
+        "books/retention.lisp",
+        "tests/evidence/2026-09-18-articles.md",
+        "tests/evidence/2026-09-18-articles.json",
+        "books/retention-invariants.lisp"
       ],
-      "progress_note": "Finite abstract reservations and composed admission covered. General release preservation, authorized evidence validation, and byte-accurate charging remain open."
+      "progress_note": "Finite abstract admission and general release preserve valid ledgers; release preserves independent pins and known identities. Authorized/committed evidence validation, durable node release, and physical-byte charging remain open."
     },
     {
       "id": "PRF-005",
@@ -150,7 +156,8 @@
         "fn-cbor-value-round-trip",
         "fn-cbor-decode-reencode-prefix",
         "fn-cbor-accepted-input-is-canonical",
-        "fn-record-round-trip"
+        "fn-record-round-trip",
+        "fn-article-successful-parse-preserves-source"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -158,9 +165,12 @@
         "books/cbor-invariants.lisp",
         "tests/evidence/2026-09-18-storage.md",
         "tests/evidence/2026-09-18-storage.json",
-        "books/records-invariants.lisp"
+        "books/records-invariants.lisp",
+        "tests/evidence/2026-09-18-articles.md",
+        "tests/evidence/2026-09-18-articles.json",
+        "books/article-invariants.lisp"
       ],
-      "progress_note": "Both primitive types have complete round-trip and accepted-input re-encoding proofs; variable schema-0 records round-trip. Record-level reverse canonicality, native schemas, and signature preimages remain open."
+      "progress_note": "Complete primitive and variable schema-0 round trips plus primitive accepted-input canonicality are certified. Successful article syntax parsing reconstructs arbitrary input exactly. Record-level reverse canonicality, native schemas, and signature preimages remain open."
     },
     {
       "id": "PRF-006",
@@ -412,14 +422,17 @@
       "status": "in-progress",
       "events": [
         "fn-nntp-unknown-group-preserves-session",
-        "fn-nntp-msgid-preserves-session"
+        "fn-nntp-msgid-preserves-session",
+        "fn-nntp-listgroup-unknown-preserves-session"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
-        "books/nntp.lisp"
+        "books/nntp.lisp",
+        "tests/evidence/2026-09-18-articles.md",
+        "tests/evidence/2026-09-18-articles.json"
       ],
-      "progress_note": "Reader subset helper properties and independent transcripts; complete command/session refinement, injection, and posting remain open."
+      "progress_note": "Reader subset helper properties and independent transcripts now include LISTGROUP ranges/cursors and unavailable-group session preservation, with socket and independent-client checks. General command/session refinement, injection, and posting remain open."
     },
     {
       "id": "PRF-016",
@@ -440,7 +453,8 @@
         "fn-wire-feed-byte-preserves-statep",
         "fn-cbor-byte-encoding-fits-input-bound",
         "fn-record-cbor-byte-encoding-bound",
-        "fn-record-group-encoding-bound"
+        "fn-record-group-encoding-bound",
+        "fn-article-successful-parse-preserves-source"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -449,9 +463,13 @@
         "books/wire.lisp",
         "tests/evidence/2026-09-18-storage.md",
         "tests/evidence/2026-09-18-storage.json",
-        "books/records-invariants.lisp"
+        "books/records-invariants.lisp",
+        "tests/evidence/2026-09-18-articles.md",
+        "tests/evidence/2026-09-18-articles.json",
+        "books/article.lisp",
+        "books/article-invariants.lisp"
       ],
-      "progress_note": "Wire/primitive/record bounds have component proofs. Real adapter count/byte limits and maximum-profile replay tested; general parser work, full queues/staging, and physical resource accounting remain open."
+      "progress_note": "Wire/primitive/record bounds have component proofs; bounded article parsing has exact source preservation, which is not a work-bound proof. Real adapter count/byte limits and maximum-profile replay tested. General parser work, output recognizers, full queues/staging, and physical resource accounting remain open."
     },
     {
       "id": "PRF-017",

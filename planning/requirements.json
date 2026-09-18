@@ -164,9 +164,11 @@
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-storage.md",
-        "tests/evidence/2026-09-18-storage.json"
+        "tests/evidence/2026-09-18-storage.json",
+        "tests/evidence/2026-09-18-articles.md",
+        "tests/evidence/2026-09-18-articles.json"
       ],
-      "implementation_note": "Bounded wire/CBOR/record decoders and numeric-octet host marshalling; store tests preserve literal Lisp-looking payloads, enforce count/byte caps, and reject malformed records. General work/allocation proof remains open."
+      "implementation_note": "Bounded wire/CBOR/record/article decoders and numeric-octet host marshalling; article syntax parsing preserves exact successful input, including opaque body bytes. Store tests enforce count/byte caps and reject malformed records. General work/allocation and output-recognizer proofs remain open."
     },
     {
       "id": "ENC-003",
@@ -498,9 +500,11 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
-        "tests/evidence/2026-09-18-integrated.json"
+        "tests/evidence/2026-09-18-integrated.json",
+        "tests/evidence/2026-09-18-articles.md",
+        "tests/evidence/2026-09-18-articles.json"
       ],
-      "implementation_note": "Exact supplied evidence gates ledger release; real authorization and committed-receipt verification pending."
+      "implementation_note": "Exact supplied evidence gates ledger release; general release preserves valid accounting, unrelated pins, and known identities. Real authorization, committed-receipt verification, and durable node-level release remain open."
     },
     {
       "id": "RET-005",
@@ -666,9 +670,11 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
-        "tests/evidence/2026-09-18-integrated.json"
+        "tests/evidence/2026-09-18-integrated.json",
+        "tests/evidence/2026-09-18-articles.md",
+        "tests/evidence/2026-09-18-articles.json"
       ],
-      "implementation_note": "Reader subset implements cursor/error rules with fixed transcripts and helper proofs; full session refinement pending."
+      "implementation_note": "Reader subset now includes LISTGROUP ranges, empty results, group-wide summaries, and cursor reset; logical transcripts, helper proofs, socket tests, and independent-client probes cover these branches. Full session refinement remains open."
     },
     {
       "id": "NNT-003",
@@ -740,9 +746,11 @@
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-storage.md",
-        "tests/evidence/2026-09-18-storage.json"
+        "tests/evidence/2026-09-18-storage.json",
+        "tests/evidence/2026-09-18-articles.md",
+        "tests/evidence/2026-09-18-articles.json"
       ],
-      "implementation_note": "Recovered stored articles and both local memberships are served by the actual NNTP core; cursor/range/profile completeness remains open."
+      "implementation_note": "Recovered stored articles and both local memberships are served by the actual NNTP core; LISTGROUP returns sorted available numbers with tested range semantics. Complete reader/overview/profile guarantees remain open."
     },
     {
       "id": "HST-001",

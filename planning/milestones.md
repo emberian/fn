@@ -50,6 +50,11 @@ Byte primitives, crash experiments, exchange, and a loopback reader are being
 integrated in parallel. Guard verification, provenance/signature modeling,
 system integration, and the remaining M1 contracts keep this milestone open.
 
+The [article batch](../tests/evidence/2026-09-18-articles.md) also certifies
+successful-parse exact source preservation and general retention-release
+preservation. These are component theorems, not completion of M1's remaining
+authorization, trace, or guard obligations.
+
 Exit: admitted executable definitions, certified initial theorems, meaningful
 scenario checks, and a written boundary between proved logic and assumed commit
 events. An abstract commit event is not yet a disk recovery proof.
@@ -92,6 +97,11 @@ physical accounting, and platform qualification keep M2 open.
 Exit: humans and agents can post/read through an actual client with documented
 storage guarantees. Audit each advertised capability against RFC clauses. This
 release does not yet claim disconnected peering or remote delivery.
+
+Incremental evidence: CLI-persisted articles can be reopened and served over
+loopback NNTP. LISTGROUP ranges/cursors now have logical, socket, and independent
+client checks. Bounded syntax parsing is separate from injection; live POST,
+complete READER, overview, provenance, and signatures remain open.
 
 ## M4: disconnected exchange
 

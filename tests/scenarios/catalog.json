@@ -188,9 +188,11 @@
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-storage.md",
-        "tests/evidence/2026-09-18-storage.json"
+        "tests/evidence/2026-09-18-storage.json",
+        "tests/evidence/2026-09-18-articles.md",
+        "tests/evidence/2026-09-18-articles.json"
       ],
-      "execution_scope": "Partial: finite abstract ledger and real adapter configured bounds, duplicate-at-capacity, and maximum-profile 128-record replay. No byte-accurate disk reservation/compaction proof."
+      "execution_scope": "Partial: finite ledger admission/release invariants, independent-pin preservation, real adapter bounds, duplicate-at-capacity, and maximum-profile 128-record replay. No durable node release or byte-accurate disk reservation/compaction proof."
     },
     {
       "id": "SCN-008",
@@ -337,9 +339,11 @@
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-storage.md",
-        "tests/evidence/2026-09-18-storage.json"
+        "tests/evidence/2026-09-18-storage.json",
+        "tests/evidence/2026-09-18-articles.md",
+        "tests/evidence/2026-09-18-articles.json"
       ],
-      "execution_scope": "Partial: primitive/record accepted-rejected vectors, full value/record round trips, primitive canonicality, and actual stored malformed bytes. No native signature/batch schema yet."
+      "execution_scope": "Partial: primitive/record accepted-rejected vectors, full round trips, primitive canonicality, stored malformed bytes, and bounded article syntax with successful-parse exact source preservation. No native signature/batch schema or complete resource proof yet."
     },
     {
       "id": "SCN-014",
@@ -367,9 +371,11 @@
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-storage.md",
-        "tests/evidence/2026-09-18-storage.json"
+        "tests/evidence/2026-09-18-storage.json",
+        "tests/evidence/2026-09-18-articles.md",
+        "tests/evidence/2026-09-18-articles.json"
       ],
-      "execution_scope": "Partial: laboratory reader subset, socket framing/isolation, actual recovered-store projection and independent nntplib client. Full READER/POST/OVER profile remains open."
+      "execution_scope": "Partial: laboratory reader subset, framing/isolation, recovered-store projection and independent nntplib client, now including LISTGROUP ranges/empty results/cursors. Full READER/POST/OVER profile remains open."
     },
     {
       "id": "SCN-015",
