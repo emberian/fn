@@ -16,8 +16,11 @@ passing tooling/socket tests, and independent `nntplib` interoperability.
 | [Acceptance invariants](../books/acceptance-invariants.lisp) | Mechanically checked preservation lemmas over the acceptance definitions | See the proof registry and certification evidence for the exact current theorem scope |
 | [Wire framing](../books/wire.lisp) | Incremental CRLF lines, dot stuffing, article terminators, bounded retained input | Session dispatch and command conformance are separate; the bulk feed helper alone cannot decide when to enter article mode |
 | [CBOR primitives](../books/cbor.lisp) | Deterministic uint32 and definite byte strings, canonicality checks, bounded decoding | No native object, signature, batch, or disk schema is frozen |
+| [Transaction records](../books/records.lisp) and [invariants](../books/records-invariants.lisp) | Bounded schema-0 grammar, exact octet/string fields, variable group lists, complete record round-trip proof | Provisional local format; record-level reverse canonicality and native signature preimages remain open |
 | [Retention](../books/retention.lisp) | Finite abstract accounting, distinct archive/forward pins, evidence-gated release, permanent duplicate history | Evidence is already authorized input; charging units are abstract, not measured physical bytes |
 | [Node composition](../books/node.lisp) and [invariants](../books/node-invariants.lisp) | One transaction stages acceptance and its reservation; completion publishes both with permanent article-to-pin bindings; general transition preservation proved | Disk completion is still abstract; node release and journal integration remain open |
+| [Replay](../books/replay.lisp) | Contiguous committed records rebuild the actual node, obligations, and allocations; known-aborted transaction-ID gaps are distinct from journal gaps | A last-good prefix on fault is diagnostic only; no checkpoint, rollback detection, or disk refinement claim |
+| [Local store](../tools/run_store.py) | Immutable framed transaction files, data/directory barriers, locking, exact ACL2 replay, injected I/O failures | Development experiment; no qualified power-loss profile, independent freshness anchor, or byte-accurate physical reservations |
 | [Journal](../books/journal.lisp) | Isolated record slots, barriers, surviving/torn volatile writes, explicit recovery faults | Integrity tags and a protected durable anchor are assumptions; no byte format, actual disk adapter, or general recovery theorem |
 | [Exchange](../books/exchange.lisp) | Bounded atomic admission of immutable fact sets; duplicate/reordered merging and conflict evidence | Authorization is supplied; no serialized/resumable transfer, signatures, or durable scheduler |
 | [NNTP reader](../books/nntp.lisp) | Experimental reader commands over committed state with independent response transcripts | Incomplete READER bundle, no POST, authentication, or signed injection |
@@ -66,8 +69,9 @@ contract has been established. Read theorem hypotheses as part of each claim.
   duplicate versus conflicting-ID rejection in its return value.
 - The composed node ties each article to an independently charged archive pin.
   Retention release is tested separately and is not yet a node deletion API.
-- CBOR's complete uint32 round trip is certified; the full byte-string round
-  trip and accepted-input canonical uniqueness remain open.
+- CBOR's complete uint32/byte-string round trips and accepted-input re-encoding
+  are certified. The composed transaction record also round-trips; portable
+  native-message schemas and signature preimages remain open.
 - Wire state bounds and one-byte preservation are certified; parser complexity,
   complete session refinement, and raw-execution guards remain open.
 - Limits in the byte primitives are experimental local bounds. They do not

@@ -1,15 +1,18 @@
 """Real-directory tests for the experimental ACL2-backed transaction store."""
 import contextlib
+import errno
 import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
-from run_store import Acl2Store, Store, StoreFault  # noqa: E402
+import run_store  # noqa: E402
+from run_store import Acl2Store, Store, StoreFault, StoreIndeterminate  # noqa: E402
 
 
 class StoreTests(unittest.TestCase):
@@ -68,6 +71,8 @@ class StoreTests(unittest.TestCase):
             self.assertEqual(bridge.article_count(), 1)
             self.assertEqual(bridge.group_next(0), 2)
             self.assertEqual(bridge.group_next(1), 2)
+            self.assertEqual(bridge.pin_count(), 1)
+            self.assertEqual(bridge.reserved(), 2)
 
     def test_duplicate_retry_and_conflicting_id_do_not_overwrite(self):
         original = b"first"
@@ -124,6 +129,86 @@ class StoreTests(unittest.TestCase):
             self.assertIn(b"already locked", refused.stderr)
         finally:
             holder.close()
+
+    def test_link_eio_without_visible_final_fences_host_and_core(self):
+        store = Store(self.path, writable=True)
+        bridge = None
+        try:
+            store.acquire()
+            bridge = Acl2Store()
+            store.recover(bridge)
+            msgid, payload = b"<eio@example.invalid>", b"eio"
+            obligation = b"archive:eio"
+            subject = b"sha256:eio"
+            evidence = b"unsigned-legacy-v0"
+            self.assertEqual(bridge.prepare(msgid, payload, [0], obligation, subject, evidence, 1),
+                             "prepared")
+            with mock.patch("run_store.os.link", side_effect=OSError(errno.EIO, "injected EIO")):
+                with self.assertRaises(StoreIndeterminate):
+                    store.publish(0, bridge.pending_record())
+            self.assertTrue(store.fenced)
+            self.assertEqual(bridge.complete("indeterminate"), "indeterminate")
+            self.assertEqual(bridge.prepare(b"<after@example.invalid>", b"after", [0],
+                                            b"archive:after", b"sha256:after", evidence, 1),
+                             "refused")
+        finally:
+            if bridge is not None:
+                bridge.close()
+            store.close()
+
+    def test_recovery_limits_and_barrier_failure_fence_until_success(self):
+        self.post("<limit@example.invalid>", b"limit")
+        store = Store(self.path, writable=True)
+        bridge = None
+        try:
+            store.acquire()
+            bridge = Acl2Store()
+            store.config["max_transactions"] = 0
+            with self.assertRaises(StoreFault):
+                store.transaction_files()
+            store.config["max_transactions"] = 128
+            store.config["max_recovery_record_bytes"] = 0
+            with self.assertRaises(StoreFault):
+                store.durable_records(bridge)
+            store.config["max_recovery_record_bytes"] = 128 * 32768
+            with mock.patch("run_store.fsync_dir", side_effect=OSError(errno.EIO, "barrier")):
+                with self.assertRaises(StoreIndeterminate):
+                    store.recover(bridge)
+            self.assertTrue(store.fenced)
+            store.recover(bridge)
+            self.assertFalse(store.fenced)
+        finally:
+            if bridge is not None:
+                bridge.close()
+            store.close()
+
+    def test_failed_config_file_barrier_is_reestablished_during_recovery(self):
+        path = Path(self.temp.name) / "init-barrier"
+        initial = Store(path, writable=True)
+        with mock.patch("run_store.fsync_file", side_effect=OSError(errno.EIO, "config barrier")):
+            with self.assertRaises(OSError):
+                initial.initialize()
+        self.assertTrue((path / "config.json").is_file())
+
+        store = Store(path, writable=True)
+        bridge = None
+        calls = []
+        real_file_barrier, real_dir_barrier = run_store.fsync_regular, run_store.fsync_dir
+        try:
+            store.acquire()
+            bridge = Acl2Store()
+            with mock.patch("run_store.fsync_regular", side_effect=lambda target: (
+                    calls.append(("file", Path(target).name)), real_file_barrier(target))[1]), \
+                 mock.patch("run_store.fsync_dir", side_effect=lambda target: (
+                    calls.append(("dir", Path(target).name)), real_dir_barrier(target))[1]):
+                store.recover(bridge)
+            self.assertEqual(calls[0], ("file", "config.json"))
+            self.assertEqual(calls[-1], ("dir", path.parent.name))
+            self.assertFalse(store.fenced)
+        finally:
+            if bridge is not None:
+                bridge.close()
+            store.close()
 
 
 if __name__ == "__main__":

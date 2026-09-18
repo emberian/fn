@@ -201,6 +201,16 @@
                                  (f-get-global 'fn-store-node state))))
              0))))
 
+(defun fn-store-pin-count (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (len (fn-retain-pins
+               (fn-node-retention (f-get-global 'fn-store-node state))))))
+
+(defun fn-store-reserved (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-retain-reserved
+          (fn-node-retention (f-get-global 'fn-store-node state)))))
+
 (defun fn-store-lookup (msgid-octets state)
   (declare (xargs :stobjs state :mode :program))
   (if (not (fn-store-msgid-octetsp msgid-octets))

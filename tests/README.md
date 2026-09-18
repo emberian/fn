@@ -18,7 +18,9 @@ python3 -m unittest discover -s tests -p test_certify_runner.py -v
 
 Certification covers the explicitly listed logical books and assertion events.
 The simulator runs the same acceptance functions. The Python tests exercise
-evidence-runner failure boundaries, not the correctness of the ACL2 definitions.
+evidence-runner failure boundaries, socket behavior, and real-directory store
+replay/fault handling. They do not prove the ACL2 definitions or qualify hardware
+power-loss behavior.
 
 ## Evidence by layer
 
