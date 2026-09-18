@@ -46,6 +46,13 @@ the relevant reconciliation algorithm establishes what it actually knows.
 
 ## Scheduling and transport
 
+The [resumable-object experiment](transfer-experiment.md) implements a first
+bounded staging kernel beneath complete-object validation. It reserves declared
+bytes and a metadata slot before accepting fragments, retains nonoverlapping
+chunks, and reports missing ranges or an unverified candidate. This logical
+experiment has no persistent queue, selected exchange encoding, dependency
+validator, or application receipt; those remain REP-003/REP-005 work.
+
 REP-005: queue durable work with explicit resource limits, retry state, and policy.
 Contacts and monotonic elapsed time arrive as environmental observations.
 Scheduling may prioritize small letters and receipts, but starvation and eventual

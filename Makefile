@@ -4,13 +4,15 @@ ACL2_BOOKS ?= books/acceptance books/acceptance-invariants tests/acl2/acceptance
 	books/cbor books/cbor-invariants tests/acl2/cbor-tests \
 	books/wildmat tests/acl2/wildmat-tests \
 	books/article books/article-invariants tests/acl2/article-tests \
+	books/article-fields tests/acl2/article-fields-tests \
 	books/retention books/retention-invariants tests/acl2/retention-tests \
 	books/node books/node-invariants tests/acl2/node-tests \
 	books/records books/records-invariants tests/acl2/records-tests \
 	books/replay books/replay-invariants tests/acl2/replay-tests \
-	books/store-files tests/acl2/store-files-tests \
+	books/store-files books/store-files-invariants tests/acl2/store-files-tests \
 	books/journal tests/acl2/journal-tests \
 	books/exchange tests/acl2/exchange-tests \
+	books/transfer tests/acl2/transfer-tests \
 	books/nntp tests/acl2/nntp-tests
 
 .PHONY: check certify model-test tooling-test test

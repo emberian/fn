@@ -78,8 +78,11 @@ The next independent owned areas are:
 - Terra's article Message-ID/Newsgroups grammar and bounded proto-article
   identity/routing checks have passed targeted certification and batch review.
   They do not claim complete injection or choose a native signing format.
-- Terra: bounded out-of-order object assembly, exact-duplicate handling, missing
-  ranges, and unverified completion candidates for disconnected exchange.
+- Terra's bounded out-of-order object assembly, exact duplicates, missing ranges,
+  and unverified candidates have passed targeted certification. Batch review
+  repaired zero-fragment limits and added an explicit reservation-count budget,
+  including for empty objects. General preservation and durable transfer remain
+  open.
 - Sol's general file-kernel crash/transition preservation, stable-prefix, and
   one-crash success-retention invariants have passed targeted certification.
   Arbitrary traces and physical correspondence remain separate work.
