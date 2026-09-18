@@ -2,7 +2,8 @@ PYTHON ?= python3
 ACL2_BOOKS ?= books/acceptance books/acceptance-invariants tests/acl2/acceptance-tests \
 	books/wire tests/acl2/wire-tests \
 	books/cbor books/cbor-invariants tests/acl2/cbor-tests \
-	books/retention tests/acl2/retention-tests \
+	books/article books/article-invariants tests/acl2/article-tests \
+	books/retention books/retention-invariants tests/acl2/retention-tests \
 	books/node books/node-invariants tests/acl2/node-tests \
 	books/records books/records-invariants tests/acl2/records-tests \
 	books/replay books/replay-invariants tests/acl2/replay-tests \
