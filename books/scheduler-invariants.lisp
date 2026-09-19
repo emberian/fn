@@ -73,7 +73,7 @@
 
 (defthm fn-sched-eligible-is-consp
   (implies (fn-sched-eligiblep item wf) (consp item))
-  :rule-classes (:forward-chaining :rewrite))
+  :rule-classes :forward-chaining)
 
 (defthm fn-sched-itemp-of-bump
   (implies (fn-sched-itemp item)
@@ -592,6 +592,7 @@
                  fn-sched-admissiblep fn-sched-promotions fn-sched-bump-queue
                  fn-sched-drive-attempt fn-sched-record-decision
                  fn-sched-selection fn-bp-result-effects fn-bp-result-state))
+           :cases ((equal w (fn-sched-item-work-id (fn-sched-selection ss wf))))
            :use ((:instance fn-sched-selection-is-the-promotion-head)
                  (:instance fn-sched-aged-advance-keeps-eligible-member
                             (aged (fn-sched-aged ss))
@@ -649,7 +650,7 @@
                 (member-equal (fn-sched-find w (fn-sched-queue ss))
                               (fn-sched-queue ss))
                 (not (fn-sched-item-agedp (fn-sched-find w (fn-sched-queue ss))))
-                (<= (fn-sched-aging-limit (fn-sched-conf ss))
+                (<= (nfix (fn-sched-aging-limit (fn-sched-conf ss)))
                     (+ 1 (nfix (fn-sched-item-passes
                                 (fn-sched-find w (fn-sched-queue ss)))))))
            (member-equal
