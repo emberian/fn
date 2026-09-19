@@ -92,5 +92,7 @@ and host-boundary operations.
 The [composition assurance record](../tests/evidence/2026-09-18-bp-composition-assurance.md)
 contains the five process-death cuts and combined 133-test result. The
 [receiver proofs](bp-receiver-proofs.md) establish general logical replay and
-receipt preservation against a fixed Store; they do not certify this adapter's
-physical I/O or BPA calls.
+receipt preservation against the Store as it evolves under ingress and
+restart (`fn-bpr-live-receipt-regenerated-after-restart` is the byte-identical
+receipt after restart as a theorem, with A-DURABILITY as `fn-sf-crash-imagep`);
+they do not certify this adapter's physical I/O or BPA calls.

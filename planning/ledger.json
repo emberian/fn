@@ -120,6 +120,10 @@
     "books/bp-receiver-trace-invariants",
     "tests/acl2/bp-receiver-invariants-tests",
     "tests/acl2/bp-receiver-teeth-tests",
+    "books/bp-receiver-evolving-history-invariants",
+    "books/bp-receiver-evolving-node-invariants",
+    "books/bp-receiver-evolving-store-invariants",
+    "tests/acl2/bp-receiver-evolving-tests",
     "books/bp-outbound",
     "tests/acl2/bp-outbound-tests",
     "tests/acl2/bp-outbound-guards-tests",
@@ -145,19 +149,19 @@
     "tests/acl2/nntp-teeth-tests"
   ],
   "totals": {
-    "books": 141,
-    "books_in_root_closure": 141,
-    "roots": 141,
-    "theorems": 1883,
-    "functions": 1434,
-    "assert_events": 2182,
-    "must_fails": 99,
+    "books": 145,
+    "books_in_root_closure": 145,
+    "roots": 145,
+    "theorems": 1976,
+    "functions": 1459,
+    "assert_events": 2252,
+    "must_fails": 111,
     "encapsulates": 8,
     "guards": {
       "verified": 802,
       "declared-off": 24,
       "default-guarded": 243,
-      "default-unguarded": 365
+      "default-unguarded": 390
     },
     "suspect_theorems": 23
   },
@@ -648,6 +652,83 @@
       "encapsulates": 0,
       "includes": [
         "bp-receiver-store-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-receiver-evolving-history-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 34,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 8
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-receiver-trace-invariants",
+        "store-node-traces"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-receiver-evolving-node-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 31,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-receiver-evolving-history-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-receiver-evolving-store-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 28,
+      "functions": 11,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 11
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-receiver-evolving-node-invariants",
+        "store-observed-traces"
       ],
       "system_includes": [],
       "suspects": [],
@@ -2629,6 +2710,34 @@
         "../../books/bp-receipt"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bp-receiver-evolving-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 5
+      },
+      "verify_guards_events": 0,
+      "assert_events": 70,
+      "must_fails": 12,
+      "defconsts": 33,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-receiver-evolving-store-invariants",
+        "bp-receipt-records-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },

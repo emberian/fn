@@ -117,6 +117,10 @@ ACL2_BOOKS ?= books/assumptions \
 	books/bp-receiver-trace-invariants \
 	tests/acl2/bp-receiver-invariants-tests \
 	tests/acl2/bp-receiver-teeth-tests \
+	books/bp-receiver-evolving-history-invariants \
+	books/bp-receiver-evolving-node-invariants \
+	books/bp-receiver-evolving-store-invariants \
+	tests/acl2/bp-receiver-evolving-tests \
 	books/bp-outbound \
 	tests/acl2/bp-outbound-tests \
 	tests/acl2/bp-outbound-guards-tests \

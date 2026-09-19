@@ -630,3 +630,42 @@ The test book must contain, over one real Store built by
    roots; `specs/bp-receiver-proofs.md` rewritten to cite the new keystones and
    drop the words "fixed Store"; `planning/proofs.json` PRF-001, PRF-007 and
    PRF-012 events updated by the ledger.
+
+## Proof status (wave 2, lane w2/evolving-store)
+
+The lemmas above are admitted in three books; the deviations from the plan are
+listed so the design and the books say the same thing.
+
+| Book | Lemmas |
+| --- | --- |
+| `books/bp-receiver-evolving-history-invariants.lisp` | definitions; L3 to L6 (`fn-bprv-prefix-preserves-member`, `fn-bprv-grounded-monotone`, `fn-bprv-contexts-grounded-monotone`, `fn-bprv-history-relational-monotone`); L8 to L12 (`fn-bprv-acceptable-implies-grounded`, `fn-bprv-accept-preserves-history-relation`, `fn-bprv-prepare-preserves-history-relation`, `fn-bprv-commit-preserves-history-relation`, `fn-bprv-apply-record-preserves-evolving-invariant`); L15 to L18 (`fn-bprv-initial-evolving-invariant`, `fn-bprv-successful-replay-has-evolving-invariant`, `fn-bprv-grounded-context-has-history-record`, `fn-bprv-evolving-output-is-history-grounded`); the retention restatements `fn-bprv-evolving-*-preserves-existing-receipt` and `fn-bprv-evolving-replay-rest-preserves-receipt-adu` |
+| `books/bp-receiver-evolving-node-invariants.lisp` | L19 (`fn-bprv-history-record-is-node-committed-when-idle`) with its one-step install lemma `fn-bprv-apply-record-installs-record`, the multi-step `fn-bprv-apply-record-keeps-committed`, the loop lemmas and `fn-bprv-replay-node-commits-history-record` (the plan's `fn-bprv-replay-installs-every-record`); L20 (`fn-bprv-evolving-output-is-node-grounded-when-idle`); `fn-bprv-acceptable-at-ready-extension` |
+| `books/bp-receiver-evolving-store-invariants.lisp` | L1, L2, L7, L21 (`fn-bprv-snrt-step-extends-history`, `fn-bprv-snrt-run-extends-history`, `fn-bprv-store-step-preserves-evolving-invariant`, `fn-bprv-grounding-record-survives-store-run`); L13, L14 (`fn-bprv-system-step-preserves-invariant`, `fn-bprv-system-run-preserves-invariant`); L22 (`fn-bprv-evolving-invariant-survives-observed-reopen`); the live trace model `fn-bpr-live-step`, `fn-bpr-live-run`, `fn-bpr-live-install` with `fn-bprv-apply-record-agrees-at-ready-extension`, `fn-bpr-live-state-is-replay-of-journal` and `fn-bpr-live-receipt-regenerated-after-restart` |
+
+Deviations:
+
+- The Store step is `fn-snrt-step` (store-node-resolution-traces), not
+  `fn-snt-step`: it covers `fn-sn-refuse-reservation` and `fn-sn-known-abort`
+  as well, which the host also runs between receiver calls.
+- L1 and L7 carry `fn-snt-relation` on the Store rather than no hypothesis.
+  The kernel's own prefix theorems (`fn-snrt-step-records-prefix`) need it,
+  and a refused transition on an untyped Store whose record list is improper
+  is not its own prefix. Every process holds the relation from its reopen
+  entry, so nothing the host does is excluded. The system invariant
+  `fn-bprv-system-invariantp` carries it alongside the receiver relation.
+- L22 takes `fn-sf-crash-imagep` (A-DURABILITY as a hypothesis, as in D5)
+  rather than a bare prefix hypothesis, and concludes both that the reopen
+  succeeds and that the invariant holds against the reopened Store.
+- L19 lives in the receiver's own node book rather than in
+  `replay-invariants`; it carries the idle-node predicate
+  `fn-bprv-node-idlep` through `fn-replay-loop` because
+  `fn-replay-apply-record` on a node with a stage could complete a stale
+  proposal.
+- The live trace model adds what the plan did not state: the journal in the
+  live state holds exactly the records `fn-bprj-apply` accepted (the host
+  preflights, writes, then applies against the same Store and state:
+  `tools/receipt_journal.py` lines 56 to 79), and replay against a later
+  ready related Store agrees with the live step
+  (`fn-bprv-apply-record-agrees-at-ready-extension`), which is what turns
+  "byte-identical receipt after restart" from a process-death test into
+  `fn-bpr-live-receipt-regenerated-after-restart`.
