@@ -76,6 +76,12 @@ def manifest_for(root: Path, certified: list[str], status: str = "passed",
     return manifest
 
 
+def entry(cache: Path, root: Path, name: str, origin: Path | None = None) -> Path:
+    """Where the pair for one book in one worktree lands in the cache."""
+    key, _ = certs.closure_key(root, name)
+    return certs.entry_directory(cache, key, str(origin or root))
+
+
 class ClosureKeyTests(unittest.TestCase):
     def test_the_key_covers_the_whole_transitive_include_closure(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -126,10 +132,12 @@ class PublishTests(unittest.TestCase):
             self.assertEqual((report.published, report.manifests), (1, 1))
             self.assertEqual(report.unverified, [])
             key, listing = certs.closure_key(root, "books/mid")
-            self.assertTrue((cache / key / "book.cert").is_file())
-            self.assertTrue((cache / key / "book.port").is_file())
-            meta = certs.read_meta(cache / key)
+            where = entry(cache, root, "books/mid")
+            self.assertTrue((where / "book.cert").is_file())
+            self.assertTrue((where / "book.port").is_file())
+            meta = certs.read_meta(where)
             self.assertEqual((meta["book"], meta["closure_key"]), ("books/mid", key))
+            self.assertEqual(meta["origin_root"], str(root))
             self.assertEqual(meta["closure"], listing)
             self.assertEqual(len(meta["closure"]), 2)
             self.assertEqual(certs.publish(root, cache).already, 1)
@@ -182,8 +190,8 @@ class PublishTests(unittest.TestCase):
             report = certs.publish(root, root / "cache", [manifest])
             self.assertEqual(report.published, 1)
             self.assertIn("books/mid", report.unverified)
-            self.assertEqual(certs.read_meta(
-                root / "cache" / certs.closure_key(root, "books/base")[0])["book"],
+            self.assertEqual(
+                certs.read_meta(entry(root / "cache", root, "books/base"))["book"],
                 "books/base")
 
     def test_valid_looking_accepts_both_certificate_formats(self):
@@ -199,11 +207,16 @@ class PublishTests(unittest.TestCase):
 
 
 class InstallTests(unittest.TestCase):
+    # These publish with a farm origin -- a path that does not exist on this
+    # machine -- because that is the case where a pair may be installed into
+    # another worktree at all.  `OriginTests` covers the refusal.
+    FARM = "/tank/fn/no-such-tree"
+
     def published(self, directory: str, books: list[str]) -> tuple[Path, Path]:
         root = worktree(directory, certified=books)
         manifest_for(root, books)
         cache = root / "cache"
-        certs.publish(root, cache)
+        certs.publish(root, cache, origin=self.FARM, origin_host="hbox")
         return root, cache
 
     def test_install_matches_a_worktree_whose_whole_closure_matches(self):
@@ -244,11 +257,92 @@ class InstallTests(unittest.TestCase):
             (root / "books/mid.port").unlink()
             manifest_for(root, ["books/mid"])
             cache = root / "cache"
-            certs.publish(root, cache)
+            certs.publish(root, cache, origin=self.FARM)
             target = worktree(two)
             (target / "books/mid.port").write_text("; left over\n")
             certs.install(target, cache)
             self.assertFalse((target / "books/mid.port").exists())
+
+
+class OriginTests(unittest.TestCase):
+    """A certificate names its sub-books by absolute path, so origin decides."""
+
+    def publish_from(self, directory: str, origin: Path | None = None,
+                     host: str | None = None) -> tuple[Path, Path]:
+        root = worktree(directory, certified=["books/mid"])
+        manifest_for(root, ["books/mid"])
+        cache = root / "cache"
+        certs.publish(root, cache, origin=str(origin) if origin else None,
+                      origin_host=host)
+        return root, cache
+
+    def test_publish_records_the_worktree_the_run_happened_in(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, cache = self.publish_from(directory)
+            meta = certs.read_meta(entry(cache, root, "books/mid"))
+            self.assertEqual(meta["origin_root"], str(root))
+            # An explicit origin -- a farm run -- is recorded instead.
+            root2, cache2 = self.publish_from(directory + "/x" if False else
+                                              tempfile.mkdtemp(),
+                                              origin=Path("/tank/fn/tree"),
+                                              host="hbox")
+            meta2 = certs.read_meta(
+                entry(cache2, root2, "books/mid", Path("/tank/fn/tree")))
+            self.assertEqual((meta2["origin_root"], meta2["origin_host"]),
+                             ("/tank/fn/tree", "hbox"))
+
+    def test_an_entry_from_another_live_worktree_is_refused(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            source, cache = self.publish_from(one)
+            target = worktree(two)
+            report = certs.install(target, cache)
+            self.assertEqual(report.installed, 0)
+            self.assertEqual(report.foreign_local, ["books/mid"])
+            self.assertFalse((target / "books/mid.cert").exists())
+            self.assertTrue(source.exists())  # the origin is why it was refused
+
+    def test_an_entry_whose_origin_is_gone_installs_anywhere(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            _, cache = self.publish_from(one, origin=Path("/tank/fn/no-such-tree"))
+            target = worktree(two)
+            report = certs.install(target, cache)
+            self.assertEqual((report.installed, report.foreign_local), (1, []))
+            self.assertTrue(certs.valid_looking(target / "books/mid.cert"))
+
+    def test_this_worktrees_own_entry_wins_over_a_relocatable_one(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            _, cache = self.publish_from(one, origin=Path("/tank/fn/no-such-tree"))
+            target = worktree(two, certified=["books/mid"])
+            manifest_for(target, ["books/mid"])
+            certs.publish(target, cache)  # the target's own pair, distinct bytes
+            key, _ = certs.closure_key(target, "books/mid")
+            self.assertEqual(len(certs.cached_entries(cache, key)), 2)
+            chosen = certs.choose_entry(certs.cached_entries(cache, key),
+                                        str(target))
+            self.assertEqual(chosen[1]["origin_root"], str(target))
+            self.assertEqual(certs.install(target, cache).kept, 1)
+
+    def test_a_pair_installed_from_a_live_worktree_earlier_is_removed(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            source, cache = self.publish_from(one)
+            target = worktree(two)
+            # What the previous, origin-blind install left behind.
+            (target / "books/mid.cert").write_bytes(
+                (source / "books/mid.cert").read_bytes())
+            (target / "books/mid.port").write_text("; foreign\n")
+            report = certs.install(target, cache)
+            self.assertEqual((report.removed_foreign, report.installed), (1, 0))
+            self.assertEqual(report.foreign_local, ["books/mid"])
+            self.assertFalse((target / "books/mid.cert").exists())
+            self.assertFalse((target / "books/mid.port").exists())
+
+    def test_status_counts_foreign_local_entries_separately(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            _, cache = self.publish_from(one)
+            target = worktree(two)
+            report = certs.status(target, cache)
+            self.assertEqual(report.foreign_local, ["books/mid"])
+            self.assertTrue(any("foreign-local 1" in line for line in report.lines()))
 
 
 class StatusAndRemoteTests(unittest.TestCase):
