@@ -159,6 +159,9 @@ ACL2_BOOKS ?= books/assumptions \
 	books/nntp-effects \
 	tests/acl2/nntp-tests \
 	tests/acl2/nntp-teeth-tests \
+	books/served \
+	tests/acl2/served-tests \
+	books/ideal \
 	books/nntp-index \
 	tests/acl2/nntp-index-tests \
 	books/bp-release \
