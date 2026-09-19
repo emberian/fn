@@ -159,6 +159,9 @@
     "books/nntp-effects",
     "tests/acl2/nntp-tests",
     "tests/acl2/nntp-teeth-tests",
+    "books/served",
+    "tests/acl2/served-tests",
+    "books/ideal",
     "books/nntp-index",
     "tests/acl2/nntp-index-tests",
     "books/bp-release",
@@ -184,21 +187,21 @@
     "tests/acl2/policy-tests"
   ],
   "totals": {
-    "books": 181,
-    "books_in_root_closure": 180,
-    "roots": 180,
-    "theorems": 2926,
-    "functions": 2005,
-    "assert_events": 3056,
+    "books": 184,
+    "books_in_root_closure": 183,
+    "roots": 183,
+    "theorems": 2976,
+    "functions": 2041,
+    "assert_events": 3086,
     "must_fails": 59,
     "encapsulates": 10,
     "guards": {
       "verified": 949,
-      "declared-off": 53,
-      "default-guarded": 573,
+      "declared-off": 56,
+      "default-guarded": 606,
       "default-unguarded": 430
     },
-    "suspect_theorems": 26,
+    "suspect_theorems": 28,
     "export_hygiene_warnings": 60,
     "teeth_form_warnings": 0
   },
@@ -1667,6 +1670,31 @@
       "read_error": null
     },
     {
+      "book": "books/ideal.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 9,
+      "functions": 16,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 14,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "served"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/identity-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -2526,6 +2554,35 @@
       "suspects": [
         "fn-retain-admission-refusal-is-no-op",
         "fn-retain-wrong-evidence-does-not-release"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/served.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 41,
+      "functions": 20,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 19,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "nntp-effects",
+        "wire-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-served-next-strictly-consumes-linear",
+        "fn-served-nntp-run-of-no-events"
       ],
       "read_error": null
     },
@@ -4442,6 +4499,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/served-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 30,
+      "must_fails": 0,
+      "defconsts": 15,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/served"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/statement-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -5066,6 +5148,22 @@
       "line": 548,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-served-next-strictly-consumes-linear",
+      "book": "books/served.lisp",
+      "line": 630,
+      "reasons": [
+        "instance-corollary: the statement is fn-wire-next-strictly-consumes instantiated, discharging nothing"
+      ]
+    },
+    {
+      "theorem": "fn-served-nntp-run-of-no-events",
+      "book": "books/served.lisp",
+      "line": 230,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-served-nntp-run and the conclusion is that branch's value"
       ]
     },
     {

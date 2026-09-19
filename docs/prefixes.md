@@ -27,6 +27,10 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-nntp-` | `nntp`, `nntp-invariants`, `nntp-effects` | Reader command dispatcher, session cursor, projection, effects |
 | `fn-ng-` | `nntp` | Guard-verified executable helpers for the NNTP graph |
 | `fn-nntp-index-` | `nntp-index` | Index-backed twins of the NNTP number enumerations and the generation-bound index cache |
+| `fn-served-` | `served` | The served NNTP path as one logic-mode, guard-`t`-verified function: one socket read is `fn-wire-drive` then `fn-nntp-step` per framed event, with the reply concatenation, the partition law and the typed effect enumeration; the connection record (wire, session, pinned archive) and the two projections the host may take of an effect list |
+| `fn-ideal-` | `ideal` | F_node, the ideal node functionality of [`specs/node-functionality.md`](../specs/node-functionality.md) section 1: the state record and the port dispatcher. SKELETON: only the reader port is real (it is `fn-served-step`); every other port is a stub returning the state with a `:todo` effect, and the robustness theorems of section 3 are written there as commented statements marked OPEN |
+| `fn-dtn-` | (planned, `dtn-channel`) | The unauthenticated, adversarially scheduled bundle channel of [`specs/node-functionality.md`](../specs/node-functionality.md) section 5.4: the in-flight multiset and the adversary's delay, reorder, duplication, loss and injection. No book yet; the tag is registered so the skeleton above can name it |
+| `fn-sys-` | (planned, `system`) | The composed system F_node × F_dtn: a finite map from endpoint id to node states plus one channel, and the end-to-end release theorem of section 5.4. No book yet |
 | `fn-index-host-` | `host/index-host.lisp` | Trusted adapter that opens the index cache at a recovered generation and asks it; holds no enumeration logic |
 | `fn-wildmat-` | `wildmat`, `wildmat-utf8-invariants`, `wildmat-parser-invariants`, `wildmat-matcher-invariants` | UTF-8 decoding, wildmat grammar parsing, dynamic-programming matcher |
 | `fn-wm-` | `wildmat-matcher-invariants`, `wildmat-work` | Reference matcher and costed matcher shadow |
