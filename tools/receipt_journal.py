@@ -61,12 +61,14 @@ class ReceiptJournal:
   fd=os.open(tmp,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600);attempted=False
   try:
    write_all(fd,raw);durable_barrier(fd)
+   self.faults.at("receipt-staged-durable")
    # Retire the descriptor number before closing: a failing close may already
    # have released it, and closing again would close an unrelated descriptor.
    handle,fd=fd,-1
    os.close(handle);attempted=True;os.link(tmp,final)
    self.faults.at("postlink")
    fsync_dir(self.records)
+   self.faults.at("receipt-durable")
   except Exception as e:
    if fd>=0:os.close(fd)
    if attempted:self.fenced=True;raise JournalUncertain("receiver publication uncertain") from e
@@ -78,6 +80,7 @@ class ReceiptJournal:
    if kind=="config": self.bridge.replay((record,))
    else: self.bridge.apply(record)
   except Exception:self.fenced=True;raise
+  self.faults.at("receipt-applied")
   return final
  def initialize(self,values): return self.publish("config",values)
  def persist_request(self,values): return self.publish("request-context",values)
