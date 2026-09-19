@@ -57,7 +57,35 @@ lock.
 
 ## Results
 
-(filled in below)
+- `make check`: green (107 Markdown files, 50 requirements, 18 proof targets,
+  18 scenarios; ledger current).
+- `python3 -m unittest tests.test_fn9p -v`: 2 tests, OK, 119 s.
+  - `test_files_and_listings_agree_with_the_nntp_reader`: the bytes of
+    `/groups/fn.letters/1` and `/2` satisfy
+    `ARTICLE <n> reply == "220 <n> <id> article follows" CRLF + file + "." CRLF`
+    against a live reader over the same store; the group directory's names are
+    exactly LISTGROUP's number lines; `stat` lengths match the bytes read;
+    `/by-id/<hex>` returns the same article; `fn.test` holds only the article
+    that named it; a write-mode `open` and a walk to a number that does not
+    exist are both refused.
+  - `test_mount_generation_is_fixed_and_a_fresh_mount_advances`: a post
+    succeeds while the view is mounted (the lock is not held), and the mounted
+    view keeps its `/status` bytes, its directory and its 404 for the new
+    number, while a fresh mount shows the higher generation and the new file.
+- A protocol-only exercise of the server over a synthetic tree (multi-read
+  files, a directory larger than one msize, `..` walks, two clients) was run
+  during development without ACL2; it is not part of the committed suite.
+- Baseline certification: the full `make certify` was started locally as
+  instructed, but this laptop was running 37 concurrent lane certifications and
+  the run reached 27 of ~160 books in 75 minutes. It was stopped on the
+  coordinator's instruction not to run a full certification locally. The same
+  full `make certify` is running on hbox under `swarm-build` in
+  `/tank/fn/ninep` (the tree this lane shipped, `FN_ACL2=/tank/fn/acl2-8.7/saved_acl2`).
+  To execute this lane's own tests, the worktree borrowed `books/*.cert`,
+  `*.fasl` and `*.port` from `/Users/ember/dev/fn` at the same commit
+  (`9321344`) — the book sources are byte-identical, this lane changed no book,
+  and ACL2 validates a certificate against the source's own hash, so a
+  mismatch would have failed closed rather than passed quietly.
 
 ## Open
 
