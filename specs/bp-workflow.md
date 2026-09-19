@@ -115,8 +115,18 @@ barriers, exclusive ownership, bounded decoder, exact replay order, and BPA-call
 ordering.  The dtn7-rs observations are experiment evidence, not a proof of all
 BPA implementations or crash modes.
 
-`fn-bp-statep` does not imply `fn-bp-works-boundp`: a separate joint invariant
-over durable and pending work remains open. Outbound projection therefore
-rechecks each work's actual node/article/archive binding. State preservation
-alone must not be cited as proof that an arbitrary recognizable work list was
-derived from that node.
+`books/bp-workflow-binding-core.lisp` and
+`books/bp-workflow-binding-invariants.lisp` establish the stronger
+`fn-bp-binding-statep`: structural state validity together with actual
+node/article/subject/archive binding for every durable work and any pending
+work. The initial state satisfies this invariant; each production transition,
+dispatcher step and arbitrary finite event trace preserves it, including
+indeterminate completion, restart and recovery. The theorem does not assume
+that a prepared work has already become durable.
+
+`fn-bp-statep` alone still does not imply this relation. The assertion book
+includes a fabricated work that is structurally valid but unbound, alongside
+nonempty pending/committed and mixed-recovery traces. Outbound projection keeps
+its explicit binding recheck for inputs not established to be reachable. The
+joint invariant does not prove journal-byte decoding, host-event refinement or
+physical durability.

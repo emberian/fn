@@ -74,6 +74,9 @@ ACL2_BOOKS ?= books/acceptance \
 	books/bp-workflow \
 	books/bp-workflow-invariants \
 	books/bp-workflow-transport-invariants \
+	books/bp-workflow-binding-core \
+	books/bp-workflow-binding-invariants \
+	tests/acl2/bp-workflow-binding-invariants-tests \
 	tests/acl2/bp-workflow-tests \
 	books/bp-workflow-records \
 	tests/acl2/bp-workflow-records-tests \
@@ -81,6 +84,11 @@ ACL2_BOOKS ?= books/acceptance \
 	tests/acl2/bp-receipt-tests \
 	books/bp-receipt-records \
 	tests/acl2/bp-receipt-records-tests \
+	books/bp-receiver-store-invariants \
+	books/bp-receiver-context-invariants \
+	books/bp-receiver-journal-invariants \
+	books/bp-receiver-invariants \
+	books/bp-receiver-retention-invariants \
 	books/bp-outbound \
 	tests/acl2/bp-outbound-tests \
 	books/journal \
