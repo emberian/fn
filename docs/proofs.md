@@ -206,9 +206,23 @@ is the SHA-256 of the sorted `<path>:<sha256>` listing of the book and its
 whole local include closure, resolved as ACL2 resolves `include-book` and
 ignoring `:dir :system`. Same book bytes over a changed dependency is a
 different key, not a hit ACL2 would then refuse; the listing is recorded in
-the entry's metadata. `install` computes the same key per book and copies in
-each matching pair, keeping a byte-identical local certificate; `status`
-prints coverage. `tools/certify_books.py` publishes against its own manifest
+the entry's metadata. A third rule decides *where* a pair may be installed. An ACL2
+certificate's post-alist names every sub-book by its **absolute**
+full-book-name, so a pair made in worktree X and installed in worktree Y on
+one machine makes Y include X's books -- X's paths still resolve -- and Y's
+own later certificates then conflict with them (`its certificate requires
+.../X/books/acceptance.lisp, but .../Y/books/acceptance.lisp has been
+included`). Each entry therefore records the `origin_root` it was produced in,
+taken from its manifest's evidence path, and `install` takes this worktree's
+own entry, else one whose origin does not exist on this machine, and otherwise
+refuses and reports `foreign-local`. A pair whose bytes match a refused entry
+is removed, so a worktree an earlier origin-blind install poisoned recovers.
+Farm runs are the reusable case: `farm.py submit --remote-root` runs under a
+path that does not exist here, and `wait` publishes with that path as the
+origin, so those pairs install into any local worktree. `install` computes the
+same closure key per book and copies in each matching pair, keeping a
+byte-identical local certificate; `status` prints coverage, counting
+foreign-local entries separately. `tools/certify_books.py` publishes against its own manifest
 after a passing run, which `--no-publish` suppresses, and `make certs-install`
 / `make certs-publish` are the manual ends. What this does not establish:
 nothing here proves a book certifies. That is the runner's fresh success

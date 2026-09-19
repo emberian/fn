@@ -281,7 +281,7 @@
         "tests/evidence/2026-09-18-fields-transfer.json",
         "tests/evidence/2026-09-18-assurance.md",
         "tests/evidence/2026-09-18-assurance.json",
-        "books/store-node-resolution-traces.lisp",
+        "books/store-node-resolution.lisp",
         "books/store-observed.lisp",
         "tests/test_store_node_host.py"
       ],
@@ -311,7 +311,7 @@
         "tests/evidence/2026-09-18-fields-transfer.json",
         "tests/evidence/2026-09-18-assurance.md",
         "tests/evidence/2026-09-18-assurance.json",
-        "books/store-node-resolution-traces.lisp",
+        "books/store-node-resolution.lisp",
         "books/store-observed.lisp",
         "tests/test_store_node_host.py"
       ],
@@ -340,7 +340,7 @@
         "tests/evidence/2026-09-18-fields-transfer.json",
         "tests/evidence/2026-09-18-assurance.md",
         "tests/evidence/2026-09-18-assurance.json",
-        "books/store-node-resolution-traces.lisp",
+        "books/store-node-resolution.lisp",
         "books/store-observed.lisp",
         "tests/test_store_node_host.py"
       ],
@@ -916,7 +916,7 @@
         "tests/evidence/2026-09-18-storage.json",
         "tests/evidence/2026-09-18-assurance.md",
         "tests/evidence/2026-09-18-assurance.json",
-        "books/store-node-resolution-traces.lisp",
+        "books/store-node-resolution.lisp",
         "books/store-observed.lisp",
         "tests/test_store_node_host.py"
       ],
