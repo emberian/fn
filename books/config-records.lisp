@@ -23,6 +23,11 @@
 (local (in-theory (enable fn-record-record-vocabulary
                           fn-record-codec-vocabulary)))
 
+; The two total selectors `books/config' withdraws on export; the journal
+; record's accessor lemmas and the `(result config)' pair selectors below are
+; written over them.
+(local (in-theory (enable fn-cfg-ag-car fn-cfg-ag-cdr)))
+
 ; -----------------------------------------------------------------------------
 ; A journal record
 
@@ -73,6 +78,17 @@
            (and (fn-record-p (fn-jrec-body j))
                 (true-listp (fn-jrec-body j)))))
 
+; The two sequence facts `fn-jrec-p' carries, stated so the keystones below
+; can keep the recognizer closed: the body's own sequence field is the
+; journal sequence.
+(defthm fn-jrec-article-sequence-agrees
+  (implies (and (fn-jrec-p j) (equal (fn-jrec-kind j) :article))
+           (equal (fn-record-sequence (fn-jrec-body j)) (fn-jrec-sequence j))))
+(defthm fn-jrec-config-sequence-agrees
+  (implies (and (fn-jrec-p j) (equal (fn-jrec-kind j) :config))
+           (equal (fn-cfg-record-sequence (fn-jrec-body j))
+                  (fn-jrec-sequence j))))
+
 (defun fn-jrec-listp (js)
   (declare (xargs :guard t))
   (if (consp js)
@@ -97,7 +113,9 @@
   (declare (xargs :guard t))
   (if (consp js)
       (and (equal (fn-jrec-sequence (car js)) expected)
-           (fn-jrec-sequences-from (cdr js) (+ 1 expected)))
+           ; `(fix expected)': the same value as `(+ 1 expected)' in the
+           ; logic, and the `:guard t' obligation of `+' on a non-number.
+           (fn-jrec-sequences-from (cdr js) (+ 1 (fix expected))))
     (null js)))
 
 (defun fn-jrec-bodies (js)
@@ -115,6 +133,12 @@
 (defun fn-config-aware-config (x)
   (declare (xargs :guard t))
   (fn-cfg-ag-car (fn-cfg-ag-cdr x)))
+
+(defthm fn-config-aware-result-of-pair
+  (equal (fn-config-aware-result (list result cfg)) result))
+(defthm fn-config-aware-config-of-pair
+  (equal (fn-config-aware-config (list result cfg)) cfg))
+(in-theory (disable (:d fn-config-aware-result) (:d fn-config-aware-config)))
 
 (defun fn-config-aware-loop (node cfg reserved ceiling js expected)
   (declare (xargs :guard (fn-node-statep node) :verify-guards nil
@@ -179,7 +203,7 @@
                                                 expected)
            :in-theory (e/d (fn-replay-loop)
                            (fn-node-statep fn-replay-apply-record
-                            fn-jrec-p fn-record-p)))))
+                            fn-jrec-p fn-record-p fn-record-sequence)))))
 
 (defthm fn-config-aware-replay-is-fn-replay-on-transaction-only-histories
   (implies (and (fn-jrec-listp js) (fn-jrec-article-onlyp js))
@@ -197,10 +221,17 @@
 ; loop reaches is the one `fn-config-replay' reaches.
 
 (defthm fn-config-aware-loop-is-fn-config-replay-on-config-only-histories
+  ; On a refused record the two loops report differently by design: this loop
+  ; keeps the last good configuration beside the fault, `fn-config-replay-loop'
+  ; returns `:fault'.  So the agreement is over histories the configuration
+  ; replay accepts; the refusal tooth is in tests/acl2/config-tests.lisp.
   (implies (and (fn-jrec-listp js)
                 (fn-jrec-config-onlyp js)
                 (fn-node-statep node)
-                (fn-jrec-sequences-from js expected))
+                (fn-jrec-sequences-from js expected)
+                (not (equal (fn-config-replay-loop cfg reserved ceiling
+                                                   (fn-jrec-bodies js))
+                            :fault)))
            (equal (fn-config-aware-config
                    (fn-config-aware-loop node cfg reserved ceiling js
                                          expected))
@@ -208,7 +239,7 @@
                                          (fn-jrec-bodies js))))
   :hints (("Goal" :induct (fn-config-aware-loop node cfg reserved ceiling js
                                                 expected)
-           :in-theory (e/d nil
+           :in-theory (e/d (fn-config-replay-loop)
                            (fn-node-statep fn-replay-apply-record
                             fn-jrec-p fn-cfg-record-acceptablep)))))
 

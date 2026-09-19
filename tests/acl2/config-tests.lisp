@@ -14,6 +14,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/config-invariants")
+(include-book "../../books/config-records")
 (include-book "../../books/store-config")
 
 (local (in-theory (enable fn-cfg-vocabulary fn-cfg-invariants-vocabulary)))
@@ -271,3 +272,64 @@
  (< (fn-cfg-generation (fn-config-replay 0 510 (fn-cfg-take 2
                                                             *cfg-t-history*)))
     (fn-cfg-generation (fn-config-replay 0 510 *cfg-t-history*))))
+
+; -----------------------------------------------------------------------------
+; Teeth for the hypotheses added on 2026-09-19 when the invariants book first
+; certified: each is a concrete value on which the conclusion fails.
+
+; `fn-cfg-groups-create-keeps-the-names-or-adds-one' needs a group list: on
+; (nil) with name nil, `fn-cfg-group-find' answers nil yet creation replaces.
+(assert-event (not (fn-cfg-group-listp '(nil))))
+(assert-event (not (consp (fn-cfg-group-find '(nil) nil))))
+(assert-event
+ (not (equal (fn-cfg-group-all-names
+              (fn-cfg-groups-create '(nil) 1 *cfg-t-stamp* nil "p"))
+             (append (fn-cfg-group-all-names '(nil)) (list nil)))))
+
+; `fn-cfg-groups-retire-preserves-group-listp' needs the entry live at `gen':
+; retiring at generation 0 an entry created at generation 1 leaves an entry
+; retired before it was created.
+(defconst *cfg-t-late-entry*
+  (list (fn-cfg-group-make "fn.late" 1 *cfg-t-stamp* nil "policy-a" 0)))
+(assert-event (fn-cfg-group-listp *cfg-t-late-entry*))
+(assert-event (not (fn-cfg-entry-livep (fn-cfg-group-find *cfg-t-late-entry*
+                                                          "fn.late")
+                                       0)))
+(assert-event
+ (not (fn-cfg-group-listp (fn-cfg-groups-retire *cfg-t-late-entry* 0
+                                                "fn.late"))))
+
+; `fn-config-replay-loop-generation-counts-records' needs a numeric starting
+; generation: on the empty history the loop returns its argument unchanged.
+(assert-event
+ (with-guard-checking
+  :none
+  (not (equal (fn-cfg-generation
+               (fn-config-replay-loop (fn-cfg-make "x" (fn-cfg-empty-value))
+                                      0 510 nil))
+              (+ (fn-cfg-generation (fn-cfg-make "x" (fn-cfg-empty-value)))
+                 0)))))
+
+; `fn-config-aware-loop-is-fn-config-replay-on-config-only-histories' needs
+; the configuration replay not to fault: on a refused record (generation 5 on
+; the initial configuration) the aware loop keeps the last good configuration
+; beside its fault while `fn-config-replay-loop' is `:fault'.
+(defconst *cfg-t-refused-js*
+  (list (fn-jrec-make :config 0
+                      (fn-cfg-record-make 0 10 5 (list (fn-cfg-set-capacity 1))
+                                          *cfg-t-stamp*))))
+(defconst *cfg-t-node* (fn-node-initial-state *fn-store-groups* 1048576))
+(assert-event (fn-node-statep *cfg-t-node*))
+(assert-event (and (fn-jrec-listp *cfg-t-refused-js*)
+                   (fn-jrec-config-onlyp *cfg-t-refused-js*)
+                   (fn-jrec-sequences-from *cfg-t-refused-js* 0)))
+(assert-event
+ (equal (fn-config-replay-loop (fn-cfg-initial) 0 510
+                               (fn-jrec-bodies *cfg-t-refused-js*))
+        :fault))
+(assert-event
+ (not (equal (fn-config-aware-config
+              (fn-config-aware-loop *cfg-t-node* (fn-cfg-initial) 0 510
+                                    *cfg-t-refused-js* 0))
+             (fn-config-replay-loop (fn-cfg-initial) 0 510
+                                    (fn-jrec-bodies *cfg-t-refused-js*)))))

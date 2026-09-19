@@ -237,6 +237,12 @@
           (fn-cfg-group-make name cgen cstamp rgen policy next))
          next))
 
+; The shape facts type reasoning supplied while the record was open, exported
+; as forward-chaining rules only (docs/proof-style.md section 1).
+(defthm fn-cfg-group-shapep-forward-shape
+  (implies (fn-cfg-group-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
+
 (in-theory (disable (:d fn-cfg-group-shapep) (:d fn-cfg-group-make)
                     (:d fn-cfg-group-name) (:d fn-cfg-group-created-gen)
                     (:d fn-cfg-group-created-stamp)
@@ -255,6 +261,10 @@
                   (<= (fn-cfg-group-created-gen e) r))))
        (fn-cfg-labelp (fn-cfg-group-policy-id e))
        (fn-record-uint32p (fn-cfg-group-next e))))
+
+(defthm fn-cfg-group-entryp-forward-shape
+  (implies (fn-cfg-group-entryp e) (and (consp e) (true-listp e)))
+  :rule-classes :forward-chaining)
 
 (defun fn-cfg-group-listp (es)
   (declare (xargs :guard t))
@@ -831,7 +841,14 @@
                            (fn-cfg-record-change r))))
 
 (defun fn-config-replay-loop (cfg reserved ceiling records)
-  (declare (xargs :guard t))
+  ; The measure is the record list alone.  The acceptability ruler is
+  ; irrelevant to termination and is kept closed here: left open, the measure
+  ; conjecture case-splits on admissibility and does not finish inside two
+  ; million prover steps (measured 2026-09-19; that was the whole cost of
+  ; this book).
+  (declare (xargs :guard t :measure (len records)
+                  :hints (("Goal" :in-theory (disable fn-cfg-record-acceptablep
+                                                      fn-cfg-apply-record)))))
   (if (consp records)
       (if (fn-cfg-record-acceptablep cfg (car records) reserved ceiling)
           (fn-config-replay-loop (fn-cfg-apply-record cfg (car records))
@@ -941,9 +958,12 @@
 ; -----------------------------------------------------------------------------
 ; The decoder.  Item readers return the `books/records' parse result.
 
+; `(not (posp count))', not `(zp count)', in the three counted readers: `zp'
+; guards `natp', these readers are `:guard t', and the count arrives from the
+; wire.  The two are equal on every input, so the definitions say the same.
 (defun fn-cfg-parse-items (count octets)
   (declare (xargs :guard t :measure (nfix count)))
-  (if (zp count)
+  (if (not (posp count))
       (fn-record-parse-ok nil octets)
     (if (not (fn-cbor-octet-listp octets))
         (fn-record-parse-error :octets)
@@ -997,7 +1017,7 @@
 
 (defun fn-cfg-read-rows (count items)
   (declare (xargs :guard t :measure (nfix count)))
-  (if (zp count)
+  (if (not (posp count))
       (fn-record-parse-ok nil items)
     (let ((first (fn-cfg-read-row items)))
       (if (not (fn-record-parse-okp first))
@@ -1047,7 +1067,7 @@
 
 (defun fn-cfg-read-deltas (count items)
   (declare (xargs :guard t :measure (nfix count)))
-  (if (zp count)
+  (if (not (posp count))
       (fn-record-parse-ok nil items)
     (let ((first (fn-cfg-read-delta items)))
       (if (not (fn-record-parse-okp first))
@@ -1114,7 +1134,9 @@
 (defun fn-cfg-decode-exact (octets)
   ; The whole-stream decoder the host calls.  It checks the input bound before
   ; traversal, then magic, version and item count before any record is built.
-  (declare (xargs :guard t))
+  ; Guards are verified below with exactly the three `books/records' domain
+  ; facts its `<' and octet-list obligations need; nothing else is opened.
+  (declare (xargs :guard t :verify-guards nil))
   (if (not (and (fn-cbor-octet-listp octets)
                 (<= (len octets) *fn-cfg-max-octets*)))
       (fn-record-parse-error :limit)
@@ -1153,6 +1175,13 @@
                                       (fn-record-parse-error :record-type)
                                     r))))))))))))))))))
 
+(verify-guards fn-cfg-decode-exact
+  :hints (("Goal"
+           :in-theory (e/d (fn-record-read-bytes-success-domain
+                            fn-record-read-uint-success-domain
+                            fn-record-read-uint-success-is-rational)
+                           (fn-cbor-octet-listp)))))
+
 ; -----------------------------------------------------------------------------
 ; The one default configuration.
 ;
@@ -1187,11 +1216,17 @@
 ; two records with the same octets decode to the same record, so the encoding
 ; is injective on well-formed records.
 
+; Local: the one `append' fact the induction step needs.  It stays local so no
+; `append'-backchaining rule leaves this book.
+(local (defthm fn-cfg-octet-listp-of-append
+  (implies (and (fn-cbor-octet-listp a) (fn-cbor-octet-listp b))
+           (fn-cbor-octet-listp (append a b)))))
+
 (defthm fn-cfg-item-octets-are-octets
   (fn-cbor-octet-listp (fn-cfg-item-octets items))
   :hints (("Goal" :induct (fn-cfg-item-octets items)
            :in-theory (e/d (fn-record-cbor-encode-octets)
-                           (fn-cbor-encode)))))
+                           (fn-cbor-encode fn-cbor-octet-listp)))))
 
 ; OPEN: the general decode-of-encode over a variable-length item stream.
 ; The prefix lemmas it needs (`fn-record-cbor-stream-uint-round-trip',

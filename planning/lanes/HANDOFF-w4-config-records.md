@@ -148,3 +148,60 @@ have no certificate, and the Python suite has not run. A run covering all of
 them plus `tools/ledger.py --write` and `check_scaffold.py` was left going in
 the background; its log is the scratchpad's `w4final.log`. Treat every
 `defthm` in the three new books as unproved until its certificate exists.
+
+## Third pass (2026-09-19): the four books certify
+
+All four roots now certify, each in under a second of book wall time on this
+laptop (ACL2 8.7, SBCL 2.6.8): `books/config` (evidence
+`build/acl2/certify-20260919T222842Z-67740`, 0.68 s), `books/config-invariants`
+(`certify-20260919T223027Z-68508`, 0.65 s), `books/config-records`
+(`certify-20260919T223425Z-70936`, 0.73 s), `tests/acl2/config-tests`
+(`certify-20260919T223427Z-70956`, 0.44 s).
+
+**The cost centre was never a guard proof.** Measured on a scratch `ld`
+driver with `(set-verify-guards-eagerness 0)` and every function
+guard-verified one at a time under a two-million-step limit: every
+`verify-guards` in the book, the reader nest included, is 0.00 s. What did
+not finish was the *measure conjecture* of `fn-config-replay-loop`, which had
+no `:measure` and so was proved by `acl2-count` with
+`fn-cfg-record-acceptablep` and `fn-cfg-apply-record` open; it case-split
+through admissibility to subgoal depth twenty and hit the step limit. The fix
+is `:measure (len records)` with a `:hints` that keeps those two closed. Three
+guard defects were also real and are fixed: `(zp count)` in the three counted
+readers and in `fn-cfg-take` guards `natp` on a `:guard t` function (now
+`(not (posp count))`, the same function); `fn-cfg-decode-exact` needed the
+three `books/records` domain facts (`fn-record-read-bytes-success-domain`,
+`fn-record-read-uint-success-domain`, `-is-rational`) for its `<` and
+octet-list obligations and is now a `verify-guards` with exactly those
+enabled; and `fn-cfg-item-octets-are-octets` needed a local
+`fn-cbor-octet-listp`-of-`append` lemma.
+
+**Three statements were false as written and are corrected, with teeth.**
+This is a correction, not a weakening: each had a concrete counterexample,
+now an `assert-event` in `tests/acl2/config-tests.lisp`.
+`fn-cfg-groups-create-keeps-the-names-or-adds-one` and
+`fn-cfg-group-find-nil-means-not-a-name` hold over a `fn-cfg-group-listp`
+(`fn-cfg-group-find` answers `nil` both for "absent" and for a found non-cons
+entry; witness `es` = `(nil)`, `name` = `nil`).
+`fn-cfg-groups-retire-preserves-group-listp` needs the entry live at `gen`
+(retiring at generation 0 an entry created at 1 leaves `retired-gen <
+created-gen`); the hypothesis is `fn-cfg-group-livep` opened, which is what
+admissibility already checks. `fn-config-replay-loop-generation-counts-records`
+needs a numeric starting generation (on the empty history the loop returns
+its argument). `fn-config-aware-loop-is-fn-config-replay-on-config-only-
+histories` (`books/config-records`) needs the configuration replay not to
+fault: on a refused record the aware loop keeps the last good configuration
+beside its fault while `fn-config-replay-loop` is `:fault`, by design.
+`config-tests` now includes `config-records` so the cluster has one test
+book. `fn-cfg-group-shapep-forward-shape` and `fn-cfg-group-entryp-forward-
+shape` are exported as forward-chaining rules per docs/proof-style.md.
+
+**Python: `Ran 38 tests`, `FAILED (errors=25)`.** Every error is
+`ValueError: write to closed file` at `tools/run_store.py:435`: the host
+bridge's ACL2 process has exited before the first call. `host/store-host.lisp`
+and `host/store-node-host.lisp` include `books/identity`,
+`books/article-fields`, `books/store-observed` and
+`books/store-node-resolution`, none of which has a certificate in this
+worktree (`make certs-install` placed 28 of ~100). The 13 tests that do not
+reach the bridge pass. Open: install those certificates (box/certs cache),
+then rerun; nothing in this pass touches the host or the bridge.
