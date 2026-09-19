@@ -752,17 +752,22 @@ def main() -> int:
     if success:
         manifest["status"] = "passed"
         if not args.no_publish:
-            # The pairs just written are valid in every worktree and on every
-            # host with this book content, so cache them before anything else
-            # can touch the sources.  A cache failure is recorded, never fatal:
-            # the certification itself already succeeded.
+            # Publish against *this* run's manifest, which is the only thing
+            # that ties a certificate to the source it was produced from.  The
+            # cache keys on the whole include closure, so a pair is offered
+            # back only to a worktree where every dependency also matches.  A
+            # cache failure is recorded, never fatal: the certification itself
+            # already succeeded.
             try:
-                published = certs.publish(ROOT, certs.cache_directory(), args.books)
+                published = certs.publish(
+                    ROOT, certs.cache_directory(),
+                    [{**manifest, "evidence": str(run_dir)}], args.books)
                 manifest["cert_cache"] = {
                     "directory": published.cache,
                     "published": published.published,
                     "already_cached": published.already,
-                    "not_published": sorted(published.uncached + published.stale),
+                    "not_published": sorted(published.uncached + published.unverified
+                                            + published.unreadable),
                 }
             except OSError as error:
                 manifest["cert_cache"] = {"error": str(error)}
