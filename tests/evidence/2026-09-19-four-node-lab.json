@@ -1,0 +1,5 @@
+{
+ "schema": 1,
+ "status": "not-yet-run",
+ "note": "Placeholder written while ACL2 certification was still in progress. It records no result. It is replaced by the machine record of an actual run before this lane is committed; if this text is still here, no run has happened."
+}
