@@ -31,10 +31,10 @@
 (include-book "records-invariants")
 (include-book "clock")
 
-; The codec proofs open the CBOR primitives and the records-level prefix
-; lemmas; both books export them disabled.
-(local (in-theory (enable fn-cbor-codec-vocabulary fn-record-codec-vocabulary
-                          fn-record-invariants-vocabulary)))
+; Nothing in this book opens the CBOR or record codec: every definition here
+; is `:guard t', and the ground witnesses at the end are decided by
+; evaluation.  Enabling `fn-cbor-codec-vocabulary' here cost minutes of guard
+; proof for no theorem, so it is not enabled.
 
 ; -----------------------------------------------------------------------------
 ; Format ceilings.

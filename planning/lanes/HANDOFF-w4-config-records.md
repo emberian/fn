@@ -119,3 +119,32 @@ Whoever picks this up: `python3 tools/certs.py install` then
 books/config books/config-invariants books/store-config
 tests/acl2/config-tests`, one at a time, and treat every `defthm` in
 `books/config-invariants.lisp` as unproved until its certificate exists.
+
+## Second pass (2026-09-19, after the convergence lane fixed `books/replay`)
+
+`git merge dev` (merge `34e3da6`; conflicts in `planning/ledger.*` taken from
+dev, `tools/frame_bridge.py` unioned so `config_record_*` and `format_id` both
+survive). `make certs-install` installed 28 of ~100. Certified in place, in
+order, each one at a time: `books/replay` **3s OK**, `books/store-config`
+**1s OK**, `books/clock` **OK** (its cached certificate was stale against
+dev's `clock.lisp` and was deleted first). So the blocking finding is closed:
+replay certifies, and `books/config-records` is no longer blocked by it.
+
+`books/config` is the remaining cost centre: it does not finish inside ~12
+minutes of `certify-book` on a machine shared with three other lanes. One
+cause was found and removed -- the book opened
+`fn-cbor-codec-vocabulary`/`fn-record-codec-vocabulary`/`fn-record-invariants-vocabulary`
+globally for the whole book, so every `:guard t` definition in it paid for the
+whole CBOR and record codec being enabled; after the general
+decode-of-encode lemma was withdrawn nothing needed them, and the enable is
+gone. The remaining suspect is the guard proof of the deep reader nest
+(`fn-cfg-read-record`, `fn-cfg-decode-exact`); the next pass should
+`(local (in-theory (disable ...)))` the reader functions between their
+definitions, as `books/records.lisp` does at its own `verify-guards` forms.
+
+**Still unverified at this handoff**: `books/config`,
+`books/config-invariants`, `books/config-records`, `tests/acl2/config-tests`
+have no certificate, and the Python suite has not run. A run covering all of
+them plus `tools/ledger.py --write` and `check_scaffold.py` was left going in
+the background; its log is the scratchpad's `w4final.log`. Treat every
+`defthm` in the three new books as unproved until its certificate exists.
