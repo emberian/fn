@@ -263,6 +263,27 @@
        (fn-record-metadata-bytes-p (fn-record-release-evidence record))
        (fn-record-uint32p (fn-record-charge record))))
 
+; What opacity takes away (docs/proof-style.md, §1): while the accessors
+; opened, type reasoning gave `(true-listp record)' from `(fn-record-p
+; record)' for free, and a caller's guard -- `fn-replay-apply-record' takes
+; `(true-listp record)' -- closed on it.  Both facts are exported back here as
+; `:forward-chaining' only, so they land in the context when a record is
+; mentioned and no rule about `consp' or `true-listp' leaves this book as a
+; rewrite.  An includer that wrote a local bridge for either one deletes it.
+
+(defthm fn-record-shapep-forward-shape
+  (implies (fn-record-shapep record)
+           (and (consp record) (true-listp record)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-record-shapep))))
+
+(defthm fn-record-p-forward-shape
+  (implies (fn-record-p record)
+           (and (consp record) (true-listp record)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :use fn-record-shapep-forward-shape
+           :in-theory (disable fn-record-shapep-forward-shape))))
+
 ; -----------------------------------------------------------------------------
 ; Encoder
 
