@@ -238,7 +238,20 @@
 (verify-guards fn-bp-replay-records)
 
 (defun fn-bp-replay-journal (node records)
- (declare (xargs :guard t :verify-guards nil))
+ (declare (xargs :guard t :verify-guards nil
+                 ; The only guard obligation here is the mbe equality, and the
+                 ; two branches differ only in endp/atom and car/cdr vs their
+                 ; total counterparts, which fn-ag-car-is-car and
+                 ; fn-ag-cdr-is-cdr close directly.  Left enabled, the state
+                 ; and config predicates open into a case split that does not
+                 ; terminate in 30 minutes; closed, the match is immediate.
+                 :guard-hints
+                 (("Goal"
+                   :in-theory (disable fn-bp-replay-records
+                                       fn-bp-initial-state
+                                       fn-bp-statep
+                                       fn-bp-config-recordp
+                                       fn-bp-config-from-record)))))
  (mbe :logic
 (if (or (endp records) (not (fn-bp-config-recordp (car records))))
      (list nil nil nil)

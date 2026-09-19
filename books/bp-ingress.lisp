@@ -319,10 +319,21 @@
   (declare (xargs :guard t :verify-guards nil
                   :guard-hints
                   (("Goal"
+                    ; The article-syntax obligation is exactly an instance of
+                    ; fn-article-successful-parse-syntax-p, so cite it and keep
+                    ; the parser closed: opening fn-article-parse (or the
+                    ; result/syntax readers) turns a one-step match into a
+                    ; multi-minute case explosion.  fn-bpi-ag-result-article is
+                    ; rewritten to fn-article-result-article by its own equality
+                    ; lemma, which is what makes the instance line up.
                     :use ((:instance fn-article-successful-parse-syntax-p
                                      (octets adu)))
-                    :in-theory (e/d (fn-article-result-article)
-                                    (fn-article-successful-parse-syntax-p))))))
+                    :in-theory (disable fn-article-successful-parse-syntax-p
+                                        fn-article-parse
+                                        fn-article-syntax-p
+                                        fn-article-result-okp
+                                        fn-article-result-article
+                                        fn-bpi-ag-result-article)))))
   (mbe :logic
 (if (not (fn-bpi-policy-appliesp store policy context))
       (list :rejected :policy-or-destination)
@@ -472,10 +483,21 @@
   (declare (xargs :guard t :verify-guards nil
                   :guard-hints
                   (("Goal"
+                    ; The article-syntax obligation is exactly an instance of
+                    ; fn-article-successful-parse-syntax-p, so cite it and keep
+                    ; the parser closed: opening fn-article-parse (or the
+                    ; result/syntax readers) turns a one-step match into a
+                    ; multi-minute case explosion.  fn-bpi-ag-result-article is
+                    ; rewritten to fn-article-result-article by its own equality
+                    ; lemma, which is what makes the instance line up.
                     :use ((:instance fn-article-successful-parse-syntax-p
                                      (octets adu)))
-                    :in-theory (e/d (fn-article-result-article)
-                                    (fn-article-successful-parse-syntax-p))))))
+                    :in-theory (disable fn-article-successful-parse-syntax-p
+                                        fn-article-parse
+                                        fn-article-syntax-p
+                                        fn-article-result-okp
+                                        fn-article-result-article
+                                        fn-bpi-ag-result-article)))))
   (mbe :logic
 (if (not (and (fn-bpi-policy-appliesp store policy context)
                 (fn-cbor-octet-listp adu)
