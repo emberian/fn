@@ -19,7 +19,15 @@ HEAD `a31ed5f` (dev), lane branch `dep/nntp`, worktree `build/lanes/dep-nntp`.
 | `tests/acl2/nntp-tests` | 3.6 s | **0.4 s** |
 | `tests/acl2/nntp-teeth-tests` | 0.5 s | **0.4 s** |
 | `books/nntp-index`, `tests/acl2/nntp-index-tests` | 0.8 / 0.6 s | open: `books/index` has no cached certificate and the budget ended |
-| `books/transfer-reservation` / `-union` / `-invariants` | 2.8 s (one book) | open: not certified since the split |
+| `books/transfer` | 0.4 s | **0.35 s** (certified in place, unedited) |
+| `books/transfer-reservation` | — | **1.00 s** |
+| `books/transfer-union` | — | **0.70 s** |
+| `books/transfer-invariants` | 2.8 s (whole book) | **1.53 s** (3.23 s for the three) |
+| `books/transfer-assembly-invariants` | 0.5 s | **0.48 s** |
+| `books/transfer-work` | 1.4 s | **1.06 s** |
+| `books/transfer-public-work` | 2.9 s | **2.44 s** |
+| `books/transfer-public-bound` | 2.1 s | **1.73 s** |
+| `tests/acl2/transfer-tests` | 0.2 s | **0.37 s** |
 
 **`books/nntp.lisp` did not certify on `dev` before this lane touched it.** The
 pre-split file, taken from `a31ed5f` and certified unchanged as
@@ -97,10 +105,9 @@ farm in absolute terms): `books/wire` 5.5 s -> **1.3 s**, `books/wire-invariants
   did not fit the budget. `books/nntp-index.lisp` already carries the two local
   events it will need (the five nntp vocabularies, and the article-is-a-cons
   bridge); it should certify once `index` has a certificate.
-- `books/transfer-reservation`, `-union` and `transfer-invariants` are not
-  certified since the split: `books/transfer` itself has no cached certificate
-  yet. The split is pure relocation -- all events, their order and their
-  `verify-guards` are preserved -- but that is not a certification.
+- `books/transfer-public-bound.lisp` (1062 lines) is still unsplit, and the
+  eleven `fn-transfer-guard-*-is-*` equalities below still leave
+  `books/transfer.lisp` as enabled global rewrite rules. Neither was attempted.
 - Every book above that opens an NNTP definition needed the same one-line local
   re-enable of the five vocabularies: `nntp-invariants`, `nntp-effects`,
   `nntp-index` and the three test books. A book that includes `"nntp"` and only
