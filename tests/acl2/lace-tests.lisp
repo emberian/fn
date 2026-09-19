@@ -162,10 +162,16 @@
 ; ... but a lace that HOLDS both (no merge) still shows it.
 (assert-event (fn-lace-equivocatorp (fn-t-fork-colliding) *fn-t-alice* 1))
 
-; Same-view without cross-canonicity is not a theorem.
-(must-fail
- (thm (implies (fn-lace-same-idsp a b)
-               (equal (fn-lace-lookup a h) (fn-lace-lookup b h)))))
+; Same-view without cross-canonicity is not a theorem: the colliding fork
+; is the witness.  One statement per lace, the same id set, and the lookup
+; of that id differs.  (A must-fail thm here explores induction without end.)
+(assert-event
+ (with-guard-checking :none
+  (let ((a (list (car (fn-t-fork-colliding))))
+        (b (list (cadr (fn-t-fork-colliding))))
+        (h (fn-stmt-id (car (fn-t-fork-colliding)))))
+    (and (fn-lace-same-idsp a b)
+         (not (equal (fn-lace-lookup a h) (fn-lace-lookup b h)))))))
 
 (defattach fn-digest fn-toy-mix-digest)
 (assert-event (not (equal (fn-stmt-id (fn-t-c1)) (fn-stmt-id (fn-t-c2)))))
