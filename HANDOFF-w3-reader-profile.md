@@ -106,8 +106,11 @@ well-formed reply.
 **Not run.** The lane's baseline `make certify` ran for roughly ninety minutes
 and was then killed by root: the laptop was at load 98 with nineteen ACL2
 processes, and the baseline was moved to a remote box that builds the `.cert`
-files at the same absolute path. No local certification was performed after
-that, by instruction. The new and changed roots
+files at the same absolute path. The log ends `make: *** [certify] Terminated:
+15`, and the worktree holds 23 `books/*.cert` and 14 `tests/acl2/*.cert`: the
+run was killed well before it reached the NNTP roots, so it produced no verdict
+on this lane's work either way. No local certification was performed after that,
+by instruction. The new and changed roots
 (`books/nntp`, `books/nntp-overview`, `books/nntp-invariants`,
 `books/nntp-effects`, `tests/acl2/nntp-tests`, `tests/acl2/nntp-teeth-tests`,
 `tests/acl2/nntp-reader-profile-tests`) have **not been certified in this
