@@ -80,6 +80,10 @@ ACL2_BOOKS ?= books/assumptions \
 	tests/acl2/store-observed-tests \
 	books/store-observed-traces \
 	tests/acl2/store-observed-traces-tests \
+	books/byte-store \
+	books/byte-store-invariants \
+	books/byte-store-programs \
+	tests/acl2/byte-store-tests \
 	tests/acl2/store-node-guards-tests \
 	tests/acl2/store-node-teeth-tests \
 	books/checkpoint \
