@@ -1,7 +1,7 @@
 ; Trusted experimental adapter helpers.  ACL2 owns wire/session/archive state.
 (in-package "ACL2")
 (include-book "../books/store-node")
-(include-book "../books/nntp-post")
+(include-book "../books/served")
 
 (defconst *fn-reader-groups* '("fn.letters"))
 (defconst *fn-reader-id* "<reader@example.invalid>")
@@ -11,8 +11,6 @@
 ; Path, Injection-Info and any generated Message-ID from it.
 (defconst *fn-reader-agent*
   '(102 110 46 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100))
-(defconst *fn-reader-greeting*
-  '(50 48 49 32 102 110 45 110 110 116 112 32 101 120 112 101 114 105 109 101 110 116 97 108 32 114 101 97 100 101 114 32 114 101 97 100 121 13 10))
 (defconst *fn-reader-archive*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state *fn-reader-groups*) 1 *fn-reader-id*
@@ -35,46 +33,36 @@
                       (fn-reader-group-octets (fn-state-groups archive))
                       *fn-article-max-octets*))
 
-; The one effect the adapter acts on rather than writes out: POST asked for
-; article framing.  The host's whole response is to call fn-wire-begin-article.
-(defun fn-reader-begin-article-effectp (effects)
-  (declare (xargs :mode :program))
-  (if (consp effects)
-      (or (equal (car effects) (fn-nntp-begin-article-effect))
-          (fn-reader-begin-article-effectp (cdr effects)))
-    nil))
-
-; The adapter only consumes these fixed, trusted effect shapes.  Socket code
-; obtains the resulting octets through @ globals; it does not decode NNTP
-; commands or construct NNTP responses itself.
-(defun fn-reader-effect-octets (effects)
-  (if (consp effects)
-      (let ((effect (car effects)))
-        (append (if (and (consp effect)
-                         (equal (car effect) :reply)
-                         (consp (cdr effect)))
-                    (car (cdr effect))
-                  nil)
-                (fn-reader-effect-octets (cdr effects))))
-    nil))
-
-(defun fn-reader-close-effectsp (effects)
-  (if (consp effects)
-      (or (equal (car effects) (fn-nntp-close-effect))
-          (fn-reader-close-effectsp (cdr effects)))
-    nil))
-
-(defun fn-reader-wire-closedp (wire)
-  (and (fn-wire-statep wire)
-       (equal (fn-wire-state-mode wire) :closed)))
-
-(defun fn-reader-install-effects (effects state)
+; The adapter consumes one typed result per call and takes no decision of its
+; own.  Concatenating the reply stream, recognising the close effect and
+; finding the submission are fn-served-reply-octets, fn-served-closingp and
+; fn-served-submission (books/served.lisp); the first two used to be
+; fn-reader-effect-octets and fn-reader-close-effectsp here, in :program mode,
+; which made the host a second owner of the reply framing.  The carried
+; connection is opaque to this file: it is stored and handed back, never read.
+; Article-mode framing is inside it: the :begin-article effect is acted on by
+; fn-served-dispatch, not here.
+(defun fn-reader-install-result (result state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((state (f-put-global 'fn-reader-effects effects state))
+  (let* ((effects (fn-served-result-effects result))
+         (submission (fn-served-submission effects))
+         (state (f-put-global 'fn-reader-conn (fn-served-result-conn result) state))
          (state (f-put-global 'fn-reader-output
-                              (fn-reader-effect-octets effects) state))
+                              (fn-served-reply-octets effects) state))
          (state (f-put-global 'fn-reader-closep
-                              (fn-reader-close-effectsp effects) state)))
+                              (fn-served-closingp effects) state))
+         (state (f-put-global 'fn-reader-submit-octets
+                              (if submission
+                                  (fn-inj-decision-octets submission) nil)
+                              state))
+         (state (f-put-global 'fn-reader-submit-msgid
+                              (if submission
+                                  (fn-inj-decision-msgid submission) nil)
+                              state))
+         (state (f-put-global 'fn-reader-submit-groups
+                              (if submission
+                                  (fn-inj-decision-groups submission) nil)
+                              state)))
     state))
 
 ; Archive selection happens once before a listener accepts clients.  A reset
@@ -127,90 +115,47 @@
 
 ; Opening a connection is the one place the whole-archive projection recognizer
 ; runs.  fn-nntp-open-session records its verdict in the session; no command
-; recomputes it: fn-nntp-step, called at line 112 below, reads the carried
-; verdict instead of rerunning fn-nntp-projectionp.
+; recomputes it: fn-nntp-step, reached through fn-served-step below, reads the
+; carried verdict instead of rerunning fn-nntp-projectionp.  The posting
+; configuration and the clock observation are pinned into the connection here;
+; a served step reads them from the connection and never from a global.
 (defun fn-reader-reset (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((archive (if (boundp-global 'fn-reader-archive state)
                       (f-get-global 'fn-reader-archive state)
                     nil))
-         (state (f-put-global 'fn-reader-wire
-                               ; RFC 3977's 512 includes CRLF; wire state holds
-                               ; only content before that delimiter.
-                               (fn-wire-initial-state 510 8192) state))
-         (state (f-put-global 'fn-reader-session
-                              (fn-post-open-session archive) state))
-         (state (f-put-global 'fn-reader-config
-                              (fn-reader-post-config
-                               archive
-                               (and (boundp-global 'fn-reader-allow-post state)
-                                    (f-get-global 'fn-reader-allow-post state)))
-                              state))
-         (state (f-put-global 'fn-reader-submission nil state))
-         (state (f-put-global 'fn-reader-suffix nil state))
-         (state (fn-reader-install-effects
-                 (list (fn-nntp-reply-effect *fn-reader-greeting*)) state)))
-    (value :ready)))
-
-; One call consumes at most one wire event.  The Python boundary preserves any
-; returned suffix as transport bytes; protocol state is never reconstructed in
-; Python.
-(defun fn-reader-chunk (octets state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((next (fn-wire-next (f-get-global 'fn-reader-wire state) octets))
-         (wire (fn-wire-next-state next))
-         (event (fn-wire-next-event next))
-         (suffix (fn-wire-next-unconsumed next))
-         (session (f-get-global 'fn-reader-session state))
-         (archive (f-get-global 'fn-reader-archive state))
-         (config (f-get-global 'fn-reader-config state))
+         (config (fn-reader-post-config
+                  archive
+                  (and (boundp-global 'fn-reader-allow-post state)
+                       (f-get-global 'fn-reader-allow-post state))))
          (clock (if (boundp-global 'fn-reader-clock state)
                     (f-get-global 'fn-reader-clock state)
                   nil))
-         (result (if event
-                     (fn-nntp-post-step session archive config clock event)
-                   (fn-post-make-result session nil nil)))
-         (effects (fn-post-result-effects result))
-         ; The one effect the adapter acts on.  Article framing is ACL2's
-         ; decision; fn-wire-begin-article is the host carrying it out.
-         (wire (if (fn-reader-begin-article-effectp effects)
-                   (fn-wire-result-state (fn-wire-begin-article wire))
-                 wire))
-         ; A framing rejection closes the wire state.  It receives the core's
-         ; syntax response, then the adapter closes the socket without taking
-         ; any more bytes from that connection.
-         (effects (if (fn-reader-wire-closedp wire)
-                      (append effects (list (fn-nntp-close-effect)))
-                    effects))
-         (submission (fn-post-result-submission result))
-         (state (f-put-global 'fn-reader-wire wire state))
-         (state (f-put-global 'fn-reader-session
-                              (fn-post-result-session result) state))
-         (state (f-put-global 'fn-reader-submission submission state))
-         (state (f-put-global 'fn-reader-submit-octets
-                              (if submission
-                                  (fn-inj-decision-octets submission) nil)
-                              state))
-         (state (f-put-global 'fn-reader-submit-msgid
-                              (if submission
-                                  (fn-inj-decision-msgid submission) nil)
-                              state))
-         (state (f-put-global 'fn-reader-submit-groups
-                              (if submission
-                                  (fn-inj-decision-groups submission) nil)
-                              state))
-         (state (fn-reader-install-effects effects state))
-         (state (f-put-global 'fn-reader-suffix suffix state)))
+         ; RFC 3977's 512 includes CRLF; wire state holds only content before
+         ; that delimiter.
+         (state (fn-reader-install-result
+                 (fn-served-open archive 510 8192 config clock) state)))
+    (value :ready)))
+
+; One socket read.  The whole chunk is consumed: fn-served-step is a fold of
+; fn-wire-feed-byte with fn-nntp-post-step run on each framed event before the
+; next byte, with the reply concatenation, proved partition independent in
+; books/served.lisp.  There is no suffix to hand back and no loop in Python.
+(defun fn-reader-chunk (octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (fn-reader-install-result
+                (fn-served-step (f-get-global 'fn-reader-conn state) octets)
+                state)))
     (value :ok)))
 
 ; The durable observation comes back from the host after it has carried the
 ; submitted octets through the same acceptance path tools/run_store.py `post`
-; uses.  ACL2 turns it into the reply; the host never writes 240 itself.
+; uses.  It is one more served input: ACL2 turns it into the reply, and the
+; host never writes 240 itself.
 (defun fn-reader-outcome (completion state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((session (f-get-global 'fn-reader-session state))
-         (result (fn-nntp-post-outcome session completion))
-         (state (f-put-global 'fn-reader-submission nil state))
-         (state (fn-reader-install-effects
-                 (fn-post-result-effects result) state)))
+  (let ((state (fn-reader-install-result
+                (fn-served-post-outcome (f-get-global 'fn-reader-conn state)
+                                        completion)
+                state)))
     (value :ok)))

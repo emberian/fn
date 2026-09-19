@@ -204,14 +204,22 @@ class Acl2Reader:
         return bytes(acl2_octet_list(self.call("(@ fn-reader-output)")))
 
     def chunk(self, octets):
+        """One socket read, consumed whole by one certified call.
+
+        `fn-served-step' (books/served.lisp) is a fold of fn-wire-feed-byte
+        with fn-nntp-post-step run on each framed event before the next byte,
+        with the reply concatenation; article mode is inside it.  It
+        consumes the entire chunk, so there is never an unconsumed suffix to
+        hand back and no re-feeding loop here; the empty list is returned in
+        that position for callers that still drain one.
+        """
         if not octets:
             return b"", False, []
         literal = "(" + " ".join(str(byte) for byte in octets) + ")"
         self.call("(fn-reader-chunk '" + literal + " state)")
         reply = bytes(acl2_octet_list(self.call("(@ fn-reader-output)")))
         closing = acl2_boolean(self.call("(@ fn-reader-closep)"))
-        suffix = acl2_octet_list(self.call("(@ fn-reader-suffix)"))
-        return reply, closing, suffix
+        return reply, closing, []
 
     def close(self):
         if self.proc is None or not self.owns_process:
@@ -318,7 +326,6 @@ def serve_client(reader, client, owner=None):
         try:
             client.settimeout(10)
             client.sendall(reader.reset())
-            pending = []
             while True:
                 try:
                     incoming = client.recv(MAX_READ)
@@ -326,38 +333,42 @@ def serve_client(reader, client, owner=None):
                     return
                 if not incoming:
                     return
-                pending.extend(incoming)
-                while pending:
-                    try:
-                        reply, closing, pending = reader.chunk(pending)
-                    except RuntimeError:
-                        # An invalid bridge result is not a protocol reply.
-                        # Do not retain this connection's input for reuse.
-                        if reader.poisoned:
-                            raise ReaderBridgeFault("ACL2 bridge poisoned")
-                        return
-                    if reply:
-                        client.sendall(reply)
-                    submission = reader.submission()
-                    if submission is not None:
-                        if owner is None:
-                            completion = ":refused"
-                        else:
-                            completion = owner.accept(*submission)
-                            if (completion == ":durable"
-                                    and not reader.reselect()):
-                                raise ReaderBridgeFault(
-                                    "the store image is no longer projectable")
-                        outcome = reader.outcome(completion)
-                        if outcome:
-                            client.sendall(outcome)
-                    if closing:
-                        graceful_close(client)
-                        return
-                    # No complete wire event consumed this input.  The retained
-                    # ACL2 wire state holds the bounded prefix.
-                    if not pending:
-                        break
+                # One read, one certified step.  The loop that used to live
+                # here re-fed an unconsumed suffix and so computed
+                # fn-wire-drive in Python; books/served.lisp now owns that
+                # loop, and fn-served-run-is-the-concatenated-step says the
+                # cut points the network chose are invisible.  Article mode
+                # is wire state inside the served connection, so a POST and
+                # its article are the same one call per read.
+                try:
+                    reply, closing, unused_suffix = reader.chunk(list(incoming))
+                except RuntimeError:
+                    # An invalid bridge result is not a protocol reply.
+                    # Do not retain this connection's input for reuse.
+                    if reader.poisoned:
+                        raise ReaderBridgeFault("ACL2 bridge poisoned")
+                    return
+                if reply:
+                    client.sendall(reply)
+                submission = reader.submission()
+                if submission is not None:
+                    # The step submitted an injected article.  The durable
+                    # attempt is the host's; the outcome goes back to ACL2 as
+                    # one more served input, and ACL2 writes the 240 or 441.
+                    if owner is None:
+                        completion = ":refused"
+                    else:
+                        completion = owner.accept(*submission)
+                        if (completion == ":durable"
+                                and not reader.reselect()):
+                            raise ReaderBridgeFault(
+                                "the store image is no longer projectable")
+                    outcome = reader.outcome(completion)
+                    if outcome:
+                        client.sendall(outcome)
+                if closing:
+                    graceful_close(client)
+                    return
         except ReaderBridgeFault:
             raise
         except (RuntimeError, ConnectionError, OSError):

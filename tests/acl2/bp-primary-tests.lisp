@@ -29,7 +29,9 @@
 (in-package "ACL2")
 
 (include-book "../../books/bp-primary-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
+; this book reasons under them, so open them here, locally.
+(local (in-theory (enable fn-cbor-record-vocabulary fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary)))
 
 ; -----------------------------------------------------------------------------
 ; CRC algorithm vectors
@@ -319,15 +321,12 @@
 ; fn-bpc-decode-of-encode
 ;   without `fn-bpc-shapep`: a value outside the domain has no encoding to
 ;   decode.
-(local
- (must-fail
-  (thm (implies (and (fn-cbor-octet-listp rest)
-                     (natp budget)
-                     (<= (fn-bpc-cost flg x) budget))
-                (equal (fn-bpc-dec flg (if (eq flg :list) (len x) 0)
-                                   (append (fn-bpc-enc flg x) rest)
-                                   budget)
-                       (fn-cbor-ok x rest))))))
+(assert-event
+ (with-guard-checking :none
+  (and (not (fn-bpc-shapep :item 7))
+       (fn-cbor-octet-listp nil) (natp 100) (<= (fn-bpc-cost :item 7) 100)
+       (not (equal (fn-bpc-dec :item 0 (append (fn-bpc-enc :item 7) nil) 100)
+                   (fn-cbor-ok 7 nil))))))
 
 ;   without the budget bound: the decoder refuses rather than looping.  Stated
 ;   generally, the negated goal sends the prover into the induction on
@@ -345,23 +344,19 @@
                       (fn-cbor-ok '(:uint . 1) nil)))))
 
 ;   without the octet-list hypothesis on the remainder.
-(local
- (must-fail
-  (thm (implies (and (fn-bpc-shapep flg x)
-                     (natp budget)
-                     (<= (fn-bpc-cost flg x) budget))
-                (equal (fn-bpc-dec flg (if (eq flg :list) (len x) 0)
-                                   (append (fn-bpc-enc flg x) rest)
-                                   budget)
-                       (fn-cbor-ok x rest))))))
+;   OPEN: no violating value was found.  The decoder returns the remainder
+;   unread, so (fn-bpc-dec :item 0 (append (fn-bpc-enc :item x) rest) budget)
+;   is (fn-cbor-ok x rest) for rest = (300) and for rest = a alike (probed
+;   2026-09-19).  The hypothesis looks unnecessary in fn-bpc-decode-of-encode
+;   (books/bp-primary-cbor.lisp, codecs); recorded for its owner.
 
 ; fn-bpc-accepted-input-is-canonical
 ;   without the success hypothesis: a refused input is not re-encoded.
-(local
- (must-fail
-  (thm (equal (fn-bpc-encode (fn-cbor-result-value
-                              (fn-bpc-decode-exact octets)))
-              octets))))
+(assert-event
+ (with-guard-checking :none
+  (and (not (fn-cbor-result-okp (fn-bpc-decode-exact '(255))))
+       (not (equal (fn-bpc-encode (fn-cbor-result-value (fn-bpc-decode-exact '(255))))
+                   '(255))))))
 
 ; fn-bpp-decode-of-encode
 ;   without `fn-bpp-blockp`: a malformed record encodes to something the
@@ -376,14 +371,13 @@
   (not (equal (fn-bpp-decode (fn-bpp-encode 0)) (fn-bpp-ok 0)))))
 
 ; fn-bpp-value-block-of-block-value
-;   without the CRC width hypothesis: a CRC field of the wrong width makes the
-;   arity disagree with the CRC type.
-(local
- (must-fail
-  (thm (implies (and (fn-bpp-blockp b)
-                     (fn-cbor-octet-listp crc-octets))
-                (equal (fn-bpp-value-block (fn-bpp-block-value b crc-octets))
-                       b)))))
+;   The width hypothesis (and the octet-list one) had no violating value: the
+;   reader does not consult the CRC field, so both were dropped from the
+;   theorem (books/bp-primary-invariants.lisp, 2026-09-19).  The witness below
+;   shows the round trip on a CRC field of the wrong width.
+(assert-event
+ (equal (fn-bpp-value-block (fn-bpp-block-value *bpp-block-a* '(1 2 3)))
+        *bpp-block-a*))
 
 ;   without `fn-bpp-blockp`: a non-record has no fields to build the value
 ;   from, so the reader cannot give the non-record back.  Stated generally
