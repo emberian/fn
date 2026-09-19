@@ -4,6 +4,32 @@
 
 (in-package "ACL2")
 (include-book "nntp-session")
+
+; The books below this one withdraw their definitions at their export events
+; (2026-09-19 split of books/nntp.lisp).  This book is the continuation of
+; that single file, so it re-enables exactly them, locally: within the
+; chain the theory is the one the original file had at this point.
+(local (in-theory (enable fn-nntp-syntax-vocabulary
+                          fn-nntp-session-vocabulary)))
+
+; This book projects from the committed acceptance state, so it opens the three
+; acceptance recognizers books/acceptance.lisp withdrew at its export event
+; (core's CHANGE of 2026-09-19).  Locally: no includer inherits them.
+(local (in-theory (enable fn-statep fn-articlep fn-pendingp)))
+
+; With the acceptance article record opaque, ACL2 can no longer see that a
+; value whose msgid field is a string must be a cons: when fn-article-msgid
+; was (car x), (stringp (car x)) forced (consp x) by type reasoning, and the
+; withdrawn definition rune takes that inference away.  Several projection
+; proofs need it, so it is stated once here, locally.  core owns the general
+; fix: export the shape-to-consp fact with the record lemmas.
+(local
+ (defthm fn-nntp-article-with-a-string-msgid-is-a-cons
+   (implies (stringp (fn-article-msgid article))
+            (consp article))
+   :rule-classes ((:forward-chaining
+                   :trigger-terms ((fn-article-msgid article))))
+   :hints (("Goal" :in-theory (enable fn-article-msgid)))))
 ; -----------------------------------------------------------------------------
 ; Projection from the committed acceptance state
 
