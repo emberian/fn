@@ -35,7 +35,7 @@ complete transaction carries its article once even when it names several groups.
 
 ## Publication boundary
 
-The [refinement contract](store-refinement.md) defines the next dedicated
+The [refinement contract](store-refinement.md) defines the implemented
 immutable-file model and its relationship to the actual replay/node functions.
 It explains why the separate isolated-slot journal model does not yet prove
 this adapter's behavior.

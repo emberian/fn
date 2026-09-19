@@ -487,7 +487,7 @@
     {
       "id": "SCN-017",
       "title": "BP adapter acceptance separation",
-      "milestone": "M6",
+      "milestone": "M4",
       "status": "specified",
       "requirements": [
         "REP-003",
@@ -504,7 +504,11 @@
         "Only validated complete application inputs receive matching receipts.",
         "Adapter version, lifetime profile, and interoperability evidence are recorded."
       ],
-      "evidence": []
+      "evidence": [
+        "tests/evidence/2026-09-18-bp-exchange.md",
+        "tests/evidence/2026-09-18-bp-composition-assurance.md"
+      ],
+      "execution_scope": "Partial: the actual pinned BPA exchange carries an experimental whole-article ADU and matching receipt through outage/restart/lost receipt/duplicate retry. Sender and receiver logical assurance and five receiver process-death cuts have separate evidence. Complete portable batches, explicit expiry/contact/quota cases, authenticated handoff and additional CLA profiles remain open. Moved to M4 to match the user's A06 active BP path; status remains specified."
     },
     {
       "id": "SCN-018",

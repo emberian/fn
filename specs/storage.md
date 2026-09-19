@@ -1,8 +1,11 @@
 # Persistent storage
 
-Status: specialized storage direction agreed; an executable isolated-slot crash
-experiment exists in `books/journal.lisp`. Production recovery and byte layouts
-await D06–D09 and D14 in the [decision workbook](../planning/decisions.md).
+Status: specialized storage direction agreed. The actual immutable-file Store,
+record/replay codecs and live file/node composition are implemented with scoped
+proof and fault evidence; see the [refinement contract](store-refinement.md).
+Final segment/checkpoint layouts, complete byte/host correspondence and platform
+qualification remain open under D06–D09/D14. The separate isolated-slot
+`books/journal.lisp` experiment is not the running adapter model.
 
 ## Authority and layout
 
@@ -75,8 +78,9 @@ The current journal experiment distinguishes contiguous journal sequence from
 acceptance transaction IDs, which are consumed even on a known abort. Its
 durable acknowledgement anchor is an explicit assumed input, not a mechanism
 implemented by the book. A staged marker makes an abort uncertain because the
-marker could survive; recovery must resolve it. The journal and composed node
-have not yet been connected to each other or to physical files.
+marker could survive; recovery must resolve it. That isolated-slot journal is not
+connected to the composed node or physical adapter. The actual immutable-file/store-node path is connected and tested; its
+remaining physical correspondence is tracked in [store refinement](store-refinement.md).
 
 Object bytes may survive without a committing reference. Such orphans are not
 visible articles and are reclaimable only after transaction/recovery roots are

@@ -1,6 +1,6 @@
-# Rebuildable group/number index (PRF-010 isolated work)
+# Rebuildable group/number index (PRF-010 logical scope)
 
-This isolated experiment derives a list of `(group, local-number, message-id)`
+This integrated logical experiment derives a list of `(group, local-number, message-id)`
 entries from the committed `fn-state-articles` memberships. `fn-index-rebuild`
 materializes every membership. `fn-index-query-range` scans only that materialized
 list and preserves authoritative article/membership order; it never merges local

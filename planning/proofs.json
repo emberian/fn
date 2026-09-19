@@ -754,7 +754,7 @@
       "id": "PRF-018",
       "title": "Conditional delivery progress",
       "statement": "The scheduling/transport model progresses obligations only under explicit eventual-contact, capacity, route, and retry assumptions.",
-      "milestone": "M6",
+      "milestone": "M4",
       "requirements": [
         "FLR-004",
         "REP-004",
@@ -772,7 +772,8 @@
       ],
       "status": "planned",
       "events": [],
-      "evidence": []
+      "evidence": [],
+      "planning_note": "Scheduled in the active disconnected path (C2-06 scheduler, C3-03 conditional progress), rather than waiting for a mission-profile milestone. This changes sequencing only; target remains planned with no theorem evidence. A-FAIRNESS and validated-transfer/handoff dependencies remain explicit."
     }
   ]
 }
