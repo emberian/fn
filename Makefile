@@ -38,6 +38,9 @@ ACL2_BOOKS ?= books/assumptions \
 	books/article-fields \
 	tests/acl2/article-fields-tests \
 	books/store-config \
+	books/frame-octets \
+	books/frame-fields \
+	books/frame-journal \
 	books/frame \
 	books/frame-invariants \
 	tests/acl2/frame-tests \
@@ -139,12 +142,18 @@ ACL2_BOOKS ?= books/assumptions \
 	tests/acl2/exchange-tests \
 	books/exchange-invariants \
 	books/transfer \
+	books/transfer-reservation \
+	books/transfer-union \
 	books/transfer-invariants \
 	books/transfer-assembly-invariants \
 	books/transfer-work \
 	books/transfer-public-work \
 	books/transfer-public-bound \
 	tests/acl2/transfer-tests \
+	books/nntp-syntax \
+	books/nntp-session \
+	books/nntp-projection \
+	books/nntp-responses \
 	books/nntp \
 	books/nntp-invariants \
 	books/nntp-effects \

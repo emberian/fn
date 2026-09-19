@@ -64,28 +64,93 @@
 
 (verify-guards fn-cbor-valuep)
 
+; The decoder's result is an opaque record.  Its shape, constructors and
+; accessors are proved once here and then withdrawn: every book above reasons
+; about a result through `fn-cbor-result-okp', `fn-cbor-result-value' and
+; `fn-cbor-result-rest' and the record lemmas below, never by opening a list.
+
+(defun fn-cbor-ag-car (x)
+  (declare (xargs :guard t))
+  (mbe :logic (car x) :exec (if (consp x) (car x) nil)))
+
+(defun fn-cbor-ag-cdr (x)
+  (declare (xargs :guard t))
+  (mbe :logic (cdr x) :exec (if (consp x) (cdr x) nil)))
+
+(verify-guards fn-cbor-ag-car)
+(verify-guards fn-cbor-ag-cdr)
+
+(defun fn-cbor-result-shapep (x)
+  (declare (xargs :guard t))
+  (and (true-listp x)
+       (consp x)
+       (or (equal (len x) 2) (equal (len x) 3))))
+
 (defun fn-cbor-ok (value rest)
+  (declare (xargs :guard t))
   (list :ok value rest))
 
 (defun fn-cbor-error (reason)
+  (declare (xargs :guard t))
   (list :error reason))
 
 (defun fn-cbor-result-okp (x)
-  (and (consp x) (equal (car x) :ok)))
+  (declare (xargs :guard t))
+  (and (consp x) (equal (fn-cbor-ag-car x) :ok)))
 
 (defun fn-cbor-result-value (x)
-  (declare (xargs :guard (true-listp x)))
-  (car (cdr x)))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr x))
+       :exec (fn-cbor-ag-car (fn-cbor-ag-cdr x))))
 
 (defun fn-cbor-result-rest (x)
-  (declare (xargs :guard (true-listp x)))
-  (car (cdr (cdr x))))
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr x)))
+       :exec (fn-cbor-ag-car (fn-cbor-ag-cdr (fn-cbor-ag-cdr x)))))
 
+(verify-guards fn-cbor-result-shapep)
 (verify-guards fn-cbor-ok)
 (verify-guards fn-cbor-error)
 (verify-guards fn-cbor-result-okp)
 (verify-guards fn-cbor-result-value)
 (verify-guards fn-cbor-result-rest)
+
+; Record lemmas: shape, accessor of constructor, injectivity and the two
+; constructors' distinctness.  These are the only rules about a result that
+; leave this book, and every rule above reasons in this vocabulary.
+
+(defthm fn-cbor-result-shapep-of-fn-cbor-ok
+  (fn-cbor-result-shapep (fn-cbor-ok value rest)))
+
+(defthm fn-cbor-result-shapep-of-fn-cbor-error
+  (fn-cbor-result-shapep (fn-cbor-error reason)))
+
+(defthm fn-cbor-result-okp-of-fn-cbor-ok
+  (fn-cbor-result-okp (fn-cbor-ok value rest)))
+
+(defthm fn-cbor-result-okp-of-fn-cbor-error
+  (not (fn-cbor-result-okp (fn-cbor-error reason))))
+
+(defthm fn-cbor-result-value-of-fn-cbor-ok
+  (equal (fn-cbor-result-value (fn-cbor-ok value rest)) value))
+
+(defthm fn-cbor-result-rest-of-fn-cbor-ok
+  (equal (fn-cbor-result-rest (fn-cbor-ok value rest)) rest))
+
+(defthm fn-cbor-ok-is-injective
+  (equal (equal (fn-cbor-ok value rest) (fn-cbor-ok value2 rest2))
+         (and (equal value value2) (equal rest rest2))))
+
+(defthm fn-cbor-error-is-injective
+  (equal (equal (fn-cbor-error reason) (fn-cbor-error reason2))
+         (equal reason reason2)))
+
+(defthm fn-cbor-ok-is-not-fn-cbor-error
+  (not (equal (fn-cbor-ok value rest) (fn-cbor-error reason))))
+
+(in-theory (disable (:d fn-cbor-result-shapep) (:d fn-cbor-ok)
+                    (:d fn-cbor-error) (:d fn-cbor-result-okp)
+                    (:d fn-cbor-result-value) (:d fn-cbor-result-rest)))
 
 ; -----------------------------------------------------------------------------
 ; Big-endian arguments and deterministic heads
@@ -286,3 +351,36 @@
            (equal (fn-cbor-decode-exact
                    (fn-cbor-encode (cons :uint n)))
                   (fn-cbor-ok (cons :uint n) nil))))
+
+
+; -----------------------------------------------------------------------------
+; Export theory.
+;
+; What leaves this book enabled: the record lemmas above, the three theorems
+; below, and the list-recursive vocabulary the proofs above induct on
+; (`fn-cbor-octetp', `fn-cbor-octet-listp', `fn-cbor-at-mostp') together with
+; the total `fn-cbor-ag-' helpers.  The codec itself is proof vocabulary: a
+; book that must open it enables `fn-cbor-codec-vocabulary' locally and says
+; why.  `fn-cbor-record-vocabulary' exists so that a book which genuinely has
+; to open a result names exactly that.
+
+(deftheory fn-cbor-record-vocabulary
+  '((:d fn-cbor-result-shapep) (:d fn-cbor-ok) (:d fn-cbor-error)
+    (:d fn-cbor-result-okp) (:d fn-cbor-result-value)
+    (:d fn-cbor-result-rest)))
+
+(deftheory fn-cbor-codec-vocabulary
+  '((:d fn-cbor-valuep) (:d fn-cbor-canonical-argumentp)
+    (:d fn-cbor-encode-argument) (:d fn-cbor-encode)
+    (:d fn-cbor-decode-argument) (:d fn-cbor-decode-unsigned)
+    (:d fn-cbor-decode-bytes) (:d fn-cbor-decode) (:d fn-cbor-decode-exact)
+    (:d fn-cbor-u16-bytes) (:d fn-cbor-u32-bytes)
+    (:d fn-cbor-u16-from) (:d fn-cbor-u32-from)))
+
+(in-theory (disable (:d fn-cbor-valuep) (:d fn-cbor-canonical-argumentp) (:d
+             fn-cbor-encode-argument) (:d fn-cbor-encode) (:d
+             fn-cbor-decode-argument) (:d fn-cbor-decode-unsigned) (:d
+             fn-cbor-decode-bytes) (:d fn-cbor-decode) (:d
+             fn-cbor-decode-exact) (:d fn-cbor-u16-bytes) (:d
+             fn-cbor-u32-bytes) (:d fn-cbor-u16-from) (:d
+             fn-cbor-u32-from)))
