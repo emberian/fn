@@ -179,3 +179,15 @@ The [article work batch](../tests/evidence/2026-09-18-article-work.md) passed al
 seven new roots. Complete public parser value correspondence and structural-work
 bounds include malformed inputs and repeated prefix copies. Original parser
 sources are unchanged; physical allocation/runtime costs remain separate.
+
+
+## Current batch: assurance closure before further dependent features
+
+The user raised assurance growth as the implemented surface expands. This batch
+closes existing boundaries: Sol owns joint pending/durable sender-work binding;
+Astra owns receiver context/receipt and journal-replay invariants; Terra owns
+actual receiver child-process death/reopen tests. Root owns frozen integration
+and the current [closure inventory](assurance-closure.md). No new protocol or
+persistent record kind is being introduced. These assignments are not proof
+completion claims. The [scope rules](../docs/proofs.md#assurance-grows-with-the-implemented-surface)
+make new obligations visible with each implementation batch.

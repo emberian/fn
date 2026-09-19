@@ -52,6 +52,11 @@ substantial changes. Then read the specification for the affected subsystem.
   independent implementation work moving; do not create serial review loops.
 - Add substantive model, codec, fault, and interoperability tests as those layers
   appear. The [validation plan](tests/README.md) defines the intended evidence.
+- For each behavior-changing batch, record added or changed assurance obligations
+  alongside the implementation. Apply the [assurance scope rules](docs/proofs.md#assurance-grows-with-the-implemented-surface):
+  distinguish missing evidence for implemented behavior from future feature work,
+  and close critical composition/recovery gaps before adding dependent behavior.
+  Counts of proofs/tests do not establish coverage; this adds no approval gate.
 - Record exact tool versions, invocation, input revision/content digest, result,
   and limitations for certification or integration evidence.
 - A proposed theorem is not a theorem proved by ACL2. An admitted definition is

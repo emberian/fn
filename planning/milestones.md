@@ -1,7 +1,9 @@
 # Development milestones
 
 Current stage: an assurance-closure wave over the executable M1/M2/M3/M4
-components. The user prioritized general preservation, crash traces, systematic
+components. The current bounded batch targets sender work/node binding, receiver
+trace/replay invariants and real receiver process-death recovery, before adding
+dependent features. The user prioritized general preservation, crash traces, systematic
 fault injection, and mechanized correspondence. No full implementation/proof
 milestone is complete. See
 [current work](now.md) for scope and ownership. Remaining decisions in the
