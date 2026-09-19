@@ -183,7 +183,7 @@
     "books": 176,
     "books_in_root_closure": 176,
     "roots": 176,
-    "theorems": 2737,
+    "theorems": 2778,
     "functions": 1983,
     "assert_events": 3000,
     "must_fails": 115,
@@ -253,7 +253,7 @@
       "book": "books/acceptance.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 35,
+      "theorems": 44,
       "functions": 45,
       "guards": {
         "verified": 39,
@@ -1500,7 +1500,7 @@
       "book": "books/exchange.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 25,
+      "theorems": 34,
       "functions": 43,
       "guards": {
         "verified": 37,
@@ -2033,7 +2033,7 @@
       "book": "books/node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 22,
+      "theorems": 31,
       "functions": 33,
       "guards": {
         "verified": 27,
@@ -2349,7 +2349,7 @@
       "book": "books/replay.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 23,
+      "theorems": 28,
       "functions": 15,
       "guards": {
         "verified": 11,
@@ -2400,7 +2400,7 @@
       "book": "books/retention.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 27,
+      "theorems": 36,
       "functions": 38,
       "guards": {
         "verified": 38,
@@ -4850,7 +4850,7 @@
     {
       "theorem": "fn-exchange-ingest-refusal-is-no-op",
       "book": "books/exchange.lisp",
-      "line": 439,
+      "line": 529,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-exchange-ingest and the conclusion is that branch's value"
       ]
@@ -4883,7 +4883,7 @@
     {
       "theorem": "fn-node-capacity-refusal-is-no-op",
       "book": "books/node.lisp",
-      "line": 441,
+      "line": 537,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-node-prepare and the conclusion is that branch's value"
       ]
@@ -4915,7 +4915,7 @@
     {
       "theorem": "fn-node-stale-completion-is-no-op",
       "book": "books/node.lisp",
-      "line": 465,
+      "line": 561,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-node-complete and the conclusion is that branch's value"
       ]
@@ -4939,7 +4939,7 @@
     {
       "theorem": "fn-retain-admission-refusal-is-no-op",
       "book": "books/retention.lisp",
-      "line": 415,
+      "line": 508,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-retain-admit and the conclusion is that branch's value"
       ]
@@ -4947,7 +4947,7 @@
     {
       "theorem": "fn-retain-wrong-evidence-does-not-release",
       "book": "books/retention.lisp",
-      "line": 455,
+      "line": 548,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value"
       ]
