@@ -442,8 +442,12 @@
     t))
 
 ; -----------------------------------------------------------------------------
-; Certified local recovery facts.  These are logical properties of the scanner,
-; conditional on the crash constructor's stated platform assumptions.
+; Certified local facts about the scanner and completion-action helper defined
+; above.  Each is a definition unfolding or a fact about a single physical
+; commit image (one sequence/txid pair); none mentions FN-JOURNAL-CRASH and
+; none is conditioned on the crash constructor's platform assumptions.  This
+; book is the historical isolated-slot journal experiment named in
+; docs/prefixes.md; it is not the adapter model the host runs.
 
 (defthm fn-journal-recover-empty
   (equal (fn-journal-recover nil :none)
