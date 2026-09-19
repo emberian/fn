@@ -99,7 +99,8 @@ class StoreTests(unittest.TestCase):
         self.post("<same@example.invalid>", original)
         duplicate = self.post("<same@example.invalid>", original)
         self.assertEqual(duplicate.stdout.strip(), b"duplicate")
-        conflict = self.post("<same@example.invalid>", b"second", expected=2)
+        conflict = self.post("<same@example.invalid>", b"second",
+                             expected=run_store.EXIT_REFUSED)
         self.assertIn(b"conflicting immutable Message-ID", conflict.stderr)
         inspected = self.invoke("inspect", "--message-id", "<same@example.invalid>")
         self.assertEqual(inspected.stdout, original)
@@ -125,7 +126,7 @@ class StoreTests(unittest.TestCase):
         self.post("<zero@example.invalid>", b"zero")
         transaction = self.path / "transactions" / "00000000000000000000.txn"
         transaction.write_bytes(transaction.read_bytes()[:-1])
-        result = self.invoke("recover", expected=2)
+        result = self.invoke("recover", expected=run_store.EXIT_FAULT)
         self.assertIn(b"truncated", result.stderr)
 
         # A fresh store exercises a namespace gap independently of framing.
@@ -138,7 +139,7 @@ class StoreTests(unittest.TestCase):
         source.unlink()
         gap = subprocess.run([sys.executable, "tools/run_store.py", "--store", str(other), "recover"],
                              cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
-        self.assertEqual(gap.returncode, 2)
+        self.assertEqual(gap.returncode, run_store.EXIT_FAULT)
         self.assertIn(b"sequence gap", gap.stderr)
 
     def test_checksum_unknown_schema_and_final_symlink_fault(self):
@@ -147,7 +148,7 @@ class StoreTests(unittest.TestCase):
         raw = bytearray(transaction.read_bytes())
         raw[-1] ^= 1
         transaction.write_bytes(raw)
-        self.assertIn(b"integrity", self.invoke("recover", expected=2).stderr)
+        self.assertIn(b"integrity", self.invoke("recover", expected=run_store.EXIT_FAULT).stderr)
 
         other = Path(self.temp.name) / "unknown"
         subprocess.run([sys.executable, "tools/run_store.py", "--store", str(other), "init"],
@@ -155,17 +156,18 @@ class StoreTests(unittest.TestCase):
         (other / "transactions" / "00000000000000000000.txn").write_bytes(frame(b"unknown-schema"))
         unknown = subprocess.run([sys.executable, "tools/run_store.py", "--store", str(other), "recover"],
                                   cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
-        self.assertEqual(unknown.returncode, 2)
+        self.assertEqual(unknown.returncode, run_store.EXIT_FAULT)
         (other / "transactions" / "00000000000000000000.txn").unlink()
         os.symlink(other / "config.json", other / "transactions" / "00000000000000000000.txn")
         symlink = subprocess.run([sys.executable, "tools/run_store.py", "--store", str(other), "recover"],
                                   cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
-        self.assertEqual(symlink.returncode, 2)
+        self.assertEqual(symlink.returncode, run_store.EXIT_FAULT)
         self.assertIn(b"symlink", symlink.stderr)
 
     def test_known_abort_before_publication_and_indeterminate_after_publication(self):
         aborted = self.post("<abort@example.invalid>", b"abort", ("fn.letters",),
-                            "--inject-fault", "prepublish", expected=2)
+                            "--inject-fault", "prepublish",
+                            expected=run_store.EXIT_REFUSED)
         self.assertIn(b"known abort", aborted.stderr)
         self.invoke("recover")
         self.assertEqual(list((self.path / "transactions").iterdir()), [])
@@ -176,7 +178,8 @@ class StoreTests(unittest.TestCase):
             self.assertEqual(bridge.record_txid(unframe(raw, 32768)), 1)
 
         uncertain = self.post("<uncertain@example.invalid>", b"uncertain", ("fn.letters",),
-                              "--inject-fault", "postpublish", expected=2)
+                              "--inject-fault", "postpublish",
+                              expected=run_store.EXIT_UNCERTAIN)
         self.assertIn(b"indeterminate", uncertain.stderr)
         # A complete but unacknowledged final file may survive; reopening does
         # exact decode, replay, and directory barriers before becoming usable.
@@ -189,7 +192,8 @@ class StoreTests(unittest.TestCase):
         try:
             self.payload.write_bytes(b"locked")
             refused = self.invoke("post", "--message-id", "<lock@example.invalid>",
-                               "--payload", self.payload, "--group", "fn.letters", expected=2)
+                               "--payload", self.payload, "--group", "fn.letters",
+                               expected=run_store.EXIT_REFUSED)
             self.assertIn(b"already locked", refused.stderr)
         finally:
             holder.close()
@@ -368,7 +372,7 @@ class StoreTests(unittest.TestCase):
         self.post("<frontier@example.invalid>", b"frontier")
         (self.path / "allocation-frontier.json").write_bytes(
             run_store.canonical_json(ahead._frontier_with_checksum(0)) + b"\n")
-        self.assertIn(b"rejected", self.invoke("recover", expected=2).stderr)
+        self.assertIn(b"rejected", self.invoke("recover", expected=run_store.EXIT_FAULT).stderr)
 
     def test_initialize_refuses_missing_frontier_when_history_exists(self):
         self.post("<history@example.invalid>", b"history")
@@ -409,10 +413,15 @@ class StoreTests(unittest.TestCase):
         with mock.patch("run_store.fsync_file", side_effect=OSError(errno.EIO, "config barrier")):
             with self.assertRaises(OSError):
                 initial.initialize()
-        self.assertTrue((path / "config.json").is_file())
-        # Retrying initialization under its writer lock completes the missing
-        # allocator file; recovery below establishes the observed config name.
+        # Initialization publishes through staging, so a failed data barrier
+        # leaves no final name at all: there is no torn config.json to make
+        # the store permanently un-initialisable.
+        self.assertFalse((path / "config.json").exists())
+        self.assertTrue(list((path / "staging").iterdir()))
+        # Retrying initialization under its writer lock publishes both files;
+        # recovery below establishes the observed config name.
         initial.initialize()
+        self.assertTrue((path / "config.json").is_file())
 
         store = Store(path, writable=True)
         bridge = None

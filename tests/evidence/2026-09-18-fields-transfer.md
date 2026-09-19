@@ -4,6 +4,12 @@
 the actual acceptance simulator, and 32 Python tests (4 tooling, 10 reader,
 18 store). The recorded source hashes were unchanged during the run.
 
+Historical note (hygiene lane, 2026-09-18): the `transfer.lisp` source digest
+recorded here and in the [machine-readable record](2026-09-18-fields-transfer.json)
+is from before `transfer.lisp` was rewritten. It no longer matches the current
+file, so this record's transfer-staging evidence is superseded for that book;
+the JSON is retained unmodified as the original historical artifact.
+
 The [machine-readable record](2026-09-18-fields-transfer.json) retains the exact
 command, revision, source/certificate/driver digests, versions, results, and raw
 log locations. The toolchain was ACL2 8.7 on SBCL 2.6.8, Python 3.14.7, macOS

@@ -75,6 +75,22 @@ An explicit policy-matched retry event can make a delivered bundle eligible for
 another attempt when the application receipt was lost.  Attempt ID and
 generation checks make observations from older attempts no-ops.
 
+An attempt's transport status moves only forward.  `fn-bp-live-statusp`
+names the statuses that transport evidence may still advance (`:intent`,
+`:bpa-submit-replied`, `:bpa-accepted`, `:attempted`, `:forwarded`,
+`:inbound-persisted`, `:dequeued`, in the lifecycle order given by
+`fn-bp-status-rank`); `fn-bp-transport-transition-okp` accepts an observation
+only if it repeats the current status or strictly advances a live one.
+`:delivered` leaves only through `fn-bp-request-retry`, and a retryable status
+leaves only through `fn-bp-prepare-attempt` at a new generation.
+`fn-bp-observe-transport-never-moves-status-backward` and
+`fn-bp-observe-transport-never-returns-to-intent`
+(`books/bp-workflow-transport-invariants.lisp`) state this over the production
+transition for every work in the state, with no hypothesis.  Placing
+`:inbound-persisted` and `:dequeued` between forwarding and delivery is a local
+ordering choice for two statuses the current adapter never emits; a BPA that
+reports them in another order is refused as stale, never admitted backward.
+
 These distinctions follow the BP lifetime, forwarding, delivery, deletion, and
 status-report concepts in RFC 9171 sections 4.3.1, 5.2, 5.5, 5.10, 5.11, and
 6.1.1.  fn adds the stronger rule that every transport outcome preserves the
@@ -125,8 +141,34 @@ indeterminate completion, restart and recovery. The theorem does not assume
 that a prepared work has already become durable.
 
 `fn-bp-statep` alone still does not imply this relation. The assertion book
-includes a fabricated work that is structurally valid but unbound, alongside
-nonempty pending/committed and mixed-recovery traces. Outbound projection keeps
+includes fabricated works that are structurally valid but unbound: one whose
+Message-ID has no binding, one whose article is present and bound but whose
+immutable subject differs, and one whose archive obligation id differs; the
+same work with the actual fields is bound. Outbound projection keeps
 its explicit binding recheck for inputs not established to be reachable. The
 joint invariant does not prove journal-byte decoding, host-event refinement or
 physical durability.
+
+**Durable intent before submission.**
+`fn-bp-step-submit-requires-matching-durable-attempt-completion`
+(`books/bp-workflow-invariants.lisp`): if a `:submit` effect is among the
+effects of `fn-bp-step s event`, then `s` is a valid unfenced state holding a
+pending `:attempt` intent, `event` is `:storage-complete` with `:durable` for
+exactly that intent's transaction pair, the effect names that intent's work,
+attempt id and attempt generation, and it is the step's only effect.
+`fn-bp-apply-journal-record-submit-requires-ordinary-durable-attempt-outcome`
+(`books/bp-workflow-records-invariants.lisp`) says the same of the record the
+host applies: only an `:outcome` record with `:ordinary :durable` for the
+pending attempt's pair, and only when the application succeeds. Committed
+recovery of an attempt installs `:unknown` and emits nothing. What remains
+host-side is A-HOST, stated in [the adapter specification](bp-workflow-host.md):
+the model cannot grant the BPA call earlier than this; it does not make the
+host obey the grant.
+
+**Replay is a trace.** `fn-bp-replay-journal` and `fn-bp-apply-journal-record`
+are the functions the host calls; `books/bp-workflow-records-invariants.lisp`
+proves they preserve `fn-bp-statep`, `fn-bp-binding-statep` and the exact node
+over arbitrary record lists, refuse a malformed or out-of-place record wherever
+it occurs, and equal `fn-bp-step` and `fn-bp-trace` respectively on the events
+a journal denotes. The denotation, the fabricated recovery fence and the
+trailing restart are defined in the adapter specification.
