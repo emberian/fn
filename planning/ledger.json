@@ -201,7 +201,7 @@
       "default-unguarded": 430
     },
     "suspect_theorems": 26,
-    "export_hygiene_warnings": 61,
+    "export_hygiene_warnings": 57,
     "teeth_form_warnings": 3
   },
   "books": [
@@ -5338,39 +5338,15 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
-        "theorem": "fn-stmt-encode-bytes-item-consp",
-        "book": "books/statement-invariants.lisp",
-        "line": 73,
-        "reason": "len-backchaining: an enabled consp conclusion backchained to a len hypothesis"
-      },
-      {
         "theorem": "fn-stmt-header-round-trip",
         "book": "books/statement-invariants.lisp",
         "line": 267,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
-        "theorem": "fn-stmt-content-id-unfolds",
-        "book": "books/statement-invariants.lisp",
-        "line": 318,
-        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
-      },
-      {
-        "theorem": "fn-stmt-of-items-of-items",
-        "book": "books/statement-invariants.lisp",
-        "line": 347,
-        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
-      },
-      {
         "theorem": "fn-stmt-round-trip",
         "book": "books/statement-invariants.lisp",
         "line": 359,
-        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
-      },
-      {
-        "theorem": "fn-stmt-receipt-of-items-of-receipt-items",
-        "book": "books/statement-invariants.lisp",
-        "line": 463,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {

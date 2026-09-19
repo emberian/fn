@@ -368,6 +368,11 @@ class Book:
     # Rule names a non-local top-level ``in-theory`` turns off.  A book's
     # export policy is what it leaves enabled, so only these count.
     disabled_rules: set[str] = field(default_factory=set)
+    # ``deftheory`` name -> its defining expression, and the non-local
+    # top-level ``in-theory`` expressions, both resolved once the whole book
+    # has been read: a withdrawal may name a theory defined anywhere above it.
+    theories: dict[str, object] = field(default_factory=dict)
+    in_theory_forms: list[object] = field(default_factory=list)
     # Each ``must-fail`` as (line, arguments), for the teeth-form lint.
     must_fail_forms: list[tuple[int, list]] = field(default_factory=list)
 
@@ -412,6 +417,8 @@ def analyze_book(path: Path, relative: str) -> Book:
         return book
     for form, line in forms:
         record(book, form, line, local=False, suppressed=False)
+    for expression in book.in_theory_forms:
+        collect_disabled(expression, book.disabled_rules, book.theories)
     verified = set(book.verify_guards)
     for function in book.functions:
         if function.name in verified:
@@ -472,7 +479,11 @@ def record(book: Book, form: object, line: int, *, local: bool, suppressed: bool
     if name == "in-theory" and len(form) >= 2:
         if not local:
             # A `local' in-theory does not change what the book exports.
-            collect_disabled(form[1], book.disabled_rules)
+            # Resolution waits for the whole book: see `analyze_book'.
+            book.in_theory_forms.append(form[1])
+        return
+    if name == "deftheory" and len(form) >= 3 and isinstance(form[1], Sym):
+        book.theories[str(form[1])] = form[2]
         return
     if name == "assert-event":
         book.assert_events += 1
@@ -808,22 +819,82 @@ def rule_name(item: object) -> str | None:
     return None
 
 
-def collect_disabled(form: object, out: set[str]) -> None:
+def theory_name_members(name: str, theories: dict[str, object],
+                        seen: frozenset[str]) -> set[str]:
+    """A name as a set of rules: a ``deftheory`` name expands, a rune does not."""
+    if name in theories and name not in seen:
+        return theory_members(theories[name], theories, seen | {name})
+    return {name}
+
+
+def theory_members(form: object, theories: dict[str, object],
+                   seen: frozenset[str] = frozenset()) -> set[str]:
+    """The rules a theory expression denotes, as far as it is literal.
+
+    A book withdraws its helpers by naming them once -- ``(deftheory
+    fn-x-vocabulary '(...))`` -- and disabling that name at the end.  Reading
+    only the disable would count every one of those rules as exported.  What
+    cannot be read literally (``current-theory``, a computed theory)
+    contributes nothing, so an unresolvable expression under-approximates the
+    withdrawal and the lint warns rather than going quiet.
+    """
+    if isinstance(form, Sym):
+        return theory_name_members(str(form), theories, seen)
+    if not isinstance(form, list) or not form:
+        return set()
+    name = head(form)
+    if name == "quote" and len(form) == 2 and isinstance(form[1], list):
+        members: set[str] = set()
+        for item in form[1]:
+            rune = rule_name(item)
+            if rune:
+                members |= theory_name_members(rune, theories, seen)
+        return members
+    if name in ("disable", "disable*"):
+        return theory_members([Sym("quote"), list(form[1:])], theories, seen)
+    if name == "theory" and len(form) == 2:
+        inner = form[1]
+        if head(inner) == "quote" and len(inner) == 2:
+            inner = inner[1]
+        return theory_members(inner, theories, seen) if isinstance(inner, Sym) else set()
+    if name in ("union-theories", "union-theories-fn") and len(form) == 3:
+        return (theory_members(form[1], theories, seen)
+                | theory_members(form[2], theories, seen))
+    if name in ("set-difference-theories", "set-difference-theories-fn") and len(form) == 3:
+        return (theory_members(form[1], theories, seen)
+                - theory_members(form[2], theories, seen))
+    return set()
+
+
+def collect_disabled(form: object, out: set[str],
+                     theories: dict[str, object] | None = None) -> None:
     """Every rule name an ``in-theory`` expression turns off."""
+    theories = {} if theories is None else theories
     if not isinstance(form, list) or not form:
         return
     name = head(form)
     if name in ("disable", "disable*"):
-        out.update(filter(None, (rule_name(item) for item in form[1:])))
+        for item in form[1:]:
+            rune = rule_name(item)
+            if rune:
+                out |= theory_name_members(rune, theories, frozenset())
         return
     if name in ("e/d", "e/d*"):
         # (e/d <enable> <disable> <enable> ...): the odd groups are disables.
         for index, group in enumerate(form[1:]):
             if index % 2 == 1 and isinstance(group, list):
-                out.update(filter(None, (rule_name(item) for item in group)))
+                for item in group:
+                    rune = rule_name(item)
+                    if rune:
+                        out |= theory_name_members(rune, theories, frozenset())
+        return
+    if name in ("set-difference-theories", "set-difference-theories-fn") and len(form) == 3:
+        # (in-theory (set-difference-theories (current-theory :here) X)):
+        # whatever X names is what this book withdraws.
+        out |= theory_members(form[2], theories, frozenset())
         return
     for item in form[1:]:
-        collect_disabled(item, out)
+        collect_disabled(item, out, theories)
 
 
 def one_argument_application(form: object) -> bool:
@@ -1115,7 +1186,9 @@ def ledger_markdown(ledger: dict) -> str:
         "vocabulary: an equality between two one-argument applications, or a",
         "`consp`/`len` conclusion backchained to a `len` hypothesis. A theorem",
         "that is `local`, `defthmd`, `:rule-classes nil`, or disabled by a",
-        "closing `in-theory` is not counted. *Teeth form* counts `must-fail`",
+        "closing `in-theory` -- directly, or through a `deftheory` name the",
+        "book defines and then withdraws -- is not counted. *Teeth form*",
+        "counts `must-fail`",
         "checks whose body is a bare `thm`/`defthm` mentioning no constant, so",
         "nothing in particular is refuted. Neither lint judges truth;",
         "`python3 tools/ledger.py --check --strict` turns both into errors.",

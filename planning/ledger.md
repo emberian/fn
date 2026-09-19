@@ -23,7 +23,7 @@ stale. Counts describe artifacts, not coverage; see
 | `must-fail` checks | 107 |
 | `encapsulate` events | 10 |
 | Theorems flagged SUSPECT by shape | 26 |
-| Export-hygiene warnings | 61 |
+| Export-hygiene warnings | 57 |
 | Teeth-form warnings | 3 |
 
 ## Lints
@@ -34,7 +34,9 @@ leaves enabled whose shape rewrites downstream goals out of accessor
 vocabulary: an equality between two one-argument applications, or a
 `consp`/`len` conclusion backchained to a `len` hypothesis. A theorem
 that is `local`, `defthmd`, `:rule-classes nil`, or disabled by a
-closing `in-theory` is not counted. *Teeth form* counts `must-fail`
+closing `in-theory` -- directly, or through a `deftheory` name the
+book defines and then withdraws -- is not counted. *Teeth form*
+counts `must-fail`
 checks whose body is a bare `thm`/`defthm` mentioning no constant, so
 nothing in particular is refuted. Neither lint judges truth;
 `python3 tools/ledger.py --check --strict` turns both into errors.
