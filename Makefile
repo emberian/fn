@@ -159,6 +159,12 @@ ACL2_BOOKS ?= books/assumptions \
 	books/transfer-public-work \
 	books/transfer-public-bound \
 	tests/acl2/transfer-tests \
+	books/transfer-journal \
+	books/transfer-journal-invariants \
+	tests/acl2/transfer-journal-tests \
+	books/container \
+	books/container-invariants \
+	tests/acl2/container-tests \
 	books/nntp-syntax \
 	books/nntp-session \
 	books/nntp-projection \
