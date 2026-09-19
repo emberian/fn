@@ -387,13 +387,30 @@
   :hints (("Goal" :induct (fn-nntp-response-textp body)
            :in-theory (enable fn-nntp-response-textp))))
 
+; A block scan that is at the start of a line and does not see a dot there is
+; the same scan in mid-line mode.  Stated separately because the start flag is
+; what makes `fn-nntp-block-scan' resist the induction suggested by
+; `fn-nntp-response-textp': the induction hypothesis arrives in mid-line mode
+; and the goal is in start mode.
+(defthm fn-nntp-block-scan-start-without-a-dot
+  (implies (not (equal (car bytes) 46))
+           (equal (fn-nntp-block-scan bytes t)
+                  (fn-nntp-block-scan bytes nil)))
+  :hints (("Goal" :expand ((fn-nntp-block-scan bytes t)))))
+
 (defthm fn-nntp-block-scan-of-stuffed-line
   (implies (fn-nntp-response-textp line)
            (equal (fn-nntp-block-scan
                    (append (fn-nntp-crlf (fn-wire-stuff-line line)) rest) t)
                   (fn-nntp-block-scan rest t)))
-  :hints (("Goal" :in-theory (enable fn-nntp-crlf fn-wire-stuff-line
-                                     fn-nntp-response-textp))))
+  :hints (("Goal"
+           :do-not-induct t
+           :cases ((equal (car line) 46) (not (consp line)))
+           :in-theory (e/d (fn-nntp-crlf fn-wire-stuff-line)
+                           (fn-nntp-response-textp))
+           :expand ((:free (x) (fn-nntp-block-scan (cons 46 x) t))
+                    (:free (x) (fn-nntp-block-scan (cons 13 x) nil))
+                    (fn-nntp-response-textp line)))))
 
 (defthm fn-nntp-block-scan-of-stuff-lines
   (implies (fn-nntp-block-textp lines)
@@ -408,9 +425,17 @@
                 (fn-nntp-initial-status-linep line)
                 (<= (+ (len line) 2) *fn-nntp-max-response-octets*))
            (fn-nntp-replyp (fn-nntp-crlf line)))
-  :hints (("Goal" :in-theory (e/d (fn-nntp-replyp fn-nntp-crlf)
-                                  (fn-nntp-initial-line-tail
-                                   fn-nntp-status-prefixp)))))
+  ;; The two re-parse rules are stated over `(append line (cons 13 (cons 10
+  ;; rest)))'.  Any induction destructures that append and the rules stop
+  ;; matching, so the line predicates stay closed and the goal is discharged by
+  ;; rewriting alone.
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-nntp-replyp fn-nntp-crlf)
+                           (fn-nntp-initial-line-tail
+                            fn-nntp-status-prefixp
+                            fn-nntp-initial-status-linep
+                            fn-nntp-response-textp)))))
 
 (defthm fn-nntp-replyp-of-block
   (implies (and (fn-nntp-response-textp line)
@@ -420,11 +445,15 @@
            (fn-nntp-replyp (append (fn-nntp-crlf line)
                                    (append (fn-nntp-stuff-lines lines)
                                            '(46 13 10)))))
-  :hints (("Goal" :in-theory (e/d (fn-nntp-replyp fn-nntp-crlf)
-                                  (fn-nntp-initial-line-tail
-                                   fn-nntp-status-prefixp
-                                   fn-nntp-block-scan
-                                   fn-nntp-stuff-lines)))))
+  :hints (("Goal"
+           :in-theory (e/d (fn-nntp-replyp fn-nntp-crlf)
+                           (fn-nntp-initial-line-tail
+                            fn-nntp-status-prefixp
+                            fn-nntp-initial-status-linep
+                            fn-nntp-response-textp
+                            fn-nntp-block-textp
+                            fn-nntp-block-scan
+                            fn-nntp-stuff-lines)))))
 
 ; -----------------------------------------------------------------------------
 ; The response constructors
@@ -704,6 +733,8 @@
              (fn-nntp-list-filtered-response session archive kind wildmat))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-list-filtered-response)
                                   (fn-nntp-projectionp
+                            fn-statep fn-state-groups
+                            fn-state-articles fn-state-nexts
                                    fn-nntp-list-active fn-nntp-list-newsgroups
                                    fn-nntp-filter-groups-by-wildmat
                                    fn-wildmat-parse)))))
@@ -715,6 +746,8 @@
              (fn-nntp-list-active-or-newsgroups session archive kind args))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-list-active-or-newsgroups)
                                   (fn-nntp-projectionp
+                            fn-statep fn-state-groups
+                            fn-state-articles fn-state-nexts
                                    fn-nntp-list-active fn-nntp-list-newsgroups
                                    fn-nntp-list-filtered-response)))))
 
@@ -730,6 +763,8 @@
             (fn-nntp-result-effects (fn-nntp-list-response session archive args))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-list-response)
                                   (fn-nntp-projectionp
+                            fn-statep fn-state-groups
+                            fn-state-articles fn-state-nexts
                                    fn-nntp-list-active
                                    fn-nntp-list-active-or-newsgroups
                                    fn-nntp-list-unmaintained-response)))))
@@ -776,7 +811,9 @@
              (fn-nntp-archive-command session archive keyword args))))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-archive-command)
-                (fn-nntp-projectionp fn-nntp-keywordp
+                (fn-nntp-projectionp
+                            fn-statep fn-state-groups
+                            fn-state-articles fn-state-nexts fn-nntp-keywordp
                  fn-nntp-group-result fn-nntp-listgroup-command
                  fn-nntp-list-response fn-nntp-next-or-last
                  fn-nntp-retrieval fn-nntp-single
@@ -791,7 +828,9 @@
            (e/d (fn-nntp-command)
                 (fn-nntp-session-command fn-nntp-archive-command
                  fn-nntp-archive-keywordp fn-nntp-keyword-tokenp
-                 fn-nntp-single fn-nntp-projectionp))
+                 fn-nntp-single fn-nntp-projectionp
+                            fn-statep fn-state-groups
+                            fn-state-articles fn-state-nexts))
            :expand ((fn-nntp-session-consistentp session archive)))))
 
 (defthm fn-nntp-step-effects-well-formed
@@ -842,51 +881,16 @@
 ; fn-nntp-decimal-field clamps the rendered width so the 512-octet argument
 ; above is structural.  This says the clamp never changes a number the profile
 ; can legitimately render, so no response loses information to it.
-(encapsulate ()
-  (local (include-book "arithmetic-5/top" :dir :system))
 
-  (local
-   (defun fn-nntp-decimal-digit-count (number)
-     (declare (xargs :measure (nfix number)))
-     (if (zp number) 0
-       (if (< number 10) 1
-         (+ 1 (fn-nntp-decimal-digit-count (floor number 10)))))))
-
-  (local
-   (defthm fn-nntp-explode-len
-     (implies (and (natp number) (consp ans))
-              (equal (len (explode-nonnegative-integer number 10 ans))
-                     (+ (fn-nntp-decimal-digit-count number) (len ans))))))
-
-  (local
-   (defthm fn-nntp-string-octets-aux-len
-     (equal (len (fn-nntp-string-octets-aux chars)) (len chars))))
-
-  (local
-   (defun fn-nntp-digit-count-induction (number k)
-     (declare (xargs :measure (nfix number)))
-     (if (or (zp number) (< number 10))
-         (list number k)
-       (fn-nntp-digit-count-induction (floor number 10) (- k 1)))))
-
-  (local
-   (defthm fn-nntp-digit-count-bounded-by-power
-     (implies (and (natp number) (natp k) (< number (expt 10 k)))
-              (<= (fn-nntp-decimal-digit-count number) k))
-     :hints (("Goal" :induct (fn-nntp-digit-count-induction number k)))))
-
-  (local
-   (defthm fn-nntp-decimal-digits-are-a-token
-     (implies (and (natp number) (fn-nntp-decimal-tokenp (fn-nntp-string-octets-aux ans))
-                   (character-listp ans))
-              (fn-nntp-decimal-tokenp
-               (fn-nntp-string-octets-aux
-                (explode-nonnegative-integer number 10 ans))))))
-
-  (defthm fn-nntp-decimal-field-is-exact-in-range
-    (implies (and (natp number) (<= number *fn-nntp-max-article-number*))
-             (equal (fn-nntp-decimal-field number)
-                    (fn-nntp-decimal number)))
-    :hints (("Goal" :in-theory (enable fn-nntp-decimal-field
-                                       fn-nntp-decimal
-                                       fn-nntp-decimal-rev)))))
+; GAP, not a weakening.  The final form of this book used to be an
+; `encapsulate' proving `fn-nntp-decimal-field-is-exact-in-range', that the
+; ten-octet clamp in `fn-nntp-decimal-field' is inactive for every number a
+; projectable archive can render.  Its local `(include-book "arithmetic-5/top"
+; :dir :system)' fails to load in this ACL2 (DEFTHEORY
+; ARITHMETIC-5-CURRENT-BASE rejects (:TYPE-PRESCRIPTION INCREMENT-TIMER@PAR)),
+; so the event is removed rather than left uncertified.  Nothing above depends
+; on it: `fn-nntp-decimal-field' bounds the rendered width by construction, so
+; `fn-nntp-group-initial-fits', `fn-nntp-listgroup-initial-fits' and
+; `fn-nntp-retrieval-initial-fits' are unconditional.  What is lost is the
+; statement that the clamp never fires in range; the boundary values 0, 1 and
+; 2147483647 are still pinned by `assert-event' in tests/acl2/nntp-tests.lisp.

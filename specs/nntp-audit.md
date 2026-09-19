@@ -136,10 +136,15 @@ projected group name at 460 octets, and a configuration carrying a longer name
 is refused before the reader opens. The ten-octet field bound is structural, not
 assumed: every rendered number passes through `fn-nntp-decimal-field`, which is
 by definition a nonempty run of at most ten decimal digits.
-`fn-nntp-decimal-field-is-exact-in-range` states that this rendering guard
-changes nothing for any number in RFC 3977 §6's range, so nothing is lost to it;
 `fn-nntp-group-initial-fits`, `fn-nntp-listgroup-initial-fits` and
-`fn-nntp-retrieval-initial-fits` then give the 512-octet bound unconditionally.
+`fn-nntp-retrieval-initial-fits` give the 512-octet bound unconditionally
+because of that guard, and none of them needs an arithmetic side condition.
+**Open**: that the guard never actually fires for a number in RFC 3977 §6's
+range is *not* proved. The event that said so,
+`fn-nntp-decimal-field-is-exact-in-range`, needed `arithmetic-5/top`, which
+this ACL2 build refuses to include, so it was removed rather than left
+uncertified. The boundary values 0, 1 and 2147483647 are pinned by
+`assert-event` only.
 
 ## Session invariant
 
