@@ -18,6 +18,13 @@
 (include-book "frame-invariants")
 (local (include-book "arithmetic/top" :dir :system))
 
+; This book opens the frame codec and this cluster's own definitions one layer
+; at a time; both are withdrawn at their export theories (BOARD, 2026-09-19
+; codecs; the export theory of `books/transfer-journal.lisp`).  Every enable
+; here is local: no includer inherits a frame or `fn-tj-` definition rune.
+(local (in-theory (enable fn-frame-fields-vocabulary fn-frame-record-vocabulary
+                          fn-tj-vocabulary)))
+
 ; The kernel transitions and the record accessors stay closed unless a proof
 ; opens them: every fact below is about the shape of a record or the value of
 ; a transition, never about the inside of `fn-transfer-add-chunk`.
@@ -87,8 +94,10 @@
   :hints (("Goal" :induct (fn-tj-run st inputs)
            :in-theory (enable fn-tj-run fn-tj-transition))))
 
-; Corollary of the keystone: after a restart the kernel reports the same
-; missing ranges for every label, because it is the same state.
+; Corollary of the keystone (docs/proof-style.md §7): after a restart the
+; kernel reports the same missing ranges for every label, because it is the
+; same state.  It is `:rule-classes nil` and is cited by `:use`, never
+; enabled; it is not a registry event, the keystone above it is.
 (defthm fn-tj-restart-reproduces-missing-ranges
   (implies (natp index)
            (equal (fn-transfer-missing-ranges
@@ -96,6 +105,7 @@
                                      st (fn-tj-journal st inputs) index))
                    label)
                   (fn-transfer-missing-ranges (fn-tj-run st inputs) label)))
+  :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-tj-replay-records fn-tj-journal
                                       fn-tj-run))))
 
@@ -366,7 +376,22 @@
 ; -----------------------------------------------------------------------------
 ; By definition: the only export of a complete entry is tagged :unverified.
 
+; `-by-definition`: this restates the tag the one non-nil branch of
+; `fn-tj-candidate` builds.  `:rule-classes nil` (docs/proof-style.md §7); it
+; is not a registry event.
 (defthm fn-tj-candidate-is-unverified-by-definition
   (implies (fn-tj-candidate st label)
            (equal (car (fn-tj-candidate st label)) :unverified))
+  :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-tj-candidate))))
+
+; -----------------------------------------------------------------------------
+; Export theory (docs/proof-style.md §2).  The keystones leave this book
+; enabled; the record-shape facts about a written record are proof vocabulary
+; and are withdrawn under one name.
+
+(deftheory fn-tj-invariants-vocabulary
+  '(fn-tj-write-is-transition-record fn-tj-transition-of-write
+    fn-tj-write-records-the-kernel-outcome fn-tj-apply-of-write))
+
+(in-theory (disable fn-tj-invariants-vocabulary))

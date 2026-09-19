@@ -102,6 +102,27 @@ another article of the container carries with a different content id
 (`fn-ct-conflict-is-evidence`); the node publishes the first and refuses the
 second, and the container result carries both as evidence.
 
+## Open (recorded, not weakened)
+
+- **`fn-ct-identity-okp-is-spec-okp` has no per-hypothesis tooth.**
+  `fn-ct-identity-spec-okp` is stated against the constrained
+  `fn-frame-digest` (A-CRYPTO), so no ground term evaluates it and no
+  `assert-event` exhibits a digest that is not the digest of the octets and
+  separates the two checks. What the test book exhibits instead is that the
+  executable check discriminates between two digests for one article, so the
+  equality is not vacuous. Same gap as codecs' `fn-frame-decode-is-open`.
+- **Dependency lists are container metadata.** They are not inside the
+  identified octets, so a container may attach a different dependency list to
+  the same content id, and the first identity-checked provider of a content id
+  wins. The witness `*ct-s-provider*` in `tests/acl2/container-tests.lisp`
+  exhibits it. D08/D15 is the fix and is host/grammar work.
+- **The records are positional lists, not opaque records.** Profile, article,
+  unknown, container and result readers lose their definition runes at the
+  export theory and the constructors `fn-ct-make-{profile,article,container}`
+  exist, but there is no accessor-of-constructor lemma per field and no
+  `-shapep` forward-chaining triple: the recognizers still carry `(len x)`
+  conjuncts. Full §1 opacity is deferred rather than done half-way.
+
 ## Host work (proposals, not claims)
 
 - Byte grammar (D08/D15): a CBOR sequence in the `records.lisp` style,

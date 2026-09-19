@@ -41,10 +41,19 @@
 ; `specs/container.md` names as a limitation).
 
 (in-package "ACL2")
-(include-book "node")
+; `node-invariants`, not `node`: `fn-node-prepare` and `fn-node-complete` now
+; carry `(fn-node-statep s)` as their guard (BOARD, 2026-09-19 core), so the
+; caller discharges it from the preservation keystones and never re-checks the
+; recognizer (docs/proof-style.md §4).
+(include-book "node-invariants")
 (include-book "identity")
 (include-book "records")
 (local (include-book "arithmetic/top" :dir :system))
+
+; The core, identity, record and frame clusters withdraw their vocabularies at
+; their export theories.  This book opens exactly what its own guard proofs
+; need, and only locally.
+(local (in-theory (enable fn-id-definitions fn-record-guard-vocabulary)))
 
 (defconst *fn-ct-version* 1)
 
@@ -278,7 +287,8 @@
 (defun fn-ct-publish-article (s a digest articles digests store profile
                                 generation groups evidence obligation-digest
                                 completion)
-  (declare (xargs :guard (and (fn-ct-profilep profile) (true-listp store))))
+  (declare (xargs :guard (and (fn-node-statep s) (fn-ct-profilep profile)
+                              (true-listp store))))
   (if (not (fn-ct-article-validp a digest articles digests store profile
                                  (len articles)))
       (list :invalid s nil)
@@ -301,13 +311,35 @@
                             obligation-id))
               (list :not-durable done nil))))))))
 
+; The node invariant the fold carries (docs/proof-style.md §4): publication of
+; one article answers with a node state whenever it was given one, so
+; `fn-ct-publish-list` never re-runs `fn-node-statep` on its own recursion.
+(defthm fn-ct-publish-article-preserves-node-statep
+  (implies (fn-node-statep s)
+           (fn-node-statep
+            (fn-ct-result-state
+             (fn-ct-publish-article s a digest articles digests store profile
+                                    generation groups evidence
+                                    obligation-digest completion))))
+  :hints (("Goal" :in-theory (e/d (fn-ct-publish-article fn-ct-result-state
+                                   fn-frame-item)
+                                  (fn-ct-article-validp fn-node-prepare
+                                   fn-node-complete fn-node-statep
+                                   fn-ct-subject-string fn-ct-obligation-string
+                                   fn-ct-charge fn-id-digestp)))))
+
 ; Every article of a container in order.  Each article carries its own host
 ; digest, obligation digest and completion observation, in parallel lists.
 ; Result: (state outcomes) with one (msgid status receipt) per article.
 (defun fn-ct-publish-list (s candidates digests obligation-digests completions
                              articles all-digests store profile generation
                              groups evidence)
-  (declare (xargs :guard (and (fn-ct-profilep profile) (true-listp store))))
+  ; The measure is named: ACL2's first guess is over the node state, and
+  ; refuting it opens the acceptance and retention kernels inside the
+  ; termination proof.
+  (declare (xargs :guard (and (fn-node-statep s) (fn-ct-profilep profile)
+                              (true-listp store))
+                  :measure (acl2-count candidates)))
   (if (consp candidates)
       (let* ((one (fn-ct-publish-article
                    s (car candidates)
@@ -334,7 +366,8 @@
 ; outside the profile, else (:ok state outcomes conflicts).
 (defun fn-ct-publish-container (s c digests obligation-digests completions
                                   store profile generation groups evidence)
-  (declare (xargs :guard (and (fn-ct-profilep profile) (true-listp store))))
+  (declare (xargs :guard (and (fn-node-statep s) (fn-ct-profilep profile)
+                              (true-listp store))))
   (if (not (fn-ct-containerp c profile))
       (list :refused :container)
     (let ((run (fn-ct-publish-list s (fn-ct-articles c) digests
@@ -343,3 +376,34 @@
                                    generation groups evidence)))
       (list :ok (fn-frame-item 0 run) (fn-frame-item 1 run)
             (fn-ct-conflict-evidence (fn-ct-articles c) (fn-ct-articles c))))))
+
+; -----------------------------------------------------------------------------
+; Export theory (docs/proof-style.md §2).  What leaves this book enabled: the
+; list-recursive vocabulary the proofs induct on (`fn-ct-id-listp`,
+; `fn-ct-article-list-shapep`, `fn-ct-unknown-listp`, `fn-ct-find-provider`,
+; `fn-ct-has-rivalp`, `fn-ct-conflict-evidence`) and the node-invariant
+; keystone above.  The accessors lose their definition rune only; the
+; recognizers, the validation predicates and the three publication
+; transitions are withdrawn under one name.
+
+(in-theory (disable (:d fn-ct-max-articles) (:d fn-ct-max-article-octets)
+                    (:d fn-ct-max-dependencies) (:d fn-ct-max-unknowns)
+                    (:d fn-ct-max-unknown-octets) (:d fn-ct-make-profile)
+                    (:d fn-ct-article-msgid) (:d fn-ct-article-content-id)
+                    (:d fn-ct-article-octets) (:d fn-ct-article-deps)
+                    (:d fn-ct-make-article) (:d fn-ct-unknown-tag)
+                    (:d fn-ct-unknown-octets) (:d fn-ct-version)
+                    (:d fn-ct-articles) (:d fn-ct-unknowns)
+                    (:d fn-ct-make-container) (:d fn-ct-result-status)
+                    (:d fn-ct-result-state) (:d fn-ct-result-receipt)
+                    (:d fn-ct-subject-string) (:d fn-ct-obligation-string)
+                    (:d fn-ct-charge)))
+
+(deftheory fn-ct-vocabulary
+  '(fn-ct-profilep fn-ct-article-shapep fn-ct-unknown-okp fn-ct-unknowns-okp
+    fn-ct-containerp fn-ct-receiptp fn-ct-identity-okp
+    fn-ct-identity-spec-okp fn-ct-deps-resolvep fn-ct-dep-resolvep
+    fn-ct-article-validp fn-ct-publish-article fn-ct-publish-list
+    fn-ct-publish-container))
+
+(in-theory (disable fn-ct-vocabulary))

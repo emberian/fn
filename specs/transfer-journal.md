@@ -102,6 +102,31 @@ a complete entry is `(:unverified octets)`; the record kind table is exactly
 `:profile`, `:reserve`, `:chunk`, and no result of this book has a receipt
 shape. Validation and acceptance are [the container](container.md).
 
+## Open (recorded, not weakened)
+
+- **Teeth bounded by A-CRYPTO.** `fn-tj-seal` and `fn-tj-open` are stated
+  against the constrained `fn-frame-digest`, so no ground term evaluates them.
+  The hypotheses of `fn-tj-open-of-seal`, and the sealed-frame hypotheses of
+  `fn-tj-replay-sealed-journal-is-run` and
+  `fn-tj-corrupt-frame-ends-replay-at-typed-fault`, therefore have no
+  `assert-event` witness. The teeth in `tests/acl2/transfer-journal-tests.lisp`
+  are on the executable host twin (`fn-tj-encode`/`fn-tj-decode` and
+  `fn-tj-replay-frames-with` with the host digest supplied), which
+  `fn-tj-replay-frames-with-is-replay-frames` equates to the sealed replay
+  when the digests are the host's. This is the same gap codecs records for
+  `fn-frame-decode-is-open`; closing it needs an evaluable digest witness in
+  the crypto seam, which is not this cluster's to add.
+- **The records are positional lists, not opaque records.** `fn-tj-kind`,
+  `-label`, `-arg`, `-octets` and `-outcome` are total readers over
+  `fn-frame-item` and lose their definition runes at the export theory, but
+  the cluster has no `fn-tj-make-<rec>` constructor and no
+  accessor-of-constructor lemma: the keystones are stated over `(cdr r)` and
+  the frame payload, which is the frame grammar's own shape. Full
+  §1 opacity would restate every keystone and is deferred.
+- **No host caller.** `fn-transfer-reserve` and `fn-transfer-add-chunk` are
+  driven by no host file today, so this journal governs no served path; the
+  registry rows stay candidates until `tools/run_transfer.py` exists.
+
 ## Host work (proposals, not claims)
 
 - `tools/run_transfer.py` (proposed): stage fragments by calling

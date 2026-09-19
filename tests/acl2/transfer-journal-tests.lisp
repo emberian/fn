@@ -9,7 +9,6 @@
 
 (in-package "ACL2")
 (include-book "../../books/transfer-journal-invariants")
-(include-book "std/testing/must-fail" :dir :system)
 
 (defconst *tj-profile* (fn-transfer-make-profile 12 8 4 3 3 4))
 (defconst *tj-label* '(1 2))
@@ -186,18 +185,35 @@
 (assert-event
  (not (equal (fn-tj-replay-records *tj-live* (fn-tj-journal *tj-live* nil) :x)
              (list :ok (fn-tj-run *tj-live* nil) 0))))
-(local
- (must-fail
-  (defthm tj-teeth-replay-without-natp-index
-    (equal (fn-tj-replay-records *tj-live* (fn-tj-journal *tj-live* nil) :x)
-           (list :ok (fn-tj-run *tj-live* nil) (+ 0 :x))))))
 
 ; -----------------------------------------------------------------------------
+; A-CRYPTO and the teeth.  `fn-tj-seal` and `fn-tj-open` are stated against
+; the constrained `fn-frame-digest`, so no ground term evaluates them and no
+; `assert-event` can exhibit a violating value for a hypothesis of
+; `fn-tj-open-of-seal`, or for the sealed-frame statements of
+; `fn-tj-replay-sealed-journal-is-run` and
+; `fn-tj-corrupt-frame-ends-replay-at-typed-fault`.  The witnesses below are
+; on the executable host twin, `fn-tj-encode`/`fn-tj-decode` and
+; `fn-tj-replay-frames-with` with the host digest supplied; they are the same
+; frames and the same replay, which is what
+; `fn-tj-replay-frames-with-is-replay-frames` says.  A hypothesis whose only
+; violating value would need an evaluated `fn-frame-digest` is recorded open
+; in specs/transfer-journal.md rather than asserted.
+;
 ; Teeth for fn-tj-replay-sealed-journal-is-run: natp index (above) and
 ;   (fn-tj-records-okp (fn-tj-journal st inputs)).
 ; Hypothesis 2 dropped: an empty label is a kernel-valid input the frame
 ; grammar cannot carry (a blob is nonempty).  The kernel reserves it, the
 ; record is not encodable, the frame is :bad, and replay faults.
+; Hypothesis 1 dropped, on the empty journal: an empty replay returns the
+; index it was given, and `:x` is not the number the conclusion computes.
+(assert-event
+ (equal (fn-tj-replay-frames *tj-initial* (fn-tj-seal-journal nil) :x)
+        (list :ok *tj-initial* :x)))
+(assert-event
+ (not (equal (fn-tj-replay-frames *tj-initial* (fn-tj-seal-journal nil) :x)
+             (list :ok (fn-tj-run *tj-initial* nil) 0))))
+
 (defconst *tj-empty-label-inputs* (list (list :reserve nil 6)))
 (defconst *tj-empty-label-record* (fn-tj-write *tj-initial* (list :reserve nil 6)))
 (assert-event (equal (fn-tj-outcome *tj-empty-label-record*) :reserved))
@@ -210,46 +226,48 @@
           *tj-initial* (list (fn-tj-encode *tj-empty-label-record* *tj-digest*))
           (list *tj-digest*) 0))
         :fault))
-(local
- (must-fail
-  (defthm tj-teeth-sealed-replay-without-natp-index
-    (equal (fn-tj-replay-frames *tj-initial* (fn-tj-seal-journal nil) :x)
-           (list :ok (fn-tj-run *tj-initial* nil) (+ 0 :x))))))
-(local
- (must-fail
-  (defthm tj-teeth-sealed-replay-without-records-okp
-    (equal (fn-tj-replay-frames
-            *tj-initial*
-            (fn-tj-seal-journal (fn-tj-journal *tj-initial* *tj-empty-label-inputs*))
-            0)
-           (list :ok (fn-tj-run *tj-initial* *tj-empty-label-inputs*) 1)))))
 
 ; -----------------------------------------------------------------------------
 ; Teeth for fn-tj-corrupt-frame-ends-replay-at-typed-fault: the two
 ; hypotheses above and (not (fn-frame-result-okp (fn-tj-open bad))).
 ; Hypothesis 1 dropped (index :x, no good records): the fault carries :x
 ; where the conclusion has the number 0.
-(local
- (must-fail
-  (defthm tj-teeth-corrupt-without-natp-index
-    (equal (fn-tj-replay-frames *tj-initial*
-                                (append (fn-tj-seal-journal nil)
-                                        (list *tj-truncated*))
-                                :x)
-           (list :fault (list :corrupt (fn-frame-item 1 (fn-tj-open *tj-truncated*)))
-                 (fn-tj-run *tj-initial* nil) (+ 0 :x))))))
 ; Hypothesis 2 dropped: the unencodable empty-label record faults first, so
 ; the fault state is the initial state, not the run.
-(local
- (must-fail
-  (defthm tj-teeth-corrupt-without-records-okp
-    (equal (fn-tj-replay-frames
-            *tj-initial*
-            (append (fn-tj-seal-journal (fn-tj-journal *tj-initial* *tj-empty-label-inputs*))
-                    (list *tj-truncated*))
-            0)
-           (list :fault (list :corrupt (fn-frame-item 1 (fn-tj-open *tj-truncated*)))
-                 (fn-tj-run *tj-initial* *tj-empty-label-inputs*) 1)))))
+; Hypothesis 1 dropped, on the host twin: with a non-natural index the fault
+; carries `:x` itself, not the number the conclusion computes.
+(assert-event
+ (equal (fn-tj-replay-frames-with *tj-initial* (list *tj-truncated*)
+                                  (list *tj-digest*) :x)
+        (list :fault
+              (list :corrupt (fn-frame-item 1 (fn-tj-decode *tj-truncated*
+                                                            *tj-digest*)))
+              *tj-initial* :x)))
+(assert-event
+ (not (equal (fn-frame-item 3 (fn-tj-replay-frames-with
+                               *tj-initial* (list *tj-truncated*)
+                               (list *tj-digest*) :x))
+             0)))
+; Hypothesis 2 dropped, on the host twin: the unencodable empty-label record
+; faults first, so the fault state is the initial state at index 0, not the
+; run at index 1.
+(assert-event
+ (equal (fn-tj-replay-frames-with
+         *tj-initial*
+         (list (fn-tj-encode *tj-empty-label-record* *tj-digest*)
+               *tj-truncated*)
+         (list *tj-digest* *tj-digest*) 0)
+        (list :fault
+              (list :corrupt (fn-frame-item 1 (fn-tj-decode :bad *tj-digest*)))
+              *tj-initial* 0)))
+(assert-event
+ (not (equal (fn-frame-item 2 (fn-tj-replay-frames-with
+                               *tj-initial*
+                               (list (fn-tj-encode *tj-empty-label-record*
+                                                   *tj-digest*)
+                                     *tj-truncated*)
+                               (list *tj-digest* *tj-digest*) 0))
+             (fn-tj-run *tj-initial* *tj-empty-label-inputs*))))
 ; Hypothesis 3 dropped: a frame that opens is not corrupt; replay continues
 ; through it to :ok, and no :corrupt fault appears.
 (defconst *tj-fourth-frame*
@@ -259,16 +277,6 @@
          *tj-initial* (append *tj-frames* (list *tj-fourth-frame*))
          (append *tj-digests* (list *tj-digest*)) 0)
         (list :ok *tj-resumed* 4)))
-(local
- (must-fail
-  (defthm tj-teeth-corrupt-without-failed-open
-    (equal (fn-frame-item 0
-            (fn-tj-replay-frames
-             *tj-initial*
-             (append (fn-tj-seal-journal (fn-tj-journal *tj-initial* *tj-inputs*))
-                     (list (fn-tj-seal (list :chunk *tj-label* 2 '(3 4) :stored))))
-             0))
-           :fault))))
 
 ; -----------------------------------------------------------------------------
 ; Teeth for fn-tj-refused-record-replays-to-same-state
@@ -281,21 +289,11 @@
 (assert-event
  (not (equal (fn-frame-item 1 (fn-tj-apply *tj-initial* *tj-reserved-record*))
              *tj-initial*)))
-(local
- (must-fail
-  (defthm tj-teeth-refusal-without-not-reserved
-    (equal (fn-frame-item 1 (fn-tj-apply *tj-initial* *tj-reserved-record*))
-           *tj-initial*))))
 
 ; Hypothesis 2 dropped: a confirmed :stored record moves the state.
 (assert-event
  (not (equal (fn-frame-item 1 (fn-tj-apply *tj-live* *tj-identical-record*))
              *tj-live*)))
-(local
- (must-fail
-  (defthm tj-teeth-refusal-without-not-stored
-    (equal (fn-frame-item 1 (fn-tj-apply *tj-live* *tj-identical-record*))
-           *tj-live*))))
 
 ; -----------------------------------------------------------------------------
 ; Teeth for fn-tj-run-preserves-statep: (fn-transfer-statep st) dropped.
@@ -303,10 +301,6 @@
 ; over :junk is :junk, which is not a state.
 (assert-event (equal (fn-tj-run :junk *tj-inputs*) :junk))
 (assert-event (not (fn-transfer-statep (fn-tj-run :junk *tj-inputs*))))
-(local
- (must-fail
-  (defthm tj-teeth-run-without-statep
-    (fn-transfer-statep (fn-tj-run :junk *tj-inputs*)))))
 
 ; -----------------------------------------------------------------------------
 ; Teeth for fn-tj-replay-frames-with-is-replay-frames: the digests must be
@@ -318,13 +312,6 @@
           *tj-initial* *tj-frames*
           (list *tj-other-digest* *tj-digest* *tj-digest*) 0))
         :fault))
-(local
- (must-fail
-  (defthm tj-teeth-host-replay-without-host-digests
-    (equal (fn-tj-replay-frames-with
-            *tj-initial* *tj-frames*
-            (list *tj-other-digest* *tj-digest* *tj-digest*) 0)
-           (fn-tj-replay-frames *tj-initial* *tj-frames* 0)))))
 
 ; -----------------------------------------------------------------------------
 ; Teeth for fn-tj-decode-of-encode
@@ -336,24 +323,8 @@
 (assert-event (not (fn-tj-record-okp *tj-bad-record*)))
 (assert-event (equal (fn-tj-encode *tj-bad-record* *tj-digest*) :bad))
 (assert-event (not (fn-frame-result-okp (fn-tj-decode :bad *tj-digest*))))
-(local
- (must-fail
-  (defthm tj-teeth-decode-without-record-okp
-    (equal (fn-tj-decode (fn-tj-encode *tj-bad-record* *tj-digest*) *tj-digest*)
-           (fn-frame-ok *fn-tj-magic* *fn-tj-version* :reserve (cdr *tj-bad-record*))))))
-(local
- (must-fail
-  (defthm tj-teeth-open-without-record-okp
-    (equal (fn-tj-open (fn-tj-seal *tj-bad-record*))
-           (fn-frame-ok *fn-tj-magic* *fn-tj-version* :reserve (cdr *tj-bad-record*))))))
 ; Hypothesis 2 dropped: a digest of the wrong length encodes to :bad.
 (assert-event (equal (fn-tj-encode (nth 0 *tj-journal*) '(1 2 3)) :bad))
-(local
- (must-fail
-  (defthm tj-teeth-decode-without-digestp
-    (equal (fn-tj-decode (fn-tj-encode (nth 0 *tj-journal*) '(1 2 3)) '(1 2 3))
-           (fn-frame-ok *fn-tj-magic* *fn-tj-version* :reserve
-                        (cdr (nth 0 *tj-journal*)))))))
 
 ; A record kind outside the table is refused by the grammar, so no record
 ; can carry an acceptance: the table is exactly :profile, :reserve, :chunk.
