@@ -184,12 +184,22 @@ ACL2_BOOKS ?= books/assumptions \
 	books/policy-invariants \
 	tests/acl2/policy-tests
 
-.PHONY: check certify model-test tooling-test test
+.PHONY: check certify certs-install certs-publish model-test tooling-test test
 check:
 	$(PYTHON) tools/check_scaffold.py
 
 certify:
 	$(PYTHON) tools/certify_books.py --jobs $(FN_CERTIFY_JOBS) $(ACL2_BOOKS)
+
+# Content-hashed certificates are valid in any worktree whose book content
+# matches, so a lane installs what the cache already has instead of certifying
+# it again.  `certify` publishes automatically; this target is for a tree
+# certified some other way.  FN_CERT_REMOTE=hbox also mirrors to that box.
+certs-install:
+	$(PYTHON) tools/certs.py install
+
+certs-publish:
+	$(PYTHON) tools/certs.py publish $(if $(FN_CERT_REMOTE),--remote $(FN_CERT_REMOTE))
 
 model-test: certify
 	$(PYTHON) tools/run_simulator.py
