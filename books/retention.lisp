@@ -90,6 +90,34 @@
           (fn-retain-make-obligation id subject kind evidence charge))
          charge))
 
+; What opacity takes away, exported back: the shape and a well-typed field
+; each imply the record is a cons (forward-chaining, never rewrite).
+(defthm fn-retain-obligation-shapep-forward-shape
+  (implies (fn-retain-obligation-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-retain-obligation-shapep))))
+(defthm fn-retain-obligation-accessors-forward-consp
+  (and
+   (implies (fn-retain-obligation-id x) (consp x))
+   (implies (fn-retain-obligation-subject x) (consp x))
+   (implies (fn-retain-obligation-kind x) (consp x))
+   (implies (fn-retain-obligation-evidence x) (consp x))
+   (implies (fn-retain-obligation-charge x) (consp x))
+   )
+  :rule-classes
+  ((:forward-chaining :corollary (implies (fn-retain-obligation-id x) (consp x))
+                      :trigger-terms ((fn-retain-obligation-id x)))
+   (:forward-chaining :corollary (implies (fn-retain-obligation-subject x) (consp x))
+                      :trigger-terms ((fn-retain-obligation-subject x)))
+   (:forward-chaining :corollary (implies (fn-retain-obligation-kind x) (consp x))
+                      :trigger-terms ((fn-retain-obligation-kind x)))
+   (:forward-chaining :corollary (implies (fn-retain-obligation-evidence x) (consp x))
+                      :trigger-terms ((fn-retain-obligation-evidence x)))
+   (:forward-chaining :corollary (implies (fn-retain-obligation-charge x) (consp x))
+                      :trigger-terms ((fn-retain-obligation-charge x)))
+   )
+  :hints (("Goal" :in-theory (enable fn-retain-obligation-id fn-retain-obligation-subject fn-retain-obligation-kind fn-retain-obligation-evidence fn-retain-obligation-charge))))
+
 (in-theory (disable (:d fn-retain-obligation-shapep) (:d fn-retain-obligation-id) (:d fn-retain-obligation-subject) (:d fn-retain-obligation-kind) (:d fn-retain-obligation-evidence) (:d fn-retain-obligation-charge) (:d fn-retain-make-obligation)))
 
 (defun fn-retain-obligationp (x)
@@ -100,6 +128,11 @@
        (fn-retain-kindp (fn-retain-obligation-kind x))
        (stringp (fn-retain-obligation-evidence x))
        (posp (fn-retain-obligation-charge x))))
+
+(defthm fn-retain-obligationp-forward-shape
+  (implies (fn-retain-obligationp x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-retain-obligationp))))
 
 (defun fn-retain-obligation-listp (xs)
   (declare (xargs :guard t))
@@ -180,6 +213,31 @@
           (fn-retain-make-release id subject kind evidence))
          evidence))
 
+; What opacity takes away, exported back: the shape and a well-typed field
+; each imply the record is a cons (forward-chaining, never rewrite).
+(defthm fn-retain-release-shapep-forward-shape
+  (implies (fn-retain-release-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-retain-release-shapep))))
+(defthm fn-retain-release-accessors-forward-consp
+  (and
+   (implies (fn-retain-release-id x) (consp x))
+   (implies (fn-retain-release-subject x) (consp x))
+   (implies (fn-retain-release-kind x) (consp x))
+   (implies (fn-retain-release-evidence x) (consp x))
+   )
+  :rule-classes
+  ((:forward-chaining :corollary (implies (fn-retain-release-id x) (consp x))
+                      :trigger-terms ((fn-retain-release-id x)))
+   (:forward-chaining :corollary (implies (fn-retain-release-subject x) (consp x))
+                      :trigger-terms ((fn-retain-release-subject x)))
+   (:forward-chaining :corollary (implies (fn-retain-release-kind x) (consp x))
+                      :trigger-terms ((fn-retain-release-kind x)))
+   (:forward-chaining :corollary (implies (fn-retain-release-evidence x) (consp x))
+                      :trigger-terms ((fn-retain-release-evidence x)))
+   )
+  :hints (("Goal" :in-theory (enable fn-retain-release-id fn-retain-release-subject fn-retain-release-kind fn-retain-release-evidence))))
+
 (in-theory (disable (:d fn-retain-release-shapep) (:d fn-retain-release-id) (:d fn-retain-release-subject) (:d fn-retain-release-kind) (:d fn-retain-release-evidence) (:d fn-retain-make-release)))
 
 (defun fn-retain-releasep (x)
@@ -189,6 +247,11 @@
        (stringp (fn-retain-release-subject x))
        (fn-retain-kindp (fn-retain-release-kind x))
        (stringp (fn-retain-release-evidence x))))
+
+(defthm fn-retain-releasep-forward-shape
+  (implies (fn-retain-releasep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-retain-releasep))))
 
 (defun fn-retain-release-listp (xs)
   (declare (xargs :guard t))
@@ -255,6 +318,31 @@
   (equal (fn-retain-releases (fn-retain-make-state capacity reserved pins releases))
          releases))
 
+; What opacity takes away, exported back: the shape and a well-typed field
+; each imply the record is a cons (forward-chaining, never rewrite).
+(defthm fn-retain-state-shapep-forward-shape
+  (implies (fn-retain-state-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-retain-state-shapep))))
+(defthm fn-retain-state-accessors-forward-consp
+  (and
+   (implies (fn-retain-capacity x) (consp x))
+   (implies (fn-retain-reserved x) (consp x))
+   (implies (fn-retain-pins x) (consp x))
+   (implies (fn-retain-releases x) (consp x))
+   )
+  :rule-classes
+  ((:forward-chaining :corollary (implies (fn-retain-capacity x) (consp x))
+                      :trigger-terms ((fn-retain-capacity x)))
+   (:forward-chaining :corollary (implies (fn-retain-reserved x) (consp x))
+                      :trigger-terms ((fn-retain-reserved x)))
+   (:forward-chaining :corollary (implies (fn-retain-pins x) (consp x))
+                      :trigger-terms ((fn-retain-pins x)))
+   (:forward-chaining :corollary (implies (fn-retain-releases x) (consp x))
+                      :trigger-terms ((fn-retain-releases x)))
+   )
+  :hints (("Goal" :in-theory (enable fn-retain-capacity fn-retain-reserved fn-retain-pins fn-retain-releases))))
+
 (in-theory (disable (:d fn-retain-state-shapep) (:d fn-retain-capacity) (:d fn-retain-reserved) (:d fn-retain-pins) (:d fn-retain-releases) (:d fn-retain-make-state)))
 
 (defun fn-retain-statep (s)
@@ -276,6 +364,11 @@
               (+ (fn-retain-sum (fn-retain-pins s))
                  (len (fn-retain-releases s))))
        (<= (fn-retain-reserved s) (fn-retain-capacity s))))
+
+(defthm fn-retain-statep-forward-shape
+  (implies (fn-retain-statep s) (and (consp s) (true-listp s)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-retain-statep))))
 
 (defun fn-retain-initial-state (capacity)
   (declare (xargs :guard t))

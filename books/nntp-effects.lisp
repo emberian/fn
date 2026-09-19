@@ -11,6 +11,16 @@
 (in-package "ACL2")
 (include-book "nntp-invariants")
 
+; The five books of the nntp cluster withdraw their definitions at their
+; export events (2026-09-19 split of books/nntp.lisp); this book reasons
+; about the transitions, so it re-enables exactly them, locally.
+(local (in-theory (enable fn-nntp-syntax-vocabulary
+                          fn-nntp-session-vocabulary
+                          fn-nntp-projection-vocabulary
+                          fn-nntp-responses-vocabulary
+                          fn-nntp-vocabulary)))
+(local (in-theory (enable fn-statep fn-articlep fn-pendingp)))
+
 ; -----------------------------------------------------------------------------
 ; The response grammar
 

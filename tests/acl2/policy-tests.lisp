@@ -5,6 +5,18 @@
 (include-book "crypto-seam-tests")
 (include-book "../../books/policy-invariants")
 
+; cluster-local theory: this book is inside the substrate cluster and opens
+; the definitions its neighbours withdraw at export (docs/proof-style.md 2).
+(local (in-theory (enable fn-crypto-seam-internals
+                          fn-stmt-internals
+                          fn-stmt-invariants-vocabulary
+                          fn-prin-internals
+                          fn-prin-invariants-vocabulary
+                          fn-lace-internals
+                          fn-lace-invariants-vocabulary
+                          fn-pol-internals
+                          fn-pol-invariants-vocabulary)))
+
 (defconst *fn-t-seed-alice* (make-list 32 :initial-element 1))
 (defconst *fn-t-seed-bob* (make-list 32 :initial-element 2))
 (defconst *fn-t-seed-mallory* (make-list 32 :initial-element 9))

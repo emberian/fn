@@ -6,6 +6,15 @@
 (in-package "ACL2")
 (include-book "records-invariants")
 
+; The ADU codec is built on the CBOR primitives and the record vocabulary,
+; both opened locally here.  Records and results stay opaque.
+(local (in-theory (enable fn-cbor-codec-vocabulary
+                          fn-cbor-invariants-vocabulary
+                          fn-record-codec-vocabulary
+                          fn-record-guard-vocabulary
+                          fn-record-record-vocabulary
+                          fn-record-invariants-vocabulary)))
+
 (defconst *fn-bpa-magic* '(70 78 45 66 80 45 65 68 85)) ; "FN-BP-ADU"
 (defconst *fn-bpa-version* 0)
 (defconst *fn-bpa-request-kind* 0)
@@ -541,3 +550,31 @@
  :hints (("Goal" :in-theory (disable fn-record-read-bytes fn-record-parse-rest
                                       fn-cbor-octet-listp fn-record-parse-okp))))
 (verify-guards fn-bpa-decode-exact)
+
+; -----------------------------------------------------------------------------
+; Export theory.
+;
+; The keystones leave this book enabled: `fn-bpa-round-trip', the two
+; per-kind round trips and `fn-bpa-success-is-canonical'.  Everything else is
+; field and prefix vocabulary.
+
+(deftheory fn-bpa-vocabulary
+  '(    fn-bpa-encoded-fields-are-octets fn-bpa-read-encoded-fields
+    fn-bpa-read-magic-prefix fn-bpa-read-small-uint-prefix
+    fn-bpa-request-fields-reconstruct fn-bpa-receipt-fields-reconstruct
+    fn-bpa-request-fields-domain fn-bpa-receipt-fields-domain
+    fn-bpa-request-receipt-exclusive fn-bpa-encoding-bound
+    fn-bpa-read-request-fields-encoded fn-bpa-read-receipt-fields-encoded
+    fn-bpa-decode-request-fields-encoded
+    fn-bpa-decode-receipt-fields-encoded))
+
+(in-theory (disable fn-bpa-encoded-fields-are-octets fn-bpa-read-encoded-fields
+             fn-bpa-read-magic-prefix fn-bpa-read-small-uint-prefix
+             fn-bpa-request-fields-reconstruct
+             fn-bpa-receipt-fields-reconstruct
+             fn-bpa-request-fields-domain fn-bpa-receipt-fields-domain
+             fn-bpa-request-receipt-exclusive fn-bpa-encoding-bound
+             fn-bpa-read-request-fields-encoded
+             fn-bpa-read-receipt-fields-encoded
+             fn-bpa-decode-request-fields-encoded
+             fn-bpa-decode-receipt-fields-encoded))
