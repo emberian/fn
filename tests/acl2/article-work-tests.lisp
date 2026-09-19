@@ -50,6 +50,11 @@
 (assert-event (equal (fn-aw-v (fn-aw-parse
   (append (fn-aw-test-fields 65) '(13 10)))) '(:error :limit)))
 
+; The measured charge and the envelope quoted in specs/article-work.md.
+(assert-event (equal (len *fn-aw-test-max-folds*) 520))
+(assert-event (equal (fn-aw-c (fn-aw-parse *fn-aw-test-max-folds*)) 30195))
+(assert-event
+ (equal (fn-article-parse-work-budget *fn-aw-test-max-folds*) 277968180))
 (assert-event
  (<= (fn-aw-c (fn-aw-parse *fn-aw-test-max-folds*))
      (fn-article-parse-work-budget *fn-aw-test-max-folds*)))

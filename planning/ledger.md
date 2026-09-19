@@ -19,7 +19,7 @@ stale. Counts describe artifacts, not coverage; see
 | Functions declared `:verify-guards nil` and never verified | 36 |
 | Functions left at the default with an explicit guard | 187 |
 | Functions left at the default with no guard | 376 |
-| `assert-event` checks | 1677 |
+| `assert-event` checks | 1680 |
 | `must-fail` checks | 58 |
 | `encapsulate` events | 7 |
 | Theorems flagged SUSPECT by shape | 21 |
@@ -112,7 +112,7 @@ that `make certify` requests.
 | `tests/acl2/article-fields-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 31 | 0 | 0 |
 | `tests/acl2/article-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 2 | 0 |
 | `tests/acl2/article-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 38 | 0 | 0 |
-| `tests/acl2/article-work-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 19 | 0 | 0 |
+| `tests/acl2/article-work-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 22 | 0 | 0 |
 | `tests/acl2/assumptions-tests.lisp` | root | 0 | 10 | 0/0/0/10 | 7 | 11 | 0 |
 | `tests/acl2/bp-adu-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 24 | 0 | 0 |
 | `tests/acl2/bp-ingress-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 21 | 0 | 0 |

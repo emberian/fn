@@ -92,11 +92,11 @@ In one sentence: the envelope is degree one in `N` — substituting `k = 129` an
 `s = 0` into the closed form gives `3 + 2N + B(129, N, 0) = 532514*N + 1060900`,
 whose quadratic factor is the header fuel `k`, not the input length — and at the
 520-octet maximally folded regression article it allows 277,968,180 units.
-The distance from the cost it bounds is not quoted, because it has not been
-measured: `books/article-public-bound`, which carries the executable cost
-model, does not certify in this worktree — `books/article-public-work` fails to
-admit `fn-aw-new-field-size` — so there is no measured charge to compare
-against, and this specification states only the closed form and its exponent.
+Measured on that same article by the executable cost model in
+`books/article-public-bound`, `fn-aw-parse` charges **30,195 work units**, so
+the envelope is **about 9,206 times** the cost it bounds
+(277,968,180 / 30,195); both numbers are asserted as executable witnesses in
+`tests/acl2/article-work-tests.lisp`.
 The envelope is structurally loose whatever that measurement turns out to be:
 it charges each of the 129 header steps the whole remaining input plus the
 accumulated state, while the parser scans each octet a fixed number of times.

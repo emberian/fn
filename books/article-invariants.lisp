@@ -397,6 +397,10 @@
            (fn-article-has-colonp line))
   :hints (("Goal" :induct (fn-article-split-colon-aux line name-rev))))
 
+; :rule-classes nil: as a rewrite rule this rewrites the scanner's accessor
+; form away everywhere article.lisp is included, including the cost shadow in
+; books/article-work.lisp, whose proofs are stated in the accessor form.  Both
+; uses below are :use instances.
 (defthm fn-article-split-colon-value-is-name-before-colon
   (implies (and (true-listp name-rev)
                 (fn-article-line-okp (fn-article-split-colon-aux line name-rev)))
@@ -404,6 +408,7 @@
                    (fn-article-split-colon-aux line name-rev))
                   (append (rev name-rev)
                           (fn-article-name-before-colon line))))
+  :rule-classes nil
   :hints (("Goal" :induct (fn-article-split-colon-aux line name-rev))))
 
 (defthm fn-article-split-colon-rest-is-value-after-colon
@@ -411,6 +416,7 @@
            (equal (fn-article-line-rest
                    (fn-article-split-colon-aux line name-rev))
                   (fn-article-value-after-colon line)))
+  :rule-classes nil
   :hints (("Goal" :induct (fn-article-split-colon-aux line name-rev))))
 
 (defthm fn-article-has-colonp-append
