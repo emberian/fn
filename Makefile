@@ -111,7 +111,21 @@ ACL2_BOOKS ?= books/acceptance \
 	books/nntp \
 	books/nntp-invariants \
 	books/nntp-effects \
-	tests/acl2/nntp-tests
+	tests/acl2/nntp-tests \
+	books/crypto-seam \
+	tests/acl2/crypto-seam-tests \
+	books/statement \
+	books/statement-invariants \
+	tests/acl2/statement-tests \
+	books/principal \
+	books/principal-invariants \
+	tests/acl2/principal-tests \
+	books/lace \
+	books/lace-invariants \
+	tests/acl2/lace-tests \
+	books/policy \
+	books/policy-invariants \
+	tests/acl2/policy-tests
 
 .PHONY: check certify model-test tooling-test test
 check:

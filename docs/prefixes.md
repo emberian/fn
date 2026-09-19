@@ -38,6 +38,12 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-bprr-` | `bp-receipt-records` | Receiver journal record application and replay |
 | `fn-bprv-` | `bp-receiver-*-invariants` | Receiver relation invariants over a Store, contexts, decisions and replay |
 | `fn-bpo-` | `bp-outbound` | Outbound projection of sender work to request ADUs and receipt validation |
+| `fn-digest-`, `fn-sig-` | `crypto-seam` | Constrained digest and signature seam with shape-only constraints; tagged preimages; hex rendering |
+| `fn-prin-` | `principal`, `principal-invariants` | Principal ids from (public key, token), key succession chains, keyrings |
+| `fn-stmt-` | `statement`, `statement-invariants` | Block-shaped statement header, item-sequence codec, content id, signing, receipt payloads |
+| `fn-lace-` | `lace`, `lace-invariants` | Statement sets keyed by content id: merge, canonicity, cross-canonicity, equivocation, causal closure |
+| `fn-pol-` | `policy`, `policy-invariants` | Group policy statements, the policy in force, authorization, policy term and receipts |
+| `fn-toy-`, `fn-t-` | `tests/acl2/*-tests` (substrate) | Test-only executable realisers attached with `defattach`, and test witnesses; never in `books/` |
 
 Host-only wrappers in `host/*.lisp` use `fn-store-`, `fn-bpreq-`, `fn-bpwf-`,
 `fn-bprj-` and similar; they are `:program` mode and outside the proof boundary.
