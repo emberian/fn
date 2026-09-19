@@ -92,6 +92,8 @@
  fn-bp-recovery-pending
  fn-bp-recover
  fn-bp-transport-transition-okp
+ fn-bp-live-statusp
+ fn-bp-status-rank
  fn-bp-observe-transport
  fn-bp-request-retry
  fn-bp-restart-work
@@ -281,3 +283,89 @@
             (fn-bp-work-with-status work :unknown)))
   :hints (("Goal" :in-theory (enable fn-bp-work-retryablep
                                       fn-bp-retryable-statusp))))
+
+; -----------------------------------------------------------------------------
+; Attempt lifecycle monotonicity (F11).  The previous relation admitted any
+; non-retryable, non-delivered status to move to any status, including back
+; to :intent.  The relation now advances a live status strictly by rank.
+
+(defthm fn-bph-find-of-replace
+  (implies (consp (fn-bp-find-work (fn-bp-work-id work) works))
+           (equal (fn-bp-find-work id (fn-bp-replace-work work works))
+                  (if (equal id (fn-bp-work-id work))
+                      work
+                    (fn-bp-find-work id works))))
+  :hints (("Goal" :induct (fn-bp-replace-work work works)
+           :in-theory (enable fn-bp-replace-work fn-bp-find-work))))
+
+(defthm fn-bph-transition-okp-rank
+  (implies (fn-bp-transport-transition-okp old new)
+           (<= (fn-bp-status-rank old) (fn-bp-status-rank new)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-bp-transport-transition-okp))))
+
+(defthm fn-bph-rank-natp
+  (natp (fn-bp-status-rank x))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn-bp-status-rank))))
+
+(defthm fn-bph-rank-of-intent
+  (equal (fn-bp-status-rank :intent) 0)
+  :hints (("Goal" :in-theory (enable fn-bp-status-rank))))
+
+(defthm fn-bph-rank-positive-unless-intent
+  (implies (not (equal x :intent))
+           (< 0 (fn-bp-status-rank x)))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (enable fn-bp-status-rank))))
+
+; Host line: tools/workflow_journal.py publishes :transport records, which
+; host/workflow-host.lisp:40 applies through fn-bp-apply-journal-record, whose
+; :transport branch is fn-bp-step's :transport case, i.e. fn-bp-observe-transport.
+(defthm fn-bp-observe-transport-never-moves-status-backward
+  (<= (fn-bp-status-rank
+       (fn-bp-attempt-status
+        (fn-bp-work-attempt (fn-bp-find-work id (fn-bp-state-works s)))))
+      (fn-bp-status-rank
+       (fn-bp-attempt-status
+        (fn-bp-work-attempt
+         (fn-bp-find-work
+          id (fn-bp-state-works
+              (fn-bp-observe-transport s work-id attempt-id generation
+                                       status)))))))
+  :rule-classes nil
+  :hints
+  (("Goal"
+    :use ((:instance fn-bph-transition-okp-rank
+                     (old (fn-bp-attempt-status
+                           (fn-bp-work-attempt
+                            (fn-bp-find-work work-id (fn-bp-state-works s)))))
+                     (new status))
+          (:instance fn-bph-find-of-replace
+                     (work (fn-bp-work-with-status
+                            (fn-bp-find-work work-id (fn-bp-state-works s))
+                            status))
+                     (works (fn-bp-state-works s)))
+          (:instance fn-bph-attempt-implies-work-consp
+                     (work (fn-bp-find-work work-id (fn-bp-state-works s)))))
+    :in-theory (enable fn-bp-observe-transport))))
+
+; The F11 statement without the rank: an attempt that has left :intent never
+; returns to it through a transport observation.
+(defthm fn-bp-observe-transport-never-returns-to-intent
+  (implies (not (equal (fn-bp-attempt-status
+                        (fn-bp-work-attempt
+                         (fn-bp-find-work id (fn-bp-state-works s))))
+                       :intent))
+           (not (equal (fn-bp-attempt-status
+                        (fn-bp-work-attempt
+                         (fn-bp-find-work
+                          id (fn-bp-state-works
+                              (fn-bp-observe-transport
+                               s work-id attempt-id generation status)))))
+                       :intent)))
+  :rule-classes nil
+  :hints
+  (("Goal"
+    :use ((:instance fn-bp-observe-transport-never-moves-status-backward))
+    :in-theory (disable fn-bp-observe-transport))))

@@ -1,10 +1,12 @@
+import os
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
-from tools.workflow_journal import (InboundDeletePending, JournalFault, JournalUncertain,
-                                    WorkflowJournal, decode_record,
+from tools.run_store import ScriptedFaults
+from tools.workflow_journal import (InboundDeletePending, JournalError, JournalFault,
+                                    JournalUncertain, WorkflowJournal, decode_record,
                                     decode_inbound, encode_record)
 
 
@@ -36,6 +38,12 @@ class WorkflowJournalTests(unittest.TestCase):
         self.assertEqual(self.journal.open(), {"acl2-image": 0})
 
     def tearDown(self): self.journal.close(); self.temp.cleanup()
+
+    def faulted(self, point="directory-fsync", error=None):
+        """Attach the test-only injector; the journal itself holds no branch."""
+        self.journal.faults = ScriptedFaults(
+            point, OSError("injected directory uncertainty") if error is None else error)
+        return self.journal
 
     def test_codec_exact_round_trip_and_damage(self):
         encoded = encode_record("attempt", ATTEMPT)
@@ -77,7 +85,7 @@ class WorkflowJournalTests(unittest.TestCase):
 
     def test_reopen_replays_visible_uncertain_attempt(self):
         with self.assertRaises(JournalUncertain):
-            self.journal.publish("attempt", ATTEMPT, "directory-fsync")
+            self.faulted().publish("attempt", ATTEMPT)
         self.journal.close()
         reopened_records=[]
         reopened=WorkflowJournal(self.root,
@@ -103,6 +111,22 @@ class WorkflowJournalTests(unittest.TestCase):
         reopened=WorkflowJournal(self.root, lambda records: self.fail("must not replay"))
         with self.assertRaises(JournalFault): reopened.open()
         reopened.close()
+
+    def test_a_symlinked_or_irregular_lock_pathname_is_refused(self):
+        """The lock pathname cannot be replaced to evade an existing lock."""
+        self.journal.close()
+        lock=self.root/"workflow.lock"
+        elsewhere=self.root/"elsewhere.lock"; elsewhere.write_bytes(b"")
+        lock.unlink(); lock.symlink_to(elsewhere)
+        replaced=WorkflowJournal(self.root, lambda records: records)
+        with self.assertRaisesRegex(JournalFault, "symlink"):
+            replaced.open()
+        lock.unlink(); os.mkfifo(lock, 0o600)
+        with self.assertRaisesRegex(JournalFault, "non-regular"):
+            WorkflowJournal(self.root, lambda records: records).open()
+        lock.unlink()
+        self.journal=WorkflowJournal(self.root, lambda records: records)
+        self.journal.open()
 
     def test_lock_contention_refuses_second_owner(self):
         contender=WorkflowJournal(self.root, lambda records: records)
@@ -152,6 +176,85 @@ class WorkflowJournalTests(unittest.TestCase):
                                         lambda bid:deleted.append(bid))
         self.assertEqual(decode_inbound(path.read_bytes()), ("bid",b"bundle"))
         self.assertEqual(deleted,["bid"])
+
+    def test_pending_delete_with_the_bid_gone_reconciles_as_completed(self):
+        """D14: a lost delete reply is resolved by the bundle's absence."""
+        with self.assertRaises(InboundDeletePending):
+            self.journal.stage_inbound("bid", lambda:["bid"], lambda bid:b"bundle",
+                                       lambda bid:(_ for _ in ()).throw(RuntimeError("lost")))
+        deleted=[]
+        # The BPA no longer lists the BID: the earlier request took effect.
+        path=self.journal.retry_staged_delete("bid", lambda:[], deleted.append)
+        self.assertEqual(decode_inbound(path.read_bytes()), ("bid", b"bundle"))
+        self.assertEqual(deleted, [])
+        # Staging the same BID again is the same reconciliation, not a refusal
+        # and not a second download.
+        downloads=[]
+        again=self.journal.stage_inbound(
+            "bid", lambda:[], lambda bid:downloads.append(bid) or b"bundle",
+            lambda bid:deleted.append(bid))
+        self.assertEqual(again, path)
+        self.assertEqual((downloads, deleted), ([], []))
+
+    def test_pending_delete_with_the_bid_present_is_retried(self):
+        with self.assertRaises(InboundDeletePending):
+            self.journal.stage_inbound("bid", lambda:["bid"], lambda bid:b"bundle",
+                                       lambda bid:(_ for _ in ()).throw(RuntimeError("lost")))
+        deleted=[]
+        path=self.journal.retry_staged_delete("bid", lambda:["bid"], deleted.append)
+        self.assertEqual(deleted, ["bid"])
+        self.assertEqual(decode_inbound(path.read_bytes()), ("bid", b"bundle"))
+
+    def test_absent_bid_without_a_durable_frame_is_still_refused(self):
+        with self.assertRaisesRegex(JournalError, "not present in inventory"):
+            self.journal.stage_inbound("missing", lambda:[], lambda bid:b"bundle",
+                                       lambda bid:None)
+        with self.assertRaisesRegex(JournalFault, "absent"):
+            self.journal.retry_staged_delete("missing", lambda:[], lambda bid:None)
+
+    def test_a_record_replaced_by_a_symlink_is_refused_on_reopen(self):
+        published=self.journal.publish("attempt", ATTEMPT)
+        self.journal.close()
+        elsewhere=self.root/"elsewhere"
+        elsewhere.write_bytes(published.path.read_bytes())
+        published.path.unlink()
+        published.path.symlink_to(elsewhere)
+        reopened=WorkflowJournal(self.root, lambda records: self.fail("must not replay"))
+        with self.assertRaises(JournalFault): reopened.open()
+        reopened.close()
+
+    def test_a_failing_close_cannot_close_a_reused_descriptor(self):
+        """The staging descriptor number is retired before it is closed."""
+        real_close=os.close
+        replacement=None
+        staged=[]
+
+        def close_then_fail(fd):
+            nonlocal replacement
+            real_close(fd)
+            if staged and fd == staged[0] and replacement is None:
+                # POSIX hands out the lowest unused number, so reusing the
+                # just-closed one makes an accidental second close observable.
+                replacement=os.open(self.root/"unrelated", os.O_CREAT|os.O_RDWR, 0o600)
+                raise OSError("injected staging close failure")
+
+        real_open=os.open
+
+        def record_open(path, flags, mode=0o777):
+            fd=real_open(path, flags, mode)
+            if Path(path).parent == self.journal.staging: staged.append(fd)
+            return fd
+
+        try:
+            with mock.patch("tools.workflow_journal.os.open", side_effect=record_open), \
+                 mock.patch("tools.workflow_journal.os.close", side_effect=close_then_fail):
+                with self.assertRaises(OSError):
+                    self.journal.stage_inbound("bid", lambda:["bid"],
+                                               lambda bid:b"bundle", lambda bid:None)
+            self.assertIsNotNone(replacement)
+            os.fstat(replacement)
+        finally:
+            if replacement is not None: real_close(replacement)
 
     def test_open_rediscovers_durable_inbound_metadata(self):
         self.journal.stage_inbound("bid", lambda:["bid"], lambda bid:b"bundle", lambda bid:None)

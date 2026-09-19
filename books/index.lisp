@@ -111,23 +111,71 @@
     nil))
 (verify-guards fn-index-query-range)
 
-; A sourced entry is an exact materialized member of the authoritative
-; article list.  Soundness and completeness are stated as separate subset
-; directions over that source materialization.  Together they reject both an
-; invented entry and an omitted membership.
+; A sourced entry corresponds to an actual (group . number) membership of some
+; article in ARTICLES: some article whose message id is the entry's msgid
+; records that exact (group . number) pair in FN-ARTICLE-MEMBERSHIPS.  This
+; scans ARTICLES and their memberships directly; it never calls
+; FN-INDEX-BUILD, so it is a check against the authoritative source, not a
+; restatement of the build's own output.
+(defun fn-index-membership-hasp (group number memberships)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp memberships)
+      (or (and (equal group (fn-ag-car (fn-ag-car memberships)))
+               (equal number (fn-ag-cdr (fn-ag-car memberships))))
+          (fn-index-membership-hasp group number (fn-ag-cdr memberships)))
+    nil))
+(verify-guards fn-index-membership-hasp)
+
 (defun fn-index-entry-sourcedp (entry articles)
   (declare (xargs :guard t :verify-guards nil))
-  (member-equal entry (fn-index-build articles)))
+  (if (consp articles)
+      (or (and (equal (fn-index-entry-msgid entry)
+                      (fn-article-msgid (fn-ag-car articles)))
+               (fn-index-membership-hasp (fn-index-entry-group entry)
+                                         (fn-index-entry-number entry)
+                                         (fn-article-memberships (fn-ag-car articles))))
+          (fn-index-entry-sourcedp entry (fn-ag-cdr articles)))
+    nil))
 (verify-guards fn-index-entry-sourcedp)
 
+; Soundness: every INDEX entry is sourced.  Completeness: every authoritative
+; membership of every article in ARTICLES is present in INDEX.  Both scan
+; ARTICLES/memberships directly, never FN-INDEX-BUILD; the correspondence
+; theorems below connect them to a fresh build by induction, not by
+; definition.
 (defun fn-index-soundp (index articles)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-subsetp index (fn-index-build articles)))
+  (if (consp index)
+      (and (fn-index-entry-sourcedp (fn-ag-car index) articles)
+           (fn-index-soundp (fn-ag-cdr index) articles))
+    t))
 (verify-guards fn-index-soundp)
+
+; MEMBER-EQUAL's guard requires (true-listp index), which an arbitrary guard-T
+; INDEX parameter does not carry; FN-AG-MEMBER is the guard-T equivalent
+; (FN-AG-MEMBER-IS-MEMBER, acceptance.lisp) already used the same way by
+; FN-SUBSETP's :exec branch.
+(defun fn-index-memberships-completep (msgid memberships index)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp memberships)
+      (and (fn-ag-member
+            (fn-index-entry (fn-ag-car (fn-ag-car memberships))
+                            (fn-ag-cdr (fn-ag-car memberships))
+                            msgid)
+            index)
+           (fn-index-memberships-completep msgid (fn-ag-cdr memberships) index))
+    t))
+(verify-guards fn-index-memberships-completep)
 
 (defun fn-index-completep (index articles)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-subsetp (fn-index-build articles) index))
+  (if (consp articles)
+      (and (fn-index-memberships-completep
+            (fn-article-msgid (fn-ag-car articles))
+            (fn-article-memberships (fn-ag-car articles))
+            index)
+           (fn-index-completep index (fn-ag-cdr articles)))
+    t))
 (verify-guards fn-index-completep)
 
 (defun fn-index-correspondencep (index articles)
@@ -180,26 +228,135 @@
           group low high msgid memberships))
   :hints (("Goal" :induct (fn-index-membership-entries msgid memberships))))
 
+; -----------------------------------------------------------------------------
+; FN-INDEX-BUILD is guard-t and well typed for a valid article list.  Proved
+; separately from soundness/completeness so FN-INDEX-RANGE-QUERY-CORRECT below
+; can derive it instead of assuming it.
+
+(defthm fn-index-membership-entries-listp
+  (implies (and (stringp msgid)
+                (fn-string-listp groups)
+                (fn-membership-listp groups memberships))
+           (fn-index-listp (fn-index-membership-entries msgid memberships)))
+  :hints (("Goal" :induct (fn-membership-listp groups memberships))))
+
+(defthm fn-index-article-entries-listp
+  (implies (fn-articlep configured article)
+           (fn-index-listp (fn-index-article-entries article)))
+  :hints (("Goal" :use (:instance fn-index-membership-entries-listp
+                                  (msgid (fn-article-msgid article))
+                                  (memberships (fn-article-memberships article))
+                                  (groups (fn-article-groups article)))
+           :in-theory (enable fn-index-article-entries fn-articlep
+                              fn-selection-validp))))
+
+(defthm fn-index-listp-append
+  (implies (and (fn-index-listp xs) (fn-index-listp ys))
+           (fn-index-listp (append xs ys)))
+  :hints (("Goal" :induct (fn-index-listp xs))))
+
+(defthm fn-index-build-listp
+  (implies (fn-article-listp configured articles)
+           (fn-index-listp (fn-index-build articles)))
+  :hints (("Goal" :induct (fn-index-build articles))))
+
 (defthm fn-index-range-query-correct
   (implies (and (fn-article-listp configured articles)
-                (fn-index-listp (fn-index-build articles))
                 (stringp group)
                 (natp low)
                 (natp high))
            (equal (fn-index-query-range
                    (fn-index-build articles) group low high)
                   (fn-index-reference-range group low high articles)))
-  :hints (("Goal" :induct (fn-index-build articles))))
+  :hints (("Goal" :induct (fn-index-build articles)
+                  :in-theory (enable fn-index-query-range))))
 
-(defthm fn-index-build-subset-self
-  (fn-subsetp (fn-index-build articles) (fn-index-build articles))
-  :hints (("Goal" :use (:instance fn-subset-self
-                                      (groups (fn-index-build articles))))))
+; -----------------------------------------------------------------------------
+; Soundness and completeness of a fresh build against the authoritative source
+; memberships.  Each is proved by induction connecting FN-INDEX-BUILD's append
+; recursion to the membership-level predicates above; neither instantiates the
+; soundness/completeness predicate with the build as its own reference, so
+; these are not `X SUBSET X` restatements.
+
+(defthm member-equal-append-right
+  (implies (member-equal x xs)
+           (member-equal x (append xs ys))))
+
+(defthm member-equal-append-left
+  (implies (member-equal x xs)
+           (member-equal x (append ys xs)))
+  :hints (("Goal" :induct (append ys xs))))
+
+; Stated with raw CAR/CDR, not FN-AG-CAR/FN-AG-CDR: FN-AG-CAR-IS-CAR rewrites
+; FN-AG-CAR to CAR, so a goal built from FN-INDEX-MEMBERSHIP-HASP's own
+; (already-normalized) unfolding has CAR/CDR by the time this rule would
+; apply, and a trigger stated in FN-AG-CAR terms would never match it.
+(defthm fn-index-membership-hasp-of-member
+  (implies (member-equal membership memberships)
+           (fn-index-membership-hasp
+            (car membership) (cdr membership) memberships)))
+
+(defthm fn-index-entry-sourcedp-cons
+  (implies (fn-index-entry-sourcedp entry articles)
+           (fn-index-entry-sourcedp entry (cons article articles))))
+
+(defthm fn-index-soundp-cons-articles
+  (implies (fn-index-soundp index articles)
+           (fn-index-soundp index (cons article articles)))
+  :hints (("Goal" :induct (fn-index-soundp index articles))))
+
+(defthm fn-index-soundp-append-index
+  (equal (fn-index-soundp (append xs ys) articles)
+         (and (fn-index-soundp xs articles)
+              (fn-index-soundp ys articles)))
+  :hints (("Goal" :induct (append xs ys))))
+
+(defthm fn-index-membership-entries-sourced
+  (implies (and (equal (fn-article-msgid article) msgid)
+                (fn-subsetp memberships (fn-article-memberships article)))
+           (fn-index-soundp
+            (fn-index-membership-entries msgid memberships)
+            (cons article rest)))
+  :hints (("Goal" :induct (fn-index-membership-entries msgid memberships))))
+
+(defthm fn-index-article-entries-self-sourced
+  (fn-index-soundp (fn-index-article-entries article) (cons article rest))
+  :hints (("Goal" :use ((:instance fn-index-membership-entries-sourced
+                                   (msgid (fn-article-msgid article))
+                                   (memberships (fn-article-memberships article)))
+                        (:instance fn-subset-self
+                                   (groups (fn-article-memberships article))))
+           :in-theory (enable fn-index-article-entries))))
 
 (defthm fn-index-build-sound
   (implies (fn-article-listp configured articles)
            (fn-index-soundp (fn-index-build articles) articles))
   :hints (("Goal" :induct (fn-index-build articles))))
+
+(defthm fn-index-memberships-completep-cons-index
+  (implies (fn-index-memberships-completep msgid memberships index)
+           (fn-index-memberships-completep msgid memberships (cons entry index)))
+  :hints (("Goal" :induct (fn-index-memberships-completep msgid memberships index))))
+
+(defthm fn-index-memberships-completep-self
+  (fn-index-memberships-completep
+   msgid memberships (fn-index-membership-entries msgid memberships))
+  :hints (("Goal" :induct (fn-index-membership-entries msgid memberships))))
+
+(defthm fn-index-memberships-completep-append-right
+  (implies (fn-index-memberships-completep msgid memberships index)
+           (fn-index-memberships-completep msgid memberships (append index more)))
+  :hints (("Goal" :induct (fn-index-memberships-completep msgid memberships index))))
+
+(defthm fn-index-memberships-completep-append-left
+  (implies (fn-index-memberships-completep msgid memberships index)
+           (fn-index-memberships-completep msgid memberships (append more index)))
+  :hints (("Goal" :induct (fn-index-memberships-completep msgid memberships index))))
+
+(defthm fn-index-completep-append-left
+  (implies (fn-index-completep index2 articles)
+           (fn-index-completep (append index1 index2) articles))
+  :hints (("Goal" :induct (fn-index-completep index2 articles))))
 
 (defthm fn-index-build-complete
   (implies (fn-article-listp configured articles)
