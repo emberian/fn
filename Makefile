@@ -29,6 +29,13 @@ ACL2_BOOKS ?= books/acceptance \
 	tests/acl2/article-work-tests \
 	books/article-fields \
 	tests/acl2/article-fields-tests \
+	books/store-config \
+	books/frame \
+	books/frame-invariants \
+	tests/acl2/frame-tests \
+	books/identity \
+	books/identity-invariants \
+	tests/acl2/identity-tests \
 	books/retention \
 	books/retention-invariants \
 	tests/acl2/retention-tests \

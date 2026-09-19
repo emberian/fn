@@ -2,14 +2,15 @@
 """Experimental local immutable-transaction store backed by interpreted ACL2.
 
 This is a storage experiment, not a durable-service or power-failure claim.
-Only ACL2 decodes records and reconstructs node state.  Python owns bounded
-filesystem I/O, SHA-256 integrity trailers, and POSIX barriers.
+ACL2 decodes records, frames and unframes transaction files, derives content
+identity, applies every bound and owns the group table and the charge policy.
+Python owns bounded filesystem I/O, POSIX barriers, and SHA-256 over byte
+strings it does not interpret (A-CRYPTO).
 """
 import argparse
 import errno
 import fcntl
 import hashlib
-import hmac
 import json
 import os
 from pathlib import Path
@@ -21,14 +22,25 @@ import sys
 import time
 
 ROOT = Path(__file__).resolve().parent.parent
+# This module is imported both as `tools.run_store` and, with `tools/` on the
+# path, as `run_store`.  Pin the framing bridge to one identity so its ACL2
+# session is shared rather than opened once per spelling.
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from tools import frame_bridge  # noqa: E402
+
 PROMPT = b"ACL2 !>"
 MAX_ACL2_OUTPUT = 4 * 1024 * 1024
 MAX_TRANSACTION_COUNT = 128
 MAX_RECOVERY_RECORD_BYTES = MAX_TRANSACTION_COUNT * 65538
 UINT32_MAX = (1 << 32) - 1
 DEFAULT_CONFIG = {
-    "format": "fn-store-experiment-2",
-    "groups": ["fn.letters", "fn.test"],
+    # Format 3 is the first written under the ACL2-owned frame grammar, which
+    # carries the record kind octet the Python framing lacked.  The configured
+    # group list is no longer copied here: `books/store-config` owns it and a
+    # store records only which version of that table it was written under.
+    "format": "fn-store-experiment-3",
+    "group_table": "fn-store-groups-1",
     "capacity": 1048576,
     "max_payload_bytes": 32768,
     "max_record_bytes": 65538,
@@ -36,7 +48,11 @@ DEFAULT_CONFIG = {
     "max_transactions": MAX_TRANSACTION_COUNT,
     "allocation_frontier_format": "fn-store-allocation-frontier-1",
 }
-MAGIC = b"FNST\x01"
+# `books/frame` owns the grammar.  These two are the slice arithmetic that
+# `durable_records` and the corruption tests still do over a file they never
+# interpret; `frame_bridge.FrameSession` checks both against the ACL2
+# constants when a session opens, so a divergence fails at startup.
+MAGIC = b"FNST\x01\x01"
 TRAILER_BYTES = 32
 SEQ_NAME = re.compile(r"^[0-9]{20}\.txn$")
 
@@ -131,28 +147,28 @@ def fsync_regular(path):
         os.close(fd)
 
 
-def frame(record):
-    if len(record) > DEFAULT_CONFIG["max_record_bytes"]:
-        raise StoreFault("record exceeds fixed store bound")
-    header = MAGIC + len(record).to_bytes(4, "big") + record
-    return header + hashlib.sha256(header).digest()
+def frame(record, bridge=None):
+    """ACL2 builds the frame; the host only appends the integrity trailer.
+
+    `fn-frame-store-protected` returns the exact octets the trailer covers and
+    `fn-frame-store-encode-is-protected-plus-digest` proves that appending 32
+    digest octets to them is `fn-frame-encode`.  SHA-256 itself is A-CRYPTO.
+    """
+    try:
+        return frame_bridge.session(bridge).store_frame(record)
+    except frame_bridge.BridgeError as error:
+        raise StoreFault("ACL2 refused to frame a transaction record") from error
 
 
-def unframe(raw, max_record_bytes):
-    minimum = len(MAGIC) + 4 + TRAILER_BYTES
-    if len(raw) < minimum or raw[:len(MAGIC)] != MAGIC:
-        raise StoreFault("bad transaction frame")
-    start = len(MAGIC)
-    size = int.from_bytes(raw[start:start + 4], "big")
-    if size > max_record_bytes:
-        raise StoreFault("transaction record exceeds configured bound")
-    expected = len(MAGIC) + 4 + size + TRAILER_BYTES
-    if len(raw) != expected:
-        raise StoreFault("truncated or overlong transaction frame")
-    protected = raw[:-TRAILER_BYTES]
-    if not hmac.compare_digest(hashlib.sha256(protected).digest(), raw[-TRAILER_BYTES:]):
-        raise StoreFault("transaction integrity trailer mismatch")
-    return raw[len(MAGIC) + 4:-TRAILER_BYTES]
+def unframe(raw, max_record_bytes, bridge=None):
+    """ACL2 parses the frame and compares the trailer with the host digest."""
+    session = frame_bridge.session(bridge)
+    if max_record_bytes != session.constants["max_store"]:
+        raise StoreFault("configured record bound disagrees with the model")
+    try:
+        return session.store_unframe(raw)
+    except frame_bridge.BridgeError as error:
+        raise StoreFault(str(error)) from error
 
 
 def read_prompt(proc, timeout=20):
@@ -768,36 +784,55 @@ class Store:
                 "ACL2 could not record {} observation".format(operation)) from error
 
 
-def metadata(msgid, payload):
-    digest = hashlib.sha256(payload).hexdigest().encode("ascii")
-    subject = b"sha256:" + digest
-    obligation = b"archive:" + hashlib.sha256(msgid + b"\x00" + subject).hexdigest().encode("ascii")
+def metadata(msgid, payload, bridge=None):
+    """Content identity, derived in ACL2 by `books/identity`.
+
+    The host hashes two byte strings it does not interpret and ACL2 decides
+    the labels, the hexadecimal spelling, the separator octet and the order of
+    the obligation preimage.  The evidence label stays a host constant: it
+    names a provenance the model only compares.
+    """
+    session = frame_bridge.session(bridge)
+    try:
+        subject = session.subject_id(payload)
+        obligation = session.obligation_id(msgid, subject)
+    except frame_bridge.BridgeError as error:
+        raise StoreError("ACL2 refused to derive content identity") from error
     return obligation, subject, b"unsigned-legacy-v0"
 
 
-def group_codes(groups, config):
-    configured = config["groups"]
-    if not groups or len(groups) != len(set(groups)):
+def group_codes(groups, config, bridge=None):
+    """`books/store-config` owns the group table; this asks it for the codes."""
+    session = frame_bridge.session(bridge)
+    if config.get("group_table") != session.group_table_id():
+        raise StoreFault("store was written under a different group table")
+    if not groups:
         raise StoreError("provide one or more distinct configured groups")
     try:
-        return [configured.index(group) for group in groups]
-    except ValueError as error:
-        raise StoreError("unknown configured group") from error
+        return session.group_codes(groups)
+    except frame_bridge.BridgeError as error:
+        raise StoreError("unknown or duplicate configured group") from error
 
 
-def conservative_charge(payload):
-    return max(1, 1 + (len(payload) + 4095) // 4096)
+def conservative_charge(payload, bridge=None):
+    """`fn-charge-for-payload`, proved positive and monotone in length."""
+    return frame_bridge.session(bridge).charge(len(payload))
 
 
-def validate_post_boundary(msgid, payload, groups, charge, config):
-    if not (0 < len(msgid) <= 250 and all(octet <= 127 for octet in msgid)):
-        raise StoreError("Message-ID must be 1 through 250 ASCII octets")
-    if len(payload) > config["max_payload_bytes"]:
-        raise StoreError("payload exceeds configured bound")
-    if not 0 < len(groups) <= 16:
-        raise StoreError("group count exceeds codec bound")
-    if not isinstance(charge, int) or isinstance(charge, bool) or not 0 < charge <= UINT32_MAX:
-        raise StoreError("charge must be a positive uint32")
+def validate_post_boundary(msgid, payload, groups, charge, config, bridge=None):
+    """One call: `fn-store-post-boundary` applies every bound in the model."""
+    session = frame_bridge.session(bridge)
+    if config["max_payload_bytes"] > session.constants["max_store"]:
+        raise StoreFault("configured payload bound disagrees with the model")
+    verdict = session.post_boundary(msgid, len(payload), len(groups), charge)
+    if verdict == "ok":
+        return
+    raise StoreError({
+        "bad-message-id": "Message-ID is not a valid RFC 5536 message identifier",
+        "payload-bound": "payload exceeds the modelled bound",
+        "group-bound": "group count exceeds codec bound",
+        "charge-bound": "charge must be a positive uint32",
+    }.get(verdict, "ACL2 refused the post boundary: {}".format(verdict)))
 
 
 def command_init(args):

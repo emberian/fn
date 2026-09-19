@@ -13,8 +13,9 @@ import hashlib
 import fcntl
 import os
 from pathlib import Path
-import struct
 from typing import Callable, Iterable, Sequence
+
+from tools import frame_bridge
 
 MAGIC = b"FNWF"
 SCHEMA = 1
@@ -27,53 +28,10 @@ MAX_INBOUND_COUNT = 1_024
 MAX_INBOUND_AGGREGATE = 64 * 1024 * 1024
 MAX_BPA_INVENTORY = 8_192
 
-KINDS = {
-    "config": 1,
-    "enqueue": 2,
-    "attempt": 3,
-    "transport": 4,
-    "receipt-intent": 5,
-    "outcome": 6,
-    "retry-request": 7,
-}
-KIND_NAMES = {value: key for key, value in KINDS.items()}
-
-FIELDS = {
-    "config": (("local-eid", "text"), ("peer-eid", "text"),
-               ("policy-id", "text"), ("receipt-authority", "text"),
-               ("bp-lifetime", "nat"), ("incarnation", "text"),
-               ("authorization-context", "text")),
-    "enqueue": (("txid", "nat"), ("tx-generation", "nat"),
-                ("work-id", "text"), ("msgid", "text"),
-                ("immutable-subject", "text"),
-                ("archive-obligation-id", "text"),
-                ("forward-obligation-id", "text"), ("peer-eid", "text"),
-                ("policy-id", "text"), ("terms-id", "text")),
-    "attempt": (("txid", "nat"), ("tx-generation", "nat"),
-                ("work-id", "text"), ("attempt-id", "text"),
-                ("attempt-generation", "nat"), ("local-eid", "text"),
-                ("peer-eid", "text"), ("policy-id", "text"),
-                ("bp-lifetime", "nat")),
-    "transport": (("work-id", "text"), ("attempt-id", "text"),
-                  ("attempt-generation", "nat"), ("status", "status")),
-    "receipt-intent": (("txid", "nat"), ("tx-generation", "nat"),
-                       ("receipt-id", "text"), ("work-id", "text"),
-                       ("immutable-subject", "text"), ("issuer-eid", "text"),
-                       ("peer-eid", "text"), ("policy-id", "text"),
-                       ("incarnation", "text"),
-                       ("authorization-context", "text"),
-                       ("terms-id", "text")),
-    "outcome": (("txid", "nat"), ("tx-generation", "nat"),
-                ("phase", "phase"), ("result", "result")),
-    "retry-request": (("work-id", "text"), ("attempt-id", "text"),
-                      ("attempt-generation", "nat"), ("policy-id", "text")),
-}
-STATUSES = {name: number for number, name in enumerate((
-    "intent", "bpa-submit-replied", "bpa-accepted", "attempted", "forwarded",
-    "delivered", "deleted", "expired", "unknown", "no-contact",
-    "inbound-persisted", "dequeued", "restart-observed"), 1)}
-PHASES = {"ordinary": 1, "recovery": 2}
-RESULTS = {"durable": 1, "aborted": 2, "committed": 3, "absent": 4}
+# The record kinds, their field names, their field types and the transport,
+# phase, result and authorization enumerations all live in `books/frame`.
+# `frame_bridge` asks for the schema of a kind and caches the answer; this
+# module keeps no copy of any of them.
 
 
 class JournalError(RuntimeError): pass
@@ -96,83 +54,20 @@ def write_all(fd: int, data: bytes) -> None:
         view = view[count:]
 
 
-def _text(value: object) -> bytes:
-    if not isinstance(value, str): raise JournalError("text field is not a string")
-    encoded = value.encode("utf-8", "strict")
-    if not encoded or len(encoded) > MAX_TEXT: raise JournalError("text field length")
-    return struct.pack(">H", len(encoded)) + encoded
+def encode_record(kind: str, values: dict[str, object], bridge=None) -> bytes:
+    """`books/frame` builds the record; the host appends the trailer only."""
+    try:
+        return frame_bridge.session(bridge).record_frame("workflow", kind, values)
+    except frame_bridge.BridgeError as error:
+        raise JournalError(str(error)) from error
 
 
-def _nat(value: object) -> bytes:
-    if not isinstance(value, int) or isinstance(value, bool) or not 0 <= value < 2**64:
-        raise JournalError("natural field range")
-    return struct.pack(">Q", value)
-
-
-def encode_record(kind: str, values: dict[str, object]) -> bytes:
-    if kind not in FIELDS or set(values) != {name for name, _ in FIELDS[kind]}:
-        raise JournalError("record fields do not match schema")
-    payload = bytearray()
-    for name, field_type in FIELDS[kind]:
-        value = values[name]
-        if field_type == "text": payload += _text(value)
-        elif field_type == "nat": payload += _nat(value)
-        elif field_type == "status":
-            if value not in STATUSES: raise JournalError("unknown transport status")
-            payload.append(STATUSES[value])
-        elif field_type == "phase":
-            if value not in PHASES: raise JournalError("unknown outcome phase")
-            payload.append(PHASES[value])
-        elif field_type == "result":
-            if value not in RESULTS: raise JournalError("unknown outcome result")
-            if (values["phase"], value) not in {
-                    ("ordinary", "durable"), ("ordinary", "aborted"),
-                    ("recovery", "committed"), ("recovery", "absent")}:
-                raise JournalError("outcome phase/result mismatch")
-            payload.append(RESULTS[value])
-    header = MAGIC + bytes((SCHEMA, KINDS[kind])) + struct.pack(">I", len(payload))
-    framed = header + payload
-    framed += hashlib.sha256(framed).digest()
-    if len(framed) > MAX_RECORD: raise JournalError("record exceeds bound")
-    return framed
-
-
-def decode_record(data: bytes) -> tuple[str, dict[str, object]]:
-    if len(data) < 42 or len(data) > MAX_RECORD: raise JournalFault("record size")
-    if data[:4] != MAGIC or data[4] != SCHEMA: raise JournalFault("magic/schema")
-    if hashlib.sha256(data[:-32]).digest() != data[-32:]: raise JournalFault("checksum")
-    kind = KIND_NAMES.get(data[5])
-    if kind is None: raise JournalFault("record kind")
-    size = struct.unpack(">I", data[6:10])[0]
-    if size != len(data) - 42: raise JournalFault("payload length")
-    payload = memoryview(data)[10:-32]; offset = 0; values = {}
-    reverse_status = {v: k for k, v in STATUSES.items()}
-    reverse_phase = {v: k for k, v in PHASES.items()}
-    reverse_result = {v: k for k, v in RESULTS.items()}
-    for name, field_type in FIELDS[kind]:
-        if field_type == "nat":
-            if offset + 8 > len(payload): raise JournalFault("truncated natural")
-            values[name] = struct.unpack(">Q", payload[offset:offset+8])[0]; offset += 8
-        elif field_type == "text":
-            if offset + 2 > len(payload): raise JournalFault("truncated text length")
-            count = struct.unpack(">H", payload[offset:offset+2])[0]; offset += 2
-            if not 1 <= count <= MAX_TEXT or offset + count > len(payload):
-                raise JournalFault("text length")
-            try: values[name] = bytes(payload[offset:offset+count]).decode("utf-8", "strict")
-            except UnicodeDecodeError as error: raise JournalFault("invalid UTF-8") from error
-            offset += count
-        else:
-            if offset >= len(payload): raise JournalFault("truncated enumeration")
-            table = (reverse_status if field_type == "status" else
-                     reverse_phase if field_type == "phase" else reverse_result)
-            if payload[offset] not in table: raise JournalFault("unknown enumeration")
-            values[name] = table[payload[offset]]; offset += 1
-    if offset != len(payload): raise JournalFault("trailing payload")
-    if kind == "outcome" and (values["phase"], values["result"]) not in {
-            ("ordinary", "durable"), ("ordinary", "aborted"),
-            ("recovery", "committed"), ("recovery", "absent")}:
-        raise JournalFault("outcome phase/result mismatch")
-    return kind, values
+def decode_record(data: bytes, bridge=None) -> tuple[str, dict[str, object]]:
+    """`books/frame` parses the record and compares the host's digest."""
+    try:
+        return frame_bridge.session(bridge).record_unframe("workflow", data)
+    except (frame_bridge.BridgeError, UnicodeDecodeError) as error:
+        raise JournalFault(str(error)) from error
 
 
 @dataclass(frozen=True)
@@ -456,21 +351,22 @@ class WorkflowJournal:
         return final
 
 
-def encode_inbound(bid: str, payload: bytes) -> bytes:
-    bid_bytes=bid.encode("utf-8","strict")
-    if not 1 <= len(bid_bytes) <= MAX_TEXT or len(payload) > MAX_INBOUND_BUNDLE:
-        raise JournalError("inbound frame bound")
-    head=b"FNBI"+struct.pack(">HI",len(bid_bytes),len(payload))+bid_bytes+payload
-    return head+hashlib.sha256(head).digest()
+def encode_inbound(bid: str, payload: bytes, bridge=None) -> bytes:
+    """ACL2 builds the frame head through the BID field; the bundle is opaque.
+
+    An inbound bundle is up to four mebibytes, which cannot cross the decimal
+    octet bridge, so the host concatenates the bundle and appends the trailer
+    over bytes it never interprets.  Every decision -- magic, version, kind,
+    the declared length, the BID text field and its bounds -- is ACL2's.
+    """
+    try:
+        return frame_bridge.session(bridge).inbound_frame(bid, payload)
+    except frame_bridge.BridgeError as error:
+        raise JournalError(str(error)) from error
 
 
-def decode_inbound(data: bytes) -> tuple[str,bytes]:
-    if len(data)<42 or data[:4]!=b"FNBI": raise JournalFault("inbound frame")
-    bid_len,payload_len=struct.unpack(">HI",data[4:10])
-    if not 1<=bid_len<=MAX_TEXT or payload_len>MAX_INBOUND_BUNDLE:
-        raise JournalFault("inbound frame bound")
-    if len(data)!=42+bid_len+payload_len: raise JournalFault("inbound frame length")
-    if hashlib.sha256(data[:-32]).digest()!=data[-32:]: raise JournalFault("inbound checksum")
-    try: bid=data[10:10+bid_len].decode("utf-8","strict")
-    except UnicodeDecodeError as error: raise JournalFault("inbound BID UTF-8") from error
-    return bid,data[10+bid_len:-32]
+def decode_inbound(data: bytes, bridge=None) -> tuple[str, bytes]:
+    try:
+        return frame_bridge.session(bridge).inbound_unframe(data)
+    except (frame_bridge.BridgeError, UnicodeDecodeError) as error:
+        raise JournalFault(str(error)) from error
