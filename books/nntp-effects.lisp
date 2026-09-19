@@ -1,15 +1,114 @@
-; Effect-shape facts for the experimental fn NNTP reader.
+; Effect typing for the experimental fn NNTP reader.
+;
+; An effect is not merely a two-element list with octets in it.  A reply is
+; re-parsed here as a protocol response: a three-digit status indicator
+; followed by SP or by CRLF (RFC 3977 section 3.2), an initial line of at most
+; 512 octets including its CRLF (section 3.1), and, when the response is
+; multi-line, a dot-stuffed block terminated by the five octets CRLF "." CRLF
+; that carries none of NUL, bare LF, or bare CR (section 3.1.1).  The scanner
+; below is independent of the response constructors: it reads the emitted
+; octets back.
 (in-package "ACL2")
-(include-book "nntp")
+(include-book "nntp-invariants")
 
-; A reply is a proper octet sequence; close has no payload.  This is the
-; concrete effect vocabulary emitted by books/nntp.lisp, not a new protocol
-; event representation.
+; -----------------------------------------------------------------------------
+; The response grammar
+
+(defun fn-nntp-response-octetp (byte)
+  ; RFC 3977 section 3.1.1: a block carries no NUL, LF, or CR apart from the
+  ; line endings themselves.  The same restriction keeps an initial line from
+  ; splitting into two responses.
+  (and (integerp byte) (<= 1 byte) (<= byte 255)
+       (not (equal byte 13)) (not (equal byte 10))))
+
+(defun fn-nntp-response-textp (bytes)
+  (if (consp bytes)
+      (and (fn-nntp-response-octetp (car bytes))
+           (fn-nntp-response-textp (cdr bytes)))
+    (null bytes)))
+
+(defun fn-nntp-block-textp (lines)
+  (if (consp lines)
+      (and (fn-nntp-response-textp (car lines))
+           (fn-nntp-block-textp (cdr lines)))
+    (null lines)))
+
+; Three decimal digits, then SP or the terminating CRLF.
+(defun fn-nntp-status-prefixp (bytes)
+  (and (consp bytes) (consp (cdr bytes)) (consp (cdr (cdr bytes)))
+       (fn-nntp-decimal-digitp (car bytes))
+       (fn-nntp-decimal-digitp (car (cdr bytes)))
+       (fn-nntp-decimal-digitp (car (cdr (cdr bytes))))
+       (let ((rest (cdr (cdr (cdr bytes)))))
+         (and (consp rest)
+              (or (equal (car rest) 32)
+                  (and (equal (car rest) 13)
+                       (consp (cdr rest))
+                       (equal (car (cdr rest)) 10)))))))
+
+; The same shape, stated about an initial line that does not yet carry CRLF.
+(defun fn-nntp-initial-status-linep (line)
+  (and (consp line) (consp (cdr line)) (consp (cdr (cdr line)))
+       (fn-nntp-decimal-digitp (car line))
+       (fn-nntp-decimal-digitp (car (cdr line)))
+       (fn-nntp-decimal-digitp (car (cdr (cdr line))))
+       (or (null (cdr (cdr (cdr line))))
+           (equal (car (cdr (cdr (cdr line)))) 32))))
+
+; `seen` counts the octets already accepted on the initial line.  The CRLF pair
+; is charged to the 512-octet limit, as RFC 3977 section 3.1 requires.
+(defun fn-nntp-initial-line-tail (bytes seen)
+  (if (consp bytes)
+      (if (equal (car bytes) 13)
+          (if (and (consp (cdr bytes))
+                   (equal (car (cdr bytes)) 10)
+                   (<= (+ seen 2) *fn-nntp-max-response-octets*))
+              (list :ok (cdr (cdr bytes)))
+            (list :error))
+        (if (fn-nntp-response-octetp (car bytes))
+            (fn-nntp-initial-line-tail (cdr bytes) (+ 1 seen))
+          (list :error)))
+    (list :error)))
+
+; `startp` is true at the start of a block line.  A line whose first octet is
+; the termination octet is either the terminating line, which must end the
+; reply, or a dot-stuffed content line.
+(defun fn-nntp-block-scan (bytes startp)
+  (declare (xargs :measure (+ (* 2 (acl2-count bytes)) (if startp 1 0))))
+  (if (not (consp bytes))
+      nil
+    (if startp
+        (if (equal (car bytes) 46)
+            (if (and (consp (cdr bytes)) (equal (car (cdr bytes)) 13))
+                (and (consp (cdr (cdr bytes)))
+                     (equal (car (cdr (cdr bytes))) 10)
+                     (null (cdr (cdr (cdr bytes)))))
+              (and (consp (cdr bytes))
+                   (equal (car (cdr bytes)) 46)
+                   (fn-nntp-block-scan (cdr (cdr bytes)) nil)))
+          (fn-nntp-block-scan bytes nil))
+      (if (equal (car bytes) 13)
+          (and (consp (cdr bytes))
+               (equal (car (cdr bytes)) 10)
+               (fn-nntp-block-scan (cdr (cdr bytes)) t))
+        (and (fn-nntp-response-octetp (car bytes))
+             (fn-nntp-block-scan (cdr bytes) nil))))))
+
+(defun fn-nntp-replyp (octets)
+  (and (fn-nntp-status-prefixp octets)
+       (let ((tail (fn-nntp-initial-line-tail octets 0)))
+         (and (equal (car tail) :ok)
+              (let ((rest (car (cdr tail))))
+                (if (null rest) t (fn-nntp-block-scan rest t)))))))
+
+; A reply is a well-formed protocol response carried as octets; close has no
+; payload.  This is the concrete effect vocabulary emitted by books/nntp.lisp.
 (defun fn-nntp-effectp (effect)
   (or (and (true-listp effect)
            (equal (len effect) 2)
            (equal (car effect) :reply)
-           (fn-octet-listp (car (cdr effect))))
+           (fn-octet-listp (car (cdr effect)))
+           (fn-nntp-replyp (car (cdr effect))))
       (equal effect (fn-nntp-close-effect))))
 
 (defun fn-nntp-effectsp (effects)
@@ -18,9 +117,15 @@
            (fn-nntp-effectsp (cdr effects)))
     (null effects)))
 
-; Keep byte rendering facts below the response constructors.  Exposing the
-; complete command parser while proving these facts creates a large, irrelevant
-; case split over token syntax.
+; -----------------------------------------------------------------------------
+; Octet-shape facts, kept below the response constructors
+
+(local (defthm fn-nntp-len-of-append-lemma
+         (equal (len (append x y)) (+ (len x) (len y)))))
+
+(local (defthm fn-nntp-append-associates-lemma
+         (equal (append (append x y) z) (append x (append y z)))))
+
 (defthm fn-nntp-effects-octet-listp-append
   (implies (and (fn-octet-listp x)
                 (fn-octet-listp y))
@@ -42,6 +147,10 @@
 
 (defthm fn-nntp-effects-string-octets
   (fn-octet-listp (fn-nntp-string-octets text))
+  :hints (("Goal" :in-theory (enable fn-nntp-string-octets))))
+
+(defthm fn-nntp-effects-string-octets-true-listp
+  (true-listp (fn-nntp-string-octets text))
   :hints (("Goal" :in-theory (enable fn-nntp-string-octets))))
 
 (defthm fn-nntp-effects-decimal-characters-aux
@@ -66,6 +175,269 @@
   (fn-octet-listp (fn-nntp-decimal number))
   :hints (("Goal" :in-theory (enable fn-nntp-decimal))))
 
+; -----------------------------------------------------------------------------
+; Decimal fields are bounded digit runs by construction
+
+(defthm fn-nntp-decimal-field-is-a-digit-run
+  (fn-nntp-decimal-tokenp (fn-nntp-decimal-field number))
+  :hints (("Goal" :in-theory (enable fn-nntp-decimal-field))))
+
+(defthm fn-nntp-decimal-field-is-nonempty
+  (consp (fn-nntp-decimal-field number))
+  :hints (("Goal" :in-theory (enable fn-nntp-decimal-field))))
+
+(defthm fn-nntp-decimal-field-is-bounded
+  (<= (len (fn-nntp-decimal-field number)) *fn-nntp-max-decimal-octets*)
+  :rule-classes (:rewrite :linear)
+  :hints (("Goal" :in-theory (enable fn-nntp-decimal-field))))
+
+(defthm fn-nntp-decimal-field-is-octets
+  (fn-octet-listp (fn-nntp-decimal-field number))
+  :hints (("Goal" :in-theory (enable fn-nntp-decimal-field))))
+
+(defthm fn-nntp-decimal-field-is-true-listp
+  (true-listp (fn-nntp-decimal-field number))
+  :hints (("Goal" :in-theory (enable fn-nntp-decimal-field))))
+
+(defthm fn-nntp-decimal-token-is-response-text
+  (implies (and (fn-nntp-decimal-tokenp octets) (true-listp octets))
+           (fn-nntp-response-textp octets)))
+
+(defthm fn-nntp-decimal-field-is-response-text
+  (fn-nntp-response-textp (fn-nntp-decimal-field number))
+  :hints (("Goal" :use ((:instance fn-nntp-decimal-token-is-response-text
+                         (octets (fn-nntp-decimal-field number)))))))
+
+(defthm fn-nntp-decimal-field-first-is-digit
+  (fn-nntp-decimal-digitp (car (fn-nntp-decimal-field number)))
+  :hints (("Goal" :in-theory (enable fn-nntp-decimal-field))))
+
+; -----------------------------------------------------------------------------
+; Printable projected data is response text
+
+(defthm fn-nntp-printable-token-is-response-text
+  (implies (and (fn-nntp-printable-tokenp octets) (true-listp octets))
+           (fn-nntp-response-textp octets)))
+
+(defthm fn-nntp-response-text-of-append
+  (implies (and (fn-nntp-response-textp x) (fn-nntp-response-textp y))
+           (fn-nntp-response-textp (append x y))))
+
+(defthm fn-nntp-response-text-true-listp
+  (implies (fn-nntp-response-textp x) (true-listp x)))
+
+(defthm fn-nntp-safe-group-name-is-response-text
+  (implies (fn-nntp-safe-group-namep group)
+           (fn-nntp-response-textp (fn-nntp-string-octets group)))
+  :hints (("Goal" :in-theory (enable fn-nntp-safe-group-namep))))
+
+(defthm fn-nntp-safe-group-name-is-bounded
+  (implies (fn-nntp-safe-group-namep group)
+           (<= (len (fn-nntp-string-octets group)) *fn-nntp-max-group-octets*))
+  :rule-classes (:rewrite :linear)
+  :hints (("Goal" :in-theory (enable fn-nntp-safe-group-namep))))
+
+(defthm fn-nntp-safe-group-list-member
+  (implies (and (fn-nntp-safe-group-listp groups)
+                (member-equal group groups))
+           (fn-nntp-safe-group-namep group))
+  :hints (("Goal" :induct (fn-nntp-safe-group-listp groups))))
+
+(defthm fn-nntp-projection-groups-are-safe
+  (implies (fn-nntp-projectionp archive)
+           (fn-nntp-safe-group-listp (fn-state-groups archive)))
+  :hints (("Goal" :in-theory (enable fn-nntp-projectionp))))
+
+(defthm fn-nntp-projected-group-is-safe
+  (implies (and (fn-nntp-projectionp archive)
+                (member-equal group (fn-state-groups archive)))
+           (fn-nntp-safe-group-namep group))
+  :hints (("Goal" :in-theory (enable fn-nntp-projectionp))))
+
+(defthm fn-nntp-filter-groups-keeps-safe-list
+  (implies (fn-nntp-safe-group-listp groups)
+           (fn-nntp-safe-group-listp
+            (fn-nntp-filter-groups-by-wildmat patterns groups)))
+  :hints (("Goal" :induct (fn-nntp-filter-groups-by-wildmat patterns groups)
+           :in-theory (e/d (fn-nntp-filter-groups-by-wildmat)
+                           (fn-nntp-group-matches-parsed-wildmatp)))))
+
+(defthm fn-nntp-message-id-tail-is-true-listp
+  (implies (fn-nntp-message-id-tailp tail) (true-listp tail))
+  :hints (("Goal" :induct (fn-nntp-message-id-tailp tail))))
+
+(defthm fn-nntp-message-id-token-is-response-text
+  (implies (fn-nntp-message-id-tokenp octets)
+           (fn-nntp-response-textp octets))
+  :hints (("Goal" :in-theory (enable fn-nntp-message-id-tokenp)
+           :use ((:instance fn-nntp-printable-token-is-response-text)))))
+
+(defthm fn-nntp-article-id-is-response-text
+  (implies (fn-nntp-article-idp article)
+           (fn-nntp-response-textp
+            (fn-nntp-string-octets (fn-article-msgid article))))
+  :hints (("Goal" :in-theory (enable fn-nntp-article-idp))))
+
+(defthm fn-nntp-article-id-is-bounded
+  (implies (fn-nntp-article-idp article)
+           (<= (len (fn-nntp-string-octets (fn-article-msgid article)))
+               *fn-nntp-max-message-id-octets*))
+  :rule-classes (:rewrite :linear)
+  :hints (("Goal" :in-theory (enable fn-nntp-article-idp
+                                     fn-nntp-message-id-tokenp))))
+
+; -----------------------------------------------------------------------------
+; The block a multi-line response carries
+
+(defthm fn-nntp-block-textp-revappend
+  (implies (and (fn-nntp-block-textp x) (fn-nntp-block-textp accumulator))
+           (fn-nntp-block-textp (revappend x accumulator))))
+
+(defthm fn-nntp-block-textp-reverse
+  (implies (fn-nntp-block-textp x) (fn-nntp-block-textp (reverse x)))
+  :hints (("Goal" :in-theory (enable reverse))))
+
+(defthm fn-nntp-response-textp-revappend
+  (implies (and (fn-nntp-response-textp x) (fn-nntp-response-textp accumulator))
+           (fn-nntp-response-textp (revappend x accumulator))))
+
+(defthm fn-nntp-response-textp-reverse
+  (implies (fn-nntp-response-textp x) (fn-nntp-response-textp (reverse x)))
+  :hints (("Goal" :in-theory (enable reverse))))
+
+(defthm fn-nntp-crlf-lines-aux-is-response-text
+  (implies (and (fn-octet-listp bytes)
+                (fn-nntp-response-textp line-rev)
+                (fn-nntp-block-textp lines-rev)
+                (equal (car (fn-nntp-crlf-lines-aux bytes line-rev lines-rev)) :ok))
+           (fn-nntp-block-textp
+            (car (cdr (fn-nntp-crlf-lines-aux bytes line-rev lines-rev)))))
+  :hints (("Goal" :in-theory (enable fn-nntp-crlf-lines-aux
+                                     fn-nntp-block-textp
+                                     fn-nntp-response-textp))))
+
+(defthm fn-nntp-crlf-lines-is-response-text
+  (implies (equal (car (fn-nntp-crlf-lines bytes)) :ok)
+           (fn-nntp-block-textp (car (cdr (fn-nntp-crlf-lines bytes)))))
+  :hints (("Goal" :in-theory (enable fn-nntp-crlf-lines))))
+
+(defthm fn-nntp-article-section-is-response-text
+  (implies (equal (car (fn-nntp-article-section article kind)) :ok)
+           (fn-nntp-block-textp
+            (car (cdr (fn-nntp-article-section article kind)))))
+  :hints (("Goal" :in-theory (enable fn-nntp-article-section))))
+
+(defthm fn-nntp-number-lines-are-response-text
+  (fn-nntp-block-textp (fn-nntp-number-lines numbers))
+  :hints (("Goal" :in-theory (enable fn-nntp-number-lines
+                                     fn-nntp-block-textp))))
+
+(defthm fn-nntp-active-line-is-response-text
+  (implies (fn-nntp-safe-group-namep group)
+           (fn-nntp-response-textp (fn-nntp-active-line archive group)))
+  :hints (("Goal" :in-theory (enable fn-nntp-active-line
+                                     fn-nntp-append-pieces))))
+
+(defthm fn-nntp-active-lines-are-response-text
+  (implies (fn-nntp-safe-group-listp groups)
+           (fn-nntp-block-textp (fn-nntp-active-lines archive groups)))
+  :hints (("Goal" :induct (fn-nntp-active-lines archive groups)
+           :in-theory (e/d (fn-nntp-active-lines fn-nntp-block-textp
+                            fn-nntp-safe-group-listp)
+                           (fn-nntp-active-line)))))
+
+(defthm fn-nntp-newsgroup-lines-are-response-text
+  (implies (fn-nntp-safe-group-listp groups)
+           (fn-nntp-block-textp (fn-nntp-newsgroup-lines groups)))
+  :hints (("Goal" :induct (fn-nntp-newsgroup-lines groups)
+           :in-theory (enable fn-nntp-newsgroup-lines fn-nntp-block-textp
+                              fn-nntp-safe-group-listp
+                              fn-nntp-append-pieces))))
+
+; -----------------------------------------------------------------------------
+; Reading an emitted response back
+
+(local
+ (defun fn-nntp-text-seen-induction (line seen)
+   (if (consp line)
+       (fn-nntp-text-seen-induction (cdr line) (+ 1 seen))
+     (list line seen))))
+
+(defthm fn-nntp-initial-line-tail-of-text
+  (implies (and (fn-nntp-response-textp line)
+                (natp seen)
+                (<= (+ seen (len line) 2) *fn-nntp-max-response-octets*))
+           (equal (fn-nntp-initial-line-tail
+                   (append line (cons 13 (cons 10 rest))) seen)
+                  (list :ok rest)))
+  :hints (("Goal" :induct (fn-nntp-text-seen-induction line seen)
+           :in-theory (enable fn-nntp-initial-line-tail
+                              fn-nntp-response-textp))))
+
+(defthm fn-nntp-status-prefix-of-append
+  (implies (fn-nntp-initial-status-linep line)
+           (fn-nntp-status-prefixp (append line (cons 13 (cons 10 rest)))))
+  :hints (("Goal" :in-theory (enable fn-nntp-status-prefixp
+                                     fn-nntp-initial-status-linep))))
+
+(defthm fn-nntp-block-scan-of-text-line
+  (implies (fn-nntp-response-textp body)
+           (equal (fn-nntp-block-scan (append body (cons 13 (cons 10 rest))) nil)
+                  (fn-nntp-block-scan rest t)))
+  :hints (("Goal" :induct (fn-nntp-response-textp body)
+           :in-theory (enable fn-nntp-response-textp))))
+
+(defthm fn-nntp-block-scan-of-stuffed-line
+  (implies (fn-nntp-response-textp line)
+           (equal (fn-nntp-block-scan
+                   (append (fn-nntp-crlf (fn-wire-stuff-line line)) rest) t)
+                  (fn-nntp-block-scan rest t)))
+  :hints (("Goal" :in-theory (enable fn-nntp-crlf fn-wire-stuff-line
+                                     fn-nntp-response-textp))))
+
+(defthm fn-nntp-block-scan-of-stuff-lines
+  (implies (fn-nntp-block-textp lines)
+           (fn-nntp-block-scan
+            (append (fn-nntp-stuff-lines lines) '(46 13 10)) t))
+  :hints (("Goal" :induct (fn-nntp-block-textp lines)
+           :in-theory (e/d (fn-nntp-stuff-lines fn-nntp-block-textp)
+                           (fn-nntp-crlf fn-wire-stuff-line)))))
+
+(defthm fn-nntp-replyp-of-single-line
+  (implies (and (fn-nntp-response-textp line)
+                (fn-nntp-initial-status-linep line)
+                (<= (+ (len line) 2) *fn-nntp-max-response-octets*))
+           (fn-nntp-replyp (fn-nntp-crlf line)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-replyp fn-nntp-crlf)
+                                  (fn-nntp-initial-line-tail
+                                   fn-nntp-status-prefixp)))))
+
+(defthm fn-nntp-replyp-of-block
+  (implies (and (fn-nntp-response-textp line)
+                (fn-nntp-initial-status-linep line)
+                (<= (+ (len line) 2) *fn-nntp-max-response-octets*)
+                (fn-nntp-block-textp lines))
+           (fn-nntp-replyp (append (fn-nntp-crlf line)
+                                   (append (fn-nntp-stuff-lines lines)
+                                           '(46 13 10)))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-replyp fn-nntp-crlf)
+                                  (fn-nntp-initial-line-tail
+                                   fn-nntp-status-prefixp
+                                   fn-nntp-block-scan
+                                   fn-nntp-stuff-lines)))))
+
+; -----------------------------------------------------------------------------
+; The response constructors
+
+(defthm fn-nntp-effects-reply-effect
+  (implies (and (fn-octet-listp octets) (fn-nntp-replyp octets))
+           (fn-nntp-effectp (fn-nntp-reply-effect octets)))
+  :hints (("Goal" :in-theory (enable fn-nntp-effectp fn-nntp-reply-effect))))
+
+(defthm fn-nntp-effects-of-make-result
+  (equal (fn-nntp-result-effects (fn-nntp-make-result session effects))
+         effects))
+
 (defthm fn-nntp-effects-crlf-octets
   (implies (fn-octet-listp line)
            (fn-octet-listp (fn-nntp-crlf line)))
@@ -82,152 +454,173 @@
            (fn-nntp-octet-linesp (cdr lines)))
     (null lines)))
 
-(defthm fn-nntp-effects-octet-linesp-revappend
-  (implies (and (fn-nntp-octet-linesp x)
-                (fn-nntp-octet-linesp accumulator))
-           (fn-nntp-octet-linesp (revappend x accumulator))))
-
-(defthm fn-nntp-effects-octet-linesp-reverse
-  (implies (fn-nntp-octet-linesp x)
-           (fn-nntp-octet-linesp (reverse x)))
-  :hints (("Goal" :in-theory (enable reverse))))
+(defthm fn-nntp-block-text-is-octet-lines
+  (implies (fn-nntp-block-textp lines)
+           (fn-nntp-octet-linesp lines))
+  :hints (("Goal" :induct (fn-nntp-block-textp lines)
+           :in-theory (enable fn-nntp-block-textp fn-nntp-octet-linesp))))
 
 (defthm fn-nntp-effects-stuff-lines-octets
   (implies (fn-nntp-octet-linesp lines)
            (fn-octet-listp (fn-nntp-stuff-lines lines)))
   :hints (("Goal" :in-theory (enable fn-nntp-stuff-lines
-                                      fn-nntp-octet-linesp))))
-
-(defthm fn-nntp-effects-reply-effect
-  (implies (fn-octet-listp octets)
-           (fn-nntp-effectp (fn-nntp-reply-effect octets)))
-  :hints (("Goal" :in-theory (enable fn-nntp-effectp
-                                      fn-nntp-reply-effect))))
-
-(defthm fn-nntp-effects-of-make-result
-  (equal (fn-nntp-result-effects (fn-nntp-make-result session effects))
-         effects))
-
-(defthm fn-nntp-effects-single
-  (fn-nntp-effectsp
-   (fn-nntp-result-effects (fn-nntp-single session text)))
-  :hints (("Goal" :in-theory (enable fn-nntp-single
-                                      fn-nntp-effectsp))))
-
-(defthm fn-nntp-effects-multi
-  (implies (fn-nntp-octet-linesp lines)
-           (fn-nntp-effectsp
-            (fn-nntp-result-effects (fn-nntp-multi session initial lines))))
-  :hints (("Goal" :in-theory (enable fn-nntp-multi
-                                      fn-nntp-effectsp))))
-
-(defthm fn-nntp-effects-multi-octets
-  (implies (and (fn-octet-listp initial)
-                (fn-nntp-octet-linesp lines))
-           (fn-nntp-effectsp
-            (fn-nntp-result-effects
-             (fn-nntp-multi-octets session initial lines))))
-  :hints (("Goal" :in-theory (enable fn-nntp-multi-octets
-                                      fn-nntp-effectsp))))
+                                     fn-nntp-octet-linesp))))
 
 (defthm fn-nntp-effects-append-pieces-octets
   (implies (fn-nntp-octet-linesp pieces)
            (fn-octet-listp (fn-nntp-append-pieces pieces)))
   :hints (("Goal" :in-theory (enable fn-nntp-append-pieces
-                                      fn-nntp-octet-linesp))))
+                                     fn-nntp-octet-linesp))))
 
-(defthm fn-nntp-effects-number-lines-octets
-  (fn-nntp-octet-linesp (fn-nntp-number-lines numbers))
-  :hints (("Goal" :in-theory (enable fn-nntp-number-lines
-                                      fn-nntp-octet-linesp))))
+(defthm fn-nntp-response-text-is-octets
+  (implies (fn-nntp-response-textp bytes) (fn-octet-listp bytes)))
 
-(defthm fn-nntp-effects-group-initial-octets
-  (fn-octet-listp (fn-nntp-group-initial archive group))
+(defthm fn-nntp-effects-single
+  (implies (and (fn-nntp-response-textp (fn-nntp-string-octets text))
+                (fn-nntp-initial-status-linep (fn-nntp-string-octets text))
+                (<= (+ (len (fn-nntp-string-octets text)) 2)
+                    *fn-nntp-max-response-octets*))
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects (fn-nntp-single session text))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-single fn-nntp-effectsp)
+                                  (fn-nntp-replyp fn-nntp-crlf
+                                   fn-nntp-initial-status-linep
+                                   fn-nntp-response-textp)))))
+
+(defthm fn-nntp-effects-multi-octets
+  (implies (and (fn-nntp-response-textp initial)
+                (fn-nntp-initial-status-linep initial)
+                (<= (+ (len initial) 2) *fn-nntp-max-response-octets*)
+                (fn-nntp-block-textp lines))
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects
+             (fn-nntp-multi-octets session initial lines))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-multi-octets fn-nntp-effectsp)
+                                  (fn-nntp-replyp fn-nntp-crlf
+                                   fn-nntp-stuff-lines
+                                   fn-nntp-initial-status-linep
+                                   fn-nntp-response-textp
+                                   fn-nntp-block-textp)))))
+
+(defthm fn-nntp-effects-multi
+  (implies (and (fn-nntp-response-textp (fn-nntp-string-octets initial))
+                (fn-nntp-initial-status-linep (fn-nntp-string-octets initial))
+                (<= (+ (len (fn-nntp-string-octets initial)) 2)
+                    *fn-nntp-max-response-octets*)
+                (fn-nntp-block-textp lines))
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects (fn-nntp-multi session initial lines))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-multi fn-nntp-effectsp)
+                                  (fn-nntp-replyp fn-nntp-crlf
+                                   fn-nntp-stuff-lines
+                                   fn-nntp-initial-status-linep
+                                   fn-nntp-response-textp
+                                   fn-nntp-block-textp)))))
+
+; -----------------------------------------------------------------------------
+; Every generated initial line fits inside RFC 3977 section 3.1's 512 octets
+
+(defthm fn-nntp-group-initial-is-response-text
+  (implies (fn-nntp-safe-group-namep group)
+           (fn-nntp-response-textp (fn-nntp-group-initial archive group)))
   :hints (("Goal" :in-theory (enable fn-nntp-group-initial
-                                      fn-nntp-octet-linesp))))
+                                     fn-nntp-append-pieces))))
 
-(defthm fn-nntp-effects-listgroup-initial-octets
-  (fn-octet-listp (fn-nntp-listgroup-initial archive group))
+(defthm fn-nntp-group-initial-is-a-status-line
+  (fn-nntp-initial-status-linep (fn-nntp-group-initial archive group))
+  :hints (("Goal" :in-theory (enable fn-nntp-group-initial
+                                     fn-nntp-initial-status-linep
+                                     fn-nntp-append-pieces))))
+
+; 4 status octets, three decimal fields of at most ten octets, three separating
+; spaces, and a group name of at most 460 octets: 497, and 510 once LISTGROUP
+; adds " list follows".  Both are inside 512 once CRLF is charged.
+(defthm fn-nntp-group-initial-fits
+  (implies (fn-nntp-safe-group-namep group)
+           (<= (+ (len (fn-nntp-group-initial archive group)) 2)
+               *fn-nntp-max-response-octets*))
+  :rule-classes (:rewrite :linear)
+  :hints (("Goal" :in-theory (enable fn-nntp-group-initial
+                                     fn-nntp-append-pieces))))
+
+(defthm fn-nntp-listgroup-initial-is-response-text
+  (implies (fn-nntp-safe-group-namep group)
+           (fn-nntp-response-textp (fn-nntp-listgroup-initial archive group)))
   :hints (("Goal" :in-theory (enable fn-nntp-listgroup-initial))))
 
-(defthm fn-nntp-effects-retrieval-initial-octets
-  (fn-octet-listp (fn-nntp-retrieval-initial kind number article))
+(defthm fn-nntp-listgroup-initial-is-a-status-line
+  (fn-nntp-initial-status-linep (fn-nntp-listgroup-initial archive group))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-listgroup-initial
+                                   fn-nntp-group-initial
+                                   fn-nntp-initial-status-linep
+                                   fn-nntp-append-pieces)
+                                  ()))))
+
+(defthm fn-nntp-listgroup-initial-fits
+  (implies (fn-nntp-safe-group-namep group)
+           (<= (+ (len (fn-nntp-listgroup-initial archive group)) 2)
+               *fn-nntp-max-response-octets*))
+  :rule-classes (:rewrite :linear)
+  :hints (("Goal" :in-theory (enable fn-nntp-listgroup-initial
+                                     fn-nntp-group-initial
+                                     fn-nntp-append-pieces))))
+
+(defthm fn-nntp-retrieval-initial-is-response-text
+  (implies (fn-nntp-article-idp article)
+           (fn-nntp-response-textp
+            (fn-nntp-retrieval-initial kind number article)))
   :hints (("Goal" :in-theory (enable fn-nntp-retrieval-initial
-                                      fn-nntp-octet-linesp))))
+                                     fn-nntp-append-pieces))))
 
-(defthm fn-nntp-effects-active-line-octets
-  (fn-octet-listp (fn-nntp-active-line archive group))
-  :hints (("Goal" :in-theory (enable fn-nntp-active-line
-                                      fn-nntp-octet-linesp))))
+(defthm fn-nntp-retrieval-initial-is-a-status-line
+  (fn-nntp-initial-status-linep (fn-nntp-retrieval-initial kind number article))
+  :hints (("Goal" :in-theory (enable fn-nntp-retrieval-initial
+                                     fn-nntp-initial-status-linep
+                                     fn-nntp-append-pieces))))
 
-(defthm fn-nntp-effects-active-lines-octets
-  (fn-nntp-octet-linesp (fn-nntp-active-lines archive groups))
-  :hints (("Goal" :in-theory (e/d (fn-nntp-active-lines
-                                     fn-nntp-octet-linesp)
-                                    (fn-nntp-active-line)))))
+(defthm fn-nntp-retrieval-initial-fits
+  (implies (fn-nntp-article-idp article)
+           (<= (+ (len (fn-nntp-retrieval-initial kind number article)) 2)
+               *fn-nntp-max-response-octets*))
+  :rule-classes (:rewrite :linear)
+  :hints (("Goal" :in-theory (enable fn-nntp-retrieval-initial
+                                     fn-nntp-append-pieces))))
 
-(defthm fn-nntp-effects-newsgroup-lines-octets
-  (fn-nntp-octet-linesp (fn-nntp-newsgroup-lines groups))
-  :hints (("Goal" :in-theory
-           (e/d (fn-nntp-newsgroup-lines fn-nntp-octet-linesp)
-                (fn-nntp-append-pieces fn-nntp-string-octets)))))
+; -----------------------------------------------------------------------------
+; Branch by branch
 
-(defthm fn-nntp-effects-crlf-lines-aux-octets
-  (implies (and (fn-octet-listp bytes)
-                (fn-octet-listp line-rev)
-                (fn-nntp-octet-linesp lines-rev)
-                (equal (car (fn-nntp-crlf-lines-aux
-                             bytes line-rev lines-rev)) :ok))
-           (fn-nntp-octet-linesp
-            (car (cdr (fn-nntp-crlf-lines-aux
-                       bytes line-rev lines-rev)))))
-  :hints (("Goal" :in-theory (enable fn-nntp-crlf-lines-aux
-                                      fn-nntp-octet-linesp))))
-
-(defthm fn-nntp-effects-crlf-lines-octets
-  (implies (equal (car (fn-nntp-crlf-lines bytes)) :ok)
-           (fn-nntp-octet-linesp
-            (car (cdr (fn-nntp-crlf-lines bytes)))))
-  :hints (("Goal" :in-theory (enable fn-nntp-crlf-lines))))
-
-(defthm fn-nntp-effects-article-section-octets
-  (implies (and (fn-nntp-projection-articlep article)
-                (equal (car (fn-nntp-article-section article kind)) :ok))
-           (fn-nntp-octet-linesp
-            (car (cdr (fn-nntp-article-section article kind)))))
-  :hints (("Goal" :in-theory (enable fn-nntp-article-section
-                                      fn-nntp-projection-articlep))))
-
-; From here on response constructors are opaque except for the one constructor
-; currently being composed.  Their effect theorems above and below are the
-; interface; expanding their byte renderers recreates the parser-wide split
-; that this book is intended to avoid.
 (in-theory (disable fn-nntp-result-effects
                     fn-nntp-make-result fn-nntp-reply-effect
                     fn-nntp-single fn-nntp-multi fn-nntp-multi-octets
                     fn-nntp-group-result fn-nntp-listgroup-result
                     fn-nntp-article-response
+                    fn-nntp-group-initial fn-nntp-listgroup-initial
+                    fn-nntp-retrieval-initial
                     fn-nntp-list-active fn-nntp-list-newsgroups))
 
 (defthm fn-nntp-effects-group-result
-  (fn-nntp-effectsp
-   (fn-nntp-result-effects (fn-nntp-group-result session archive group)))
-  :hints (("Goal" :in-theory
-           (e/d (fn-nntp-group-result fn-nntp-effectsp)
-                (fn-nntp-reply-effect fn-nntp-crlf
-                 fn-nntp-group-initial fn-nntp-set-cursor
-                 fn-nntp-make-result)))))
+  (implies (fn-nntp-projectionp archive)
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects (fn-nntp-group-result session archive group))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-group-result fn-nntp-effectsp)
+                                  (fn-nntp-reply-effect fn-nntp-crlf
+                                   fn-nntp-set-cursor
+                                   fn-nntp-make-result)))))
 
 (defthm fn-nntp-effects-listgroup-result
-  (fn-nntp-effectsp
-   (fn-nntp-result-effects
-    (fn-nntp-listgroup-result session archive group range)))
-  :hints (("Goal" :in-theory (enable fn-nntp-listgroup-result))))
+  (implies (fn-nntp-projectionp archive)
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects
+             (fn-nntp-listgroup-result session archive group range))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-listgroup-result)
+                                  (fn-nntp-set-cursor
+                                   fn-nntp-group-range-numbers)))))
 
 (defthm fn-nntp-effects-listgroup-command
-  (fn-nntp-effectsp
-   (fn-nntp-result-effects
-    (fn-nntp-listgroup-command session archive args)))
+  (implies (fn-nntp-projectionp archive)
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects
+             (fn-nntp-listgroup-command session archive args))))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-listgroup-command)
                 (fn-nntp-listgroup-result fn-nntp-single
@@ -235,100 +628,95 @@
                  fn-nntp-result-effects)))))
 
 (defthm fn-nntp-effects-article-response
-  (implies (fn-nntp-projection-articlep article)
-           (fn-nntp-effectsp
-            (fn-nntp-result-effects
-             (fn-nntp-article-response session article number kind updatep group))))
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects
+    (fn-nntp-article-response session article number kind updatep group)))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-article-response fn-nntp-effectsp)
-                (fn-nntp-retrieval-initial
-                 fn-nntp-article-section
+                (fn-nntp-article-section
                  fn-nntp-stuff-lines
                  fn-nntp-crlf
-                 fn-nntp-decimal
+                 fn-nntp-set-cursor
+                 fn-nntp-decimal-field
                  fn-nntp-string-octets)))))
 
-(defthm fn-nntp-effects-article-response-stat
+(defthm fn-nntp-effects-current-retrieval
   (fn-nntp-effectsp
    (fn-nntp-result-effects
-    (fn-nntp-article-response session article number :stat updatep group)))
-  :hints (("Goal" :in-theory
-           (e/d (fn-nntp-article-response fn-nntp-effectsp)
-                (fn-nntp-make-result fn-nntp-result-effects
-                 fn-nntp-reply-effect fn-nntp-crlf
-                 fn-nntp-retrieval-initial)))))
-
-(defthm fn-nntp-effects-find-group-number-projection
-  (implies (and (fn-nntp-projection-articlesp articles)
-                (consp (fn-nntp-find-group-number group number articles)))
-           (fn-nntp-projection-articlep
-            (fn-nntp-find-group-number group number articles)))
-  :hints (("Goal" :in-theory (enable fn-nntp-find-group-number
-                                      fn-nntp-projection-articlesp))))
-
-(defthm fn-nntp-effects-find-article-projection
-  (implies (and (fn-nntp-projection-articlesp articles)
-                (consp (fn-find-article msgid articles)))
-           (fn-nntp-projection-articlep (fn-find-article msgid articles)))
-  :hints (("Goal" :in-theory (enable fn-find-article
-                                      fn-nntp-projection-articlesp))))
-
-(defthm fn-nntp-effects-current-retrieval
-  (implies (fn-nntp-projectionp archive)
-           (fn-nntp-effectsp
-            (fn-nntp-result-effects
-             (fn-nntp-current-retrieval session archive kind))))
-  :hints (("Goal" :in-theory (enable fn-nntp-current-retrieval))))
+    (fn-nntp-current-retrieval session archive kind)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-current-retrieval)
+                                  (fn-nntp-article-response
+                                   fn-nntp-available-article)))))
 
 (defthm fn-nntp-effects-number-retrieval
-  (implies (fn-nntp-projectionp archive)
-           (fn-nntp-effectsp
-            (fn-nntp-result-effects
-             (fn-nntp-number-retrieval session archive kind token))))
-  :hints (("Goal" :in-theory (enable fn-nntp-number-retrieval))))
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects
+    (fn-nntp-number-retrieval session archive kind token)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-number-retrieval)
+                                  (fn-nntp-article-response
+                                   fn-nntp-find-group-number)))))
 
 (defthm fn-nntp-effects-msgid-retrieval
-  (implies (fn-nntp-projectionp archive)
-           (fn-nntp-effectsp
-            (fn-nntp-result-effects
-             (fn-nntp-msgid-retrieval session archive kind token))))
-  :hints (("Goal" :in-theory (enable fn-nntp-msgid-retrieval))))
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects
+    (fn-nntp-msgid-retrieval session archive kind token)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-msgid-retrieval)
+                                  (fn-nntp-article-response
+                                   fn-find-article)))))
 
 (defthm fn-nntp-effects-retrieval
-  (implies (fn-nntp-projectionp archive)
-           (fn-nntp-effectsp
-            (fn-nntp-result-effects
-             (fn-nntp-retrieval session archive kind args))))
-  :hints (("Goal" :in-theory (enable fn-nntp-retrieval))))
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects
+    (fn-nntp-retrieval session archive kind args)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-retrieval)
+                                  (fn-nntp-current-retrieval
+                                   fn-nntp-number-retrieval
+                                   fn-nntp-msgid-retrieval)))))
 
 (defthm fn-nntp-effects-next-or-last
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects
+    (fn-nntp-next-or-last session archive direction)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-next-or-last)
+                                  (fn-nntp-article-response
+                                   fn-nntp-available-article
+                                   fn-nntp-group-next-number
+                                   fn-nntp-group-last-number)))))
+
+(defthm fn-nntp-effects-list-active
+  (implies (fn-nntp-safe-group-listp groups)
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects (fn-nntp-list-active session archive groups))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-list-active)
+                                  (fn-nntp-active-lines)))))
+
+(defthm fn-nntp-effects-list-newsgroups
+  (implies (fn-nntp-safe-group-listp groups)
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects (fn-nntp-list-newsgroups session groups))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-list-newsgroups)
+                                  (fn-nntp-newsgroup-lines)))))
+
+(defthm fn-nntp-effects-list-filtered-response
   (implies (fn-nntp-projectionp archive)
            (fn-nntp-effectsp
             (fn-nntp-result-effects
-             (fn-nntp-next-or-last session archive direction))))
-  :hints (("Goal" :in-theory (enable fn-nntp-next-or-last))))
-
-(defthm fn-nntp-effects-list-active
-  (fn-nntp-effectsp
-   (fn-nntp-result-effects (fn-nntp-list-active session archive groups)))
-  :hints (("Goal" :in-theory (enable fn-nntp-list-active))))
-
-(defthm fn-nntp-effects-list-newsgroups
-  (fn-nntp-effectsp
-   (fn-nntp-result-effects (fn-nntp-list-newsgroups session groups)))
-  :hints (("Goal" :in-theory (enable fn-nntp-list-newsgroups))))
-
-(defthm fn-nntp-effects-list-filtered-response
-  (fn-nntp-effectsp
-   (fn-nntp-result-effects
-    (fn-nntp-list-filtered-response session archive kind wildmat)))
-  :hints (("Goal" :in-theory (enable fn-nntp-list-filtered-response))))
+             (fn-nntp-list-filtered-response session archive kind wildmat))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-list-filtered-response)
+                                  (fn-nntp-projectionp
+                                   fn-nntp-list-active fn-nntp-list-newsgroups
+                                   fn-nntp-filter-groups-by-wildmat
+                                   fn-wildmat-parse)))))
 
 (defthm fn-nntp-effects-list-active-or-newsgroups
-  (fn-nntp-effectsp
-   (fn-nntp-result-effects
-    (fn-nntp-list-active-or-newsgroups session archive kind args)))
-  :hints (("Goal" :in-theory (enable fn-nntp-list-active-or-newsgroups))))
+  (implies (fn-nntp-projectionp archive)
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects
+             (fn-nntp-list-active-or-newsgroups session archive kind args))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-list-active-or-newsgroups)
+                                  (fn-nntp-projectionp
+                                   fn-nntp-list-active fn-nntp-list-newsgroups
+                                   fn-nntp-list-filtered-response)))))
 
 (defthm fn-nntp-effects-list-unmaintained-response
   (fn-nntp-effectsp
@@ -337,21 +725,26 @@
   :hints (("Goal" :in-theory (enable fn-nntp-list-unmaintained-response))))
 
 (defthm fn-nntp-effects-list-response
-  (fn-nntp-effectsp
-   (fn-nntp-result-effects (fn-nntp-list-response session archive args)))
-  :hints (("Goal" :in-theory (enable fn-nntp-list-response))))
+  (implies (fn-nntp-projectionp archive)
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects (fn-nntp-list-response session archive args))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-list-response)
+                                  (fn-nntp-projectionp
+                                   fn-nntp-list-active
+                                   fn-nntp-list-active-or-newsgroups
+                                   fn-nntp-list-unmaintained-response)))))
 
 (defthm fn-nntp-effects-capabilities
   (fn-nntp-effectsp
    (fn-nntp-result-effects (fn-nntp-capabilities session)))
   :hints (("Goal" :in-theory (enable fn-nntp-capabilities
-                                      fn-nntp-octet-linesp))))
+                                     fn-nntp-block-textp))))
 
 (defthm fn-nntp-effects-help
   (fn-nntp-effectsp
    (fn-nntp-result-effects (fn-nntp-help session)))
   :hints (("Goal" :in-theory (enable fn-nntp-help
-                                      fn-nntp-octet-linesp))))
+                                     fn-nntp-block-textp))))
 
 (in-theory (disable fn-nntp-listgroup-command
                     fn-nntp-current-retrieval
@@ -364,46 +757,62 @@
                     fn-nntp-list-response
                     fn-nntp-capabilities fn-nntp-help))
 
-(defthm fn-nntp-effects-close-effect
+(defthm fn-nntp-close-effect-is-well-formed
   (fn-nntp-effectp (fn-nntp-close-effect))
-  :hints (("Goal" :in-theory (enable fn-nntp-effectp
-                                      fn-nntp-close-effect))))
+  :hints (("Goal" :in-theory (enable fn-nntp-effectp fn-nntp-close-effect))))
+
+(defthm fn-nntp-session-command-effects-well-formed
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects (fn-nntp-session-command session keyword args)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-nntp-session-command fn-nntp-effectsp)
+                (fn-nntp-capabilities fn-nntp-help fn-nntp-single
+                 fn-nntp-keywordp fn-nntp-keyword-tokenp)))))
+
+(defthm fn-nntp-archive-command-effects-well-formed
+  (implies (fn-nntp-projectionp archive)
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects
+             (fn-nntp-archive-command session archive keyword args))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-nntp-archive-command)
+                (fn-nntp-projectionp fn-nntp-keywordp
+                 fn-nntp-group-result fn-nntp-listgroup-command
+                 fn-nntp-list-response fn-nntp-next-or-last
+                 fn-nntp-retrieval fn-nntp-single
+                 fn-nntp-token-string)))))
 
 (defthm fn-nntp-command-effects-well-formed
-  (implies (fn-nntp-projectionp archive)
+  (implies (fn-nntp-session-consistentp session archive)
            (fn-nntp-effectsp
             (fn-nntp-result-effects
              (fn-nntp-command session archive tokens))))
   :hints (("Goal" :in-theory
-           (e/d (fn-nntp-command fn-nntp-effectsp)
-                (fn-nntp-result-effects fn-nntp-make-result
-                 fn-nntp-reply-effect fn-nntp-close-effect
-                 fn-nntp-single fn-nntp-group-result
-                 fn-nntp-listgroup-command fn-nntp-list-response
-                 fn-nntp-next-or-last fn-nntp-retrieval
-                 fn-nntp-capabilities fn-nntp-help
-                 fn-nntp-crlf fn-nntp-string-octets)))))
+           (e/d (fn-nntp-command)
+                (fn-nntp-session-command fn-nntp-archive-command
+                 fn-nntp-archive-keywordp fn-nntp-keyword-tokenp
+                 fn-nntp-single fn-nntp-projectionp))
+           :expand ((fn-nntp-session-consistentp session archive)))))
 
 (defthm fn-nntp-step-effects-well-formed
-  (implies (and (fn-nntp-sessionp session)
-                (fn-nntp-projectionp archive))
+  (implies (fn-nntp-session-consistentp session archive)
            (fn-nntp-effectsp
             (fn-nntp-result-effects (fn-nntp-step session archive wire-event))))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-step)
                 (fn-nntp-result-effects fn-nntp-make-result
-                 fn-nntp-single fn-nntp-command)))))
-
-(defthm fn-nntp-close-effect-is-well-formed
-  (fn-nntp-effectp (fn-nntp-close-effect))
-  :hints (("Goal" :in-theory (enable fn-nntp-effectp fn-nntp-close-effect))))
+                 fn-nntp-single fn-nntp-command
+                 fn-nntp-session-consistentp
+                 fn-nntp-sessionp fn-nntp-session-openp
+                 fn-nntp-command-inputp fn-nntp-tokenize
+                 fn-nntp-command-arguments-at-mostp)))))
 
 (defthm fn-nntp-closed-step-has-no-effects
   (implies (or (not (fn-nntp-sessionp session))
                (not (equal (fn-nntp-session-openp session) t)))
            (equal (fn-nntp-result-effects (fn-nntp-step session archive wire-event))
                   nil))
-  :hints (("Goal" :in-theory (enable fn-nntp-step))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-step) (fn-nntp-command)))))
 
 (defthm fn-nntp-closed-step-effects-well-formed
   (implies (or (not (fn-nntp-sessionp session))
@@ -414,14 +823,70 @@
 
 (defthm fn-nntp-quit-step-effects-well-formed
   (implies (and (fn-nntp-sessionp session)
-                (equal (fn-nntp-session-openp session) t)
-                (fn-nntp-projectionp archive))
+                (equal (fn-nntp-session-openp session) t))
            (fn-nntp-effectsp
             (fn-nntp-result-effects
              (fn-nntp-step session archive '(:command (81 85 73 84))))))
-  :hints (("Goal" :in-theory (enable fn-nntp-step
-                                      fn-nntp-command
-                                      fn-nntp-effectsp
-                                      fn-nntp-effectp
-                                      fn-nntp-reply-effect
-                                      fn-nntp-close-effect))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-step
+                                   fn-nntp-command
+                                   fn-nntp-session-command
+                                   fn-nntp-effectsp
+                                   fn-nntp-effectp
+                                   fn-nntp-reply-effect
+                                   fn-nntp-close-effect)
+                                  (fn-nntp-replyp)))))
+
+; -----------------------------------------------------------------------------
+; The decimal rendering guard is inactive across RFC 3977 section 6's range
+
+; fn-nntp-decimal-field clamps the rendered width so the 512-octet argument
+; above is structural.  This says the clamp never changes a number the profile
+; can legitimately render, so no response loses information to it.
+(encapsulate ()
+  (local (include-book "arithmetic-5/top" :dir :system))
+
+  (local
+   (defun fn-nntp-decimal-digit-count (number)
+     (declare (xargs :measure (nfix number)))
+     (if (zp number) 0
+       (if (< number 10) 1
+         (+ 1 (fn-nntp-decimal-digit-count (floor number 10)))))))
+
+  (local
+   (defthm fn-nntp-explode-len
+     (implies (and (natp number) (consp ans))
+              (equal (len (explode-nonnegative-integer number 10 ans))
+                     (+ (fn-nntp-decimal-digit-count number) (len ans))))))
+
+  (local
+   (defthm fn-nntp-string-octets-aux-len
+     (equal (len (fn-nntp-string-octets-aux chars)) (len chars))))
+
+  (local
+   (defun fn-nntp-digit-count-induction (number k)
+     (declare (xargs :measure (nfix number)))
+     (if (or (zp number) (< number 10))
+         (list number k)
+       (fn-nntp-digit-count-induction (floor number 10) (- k 1)))))
+
+  (local
+   (defthm fn-nntp-digit-count-bounded-by-power
+     (implies (and (natp number) (natp k) (< number (expt 10 k)))
+              (<= (fn-nntp-decimal-digit-count number) k))
+     :hints (("Goal" :induct (fn-nntp-digit-count-induction number k)))))
+
+  (local
+   (defthm fn-nntp-decimal-digits-are-a-token
+     (implies (and (natp number) (fn-nntp-decimal-tokenp (fn-nntp-string-octets-aux ans))
+                   (character-listp ans))
+              (fn-nntp-decimal-tokenp
+               (fn-nntp-string-octets-aux
+                (explode-nonnegative-integer number 10 ans))))))
+
+  (defthm fn-nntp-decimal-field-is-exact-in-range
+    (implies (and (natp number) (<= number *fn-nntp-max-article-number*))
+             (equal (fn-nntp-decimal-field number)
+                    (fn-nntp-decimal number)))
+    :hints (("Goal" :in-theory (enable fn-nntp-decimal-field
+                                       fn-nntp-decimal
+                                       fn-nntp-decimal-rev)))))

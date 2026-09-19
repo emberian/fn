@@ -56,6 +56,13 @@
          (state (f-put-global 'fn-reader-action :ready state)))
     (value :ready)))
 
+; A single committed article whose stored bytes cannot be projected used to
+; refuse the whole store here.  It no longer does: fn-nntp-projectionp is now a
+; configuration recognizer over the group names, the watermarks, and the
+; article capacity, and an unprojectable article degrades only itself through
+; fn-nntp-article-response.  Refusal is reserved for a store whose recognizer
+; fails and for a configuration whose group names cannot be rendered inside RFC
+; 3977 section 3.1's 512-octet initial line.
 (defun fn-reader-use-store (state)
   (declare (xargs :stobjs state :mode :program))
   (let ((store (f-get-global 'fn-store-sn state)))
@@ -71,13 +78,21 @@
       (let ((state (f-put-global 'fn-reader-action :refused state)))
         (value :refused)))))
 
+; Opening a connection is the one place the whole-archive projection recognizer
+; runs.  fn-nntp-open-session records its verdict in the session; no command
+; recomputes it: fn-nntp-step, called at line 112 below, reads the carried
+; verdict instead of rerunning fn-nntp-projectionp.
 (defun fn-reader-reset (state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((state (f-put-global 'fn-reader-wire
+  (let* ((archive (if (boundp-global 'fn-reader-archive state)
+                      (f-get-global 'fn-reader-archive state)
+                    nil))
+         (state (f-put-global 'fn-reader-wire
                                ; RFC 3977's 512 includes CRLF; wire state holds
                                ; only content before that delimiter.
                                (fn-wire-initial-state 510 8192) state))
-         (state (f-put-global 'fn-reader-session (fn-nntp-initial-session) state))
+         (state (f-put-global 'fn-reader-session
+                              (fn-nntp-open-session archive) state))
          (state (f-put-global 'fn-reader-suffix nil state))
          (state (fn-reader-install-effects
                  (list (fn-nntp-reply-effect *fn-reader-greeting*)) state)))
