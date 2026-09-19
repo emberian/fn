@@ -1,27 +1,49 @@
 ; Correspondence for actual live node/file completion, without a trusted reply.
 (in-package "ACL2")
 (include-book "store-node")
-(include-book "store-files-invariants")
 
-(local (in-theory (disable fn-node-statep fn-sf-statep fn-record-p
-                           fn-node-prepare fn-node-complete fn-node-recover
-                           fn-replay-advance-txid fn-replay fn-replay-loop
-                           fn-retain-statep fn-node-initial-state fn-sf-prepare-record
-                           fn-sf-start-frontier fn-sf-frontier-file-result
-                           fn-sf-frontier-replace-result fn-sf-frontier-dir-result
-                           fn-sf-record-file-result fn-sf-record-link-result
-                           fn-sf-record-dir-result fn-sf-recovery-barrier
-                           fn-sf-core-completion fn-sf-emit-success
-                           fn-sf-crash)))
+; The core definitions these correspondence proofs open (the core exports
+; keystones only, docs/proof-style.md s2); local, named once.
+(local (deftheory fn-snx-core-definitions
+         (union-theories (union-theories '(fn-articlep fn-pendingp fn-statep fn-initial-state fn-install-pending
+            fn-clear-pending fn-accept-prepare fn-accept-complete fn-accept-recover
+            fn-pending-matchesp
+            fn-retain-obligationp fn-retain-releasep fn-retain-statep
+            fn-retain-initial-state fn-retain-admissiblep fn-retain-admit
+            fn-retain-release
+            fn-node-stagep fn-node-bindingp fn-node-statep fn-node-initial-state
+            fn-node-pending-matchesp fn-node-prepare fn-node-complete fn-node-recover
+            fn-replay-okp fn-replay-advance-okp fn-replay-advance-txid) (theory 'fn-acceptance-invariants-vocabulary)) (theory 'fn-node-invariants-vocabulary))))
+
+; The composed definitions and the kernel steps these proofs open are
+; enabled locally (docs/proof-style.md s2); the records stay opaque.
+(local (in-theory (e/d (fn-sn-statep fn-sn-initial fn-sn-pending-record
+                        fn-sn-record-bindsp fn-sn-prepare-node fn-sn-prepare
+                        fn-sn-completion-record fn-sn-completion-enabledp
+                        fn-sn-finish fn-sn-file-step fn-sn-io fn-sn-crash
+                        fn-sn-recover fn-sn-fence-node fn-sn-resolve-node
+                        fn-sf-initial-state fn-sf-history-recoverablep
+                        fn-sf-replay-node fn-sf-refuse-reservation
+                        fn-sf-prepublish-abort fn-sf-abort-completion
+                        fn-sf-lose-success fn-sf-recover fn-sf-crash-imagep
+                        fn-replay-apply-record fn-replay-okp fn-replay-faultp
+                        fn-replay-advance-okp fn-node-pending-matchesp
+                        fn-store-files-invariants-vocabulary)
+                       (fn-node-statep fn-sf-statep fn-record-p
+                        fn-node-prepare fn-node-complete fn-node-recover
+                        fn-replay-advance-txid fn-replay fn-replay-loop
+                        fn-retain-statep fn-node-initial-state fn-sf-prepare-record
+                        fn-sf-start-frontier fn-sf-frontier-file-result
+                        fn-sf-frontier-replace-result fn-sf-frontier-dir-result
+                        fn-sf-record-file-result fn-sf-record-link-result
+                        fn-sf-record-dir-result fn-sf-recovery-barrier
+                        fn-sf-core-completion fn-sf-emit-success
+                        fn-sf-crash))))
 
 (defthm fn-sn-initial-is-state
   (implies (and (fn-string-listp groups) (fn-no-duplicatesp groups)
                 (natp capacity))
            (fn-sn-statep (fn-sn-initial groups capacity))))
-
-(defthm fn-sn-prepare-node-preserves-state
-  (implies (fn-node-statep node)
-           (fn-node-statep (fn-sn-prepare-node node record))))
 
 (defthm fn-sn-prepare-preserves-state
   (implies (fn-sn-statep s)
@@ -38,7 +60,7 @@
 (defthm fn-sn-io-preserves-state
   (implies (fn-sn-statep s)
            (fn-sn-statep (fn-sn-io s operation result)))
-  :hints (("Goal" :in-theory (disable fn-sn-file-step fn-sf-successes))))
+  :hints (("Goal" :in-theory (disable fn-sn-file-step ))))
 
 (defthm fn-sn-finish-preserves-state
   (implies (fn-sn-statep s)
@@ -124,11 +146,13 @@
                               (fn-record-generation record) :durable)
             record))
   :hints (("Goal" :use fn-sn-record-binds-pending-fields
-           :in-theory (enable fn-node-complete fn-node-statep fn-statep))))
+           :in-theory (enable fn-node-complete fn-node-statep fn-statep fn-snx-core-definitions))))
 
+; -by-definition: the else branch of fn-sn-finish with its test negated.
 (defthm fn-sn-finish-disabled-is-no-op
   (implies (not (fn-sn-completion-enabledp s))
            (equal (fn-sn-finish s) s))
+  :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-sn-completion-enabledp))))
 
 (defthm fn-sn-finish-is-actual-durable-completion
@@ -178,7 +202,8 @@
                 (fn-sn-committed-recordp (fn-sn-node (fn-sn-finish s))
                                          (fn-sn-completion-record s))))
   :hints (("Goal" :use (fn-sn-finish-is-actual-durable-completion
-                         fn-sn-finish-installs-exact-article-and-archive-pin)
+                         fn-sn-finish-installs-exact-article-and-archive-pin
+                         fn-sn-finish-disabled-is-no-op)
            :cases ((fn-sn-completion-enabledp s))
            :in-theory (disable fn-sn-finish fn-sn-completion-record
                                fn-sn-record-bindsp fn-sn-committed-recordp))))
@@ -210,7 +235,7 @@
                   (fn-node-complete node (fn-record-txid record)
                                     (fn-record-generation record) :durable)))
   :hints (("Goal" :in-theory (enable fn-node-complete fn-node-recover
-                                      fn-node-statep fn-statep))))
+                                      fn-node-statep fn-statep fn-snx-core-definitions))))
 
 (defthm fn-sn-indeterminate-absent-resolution-equals-abort
   (implies (fn-node-pending-matchesp node (fn-record-txid record)
@@ -219,7 +244,7 @@
                   (fn-node-complete node (fn-record-txid record)
                                     (fn-record-generation record) :aborted)))
   :hints (("Goal" :in-theory (enable fn-node-complete fn-node-recover
-                                      fn-node-statep fn-statep))))
+                                      fn-node-statep fn-statep fn-snx-core-definitions))))
 
 (defthm fn-sn-file-steps-cannot-acknowledge
   (equal (fn-sf-successes (fn-sn-file-step files operation result))
@@ -232,7 +257,7 @@
 (defthm fn-sn-io-cannot-acknowledge
   (equal (fn-sf-successes (fn-sn-files (fn-sn-io s operation result)))
          (fn-sf-successes (fn-sn-files s)))
-  :hints (("Goal" :in-theory (disable fn-sn-file-step fn-sf-successes))))
+  :hints (("Goal" :in-theory (disable fn-sn-file-step ))))
 
 (defthm fn-sn-prepare-cannot-acknowledge
   (equal (fn-sf-successes (fn-sn-files (fn-sn-prepare s record)))
@@ -260,7 +285,7 @@
                        (fn-sn-groups s))
                 (equal (fn-sn-capacity (fn-sn-crash s frontier-choice record-choice))
                        (fn-sn-capacity s))))
-  :hints (("Goal" :in-theory (e/d (fn-sn-crash fn-sn-update fn-sn-make)
+  :hints (("Goal" :in-theory (e/d (fn-sn-crash fn-sn-update )
                                   (fn-sn-statep fn-sf-crash fn-sf-crash-choicep)))))
 
 (defthm fn-sn-prepare-installs-bound-candidate
@@ -344,21 +369,38 @@
                            fn-sf-replay-node fn-sn-prepare-node
                            fn-retain-statep fn-node-initial-state)))
 
+; Constructor-of-accessors for the two core records this book rebuilds
+; (fn-replay-advance-txid rebuilds the acceptance state and the node).  The
+; core records are opaque; these open them once, here, under their shapes.
 (defthm fn-snt-node-reconstruct
-  (implies (and (true-listp node) (equal (len node) 4))
+  (implies (fn-node-state-shapep node)
            (equal (fn-node-make-state (fn-node-acceptance node)
                     (fn-node-retention node) (fn-node-stage node)
-                    (fn-node-bindings node)) node)))
+                    (fn-node-bindings node)) node))
+  :hints (("Goal" :in-theory (enable len fn-node-state-shapep fn-node-make-state
+                                     fn-node-acceptance fn-node-retention
+                                     fn-node-stage fn-node-bindings)
+           :expand ((len node) (len (cdr node)) (len (cddr node))
+                    (len (cdddr node)) (len (cddddr node)))
+           :do-not-induct t)))
 (defthm fn-snt-acceptance-reconstruct
-  (implies (and (true-listp a) (equal (len a) 6))
+  (implies (fn-state-shapep a)
            (equal (fn-make-state (fn-state-groups a) (fn-state-nexts a)
                     (fn-state-articles a) (fn-state-next-txid a)
-                    (fn-state-pending a) (fn-state-fenced a)) a)))
+                    (fn-state-pending a) (fn-state-fenced a)) a))
+  :hints (("Goal" :in-theory (enable len fn-state-shapep fn-make-state
+                                     fn-state-groups fn-state-nexts
+                                     fn-state-articles fn-state-next-txid
+                                     fn-state-pending fn-state-fenced)
+           :expand ((len a) (len (cdr a)) (len (cddr a))
+                    (len (cdddr a)) (len (cddddr a))
+                    (len (cdr (cddddr a))) (len (cddr (cddddr a))))
+           :do-not-induct t)))
 
 (defthm fn-snt-valid-node-is-consp
   (implies (fn-node-statep node) (consp node))
   :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-node-statep))))
+  :hints (("Goal" :in-theory (enable fn-node-statep fn-node-state-shapep))))
 (defthm fn-snt-advanced-node-is-consp
   (implies (fn-node-statep node)
            (consp (fn-replay-advance-txid node frontier)))
@@ -384,7 +426,7 @@
                                 (:instance fn-snt-acceptance-reconstruct
                                  (a (fn-node-acceptance node))))
            :in-theory (enable fn-replay-advance-txid
-                               fn-node-statep fn-statep))))
+                               fn-node-statep fn-statep fn-snx-core-definitions))))
 
 (defthm fn-snt-advance-twice
   (implies (and (fn-replay-advance-okp node first)
@@ -393,10 +435,10 @@
                    (fn-replay-advance-txid node first) second)
                   (fn-replay-advance-txid node second)))
   :hints (("Goal" :in-theory (enable fn-replay-advance-txid
-                                      fn-node-statep fn-statep))))
+                                      fn-node-statep fn-statep fn-snx-core-definitions))))
 
-(local (in-theory (disable fn-node-acceptance fn-state-next-txid
-                           fn-node-stage fn-state-pending fn-state-fenced)))
+(local (in-theory (disable  fn-state-next-txid
+                             )))
 
 (defthm fn-snt-history-recoverable-monotone
   (implies (and (fn-sf-history-recoverablep groups capacity records first)
@@ -450,9 +492,9 @@
                     (fn-record-txid record) (fn-record-generation record) :aborted)
                   (fn-replay-advance-txid node (1+ (fn-record-txid record)))))
   :hints (("Goal" :in-theory (enable fn-sn-prepare-node fn-node-prepare
-    fn-node-complete fn-replay-advance-txid fn-node-statep fn-statep
-    fn-node-acceptance fn-state-next-txid fn-node-stage fn-state-pending
-    fn-state-fenced))))
+    fn-node-complete fn-replay-advance-txid fn-node-statep fn-statep fn-snx-core-definitions
+       fn-state-pending
+    ))))
 
 (defthm fn-snt-prepared-durable-is-idle-at-successor
   (implies (and (fn-replay-advance-okp node (fn-record-txid record))
@@ -472,6 +514,26 @@
                         (generation (fn-record-generation record))
                         (completion-status :durable)))
            :in-theory (enable fn-sn-prepare-node fn-node-prepare
-    fn-node-complete fn-replay-advance-txid fn-node-statep fn-statep
-    fn-node-acceptance fn-state-next-txid fn-node-stage fn-state-pending
-    fn-state-fenced))))
+    fn-node-complete fn-replay-advance-txid fn-node-statep fn-statep fn-snx-core-definitions
+       fn-state-pending
+    ))))
+
+; -----------------------------------------------------------------------------
+; Export theory.  Withdrawn under a name: the replay-composition and
+; frontier-advance lemmas (proof vocabulary for the trace books) and the
+; committed-record recognizer.  Enabled on include: the preservation
+; keystones, the cannot-acknowledge family, the completion-gate keystone
+; and the resolution correspondences.
+(deftheory fn-store-node-invariants-vocabulary
+  '(fn-sn-file-recovery-retains-history fn-sn-replay-loop-append
+    fn-sn-replay-singleton-is-live-completion
+    fn-sn-extended-history-equals-live-completion
+    fn-snt-node-reconstruct fn-snt-acceptance-reconstruct
+    fn-snt-valid-node-is-consp fn-snt-advanced-node-is-consp
+    fn-snt-advance-is-idle fn-snt-advance-at-current-is-identity
+    fn-snt-advance-twice fn-snt-history-recoverable-monotone
+    fn-snt-replayed-node-idle-and-frontier fn-snt-advance-replayed-node
+    fn-snt-successful-replay-sequence fn-snt-successful-replay-history-length
+    fn-snt-prepared-abort-is-frontier-advance
+    fn-snt-prepared-durable-is-idle-at-successor))
+(in-theory (disable fn-store-node-invariants-vocabulary fn-sn-committed-recordp))

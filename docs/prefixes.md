@@ -17,7 +17,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-sf-` | `store-files`, `store-files-invariants`, `store-files-traces` | Immutable-file publication kernel: allocator frontier, staged record, barriers, crash constructor, recovery gate |
 | `fn-sn-` | `store-node`, `store-node-invariants`, `store-node-resolution` | Live file/node composition: pending record binding, actual completion, refusal and known-abort resolution, observed opening |
 | `fn-snt-` | `store-node-traces` | Trace relation and preservation for the composed store/node machine |
-| `fn-snrt-` | `store-node-resolution-traces` | Trace preservation including refusal and abort resolution |
+| `fn-snrt-` | `store-node-resolution` (folded from `store-node-resolution-traces`, 2026-09-19) | Trace preservation including refusal and abort resolution |
 | `fn-checkpoint-` | `checkpoint` | Logical checkpoint capture, restore and checkpoint-plus-suffix replay |
 | `fn-index-` | `index` | Derived group/number index and range queries |
 | `fn-journal-` | `journal` | Historical isolated-slot journal experiment; not the adapter model |

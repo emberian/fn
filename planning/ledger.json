@@ -73,8 +73,6 @@
     "tests/acl2/store-node-traces-tests",
     "books/store-node-resolution",
     "tests/acl2/store-node-resolution-tests",
-    "books/store-node-resolution-traces",
-    "tests/acl2/store-node-resolution-traces-tests",
     "books/store-observed",
     "tests/acl2/store-observed-tests",
     "books/store-observed-traces",
@@ -177,22 +175,22 @@
     "tests/acl2/policy-tests"
   ],
   "totals": {
-    "books": 173,
-    "books_in_root_closure": 173,
-    "roots": 173,
-    "theorems": 2662,
-    "functions": 1975,
-    "assert_events": 2934,
-    "must_fails": 141,
+    "books": 172,
+    "books_in_root_closure": 171,
+    "roots": 171,
+    "theorems": 2712,
+    "functions": 1980,
+    "assert_events": 2970,
+    "must_fails": 105,
     "encapsulates": 10,
     "guards": {
-      "verified": 952,
-      "declared-off": 53,
-      "default-guarded": 540,
+      "verified": 944,
+      "declared-off": 58,
+      "default-guarded": 548,
       "default-unguarded": 430
     },
     "suspect_theorems": 26,
-    "export_hygiene_warnings": 65,
+    "export_hygiene_warnings": 67,
     "teeth_form_warnings": 24
   },
   "books": [
@@ -1370,15 +1368,15 @@
       "book": "books/checkpoint.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 10,
-      "functions": 13,
+      "theorems": 18,
+      "functions": 14,
       "guards": {
-        "verified": 13,
+        "verified": 12,
         "declared-off": 0,
-        "default-guarded": 0,
+        "default-guarded": 2,
         "default-unguarded": 0
       },
-      "verify_guards_events": 13,
+      "verify_guards_events": 12,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -1637,12 +1635,12 @@
       "book": "books/index.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 24,
-      "functions": 22,
+      "theorems": 32,
+      "functions": 23,
       "guards": {
         "verified": 22,
         "declared-off": 0,
-        "default-guarded": 0,
+        "default-guarded": 1,
         "default-unguarded": 0
       },
       "verify_guards_events": 22,
@@ -2446,7 +2444,7 @@
       "book": "books/store-files-traces.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 53,
+      "theorems": 51,
       "functions": 12,
       "guards": {
         "verified": 0,
@@ -2471,22 +2469,22 @@
       "book": "books/store-files.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 13,
-      "functions": 48,
+      "theorems": 30,
+      "functions": 49,
       "guards": {
-        "verified": 48,
+        "verified": 47,
         "declared-off": 0,
-        "default-guarded": 0,
+        "default-guarded": 2,
         "default-unguarded": 0
       },
-      "verify_guards_events": 48,
+      "verify_guards_events": 47,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 2,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "replay-invariants"
+        "replay"
       ],
       "system_includes": [],
       "suspects": [],
@@ -2496,7 +2494,7 @@
       "book": "books/store-node-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 45,
+      "theorems": 44,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -2511,7 +2509,6 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "store-files-invariants",
         "store-node"
       ],
       "system_includes": [
@@ -2523,41 +2520,16 @@
       "read_error": null
     },
     {
-      "book": "books/store-node-resolution-traces.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 13,
-      "functions": 2,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 2
-      },
-      "verify_guards_events": 0,
-      "assert_events": 0,
-      "must_fails": 0,
-      "defconsts": 0,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "store-node-resolution"
-      ],
-      "system_includes": [],
-      "suspects": [],
-      "read_error": null
-    },
-    {
       "book": "books/store-node-resolution.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 16,
-      "functions": 6,
+      "theorems": 30,
+      "functions": 8,
       "guards": {
         "verified": 6,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 0
+        "default-unguarded": 2
       },
       "verify_guards_events": 6,
       "assert_events": 0,
@@ -2579,7 +2551,7 @@
       "book": "books/store-node-traces.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 52,
+      "theorems": 51,
       "functions": 5,
       "guards": {
         "verified": 0,
@@ -2607,22 +2579,22 @@
       "book": "books/store-node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
-      "functions": 22,
+      "theorems": 9,
+      "functions": 23,
       "guards": {
-        "verified": 22,
+        "verified": 21,
         "declared-off": 0,
-        "default-guarded": 0,
+        "default-guarded": 2,
         "default-unguarded": 0
       },
-      "verify_guards_events": 22,
+      "verify_guards_events": 21,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "store-files"
+        "store-files-invariants"
       ],
       "system_includes": [],
       "suspects": [],
@@ -2632,7 +2604,7 @@
       "book": "books/store-observed-traces.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 10,
+      "theorems": 0,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -2647,7 +2619,6 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "store-node-resolution-traces",
         "store-observed"
       ],
       "system_includes": [],
@@ -2658,22 +2629,22 @@
       "book": "books/store-observed.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 15,
-      "functions": 12,
+      "theorems": 36,
+      "functions": 13,
       "guards": {
-        "verified": 12,
-        "declared-off": 0,
-        "default-guarded": 0,
+        "verified": 7,
+        "declared-off": 5,
+        "default-guarded": 1,
         "default-unguarded": 0
       },
-      "verify_guards_events": 12,
+      "verify_guards_events": 7,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "store-node-invariants"
+        "store-node-resolution"
       ],
       "system_includes": [],
       "suspects": [
@@ -4307,17 +4278,15 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 52,
-      "must_fails": 11,
+      "assert_events": 63,
+      "must_fails": 0,
       "defconsts": 13,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/store-files-invariants"
       ],
-      "system_includes": [
-        "std/testing/must-fail"
-      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -4334,17 +4303,15 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 78,
-      "must_fails": 10,
+      "assert_events": 88,
+      "must_fails": 0,
       "defconsts": 42,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/store-files-invariants"
       ],
-      "system_includes": [
-        "std/testing/must-fail"
-      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -4426,8 +4393,8 @@
     },
     {
       "book": "tests/acl2/store-node-resolution-traces-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
+      "in_root_closure": false,
+      "is_root": false,
       "theorems": 0,
       "functions": 0,
       "guards": {
@@ -4443,7 +4410,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/store-node-resolution-traces"
+        "../../books/store-node-resolution"
       ],
       "system_includes": [],
       "suspects": [],
@@ -4462,17 +4429,15 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 43,
-      "must_fails": 10,
+      "assert_events": 53,
+      "must_fails": 0,
       "defconsts": 11,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/store-observed-traces"
+        "../../books/store-observed"
       ],
-      "system_includes": [
-        "std/testing/must-fail"
-      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -4564,17 +4529,15 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 58,
-      "must_fails": 5,
+      "assert_events": 63,
+      "must_fails": 0,
       "defconsts": 26,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/store-observed-traces"
+        "../../books/store-observed"
       ],
-      "system_includes": [
-        "std/testing/must-fail"
-      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -4881,7 +4844,7 @@
     {
       "theorem": "fn-sn-finish-disabled-is-no-op",
       "book": "books/store-node-invariants.lisp",
-      "line": 129,
+      "line": 152,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-finish and the conclusion is that branch's value"
       ]
@@ -4889,7 +4852,7 @@
     {
       "theorem": "fn-sn-known-abort-disabled-is-no-op",
       "book": "books/store-node-resolution.lisp",
-      "line": 97,
+      "line": 129,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-known-abort and the conclusion is that branch's value"
       ]
@@ -4897,7 +4860,7 @@
     {
       "theorem": "fn-sn-open-observed-invalid-history-refuses",
       "book": "books/store-observed.lisp",
-      "line": 330,
+      "line": 406,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value"
       ]
@@ -4905,7 +4868,7 @@
     {
       "theorem": "fn-sn-refuse-reservation-disabled-is-no-op",
       "book": "books/store-node-resolution.lisp",
-      "line": 92,
+      "line": 123,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-refuse-reservation and the conclusion is that branch's value"
       ]
@@ -5090,6 +5053,18 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-checkpoint-groups-of-fn-checkpoint-make",
+        "book": "books/checkpoint.lisp",
+        "line": 65,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-checkpoint-capacity-of-fn-checkpoint-make",
+        "book": "books/checkpoint.lisp",
+        "line": 68,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-frame-split-exists-consp",
         "book": "books/frame.lisp",
         "line": 153,
@@ -5176,13 +5151,13 @@
       {
         "theorem": "fn-sf-completed-frontier-barrier-removes-old-choice",
         "book": "books/store-files-invariants.lisp",
-        "line": 245,
+        "line": 259,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-snt-typed-frontier-phase",
         "book": "books/store-node-traces.lisp",
-        "line": 175,
+        "line": 221,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {

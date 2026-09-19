@@ -8,6 +8,20 @@
 (include-book "store-files")
 (local (include-book "arithmetic/top" :dir :system))
 
+; The preservation keystones open the kernel definitions locally (docs/
+; proof-style.md s2); the record stays opaque, so goals are in accessor
+; vocabulary throughout.
+(local (in-theory (enable fn-sf-statep fn-sf-phase-shapep fn-sf-initial-state
+                          fn-sf-start-frontier fn-sf-frontier-file-result
+                          fn-sf-frontier-replace-result fn-sf-frontier-dir-result
+                          fn-sf-refuse-reservation fn-sf-prepare-record
+                          fn-sf-record-file-result fn-sf-prepublish-abort
+                          fn-sf-abort-completion fn-sf-record-link-result
+                          fn-sf-record-dir-result fn-sf-core-completion
+                          fn-sf-emit-success fn-sf-lose-success
+                          fn-sf-crash-imagep fn-sf-crash fn-sf-recover
+                          fn-sf-recovery-barrier)))
+
 ; -----------------------------------------------------------------------------
 ; Ordered record-list lemmas used by crash and publication preservation.
 
@@ -179,7 +193,7 @@
                             (s (fn-sf-crash s frontier-choice record-choice))))
            :in-theory
            (disable fn-sf-statep fn-sf-crash
-                    fn-sf-successes fn-sf-records
+                     
                     fn-sf-success-listp fn-sf-record-has-pairp))))
 
 ; -----------------------------------------------------------------------------
@@ -326,7 +340,7 @@
                             (frontier (fn-sf-frontier s))))
            :in-theory (e/d (fn-sf-statep)
                            (fn-sf-phasep fn-sf-phase-shapep fn-sf-record-listp
-                            fn-sf-success-listp fn-sf-frontier fn-sf-records)))))
+                            fn-sf-success-listp  )))))
 
 (defthm fn-sf-admissible-image-facts
   (implies (fn-sf-crash-imagep s frontier records)
@@ -359,8 +373,8 @@
                                fn-sf-image-record-choice
                                fn-sf-record-listp fn-sf-success-listp
                                fn-sf-record-has-pairp
-                               fn-sf-frontier fn-sf-records fn-sf-successes
-                               fn-sf-phase
+                                 
+                               
                                fn-sf-crash-imagep-implies-state
                                fn-sf-crash-realizes-every-admissible-image
                                fn-sf-crash-preserves-state
@@ -457,3 +471,18 @@
 (defthm fn-sf-recovery-barrier-preserves-state
   (implies (fn-sf-statep s)
            (fn-sf-statep (fn-sf-recovery-barrier s result))))
+
+; -----------------------------------------------------------------------------
+; Export theory.  The ordered record-list and success-list lemmas are proof
+; vocabulary; a book above re-enables them by this name.  The one-crash
+; preservation, crash-point fidelity, admissible-image and transition
+; preservation keystones stay enabled.
+(deftheory fn-store-files-invariants-vocabulary
+  '(fn-sf-prefixp-reflexive fn-sf-prefixp-append
+    fn-sf-record-listp-is-true-list fn-sf-record-listp-frontier-monotone
+    fn-sf-record-listp-append-one-general
+    fn-sf-candidate-append-preserves-record-list
+    fn-sf-record-pair-present-after-append fn-sf-record-pair-preserved-by-append
+    fn-sf-success-list-preserved-by-append fn-sf-success-list-append-covered-pair
+    fn-sf-success-member-has-record))
+(in-theory (disable fn-store-files-invariants-vocabulary))

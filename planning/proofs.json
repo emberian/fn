@@ -63,7 +63,7 @@
         "tests/evidence/2026-09-18-assurance.md",
         "tests/evidence/2026-09-18-assurance.json",
         "books/node-traces.lisp",
-        "books/store-node-resolution-traces.lisp",
+        "books/store-node-resolution.lisp",
         "tests/evidence/2026-09-18-composed-store.md",
         "tests/evidence/2026-09-18-bp-composition-assurance.md",
         "tests/evidence/2026-09-18-bp-composition-assurance.json"
@@ -332,7 +332,7 @@
         "tests/test_store_process_crash.py",
         "tests/evidence/2026-09-18-assurance.md",
         "tests/evidence/2026-09-18-assurance.json",
-        "books/store-node-resolution-traces.lisp",
+        "books/store-node-resolution.lisp",
         "books/store-observed.lisp",
         "tests/acl2/store-observed-tests.lisp",
         "tests/evidence/2026-09-18-composed-store.md",
