@@ -178,11 +178,21 @@
 ; -----------------------------------------------------------------------------
 ; Identity, charge and group bridge
 
+(defun fn-store-subject-prefix (length)
+  ; The fixed head of a subject-v1 preimage.  The host appends the article to
+  ; this and hashes it, so a 32 KiB payload never crosses the bridge.
+  (if (and (natp length) (<= length *fn-cbor-max-uint*))
+      (fn-id-subject-prefix length)
+    nil))
+
 (defun fn-store-subject-id (digest)
   (if (fn-id-digestp digest) (fn-id-subject digest) nil))
 
 (defun fn-store-obligation-preimage (msgid subject)
-  (if (and (fn-cbor-octet-listp msgid) (fn-cbor-octet-listp subject))
+  (if (and (fn-cbor-octet-listp msgid)
+           (<= (len msgid) *fn-cbor-max-uint*)
+           (fn-cbor-octet-listp subject)
+           (<= (len subject) *fn-cbor-max-uint*))
       (fn-id-obligation-preimage msgid subject)
     nil))
 
@@ -205,8 +215,17 @@
   ; The configured group list as octets, for the one call Python makes at open.
   (fn-store-group-name-octets *fn-store-groups*))
 
+(defun fn-store-identity-text (identity)
+  ; The one rendering of a canonical identity into a string, for the three
+  ; boundaries that cannot carry octets: the store record metadata fields, the
+  ; workflow journal JSON and the NNTP header value.
+  (if (fn-cbor-octet-listp identity) (fn-id-text identity) nil))
+
 (defun fn-store-group-table-id ()
   *fn-store-group-table-id*)
+
+(defun fn-store-format-id ()
+  *fn-store-format-id*)
 
 (defun fn-store-octet-lists->strings (xs)
   (if (consp xs)

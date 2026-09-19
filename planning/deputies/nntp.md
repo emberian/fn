@@ -105,6 +105,16 @@ farm in absolute terms): `books/wire` 5.5 s -> **1.3 s**, `books/wire-invariants
   did not fit the budget. `books/nntp-index.lisp` already carries the two local
   events it will need (the five nntp vocabularies, and the article-is-a-cons
   bridge); it should certify once `index` has a certificate.
+- `fn-transfer-add-chunk-result-state-normal-form` is `:rule-classes nil` as of
+  this lane's last commit. Exported enabled it rewrote the stored branch of
+  `fn-transfer-add-chunk` into its constructor form before the cluster's own
+  preservation keystones could fire, in every includer; w3/fragment-container
+  lost two proofs to it. The four proofs in `books/transfer-invariants.lisp`
+  that wanted it already cited it by `:use`, so nothing else changed and its
+  statement is untouched. `fn-transfer-find-absent-is-nil`
+  (`books/transfer-reservation.lisp:60`) is NOT the same shape and was left
+  alone: it is hypothesis-guarded (`fn-transfer-label-absentp`) and normalizes
+  a lookup toward `nil`; it does not pre-empt a transition's stored branch.
 - `books/transfer-public-bound.lisp` (1062 lines) is still unsplit, and the
   eleven `fn-transfer-guard-*-is-*` equalities below still leave
   `books/transfer.lisp` as enabled global rewrite rules. Neither was attempted.

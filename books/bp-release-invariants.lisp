@@ -21,6 +21,10 @@
 (include-book "bp-release")
 (include-book "bp-workflow-binding-core")
 (include-book "retention-invariants")
+; retention proof vocabulary is withdrawn at that book's export (core, 2026-09-19); open it here.
+(local (in-theory (enable fn-retention-invariants-vocabulary)))
+(local (in-theory (enable fn-retain-statep fn-retain-admissiblep fn-retain-admit fn-retain-release
+                          fn-node-stagep fn-node-statep fn-statep)))
 
 ; -----------------------------------------------------------------------------
 ; Selector arithmetic
@@ -49,6 +53,12 @@
                                       fn-node-make-state fn-node-acceptance
                                       fn-node-retention fn-node-stage
                                       fn-node-bindings))))
+
+; The rebuilt node has the node-state shape (core's record lemma
+; fn-node-state-shapep-of-fn-node-make-state, opaque records 2026-09-19).
+(defthm fn-bprl-node-with-retention-is-shaped
+  (fn-node-state-shapep (fn-bprl-node-with-retention node r))
+  :hints (("Goal" :in-theory (enable fn-bprl-node-with-retention))))
 
 (defthm fn-bprl-with-node-components
   (and (true-listp (fn-bprl-with-node s node))

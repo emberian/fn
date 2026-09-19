@@ -24,6 +24,14 @@ the sorted ``<path>:<sha256>`` listing of the book and its whole local include
 closure, which also keeps two same-byte books apart, since each listing names
 its own path.
 
+**And a pair is installed only where its sub-book paths cannot mislead.**  An
+ACL2 certificate's post-alist names every sub-book by *absolute* path, so a
+pair made in worktree X and installed in worktree Y on one machine makes Y
+include X's books, and Y's own certificates then conflict with them.  Each
+entry records the ``origin_root`` it was produced in; ``install`` takes this
+worktree's own entry, else one whose origin does not exist on this machine,
+and otherwise refuses and says ``foreign-local``.
+
 What this still does not establish: nothing here proves a book certifies.
 ``tools/certify_books.py`` does that, with a fresh success marker per book; the
 cache only moves its result to another worktree, where ACL2 checks it again.
@@ -75,6 +83,7 @@ class Certified:
     after: str | None
     cert: str
     evidence: str
+    origin: str = ""
 
 
 @dataclass
@@ -91,6 +100,10 @@ class Report:
     unverified: list[str] = field(default_factory=list)
     uncached: list[str] = field(default_factory=list)
     unreadable: list[str] = field(default_factory=list)
+    # Books whose only cached pairs were made in another worktree that still
+    # exists on this machine: ACL2 would follow that worktree's sub-books.
+    foreign_local: list[str] = field(default_factory=list)
+    removed_foreign: int = 0
     certified_locally: int = 0
     manifests: int = 0
     mirrored: str | None = None
@@ -103,13 +116,19 @@ class Report:
                        f"no manifest-verified pair {len(self.unverified)}")
         elif self.action == "install":
             out.append(f"  installed {self.installed}, kept identical local "
-                       f"{self.kept}, no cached pair {len(self.uncached)}")
+                       f"{self.kept}, no cached pair {len(self.uncached)}, "
+                       f"foreign-local {len(self.foreign_local)}, "
+                       f"removed foreign {self.removed_foreign}")
         else:
             out.append(f"  certified here {self.certified_locally}, "
-                       f"in the cache {self.books - len(self.uncached)}, "
+                       f"usable from the cache "
+                       f"{self.books - len(self.uncached) - len(self.foreign_local)}, "
+                       f"foreign-local {len(self.foreign_local)}, "
                        f"not in the cache {len(self.uncached)}")
         for book in self.unverified:
             out.append(f"  unverified: {book}")
+        for book in self.foreign_local:
+            out.append(f"  foreign-local (made in another live worktree): {book}")
         for book in self.unreadable:
             out.append(f"  unreadable closure: {book}")
         for book in self.uncached:
@@ -231,8 +250,53 @@ def closure_key(root: Path, name: str) -> tuple[str, list[str]]:
     return hashlib.sha256("\n".join(listing).encode("utf-8")).hexdigest(), listing
 
 
-def entry_directory(cache: Path, key: str) -> Path:
-    return cache / key
+def origin_token(origin: str) -> str:
+    """A path-safe, deterministic name for one origin worktree."""
+    return hashlib.sha256(origin.encode("utf-8")).hexdigest()[:16]
+
+
+def entry_directory(cache: Path, key: str, origin: str) -> Path:
+    return cache / key / origin_token(origin)
+
+
+def cached_entries(cache: Path, key: str) -> list[tuple[Path, dict]]:
+    """Every usable entry for one closure key, with its metadata.
+
+    An entry with no recorded ``origin_root`` predates this rule.  It is kept
+    and reported, but never chosen: it cannot be classified, and installing an
+    unclassifiable certificate is how a worktree ends up including another
+    worktree's books.  Keeping it is what lets `install` recognise, and
+    remove, a pair an earlier origin-blind install left behind.
+    """
+    base = cache / key
+    if not base.is_dir():
+        return []
+    found = []
+    for directory in sorted(base.iterdir()):
+        if not (directory / "book.cert").is_file():
+            continue
+        found.append((directory, read_meta(directory)))
+    return found
+
+
+def choose_entry(entries: list[tuple[Path, dict]],
+                 target: str) -> tuple[Path, dict] | None:
+    """The entry this worktree may install, or None when all are foreign-local.
+
+    An ACL2 certificate's post-alist records the *absolute* full-book-name of
+    every sub-book.  A pair made in worktree X and installed in worktree Y on
+    the same machine makes Y include X's books -- X's paths still resolve --
+    and Y's own later certificates then conflict with them.  So: this
+    worktree's own pair first; otherwise one whose origin does not exist on
+    this machine, where nothing can be followed by mistake.
+    """
+    own = [entry for entry in entries if entry[1].get("origin_root") == target]
+    if own:
+        return own[0]
+    relocatable = [entry for entry in entries
+                   if entry[1].get("origin_root")
+                   and not Path(entry[1]["origin_root"]).exists()]
+    return relocatable[0] if relocatable else None
 
 
 def read_meta(directory: Path) -> dict:
@@ -262,7 +326,15 @@ def load_manifests(root: Path, path: Path | None = None) -> list[dict]:
     return loaded
 
 
-def certified_books(manifests: list[dict]) -> dict[str, list[Certified]]:
+def manifest_origin(manifest: dict, default: str) -> str:
+    """The worktree a run happened in, from its evidence path."""
+    evidence = str(manifest.get("evidence", ""))
+    marker = "/build/acl2/"
+    return evidence.split(marker)[0] if marker in evidence else default
+
+
+def certified_books(manifests: list[dict],
+                    default_origin: str = "") -> dict[str, list[Certified]]:
     """What each passing manifest says it certified, by book.
 
     A manifest that did not pass contributes nothing: the runner's pass rule
@@ -288,6 +360,7 @@ def certified_books(manifests: list[dict]) -> dict[str, list[Certified]]:
         certificates = manifest.get("certificate_digests_sha256") or {}
         exits = manifest.get("acl2_exit_codes") or {}
         evidence = str(manifest.get("evidence", "<in-memory manifest>"))
+        origin = manifest_origin(manifest, default_origin)
         for book, token in zip(requested, expected):
             if token is not None and token not in observed:
                 continue
@@ -301,7 +374,7 @@ def certified_books(manifests: list[dict]) -> dict[str, list[Certified]]:
                 # that exists and does not name this book recorded a closure
                 # error, so it must not verify anything.
                 after=after.get(f"{book}.lisp", None if not after else ""),
-                cert=certificate, evidence=evidence))
+                cert=certificate, evidence=evidence, origin=origin))
     return found
 
 
@@ -321,12 +394,19 @@ def verified(records: list[Certified], source: str, cert: str) -> Certified | No
 
 
 def publish(root: Path, cache: Path, manifests: list[dict] | None = None,
-            names: list[str] | None = None) -> Report:
-    """Cache every pair a certification manifest still vouches for."""
+            names: list[str] | None = None, origin: str | None = None,
+            origin_host: str | None = None) -> Report:
+    """Cache every pair a certification manifest still vouches for.
+
+    ``origin`` is the absolute worktree path the certificates were *produced*
+    in, which is what their sub-book paths point at.  It defaults to each
+    manifest's own evidence path, then to ``root``; a farm run passes the path
+    the run used on the box.
+    """
     report = Report(action="publish", cache=str(cache))
     loaded = load_manifests(root) if manifests is None else list(manifests)
     report.manifests = len(loaded)
-    records = certified_books(loaded)
+    records = certified_books(loaded, origin or str(root.resolve()))
     cache.mkdir(parents=True, exist_ok=True)
     for source in book_sources(root, names):
         if not source.is_file():
@@ -351,7 +431,8 @@ def publish(root: Path, cache: Path, manifests: list[dict] | None = None,
         except UnreadableBook as error:
             report.unreadable.append(f"{name}: {error}")
             continue
-        directory = entry_directory(cache, key)
+        where = origin or record.origin or str(root.resolve())
+        directory = entry_directory(cache, key, where)
         cached = directory / "book.cert"
         if cached.is_file() and content_hash(cached) == content_hash(cert):
             report.already += 1
@@ -359,13 +440,14 @@ def publish(root: Path, cache: Path, manifests: list[dict] | None = None,
         directory.mkdir(parents=True, exist_ok=True)
         port = source.with_suffix(".port")
         write_entry(directory, name, key, listing, cert,
-                    port if port.is_file() else None, record)
+                    port if port.is_file() else None, record, where, origin_host)
         report.published += 1
     return report
 
 
 def write_entry(directory: Path, name: str, key: str, listing: list[str],
-                cert: Path, port: Path | None, record: Certified) -> None:
+                cert: Path, port: Path | None, record: Certified,
+                origin: str, origin_host: str | None = None) -> None:
     """Write the pair and its metadata, each file renamed into place."""
     place(cert, directory / "book.cert")
     target_port = directory / "book.port"
@@ -380,6 +462,11 @@ def write_entry(directory: Path, name: str, key: str, listing: list[str],
         "cert_sha256": record.cert,
         "source_sha256": record.source,
         "evidence": record.evidence,
+        # The worktree the pair was produced in.  A certificate's post-alist
+        # names its sub-books by absolute path, so this is what decides where
+        # the pair may be installed; `origin_host` is provenance only.
+        "origin_root": origin,
+        "origin_host": origin_host or os.uname().nodename,
         "has_port": port is not None,
         "published_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "published_from": str(cert.parent),
@@ -411,12 +498,27 @@ def install(root: Path, cache: Path, names: list[str] | None = None) -> Report:
         except UnreadableBook as error:
             report.unreadable.append(f"{name}: {error}")
             continue
-        directory = entry_directory(cache, key)
-        cached = directory / "book.cert"
-        if not cached.is_file():
-            report.uncached.append(name)
-            continue
+        entries = cached_entries(cache, key)
         cert = source.with_suffix(".cert")
+        chosen = choose_entry(entries, str(root.resolve()))
+        if chosen is None:
+            if entries:
+                # Every cached pair belongs to a worktree that still exists
+                # here.  Installing one would make this worktree include that
+                # worktree's books.  Remove a local pair that is provably one
+                # of them, so a tree poisoned by an earlier install recovers.
+                report.foreign_local.append(name)
+                if cert.is_file() and any(
+                        content_hash(cert) == content_hash(entry / "book.cert")
+                        for entry, _ in entries):
+                    cert.unlink()
+                    source.with_suffix(".port").unlink(missing_ok=True)
+                    report.removed_foreign += 1
+            else:
+                report.uncached.append(name)
+            continue
+        directory, meta = chosen
+        cached = directory / "book.cert"
         if cert.is_file() and content_hash(cert) == content_hash(cached):
             # The same bytes are already here; a copy would change nothing.
             report.kept += 1
@@ -446,8 +548,11 @@ def status(root: Path, cache: Path) -> Report:
             report.unreadable.append(f"{name}: {error}")
             report.uncached.append(name)
             continue
-        if not entry_directory(cache, key).joinpath("book.cert").is_file():
+        entries = cached_entries(cache, key)
+        if not entries:
             report.uncached.append(name)
+        elif choose_entry(entries, str(root.resolve())) is None:
+            report.foreign_local.append(name)
     return report
 
 

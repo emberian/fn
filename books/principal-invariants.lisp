@@ -26,6 +26,9 @@
                           fn-stmt-invariants-vocabulary
                           fn-prin-internals)))
 
+;; Convergence (board, codecs ANSWER to substrate): re-open the codecs vocabulary this codec is built on.
+(local (in-theory (enable fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary fn-record-invariants-vocabulary)))
+
 ; -----------------------------------------------------------------------------
 ; Identity
 

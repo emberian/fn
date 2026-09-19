@@ -59,9 +59,13 @@ ACL2_BOOKS ?= books/assumptions \
 	books/records-canonicality \
 	tests/acl2/records-tests \
 	tests/acl2/records-teeth-tests \
+	books/config \
+	books/config-invariants \
 	books/replay \
 	books/replay-invariants \
 	tests/acl2/replay-tests \
+	books/config-records \
+	tests/acl2/config-tests \
 	books/store-files \
 	books/store-files-invariants \
 	tests/acl2/store-files-tests \
@@ -76,12 +80,14 @@ ACL2_BOOKS ?= books/assumptions \
 	tests/acl2/store-node-traces-tests \
 	books/store-node-resolution \
 	tests/acl2/store-node-resolution-tests \
-	books/store-node-resolution-traces \
-	tests/acl2/store-node-resolution-traces-tests \
 	books/store-observed \
 	tests/acl2/store-observed-tests \
 	books/store-observed-traces \
 	tests/acl2/store-observed-traces-tests \
+	books/byte-store \
+	books/byte-store-invariants \
+	books/byte-store-programs \
+	tests/acl2/byte-store-tests \
 	tests/acl2/store-node-guards-tests \
 	tests/acl2/store-node-teeth-tests \
 	books/checkpoint \
@@ -108,6 +114,11 @@ ACL2_BOOKS ?= books/assumptions \
 	books/tcpcl-session \
 	books/tcpcl-invariants \
 	tests/acl2/tcpcl-tests \
+	books/anchor \
+	books/anchor-record \
+	books/anchor-invariants \
+	tests/acl2/anchor-tests \
+	tests/acl2/anchor-teeth-tests \
 	books/membership-epochs \
 	books/membership-epochs-invariants \
 	tests/acl2/membership-epochs-tests \
@@ -157,6 +168,12 @@ ACL2_BOOKS ?= books/assumptions \
 	books/transfer-public-work \
 	books/transfer-public-bound \
 	tests/acl2/transfer-tests \
+	books/transfer-journal \
+	books/transfer-journal-invariants \
+	tests/acl2/transfer-journal-tests \
+	books/container \
+	books/container-invariants \
+	tests/acl2/container-tests \
 	books/nntp-syntax \
 	books/nntp-session \
 	books/nntp-projection \
@@ -166,6 +183,9 @@ ACL2_BOOKS ?= books/assumptions \
 	books/nntp-effects \
 	tests/acl2/nntp-tests \
 	tests/acl2/nntp-teeth-tests \
+	books/served \
+	tests/acl2/served-tests \
+	books/ideal \
 	books/nntp-index \
 	tests/acl2/nntp-index-tests \
 	books/bp-release \

@@ -9,6 +9,9 @@
 
 (include-book "../../books/bp-fragment-invariants")
 (include-book "std/testing/must-fail" :dir :system)
+; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
+; this book reasons under them, so open them here, locally.
+(local (in-theory (enable fn-cbor-record-vocabulary fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary)))
 
 (defconst *bpf-payload* '(10 20 30 40 50 60 70 80))
 
