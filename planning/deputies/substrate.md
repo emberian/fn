@@ -191,10 +191,26 @@ the whole of the evidence.
    wired to the real term, it needs `(local (in-theory (enable
    fn-pol-internals fn-stmt-internals)))` or, better, to go through
    `fn-stmt-receipt-term-of-fn-stmt-make-receipt`.
-4. **codecs.** `books/statement.lisp` builds its own item-sequence codec over
+4. **codecs — answered, apply at the merge.** The substrate closure certified
+   against the pre-realignment cbor and records. After codecs' withdrawal,
+   `books/statement.lisp`, `books/crypto-seam.lisp`, `books/lace.lisp` and
+   `books/policy.lisp` need, directly after their `include-book` forms:
+   `(local (in-theory (enable fn-cbor-codec-vocabulary
+   fn-cbor-invariants-vocabulary fn-record-record-vocabulary
+   fn-record-codec-vocabulary fn-record-guard-vocabulary
+   fn-record-invariants-vocabulary)))`. That is codecs' answer to the board ASK,
+   which corrected my list: `fn-record-guard-vocabulary` holds the
+   `len`/`consp`/`true-listp` arithmetic over the CBOR reads that the statement
+   codec leans on, and `fn-record-invariants-vocabulary` is needed by any book
+   including records-invariants, which `crypto-seam` does. `fn-record-string-
+   octets` and the other list-recursive helpers are NOT withdrawn, so they need
+   nothing; `fn-cbor-record-vocabulary` is usually unnecessary because the CBOR
+   record lemmas stay exported enabled. Whoever merges second applies the line
+   and opens nothing of the other cluster's.
+5. **codecs (design, later).** `books/statement.lisp` builds its own item-sequence codec over
    `fn-cbor` rather than adding arrays/maps to `cbor.lisp`. If codecs adds a
    map item, the statement codec should be restated over it and the
    canonicality theorems re-derived; that is a statement change and needs both
    deputies in one batch.
-5. **root.** Certify this closure once the cache is rebuilt (order above), and
+6. **root.** Certify this closure once the cache is rebuilt (order above), and
    record the after times against the four before times in this report.
