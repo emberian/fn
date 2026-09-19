@@ -870,26 +870,26 @@
 
 (defthm fn-frame-inbound-open-of-prefix
   (implies (and (fn-frame-textp bid)
-                (fn-frame-blobp identity)
-                (<= (len identity) *fn-frame-max-identity*)
+                (fn-frame-blobp ident)
+                (<= (len ident) *fn-frame-max-identity*)
                 (natp bundle-length)
-                (<= (+ 2 (len bid) 4 (len identity) bundle-length)
+                (<= (+ 2 (len bid) 4 (len ident) bundle-length)
                     *fn-frame-max-inbound-payload*)
                 (fn-cbor-octet-listp tail)
                 (fn-cbor-at-mostp
-                 (append (fn-frame-inbound-prefix bid identity bundle-length)
+                 (append (fn-frame-inbound-prefix bid ident bundle-length)
                          tail)
                  (+ *fn-frame-header-octets* 2 *fn-frame-max-text* 4
                     *fn-frame-max-identity*))
                 (fn-frame-digestp digest))
            (equal (fn-frame-inbound-open
-                   (append (fn-frame-inbound-prefix bid identity bundle-length)
+                   (append (fn-frame-inbound-prefix bid ident bundle-length)
                            tail)
-                   (+ *fn-frame-overhead-octets* 2 (len bid) 4 (len identity)
+                   (+ *fn-frame-overhead-octets* 2 (len bid) 4 (len ident)
                       bundle-length)
                    digest digest)
                   (fn-frame-ok *fn-frame-magic-inbound* *fn-frame-version*
-                               (list bid identity) bundle-length)))
+                               (list bid ident) bundle-length)))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-frame-inbound-open fn-frame-inbound-prefix
                             fn-frame-magicp fn-frame-digestp fn-frame-item)
