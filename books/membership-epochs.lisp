@@ -245,6 +245,13 @@
                          (cdr chain))
     roster))
 
+; `member-equal` in `fn-me-decide` needs a true list, and the roster it is
+; given is a fold.  Without this the guard proof tries the induction inline
+; and pushes a subgoal subsumed by its own parent.
+(defthm fn-me-roster-fold-true-listp
+  (implies (true-listp roster)
+           (true-listp (fn-me-roster-fold roster chain))))
+
 (defun fn-me-chain-prefix (n chain)
   (declare (xargs :guard (and (natp n) (fn-me-commitsp chain))))
   (if (and (posp n) (consp chain))
@@ -435,6 +442,10 @@
 (defun fn-me-roster-at (s n)
   (declare (xargs :guard (and (fn-me-sitep s) (natp n))))
   (fn-me-roster-fold (fn-me-founding s) (fn-me-chain-prefix n (fn-me-chain s))))
+
+(defthm fn-me-roster-at-true-listp
+  (implies (fn-me-sitep s)
+           (true-listp (fn-me-roster-at s n))))
 
 (defun fn-me-revoked-at (s member)
   (declare (xargs :guard (fn-me-sitep s)))

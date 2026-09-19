@@ -8,18 +8,30 @@ reviewable design packet and one executable policy model.
 
 ## Certification status
 
-**Not yet certified locally.** The lane's baseline `make certify` was killed by
-root at 98 load with nineteen concurrent ACL2 processes and moved to a remote
-box; the lane was instructed not to restart it. `make check` is green
-(structural checks, 105 Markdown files, 50 requirements, 18 proof targets, 18
-scenarios; ledger cited events exist and are not SUSPECT). `tools/ledger.py`
-reads the three new books without a read error and flags no SUSPECT theorem in
-any of them. The three roots
-(`books/membership-epochs`, `books/membership-epochs-invariants`,
-`tests/acl2/membership-epochs-tests`) are in the Makefile closure and must be
-certified one book at a time once the baseline certificates are installed.
-Until then, **no theorem below is claimed as proved by ACL2** -- they are
-proposed theorems, exactly as AGENTS.md requires that distinction to be made.
+**All three roots certified by ACL2 in this worktree**, one book at a time:
+
+```
+books/membership-epochs                 ACL2 certification passed
+books/membership-epochs-invariants      ACL2 certification passed
+tests/acl2/membership-epochs-tests      ACL2 certification passed
+```
+
+Evidence directories: `build/acl2/certify-20260919T153804Z-85696`, `build/acl2/certify-20260919T153833Z-85852`, `build/acl2/certify-20260919T153835Z-85866`.
+The roots include no fn book -- only the system books `arithmetic/top`
+(local, in the invariants book) and `std/testing/must-fail` (in the test
+book) -- so they did not depend on the lane's interrupted baseline run, which
+root moved to a remote box. `make check` is green: 106 Markdown files, 50
+requirements, 18 proof targets, 18 scenarios; ledger cited events exist and
+are not SUSPECT. `tools/ledger.py` flags no SUSPECT theorem in any of the
+three books. The full-tree `make certify` for this branch has NOT been run
+here and remains the integrator's step.
+
+Three certification fixes were needed and are in the committed source: a
+`true-listp` lemma for the roster fold (without it the `fn-me-decide` guard
+proof pushed a subgoal subsumed by its own parent), `:verify-guards nil` on
+the local induction scheme (`cdr` of an arbitrary second chain has no guard),
+and reflexivity of the chain-prefix order (`fn-me-adopt` is a no-op on a
+commit premised on the wrong epoch).
 
 ## What landed
 
