@@ -13,14 +13,14 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 139 |
 | Certification roots in the Makefile | 139 |
 | Books inside the root closure | 139 |
-| `defthm` and `defthmd` events | 1698 |
+| `defthm` and `defthmd` events | 1700 |
 | `defun` events | 1420 |
 | Functions with verified guards | 832 |
 | Functions declared `:verify-guards nil` and never verified | 29 |
 | Functions left at the default with an explicit guard | 183 |
 | Functions left at the default with no guard | 376 |
-| `assert-event` checks | 1782 |
-| `must-fail` checks | 87 |
+| `assert-event` checks | 1804 |
+| `must-fail` checks | 72 |
 | `encapsulate` events | 7 |
 | Theorems flagged SUSPECT by shape | 25 |
 
@@ -122,10 +122,10 @@ that `make certify` requests.
 | `tests/acl2/article-work-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 19 | 0 | 0 |
 | `tests/acl2/assumptions-tests.lisp` | root | 0 | 10 | 0/0/0/10 | 7 | 11 | 0 |
 | `tests/acl2/bp-adu-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 24 | 0 | 0 |
-| `tests/acl2/bp-fragment-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 52 | 10 | 0 |
+| `tests/acl2/bp-fragment-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 63 | 2 | 0 |
 | `tests/acl2/bp-ingress-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 21 | 0 | 0 |
 | `tests/acl2/bp-outbound-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 29 | 0 | 0 |
-| `tests/acl2/bp-primary-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 89 | 11 | 0 |
+| `tests/acl2/bp-primary-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 100 | 4 | 0 |
 | `tests/acl2/bp-receipt-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
 | `tests/acl2/bp-receipt-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 26 | 0 | 0 |
 | `tests/acl2/bp-receiver-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
