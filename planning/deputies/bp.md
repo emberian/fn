@@ -86,3 +86,10 @@ consults the CRC field); `fn-clock-drop-permission-is-exactly-expired-by-definit
 4. bp, next cycle: opaque records for bp-workflow (8 kinds), relay, bp-primary, bp-fragment; fold
    the seven receiver invariants books and three evolving books into
    `bp-receiver-{definitions,properties}` and one test book; the two remaining export-hygiene rows.
+
+## Closed 2026-09-19 (w4/convergence2)
+
+The receiver chain named open above (bp-ingress through bp-receiver-evolving-store-invariants,
+relay, relay-invariants, relay-crash-invariants and the eight test books) is certified on dev
+b55dcea by the second convergence lane; the edits, one line each, are the CHANGE convergence2
+entry on the board. Nothing in this cluster is open.
