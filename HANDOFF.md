@@ -628,3 +628,24 @@ These are proposals, not changes: no host or tool file was touched by this lane.
    must carry the offset and the payload length, and the reassembly buffer must
    be keyed by `fn-bpp-adu-key`. `books/bp-fragment.lisp` has no input until
    that exists.
+
+## Commands run and results
+
+Tool versions: ACL2 8.7 built on SBCL, `/opt/homebrew/bin/acl2` ->
+`/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2`; system books at
+`/opt/homebrew/Cellar/acl2/8.7_6/libexec/books`. macOS arm64.
+
+| Command | Result |
+| --- | --- |
+| `curl -sSL https://www.rfc-editor.org/rfc/rfc9171.txt -o rfc9171.txt`, likewise 9172 and 9173 | fetched; 2990, 1989 and 2690 lines. The only network action taken by this lane |
+| `python3 tools/check_scaffold.py` (`make check`) | `Scaffold OK: 78 Markdown files, 49 requirements, 18 proof targets, 18 scenario specifications.` |
+| `make certify` at the lane's base `0bd0b5c`, before any new book | did not complete: the runner's default 600 s per-book timeout was exceeded on `books/article-properties` under ten-lane contention, leaving 106 of 113 roots certified and the seven `article-*` roots unfinished. Not a proof failure; the coordinator's later notice sets `FN_ACL2_TIMEOUT_SECONDS=1800` for this reason |
+| `ACL2_CUSTOMIZATION=NONE acl2` with `(certify-book "books/bp-primary-cbor" 0 t)`, thirteen iterations | see below |
+
+**Certification state at the time this handoff was written is recorded in the
+status section below.** Nothing in this lane is claimed as certified unless it
+is listed there as certified.
+
+### Certification status
+
+RESULTS-PLACEHOLDER

@@ -893,6 +893,7 @@
                   (fn-cbor-ok x rest)))
   :hints (("Goal"
            :induct (fn-bpc-round-trip-induction flg x rest budget)
+           :expand ((:free (a b c d) (fn-bpc-dec a b c d)))
            :in-theory (disable fn-bpc-argument fn-bpc-decode-head
                                fn-cbor-ok fn-cbor-error fn-cbor-result-okp
                                fn-cbor-result-value fn-cbor-result-rest
@@ -995,6 +996,7 @@
                   octets))
   :hints (("Goal"
            :induct (fn-bpc-dec flg count octets budget)
+           :expand ((:free (a b c d) (fn-bpc-dec a b c d)))
            :in-theory (disable fn-bpc-argument fn-bpc-decode-head
                                fn-cbor-ok fn-cbor-error fn-cbor-result-okp
                                fn-cbor-result-value fn-cbor-result-rest
