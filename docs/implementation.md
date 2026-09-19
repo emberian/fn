@@ -15,7 +15,8 @@ The [closure queue](../planning/assurance-closure.md) tracks remaining work;
 The [follow-on batch](../tests/evidence/2026-09-18-reader-checkpoint-index.md) adds
 reader/field guards, logical checkpoint equivalence, a derived index and the
 legacy BP ingress model. The [actual BPA experiment](../tests/evidence/2026-09-18-bpv7-transport.md)
-is separate transport evidence; complete fn workflow/receipt composition remains active.
+is separate transport evidence; the actual fn workflow/receipt exchange and
+its scoped composition proofs now have the evidence described below.
 
 ## Current components
 
@@ -41,7 +42,7 @@ is separate transport evidence; complete fn workflow/receipt composition remains
 | [NNTP reader](../books/nntp.lisp) | Experimental reader commands including LISTGROUP ranges/cursors and filtered LIST ACTIVE/NEWSGROUPS over committed state, with independent response transcripts | Incomplete READER bundle, no POST, authentication, or signed injection |
 | [Logical checkpoint](../books/checkpoint.lisp) | Capture of the exact prefix node, consumed frontier, actual suffix replay and full-replay equivalence | No persisted checkpoint codec, publication or crash generation selection |
 | [Derived index](../books/index.lisp) | Group/local-number materialization, soundness/completeness and independent range-query correspondence | Not yet a host index or performance improvement |
-| [Legacy BP ingress](../books/bp-ingress.lisp) | Exact article ADU parsing, configured group mapping and composed-store admission | Laboratory profile; actual host/workflow integration and signed receipts remain active |
+| [Legacy BP ingress](../books/bp-ingress.lisp) | Exact article ADU parsing, configured group mapping and composed-store admission | Actual host/workflow exchange is integrated for the lab profile; native signing and authenticated receipts remain open |
 | [Simulator](../host/simulator.lisp) | Fixed traces executing the actual acceptance functions in ACL2 | No shadow semantics, network listener, or real disk adapter |
 
 Run the integrated checks from the repository root with `make test`, or run
@@ -122,12 +123,20 @@ The [BP exchange checkpoint](../tests/evidence/2026-09-18-bp-exchange.md) connec
 actual fn sender and receiver journals through a pinned BPA. It covers outage,
 process restart, explicit retry, lost application receipt, duplicate recognition,
 identical receipt regeneration and durable sender acceptance of the BP return.
-Both nodes retain one article/archive pin. The complete Python suite passed 132
+Both nodes retain one article/archive pin. That checkpoint's Python suite passed 132
 tests; nine scoped ACL2 roots cover receiver correction, outbound projection and
 finite sender state/node/transport-receipt proofs. This is separate from the
 historical all-roots runs above.
 
 A recorded BPA restart window leaves inventory without forwarding progress;
-fn's durable retry handles this uncertainty. Authentication, receiver general
-trace/refinement, joint pending/durable-work binding, multi-relay/carried-media
-contact plans, LTP, fairness and physical power-loss qualification remain open.
+fn's durable retry handles this uncertainty. The subsequent
+[composition assurance batch](../tests/evidence/2026-09-18-bp-composition-assurance.md)
+adds joint pending/durable sender binding, fixed-Store receiver state/context/
+receipt and journal-replay invariants, stable receipt bytes, and five actual
+receiver process-death cuts. Eleven scoped ACL2 roots and the 133-test Python
+suite passed. The complete 41-function ADU codec has verified guards; 97
+functions in the other six inventoried BP base books still need them.
+
+General journal-byte/host refinement, composition with an evolving Store,
+authentication, multi-relay/carried-media contact plans, LTP, fairness and
+physical power-loss qualification remain open.

@@ -152,7 +152,7 @@ now passes: durable sender work, contact outage and process restart, explicit
 retry, receiver acceptance/receipt decision, lost receipt, receiver restart,
 distinct-BID duplicate, identical receipt regeneration and real BP return into a
 durable sender decision. Both nodes retain exactly one article/archive pin.
-The current combined Python suite passed **132 tests**. Nine scoped ACL2 roots
+That checkpoint's combined Python suite passed **132 tests**. Nine scoped ACL2 roots
 passed for outbound projection, corrected receiver/journal and sender proofs;
 this is separate from the earlier 75-root full integration checkpoint.
 
@@ -168,10 +168,10 @@ The failed run is retained. The actual exchange now exercises recovery through
 fn's explicit durable retry policy, which resubmits the same application work.
 No API reply, bundle inventory, expiry or transport delivery discharges fn work.
 
-Current next M4 work: a joint durable/pending-work-to-node invariant and general
-receiver trace/replay argument; contact-plan/relay/carried-media composition with
-expiry, reorder and staging exhaustion; and the D01/D09 identity and authenticated
-receipt design. Scheduling fairness/LTP/physical power-loss qualification remain
+The next M4 work after the closure batch below is FNWF/FNRJ byte/live/replay
+refinement and receiver composition with an evolving Store, followed by
+contact-plan/relay/carried-media composition with expiry, reorder and staging
+exhaustion, and the D01/D09 identity and authenticated receipt design. Scheduling fairness/LTP/physical power-loss qualification remain
 explicit. The first loop's local A-POLICY is trusted and receipts are unsigned.
 D01/D09 are not silently selected by the experimental CBOR ADU.
 
@@ -181,13 +181,24 @@ bounds include malformed inputs and repeated prefix copies. Original parser
 sources are unchanged; physical allocation/runtime costs remain separate.
 
 
-## Current batch: assurance closure before further dependent features
+## Current checkpoint: assurance closure over implemented BP behavior
 
-The user raised assurance growth as the implemented surface expands. This batch
-closes existing boundaries: Sol owns joint pending/durable sender-work binding;
-Astra owns receiver context/receipt and journal-replay invariants; Terra owns
-actual receiver child-process death/reopen tests. Root owns frozen integration
-and the current [closure inventory](assurance-closure.md). No new protocol or
-persistent record kind is being introduced. These assignments are not proof
-completion claims. The [scope rules](../docs/proofs.md#assurance-grows-with-the-implemented-surface)
-make new obligations visible with each implementation batch.
+The [composition assurance batch](../tests/evidence/2026-09-18-bp-composition-assurance.md)
+closes the selected sender/receiver proof and process-death tasks: a joint
+pending/durable sender-work binding invariant; general receiver state,
+Store/context/receipt and typed journal-replay invariants; stable receipt ADUs;
+and five actual receiver child-process deaths with exact recovery checks.
+Root certified 11 scoped roots and the combined Python suite passed 133 tests.
+The complete 41-function BP ADU codec also has verified guards. Production
+transitions and persisted formats are unchanged.
+
+The next bounded assurance batch should close the remaining BP execution guards
+and journal byte/live/replay correspondence, then compose the receiver invariant
+with Store evolution. The fixed-Store theorem does not close that last seam.
+D01/D09 authority design and later relay/contact-plan work retain their separate
+dependencies. See the [closure inventory](assurance-closure.md) for exact scope.
+No complete milestone or cryptographic/physical durability claim follows.
+
+The [scope rules](../docs/proofs.md#assurance-grows-with-the-implemented-surface)
+require each behavior change to expose its added assurance obligations in the
+same batch, so implementation and missing assurance remain visible together.
