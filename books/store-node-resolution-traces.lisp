@@ -119,3 +119,56 @@
                              fn-sn-record-bindsp fn-sn-completion-record
                              fn-sn-committed-recordp fn-node-complete
                              fn-sn-node fn-record-txid fn-record-generation)))))
+
+; -----------------------------------------------------------------------------
+; Stable records only grow along resolution traces as well.
+
+(defthm fn-snrt-refuse-keeps-records
+  (equal (fn-sf-records (fn-sn-files (fn-sn-refuse-reservation s txid)))
+         (fn-sf-records (fn-sn-files s)))
+  :hints (("Goal" :in-theory (e/d (fn-sn-refuse-reservation fn-sn-update fn-sn-make
+                                   fn-sn-files)
+                                  (fn-sn-refuse-reservation-enabledp
+                                   fn-sf-refuse-reservation fn-sf-records)))))
+
+(defthm fn-snrt-known-abort-files-keep-records
+  (equal (fn-sf-records (fn-sn-known-abort-files files))
+         (fn-sf-records files))
+  :hints (("Goal" :in-theory (e/d (fn-sn-known-abort-files
+                                   fn-sn-known-abort-file-start)
+                                  (fn-sf-abort-completion fn-sf-record-file-result
+                                   fn-sf-prepublish-abort fn-sf-records)))))
+
+(defthm fn-snrt-known-abort-keeps-records
+  (equal (fn-sf-records (fn-sn-files (fn-sn-known-abort s)))
+         (fn-sf-records (fn-sn-files s)))
+  :hints (("Goal" :in-theory (e/d (fn-sn-known-abort fn-sn-update fn-sn-make
+                                   fn-sn-files)
+                                  (fn-sn-known-abort-enabledp
+                                   fn-sn-known-abort-files fn-sf-records
+                                   fn-node-complete)))))
+
+(defthm fn-snrt-step-records-prefix
+  (implies (fn-snt-relation s)
+           (fn-sf-prefixp (fn-sf-records (fn-sn-files s))
+                          (fn-sf-records (fn-sn-files (fn-snrt-step s event)))))
+  :hints (("Goal"
+           :use (fn-snt-related-records-true-list
+                 (:instance fn-snt-step-records-prefix))
+           :in-theory (e/d (fn-snrt-step)
+                           (fn-snt-relation fn-snt-step fn-sn-refuse-reservation
+                            fn-sn-known-abort fn-sn-files fn-sf-records
+                            fn-sf-prefixp fn-snt-step-records-prefix)))))
+
+(defthm fn-snrt-mixed-trace-records-prefix
+  (implies (fn-snt-relation s)
+           (fn-sf-prefixp (fn-sf-records (fn-sn-files s))
+                          (fn-sf-records (fn-sn-files (fn-snrt-run s events)))))
+  :hints (("Goal" :induct (fn-snrt-run s events)
+           :in-theory (disable fn-snt-relation fn-snrt-step fn-sn-files
+                               fn-sf-records fn-sf-prefixp))
+          ("Subgoal *1/1" :use ((:instance fn-sf-prefixp-transitive
+                                 (xs (fn-sf-records (fn-sn-files s)))
+                                 (ys (fn-sf-records (fn-sn-files (fn-snrt-step s (car events)))))
+                                 (zs (fn-sf-records (fn-sn-files (fn-snrt-run
+                                       (fn-snrt-step s (car events)) (cdr events))))))))))

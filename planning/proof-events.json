@@ -309,7 +309,15 @@
           "kind": "theorem"
         },
         {
-          "name": "fn-sf-lost-core-completion-fences",
+          "name": "fn-sf-crash-realizes-every-admissible-image",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-sn-open-observed-success-has-live-history-relation",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-sn-acknowledged-record-survives-observed-reopen",
           "kind": "theorem"
         },
         {

@@ -10,17 +10,17 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 129 |
-| Certification roots in the Makefile | 129 |
-| Books inside the root closure | 129 |
-| `defthm` and `defthmd` events | 1508 |
-| `defun` events | 1281 |
-| Functions with verified guards | 700 |
+| Books read | 131 |
+| Certification roots in the Makefile | 131 |
+| Books inside the root closure | 131 |
+| `defthm` and `defthmd` events | 1544 |
+| `defun` events | 1294 |
+| Functions with verified guards | 701 |
 | Functions declared `:verify-guards nil` and never verified | 29 |
 | Functions left at the default with an explicit guard | 180 |
-| Functions left at the default with no guard | 372 |
-| `assert-event` checks | 1615 |
-| `must-fail` checks | 58 |
+| Functions left at the default with no guard | 384 |
+| `assert-event` checks | 1803 |
+| `must-fail` checks | 90 |
 | `encapsulate` events | 7 |
 | Theorems flagged SUSPECT by shape | 21 |
 
@@ -84,14 +84,15 @@ that `make certify` requests.
 | `books/replay.lisp` | root | 7 | 13 | 13/0/0/0 | 0 | 0 | 0 |
 | `books/retention-invariants.lisp` | root | 16 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/retention.lisp` | root | 11 | 35 | 35/0/0/0 | 0 | 0 | 2 |
-| `books/store-files-invariants.lisp` | root | 32 | 1 | 0/0/0/1 | 0 | 0 | 0 |
+| `books/store-files-invariants.lisp` | root | 43 | 3 | 0/0/0/3 | 0 | 0 | 0 |
 | `books/store-files-traces.lisp` | root | 53 | 12 | 0/0/0/12 | 0 | 0 | 0 |
-| `books/store-files.lisp` | root | 13 | 47 | 47/0/0/0 | 0 | 0 | 0 |
-| `books/store-node-invariants.lisp` | root | 44 | 1 | 0/0/0/1 | 0 | 0 | 1 |
-| `books/store-node-resolution-traces.lisp` | root | 8 | 2 | 0/0/0/2 | 0 | 0 | 0 |
+| `books/store-files.lisp` | root | 13 | 48 | 48/0/0/0 | 0 | 0 | 0 |
+| `books/store-node-invariants.lisp` | root | 45 | 1 | 0/0/0/1 | 0 | 0 | 1 |
+| `books/store-node-resolution-traces.lisp` | root | 13 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `books/store-node-resolution.lisp` | root | 16 | 6 | 6/0/0/0 | 0 | 0 | 2 |
-| `books/store-node-traces.lisp` | root | 43 | 5 | 0/0/0/5 | 0 | 0 | 0 |
+| `books/store-node-traces.lisp` | root | 52 | 5 | 0/0/0/5 | 0 | 0 | 0 |
 | `books/store-node.lisp` | root | 0 | 22 | 22/0/0/0 | 0 | 0 | 0 |
+| `books/store-observed-traces.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/store-observed.lisp` | root | 15 | 12 | 12/0/0/0 | 0 | 0 | 1 |
 | `books/transfer-assembly-invariants.lisp` | root | 25 | 5 | 0/0/0/5 | 0 | 0 | 0 |
 | `books/transfer-invariants.lisp` | root | 39 | 1 | 0/0/0/1 | 0 | 0 | 0 |
@@ -145,17 +146,18 @@ that `make certify` requests.
 | `tests/acl2/replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 0 | 0 |
 | `tests/acl2/retention-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 4 | 0 |
 | `tests/acl2/retention-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 24 | 0 | 0 |
-| `tests/acl2/store-files-exploration-tests.lisp` | root | 0 | 19 | 0/0/0/19 | 38 | 0 | 0 |
-| `tests/acl2/store-files-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 2 | 0 |
-| `tests/acl2/store-files-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 42 | 0 | 0 |
+| `tests/acl2/store-files-exploration-tests.lisp` | root | 0 | 29 | 0/0/0/29 | 58 | 0 | 0 |
+| `tests/acl2/store-files-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 52 | 11 | 0 |
+| `tests/acl2/store-files-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 78 | 10 | 0 |
 | `tests/acl2/store-files-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
 | `tests/acl2/store-node-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 116 | 0 | 0 |
 | `tests/acl2/store-node-resolution-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 21 | 0 | 0 |
 | `tests/acl2/store-node-resolution-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 0 | 0 |
-| `tests/acl2/store-node-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 2 | 0 |
-| `tests/acl2/store-node-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 32 | 0 | 0 |
-| `tests/acl2/store-node-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
-| `tests/acl2/store-observed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
+| `tests/acl2/store-node-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 43 | 10 | 0 |
+| `tests/acl2/store-node-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 37 | 0 | 0 |
+| `tests/acl2/store-node-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
+| `tests/acl2/store-observed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
+| `tests/acl2/store-observed-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 58 | 5 | 0 |
 | `tests/acl2/transfer-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 0 | 0 |
 | `tests/acl2/wildmat-parser-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
 | `tests/acl2/wildmat-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 1 | 0 |
@@ -189,6 +191,6 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-retain-wrong-evidence-does-not-release` | `books/retention.lisp` | 359 | branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value |
 | `fn-sn-finish-disabled-is-no-op` | `books/store-node-invariants.lisp` | 129 | branch-of-definition: the hypothesis negates a branch test of fn-sn-finish and the conclusion is that branch's value |
 | `fn-sn-known-abort-disabled-is-no-op` | `books/store-node-resolution.lisp` | 97 | branch-of-definition: the hypothesis negates a branch test of fn-sn-known-abort and the conclusion is that branch's value |
-| `fn-sn-open-observed-invalid-history-refuses` | `books/store-observed.lisp` | 319 | branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value |
+| `fn-sn-open-observed-invalid-history-refuses` | `books/store-observed.lisp` | 330 | branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value |
 | `fn-sn-refuse-reservation-disabled-is-no-op` | `books/store-node-resolution.lisp` | 92 | branch-of-definition: the hypothesis negates a branch test of fn-sn-refuse-reservation and the conclusion is that branch's value |
 | `fn-wire-feed-closed-noop` | `books/wire.lisp` | 393 | branch-of-definition: the hypothesis is a branch test of fn-wire-feed and the conclusion is that branch's value |

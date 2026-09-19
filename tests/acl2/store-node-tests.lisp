@@ -83,11 +83,31 @@
   (fn-sn-recover (fn-sn-crash *sn-link-error* :old :present)))
 (defconst *sn-absent*
   (fn-sn-recover (fn-sn-crash *sn-link-error* :old :absent)))
+
+; Process death after os.link returned but before the link result was
+; observed (the final-link cut) leaves the composition in :record-data-durable
+; with the same two outcomes; both replay to the same nodes as the fenced
+; link above, and neither invents an acknowledgement.
+(defconst *sn-data-durable* (fn-sn-io *sn-prepared* :record-file :ok))
+(assert-event (equal (fn-sf-phase (fn-sn-files *sn-data-durable*)) :record-data-durable))
+(assert-event (equal (fn-sn-node (fn-sn-recover (fn-sn-crash *sn-data-durable* :old :present)))
+                     (fn-sn-node *sn-present*)))
+(assert-event (equal (fn-sn-node (fn-sn-recover (fn-sn-crash *sn-data-durable* :old :absent)))
+                     (fn-sn-node *sn-absent*)))
+(assert-event (not (fn-sf-successes
+                    (fn-sn-files (fn-sn-recover (fn-sn-crash *sn-data-durable* :old :present))))))
+; Death after the record file barrier returned but before it was observed
+; (the staged-data-barrier cut) is in :record-staged: no link was issued, so
+; the present choice selects nothing.
+(assert-event (equal (fn-sf-records (fn-sn-files (fn-sn-crash *sn-prepared* :old :present)))
+                     nil))
 (assert-event (fn-sn-committed-recordp (fn-sn-node *sn-present*) *sn-record*))
 (assert-event (not (fn-sf-successes (fn-sn-files *sn-present*))))
 (assert-event (not (fn-state-articles (fn-node-acceptance (fn-sn-node *sn-absent*)))))
 (assert-event (equal (fn-state-next-txid (fn-node-acceptance (fn-sn-node *sn-absent*))) 1))
 (assert-event (equal (fn-sn-finish *sn-present*) *sn-present*))
+; unreachable-in-composition: fn-sn-fence-node/fn-sn-resolve-node have no host
+; caller; these two checks document the in-process correspondence only.
 (assert-event (equal (fn-sn-node *sn-present*)
                      (fn-sn-resolve-node
                       (fn-sn-fence-node (fn-sn-node *sn-prepared*) *sn-record*)

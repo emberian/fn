@@ -75,6 +75,8 @@
     "tests/acl2/store-node-resolution-traces-tests",
     "books/store-observed",
     "tests/acl2/store-observed-tests",
+    "books/store-observed-traces",
+    "tests/acl2/store-observed-traces-tests",
     "tests/acl2/store-node-guards-tests",
     "tests/acl2/store-node-teeth-tests",
     "books/checkpoint",
@@ -133,19 +135,19 @@
     "tests/acl2/nntp-teeth-tests"
   ],
   "totals": {
-    "books": 129,
-    "books_in_root_closure": 129,
-    "roots": 129,
-    "theorems": 1508,
-    "functions": 1281,
-    "assert_events": 1615,
-    "must_fails": 58,
+    "books": 131,
+    "books_in_root_closure": 131,
+    "roots": 131,
+    "theorems": 1544,
+    "functions": 1294,
+    "assert_events": 1803,
+    "must_fails": 90,
     "encapsulates": 7,
     "guards": {
-      "verified": 700,
+      "verified": 701,
       "declared-off": 29,
       "default-guarded": 180,
-      "default-unguarded": 372
+      "default-unguarded": 384
     },
     "suspect_theorems": 21
   },
@@ -1499,13 +1501,13 @@
       "book": "books/store-files-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 32,
-      "functions": 1,
+      "theorems": 43,
+      "functions": 3,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 1
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -1552,14 +1554,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 13,
-      "functions": 47,
+      "functions": 48,
       "guards": {
-        "verified": 47,
+        "verified": 48,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 47,
+      "verify_guards_events": 48,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 2,
@@ -1576,7 +1578,7 @@
       "book": "books/store-node-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 44,
+      "theorems": 45,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -1606,7 +1608,7 @@
       "book": "books/store-node-resolution-traces.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 8,
+      "theorems": 13,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -1659,7 +1661,7 @@
       "book": "books/store-node-traces.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 43,
+      "theorems": 52,
       "functions": 5,
       "guards": {
         "verified": 0,
@@ -1703,6 +1705,32 @@
       "encapsulates": 0,
       "includes": [
         "store-files"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/store-observed-traces.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 10,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-node-resolution-traces",
+        "store-observed"
       ],
       "system_includes": [],
       "suspects": [],
@@ -3082,17 +3110,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 19,
+      "functions": 29,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 19
+        "default-unguarded": 29
       },
       "verify_guards_events": 0,
-      "assert_events": 38,
+      "assert_events": 58,
       "must_fails": 0,
-      "defconsts": 9,
+      "defconsts": 15,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -3115,9 +3143,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 18,
-      "must_fails": 2,
-      "defconsts": 7,
+      "assert_events": 52,
+      "must_fails": 11,
+      "defconsts": 13,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -3142,15 +3170,17 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 42,
-      "must_fails": 0,
-      "defconsts": 39,
+      "assert_events": 78,
+      "must_fails": 10,
+      "defconsts": 42,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/store-files"
+        "../../books/store-files-invariants"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -3268,13 +3298,13 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 15,
-      "must_fails": 2,
-      "defconsts": 7,
+      "assert_events": 43,
+      "must_fails": 10,
+      "defconsts": 11,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/store-node-invariants"
+        "../../books/store-observed-traces"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -3295,9 +3325,9 @@
         "default-unguarded": 4
       },
       "verify_guards_events": 0,
-      "assert_events": 32,
+      "assert_events": 37,
       "must_fails": 0,
-      "defconsts": 11,
+      "defconsts": 12,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -3320,9 +3350,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 10,
+      "assert_events": 12,
       "must_fails": 0,
-      "defconsts": 10,
+      "defconsts": 11,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -3345,15 +3375,42 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 10,
+      "assert_events": 15,
       "must_fails": 0,
-      "defconsts": 7,
+      "defconsts": 8,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/store-observed"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/store-observed-traces-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 58,
+      "must_fails": 5,
+      "defconsts": 26,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-observed-traces"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -3633,7 +3690,7 @@
     {
       "theorem": "fn-sn-open-observed-invalid-history-refuses",
       "book": "books/store-observed.lisp",
-      "line": 319,
+      "line": 330,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value"
       ]
