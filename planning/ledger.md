@@ -10,19 +10,19 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 128 |
-| Certification roots in the Makefile | 128 |
-| Books inside the root closure | 128 |
-| `defthm` and `defthmd` events | 1430 |
-| `defun` events | 1262 |
-| Functions with verified guards | 685 |
-| Functions declared `:verify-guards nil` and never verified | 34 |
-| Functions left at the default with an explicit guard | 178 |
-| Functions left at the default with no guard | 365 |
-| `assert-event` checks | 1537 |
-| `must-fail` checks | 43 |
+| Books read | 129 |
+| Certification roots in the Makefile | 129 |
+| Books inside the root closure | 129 |
+| `defthm` and `defthmd` events | 1508 |
+| `defun` events | 1281 |
+| Functions with verified guards | 700 |
+| Functions declared `:verify-guards nil` and never verified | 29 |
+| Functions left at the default with an explicit guard | 180 |
+| Functions left at the default with no guard | 372 |
+| `assert-event` checks | 1615 |
+| `must-fail` checks | 58 |
 | `encapsulate` events | 7 |
-| Theorems flagged SUSPECT by shape | 24 |
+| Theorems flagged SUSPECT by shape | 21 |
 
 ## Per book
 
@@ -59,16 +59,17 @@ that `make certify` requests.
 | `books/bp-receiver-trace-invariants.lisp` | root | 6 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/bp-workflow-binding-core.lisp` | root | 27 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/bp-workflow-binding-invariants.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/bp-workflow-invariants.lisp` | root | 51 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/bp-workflow-invariants.lisp` | root | 59 | 0 | 0/0/0/0 | 0 | 0 | 1 |
+| `books/bp-workflow-records-invariants.lisp` | root | 43 | 8 | 0/8/0/0 | 0 | 0 | 0 |
 | `books/bp-workflow-records.lisp` | root | 0 | 11 | 0/10/1/0 | 0 | 0 | 0 |
-| `books/bp-workflow-transport-invariants.lisp` | root | 25 | 2 | 0/0/2/0 | 0 | 0 | 0 |
-| `books/bp-workflow.lisp` | root | 0 | 109 | 0/0/109/0 | 0 | 0 | 0 |
+| `books/bp-workflow-transport-invariants.lisp` | root | 32 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/bp-workflow.lisp` | root | 0 | 111 | 0/0/111/0 | 0 | 0 | 0 |
 | `books/cbor-invariants.lisp` | root | 36 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/cbor.lisp` | root | 3 | 21 | 21/0/0/0 | 0 | 0 | 0 |
-| `books/checkpoint.lisp` | root | 6 | 13 | 0/13/0/0 | 0 | 0 | 0 |
+| `books/checkpoint.lisp` | root | 10 | 13 | 13/0/0/0 | 0 | 0 | 0 |
 | `books/exchange-invariants.lisp` | root | 22 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `books/exchange.lisp` | root | 10 | 40 | 40/0/0/0 | 0 | 0 | 1 |
-| `books/index.lisp` | root | 8 | 20 | 20/0/0/0 | 0 | 0 | 4 |
+| `books/index.lisp` | root | 24 | 22 | 22/0/0/0 | 0 | 0 | 0 |
 | `books/journal.lisp` | root | 9 | 61 | 0/0/0/61 | 0 | 0 | 0 |
 | `books/nntp-effects.lisp` | root | 57 | 3 | 0/0/0/3 | 0 | 0 | 0 |
 | `books/nntp-invariants.lisp` | root | 49 | 3 | 0/0/0/3 | 0 | 0 | 0 |
@@ -120,13 +121,13 @@ that `make certify` requests.
 | `tests/acl2/bp-receipt-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 26 | 0 | 0 |
 | `tests/acl2/bp-receiver-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/bp-receiver-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 2 | 0 |
-| `tests/acl2/bp-workflow-binding-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
-| `tests/acl2/bp-workflow-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
+| `tests/acl2/bp-workflow-binding-invariants-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 23 | 2 | 0 |
+| `tests/acl2/bp-workflow-records-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 60 | 6 | 0 |
 | `tests/acl2/bp-workflow-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
-| `tests/acl2/bp-workflow-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 27 | 0 | 0 |
+| `tests/acl2/bp-workflow-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 50 | 7 | 0 |
 | `tests/acl2/cbor-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 3 | 0 |
 | `tests/acl2/cbor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
-| `tests/acl2/checkpoint-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 19 | 0 | 0 |
+| `tests/acl2/checkpoint-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/exchange-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 106 | 0 | 0 |
 | `tests/acl2/exchange-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
 | `tests/acl2/exchange-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 3 | 0 |
@@ -171,12 +172,9 @@ Every theorem below is proved; none may be cited as a registry event in
 | Theorem | Book | Line | Why |
 | --- | --- | --- | --- |
 | `fn-af-message-id-equalp-is-exact` | `books/article-fields.lisp` | 311 | definition-restated: the conclusion is the body of fn-af-message-id-equalp with the conjuncts the hypotheses already assert struck out |
+| `fn-bp-effect-for-pending-attempt-unfolds` | `books/bp-workflow-invariants.lisp` | 882 | branch-of-definition: the hypothesis is a branch test of fn-bp-effect-for-pending and the conclusion is that branch's value |
 | `fn-bpr-context-from-request-is-constructor` | `books/bp-receiver-state-invariants.lisp` | 86 | definition-restated: the conclusion is the body of fn-bpr-context-from-request |
 | `fn-exchange-ingest-refusal-is-no-op` | `books/exchange.lisp` | 364 | branch-of-definition: the hypothesis negates a branch test of fn-exchange-ingest and the conclusion is that branch's value |
-| `fn-index-build-complete` | `books/index.lisp` | 204 | reflexive-conclusion: a conjunct is (fn-subsetp X X) |
-| `fn-index-build-correspondence` | `books/index.lisp` | 209 | reflexive-conclusion: a conjunct is (fn-subsetp X X) |
-| `fn-index-build-sound` | `books/index.lisp` | 199 | reflexive-conclusion: a conjunct is (fn-subsetp X X) |
-| `fn-index-build-subset-self` | `books/index.lisp` | 194 | instance-corollary: the statement is fn-subset-self instantiated, discharging nothing; reflexive-conclusion: a conjunct is (fn-subsetp X X) |
 | `fn-node-capacity-refusal-is-no-op` | `books/node.lisp` | 367 | branch-of-definition: the hypothesis is a branch test of fn-node-prepare and the conclusion is that branch's value |
 | `fn-node-complete-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 141 | closed-theory-corollary: proved only by fn-node-complete-preserves-state, fn-node-state-has-committed-archive-pins |
 | `fn-node-prepare-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 124 | closed-theory-corollary: proved only by fn-node-prepare-preserves-state, fn-node-state-has-committed-archive-pins |

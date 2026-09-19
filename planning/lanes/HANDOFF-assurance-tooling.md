@@ -7,7 +7,7 @@ Worktree `/Users/ember/dev/fn/build/lanes/assurance-tooling`.
 (unsigned; 1Password refused the signing key while the lane ran unattended).
 
 The lane adopts the two assurance-discipline gaps at the end of §6 of
-[the independent review](planning/review-2026-09-18-independent.md): there was
+[the independent review](../review-2026-09-18-independent.md): there was
 no `encapsulate` in the tree, so every named assumption was prose; and there
 was no teeth discipline, so the registry's `events` lists were hand-maintained
 and pointed at corollaries. Packets C1-15 and C1-16.
