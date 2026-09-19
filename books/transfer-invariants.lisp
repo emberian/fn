@@ -437,7 +437,14 @@
                             fn-transfer-uncoveredp
                             fn-transfer-window-clearp
                             fn-transfer-overlap-position
-                            fn-transfer-chunk-inputp)))))
+                            fn-transfer-chunk-inputp
+                            ; Keep the goal in accessor form: the combined head
+                            ; rule is stated with fn-transfer-chunk-offset and
+                            ; fn-transfer-chunk-octets, and its free window
+                            ; variables can only be bound by matching those
+                            ; hypotheses, which car/cadr forms defeat.
+                            fn-transfer-chunk-offset
+                            fn-transfer-chunk-octets)))))
 
 ; The shape of the retained union: well-formed, nonempty, uncovered, ordered
 ; runs inside the arriving window.
@@ -528,7 +535,13 @@
                             fn-transfer-ranges-overlapp
                             fn-transfer-uncoveredp
                             fn-transfer-overlap-position
-                            fn-transfer-no-overlaps-withp)))))
+                            fn-transfer-no-overlaps-withp
+                            ; Same accessor-form discipline as
+                            ; fn-transfer-uncovered-chunk-has-no-overlap, whose
+                            ; free window variables this proof must let ACL2
+                            ; bind.
+                            fn-transfer-chunk-offset
+                            fn-transfer-chunk-octets)))))
 
 (defthm fn-transfer-uncovered-chunks-append-is-chunk-listp
   (implies (and (natp position)
@@ -914,9 +927,17 @@
                   (fn-transfer-add-chunk st label offset octets))))
                (fn-transfer-capacity (fn-transfer-state-profile st))))
   :hints (("Goal"
-           :use ((:instance fn-transfer-add-chunk-preserves-statep))
+           ; The reserved bytes are unchanged by the transition, so the bound
+           ; is the one fn-transfer-statep already carries for st; the
+           ; accessors stay closed so both sides keep the same shape.
+           :use ((:instance fn-transfer-add-chunk-preserves-reserved-bytes))
            :in-theory (e/d (fn-transfer-statep)
-                           (fn-transfer-add-chunk)))))
+                           (fn-transfer-add-chunk
+                            fn-transfer-state-profile
+                            fn-transfer-state-entries
+                            fn-transfer-result-state
+                            fn-transfer-capacity
+                            fn-transfer-reserved-bytes)))))
 
 (defthm fn-transfer-add-chunk-nonadmissible-no-overwrite
   (implies (and (fn-transfer-statep st)

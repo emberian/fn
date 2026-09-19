@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 129 |
 | Certification roots in the Makefile | 129 |
 | Books inside the root closure | 129 |
-| `defthm` and `defthmd` events | 1508 |
-| `defun` events | 1281 |
-| Functions with verified guards | 700 |
-| Functions declared `:verify-guards nil` and never verified | 29 |
-| Functions left at the default with an explicit guard | 180 |
-| Functions left at the default with no guard | 372 |
-| `assert-event` checks | 1615 |
+| `defthm` and `defthmd` events | 1614 |
+| `defun` events | 1311 |
+| Functions with verified guards | 712 |
+| Functions declared `:verify-guards nil` and never verified | 36 |
+| Functions left at the default with an explicit guard | 187 |
+| Functions left at the default with no guard | 376 |
+| `assert-event` checks | 1677 |
 | `must-fail` checks | 58 |
 | `encapsulate` events | 7 |
 | Theorems flagged SUSPECT by shape | 21 |
@@ -35,7 +35,7 @@ that `make certify` requests.
 | `books/acceptance-invariants.lisp` | root | 36 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/acceptance.lisp` | root | 20 | 63 | 58/0/5/0 | 0 | 0 | 0 |
 | `books/article-fields.lisp` | root | 5 | 30 | 30/0/0/0 | 0 | 0 | 1 |
-| `books/article-invariants.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/article-invariants.lisp` | root | 44 | 14 | 0/7/7/0 | 0 | 0 | 0 |
 | `books/article-properties.lisp` | root | 42 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/article-public-bound.lisp` | root | 17 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/article-public-work.lisp` | root | 10 | 5 | 0/0/0/5 | 0 | 0 | 0 |
@@ -94,24 +94,24 @@ that `make certify` requests.
 | `books/store-node.lisp` | root | 0 | 22 | 22/0/0/0 | 0 | 0 | 0 |
 | `books/store-observed.lisp` | root | 15 | 12 | 12/0/0/0 | 0 | 0 | 1 |
 | `books/transfer-assembly-invariants.lisp` | root | 25 | 5 | 0/0/0/5 | 0 | 0 | 0 |
-| `books/transfer-invariants.lisp` | root | 39 | 1 | 0/0/0/1 | 0 | 0 | 0 |
+| `books/transfer-invariants.lisp` | root | 66 | 5 | 0/0/0/5 | 0 | 0 | 0 |
 | `books/transfer-public-bound.lisp` | root | 71 | 7 | 0/0/0/7 | 0 | 0 | 0 |
 | `books/transfer-public-work.lisp` | root | 28 | 19 | 0/0/0/19 | 0 | 0 | 0 |
 | `books/transfer-work.lisp` | root | 35 | 13 | 0/0/0/13 | 0 | 0 | 0 |
-| `books/transfer.lisp` | root | 13 | 62 | 53/0/9/0 | 0 | 0 | 0 |
+| `books/transfer.lisp` | root | 14 | 67 | 58/0/9/0 | 0 | 0 | 0 |
 | `books/wildmat-matcher-invariants.lisp` | root | 19 | 5 | 0/0/0/5 | 0 | 0 | 0 |
 | `books/wildmat-parser-invariants.lisp` | root | 9 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/wildmat-utf8-invariants.lisp` | root | 29 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/wildmat-work.lisp` | root | 52 | 17 | 0/0/0/17 | 0 | 0 | 0 |
 | `books/wildmat.lisp` | root | 11 | 54 | 54/0/0/0 | 0 | 0 | 0 |
-| `books/wire-invariants.lisp` | root | 10 | 1 | 0/0/0/1 | 0 | 0 | 0 |
-| `books/wire.lisp` | root | 14 | 38 | 38/0/0/0 | 0 | 0 | 1 |
+| `books/wire-invariants.lisp` | root | 40 | 2 | 1/0/0/1 | 0 | 0 | 0 |
+| `books/wire.lisp` | root | 27 | 44 | 44/0/0/0 | 0 | 0 | 1 |
 | `tests/acl2/acceptance-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 148 | 0 | 0 |
 | `tests/acl2/acceptance-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 24 | 5 | 0 |
 | `tests/acl2/acceptance-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 61 | 0 | 0 |
 | `tests/acl2/article-fields-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 31 | 0 | 0 |
 | `tests/acl2/article-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 2 | 0 |
-| `tests/acl2/article-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 24 | 0 | 0 |
+| `tests/acl2/article-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 38 | 0 | 0 |
 | `tests/acl2/article-work-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 19 | 0 | 0 |
 | `tests/acl2/assumptions-tests.lisp` | root | 0 | 10 | 0/0/0/10 | 7 | 11 | 0 |
 | `tests/acl2/bp-adu-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 24 | 0 | 0 |
@@ -156,11 +156,11 @@ that `make certify` requests.
 | `tests/acl2/store-node-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 32 | 0 | 0 |
 | `tests/acl2/store-node-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
 | `tests/acl2/store-observed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
-| `tests/acl2/transfer-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 0 | 0 |
+| `tests/acl2/transfer-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 60 | 0 | 0 |
 | `tests/acl2/wildmat-parser-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
 | `tests/acl2/wildmat-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 1 | 0 |
 | `tests/acl2/wildmat-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 35 | 0 | 0 |
-| `tests/acl2/wire-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 0 | 0 |
+| `tests/acl2/wire-tests.lisp` | root | 4 | 0 | 0/0/0/0 | 49 | 0 | 0 |
 
 ## Theorems flagged SUSPECT by shape
 
@@ -191,4 +191,4 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-sn-known-abort-disabled-is-no-op` | `books/store-node-resolution.lisp` | 97 | branch-of-definition: the hypothesis negates a branch test of fn-sn-known-abort and the conclusion is that branch's value |
 | `fn-sn-open-observed-invalid-history-refuses` | `books/store-observed.lisp` | 319 | branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value |
 | `fn-sn-refuse-reservation-disabled-is-no-op` | `books/store-node-resolution.lisp` | 92 | branch-of-definition: the hypothesis negates a branch test of fn-sn-refuse-reservation and the conclusion is that branch's value |
-| `fn-wire-feed-closed-noop` | `books/wire.lisp` | 393 | branch-of-definition: the hypothesis is a branch test of fn-wire-feed and the conclusion is that branch's value |
+| `fn-wire-feed-closed-noop` | `books/wire.lisp` | 670 | branch-of-definition: the hypothesis is a branch test of fn-wire-feed and the conclusion is that branch's value |
