@@ -1,6 +1,6 @@
 # w3/identity-v1 — the v1 content identity profile, adopted
 
-HEAD: __HEAD__ (branch `w3/identity-v1`, from `9321344`)
+HEAD: 4bc47c5 (branch `w3/identity-v1`, from `9321344`)
 
 ## What changed
 
