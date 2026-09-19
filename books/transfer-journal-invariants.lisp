@@ -22,8 +22,12 @@
 ; at a time; both are withdrawn at their export theories (BOARD, 2026-09-19
 ; codecs; the export theory of `books/transfer-journal.lisp`).  Every enable
 ; here is local: no includer inherits a frame or `fn-tj-` definition rune.
-(local (in-theory (enable fn-frame-fields-vocabulary fn-frame-record-vocabulary
-                          fn-tj-vocabulary)))
+; The full frame vocabulary is opened here and nowhere else: this book has no
+; `defun` but `fn-tj-induct`, so the `len`-backchaining cascade cannot reach
+; an admission the way it did in `books/transfer-journal.lisp`.
+(local (in-theory (enable fn-frame-octet-vocabulary fn-frame-fields-vocabulary
+                          fn-frame-record-vocabulary fn-frame-codec-vocabulary
+                          fn-frame-invariants-vocabulary fn-tj-vocabulary)))
 
 ; The kernel transitions and the record accessors stay closed unless a proof
 ; opens them: every fact below is about the shape of a record or the value of
@@ -86,13 +90,44 @@
   :hints (("Goal" :induct (fn-tj-induct st inputs index)
            :in-theory (enable fn-tj-replay-records fn-tj-journal fn-tj-run))))
 
+; One step first, with the kernel closed: the dispatch opens to exactly the
+; two public transitions and each is discharged by the kernel's own exported
+; preservation keystone (`fn-transfer-reserve-preserves-statep`,
+; `books/transfer-reservation.lisp`; `fn-transfer-add-chunk-preserves-statep`,
+; `books/transfer-invariants.lisp`).  Opening `fn-tj-transition` inside the
+; induction instead sent the waterfall into `GENERALIZE-CLAUSE` on the
+; arithmetic library's `floor`/`mod` rules and aborted (measured here).
+(local
+ (defthm fn-tj-transition-preserves-statep
+   (implies (fn-transfer-statep st)
+            (fn-transfer-statep
+             (fn-transfer-result-state (fn-tj-transition st r))))
+   ; `fn-transfer-add-chunk-result-state-normal-form` is exported enabled by
+   ; `books/transfer-invariants.lisp` and rewrites the stored branch into its
+   ; explicit `(list (car st) (fn-transfer-replace-entry-with-chunks ...))`
+   ; before the preservation keystone can fire, which is what left the
+   ; add-chunk branch open here.  Both keystones are cited by `:use` with the
+   ; normal form closed.
+   :hints (("Goal" :do-not '(generalize)
+            :use ((:instance fn-transfer-reserve-preserves-statep
+                             (label (fn-tj-label r))
+                             (declared-length (fn-tj-arg r)))
+                  (:instance fn-transfer-add-chunk-preserves-statep
+                             (label (fn-tj-label r)) (offset (fn-tj-arg r))
+                             (octets (fn-tj-octets r))))
+            :in-theory (e/d (fn-tj-transition)
+                            (fn-transfer-add-chunk-result-state-normal-form
+                             fn-transfer-reserve-preserves-statep
+                             fn-transfer-add-chunk-preserves-statep))))))
+
 ; The fold never leaves the kernel's own states: whatever a replay reaches
 ; is a state the two public transitions built.
 (defthm fn-tj-run-preserves-statep
   (implies (fn-transfer-statep st)
            (fn-transfer-statep (fn-tj-run st inputs)))
   :hints (("Goal" :induct (fn-tj-run st inputs)
-           :in-theory (enable fn-tj-run fn-tj-transition))))
+           :do-not '(generalize)
+           :in-theory (e/d (fn-tj-run) (fn-tj-transition)))))
 
 ; Corollary of the keystone (docs/proof-style.md §7): after a restart the
 ; kernel reports the same missing ranges for every label, because it is the
@@ -342,8 +377,16 @@
   (implies (and (not (equal (fn-tj-outcome r) :reserved))
                 (not (equal (fn-tj-outcome r) :stored)))
            (equal (fn-frame-item 1 (fn-tj-apply st r)) st))
+  ; Same trap as `fn-tj-transition-preserves-statep`: `books/transfer-
+  ; invariants.lisp` exports `fn-transfer-add-chunk-result-state-normal-form`
+  ; enabled, and it rewrites the stored branch into its explicit
+  ; `(list (car st) (fn-transfer-replace-entry-with-chunks ...))` before the
+  ; three refusal lemmas cited below can meet the goal.  Both it and
+  ; `fn-transfer-find-absent-is-nil` are closed here.  A board CHANGE-request
+  ; asks nntp to make the normal form `:rule-classes nil`.
   :hints (("Goal" :in-theory (e/d (fn-tj-apply fn-tj-transition fn-frame-item)
-                                  ())
+                                  (fn-transfer-add-chunk-result-state-normal-form
+                                   fn-transfer-find-absent-is-nil))
            :use ((:instance fn-transfer-reserve-refusal-no-overwrite-general
                             (label (fn-tj-label r))
                             (declared-length (fn-tj-arg r)))
