@@ -105,6 +105,26 @@ expressed by analogy with `fn-journal-crash`: no theorem binds an FNWF or FNRJ
 record file to a journal slot, so those cuts are checked against the host
 contract and the model's shape, not against a proved correspondence.
 
+## Tooling unit tests
+
+The tools that decide what gets certified are themselves tested, with no ACL2
+and no network: `python3 -m unittest tests.test_certify_runner tests.test_ledger
+tests.test_certs tests.test_farm`. `tests/test_certify_runner.py` drives the
+real runner against a fake ACL2 in a throwaway repository (`FakeRepository`):
+the parallel schedule, `--affected-by` selection and `--dry-run` listing
+(`AffectedByTests`), the machine-wide process cap with one slot serialising
+four jobs (`SlotTests`), and the certificate cache hook, including that a
+failing run publishes nothing (`CachePublishTests`). `tests/test_certs.py`
+holds the cache to its narrow promise: publish keys on book content, refuses a
+certificate older than its book, install matches across worktrees, never
+overwrites a newer matching local pair, and keeps two same-byte books apart.
+`tests/test_farm.py` reads the exact commands `tools/farm.py` would issue --
+the mirror that excludes `build/`, the detached runner, a bounded wait that
+sleeps rather than spins, the fetch of evidence and pairs -- without running
+ssh. `tests/test_ledger.py` covers the reader, the suspect detector and both
+export lints. None of this is evidence about ACL2; it is evidence that the
+harness reports what ACL2 did.
+
 ## Evidence record
 
 Each meaningful validation summary records: requirement/scenario/proof IDs;

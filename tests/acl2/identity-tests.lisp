@@ -9,7 +9,6 @@
 
 (in-package "ACL2")
 (include-book "../../books/identity-invariants")
-(include-book "std/testing/must-fail" :dir :system)
 
 ; "<a@example.invalid>"
 (defconst *fn-id-test-msgid*
@@ -170,16 +169,19 @@
 ; The policy is not the constant function: a larger payload does cost more.
 (assert-event (< (fn-charge-for-payload 0) (fn-charge-for-payload 32768)))
 
-; Monotonicity is not provable without the ordering hypothesis.
-(must-fail
- (defthm fn-charge-for-payload-monotone-without-order
-   (implies (and (natp m) (natp n))
-            (<= (fn-charge-for-payload m) (fn-charge-for-payload n)))))
+; Monotonicity needs its ordering hypothesis, and here is the pair that shows
+; it: 32768 and 0 are both naturals, and dropping `(<= m n)` would claim the
+; charge for the larger payload is not above the charge for the smaller.
+(assert-event (natp 32768))
+(assert-event (natp 0))
+(assert-event (not (<= (fn-charge-for-payload 32768)
+                       (fn-charge-for-payload 0))))
 
-; The hexadecimal projection is not invertible without the even-length
-; hypothesis: a lone hex digit has no octet.
-(must-fail
- (defthm fn-id-hex-octets-of-unhex-without-even-length
-   (implies (fn-id-hex-listp octets)
-            (equal (fn-id-hex-octets (fn-id-unhex octets)) octets))))
-
+; The hexadecimal projection needs its even-length hypothesis, and `(48)`, a
+; lone ASCII "0", is the witness: it is a hex list, it is odd, and unhexing
+; then rehexing it does not return it.
+(assert-event (fn-id-hex-listp '(48)))
+(assert-event (not (equal (len '(48)) (* 2 (floor (len '(48)) 2)))))
+(assert-event
+ (with-guard-checking :none
+  (not (equal (fn-id-hex-octets (fn-id-unhex '(48))) '(48)))))

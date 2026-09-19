@@ -42,6 +42,13 @@
 
 (in-package "ACL2")
 (include-book "frame")
+
+; The derivations are built on the frame field grammar, so this book opens
+; it locally; results stay opaque.
+(local (in-theory (enable fn-frame-octet-vocabulary
+                          fn-frame-fields-vocabulary
+                          fn-frame-codec-vocabulary
+                          fn-cbor-invariants-vocabulary)))
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -213,6 +220,21 @@
 ; hands ACL2 an identity gets it checked against the grammar, not merely
 ; compared with another octet string of unknown provenance.
 
+; The guard of the three header reads below is the only place this book needs
+; a list fact about a split suffix.  `fn-frame-split-suffix-true-listp' is a
+; REWRITE rule, so it never lands in the context, and the three obligations
+; are propositional (`(not (cddr split))' from `(not (consp (cddr split)))'),
+; which type reasoning alone cannot close.  The same fact, forward-chained off
+; the split term, does close them, and type-set carries it down the `cdr's.
+; Local: a guard fact, never an exported `true-listp' backchaining rule.
+(local
+ (defthm fn-id-frame-split-suffix-true-listp-fc
+   (implies (true-listp xs)
+            (true-listp (cdr (fn-frame-split n xs))))
+   :rule-classes ((:forward-chaining
+                   :trigger-terms ((fn-frame-split n xs))))
+   :hints (("Goal" :use fn-frame-split-suffix-true-listp))))
+
 (defun fn-id-labelledp (label octets)
   ; The octet check comes first so that the split is never applied to
   ; something that is not a list.
@@ -250,3 +272,31 @@
   (declare (xargs :guard (natp length)))
   (+ 1 (floor (+ (nfix length) (- *fn-id-charge-page-octets* 1))
               *fn-id-charge-page-octets*)))
+
+; -----------------------------------------------------------------------------
+; Export theory.
+;
+; Enabled on include: nothing but the derivations themselves as executable
+; functions.  A book that reasons about them opens this theory locally;
+; `identity-invariants' does exactly that and exports the hex keystones.
+
+(deftheory fn-id-definitions
+  '(    (:d fn-id-hex-digit) (:d fn-id-hex-digitp) (:d fn-id-hex-value)
+    (:d fn-id-hex-octets) (:d fn-id-hex-listp) (:d fn-id-unhex)
+    (:d fn-id-digestp) (:d fn-id-subject-prefix) (:d fn-id-subject-preimage)
+    (:d fn-id-obligation-preimage) (:d fn-id-render) (:d fn-id-subject)
+    (:d fn-id-obligation) (:d fn-id-text) (:d fn-id-from-text)
+    (:d fn-id-subject-of-payload) (:d fn-id-obligation-of)
+    (:d fn-id-labelledp) (:d fn-id-subjectp) (:d fn-id-obligationp)
+    (:d fn-charge-for-payload)))
+
+(in-theory (disable (:d fn-id-hex-digit) (:d fn-id-hex-digitp)
+             (:d fn-id-hex-value) (:d fn-id-hex-octets)
+             (:d fn-id-hex-listp) (:d fn-id-unhex) (:d fn-id-digestp)
+             (:d fn-id-subject-prefix) (:d fn-id-subject-preimage)
+             (:d fn-id-obligation-preimage) (:d fn-id-render)
+             (:d fn-id-subject) (:d fn-id-obligation) (:d fn-id-text)
+             (:d fn-id-from-text) (:d fn-id-subject-of-payload)
+             (:d fn-id-obligation-of) (:d fn-id-labelledp)
+             (:d fn-id-subjectp) (:d fn-id-obligationp)
+             (:d fn-charge-for-payload)))

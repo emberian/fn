@@ -13,6 +13,11 @@
 (in-package "ACL2")
 (include-book "nntp")
 
+; This book reasons about the NNTP transitions themselves, so it opens the
+; vocabularies the five books of the nntp cluster withdraw at their export
+; events (2026-09-19 split of books/nntp.lisp).
+(local (in-theory (enable fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary fn-nntp-projection-vocabulary fn-nntp-responses-vocabulary fn-nntp-vocabulary)))
+
 ; -----------------------------------------------------------------------------
 ; The session relation
 
