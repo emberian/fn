@@ -243,14 +243,38 @@ class StoreReaderSocketTests(unittest.TestCase):
                   b"Message-ID: <after-reader@example.invalid>\r\n\r\nafter\r\n",
                   ("fn.letters",))
 
-    def test_store_with_non_news_payload_refuses_before_listening(self):
+    def test_store_with_non_news_payload_degrades_only_that_article(self):
+        # Defect D3 in planning/review-2026-09-18-independent.md: this store
+        # used to refuse to open at all, and before that every command in the
+        # session answered 503.  A committed article whose stored bytes are not
+        # CRLF-framed now degrades only itself.
         self.post("<opaque@example.invalid>", b"opaque durable bytes", ("fn.letters",))
-        result = subprocess.run(
-            [sys.executable, "tools/run_reader.py", "--port", "0", "--store", str(self.store)],
-            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertNotIn(b"LISTENING", result.stdout)
-        self.assertIn(b"reader archive is not NNTP-projectable", result.stderr)
+        self.post("<news@example.invalid>",
+                  b"Message-ID: <news@example.invalid>\r\n\r\nreadable\r\n",
+                  ("fn.letters",))
+        with ReaderProcess(self.store) as reader:
+            client = reader.connect()
+            client.sendall(b"CAPABILITIES\r\n")
+            reader.assert_bytes(
+                client,
+                b"101 capability list follows\r\nVERSION 2\r\n"
+                b"IMPLEMENTATION fn-nntp-lab\r\n.\r\n")
+            client.sendall(b"GROUP fn.letters\r\n")
+            reader.assert_bytes(client, b"211 2 1 2 fn.letters\r\n")
+            client.sendall(b"STAT 1\r\n")
+            reader.assert_bytes(
+                client, b"223 1 <opaque@example.invalid> retrieved\r\n")
+            client.sendall(b"ARTICLE 1\r\n")
+            reader.assert_bytes(
+                client, b"503 stored article framing unavailable\r\n")
+            client.sendall(b"ARTICLE 2\r\n")
+            reader.assert_bytes(
+                client,
+                b"220 2 <news@example.invalid> article follows\r\n"
+                b"Message-ID: <news@example.invalid>\r\n\r\nreadable\r\n.\r\n")
+            client.sendall(b"QUIT\r\n")
+            reader.assert_bytes(client, b"205 closing connection\r\n")
+            client.close()
 
 
 if __name__ == "__main__":

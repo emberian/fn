@@ -10,6 +10,14 @@ connection invokes the adapter's real reader reset.  Expected replies are
 independent byte strings in the test; no result is obtained by comparing one
 partitioned run with another.
 
+The reset is also where the whole-archive projection recognizer runs.
+`fn-reader-reset` builds the session with `fn-nntp-open-session`, which
+evaluates `fn-nntp-projectionp` once and stores its verdict in the session; no
+command in the connection recomputes it.  Each connection in this matrix
+therefore pays that recognizer exactly once, and each command afterwards pays
+only for what it reads.  See the served-path section of
+[the NNTP checklist](nntp-audit.md).
+
 The valid multicommand corpus is `GROUP fn.letters`, `STAT`, and `QUIT`, with
 all 31 two-piece cuts, including each CRLF boundary.  A UTF-8 wildmat corpus
 uses `LIST ACTIVE fn.ñ*` followed by `QUIT`, with all 27 cuts, including the
