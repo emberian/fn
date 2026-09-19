@@ -10,18 +10,18 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 162 |
-| Certification roots in the Makefile | 162 |
-| Books inside the root closure | 162 |
-| `defthm` and `defthmd` events | 2272 |
-| `defun` events | 1667 |
-| Functions with verified guards | 934 |
-| Functions declared `:verify-guards nil` and never verified | 52 |
-| Functions left at the default with an explicit guard | 284 |
-| Functions left at the default with no guard | 397 |
-| `assert-event` checks | 2567 |
-| `must-fail` checks | 133 |
-| `encapsulate` events | 8 |
+| Books read | 166 |
+| Certification roots in the Makefile | 166 |
+| Books inside the root closure | 166 |
+| `defthm` and `defthmd` events | 2313 |
+| `defun` events | 1722 |
+| Functions with verified guards | 984 |
+| Functions declared `:verify-guards nil` and never verified | 53 |
+| Functions left at the default with an explicit guard | 286 |
+| Functions left at the default with no guard | 399 |
+| `assert-event` checks | 2607 |
+| `must-fail` checks | 143 |
+| `encapsulate` events | 10 |
 | Theorems flagged SUSPECT by shape | 27 |
 
 ## Per book
@@ -34,6 +34,8 @@ that `make certify` requests.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `books/acceptance-invariants.lisp` | root | 36 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/acceptance.lisp` | root | 20 | 63 | 58/0/5/0 | 0 | 0 | 0 |
+| `books/anchor-invariants.lisp` | root | 26 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/anchor.lisp` | root | 14 | 54 | 50/1/1/2 | 0 | 0 | 0 |
 | `books/article-fields.lisp` | root | 5 | 30 | 30/0/0/0 | 0 | 0 | 1 |
 | `books/article-invariants.lisp` | root | 44 | 14 | 0/7/7/0 | 0 | 0 | 0 |
 | `books/article-properties.lisp` | root | 42 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -130,6 +132,8 @@ that `make certify` requests.
 | `tests/acl2/acceptance-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 148 | 0 | 0 |
 | `tests/acl2/acceptance-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 24 | 5 | 0 |
 | `tests/acl2/acceptance-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 61 | 0 | 0 |
+| `tests/acl2/anchor-teeth-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 0 | 10 | 0 |
+| `tests/acl2/anchor-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 40 | 0 | 0 |
 | `tests/acl2/article-fields-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 31 | 0 | 0 |
 | `tests/acl2/article-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 2 | 0 |
 | `tests/acl2/article-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 38 | 0 | 0 |
