@@ -10,6 +10,11 @@ No unanswered recommendation is silently promoted to an agreed decision.
 rows. Astra owns routine reversible implementation choices and will bring
 user-facing tradeoffs forward with concrete examples as they become relevant.
 
+The [three-cycle plan](swarm-cycles.md) schedules concrete decision packets
+alongside implementation. Independent local service, storage and DTN work can
+proceed under explicit experimental profiles. Its proposed sequencing and UI
+placement do not select a source grammar, cryptographic suite or release scope.
+
 ## Already agreed
 
 | ID | Direction |
