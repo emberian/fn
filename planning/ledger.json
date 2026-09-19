@@ -140,8 +140,8 @@
     "roots": 131,
     "theorems": 1544,
     "functions": 1294,
-    "assert_events": 1741,
-    "must_fails": 73,
+    "assert_events": 1803,
+    "must_fails": 90,
     "encapsulates": 7,
     "guards": {
       "verified": 701,
@@ -3143,9 +3143,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 18,
-      "must_fails": 2,
-      "defconsts": 7,
+      "assert_events": 52,
+      "must_fails": 11,
+      "defconsts": 13,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -3298,13 +3298,13 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 15,
-      "must_fails": 2,
-      "defconsts": 7,
+      "assert_events": 43,
+      "must_fails": 10,
+      "defconsts": 11,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/store-node-invariants"
+        "../../books/store-observed-traces"
       ],
       "system_includes": [
         "std/testing/must-fail"
