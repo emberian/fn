@@ -7,6 +7,11 @@
 ;   fn-relay-receipt-kind-is-archived-or-forwarding
 (in-package "ACL2")
 (include-book "relay-invariants")
+; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
+; this book reasons under them, so open them here, locally.
+(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary
+                          fn-record-invariants-vocabulary fn-cbor-record-vocabulary
+                          fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary)))
 ; The relay proofs open the receiver definitions; enable them here, locally.
 (local (in-theory (enable fn-bp-receiver-vocabulary fn-bp-receiver-records-vocabulary)))
 

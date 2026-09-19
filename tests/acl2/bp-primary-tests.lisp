@@ -29,6 +29,9 @@
 (in-package "ACL2")
 
 (include-book "../../books/bp-primary-invariants")
+; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
+; this book reasons under them, so open them here, locally.
+(local (in-theory (enable fn-cbor-record-vocabulary fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary)))
 
 ; -----------------------------------------------------------------------------
 ; CRC algorithm vectors
