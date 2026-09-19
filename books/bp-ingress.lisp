@@ -178,6 +178,40 @@
   (equal (fn-bpi-policy-issuer-eid (fn-bpi-make-policy destination endpoint group-map archive-id subject
                                         evidence charge policy-id terms-id issuer-eid))
          issuer-eid))
+(defthm fn-bpi-policy-shapep-forward-shape
+  (implies (fn-bpi-policy-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
+(defthm fn-bpi-policy-accessors-forward-consp
+  (and (implies (fn-bpi-policy-destination x) (consp x))
+       (implies (fn-bpi-policy-endpoint x) (consp x))
+       (implies (fn-bpi-policy-group-map x) (consp x))
+       (implies (fn-bpi-policy-archive-id x) (consp x))
+       (implies (fn-bpi-policy-subject x) (consp x))
+       (implies (fn-bpi-policy-evidence x) (consp x))
+       (implies (fn-bpi-policy-charge x) (consp x))
+       (implies (fn-bpi-policy-id x) (consp x))
+       (implies (fn-bpi-policy-terms-id x) (consp x))
+       (implies (fn-bpi-policy-issuer-eid x) (consp x)))
+  :rule-classes ((:forward-chaining :corollary (implies (fn-bpi-policy-destination x) (consp x))
+                                    :trigger-terms ((fn-bpi-policy-destination x)))
+                 (:forward-chaining :corollary (implies (fn-bpi-policy-endpoint x) (consp x))
+                                    :trigger-terms ((fn-bpi-policy-endpoint x)))
+                 (:forward-chaining :corollary (implies (fn-bpi-policy-group-map x) (consp x))
+                                    :trigger-terms ((fn-bpi-policy-group-map x)))
+                 (:forward-chaining :corollary (implies (fn-bpi-policy-archive-id x) (consp x))
+                                    :trigger-terms ((fn-bpi-policy-archive-id x)))
+                 (:forward-chaining :corollary (implies (fn-bpi-policy-subject x) (consp x))
+                                    :trigger-terms ((fn-bpi-policy-subject x)))
+                 (:forward-chaining :corollary (implies (fn-bpi-policy-evidence x) (consp x))
+                                    :trigger-terms ((fn-bpi-policy-evidence x)))
+                 (:forward-chaining :corollary (implies (fn-bpi-policy-charge x) (consp x))
+                                    :trigger-terms ((fn-bpi-policy-charge x)))
+                 (:forward-chaining :corollary (implies (fn-bpi-policy-id x) (consp x))
+                                    :trigger-terms ((fn-bpi-policy-id x)))
+                 (:forward-chaining :corollary (implies (fn-bpi-policy-terms-id x) (consp x))
+                                    :trigger-terms ((fn-bpi-policy-terms-id x)))
+                 (:forward-chaining :corollary (implies (fn-bpi-policy-issuer-eid x) (consp x))
+                                    :trigger-terms ((fn-bpi-policy-issuer-eid x)))))
 (in-theory (disable (:d fn-bpi-policy-shapep) (:d fn-bpi-policy-destination) (:d fn-bpi-policy-endpoint) (:d fn-bpi-policy-group-map) (:d fn-bpi-policy-archive-id) (:d fn-bpi-policy-subject) (:d fn-bpi-policy-evidence) (:d fn-bpi-policy-charge) (:d fn-bpi-policy-id) (:d fn-bpi-policy-terms-id) (:d fn-bpi-policy-issuer-eid)
                     (:d fn-bpi-make-policy)))
 
@@ -222,6 +256,22 @@
   (equal (fn-bpi-context-bundle-id (fn-bpi-make-context destination source-eid bundle-id lifetime)) bundle-id))
 (defthm fn-bpi-context-lifetime-of-fn-bpi-make-context
   (equal (fn-bpi-context-lifetime (fn-bpi-make-context destination source-eid bundle-id lifetime)) lifetime))
+(defthm fn-bpi-context-shapep-forward-shape
+  (implies (fn-bpi-context-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
+(defthm fn-bpi-context-accessors-forward-consp
+  (and (implies (fn-bpi-context-destination x) (consp x))
+       (implies (fn-bpi-context-source-eid x) (consp x))
+       (implies (fn-bpi-context-bundle-id x) (consp x))
+       (implies (fn-bpi-context-lifetime x) (consp x)))
+  :rule-classes ((:forward-chaining :corollary (implies (fn-bpi-context-destination x) (consp x))
+                                    :trigger-terms ((fn-bpi-context-destination x)))
+                 (:forward-chaining :corollary (implies (fn-bpi-context-source-eid x) (consp x))
+                                    :trigger-terms ((fn-bpi-context-source-eid x)))
+                 (:forward-chaining :corollary (implies (fn-bpi-context-bundle-id x) (consp x))
+                                    :trigger-terms ((fn-bpi-context-bundle-id x)))
+                 (:forward-chaining :corollary (implies (fn-bpi-context-lifetime x) (consp x))
+                                    :trigger-terms ((fn-bpi-context-lifetime x)))))
 (in-theory (disable (:d fn-bpi-context-shapep) (:d fn-bpi-context-destination) (:d fn-bpi-context-source-eid) (:d fn-bpi-context-bundle-id) (:d fn-bpi-context-lifetime)
                     (:d fn-bpi-make-context)))
 
@@ -332,6 +382,10 @@
        (fn-record-metadata-bytes-p (fn-bpi-policy-terms-id policy))
        (fn-record-metadata-bytes-p (fn-bpi-policy-issuer-eid policy))))
 (verify-guards fn-bpi-policy-p)
+(defthm fn-bpi-policy-p-forward-shape
+  (implies (fn-bpi-policy-p x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-bpi-policy-p fn-bpi-policy-shapep))))
 
 (defun fn-bpi-context-p (context)
   (declare (xargs :guard t))
@@ -341,6 +395,10 @@
        (fn-record-metadata-bytes-p (fn-bpi-context-bundle-id context))
        (fn-record-uint32p (fn-bpi-context-lifetime context))))
 (verify-guards fn-bpi-context-p)
+(defthm fn-bpi-context-p-forward-shape
+  (implies (fn-bpi-context-p x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-bpi-context-p fn-bpi-context-shapep))))
 
 (defun fn-bpi-policy-appliesp (store policy context)
   (declare (xargs :guard t))
