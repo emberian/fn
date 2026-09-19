@@ -177,7 +177,151 @@
 
 ; -----------------------------------------------------------------------------
 ; One field, both directions
+;
+; The two value predicates are used only through these shape facts from here
+; on.  `fn-frame-textp` calls the wildmat decoder and `fn-frame-blobp` calls
+; `fn-cbor-at-mostp`; opening either one on a payload sends the prover
+; inducting down the octets instead of using the splitter lemmas.
 
+(defthm fn-frame-textp-is-octets
+  (implies (fn-frame-textp value) (fn-cbor-octet-listp value))
+  :rule-classes (:rewrite :forward-chaining)
+  :hints (("Goal" :do-not-induct t :in-theory (enable fn-frame-textp))))
+
+(defthm fn-frame-textp-is-consp
+  (implies (fn-frame-textp value) (consp value))
+  :rule-classes (:rewrite :forward-chaining)
+  :hints (("Goal" :do-not-induct t :in-theory (enable fn-frame-textp))))
+
+(defthm fn-frame-textp-len-bound
+  (implies (fn-frame-textp value) (<= (len value) *fn-frame-max-text*))
+  :rule-classes (:linear :forward-chaining)
+  :hints (("Goal" :do-not-induct t :in-theory (enable fn-frame-textp))))
+
+(defthm fn-frame-blobp-is-octets
+  (implies (fn-frame-blobp value) (fn-cbor-octet-listp value))
+  :rule-classes (:rewrite :forward-chaining)
+  :hints (("Goal" :do-not-induct t :in-theory (enable fn-frame-blobp))))
+
+(defthm fn-frame-blobp-is-consp
+  (implies (fn-frame-blobp value) (consp value))
+  :rule-classes (:rewrite :forward-chaining)
+  :hints (("Goal" :do-not-induct t :in-theory (enable fn-frame-blobp))))
+
+(defthm fn-frame-blobp-len-bound
+  (implies (fn-frame-blobp value) (<= (len value) *fn-frame-max-blob*))
+  :rule-classes (:linear :forward-chaining)
+  :hints (("Goal" :do-not-induct t :in-theory (enable fn-frame-blobp))))
+
+; `append` is associated to the right so that the length-prefix lemma sees a
+; two-octet first argument rather than the whole field.
+(local
+ (defthm fn-frame-append-assoc
+   (equal (append (append a b) c) (append a (append b c)))))
+
+(local
+ (defthm fn-frame-len-positive-when-consp
+   (implies (consp x) (< 0 (len x)))
+   :rule-classes :linear
+   :hints (("Goal" :expand ((len x))))))
+
+; The same closure `books/frame.lisp` makes locally, and for the same reason:
+; a big-endian encoder opened on a computed length unrolls into floor and mod
+; and defeats every shape lemma above.
+(local (in-theory (disable fn-cbor-u16-bytes fn-cbor-u32-bytes
+                           fn-frame-u64-bytes
+                           fn-frame-textp fn-frame-blobp)))
+
+; The parse result is a tagged triple.  Its constructor and accessors are
+; reasoned about through these four rules and then closed: opening
+; `fn-frame-item` on a result whose shape is not yet known explodes the
+; grammar branches into nested ifs, and that is what makes the field proofs
+; below diverge rather than any induction.
+
+(defthm fn-frame-parse-okp-of-parse-ok
+  (fn-frame-parse-okp (fn-frame-parse-ok value rest)))
+
+(defthm fn-frame-parse-okp-of-parse-error
+  (not (fn-frame-parse-okp (fn-frame-parse-error reason))))
+
+(defthm fn-frame-parse-value-of-parse-ok
+  (equal (fn-frame-parse-value (fn-frame-parse-ok value rest)) value))
+
+(defthm fn-frame-parse-rest-of-parse-ok
+  (equal (fn-frame-parse-rest (fn-frame-parse-ok value rest)) rest))
+
+(local (in-theory (disable fn-frame-parse-ok fn-frame-parse-error
+                           fn-frame-parse-okp fn-frame-parse-value
+                           fn-frame-parse-rest fn-frame-item)))
+
+; One case per spec shape.  Each is a straight-line rewrite: the splitter
+; lemma consumes the length prefix, the width lemma reads it back, and the
+; splitter lemma consumes the payload.  Nothing inducts.
+
+(defthm fn-frame-field-parse-of-octets-text
+  (implies (and (fn-frame-textp value)
+                (fn-cbor-octet-listp rest))
+           (equal (fn-frame-field-parse
+                   :text (append (fn-frame-field-octets :text value) rest))
+                  (fn-frame-parse-ok value rest)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-frame-field-parse fn-frame-field-octets
+                            fn-frame-parse-counted)
+                           (floor mod fn-cbor-u16-from fn-cbor-u32-from
+                            fn-frame-u64-from fn-frame-item
+                            fn-frame-parse-ok fn-frame-parse-error
+                            fn-frame-parse-okp fn-frame-parse-value
+                            fn-frame-parse-rest)))))
+
+(defthm fn-frame-field-parse-of-octets-blob
+  (implies (and (fn-frame-blobp value)
+                (fn-cbor-octet-listp rest))
+           (equal (fn-frame-field-parse
+                   :blob (append (fn-frame-field-octets :blob value) rest))
+                  (fn-frame-parse-ok value rest)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-frame-field-parse fn-frame-field-octets
+                            fn-frame-parse-counted)
+                           (floor mod fn-cbor-u16-from fn-cbor-u32-from
+                            fn-frame-u64-from fn-frame-item
+                            fn-frame-parse-ok fn-frame-parse-error
+                            fn-frame-parse-okp fn-frame-parse-value
+                            fn-frame-parse-rest)))))
+
+(defthm fn-frame-field-parse-of-octets-nat
+  (implies (and (fn-frame-natp value)
+                (fn-cbor-octet-listp rest))
+           (equal (fn-frame-field-parse
+                   :nat (append (fn-frame-field-octets :nat value) rest))
+                  (fn-frame-parse-ok value rest)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-frame-field-parse fn-frame-field-octets
+                            fn-frame-natp)
+                           (floor mod fn-cbor-u16-from fn-cbor-u32-from
+                            fn-frame-u64-from fn-frame-item
+                            fn-frame-parse-ok fn-frame-parse-error
+                            fn-frame-parse-okp fn-frame-parse-value
+                            fn-frame-parse-rest)))))
+
+(defthm fn-frame-field-parse-of-octets-enum
+  (implies (and (fn-frame-enum-specp spec)
+                (not (equal (fn-frame-enum-index value (cdr spec)) 0))
+                (fn-cbor-octet-listp rest))
+           (equal (fn-frame-field-parse
+                   spec (append (fn-frame-field-octets spec value) rest))
+                  (fn-frame-parse-ok value rest)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-frame-field-parse fn-frame-field-octets
+                            fn-frame-enum-specp)
+                           (floor mod fn-cbor-u16-from fn-cbor-u32-from
+                            fn-frame-u64-from fn-frame-item
+                            fn-frame-parse-ok fn-frame-parse-error
+                            fn-frame-parse-okp fn-frame-parse-value
+                            fn-frame-parse-rest)))))
+
+; Re-assembled from the four cases.  `fn-frame-field-parse` and
+; `fn-frame-field-octets` stay closed here so the case rules fire on the
+; term rather than the prover opening the grammar a fifth time.
 (defthm fn-frame-field-parse-of-octets
   (implies (and (fn-frame-specp spec)
                 (fn-frame-field-okp spec value)
@@ -185,10 +329,10 @@
            (equal (fn-frame-field-parse
                    spec (append (fn-frame-field-octets spec value) rest))
                   (fn-frame-parse-ok value rest)))
-  :hints (("Goal" :in-theory (enable fn-frame-field-parse fn-frame-field-octets
-                                     fn-frame-field-okp fn-frame-parse-counted
-                                     fn-frame-textp fn-frame-blobp
-                                     fn-frame-natp fn-frame-specp))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-frame-specp fn-frame-field-okp)
+                           (fn-frame-field-parse fn-frame-field-octets
+                            floor mod)))))
 
 (defthm fn-frame-field-octets-of-parse
   (implies (and (fn-frame-specp spec)
