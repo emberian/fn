@@ -31,6 +31,14 @@
 (include-book "principal")
 (include-book "statement-invariants")
 
+; cluster-local theory: this book is inside the substrate cluster and opens
+; the definitions its neighbours withdraw at export (docs/proof-style.md 2).
+(local (in-theory (enable fn-crypto-seam-internals
+                          fn-stmt-internals
+                          fn-stmt-invariants-vocabulary
+                          fn-prin-internals
+                          fn-lace-internals)))
+
 (local (in-theory (disable fn-stmt-id fn-stmt-p fn-stmt-creator
                            fn-stmt-incarnation fn-stmt-sequence fn-stmt-preds
                            fn-stmt-payload fn-stmt-header fn-stmt-kind
@@ -431,3 +439,61 @@
                      (fn-prin-verifiedp (car delta) keyring)))
            (fn-pol-delta-without-authority-p (cdr delta) keyring authority))
     t))
+
+; -----------------------------------------------------------------------------
+; Record lemmas (docs/proof-style.md section 1).  Accessor of constructor,
+; one per field, so nothing above this book opens a record.
+
+(defthm fn-pol-policy-group-of-fn-pol-make-policy
+  (equal (fn-pol-policy-group (fn-pol-make-policy group members terms))
+         group))
+(defthm fn-pol-policy-members-of-fn-pol-make-policy
+  (equal (fn-pol-policy-members (fn-pol-make-policy group members terms))
+         members))
+(defthm fn-pol-policy-terms-of-fn-pol-make-policy
+  (equal (fn-pol-policy-terms (fn-pol-make-policy group members terms))
+         terms))
+
+; -----------------------------------------------------------------------------
+; Export theory (docs/proof-style.md section 2).
+;
+; The policy record, the codec, resolution of the policy in force and
+; receipt construction are withdrawn; the candidate and conflict scans stay.
+;
+; Only the `:definition' rune is withdrawn, so type prescriptions and
+; executable counterparts still decide ground terms.  A book inside this
+; cluster that must open one of these enables `fn-pol-internals' locally.
+
+; The `true-listp'/`consp' backchaining rules below are withdrawn with the
+; definitions: an includer that inherits them pays for them on every goal
+; shaped like a list (docs/proof-style.md section 8).
+
+(deftheory fn-pol-internals
+  '(
+    (:d fn-pol-namep)
+    (:d fn-pol-termsp)
+    (:d fn-pol-make-policy)
+    (:d fn-pol-policy-group)
+    (:d fn-pol-policy-members)
+    (:d fn-pol-policy-terms)
+    (:d fn-pol-policy-p)
+    (:d fn-pol-policy-items)
+    (:d fn-pol-policy-of-items)
+    (:d fn-pol-policy-encode)
+    (:d fn-pol-policy-decode-exact)
+    (:d fn-pol-statement-policy)
+    (:d fn-pol-candidatep)
+    (:d fn-pol-slot-lessp)
+    (:d fn-pol-current)
+    (:d fn-pol-authorized-set)
+    (:d fn-pol-authorizedp)
+    (:d fn-pol-admitp)
+    (:d fn-pol-evidence)
+    (:d fn-pol-evidence-digest)
+    (:d fn-pol-term)
+    (:d fn-pol-make-receipt)
+    (:d fn-pol-receipt-groundedp)
+    (:d fn-pol-sign-receipt)
+    fn-pol-authorized-set-is-true-list))
+
+(in-theory (disable fn-pol-internals))

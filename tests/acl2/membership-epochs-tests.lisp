@@ -17,7 +17,11 @@
 (in-package "ACL2")
 
 (include-book "../../books/membership-epochs-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+
+; cluster-local theory: this book is inside the substrate cluster and opens
+; the definitions its neighbours withdraw at export (docs/proof-style.md 2).
+(local (in-theory (enable fn-me-internals
+                          fn-me-invariants-vocabulary)))
 
 ; -----------------------------------------------------------------------------
 ; The shared prefix
@@ -187,160 +191,180 @@
                      :refuse))
 
 ; -----------------------------------------------------------------------------
-; Teeth: one `must-fail` per hypothesis of each keystone.
+; Teeth (docs/proof-style.md section 5): one CONCRETE violating value per
+; hypothesis.  Each block drops one hypothesis of a keystone and exhibits a
+; ground state for which the conclusion is false; the previous `must-fail`
+; forms proved only that the prover found no proof, and cost 220 s of the
+; 221 s this book took to certify.
 
-; `fn-me-revoked-scan-stable-under-prefix` without the prefix hypothesis.
-(must-fail
- (defthm teeth-stable-needs-prefix
-   (implies (< 0 (fn-me-revoked-scan a member index))
-            (equal (fn-me-revoked-scan b member index)
-                   (fn-me-revoked-scan a member index)))
-   :rule-classes nil))
+; A site that has adopted nothing after epoch 2: it revokes nobody, so it is
+; the "a" side of every tooth that needs a hold without a revocation.
+(defconst *me-site-early*
+  (fn-me-site "site-early" *me-founding*
+              (list *me-c1* *me-c2*) (list *me-c1* *me-c2*) 2 2 nil))
 
-; ... and without knowing that `a` records a revocation at all.
-(must-fail
- (defthm teeth-stable-needs-a-revocation
-   (implies (fn-me-chain-prefixp a b)
-            (equal (fn-me-revoked-scan b member index)
-                   (fn-me-revoked-scan a member index)))
-   :rule-classes nil))
+(assert-event (fn-me-sitep *me-site-early*))
+(assert-event (equal (fn-me-epoch *me-site-early*) 2))
 
-; `fn-me-roster-fold-omits-removed` without the no-re-admission hypothesis.
-(must-fail
- (defthm teeth-roster-needs-no-readmission
-   (implies (not (member-equal member roster))
-            (not (member-equal member (fn-me-roster-fold roster chain))))
-   :rule-classes nil))
+; -----------------------------------------------------------------------------
+; `fn-me-revoked-scan-stable-under-prefix'
 
-; `fn-me-revoked-refusal-is-monotone`, one hypothesis at a time.
-(must-fail
- (defthm teeth-monotone-needs-knowledge-extension
-   (implies (and (fn-me-sitep a) (fn-me-sitep b) (fn-me-messagep msg)
-                 (< 0 (fn-me-revoked-at a (fn-me-msg-sender msg)))
-                 (<= (fn-me-revoked-at a (fn-me-msg-sender msg))
-                     (fn-me-msg-epoch msg)))
-            (equal (fn-me-decide b msg) :refuse))
-   :rule-classes nil))
+; Without `fn-me-chain-prefixp': B's chain is not an extension of A's, and the
+; two scans disagree about dave.
+(assert-event (not (fn-me-chain-prefixp (fn-me-chain *me-site-a*)
+                                        (fn-me-chain *me-site-b*))))
+(assert-event (equal (fn-me-revoked-scan (fn-me-chain *me-site-a*) "dave" 0) 3))
+(assert-event (equal (fn-me-revoked-scan (fn-me-chain *me-site-b*) "dave" 0) 0))
 
-(must-fail
- (defthm teeth-monotone-needs-a-revocation
-   (implies (and (fn-me-sitep a) (fn-me-sitep b) (fn-me-messagep msg)
-                 (fn-me-knowledge-extendsp a b))
-            (equal (fn-me-decide b msg) :refuse))
-   :rule-classes nil))
+; Without a revocation on the shorter chain: a genuine prefix, and the scan
+; still moves, because the extension is where the removal happens.
+(assert-event (fn-me-chain-prefixp (fn-me-chain *me-site-early*)
+                                   (fn-me-chain *me-site-a*)))
+(assert-event (equal (fn-me-revoked-scan (fn-me-chain *me-site-early*) "dave" 0) 0))
+(assert-event (not (equal (fn-me-revoked-scan (fn-me-chain *me-site-a*) "dave" 0)
+                          (fn-me-revoked-scan (fn-me-chain *me-site-early*)
+                                              "dave" 0))))
 
-(must-fail
- (defthm teeth-monotone-needs-the-epoch-to-be-at-or-after
-   (implies (and (fn-me-sitep a) (fn-me-sitep b) (fn-me-messagep msg)
-                 (fn-me-knowledge-extendsp a b)
-                 (< 0 (fn-me-revoked-at a (fn-me-msg-sender msg))))
-            (equal (fn-me-decide b msg) :refuse))
-   :rule-classes nil))
+; -----------------------------------------------------------------------------
+; `fn-me-roster-fold-omits-removed'
 
-; The ground counterexample behind the first of those three: B is not an
-; extension of A, and B admits exactly the message A refuses.
-(assert-event (and (equal (fn-me-decide *me-site-a* *me-dave-3*) :refuse)
-                   (equal (fn-me-decide *me-site-b* *me-dave-3*) :admit)))
+; Without `fn-me-no-readmissionp': dave is absent from the starting roster and
+; present in the fold, because the chain adds him back at epoch 4.
+(assert-event (not (fn-me-no-readmissionp (fn-me-chain *me-site-readd*))))
+(assert-event (not (member-equal "dave" '("alice"))))
+(assert-event (member-equal "dave"
+                            (fn-me-roster-fold '("alice")
+                                               (fn-me-chain *me-site-readd*))))
 
-; `fn-me-ahead-message-is-held` without the `:hold` verdict.
-(must-fail
- (defthm teeth-held-needs-the-hold-verdict
-   (implies (and (fn-me-sitep site) (fn-me-messagep msg))
-            (member-equal msg (fn-me-held (fn-me-receive site msg))))
-   :rule-classes nil))
+; -----------------------------------------------------------------------------
+; `fn-me-revoked-refusal-is-monotone'
 
-; `fn-me-hold-count-bounded` without the incoming bound.
-(must-fail
- (defthm teeth-bound-needs-the-incoming-bound
-   (implies (and (fn-me-sitep site) (fn-me-messagep msg))
-            (<= (len (fn-me-held (fn-me-receive site msg)))
-                (fn-me-hold-limit site)))
-   :rule-classes nil))
+; Without `fn-me-knowledge-extendsp': B is not an extension of A, and B admits
+; exactly the letter A refuses.  This is the partition, stated as a value.
+(assert-event (not (fn-me-knowledge-extendsp *me-site-a* *me-site-b*)))
+(assert-event (< 0 (fn-me-revoked-at *me-site-a* "dave")))
+(assert-event (<= (fn-me-revoked-at *me-site-a* "dave")
+                  (fn-me-msg-epoch *me-dave-3*)))
+(assert-event (equal (fn-me-decide *me-site-b* *me-dave-3*) :admit))
 
-; `fn-me-hold-resolves-on-reaching-epoch`, one hypothesis at a time.
-(must-fail
- (defthm teeth-resolve-needs-the-epoch-reached
-   (implies (and (fn-me-sitep a) (fn-me-sitep b) (fn-me-messagep msg)
-                 (equal (fn-me-decide a msg) :hold)
-                 (<= (fn-me-epoch b) (+ (fn-me-msg-epoch msg) (fn-me-window b)))
-                 (equal (fn-me-revoked-at b (fn-me-msg-sender msg)) 0)
-                 (member-equal (fn-me-msg-sender msg)
-                               (fn-me-roster-at b (fn-me-msg-epoch msg))))
-            (and (member-equal msg (fn-me-held (fn-me-receive a msg)))
-                 (equal (fn-me-decide b msg) :admit)))
-   :rule-classes nil))
+; Without a revocation at A: knowledge grows and the letter is admitted.
+(assert-event (fn-me-knowledge-extendsp *me-a-held2* *me-a-epoch4*))
+(assert-event (equal (fn-me-revoked-at *me-a-held2* "erin") 0))
+(assert-event (equal (fn-me-decide *me-a-epoch4* *me-erin-4*) :admit))
 
-(must-fail
- (defthm teeth-resolve-needs-the-window
-   (implies (and (fn-me-sitep a) (fn-me-sitep b) (fn-me-messagep msg)
-                 (equal (fn-me-decide a msg) :hold)
-                 (<= (fn-me-msg-epoch msg) (fn-me-epoch b))
-                 (equal (fn-me-revoked-at b (fn-me-msg-sender msg)) 0)
-                 (member-equal (fn-me-msg-sender msg)
-                               (fn-me-roster-at b (fn-me-msg-epoch msg))))
-            (and (member-equal msg (fn-me-held (fn-me-receive a msg)))
-                 (equal (fn-me-decide b msg) :admit)))
-   :rule-classes nil))
+; Without the epoch being at or after the revocation: dave's epoch-2 letter
+; predates his removal at epoch 3, and B admits it.  SEC-004.
+(assert-event (fn-me-knowledge-extendsp *me-site-a* *me-a-epoch4*))
+(assert-event (< 0 (fn-me-revoked-at *me-site-a* "dave")))
+(assert-event (< (fn-me-msg-epoch *me-dave-2*)
+                 (fn-me-revoked-at *me-site-a* "dave")))
+(assert-event (equal (fn-me-decide *me-a-epoch4* *me-dave-2*) :admit))
 
-(must-fail
- (defthm teeth-resolve-needs-no-revocation
-   (implies (and (fn-me-sitep a) (fn-me-sitep b) (fn-me-messagep msg)
-                 (equal (fn-me-decide a msg) :hold)
-                 (<= (fn-me-msg-epoch msg) (fn-me-epoch b))
-                 (<= (fn-me-epoch b) (+ (fn-me-msg-epoch msg) (fn-me-window b)))
-                 (member-equal (fn-me-msg-sender msg)
-                               (fn-me-roster-at b (fn-me-msg-epoch msg))))
-            (and (member-equal msg (fn-me-held (fn-me-receive a msg)))
-                 (equal (fn-me-decide b msg) :admit)))
-   :rule-classes nil))
+; -----------------------------------------------------------------------------
+; `fn-me-ahead-message-is-held'
 
-(must-fail
- (defthm teeth-resolve-needs-membership-at-that-epoch
-   (implies (and (fn-me-sitep a) (fn-me-sitep b) (fn-me-messagep msg)
-                 (equal (fn-me-decide a msg) :hold)
-                 (<= (fn-me-msg-epoch msg) (fn-me-epoch b))
-                 (<= (fn-me-epoch b) (+ (fn-me-msg-epoch msg) (fn-me-window b)))
-                 (equal (fn-me-revoked-at b (fn-me-msg-sender msg)) 0))
-            (and (member-equal msg (fn-me-held (fn-me-receive a msg)))
-                 (equal (fn-me-decide b msg) :admit)))
-   :rule-classes nil))
+; Without the `:hold' verdict: a refused letter is not taken into custody, so
+; the sender's obligation is not discharged by a site that said no.
+(assert-event (equal (fn-me-decide *me-site-a* *me-dave-3*) :refuse))
+(assert-event (not (member-equal *me-dave-3*
+                                 (fn-me-held (fn-me-receive *me-site-a*
+                                                            *me-dave-3*)))))
 
-; `fn-me-merge-exposes-the-partition`, one hypothesis at a time.
-(must-fail
- (defthm teeth-resolve-needs-the-hold-verdict
-   (implies (and (fn-me-sitep a) (fn-me-sitep b) (fn-me-messagep msg)
-                 (<= (fn-me-msg-epoch msg) (fn-me-epoch b))
-                 (<= (fn-me-epoch b) (+ (fn-me-msg-epoch msg) (fn-me-window b)))
-                 (equal (fn-me-revoked-at b (fn-me-msg-sender msg)) 0)
-                 (member-equal (fn-me-msg-sender msg)
-                               (fn-me-roster-at b (fn-me-msg-epoch msg))))
-            (and (member-equal msg (fn-me-held (fn-me-receive a msg)))
-                 (equal (fn-me-decide b msg) :admit)))
-   :rule-classes nil))
+; -----------------------------------------------------------------------------
+; `fn-me-hold-count-bounded'
 
-(must-fail
- (defthm teeth-partition-needs-distinct-ids
-   (implies (and (member-equal ca a)
-                 (member-equal cb b)
-                 (equal (fn-me-commit-base ca) (fn-me-commit-base cb))
-                 (not (member-equal (fn-me-commit-id cb) (fn-me-commit-ids a))))
-            (fn-me-forkedp (fn-me-merge a b)))
-   :rule-classes nil))
+; Without the incoming bound: a site handed a held list longer than its own
+; limit stays over the limit.  The keystone bounds custody growth, not custody.
+(defconst *me-site-over*
+  (fn-me-site "site-over" *me-founding*
+              (list *me-c1* *me-c2* *me-ca*) (list *me-c1* *me-c2* *me-ca*)
+              2 1 (list *me-erin-4* *me-erin-5*)))
 
-(must-fail
- (defthm teeth-partition-needs-the-same-base
-   (implies (and (member-equal ca a)
-                 (member-equal cb b)
-                 (not (equal (fn-me-commit-id ca) (fn-me-commit-id cb)))
-                 (not (member-equal (fn-me-commit-id cb) (fn-me-commit-ids a))))
-            (fn-me-forkedp (fn-me-merge a b)))
-   :rule-classes nil))
+(assert-event (fn-me-sitep *me-site-over*))
+(assert-event (< (fn-me-hold-limit *me-site-over*)
+                 (len (fn-me-held *me-site-over*))))
+(assert-event (equal (fn-me-decide *me-site-over* *me-erin-6*) :capacity))
+(assert-event (< (fn-me-hold-limit *me-site-over*)
+                 (len (fn-me-held (fn-me-receive *me-site-over* *me-erin-6*)))))
 
-(must-fail
- (defthm teeth-partition-needs-the-right-commit-to-be-new
-   (implies (and (member-equal ca a)
-                 (member-equal cb b)
-                 (equal (fn-me-commit-base ca) (fn-me-commit-base cb))
-                 (not (equal (fn-me-commit-id ca) (fn-me-commit-id cb))))
-            (fn-me-forkedp (fn-me-merge a b)))
-   :rule-classes nil))
+; -----------------------------------------------------------------------------
+; `fn-me-hold-resolves-on-reaching-epoch'
+
+; Without the receiver having reached the epoch: A holds erin's epoch-4 letter
+; and, at epoch 3, holds it again rather than admitting it.
+(assert-event (equal (fn-me-decide *me-site-a* *me-erin-4*) :hold))
+(assert-event (< (fn-me-epoch *me-site-a*) (fn-me-msg-epoch *me-erin-4*)))
+(assert-event (equal (fn-me-decide *me-site-a* *me-erin-4*) :hold))
+
+; Without the window: a site five epochs along with a zero-epoch window
+; refuses the same letter as too old.  The window is a bound on how far back
+; a receiver will reach, and it is what makes custody finite.
+(defconst *me-c5* (fn-me-commit "c5" 4 "alice" :rotate "carol"))
+(defconst *me-site-far*
+  (fn-me-site "site-far" *me-founding*
+              (list *me-c1* *me-c2* *me-ca* *me-c4* *me-c5*)
+              (list *me-c1* *me-c2* *me-ca* *me-c4* *me-c5*)
+              0 2 nil))
+
+(assert-event (fn-me-sitep *me-site-far*))
+(assert-event (equal (fn-me-epoch *me-site-far*) 5))
+(assert-event (< (+ (fn-me-msg-epoch *me-erin-4*)
+                    (fn-me-window *me-site-far*))
+                 (fn-me-epoch *me-site-far*)))
+(assert-event (equal (fn-me-revoked-at *me-site-far* "erin") 0))
+(assert-event (member-equal "erin" (fn-me-roster-at *me-site-far* 4)))
+(assert-event (equal (fn-me-decide *me-site-far* *me-erin-4*) :refuse))
+
+; Without `(equal (fn-me-revoked-at b sender) 0)': the re-admission chain is
+; the only shape that satisfies every other hypothesis while the sender is
+; revoked, and there the letter is refused.  This is the gap that makes
+; `fn-me-no-readmissionp' a requirement and not a taste.
+(defconst *me-dave-4* (fn-me-message "dave" 4 "cid-dave-4"))
+
+(assert-event (equal (fn-me-decide *me-site-early* *me-dave-4*) :hold))
+(assert-event (equal (fn-me-epoch *me-site-readd*) 4))
+(assert-event (member-equal "dave" (fn-me-roster-at *me-site-readd* 4)))
+(assert-event (not (equal (fn-me-revoked-at *me-site-readd* "dave") 0)))
+(assert-event (equal (fn-me-decide *me-site-readd* *me-dave-4*) :refuse))
+
+; Without membership at the letter's epoch: mallory is held while ahead and
+; refused once the epoch is reached.  A hold is not a promise to admit.
+(defconst *me-mallory-4* (fn-me-message "mallory" 4 "cid-mallory-4"))
+
+(assert-event (equal (fn-me-decide *me-site-a* *me-mallory-4*) :hold))
+(assert-event (not (member-equal "mallory" (fn-me-roster-at *me-a-epoch4* 4))))
+(assert-event (equal (fn-me-decide *me-a-epoch4* *me-mallory-4*) :refuse))
+
+; Without the `:hold' verdict at A: an admitted letter is never in custody.
+(assert-event (equal (fn-me-decide *me-site-a* (fn-me-message "alice" 1 "x"))
+                     :admit))
+(assert-event (not (member-equal
+                    (fn-me-message "alice" 1 "x")
+                    (fn-me-held (fn-me-receive *me-site-a*
+                                               (fn-me-message "alice" 1 "x"))))))
+
+; -----------------------------------------------------------------------------
+; `fn-me-merge-exposes-the-partition'
+
+; Without the same base: two commits at different epochs are not a fork, and
+; the merge of them is a plain union.
+(assert-event (not (equal (fn-me-commit-base *me-c1*)
+                          (fn-me-commit-base *me-c2*))))
+(assert-event (not (fn-me-forkedp (fn-me-merge (list *me-c1*) (list *me-c2*)))))
+
+; Without the right commit being new: an id already known is not merged, so a
+; conflicting commit carrying a known id never reaches the evidence set.  The
+; witness is an id collision, which is why ids are content ids and not names.
+(defconst *me-cb-imposter* (fn-me-commit "cb" 0 "alice" :add "zed"))
+(defconst *me-a-collided* (list *me-ca* *me-cb-imposter*))
+
+(assert-event (member-equal (fn-me-commit-id *me-cb*)
+                            (fn-me-commit-ids *me-a-collided*)))
+(assert-event (equal (fn-me-commit-base *me-ca*) (fn-me-commit-base *me-cb*)))
+(assert-event (not (fn-me-forkedp (fn-me-merge *me-a-collided* (list *me-cb*)))))
+
+; The distinctness hypothesis of `fn-me-merge-exposes-the-partition' has no
+; violating value: `(member-equal ca a)' puts ca's id in `(fn-me-commit-ids a)'
+; and the last hypothesis keeps cb's id out of it, so the ids differ already.
+; Recorded open rather than dropped: removing it re-proves the keystone, which
+; this lane could not run (planning/deputies/substrate.md).
