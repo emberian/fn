@@ -8,7 +8,9 @@ construction remains the already-accounted entry-local operation, while
 reserve and add-chunk candidates belong to mutation paths outside this wave.
 
 `books/transfer-public-work.lisp` defines a certified costed call graph for
-the actual public missing-range function. It independently repeats the
+the actual public missing-range function.  It is a root of the integrated
+certification batch and carries a certificate; the header comment that said
+certification was deferred was stale and has been removed. It independently repeats the
 recursive work of
 `true-listp`, bounded-list preflights, octet validation, profile validation,
 entry and chunk validation, pairwise overlap checks, distinct-label checks,

@@ -44,6 +44,23 @@ work predicate, trust tag, skipped proof, or validity premise.  Raw structure
 parameters are necessary because the total public function examines malformed
 states and arbitrary query labels before profile bounds can constrain them.
 
+## What this bound is about, and who may cite it
+
+The bound is about `fn-transfer-missing-ranges` and nothing else.  That
+function has no caller outside `books/transfer*.lisp` and
+`tests/acl2/transfer-tests.lisp`: no host file, no adapter and no other book
+calls it, so the bound currently governs no served path.  Under the assurance
+rule that a theorem's subject must be the function the host calls, PRF-016
+should not cite `fn-transfer-missing-ranges-work-public-bound` as evidence for
+bounded staging, and PRF-011 should not cite the transfer assembly theorems as
+merge evidence, until a caller exists and is named.  `planning/proofs.json` is
+not owned by this lane; this paragraph is the proposal to its owner, not a
+registry change.  The other two public transitions, `fn-transfer-reserve` and
+`fn-transfer-add-chunk`, have no costed shadow at all, so no bound covers a
+staging *mutation*; `fn-transfer-add-chunk` now performs an overlap byte
+comparison and a per-position uncovered-run split, whose cost is bounded by the
+arrival length times the retained fragment count but is not modeled here.
+
 One work unit represents a recursive structural visit or a primitive numeric
 check/comparison in the logical implementation.  Structural equality charges
 the nodes it actually compares.  The theorem does not model integer bit
