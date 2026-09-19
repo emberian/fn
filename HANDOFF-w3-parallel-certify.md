@@ -1,6 +1,7 @@
 # w3/parallel-certify
 
 Branch `w3/parallel-certify`, branched from `dev` at `9321344`.
+The work is one commit, `8548afc`; this line is the only thing after it.
 
 ## What changed
 
