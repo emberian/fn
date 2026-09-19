@@ -16,6 +16,16 @@
 (in-package "ACL2")
 (include-book "nntp")
 
+; The five books of the nntp cluster withdraw their definitions at their
+; export events (2026-09-19 split of books/nntp.lisp); this book reasons
+; about the overview renderers themselves, so it re-enables exactly them,
+; locally.  No includer inherits them.
+(local (in-theory (enable fn-nntp-syntax-vocabulary
+                          fn-nntp-session-vocabulary
+                          fn-nntp-projection-vocabulary
+                          fn-nntp-responses-vocabulary
+                          fn-nntp-vocabulary)))
+
 ; -----------------------------------------------------------------------------
 ; A clean overview field
 

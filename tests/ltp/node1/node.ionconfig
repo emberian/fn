@@ -1,0 +1,6 @@
+wmKey 76001
+sdrName ion1
+wmSize 50000000
+configFlags 1
+heapWords 2000000
+pathName /tank/fn/ltp/run/node1

@@ -6,6 +6,16 @@
 (in-package "ACL2")
 (include-book "records-invariants")
 
+; The reverse direction is about the codec's definitions, so they are opened
+; locally here.  Records and both results stay opaque: the record lemmas from
+; `records' close the goals about them.
+(local (in-theory (enable fn-cbor-codec-vocabulary
+                          fn-cbor-invariants-vocabulary
+                          fn-record-codec-vocabulary
+                          fn-record-guard-vocabulary
+                          fn-record-record-vocabulary
+                          fn-record-invariants-vocabulary)))
+
 (defthm fn-record-read-uint-reencode-prefix
   (implies (fn-record-parse-okp (fn-record-read-uint octets))
            (equal (append (fn-cbor-encode
@@ -150,12 +160,6 @@
 
 (defthm fn-record-parse-ok-has-rest
   (equal (fn-record-parse-rest (fn-record-parse-ok value rest)) rest))
-
-(defthm fn-record-parse-error-is-failure
-  (not (fn-record-parse-okp (fn-record-parse-error code)))
-  :hints (("Goal"
-           :in-theory (enable fn-record-parse-error
-                              fn-record-parse-okp))))
 
 ; This is the non-parsing part of the lift: once each sequential field has
 ; reconstructed its source prefix, their append equations compose into the
@@ -601,14 +605,15 @@
                               fn-record-parse-okp))))
 
 (defthm fn-record-final-ok-is-success
-  (fn-record-result-okp (list :ok record))
+  (fn-record-result-okp (fn-record-result-ok record))
   :hints (("Goal"
-           :in-theory (enable fn-record-result-okp))))
+           :in-theory (enable fn-record-result-okp fn-record-result-ok))))
 
 (defthm fn-record-final-ok-has-record
-  (equal (fn-record-result-record (list :ok record)) record)
+  (equal (fn-record-result-record (fn-record-result-ok record)) record)
   :hints (("Goal"
-           :in-theory (enable fn-record-result-record))))
+           :in-theory (enable fn-record-result-record
+                              fn-record-result-ok))))
 
 ; The exact decoder's successful control-flow facts, without opening either
 ; primitive CBOR read.  These facts are the complete adapter from its two
@@ -645,7 +650,7 @@
            :in-theory
            (union-theories
             (theory 'minimal-theory)
-            '(fn-record-decode-exact
+            '((:d fn-record-decode-exact)
               fn-record-result-okp-is-parse-okp
               fn-record-parse-error-is-failure
               fn-record-final-ok-is-success
@@ -702,3 +707,49 @@
             '(fn-record-decode-exact-successes
               fn-record-append-associative
               (:executable-counterpart equal))))))
+
+; -----------------------------------------------------------------------------
+; Export theory.  `fn-record-accepted-input-is-canonical' is the keystone.
+; Everything else is parser-adapter vocabulary, including the two accessor
+; equalities (`fn-record-result-okp-is-parse-okp' and the prefix compositions)
+; that must not reach an includer as rewrite rules.
+
+(deftheory fn-record-canonicality-vocabulary
+  '(    fn-record-read-uint-reencode-prefix
+    fn-record-read-bytes-reencode-prefix
+    fn-record-octets-chars-are-characters
+    fn-record-string-octets-aux-of-octets-chars
+    fn-record-string-octets-of-octets-string
+    fn-record-read-bytes-value-are-octets
+    fn-record-read-uint-value-is-natural
+    fn-record-read-uint-reencode-exact
+    fn-record-parse-groups-reencode-prefix
+    fn-record-parse-groups-value-length fn-record-parse-ok-is-success
+    fn-record-parse-ok-has-value fn-record-parse-ok-has-rest
+    fn-record-component-prefixes-compose fn-record-five-prefixes-compose
+    fn-record-two-prefixes-compose fn-record-decode-after-header-successes
+    fn-record-decode-tail-reencode fn-record-decode-after-header-reencode
+    fn-record-result-okp-is-parse-okp fn-record-final-ok-is-success
+    fn-record-final-ok-has-record fn-record-decode-exact-successes))
+
+(in-theory (disable fn-record-read-uint-reencode-prefix
+             fn-record-read-bytes-reencode-prefix
+             fn-record-octets-chars-are-characters
+             fn-record-string-octets-aux-of-octets-chars
+             fn-record-string-octets-of-octets-string
+             fn-record-read-bytes-value-are-octets
+             fn-record-read-uint-value-is-natural
+             fn-record-read-uint-reencode-exact
+             fn-record-parse-groups-reencode-prefix
+             fn-record-parse-groups-value-length
+             fn-record-parse-ok-is-success fn-record-parse-ok-has-value
+             fn-record-parse-ok-has-rest
+             fn-record-component-prefixes-compose
+             fn-record-five-prefixes-compose
+             fn-record-two-prefixes-compose
+             fn-record-decode-after-header-successes
+             fn-record-decode-tail-reencode
+             fn-record-decode-after-header-reencode
+             fn-record-result-okp-is-parse-okp
+             fn-record-final-ok-is-success fn-record-final-ok-has-record
+             fn-record-decode-exact-successes))

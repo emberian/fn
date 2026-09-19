@@ -365,6 +365,16 @@ class Book:
     defmacros: int = 0
     encapsulates: int = 0
     read_error: str | None = None
+    # Rule names a non-local top-level ``in-theory`` turns off.  A book's
+    # export policy is what it leaves enabled, so only these count.
+    disabled_rules: set[str] = field(default_factory=set)
+    # ``deftheory`` name -> its defining expression, and the non-local
+    # top-level ``in-theory`` expressions, both resolved once the whole book
+    # has been read: a withdrawal may name a theory defined anywhere above it.
+    theories: dict[str, object] = field(default_factory=dict)
+    in_theory_forms: list[object] = field(default_factory=list)
+    # Each ``must-fail`` as (line, arguments), for the teeth-form lint.
+    must_fail_forms: list[tuple[int, list]] = field(default_factory=list)
 
 
 TRANSPARENT = {"local", "progn", "progn!", "with-output", "defsection", "defsection-progn"}
@@ -407,6 +417,8 @@ def analyze_book(path: Path, relative: str) -> Book:
         return book
     for form, line in forms:
         record(book, form, line, local=False, suppressed=False)
+    for expression in book.in_theory_forms:
+        collect_disabled(expression, book.disabled_rules, book.theories)
     verified = set(book.verify_guards)
     for function in book.functions:
         if function.name in verified:
@@ -432,6 +444,7 @@ def record(book: Book, form: object, line: int, *, local: bool, suppressed: bool
     if name in SUPPRESSING:
         if name.startswith("must-fail") and not suppressed:
             book.must_fails += 1
+            book.must_fail_forms.append((line, list(form[1:])))
         for item in form[1:]:
             record(book, item, line, local=local, suppressed=True)
         return
@@ -462,6 +475,15 @@ def record(book: Book, form: object, line: int, *, local: bool, suppressed: bool
             book.system_includes.append(form[1])
         else:
             book.includes.append(form[1])
+        return
+    if name == "in-theory" and len(form) >= 2:
+        if not local:
+            # A `local' in-theory does not change what the book exports.
+            # Resolution waits for the whole book: see `analyze_book'.
+            book.in_theory_forms.append(form[1])
+        return
+    if name == "deftheory" and len(form) >= 3 and isinstance(form[1], Sym):
+        book.theories[str(form[1])] = form[2]
         return
     if name == "assert-event":
         book.assert_events += 1
@@ -762,6 +784,242 @@ def if_branches(form: object, found: list | None = None) -> list:
 
 
 # --------------------------------------------------------------------------
+# export and teeth lints
+# --------------------------------------------------------------------------
+#
+# Two shape lints, both WARN by default and both counted in the generated
+# ledger.  Neither is a claim that a theorem is wrong: they name the two ways
+# this tree has repeatedly made later proofs expensive.
+#
+# * Export hygiene.  A book's micro discipline (`planning/deputies/BRIEF.md`)
+#   is that accessor equalities and `len` backchaining rules stay inside the
+#   book that needs them: `:rule-classes nil`, `local`, `defthmd`, or a
+#   closing `in-theory (disable ...)`.  One such rule left enabled rewrites
+#   every downstream goal out of accessor vocabulary.
+# * Teeth form.  A `must-fail` whose body is a bare `thm` over free variables
+#   shows only that ACL2 did not prove a general claim, which a typo also
+#   achieves.  Teeth are concrete: a specific violating value.
+
+# One-argument applications of these are recognizers or arithmetic, not the
+# accessor-shaped rewrites the export lint is about.
+NON_ACCESSOR = {
+    "not", "len", "consp", "atom", "null", "endp", "zp", "true-listp",
+    "natp", "posp", "integerp", "rationalp", "acl2-numberp", "stringp",
+    "symbolp", "characterp", "booleanp", "quote", "if", "implies",
+}
+
+
+def rule_name(item: object) -> str | None:
+    """The name in a theory element: ``foo`` or ``(:rewrite foo)``."""
+    if isinstance(item, Sym):
+        return str(item)
+    if (isinstance(item, list) and len(item) == 2 and isinstance(item[0], Sym)
+            and str(item[0]).startswith(":") and isinstance(item[1], Sym)):
+        return str(item[1])
+    return None
+
+
+def theory_name_members(name: str, theories: dict[str, object],
+                        seen: frozenset[str]) -> set[str]:
+    """A name as a set of rules: a ``deftheory`` name expands, a rune does not."""
+    if name in theories and name not in seen:
+        return theory_members(theories[name], theories, seen | {name})
+    return {name}
+
+
+def theory_members(form: object, theories: dict[str, object],
+                   seen: frozenset[str] = frozenset()) -> set[str]:
+    """The rules a theory expression denotes, as far as it is literal.
+
+    A book withdraws its helpers by naming them once -- ``(deftheory
+    fn-x-vocabulary '(...))`` -- and disabling that name at the end.  Reading
+    only the disable would count every one of those rules as exported.  What
+    cannot be read literally (``current-theory``, a computed theory)
+    contributes nothing, so an unresolvable expression under-approximates the
+    withdrawal and the lint warns rather than going quiet.
+    """
+    if isinstance(form, Sym):
+        return theory_name_members(str(form), theories, seen)
+    if not isinstance(form, list) or not form:
+        return set()
+    name = head(form)
+    if name == "quote" and len(form) == 2 and isinstance(form[1], list):
+        members: set[str] = set()
+        for item in form[1]:
+            rune = rule_name(item)
+            if rune:
+                members |= theory_name_members(rune, theories, seen)
+        return members
+    if name in ("disable", "disable*"):
+        return theory_members([Sym("quote"), list(form[1:])], theories, seen)
+    if name == "theory" and len(form) == 2:
+        inner = form[1]
+        if head(inner) == "quote" and len(inner) == 2:
+            inner = inner[1]
+        return theory_members(inner, theories, seen) if isinstance(inner, Sym) else set()
+    if name in ("union-theories", "union-theories-fn") and len(form) == 3:
+        return (theory_members(form[1], theories, seen)
+                | theory_members(form[2], theories, seen))
+    if name in ("set-difference-theories", "set-difference-theories-fn") and len(form) == 3:
+        return (theory_members(form[1], theories, seen)
+                - theory_members(form[2], theories, seen))
+    return set()
+
+
+def collect_disabled(form: object, out: set[str],
+                     theories: dict[str, object] | None = None) -> None:
+    """Every rule name an ``in-theory`` expression turns off."""
+    theories = {} if theories is None else theories
+    if not isinstance(form, list) or not form:
+        return
+    name = head(form)
+    if name in ("disable", "disable*"):
+        for item in form[1:]:
+            rune = rule_name(item)
+            if rune:
+                out |= theory_name_members(rune, theories, frozenset())
+        return
+    if name in ("e/d", "e/d*"):
+        # (e/d <enable> <disable> <enable> ...): the odd groups are disables.
+        for index, group in enumerate(form[1:]):
+            if index % 2 == 1 and isinstance(group, list):
+                for item in group:
+                    rune = rule_name(item)
+                    if rune:
+                        out |= theory_name_members(rune, theories, frozenset())
+        return
+    if name in ("set-difference-theories", "set-difference-theories-fn") and len(form) == 3:
+        # (in-theory (set-difference-theories (current-theory :here) X)):
+        # whatever X names is what this book withdraws.
+        out |= theory_members(form[2], theories, frozenset())
+        return
+    for item in form[1:]:
+        collect_disabled(item, out, theories)
+
+
+def one_argument_application(form: object) -> bool:
+    return (isinstance(form, list) and len(form) == 2
+            and isinstance(form[0], Sym)
+            and str(form[0]) not in NON_ACCESSOR
+            and not str(form[0]).startswith(":"))
+
+
+def exported(theorem: Theorem, book: Book) -> bool:
+    """Is this theorem an enabled rule outside its book?"""
+    if theorem.local or theorem.disabled:
+        return False
+    if theorem.name in book.disabled_rules:
+        return False
+    classes = keyword_plist(theorem.rest).get(":rule-classes", "absent")
+    if isinstance(classes, Sym) and str(classes) == "nil":
+        return False
+    return not (isinstance(classes, list) and not classes)
+
+
+def export_hygiene(tree: "Tree") -> list[dict]:
+    """Enabled rules whose shape rewrites goals out of accessor vocabulary."""
+    findings: list[dict] = []
+    for book in sorted(tree.books.values(), key=lambda b: b.path):
+        for theorem in book.theorems:
+            if not exported(theorem, book):
+                continue
+            hypotheses, conclusion = split_implication(theorem.statement)
+            reason = None
+            if (head(conclusion) == "equal" and len(conclusion) == 3
+                    and one_argument_application(conclusion[1])
+                    and one_argument_application(conclusion[2])
+                    and str(conclusion[1][0]) != str(conclusion[2][0])
+                    and (str(conclusion[1][0]) in tree.functions
+                         or str(conclusion[2][0]) in tree.functions)):
+                # Two *different* one-argument heads: the rule rewrites one
+                # vocabulary into another, which is what pulls downstream
+                # goals out of accessor form.  The same head on both sides is
+                # a preservation or congruence lemma, which is the shape the
+                # discipline asks for, so it is not a finding.
+                reason = ("accessor-equality: an enabled equality between two "
+                          "different one-argument applications")
+            elif any("len" in calls(hypothesis) for hypothesis in hypotheses):
+                if head(conclusion) == "consp":
+                    reason = ("len-backchaining: an enabled consp conclusion "
+                              "backchained to a len hypothesis")
+                elif (head(conclusion) == "equal" and len(conclusion) == 3
+                      and any(head(side) == "len" for side in conclusion[1:])):
+                    reason = ("len-backchaining: an enabled len equality "
+                              "backchained to a len hypothesis")
+            if reason:
+                findings.append({"theorem": theorem.name, "book": book.path,
+                                 "line": theorem.line, "reason": reason})
+    return findings
+
+
+def statement_of(body: object) -> object:
+    """The claim inside a ``thm``/``defthm``, without its keyword options.
+
+    Scanning the options too would let a ``:rule-classes nil`` supply the
+    constant that makes a general claim look like a witness.
+    """
+    index = 1 if head(body) == "thm" else 2
+    return body[index] if isinstance(body, list) and len(body) > index else None
+
+
+def concrete_witness(form: object) -> bool:
+    """Does this form mention a constant: a literal, a keyword, a defconst?"""
+    if isinstance(form, Sym):
+        text = str(form)
+        if text.startswith(":"):
+            return True  # a keyword: a specific value in this tree's vocabulary
+        return len(text) > 2 and text.startswith("*") and text.endswith("*")
+    if isinstance(form, (int, float)):
+        return True
+    if isinstance(form, str):  # a string literal; Sym was handled above
+        return True
+    if isinstance(form, list):
+        if head(form) == "quote":
+            return True
+        return any(concrete_witness(item) for item in form)
+    return False
+
+
+def teeth_form(tree: "Tree") -> list[dict]:
+    """``must-fail`` bodies that are general claims rather than witnesses."""
+    findings: list[dict] = []
+    for book in sorted(tree.books.values(), key=lambda b: b.path):
+        for line, arguments in book.must_fail_forms:
+            body = next((item for item in arguments
+                         if not (isinstance(item, Sym) and str(item).startswith(":"))),
+                        None)
+            if head(body) not in ("thm", "defthm", "defthmd"):
+                continue
+            if concrete_witness(statement_of(body)):
+                continue
+            name = str(body[1]) if (head(body) != "thm" and len(body) > 1
+                                    and isinstance(body[1], Sym)) else "thm"
+            findings.append({
+                "check": name, "book": book.path, "line": line,
+                "reason": ("bare-general-claim: the must-fail body has no "
+                           "constant, so it refutes nothing in particular"),
+            })
+    return findings
+
+
+def lint_findings(tree: "Tree") -> dict[str, list[dict]]:
+    return {"export_hygiene": export_hygiene(tree), "teeth_form": teeth_form(tree)}
+
+
+def lint_warnings(tree: "Tree | None" = None) -> list[str]:
+    """One line per finding, for `--check` and `make check`."""
+    findings = lint_findings(tree if tree is not None else load_tree())
+    lines = []
+    for entry in findings["export_hygiene"]:
+        lines.append(f"export hygiene: {entry['book']}:{entry['line']}: "
+                     f"{entry['theorem']}: {entry['reason']}")
+    for entry in findings["teeth_form"]:
+        lines.append(f"teeth form: {entry['book']}:{entry['line']}: "
+                     f"{entry['check']}: {entry['reason']}")
+    return lines
+
+
+# --------------------------------------------------------------------------
 # tree, roots and closure
 # --------------------------------------------------------------------------
 
@@ -867,13 +1125,16 @@ def build_ledger(tree: Tree) -> dict:
                    for state in GUARD_STATES},
         "suspect_theorems": len(tree.suspects),
     }
+    lints = lint_findings(tree)
+    totals["export_hygiene_warnings"] = len(lints["export_hygiene"])
+    totals["teeth_form_warnings"] = len(lints["teeth_form"])
     suspects = [{"theorem": name,
                  "book": tree.theorems[name].book,
                  "line": tree.theorems[name].line,
                  "reasons": reasons}
                 for name, reasons in sorted(tree.suspects.items())]
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "description": ("Generated by tools/ledger.py from books/*.lisp and "
                         "tests/acl2/*.lisp.  Do not edit; run "
                         "`python3 tools/ledger.py --write`."),
@@ -881,6 +1142,7 @@ def build_ledger(tree: Tree) -> dict:
         "totals": totals,
         "books": rows,
         "suspects": suspects,
+        "lints": lints,
     }
 
 
@@ -913,6 +1175,23 @@ def ledger_markdown(ledger: dict) -> str:
         f"| `must-fail` checks | {totals['must_fails']} |",
         f"| `encapsulate` events | {totals['encapsulates']} |",
         f"| Theorems flagged SUSPECT by shape | {totals['suspect_theorems']} |",
+        f"| Export-hygiene warnings | {totals['export_hygiene_warnings']} |",
+        f"| Teeth-form warnings | {totals['teeth_form_warnings']} |",
+        "",
+        "## Lints",
+        "",
+        "Two WARN lints, counted above and listed in full under `lints` in",
+        "[`ledger.json`](ledger.json). *Export hygiene* counts theorems a book",
+        "leaves enabled whose shape rewrites downstream goals out of accessor",
+        "vocabulary: an equality between two one-argument applications, or a",
+        "`consp`/`len` conclusion backchained to a `len` hypothesis. A theorem",
+        "that is `local`, `defthmd`, `:rule-classes nil`, or disabled by a",
+        "closing `in-theory` -- directly, or through a `deftheory` name the",
+        "book defines and then withdraws -- is not counted. *Teeth form*",
+        "counts `must-fail`",
+        "checks whose body is a bare `thm`/`defthm` mentioning no constant, so",
+        "nothing in particular is refuted. Neither lint judges truth;",
+        "`python3 tools/ledger.py --check --strict` turns both into errors.",
         "",
         "## Per book",
         "",
@@ -1046,10 +1325,14 @@ def apply_events(regenerated: dict[str, list[str]]) -> str:
 # --------------------------------------------------------------------------
 
 
-def check_problems() -> list[str]:
-    """Everything `make check` must fail on."""
+def check_problems(tree: "Tree | None" = None) -> list[str]:
+    """Everything `make check` must fail on.
+
+    The caller may pass a tree it already loaded; reading 180 books twice to
+    produce the same answer is waste, not independence.
+    """
     problems: list[str] = []
-    tree = load_tree()
+    tree = load_tree() if tree is None else tree
     for book in tree.books.values():
         if book.read_error:
             problems.append(f"{book.path}: unreadable: {book.read_error}")
@@ -1106,14 +1389,21 @@ def main(argv: list[str] | None = None) -> int:
                         help="regenerate ledger.json, ledger.md and proofs.json events")
     parser.add_argument("--check", action="store_true",
                         help="fail on an unknown or SUSPECT cited theorem, or stale output")
+    parser.add_argument("--strict", action="store_true",
+                        help="with --check, fail on export-hygiene and teeth-form warnings")
     arguments = parser.parse_args(argv)
     if arguments.check:
-        problems = check_problems()
+        tree = load_tree()
+        problems = check_problems(tree)
+        warnings = lint_warnings(tree)
         for problem in problems:
             print(f"ERROR: {problem}", file=sys.stderr)
-        if problems:
+        for warning in warnings:
+            print(f"WARN: {warning}", file=sys.stderr)
+        if problems or (warnings and arguments.strict):
             return 1
-        print("Ledger OK: generated counts, cited events and registry are current.")
+        print(f"Ledger OK: generated counts, cited events and registry are "
+              f"current; {len(warnings)} lint warnings.")
         return 0
     if arguments.write:
         problems = write_all()

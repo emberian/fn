@@ -1,10 +1,27 @@
-; Executable scenarios for the finite-capacity retention ledger.
+; Retention test book: executable ledger scenarios and the teeth of the
+; retention keystones.
+;
+; Folded from retention-tests and retention-teeth-tests (2026-09-19).  Every
+; negative case is a concrete violating value that ACL2 evaluates.  A call
+; outside a transition's guard is made under `with-guard-checking :none'.
 (in-package "ACL2")
-(include-book "../../books/retention")
+(include-book "../../books/retention-invariants")
+
+; -----------------------------------------------------------------------------
+; Executable scenarios for the finite-capacity retention ledger.
 
 (defconst *retention-empty* (fn-retain-initial-state 10))
 (assert-event (fn-retain-statep *retention-empty*))
 (assert-event (equal (fn-retain-reserved *retention-empty*) 0))
+
+; The three ledger transitions carry `fn-retain-statep'; records are total.
+(assert-event (equal (guard 'fn-retain-admissiblep nil (w state)) '(fn-retain-statep s)))
+(assert-event (equal (guard 'fn-retain-admit nil (w state)) '(fn-retain-statep s)))
+(assert-event (equal (guard 'fn-retain-release nil (w state)) '(fn-retain-statep s)))
+(assert-event (equal (guard 'fn-retain-obligation-id nil (w state)) ''t))
+(assert-event (equal (guard 'fn-retain-matching-releasep nil (w state)) ''t))
+(assert-event (equal (fn-retain-obligation-charge 7) nil))
+(assert-event (equal (fn-retain-releases '(10 0 . tail)) nil))
 
 ; One archive pin reserves its own charge.
 (defconst *retention-archive*
@@ -94,3 +111,141 @@
  (equal (fn-retain-admit *retention-history-full* "history-4" "object-4"
                         :archive "release-4" 1)
         *retention-history-full*))
+
+; -----------------------------------------------------------------------------
+; Teeth for the retention keystones.
+;
+; `fn-retain-wrong-evidence-does-not-release' is the else-branch of the
+; definition with the branch test as its hypothesis; it is `:rule-classes nil'
+; and not a registry event.  The keystones with content are the two below: a
+; matching release RECORDS its evidence, and releasing one obligation leaves
+; every other pin alone.
+
+; A reachable, non-degenerate witness: two independent pins on the SAME
+; immutable content subject with different kinds, identities, evidence and
+; charges.  A predicate that compared only the subject would identify them,
+; and the point of RET-004 is that a forwarding receipt cannot discharge an
+; archive pin over the same bytes.
+(defconst *ret-teeth-empty* (fn-retain-initial-state 10))
+(defconst *ret-teeth-archive*
+  (fn-retain-admit *ret-teeth-empty* "archive-1" "object-a" :archive
+                   "operator-release-a" 6))
+(defconst *ret-teeth-two-pins*
+  (fn-retain-admit *ret-teeth-archive* "forward-1" "object-a" :forward
+                   "receipt-from-successor" 4))
+
+(assert-event (fn-retain-statep *ret-teeth-two-pins*))
+(assert-event (equal (len (fn-retain-pins *ret-teeth-two-pins*)) 2))
+(assert-event (equal (fn-retain-reserved *ret-teeth-two-pins*) 10))
+(assert-event (null (fn-retain-releases *ret-teeth-two-pins*)))
+
+; The two pins agree on the subject and differ in every other field.
+(assert-event
+ (equal (fn-retain-obligation-subject
+         (fn-retain-find-id "archive-1" (fn-retain-pins *ret-teeth-two-pins*)))
+        (fn-retain-obligation-subject
+         (fn-retain-find-id "forward-1" (fn-retain-pins *ret-teeth-two-pins*)))))
+(assert-event
+ (not (equal (fn-retain-obligation-kind
+              (fn-retain-find-id "archive-1" (fn-retain-pins *ret-teeth-two-pins*)))
+             (fn-retain-obligation-kind
+              (fn-retain-find-id "forward-1" (fn-retain-pins *ret-teeth-two-pins*))))))
+(assert-event
+ (not (equal (fn-retain-obligation-evidence
+              (fn-retain-find-id "archive-1" (fn-retain-pins *ret-teeth-two-pins*)))
+             (fn-retain-obligation-evidence
+              (fn-retain-find-id "forward-1" (fn-retain-pins *ret-teeth-two-pins*))))))
+
+; The exact release is reachable and records its evidence.
+(defconst *ret-teeth-released*
+  (fn-retain-release *ret-teeth-two-pins* "forward-1" "object-a" :forward
+                     "receipt-from-successor"))
+(assert-event (fn-retain-statep *ret-teeth-released*))
+(assert-event
+ (equal (car (fn-retain-releases *ret-teeth-released*))
+        (fn-retain-make-release "forward-1" "object-a" :forward
+                                "receipt-from-successor")))
+
+; Teeth for `fn-retain-exact-release-records-its-evidence'
+;   (implies (and (fn-retain-statep s)
+;                 (fn-retain-matching-releasep
+;                  (fn-retain-find-id id (fn-retain-pins s)) id subject kind evidence))
+;            (equal (car (fn-retain-releases (fn-retain-release s id subject kind evidence)))
+;                   (fn-retain-make-release id subject kind evidence)))
+
+; Hypothesis 1, `(fn-retain-statep s)', dropped.  A forged ledger whose release
+; history holds a non-release value carries a perfectly matching pin, so the
+; second hypothesis holds; `fn-retain-release' refuses a non-state outright, so
+; the release history it returns is the forged one, not the new record.  The
+; call is outside the guard, so it runs in the logic.
+(defconst *ret-teeth-forged*
+  (list 10 6 (list (fn-retain-make-obligation "archive-1" "object-a" :archive
+                                              "operator-release-a" 6))
+        (list :not-a-release-record)))
+(assert-event (not (fn-retain-statep *ret-teeth-forged*)))
+(assert-event
+ (fn-retain-matching-releasep
+  (fn-retain-find-id "archive-1" (fn-retain-pins *ret-teeth-forged*))
+  "archive-1" "object-a" :archive "operator-release-a"))
+(assert-event
+ (with-guard-checking :none
+  (not (equal (car (fn-retain-releases
+                    (fn-retain-release *ret-teeth-forged* "archive-1" "object-a"
+                                       :archive "operator-release-a")))
+              (fn-retain-make-release "archive-1" "object-a" :archive
+                                      "operator-release-a")))))
+
+; Hypothesis 2, the matching-release test, dropped.  A real ledger, a real pin,
+; and evidence that does not match it: nothing is recorded, so the head of the
+; release history is not the record the theorem names.
+(assert-event
+ (not (fn-retain-matching-releasep
+       (fn-retain-find-id "archive-1" (fn-retain-pins *ret-teeth-two-pins*))
+       "archive-1" "object-a" :archive "stale-or-unauthorized")))
+(assert-event
+ (not (equal (car (fn-retain-releases
+                   (fn-retain-release *ret-teeth-two-pins* "archive-1" "object-a"
+                                      :archive "stale-or-unauthorized")))
+             (fn-retain-make-release "archive-1" "object-a" :archive
+                                     "stale-or-unauthorized"))))
+
+; Teeth for `fn-retain-release-preserves-independent-pin'
+;   (implies (not (equal other id))
+;            (equal (fn-retain-find-id
+;                    other (fn-retain-pins (fn-retain-release s id subject kind evidence)))
+;                   (fn-retain-find-id other (fn-retain-pins s))))
+
+; The only hypothesis, `(not (equal other id))', dropped: the released pin is
+; exactly the one that does not survive, which is the whole point.
+(assert-event
+ (not (equal (fn-retain-find-id
+              "forward-1"
+              (fn-retain-pins
+               (fn-retain-release *ret-teeth-two-pins* "forward-1" "object-a"
+                                  :forward "receipt-from-successor")))
+             (fn-retain-find-id "forward-1" (fn-retain-pins *ret-teeth-two-pins*)))))
+
+; And the positive side, so the case above is not passing for a shallow reason:
+; the archive pin is untouched by the forwarding release.
+(assert-event
+ (equal (fn-retain-find-id "archive-1" (fn-retain-pins *ret-teeth-released*))
+        (fn-retain-find-id "archive-1" (fn-retain-pins *ret-teeth-two-pins*))))
+
+; `fn-retain-known-obligation-id-is-not-reused' now has one hypothesis.
+;
+;   (implies (fn-retain-known-idp id (fn-retain-pins s) (fn-retain-releases s))
+;            (equal (fn-retain-admit s id subject kind evidence charge) s))
+;
+; Its former `(fn-retain-statep s)' hypothesis was unnecessary: admission
+; refuses every non-state whatever the identity, so no violating value existed
+; and the hypothesis was dropped from the theorem.
+
+; The remaining hypothesis, known-idp, dropped: a fresh identity is admitted,
+; so admission is not a no-op.
+(assert-event
+ (not (fn-retain-known-idp "archive-2" (fn-retain-pins *ret-teeth-two-pins*)
+                           (fn-retain-releases *ret-teeth-two-pins*))))
+(assert-event
+ (not (equal (fn-retain-admit *ret-teeth-empty* "archive-2" "object-b" :archive
+                              "operator-release-b" 3)
+             *ret-teeth-empty*)))

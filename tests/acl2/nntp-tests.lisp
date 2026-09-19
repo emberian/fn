@@ -6,6 +6,10 @@
 (include-book "../../books/nntp-effects")
 (include-book "std/testing/must-fail" :dir :system)
 
+; This book reasons about the NNTP transitions themselves, so it opens the
+; vocabularies the five books of the nntp cluster withdraw at their export
+; events (2026-09-19 split of books/nntp.lisp).
+(local (in-theory (enable fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary fn-nntp-projection-vocabulary fn-nntp-responses-vocabulary fn-nntp-vocabulary)))
 ; The reader environment every transcript below runs against: one wall clock
 ; reading (2026-09-19T12:34:56Z as DTN milliseconds) and one persisted group
 ; creation fact.  No transcript lets the reader invent either.
@@ -354,10 +358,6 @@
                            '(:command (71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115)))
              (fn-nntp-step *fn-nntp-session0* *fn-nntp-mixed-archive* *fn-nntp-env0*
                            '(:command (71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115))))))
-(must-fail
- (thm (equal (fn-nntp-step session archive *fn-nntp-env0* (list :command line))
-             (fn-nntp-step session other *fn-nntp-env0* (list :command line)))))
-
 ; fn-nntp-step-preserves-consistent-session: dropping the hypothesis fails on a
 ; reachable-shaped session whose cursor names no available article.
 (defconst *fn-nntp-stale-session* (fn-nntp-make-session t "fn.letters" 99 t))
@@ -368,11 +368,6 @@
        (fn-nntp-result-session
         (fn-nntp-step *fn-nntp-stale-session* *fn-nntp-archive* *fn-nntp-env0* '(:command (83 84 65 84))))
        *fn-nntp-archive*)))
-(must-fail
- (thm (fn-nntp-session-consistentp
-       (fn-nntp-result-session (fn-nntp-step session archive *fn-nntp-env0* wire-event))
-       archive)))
-
 ; fn-nntp-step-effects-well-formed: a session that claims a projection the
 ; archive does not have escapes the 460-octet group cap, which is the only
 ; reason every generated initial line fits, so the conclusion is false
@@ -415,10 +410,6 @@
   (fn-nntp-result-effects
    (fn-nntp-step *fn-nntp-forged-session* *fn-nntp-unsafe-group-archive* *fn-nntp-env0*
                  '(:command (76 73 83 84))))))
-(must-fail
- (thm (fn-nntp-effectsp
-       (fn-nntp-result-effects (fn-nntp-step session archive *fn-nntp-env0* wire-event)))))
-
 ; The same session against a projectable archive is well formed, so the
 ; separating witness separates on more than the weakest clause.
 (assert-event
@@ -450,11 +441,6 @@
 (assert-event
  (not (equal (fn-nntp-session-current (fn-nntp-result-session *fn-nntp-empty-group*))
              (fn-nntp-group-low "fn.empty" (fn-state-articles *fn-nntp-archive*)))))
-(must-fail
- (thm (equal (fn-nntp-session-current
-              (fn-nntp-result-session (fn-nntp-group-result session archive group)))
-             (fn-nntp-group-low group (fn-state-articles archive)))))
-
 ; -----------------------------------------------------------------------------
 ; acceptance permits opaque strings and bytes; the projection refuses unsafe
 ; committed data before it can interpolate CRLF into any response line.
