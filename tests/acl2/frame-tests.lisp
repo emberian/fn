@@ -66,12 +66,13 @@
          *fn-frame-test-other-digest* *fn-frame-max-store-payload*)
         (fn-frame-error :integrity)))
 
-; The declared length disagrees with the octets actually present.
+; The header declares one octet more payload than the file holds: a frame cut
+; short is `:truncated`, distinct from a length the caller will not accept.
 (assert-event
  (equal (fn-frame-decode
          (append '(70 78 83 84 1 1 0 0 0 4 1 2 3) *fn-frame-test-digest*)
          *fn-frame-test-digest* *fn-frame-max-store-payload*)
-        (fn-frame-error :length)))
+        (fn-frame-error :truncated)))
 
 ; One octet of padding after a well-formed frame is a refusal, never a value
 ; with something ignored after it.
@@ -94,7 +95,7 @@
 ; Too few octets to hold a header and a trailer.
 (assert-event
  (equal (fn-frame-decode '(70 78 83 84 1 1 0 0 0 0) *fn-frame-test-digest* 16)
-        (fn-frame-error :length)))
+        (fn-frame-error :truncated)))
 
 ; A digest of the wrong width is refused before the payload is taken apart.
 (assert-event
@@ -236,11 +237,19 @@
                                *fn-frame-test-other-digest*)
         (fn-frame-error :integrity)))
 
+; One octet past the frame the header describes is `:length`; one octet short
+; of it is `:truncated`.
 (assert-event
  (equal (fn-frame-inbound-open '(70 78 66 73 1 1 0 0 0 10 0 3 98 105 100)
                                53 *fn-frame-test-digest*
                                *fn-frame-test-digest*)
         (fn-frame-error :length)))
+
+(assert-event
+ (equal (fn-frame-inbound-open '(70 78 66 73 1 1 0 0 0 10 0 3 98 105 100)
+                               51 *fn-frame-test-digest*
+                               *fn-frame-test-digest*)
+        (fn-frame-error :truncated)))
 
 ; -----------------------------------------------------------------------------
 ; Teeth for the keystone hypotheses a caller could drop

@@ -146,8 +146,8 @@ publication is visible to an operator; it never deletes a staged name and never
 treats one as history.
 
 The tested development profile fixes two groups (`fn.letters`, `fn.test`), 128
-transactions, 32,768 payload octets per article, 65,538 encoded record octets,
-and 8,388,864 aggregate record octets on recovery. Configuration is checksummed
+transactions, 32,768 payload octets per article, and 8,388,864 aggregate record
+octets on recovery. Configuration is checksummed
 and exact-versioned; the adapter refuses other profiles rather than silently
 using host defaults. The aggregate cap bounds the temporary all-record replay
 input. A future streaming/checkpoint implementation requires its own argument.
@@ -155,6 +155,11 @@ The group list is no longer written into the configuration:
 [`books/store-config.lisp`](../books/store-config.lisp) owns it, the two
 directions of the name/code mapping are proved inverse, and a store records
 only which version of the table it was written under (`fn-store-groups-1`).
+The 65,538-octet encoded-record bound is a model constant, not store
+configuration: `books/frame.lisp`'s `*fn-frame-max-store-payload*` is its one
+owner, `tools/run_store.py` reads it from the bridge to size its bounded read
+and passes no bound to `unframe`, and the configuration no longer carries a
+`max_record_bytes` a host could disagree with.
 The Message-ID bound is `books/article-fields`'s `fn-af-message-idp` for every
 caller, and the charge is `books/identity`'s `fn-charge-for-payload`.
 
@@ -164,9 +169,13 @@ A transaction file is one frame of the grammar in
 [`books/frame.lisp`](../books/frame.lisp), shared with both journals:
 magic `FNST`, version, record kind, a four-octet big-endian payload length,
 the encoded record, and a 32-octet integrity trailer. Store format
-`fn-store-experiment-3` is the first written under it; a store written under
-the previous Python framing is refused by its configuration version rather
-than misread.
+`fn-store-experiment-4` is the current one; a store written under the previous
+Python framing, or under the configuration that still carried the record
+bound, is refused by its configuration version rather than misread. The
+decoder keeps its refusals distinct: a file whose header declares more payload
+than the octets hold is `:truncated`, a declared length past the caller's cap
+is `:limit`, and `:length` is only octets past the frame the header
+describes.
 
 Proved, in [`books/frame-invariants.lisp`](../books/frame-invariants.lisp):
 `fn-frame-decode-of-encode` recovers every accepted value, and

@@ -653,7 +653,14 @@
                       (fn-frame-error :limit)
                     (if (not (equal (len (cdr head))
                                     (+ declared *fn-frame-trailer-octets*)))
-                        (fn-frame-error :length)
+                        ; A header that declares more payload than the octets
+                        ; still hold is a cut frame, not a disagreement about
+                        ; a bound: `:truncated` there, and `:length` only for
+                        ; octets past the frame the header describes.
+                        (if (< (len (cdr head))
+                               (+ declared *fn-frame-trailer-octets*))
+                            (fn-frame-error :truncated)
+                          (fn-frame-error :length))
                       (if (not (fn-frame-digestp digest))
                           (fn-frame-error :digest)
                         (let ((body (fn-frame-split declared (cdr head))))
@@ -970,7 +977,12 @@
                       (fn-frame-error :limit)
                     (if (not (equal total-length
                                     (+ *fn-frame-overhead-octets* declared)))
-                        (fn-frame-error :length)
+                        ; Same distinction as `fn-frame-decode`: fewer octets
+                        ; than the header declares is truncation.
+                        (if (< total-length
+                               (+ *fn-frame-overhead-octets* declared))
+                            (fn-frame-error :truncated)
+                          (fn-frame-error :length))
                       (let ((parsed (fn-frame-field-parse :text (cdr split))))
                         (if (not (fn-frame-parse-okp parsed))
                             (fn-frame-error :field-length)

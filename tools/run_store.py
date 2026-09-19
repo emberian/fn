@@ -39,11 +39,13 @@ DEFAULT_CONFIG = {
     # carries the record kind octet the Python framing lacked.  The configured
     # group list is no longer copied here: `books/store-config` owns it and a
     # store records only which version of that table it was written under.
-    "format": "fn-store-experiment-3",
+    # The encoded-record bound left with it: `books/frame` owns
+    # `*fn-frame-max-store-payload*`, the host reads it from the bridge, and a
+    # configuration that could disagree with the model is not written at all.
+    "format": "fn-store-experiment-4",
     "group_table": "fn-store-groups-1",
     "capacity": 1048576,
     "max_payload_bytes": 32768,
-    "max_record_bytes": 65538,
     "max_recovery_record_bytes": MAX_RECOVERY_RECORD_BYTES,
     "max_transactions": MAX_TRANSACTION_COUNT,
     "allocation_frontier_format": "fn-store-allocation-frontier-1",
@@ -275,11 +277,14 @@ def frame(record, bridge=None):
         raise StoreFault("ACL2 refused to frame a transaction record") from error
 
 
-def unframe(raw, max_record_bytes, bridge=None):
-    """ACL2 parses the frame and compares the trailer with the host digest."""
+def unframe(raw, bridge=None):
+    """ACL2 parses the frame and compares the trailer with the host digest.
+
+    The record bound is the model's, so there is no host bound to pass and
+    none to disagree: `fn-frame-store-decode` applies
+    `*fn-frame-max-store-payload*` itself.
+    """
     session = frame_bridge.session(bridge)
-    if max_record_bytes != session.constants["max_store"]:
-        raise StoreFault("configured record bound disagrees with the model")
     try:
         return session.store_unframe(raw)
     except frame_bridge.BridgeError as error:
@@ -762,11 +767,14 @@ class Store:
     def durable_records(self, acl2):
         records = []
         aggregate = 0
+        # The bounded read is sized from the model's record bound, not from a
+        # host copy of it.
+        constants = frame_bridge.session().constants
+        bound = constants["overhead"] + constants["max_store"]
         for sequence, path in self.transaction_files():
             check_regular(path)
-            raw = read_regular_bounded(
-                path, len(MAGIC) + 4 + self.config["max_record_bytes"] + TRAILER_BYTES)
-            record = unframe(raw, self.config["max_record_bytes"])
+            raw = read_regular_bounded(path, bound)
+            record = unframe(raw)
             aggregate += len(record)
             if aggregate > self.config["max_recovery_record_bytes"]:
                 raise StoreFault("transaction recovery input exceeds configured bound")
@@ -900,8 +908,6 @@ class Store:
         self._require_writer()
         if self.fenced:
             raise StoreIndeterminate("store is fenced pending recovery")
-        if len(record) > self.config["max_record_bytes"]:
-            raise StoreFault("ACL2 record exceeds configured bound")
         name = "{:020d}.txn".format(sequence)
         final = self.transactions / name
         stage = self.staging / (".stage-{}-{}".format(os.getpid(), os.urandom(12).hex()))
