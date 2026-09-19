@@ -23,6 +23,8 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-journal-` | `journal` | Historical isolated-slot journal experiment; not the adapter model |
 | `fn-exchange-` | `exchange`, `exchange-invariants` | Bounded atomic fact-set admission and merge |
 | `fn-transfer-` | `transfer`, `transfer-invariants`, `transfer-assembly-invariants`, `transfer-work`, `transfer-public-work`, `transfer-public-bound` | Fragment reservation, assembly, missing ranges, costed shadows and bounds |
+| `fn-tj-` | `transfer-journal`, `transfer-journal-invariants` | Durable fragment journal around `fn-transfer-reserve`/`fn-transfer-add-chunk`: records with the kernel's outcome, replay as the fold of the transitions, the FNTJ frame family, typed faults, the `:unverified` candidate export |
+| `fn-ct-` | `container`, `container-invariants` | Portable object container: articles with exact octets, content id and dependency ids, opaque unknowns; identity/dependency/size validation before allocation; publication through `fn-node-prepare`/`fn-node-complete`; OBJ-004 conflict evidence |
 | `fn-wire-` | `wire`, `wire-invariants` | NNTP line framing, dot stuffing, bounded retained input |
 | `fn-nntp-` | `nntp`, `nntp-invariants`, `nntp-effects` | Reader command dispatcher, session cursor, projection, effects |
 | `fn-ng-` | `nntp` | Guard-verified executable helpers for the NNTP graph |

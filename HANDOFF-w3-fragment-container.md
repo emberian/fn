@@ -1,0 +1,253 @@
+# HANDOFF w3-fragment-container
+
+Branch `w3/fragment-container` from `dev` (parent `9321344`). HEAD is the
+commit that carries this file together with the work below. Worktree
+`/Users/ember/dev/fn/build/lanes/w3-fragment-container`. The local baseline
+`make certify` was terminated by the coordinator at load 98 (nineteen ACL2
+processes on the laptop) and rerun on a remote box at the same absolute path;
+see "Baseline" below. No shared book was edited: `transfer*.lisp`,
+`frame.lisp`, `node.lisp`, `identity.lisp`, `records.lisp` and every other
+book are byte-identical to `dev`.
+
+## Per book
+
+| Book | Status | Evidence dir (`build/acl2/`) | Theorems |
+| --- | --- | --- | --- |
+| `books/transfer-journal.lisp` | PENDING | | |
+| `books/transfer-journal-invariants.lisp` | PENDING | | |
+| `tests/acl2/transfer-journal-tests.lisp` | PENDING | | |
+| `books/container.lisp` | PENDING | | |
+| `books/container-invariants.lisp` | PENDING | | |
+| `tests/acl2/container-tests.lisp` | PENDING | | |
+
+Makefile roots added after `tests/acl2/transfer-tests`, in that order.
+`docs/prefixes.md` rows `fn-tj-` and `fn-ct-`. `python3 tools/ledger.py
+--write` run; `make check` green. No `skip-proofs`, `defaxiom` or `defttag`.
+
+## Baseline
+
+PENDING (filled in when "BASELINE CERTS INSTALLED" arrives).
+
+## Subject and host line
+
+Packet A composes the two public kernel transitions the transfer tests
+drive, `fn-transfer-reserve` and `fn-transfer-add-chunk`
+(`books/transfer.lisp:489`, `:626`); no host file calls them yet
+(`specs/transfer-public-bound.md` records the same for
+`fn-transfer-missing-ranges`). The journal therefore governs no served path
+until the proposed `tools/run_transfer.py` exists; the handoff says so and the
+specs say so. Packet B composes `fn-node-prepare` (`books/node.lisp:227`) and
+`fn-node-complete` (`:257`), which `host/store-host.lisp` drives through the
+store adapter; the container calls them with the transaction id read from the
+node (`fn-state-next-txid`) and the host's completion observation, exactly as
+the adapter does.
+
+## Keystones, verbatim (packet A, `books/transfer-journal-invariants.lisp`)
+
+```
+(defthm fn-tj-replay-of-journal-is-run
+  (implies (natp index)
+           (equal (fn-tj-replay-records st (fn-tj-journal st inputs) index)
+                  (list :ok (fn-tj-run st inputs) (+ (len inputs) index)))))
+```
+Hypotheses: `(natp index)` only. `st` and `inputs` are arbitrary: a
+malformed input is journaled with the kernel's refusal and replays to it. The
+original draft carried `(fn-tj-inputsp inputs)`; it was vacuous once the
+record shape was made explicit, so it was removed rather than left as a
+hypothesis without teeth.
+
+```
+(defthm fn-tj-run-preserves-statep
+  (implies (fn-transfer-statep st)
+           (fn-transfer-statep (fn-tj-run st inputs))))
+
+(defthm fn-tj-replay-sealed-journal-is-run
+  (implies (and (natp index)
+                (fn-tj-records-okp (fn-tj-journal st inputs)))
+           (equal (fn-tj-replay-frames
+                   st (fn-tj-seal-journal (fn-tj-journal st inputs)) index)
+                  (list :ok (fn-tj-run st inputs) (+ (len inputs) index)))))
+
+(defthm fn-tj-corrupt-frame-ends-replay-at-typed-fault
+  (implies (and (natp index)
+                (fn-tj-records-okp (fn-tj-journal st inputs))
+                (not (fn-frame-result-okp (fn-tj-open bad))))
+           (equal (fn-tj-replay-frames
+                   st
+                   (append (fn-tj-seal-journal (fn-tj-journal st inputs))
+                           (cons bad rest))
+                   index)
+                  (list :fault
+                        (list :corrupt (fn-frame-item 1 (fn-tj-open bad)))
+                        (fn-tj-run st inputs)
+                        (+ (len inputs) index)))))
+
+(defthm fn-tj-refused-record-replays-to-same-state
+  (implies (and (not (equal (fn-tj-outcome r) :reserved))
+                (not (equal (fn-tj-outcome r) :stored)))
+           (equal (fn-frame-item 1 (fn-tj-apply st r)) st)))
+
+(defthm fn-tj-decode-of-encode
+  (implies (and (fn-tj-record-okp r) (fn-frame-digestp digest))
+           (equal (fn-tj-decode (fn-tj-encode r digest) digest)
+                  (fn-frame-ok *fn-tj-magic* *fn-tj-version* (fn-tj-kind r) (cdr r)))))
+
+(defthm fn-tj-open-of-seal
+  (implies (fn-tj-record-okp r)
+           (equal (fn-tj-open (fn-tj-seal r))
+                  (fn-frame-ok *fn-tj-magic* *fn-tj-version* (fn-tj-kind r) (cdr r)))))
+
+(defthm fn-tj-replay-frames-with-is-replay-frames
+  (implies (equal digests (fn-tj-digests-of frames))
+           (equal (fn-tj-replay-frames-with st frames digests index)
+                  (fn-tj-replay-frames st frames index))))
+```
+Hypothesis stacks: A-CRYPTO (`fn-frame-digest`, shape only) under every
+`fn-tj-open`/`fn-tj-seal` statement; `fn-transfer-reserve-preserves-statep`
+and `fn-transfer-add-chunk-preserves-statep` under `fn-tj-run-preserves-statep`;
+`fn-transfer-reserve-refusal-no-overwrite-general`,
+`fn-transfer-reserve-refusal-no-overwrite` and
+`fn-transfer-add-chunk-refusal-or-conflict-no-overwrite` under the refusal
+keystone; `fn-frame-decode-of-encode`, `fn-frame-protected-prefix-of-encode`
+and `fn-frame-fields-parse-of-octets` under the frame pair. Corollaries named
+as such: `fn-tj-restart-reproduces-missing-ranges` (of the first keystone),
+`fn-tj-candidate-is-unverified-by-definition`.
+
+Covered scope: the logical journal and its frames; durability of the write
+(`fsync`), the host's SHA-256, and splitting a file into frames are host work
+(A-DURABILITY, A-CRYPTO, A-HOST). Reorder and byte-identical overlap are
+kernel properties the witness exercises
+(`fn-transfer-add-chunk-retains-union`,
+`fn-transfer-complete-entry-candidate-correct`); this lane adds no theorem
+about them beyond replay.
+
+## Keystones, verbatim (packet B, `books/container-invariants.lisp`)
+
+```
+(defthm fn-ct-identity-okp-is-spec-okp
+  (implies (equal digest (fn-frame-digest (fn-ct-article-octets a)))
+           (equal (fn-ct-identity-okp a digest) (fn-ct-identity-spec-okp a))))
+
+(defthm fn-ct-receipt-implies-validated
+  (implies (fn-ct-receiptp
+            (fn-ct-result-receipt
+             (fn-ct-publish-article s a digest articles digests store profile
+                                    generation groups evidence obligation-digest completion)))
+           (fn-ct-article-validp a digest articles digests store profile (len articles))))
+
+(defthm fn-ct-accepted-is-complete-of-prepare
+  (implies (equal (fn-ct-result-status (fn-ct-publish-article s a digest articles digests store
+                                          profile generation groups evidence obligation-digest completion))
+                  :accepted)
+           (and (fn-ct-article-validp a digest articles digests store profile (len articles))
+                (equal completion :durable)
+                (not (equal (fn-node-prepare s generation (fn-ct-article-msgid a) (fn-ct-article-octets a) groups
+                                             (fn-ct-obligation-string obligation-digest)
+                                             (fn-ct-subject-string a) evidence (fn-ct-charge a))
+                            s))
+                (equal (fn-ct-result-state (fn-ct-publish-article ...same arguments...))
+                       (fn-node-complete
+                        (fn-node-prepare s generation (fn-ct-article-msgid a) (fn-ct-article-octets a) groups
+                                         (fn-ct-obligation-string obligation-digest)
+                                         (fn-ct-subject-string a) evidence (fn-ct-charge a))
+                        (fn-state-next-txid (fn-node-acceptance s))
+                        generation :durable)))))
+
+(defthm fn-ct-invalid-article-leaves-node-unchanged
+  (implies (not (fn-ct-article-validp a digest articles digests store profile (len articles)))
+           (and (equal (fn-ct-result-status (fn-ct-publish-article ...)) :invalid)
+                (equal (fn-ct-result-state (fn-ct-publish-article ...)) s)
+                (equal (fn-ct-result-receipt (fn-ct-publish-article ...)) nil))))
+
+(defthm fn-ct-accepted-article-is-in-the-node
+  (implies (equal (fn-ct-result-status (fn-ct-publish-article ...)) :accepted)
+           (fn-acceptedp (fn-ct-article-msgid a)
+                         (fn-state-articles (fn-node-acceptance (fn-ct-result-state (fn-ct-publish-article ...)))))))
+
+(defthm fn-ct-store-resolved-verdict-ignores-siblings
+  (implies (fn-ct-all-in-store (fn-ct-article-deps a) store)
+           (equal (fn-ct-article-validp a digest articles digests store profile fuel)
+                  (fn-ct-article-validp a digest nil nil store profile fuel))))
+
+(defthm fn-ct-self-dependency-never-validates
+  (implies (and (not (member-equal id store))
+                (member-equal id (fn-ct-article-deps (car (fn-ct-find-provider id articles digests)))))
+           (not (fn-ct-article-validp (car (fn-ct-find-provider id articles digests))
+                                      digest articles digests store profile fuel))))
+
+(defthm fn-ct-conflict-is-evidence
+  (implies (and (member-equal a candidates) (member-equal b articles)
+                (equal (fn-ct-article-msgid a) (fn-ct-article-msgid b))
+                (not (equal (fn-ct-article-content-id a) (fn-ct-article-content-id b))))
+           (member-equal a (fn-ct-conflict-evidence candidates articles))))
+
+(defthm fn-ct-invalid-head-does-not-block-siblings
+  (implies (and (consp candidates)
+                (not (fn-ct-article-validp (car candidates) (if (consp digests) (car digests) nil)
+                                           articles all-digests store profile (len articles))))
+           (equal (fn-frame-item 0 (fn-ct-publish-list s candidates digests obligation-digests completions
+                                                        articles all-digests store profile generation groups evidence))
+                  (fn-frame-item 0 (fn-ct-publish-list s (cdr candidates) (cdr-or-nil digests) (cdr-or-nil obligation-digests)
+                                                        (cdr-or-nil completions) articles all-digests store profile
+                                                        generation groups evidence)))))
+
+(defthm fn-ct-unknowns-are-never-consulted
+  (implies (and (fn-ct-unknowns-okp us profile) (fn-ct-unknowns-okp us2 profile))
+           (equal (fn-ct-publish-container s (fn-ct-make-container v as us) ...)
+                  (fn-ct-publish-container s (fn-ct-make-container v as us2) ...))))
+```
+(`...` elides repeated argument lists; `cdr-or-nil` stands for
+`(if (consp x) (cdr x) nil)` exactly as in the book. The book is the
+statement of record.)
+
+Hypothesis stacks: A-CRYPTO under `fn-ct-identity-okp-is-spec-okp` and the
+identity rule of `books/identity.lisp` (`fn-id-subject-of-payload`);
+`fn-node-prepare-preserves-state` and the acceptance definitions
+(`fn-accept-prepare`, `fn-install-pending`) opened one layer each under
+`fn-ct-accepted-article-is-in-the-node`; nothing else outside the book.
+
+Covered scope: validation and publication of the logical container; the
+byte grammar (D08/D15), signatures and authorization are not here. Stated
+limitation: dependency lists are container metadata, not identified octets,
+and the first identity-checked provider of a content id wins
+(`specs/container.md`; the tooth `ct-teeth-cycle-without-self-dependency`
+exhibits it).
+
+## Teeth
+
+`tests/acl2/transfer-journal-tests.lisp`: the two-fragment restart trace
+(reserve, tail, head, crash, replay, exact missing ranges `((2 1) (3 1))`,
+resume to `(:unverified (1 2 3 4 5 6))`); duplicate, differing overlap,
+byte-identical overlap, reorder, malformed input; three corruptions
+(truncated frame, wrong trailer, lying outcome), each a typed fault with the
+prefix state; `must-fail` per hypothesis of every keystone (non-natural
+index; unencodable empty label for `fn-tj-records-okp`; an opening frame for
+the corrupt keystone; `:reserved` and `:stored` records for the refusal
+keystone; `:junk` for `fn-tj-run-preserves-statep`; foreign digests for the
+host entry point; a bad record and a short digest for the frame pair).
+
+`tests/acl2/container-tests.lisp`: a container with a tampered article (A's
+identity over other octets), a valid A, a valid B depending on A, and an
+unknown object; T refused with no receipt, A and B published through
+`fn-node-prepare`/`fn-node-complete`, unknown carried; version refusal,
+missing dependency, a two-article cycle, an oversized article, an aborted
+completion, a retention refusal, one Message-ID with two content ids
+(evidence returned, second refused); `must-fail` per hypothesis of every
+keystone.
+
+## Proposals (host work, not claims)
+
+- `tools/run_transfer.py`: append `fn-tj-encode` of `fn-tj-write` to
+  `transfer.fntj` with `fsync` before adopting the kernel state; replay with
+  `fn-tj-replay-frames-with` at start. The BP side maps a reassembled bundle
+  payload (`books/bp-fragment.lisp`) to a `:chunk` input (C2-08).
+- `tools/run_container.py` and a container byte grammar in the
+  `records.lisp` style, golden vector plus round-trip theorem as its gate
+  (`specs/container.md`).
+- D08/D15: carry the dependency list inside the identified, signed object
+  so a container cannot attach a different dependency list to the same
+  content id.
+- `planning/proofs.json` is not owned by this lane: the journal keystones are
+  candidates for PRF-007/011/016 and SCN-009/013/015, the container keystones
+  for PRF-001/005/011/016 and SCN-009/012/013, once a host caller exists for
+  the journal.

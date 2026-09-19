@@ -152,6 +152,12 @@
     "books/transfer-public-work",
     "books/transfer-public-bound",
     "tests/acl2/transfer-tests",
+    "books/transfer-journal",
+    "books/transfer-journal-invariants",
+    "tests/acl2/transfer-journal-tests",
+    "books/container",
+    "books/container-invariants",
+    "tests/acl2/container-tests",
     "books/nntp",
     "books/nntp-invariants",
     "books/nntp-effects",
@@ -166,21 +172,21 @@
     "tests/acl2/relay-tests"
   ],
   "totals": {
-    "books": 162,
-    "books_in_root_closure": 162,
-    "roots": 162,
-    "theorems": 2272,
-    "functions": 1667,
-    "assert_events": 2567,
-    "must_fails": 133,
+    "books": 168,
+    "books_in_root_closure": 168,
+    "roots": 168,
+    "theorems": 2330,
+    "functions": 1744,
+    "assert_events": 2681,
+    "must_fails": 160,
     "encapsulates": 8,
     "guards": {
-      "verified": 934,
-      "declared-off": 52,
-      "default-guarded": 284,
-      "default-unguarded": 397
+      "verified": 937,
+      "declared-off": 58,
+      "default-guarded": 350,
+      "default-unguarded": 399
     },
-    "suspect_theorems": 27
+    "suspect_theorems": 28
   },
   "books": [
     {
@@ -1404,6 +1410,65 @@
       "read_error": null
     },
     {
+      "book": "books/container-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 25,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "container",
+        "node-invariants"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-ct-prepare-on-non-state-by-definition"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/container.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 43,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 42,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "identity",
+        "node",
+        "records"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/exchange-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -2378,6 +2443,61 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "transfer"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/transfer-journal-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 32,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "frame-invariants",
+        "transfer-invariants",
+        "transfer-journal"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/transfer-journal.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 31,
+      "guards": {
+        "verified": 3,
+        "declared-off": 5,
+        "default-guarded": 23,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 3,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "frame",
         "transfer"
       ],
       "system_includes": [],
@@ -3453,6 +3573,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/container-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 62,
+      "must_fails": 14,
+      "defconsts": 39,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/container-invariants"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/exchange-guards-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -4280,6 +4427,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/transfer-journal-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 52,
+      "must_fails": 13,
+      "defconsts": 29,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/transfer-journal-invariants"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/transfer-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -4463,6 +4637,14 @@
       "reasons": [
         "definition-restated: the conclusion is the body of fn-clock-may-drop-local-copyp",
         "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
+      "theorem": "fn-ct-prepare-on-non-state-by-definition",
+      "book": "books/container-invariants.lisp",
+      "line": 252,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-node-prepare and the conclusion is that branch's value"
       ]
     },
     {
