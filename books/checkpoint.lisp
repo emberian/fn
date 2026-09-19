@@ -4,11 +4,22 @@
 
 (in-package "ACL2")
 (include-book "store-node-invariants")
+; The codecs cluster withdraws the record and codec definitions at export
+; (2026-09-19); the proofs here open fn-record-p and the record accessors.
+(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))
+(local (in-theory (enable fn-store-files-invariants-vocabulary
+                          fn-store-node-invariants-vocabulary)))
 
 ; A checkpoint stores the exact core node after its committed journal prefix.
 ; The durable allocator frontier is separate: known-aborted reservations need
 ; not appear in the journal and can therefore be ahead of the core's next txid.
 ; Layout: (:fn-checkpoint 1 groups capacity frontier next-sequence node)
+; The checkpoint is an opaque record below its lemmas (docs/proof-style.md s1).
+(defun fn-checkpoint-shapep (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 7)
+       (equal (car x) :fn-checkpoint) (equal (cadr x) 1)))
+
 (defun fn-checkpoint-groups (x)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car (cdr (cdr x)))
@@ -43,19 +54,60 @@
                          (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))))
 (verify-guards fn-checkpoint-node)
 
-; FN-RETAIN-CAPACITY's guard is (TRUE-LISTP S), not T, so this needs NODE
-; constrained: FN-NODE-STATEP implies FN-RETAIN-STATEP of its retention
-; component, which implies TRUE-LISTP.  Every call site (FN-CHECKPOINT-CAPTURE
-; below; the test book's *CP-WRONG-FRONTIER*, built from an already-FN-NODE-
-; STATEP node) supplies exactly this.
+; The core accessors are total, so the constructor is.  The stored groups
+; and capacity are the node's own (the recognizer below rechecks the binding).
 (defun fn-checkpoint-make (frontier sequence node)
-  (declare (xargs :guard (fn-node-statep node) :verify-guards nil))
+  (declare (xargs :guard t))
   (list :fn-checkpoint 1
         (fn-state-groups (fn-node-acceptance node))
         (fn-retain-capacity (fn-node-retention node))
         frontier sequence node))
-(verify-guards fn-checkpoint-make
-  :hints (("Goal" :in-theory (enable fn-node-statep fn-retain-statep))))
+
+(defthm fn-checkpoint-shapep-of-fn-checkpoint-make
+  (fn-checkpoint-shapep (fn-checkpoint-make frontier sequence node)))
+(defthm fn-checkpoint-groups-of-fn-checkpoint-make
+  (equal (fn-checkpoint-groups (fn-checkpoint-make frontier sequence node))
+         (fn-state-groups (fn-node-acceptance node))))
+(defthm fn-checkpoint-capacity-of-fn-checkpoint-make
+  (equal (fn-checkpoint-capacity (fn-checkpoint-make frontier sequence node))
+         (fn-retain-capacity (fn-node-retention node))))
+(defthm fn-checkpoint-frontier-of-fn-checkpoint-make
+  (equal (fn-checkpoint-frontier (fn-checkpoint-make frontier sequence node))
+         frontier))
+(defthm fn-checkpoint-sequence-of-fn-checkpoint-make
+  (equal (fn-checkpoint-sequence (fn-checkpoint-make frontier sequence node))
+         sequence))
+(defthm fn-checkpoint-node-of-fn-checkpoint-make
+  (equal (fn-checkpoint-node (fn-checkpoint-make frontier sequence node))
+         node))
+(in-theory (disable (:d fn-checkpoint-shapep) (:d fn-checkpoint-groups)
+                    (:d fn-checkpoint-capacity) (:d fn-checkpoint-frontier)
+                    (:d fn-checkpoint-sequence) (:d fn-checkpoint-node)
+                    (:d fn-checkpoint-make)))
+
+; Shape facts type reasoning used to supply while the record opened
+; (docs/proof-style.md s1), exported as forward-chaining rules only.
+(defthm fn-checkpoint-shapep-forward-shape
+  (implies (fn-checkpoint-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-checkpoint-shapep))))
+(defthm fn-checkpoint-accessors-forward-consp
+  (and (implies (fn-checkpoint-groups x) (consp x))
+       (implies (fn-checkpoint-capacity x) (consp x))
+       (implies (fn-checkpoint-frontier x) (consp x))
+       (implies (fn-checkpoint-sequence x) (consp x))
+       (implies (fn-checkpoint-node x) (consp x)))
+  :rule-classes ((:forward-chaining :corollary (implies (fn-checkpoint-groups x) (consp x))
+                                    :trigger-terms ((fn-checkpoint-groups x)))
+                 (:forward-chaining :corollary (implies (fn-checkpoint-capacity x) (consp x))
+                                    :trigger-terms ((fn-checkpoint-capacity x)))
+                 (:forward-chaining :corollary (implies (fn-checkpoint-frontier x) (consp x))
+                                    :trigger-terms ((fn-checkpoint-frontier x)))
+                 (:forward-chaining :corollary (implies (fn-checkpoint-sequence x) (consp x))
+                                    :trigger-terms ((fn-checkpoint-sequence x)))
+                 (:forward-chaining :corollary (implies (fn-checkpoint-node x) (consp x))
+                                    :trigger-terms ((fn-checkpoint-node x))))
+  :hints (("Goal" :in-theory (enable fn-checkpoint-groups fn-checkpoint-capacity fn-checkpoint-frontier fn-checkpoint-sequence fn-checkpoint-node))))
 
 ; Capture below derives sequence from actual replay.  A later byte refinement
 ; must integrity-bind every stored field together; the logical recognizer
@@ -63,10 +115,7 @@
 (defun fn-checkpointp (x)
   (declare (xargs :guard t :verify-guards nil))
   (let ((node (fn-checkpoint-node x)))
-    (and (true-listp x)
-         (equal (len x) 7)
-         (equal (car x) :fn-checkpoint)
-         (equal (cadr x) 1)
+    (and (fn-checkpoint-shapep x)
          (fn-string-listp (fn-checkpoint-groups x))
          (fn-no-duplicatesp (fn-checkpoint-groups x))
          (natp (fn-checkpoint-capacity x))
@@ -78,28 +127,25 @@
          (equal (fn-retain-capacity (fn-node-retention node))
                 (fn-checkpoint-capacity x))
          (fn-replay-advance-okp node (fn-checkpoint-frontier x)))))
-(verify-guards fn-checkpointp
-  :hints (("Goal" :in-theory (enable len fn-node-statep fn-retain-statep))))
+(verify-guards fn-checkpointp)
+(defthm fn-checkpointp-forward-shape
+  (implies (fn-checkpointp x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-checkpointp fn-checkpoint-shapep))))
 
-; Standalone, non-recursive bridging facts for the guard proofs below.  Each
-; is a flat one-step unfolding of a non-recursive predicate (FN-REPLAY-OKP,
-; FN-RECORD-UINT32P); stated over a free ANSWER/N rather than a call to
-; FN-REPLAY, so proving them cannot trigger induction over an arbitrary
-; RECORDS list the way enabling FN-REPLAY-OKP at a call site that also
-; exposes FN-REPLAY/FN-REPLAY-LOOP does.
-(defthm fn-replay-okp-implies-node-statep
-  (implies (fn-replay-okp answer)
-           (fn-node-statep (fn-replay-result-node answer)))
-  :hints (("Goal" :in-theory (enable fn-replay-okp))))
+; Guard-proof facts, local (docs/proof-style.md s3): flat one-step unfoldings
+; of FN-REPLAY-OKP and FN-RECORD-UINT32P over a free ANSWER/N, so no call
+; site has to open FN-REPLAY-OKP beside FN-REPLAY.
+(local
+ (defthm fn-replay-okp-implies-node-statep
+   (implies (fn-replay-okp answer)
+            (fn-node-statep (fn-replay-result-node answer)))
+   :hints (("Goal" :in-theory (enable fn-replay-okp)))))
 
-(defthm fn-record-uint32p-implies-natp
-  (implies (fn-record-uint32p n) (natp n))
-  :hints (("Goal" :in-theory (enable fn-record-uint32p))))
-
-(defthm fn-node-statep-implies-retention-true-listp
-  (implies (fn-node-statep node)
-           (true-listp (fn-node-retention node)))
-  :hints (("Goal" :in-theory (enable fn-node-statep fn-retain-statep))))
+(local
+ (defthm fn-record-uint32p-implies-natp
+   (implies (fn-record-uint32p n) (natp n))
+   :hints (("Goal" :in-theory (enable fn-record-uint32p)))))
 
 ; Capture returns either (:ok checkpoint) or (:error reason).  The prefix is
 ; replayed here once to obtain the exact state being snapshotted.  Restore below
@@ -129,10 +175,7 @@
 (verify-guards fn-checkpoint-capture
   :hints (("Goal"
            :in-theory (disable fn-replay fn-replay-loop fn-replay-okp
-                               fn-node-statep fn-retain-statep)
-           :use ((:instance fn-record-uint32p-implies-natp (n frontier))
-                 (:instance fn-replay-okp-implies-node-statep
-                            (answer (fn-replay groups capacity records)))))))
+                               fn-node-statep fn-retain-statep))))
 
 (defun fn-checkpoint-capture-value (result)
   (declare (xargs :guard t :verify-guards nil))
@@ -154,7 +197,8 @@
              (fn-replay-result-node answer) frontier)
             (fn-replay-result-sequence answer)
             frontier))))
-(verify-guards fn-checkpoint-finish)
+(verify-guards fn-checkpoint-finish
+  :hints (("Goal" :in-theory (enable fn-replay-advance-okp))))
 
 ; Restore validates the checkpoint's configuration binding and the suffix's
 ; journal/allocator interval before invoking the actual replay loop.  In
@@ -193,6 +237,7 @@
   (declare (xargs :guard t :verify-guards nil))
   (fn-checkpoint-finish (fn-replay groups capacity records) frontier))
 (verify-guards fn-checkpoint-full-replay)
+
 
 ; This recognizer states the executable admissibility conditions for a split.
 ; It contains no equality between checkpoint and full results.  In particular,
@@ -238,12 +283,7 @@
            :use ((:instance fn-record-uint32p-implies-natp
                             (n checkpoint-frontier))
                  (:instance fn-record-uint32p-implies-natp
-                            (n final-frontier))
-                 (:instance fn-replay-okp-implies-node-statep
-                            (answer (fn-replay groups capacity prefix)))
-                 (:instance fn-node-statep-implies-retention-true-listp
-                            (node (fn-replay-result-node
-                                   (fn-replay groups capacity prefix))))))))
+                            (n final-frontier))))))
 
 ; -----------------------------------------------------------------------------
 ; Correspondence facts
@@ -257,8 +297,8 @@
            fn-replay-okp fn-replay-faultp fn-replay-advance-okp
            fn-replay-advance-txid fn-sf-record-listp fn-record-uint32p
            fn-replay-result-kind fn-replay-result-node
-           fn-replay-result-sequence fn-node-acceptance fn-node-retention
-           fn-state-groups fn-retain-capacity
+           fn-replay-result-sequence  fn-node-retention
+            fn-retain-capacity
            fn-string-listp fn-no-duplicatesp
            binary-append len fn-node-initial-state
            fn-snt-successful-replay-sequence
@@ -285,12 +325,7 @@
          (natp sequence)
          (fn-replay-advance-okp node frontier))
     (fn-checkpointp (fn-checkpoint-make frontier sequence node)))
-   :hints (("Goal"
-            :in-theory
-            (enable fn-checkpointp fn-checkpoint-make len
-                    fn-checkpoint-groups fn-checkpoint-capacity
-                    fn-checkpoint-frontier fn-checkpoint-sequence
-                    fn-checkpoint-node)))))
+   :hints (("Goal" :in-theory (enable fn-checkpointp)))))
 
 (defthm fn-checkpoint-admissible-capture-is-exact
   (implies
@@ -404,3 +439,16 @@
                            (cons record more) frontier)
     (list :error :suffix)))
   :hints (("Goal" :in-theory (enable fn-checkpoint-restore fn-sf-record-listp))))
+
+; -----------------------------------------------------------------------------
+; Export theory.  Withdrawn: the recognizer, capture, finish, restore, the
+; reference full replay, the split admissibility recognizer, and under a name
+; the replay-splitting lemma.  Enabled on include: the record lemmas and the
+; keystones fn-checkpoint-plus-suffix-equals-full-replay (PRF-008) and
+; fn-checkpoint-restore-rejects-frontier-reuse.
+(deftheory fn-checkpoint-vocabulary
+  '(fn-checkpoint-full-replay-splits-at-successful-prefix))
+(in-theory (disable fn-checkpoint-vocabulary fn-checkpointp
+                    fn-checkpoint-capture fn-checkpoint-capture-value
+                    fn-checkpoint-finish fn-checkpoint-restore
+                    fn-checkpoint-full-replay fn-checkpoint-admissible-splitp))
