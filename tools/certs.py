@@ -271,14 +271,26 @@ def certified_books(manifests: list[dict]) -> dict[str, list[Certified]]:
     """
     found: dict[str, list[Certified]] = {}
     for manifest in manifests:
-        if manifest.get("status") != "passed":
-            continue
+        # The unit of trust is one BOOK, not one run: a gate that fails on a
+        # single root still certified every other root, and each of those has
+        # its own fresh nonce-tagged success marker.  A book counts only when
+        # its expected marker was observed in this run and ACL2 exited 0.
+        requested = manifest.get("requested_books", [])
+        expected = manifest.get("expected_success_markers") or []
+        observed = set(manifest.get("observed_success_markers") or [])
+        if len(expected) != len(requested):
+            # An older or malformed manifest; fall back to the run verdict.
+            if manifest.get("status") != "passed":
+                continue
+            expected = [None] * len(requested)
         sources = manifest.get("source_digests_sha256") or {}
         after = manifest.get("source_digests_sha256_after") or {}
         certificates = manifest.get("certificate_digests_sha256") or {}
         exits = manifest.get("acl2_exit_codes") or {}
         evidence = str(manifest.get("evidence", "<in-memory manifest>"))
-        for book in manifest.get("requested_books", []):
+        for book, token in zip(requested, expected):
+            if token is not None and token not in observed:
+                continue
             source = sources.get(f"{book}.lisp")
             certificate = certificates.get(book)
             if source is None or certificate is None or exits.get(book, 0) != 0:
