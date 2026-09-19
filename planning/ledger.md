@@ -10,19 +10,19 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 182 |
-| Certification roots in the Makefile | 182 |
-| Books inside the root closure | 182 |
-| `defthm` and `defthmd` events | 2797 |
-| `defun` events | 1988 |
-| Functions with verified guards | 945 |
-| Functions declared `:verify-guards nil` and never verified | 53 |
-| Functions left at the default with an explicit guard | 560 |
+| Books read | 187 |
+| Certification roots in the Makefile | 187 |
+| Books inside the root closure | 187 |
+| `defthm` and `defthmd` events | 2842 |
+| `defun` events | 2082 |
+| Functions with verified guards | 1016 |
+| Functions declared `:verify-guards nil` and never verified | 54 |
+| Functions left at the default with an explicit guard | 582 |
 | Functions left at the default with no guard | 430 |
-| `assert-event` checks | 3000 |
+| `assert-event` checks | 3063 |
 | `must-fail` checks | 107 |
 | `encapsulate` events | 10 |
-| Theorems flagged SUSPECT by shape | 26 |
+| Theorems flagged SUSPECT by shape | 27 |
 | Export-hygiene warnings | 57 |
 | Teeth-form warnings | 3 |
 
@@ -108,6 +108,8 @@ that `make certify` requests.
 | `books/identity-invariants.lisp` | root | 25 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/identity.lisp` | root | 0 | 16 | 3/0/13/0 | 0 | 0 | 0 |
 | `books/index.lisp` | root | 24 | 22 | 22/0/0/0 | 0 | 0 | 0 |
+| `books/injection-invariants.lisp` | root | 19 | 2 | 0/0/2/0 | 0 | 0 | 1 |
+| `books/injection.lisp` | root | 11 | 72 | 57/0/15/0 | 0 | 0 | 0 |
 | `books/journal.lisp` | root | 9 | 61 | 0/0/0/61 | 0 | 0 | 0 |
 | `books/lace-invariants.lisp` | root | 65 | 1 | 0/0/0/1 | 0 | 0 | 1 |
 | `books/lace.lisp` | root | 5 | 20 | 0/0/20/0 | 0 | 0 | 0 |
@@ -116,8 +118,9 @@ that `make certify` requests.
 | `books/nntp-effects.lisp` | root | 97 | 12 | 0/0/0/12 | 0 | 0 | 1 |
 | `books/nntp-index.lisp` | root | 33 | 25 | 25/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-invariants.lisp` | root | 67 | 4 | 0/0/0/4 | 0 | 0 | 0 |
+| `books/nntp-post.lisp` | root | 15 | 18 | 12/1/5/0 | 0 | 0 | 0 |
 | `books/nntp-projection.lisp` | root | 23 | 22 | 22/0/0/0 | 0 | 0 | 0 |
-| `books/nntp-responses.lisp` | root | 1 | 21 | 21/0/0/0 | 0 | 0 | 0 |
+| `books/nntp-responses.lisp` | root | 1 | 23 | 23/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-session.lisp` | root | 1 | 34 | 34/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-syntax.lisp` | root | 6 | 45 | 39/0/6/0 | 0 | 0 | 0 |
 | `books/nntp.lisp` | root | 0 | 5 | 5/0/0/0 | 0 | 0 | 0 |
@@ -199,10 +202,12 @@ that `make certify` requests.
 | `tests/acl2/frame-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 47 | 0 | 0 |
 | `tests/acl2/identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 30 | 0 | 0 |
 | `tests/acl2/index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 0 | 0 |
+| `tests/acl2/injection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 35 | 0 | 0 |
 | `tests/acl2/journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 52 | 0 | 0 |
 | `tests/acl2/membership-epochs-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 100 | 0 | 0 |
 | `tests/acl2/nntp-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 50 | 0 | 0 |
+| `tests/acl2/nntp-post-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 28 | 0 | 0 |
 | `tests/acl2/nntp-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 2 | 0 |
 | `tests/acl2/nntp-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 156 | 0 | 0 |
 | `tests/acl2/node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 92 | 0 | 0 |
@@ -251,8 +256,9 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-clock-drop-permission-is-exactly-expired-by-definition` | `books/clock-invariants.lisp` | 163 | definition-restated: the conclusion is the body of fn-clock-may-drop-local-copyp; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-exchange-ingest-refusal-is-no-op` | `books/exchange.lisp` | 529 | branch-of-definition: the hypothesis negates a branch test of fn-exchange-ingest and the conclusion is that branch's value |
 | `fn-frame-decode-refuses-oversize-before-validation` | `books/frame-invariants.lisp` | 653 | branch-of-definition: the hypothesis is a branch test of fn-frame-decode and the conclusion is that branch's value |
+| `fn-inj-instantp-opens` | `books/injection-invariants.lisp` | 207 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-inj-instantp |
 | `fn-lace-cross-canonical-self` | `books/lace-invariants.lisp` | 289 | definition-restated: the conclusion is the body of fn-lace-canonicalp; reflexive-conclusion: a conjunct is (equal X X) |
-| `fn-nntp-block-scan-start-without-a-dot` | `books/nntp-effects.lisp` | 405 | branch-of-definition: the hypothesis negates a branch test of fn-nntp-block-scan and the conclusion is that branch's value |
+| `fn-nntp-block-scan-start-without-a-dot` | `books/nntp-effects.lisp` | 410 | branch-of-definition: the hypothesis negates a branch test of fn-nntp-block-scan and the conclusion is that branch's value |
 | `fn-node-capacity-refusal-is-no-op` | `books/node.lisp` | 537 | branch-of-definition: the hypothesis is a branch test of fn-node-prepare and the conclusion is that branch's value |
 | `fn-node-complete-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 159 | closed-theory-corollary: proved only by fn-node-complete-preserves-state, fn-node-state-has-committed-archive-pins |
 | `fn-node-prepare-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 141 | closed-theory-corollary: proved only by fn-node-prepare-preserves-state, fn-node-state-has-committed-archive-pins |

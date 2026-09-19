@@ -161,6 +161,11 @@
     "books/nntp-effects",
     "tests/acl2/nntp-tests",
     "tests/acl2/nntp-teeth-tests",
+    "books/injection",
+    "books/injection-invariants",
+    "tests/acl2/injection-tests",
+    "books/nntp-post",
+    "tests/acl2/nntp-post-tests",
     "books/nntp-index",
     "tests/acl2/nntp-index-tests",
     "books/bp-release",
@@ -186,21 +191,21 @@
     "tests/acl2/policy-tests"
   ],
   "totals": {
-    "books": 182,
-    "books_in_root_closure": 182,
-    "roots": 182,
-    "theorems": 2797,
-    "functions": 1988,
-    "assert_events": 3000,
+    "books": 187,
+    "books_in_root_closure": 187,
+    "roots": 187,
+    "theorems": 2842,
+    "functions": 2082,
+    "assert_events": 3063,
     "must_fails": 107,
     "encapsulates": 10,
     "guards": {
-      "verified": 945,
-      "declared-off": 53,
-      "default-guarded": 560,
+      "verified": 1016,
+      "declared-off": 54,
+      "default-guarded": 582,
       "default-unguarded": 430
     },
-    "suspect_theorems": 26,
+    "suspect_theorems": 27,
     "export_hygiene_warnings": 57,
     "teeth_form_warnings": 3
   },
@@ -1750,6 +1755,63 @@
       "read_error": null
     },
     {
+      "book": "books/injection-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 19,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "injection"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-inj-instantp-opens"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/injection.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 11,
+      "functions": 72,
+      "guards": {
+        "verified": 57,
+        "declared-off": 0,
+        "default-guarded": 15,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 57,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 16,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "article-fields",
+        "clock"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/journal.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -1954,6 +2016,32 @@
       "read_error": null
     },
     {
+      "book": "books/nntp-post.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 15,
+      "functions": 18,
+      "guards": {
+        "verified": 12,
+        "declared-off": 1,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 12,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "injection",
+        "nntp-effects"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/nntp-projection.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -1983,14 +2071,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 1,
-      "functions": 21,
+      "functions": 23,
       "guards": {
-        "verified": 21,
+        "verified": 23,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 21,
+      "verify_guards_events": 23,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -4111,6 +4199,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/injection-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 35,
+      "must_fails": 0,
+      "defconsts": 12,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/injection-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/journal-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -4210,6 +4323,31 @@
       "system_includes": [
         "std/testing/must-fail"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/nntp-post-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 28,
+      "must_fails": 0,
+      "defconsts": 19,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/nntp-post"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -5020,6 +5158,14 @@
       ]
     },
     {
+      "theorem": "fn-inj-instantp-opens",
+      "book": "books/injection-invariants.lisp",
+      "line": 207,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-inj-instantp"
+      ]
+    },
+    {
       "theorem": "fn-lace-cross-canonical-self",
       "book": "books/lace-invariants.lisp",
       "line": 289,
@@ -5031,7 +5177,7 @@
     {
       "theorem": "fn-nntp-block-scan-start-without-a-dot",
       "book": "books/nntp-effects.lisp",
-      "line": 405,
+      "line": 410,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-nntp-block-scan and the conclusion is that branch's value"
       ]

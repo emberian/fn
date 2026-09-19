@@ -10,8 +10,13 @@ import subprocess
 import sys
 import time
 
-from run_store import (Acl2Store, EXIT_FAULT, EXIT_OK, Store, UsageParser,
-                       decimal_list)
+from run_store import (Acl2Store, EXIT_FAULT, EXIT_OK, Store, StoreError,
+                       StoreIndeterminate, UsageParser, conservative_charge,
+                       decimal_list, durable_post, group_codes,
+                       validate_post_boundary)
+
+# DTN time (RFC 9171 section 4.2.6) is milliseconds since 2000-01-01T00:00:00Z.
+DTN_EPOCH_OFFSET = 946684800
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROMPT = b"ACL2 !>"
@@ -70,6 +75,16 @@ def acl2_octet_list(output):
     return values
 
 
+def acl2_natural(output):
+    trimmed = output.strip()
+    if not trimmed.endswith(PROMPT):
+        raise RuntimeError("unexpected ACL2 natural result")
+    body = trimmed[:-len(PROMPT)].strip()
+    if not re.fullmatch(rb"[0-9]+", body):
+        raise RuntimeError("unexpected ACL2 natural result")
+    return int(body)
+
+
 def acl2_boolean(output):
     if re.fullmatch(rb"T\s*ACL2 !>", output):
         return True
@@ -88,8 +103,9 @@ def acl2_archive_action(output):
 class Acl2Reader:
     """A fixed-call bridge: socket input reaches ACL2 only as octet literals."""
 
-    def __init__(self, store_bridge=None):
+    def __init__(self, store_bridge=None, allow_post=False):
         self.store_bridge = store_bridge
+        self.allow_post = allow_post
         self.owns_process = store_bridge is None
         self.proc = None
         self.own_poisoned = False
@@ -108,6 +124,8 @@ class Acl2Reader:
             self._load('(include-book "books/node")')
             self._load('(include-book "books/nntp")')
             self._load('(ld "host/reader-host.lisp" :ld-error-action :return :ld-error-triples t)')
+            self.call("(fn-reader-set-posting {} state)".format(
+                "t" if allow_post else "nil"))
             selection = "(fn-reader-use-seed state)" if self.owns_process else "(fn-reader-use-store state)"
             if acl2_archive_action(self.call(selection)) != b"ready":
                 raise RuntimeError("reader archive is not NNTP-projectable")
@@ -137,7 +155,52 @@ class Acl2Reader:
         return fail_on_acl2_error(output)
 
     def reset(self):
+        # One clock observation per connection.  books/clock.lisp says what
+        # the host is asserting with it; books/injection.lisp is the only
+        # thing that reads it.  A POST later in a long connection therefore
+        # carries this connection's reading, which is why the Injection-Date
+        # of two posts on one connection can be equal.
+        self.observe_clock()
         self.call("(fn-reader-reset state)")
+        return bytes(acl2_octet_list(self.call("(@ fn-reader-output)")))
+
+    def observe_clock(self):
+        now = time.time()
+        wall = int((now - DTN_EPOCH_OFFSET) * 1000)
+        if wall < 0:
+            wall = 0
+        monotonic = int(time.monotonic() * 1000)
+        self.call("(fn-reader-observe-clock {} {} {} state)".format(
+            monotonic, wall, 1000))
+
+    def submission(self):
+        """The article ACL2 injected, or None.  ACL2 produced every octet."""
+        octets = acl2_octet_list(self.call("(@ fn-reader-submit-octets)"))
+        if not octets:
+            return None
+        msgid = bytes(acl2_octet_list(self.call("(@ fn-reader-submit-msgid)")))
+        count = acl2_natural(self.call("(len (@ fn-reader-submit-groups))"))
+        if count > 64:
+            raise RuntimeError("ACL2 reported an implausible group count")
+        groups = [bytes(acl2_octet_list(self.call(
+            "(fn-inj-nth {} (@ fn-reader-submit-groups))".format(index))))
+            for index in range(count)]
+        return msgid, bytes(octets), groups
+
+    def reselect(self):
+        """Re-read the served image after a durable post.
+
+        The projection this reader serves is a snapshot taken when the store
+        was selected, so an article committed through POST is invisible until
+        the image is selected again.  fn-reader-use-store re-runs the
+        whole-archive recognizer on the new image; a refusal is fatal to this
+        process rather than served from a stale snapshot.
+        """
+        return acl2_archive_action(
+            self.call("(fn-reader-use-store state)")) == b"ready"
+
+    def outcome(self, completion):
+        self.call("(fn-reader-outcome {} state)".format(completion))
         return bytes(acl2_octet_list(self.call("(@ fn-reader-output)")))
 
     def chunk(self, octets):
@@ -199,7 +262,52 @@ def graceful_close(client):
         return
 
 
-def serve_client(reader, client):
+class PostOwner:
+    """The writer path a served POST uses.
+
+    For this lane the reader process holds the exclusive writer lock itself,
+    so one process owns both the served reads and the durable writes.  That is
+    a deliberate interim arrangement: the mutable-owner lane (C1-05) replaces
+    it with a separate owner, and until then a store served with --post cannot
+    also be served read-only by another process.
+    """
+
+    def __init__(self, store, bridge, records_count):
+        self.store = store
+        self.bridge = bridge
+        self.records_count = records_count
+
+    def accept(self, msgid, payload, groups):
+        """Carry ACL2's injected octets through the CLI's durable path.
+
+        Returns the completion ACL2 will turn into 240 or 441: the three
+        outcomes stay distinct here and all the way out to the wire.
+        """
+        try:
+            codes = group_codes([g.decode("ascii") for g in groups],
+                                self.store.config, self.bridge)
+            charge = conservative_charge(payload, self.bridge)
+            validate_post_boundary(msgid, payload, codes, charge,
+                                   self.store.config, self.bridge)
+            existing = self.bridge.existing_action(msgid, payload, codes)
+            if existing == "duplicate":
+                # Already durable under this exact identity and content.
+                return ":durable"
+            if existing == "conflict":
+                return ":refused"
+            if self.records_count >= self.store.config["max_transactions"]:
+                return ":refused"
+            durable_post(self.store, self.bridge, self.records_count, msgid,
+                         payload, codes, charge)
+            self.records_count += 1
+            return ":durable"
+        except StoreIndeterminate:
+            return ":uncertain"
+        except (StoreError, UnicodeDecodeError):
+            return ":refused"
+
+
+def serve_client(reader, client, owner=None):
     """Serve one connection; a broken peer cannot end the listener.
 
     A poisoned bridge is not a broken peer.  Once correlation is lost the
@@ -230,6 +338,19 @@ def serve_client(reader, client):
                         return
                     if reply:
                         client.sendall(reply)
+                    submission = reader.submission()
+                    if submission is not None:
+                        if owner is None:
+                            completion = ":refused"
+                        else:
+                            completion = owner.accept(*submission)
+                            if (completion == ":durable"
+                                    and not reader.reselect()):
+                                raise ReaderBridgeFault(
+                                    "the store image is no longer projectable")
+                        outcome = reader.outcome(completion)
+                        if outcome:
+                            client.sendall(outcome)
                     if closing:
                         graceful_close(client)
                         return
@@ -254,6 +375,8 @@ def main():
     parser.add_argument("--port", type=int, default=8119)
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--store", help="durable store snapshot to serve")
+    parser.add_argument("--post", action="store_true",
+                        help="accept POST; takes the exclusive writer lock")
     args = parser.parse_args()
     if not 0 <= args.port <= 65535:
         parser.error("--port must be from 0 through 65535")
@@ -261,17 +384,21 @@ def main():
     reader = None
     store = None
     store_bridge = None
+    owner = None
     try:
         if args.store:
-            # A shared lock fixes this recovered snapshot; posting needs the
-            # incompatible exclusive writer lock and is therefore refused.
-            store = Store(args.store, writable=False)
+            # A shared lock fixes a recovered snapshot for reading.  Serving
+            # POST needs the incompatible exclusive writer lock, so --post
+            # makes this process the writer as well; see PostOwner.
+            store = Store(args.store, writable=args.post)
             store.acquire()
             store_bridge = Acl2Store()
-            store.recover(store_bridge)
-            reader = Acl2Reader(store_bridge)
+            records = store.recover(store_bridge)
+            reader = Acl2Reader(store_bridge, allow_post=args.post)
+            if args.post:
+                owner = PostOwner(store, store_bridge, len(records))
         else:
-            reader = Acl2Reader()
+            reader = Acl2Reader(allow_post=args.post)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
             listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             listener.bind(("127.0.0.1", args.port))
@@ -280,7 +407,7 @@ def main():
             while True:
                 client, _ = listener.accept()
                 try:
-                    serve_client(reader, client)
+                    serve_client(reader, client, owner)
                 except ReaderBridgeFault as fault:
                     # Correlation is unrecoverable within this process.  Fail
                     # closed rather than answer the next client from a pipe

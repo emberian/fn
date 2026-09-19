@@ -77,6 +77,86 @@ omit entries. Cross-posting affects all intended configured local groups in one
 transaction. D05 defines treatment of unknown groups for local posts and later
 incoming transfers; preserve the original Newsgroups header/provenance.
 
+## POST (RFC 3977 §6.3.1)
+
+POST is one composed transition with a durable step in the middle, and the
+three parts have three different owners of the *reply*, all of them ACL2.
+
+1. `fn-nntp-step` answers a `POST` command line with `340 send article to be
+   posted` and one `:begin-article` effect. That effect is the instruction to
+   put the wire into article mode; the host applies it by calling
+   `fn-wire-begin-article` and does nothing else with it. The dispatcher has
+   no configuration argument and no clock, so it decides nothing further.
+2. `fn-nntp-post-step` (`books/nntp-post.lisp`) is the function the serving
+   host calls. It wraps `fn-nntp-step`: for every command that is not POST it
+   returns that result unchanged. When it sees the offer it consults the
+   configuration: posting disallowed becomes `440 posting not permitted` and
+   the session does not enter article mode. When the terminated body arrives
+   as an `(:article body)` wire event it calls `fn-inj-decide`. A refusal is
+   `441` carrying that reason's own line. An acceptance emits **no reply**: it
+   emits a *submission*, which is the injected article's exact octets, its
+   Message-ID and its groups.
+3. The host carries that submission through the same durable acceptance path
+   the command-line `post` uses — `fn-node-prepare`, publication, then
+   `fn-node-complete` — and calls `fn-nntp-post-outcome` with what it
+   observed. `:durable` is `240 article received OK`. `:refused` and
+   `:uncertain` are two distinct `441` lines, and stay distinct out to the
+   wire: an uncertain outcome never becomes a 240 and never becomes the
+   refusal line, because a client must not repost on it.
+
+A submission is not an acknowledgement. No 240 is reachable from
+`fn-nntp-post-step`; it exists only in `fn-nntp-post-outcome` under
+`:durable`.
+
+### What injection is
+
+`books/injection.lisp` implements RFC 5537 §3.5 as a function of exactly three
+things: the source octets the posting agent supplied, one
+`fn-clock-observationp`, and a configuration record naming the injecting
+agent's identity, the groups it accepts, and its size bound. The host computes
+none of it — not the Message-ID, not the Injection-Date, not the Path, not the
+injected octets.
+
+The injecting agent generates `Path`, `Injection-Date`, `Injection-Info`, and
+`Message-ID` and `Date` when the proto-article omits them (RFC 5537 §3.4.1
+permits exactly those three omissions). `From`, `Subject` and `Newsgroups`
+must be supplied. The generated lines are *prepended*: the supplied source is
+a verbatim suffix of the injected article, which is proved
+(`fn-inj-injected-article-retains-the-source-octets`), and is what makes the
+"MUST NOT alter the body" clause of §3.5 item 6 hold structurally rather than
+by inspection.
+
+Two choices here are local policy, not RFC requirements, and are recorded as
+such:
+
+- A proto-article that already carries `Path` or `Injection-Date` is refused
+  rather than rewritten. §3.2.1 would have an injecting agent prepend its
+  identity to an existing `Path`; rewriting a supplied field would break the
+  verbatim-suffix property, so fn refuses. fn is the origin injecting agent
+  for a POST.
+- The wall clock must be present and inside the 400-year Gregorian cycle from
+  2000-01-01. Outside it there is no Injection-Date this model renders, and
+  the outcome is a refusal, not a guess.
+
+### Retry identity (NNT-005, D01)
+
+The design choice, stated because it constrains clients: a **supplied**
+Message-ID is retained octet for octet and survives any clock reading, so a
+posting agent that supplies one has an exact retry identity. A **generated**
+Message-ID is derived from the clock, so a retry that omits Message-ID is a
+new article and fn will not deduplicate it. Both halves are theorems in
+`books/injection-invariants.lisp`; the second is stated so that no client
+assumes otherwise.
+
+### Not yet true of POST
+
+The greeting is still a fixed 201 and does not vary with the configured
+posting permission. POST is not advertised in CAPABILITIES. There is no
+freshness window on a supplied `Date` (§3.5 item 3), no trusted-source check
+(item 1) and no moderated-group handling (item 7). The reader process that
+serves POST today holds the writer path itself; the mutable-owner lane
+replaces that.
+
 ## Scope
 
 No moderation, automated control-message execution, private-mail confidentiality,

@@ -59,6 +59,9 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-toy-`, `fn-t-` | `tests/acl2/*-tests` (substrate) | Test-only executable realisers attached with `defattach`, and test witnesses; never in `books/` |
 | `fn-me-` | `membership-epochs`, `membership-epochs-invariants` | Group membership as epochs: commits over a base epoch, adopted chain and evidence set, the lace-shaped merge with explicit fork evidence, rosters, revocation knowledge, and the four-way admissibility decision for a late message. A policy model: no keys, no ciphertext, no digest |
 
+| `fn-inj-` | `injection`, `injection-invariants` | RFC 5537 §3.5 injection: the injecting-agent configuration record, the Gregorian calendar of the 2000-2399 cycle and the RFC 5322 date-time rendering, the generated Message-ID, and the opaque decision record carrying either a refusal reason or the exact injected octets |
+| `fn-post-`, `fn-nntp-post-` | `nntp-post`, `tests/acl2/nntp-post-tests` | POST (RFC 3977 §6.3.1) composed over the reader dispatcher: the posting session (the reader session plus the awaiting bit), the result record carrying effects and a submission, and the two host entry points `fn-nntp-post-step` and `fn-nntp-post-outcome` |
+
 Host-only wrappers in `host/*.lisp` use `fn-store-`, `fn-bpreq-`, `fn-bpwf-`,
 `fn-bprj-` and similar; they are `:program` mode and outside the proof boundary.
 The `fn-store-` tag is shared: `books/store-config` owns the group table under
