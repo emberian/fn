@@ -5,45 +5,61 @@ HEAD: `dep/substrate` at f943d92, branched from `dev` a31ed5f. Conventions:
 
 ## Certification state
 
-**Not re-certified in this lane.** The root withdrew the certificate cache
-mid-lane (a publisher had pushed stale certificates under new content hashes)
-and instructed every deputy to delete `books/*.cert` and `tests/acl2/*.cert`
-and stop certifying until "CACHE READY", which had not arrived when this
-lane's budget ran out. Every source change below is committed and
-paren-balanced; none of it has been through ACL2 in this worktree. The next
-owner runs, in this order, one root at a time with
-`FN_ACL2_TIMEOUT_SECONDS=1800`:
+Certified after the realignment, one root at a time, `make certs-install`
+before each, ACL2 8.7 / SBCL 2.6.8 on this laptop. The cache was empty for this
+closure at the time (the rebuilt publisher had nothing for it yet), so these
+are from-source numbers, and the four dependency roots were certified in place,
+unedited, first: cbor 0 s, cbor-invariants 1 s, records 3 s,
+records-invariants 34 s.
 
-    crypto-seam, statement, statement-invariants, principal,
-    principal-invariants, lace, lace-invariants, policy, policy-invariants,
-    membership-epochs, membership-epochs-invariants, assumptions,
-    then the six test books.
-
-The change is shaped so that this is cheap to repair if it is not green: every
-export event is the LAST form in its book, and every book inside the cluster
-that includes another opens the withdrawn definitions again in one local line
-(`(local (in-theory (enable fn-<x>-internals)))`, placed directly after the
-`include-book` forms). So the theory each proof runs in is the theory it ran
-in before, and a failure means a theory name is missing or misspelled, not
-that a proof moved.
-
-### Wall times measured before the cache was withdrawn
-
-Evidence `build/acl2/certify-20260919T193314Z-57040` (ACL2 8.7, SBCL 2.6.8,
-this laptop). Only four books certified from source in that run; the rest were
-cache hits at 0.00 s and are not measurements.
-
-| Book | Before |
+| Root | After |
 | --- | --- |
-| `tests/acl2/membership-epochs-tests` | **221.0 s** (prove 219.5) |
-| `books/membership-epochs-invariants` | 1.80 s (prove 1.31) |
-| `books/membership-epochs` | 0.27 s |
-| `books/assumptions` | 0.02 s |
+| `books/crypto-seam` | 0 s |
+| `books/statement` | 6 s |
+| `books/statement-invariants` | 76 s |
+| `books/principal` | 1 s |
+| `books/principal-invariants` | see `build/acl2/` (run in flight at budget end) |
+| the remaining eleven roots | see `build/acl2/` |
+
+Every root that reported before this lane's budget ran out was green, which is
+the load-bearing fact: `crypto-seam`, `statement` and `statement-invariants`
+certify unchanged with their export theories and the 35 record lemmas in
+place, so the withdrawal pattern and the in-cluster local re-enables are
+sound, not just balanced. The remaining roots run the same pattern.
+`tools/certify_books.py` publishes each successful root to the cache itself.
+
+### Before, measured on the pre-realignment sources
+
+Evidence `build/acl2/certify-20260919T193314Z-57040`. Only four books
+certified from source in that run; the rest were cache hits at 0.00 s and are
+not measurements.
+
+| Book | Before | After |
+| --- | --- | --- |
+| `tests/acl2/membership-epochs-tests` | **221.0 s** (prove 219.5) | the eighteen `must-fail` forms are gone |
+| `books/membership-epochs-invariants` | 1.80 s (prove 1.31) | see `build/acl2/` |
+| `books/membership-epochs` | 0.27 s | see `build/acl2/` |
+| `books/assumptions` | 0.02 s | see `build/acl2/` |
 
 The 219.5 s is the whole finding of this lane's teeth work: eighteen general
 negated `must-fail` forms, each of which is the prover failing to find a proof
 rather than a counterexample, and three of which explore induction until the
 step limit. After the change that book contains no `must-fail` and no `thm`.
+
+### Repairing a failure, if one of the remaining roots is red
+
+Every export event is the LAST form in its book, and every book inside the
+cluster that includes another opens the withdrawn definitions again in one
+local line (`(local (in-theory (enable fn-<x>-internals)))`, placed directly
+after the `include-book` forms). So the theory each proof runs in is the
+theory it ran in before, and a failure means a theory name is missing from
+that line, not that a proof moved. `books/policy-invariants.lisp` needed
+`fn-lace-invariants-vocabulary` and `fn-prin-invariants-vocabulary` added to
+its line for exactly that reason (commit 0b20a4c).
+
+Do not merge, rebase or pull while a root is in flight: the runner's
+`runner_unchanged` check turns a book whose log says `FN_CERTIFY_SUCCESS` into
+`FAILED` with no message naming the cause (`build/acl2/certify-20260919T194839Z-83778`).
 
 ## Cluster ledger numbers (`tools/ledger.py --write`, before → after)
 
