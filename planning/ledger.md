@@ -19,8 +19,8 @@ stale. Counts describe artifacts, not coverage; see
 | Functions declared `:verify-guards nil` and never verified | 29 |
 | Functions left at the default with an explicit guard | 180 |
 | Functions left at the default with no guard | 384 |
-| `assert-event` checks | 1741 |
-| `must-fail` checks | 73 |
+| `assert-event` checks | 1803 |
+| `must-fail` checks | 90 |
 | `encapsulate` events | 7 |
 | Theorems flagged SUSPECT by shape | 21 |
 
@@ -147,13 +147,13 @@ that `make certify` requests.
 | `tests/acl2/retention-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 4 | 0 |
 | `tests/acl2/retention-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 24 | 0 | 0 |
 | `tests/acl2/store-files-exploration-tests.lisp` | root | 0 | 29 | 0/0/0/29 | 58 | 0 | 0 |
-| `tests/acl2/store-files-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 2 | 0 |
+| `tests/acl2/store-files-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 52 | 11 | 0 |
 | `tests/acl2/store-files-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 78 | 10 | 0 |
 | `tests/acl2/store-files-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
 | `tests/acl2/store-node-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 116 | 0 | 0 |
 | `tests/acl2/store-node-resolution-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 21 | 0 | 0 |
 | `tests/acl2/store-node-resolution-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 0 | 0 |
-| `tests/acl2/store-node-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 2 | 0 |
+| `tests/acl2/store-node-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 43 | 10 | 0 |
 | `tests/acl2/store-node-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 37 | 0 | 0 |
 | `tests/acl2/store-node-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
 | `tests/acl2/store-observed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
