@@ -86,6 +86,34 @@
        (natp (fn-ct-max-unknowns p))
        (natp (fn-ct-max-unknown-octets p))))
 
+; The profile recognizer is a carried invariant (docs/proof-style.md §4): it
+; is checked once by the caller and every guard proof below discharges it
+; from its own hypothesis.  Opening it destructured `profile` into six
+; variables inside the guard conjecture of `fn-ct-deps-resolvep` and left a
+; goal (`(not (natp profile9))`) with no induction scheme (measured here).
+; What opacity takes away it exports back as forward-chaining, never rewrite
+; (docs/proof-style.md §1): the five field facts the guard proofs below used
+; to get by opening the recognizer.
+(defthm fn-ct-profilep-forward-fields
+  (implies (fn-ct-profilep p)
+           (and (true-listp p)
+                (natp (fn-ct-max-articles p))
+                (natp (fn-ct-max-article-octets p))
+                (natp (fn-ct-max-dependencies p))
+                (natp (fn-ct-max-unknowns p))
+                (natp (fn-ct-max-unknown-octets p))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-ct-profilep))))
+
+; The accessors go opaque with it, so the guard goals and the exported facts
+; stay in the same vocabulary (docs/proof-style.md §1): with the readers open
+; the forward-chained `(natp (fn-ct-max-dependencies p))` did not meet the
+; goal's `(rationalp (fn-frame-item 2 profile))`.
+(in-theory (disable fn-ct-profilep
+                    (:d fn-ct-max-articles) (:d fn-ct-max-article-octets)
+                    (:d fn-ct-max-dependencies) (:d fn-ct-max-unknowns)
+                    (:d fn-ct-max-unknown-octets)))
+
 ; -----------------------------------------------------------------------------
 ; Articles, unknowns, containers
 

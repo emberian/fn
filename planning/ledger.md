@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 188 |
 | Certification roots in the Makefile | 188 |
 | Books inside the root closure | 188 |
-| `defthm` and `defthmd` events | 2856 |
+| `defthm` and `defthmd` events | 2858 |
 | `defun` events | 2065 |
 | Functions with verified guards | 948 |
 | Functions declared `:verify-guards nil` and never verified | 59 |
@@ -98,7 +98,7 @@ that `make certify` requests.
 | `books/clock-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/clock.lisp` | root | 1 | 17 | 17/0/0/0 | 0 | 0 | 0 |
 | `books/container-invariants.lisp` | root | 25 | 2 | 0/0/1/1 | 0 | 0 | 0 |
-| `books/container.lisp` | root | 1 | 43 | 0/1/42/0 | 0 | 0 | 0 |
+| `books/container.lisp` | root | 2 | 43 | 0/1/42/0 | 0 | 0 | 0 |
 | `books/crypto-seam.lisp` | root | 19 | 14 | 0/0/10/4 | 0 | 0 | 0 |
 | `books/exchange-invariants.lisp` | root | 22 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/exchange.lisp` | root | 34 | 43 | 37/0/6/0 | 0 | 0 | 1 |
@@ -155,7 +155,7 @@ that `make certify` requests.
 | `books/store-observed.lisp` | root | 15 | 12 | 12/0/0/0 | 0 | 0 | 1 |
 | `books/transfer-assembly-invariants.lisp` | root | 25 | 5 | 0/0/0/5 | 0 | 0 | 0 |
 | `books/transfer-invariants.lisp` | root | 14 | 1 | 0/0/0/1 | 0 | 0 | 0 |
-| `books/transfer-journal-invariants.lisp` | root | 32 | 1 | 0/0/0/1 | 0 | 0 | 0 |
+| `books/transfer-journal-invariants.lisp` | root | 33 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/transfer-journal.lisp` | root | 1 | 31 | 3/5/23/0 | 0 | 0 | 0 |
 | `books/transfer-public-bound.lisp` | root | 71 | 7 | 0/0/0/7 | 0 | 0 | 0 |
 | `books/transfer-public-work.lisp` | root | 28 | 19 | 0/0/0/19 | 0 | 0 | 0 |
