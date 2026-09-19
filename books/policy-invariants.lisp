@@ -206,18 +206,41 @@
 ; -----------------------------------------------------------------------------
 ; Staleness
 
-; OPEN (2026-09-19 substrate lane): not proved; case explosion over the nfixed (incarnation, sequence) order under induction on cands (94 x 90 subgoals, no closing lemma found within budget).
-; Statement kept verbatim, outside the book, so nothing is weakened silently.
-#|
+; fn-pol-slot-lessp is a strict total order on the nfixed (incarnation,
+; sequence) keys.  These four order facts are everything the maximality
+; induction needs, so the comparison stays closed there and the induction
+; never splits over the nfix terms (opening it on every branch was a 94 x 90
+; subgoal explosion).
+
+(defthm fn-pol-slot-lessp-irreflexive
+  (not (fn-pol-slot-lessp a a)))
+
+(defthm fn-pol-slot-lessp-asymmetric
+  (implies (fn-pol-slot-lessp b a)
+           (not (fn-pol-slot-lessp a b))))
+
+(defthm fn-pol-slot-lessp-negative-transitive
+  (implies (and (not (fn-pol-slot-lessp a b))
+                (not (fn-pol-slot-lessp b c)))
+           (not (fn-pol-slot-lessp a c)))
+  :rule-classes ((:rewrite :match-free :all)))
+
+; An atom sits at key (0, 0); nothing is below it, so anything not above it
+; is at (0, 0) too.  (fn-pol-latest returns an atom member only when every
+; member is at that key; fn-lace-p is deliberately not assumed.)
+(defthm fn-pol-slot-lessp-below-atom
+  (implies (and (not (consp b))
+                (not (fn-pol-slot-lessp b c)))
+           (not (fn-pol-slot-lessp a c)))
+  :rule-classes ((:rewrite :match-free :all))
+  :hints (("Goal" :in-theory (enable fn-stmt-incarnation fn-stmt-sequence))))
+
 (defthm fn-pol-latest-is-maximal
   (implies (member-equal c cands)
            (not (fn-pol-slot-lessp (fn-pol-latest cands) c)))
-  :hints (("Goal" :induct (fn-pol-latest cands))))
-|#
+  :hints (("Goal" :induct (fn-pol-latest cands)
+           :in-theory (disable fn-pol-slot-lessp))))
 
-; OPEN (2026-09-19 substrate lane): not proved; depends on fn-pol-latest-is-maximal above.
-; Statement kept verbatim, outside the book, so nothing is weakened silently.
-#|
 (defthm fn-pol-current-is-not-superseded
   (implies (and (member-equal p1 lace)
                 (fn-pol-candidatep p1 keyring group authority)
@@ -238,7 +261,6 @@
                             fn-pol-latest-is-maximal
                             fn-pol-member-candidate-is-in-candidates
                             fn-pol-candidatep-implies-authority-stmt)))))
-|#
 
 ; -----------------------------------------------------------------------------
 ; Refusals that hold by definition; named as such.  The executable teeth for
@@ -311,6 +333,17 @@
                                fn-pol-current-is-candidate-in-lace
                                fn-lace-lookup-of-member))))
 
+; The kind travels in the header; fn-lace-sign-fields covers the other
+; fields.  Proved on the constructors alone, with the signing preimage and
+; the payload ref closed, so no codec opens.
+(defthm fn-pol-sign-kind
+  (equal (fn-stmt-kind (fn-stmt-sign sk c i n preds k p)) k)
+  :hints (("Goal" :in-theory (e/d (fn-stmt-sign fn-stmt-kind fn-stmt-header)
+                                  (fn-stmt-payload-ref
+                                   fn-stmt-signing-preimage)))))
+
+; The codec stays opaque: the payload of the signed statement is the receipt
+; encoding by fn-lace-sign-fields, and fn-stmt-receipt-round-trip decodes it.
 (defthm fn-pol-signed-receipt-carries-term
   (implies (fn-stmt-receipt-p receipt)
            (and (equal (fn-stmt-receipt-decode-exact
@@ -322,12 +355,20 @@
                         (fn-pol-sign-receipt sk receiver incarnation sequence
                                              preds receipt))
                        :receipt)))
-  :hints (("Goal"
+  :hints (("Goal" :do-not-induct t
            :use ((:instance fn-lace-sign-fields
                             (c receiver) (i incarnation) (n sequence)
                             (k :receipt)
-                            (p (fn-stmt-receipt-encode receipt))))
-           :in-theory (e/d (fn-stmt-kind fn-stmt-sign fn-stmt-header)
-                           (fn-lace-sign-fields fn-stmt-receipt-encode
-                            fn-stmt-receipt-decode-exact
-                            fn-stmt-receipt-p)))))
+                            (p (fn-stmt-receipt-encode receipt)))
+                 (:instance fn-pol-sign-kind
+                            (c receiver) (i incarnation) (n sequence)
+                            (k :receipt)
+                            (p (fn-stmt-receipt-encode receipt)))
+                 (:instance fn-stmt-receipt-round-trip (r receipt)))
+           :in-theory (disable fn-lace-sign-fields fn-pol-sign-kind
+                               fn-stmt-receipt-round-trip
+                               fn-stmt-receipt-encode
+                               fn-stmt-receipt-decode-exact
+                               fn-stmt-receipt-p fn-stmt-sign fn-stmt-kind
+                               fn-stmt-payload fn-stmt-header fn-stmt-ok
+                               fn-stmt-okp fn-stmt-value))))

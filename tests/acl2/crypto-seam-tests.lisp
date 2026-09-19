@@ -21,15 +21,32 @@
 
 (defconst *fn-toy-modulus* (- (expt 2 256) 189))
 
+; floor and mod stay closed in the guard proofs, as in books/crypto-seam.lisp;
+; these local bounds are all the realisers need.
+(local (defthm fn-toy-floor-256-is-natural
+         (implies (natp x) (natp (floor x 256)))
+         :hints (("Goal" :in-theory (disable floor)))))
+
+(local (defthm fn-toy-mod-256-bound
+         (implies (natp x)
+                  (and (natp (mod x 256)) (< (mod x 256) 256)))
+         :hints (("Goal" :in-theory (disable mod)))))
+
+(local (defthm fn-toy-mod-modulus-is-natural
+         (implies (natp x) (natp (mod x *fn-toy-modulus*)))
+         :hints (("Goal" :in-theory (disable mod)))))
+
 (defun fn-toy-fold (octets acc)
-  (declare (xargs :guard (and (fn-cbor-octet-listp octets) (natp acc))))
+  (declare (xargs :guard (and (fn-cbor-octet-listp octets) (natp acc))
+                  :guard-hints (("Goal" :in-theory (disable floor mod)))))
   (if (consp octets)
       (fn-toy-fold (cdr octets)
                    (mod (+ (* acc 263) (car octets) 1) *fn-toy-modulus*))
     acc))
 
 (defun fn-toy-nat-octets (n k)
-  (declare (xargs :guard (and (natp n) (natp k))))
+  (declare (xargs :guard (and (natp n) (natp k))
+                  :guard-hints (("Goal" :in-theory (disable floor mod)))))
   (if (zp k)
       nil
     (append (fn-toy-nat-octets (floor n 256) (1- k))
@@ -39,7 +56,15 @@
   (implies (natp n)
            (and (fn-cbor-octet-listp (fn-toy-nat-octets n k))
                 (equal (len (fn-toy-nat-octets n k)) (nfix k))))
-  :hints (("Goal" :induct (fn-toy-nat-octets n k))))
+  :hints (("Goal" :induct (fn-toy-nat-octets n k)
+           :in-theory (disable floor mod))))
+
+; Only for octet lists: a negative rational element would make the fold a
+; non-integer residue, and fn-toy-mix-digest guards its input accordingly.
+(defthm fn-toy-fold-is-natural
+  (implies (and (fn-cbor-octet-listp octets) (natp acc))
+           (natp (fn-toy-fold octets acc)))
+  :hints (("Goal" :in-theory (disable floor mod))))
 
 (defun fn-toy-mix-digest (m)
   (declare (xargs :guard t))
@@ -48,9 +73,6 @@
 (defun fn-toy-length-digest (m)
   (declare (xargs :guard t))
   (fn-toy-nat-octets (len m) 32))
-
-(defthm fn-toy-fold-is-natural
-  (implies (natp acc) (natp (fn-toy-fold octets acc))))
 
 (defthm fn-toy-mix-digest-shape
   (fn-digest-octetsp (fn-toy-mix-digest m)))
@@ -76,19 +98,28 @@
 (defthm fn-toy-public-key-shape
   (fn-sig-public-key-p (fn-toy-public-key sk)))
 
+; The realisers stay closed here: opening fn-toy-mix-digest unrolls the
+; 32-octet fold and exhausts the step budget.  The digest shape is all the
+; signature shape needs.
 (defthm fn-toy-sign-shape
   (fn-sig-signature-p (fn-toy-sign sk m))
-  :hints (("Goal" :in-theory (disable fn-toy-mix-digest-shape)
+  :hints (("Goal" :do-not-induct t
            :use ((:instance fn-toy-mix-digest-shape
                             (m (append (fn-toy-public-key sk)
-                                       (if (fn-cbor-octet-listp m) m nil))))))))
+                                       (if (fn-cbor-octet-listp m) m nil)))))
+           :in-theory (e/d (fn-sig-signature-p fn-digest-octetsp)
+                           (fn-toy-mix-digest-shape fn-toy-mix-digest
+                            fn-toy-public-key fn-toy-nat-octets fn-toy-fold
+                            fn-cbor-octet-listp)))))
 
 (defthm fn-toy-verify-is-boolean
   (booleanp (fn-toy-verify pk m sig)))
 
 (defthm fn-toy-verify-of-sign
   (implies (and (fn-sig-seed-p sk) (fn-cbor-octet-listp m))
-           (fn-toy-verify (fn-toy-public-key sk) m (fn-toy-sign sk m))))
+           (fn-toy-verify (fn-toy-public-key sk) m (fn-toy-sign sk m)))
+  :hints (("Goal" :in-theory (disable fn-toy-mix-digest fn-toy-nat-octets
+                                      fn-toy-fold))))
 
 (defattach (fn-sig-public-key fn-toy-public-key)
            (fn-sig-sign fn-toy-sign)
@@ -130,8 +161,10 @@
 
 ; Teeth for fn-digest-tagged-preimage-injective: without the tag shape
 ; hypothesis an empty tag and a non-octet tag both encode to nothing useful.
-(assert-event (equal (ec-call (fn-digest-tagged-preimage '(300) '(1)))
-                     (ec-call (fn-digest-tagged-preimage '(301) '(1)))))
+(assert-event
+ (with-guard-checking :none
+  (equal (fn-digest-tagged-preimage '(300) '(1))
+         (fn-digest-tagged-preimage '(301) '(1)))))
 (assert-event (not (fn-digest-tagp '(300))))
 
 ; -----------------------------------------------------------------------------

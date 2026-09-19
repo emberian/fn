@@ -169,9 +169,11 @@
                     (fn-stmt-make-receipt (fn-stmt-id (fn-t-stmt-1))
                                           *fn-t-obligation* t
                                           (fn-digest-tagged '(101) '(2))))))
+; The receipt codec's fuel is exactly its four items, so a trailing octet
+; (a fifth, well-formed uint item) is refused as one item too many.
 (assert-event (equal (fn-stmt-receipt-decode-exact
                       (append (fn-stmt-receipt-encode (fn-t-receipt-1)) '(0)))
-                     (fn-stmt-error :trailing)))
+                     (fn-stmt-error :too-many-items)))
 (assert-event (equal (fn-stmt-receipt-decode-exact
                       (fn-stmt-encode-items (list '(:bytes 1 2 3))))
                      (fn-stmt-error :subject)))

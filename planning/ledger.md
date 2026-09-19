@@ -13,14 +13,14 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 143 |
 | Certification roots in the Makefile | 143 |
 | Books inside the root closure | 143 |
-| `defthm` and `defthmd` events | 1737 |
+| `defthm` and `defthmd` events | 1747 |
 | `defun` events | 1498 |
 | Functions with verified guards | 701 |
 | Functions declared `:verify-guards nil` and never verified | 29 |
 | Functions left at the default with an explicit guard | 338 |
 | Functions left at the default with no guard | 430 |
-| `assert-event` checks | 1833 |
-| `must-fail` checks | 61 |
+| `assert-event` checks | 1834 |
+| `must-fail` checks | 60 |
 | `encapsulate` events | 9 |
 | Theorems flagged SUSPECT by shape | 23 |
 
@@ -80,7 +80,7 @@ that `make certify` requests.
 | `books/node-invariants.lisp` | root | 20 | 0 | 0/0/0/0 | 0 | 0 | 3 |
 | `books/node-traces.lisp` | root | 19 | 23 | 0/0/0/23 | 0 | 0 | 4 |
 | `books/node.lisp` | root | 7 | 30 | 30/0/0/0 | 0 | 0 | 2 |
-| `books/policy-invariants.lisp` | root | 25 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/policy-invariants.lisp` | root | 32 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/policy.lisp` | root | 10 | 29 | 1/0/28/0 | 0 | 0 | 0 |
 | `books/principal-invariants.lisp` | root | 19 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/principal.lisp` | root | 2 | 27 | 0/0/27/0 | 0 | 0 | 0 |
@@ -137,14 +137,14 @@ that `make certify` requests.
 | `tests/acl2/cbor-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 3 | 0 |
 | `tests/acl2/cbor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
 | `tests/acl2/checkpoint-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
-| `tests/acl2/crypto-seam-tests.lisp` | root | 8 | 7 | 0/0/7/0 | 18 | 2 | 0 |
+| `tests/acl2/crypto-seam-tests.lisp` | root | 11 | 7 | 0/0/7/0 | 18 | 2 | 0 |
 | `tests/acl2/exchange-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 106 | 0 | 0 |
 | `tests/acl2/exchange-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
 | `tests/acl2/exchange-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 3 | 0 |
 | `tests/acl2/exchange-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
 | `tests/acl2/index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 0 | 0 |
 | `tests/acl2/journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
-| `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 51 | 1 | 0 |
+| `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 52 | 0 | 0 |
 | `tests/acl2/nntp-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 2 | 0 |
 | `tests/acl2/nntp-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 76 | 0 | 0 |
 | `tests/acl2/node-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 16 | 2 | 0 |

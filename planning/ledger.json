@@ -150,10 +150,10 @@
     "books": 143,
     "books_in_root_closure": 143,
     "roots": 143,
-    "theorems": 1737,
+    "theorems": 1747,
     "functions": 1498,
-    "assert_events": 1833,
-    "must_fails": 61,
+    "assert_events": 1834,
+    "must_fails": 60,
     "encapsulates": 9,
     "guards": {
       "verified": 701,
@@ -1410,7 +1410,7 @@
       "book": "books/policy-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 25,
+      "theorems": 32,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -2895,7 +2895,7 @@
       "book": "tests/acl2/crypto-seam-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 8,
+      "theorems": 11,
       "functions": 7,
       "guards": {
         "verified": 0,
@@ -3083,8 +3083,8 @@
         "default-unguarded": 9
       },
       "verify_guards_events": 0,
-      "assert_events": 51,
-      "must_fails": 1,
+      "assert_events": 52,
+      "must_fails": 0,
       "defconsts": 4,
       "defmacros": 0,
       "encapsulates": 0,

@@ -37,8 +37,10 @@
                                        (cons :bytes *fn-t-token-default*)))))
 ; tooth for fn-prin-preimage-injective: without the public-key shape
 ; hypothesis two different non-keys share a preimage.
-(assert-event (equal (ec-call (fn-prin-preimage '(300) '(1)))
-                     (ec-call (fn-prin-preimage '(301) '(1)))))
+(assert-event
+ (with-guard-checking :none
+  (equal (fn-prin-preimage '(300) '(1))
+         (fn-prin-preimage '(301) '(1)))))
 (assert-event (not (fn-sig-public-key-p '(300))))
 
 ; A-CRYPTO made visible: under a colliding digest two keys share an id.
