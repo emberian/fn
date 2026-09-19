@@ -56,7 +56,9 @@
 ; one and never none.
 (local
  (defun fn-me-revoked-induct (a b member index)
-   (declare (xargs :guard t :measure (acl2-count a)))
+   ; An induction scheme only: it is never executed, and `cdr` on an
+   ; arbitrary second chain has no guard to verify.
+   (declare (xargs :guard t :verify-guards nil :measure (acl2-count a)))
    (if (consp a)
        (fn-me-revoked-induct (cdr a) (cdr b) member (+ 1 (nfix index)))
      (list a b member index))))
@@ -167,6 +169,11 @@
 (defthm fn-me-chain-prefixp-of-append
   (fn-me-chain-prefixp a (append a b)))
 
+; `fn-me-adopt` is a no-op on a commit premised on the wrong epoch, so the
+; reflexive case of the prefix order is half of the theorem below.
+(defthm fn-me-chain-prefixp-reflexive
+  (fn-me-chain-prefixp a a))
+
 (defthm fn-me-adopt-extends-chain
   (implies (and (fn-me-sitep site) (fn-me-commitp commit))
            (fn-me-chain-prefixp (fn-me-chain site)
@@ -218,6 +225,12 @@
 (defthm fn-me-commitsp-of-merge
   (implies (and (fn-me-commitsp a) (fn-me-commitsp b))
            (fn-me-commitsp (fn-me-merge a b))))
+
+; A commit is a six-element list, hence a cons, hence never the `nil` that
+; `fn-me-conflict-with` returns for "no conflict".
+(defthm fn-me-commitp-implies-consp
+  (implies (fn-me-commitp c) (consp c))
+  :rule-classes (:rewrite :forward-chaining))
 
 ; `fn-me-conflict-with` reports the conflicting commit itself, so the list has
 ; to be commits: a `nil` element would be a conflict that reads as none found.
