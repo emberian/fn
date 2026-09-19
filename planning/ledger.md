@@ -10,17 +10,17 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 162 |
-| Certification roots in the Makefile | 162 |
-| Books inside the root closure | 162 |
-| `defthm` and `defthmd` events | 2272 |
-| `defun` events | 1667 |
+| Books read | 165 |
+| Certification roots in the Makefile | 165 |
+| Books inside the root closure | 165 |
+| `defthm` and `defthmd` events | 2340 |
+| `defun` events | 1726 |
 | Functions with verified guards | 934 |
-| Functions declared `:verify-guards nil` and never verified | 52 |
+| Functions declared `:verify-guards nil` and never verified | 102 |
 | Functions left at the default with an explicit guard | 284 |
-| Functions left at the default with no guard | 397 |
-| `assert-event` checks | 2567 |
-| `must-fail` checks | 133 |
+| Functions left at the default with no guard | 406 |
+| `assert-event` checks | 2616 |
+| `must-fail` checks | 147 |
 | `encapsulate` events | 8 |
 | Theorems flagged SUSPECT by shape | 27 |
 
@@ -93,6 +93,8 @@ that `make certify` requests.
 | `books/node-invariants.lisp` | root | 20 | 0 | 0/0/0/0 | 0 | 0 | 3 |
 | `books/node-traces.lisp` | root | 19 | 23 | 0/0/0/23 | 0 | 0 | 4 |
 | `books/node.lisp` | root | 7 | 30 | 30/0/0/0 | 0 | 0 | 2 |
+| `books/owner-invariants.lisp` | root | 68 | 7 | 0/0/0/7 | 0 | 0 | 0 |
+| `books/owner.lisp` | root | 0 | 50 | 0/50/0/0 | 0 | 0 | 0 |
 | `books/records-canonicality.lisp` | root | 25 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/records-invariants.lisp` | root | 25 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/records.lisp` | root | 23 | 45 | 45/0/0/0 | 0 | 0 | 0 |
@@ -170,6 +172,7 @@ that `make certify` requests.
 | `tests/acl2/node-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 16 | 2 | 0 |
 | `tests/acl2/node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 0 | 0 |
 | `tests/acl2/node-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 24 | 0 | 0 |
+| `tests/acl2/owner-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 49 | 14 | 0 |
 | `tests/acl2/records-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 3 | 0 |
 | `tests/acl2/records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
 | `tests/acl2/relay-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 61 | 4 | 0 |
