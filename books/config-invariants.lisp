@@ -73,11 +73,15 @@
                        (fn-cfg-group-next (fn-cfg-group-find es name))))))
 
 (defthm fn-cfg-groups-create-keeps-the-names-or-adds-one
-  (equal (fn-cfg-group-all-names (fn-cfg-groups-create es gen stamp name
-                                                       policy))
-         (if (consp (fn-cfg-group-find es name))
-             (fn-cfg-group-all-names es)
-           (append (fn-cfg-group-all-names es) (list name)))))
+  ; Over a group list only: `fn-cfg-group-find' answers `nil' both for "no such
+  ; name" and for a found non-cons entry, so on `es' = (nil) with `name' nil
+  ; the creation replaces in place while the right-hand side appends.
+  (implies (fn-cfg-group-listp es)
+           (equal (fn-cfg-group-all-names (fn-cfg-groups-create es gen stamp
+                                                                name policy))
+                  (if (consp (fn-cfg-group-find es name))
+                      (fn-cfg-group-all-names es)
+                    (append (fn-cfg-group-all-names es) (list name))))))
 
 ; -----------------------------------------------------------------------------
 ; 4.  An admissible change preserves the typed value
@@ -87,7 +91,12 @@
            (fn-cfg-group-entryp (fn-cfg-group-find es name))))
 
 (defthm fn-cfg-groups-retire-preserves-group-listp
-  (implies (and (fn-cfg-group-listp es) (fn-record-uint32p gen))
+  ; The retired entry must be live at `gen': an entry retired before its own
+  ; creation generation is not a group entry (created-gen <= retired-gen), so
+  ; the statement without this hypothesis is false.  The hypothesis is exactly
+  ; `fn-cfg-group-livep' opened, which is what admissibility checks.
+  (implies (and (fn-cfg-group-listp es) (fn-record-uint32p gen)
+                (fn-cfg-entry-livep (fn-cfg-group-find es name) gen))
            (fn-cfg-group-listp (fn-cfg-groups-retire es gen name))))
 
 (defthm fn-cfg-groups-create-preserves-group-listp
@@ -99,14 +108,27 @@
            (fn-cfg-group-listp
             (fn-cfg-groups-create es gen stamp name policy))))
 
+(local (defthm fn-cfg-member-namep-of-append
+  (equal (fn-cfg-member-namep x (append a b))
+         (or (fn-cfg-member-namep x a) (fn-cfg-member-namep x b)))))
+
 (defthm fn-cfg-no-duplicates-of-append-one
   (implies (and (fn-cfg-no-duplicate-namesp names)
                 (not (fn-cfg-member-namep name names)))
            (fn-cfg-no-duplicate-namesp (append names (list name)))))
 
 (defthm fn-cfg-group-find-nil-means-not-a-name
-  (implies (not (consp (fn-cfg-group-find es name)))
+  ; Over a group list, for the same reason as the creation lemma above.
+  (implies (and (fn-cfg-group-listp es)
+                (not (consp (fn-cfg-group-find es name))))
            (not (fn-cfg-member-namep name (fn-cfg-group-all-names es)))))
+
+(local (defthm fn-cfg-create-adds-no-other-name
+  (implies (and (not (fn-cfg-member-namep x (fn-cfg-group-all-names es)))
+                (not (equal x name)))
+           (not (fn-cfg-member-namep
+                 x (fn-cfg-group-all-names
+                    (fn-cfg-groups-create es gen stamp name policy)))))))
 
 (defthm fn-cfg-groups-create-preserves-no-duplicates
   (implies (fn-cfg-no-duplicate-namesp (fn-cfg-group-all-names es))
@@ -130,12 +152,18 @@
            (fn-cfg-limits-withinp (fn-cfg-row-upsert rows row))))
 
 (defthm fn-cfg-apply-delta-preserves-valuep
+  ; `fn-record-uint32p' is opened for the `:set-limit' arm (`nfix' of a
+  ; uint32 is itself); `fn-record-string-octets' is kept closed so a label
+  ; stays the opaque term `fn-cfg-labelp' names rather than splitting on
+  ; `stringp' through `coerce'.
   (implies (and (fn-cfg-valuep v)
                 (fn-cfg-deltap d)
                 (fn-record-uint32p gen)
                 (fn-cfg-stampp stamp)
                 (not (fn-cfg-delta-reason v gen stamp reserved ceiling d)))
-           (fn-cfg-valuep (fn-cfg-apply-delta v gen stamp d))))
+           (fn-cfg-valuep (fn-cfg-apply-delta v gen stamp d)))
+  :hints (("Goal" :in-theory (e/d (fn-record-uint32p)
+                                  (fn-record-string-octets)))))
 
 (defthm fn-cfg-apply-preserves-valuep
   (implies (and (fn-cfg-valuep v)
@@ -153,7 +181,7 @@
                 (fn-cfg-record-acceptablep cfg r reserved ceiling))
            (fn-cfgp (fn-cfg-apply-record cfg r)))
   :hints (("Goal" :in-theory (disable fn-cfg-apply fn-cfg-admissiblep
-                                      fn-cfg-valuep fn-cfg-recordp))))
+                                      fn-cfg-valuep))))
 
 (defthm fn-config-replay-loop-result-is-typed
   (implies (fn-cfgp cfg)
@@ -204,8 +232,14 @@
                                       fn-cfg-recordp fn-cfgp))))
 
 (defthm fn-config-replay-loop-generation-counts-records
-  (implies (not (equal (fn-config-replay-loop cfg reserved ceiling records)
-                       :fault))
+  ; The starting generation must be a number: on the empty history the loop
+  ; returns `cfg' itself, and `(+ g 0)' is not `g' for a non-numeric `g'.
+  ; `fn-config-replay' starts from generation 0, which is what the entry-point
+  ; keystone below instantiates.
+  (implies (and (acl2-numberp (fn-cfg-generation cfg))
+                (not (equal (fn-config-replay-loop cfg reserved ceiling
+                                                   records)
+                            :fault)))
            (equal (fn-cfg-generation
                    (fn-config-replay-loop cfg reserved ceiling records))
                   (+ (fn-cfg-generation cfg) (len records))))
@@ -224,8 +258,7 @@
            :use ((:instance fn-config-replay-loop-generation-counts-records
                             (cfg (fn-cfg-initial))))
            :in-theory (disable fn-config-replay-loop
-                               fn-config-replay-loop-generation-counts-records
-                               fn-cfg-initial))))
+                               fn-config-replay-loop-generation-counts-records))))
 
 ; -----------------------------------------------------------------------------
 ; 5.  Recovery is `<=', never `='
@@ -234,7 +267,7 @@
   ; A crash image is a prefix of the committed history; per STO-004 an
   ; unacknowledged tail may be absent.  Total.
   (declare (xargs :guard t))
-  (if (zp n)
+  (if (not (posp n))
       nil
     (if (consp xs)
         (cons (car xs) (fn-cfg-take (- n 1) (cdr xs)))

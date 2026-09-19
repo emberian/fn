@@ -962,6 +962,22 @@ differences are deliberate:
   [`tests/acl2/config-tests.lisp`](../tests/acl2/config-tests.lisp).
   `tools/run_store.py initialize` writes one default configuration record
   through the bridge and `recover` replays it, refusing a store that has none.
+- **Certified 2026-09-19.** `books/config`, `books/config-invariants`,
+  `books/config-records` and `tests/acl2/config-tests` each certify in under a
+  second (evidence directories in the lane handoff). Three statements were
+  false as first written and were corrected rather than weakened, each with a
+  concrete tooth in the test book: the two `fn-cfg-group-find` lemmas hold over
+  a group list, `fn-cfg-groups-retire-preserves-group-listp` over an entry live
+  at the retiring generation, and the config-only agreement of
+  `fn-config-aware-loop` with `fn-config-replay-loop` over histories the
+  configuration replay accepts (on a refused record the aware loop keeps the
+  last good configuration beside its fault; the configuration replay is
+  `:fault`). Still open: the general decode-of-encode over a variable-length
+  item stream (`books/config.lisp` states it as OPEN; coverage is the ground
+  default-record vector), and the host Python suite, whose bridge cannot start
+  in a worktree without certificates for `books/identity`,
+  `books/article-fields`, `books/store-observed` and
+  `books/store-node-resolution`.
 - **Keystones proved.** `fn-config-replay-loop-splits-at-any-prefix` (replay is
   a fold, which is what determinism means for a resumed recovery);
   `fn-config-replay-generation-counts-config-records` (the generation is the
