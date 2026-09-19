@@ -269,6 +269,48 @@ validation`, `fn-frame-decode-bounds-its-payload`,
 ACL2. `HANDOFF.md` §3 quotes several of them as keystones; that section is
 premature and must not be cited until they certify.
 
+### 3.1a What the repair session (2026-09-19, post-merge) actually found
+
+`books/frame-invariants.lisp` now carries the §3.1 fix in source: shape
+lemmas `fn-frame-textp-is-octets/-is-consp/-len-bound` and the `fn-frame-blobp`
+analogues, a local `fn-frame-append-assoc`, a local
+`fn-frame-len-positive-when-consp`, four rewrite rules that close the parse
+result (`fn-frame-parse-okp-of-parse-ok`, `-of-parse-error`,
+`fn-frame-parse-value-of-parse-ok`, `fn-frame-parse-rest-of-parse-ok`), a
+`(local (in-theory (disable fn-cbor-u16-bytes fn-cbor-u32-bytes
+fn-frame-u64-bytes fn-frame-textp fn-frame-blobp)))` and a second disable of
+the parse-result constructor, accessors and `fn-frame-item`, then
+`fn-frame-field-parse-of-octets` split into `-text`, `-blob`, `-nat`, `-enum`
+and re-assembled. Everything up to and including `fn-frame-blobp-len-bound`
+is admitted (logs `build/ld-frame-invariants-{2,3,4,5}.log`).
+
+Three things were learned, each paid for by a run:
+
+1. **`associativity-of-append` is not a rule name in this installation.** A
+   hint naming it fails with `ACL2 Error [Translate] ... A theory expression
+   could not be evaluated` (log 3). The local `fn-frame-append-assoc` above
+   replaces it; without right-association `fn-frame-split-of-append` cannot
+   fire, because the outer append's first argument is the whole field, not
+   the two-octet length prefix. Log 2's `Subgoal 3''` shows exactly that:
+   `(FN-FRAME-SPLIT 2 (APPEND (APPEND (FN-CBOR-U16-BYTES (LEN VALUE)) VALUE)
+   REST))` left unreduced.
+2. **`:do-not-induct t` does not bound the cost.** Runs 4 and 5 sat at 98%
+   CPU for more than ten minutes inside the simplifier on
+   `fn-frame-field-parse-of-octets-text` with no induction message, and
+   `certify_books.py`-style buffering means the log ends mid-form, so the
+   failing subgoal is never written. Closing the parse-result accessors
+   (the if-explosion hypothesis) did not change it.
+3. **The remaining suspect is the text case specifically.** `-blob`, `-nat`
+   and `-enum` have never been reached. Next thing to try is to prove the
+   counted tail once over a variable length --
+   `(implies (and (true-listp value) (consp value) (natp maximum)
+   (<= (len value) maximum)) (equal (fn-frame-parse-counted (append value rest)
+   (len value) maximum) (fn-frame-parse-ok value rest)))` -- disable
+   `fn-frame-parse-counted` afterwards, and let the `-text` case do only the
+   split-2 step. Run it as an `ld` of a *scratch* file holding just that one
+   lemma, not as an `ld` of the whole book: each full-book run costs four
+   minutes of admitted preamble before it reaches the form under test.
+
 ### 3.2 Never attempted
 
 - `books/identity.lisp`, `books/identity-invariants.lisp` — written, never

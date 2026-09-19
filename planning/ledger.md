@@ -10,19 +10,19 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 129 |
-| Certification roots in the Makefile | 129 |
-| Books inside the root closure | 129 |
-| `defthm` and `defthmd` events | 1508 |
-| `defun` events | 1281 |
-| Functions with verified guards | 700 |
+| Books read | 136 |
+| Certification roots in the Makefile | 136 |
+| Books inside the root closure | 136 |
+| `defthm` and `defthmd` events | 1634 |
+| `defun` events | 1361 |
+| Functions with verified guards | 730 |
 | Functions declared `:verify-guards nil` and never verified | 29 |
-| Functions left at the default with an explicit guard | 180 |
-| Functions left at the default with no guard | 372 |
-| `assert-event` checks | 1615 |
-| `must-fail` checks | 58 |
-| `encapsulate` events | 7 |
-| Theorems flagged SUSPECT by shape | 21 |
+| Functions left at the default with an explicit guard | 229 |
+| Functions left at the default with no guard | 373 |
+| `assert-event` checks | 1679 |
+| `must-fail` checks | 63 |
+| `encapsulate` events | 8 |
+| Theorems flagged SUSPECT by shape | 22 |
 
 ## Per book
 
@@ -69,6 +69,10 @@ that `make certify` requests.
 | `books/checkpoint.lisp` | root | 10 | 13 | 13/0/0/0 | 0 | 0 | 0 |
 | `books/exchange-invariants.lisp` | root | 22 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `books/exchange.lisp` | root | 10 | 40 | 40/0/0/0 | 0 | 0 | 1 |
+| `books/frame-invariants.lisp` | root | 61 | 0 | 0/0/0/0 | 0 | 0 | 1 |
+| `books/frame.lisp` | root | 36 | 58 | 27/0/30/1 | 0 | 0 | 0 |
+| `books/identity-invariants.lisp` | root | 21 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/identity.lisp` | root | 0 | 16 | 3/0/13/0 | 0 | 0 | 0 |
 | `books/index.lisp` | root | 24 | 22 | 22/0/0/0 | 0 | 0 | 0 |
 | `books/journal.lisp` | root | 9 | 61 | 0/0/0/61 | 0 | 0 | 0 |
 | `books/nntp-effects.lisp` | root | 57 | 3 | 0/0/0/3 | 0 | 0 | 0 |
@@ -84,6 +88,7 @@ that `make certify` requests.
 | `books/replay.lisp` | root | 7 | 13 | 13/0/0/0 | 0 | 0 | 0 |
 | `books/retention-invariants.lisp` | root | 16 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/retention.lisp` | root | 11 | 35 | 35/0/0/0 | 0 | 0 | 2 |
+| `books/store-config.lisp` | root | 8 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/store-files-invariants.lisp` | root | 32 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/store-files-traces.lisp` | root | 53 | 12 | 0/0/0/12 | 0 | 0 | 0 |
 | `books/store-files.lisp` | root | 13 | 47 | 47/0/0/0 | 0 | 0 | 0 |
@@ -132,6 +137,8 @@ that `make certify` requests.
 | `tests/acl2/exchange-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
 | `tests/acl2/exchange-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 3 | 0 |
 | `tests/acl2/exchange-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
+| `tests/acl2/frame-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 3 | 0 |
+| `tests/acl2/identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 24 | 2 | 0 |
 | `tests/acl2/index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 0 | 0 |
 | `tests/acl2/journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/nntp-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 2 | 0 |
@@ -175,6 +182,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bp-effect-for-pending-attempt-unfolds` | `books/bp-workflow-invariants.lisp` | 882 | branch-of-definition: the hypothesis is a branch test of fn-bp-effect-for-pending and the conclusion is that branch's value |
 | `fn-bpr-context-from-request-is-constructor` | `books/bp-receiver-state-invariants.lisp` | 86 | definition-restated: the conclusion is the body of fn-bpr-context-from-request |
 | `fn-exchange-ingest-refusal-is-no-op` | `books/exchange.lisp` | 364 | branch-of-definition: the hypothesis negates a branch test of fn-exchange-ingest and the conclusion is that branch's value |
+| `fn-frame-decode-refuses-oversize-before-validation` | `books/frame-invariants.lisp` | 473 | branch-of-definition: the hypothesis is a branch test of fn-frame-decode and the conclusion is that branch's value |
 | `fn-node-capacity-refusal-is-no-op` | `books/node.lisp` | 367 | branch-of-definition: the hypothesis is a branch test of fn-node-prepare and the conclusion is that branch's value |
 | `fn-node-complete-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 141 | closed-theory-corollary: proved only by fn-node-complete-preserves-state, fn-node-state-has-committed-archive-pins |
 | `fn-node-prepare-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 124 | closed-theory-corollary: proved only by fn-node-prepare-preserves-state, fn-node-state-has-committed-archive-pins |
