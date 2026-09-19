@@ -4,22 +4,22 @@ Branch `w3/nine-p`, branched from `dev` at `9321344`.
 
 ## What landed
 
-- [`tools/fn9p.py`](tools/fn9p.py): a read-only 9P2000 server over one
+- [`tools/fn9p.py`](../../tools/fn9p.py): a read-only 9P2000 server over one
   committed store. It replays the store exactly as `tools/run_reader.py` does
   (shared lock, `Acl2Store`, `Store.recover`, `fn-reader-use-store`),
   materializes the whole view through the ACL2 bridge, and then releases the
   lock, the bridge and the ACL2 process. Implements version, attach, walk,
   open, read, clunk, stat, flush; refuses auth, create, write, remove, wstat
   and any non-read open mode.
-- [`host/ninep-host.lisp`](host/ninep-host.lisp): the ACL2 adapter. Every byte
+- [`host/ninep-host.lisp`](../../host/ninep-host.lisp): the ACL2 adapter. Every byte
   the server serves comes from here, and everything here calls
   `books/nntp.lisp` over the archive `host/reader-host.lisp` selected. No news
   semantics in Python.
-- [`tests/test_fn9p.py`](tests/test_fn9p.py): a 9P client written for the test,
+- [`tests/test_fn9p.py`](../../tests/test_fn9p.py): a 9P client written for the test,
   comparing the view against a live NNTP reader over the same store.
-- [`specs/views-9p.md`](specs/views-9p.md): the projection contract, what is
+- [`specs/views-9p.md`](../../specs/views-9p.md): the projection contract, what is
   and is not served, the fixed-generation rule, and the trust boundary.
-- [`tests/evidence/2026-09-19-nine-p.md`](tests/evidence/2026-09-19-nine-p.md):
+- [`tests/evidence/2026-09-19-nine-p.md`](../../tests/evidence/2026-09-19-nine-p.md):
   the Linux kernel-client mount transcript.
 - `planning/milestones.md` M6 now names the experiment.
 
@@ -75,7 +75,7 @@ lock.
 - Linux kernel mount (hbox, 6.11.0-29-generic, in-kernel v9fs over TCP):
   mounts, walks, `ls -la`, `cat` of an article byte for byte, `ENOENT` for a
   missing article, `EPERM` for create and write, clean `umount`. Recorded in
-  [the evidence note](tests/evidence/2026-09-19-nine-p.md). The tree served
+  [the evidence note](../../tests/evidence/2026-09-19-nine-p.md). The tree served
   there was synthetic, so it is protocol evidence, not projection evidence --
   the store-backed kernel mount with a `diff` against the reader is chained
   behind the hbox `make certify` and will land in
