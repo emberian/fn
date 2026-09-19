@@ -7,9 +7,11 @@
 (defun fn-bp-journal-textp (x)
   (declare (xargs :guard t :verify-guards nil))
   (and (stringp x) (< 0 (length x)) (<= (length x) 512)))
+(verify-guards fn-bp-journal-textp)
 (defun fn-bp-u64p (x)
   (declare (xargs :guard t :verify-guards nil))
   (and (natp x) (< x 18446744073709551616)))
+(verify-guards fn-bp-u64p)
 (defun fn-bp-journal-nth (n x)
   (declare (xargs :guard t :measure (nfix n)))
   (if (not (and (integerp n) (< 0 n)))
@@ -26,11 +28,13 @@
        (posp (fn-bp-journal-nth 5 r))
        (fn-bp-journal-textp (fn-bp-journal-nth 6 r))
        (fn-bp-journal-textp (fn-bp-journal-nth 7 r))))
+(verify-guards fn-bp-config-recordp)
 (defun fn-bp-config-from-record (r)
   (declare (xargs :guard t :verify-guards nil))
   (fn-bp-make-config (fn-bp-journal-nth 1 r) (fn-bp-journal-nth 2 r)
    (fn-bp-journal-nth 3 r) (fn-bp-journal-nth 4 r) (fn-bp-journal-nth 5 r)
    (fn-bp-journal-nth 6 r) (fn-bp-journal-nth 7 r)))
+(verify-guards fn-bp-config-from-record)
 
 (defun fn-bp-journal-recordp (r)
  (declare (xargs :guard t :verify-guards nil))
@@ -77,6 +81,7 @@
      (fn-bp-u64p (fn-bp-journal-nth 3 r))
      (fn-bp-journal-textp (fn-bp-journal-nth 4 r))))
    (t nil))))
+(verify-guards fn-bp-journal-recordp)
 
 (defun fn-bp-record-event (r)
  (declare (xargs :guard t :verify-guards nil))
@@ -101,6 +106,7 @@
      (fn-bp-journal-nth 1 r) (fn-bp-journal-nth 2 r)
      (fn-bp-journal-nth 3 r) (fn-bp-journal-nth 4 r)))
    (t nil))))
+(verify-guards fn-bp-record-event)
 
 (defun fn-bp-record-contextp (s r prepared)
  (declare (xargs :guard t :verify-guards nil))
@@ -126,6 +132,7 @@
    ((equal k :transport) (not (consp (fn-bp-state-pending s))))
    ((equal k :retry-request) (not (consp (fn-bp-state-pending s))))
    (t nil))))
+(verify-guards fn-bp-record-contextp)
 
 ; Apply one already decoded record to a live image.  Unlike disk replay this
 ; never fabricates restart or indeterminate observations.  A no-op transition
@@ -133,7 +140,8 @@
 ; cannot authorize effects.
 (defun fn-bp-apply-journal-record (s r)
  (declare (xargs :guard t :verify-guards nil))
- (if (or (not (fn-bp-journal-recordp r)) (equal (car r) :config))
+ (mbe :logic
+(if (or (not (fn-bp-journal-recordp r)) (equal (car r) :config))
      (list nil s nil)
   (if (equal (car r) :outcome)
       (let* ((recoveryp (equal (fn-bp-journal-nth 3 r) :recovery))
@@ -149,12 +157,32 @@
            (next (fn-bp-result-state answer)))
       (if (or (equal next s) (not (fn-bp-record-contextp s r next)))
           (list nil s nil)
-        (list t next (fn-bp-result-effects answer)))))))
+        (list t next (fn-bp-result-effects answer))))))
+      :exec
+(if (or (not (fn-bp-journal-recordp r)) (equal (fn-ag-car r) :config))
+     (list nil s nil)
+  (if (equal (fn-ag-car r) :outcome)
+      (let* ((recoveryp (equal (fn-bp-journal-nth 3 r) :recovery))
+             (event (if recoveryp
+               (fn-bp-storage-recover-event (fn-bp-journal-nth 1 r)
+                (fn-bp-journal-nth 2 r) (fn-bp-journal-nth 4 r))
+               (fn-bp-storage-complete-event (fn-bp-journal-nth 1 r)
+                (fn-bp-journal-nth 2 r) (fn-bp-journal-nth 4 r))))
+             (answer (fn-bp-step s event)) (next (fn-bp-result-state answer)))
+       (if (equal next s) (list nil s nil)
+         (list t next (fn-bp-result-effects answer))))
+    (let* ((answer (fn-bp-step s (fn-bp-record-event r)))
+           (next (fn-bp-result-state answer)))
+      (if (or (equal next s) (not (fn-bp-record-contextp s r next)))
+          (list nil s nil)
+        (list t next (fn-bp-result-effects answer)))))) ))
+(verify-guards fn-bp-apply-journal-record)
 
 ; Result is (okp state effects). A false okp makes the recovered prefix unusable.
 (defun fn-bp-replay-records (s records effects)
  (declare (xargs :guard t :verify-guards nil :measure (acl2-count records)))
- (if (endp records) (list t (fn-bp-result-state (fn-bp-step s (fn-bp-restart-event))) effects)
+ (mbe :logic
+(if (endp records) (list t (fn-bp-result-state (fn-bp-step s (fn-bp-restart-event))) effects)
   (let* ((r (car records)) (kind (fn-bp-journal-nth 0 r)))
    (if (or (not (fn-bp-journal-recordp r)) (equal kind :config))
        (list nil s effects)
@@ -179,12 +207,48 @@
                  (not (fn-bp-record-contextp s r prepared)))
              (list nil s effects)
            (fn-bp-replay-records prepared (cdr records)
-            (append effects (fn-bp-result-effects first))))))))))
+            (append effects (fn-bp-result-effects first)))))))))
+      :exec
+(if (atom records) (list t (fn-bp-result-state (fn-bp-step s (fn-bp-restart-event))) effects)
+  (let* ((r (fn-ag-car records)) (kind (fn-bp-journal-nth 0 r)))
+   (if (or (not (fn-bp-journal-recordp r)) (equal kind :config))
+       (list nil s effects)
+     (if (equal kind :outcome)
+       (if (not (fn-bp-pending-matchesp s (fn-bp-journal-nth 1 r)
+                                            (fn-bp-journal-nth 2 r)))
+           (list nil s effects)
+         (let* ((recoveryp (equal (fn-bp-journal-nth 3 r) :recovery))
+                (fenced (if recoveryp
+                  (fn-bp-result-state (fn-bp-step s (fn-bp-storage-complete-event
+                    (fn-bp-journal-nth 1 r) (fn-bp-journal-nth 2 r) :indeterminate))) s))
+                (done (fn-bp-step fenced
+                  (if recoveryp (fn-bp-storage-recover-event
+                    (fn-bp-journal-nth 1 r) (fn-bp-journal-nth 2 r) (fn-bp-journal-nth 4 r))
+                   (fn-bp-storage-complete-event (fn-bp-journal-nth 1 r)
+                    (fn-bp-journal-nth 2 r) (fn-bp-journal-nth 4 r))))))
+           (fn-bp-replay-records (fn-bp-result-state done) (fn-ag-cdr records)
+            (fn-ag-append effects (fn-bp-result-effects done)))))
+       (let* ((event (fn-bp-record-event r)) (first (fn-bp-step s event))
+              (prepared (fn-bp-result-state first)))
+         (if (or (equal prepared s)
+                 (not (fn-bp-record-contextp s r prepared)))
+             (list nil s effects)
+           (fn-bp-replay-records prepared (fn-ag-cdr records)
+            (fn-ag-append effects (fn-bp-result-effects first))))))))) ))
+(verify-guards fn-bp-replay-records)
 
 (defun fn-bp-replay-journal (node records)
  (declare (xargs :guard t :verify-guards nil))
- (if (or (endp records) (not (fn-bp-config-recordp (car records))))
+ (mbe :logic
+(if (or (endp records) (not (fn-bp-config-recordp (car records))))
      (list nil nil nil)
    (let ((s (fn-bp-initial-state node (fn-bp-config-from-record (car records)))))
     (if (not (fn-bp-statep s)) (list nil nil nil)
-      (fn-bp-replay-records s (cdr records) nil)))))
+      (fn-bp-replay-records s (cdr records) nil))))
+      :exec
+(if (or (atom records) (not (fn-bp-config-recordp (fn-ag-car records))))
+     (list nil nil nil)
+   (let ((s (fn-bp-initial-state node (fn-bp-config-from-record (fn-ag-car records)))))
+    (if (not (fn-bp-statep s)) (list nil nil nil)
+      (fn-bp-replay-records s (fn-ag-cdr records) nil))))))
+(verify-guards fn-bp-replay-journal)
