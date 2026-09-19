@@ -6,26 +6,32 @@ this lane.
 
 ## What shipped
 
-**`tools/certs.py`** — a content-addressed cache of `.cert`/`.port` pairs,
-which content-hashed certificates (`ACL2_BOOK_HASH_ALISTP=NIL`) make portable.
-`publish` walks `books/` and `tests/acl2/` and stores each valid-looking pair
-under `<sha256 of the book source>/<book name>/` in `~/.cache/fn-certs`
-(`FN_CERT_CACHE`), refusing one older than the book beside it; `--remote hbox`
-or `--remote persvati` rsyncs the cache to `/tank/fn/certcache` or
-`~/fn-certcache`. `install` copies in every pair whose key matches a book here
-and never overwrites a local certificate that already matches its book and is
-no older than the cached one; it reports installed/kept counts and the books
-with no cached pair. `status` prints coverage. The book name below the hash is
-deliberate: two books with identical bytes do not share an entry, because
-whether ACL2 writes a book's own name into its certificate is not something
-this tool should have to be right about. `tools/certify_books.py` publishes
-after every passing run unless `--no-publish`, and records the result in the
-manifest as `cert_cache`. Targets: `make certs-install`, `make certs-publish`
-(`FN_CERT_REMOTE=hbox` also mirrors).
-Tests (`tests/test_certs.py`): `PublishTests`,
-`InstallTests.test_install_matches_by_content_across_worktrees`,
-`...never_overwrites_a_newer_local_certificate`,
-`...removes_a_port_the_cached_entry_does_not_have`, `StatusAndRemoteTests`.
+**`tools/certs.py`** (reworked on `dep/tooling2` after the cache was
+poisoned; the first version keyed on the book's own content and trusted any
+`.cert` beside a book). `publish` now caches a pair **only** against a
+certification manifest (`--manifest PATH`, else every
+`build/acl2/certify-*/manifest.json` under `--root`): the source must still
+hash to that run's `source_digests_sha256` (and `_after` when recorded) and
+the certificate to its `certificate_digests_sha256`, from a manifest whose
+status is `passed`. There is no other publish path, so a stale certificate
+beside a freshly merged source is `unverified`, never cached. The key is the
+**closure hash**: sha256 over the sorted `<path>:<sha256>` listing of the book
+and its whole local include closure (`include-book` resolved relative to the
+including file, `:dir :system` ignored), so a changed dependency changes the
+key of an unchanged book and the cache cannot report a hit ACL2 would refuse.
+`install` computes the same key and keeps a byte-identical local certificate;
+`status` prints coverage; `valid_looking` accepts both ACL2 8.7's serialized
+`#Z` format and the textual one; no rule anywhere depends on mtime. Entry meta
+records the closure listing and the evidence directory. `certify_books.py`
+publishes against its own in-memory manifest. Targets: `make certs-install`,
+`make certs-publish` (`FN_CERT_REMOTE=hbox` also mirrors).
+Tests (`tests/test_certs.py`, 19): `ClosureKeyTests` (a changed dependency
+changes an unchanged book's key; `:dir :system` excluded; a missing dependency
+raises), `PublishTests` (no manifest, edited source, replaced certificate,
+failed manifest and a recorded closure error each publish nothing; both
+certificate formats), `InstallTests` (whole-closure match, no false hit on a
+changed dependency, a differing local pair replaced, a stale `.port` removed),
+`StatusAndRemoteTests`.
 
 **`certify_books.py --affected-by BOOK [--dry-run]`** — keeps only the
 requested roots that are, or transitively include, a named book, in requested
