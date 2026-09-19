@@ -91,6 +91,7 @@ ACL2_BOOKS ?= books/assumptions \
 	tests/acl2/bp-workflow-tests \
 	tests/acl2/bp-workflow-teeth-tests \
 	books/bp-workflow-records \
+	books/bp-workflow-records-invariants \
 	tests/acl2/bp-workflow-records-tests \
 	books/bp-receipt \
 	tests/acl2/bp-receipt-tests \
