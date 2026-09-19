@@ -10,7 +10,7 @@ import subprocess
 import sys
 import time
 
-from run_store import (Acl2Store, EXIT_FAULT, EXIT_OK, EXIT_USAGE, Store, UsageParser,
+from run_store import (Acl2Store, EXIT_FAULT, EXIT_OK, Store, UsageParser,
                        decimal_list)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

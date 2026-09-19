@@ -442,7 +442,7 @@ class WorkflowJournal:
             # took effect and only its reply was lost.  Absence without a
             # durable frame is an ordinary missing bundle.
             if not final.exists(): raise JournalError("BID is not present in inventory")
-            return self._reconcile_completed_delete(bid, final)
+            return self._validated_durable_frame(bid, final)
         existing=list(self.inbound.iterdir())
         if not final.exists() and len(existing) >= MAX_INBOUND_COUNT:
             raise JournalError("inbound count")
@@ -491,13 +491,8 @@ class WorkflowJournal:
             if item == bid: present=True
         return present
 
-    def _reconcile_completed_delete(self, bid: str, final: Path) -> Path:
-        """Resolve a pending delete whose reply was lost but which took effect.
-
-        The durable frame is re-barriered and its stored BID rechecked; the BPA
-        is not called again.  Returning normally is what clears the pending
-        state, because the caller raised InboundDeletePending to create it.
-        """
+    def _validated_durable_frame(self, bid: str, final: Path) -> Path:
+        """Re-barrier one durable inbound frame and recheck its stored BID."""
         if final.is_symlink() or not final.is_file():
             raise JournalFault("durable inbound frame is absent")
         stored_bid, _payload=decode_inbound(
@@ -520,8 +515,10 @@ class WorkflowJournal:
         name=hashlib.sha256(bid.encode("utf-8", "strict")).hexdigest()+".bp"
         final=self.inbound/name
         if not self._in_inventory(bid, inventory):
-            return self._reconcile_completed_delete(bid, final)
-        self._reconcile_completed_delete(bid, final)
+            # Returning normally is what clears the pending state, because the
+            # caller raised InboundDeletePending to create it.
+            return self._validated_durable_frame(bid, final)
+        self._validated_durable_frame(bid, final)
         try: delete(bid)
         except Exception as error:
             raise InboundDeletePending(f"durable inbound awaits BPA delete: {bid}") from error
