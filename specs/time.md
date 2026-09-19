@@ -1,6 +1,10 @@
 # Clock observations and bundle expiry
 
-Status: executable model and certified properties. This is not a clock
+Status: executable model and certified properties. `books/clock` and
+`books/clock-invariants` are certified by ACL2. `tests/acl2/clock-tests` is
+**not**: one of its event forms fails, so every witness and tooth cited below
+is written and not yet accepted, including the two-node witness in the safety
+section. This is not a clock
 discipline, a time-synchronisation protocol, a retention policy, or a
 qualification of any host time source.
 
