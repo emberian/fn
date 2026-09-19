@@ -554,12 +554,39 @@
 ; -----------------------------------------------------------------------------
 ; Durable observations and restart
 
+; Attempt lifecycle.  A live status is one that transport evidence may still
+; advance.  The rank orders the lifecycle: durable intent, BPA reply, BPA
+; inventory, transmission attempt, forwarding, inbound persistence, dequeue,
+; delivery, then the retryable end states.  An observation is accepted only if
+; it repeats the current status or strictly advances a live one.  :delivered
+; leaves only through an explicit policy retry (fn-bp-request-retry), and a
+; retryable status leaves only through a new attempt at a new generation
+; (fn-bp-prepare-attempt).  No observation returns an attempt to :intent, so
+; the one-shot submit gate keyed on :intent cannot be reopened by transport
+; evidence.  See bp-workflow-transport-invariants for the theorems.
+(defun fn-bp-live-statusp (x)
+  (declare (xargs :guard t))
+  (member-equal x '(:intent :bpa-submit-replied :bpa-accepted :attempted
+                    :forwarded :inbound-persisted :dequeued)))
+
+(defun fn-bp-status-rank (x)
+  (declare (xargs :guard t))
+  (cond ((equal x :intent) 0)
+        ((equal x :bpa-submit-replied) 1)
+        ((equal x :bpa-accepted) 2)
+        ((equal x :attempted) 3)
+        ((equal x :forwarded) 4)
+        ((equal x :inbound-persisted) 5)
+        ((equal x :dequeued) 6)
+        ((equal x :delivered) 7)
+        (t 8)))
+
 (defun fn-bp-transport-transition-okp (old new)
   (declare (xargs :guard t))
   (and (fn-bp-transport-statusp new)
        (or (equal old new)
-           (and (not (fn-bp-retryable-statusp old))
-                (not (equal old :delivered))))))
+           (and (fn-bp-live-statusp old)
+                (< (fn-bp-status-rank old) (fn-bp-status-rank new))))))
 
 (defun fn-bp-observe-transport (s work-id attempt-id generation status)
   (declare (xargs :guard t))

@@ -79,6 +79,7 @@ ACL2_BOOKS ?= books/acceptance \
 	tests/acl2/bp-workflow-binding-invariants-tests \
 	tests/acl2/bp-workflow-tests \
 	books/bp-workflow-records \
+	books/bp-workflow-records-invariants \
 	tests/acl2/bp-workflow-records-tests \
 	books/bp-receipt \
 	tests/acl2/bp-receipt-tests \

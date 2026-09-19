@@ -17,6 +17,12 @@ Message-ID. It constructs the request with:
 3. policy, source incarnation, authorization context and terms from work; and
 4. the exact committed node article payload.
 
+Because no transport observation returns an attempt to `:intent`
+(`fn-bp-observe-transport-never-returns-to-intent` in
+`books/bp-workflow-transport-invariants.lisp`), the `:intent` requirement here
+cannot be re-satisfied by transport evidence once the attempt has advanced;
+only a new attempt at a new generation is `:intent` again.
+
 The `fn-bpa-requestp` gate enforces the portable 256-octet metadata and
 32,768-octet article bounds. Missing work/article/binding, stale attempts and
 unencodable metadata are refused. Building the ADU is a read-only projection.
