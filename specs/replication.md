@@ -70,6 +70,6 @@ receipts. BP lifetime and fn retention lifetime are separately specified.
 
 Limit what each peer can request, introduce, or learn through inventories. A
 content-addressed store does not make private object enumeration harmless.
-The shared-group first proposal avoids promising confidentiality; D04 determines
-whether encrypted groups/letters are required for the first release. End-to-end
+D04 selects shared community groups first and defers private encrypted groups
+beyond the initial release, while preserving explicit privacy boundaries. End-to-end
 encryption would require an explicit metadata-leakage and key-rotation design.
