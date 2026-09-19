@@ -72,6 +72,16 @@ lock.
     succeeds while the view is mounted (the lock is not held), and the mounted
     view keeps its `/status` bytes, its directory and its 404 for the new
     number, while a fresh mount shows the higher generation and the new file.
+- Linux kernel mount (hbox, 6.11.0-29-generic, in-kernel v9fs over TCP):
+  mounts, walks, `ls -la`, `cat` of an article byte for byte, `ENOENT` for a
+  missing article, `EPERM` for create and write, clean `umount`. Recorded in
+  [the evidence note](tests/evidence/2026-09-19-nine-p.md). The tree served
+  there was synthetic, so it is protocol evidence, not projection evidence --
+  the store-backed kernel mount with a `diff` against the reader is chained
+  behind the hbox `make certify` and will land in
+  `/tank/fn/ninep/mount-transcript.log`. That mount showed both refusals
+  arriving as `ESERVERFAULT`; a missing file now answers with the string v9fs
+  maps to `ENOENT`, and the tests were re-run green after that change.
 - A protocol-only exercise of the server over a synthetic tree (multi-read
   files, a directory larger than one msize, `..` walks, two clients) was run
   during development without ACL2; it is not part of the committed suite.
