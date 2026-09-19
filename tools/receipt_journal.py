@@ -1,74 +1,24 @@
 """Separate durable receiver request/receipt journal; ACL2 owns semantics."""
 from __future__ import annotations
-import fcntl, hashlib, os, struct
+import fcntl, os
 from pathlib import Path
+from tools import frame_bridge
 from tools.workflow_journal import (FaultPoints, JournalError, JournalFault, JournalUncertain,
                                     NO_FAULTS, durable_barrier, fsync_dir,
                                     open_exclusive_lock, read_regular_barriered, write_all)
 MAGIC=b"FNRJ"; SCHEMA=1; MAX_TEXT=512; MAX_BLOB=131072; MAX_RECORD=270000
 MAX_RECORDS=4096; MAX_AGGREGATE=64*1024*1024
-KINDS={"config":1,"request-context":2,"receipt-intent":3,"receipt-decision":4}
-NAMES={v:k for k,v in KINDS.items()}
-FIELDS={
- "config":(("destination-eid","text"),("policy-id","text"),("issuer-eid","text")),
- "request-context":(("inbound-bid","text"),("request-adu","blob"),("store-record","blob"),("policy-authorized","true")),
- "receipt-intent":(("work-id","text"),("receipt-id","text"),("receipt-adu","blob"),("policy-authorized","true")),
- "receipt-decision":(("work-id","text"),("receipt-id","text"),("outcome","outcome"))}
-OUTCOMES={"committed":1,"absent":2}
-def _s(v):
- if not isinstance(v,str): raise JournalError("receiver text type")
- b=v.encode("utf-8","strict")
- if not 1<=len(b)<=MAX_TEXT: raise JournalError("receiver text bound")
- return struct.pack(">H",len(b))+b
-def _b(v):
- if not isinstance(v,bytes) or not 1<=len(v)<=MAX_BLOB: raise JournalError("receiver blob bound")
- return struct.pack(">I",len(v))+v
-def encode_receiver_record(kind,values):
- if kind not in FIELDS or set(values)!={n for n,_ in FIELDS[kind]}: raise JournalError("receiver record shape")
- p=bytearray()
- for n,t in FIELDS[kind]:
-  v=values[n]
-  if t=="text":p+=_s(v)
-  elif t=="blob":p+=_b(v)
-  elif t=="true":
-   if v is not True: raise JournalError("receiver policy decision")
-   p.append(1)
-  else:
-   if v not in OUTCOMES: raise JournalError("receiver outcome")
-   p.append(OUTCOMES[v])
- h=MAGIC+bytes((SCHEMA,KINDS[kind]))+struct.pack(">I",len(p)); raw=h+p+hashlib.sha256(h+p).digest()
- if len(raw)>MAX_RECORD: raise JournalError("receiver record bound")
- return bytes(raw)
-def decode_receiver_record(raw):
- if not 42<=len(raw)<=MAX_RECORD or raw[:4]!=MAGIC or raw[4]!=SCHEMA: raise JournalFault("receiver frame")
- if hashlib.sha256(raw[:-32]).digest()!=raw[-32:]: raise JournalFault("receiver checksum")
- kind=NAMES.get(raw[5]); size=struct.unpack(">I",raw[6:10])[0]
- if kind is None or size!=len(raw)-42: raise JournalFault("receiver kind/length")
- p=memoryview(raw)[10:-32]; o=0; values={}; rev={v:k for k,v in OUTCOMES.items()}
- for n,t in FIELDS[kind]:
-  if t=="text":
-   if o+2>len(p): raise JournalFault("receiver text")
-   z=struct.unpack(">H",p[o:o+2])[0];o+=2
-   if not 1<=z<=MAX_TEXT or o+z>len(p): raise JournalFault("receiver text bound")
-   try: values[n]=bytes(p[o:o+z]).decode("utf-8","strict")
-   except UnicodeDecodeError as e: raise JournalFault("receiver utf8") from e
-   o+=z
-  elif t=="blob":
-   if o+4>len(p): raise JournalFault("receiver blob")
-   z=struct.unpack(">I",p[o:o+4])[0];o+=4
-   if not 1<=z<=MAX_BLOB or o+z>len(p): raise JournalFault("receiver blob bound")
-   values[n]=bytes(p[o:o+z]);o+=z
-  else:
-   if o>=len(p): raise JournalFault("receiver enum")
-   q=int(p[o]);o+=1
-   if t=="true":
-    if q!=1: raise JournalFault("receiver policy")
-    values[n]=True
-   else:
-    if q not in rev: raise JournalFault("receiver outcome")
-    values[n]=rev[q]
- if o!=len(p): raise JournalFault("receiver trailing bytes")
- return kind,values
+# The receiver record kinds, their field names and types, and the outcome
+# enumeration live in `books/frame`; `frame_bridge` asks for the schema of a
+# kind and caches it.  This module keeps no copy of any of them.
+def encode_receiver_record(kind,values,bridge=None):
+ """`books/frame` builds the record; the host appends the trailer only."""
+ try: return frame_bridge.session(bridge).record_frame("receipt",kind,values)
+ except frame_bridge.BridgeError as error: raise JournalError(str(error)) from error
+def decode_receiver_record(raw,bridge=None):
+ """`books/frame` parses the record and compares the host's digest."""
+ try: return frame_bridge.session(bridge).record_unframe("receipt",raw)
+ except (frame_bridge.BridgeError,UnicodeDecodeError) as error: raise JournalFault(str(error)) from error
 class ReceiptJournal:
  def __init__(self,root,bridge,faults:FaultPoints=NO_FAULTS):
   self.root=Path(root);self.records=self.root/"records";self.staging=self.root/"staging"

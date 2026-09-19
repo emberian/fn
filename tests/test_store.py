@@ -175,7 +175,7 @@ class StoreTests(unittest.TestCase):
         with self.recovered_bridge() as bridge:
             # The post after reopen uses txid 1, never the aborted txid 0.
             raw = (self.path / "transactions" / "00000000000000000000.txn").read_bytes()
-            self.assertEqual(bridge.record_txid(unframe(raw, 32768)), 1)
+            self.assertEqual(bridge.record_txid(unframe(raw)), 1)
 
         uncertain = self.post("<uncertain@example.invalid>", b"uncertain", ("fn.letters",),
                               "--inject-fault", "postpublish",

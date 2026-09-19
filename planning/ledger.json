@@ -38,6 +38,13 @@
     "tests/acl2/article-work-tests",
     "books/article-fields",
     "tests/acl2/article-fields-tests",
+    "books/store-config",
+    "books/frame",
+    "books/frame-invariants",
+    "tests/acl2/frame-tests",
+    "books/identity",
+    "books/identity-invariants",
+    "tests/acl2/identity-tests",
     "books/retention",
     "books/retention-invariants",
     "tests/acl2/retention-tests",
@@ -135,21 +142,21 @@
     "tests/acl2/nntp-teeth-tests"
   ],
   "totals": {
-    "books": 131,
-    "books_in_root_closure": 131,
-    "roots": 131,
-    "theorems": 1728,
-    "functions": 1347,
-    "assert_events": 1948,
-    "must_fails": 94,
-    "encapsulates": 7,
+    "books": 138,
+    "books_in_root_closure": 138,
+    "roots": 138,
+    "theorems": 1876,
+    "functions": 1427,
+    "assert_events": 2013,
+    "must_fails": 99,
+    "encapsulates": 8,
     "guards": {
-      "verified": 725,
+      "verified": 755,
       "declared-off": 36,
-      "default-guarded": 187,
-      "default-unguarded": 399
+      "default-guarded": 236,
+      "default-unguarded": 400
     },
-    "suspect_theorems": 22
+    "suspect_theorems": 23
   },
   "books": [
     {
@@ -1102,6 +1109,119 @@
       "read_error": null
     },
     {
+      "book": "books/frame-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 79,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "frame"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-frame-decode-refuses-oversize-before-validation"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/frame.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 36,
+      "functions": 58,
+      "guards": {
+        "verified": 27,
+        "declared-off": 0,
+        "default-guarded": 30,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 27,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 31,
+      "defmacros": 0,
+      "encapsulates": 1,
+      "includes": [
+        "cbor-invariants",
+        "wildmat"
+      ],
+      "system_includes": [
+        "arithmetic/top",
+        "ihs/quotient-remainder-lemmas"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/identity-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 25,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "frame-invariants",
+        "identity"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/identity.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 16,
+      "guards": {
+        "verified": 3,
+        "declared-off": 0,
+        "default-guarded": 13,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 3,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 7,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "frame"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/index.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -1497,6 +1617,31 @@
         "fn-retain-admission-refusal-is-no-op",
         "fn-retain-wrong-evidence-does-not-release"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/store-config.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 8,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 6,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "cbor"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -2775,6 +2920,60 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/frame-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 41,
+      "must_fails": 3,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/frame-invariants"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/identity-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 24,
+      "must_fails": 2,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/identity-invariants"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/index-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -3577,6 +3776,14 @@
       "line": 364,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-exchange-ingest and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-frame-decode-refuses-oversize-before-validation",
+      "book": "books/frame-invariants.lisp",
+      "line": 638,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-frame-decode and the conclusion is that branch's value"
       ]
     },
     {
