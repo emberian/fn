@@ -11,7 +11,7 @@
 ; content whatsoever can change the answer to CAPABILITIES, HELP, QUIT, an
 ; unrecognized command, or a syntax error.
 (in-package "ACL2")
-(include-book "nntp")
+(include-book "nntp-overview")
 
 ; -----------------------------------------------------------------------------
 ; The session relation
@@ -233,6 +233,51 @@
                                    fn-nntp-result-session
                                    fn-nntp-session-projected)))))
 
+; -----------------------------------------------------------------------------
+; The reader profile's new commands change no session state
+;
+; RFC 3977 section 5.3.2 requires MODE READER on a non-mode-switching server
+; advertising READER to affect the server state in no way; sections 7.1, 7.3,
+; 8.3 and 8.4 define DATE, NEWGROUPS, OVER and LIST OVERVIEW.FMT with no state
+; effect either, and in particular OVER does not move the current article.
+
+(defthm fn-nntp-date-response-preserves-session
+  (equal (fn-nntp-result-session (fn-nntp-date-response session env)) session))
+
+(defthm fn-nntp-mode-response-preserves-session
+  (equal (fn-nntp-result-session (fn-nntp-mode-response session args)) session))
+
+(defthm fn-nntp-newgroups-response-preserves-session
+  (equal (fn-nntp-result-session
+          (fn-nntp-newgroups-response session archive env args))
+         session))
+
+(defthm fn-nntp-list-overview-fmt-preserves-session
+  (equal (fn-nntp-result-session (fn-nntp-list-overview-fmt session)) session))
+
+(defthm fn-nntp-over-current-preserves-session
+  (equal (fn-nntp-result-session (fn-nntp-over-current session archive)) session))
+
+(defthm fn-nntp-over-range-preserves-session
+  (equal (fn-nntp-result-session (fn-nntp-over-range session archive token))
+         session))
+
+(defthm fn-nntp-over-msgid-preserves-session
+  (equal (fn-nntp-result-session (fn-nntp-over-msgid session archive token))
+         session))
+
+(defthm fn-nntp-over-response-preserves-session
+  (equal (fn-nntp-result-session (fn-nntp-over-response session archive args))
+         session)
+  :hints (("Goal" :in-theory (e/d (fn-nntp-over-response)
+                                  (fn-nntp-over-current fn-nntp-over-range
+                                   fn-nntp-over-msgid)))))
+
+(in-theory (disable fn-nntp-date-response fn-nntp-mode-response
+                    fn-nntp-newgroups-response fn-nntp-list-overview-fmt
+                    fn-nntp-over-current fn-nntp-over-range
+                    fn-nntp-over-msgid fn-nntp-over-response))
+
 (defthm fn-nntp-list-response-preserves-session
   (equal (fn-nntp-result-session (fn-nntp-list-response session archive args))
          session)
@@ -258,7 +303,7 @@
 
 (defthm fn-nntp-session-command-keeps-projection
   (equal (fn-nntp-session-projected
-          (fn-nntp-result-session (fn-nntp-session-command session keyword args)))
+          (fn-nntp-result-session (fn-nntp-session-command session env keyword args)))
          (fn-nntp-session-projected session))
   ; The QUIT branch builds its result inline, so the session accessors stay
   ; open here; the theorem itself is in the closed form later proofs use.
@@ -268,7 +313,7 @@
 
 (defthm fn-nntp-archive-command-keeps-projection
   (equal (fn-nntp-session-projected
-          (fn-nntp-result-session (fn-nntp-archive-command session archive keyword args)))
+          (fn-nntp-result-session (fn-nntp-archive-command session archive env keyword args)))
          (fn-nntp-session-projected session))
   :hints (("Goal" :in-theory (e/d (fn-nntp-archive-command)
                                   (fn-nntp-group-result fn-nntp-listgroup-command
@@ -280,7 +325,7 @@
 
 (defthm fn-nntp-command-keeps-projection
   (equal (fn-nntp-session-projected
-          (fn-nntp-result-session (fn-nntp-command session archive tokens)))
+          (fn-nntp-result-session (fn-nntp-command session archive env tokens)))
          (fn-nntp-session-projected session))
   :hints (("Goal" :in-theory (e/d (fn-nntp-command)
                                   (fn-nntp-session-command fn-nntp-archive-command
@@ -293,7 +338,7 @@
 ; verdict every later step has.  No served command reruns fn-nntp-projectionp.
 (defthm fn-nntp-step-preserves-carried-projection
   (equal (fn-nntp-session-projected
-          (fn-nntp-result-session (fn-nntp-step session archive wire-event)))
+          (fn-nntp-result-session (fn-nntp-step session archive env wire-event)))
          (fn-nntp-session-projected session))
   :hints (("Goal" :in-theory (e/d (fn-nntp-step)
                                   (fn-nntp-command fn-nntp-single
@@ -311,8 +356,8 @@
 ; now do not read the archive at all, so no archive can change their answer.
 (defthm fn-nntp-archive-free-step-ignores-the-archive
   (implies (not (fn-nntp-archive-keywordp (car (fn-nntp-tokenize line))))
-           (equal (fn-nntp-step session archive (list :command line))
-                  (fn-nntp-step session other (list :command line))))
+           (equal (fn-nntp-step session archive env (list :command line))
+                  (fn-nntp-step session other env (list :command line))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-step fn-nntp-command)
                                   (fn-nntp-session-command fn-nntp-archive-command
                                    fn-nntp-archive-keywordp fn-nntp-keyword-tokenp
@@ -730,7 +775,7 @@
   (implies (fn-nntp-session-consistentp session archive)
            (fn-nntp-session-consistentp
             (fn-nntp-result-session
-             (fn-nntp-session-command session keyword args)) archive))
+             (fn-nntp-session-command session env keyword args)) archive))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-session-command)
                 (fn-nntp-make-session
@@ -752,7 +797,7 @@
                 (fn-nntp-projectionp archive))
            (fn-nntp-session-consistentp
             (fn-nntp-result-session
-             (fn-nntp-archive-command session archive keyword args)) archive))
+             (fn-nntp-archive-command session archive env keyword args)) archive))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-archive-command)
                 (fn-nntp-projectionp fn-statep
@@ -769,7 +814,7 @@
 (defthm fn-nntp-command-preserves-consistent-session
   (implies (fn-nntp-session-consistentp session archive)
            (fn-nntp-session-consistentp
-            (fn-nntp-result-session (fn-nntp-command session archive tokens))
+            (fn-nntp-result-session (fn-nntp-command session archive env tokens))
             archive))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-command)
@@ -786,7 +831,7 @@
 (defthm fn-nntp-step-preserves-consistent-session
   (implies (fn-nntp-session-consistentp session archive)
            (fn-nntp-session-consistentp
-            (fn-nntp-result-session (fn-nntp-step session archive wire-event))
+            (fn-nntp-result-session (fn-nntp-step session archive env wire-event))
             archive))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-step)
@@ -807,43 +852,43 @@
 
 ; Actual step folding, including malformed events and events after QUIT.  There
 ; is no event predicate that assumes the result is valid, and no output filter.
-(defun fn-nntp-run-session (session archive events)
+(defun fn-nntp-run-session (session archive env events)
   (if (consp events)
       (fn-nntp-run-session
-       (fn-nntp-result-session (fn-nntp-step session archive (car events)))
-       archive (cdr events))
+       (fn-nntp-result-session (fn-nntp-step session archive env (car events)))
+       archive env (cdr events))
     session))
 
 (defthm fn-nntp-finite-trace-preserves-consistent-session
   (implies (fn-nntp-session-consistentp session archive)
            (fn-nntp-session-consistentp
-            (fn-nntp-run-session session archive events) archive))
-  :hints (("Goal" :induct (fn-nntp-run-session session archive events)
+            (fn-nntp-run-session session archive env events) archive))
+  :hints (("Goal" :induct (fn-nntp-run-session session archive env events)
            :in-theory (e/d (fn-nntp-run-session)
                            (fn-nntp-step fn-nntp-result-session
                             fn-nntp-session-consistentp fn-nntp-projectionp)))))
 
 (defthm fn-nntp-finite-trace-preserves-carried-projection
-  (equal (fn-nntp-session-projected (fn-nntp-run-session session archive events))
+  (equal (fn-nntp-session-projected (fn-nntp-run-session session archive env events))
          (fn-nntp-session-projected session))
-  :hints (("Goal" :induct (fn-nntp-run-session session archive events)
+  :hints (("Goal" :induct (fn-nntp-run-session session archive env events)
            :in-theory (e/d (fn-nntp-run-session)
                            (fn-nntp-step fn-nntp-result-session
                             fn-nntp-session-projected)))))
 
 (defthm fn-nntp-opened-finite-trace-is-consistent
   (and (fn-nntp-session-consistentp
-        (fn-nntp-run-session (fn-nntp-open-session archive) archive events)
+        (fn-nntp-run-session (fn-nntp-open-session archive) archive env events)
         archive)
        (fn-nntp-sessionp
-        (fn-nntp-run-session (fn-nntp-open-session archive) archive events)))
+        (fn-nntp-run-session (fn-nntp-open-session archive) archive env events)))
   :hints (("Goal"
            :use ((:instance fn-nntp-open-session-is-consistent)
                  (:instance fn-nntp-finite-trace-preserves-consistent-session
                   (session (fn-nntp-open-session archive)))
                  (:instance fn-nntp-consistent-session-is-session
                   (session (fn-nntp-run-session
-                            (fn-nntp-open-session archive) archive events))))
+                            (fn-nntp-open-session archive) archive env events))))
            :in-theory (disable fn-nntp-run-session
                                fn-nntp-open-session
                                fn-nntp-session-consistentp fn-nntp-sessionp

@@ -24,7 +24,8 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-exchange-` | `exchange`, `exchange-invariants` | Bounded atomic fact-set admission and merge |
 | `fn-transfer-` | `transfer`, `transfer-invariants`, `transfer-assembly-invariants`, `transfer-work`, `transfer-public-work`, `transfer-public-bound` | Fragment reservation, assembly, missing ranges, costed shadows and bounds |
 | `fn-wire-` | `wire`, `wire-invariants` | NNTP line framing, dot stuffing, bounded retained input |
-| `fn-nntp-` | `nntp`, `nntp-invariants`, `nntp-effects` | Reader command dispatcher, session cursor, projection, effects |
+| `fn-nntp-` | `nntp`, `nntp-overview`, `nntp-invariants`, `nntp-effects` | Reader command dispatcher, session cursor, projection, effects; the reader environment (clock observation and group-creation facts), the closed-form civil calendar, and the DATE/NEWGROUPS/MODE READER/OVER branches |
+| `fn-nov-` | `nntp`, `nntp-overview` | RFC 3977 §8.3.2 overview projection over the proved article `fields` view: field escaping, `:bytes`/`:lines` metadata, the eight-field line, and the cleanliness theorems |
 | `fn-ng-` | `nntp` | Guard-verified executable helpers for the NNTP graph |
 | `fn-wildmat-` | `wildmat`, `wildmat-utf8-invariants`, `wildmat-parser-invariants`, `wildmat-matcher-invariants` | UTF-8 decoding, wildmat grammar parsing, dynamic-programming matcher |
 | `fn-wm-` | `wildmat-matcher-invariants`, `wildmat-work` | Reference matcher and costed matcher shadow |
