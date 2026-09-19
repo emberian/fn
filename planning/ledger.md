@@ -10,17 +10,17 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 176 |
-| Certification roots in the Makefile | 176 |
-| Books inside the root closure | 176 |
-| `defthm` and `defthmd` events | 2511 |
-| `defun` events | 1884 |
-| Functions with verified guards | 935 |
+| Books read | 178 |
+| Certification roots in the Makefile | 178 |
+| Books inside the root closure | 178 |
+| `defthm` and `defthmd` events | 2543 |
+| `defun` events | 1909 |
+| Functions with verified guards | 960 |
 | Functions declared `:verify-guards nil` and never verified | 52 |
 | Functions left at the default with an explicit guard | 442 |
 | Functions left at the default with no guard | 455 |
-| `assert-event` checks | 2786 |
-| `must-fail` checks | 135 |
+| `assert-event` checks | 2836 |
+| `must-fail` checks | 139 |
 | `encapsulate` events | 10 |
 | Theorems flagged SUSPECT by shape | 29 |
 
@@ -91,6 +91,7 @@ that `make certify` requests.
 | `books/lace-invariants.lisp` | root | 65 | 1 | 0/0/0/1 | 0 | 0 | 1 |
 | `books/lace.lisp` | root | 5 | 20 | 0/0/20/0 | 0 | 0 | 0 |
 | `books/nntp-effects.lisp` | root | 97 | 12 | 0/0/0/12 | 0 | 0 | 1 |
+| `books/nntp-index.lisp` | root | 32 | 25 | 25/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-invariants.lisp` | root | 67 | 4 | 0/0/0/4 | 0 | 0 | 0 |
 | `books/nntp.lisp` | root | 30 | 127 | 121/0/6/0 | 0 | 0 | 0 |
 | `books/node-invariants.lisp` | root | 20 | 0 | 0/0/0/0 | 0 | 0 | 3 |
@@ -176,6 +177,7 @@ that `make certify` requests.
 | `tests/acl2/index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 0 | 0 |
 | `tests/acl2/journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 52 | 0 | 0 |
+| `tests/acl2/nntp-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 50 | 4 | 0 |
 | `tests/acl2/nntp-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 2 | 0 |
 | `tests/acl2/nntp-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 156 | 4 | 0 |
 | `tests/acl2/node-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 16 | 2 | 0 |
