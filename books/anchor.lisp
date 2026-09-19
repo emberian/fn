@@ -40,7 +40,7 @@
 ; `fn-anchor-vocabulary' (or `fn-anchor-octet-vocabulary') locally.
 
 (in-package "ACL2")
-(include-book "frame")
+(include-book "cbor-invariants")
 (include-book "clock")
 (local (include-book "arithmetic/top" :dir :system))
 (local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
@@ -48,7 +48,8 @@
 ; Local vocabulary re-enable (docs/proof-style.md sec. 2).  This book builds
 ; octet lists by `append' and reads its own field widths, so it needs cbor's
 ; withdrawn list arithmetic; the frame grammar and the frame result records
-; are opened only in the FNAN section below, and are enabled there.
+; the FNAN durable record family lives in `books/anchor-record.lisp', which
+; is the only book of this cluster that includes `frame' at all.
 (local (in-theory (enable fn-cbor-invariants-vocabulary)))
 
 ; The clock book contributes only *fn-clock-max* (a constant), so no clock
@@ -149,6 +150,13 @@
   :hints (("Goal" :in-theory (disable floor mod))))
 
 (in-theory (disable (:d fn-anchor-le-bytes)))
+
+; `len' distributes over `append'.  frame-octets proves this as
+; `fn-frame-len-of-append', but this book no longer includes frame; it is
+; proof vocabulary either way, so it is local.
+(local
+ (defthm fn-anchor-len-of-append
+   (equal (len (append x y)) (+ (len x) (len y)))))
 
 ; -----------------------------------------------------------------------------
 ; A-CRYPTO, first seam: the Merkle leaf digest
@@ -530,7 +538,7 @@
   (implies (fn-anchor-p a)
            (equal (len (fn-anchor-dele-octets a)) 72))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-frame-len-of-append))))
+  :hints (("Goal" :in-theory (enable fn-anchor-len-of-append))))
 
 (defthm fn-anchor-srep-octets-are-octets
   (fn-cbor-octet-listp (fn-anchor-srep-octets a)))
@@ -538,7 +546,7 @@
 (defthm fn-anchor-srep-octets-length
   (equal (len (fn-anchor-srep-octets a)) 100)
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-frame-len-of-append))))
+  :hints (("Goal" :in-theory (enable fn-anchor-len-of-append))))
 
 (defthm fn-anchor-signed-octets-are-octets
   (fn-cbor-octet-listp (fn-anchor-signed-octets a)))
@@ -1051,117 +1059,6 @@
 (verify-guards fn-anchor-restore-observed)
 
 ; -----------------------------------------------------------------------------
-; The durable anchor frame family, FNAN
-;
-; A new family over books/frame's grammar; frame.lisp is untouched.  Kind 1 is
-; an observed anchor, kind 2 is an incarnation advance and the anchor it
-; advanced under.
-;
-; Local vocabulary re-enable: from here to the end this book opens frame's
-; field grammar, its two result records and the splitter facts under them
-; (docs/deputies BOARD, 2026-09-19 codecs).  Nothing above this point needs
-; them, and the enable is local, so no includer inherits the cascade.
-
-; The field grammar itself stays closed: opening `fn-frame-values-okp' and
-; `fn-frame-field-okp' over a nine-field spec is the case split that made this
-; book's guard proofs unbounded, and neither is needed -- the guard of
-; `fn-frame-fields-octets' IS `fn-frame-values-okp', which is a conjunct of
-; `fn-anchor-record-okp'.  This is the same `e/d' the frame cluster uses for
-; its own journal round trips (books/frame-invariants.lisp:800).
-(local (in-theory (e/d (fn-frame-codec-vocabulary
-                        fn-frame-record-vocabulary
-                        fn-frame-fields-vocabulary)
-                       ((:d fn-frame-values-okp) (:d fn-frame-field-okp)
-                        (:d fn-frame-field-octets) (:d fn-frame-field-parse)
-                        (:d fn-frame-fields-octets) (:d fn-frame-fields-parse)
-                        (:d fn-frame-fields-parse-aux)))))
-
-(defconst *fn-anchor-magic* '(70 78 65 78))   ; FNAN
-(defconst *fn-anchor-max-payload* 1024)
-
-(defconst *fn-anchor-kinds* '(:observed :incarnation))
-
-(defconst *fn-anchor-specs*
-  (list (cons :observed
-              '(:blob :blob :nat :nat :blob :nat :nat :blob :blob))
-        (cons :incarnation
-              '(:nat :blob :blob :nat :nat :blob :nat :nat :blob :blob))))
-
-(defthm fn-anchor-spec-for-is-spec-list
-  (implies (not (equal (fn-frame-spec-for kind *fn-anchor-specs*) :none))
-           (fn-frame-spec-listp (fn-frame-spec-for kind *fn-anchor-specs*))))
-
-(defun fn-anchor-record-anchor (kind values)
-  (declare (xargs :guard t :verify-guards nil))
-  (let ((base (if (equal kind :observed) 0 1)))
-    (fn-anchor (fn-frame-item base values)
-               (fn-frame-item (+ base 1) values)
-               (fn-frame-item (+ base 2) values)
-               (fn-frame-item (+ base 3) values)
-               (fn-frame-item (+ base 4) values)
-               (fn-frame-item (+ base 5) values)
-               (fn-frame-item (+ base 6) values)
-               (fn-frame-item (+ base 7) values)
-               (fn-frame-item (+ base 8) values))))
-
-(verify-guards fn-anchor-record-anchor)
-
-; The field grammar admits any blob; the anchor grammar admits only the exact
-; Roughtime field widths, so a record cannot hold a 31-octet "public key".
-(defun fn-anchor-record-okp (kind values)
-  (declare (xargs :guard t :verify-guards nil))
-  (let ((spec (fn-frame-spec-for kind *fn-anchor-specs*)))
-    (and (not (equal spec :none))
-         (fn-frame-values-okp spec values)
-         (fn-anchor-p (fn-anchor-record-anchor kind values)))))
-
-(verify-guards fn-anchor-record-okp)
-
-(defun fn-anchor-encode (kind values digest)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (not (and (fn-anchor-record-okp kind values)
-                (fn-frame-digestp digest)))
-      :bad
-    (let ((code (fn-frame-enum-index kind *fn-anchor-kinds*)))
-      (if (equal code 0)
-          :bad
-        (let ((payload (fn-frame-fields-octets
-                        (fn-frame-spec-for kind *fn-anchor-specs*) values)))
-          (if (not (fn-cbor-at-mostp payload *fn-anchor-max-payload*))
-              :bad
-            (fn-frame-encode *fn-anchor-magic* *fn-frame-version* code
-                             payload digest)))))))
-
-(verify-guards fn-anchor-encode)
-
-(defun fn-anchor-decode (octets digest)
-  (declare (xargs :guard t :verify-guards nil))
-  (let ((frame (fn-frame-decode octets digest *fn-anchor-max-payload*)))
-    (if (not (fn-frame-result-okp frame))
-        frame
-      (if (not (and (equal (fn-frame-result-magic frame) *fn-anchor-magic*)
-                    (equal (fn-frame-result-version frame) *fn-frame-version*)))
-          (fn-frame-error :magic)
-        (let ((code (fn-frame-result-kind frame)))
-          (if (or (not (posp code)) (< (len *fn-anchor-kinds*) code))
-              (fn-frame-error :kind)
-            (let* ((kind (fn-frame-item (- code 1) *fn-anchor-kinds*))
-                   (spec (fn-frame-spec-for kind *fn-anchor-specs*)))
-              (if (equal spec :none)
-                  (fn-frame-error :kind)
-                (let ((parsed (fn-frame-fields-parse
-                               spec (fn-frame-result-payload frame))))
-                  (if (not (fn-frame-parse-okp parsed))
-                      (fn-frame-error (fn-frame-parse-value parsed))
-                    (if (not (fn-anchor-record-okp
-                              kind (fn-frame-parse-value parsed)))
-                        (fn-frame-error :anchor-field)
-                      (fn-frame-ok *fn-anchor-magic* *fn-frame-version* kind
-                                   (fn-frame-parse-value parsed)))))))))))))
-
-(verify-guards fn-anchor-decode)
-
-; -----------------------------------------------------------------------------
 ; Export theory (docs/proof-style.md sec. 2)
 ;
 ; What leaves this book enabled: the record lemmas of the four records, their
@@ -1169,7 +1066,7 @@
 ; `fn-anchor-signed-octets-determine-the-root'.  Everything else -- every
 ; record accessor, constructor and shape, every recognizer, the reconstruction
 ; of the signed octets, the interval order, all five transitions, both host
-; entries and the FNAN codec -- is withdrawn here, as `(:d name)' only, so
+; entries -- is withdrawn here, as `(:d name)' only, so
 ; ground evaluation and type prescriptions still decide.
 ;
 ; An includer that must open one of these enables `fn-anchor-vocabulary'
@@ -1204,14 +1101,12 @@
     (:d fn-anchor-pair-admit) (:d fn-anchor-pair-admittedp)
     (:d fn-anchor-node-accept-observed)
     (:d fn-anchor-node-advance-observed) (:d fn-anchor-restore-observed)
-    (:d fn-anchor-record-anchor) (:d fn-anchor-record-okp)
-    (:d fn-anchor-encode) (:d fn-anchor-decode)))
+))
 
 (deftheory fn-anchor-octet-vocabulary
   '(fn-anchor-le-bytes-are-octets fn-anchor-le-bytes-len
     fn-anchor-leaf-digest-length fn-anchor-dele-octets-are-octets
-    fn-anchor-srep-octets-are-octets fn-anchor-signed-octets-are-octets
-    fn-anchor-spec-for-is-spec-list))
+    fn-anchor-srep-octets-are-octets fn-anchor-signed-octets-are-octets))
 
 (in-theory (disable (:d fn-anchor-shapep) (:d fn-anchor) (:d fn-anchor-key)
              (:d fn-anchor-delegate) (:d fn-anchor-mint) (:d fn-anchor-maxt)
@@ -1244,11 +1139,9 @@
              (:d fn-anchor-node-accept-observed)
              (:d fn-anchor-node-advance-observed)
              (:d fn-anchor-restore-observed)
-             (:d fn-anchor-record-anchor) (:d fn-anchor-record-okp)
-             (:d fn-anchor-encode) (:d fn-anchor-decode)))
+))
 
 (in-theory (disable fn-anchor-le-bytes-are-octets fn-anchor-le-bytes-len
              fn-anchor-leaf-digest-length fn-anchor-dele-octets-are-octets
              fn-anchor-srep-octets-are-octets
-             fn-anchor-signed-octets-are-octets
-             fn-anchor-spec-for-is-spec-list))
+             fn-anchor-signed-octets-are-octets))

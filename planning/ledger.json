@@ -103,6 +103,11 @@
     "books/clock",
     "books/clock-invariants",
     "tests/acl2/clock-tests",
+    "books/anchor",
+    "books/anchor-record",
+    "books/anchor-invariants",
+    "tests/acl2/anchor-tests",
+    "tests/acl2/anchor-teeth-tests",
     "books/membership-epochs",
     "books/membership-epochs-invariants",
     "tests/acl2/membership-epochs-tests",
@@ -186,21 +191,21 @@
     "tests/acl2/policy-tests"
   ],
   "totals": {
-    "books": 182,
-    "books_in_root_closure": 182,
-    "roots": 182,
-    "theorems": 2871,
-    "functions": 2000,
-    "assert_events": 3020,
+    "books": 187,
+    "books_in_root_closure": 187,
+    "roots": 187,
+    "theorems": 2951,
+    "functions": 2066,
+    "assert_events": 3086,
     "must_fails": 95,
-    "encapsulates": 10,
+    "encapsulates": 12,
     "guards": {
-      "verified": 952,
-      "declared-off": 53,
-      "default-guarded": 565,
-      "default-unguarded": 430
+      "verified": 983,
+      "declared-off": 54,
+      "default-guarded": 598,
+      "default-unguarded": 431
     },
-    "suspect_theorems": 26,
+    "suspect_theorems": 27,
     "export_hygiene_warnings": 59,
     "teeth_form_warnings": 0
   },
@@ -278,6 +283,93 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/anchor-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 25,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "anchor-record"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/anchor-record.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 4,
+      "guards": {
+        "verified": 4,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 4,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "anchor",
+        "frame",
+        "frame-invariants"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/anchor.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 50,
+      "functions": 59,
+      "guards": {
+        "verified": 27,
+        "declared-off": 1,
+        "default-guarded": 30,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 27,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 13,
+      "defmacros": 0,
+      "encapsulates": 2,
+      "includes": [
+        "cbor-invariants",
+        "clock"
+      ],
+      "system_includes": [
+        "arithmetic/top",
+        "ihs/quotient-remainder-lemmas"
+      ],
+      "suspects": [
+        "fn-anchor-octets-of-lengthp-forward"
+      ],
       "read_error": null
     },
     {
@@ -3284,6 +3376,56 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/anchor-teeth-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 26,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "anchor-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/anchor-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 40,
+      "must_fails": 0,
+      "defconsts": 25,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/anchor-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/article-fields-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -4949,6 +5091,14 @@
       "reasons": [
         "definition-restated: the conclusion is the body of fn-ag-less",
         "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
+      "theorem": "fn-anchor-octets-of-lengthp-forward",
+      "book": "books/anchor.lisp",
+      "line": 106,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-anchor-octets-of-lengthp"
       ]
     },
     {

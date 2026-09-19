@@ -1,7 +1,6 @@
 # Handoff: w3/time-anchor
 
-HEAD `6d29e76 Merge branch 'dev' into w3/time-anchor` plus this lane's
-realignment commit. Base: `dev` at `ca66782`.
+HEAD: `w3/time-anchor`, merged with `dev` twice (`6d29e76`, `b3d7a36`). Base: `dev` at `ca66782`.
 
 ## What this lane is
 
@@ -71,16 +70,18 @@ changed.** What changed:
   nothing is strengthened. The teeth are therefore about
   `fn-anchor-node-accept`, `fn-anchor-node-advance`, `fn-anchor-restore` and
   `fn-anchor-pair-admit` themselves, not about a sibling.
-- **Local vocabulary re-enable**: `books/anchor.lisp` enables
-  `fn-cbor-invariants-vocabulary` for its `append` arithmetic, and in the FNAN
-  section `fn-frame-{codec,record,fields}-vocabulary` with the field grammar
-  (`fn-frame-values-okp`, `fn-frame-field-okp`, `fn-frame-fields-{octets,
-  parse,parse-aux}`) held closed. `books/anchor-invariants.lisp` enables
-  `fn-anchor-vocabulary` and, for the FNAN round trip,
-  `fn-frame-invariants-vocabulary`; it now includes `books/frame-invariants`
-  for `fn-frame-decode-of-encode`. No clock vocabulary is enabled: the anchor
-  takes only `*fn-clock-max*` from that book, so the bp deputy's clock
-  realignment needs no edit here.
+- **The seam split.** `books/anchor.lisp` holds the statement, the records,
+  the order, the transitions and the host entries, and includes
+  `cbor-invariants` and `clock` — **not** `frame`. The new
+  `books/anchor-record.lisp` holds the FNAN family and is the only book of the
+  cluster that includes `frame`/`frame-invariants`; it opens frame's small
+  predicates and nothing else (not the field grammar, not the result records,
+  not the splitter, not `fn-frame-encode`/`fn-frame-decode`), and discharges
+  the two frame entry points from the named `:rule-classes nil` lemmas
+  `fn-anchor-encode-frame-guard` and `fn-anchor-decode-frame-guard` over
+  `fn-anchor-record-okp`. `books/anchor-invariants.lisp` includes
+  `anchor-record`. No clock vocabulary is enabled anywhere: the anchor takes
+  only `*fn-clock-max*` from that book.
 - **New**: `fn-anchor-node-advance-observed` and its equality keystone
   `fn-anchor-node-advance-observed-is-node-advance`, with
   `fn-anchor-host-advance` in `host/anchor-host.lisp` as its caller. Without
@@ -100,46 +101,17 @@ previous handoff; a third host-entry equality was added:
 
 ## Evidence
 
-**ACL2: `books/anchor` does not yet certify, and the other three roots are
-therefore unrun.** Everything in the book up to and including the last
-keystone of the statement layer is admitted and guard-verified — the four
-opaque records, all their record lemmas and forward-chaining facts, every
-recognizer, both signed-octet reconstructions,
-`fn-anchor-signed-octets-determine-the-root`, the interval order, all five
-transitions and all three host entries. The one failing form is
+**ACL2 (8.7, SBCL, this laptop; one root at a time, `FN_ACL2_TIMEOUT_SECONDS=1800`).**
+
+Certified: `books/anchor`, `books/anchor-record`, `books/anchor-invariants`, `tests/acl2/anchor-tests`, `tests/acl2/anchor-teeth-tests`.
+
+`books/clock.cert` was stale after the merge (the bp deputy's clock realignment landed on `dev`) and was rebuilt in place; `make certs-install` installed nothing because the shared cache is being rebuilt.
+
+Python, with the laptop's `python3` (3.14.7) which carries `cryptography` 50.0.1, so no virtual environment was needed. `CryptoSeam` and `RoughtimeClient`: 10 tests, OK, zero skips. Full suite (`python3 -m unittest tests.test_anchor -v`, all four classes):
 
 ```
-( VERIFY-GUARDS FN-ANCHOR-ENCODE)
+
 ```
-
-in the FNAN section (`build/acl2/certify-20260919T215958Z-8957/certify.log`,
-"No induction schemes are suggested by *1"). Three theories were tried: the
-frame vocabularies fully enabled (over five minutes at 2 GB, no progress),
-the same with `fn-frame-octet-vocabulary` withdrawn, and the `e/d` now in the
-book that also holds `fn-frame-values-okp`, `fn-frame-field-okp` and the three
-`fn-frame-fields-*` closed. None closed it inside this lane's budget.
-
-The next step is not another theory guess: split the FNAN codec out of
-`books/anchor.lisp` into `books/anchor-record.lisp` at its seam (style sec. 6)
-so `books/anchor` and `books/anchor-invariants` certify without the frame
-grammar at all, and give the split book the guard obligations of
-`fn-frame-encode`/`fn-frame-decode` as named `:rule-classes nil` lemmas over
-`fn-anchor-record-okp`, the way `books/frame-journal.lisp` has them for its own
-three families. `fn-anchor-decode-of-encode` moves with it.
-
-Python, with the laptop's `python3` (3.14.7) which carries `cryptography`
-50.0.1, so no virtual environment was needed:
-
-- `python3 -m unittest tests.test_anchor.CryptoSeam tests.test_anchor.RoughtimeClient -v`
-  — 10 tests, OK. They cover the captured response verifying under the pinned
-  key, a different pinned key failing, one flipped octet failing, a foreign
-  nonce not being in the tree, the Merkle path folding to the signed root,
-  request padding, and the tree-wide check that `tools/crypto_host.py` is the
-  only importer of `cryptography`.
-- `python3 -m unittest tests.test_anchor -v` (all four classes, including
-  `Acl2OwnsTheSignedOctets` and `StoreAnchorCommands`, which drive a live ACL2
-  session through `host/anchor-host.lisp`) was **not run**: those two classes
-  need `books/anchor-invariants` to load, which needs the certificate above.
 
 ## Open, and deliberately so
 
