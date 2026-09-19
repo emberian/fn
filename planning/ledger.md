@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 182 |
 | Certification roots in the Makefile | 182 |
 | Books inside the root closure | 182 |
-| `defthm` and `defthmd` events | 2871 |
+| `defthm` and `defthmd` events | 2873 |
 | `defun` events | 2000 |
 | Functions with verified guards | 952 |
 | Functions declared `:verify-guards nil` and never verified | 53 |
@@ -130,7 +130,7 @@ that `make certify` requests.
 | `books/principal.lisp` | root | 6 | 27 | 0/0/27/0 | 0 | 0 | 0 |
 | `books/records-canonicality.lisp` | root | 24 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/records-invariants.lisp` | root | 25 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/records.lisp` | root | 39 | 48 | 48/0/0/0 | 0 | 0 | 0 |
+| `books/records.lisp` | root | 41 | 48 | 48/0/0/0 | 0 | 0 | 0 |
 | `books/relay-crash-invariants.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/relay-invariants.lisp` | root | 52 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/relay.lisp` | root | 0 | 32 | 0/15/17/0 | 0 | 0 | 0 |

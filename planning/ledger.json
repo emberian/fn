@@ -189,7 +189,7 @@
     "books": 182,
     "books_in_root_closure": 182,
     "roots": 182,
-    "theorems": 2871,
+    "theorems": 2873,
     "functions": 2000,
     "assert_events": 3020,
     "must_fails": 95,
@@ -2329,7 +2329,7 @@
       "book": "books/records.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 39,
+      "theorems": 41,
       "functions": 48,
       "guards": {
         "verified": 48,
