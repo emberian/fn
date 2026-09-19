@@ -611,7 +611,8 @@
         "NNT-004",
         "NNT-005",
         "NNT-006",
-        "HST-002"
+        "HST-002",
+        "NNT-007"
       ],
       "depends_on": [
         "PRF-002",
@@ -629,7 +630,8 @@
         "fn-nntp-listgroup-unknown-preserves-session",
         "fn-nntp-step-preserves-consistent-session",
         "fn-nntp-finite-trace-preserves-consistent-session",
-        "fn-nntp-initialized-finite-trace-is-consistent",
+        "fn-nntp-opened-finite-trace-is-consistent",
+        "fn-nntp-step-preserves-carried-projection",
         "fn-nntp-command-effects-well-formed",
         "fn-nntp-step-effects-well-formed",
         "fn-nntp-closed-step-has-no-effects"

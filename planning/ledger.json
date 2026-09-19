@@ -138,18 +138,18 @@
     "books": 131,
     "books_in_root_closure": 131,
     "roots": 131,
-    "theorems": 1650,
-    "functions": 1324,
-    "assert_events": 1868,
-    "must_fails": 90,
+    "theorems": 1728,
+    "functions": 1347,
+    "assert_events": 1948,
+    "must_fails": 94,
     "encapsulates": 7,
     "guards": {
-      "verified": 713,
+      "verified": 725,
       "declared-off": 36,
       "default-guarded": 187,
-      "default-unguarded": 388
+      "default-unguarded": 399
     },
-    "suspect_theorems": 21
+    "suspect_theorems": 22
   },
   "books": [
     {
@@ -1154,13 +1154,13 @@
       "book": "books/nntp-effects.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 57,
-      "functions": 3,
+      "theorems": 97,
+      "functions": 12,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 3
+        "default-unguarded": 12
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -1169,23 +1169,25 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "nntp"
+        "nntp-invariants"
       ],
       "system_includes": [],
-      "suspects": [],
+      "suspects": [
+        "fn-nntp-block-scan-start-without-a-dot"
+      ],
       "read_error": null
     },
     {
       "book": "books/nntp-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 49,
-      "functions": 3,
+      "theorems": 67,
+      "functions": 4,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 3
+        "default-unguarded": 4
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -1204,18 +1206,18 @@
       "book": "books/nntp.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 10,
-      "functions": 115,
+      "theorems": 30,
+      "functions": 127,
       "guards": {
-        "verified": 109,
+        "verified": 121,
         "declared-off": 0,
         "default-guarded": 6,
         "default-unguarded": 0
       },
-      "verify_guards_events": 109,
+      "verify_guards_events": 121,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 2,
+      "defconsts": 8,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -2854,23 +2856,25 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 1,
+      "functions": 2,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 1
+        "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 76,
-      "must_fails": 0,
-      "defconsts": 33,
+      "assert_events": 156,
+      "must_fails": 4,
+      "defconsts": 58,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/nntp"
+        "../../books/nntp-effects"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -3573,6 +3577,14 @@
       "line": 364,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-exchange-ingest and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-nntp-block-scan-start-without-a-dot",
+      "book": "books/nntp-effects.lisp",
+      "line": 395,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-nntp-block-scan and the conclusion is that branch's value"
       ]
     },
     {
