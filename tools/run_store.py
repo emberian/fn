@@ -390,6 +390,7 @@ class Acl2Store:
             self.call('(include-book "books/replay")')
             self.call('(ld "host/store-host.lisp" :ld-error-action :return :ld-error-triples t)')
             self.call('(ld "host/store-node-host.lisp" :ld-error-action :return :ld-error-triples t)')
+            self.call('(ld "host/checkpoint-host.lisp" :ld-error-action :return :ld-error-triples t)')
             self.reset()
         except BaseException:
             self.close()
@@ -551,6 +552,8 @@ class Store:
         # record-directory -> :completing observation.  Any uncertainty means
         # recovered observation, rather than a retry against a stale core.
         self.completion_pending = False
+        # The selected-checkpoint outcome of the last recovery (tools/checkpoint.py).
+        self.checkpoint_outcome = ("none",)
 
     @property
     def config_path(self): return self.root / "config.json"
@@ -835,7 +838,26 @@ class Store:
             self.fenced = True
             raise StoreIndeterminate("cannot establish recovered namespace frontier") from error
         self.fenced = False
+        self.checkpoint_outcome = self._checkpoint_hook(acl2, records)
         return records
+
+    def _checkpoint_hook(self, acl2, records):
+        """C2-09: decode the selected checkpoint generation and replay only its suffix.
+
+        The journal replayed above stays the authority.  The outcome is one of
+        ("none",), ("ok", generation, sequence, differential) or ("corrupt",
+        reason); a corrupt selected generation is reported, never replaced by
+        an older one.  `differential` is ACL2's comparison of the two nodes;
+        it is asserted only under FN_CHECKPOINT_DIFFERENTIAL.
+        """
+        from tools import checkpoint
+        try:
+            outcome = checkpoint.restore_selected(self, acl2, records, self.frontier)
+        except checkpoint.CheckpointCorrupt as error:
+            return ("corrupt", str(error))
+        if outcome[0] == "ok" and checkpoint.differential_enabled():
+            assert outcome[3], "checkpoint plus suffix differs from full replay"
+        return outcome
 
     def advance_frontier(self, acl2, current_txid):
         """Report each allocator observation to the file kernel in order."""
@@ -1177,11 +1199,15 @@ def orphan_report(store):
 
 
 def command_recover(args):
+    from tools import checkpoint
     store, bridge, records = open_live_store(args.store, writable=True)
     try:
-        print("recovered transactions={} articles={} {}".format(
-            len(records), bridge.article_count(), orphan_report(store)))
-        return EXIT_OK
+        print("recovered transactions={} articles={} {} {}".format(
+            len(records), bridge.article_count(), orphan_report(store),
+            checkpoint.describe(store.checkpoint_outcome)))
+        # A corrupt selected generation is a distinct, reported outcome: the
+        # journal recovered, the checkpoint subsystem did not.
+        return EXIT_FAULT if store.checkpoint_outcome[0] == "corrupt" else EXIT_OK
     finally:
         bridge.close()
         store.close()

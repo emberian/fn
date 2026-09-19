@@ -36,6 +36,7 @@ COMPONENT_MODULES = {
     "workflow": ROOT / "tools" / "workflow_journal.py",
     "receipt": ROOT / "tools" / "receipt_journal.py",
     "receive": ROOT / "tools" / "run_bp_receive.py",
+    "checkpoint": ROOT / "tools" / "checkpoint.py",
 }
 
 SCENARIOS = ("cross-post", "bp-receive", "bp-retry", "capacity-refusal",
@@ -248,6 +249,41 @@ CUTS: tuple[Cut, ...] = (
         "effect outside both crash models",
         record="present", scenarios=("bp-receive", "bp-retry"),
         acknowledged=("receipt", "bpa-delete"), quick=True),
+    # -- checkpoint generation machine (books/checkpoint-publish.lisp) --------
+    # `fn-cpp-crash` choices: marker :old/:new, generation :absent/:present;
+    # `fn-cpp-candidate-present-visiblep` and `fn-cpp-marker-new-visiblep`
+    # name the phases each choice is live in.  No campaign scenario publishes
+    # a checkpoint; tests/test_checkpoint.py kills at every one of these.
+    Cut("checkpoint", "checkpoint:candidate-durable", "publish",
+        "fn-cpp phase :candidate-data-durable; generation :absent (the model "
+        "also admits :present, an over-approximation: os.link has not run); "
+        "marker :old",
+        uncovered="reached by tests/test_checkpoint.py process-death cases, "
+                  "not by a campaign scenario"),
+    Cut("checkpoint", "checkpoint:candidate-linked", "publish",
+        "fn-cpp phase :candidate-data-durable, generation :absent or :present; "
+        "marker :old",
+        uncovered="reached by tests/test_checkpoint.py process-death cases, "
+                  "not by a campaign scenario"),
+    Cut("checkpoint", "checkpoint:candidate-published", "publish",
+        "fn-cpp phase :candidate-attempted after the directory barrier: "
+        "generation :present in reality; marker :old",
+        uncovered="reached by tests/test_checkpoint.py process-death cases, "
+                  "not by a campaign scenario"),
+    Cut("checkpoint", "checkpoint:selection-durable", "select",
+        "fn-cpp phase :marker-data-durable; marker :old (the model also "
+        "admits :new, an over-approximation: os.replace has not run)",
+        uncovered="reached by tests/test_checkpoint.py process-death cases, "
+                  "not by a campaign scenario"),
+    Cut("checkpoint", "checkpoint:selection-replaced", "select",
+        "fn-cpp phase :marker-data-durable, marker :old or :new",
+        uncovered="reached by tests/test_checkpoint.py process-death cases, "
+                  "not by a campaign scenario"),
+    Cut("checkpoint", "checkpoint:selection-published", "select",
+        "fn-cpp phase :marker-attempted after the directory barrier: marker "
+        ":new in reality",
+        uncovered="reached by tests/test_checkpoint.py process-death cases, "
+                  "not by a campaign scenario"),
 )
 
 

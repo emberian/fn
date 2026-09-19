@@ -19,6 +19,8 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-snt-` | `store-node-traces` | Trace relation and preservation for the composed store/node machine |
 | `fn-snrt-` | `store-node-resolution-traces` | Trace preservation including refusal and abort resolution |
 | `fn-checkpoint-` | `checkpoint` | Logical checkpoint capture, restore and checkpoint-plus-suffix replay |
+| `fn-cpc-` | `checkpoint-codec` | Canonical whole-state checkpoint bytes over the CBOR primitives: tagged node tree, header, both-direction canonicality, validation binding to capture, the FNCP frame magic and kind table (checkpoint, selection marker) |
+| `fn-cpp-` | `checkpoint-publish` | Checkpoint generation machine: stage, barriers, link, marker selection, crash images with old/new and absent/present choices, recovery with distinct none/ok/corrupt/missing outcomes |
 | `fn-index-` | `index` | Derived group/number index and range queries |
 | `fn-journal-` | `journal` | Historical isolated-slot journal experiment; not the adapter model |
 | `fn-exchange-` | `exchange`, `exchange-invariants` | Bounded atomic fact-set admission and merge |
