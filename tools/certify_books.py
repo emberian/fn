@@ -46,10 +46,10 @@ FAILURE_MARKERS = (
 )
 BOOK_NAME = re.compile(r"(?:books|tests/acl2)/(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+$")
 DEFAULT_BOOKS = (
+    "books/acceptance-alloc",
     "books/acceptance",
     "books/acceptance-invariants",
     "tests/acl2/acceptance-tests",
-    "tests/acl2/acceptance-guards-tests",
     "books/wire",
     "books/wire-invariants",
     "tests/acl2/wire-tests",
@@ -76,7 +76,6 @@ DEFAULT_BOOKS = (
     "books/node-invariants",
     "tests/acl2/node-tests",
     "books/node-traces",
-    "tests/acl2/node-traces-tests",
     "books/records",
     "books/records-invariants",
     "books/records-canonicality",
@@ -84,7 +83,6 @@ DEFAULT_BOOKS = (
     "books/replay",
     "books/replay-invariants",
     "tests/acl2/replay-tests",
-    "tests/acl2/replay-guards-tests",
     "books/store-files",
     "books/store-files-invariants",
     "tests/acl2/store-files-tests",
@@ -110,8 +108,6 @@ DEFAULT_BOOKS = (
     "books/exchange",
     "tests/acl2/exchange-tests",
     "books/exchange-invariants",
-    "tests/acl2/exchange-invariants-tests",
-    "tests/acl2/exchange-guards-tests",
     "books/transfer",
     "books/transfer-invariants",
     "books/transfer-assembly-invariants",

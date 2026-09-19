@@ -4,12 +4,14 @@
 ; or peer behavior.  `provenance' is an already-validated authorization token
 ; supplied by the caller.  Unknown schemas are rejected: an opaque relay path
 ; needs a separately specified encoding and authority policy before it exists.
+;
+; Records are opaque and `fn-exchange-statep' is a carried invariant guarding
+; `fn-exchange-admissible-batchp' and `fn-exchange-ingest'
+; (docs/proof-style.md).  The :logic bodies are the original total ones.
 
 (in-package "ACL2")
-; Reuse proved total CAR/CDR and membership execution helpers.  Each MBE
-; retains the original exchange logical body and proves execution identical,
-; including malformed atoms and dotted lists.
-(include-book "acceptance")
+; Reuse the proved total CAR/CDR and membership execution helpers.
+(include-book "acceptance-alloc")
 
 ; -----------------------------------------------------------------------------
 ; Portable facts, identities, and explicit validation policy
@@ -18,54 +20,105 @@
 ; `message-id', `content-id', and `(origin incarnation sequence)' deliberately
 ; name different namespaces.  Facts that share a Message-ID but differ in their
 ; content IDs are retained as separate evidence.
-(defun fn-exchange-schema (x) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car x)
-       :exec (fn-ag-car x)))
-
+(defun fn-exchange-fact-shapep (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 8)))
+(defun fn-exchange-schema (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car x) :exec (fn-ag-car x)))
 (verify-guards fn-exchange-schema)
-(defun fn-exchange-kind (x) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr x))
-       :exec (fn-ag-car (fn-ag-cdr x))))
-
+(defun fn-exchange-kind (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
 (verify-guards fn-exchange-kind)
-(defun fn-exchange-message-id (x) (declare (xargs :guard t :verify-guards nil))
+(defun fn-exchange-message-id (x)
+  (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car (cdr (cdr x)))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
-
 (verify-guards fn-exchange-message-id)
-(defun fn-exchange-content-id (x) (declare (xargs :guard t :verify-guards nil))
+(defun fn-exchange-content-id (x)
+  (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car (cdr (cdr (cdr x))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
-
 (verify-guards fn-exchange-content-id)
-(defun fn-exchange-origin (x) (declare (xargs :guard t :verify-guards nil))
+(defun fn-exchange-origin (x)
+  (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car (cdr (cdr (cdr (cdr x)))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
-
 (verify-guards fn-exchange-origin)
-(defun fn-exchange-incarnation (x) (declare (xargs :guard t :verify-guards nil))
+(defun fn-exchange-incarnation (x)
+  (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car (cdr (cdr (cdr (cdr (cdr x))))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))))
-
+       :exec (fn-ag-car
+              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))))
 (verify-guards fn-exchange-incarnation)
-(defun fn-exchange-sequence (x) (declare (xargs :guard t :verify-guards nil))
+(defun fn-exchange-sequence (x)
+  (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr x)))))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))))
-
+       :exec (fn-ag-car
+              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
+                                     (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))))
 (verify-guards fn-exchange-sequence)
 (defun fn-exchange-provenance (x)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr x))))))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))))))
-
+       :exec (fn-ag-car
+              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
+                                     (fn-ag-cdr (fn-ag-cdr
+                                                 (fn-ag-cdr (fn-ag-cdr x))))))))))
 (verify-guards fn-exchange-provenance)
 
 (defun fn-exchange-make-fact
   (schema kind message-id content-id origin incarnation sequence provenance)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (list schema kind message-id content-id origin incarnation sequence provenance))
 
-(verify-guards fn-exchange-make-fact)
+(defthm fn-exchange-fact-shapep-of-fn-exchange-make-fact
+  (fn-exchange-fact-shapep
+   (fn-exchange-make-fact schema kind message-id content-id origin incarnation
+                          sequence provenance)))
+(defthm fn-exchange-schema-of-fn-exchange-make-fact
+  (equal (fn-exchange-schema
+          (fn-exchange-make-fact schema kind message-id content-id origin
+                                 incarnation sequence provenance))
+         schema))
+(defthm fn-exchange-kind-of-fn-exchange-make-fact
+  (equal (fn-exchange-kind
+          (fn-exchange-make-fact schema kind message-id content-id origin
+                                 incarnation sequence provenance))
+         kind))
+(defthm fn-exchange-message-id-of-fn-exchange-make-fact
+  (equal (fn-exchange-message-id
+          (fn-exchange-make-fact schema kind message-id content-id origin
+                                 incarnation sequence provenance))
+         message-id))
+(defthm fn-exchange-content-id-of-fn-exchange-make-fact
+  (equal (fn-exchange-content-id
+          (fn-exchange-make-fact schema kind message-id content-id origin
+                                 incarnation sequence provenance))
+         content-id))
+(defthm fn-exchange-origin-of-fn-exchange-make-fact
+  (equal (fn-exchange-origin
+          (fn-exchange-make-fact schema kind message-id content-id origin
+                                 incarnation sequence provenance))
+         origin))
+(defthm fn-exchange-incarnation-of-fn-exchange-make-fact
+  (equal (fn-exchange-incarnation
+          (fn-exchange-make-fact schema kind message-id content-id origin
+                                 incarnation sequence provenance))
+         incarnation))
+(defthm fn-exchange-sequence-of-fn-exchange-make-fact
+  (equal (fn-exchange-sequence
+          (fn-exchange-make-fact schema kind message-id content-id origin
+                                 incarnation sequence provenance))
+         sequence))
+(defthm fn-exchange-provenance-of-fn-exchange-make-fact
+  (equal (fn-exchange-provenance
+          (fn-exchange-make-fact schema kind message-id content-id origin
+                                 incarnation sequence provenance))
+         provenance))
+
+(in-theory (disable (:d fn-exchange-fact-shapep) (:d fn-exchange-schema) (:d fn-exchange-kind) (:d fn-exchange-message-id) (:d fn-exchange-content-id) (:d fn-exchange-origin) (:d fn-exchange-incarnation) (:d fn-exchange-sequence) (:d fn-exchange-provenance) (:d fn-exchange-make-fact)))
 
 (defun fn-exchange-kindp (x)
   (declare (xargs :guard t :verify-guards nil))
@@ -83,8 +136,7 @@
 
 (defun fn-exchange-factp (x)
   (declare (xargs :guard t :verify-guards nil))
-  (and (true-listp x)
-       (equal (len x) 8)
+  (and (fn-exchange-fact-shapep x)
        (natp (fn-exchange-schema x))
        (fn-exchange-kindp (fn-exchange-kind x))
        (stringp (fn-exchange-message-id x))
@@ -108,40 +160,51 @@
 (defun fn-exchange-no-duplicatesp (xs)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (if (consp xs)
-      (and (not (member-equal (car xs) (cdr xs)))
-           (fn-exchange-no-duplicatesp (cdr xs)))
-    t)
+                  (and (not (member-equal (car xs) (cdr xs)))
+                       (fn-exchange-no-duplicatesp (cdr xs)))
+                t)
        :exec (if (consp xs)
-      (and (not (fn-ag-member (car xs) (cdr xs)))
-           (fn-exchange-no-duplicatesp (cdr xs)))
-    t)))
+                 (and (not (fn-ag-member (car xs) (cdr xs)))
+                      (fn-exchange-no-duplicatesp (cdr xs)))
+               t)))
 
 (verify-guards fn-exchange-no-duplicatesp)
 
 ; Policy: (enabled-schemas authorized-provenances).  Schema 1 is the one
 ; understood semantic schema in this model.  A policy cannot promote another
 ; schema by listing it; this makes unknown input unable to authorize a change.
-(defun fn-exchange-policy-schemas (p) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car p)
-       :exec (fn-ag-car p)))
-
+(defun fn-exchange-policy-shapep (p)
+  (declare (xargs :guard t))
+  (and (true-listp p) (equal (len p) 2)))
+(defun fn-exchange-policy-schemas (p)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car p) :exec (fn-ag-car p)))
 (verify-guards fn-exchange-policy-schemas)
-(defun fn-exchange-policy-authorizations (p) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr p))
-       :exec (fn-ag-car (fn-ag-cdr p))))
-
+(defun fn-exchange-policy-authorizations (p)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr p)) :exec (fn-ag-car (fn-ag-cdr p))))
 (verify-guards fn-exchange-policy-authorizations)
 
 (defun fn-exchange-make-policy (schemas authorizations)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (list schemas authorizations))
 
-(verify-guards fn-exchange-make-policy)
+(defthm fn-exchange-policy-shapep-of-fn-exchange-make-policy
+  (fn-exchange-policy-shapep (fn-exchange-make-policy schemas authorizations)))
+(defthm fn-exchange-policy-schemas-of-fn-exchange-make-policy
+  (equal (fn-exchange-policy-schemas
+          (fn-exchange-make-policy schemas authorizations))
+         schemas))
+(defthm fn-exchange-policy-authorizations-of-fn-exchange-make-policy
+  (equal (fn-exchange-policy-authorizations
+          (fn-exchange-make-policy schemas authorizations))
+         authorizations))
+
+(in-theory (disable (:d fn-exchange-policy-shapep) (:d fn-exchange-policy-schemas) (:d fn-exchange-policy-authorizations) (:d fn-exchange-make-policy)))
 
 (defun fn-exchange-policyp (p)
   (declare (xargs :guard t :verify-guards nil))
-  (and (true-listp p)
-       (equal (len p) 2)
+  (and (fn-exchange-policy-shapep p)
        (true-listp (fn-exchange-policy-schemas p))
        (fn-exchange-no-duplicatesp (fn-exchange-policy-schemas p))
        (fn-exchange-string-listp (fn-exchange-policy-authorizations p))
@@ -152,16 +215,18 @@
 (defun fn-exchange-known-schemap (schema policy)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (and (equal schema 1)
-       (member-equal schema (fn-exchange-policy-schemas policy)))
+                   (member-equal schema (fn-exchange-policy-schemas policy)))
        :exec (and (equal schema 1)
-       (fn-ag-member schema (fn-exchange-policy-schemas policy)))))
+                  (fn-ag-member schema (fn-exchange-policy-schemas policy)))))
 
 (verify-guards fn-exchange-known-schemap)
 
 (defun fn-exchange-authorizedp (provenance policy)
   (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (member-equal provenance (fn-exchange-policy-authorizations policy))
-       :exec (fn-ag-member provenance (fn-exchange-policy-authorizations policy))))
+  (mbe :logic (member-equal provenance
+                            (fn-exchange-policy-authorizations policy))
+       :exec (fn-ag-member provenance
+                           (fn-exchange-policy-authorizations policy))))
 
 (verify-guards fn-exchange-authorizedp)
 
@@ -188,12 +253,8 @@
 
 (defun fn-exchange-add-fact (fact facts)
   (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (if (member-equal fact facts)
-      facts
-    (cons fact facts))
-       :exec (if (fn-ag-member fact facts)
-      facts
-    (cons fact facts))))
+  (mbe :logic (if (member-equal fact facts) facts (cons fact facts))
+       :exec (if (fn-ag-member fact facts) facts (cons fact facts))))
 
 (verify-guards fn-exchange-add-fact)
 
@@ -209,13 +270,13 @@
 (defun fn-exchange-subsetp (xs ys)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (if (consp xs)
-      (and (member-equal (car xs) ys)
-           (fn-exchange-subsetp (cdr xs) ys))
-    t)
+                  (and (member-equal (car xs) ys)
+                       (fn-exchange-subsetp (cdr xs) ys))
+                t)
        :exec (if (consp xs)
-      (and (fn-ag-member (car xs) ys)
-           (fn-exchange-subsetp (cdr xs) ys))
-    t)))
+                 (and (fn-ag-member (car xs) ys)
+                      (fn-exchange-subsetp (cdr xs) ys))
+               t)))
 
 (verify-guards fn-exchange-subsetp)
 
@@ -277,22 +338,32 @@
 ; State: (capacity facts).  Capacity is charged by distinct retained facts in
 ; this abstract slice.  A real byte/obligation charge needs the storage and
 ; retention correspondence; no such durability claim is made here.
-(defun fn-exchange-capacity (s) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car s)
-       :exec (fn-ag-car s)))
-
+(defun fn-exchange-state-shapep (s)
+  (declare (xargs :guard t))
+  (and (true-listp s) (equal (len s) 2)))
+(defun fn-exchange-capacity (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car s) :exec (fn-ag-car s)))
 (verify-guards fn-exchange-capacity)
-(defun fn-exchange-facts (s) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr s))
-       :exec (fn-ag-car (fn-ag-cdr s))))
-
+(defun fn-exchange-facts (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr s)) :exec (fn-ag-car (fn-ag-cdr s))))
 (verify-guards fn-exchange-facts)
 
 (defun fn-exchange-make-state (capacity facts)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (list capacity facts))
 
-(verify-guards fn-exchange-make-state)
+(defthm fn-exchange-state-shapep-of-fn-exchange-make-state
+  (fn-exchange-state-shapep (fn-exchange-make-state capacity facts)))
+(defthm fn-exchange-capacity-of-fn-exchange-make-state
+  (equal (fn-exchange-capacity (fn-exchange-make-state capacity facts))
+         capacity))
+(defthm fn-exchange-facts-of-fn-exchange-make-state
+  (equal (fn-exchange-facts (fn-exchange-make-state capacity facts))
+         facts))
+
+(in-theory (disable (:d fn-exchange-state-shapep) (:d fn-exchange-capacity) (:d fn-exchange-facts) (:d fn-exchange-make-state)))
 
 (defun fn-exchange-fact-listp (facts)
   (declare (xargs :guard t :verify-guards nil))
@@ -305,8 +376,7 @@
 
 (defun fn-exchange-statep (s)
   (declare (xargs :guard t :verify-guards nil))
-  (and (true-listp s)
-       (equal (len s) 2)
+  (and (fn-exchange-state-shapep s)
        (natp (fn-exchange-capacity s))
        (fn-exchange-fact-listp (fn-exchange-facts s))
        (fn-exchange-no-duplicatesp (fn-exchange-facts s))
@@ -323,25 +393,28 @@
 (defun fn-exchange-new-facts (batch facts)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (if (consp batch)
-      (if (member-equal (car batch) facts)
-          (fn-exchange-new-facts (cdr batch) facts)
-        (cons (car batch)
-              (fn-exchange-new-facts (cdr batch)
-                                     (cons (car batch) facts))))
-    nil)
+                  (if (member-equal (car batch) facts)
+                      (fn-exchange-new-facts (cdr batch) facts)
+                    (cons (car batch)
+                          (fn-exchange-new-facts (cdr batch)
+                                                 (cons (car batch) facts))))
+                nil)
        :exec (if (consp batch)
-      (if (fn-ag-member (car batch) facts)
-          (fn-exchange-new-facts (cdr batch) facts)
-        (cons (car batch)
-              (fn-exchange-new-facts (cdr batch)
-                                     (cons (car batch) facts))))
-    nil)))
+                 (if (fn-ag-member (car batch) facts)
+                     (fn-exchange-new-facts (cdr batch) facts)
+                   (cons (car batch)
+                         (fn-exchange-new-facts (cdr batch)
+                                                (cons (car batch) facts))))
+               nil)))
 
 (verify-guards fn-exchange-new-facts)
 
+; Admissibility is decided under the carried invariant: the :logic body keeps
+; the whole-state recognizer as its first conjunct, the :exec path relies on
+; the guard.
 (defun fn-exchange-admissible-batchp (s batch policy)
-  (declare (xargs :guard t :verify-guards nil))
-  (and (fn-exchange-statep s)
+  (declare (xargs :guard (fn-exchange-statep s) :verify-guards nil))
+  (and (mbe :logic (fn-exchange-statep s) :exec t)
        (fn-exchange-batch-validp batch policy)
        (<= (+ (len (fn-exchange-facts s))
               (len (fn-exchange-new-facts batch (fn-exchange-facts s))))
@@ -352,7 +425,7 @@
 ; Capacity or validation refusal leaves the state exact.  In particular this
 ; never installs a prefix of an unaffordable batch and never erases facts.
 (defun fn-exchange-ingest (s batch policy)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-exchange-statep s) :verify-guards nil))
   (if (fn-exchange-admissible-batchp s batch policy)
       (fn-exchange-make-state
        (fn-exchange-capacity s)
@@ -361,9 +434,12 @@
 
 (verify-guards fn-exchange-ingest)
 
+; A `-by-definition' fact: the refusing branch with its test as hypothesis.
+; Not a registry event and not a rewrite rule; used by :use.
 (defthm fn-exchange-ingest-refusal-is-no-op
   (implies (not (fn-exchange-admissible-batchp s batch policy))
            (equal (fn-exchange-ingest s batch policy) s))
+  :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-exchange-ingest))))
 
 ; The observable result of an admitted batch is its immutable fact set; list
@@ -447,3 +523,18 @@
       :single)))
 
 (verify-guards fn-exchange-message-status)
+
+; -----------------------------------------------------------------------------
+; Export.  Records were disabled at their definitions.  Withdrawn here: the
+; recognizers, the initial state, admissibility and ingest, and the set
+; lemmas that are proof vocabulary rather than keystones (exchange-invariants
+; enables them locally).  Keystones stay enabled: the two merge observations,
+; `fn-exchange-admitted-ingest-member' and `fn-exchange-admitted-order-member'.
+(deftheory fn-exchange-set-vocabulary
+  '(fn-exchange-subsetp-right-extension
+    fn-exchange-subsetp-reflexive
+    fn-exchange-add-fact-member
+    fn-exchange-merge-member
+    fn-exchange-member-append))
+(in-theory (disable fn-exchange-set-vocabulary
+                    (:d fn-exchange-factp) (:d fn-exchange-policyp) (:d fn-exchange-statep) (:d fn-exchange-initial-state) (:d fn-exchange-admissible-batchp) (:d fn-exchange-ingest)))

@@ -4,54 +4,89 @@
 ; selected a complete candidate.  This book does not model a disk, signatures,
 ; or power-failure behavior.  A replay fault is fail-closed: its saved node is
 ; diagnostic last-good-prefix state, never authority to continue recovery.
+;
+; `fn-node-statep' is carried through replay: it is checked once, on the
+; initial node in `fn-replay', and every per-record step is guarded by it.
+; The guards are discharged from the node preservation keystones, which is
+; why this book includes node-invariants.  The former replay-invariants book
+; is folded in here beside the definitions whose guards it discharges; the
+; :logic bodies are the original total ones.
 
 (in-package "ACL2")
-(include-book "node")
+(include-book "node-invariants")
 (include-book "records")
 
 ; -----------------------------------------------------------------------------
 ; Result records
 
-; Result accessors preserve ACL2 total selector semantics even for atoms and
-; dotted inputs; MBE guard verification proves the safe execution identical.
 ; Success: (:ok node next-journal-sequence)
 ; Fault:   (:fault last-good-node expected-journal-sequence reason)
-(defun fn-replay-result-kind (x) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car x)
-       :exec (fn-ag-car x)))
-
+(defun fn-replay-ok-shapep (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 3)))
+(defun fn-replay-fault-shapep (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 4)))
+(defun fn-replay-result-kind (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car x) :exec (fn-ag-car x)))
 (verify-guards fn-replay-result-kind)
-(defun fn-replay-result-node (x) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr x))
-       :exec (fn-ag-car (fn-ag-cdr x))))
-
+(defun fn-replay-result-node (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
 (verify-guards fn-replay-result-node)
-(defun fn-replay-result-sequence (x) (declare (xargs :guard t :verify-guards nil))
+(defun fn-replay-result-sequence (x)
+  (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car (cdr (cdr x)))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
-
 (verify-guards fn-replay-result-sequence)
-(defun fn-replay-result-reason (x) (declare (xargs :guard t :verify-guards nil))
+(defun fn-replay-result-reason (x)
+  (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car (cdr (cdr (cdr x))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
-
 (verify-guards fn-replay-result-reason)
 
 (defun fn-replay-ok (node next-sequence)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (list :ok node next-sequence))
 
-(verify-guards fn-replay-ok)
-
 (defun fn-replay-fault (node expected-sequence reason)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (list :fault node expected-sequence reason))
 
-(verify-guards fn-replay-fault)
+(defthm fn-replay-ok-shapep-of-fn-replay-ok
+  (fn-replay-ok-shapep (fn-replay-ok node next-sequence)))
+(defthm fn-replay-result-kind-of-fn-replay-ok
+  (equal (fn-replay-result-kind (fn-replay-ok node next-sequence)) :ok))
+(defthm fn-replay-result-node-of-fn-replay-ok
+  (equal (fn-replay-result-node (fn-replay-ok node next-sequence)) node))
+(defthm fn-replay-result-sequence-of-fn-replay-ok
+  (equal (fn-replay-result-sequence (fn-replay-ok node next-sequence))
+         next-sequence))
+(defthm fn-replay-fault-shapep-of-fn-replay-fault
+  (fn-replay-fault-shapep (fn-replay-fault node expected-sequence reason)))
+(defthm fn-replay-result-kind-of-fn-replay-fault
+  (equal (fn-replay-result-kind (fn-replay-fault node expected-sequence reason))
+         :fault))
+(defthm fn-replay-result-node-of-fn-replay-fault
+  (equal (fn-replay-result-node (fn-replay-fault node expected-sequence reason))
+         node))
+(defthm fn-replay-result-sequence-of-fn-replay-fault
+  (equal (fn-replay-result-sequence
+          (fn-replay-fault node expected-sequence reason))
+         expected-sequence))
+(defthm fn-replay-result-reason-of-fn-replay-fault
+  (equal (fn-replay-result-reason (fn-replay-fault node expected-sequence reason))
+         reason))
+
+(in-theory (disable (:d fn-replay-ok-shapep) (:d fn-replay-fault-shapep)
+                    (:d fn-replay-result-kind) (:d fn-replay-result-node)
+                    (:d fn-replay-result-sequence) (:d fn-replay-result-reason)
+                    (:d fn-replay-ok) (:d fn-replay-fault)))
 
 (defun fn-replay-okp (x)
   (declare (xargs :guard t :verify-guards nil))
-  (and (true-listp x) (equal (len x) 3)
+  (and (fn-replay-ok-shapep x)
        (equal (fn-replay-result-kind x) :ok)
        (fn-node-statep (fn-replay-result-node x))
        (natp (fn-replay-result-sequence x))))
@@ -60,12 +95,22 @@
 
 (defun fn-replay-faultp (x)
   (declare (xargs :guard t :verify-guards nil))
-  (and (true-listp x) (equal (len x) 4)
+  (and (fn-replay-fault-shapep x)
        (equal (fn-replay-result-kind x) :fault)
        (fn-node-statep (fn-replay-result-node x))
        (natp (fn-replay-result-sequence x))))
 
 (verify-guards fn-replay-faultp)
+
+(defthm fn-replay-ok-constructor-is-typed
+  (implies (and (fn-node-statep node) (natp sequence))
+           (fn-replay-okp (fn-replay-ok node sequence)))
+  :hints (("Goal" :in-theory (enable fn-replay-okp))))
+
+(defthm fn-replay-fault-constructor-is-typed
+  (implies (and (fn-node-statep node) (natp sequence))
+           (fn-replay-faultp (fn-replay-fault node sequence reason)))
+  :hints (("Goal" :in-theory (enable fn-replay-faultp))))
 
 ; -----------------------------------------------------------------------------
 ; Explicit reconstruction of txids consumed by known-aborted transactions.
@@ -75,9 +120,9 @@
 ; to the next committed record's txid.  It changes no article, retention pin,
 ; binding, group watermark, or capacity accounting.
 (defun fn-replay-advance-txid (node recorded-txid)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-node-statep node) :verify-guards nil))
   (let ((acceptance (fn-node-acceptance node)))
-    (if (and (fn-node-statep node)
+    (if (and (mbe :logic (fn-node-statep node) :exec t)
              (natp recorded-txid)
              (null (fn-node-stage node))
              (null (fn-state-pending acceptance))
@@ -93,7 +138,8 @@
          (fn-node-bindings node))
       node)))
 
-(verify-guards fn-replay-advance-txid)
+(verify-guards fn-replay-advance-txid
+  :hints (("Goal" :in-theory (enable fn-node-statep fn-statep))))
 
 (defun fn-replay-advance-okp (node recorded-txid)
   (declare (xargs :guard t :verify-guards nil))
@@ -104,70 +150,16 @@
        (equal (fn-state-fenced (fn-node-acceptance node)) nil)
        (<= (fn-state-next-txid (fn-node-acceptance node)) recorded-txid)))
 
-(verify-guards fn-replay-advance-okp)
+(verify-guards fn-replay-advance-okp
+  :hints (("Goal" :in-theory (enable fn-node-statep fn-statep))))
 
-; Apply exactly one record only after its sequence has been checked.  NIL is a
-; refusal signal; it is deliberately not a normal partial state.
-; Its proper-list helper guard is established by the public replay loop
-; through fn-record-p.  No validity test is added to the logical transition.
-(defun fn-replay-apply-record (node record)
-  (declare (xargs :guard (true-listp record) :verify-guards nil))
-  (let ((advanced (fn-replay-advance-txid node (fn-record-txid record))))
-    (if (not (equal (fn-state-next-txid (fn-node-acceptance advanced))
-                    (fn-record-txid record)))
-        nil
-      (let ((prepared
-             (fn-node-prepare advanced
-                              (fn-record-generation record)
-                              (fn-record-msgid record)
-                              (fn-record-payload record)
-                              (fn-record-groups record)
-                              (fn-record-obligation-id record)
-                              (fn-record-content-subject record)
-                              (fn-record-release-evidence record)
-                              (fn-record-charge record))))
-        (if (not (fn-node-pending-matchesp
-                  prepared
-                  (fn-record-txid record)
-                  (fn-record-generation record)))
-            nil
-          (fn-node-complete prepared
-                            (fn-record-txid record)
-                            (fn-record-generation record)
-                            :durable))))))
-
-(verify-guards fn-replay-apply-record)
-
-; The replay loop is total.  It inspects no later record after a fault.
-(defun fn-replay-loop (node records expected-sequence)
-  (declare (xargs :guard t :verify-guards nil :measure (len records)))
-  (if (not (fn-node-statep node))
-      (fn-replay-fault node expected-sequence :invalid-initial-node)
-    (if (consp records)
-        (let ((record (car records)))
-          (if (not (fn-record-p record))
-              (fn-replay-fault node expected-sequence :invalid-record)
-            (if (not (equal (fn-record-sequence record) expected-sequence))
-                (fn-replay-fault node expected-sequence :sequence)
-              (let ((next (fn-replay-apply-record node record)))
-                (if (not (fn-node-statep next))
-                    (fn-replay-fault node expected-sequence :node-refusal)
-                  (fn-replay-loop next (cdr records)
-                                  (1+ expected-sequence)))))))
-      (if (null records)
-          (fn-replay-ok node expected-sequence)
-        (fn-replay-fault node expected-sequence :improper-record-list)))))
-
-(verify-guards fn-replay-loop)
-
-(defun fn-replay (groups capacity records)
-  (declare (xargs :guard t :verify-guards nil))
-  (fn-replay-loop (fn-node-initial-state groups capacity) records 0))
-
-(verify-guards fn-replay)
-
-; -----------------------------------------------------------------------------
-; Mechanical facts about fail-closed replay boundaries.
+; Raising an idle acceptance txid models a known-aborted transaction gap.  It
+; cannot create a partial article or pin and preserves the full node invariant.
+(defthm fn-replay-advance-preserves-node-statep
+  (implies (fn-node-statep node)
+           (fn-node-statep (fn-replay-advance-txid node recorded-txid)))
+  :hints (("Goal" :in-theory (enable fn-replay-advance-txid
+                                      fn-node-statep fn-statep))))
 
 (defthm fn-replay-advance-keeps-committed-retention
   (equal (fn-node-retention (fn-replay-advance-txid node recorded-txid))
@@ -194,6 +186,111 @@
   :hints (("Goal" :in-theory (enable fn-replay-advance-okp
                                       fn-replay-advance-txid))))
 
+(in-theory (disable (:d fn-replay-advance-txid)))
+
+; Apply exactly one record only after its sequence has been checked.  NIL is a
+; refusal signal; it is deliberately not a normal partial state.  The guard
+; on the node is discharged through the two node transitions by their
+; preservation keystones; the record's proper-list guard is established by the
+; public replay loop through fn-record-p.
+(defun fn-replay-apply-record (node record)
+  (declare (xargs :guard (and (fn-node-statep node) (true-listp record))
+                  :verify-guards nil))
+  (let ((advanced (fn-replay-advance-txid node (fn-record-txid record))))
+    (if (not (equal (fn-state-next-txid (fn-node-acceptance advanced))
+                    (fn-record-txid record)))
+        nil
+      (let ((prepared
+             (fn-node-prepare advanced
+                              (fn-record-generation record)
+                              (fn-record-msgid record)
+                              (fn-record-payload record)
+                              (fn-record-groups record)
+                              (fn-record-obligation-id record)
+                              (fn-record-content-subject record)
+                              (fn-record-release-evidence record)
+                              (fn-record-charge record))))
+        (if (not (fn-node-pending-matchesp
+                  prepared
+                  (fn-record-txid record)
+                  (fn-record-generation record)))
+            nil
+          (fn-node-complete prepared
+                            (fn-record-txid record)
+                            (fn-record-generation record)
+                            :durable))))))
+
+(verify-guards fn-replay-apply-record)
+
+; A non-NIL one-record result is the existing node transaction machine's
+; durable branch, hence remains a valid node.  NIL is intentionally a refusal,
+; not a partially reconstructed state.
+(defthm fn-replay-apply-record-non-nil-is-node-state
+  (implies (and (fn-node-statep node)
+                (fn-record-p record)
+                (consp (fn-replay-apply-record node record)))
+           (fn-node-statep (fn-replay-apply-record node record)))
+  :hints (("Goal" :in-theory (enable fn-replay-apply-record))))
+
+; Under the carried invariant a one-record result is a node exactly when it is
+; non-NIL.  This is the equality the replay loop's :exec test relies on; it is
+; used by :use in the guard proof and is not a rewrite rule.
+(defthm fn-replay-apply-record-statep-iff-consp
+  (implies (and (fn-node-statep node)
+                (fn-record-p record))
+           (iff (fn-node-statep (fn-replay-apply-record node record))
+                (consp (fn-replay-apply-record node record))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use fn-replay-apply-record-non-nil-is-node-state
+           :in-theory (e/d (fn-node-statep fn-node-state-shapep)
+                           (fn-replay-apply-record
+                            fn-replay-apply-record-non-nil-is-node-state)))))
+
+; The replay loop is total.  It inspects no later record after a fault.  Its
+; :exec path tests one-record refusal by NIL rather than by the recognizer.
+(defun fn-replay-loop (node records expected-sequence)
+  (declare (xargs :guard (fn-node-statep node) :verify-guards nil
+                  :measure (len records)))
+  (if (mbe :logic (not (fn-node-statep node)) :exec nil)
+      (fn-replay-fault node expected-sequence :invalid-initial-node)
+    (if (consp records)
+        (let ((record (car records)))
+          (if (not (fn-record-p record))
+              (fn-replay-fault node expected-sequence :invalid-record)
+            (if (not (equal (fn-record-sequence record) expected-sequence))
+                (fn-replay-fault node expected-sequence :sequence)
+              (let ((next (fn-replay-apply-record node record)))
+                (if (mbe :logic (not (fn-node-statep next))
+                         :exec (not (consp next)))
+                    (fn-replay-fault node expected-sequence :node-refusal)
+                  (fn-replay-loop next (cdr records)
+                                  (1+ expected-sequence)))))))
+      (if (null records)
+          (fn-replay-ok node expected-sequence)
+        (fn-replay-fault node expected-sequence :improper-record-list)))))
+
+(verify-guards fn-replay-loop
+  :hints (("Goal"
+           :use ((:instance fn-replay-apply-record-statep-iff-consp
+                            (record (car records))))
+           :in-theory (disable fn-node-statep fn-replay-apply-record))))
+
+; The initial node is checked once; the loop then carries the invariant.
+; Logically identical to the former `(fn-replay-loop initial records 0)',
+; whose first test was exactly this one.
+(defun fn-replay (groups capacity records)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((node (fn-node-initial-state groups capacity)))
+    (if (fn-node-statep node)
+        (fn-replay-loop node records 0)
+      (fn-replay-fault node 0 :invalid-initial-node))))
+
+(verify-guards fn-replay)
+
+; -----------------------------------------------------------------------------
+; Mechanical facts about fail-closed replay boundaries.
+
 (defthm fn-replay-empty-prefix-is-ok
   (implies (fn-node-statep node)
            (equal (fn-replay-loop node nil expected-sequence)
@@ -214,3 +311,43 @@
            (equal (fn-replay-loop node (cons record records) expected-sequence)
                   (fn-replay-fault node expected-sequence :sequence)))
   :hints (("Goal" :in-theory (enable fn-replay-loop))))
+
+; From a valid node and natural expected sequence, replay always returns a
+; typed success or a typed fault containing a valid diagnostic prefix node.
+(defthm fn-replay-loop-result-is-typed
+  (implies (and (fn-node-statep node)
+                (natp expected-sequence))
+           (or (fn-replay-okp
+                (fn-replay-loop node records expected-sequence))
+               (fn-replay-faultp
+                (fn-replay-loop node records expected-sequence))))
+  :hints (("Goal" :induct (fn-replay-loop node records expected-sequence)
+           :in-theory (e/d (fn-replay-loop)
+                           (fn-node-statep fn-replay-okp fn-replay-faultp
+                            fn-replay-apply-record fn-record-p)))))
+
+; Valid configured initial inputs inherit the typed replay-result boundary.
+(defthm fn-replay-result-is-typed-from-valid-configuration
+  (implies (and (fn-string-listp groups)
+                (fn-no-duplicatesp groups)
+                (natp capacity))
+           (or (fn-replay-okp (fn-replay groups capacity records))
+               (fn-replay-faultp (fn-replay groups capacity records))))
+  :hints (("Goal"
+           :use ((:instance fn-replay-loop-result-is-typed
+                            (node (fn-node-initial-state groups capacity))
+                            (expected-sequence 0)))
+           :in-theory (e/d (fn-replay)
+                           (fn-node-statep fn-replay-okp fn-replay-faultp
+                            fn-replay-loop fn-node-initial-state
+                            fn-replay-loop-result-is-typed)))))
+
+; -----------------------------------------------------------------------------
+; Export.  Records were disabled at their definitions.  Withdrawn here: the
+; result recognizers, the advance predicate, the one-record step, the loop and
+; the entry point.  Keystones stay enabled: the typed-constructor lemmas, the
+; advance preservation and projection lemmas, the non-NIL-is-node lemma, the
+; three boundary facts and the two typed-result theorems.
+(in-theory (disable (:d fn-replay-okp) (:d fn-replay-faultp)
+                    (:d fn-replay-advance-okp) (:d fn-replay-apply-record)
+                    (:d fn-replay-loop) (:d fn-replay)))
