@@ -59,9 +59,13 @@ ACL2_BOOKS ?= books/assumptions \
 	books/records-canonicality \
 	tests/acl2/records-tests \
 	tests/acl2/records-teeth-tests \
+	books/config \
+	books/config-invariants \
 	books/replay \
 	books/replay-invariants \
 	tests/acl2/replay-tests \
+	books/config-records \
+	tests/acl2/config-tests \
 	books/store-files \
 	books/store-files-invariants \
 	tests/acl2/store-files-tests \

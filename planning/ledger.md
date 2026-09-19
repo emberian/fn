@@ -10,20 +10,20 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 199 |
-| Certification roots in the Makefile | 198 |
-| Books inside the root closure | 198 |
-| `defthm` and `defthmd` events | 3233 |
-| `defun` events | 2273 |
-| Functions with verified guards | 988 |
+| Books read | 203 |
+| Certification roots in the Makefile | 202 |
+| Books inside the root closure | 202 |
+| `defthm` and `defthmd` events | 3319 |
+| `defun` events | 2417 |
+| Functions with verified guards | 991 |
 | Functions declared `:verify-guards nil` and never verified | 131 |
-| Functions left at the default with an explicit guard | 718 |
+| Functions left at the default with an explicit guard | 859 |
 | Functions left at the default with no guard | 436 |
-| `assert-event` checks | 3355 |
+| `assert-event` checks | 3409 |
 | `must-fail` checks | 59 |
 | `encapsulate` events | 14 |
 | Theorems flagged SUSPECT by shape | 29 |
-| Export-hygiene warnings | 60 |
+| Export-hygiene warnings | 62 |
 | Teeth-form warnings | 0 |
 
 ## Lints
@@ -103,6 +103,9 @@ that `make certify` requests.
 | `books/checkpoint.lisp` | root | 18 | 14 | 12/0/2/0 | 0 | 0 | 0 |
 | `books/clock-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/clock.lisp` | root | 9 | 18 | 18/0/0/0 | 0 | 0 | 0 |
+| `books/config-invariants.lisp` | root | 32 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/config-records.lisp` | root | 12 | 15 | 2/0/13/0 | 0 | 0 | 0 |
+| `books/config.lisp` | root | 42 | 128 | 1/0/127/0 | 0 | 0 | 0 |
 | `books/container-invariants.lisp` | root | 25 | 2 | 0/0/1/1 | 0 | 0 | 0 |
 | `books/container.lisp` | root | 2 | 43 | 0/1/42/0 | 0 | 0 | 0 |
 | `books/crypto-seam.lisp` | root | 19 | 14 | 0/0/10/4 | 0 | 0 | 0 |
@@ -208,6 +211,7 @@ that `make certify` requests.
 | `tests/acl2/cbor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
 | `tests/acl2/checkpoint-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/clock-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
+| `tests/acl2/config-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 54 | 0 | 0 |
 | `tests/acl2/container-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 62 | 0 | 0 |
 | `tests/acl2/crypto-seam-tests.lisp` | root | 11 | 7 | 0/0/7/0 | 18 | 0 | 0 |
 | `tests/acl2/exchange-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 162 | 0 | 0 |
