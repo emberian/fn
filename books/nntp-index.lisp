@@ -161,9 +161,17 @@
            (equal (fn-nntp-index-numbers
                    (fn-index-reference-range group low high articles))
                   (fn-nntp-available-numbers group low high articles)))
+  ; The accessors stay folded here on purpose: FN-ARTICLE-MSGID and
+  ; FN-ARTICLE-MEMBERSHIPS normalize to CAR/CADDDR, and the lemma above is
+  ; stated in accessor vocabulary, so it cannot match an unfolded goal.
+  ; FN-ARTICLEP stays folded for the same reason -- it is the lemma's
+  ; hypothesis, not a bag of conjuncts.
   :hints (("Goal" :induct (fn-index-reference-range group low high articles)
            :in-theory (disable fn-nntp-article-number
-                               fn-nntp-index-entry-available))))
+                               fn-nntp-index-entry-available
+                               fn-articlep
+                               fn-article-msgid
+                               fn-article-memberships))))
 
 ; The keystone bridge: the numbers read out of a fresh index query are the
 ; numbers the fold would have computed.  FN-INDEX-RANGE-QUERY-CORRECT is the

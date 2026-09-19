@@ -174,7 +174,7 @@
     "theorems": 2304,
     "functions": 1692,
     "assert_events": 2617,
-    "must_fails": 133,
+    "must_fails": 137,
     "encapsulates": 8,
     "guards": {
       "verified": 959,
@@ -3700,7 +3700,7 @@
       },
       "verify_guards_events": 0,
       "assert_events": 50,
-      "must_fails": 0,
+      "must_fails": 4,
       "defconsts": 18,
       "defmacros": 0,
       "encapsulates": 0,
