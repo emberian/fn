@@ -76,12 +76,14 @@ ACL2_BOOKS ?= books/assumptions \
 	tests/acl2/store-node-traces-tests \
 	books/store-node-resolution \
 	tests/acl2/store-node-resolution-tests \
-	books/store-node-resolution-traces \
-	tests/acl2/store-node-resolution-traces-tests \
 	books/store-observed \
 	tests/acl2/store-observed-tests \
 	books/store-observed-traces \
 	tests/acl2/store-observed-traces-tests \
+	books/byte-store \
+	books/byte-store-invariants \
+	books/byte-store-programs \
+	tests/acl2/byte-store-tests \
 	tests/acl2/store-node-guards-tests \
 	tests/acl2/store-node-teeth-tests \
 	books/checkpoint \
@@ -103,6 +105,11 @@ ACL2_BOOKS ?= books/assumptions \
 	books/clock \
 	books/clock-invariants \
 	tests/acl2/clock-tests \
+	books/anchor \
+	books/anchor-record \
+	books/anchor-invariants \
+	tests/acl2/anchor-tests \
+	tests/acl2/anchor-teeth-tests \
 	books/membership-epochs \
 	books/membership-epochs-invariants \
 	tests/acl2/membership-epochs-tests \
@@ -162,6 +169,9 @@ ACL2_BOOKS ?= books/assumptions \
 	books/nntp-effects \
 	tests/acl2/nntp-tests \
 	tests/acl2/nntp-teeth-tests \
+	books/served \
+	tests/acl2/served-tests \
+	books/ideal \
 	books/nntp-index \
 	tests/acl2/nntp-index-tests \
 	tests/acl2/nntp-reader-profile-tests \
