@@ -358,6 +358,45 @@ class ExportHygieneLintTests(unittest.TestCase):
         self.assertEqual(len(self.findings(
             self.ACCESSOR + "(local (in-theory (disable fn-ag-car-is-car)))")), 1)
 
+    def test_a_theory_name_withdrawn_at_the_end_of_the_book_exempts_its_rules(self):
+        # The shape three deputies use: name the helpers once, withdraw the
+        # name.  Reading only the disable would count every helper as exported.
+        withdrawn = self.ACCESSOR + """(deftheory fn-ag-vocabulary
+  '(fn-ag-car-is-car))
+(in-theory (disable fn-ag-vocabulary))
+"""
+        self.assertEqual(self.findings(withdrawn), [])
+        # Defining the theory and never disabling it withdraws nothing.
+        defined_only = self.ACCESSOR + """(deftheory fn-ag-vocabulary
+  '(fn-ag-car-is-car))
+"""
+        self.assertEqual([entry["theorem"] for entry in self.findings(defined_only)],
+                         ["fn-ag-car-is-car"])
+
+    def test_rune_forms_and_theory_algebra_resolve_too(self):
+        for closing in (
+                "(deftheory v '((:rewrite fn-ag-car-is-car)))\n"
+                "(in-theory (disable v))",
+                "(deftheory v '((:d fn-ag-car) (:e fn-ag-car) fn-ag-car-is-car))\n"
+                "(in-theory (disable v))",
+                "(deftheory inner '(fn-ag-car-is-car))\n"
+                "(deftheory outer (union-theories (theory 'inner) '(fn-ag-car)))\n"
+                "(in-theory (disable outer))",
+                "(deftheory v '(fn-ag-car-is-car))\n"
+                "(in-theory (set-difference-theories (current-theory :here) "
+                "(theory 'v)))",
+                "(deftheory v '(fn-ag-car-is-car))\n"
+                "(in-theory (e/d (fn-ag-car) (v)))"):
+            self.assertEqual(self.findings(self.ACCESSOR + closing + "\n"), [],
+                             closing)
+
+    def test_a_theory_that_does_not_name_the_rule_still_leaves_it_enabled(self):
+        closing = ("(deftheory v '(fn-ag-cdr-is-cdr))\n"
+                   "(in-theory (disable v))\n")
+        self.assertEqual([entry["theorem"] for entry in
+                          self.findings(self.ACCESSOR + closing)],
+                         ["fn-ag-car-is-car"])
+
     def test_len_backchaining_conclusions_are_flagged(self):
         found = self.findings('''(in-package "ACL2")
 (defthm consp-from-len (implies (< 0 (len x)) (consp x)))
