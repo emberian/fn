@@ -120,6 +120,35 @@ class BpaDtn7ClientTests(unittest.TestCase):
         with self.assertRaises(bpa.BpaDtn7Timeout):
             self.client.inventory()
 
+    def test_a_transfer_inside_every_read_window_still_hits_the_total_deadline(self):
+        """The per-read timeout alone cannot bound a transfer.
+
+        This peer answers well inside the socket timeout, so no single read
+        fails; only the whole-transfer deadline ends the call.
+        """
+        client = bpa.BpaDtn7Client(self.server.server_port, timeout_seconds=2.0,
+                                   max_bundle_bytes=4096, total_deadline_seconds=0.2)
+
+        def unhurried():
+            time.sleep(0.5)
+            return self.fixed(200, b"opaque-bp-cbor")
+
+        _Handler.routes["/download?dtn://bp-a/-slow"] = unhurried
+        started = time.monotonic()
+        with self.assertRaisesRegex(bpa.BpaDtn7Timeout, "total deadline"):
+            client.download_bundle("dtn://bp-a/-slow")
+        elapsed = time.monotonic() - started
+        # It ended on its own deadline, before the 2 s per-read timeout.
+        self.assertLess(elapsed, 2.0)
+
+    def test_delete_completion_is_observed_from_inventory_absence(self):
+        """D14: a lost delete reply is resolved, never assumed either way."""
+        _Handler.routes["/status/bundles"] = self.fixed(200, b'["dtn://bp-a/-1"]')
+        self.assertFalse(self.client.delete_completed("dtn://bp-a/-1"))
+        self.assertTrue(self.client.delete_completed("dtn://bp-a/-2"))
+        _Handler.routes["/status/bundles"] = self.fixed(200, b"[]")
+        self.assertTrue(self.client.delete_completed("dtn://bp-a/-1"))
+
     def test_loopback_and_input_boundaries_are_enforced(self):
         with self.assertRaises(bpa.BpaDtn7ProtocolError):
             bpa.BpaDtn7Client(3000, host="127.0.0.1")
@@ -127,6 +156,10 @@ class BpaDtn7ClientTests(unittest.TestCase):
             self.client.download_bundle("dtn://x/" + "a" * bpa.MAX_BID_BYTES)
         with self.assertRaises(bpa.BpaDtn7ProtocolError):
             bpa.BpaDtn7Client(3000, timeout_seconds=0)
+        with self.assertRaises(bpa.BpaDtn7ProtocolError):
+            bpa.BpaDtn7Client(3000, total_deadline_seconds=0)
+        with self.assertRaises(bpa.BpaDtn7ProtocolError):
+            bpa.BpaDtn7Client(3000, total_deadline_seconds=bpa.MAX_TOTAL_DEADLINE_SECONDS + 1)
 
 
 if __name__ == "__main__":

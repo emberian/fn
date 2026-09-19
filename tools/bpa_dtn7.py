@@ -11,6 +11,7 @@ from dataclasses import dataclass
 import http.client
 import json
 import socket
+import time
 from typing import Callable
 from urllib.parse import quote
 
@@ -19,6 +20,11 @@ PINNED_DTN7_VERSION = "0.21.0"
 LOCAL_HOST = "::1"
 DEFAULT_TIMEOUT_SECONDS = 2.0
 MAX_TIMEOUT_SECONDS = 30.0
+# The socket timeout bounds one read.  A peer that drips one byte inside every
+# timeout window would otherwise hold the call open without limit, so the whole
+# request/response also carries a deadline.
+DEFAULT_TOTAL_DEADLINE_SECONDS = 30.0
+MAX_TOTAL_DEADLINE_SECONDS = 300.0
 MAX_BID_BYTES = 512
 MAX_INVENTORY_COUNT = 8192
 # 8,192 quoted BIDs of 512 bytes plus JSON punctuation fits below this cap.
@@ -86,6 +92,7 @@ class BpaDtn7Client:
     def __init__(self, port: int, *, host: str = LOCAL_HOST,
                  timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
                  max_bundle_bytes: int = DEFAULT_MAX_BUNDLE_BYTES,
+                 total_deadline_seconds: float = DEFAULT_TOTAL_DEADLINE_SECONDS,
                  connection_factory: Callable[..., http.client.HTTPConnection] = http.client.HTTPConnection):
         if host != LOCAL_HOST:
             raise BpaDtn7ProtocolError("experimental BPA client permits only ::1")
@@ -97,13 +104,19 @@ class BpaDtn7Client:
         if (not isinstance(max_bundle_bytes, int) or isinstance(max_bundle_bytes, bool) or
                 not 1 <= max_bundle_bytes <= MAX_INVENTORY_RESPONSE_BYTES):
             raise BpaDtn7ProtocolError("BPA bundle cap is outside the local profile")
+        if (not isinstance(total_deadline_seconds, (int, float)) or
+                isinstance(total_deadline_seconds, bool) or
+                not 0 < total_deadline_seconds <= MAX_TOTAL_DEADLINE_SECONDS):
+            raise BpaDtn7ProtocolError("BPA transfer deadline is outside the local profile")
         self.port = port
         self.host = host
         self.timeout_seconds = float(timeout_seconds)
         self.max_bundle_bytes = max_bundle_bytes
+        self.total_deadline_seconds = float(total_deadline_seconds)
         self._connection_factory = connection_factory
 
-    def _read_bounded(self, response: http.client.HTTPResponse, limit: int) -> bytes:
+    def _read_bounded(self, response: http.client.HTTPResponse, limit: int,
+                      deadline: float) -> bytes:
         header = response.getheader("Content-Length")
         if header is not None:
             try:
@@ -116,6 +129,8 @@ class BpaDtn7Client:
                 raise BpaDtn7ResponseTooLarge("BPA response exceeds configured cap")
         output = bytearray()
         while True:
+            if time.monotonic() > deadline:
+                raise BpaDtn7Timeout("BPA transfer exceeded its total deadline")
             try:
                 chunk = response.read(min(_READ_CHUNK_BYTES, limit + 1 - len(output)))
             except socket.timeout as error:
@@ -128,6 +143,8 @@ class BpaDtn7Client:
             if len(output) == limit:
                 # One byte more distinguishes exact-at-cap from an oversized
                 # chunked response without allocating beyond the configured cap.
+                if time.monotonic() > deadline:
+                    raise BpaDtn7Timeout("BPA transfer exceeded its total deadline")
                 try:
                     extra = response.read(1)
                 except socket.timeout as error:
@@ -137,14 +154,15 @@ class BpaDtn7Client:
                 return bytes(output)
 
     def _get(self, path: str, operation: str, limit: int) -> bytes:
+        deadline = time.monotonic() + self.total_deadline_seconds
         connection = self._connection_factory(self.host, self.port, timeout=self.timeout_seconds)
         try:
             connection.request("GET", path, headers={"Accept": "application/json, application/octet-stream"})
             response = connection.getresponse()
             if response.status != 200:
-                detail = self._read_bounded(response, MAX_ERROR_RESPONSE_BYTES)
+                detail = self._read_bounded(response, MAX_ERROR_RESPONSE_BYTES, deadline)
                 raise BpaDtn7HttpError(response.status, operation, detail)
-            return self._read_bounded(response, limit)
+            return self._read_bounded(response, limit, deadline)
         except BpaDtn7Error:
             raise
         except (socket.timeout, TimeoutError) as error:
@@ -180,5 +198,19 @@ class BpaDtn7Client:
         return raw
 
     def delete(self, bid: str) -> None:
-        """Request explicit BPA deletion; it has no fn acceptance meaning."""
+        """Request explicit BPA deletion; it has no fn acceptance meaning.
+
+        A lost reply leaves the request's effect unknown here.  It is resolved
+        by `delete_completed`, never by assuming either outcome.
+        """
         self._get("/delete?" + _raw_query_bid(bid), "delete", MAX_ERROR_RESPONSE_BYTES)
+
+    def delete_completed(self, bid: str) -> bool:
+        """Observe whether a pending delete took effect: the BID left inventory.
+
+        Absence from the pinned inventory is the only local evidence that an
+        earlier delete whose reply was lost actually ran; presence means the
+        delete must be retried.  This is a transport observation about the BPA,
+        never an fn acceptance, release, or receipt decision.
+        """
+        return _bounded_visible_ascii(bid, "BPA BID") not in self.inventory()
