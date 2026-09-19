@@ -101,13 +101,22 @@
 (assert-event (equal (fn-bpi-find-group "z" nil) nil))
 (assert-event (equal (fn-bpi-map-groups nil nil) '(:ok nil)))
 (assert-event (equal (fn-bpi-ag-dec 7) 6))
-(assert-event (equal (fn-bpi-ag-dec 'not-a-number) (1- 'not-a-number)))
-(assert-event (equal (fn-bpi-ag-result-article 7) (fn-article-result-article 7)))
-(assert-event (equal (fn-bpi-ag-record-msgid 7) (fn-record-msgid 7)))
-(assert-event (equal (fn-bpi-ag-record-payload '(a . b)) (fn-record-payload '(a . b))))
-(assert-event (equal (fn-bpi-ag-record-groups 7) (fn-record-groups 7)))
-(assert-event (equal (fn-bpi-ag-record-obligation-id 7) (fn-record-obligation-id 7)))
-(assert-event (equal (fn-bpi-ag-record-content-subject 7) (fn-record-content-subject 7)))
+; -1 is the logical value of (1- 'not-a-number); it is written out because
+; assert-event evaluates its form under guard checking, where the 1- call
+; itself is a guard violation.
+(assert-event (equal (fn-bpi-ag-dec 'not-a-number) -1))
+; Agreement with the narrow readers off their guards is not testable here:
+; assert-event evaluates under guard checking, and fn-article-result-article /
+; fn-record-* carry a (true-listp x) guard, so naming them on malformed input
+; is itself the violation.  Agreement is instead proved for all inputs by the
+; fn-bpi-ag-*-is-* equality theorems in books/bp-ingress.lisp; what these
+; assertions add is that the total helpers themselves run on malformed input.
+(assert-event (equal (fn-bpi-ag-result-article 7) nil))
+(assert-event (equal (fn-bpi-ag-record-msgid 7) nil))
+(assert-event (equal (fn-bpi-ag-record-payload '(a . b)) nil))
+(assert-event (equal (fn-bpi-ag-record-groups 7) nil))
+(assert-event (equal (fn-bpi-ag-record-obligation-id 7) nil))
+(assert-event (equal (fn-bpi-ag-record-content-subject 7) nil))
 (assert-event (equal (fn-bpi-node-record-committedp 7 7) nil))
 (assert-event (equal (fn-bpi-durably-acceptedp 7 7) nil))
 (assert-event (equal (fn-bpi-adu-durably-acceptedp 7 7 7 '(1 2 3)) nil))
