@@ -35,6 +35,39 @@ proposed profile uses definite lengths, rejects duplicate map keys, avoids float
 and limits integer domains per field. Parsers do not use the Common Lisp reader,
 intern arbitrary remote symbols, or execute data. Bound checks precede allocation.
 
+## Content identity, and the domain separation it lacks
+
+[`books/identity.lisp`](../books/identity.lisp) owns the two derivations the
+adapter used to own:
+
+    subject    = "sha256:"  || lowercase-hex(SHA-256(payload))
+    obligation = "archive:" || lowercase-hex(SHA-256(msgid || 0x00 || subject))
+
+ACL2 decides the labels, the hexadecimal alphabet and case, the separator
+octet, the order of the preimage and every length; the host supplies the digest
+octets under A-CRYPTO. The hexadecimal projection is proved invertible in both
+directions and injective, so an identity collision is a digest collision and
+nothing else. The charge policy `fn-charge-for-payload` is proved positive and
+monotone in payload length.
+
+**This preimage is not domain separated, and ENC-003 asks that it be.** It
+carries no domain label, no schema version and no algorithm identifier, so a
+future preimage of another kind could collide with it by construction rather
+than by digest collision. Existing lab stores and fixtures depend on the exact
+bytes above, so the derivation stands. The v1 profile to adopt, for the
+substrate lane building the portable statement header:
+
+    subject-v1    = SHA-256("fn/subject/v1" || 0x00 || uint32-be(len(payload))
+                            || payload)
+    obligation-v1 = SHA-256("fn/obligation/v1" || 0x00 || uint32-be(len(msgid))
+                            || msgid || uint32-be(len(subject)) || subject)
+
+with the label carried in the encoded identity rather than prefixed to a hex
+string, and with the algorithm identifier part of the container so that
+algorithm agility (D09) does not change the meaning of an existing identity.
+Length-prefixing every variable field removes the remaining ambiguity that the
+single 0x00 separator only papers over.
+
 ENC-003: identity and signature preimages specify a domain, schema version,
 algorithm identifiers, field encoding, and exact bytes. Do not hash native Lisp
 printing, platform-endian memory, ambiguous concatenations, or normalized display
@@ -58,9 +91,55 @@ Publish golden byte vectors with independent decoding checks. Include empty
 values, boundaries, duplicate keys, non-minimal encodings, truncation, oversized
 length declarations, and unfamiliar schema versions.
 
-The initial frame fields to evaluate are magic, version, record kind, bounded
-length, payload, and integrity trailer. This is a field inventory, not a chosen
-binary layout. The commit/checkpoint grammar must be designed alongside the
+## The durable frame grammar
+
+Chosen and proved, replacing four Python-only grammars (FNST, FNWF, FNRJ,
+FNBI). One layout serves all four:
+
+    FRAME := MAGIC(4) VERSION(1) KIND(1) LENGTH(4, big-endian)
+             PAYLOAD(LENGTH) TRAILER(32)
+
+It is a direct octet layout rather than a CBOR item, for two structural
+reasons. The frame's job is to bound the payload before anything allocates, so
+building it on the CBOR decoder would make that bound depend on the parser the
+frame exists to protect, and the store payload is itself a CBOR record. A
+fixed-width big-endian field also has exactly one encoding of each accepted
+value, so ENC-001's canonical uniqueness here is structural: `books/frame.lisp`
+defines `fn-frame-encode` and `fn-frame-decode` and
+[`books/frame-invariants.lisp`](../books/frame-invariants.lisp) proves
+`fn-frame-decode-of-encode` for every accepted value and
+`fn-frame-encode-of-decode` for every accepted octet string. ENC-002's bound is
+`fn-frame-decode-refuses-oversize-before-validation`: an input longer than the
+caller's cap is refused with no hypothesis about its contents at all, so no
+octet was examined and nothing was allocated. Journal payloads use a field
+grammar in the same book (u16-prefixed UTF-8 text, u32-prefixed blob, 64-bit
+big-endian natural, one-octet 1-based enumeration) with both round-trip
+directions proved over field-specification lists. UTF-8 validity is the wildmat
+book's RFC 3629 decoder; there is no second table.
+
+FNWF and FNRJ frames are byte-identical to the Python frames they replace, and
+`tests/acl2/frame-tests.lisp` asserts that against vectors generated from the
+Python encoders. FNST gains the record kind octet it lacked, so a store written
+under the old framing is refused by its configuration format
+(`fn-store-experiment-4`) rather than misread. FNBI moves its BID length into a
+payload text field; because an inbound bundle can reach four mebibytes and
+cannot cross the decimal-octet bridge, ACL2 builds and validates the frame head
+and the host concatenates bundle bytes it never interprets.
+
+**A-CRYPTO.** The 32-octet trailer is SHA-256 in deployment and ACL2 does not
+compute it. `fn-frame-digest` is an `encapsulate` whose only constraints are
+output shape (an octet list of length 32), with a local witness proving the
+constraints satisfiable. No theorem in this tree claims collision or preimage
+resistance for it. `fn-frame-seal` and `fn-frame-open` are the specification
+functions stated against the constrained digest; `fn-frame-encode` and
+`fn-frame-decode` take the digest as an argument and are what the host calls,
+and `fn-frame-encode-is-seal` and `fn-frame-decode-is-open` state exactly what
+the host must have computed for the two to coincide, naming `fn-frame-digest`
+in their hypotheses. See the measurement in `HANDOFF.md` for why the installed
+`books/kestrel/crypto/sha-2/` formal specification is not used to compute the
+trailer.
+
+The commit/checkpoint grammar must still be designed alongside the
 [storage failure model](failures.md).
 
 See [RFC 8949 §4.2](https://www.rfc-editor.org/rfc/rfc8949.html#section-4.2) for
