@@ -373,34 +373,21 @@
                                     fn-transfer-result-state)
                                    (fn-transfer-statep))))))
 
-(defthm fn-tj-refused-record-replays-to-same-state
-  (implies (and (not (equal (fn-tj-outcome r) :reserved))
-                (not (equal (fn-tj-outcome r) :stored)))
-           (equal (fn-frame-item 1 (fn-tj-apply st r)) st))
-  ; Same trap as `fn-tj-transition-preserves-statep`: `books/transfer-
-  ; invariants.lisp` exports `fn-transfer-add-chunk-result-state-normal-form`
-  ; enabled, and it rewrites the stored branch into its explicit
-  ; `(list (car st) (fn-transfer-replace-entry-with-chunks ...))` before the
-  ; three refusal lemmas cited below can meet the goal.  Both it and
-  ; `fn-transfer-find-absent-is-nil` are closed here.  A board CHANGE-request
-  ; asks nntp to make the normal form `:rule-classes nil`.
-  :hints (("Goal" :in-theory (e/d (fn-tj-apply fn-tj-transition fn-frame-item)
-                                  (fn-transfer-add-chunk-result-state-normal-form
-                                   fn-transfer-find-absent-is-nil))
-           :use ((:instance fn-transfer-reserve-refusal-no-overwrite-general
-                            (label (fn-tj-label r))
-                            (declared-length (fn-tj-arg r)))
-                 (:instance fn-transfer-reserve-refusal-no-overwrite
-                            (label (fn-tj-label r))
-                            (declared-length (fn-tj-arg r)))
-                 (:instance fn-transfer-add-chunk-refusal-or-conflict-no-overwrite
-                            (label (fn-tj-label r))
-                            (offset (fn-tj-arg r))
-                            (octets (fn-tj-octets r)))
-                 (:instance fn-tj-add-chunk-on-non-state-no-overwrite
-                            (label (fn-tj-label r))
-                            (offset (fn-tj-arg r))
-                            (octets (fn-tj-octets r)))))))
+; REMOVED, recorded open in specs/transfer-journal.md:
+; `fn-tj-refused-record-replays-to-same-state` as the handoff fixed it,
+;   (implies (and (not (equal (fn-tj-outcome r) :reserved))
+;                 (not (equal (fn-tj-outcome r) :stored)))
+;            (equal (fn-frame-item 1 (fn-tj-apply st r)) st))
+; is false, and the prover exhibits why: for a record that is not a
+; transition record `fn-tj-apply` answers `(list :fault :not-a-transition st)`,
+; whose item 1 is the reason, not the state, so the goal reduces to
+; `(equal :not-a-transition st)`.  The provable statement adds
+; `(fn-tj-transition-recordp r)` and reads item 2 on the fault branch; adding
+; a hypothesis to a keystone is a statement change this lane is not
+; authorised to make, so the theorem is removed rather than weakened.  The
+; property it was meant to carry is exercised concretely in
+; tests/acl2/transfer-journal-tests.lisp (duplicate, differing overlap and
+; malformed records, each replaying to the prior state).
 
 ; -----------------------------------------------------------------------------
 ; The host entry point is the specification: with the digests a correct host

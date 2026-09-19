@@ -14,7 +14,7 @@ book are byte-identical to `dev`.
 | Book | Status | Evidence dir (`build/acl2/`) | Theorems |
 | --- | --- | --- | --- |
 | `books/transfer-journal.lisp` | **certified** | `certify-20260919T215540Z-3210` | 26 |
-| `books/transfer-journal-invariants.lisp` | open | `certify-20260919T220645Z-21925` | |
+| `books/transfer-journal-invariants.lisp` | **certified** | `certify-20260919T221000Z-26241` | 23 |
 | `tests/acl2/transfer-journal-tests.lisp` | open | `certify-20260919T220717Z-22415` | |
 | `books/container.lisp` | open | `certify-20260919T220828Z-23468` | |
 | `books/container-invariants.lisp` | open | `certify-20260919T220917Z-24484` | |

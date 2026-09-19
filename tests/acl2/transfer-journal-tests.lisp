@@ -279,7 +279,8 @@
         (list :ok *tj-resumed* 4)))
 
 ; -----------------------------------------------------------------------------
-; Teeth for fn-tj-refused-record-replays-to-same-state
+; Witnesses for the refusal property (its theorem is recorded open in
+; specs/transfer-journal.md; these are what carry it today)
 ;   (implies (and (not (equal (fn-tj-outcome r) :reserved))
 ;                 (not (equal (fn-tj-outcome r) :stored)))
 ;            (equal (fn-frame-item 1 (fn-tj-apply st r)) st))
