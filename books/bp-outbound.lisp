@@ -98,6 +98,7 @@
         (if (fn-bpa-receiptp message)
             (fn-bpo-adu-receipt-to-bp message)
           nil)))))
+(verify-guards fn-bpo-decode-receipt)
 
 ; txid and generation are local journal allocation inputs.  They occur only in
 ; this local record and are never read from or written to the portable ADU.
@@ -117,7 +118,10 @@
 (defun fn-bpo-receipt-intent-record
   (s txid generation receipt-octets policy-authorizedp)
   (declare (xargs :guard t :verify-guards nil))
-  (if (not (equal policy-authorizedp t))
+  ; The actual workflow journal transition owns all identity, authority,
+  ; pending/fence and local transaction-pair checks.
+  (mbe :logic
+(if (not (equal policy-authorizedp t))
       (fn-bpo-make-error :policy-refused)
     (let ((receipt (fn-bpo-decode-receipt receipt-octets)))
       (if (not (consp receipt))
@@ -126,11 +130,23 @@
                 (fn-bpo-make-receipt-intent-record
                  txid generation receipt))
                (applied (fn-bp-apply-journal-record s record)))
-          ; The actual workflow journal transition owns all identity, authority,
-          ; pending/fence and local transaction-pair checks.
           (if (car applied)
               (fn-bpo-make-ok record)
-            (fn-bpo-make-error :receipt-refused)))))))
+            (fn-bpo-make-error :receipt-refused))))))
+       :exec
+(if (not (equal policy-authorizedp t))
+      (fn-bpo-make-error :policy-refused)
+    (let ((receipt (fn-bpo-decode-receipt receipt-octets)))
+      (if (not (consp receipt))
+          (fn-bpo-make-error :receipt-refused)
+        (let* ((record
+                (fn-bpo-make-receipt-intent-record
+                 txid generation receipt))
+               (applied (fn-bp-apply-journal-record s record)))
+          (if (fn-ag-car applied)
+              (fn-bpo-make-ok record)
+            (fn-bpo-make-error :receipt-refused)))))) ))
+(verify-guards fn-bpo-receipt-intent-record)
 
 ; ---------------------------------------------------------------------------
 ; Composition properties

@@ -92,6 +92,7 @@
     "tests/acl2/index-tests",
     "books/bp-ingress",
     "tests/acl2/bp-ingress-tests",
+    "tests/acl2/bp-ingress-guards-tests",
     "books/bp-adu",
     "tests/acl2/bp-adu-tests",
     "books/bp-workflow",
@@ -105,6 +106,7 @@
     "books/bp-workflow-records",
     "books/bp-workflow-records-invariants",
     "tests/acl2/bp-workflow-records-tests",
+    "tests/acl2/bp-workflow-records-guards-tests",
     "books/bp-receipt",
     "tests/acl2/bp-receipt-tests",
     "books/bp-receipt-records",
@@ -120,6 +122,7 @@
     "tests/acl2/bp-receiver-teeth-tests",
     "books/bp-outbound",
     "tests/acl2/bp-outbound-tests",
+    "tests/acl2/bp-outbound-guards-tests",
     "books/journal",
     "tests/acl2/journal-tests",
     "books/exchange",
@@ -142,19 +145,19 @@
     "tests/acl2/nntp-teeth-tests"
   ],
   "totals": {
-    "books": 138,
-    "books_in_root_closure": 138,
-    "roots": 138,
-    "theorems": 1876,
-    "functions": 1427,
-    "assert_events": 2013,
+    "books": 141,
+    "books_in_root_closure": 141,
+    "roots": 141,
+    "theorems": 1883,
+    "functions": 1434,
+    "assert_events": 2182,
     "must_fails": 99,
     "encapsulates": 8,
     "guards": {
-      "verified": 755,
-      "declared-off": 36,
-      "default-guarded": 236,
-      "default-unguarded": 400
+      "verified": 802,
+      "declared-off": 24,
+      "default-guarded": 243,
+      "default-unguarded": 365
     },
     "suspect_theorems": 23
   },
@@ -525,15 +528,15 @@
       "book": "books/bp-ingress.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
-      "functions": 35,
+      "theorems": 7,
+      "functions": 42,
       "guards": {
-        "verified": 0,
+        "verified": 35,
         "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 35
+        "default-guarded": 7,
+        "default-unguarded": 0
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 35,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -541,6 +544,7 @@
       "encapsulates": 0,
       "includes": [
         "article-fields",
+        "article-properties",
         "store-node"
       ],
       "system_includes": [],
@@ -554,12 +558,12 @@
       "theorems": 10,
       "functions": 11,
       "guards": {
-        "verified": 0,
-        "declared-off": 2,
+        "verified": 2,
+        "declared-off": 0,
         "default-guarded": 9,
         "default-unguarded": 0
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 2,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -912,12 +916,12 @@
       "theorems": 0,
       "functions": 11,
       "guards": {
-        "verified": 0,
-        "declared-off": 10,
+        "verified": 10,
+        "declared-off": 0,
         "default-guarded": 1,
         "default-unguarded": 0
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 10,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -2478,6 +2482,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/bp-ingress-guards-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 108,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-ingress"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/bp-ingress-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -2497,6 +2526,31 @@
       "encapsulates": 0,
       "includes": [
         "../../books/bp-ingress"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bp-outbound-guards-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 29,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-outbound"
       ],
       "system_includes": [],
       "suspects": [],
@@ -2656,6 +2710,31 @@
       "system_includes": [
         "std/testing/must-fail"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bp-workflow-records-guards-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 32,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-workflow-records"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },

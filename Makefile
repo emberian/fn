@@ -89,6 +89,7 @@ ACL2_BOOKS ?= books/assumptions \
 	tests/acl2/index-tests \
 	books/bp-ingress \
 	tests/acl2/bp-ingress-tests \
+	tests/acl2/bp-ingress-guards-tests \
 	books/bp-adu \
 	tests/acl2/bp-adu-tests \
 	books/bp-workflow \
@@ -102,6 +103,7 @@ ACL2_BOOKS ?= books/assumptions \
 	books/bp-workflow-records \
 	books/bp-workflow-records-invariants \
 	tests/acl2/bp-workflow-records-tests \
+	tests/acl2/bp-workflow-records-guards-tests \
 	books/bp-receipt \
 	tests/acl2/bp-receipt-tests \
 	books/bp-receipt-records \
@@ -117,6 +119,7 @@ ACL2_BOOKS ?= books/assumptions \
 	tests/acl2/bp-receiver-teeth-tests \
 	books/bp-outbound \
 	tests/acl2/bp-outbound-tests \
+	tests/acl2/bp-outbound-guards-tests \
 	books/journal \
 	tests/acl2/journal-tests \
 	books/exchange \
