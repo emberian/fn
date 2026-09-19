@@ -70,7 +70,6 @@ class Acl2Owner(Acl2Store):
         super().__init__()
         self.max_conns = max_conns
         self.call('(include-book "books/owner")')
-        self.call('(ld "host/reader-host.lisp" :ld-error-action :return :ld-error-triples t)')
         self.call('(ld "host/owner-host.lisp" :ld-error-action :return :ld-error-triples t)')
 
     def _symbol(self, form, timeout=None):
@@ -125,17 +124,31 @@ class Acl2Owner(Acl2Store):
         cid = acl2_symbol_or_nat(self.call("(fn-owner-open state)"))
         if cid is None:
             return None, b""
-        return cid, bytes(acl2_octet_list(self.call("(@ fn-reader-output)")))
+        return cid, bytes(acl2_octet_list(self.call("(@ fn-owner-output)")))
 
     def chunk(self, cid, octets):
+        """One socket read, consumed whole by one certified call.
+
+        `fn-own-read' (books/owner.lisp) is one fn-served-step over the
+        connection's wire, session and pinned archive
+        (fn-own-read-is-served-step-on-pinned-prefix).  The whole chunk is
+        consumed, so there is no unconsumed suffix and no re-feeding loop
+        here.  The third value is the submission the read produced, if any:
+        None until w4/post's POST fold lands a submit effect in
+        fn-nntp-effectp; the owner then runs the durable path for it and
+        feeds the outcome back through `outcome'.
+        """
         literal = "(" + " ".join(str(byte) for byte in octets) + ")"
         outcome = self._symbol("(fn-owner-chunk {} '{} state)".format(cid, literal))
         if outcome != "ok":
             raise StoreError("owner does not know connection {}".format(cid))
-        reply = bytes(acl2_octet_list(self.call("(@ fn-reader-output)")))
-        closing = acl2_boolean(self.call("(@ fn-reader-closep)"))
-        suffix = acl2_octet_list(self.call("(@ fn-reader-suffix)"))
-        return reply, closing, suffix
+        reply = bytes(acl2_octet_list(self.call("(@ fn-owner-output)")))
+        closing = acl2_boolean(self.call("(@ fn-owner-closep)"))
+        return reply, closing, None
+
+    def outcome(self, cid, word):
+        """Feed a submission's durable outcome back through the book."""
+        return self._symbol("(fn-owner-outcome {} :{} state)".format(cid, word))
 
     def close_connection(self, cid):
         return self._symbol("(fn-owner-close {} state)".format(cid))
@@ -180,7 +193,6 @@ class Connection:
     def __init__(self, sock, cid):
         self.sock = sock
         self.cid = cid
-        self.pending = []
         self.outbuf = b""
         self.closing = False
         self.reading = True
@@ -237,14 +249,16 @@ class Owner:
                 self.drop(conn)
                 return
             if incoming:
-                conn.pending.extend(incoming)
-                while conn.pending and not conn.closing:
-                    reply, closing, conn.pending = self.bridge.chunk(conn.cid, conn.pending)
-                    conn.outbuf += reply
-                    if closing:
-                        conn.closing = True
-                    if not conn.pending:
-                        break
+                # One read, one certified step: fn-own-read consumes the
+                # whole chunk (books/served.lisp owns the framing loop and
+                # fn-served-run-is-the-concatenated-step says the cut points
+                # the network chose are invisible).
+                reply, closing, submission = self.bridge.chunk(conn.cid, list(incoming))
+                conn.outbuf += reply
+                if closing:
+                    conn.closing = True
+                if submission is not None:
+                    conn.outbuf += self.submit(conn, submission)
         if mask & selectors.EVENT_WRITE and conn.outbuf:
             try:
                 sent = conn.sock.send(conn.outbuf)
@@ -263,6 +277,31 @@ class Owner:
         # post path keep running.
         conn.reading = len(conn.outbuf) < MAX_OUTPUT_BACKLOG
         self.rearm(conn)
+
+    def submit(self, conn, submission):
+        """The served POST path, shaped for w4/post's fold.
+
+        A submission the served step produced runs the same durable path a
+        control-channel POST runs, with this connection as the transaction
+        owner, and its outcome is fed back through fn-owner-outcome so the
+        book, not this file, decides the reply.  Until the fold lands the
+        served step produces no submission and this is never reached.
+        """
+        msgid, payload, groups, charge = submission
+        self.clock.observe(self.bridge)
+        if self.bridge.begin(conn.cid) != "begun":
+            self.bridge.outcome(conn.cid, "refused")
+            return b""
+        try:
+            sequence, _charge = post_article(self.store, self.bridge, self.records,
+                                             msgid, payload, groups, charge)
+        except StoreError as error:
+            self.bridge.outcome(conn.cid, self.outcome_word(error))
+            return b""
+        if sequence is not None:
+            self.records += 1
+        self.bridge.outcome(conn.cid, "duplicate" if sequence is None else "committed")
+        return b""
 
     def rearm(self, conn):
         events = 0

@@ -1,12 +1,16 @@
 ; Experimental owner bridge: :program wrappers over the proved fn-own machine.
 ;
 ; tools/run_owner.py drives one owner per store through these entry points.
-; Every wrapper is one fn-own-step (or fn-own-read-step) over the global
-; `fn-owner`; the host never rebuilds owner, store or session state itself.
-; Marshaling reuses host/store-host.lisp (decimal octets in, symbols and
-; naturals out) and host/reader-host.lisp (effect octets out).  Wire framing
-; per connection stays in the host globals as in the reader host: it is
-; bounded by fn-wire-initial-state, not by the owner model.
+; Every wrapper is one fn-own-step, one fn-own-read (the served port: one
+; socket read is one fn-served-step over the connection's pinned archive,
+; fn-own-read-is-served-step-on-pinned-prefix) or one fn-own-open, over the
+; global `fn-owner`; the host never rebuilds owner, store, wire or session
+; state itself.  The wire framing state lives inside the owner's connection
+; record, so there is no per-connection host state at all.  Marshaling
+; reuses host/store-host.lisp (decimal octets in, symbols and naturals out);
+; the reply stream and the close verdict are the book's two projections of an
+; effect list (fn-served-reply-octets, fn-served-closingp), installed in the
+; globals `fn-owner-output` and `fn-owner-closep`.
 (in-package "ACL2")
 (include-book "../books/owner")
 
@@ -14,9 +18,20 @@
   (declare (xargs :stobjs state :mode :program))
   (value (f-get-global 'fn-owner state)))
 
+(defun fn-owner-install-effects (effects state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((state (f-put-global 'fn-owner-effects effects state))
+         (state (f-put-global 'fn-owner-output (fn-served-reply-octets effects) state))
+         (state (f-put-global 'fn-owner-closep (fn-served-closingp effects) state)))
+    state))
+
 ; The process root.  A decoded observed image opens through
-; fn-sn-open-observed exactly as host/store-node-host.lisp:27 does; the owner
-; is started over that state (fn-own-open-observed-start-relation).
+; fn-sn-open-observed exactly as host/store-node-host.lisp does; the owner
+; is started over that state (fn-own-open-observed-start-relation).  The
+; dispatch is on the typed result's kind, never on fn-sn-open-okp, which
+; would run the whole-state recognizer once more per recovery: a result of
+; kind :ok is fn-sn-open-okp by fn-own-open-kind-ok-is-okp
+; (books/owner-invariants.lisp, under fn-sn-open-observed-result-is-typed).
 (defun fn-owner-recover (octet-records frontier max-conns state)
   (declare (xargs :stobjs state :mode :program))
   (let ((records (fn-store-decode-records octet-records)))
@@ -24,14 +39,13 @@
         (value :fault)
       (let ((opened (fn-sn-open-observed *fn-store-groups*
                                          *fn-store-capacity* frontier records)))
-        (if (and (fn-sn-open-okp opened)
+        (if (and (equal (fn-sn-open-kind opened) :ok)
                  (equal (fn-sf-phase (fn-sn-files (fn-sn-open-state opened)))
                         :recovering))
-            (let* ((state (f-put-global 'fn-owner
-                                        (fn-own-start (fn-sn-open-state opened)
-                                                      max-conns)
-                                        state))
-                   (state (f-put-global 'fn-owner-wires nil state)))
+            (let ((state (f-put-global 'fn-owner
+                                       (fn-own-start (fn-sn-open-state opened)
+                                                     max-conns)
+                                       state)))
               (value :recovering))
           (value :fault))))))
 
@@ -143,6 +157,15 @@
          (state (fn-owner-step (list :begin id) state)))
     (value (if (equal (f-get-global 'fn-owner state) before) :refused :begun))))
 
+; The durable outcome of a submission a connection made through the served
+; path (w4/post's POST fold) is fed back through the owner as one event.  The
+; book treats (:outcome ...) as a no-op until that lane lands; the shape of
+; the call is fixed here so the fold has a port to fill.
+(defun fn-owner-outcome (id outcome state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (fn-owner-step (list :outcome id outcome) state)))
+    (value :fed)))
+
 (defun fn-owner-next-txid (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-state-next-txid (fn-node-acceptance (fn-owner-node state)))))
@@ -163,7 +186,7 @@
         (value (if action action :absent))))))
 
 ; -----------------------------------------------------------------------------
-; Connections.  One wire state per connection lives in `fn-owner-wires`.
+; Connections
 
 (defun fn-owner-version (state)
   (declare (xargs :stobjs state :mode :program))
@@ -187,80 +210,43 @@
   (value (fn-owner-connection-versions
           (fn-own-conns (f-get-global 'fn-owner state)))))
 
-; Open pins the committed view (fn-own-open).  The greeting is the fixed
-; reader greeting; a refused open (bound reached) installs no connection and
-; returns NIL so the host closes the socket without a reply.
+; Open pins the committed view and opens one served connection over it
+; (fn-own-open); the greeting is the effect list it returns.  A refused open
+; (bound reached) installs no connection and returns NIL so the host closes
+; the socket without a reply.
 (defun fn-owner-open (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((before (f-get-global 'fn-owner state))
          (id (fn-own-next-id before))
-         (state (fn-owner-step (list :open) state)))
+         (opened (fn-own-open before))
+         (state (f-put-global 'fn-owner (cdr opened) state))
+         (state (fn-owner-install-effects (car opened) state)))
     (if (fn-own-find-conn id (fn-own-conns (f-get-global 'fn-owner state)))
-        (let* ((state (f-put-global 'fn-owner-wires
-                                    (cons (cons id (fn-wire-initial-state 510 8192))
-                                          (f-get-global 'fn-owner-wires state))
-                                    state))
-               (state (fn-reader-install-effects
-                       (list (fn-nntp-reply-effect *fn-reader-greeting*)) state)))
-          (value id))
+        (value id)
       (value nil))))
 
-(defun fn-owner-set-wire (id wire wires)
-  (declare (xargs :mode :program))
-  (if (consp wires)
-      (if (equal (car (car wires)) id)
-          (cons (cons id wire) (cdr wires))
-        (cons (car wires) (fn-owner-set-wire id wire (cdr wires))))
-    nil))
-
-(defun fn-owner-drop-wire (id wires)
-  (declare (xargs :mode :program))
-  (if (consp wires)
-      (if (equal (car (car wires)) id)
-          (fn-owner-drop-wire id (cdr wires))
-        (cons (car wires) (fn-owner-drop-wire id (cdr wires))))
-    nil))
-
-; One call consumes at most one wire event and runs exactly one
-; fn-own-read-step against the connection's pinned archive
-; (fn-own-reader-sees-pinned-prefix-replay).  Effects go out through the
-; reader host's globals; the unconsumed suffix is returned to the host.
+; One socket read of one connection is one fn-own-read: fn-served-step over
+; the connection's wire, session and pinned archive
+; (fn-own-read-is-served-step-on-pinned-prefix).  The whole chunk is
+; consumed; there is no suffix and no loop in Python.
 (defun fn-owner-chunk (id octets state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((entry (assoc-equal id (f-get-global 'fn-owner-wires state))))
-    (if (not entry)
+  (let ((owner (f-get-global 'fn-owner state)))
+    (if (not (fn-own-find-conn id (fn-own-conns owner)))
         (value :unknown)
-      (let* ((next (fn-wire-next (cdr entry) octets))
-             (wire (fn-wire-next-state next))
-             (event (fn-wire-next-event next))
-             (suffix (fn-wire-next-unconsumed next))
-             (owner (f-get-global 'fn-owner state))
-             (result (if event
-                         (fn-own-read-step owner id event)
-                       (cons nil owner)))
-             (effects (if (fn-reader-wire-closedp wire)
-                          (append (car result) (list (fn-nntp-close-effect)))
-                        (car result)))
+      (let* ((result (fn-own-read owner id octets))
              (state (f-put-global 'fn-owner (cdr result) state))
-             (state (f-put-global 'fn-owner-wires
-                                  (fn-owner-set-wire id wire
-                                                     (f-get-global 'fn-owner-wires state))
-                                  state))
-             (state (fn-reader-install-effects effects state))
-             (state (f-put-global 'fn-reader-suffix suffix state)))
+             (state (fn-owner-install-effects (car result) state)))
         (value :ok)))))
 
 (defun fn-owner-close (id state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((state (fn-owner-step (list :close id) state))
-         (state (f-put-global 'fn-owner-wires
-                              (fn-owner-drop-wire id (f-get-global 'fn-owner-wires state))
-                              state)))
+  (let ((state (fn-owner-step (list :close id) state)))
     (value :closed)))
 
 (defun fn-owner-advance (id state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((state (fn-owner-step (list :advance id) state)))
+  (let ((state (fn-owner-step (list :advance id) state)))
     (fn-owner-conn-version id state)))
 
 ; -----------------------------------------------------------------------------
