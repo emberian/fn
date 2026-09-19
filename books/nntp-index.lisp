@@ -27,6 +27,19 @@
 ; events (2026-09-19 split of books/nntp.lisp).
 (local (in-theory (enable fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary fn-nntp-projection-vocabulary fn-nntp-responses-vocabulary fn-nntp-vocabulary)))
 
+; This book reads the committed acceptance state, so it opens the three
+; acceptance recognizers core withdrew, and restates the article-is-a-cons
+; inference the opaque record took away (see books/nntp-projection.lisp).
+; Both are local: no includer inherits them.
+(local (in-theory (enable fn-statep fn-articlep fn-pendingp)))
+(local
+ (defthm fn-nntp-index-article-with-a-string-msgid-is-a-cons
+   (implies (stringp (fn-article-msgid article))
+            (consp article))
+   :rule-classes ((:forward-chaining
+                   :trigger-terms ((fn-article-msgid article))))
+   :hints (("Goal" :in-theory (enable fn-article-msgid)))))
+
 ; -----------------------------------------------------------------------------
 ; An index entry carries (group number msgid).  That is exactly the data
 ; FN-NNTP-ARTICLE-NUMBER needs: the per-article projectability test

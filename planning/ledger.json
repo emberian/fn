@@ -186,7 +186,7 @@
     "books": 179,
     "books_in_root_closure": 179,
     "roots": 179,
-    "theorems": 2680,
+    "theorems": 2681,
     "functions": 1980,
     "assert_events": 2934,
     "must_fails": 133,
@@ -1822,7 +1822,7 @@
       "book": "books/nntp-index.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 32,
+      "theorems": 33,
       "functions": 25,
       "guards": {
         "verified": 25,
@@ -4957,7 +4957,7 @@
     {
       "theorem": "fn-nntp-block-scan-start-without-a-dot",
       "book": "books/nntp-effects.lisp",
-      "line": 395,
+      "line": 405,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-nntp-block-scan and the conclusion is that branch's value"
       ]

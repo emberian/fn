@@ -14,9 +14,12 @@ HEAD `a31ed5f` (dev), lane branch `dep/nntp`, worktree `build/lanes/dep-nntp`.
 | `books/nntp-projection` | — | **0.5 s** |
 | `books/nntp-responses` | — | **0.4 s** |
 | `books/nntp` | 0.8 s (whole file) | **0.3 s** (dispatcher only; 1.8 s for the five) |
-| `books/nntp-invariants` | 393.5 s | PENDING |
-| `books/nntp-effects` | 62.5 s | PENDING |
-| `books/transfer-reservation` / `-union` / `-invariants` | 2.8 s (one book) | PENDING |
+| `books/nntp-invariants` | 393.5 s | **200.6 s** |
+| `books/nntp-effects` | 62.5 s | **34.2 s** |
+| `tests/acl2/nntp-tests` | 3.6 s | **0.4 s** |
+| `tests/acl2/nntp-teeth-tests` | 0.5 s | **0.4 s** |
+| `books/nntp-index`, `tests/acl2/nntp-index-tests` | 0.8 / 0.6 s | open: `books/index` has no cached certificate and the budget ended |
+| `books/transfer-reservation` / `-union` / `-invariants` | 2.8 s (one book) | open: not certified since the split |
 
 **`books/nntp.lisp` did not certify on `dev` before this lane touched it.** The
 pre-split file, taken from `a31ed5f` and certified unchanged as
@@ -89,8 +92,19 @@ farm in absolute terms): `books/wire` 5.5 s -> **1.3 s**, `books/wire-invariants
 
 ## Open, not weakened
 
-- `books/nntp*` and `books/transfer*-invariants` have not been through ACL2
-  since the split. They must be certified before the convergence merge.
+- `books/nntp-index` and `tests/acl2/nntp-index-tests` are not certified:
+  `books/index` (store's) has no cached certificate and certifying it in place
+  did not fit the budget. `books/nntp-index.lisp` already carries the two local
+  events it will need (the five nntp vocabularies, and the article-is-a-cons
+  bridge); it should certify once `index` has a certificate.
+- `books/transfer-reservation`, `-union` and `transfer-invariants` are not
+  certified since the split: `books/transfer` itself has no cached certificate
+  yet. The split is pure relocation -- all events, their order and their
+  `verify-guards` are preserved -- but that is not a certification.
+- Every book above that opens an NNTP definition needed the same one-line local
+  re-enable of the five vocabularies: `nntp-invariants`, `nntp-effects`,
+  `nntp-index` and the three test books. A book that includes `"nntp"` and only
+  computes needs nothing.
 - `books/article*`, `books/wildmat*` and the rest of `books/transfer*` were not
   realigned: records are still open, no book has an export theory, and
   `books/transfer-public-bound.lisp` (1062 lines) is unsplit. The budget went
