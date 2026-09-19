@@ -5,6 +5,8 @@
 (in-package "ACL2")
 (include-book "bp-receiver-evolving-node-invariants")
 (include-book "store-observed-traces")
+; withdrawn at the core export (2026-09-19); this book opened them before.
+(local (in-theory (enable fn-node-statep fn-statep)))
 (local (in-theory (disable
  fn-bprr-nth
  fn-bprr-textp
