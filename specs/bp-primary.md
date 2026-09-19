@@ -231,3 +231,34 @@ exactly the interoperability claim the assurance rules forbid.
 - **Guard verification** is complete for every function in these books, but no
   resource-cost bound is proved for CRC computation; the CRC is linear in the
   encoded block length, which is itself bounded by the codec's input preflight.
+
+## Teeth bitten by instance, and teeth still open
+
+Three teeth in the two test books asked the prover to refute a general
+statement and did not terminate. Each is now bitten by a concrete
+counterexample instead — an `assert-event` that evaluates the theorem body on
+one witness violating the dropped hypothesis and checks the body is false. No
+theorem was weakened; the witness is a strictly sharper refutation than
+`must-fail`, which only reports that ACL2 did not find a proof.
+
+- `fn-bpc-decode-of-encode`, item-budget hypothesis dropped: flg `:item`,
+  x `(:uint . 1)`, rest `nil`, budget `0`. The decoder answers
+  `(:error :budget)`.
+- `fn-bpp-decode-of-encode`, `fn-bpp-blockp` dropped: b `0`, evaluated
+  logically because `0` is outside `fn-bpp-encode`'s guard.
+- `fn-bpf-reassemble-ok-agrees-with-every-fragment`, `member-equal` dropped:
+  fs `*bpf-cut*`, total `8`, k `0`, and a fragment outside the list.
+
+Certifying past those three uncovered further teeth of the same shape, which
+earlier runs never reached. They are open, not retired:
+
+- `tests/acl2/bp-primary-tests`: `fn-bpp-value-block-of-block-value` without
+  `fn-bpp-blockp`, and the teeth after it.
+- `tests/acl2/bp-fragment-tests`:
+  `fn-bpf-reassemble-ok-agrees-with-every-fragment` without the `:ok`
+  hypothesis, and the teeth after it.
+
+Each opens the recursion it was meant to escape, so the general refutation
+runs past the rewriter's call-depth limit or past a 1800 s budget. The
+remedy is the same instance treatment; it is not yet applied, so neither book
+certifies.

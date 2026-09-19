@@ -329,16 +329,20 @@
                                    budget)
                        (fn-cbor-ok x rest))))))
 
-;   without the budget bound: the decoder refuses rather than looping.
-(local
- (must-fail
-  (thm (implies (and (fn-bpc-shapep flg x)
-                     (fn-cbor-octet-listp rest)
-                     (natp budget))
-                (equal (fn-bpc-dec flg (if (eq flg :list) (len x) 0)
-                                   (append (fn-bpc-enc flg x) rest)
-                                   budget)
-                       (fn-cbor-ok x rest))))))
+;   without the budget bound: the decoder refuses rather than looping.  Stated
+;   generally, the negated goal sends the prover into the induction on
+;   `fn-bpc-dec` it was meant to escape, so the tooth is bitten by an instance
+;   instead: the theorem body at flg = :item, x = (:uint . 1), rest = nil and
+;   budget = 0 satisfies every surviving hypothesis and is false, because the
+;   decoder answers (:error :budget) rather than the value.
+(assert-event
+ (not (implies (and (fn-bpc-shapep :item '(:uint . 1))
+                    (fn-cbor-octet-listp nil)
+                    (natp 0))
+               (equal (fn-bpc-dec :item 0
+                                  (append (fn-bpc-enc :item '(:uint . 1)) nil)
+                                  0)
+                      (fn-cbor-ok '(:uint . 1) nil)))))
 
 ;   without the octet-list hypothesis on the remainder.
 (local
@@ -361,10 +365,15 @@
 
 ; fn-bpp-decode-of-encode
 ;   without `fn-bpp-blockp`: a malformed record encodes to something the
-;   decoder refuses.
-(local
- (must-fail
-  (thm (equal (fn-bpp-decode (fn-bpp-encode b)) (fn-bpp-ok b)))))
+;   decoder refuses.  Stated generally over a free `b`, the negated goal opens
+;   every branch of the encoder and the decoder at once and does not settle, so
+;   the tooth is bitten by an instance: b = 0 is not a block, and the round
+;   trip on it is false.  The instance is evaluated logically, because 0 is
+;   outside `fn-bpp-encode`'s guard -- which is the point.
+(assert-event (not (fn-bpp-blockp 0)))
+(assert-event
+ (with-guard-checking :none
+  (not (equal (fn-bpp-decode (fn-bpp-encode 0)) (fn-bpp-ok 0)))))
 
 ; fn-bpp-value-block-of-block-value
 ;   without the CRC width hypothesis: a CRC field of the wrong width makes the
