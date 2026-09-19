@@ -516,7 +516,12 @@
                 (<= (fn-nntp-unix-dtn-ms unix-ms) *fn-clock-max*)
                 (<= (nfix error-ms) *fn-clock-max*))
            (fn-clock-observationp
-            (fn-nntp-host-observation monotonic-ms unix-ms error-ms has-wall))))
+            (fn-nntp-host-observation monotonic-ms unix-ms error-ms has-wall)))
+  ; The observation is an opaque record (books/clock.lisp, 2026-09-19): its
+  ; recognizer is withdrawn at that book's export, so it is opened here by
+  ; name and closed by the accessor-of-constructor lemmas it exports.
+  :hints (("Goal" :in-theory (enable fn-clock-observationp)
+           :do-not-induct t)))
 
 ; -----------------------------------------------------------------------------
 ; Zero-padded decimal rendering
