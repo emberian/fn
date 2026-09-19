@@ -118,6 +118,43 @@
                                  incarnation sequence provenance))
          provenance))
 
+; What opacity takes away, exported back: the shape and a well-typed field
+; each imply the record is a cons (forward-chaining, never rewrite).
+(defthm fn-exchange-fact-shapep-forward-shape
+  (implies (fn-exchange-fact-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-exchange-fact-shapep))))
+(defthm fn-exchange-fact-accessors-forward-consp
+  (and
+   (implies (fn-exchange-schema x) (consp x))
+   (implies (fn-exchange-kind x) (consp x))
+   (implies (fn-exchange-message-id x) (consp x))
+   (implies (fn-exchange-content-id x) (consp x))
+   (implies (fn-exchange-origin x) (consp x))
+   (implies (fn-exchange-incarnation x) (consp x))
+   (implies (fn-exchange-sequence x) (consp x))
+   (implies (fn-exchange-provenance x) (consp x))
+   )
+  :rule-classes
+  ((:forward-chaining :corollary (implies (fn-exchange-schema x) (consp x))
+                      :trigger-terms ((fn-exchange-schema x)))
+   (:forward-chaining :corollary (implies (fn-exchange-kind x) (consp x))
+                      :trigger-terms ((fn-exchange-kind x)))
+   (:forward-chaining :corollary (implies (fn-exchange-message-id x) (consp x))
+                      :trigger-terms ((fn-exchange-message-id x)))
+   (:forward-chaining :corollary (implies (fn-exchange-content-id x) (consp x))
+                      :trigger-terms ((fn-exchange-content-id x)))
+   (:forward-chaining :corollary (implies (fn-exchange-origin x) (consp x))
+                      :trigger-terms ((fn-exchange-origin x)))
+   (:forward-chaining :corollary (implies (fn-exchange-incarnation x) (consp x))
+                      :trigger-terms ((fn-exchange-incarnation x)))
+   (:forward-chaining :corollary (implies (fn-exchange-sequence x) (consp x))
+                      :trigger-terms ((fn-exchange-sequence x)))
+   (:forward-chaining :corollary (implies (fn-exchange-provenance x) (consp x))
+                      :trigger-terms ((fn-exchange-provenance x)))
+   )
+  :hints (("Goal" :in-theory (enable fn-exchange-schema fn-exchange-kind fn-exchange-message-id fn-exchange-content-id fn-exchange-origin fn-exchange-incarnation fn-exchange-sequence fn-exchange-provenance))))
+
 (in-theory (disable (:d fn-exchange-fact-shapep) (:d fn-exchange-schema) (:d fn-exchange-kind) (:d fn-exchange-message-id) (:d fn-exchange-content-id) (:d fn-exchange-origin) (:d fn-exchange-incarnation) (:d fn-exchange-sequence) (:d fn-exchange-provenance) (:d fn-exchange-make-fact)))
 
 (defun fn-exchange-kindp (x)
@@ -145,6 +182,11 @@
        (stringp (fn-exchange-incarnation x))
        (natp (fn-exchange-sequence x))
        (stringp (fn-exchange-provenance x))))
+
+(defthm fn-exchange-factp-forward-shape
+  (implies (fn-exchange-factp x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-exchange-factp))))
 
 (verify-guards fn-exchange-factp)
 
@@ -200,6 +242,25 @@
           (fn-exchange-make-policy schemas authorizations))
          authorizations))
 
+; What opacity takes away, exported back: the shape and a well-typed field
+; each imply the record is a cons (forward-chaining, never rewrite).
+(defthm fn-exchange-policy-shapep-forward-shape
+  (implies (fn-exchange-policy-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-exchange-policy-shapep))))
+(defthm fn-exchange-policy-accessors-forward-consp
+  (and
+   (implies (fn-exchange-policy-schemas x) (consp x))
+   (implies (fn-exchange-policy-authorizations x) (consp x))
+   )
+  :rule-classes
+  ((:forward-chaining :corollary (implies (fn-exchange-policy-schemas x) (consp x))
+                      :trigger-terms ((fn-exchange-policy-schemas x)))
+   (:forward-chaining :corollary (implies (fn-exchange-policy-authorizations x) (consp x))
+                      :trigger-terms ((fn-exchange-policy-authorizations x)))
+   )
+  :hints (("Goal" :in-theory (enable fn-exchange-policy-schemas fn-exchange-policy-authorizations))))
+
 (in-theory (disable (:d fn-exchange-policy-shapep) (:d fn-exchange-policy-schemas) (:d fn-exchange-policy-authorizations) (:d fn-exchange-make-policy)))
 
 (defun fn-exchange-policyp (p)
@@ -209,6 +270,11 @@
        (fn-exchange-no-duplicatesp (fn-exchange-policy-schemas p))
        (fn-exchange-string-listp (fn-exchange-policy-authorizations p))
        (fn-exchange-no-duplicatesp (fn-exchange-policy-authorizations p))))
+
+(defthm fn-exchange-policyp-forward-shape
+  (implies (fn-exchange-policyp p) (and (consp p) (true-listp p)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-exchange-policyp))))
 
 (verify-guards fn-exchange-policyp)
 
@@ -363,6 +429,25 @@
   (equal (fn-exchange-facts (fn-exchange-make-state capacity facts))
          facts))
 
+; What opacity takes away, exported back: the shape and a well-typed field
+; each imply the record is a cons (forward-chaining, never rewrite).
+(defthm fn-exchange-state-shapep-forward-shape
+  (implies (fn-exchange-state-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-exchange-state-shapep))))
+(defthm fn-exchange-state-accessors-forward-consp
+  (and
+   (implies (fn-exchange-capacity x) (consp x))
+   (implies (fn-exchange-facts x) (consp x))
+   )
+  :rule-classes
+  ((:forward-chaining :corollary (implies (fn-exchange-capacity x) (consp x))
+                      :trigger-terms ((fn-exchange-capacity x)))
+   (:forward-chaining :corollary (implies (fn-exchange-facts x) (consp x))
+                      :trigger-terms ((fn-exchange-facts x)))
+   )
+  :hints (("Goal" :in-theory (enable fn-exchange-capacity fn-exchange-facts))))
+
 (in-theory (disable (:d fn-exchange-state-shapep) (:d fn-exchange-capacity) (:d fn-exchange-facts) (:d fn-exchange-make-state)))
 
 (defun fn-exchange-fact-listp (facts)
@@ -381,6 +466,11 @@
        (fn-exchange-fact-listp (fn-exchange-facts s))
        (fn-exchange-no-duplicatesp (fn-exchange-facts s))
        (<= (len (fn-exchange-facts s)) (fn-exchange-capacity s))))
+
+(defthm fn-exchange-statep-forward-shape
+  (implies (fn-exchange-statep s) (and (consp s) (true-listp s)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-exchange-statep))))
 
 (verify-guards fn-exchange-statep)
 

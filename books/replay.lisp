@@ -79,6 +79,35 @@
   (equal (fn-replay-result-reason (fn-replay-fault node expected-sequence reason))
          reason))
 
+; What opacity takes away, exported back: the shape and a well-typed field
+; each imply the record is a cons (forward-chaining, never rewrite).
+(defthm fn-replay-ok-shapep-forward-shape
+  (implies (fn-replay-ok-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-replay-ok-shapep))))
+(defthm fn-replay-fault-shapep-forward-shape
+  (implies (fn-replay-fault-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-replay-fault-shapep))))
+(defthm fn-replay-result-accessors-forward-consp
+  (and
+   (implies (fn-replay-result-kind x) (consp x))
+   (implies (fn-replay-result-node x) (consp x))
+   (implies (fn-replay-result-sequence x) (consp x))
+   (implies (fn-replay-result-reason x) (consp x))
+   )
+  :rule-classes
+  ((:forward-chaining :corollary (implies (fn-replay-result-kind x) (consp x))
+                      :trigger-terms ((fn-replay-result-kind x)))
+   (:forward-chaining :corollary (implies (fn-replay-result-node x) (consp x))
+                      :trigger-terms ((fn-replay-result-node x)))
+   (:forward-chaining :corollary (implies (fn-replay-result-sequence x) (consp x))
+                      :trigger-terms ((fn-replay-result-sequence x)))
+   (:forward-chaining :corollary (implies (fn-replay-result-reason x) (consp x))
+                      :trigger-terms ((fn-replay-result-reason x)))
+   )
+  :hints (("Goal" :in-theory (enable fn-replay-result-kind fn-replay-result-node fn-replay-result-sequence fn-replay-result-reason))))
+
 (in-theory (disable (:d fn-replay-ok-shapep) (:d fn-replay-fault-shapep)
                     (:d fn-replay-result-kind) (:d fn-replay-result-node)
                     (:d fn-replay-result-sequence) (:d fn-replay-result-reason)
@@ -91,6 +120,11 @@
        (fn-node-statep (fn-replay-result-node x))
        (natp (fn-replay-result-sequence x))))
 
+(defthm fn-replay-okp-forward-shape
+  (implies (fn-replay-okp x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-replay-okp))))
+
 (verify-guards fn-replay-okp)
 
 (defun fn-replay-faultp (x)
@@ -99,6 +133,11 @@
        (equal (fn-replay-result-kind x) :fault)
        (fn-node-statep (fn-replay-result-node x))
        (natp (fn-replay-result-sequence x))))
+
+(defthm fn-replay-faultp-forward-shape
+  (implies (fn-replay-faultp x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-replay-faultp))))
 
 (verify-guards fn-replay-faultp)
 

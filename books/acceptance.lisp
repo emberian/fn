@@ -69,6 +69,34 @@
   (equal (fn-article-pin (fn-make-article msgid payload groups memberships pin))
          pin))
 
+; What opacity takes away, exported back: the shape and a well-typed field
+; each imply the record is a cons (forward-chaining, never rewrite).
+(defthm fn-article-shapep-forward-shape
+  (implies (fn-article-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-article-shapep))))
+(defthm fn-article-accessors-forward-consp
+  (and
+   (implies (fn-article-msgid x) (consp x))
+   (implies (fn-article-payload x) (consp x))
+   (implies (fn-article-groups x) (consp x))
+   (implies (fn-article-memberships x) (consp x))
+   (implies (fn-article-pin x) (consp x))
+   )
+  :rule-classes
+  ((:forward-chaining :corollary (implies (fn-article-msgid x) (consp x))
+                      :trigger-terms ((fn-article-msgid x)))
+   (:forward-chaining :corollary (implies (fn-article-payload x) (consp x))
+                      :trigger-terms ((fn-article-payload x)))
+   (:forward-chaining :corollary (implies (fn-article-groups x) (consp x))
+                      :trigger-terms ((fn-article-groups x)))
+   (:forward-chaining :corollary (implies (fn-article-memberships x) (consp x))
+                      :trigger-terms ((fn-article-memberships x)))
+   (:forward-chaining :corollary (implies (fn-article-pin x) (consp x))
+                      :trigger-terms ((fn-article-pin x)))
+   )
+  :hints (("Goal" :in-theory (enable fn-article-msgid fn-article-payload fn-article-groups fn-article-memberships fn-article-pin))))
+
 (in-theory (disable (:d fn-article-shapep) (:d fn-article-msgid) (:d fn-article-payload) (:d fn-article-groups) (:d fn-article-memberships) (:d fn-article-pin) (:d fn-make-article)))
 
 (defun fn-articlep (configured x)
@@ -80,6 +108,11 @@
        (fn-membership-listp (fn-article-groups x)
                             (fn-article-memberships x))
        (equal (fn-article-pin x) t)))
+
+(defthm fn-articlep-forward-shape
+  (implies (fn-articlep configured x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-articlep))))
 
 (verify-guards fn-articlep)
 
@@ -266,6 +299,40 @@
           (fn-make-pending txid generation msgid payload groups memberships pin))
          pin))
 
+; What opacity takes away, exported back: the shape and a well-typed field
+; each imply the record is a cons (forward-chaining, never rewrite).
+(defthm fn-pending-shapep-forward-shape
+  (implies (fn-pending-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-pending-shapep))))
+(defthm fn-pending-accessors-forward-consp
+  (and
+   (implies (fn-pending-txid x) (consp x))
+   (implies (fn-pending-generation x) (consp x))
+   (implies (fn-pending-msgid x) (consp x))
+   (implies (fn-pending-payload x) (consp x))
+   (implies (fn-pending-groups x) (consp x))
+   (implies (fn-pending-memberships x) (consp x))
+   (implies (fn-pending-pin x) (consp x))
+   )
+  :rule-classes
+  ((:forward-chaining :corollary (implies (fn-pending-txid x) (consp x))
+                      :trigger-terms ((fn-pending-txid x)))
+   (:forward-chaining :corollary (implies (fn-pending-generation x) (consp x))
+                      :trigger-terms ((fn-pending-generation x)))
+   (:forward-chaining :corollary (implies (fn-pending-msgid x) (consp x))
+                      :trigger-terms ((fn-pending-msgid x)))
+   (:forward-chaining :corollary (implies (fn-pending-payload x) (consp x))
+                      :trigger-terms ((fn-pending-payload x)))
+   (:forward-chaining :corollary (implies (fn-pending-groups x) (consp x))
+                      :trigger-terms ((fn-pending-groups x)))
+   (:forward-chaining :corollary (implies (fn-pending-memberships x) (consp x))
+                      :trigger-terms ((fn-pending-memberships x)))
+   (:forward-chaining :corollary (implies (fn-pending-pin x) (consp x))
+                      :trigger-terms ((fn-pending-pin x)))
+   )
+  :hints (("Goal" :in-theory (enable fn-pending-txid fn-pending-generation fn-pending-msgid fn-pending-payload fn-pending-groups fn-pending-memberships fn-pending-pin))))
+
 (in-theory (disable (:d fn-pending-shapep) (:d fn-pending-txid) (:d fn-pending-generation) (:d fn-pending-msgid) (:d fn-pending-payload) (:d fn-pending-groups) (:d fn-pending-memberships) (:d fn-pending-pin) (:d fn-make-pending)))
 
 (defun fn-pendingp (configured nexts next-txid x)
@@ -283,6 +350,11 @@
        (fn-memberships-at-watermarkp
         (fn-pending-memberships x) nexts)
        (equal (fn-pending-pin x) t)))
+
+(defthm fn-pendingp-forward-shape
+  (implies (fn-pendingp configured nexts next-txid x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-pendingp))))
 
 (verify-guards fn-pendingp)
 
@@ -355,6 +427,37 @@
           (fn-make-state groups nexts articles next-txid pending fenced))
          fenced))
 
+; What opacity takes away, exported back: the shape and a well-typed field
+; each imply the record is a cons (forward-chaining, never rewrite).
+(defthm fn-state-shapep-forward-shape
+  (implies (fn-state-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-state-shapep))))
+(defthm fn-state-accessors-forward-consp
+  (and
+   (implies (fn-state-groups x) (consp x))
+   (implies (fn-state-nexts x) (consp x))
+   (implies (fn-state-articles x) (consp x))
+   (implies (fn-state-next-txid x) (consp x))
+   (implies (fn-state-pending x) (consp x))
+   (implies (fn-state-fenced x) (consp x))
+   )
+  :rule-classes
+  ((:forward-chaining :corollary (implies (fn-state-groups x) (consp x))
+                      :trigger-terms ((fn-state-groups x)))
+   (:forward-chaining :corollary (implies (fn-state-nexts x) (consp x))
+                      :trigger-terms ((fn-state-nexts x)))
+   (:forward-chaining :corollary (implies (fn-state-articles x) (consp x))
+                      :trigger-terms ((fn-state-articles x)))
+   (:forward-chaining :corollary (implies (fn-state-next-txid x) (consp x))
+                      :trigger-terms ((fn-state-next-txid x)))
+   (:forward-chaining :corollary (implies (fn-state-pending x) (consp x))
+                      :trigger-terms ((fn-state-pending x)))
+   (:forward-chaining :corollary (implies (fn-state-fenced x) (consp x))
+                      :trigger-terms ((fn-state-fenced x)))
+   )
+  :hints (("Goal" :in-theory (enable fn-state-groups fn-state-nexts fn-state-articles fn-state-next-txid fn-state-pending fn-state-fenced))))
+
 (in-theory (disable (:d fn-state-shapep) (:d fn-state-groups) (:d fn-state-nexts) (:d fn-state-articles) (:d fn-state-next-txid) (:d fn-state-pending) (:d fn-state-fenced) (:d fn-make-state)))
 
 (defun fn-statep (s)
@@ -379,6 +482,11 @@
        (fn-fencedp (fn-state-fenced s))
        (or (null (fn-state-fenced s))
            (consp (fn-state-pending s)))))
+
+(defthm fn-statep-forward-shape
+  (implies (fn-statep s) (and (consp s) (true-listp s)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-statep))))
 
 (verify-guards fn-statep)
 

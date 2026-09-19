@@ -70,6 +70,38 @@ Why this and not `(len x)` in the recognizer: a `len` conjunct is a
 `len`-backchaining invitation every time the recognizer opens. The shape
 predicate opens to it only if you enable it, and you never need to.
 
+### What opacity takes away and what you must export back
+
+While `fn-article-msgid` opened to `(car x)`, type reasoning gave
+`(consp a)` from `(stringp (fn-article-msgid a))` for free, and
+`(fn-articlep c a)` gave `(true-listp a)` by opening. Withdrawing the
+definitions withdraws those facts, and an includer that projects a field out
+of a record found by `fn-find-article` (`fn-nntp-group-low-is-available`,
+`books/nntp.lisp`) fails for want of `(consp a)`. So every opaque record
+exports, beside its record lemmas and as `:forward-chaining` rules only
+(never rewrite), the three shape facts type reasoning used to supply:
+
+```lisp
+(defthm fn-article-shapep-forward-shape
+  (implies (fn-article-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
+(defthm fn-article-accessors-forward-consp
+  (and (implies (fn-article-msgid x) (consp x)) ...)     ; one conjunct per field
+  :rule-classes ((:forward-chaining :corollary (implies (fn-article-msgid x) (consp x))
+                                    :trigger-terms ((fn-article-msgid x))) ...))
+(defthm fn-articlep-forward-shape
+  (implies (fn-articlep configured x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
+```
+(`books/acceptance.lisp`; the same three per record in every cluster book,
+named `<shape>-forward-shape`, `<rec>-accessors-forward-consp`,
+`<recognizer>-forward-shape`.) The accessor rule triggers on the field term
+itself, so `(stringp (fn-article-msgid a))` in a hypothesis yields
+`(consp a)` exactly as before. Forward-chaining is the right class: the
+facts land in the context when the record is mentioned, and no rewrite rule
+about `consp` or `true-listp` leaves the book. An includer that wrote a local
+bridge for one of these deletes it.
+
 ## 2. Export theory at book end
 
 Every book ends with an explicit theory event. It withdraws the recognizers
