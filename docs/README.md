@@ -44,7 +44,7 @@ reading stored articles over loopback NNTP.
 | What has been decided? | [Decision register](../planning/decisions.md) |
 | What behavior is required? | [Requirement registry](../planning/requirements.json), with links to the detailed specs |
 | What is to be proved? | [Proof registry](../planning/proofs.json), interpreted by the proof strategy |
-| What should happen next? | [Milestones](../planning/milestones.md) |
+| What should happen next? | [Three swarm cycles](../planning/swarm-cycles.md), with packet dependencies and exits; [milestones](../planning/milestones.md) define the full contracts |
 | Which examples must be exercised? | [Scenario catalog](../tests/scenarios/catalog.json) |
 | Which standards support the design? | [References](references.md) |
 

@@ -1,14 +1,19 @@
 # Development milestones
 
-Current stage: an assurance-closure wave over the executable M1/M2/M3/M4
-components. The bounded BP composition assurance batch now closes sender
-work/node binding, fixed-Store receiver trace/replay invariants and five real
-receiver process-death cuts. Next are remaining BP guards and journal
-byte/live/replay refinement, including receiver composition with Store evolution.
-The user prioritized general preservation, crash traces, systematic fault injection, and mechanized correspondence. No full implementation/proof
-milestone is complete. See
-[current work](now.md) for scope and ownership. Remaining decisions in the
-[workbook](decisions.md) are a backlog; they do not all block this abstract model.
+Current stage: the BP composition assurance batch is complete for its named
+scope; no full implementation/proof milestone is complete. The user requested
+broader feature and assurance work in parallel. The [three-cycle work plan](swarm-cycles.md)
+now maps 34 planned packets to dependencies, owners, stable IDs and finite exits:
+a writable local pilot; signed disconnected exchange; then long-lived operation
+and release assessment. Packet readiness controls sequencing, so independent
+local service, identity, storage and DTN work can advance together.
+
+The next launch is C1: BP guards/journal refinement and receiver/Store composition
+alongside the mutable owner, injection/POST, complete reader/overview, resource
+accounting, index adoption, checkpoint codec, source/authority design and an
+early LTP feasibility experiment. These are planned artifacts, not evidence or
+new decision resolutions. [Current work](now.md) retains the completed baseline;
+the [decision workbook](decisions.md) records the remaining product choices.
 
 Each milestone ends with a reviewable artifact and evidence. Sequence is a
 dependency order, not a calendar estimate. Privacy/signature choices may expand
@@ -83,8 +88,9 @@ Incremental evidence: the [storage experiment](../specs/store-experiment.md) now
 has complete record round-trip and typed replay proofs, real file/barrier/lock
 operations, persistent allocation across abort/reopen, and failure-injection
 tests. The [integrated record](../tests/evidence/2026-09-18-storage.md) includes a
-maximum-profile reopen test. Journal refinement, full recovery proofs, checkpoints,
-physical accounting, and platform qualification keep M2 open.
+maximum-profile reopen test. Actual immutable-file frame/byte and host refinement,
+checkpoint publication/recovery, physical accounting, and platform qualification
+keep M2 open; the isolated-slot journal is not the selected adapter model.
 
 The [reader/storage batch](../tests/evidence/2026-09-18-wildmat-storage.md) adds a
 dedicated immutable-file publication kernel with one-use allocator reservations,
@@ -111,7 +117,8 @@ qualification remain work.
 
 Exit: humans and agents can post/read through an actual client with documented
 storage guarantees. Audit each advertised capability against RFC clauses. This
-release does not yet claim disconnected peering or remote delivery.
+local-service milestone alone does not establish disconnected peering or remote
+delivery; the active M4 path supplies its own concurrent evidence.
 
 Incremental evidence: CLI-persisted articles can be reopened and served over
 loopback NNTP. LISTGROUP ranges/cursors now have logical, socket, and independent
@@ -165,8 +172,10 @@ with five actual receiver process-death cuts; it leaves those wider seams open.
 - Exercise corruption detection, repair policy, backup/restore, retained evidence,
   key/policy evolution, and format migration.
 
-Exit: finite-resource operation is explicit and tested; pruning/compaction do not
-quietly weaken acceptance or replay guarantees.
+Exit: bounded admission/refusal and operational headroom are explicit and tested;
+compaction does not weaken acceptance or replay guarantees. Retained history may
+grow until admission refuses. Finite history pruning requires D13 and its own
+duplicate/resurrection argument; indefinite acceptance is not promised.
 
 ## M6: additional interfaces and mission profiles
 

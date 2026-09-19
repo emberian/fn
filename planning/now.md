@@ -192,9 +192,9 @@ Root certified 11 scoped roots and the combined Python suite passed 133 tests.
 The complete 41-function BP ADU codec also has verified guards. Production
 transitions and persisted formats are unchanged.
 
-The next bounded assurance batch should close the remaining BP execution guards
-and journal byte/live/replay correspondence, then compose the receiver invariant
-with Store evolution. The fixed-Store theorem does not close that last seam.
+The next BP assurance packets close the remaining execution guards and journal
+byte/live/replay correspondence, and compose the receiver invariant with Store
+evolution. They now run alongside the feature lanes in the wider plan below. The fixed-Store theorem does not close that last seam.
 D01/D09 authority design and later relay/contact-plan work retain their separate
 dependencies. See the [closure inventory](assurance-closure.md) for exact scope.
 No complete milestone or cryptographic/physical durability claim follows.
@@ -202,3 +202,35 @@ No complete milestone or cryptographic/physical durability claim follows.
 The [scope rules](../docs/proofs.md#assurance-grows-with-the-implemented-surface)
 require each behavior change to expose its added assurance obligations in the
 same batch, so implementation and missing assurance remain visible together.
+
+
+## Next launch: broad feature and assurance cycles
+
+The user requested the [three-cycle swarm plan](swarm-cycles.md) after this
+checkpoint. Its 34 packets are **planned, not running**. No implementation or
+certification was performed by the planning audit. Root and four independent
+planning audits checked storage/operations, NNTP/service, DTN and coverage.
+
+C1 targets a writable local laboratory pilot while closing current durable seams.
+Launch C1-01 through C1-08 plus C1-11/12, with at most ten artifact owners,
+one convergence owner and root; use the spare slot for a bounded hard problem.
+Index adoption/checkpoint codec join as slots free. Each lane freezes interfaces
+before dependent adoption; only actual consumers wait for a missing dependency.
+
+C2 targets native signatures/authority, persistent fragments and complete-object
+validation, scheduled relay undertakings, carried media, checkpoint authority,
+origin restore and the proposed local web client. C3 adopts physical compaction,
+operational repair/restore, conditional progress and extended transport, then
+runs a complete fault and release assessment.
+
+The critical new relay seam is content plus a durable onward obligation before
+emitting a receipt that promises forwarding. An archival receipt followed by
+manual enqueue does not close it. Body reclamation also needs explicit separation
+of content from retained duplicate/evidence history; current inline article
+records do not supply that feature automatically.
+
+D01's exact-source/separate-projection direction and bringing web UI forward
+were presented as optional user questions during planning; no answer has been
+recorded. D09's suite/key lifecycle gets a concrete research/vector packet early
+in C1. Existing D02/D03/D04 decisions remain binding. All other routine reversible
+work proceeds within current authorization and the named experimental profiles.
