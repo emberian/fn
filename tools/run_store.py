@@ -1136,6 +1136,49 @@ CLI_FAULTS = {
 }
 
 
+def durable_post(store, bridge, records_count, msgid, payload, codes, charge):
+    """The durable acceptance path, shared by the CLI and the served POST.
+
+    ACL2 decides: `bridge.prepare` is fn-node-prepare and `store.finish` is the
+    exact fn-sn durable completion.  This function performs I/O around those
+    decisions and reports the sequence it committed.  It never invents a
+    durable status.
+    """
+    current_txid = bridge.next_txid()
+    next_frontier = store.advance_frontier(bridge, current_txid)
+    obligation, subject, evidence = metadata(msgid, payload)
+    action = bridge.prepare(msgid, payload, codes, obligation,
+                            subject, evidence, charge)
+    if action != "prepared":
+        # The allocator reservation is durable even for a synchronous
+        # semantic refusal.  The file kernel consumes it; Python only
+        # reports the already-observed allocator sequence.
+        store.fenced = True
+        if bridge.refuse_reservation() != "refused":
+            raise StoreIndeterminate("ACL2 could not consume refused reservation")
+        raise StoreError("ACL2 refused post: {}".format(action))
+    record = bridge.pending_record()
+    try:
+        store.publish(bridge, records_count, record)
+    except StoreIndeterminate:
+        raise
+    except StoreError:
+        # A pre-publication staging failure has no final-name event.  Its
+        # exact candidate is resolved through fn-sf/fn-node; a bridge
+        # inconsistency stays fenced for observed replay.
+        if not store.fenced:
+            store.fenced = True
+            if bridge.known_abort() != "aborted":
+                raise StoreIndeterminate("ACL2 rejected known pre-publication abort")
+        raise
+    # Final-name publication and its directory barrier have put the file
+    # kernel in :completing.  Only fn-sn-finish performs the exact actual
+    # node durable completion; there is no host durable-status string.
+    store.fenced = True
+    store.finish(bridge)
+    return records_count
+
+
 def command_post(args, faults=NO_FAULTS):
     """Post one article.  `faults` is the test-only injector; the CLI hook wins."""
     msgid = args.message_id.encode("ascii")
@@ -1155,39 +1198,9 @@ def command_post(args, faults=NO_FAULTS):
             raise StoreError("conflicting immutable Message-ID")
         if len(records) >= store.config["max_transactions"]:
             raise StoreError("transaction count has reached configured bound")
-        current_txid = bridge.next_txid()
-        next_frontier = store.advance_frontier(bridge, current_txid)
-        obligation, subject, evidence = metadata(msgid, payload)
-        action = bridge.prepare(msgid, payload, codes, obligation,
-                                subject, evidence, charge)
-        if action != "prepared":
-            # The allocator reservation is durable even for a synchronous
-            # semantic refusal.  The file kernel consumes it; Python only
-            # reports the already-observed allocator sequence.
-            store.fenced = True
-            if bridge.refuse_reservation() != "refused":
-                raise StoreIndeterminate("ACL2 could not consume refused reservation")
-            raise StoreError("ACL2 refused post: {}".format(action))
-        record = bridge.pending_record()
-        try:
-            store.publish(bridge, len(records), record)
-        except StoreIndeterminate:
-            raise
-        except StoreError:
-            # A pre-publication staging failure has no final-name event.  Its
-            # exact candidate is resolved through fn-sf/fn-node; a bridge
-            # inconsistency stays fenced for observed replay.
-            if not store.fenced:
-                store.fenced = True
-                if bridge.known_abort() != "aborted":
-                    raise StoreIndeterminate("ACL2 rejected known pre-publication abort")
-            raise
-        # Final-name publication and its directory barrier have put the file
-        # kernel in :completing.  Only fn-sn-finish performs the exact actual
-        # node durable completion; there is no host durable-status string.
-        store.fenced = True
-        store.finish(bridge)
-        print("committed sequence={} charge={}".format(len(records), charge))
+        sequence = durable_post(store, bridge, len(records), msgid,
+                                payload, codes, charge)
+        print("committed sequence={} charge={}".format(sequence, charge))
         return EXIT_OK
     finally:
         bridge.close()

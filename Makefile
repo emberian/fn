@@ -161,6 +161,11 @@ ACL2_BOOKS ?= books/assumptions \
 	books/nntp-effects \
 	tests/acl2/nntp-tests \
 	tests/acl2/nntp-teeth-tests \
+	books/injection \
+	books/injection-invariants \
+	tests/acl2/injection-tests \
+	books/nntp-post \
+	tests/acl2/nntp-post-tests \
 	books/nntp-index \
 	tests/acl2/nntp-index-tests \
 	books/bp-release \

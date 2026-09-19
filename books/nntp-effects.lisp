@@ -119,7 +119,12 @@
            (equal (car effect) :reply)
            (fn-octet-listp (car (cdr effect)))
            (fn-nntp-replyp (car (cdr effect))))
-      (equal effect (fn-nntp-close-effect))))
+      (equal effect (fn-nntp-close-effect))
+      ; POST (RFC 3977 section 6.3.1) changes the framing mode rather than
+      ; emitting octets: the host applies this one by calling
+      ; fn-wire-begin-article.  It carries no payload, so nothing about it can
+      ; be malformed; books/nntp-post.lisp is what reads it.
+      (equal effect (fn-nntp-begin-article-effect))))
 
 (defun fn-nntp-effectsp (effects)
   (if (consp effects)
