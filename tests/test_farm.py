@@ -128,6 +128,33 @@ class WaitTests(unittest.TestCase):
                 self.assertIn("--exclude=*", command)
             self.assertTrue((root / "build/farm/run-x.log").is_file())
 
+    def test_wait_uses_the_remote_path_and_records_it_as_the_origin(self):
+        # Certificates name their sub-books by absolute path, so what the run
+        # used on the box is their origin -- and a path that does not exist
+        # here is what makes them installable in any local worktree.
+        fake = Fake(["0"], log=self.LOG)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            (root / "books").mkdir()
+            with driving(fake, root / "cache"):
+                identifier = farm.submit("hbox", root, [], jobs=2,
+                                         timeout_seconds=60, affected_by=[],
+                                         remote=Path("/tank/fn/tree"))
+            self.assertEqual(fake.rsyncs()[0][-1], "hbox:/tank/fn/tree/")
+            published: dict = {}
+
+            def spy(*positional, **keyword):
+                published.update(keyword)
+                return farm.certs.Report("publish", "cache")
+
+            with mock.patch.object(farm.certs, "publish", spy), \
+                    driving(fake, root / "cache"):
+                farm.wait("hbox", identifier, root, poll=1, timeout_seconds=60)
+            self.assertEqual((published["origin"], published["origin_host"]),
+                             ("/tank/fn/tree", "hbox"))
+            self.assertTrue(any("hbox:/tank/fn/tree/books/" in part
+                                for command in fake.rsyncs() for part in command))
+
     def test_wait_returns_the_remote_exit_code(self):
         fake = Fake(["1"], log=self.LOG)
         with tempfile.TemporaryDirectory() as directory:
