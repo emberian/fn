@@ -5079,7 +5079,7 @@
     {
       "theorem": "fn-prin-apply-succession-when-not-acceptable",
       "book": "books/principal-invariants.lisp",
-      "line": 202,
+      "line": 205,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-prin-apply-succession and the conclusion is that branch's value"
       ]
@@ -5340,19 +5340,19 @@
       {
         "theorem": "fn-stmt-header-round-trip",
         "book": "books/statement-invariants.lisp",
-        "line": 267,
+        "line": 270,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-stmt-round-trip",
         "book": "books/statement-invariants.lisp",
-        "line": 359,
+        "line": 362,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-stmt-receipt-round-trip",
         "book": "books/statement-invariants.lisp",
-        "line": 478,
+        "line": 481,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {

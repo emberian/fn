@@ -16,6 +16,9 @@
 (include-book "node-invariants")
 (include-book "records")
 
+; Convergence (board, codecs CHANGE on records): `fn-record-p' is opaque and exports no forward shape rule; the loop guard needs true-listp from it.
+(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))
+
 ; -----------------------------------------------------------------------------
 ; Result records
 
