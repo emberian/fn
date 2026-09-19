@@ -35,38 +35,61 @@ proposed profile uses definite lengths, rejects duplicate map keys, avoids float
 and limits integer domains per field. Parsers do not use the Common Lisp reader,
 intern arbitrary remote symbols, or execute data. Bound checks precede allocation.
 
-## Content identity, and the domain separation it lacks
+## Content identity: the v1 profile, adopted
 
-[`books/identity.lisp`](../books/identity.lisp) owns the two derivations the
-adapter used to own:
-
-    subject    = "sha256:"  || lowercase-hex(SHA-256(payload))
-    obligation = "archive:" || lowercase-hex(SHA-256(msgid || 0x00 || subject))
-
-ACL2 decides the labels, the hexadecimal alphabet and case, the separator
-octet, the order of the preimage and every length; the host supplies the digest
-octets under A-CRYPTO. The hexadecimal projection is proved invertible in both
-directions and injective, so an identity collision is a digest collision and
-nothing else. The charge policy `fn-charge-for-payload` is proved positive and
-monotone in payload length.
-
-**This preimage is not domain separated, and ENC-003 asks that it be.** It
-carries no domain label, no schema version and no algorithm identifier, so a
-future preimage of another kind could collide with it by construction rather
-than by digest collision. Existing lab stores and fixtures depend on the exact
-bytes above, so the derivation stands. The v1 profile to adopt, for the
-substrate lane building the portable statement header:
+[`books/identity.lisp`](../books/identity.lisp) owns the two derivations, and
+they are the domain-separated v1 profile:
 
     subject-v1    = SHA-256("fn/subject/v1" || 0x00 || uint32-be(len(payload))
                             || payload)
     obligation-v1 = SHA-256("fn/obligation/v1" || 0x00 || uint32-be(len(msgid))
                             || msgid || uint32-be(len(subject)) || subject)
 
-with the label carried in the encoded identity rather than prefixed to a hex
-string, and with the algorithm identifier part of the container so that
-algorithm agility (D09) does not change the meaning of an existing identity.
-Length-prefixing every variable field removes the remaining ambiguity that the
-single 0x00 separator only papers over.
+An identity is the triple (label octets, algorithm id, digest octets),
+rendered canonically as
+
+    identity = label || 0x00 || version-octet || algorithm-octet || digest
+
+with version 1 and algorithm 1 (SHA-256). The kind is carried *inside* the
+encoded identity rather than as a hex prefix, and the algorithm identifier
+travels in the container, so algorithm agility (D09) changes the algorithm
+octet and does not change the meaning of an identity already written. A
+subject identity is 48 octets and an obligation identity 51.
+
+The canonical identity is octets. `fn-id-text` renders it as lowercase
+hexadecimal, whole and label included, and the host uses that rendering at
+exactly the three boundaries where a string is unavoidable: the store record's
+metadata fields, the workflow journal's JSON records and the NNTP header
+value. Nothing else renders an identity. The projection is proved invertible
+in both directions and injective, so a string comparison at one of those
+boundaries is an octet comparison and an identity collision is a digest
+collision and nothing else.
+
+ACL2 decides the labels, the version and algorithm octets, the hexadecimal
+alphabet and case, the separator octet, every length prefix and the order of
+each preimage; the host supplies the digest octets under A-CRYPTO. For a
+subject the host is given only the fixed preimage head
+(`fn-id-subject-prefix`) and appends the payload itself, so a 32 KiB article
+never crosses the bridge. The charge policy `fn-charge-for-payload` is proved
+positive and monotone in payload length.
+
+**ENC-003 is met rather than deferred.** Every variable field is
+length-prefixed, so a field boundary is a decoded number and not a separator
+octet that the field might itself contain, and the domain labels differ, so
+the keystone
+
+    fn-id-subject-and-obligation-preimages-differ
+
+holds with no hypotheses at all: for *every* payload and *every*
+(msgid, subject) pair the subject and obligation preimages are different octet
+strings. Two kinds of identity cannot share a preimage by construction.
+
+The pre-v1 derivation — `"sha256:" || hex(SHA-256(payload))` and
+`"archive:" || hex(SHA-256(msgid || 0x00 || subject))` — is deleted, not kept
+beside this one. A store holding those identities was written under store
+format `fn-store-experiment-4`; the current format is `fn-store-experiment-5`
+([`books/store-config.lisp`](../books/store-config.lisp)), so such a store is
+refused at open by its configuration rather than misread.
 
 ENC-003: identity and signature preimages specify a domain, schema version,
 algorithm identifiers, field encoding, and exact bytes. Do not hash native Lisp
@@ -121,7 +144,7 @@ FNWF and FNRJ frames are byte-identical to the Python frames they replace, and
 `tests/acl2/frame-tests.lisp` asserts that against vectors generated from the
 Python encoders. FNST gains the record kind octet it lacked, so a store written
 under the old framing is refused by its configuration format
-(`fn-store-experiment-4`) rather than misread. FNBI moves its BID length into a
+(`fn-store-experiment-5`) rather than misread. FNBI moves its BID length into a
 payload text field; because an inbound bundle can reach four mebibytes and
 cannot cross the decimal-octet bridge, ACL2 builds and validates the frame head
 and the host concatenates bundle bytes it never interprets.
