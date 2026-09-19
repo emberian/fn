@@ -102,6 +102,9 @@ ACL2_BOOKS ?= books/assumptions \
 	books/clock \
 	books/clock-invariants \
 	tests/acl2/clock-tests \
+	books/membership-epochs \
+	books/membership-epochs-invariants \
+	tests/acl2/membership-epochs-tests \
 	books/bp-workflow \
 	books/bp-workflow-invariants \
 	books/bp-workflow-transport-invariants \

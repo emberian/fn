@@ -105,6 +105,9 @@
     "books/clock",
     "books/clock-invariants",
     "tests/acl2/clock-tests",
+    "books/membership-epochs",
+    "books/membership-epochs-invariants",
+    "tests/acl2/membership-epochs-tests",
     "books/bp-workflow",
     "books/bp-workflow-invariants",
     "books/bp-workflow-transport-invariants",
@@ -182,18 +185,18 @@
     "tests/acl2/policy-tests"
   ],
   "totals": {
-    "books": 178,
-    "books_in_root_closure": 178,
-    "roots": 178,
-    "theorems": 2543,
-    "functions": 1909,
-    "assert_events": 2836,
-    "must_fails": 139,
+    "books": 181,
+    "books_in_root_closure": 181,
+    "roots": 181,
+    "theorems": 2597,
+    "functions": 1961,
+    "assert_events": 2885,
+    "must_fails": 155,
     "encapsulates": 10,
     "guards": {
       "verified": 960,
-      "declared-off": 52,
-      "default-guarded": 442,
+      "declared-off": 53,
+      "default-guarded": 493,
       "default-unguarded": 455
     },
     "suspect_theorems": 29
@@ -1707,6 +1710,56 @@
       "includes": [
         "statement"
       ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/membership-epochs-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 33,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "membership-epochs"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/membership-epochs.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 21,
+      "functions": 51,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 51,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [],
       "system_includes": [],
       "suspects": [],
       "read_error": null
@@ -3985,6 +4038,33 @@
         "crypto-seam-tests"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/membership-epochs-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 49,
+      "must_fails": 16,
+      "defconsts": 21,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/membership-epochs-invariants"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
