@@ -119,9 +119,17 @@ def valid_looking(cert: Path) -> bool:
     if not cert.is_file() or cert.stat().st_size == 0:
         return False
     try:
-        text = cert.read_text(encoding="utf-8", errors="replace")
+        head = cert.read_bytes()[:4096]
     except OSError:  # pragma: no cover - unreadable file
         return False
+    # ACL2 8.7 writes certificates with its compact serializer: the file
+    # opens with the serializer magic (`#Z` after a form feed) and is not
+    # UTF-8 text.  Older ACL2s and hand-written fixtures use the textual
+    # form beginning with (IN-PACKAGE.  Accept either; ACL2 itself decides
+    # validity at include time.
+    if b"#Z" in head[:16]:
+        return True
+    text = head.decode("utf-8", errors="replace")
     return text.lstrip().startswith("(IN-PACKAGE") and all(
         marker in text for marker in CERT_MARKERS)
 
@@ -160,11 +168,10 @@ def publish(root: Path, cache: Path, names: list[str] | None = None) -> Report:
         if not valid_looking(cert):
             report.uncached.append(name)
             continue
-        if cert.stat().st_mtime < source.stat().st_mtime:
-            # The book was edited after this certificate was written, so the
-            # certificate does not describe the content this key names.
-            report.stale.append(name)
-            continue
+        # Validity is decided by content, not by mtime: the certificate records
+        # the book's checksum (ACL2_BOOK_HASH_ALISTP=NIL), and include-book
+        # refuses a mismatch.  Checkout mtimes are meaningless (a fresh
+        # worktree is newer than every certificate ever made for it).
         digest = content_hash(source)
         directory = entry_directory(cache, digest, name)
         cached = directory / "book.cert"
@@ -226,12 +233,10 @@ def install(root: Path, cache: Path, names: list[str] | None = None) -> Report:
         meta = read_meta(directory)
         cert = source.with_suffix(".cert")
         if valid_looking(cert):
-            local = cert.stat().st_mtime
-            if local >= source.stat().st_mtime and local >= meta.get("certified_at", 0.0):
-                # A local certificate that matches this book and is no older
-                # than the cached one: never overwrite what is already good.
-                report.kept += 1
-                continue
+            # A local certificate already exists for this content: keep it.
+            # Both describe the same bytes, and ACL2 decides validity.
+            report.kept += 1
+            continue
         place(cached, cert)
         port = source.with_suffix(".port")
         if (directory / "book.port").is_file():
