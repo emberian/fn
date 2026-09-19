@@ -112,6 +112,22 @@ class WorkflowJournalTests(unittest.TestCase):
         with self.assertRaises(JournalFault): reopened.open()
         reopened.close()
 
+    def test_a_symlinked_or_irregular_lock_pathname_is_refused(self):
+        """The lock pathname cannot be replaced to evade an existing lock."""
+        self.journal.close()
+        lock=self.root/"workflow.lock"
+        elsewhere=self.root/"elsewhere.lock"; elsewhere.write_bytes(b"")
+        lock.unlink(); lock.symlink_to(elsewhere)
+        replaced=WorkflowJournal(self.root, lambda records: records)
+        with self.assertRaisesRegex(JournalFault, "symlink"):
+            replaced.open()
+        lock.unlink(); os.mkfifo(lock, 0o600)
+        with self.assertRaisesRegex(JournalFault, "non-regular"):
+            WorkflowJournal(self.root, lambda records: records).open()
+        lock.unlink()
+        self.journal=WorkflowJournal(self.root, lambda records: records)
+        self.journal.open()
+
     def test_lock_contention_refuses_second_owner(self):
         contender=WorkflowJournal(self.root, lambda records: records)
         with self.assertRaisesRegex(JournalFault, "already owned"):
