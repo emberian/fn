@@ -1,10 +1,12 @@
 ; Teeth for the NNTP session keystone.
 ;
-; `fn-nntp-step-preserves-consistent-session' (books/nntp-invariants.lisp:485)
+; `fn-nntp-step-preserves-consistent-session' (books/nntp-invariants.lisp:786)
 ; is the reader's one-step safety property: a session whose selected group and
-; article cursor exist in the archive still does after any wire event.  Two
-; hypotheses; one has teeth and one does not, and the one that does not is a
-; consequence of the review's D3.
+; article cursor exist in the archive still does after any wire event.  It now
+; has a single hypothesis: the archive-configuration hypothesis it used to
+; carry was removed when the verdict moved into the session (the review's D3),
+; so the teeth below are all for that one hypothesis and each separates a
+; different clause of `fn-nntp-session-consistentp'.
 
 (in-package "ACL2")
 (include-book "../../books/nntp-invariants")
@@ -37,7 +39,7 @@
 ; at an article that exists.
 (defconst *nnt-selected*
   (fn-nntp-result-session
-   (fn-nntp-step (fn-nntp-initial-session) *nnt-archive*
+   (fn-nntp-step (fn-nntp-open-session *nnt-archive*) *nnt-archive*
                  '(:command (103 82 111 85 112 32 102 110 46 108 101 116 116
                              101 114 115)))))
 (assert-event (equal (fn-nntp-session-group *nnt-selected*) "fn.letters"))
@@ -64,8 +66,7 @@
 
 ; -----------------------------------------------------------------------------
 ; Teeth for `fn-nntp-step-preserves-consistent-session'
-;   (implies (and (fn-nntp-session-consistentp session archive)  ; H1
-;                 (fn-nntp-projectionp archive))                 ; H2
+;   (implies (fn-nntp-session-consistentp session archive)        ; H1
 ;            (fn-nntp-session-consistentp
 ;             (fn-nntp-result-session (fn-nntp-step session archive wire-event))
 ;             archive))
@@ -75,7 +76,7 @@
 ; leaves it exactly as it was: the step neither repairs nor detects it.  This
 ; is why the invariant has to be established at session creation and carried,
 ; not recomputed.
-(defconst *nnt-forged-session* (list t "fn.unknown" nil))
+(defconst *nnt-forged-session* (list t "fn.unknown" nil t))
 (assert-event (fn-nntp-sessionp *nnt-forged-session*))
 (assert-event (not (fn-nntp-session-consistentp *nnt-forged-session* *nnt-archive*)))
 (assert-event
@@ -96,7 +97,7 @@
 
 ; A second inconsistency, this time in the cursor rather than the group, so the
 ; case does not rest on one clause of `fn-nntp-session-consistentp'.
-(defconst *nnt-stale-cursor* (list t "fn.letters" 99))
+(defconst *nnt-stale-cursor* (list t "fn.letters" 99 t))
 (assert-event (not (fn-nntp-session-consistentp *nnt-stale-cursor* *nnt-archive*)))
 (assert-event
  (not (fn-nntp-session-consistentp
@@ -114,10 +115,17 @@
                     '(:command (88 89 90 90 89))))
      *nnt-archive*))))
 
-; H2, `(fn-nntp-projectionp archive)', has no teeth, and none is forged.
-; `fn-nntp-step' re-runs `fn-nntp-projectionp' over the whole archive on every
-; command and answers 503 without touching the session when it fails
-; (books/nntp.lisp:1115-1116; the review's D3).  So a non-projectable archive
-; makes the step a session no-op, and the conclusion follows from H1 alone.
-; H2 is doing no work in THIS theorem; it is the availability defect D3
-; describes, priced as a hypothesis.  Recorded as a finding in HANDOFF.md.
+; There is no second hypothesis any more.  The old statement also assumed
+; `(fn-nntp-projectionp archive)', which did no work: `fn-nntp-step' re-ran the
+; whole-archive recognizer on every command and answered 503 without touching
+; the session when it failed, so a non-projectable archive made the step a
+; session no-op and the conclusion followed from H1 alone.  That recomputation
+; was the review's D3.  `fn-nntp-step' no longer mentions
+; `fn-nntp-projectionp'; the verdict is decided once by `fn-nntp-open-session'
+; and carried in the session's fourth field, and the third witness below keeps
+; that field true so the forged inconsistency is in the group and the cursor,
+; not in the carried verdict.  The statement is therefore strictly stronger
+; than the one these teeth were first written against.
+;
+; Teeth for the carried verdict itself, for the effect grammar and for the
+; GROUP cursor keystone live in tests/acl2/nntp-tests.lisp.

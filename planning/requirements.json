@@ -840,6 +840,26 @@
       "implementation_note": "Actual recovered memberships feed LISTGROUP and filtered ACTIVE/NEWSGROUPS through ACL2. Independent client tests exact stored views. Complete reader/overview/profile guarantees remain open."
     },
     {
+      "id": "NNT-007",
+      "title": "The session carries the archive-configuration verdict decided at open",
+      "specification": "specs/nntp.md#sessions-and-framing",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-015"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/nntp-invariants.lisp",
+        "tests/acl2/nntp-tests.lisp",
+        "specs/nntp-audit.md"
+      ],
+      "implementation_note": "fn-nntp-open-session runs the whole-archive recognizer once per connection and fn-nntp-step reads the carried verdict; an unrenderable committed article degrades only itself. Cursor behaviour under expiry or removal of a committed article remains open."
+    },
+    {
       "id": "HST-001",
       "title": "Host executes the proved core or a justified refinement",
       "specification": "specs/host.md#core-interface",

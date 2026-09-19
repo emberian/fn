@@ -628,7 +628,11 @@
           "kind": "theorem"
         },
         {
-          "name": "fn-nntp-initialized-finite-trace-is-consistent",
+          "name": "fn-nntp-opened-finite-trace-is-consistent",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-nntp-step-preserves-carried-projection",
           "kind": "theorem"
         },
         {
