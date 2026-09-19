@@ -1,6 +1,7 @@
 import tempfile,unittest
 from pathlib import Path
 from tools import run_bp_ingress,run_store
+from tools.run_store import ScriptedFaults
 from tools.receipt_bridge import Acl2ReceiptBridge
 from tools.receipt_journal import ReceiptJournal
 from tools.workflow_journal import JournalError,JournalUncertain
@@ -34,7 +35,8 @@ class ReceiptJournalLiveTests(unittest.TestCase):
      j.persist_request({**values,"inbound-bid":"bid:bad","request-adu":bad})
     self.assertEqual(tuple((p.name,p.read_bytes()) for p in j.records.iterdir()),before)
     with self.assertRaises(JournalUncertain):
-     j.persist_receipt_intent("work:1","receipt:1",fault="postlink")
+     j.faults=ScriptedFaults("postlink",OSError("injected receiver uncertainty"))
+     j.persist_receipt_intent("work:1","receipt:1")
     j.close();j=ReceiptJournal(Path(d)/"receipt",bridge);j.open()
     self.assertEqual(j.receipt_adu(request),b"")
     j.decide_receipt("work:1","receipt:1","committed")

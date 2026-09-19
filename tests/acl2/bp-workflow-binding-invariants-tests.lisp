@@ -1,6 +1,7 @@
 ; Executable witnesses for the joint workflow/node binding invariant.
 (in-package "ACL2")
 (include-book "../../books/bp-workflow-binding-invariants")
+(include-book "std/testing/must-fail" :dir :system)
 
 (defconst *bpb-groups* '("fn.letters"))
 (defconst *bpb-node-empty* (fn-node-initial-state *bpb-groups* 16))
@@ -88,3 +89,60 @@
 (assert-event
  (not (fn-bp-works-boundp (fn-bp-state-node *bpb-structural-only*)
                           (fn-bp-state-works *bpb-structural-only*))))
+
+; The witness above separates the predicates only by a missing Message-ID.
+; The following two are structurally valid, name an article that is present
+; and bound in the node, and differ from the actual binding in exactly one
+; field.  Each fails fn-bp-work-boundp and therefore fn-bp-binding-statep,
+; while the same work with the actual field is bound.
+(assert-event
+ (consp (fn-node-find-binding "<bound@example.invalid>"
+                              (fn-node-bindings *bpb-node*))))
+(defun fn-bpbt-work (subject archive-id)
+  (fn-bp-make-work "shaped-work" "<bound@example.invalid>" subject archive-id
+                   "forward-bound" "dtn://peer/fn" "policy-bound"
+                   "incarnation-bound" "auth-bound" "terms-bound" 0 nil nil))
+(defun fn-bpbt-state (work)
+  (fn-bp-make-state *bpb-node* *bpb-config* (list work) nil nil nil nil))
+
+; Control: the actual subject and archive id are bound.
+(defconst *bpb-shaped-right* (fn-bpbt-work "subject-bound" "archive-bound"))
+(assert-event (fn-bp-work-boundp *bpb-node* *bpb-shaped-right*))
+(assert-event (fn-bp-binding-statep (fn-bpbt-state *bpb-shaped-right*)))
+
+; Wrong immutable subject, article present, archive id exact.
+(defconst *bpb-wrong-subject* (fn-bpbt-work "not-the-subject" "archive-bound"))
+(assert-event (fn-bp-statep (fn-bpbt-state *bpb-wrong-subject*)))
+(assert-event
+ (equal (fn-node-binding-id
+         (fn-node-find-binding (fn-bp-work-msgid *bpb-wrong-subject*)
+                               (fn-node-bindings *bpb-node*)))
+        (fn-bp-work-archive-id *bpb-wrong-subject*)))
+(assert-event (not (fn-bp-work-boundp *bpb-node* *bpb-wrong-subject*)))
+(must-fail (assert-event (fn-bp-binding-statep (fn-bpbt-state *bpb-wrong-subject*))))
+
+; Wrong archive obligation id, article present, subject exact.
+(defconst *bpb-wrong-archive* (fn-bpbt-work "subject-bound" "not-the-archive"))
+(assert-event (fn-bp-statep (fn-bpbt-state *bpb-wrong-archive*)))
+(assert-event
+ (equal (fn-node-binding-subject
+         (fn-node-find-binding (fn-bp-work-msgid *bpb-wrong-archive*)
+                               (fn-node-bindings *bpb-node*)))
+        (fn-bp-work-subject *bpb-wrong-archive*)))
+(assert-event (not (fn-bp-work-boundp *bpb-node* *bpb-wrong-archive*)))
+(must-fail (assert-event (fn-bp-binding-statep (fn-bpbt-state *bpb-wrong-archive*))))
+
+; The production enqueue cannot construct either: prepare-enqueue derives the
+; subject and archive id from the node binding, so a caller cannot supply them.
+(defconst *bpb-enqueue-shaped*
+  (fn-bp-prepare-enqueue *bpb-initial* 40 1 "shaped-work"
+                         "<bound@example.invalid>" "forward-bound"
+                         "policy-bound" "terms-bound"))
+(assert-event
+ (equal (fn-bp-work-subject
+         (fn-bp-pending-work (fn-bp-state-pending *bpb-enqueue-shaped*)))
+        "subject-bound"))
+(assert-event
+ (equal (fn-bp-work-archive-id
+         (fn-bp-pending-work (fn-bp-state-pending *bpb-enqueue-shaped*)))
+        "archive-bound"))

@@ -4,6 +4,7 @@ from unittest import mock
 from tools.receipt_journal import (ReceiptJournal,decode_receiver_record,encode_receiver_record,
                                    MAX_RECORD)
 from tools.receipt_bridge import Acl2ReceiptBridge
+from tools.run_store import ScriptedFaults
 from tools.workflow_journal import JournalError,JournalFault,JournalUncertain
 CONFIG={"destination-eid":"dtn://receiver/","policy-id":"policy:1","issuer-eid":"dtn://issuer/"}
 REQ={"inbound-bid":"bid:1","request-adu":b"request","store-record":b"record","policy-authorized":True}
@@ -19,6 +20,10 @@ class ReceiptJournalTests(unittest.TestCase):
  def setUp(self):
   self.t=tempfile.TemporaryDirectory();self.b=Bridge();self.j=ReceiptJournal(Path(self.t.name)/"r",self.b);self.j.open();self.j.initialize(CONFIG)
  def tearDown(self):self.j.close();self.t.cleanup()
+ def faulted(self,point="postlink",error=None):
+  """Attach the test-only injector; the journal itself holds no branch."""
+  self.j.faults=ScriptedFaults(point,OSError("injected receiver uncertainty") if error is None else error)
+  return self.j
  def test_exact_codec_and_damage(self):
   raw=encode_receiver_record("request-context",REQ);self.assertEqual(decode_receiver_record(raw),("request-context",REQ))
   bad=bytearray(raw);bad[-1]^=1
@@ -40,7 +45,7 @@ class ReceiptJournalTests(unittest.TestCase):
   with mock.patch("tools.receipt_journal.MAX_AGGREGATE",sum(p.stat().st_size for p in self.j.records.iterdir())+MAX_RECORD):
    with self.assertRaisesRegex(JournalFault,"headroom"):self.j.persist_receipt_intent("work:1","receipt:1")
  def test_postlink_uncertainty_fences_and_replays_visible_record(self):
-  with self.assertRaises(JournalUncertain):self.j.publish("request-context",REQ,fault="postlink")
+  with self.assertRaises(JournalUncertain):self.faulted().publish("request-context",REQ)
   self.assertTrue(self.j.fenced);self.j.close();b=Bridge();j=ReceiptJournal(Path(self.t.name)/"r",b);j.open()
   self.assertEqual([k for k,_ in b.records],["config","request-context"]);j.close()
  def test_exclusive_owner(self):
@@ -51,6 +56,37 @@ class ReceiptJournalTests(unittest.TestCase):
   with mock.patch("tools.receipt_journal.fsync_dir",side_effect=OSError("barrier")):
    with self.assertRaisesRegex(JournalFault,"recovery failed"):ReceiptJournal(Path(self.t.name)/"r",Bridge()).open()
   fresh=ReceiptJournal(Path(self.t.name)/"r",Bridge());fresh.open();fresh.close()
+ def test_a_failing_close_cannot_close_a_reused_descriptor(self):
+  """The staging descriptor number is retired before it is closed."""
+  import os
+  real_close=os.close;real_open=os.open;staged=[];replacement=None
+  def record_open(path,flags,mode=0o777):
+   fd=real_open(path,flags,mode)
+   if Path(path).parent==self.j.staging: staged.append(fd)
+   return fd
+  def close_then_fail(fd):
+   nonlocal replacement
+   real_close(fd)
+   if staged and fd==staged[0] and replacement is None:
+    replacement=real_open(Path(self.t.name)/"unrelated",os.O_CREAT|os.O_RDWR,0o600)
+    raise OSError("injected receiver close failure")
+  try:
+   with mock.patch("tools.receipt_journal.os.open",side_effect=record_open), \
+        mock.patch("tools.receipt_journal.os.close",side_effect=close_then_fail):
+    with self.assertRaises(OSError): self.j.persist_request(REQ)
+   self.assertIsNotNone(replacement);os.fstat(replacement)
+  finally:
+   if replacement is not None: real_close(replacement)
+ def test_a_record_replaced_by_a_symlink_is_refused_on_reopen(self):
+  self.j.persist_request(REQ);self.j.close()
+  import os
+  root=Path(self.t.name)/"r";record=root/"records"/"0000000000000001.rj"
+  elsewhere=root/"elsewhere";elsewhere.write_bytes(record.read_bytes())
+  record.unlink();record.symlink_to(elsewhere)
+  reopened=ReceiptJournal(root,Bridge())
+  with self.assertRaises(JournalFault): reopened.open()
+  reopened.close()
+  self.j=ReceiptJournal(Path(self.t.name)/"unused",Bridge());self.j.open()
  def test_public_raw_nonbytes_refused_before_acl2_call(self):
   class Store:
    def __init__(self):self.calls=0

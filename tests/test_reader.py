@@ -234,7 +234,7 @@ class StoreReaderSocketTests(unittest.TestCase):
             self.payload.write_bytes(b"Message-ID: <blocked@example.invalid>\r\n\r\nblocked\r\n")
             blocked = self.store_command(
                 "post", "--message-id", "<blocked@example.invalid>", "--payload", self.payload,
-                "--group", "fn.letters", expected=2)
+                "--group", "fn.letters", expected=1)
             self.assertIn(b"already locked", blocked.stderr)
         finally:
             reader.__exit__()

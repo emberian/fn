@@ -28,10 +28,11 @@ of a dependent guarantee.
 - [x] Record the user-facing choices needed by the first bounded M1 cycle.
 - [x] Run structural checks and review for contradictions before handoff.
 
-Scaffold validation on 2026-09-18: `make check` passed for 22 Markdown files,
-49 requirements, 18 proof targets, and 18 scenario specifications. Temporary-copy
-negative checks rejected a broken document link, an unknown proof reference,
-and a certified status without evidence. These are tooling checks only.
+Scaffold validation on 2026-09-18: `make check` passed (see planning/ledger.md
+for current document/requirement/proof-target/scenario counts, which have grown
+since this milestone closed). Temporary-copy negative checks rejected a broken
+document link, an unknown proof reference, and a certified status without
+evidence. These are tooling checks only.
 
 Exit: navigable scaffold and an accurate next-task list. M0 does not freeze all
 later binary layouts. Decisions needing model/measurement evidence remain open
@@ -100,9 +101,9 @@ crash choices, actual replay, and initial fence/gate proofs. The subsequent
 preservation, stable-prefix retention, and one-crash success retention. The [assurance checkpoint](../tests/evidence/2026-09-18-assurance.md) extends
 this to arbitrary finite file traces and actual live completion/replay
 correspondence, with systematic fault/process testing. The subsequent [composed-store checkpoint](../tests/evidence/2026-09-18-composed-store.md)
-passed mixed live/refusal/recovery traces, actual host adoption and 533 base
-function guards in a 75-root/67-test batch. Physical refinement and platform
-qualification remain work.
+passed mixed live/refusal/recovery traces and actual host adoption with a full
+base-book guard batch (planning/ledger.md has current counts). Physical
+refinement and platform qualification remain work.
 
 ## M3: first usable local news service
 
