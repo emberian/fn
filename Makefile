@@ -1,4 +1,7 @@
 PYTHON ?= python3
+# Maximum concurrent ACL2 processes. Books still certify in local
+# include-book dependency order; 1 reproduces the sequential run.
+FN_CERTIFY_JOBS ?= 1
 ACL2_BOOKS ?= books/assumptions \
 	tests/acl2/assumptions-tests \
 	books/acceptance \
@@ -167,7 +170,7 @@ check:
 	$(PYTHON) tools/check_scaffold.py
 
 certify:
-	$(PYTHON) tools/certify_books.py $(ACL2_BOOKS)
+	$(PYTHON) tools/certify_books.py --jobs $(FN_CERTIFY_JOBS) $(ACL2_BOOKS)
 
 model-test: certify
 	$(PYTHON) tools/run_simulator.py
