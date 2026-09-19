@@ -10,7 +10,6 @@
 
 (in-package "ACL2")
 (include-book "../../books/scheduler-invariants")
-(include-book "std/testing/must-fail" :dir :system)
 
 ; -----------------------------------------------------------------------------
 ; A reachable sender: two durable works bound to two accepted articles.
@@ -324,141 +323,198 @@
                           :priority 0))))
 
 ; -----------------------------------------------------------------------------
-; Teeth.  One `must-fail' per hypothesis of each keystone.
+; Teeth.  One CONCRETE violating value per hypothesis of each keystone
+; (docs/proof-style.md §5).  A general negated `must-fail' says only that the
+; prover found no proof; each assertion below is a counterexample, evaluated.
 
-; fn-sched-step-preserves-state
-(must-fail
- (defthm sched-teeth-step-needs-statep
-   (fn-sched-statep (fn-sched-result-ss (fn-sched-step ss wf event)))))
+; A forged state: right tag, right length, promotion queue not a list of
+; strings.  Reachable by no transition, which is the point.
+(defconst *sched-teeth-forged*
+  (fn-sched-state 0 *sched-conf* nil '(7) nil 0 0 1000 nil))
+(assert-event (not (fn-sched-statep *sched-teeth-forged*)))
 
-; fn-sched-trace-preserves-state
-(must-fail
- (defthm sched-teeth-trace-needs-statep
-   (fn-sched-statep (fn-sched-result-ss (fn-sched-trace ss wf events)))))
+; fn-sched-step-preserves-state / fn-sched-trace-preserves-state, hypothesis
+; (fn-sched-statep ss).
+(assert-event
+ (not (fn-sched-statep
+       (fn-sched-result-ss
+        (fn-sched-step *sched-teeth-forged* *sched-wf*
+                       (fn-sched-admit-event "work-new" :article 8))))))
+(assert-event
+ (not (fn-sched-statep
+       (fn-sched-result-ss
+        (fn-sched-trace *sched-teeth-forged* *sched-wf*
+                        (list (fn-sched-admit-event "work-new" :article 8)))))))
 
-; fn-sched-step-preserves-queued
-(must-fail
- (defthm sched-teeth-queued-needs-queued
-   (fn-sched-queuedp
-    id (fn-sched-queue (fn-sched-result-ss (fn-sched-step ss wf event))))))
+; fn-sched-step-preserves-queued, hypothesis (fn-sched-queuedp id ...): a
+; work-id that was never admitted is not queued after the step either.
+(assert-event (not (fn-sched-queuedp "work-absent" (fn-sched-queue *sched-ss*))))
+(assert-event
+ (not (fn-sched-queuedp
+       "work-absent"
+       (fn-sched-queue (fn-sched-result-ss
+                        (fn-sched-step *sched-ss* *sched-wf*
+                                       (fn-sched-close-event)))))))
 
-; fn-sched-only-a-tick-or-a-relay-touches-the-workflow, hypothesis one
-(must-fail
- (defthm sched-teeth-workflow-needs-not-tick
-   (implies (not (equal (fn-bp-nth 0 event) :transport))
-            (equal (fn-sched-result-wf (fn-sched-step ss wf event)) wf))))
+; fn-sched-only-a-tick-or-a-relay-touches-the-workflow, hypothesis one: the
+; tick it excludes does move the workflow.
+(assert-event
+ (not (equal (fn-sched-result-wf
+              (fn-sched-step *sched-ss* *sched-wf*
+                             (fn-sched-tick-event "attempt:0" *sched-obs*)))
+             *sched-wf*)))
 
-; the same theorem, hypothesis two
-(must-fail
- (defthm sched-teeth-workflow-needs-not-transport
-   (implies (not (equal (fn-bp-nth 0 event) :tick))
-            (equal (fn-sched-result-wf (fn-sched-step ss wf event)) wf))))
+; the same theorem, hypothesis two: the relayed transport observation it
+; excludes does move the workflow.
+(defconst *sched-wf-after-tick-1* (fn-sched-result-wf *sched-tick-1*))
+(assert-event
+ (not (equal (fn-sched-result-wf
+              (fn-sched-step *sched-ss* *sched-wf-after-tick-1*
+                             (fn-sched-transport-event "work-small" "attempt:0"
+                                                       0 :no-contact)))
+             *sched-wf-after-tick-1*)))
 
-; fn-sched-promotion-position-decreases, hypothesis by hypothesis
-(must-fail
- (defthm sched-teeth-position-needs-admissible
-   (implies (and (fn-sched-drive-okp ss wf attempt-id)
-                 (member-equal w (fn-sched-aged ss))
-                 (fn-sched-eligiblep (fn-sched-find w (fn-sched-queue ss)) wf)
-                 (not (fn-sched-submit-for-idp
-                       w (fn-sched-result-effects
-                          (fn-sched-tick-step ss wf attempt-id)))))
-            (< (fn-sched-pos
-                w (fn-sched-aged
-                   (fn-sched-result-ss (fn-sched-tick-step ss wf attempt-id))))
-               (fn-sched-pos w (fn-sched-aged ss))))))
+; -----------------------------------------------------------------------------
+; The promoted state: "work-big" sits at the head of the promotion queue.
 
-(must-fail
- (defthm sched-teeth-position-needs-drive-ok
-   (implies (and (fn-sched-admissiblep ss)
-                 (member-equal w (fn-sched-aged ss))
-                 (fn-sched-eligiblep (fn-sched-find w (fn-sched-queue ss)) wf)
-                 (not (fn-sched-submit-for-idp
-                       w (fn-sched-result-effects
-                          (fn-sched-tick-step ss wf attempt-id)))))
-            (< (fn-sched-pos
-                w (fn-sched-aged
-                   (fn-sched-result-ss (fn-sched-tick-step ss wf attempt-id))))
-               (fn-sched-pos w (fn-sched-aged ss))))))
+(defconst *sched-promoted* (fn-sched-result-ss *sched-after-two*))
+(defconst *sched-promoted-wf* (fn-sched-result-wf *sched-after-two*))
+(assert-event (member-equal "work-big" (fn-sched-aged *sched-promoted*)))
+(assert-event (fn-sched-admissiblep *sched-promoted*))
 
-(must-fail
- (defthm sched-teeth-position-needs-membership
-   (implies (and (fn-sched-admissiblep ss)
-                 (fn-sched-drive-okp ss wf attempt-id)
-                 (fn-sched-eligiblep (fn-sched-find w (fn-sched-queue ss)) wf)
-                 (not (fn-sched-submit-for-idp
-                       w (fn-sched-result-effects
-                          (fn-sched-tick-step ss wf attempt-id)))))
-            (< (fn-sched-pos
-                w (fn-sched-aged
-                   (fn-sched-result-ss (fn-sched-tick-step ss wf attempt-id))))
-               (fn-sched-pos w (fn-sched-aged ss))))))
+; fn-sched-promotion-position-decreases, hypothesis (fn-sched-admissiblep ss):
+; with the contact closed the tick moves nothing, so the position does not fall.
+(defconst *sched-promoted-closed* (fn-sched-close *sched-promoted*))
+(assert-event (not (fn-sched-admissiblep *sched-promoted-closed*)))
+(assert-event (member-equal "work-big" (fn-sched-aged *sched-promoted-closed*)))
+(assert-event
+ (fn-sched-eligiblep (fn-sched-find "work-big"
+                                    (fn-sched-queue *sched-promoted-closed*))
+                     *sched-promoted-wf*))
+(assert-event
+ (not (fn-sched-submit-for-idp
+       "work-big"
+       (fn-sched-result-effects
+        (fn-sched-tick-step *sched-promoted-closed* *sched-promoted-wf*
+                            "attempt:9")))))
+(assert-event
+ (not (< (fn-sched-pos
+          "work-big"
+          (fn-sched-aged
+           (fn-sched-result-ss
+            (fn-sched-tick-step *sched-promoted-closed* *sched-promoted-wf*
+                                "attempt:9"))))
+         (fn-sched-pos "work-big" (fn-sched-aged *sched-promoted-closed*)))))
 
-(must-fail
- (defthm sched-teeth-position-needs-eligibility
-   (implies (and (fn-sched-admissiblep ss)
-                 (fn-sched-drive-okp ss wf attempt-id)
-                 (member-equal w (fn-sched-aged ss))
-                 (not (fn-sched-submit-for-idp
-                       w (fn-sched-result-effects
-                          (fn-sched-tick-step ss wf attempt-id)))))
-            (< (fn-sched-pos
-                w (fn-sched-aged
-                   (fn-sched-result-ss (fn-sched-tick-step ss wf attempt-id))))
-               (fn-sched-pos w (fn-sched-aged ss))))))
+; the same theorem, hypothesis (fn-sched-drive-okp ...): a fenced workflow
+; refuses, the tick is a no-op, and the position does not fall.
+(defconst *sched-promoted-wf-fenced*
+  (fn-bp-result-state
+   (fn-bp-complete
+    (fn-bp-prepare-attempt *sched-promoted-wf* 12 0 "work-small" "attempt:x")
+    12 0 :indeterminate)))
+(assert-event (fn-bp-state-fenced *sched-promoted-wf-fenced*))
+(assert-event
+ (not (fn-sched-drive-okp *sched-promoted* *sched-promoted-wf-fenced*
+                          "attempt:9")))
+(assert-event
+ (not (< (fn-sched-pos
+          "work-big"
+          (fn-sched-aged
+           (fn-sched-result-ss
+            (fn-sched-tick-step *sched-promoted* *sched-promoted-wf-fenced*
+                                "attempt:9"))))
+         (fn-sched-pos "work-big" (fn-sched-aged *sched-promoted*)))))
 
-; fn-sched-aging-bound: the promotion queue must fit the configured bound
-(must-fail
- (defthm sched-teeth-aging-needs-fitsp
-   (implies (and (member-equal w (fn-sched-aged ss))
-                 (fn-sched-contact-runp ss wf n attempt-id)
-                 (fn-sched-eligible-runp ss wf n attempt-id w)
-                 (< (nfix (fn-sched-queue-bound (fn-sched-conf ss))) n))
-            (fn-sched-selected-withinp ss wf n attempt-id w))))
+; the same theorem, hypothesis (member-equal w (fn-sched-aged ss)): on the
+; initial open state the promotion queue is empty, "work-big" is eligible and
+; is not selected, and its position (zero in an empty queue) does not fall.
+(assert-event (not (member-equal "work-big" (fn-sched-aged *sched-ss*))))
+(assert-event
+ (not (fn-sched-submit-for-idp
+       "work-big"
+       (fn-sched-result-effects
+        (fn-sched-tick-step *sched-ss* *sched-wf* "attempt:0")))))
+(assert-event
+ (not (< (fn-sched-pos
+          "work-big"
+          (fn-sched-aged
+           (fn-sched-result-ss
+            (fn-sched-tick-step *sched-ss* *sched-wf* "attempt:0"))))
+         (fn-sched-pos "work-big" (fn-sched-aged *sched-ss*)))))
 
-; the work must have reached the promotion queue
-(must-fail
- (defthm sched-teeth-aging-needs-promotion
-   (implies (and (fn-sched-aged-fitsp ss)
-                 (fn-sched-contact-runp ss wf n attempt-id)
-                 (fn-sched-eligible-runp ss wf n attempt-id w)
-                 (< (nfix (fn-sched-queue-bound (fn-sched-conf ss))) n))
-            (fn-sched-selected-withinp ss wf n attempt-id w))))
+; the same theorem, hypothesis (fn-sched-eligiblep (fn-sched-find w ...) wf):
+; an expired item is dropped from the promotion queue rather than advanced.
+(defconst *sched-promoted-expired*
+  (fn-sched-result-ss
+   (fn-sched-step *sched-promoted* *sched-promoted-wf* *sched-expired-event*)))
+(assert-event (member-equal "work-big" (fn-sched-aged *sched-promoted-expired*)))
+(assert-event
+ (not (fn-sched-eligiblep
+       (fn-sched-find "work-big" (fn-sched-queue *sched-promoted-expired*))
+       *sched-promoted-wf*)))
+(assert-event
+ (not (< (fn-sched-pos
+          "work-big"
+          (fn-sched-aged
+           (fn-sched-result-ss
+            (fn-sched-tick-step *sched-promoted-expired* *sched-promoted-wf*
+                                "attempt:9"))))
+         (fn-sched-pos "work-big" (fn-sched-aged *sched-promoted-expired*)))))
 
-; the contacts must recur for long enough
-(must-fail
- (defthm sched-teeth-aging-needs-horizon
-   (implies (and (fn-sched-aged-fitsp ss)
-                 (member-equal w (fn-sched-aged ss))
-                 (fn-sched-contact-runp ss wf n attempt-id)
-                 (fn-sched-eligible-runp ss wf n attempt-id w))
-            (fn-sched-selected-withinp ss wf n attempt-id w))))
+; -----------------------------------------------------------------------------
+; fn-sched-aging-bound, hypothesis by hypothesis.
 
-; the work must stay eligible
-(must-fail
- (defthm sched-teeth-aging-needs-eligibility
-   (implies (and (fn-sched-aged-fitsp ss)
-                 (member-equal w (fn-sched-aged ss))
-                 (fn-sched-contact-runp ss wf n attempt-id)
-                 (< (nfix (fn-sched-queue-bound (fn-sched-conf ss))) n))
-            (fn-sched-selected-withinp ss wf n attempt-id w))))
+; the horizon must exceed the configured queue bound: at n = 0 nothing is
+; selected, and every other hypothesis holds.
+(assert-event (fn-sched-aged-fitsp *sched-promoted*))
+(assert-event (fn-sched-contact-runp *sched-promoted* *sched-promoted-wf* 0
+                                     "attempt:2"))
+(assert-event (fn-sched-eligible-runp *sched-promoted* *sched-promoted-wf* 0
+                                      "attempt:2" "work-big"))
+(assert-event (not (fn-sched-selected-withinp *sched-promoted*
+                                              *sched-promoted-wf* 0
+                                              "attempt:2" "work-big")))
 
-; capacity must suffice at every tick of the run
-(must-fail
- (defthm sched-teeth-aging-needs-capacity
-   (implies (and (fn-sched-aged-fitsp ss)
-                 (member-equal w (fn-sched-aged ss))
-                 (fn-sched-eligible-runp ss wf n attempt-id w)
-                 (< (nfix (fn-sched-queue-bound (fn-sched-conf ss))) n))
-            (fn-sched-selected-withinp ss wf n attempt-id w))))
+; capacity must suffice: with the contact closed no tick of the run is
+; admissible and the work is never selected, over a horizon past the bound.
+(assert-event
+ (not (fn-sched-contact-runp *sched-promoted-closed* *sched-promoted-wf* 5
+                             "attempt:9")))
+(assert-event
+ (not (fn-sched-selected-withinp *sched-promoted-closed* *sched-promoted-wf* 5
+                                 "attempt:9" "work-big")))
 
-; conditional progress: without A-FAIRNESS's finite contact index the horizon
-; is not a number and the conclusion does not follow.
-(must-fail
- (defthm sched-teeth-progress-needs-a-fairness
-   (implies (and (fn-sched-aged-fitsp ss)
-                 (member-equal w (fn-sched-aged ss))
-                 (fn-sched-contact-runp ss wf n attempt-id)
-                 (fn-sched-eligible-runp ss wf n attempt-id w)
-                 (equal n (fn-assume-fairness-contact-index route schedule)))
-            (fn-sched-selected-withinp ss wf n attempt-id w))))
+; the work must stay eligible: the expired item is never selected, over the
+; same horizon.
+(assert-event
+ (not (fn-sched-eligible-runp *sched-promoted-expired* *sched-promoted-wf* 5
+                              "attempt:9" "work-big")))
+(assert-event
+ (not (fn-sched-selected-withinp *sched-promoted-expired* *sched-promoted-wf* 5
+                                 "attempt:9" "work-big")))
+
+; OPEN TEETH, recorded rather than faked (AGENTS.md: a claim earns its name).
+;
+;  * `(member-equal w (fn-sched-aged ss))' of `fn-sched-aging-bound'.  A
+;    violating value needs a work that is eligible at every tick of a run past
+;    the queue bound and still not selected, which under the aging policy
+;    requires a promotion queue this lane cannot reach in ground evaluation.
+;  * `(fn-sched-aged-fitsp ss)' of the same theorem.  A violating value needs a
+;    promotion queue longer than the configured queue bound; no transition
+;    builds one, which is exactly the invariant specs/scheduler.md leaves to
+;    C3-03.  Until that invariant is a theorem the hypothesis has no reachable
+;    counterexample and is not claimed to have one.
+
+; -----------------------------------------------------------------------------
+; fn-sched-conditional-progress-under-a-fairness: without A-FAIRNESS the
+; horizon is not a natural number, and a non-numeric horizon selects nothing.
+(assert-event (fn-sched-contact-runp *sched-promoted* *sched-promoted-wf*
+                                     :no-finite-horizon "attempt:2"))
+(assert-event (fn-sched-eligible-runp *sched-promoted* *sched-promoted-wf*
+                                      :no-finite-horizon "attempt:2"
+                                      "work-big"))
+(assert-event (not (fn-sched-selected-withinp *sched-promoted*
+                                              *sched-promoted-wf*
+                                              :no-finite-horizon "attempt:2"
+                                              "work-big")))
