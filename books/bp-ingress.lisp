@@ -574,3 +574,10 @@
             (fn-bpi-context-source-eid context))
     nil)))
 (verify-guards fn-bpi-receipt-eligibility)
+
+;; Export theory.  The seven executable-helper equalities above exist only
+;; to discharge this book's own mbe guard obligations.  Left enabled they
+;; rewrite every accessor in every includer (bp-receipt and the receiver
+;; relation books), which turned a six-minute proof into a 1800 s timeout
+;; after the guard-closure merge.  Includers see them disabled.
+(in-theory (disable fn-bpi-ag-dec-is-1- fn-bpi-ag-result-article-is-fn-article-result-article fn-bpi-ag-record-msgid-is-fn-record-msgid fn-bpi-ag-record-payload-is-fn-record-payload fn-bpi-ag-record-groups-is-fn-record-groups fn-bpi-ag-record-obligation-id-is-fn-record-obligation-id fn-bpi-ag-record-content-subject-is-fn-record-content-subject))

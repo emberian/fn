@@ -15,6 +15,9 @@
 (in-package "ACL2")
 (include-book "cbor")
 
+; The group table is encoded with the CBOR primitives, opened locally here.
+(local (in-theory (enable fn-cbor-codec-vocabulary)))
+
 (defconst *fn-store-groups* '("fn.letters" "fn.test"))
 
 ; "fn-store-groups-1"
@@ -139,3 +142,17 @@
            (equal (fn-store-groups-from-codes
                    (fn-store-codes-from-groups names))
                   names)))
+
+; -----------------------------------------------------------------------------
+; Export theory.
+;
+; The keystones are the two inversions between a group name and its code.
+; The membership and type facts are proof vocabulary.
+
+(deftheory fn-store-config-vocabulary
+  '(    fn-store-group-code-in-natp fn-store-group-name-of-code-in
+    fn-store-group-name-is-a-member fn-store-codes-from-groups-member))
+
+(in-theory (disable fn-store-group-code-in-natp fn-store-group-name-of-code-in
+             fn-store-group-name-is-a-member
+             fn-store-codes-from-groups-member))

@@ -188,7 +188,10 @@ duplicate/resurrection argument; indefinite acceptance is not promised.
   quota pressure, and eventual-contact assumptions.
 - After the selected NNTP/command-line-first path (D17), build the human web
   interface; explore 9p projections and submission
-  files using the same acceptance rules. Private messaging follows D04's scope.
+  files using the same acceptance rules. The read-only half of that exploration
+  is now an experiment: [a 9P2000 view](../specs/views-9p.md) of one committed
+  store, mounted by the Linux kernel client and served entirely from the
+  reader's own projection functions. Private messaging follows D04's scope.
 
 Exit: demonstrate actual adapter interoperability and report its version/profile.
 Operational mission qualification requires its own hardware, security, and

@@ -468,7 +468,7 @@
         "tests/evidence/2026-09-18-assurance.md",
         "tests/evidence/2026-09-18-assurance.json",
         "books/exchange-invariants.lisp",
-        "tests/acl2/exchange-invariants-tests.lisp"
+        "tests/acl2/exchange-tests.lisp"
       ],
       "progress_note": "Admissible ingest and arbitrary policy-changing traces preserve state and conflicting facts. Capacity-limited admission is intentionally not order-independent. Transfer staging correctness/work is proved separately; persistent progress, dependency authority, portable batches and receipts remain open."
     },
@@ -594,8 +594,8 @@
         "books/retention.lisp",
         "books/node.lisp",
         "books/replay.lisp",
-        "tests/acl2/acceptance-guards-tests.lisp",
-        "tests/acl2/replay-guards-tests.lisp",
+        "tests/acl2/acceptance-tests.lisp",
+        "tests/acl2/replay-tests.lisp",
         "books/store-files.lisp",
         "books/store-node.lisp",
         "books/store-node-resolution.lisp",
@@ -603,7 +603,7 @@
         "tests/acl2/store-node-guards-tests.lisp",
         "books/transfer.lisp",
         "books/exchange.lisp",
-        "tests/acl2/exchange-guards-tests.lisp",
+        "tests/acl2/exchange-tests.lisp",
         "tests/evidence/2026-09-18-composed-store.md",
         "tests/evidence/2026-09-18-reader-checkpoint-index.md",
         "tests/evidence/2026-09-18-bp-guards.md",

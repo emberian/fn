@@ -51,6 +51,26 @@ DEFAULT_CONFIG = {
     "max_transactions": MAX_TRANSACTION_COUNT,
     "allocation_frontier_format": "fn-store-allocation-frontier-1",
 }
+# A second *named* profile, not a raised default.  `max_transactions` and the
+# aggregate replay input it derives are the two bounds this host owns; every
+# bound the model owns (`*fn-frame-max-store-payload*`, `*fn-article-max-octets*`,
+# `*fn-store-groups*`, `fn-af-message-idp`, `fn-charge-for-payload`) is
+# unchanged here and cannot be raised from configuration at all.  A store
+# carries its profile name in its checksummed configuration, so a dev store and
+# a scale store are distinguishable on disk and neither is read under the
+# other's bounds.  `planning/scale-profile.md` holds the measurements that
+# justify the number and the reopen cost it implies.
+SCALE_TRANSACTION_COUNT = 4096
+SCALE_CONFIG = dict(
+    DEFAULT_CONFIG,
+    profile="fn-store-profile-scale-1",
+    max_transactions=SCALE_TRANSACTION_COUNT,
+    max_recovery_record_bytes=SCALE_TRANSACTION_COUNT * 65538,
+)
+# The development profile keeps its exact configuration bytes: it gains no
+# `profile` key, so every store written before this profile existed still
+# checksums and still opens.
+SUPPORTED_PROFILES = (DEFAULT_CONFIG, SCALE_CONFIG)
 # `books/frame` owns the grammar.  These two are the slice arithmetic that
 # `durable_records` and the corruption tests still do over a file they never
 # interpret; `frame_bridge.FrameSession` checks both against the ACL2
@@ -383,6 +403,7 @@ class Acl2Store:
     def __init__(self):
         env = os.environ.copy()
         env["ACL2_CUSTOMIZATION"] = "NONE"
+        env["ACL2_BOOK_HASH_ALISTP"] = "NIL"  # content-hashed certificates: relocatable across worktrees and hosts
         self.proc = None
         # A bridge whose correlation is lost cannot be repaired by reading
         # further: a new ACL2 process is the only recovery.
@@ -614,10 +635,13 @@ class Acl2Store:
 
 
 class Store:
-    def __init__(self, root, writable=False, faults=NO_FAULTS):
+    def __init__(self, root, writable=False, faults=NO_FAULTS, profile=None):
         self.root = Path(root).absolute()
         self.writable = writable
         self.faults = faults
+        # Which named profile `initialize` would write.  Opening an existing
+        # store still takes the profile from its durable configuration.
+        self.profile = DEFAULT_CONFIG if profile is None else profile
         self.lock_fd = None
         self.config = None
         self.frontier = None
@@ -769,7 +793,7 @@ class Store:
         try:
             self._safe_directory(self.transactions, create=True)
             self._safe_directory(self.staging, create=True)
-            config = config_with_checksum(DEFAULT_CONFIG)
+            config = config_with_checksum(self.profile)
             if self._publish_initial_file(self.config_path, canonical_json(config) + b"\n"):
                 self.config = config
             else:
@@ -801,7 +825,8 @@ class Store:
             raise StoreFault("invalid durable config: {}".format(error)) from error
         if not isinstance(config, dict) or config_with_checksum(config) != config:
             raise StoreFault("config checksum mismatch")
-        if config != config_with_checksum(DEFAULT_CONFIG):
+        if not any(config == config_with_checksum(supported)
+                   for supported in SUPPORTED_PROFILES):
             raise StoreFault("unsupported store configuration")
         self.config = config
 
