@@ -86,3 +86,11 @@
 (assert-event (equal (len *bpa-request*) 10))
 (assert-event (equal (len *bpa-receipt*) 10))
 
+
+; These decoder entries used to remain :ideal despite codec certification.
+; The public guard-T decoder and its typed internal callees are now verified.
+(assert-event (equal (symbol-class 'fn-bpa-read-fields (w state)) :common-lisp-compliant))
+(assert-event (equal (symbol-class 'fn-bpa-decode-fields (w state)) :common-lisp-compliant))
+(assert-event (equal (symbol-class 'fn-bpa-decode-after-magic (w state)) :common-lisp-compliant))
+(assert-event (equal (symbol-class 'fn-bpa-decode-candidate (w state)) :common-lisp-compliant))
+(assert-event (equal (symbol-class 'fn-bpa-decode-exact (w state)) :common-lisp-compliant))

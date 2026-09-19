@@ -565,9 +565,11 @@
         "books/exchange.lisp",
         "tests/acl2/exchange-guards-tests.lisp",
         "tests/evidence/2026-09-18-composed-store.md",
-        "tests/evidence/2026-09-18-reader-checkpoint-index.md"
+        "tests/evidence/2026-09-18-reader-checkpoint-index.md",
+        "tests/evidence/2026-09-18-bp-guards.md",
+        "tests/evidence/2026-09-18-bp-guards.json"
       ],
-      "progress_note": "Composed storage host adoption passed the 75-root/67-test batch. Seventeen existing base graphs now have 678 guarded functions, adding NNTP115 and semantic fields30 with unchanged existing logic; the derived index separately has 20 guarded functions. NNTP retains one explicit EC-CALL for total wildcard behavior. The host uses interpreted ACL2; full physical byte/effect correspondence and platform qualification remain open."
+      "progress_note": "Composed storage host adoption passed the 75-root/67-test batch. Seventeen existing base graphs now have 678 guarded functions, adding NNTP115 and semantic fields30 with unchanged existing logic; the derived index separately has 20 guarded functions. NNTP retains one explicit EC-CALL for total wildcard behavior. The host uses interpreted ACL2; full physical byte/effect correspondence and platform qualification remain open. The complete 41-function BP ADU codec now has verified guards after closing five streaming decoder functions without logical changes. An actual seven-book BP inventory records 97 functions still awaiting guard verification outside that codec; those remain a separate execution gap."
     },
     {
       "id": "PRF-015",

@@ -24,7 +24,7 @@ Request fields are ordered as follows:
 
 The first eight are nonempty octet-domain strings of at most 256 octets. The
 article is an opaque octet list of at most 32,768 octets. Encoding and decoding
-preserve it exactly. A later ingress composition must unwrap it with this codec
+preserve it exactly. The current receiver composition unwraps it with this codec
 and pass only those exact octets to the existing article parser and Store
 acceptance path. Envelope source, subject, policy and terms are context inputs;
 they do not override article fields or authorize local acceptance.
@@ -40,7 +40,7 @@ Receipt fields exactly match the current nine-field workflow receipt order:
 receipt identity, work identity, subject, issuer EID, peer EID, policy identity,
 incarnation, authorization context and terms identity. The receipt incarnation
 is the copied source/request incarnation binding for that work, not an issuer
-clock or local transaction generation. Later composition must still require the
+clock or local transaction generation. The current outbound composition requires the
 workflow checks that issuer equals the configured receipt authority and peer EID
 equals the work/config peer. Authorization context is carried evidence for that
 check; peer-supplied bytes never substitute for the receiver or sender host's
@@ -60,3 +60,9 @@ signature verification, authorization decision, article syntax validation,
 durability operation, receipt-intent commit, freshness check or replay decision.
 The exact byte profile is experimental and may be replaced when D01/D09 and the
 portable receipt authority contract are selected.
+
+The [guard closure](../tests/evidence/2026-09-18-bp-guards.md) verifies all 41
+functions in this codec, including public guard-`T` decoding. Internal streaming
+callees retain their explicit natural-number/octet-list guards. Existing logical
+bodies are unchanged. This is separate from resource-cost, authority and host
+refinement obligations; the full BP host graph still has unverified guards.
