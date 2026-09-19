@@ -313,7 +313,7 @@ after raising capacity.
 that match the peer's `accept-groups` and are live: those, and only those,
 become the local memberships (`groups` argument to `fn-node-prepare`). The
 original Newsgroups header stays in the stored source bytes untouched (D01,
-NNT-006: "preserve the original Newsgroups header/provenance"; D05's
+NNT-006 (defined in [nntp.md](nntp.md)): "preserve the original Newsgroups header/provenance"; D05's
 "incoming transfers may retain the original group list while indexing only
 configured admissible groups"). An unknown group in Newsgroups is therefore
 not a refusal by itself; an article *none* of whose groups is in scope is
