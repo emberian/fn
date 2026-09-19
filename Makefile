@@ -117,6 +117,13 @@ ACL2_BOOKS ?= books/assumptions \
 	tests/acl2/bp-receiver-teeth-tests \
 	books/bp-outbound \
 	tests/acl2/bp-outbound-tests \
+	books/bp-release \
+	books/bp-release-invariants \
+	tests/acl2/bp-release-tests \
+	books/relay \
+	books/relay-invariants \
+	books/relay-crash-invariants \
+	tests/acl2/relay-tests \
 	books/journal \
 	tests/acl2/journal-tests \
 	books/exchange \
