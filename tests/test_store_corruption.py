@@ -163,8 +163,8 @@ class StoreCorruptionTests(unittest.TestCase):
             path.write_bytes(raw)
 
         cases = (
-            ("length", bad_length, "truncated or overlong transaction frame"),
-            ("digest", bad_digest, "transaction integrity trailer mismatch"),
+            ("length", bad_length, "frame refused: truncated"),
+            ("digest", bad_digest, "frame refused: integrity"),
             ("schema", lambda path: path.write_bytes(frame(b"unknown-schema")),
              "ACL2 returned a non-natural"),
         )
