@@ -42,7 +42,10 @@
         "fn-bprv-initial-invariant",
         "fn-bprv-actual-record-preserves-invariant",
         "fn-bprv-actual-finite-replay-preserves-invariant",
-        "fn-bprv-successful-replay-has-invariant"
+        "fn-bprv-successful-replay-has-invariant",
+        "fn-bprv-store-step-preserves-evolving-invariant",
+        "fn-bprv-apply-record-preserves-evolving-invariant",
+        "fn-bprv-system-run-preserves-invariant"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -302,7 +305,10 @@
         "fn-bprv-successful-replay-has-invariant",
         "fn-bprv-replay-no-receipt-before-committed-decision",
         "fn-bprv-replayed-receipt-is-grounded",
-        "fn-bprv-replay-rest-preserves-receipt-adu"
+        "fn-bprv-replay-rest-preserves-receipt-adu",
+        "fn-bprv-history-record-is-node-committed-when-idle",
+        "fn-bprv-evolving-invariant-survives-observed-reopen",
+        "fn-bpr-live-receipt-regenerated-after-restart"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -506,7 +512,12 @@
         "fn-bprv-successful-replay-has-invariant",
         "fn-bprv-replay-no-receipt-before-committed-decision",
         "fn-bprv-replayed-receipt-is-grounded",
-        "fn-bprv-replay-rest-preserves-receipt-adu"
+        "fn-bprv-replay-rest-preserves-receipt-adu",
+        "fn-bprv-acceptable-implies-grounded",
+        "fn-bprv-evolving-output-is-history-grounded",
+        "fn-bprv-evolving-output-is-node-grounded-when-idle",
+        "fn-bprv-apply-record-agrees-at-ready-extension",
+        "fn-bpr-live-state-is-replay-of-journal"
       ],
       "evidence": [
         "books/bp-workflow.lisp",

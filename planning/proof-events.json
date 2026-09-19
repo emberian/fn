@@ -104,6 +104,18 @@
         {
           "name": "fn-bprv-successful-replay-has-invariant",
           "kind": "theorem"
+        },
+        {
+          "name": "fn-bprv-store-step-preserves-evolving-invariant",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-bprv-apply-record-preserves-evolving-invariant",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-bprv-system-run-preserves-invariant",
+          "kind": "theorem"
         }
       ]
     },
@@ -419,6 +431,18 @@
         {
           "name": "fn-bprv-replay-rest-preserves-receipt-adu",
           "kind": "theorem"
+        },
+        {
+          "name": "fn-bprv-history-record-is-node-committed-when-idle",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-bprv-evolving-invariant-survives-observed-reopen",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-bpr-live-receipt-regenerated-after-restart",
+          "kind": "theorem"
         }
       ]
     },
@@ -583,6 +607,26 @@
         },
         {
           "name": "fn-bprv-replay-rest-preserves-receipt-adu",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-bprv-acceptable-implies-grounded",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-bprv-evolving-output-is-history-grounded",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-bprv-evolving-output-is-node-grounded-when-idle",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-bprv-apply-record-agrees-at-ready-extension",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-bpr-live-state-is-replay-of-journal",
           "kind": "theorem"
         }
       ]

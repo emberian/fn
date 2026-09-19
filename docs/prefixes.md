@@ -39,7 +39,8 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-bpi-` | `bp-ingress` | Legacy article ADU ingress, routing and composed-store admission |
 | `fn-bpr-` | `bp-receipt` | Receiver state: request context, receipt intent and decision, receipt ADU emission |
 | `fn-bprr-` | `bp-receipt-records` | Receiver journal record application and replay |
-| `fn-bprv-` | `bp-receiver-*-invariants` | Receiver relation invariants over a Store, contexts, decisions and replay |
+| `fn-bprv-` | `bp-receiver-*-invariants`, `bp-receiver-evolving-*-invariants` | Receiver relation invariants over a Store, contexts, decisions and replay; the history-indexed relation over an evolving Store |
+| `fn-bpr-live-` | `bp-receiver-evolving-store-invariants` | Live receiver trace model over the host's call sequence (`tools/run_bp_receive.py`): Store global, receiver global, journal on disk |
 | `fn-bpo-` | `bp-outbound` | Outbound projection of sender work to request ADUs and receipt validation |
 
 Host-only wrappers in `host/*.lisp` use `fn-store-`, `fn-bpreq-`, `fn-bpwf-`,
