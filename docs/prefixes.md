@@ -48,6 +48,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-bpc-` | `bp-primary-cbor` | Deterministic CBOR vocabulary RFC 9171 §4.3.1 needs over `fn-cbor-`: definite arrays and text strings, unsigned integers to 2^64-1 |
 | `fn-bpp-` | `bp-primary`, `bp-primary-invariants` | BPv7 primary bundle block: flags, CRC-16/CRC32C, `dtn` and `ipn` endpoint IDs, creation timestamp, lifetime, fragment fields, bundle identity, §4.4 extension block data |
 | `fn-bpf-` | `bp-fragment`, `bp-fragment-invariants` | BPv7 fragmentation and ADU reassembly over identical-overlap covers; fragment primary blocks |
+| `fn-sched-` | `scheduler`, `scheduler-invariants` | Durable contact/retry scheduler: contact-plan observations, bounded work queue, deterministic priority with a FIFO aging rule, selection composed with `fn-bp-step`, the stated unfair policy used for the starvation counterexample, and the proposed FNWF `:schedule` decision record |
 | `fn-clock-` | `clock`, `clock-invariants` | Host clock observations, Bundle Age anchors and the three-way bundle expiry decision |
 
 Host-only wrappers in `host/*.lisp` use `fn-store-`, `fn-bpreq-`, `fn-bpwf-`,
