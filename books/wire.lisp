@@ -17,6 +17,19 @@
 
 (in-package "ACL2")
 
+; ---------------------------------------------------------------------------
+; Total selectors.  The records below are positional lists; these two helpers
+; are their logical primitives by mbe, so an accessor is guard-total (:guard t)
+; and no caller ever incurs a true-listp obligation to read a field.
+
+(defun fn-wire-ag-car (x)
+  (declare (xargs :guard t))
+  (mbe :logic (car x) :exec (if (consp x) (car x) nil)))
+
+(defun fn-wire-ag-cdr (x)
+  (declare (xargs :guard t))
+  (mbe :logic (cdr x) :exec (if (consp x) (cdr x) nil)))
+
 ; -----------------------------------------------------------------------------
 ; Primitive domains and dot transformation
 
@@ -106,42 +119,87 @@
       (equal x :article)
       (equal x :closed)))
 
+(defun fn-wire-state-shapep (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 8)))
+
 (defun fn-wire-state-mode (x)
-  (declare (xargs :guard (true-listp x) :verify-guards nil))
-  (car x))
+  (declare (xargs :guard t))
+  (fn-wire-ag-car x))
 
 (defun fn-wire-state-line-rev (x)
-  (declare (xargs :guard (true-listp x) :verify-guards nil))
-  (car (cdr x)))
+  (declare (xargs :guard t))
+  (fn-wire-ag-car (fn-wire-ag-cdr x)))
 
 (defun fn-wire-state-line-len (x)
-  (declare (xargs :guard (true-listp x) :verify-guards nil))
-  (car (cdr (cdr x))))
+  (declare (xargs :guard t))
+  (fn-wire-ag-car (fn-wire-ag-cdr (fn-wire-ag-cdr x))))
 
 (defun fn-wire-state-body-rev (x)
-  (declare (xargs :guard (true-listp x) :verify-guards nil))
-  (car (cdr (cdr (cdr x)))))
+  (declare (xargs :guard t))
+  (fn-wire-ag-car (fn-wire-ag-cdr (fn-wire-ag-cdr (fn-wire-ag-cdr x)))))
 
 (defun fn-wire-state-pending-crp (x)
-  (declare (xargs :guard (true-listp x) :verify-guards nil))
-  (car (cdr (cdr (cdr (cdr x))))))
+  (declare (xargs :guard t))
+  (fn-wire-ag-car (fn-wire-ag-cdr (fn-wire-ag-cdr (fn-wire-ag-cdr (fn-wire-ag-cdr x))))))
 
 (defun fn-wire-state-body-size (x)
-  (declare (xargs :guard (true-listp x) :verify-guards nil))
-  (car (cdr (cdr (cdr (cdr (cdr x)))))))
+  (declare (xargs :guard t))
+  (fn-wire-ag-car (fn-wire-ag-cdr (fn-wire-ag-cdr (fn-wire-ag-cdr (fn-wire-ag-cdr (fn-wire-ag-cdr x)))))))
 
 (defun fn-wire-state-line-limit (x)
-  (declare (xargs :guard (true-listp x) :verify-guards nil))
-  (car (cdr (cdr (cdr (cdr (cdr (cdr x))))))))
+  (declare (xargs :guard t))
+  (fn-wire-ag-car (fn-wire-ag-cdr (fn-wire-ag-cdr (fn-wire-ag-cdr (fn-wire-ag-cdr (fn-wire-ag-cdr (fn-wire-ag-cdr x))))))))
 
 (defun fn-wire-state-body-limit (x)
-  (declare (xargs :guard (true-listp x) :verify-guards nil))
-  (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr x)))))))))
+  (declare (xargs :guard t))
+  (fn-wire-ag-car (fn-wire-ag-cdr (fn-wire-ag-cdr (fn-wire-ag-cdr (fn-wire-ag-cdr (fn-wire-ag-cdr (fn-wire-ag-cdr (fn-wire-ag-cdr x)))))))))
 
 (defun fn-wire-make-state (mode line-rev line-len body-rev pending-crp
                                 body-size line-limit body-limit)
   (list mode line-rev line-len body-rev pending-crp body-size
         line-limit body-limit))
+
+
+; Record lemmas for the wire state record: its shape and one accessor-of-constructor
+; equality per field.  Below this point nothing opens the record.
+
+(defthm fn-wire-state-shapep-of-fn-wire-make-state
+  (fn-wire-state-shapep (fn-wire-make-state mode line-rev line-len body-rev pending-crp body-size line-limit body-limit)))
+
+(defthm fn-wire-state-mode-of-fn-wire-make-state
+  (equal (fn-wire-state-mode (fn-wire-make-state mode line-rev line-len body-rev pending-crp body-size line-limit body-limit))
+         mode))
+
+(defthm fn-wire-state-line-rev-of-fn-wire-make-state
+  (equal (fn-wire-state-line-rev (fn-wire-make-state mode line-rev line-len body-rev pending-crp body-size line-limit body-limit))
+         line-rev))
+
+(defthm fn-wire-state-line-len-of-fn-wire-make-state
+  (equal (fn-wire-state-line-len (fn-wire-make-state mode line-rev line-len body-rev pending-crp body-size line-limit body-limit))
+         line-len))
+
+(defthm fn-wire-state-body-rev-of-fn-wire-make-state
+  (equal (fn-wire-state-body-rev (fn-wire-make-state mode line-rev line-len body-rev pending-crp body-size line-limit body-limit))
+         body-rev))
+
+(defthm fn-wire-state-pending-crp-of-fn-wire-make-state
+  (equal (fn-wire-state-pending-crp (fn-wire-make-state mode line-rev line-len body-rev pending-crp body-size line-limit body-limit))
+         pending-crp))
+
+(defthm fn-wire-state-body-size-of-fn-wire-make-state
+  (equal (fn-wire-state-body-size (fn-wire-make-state mode line-rev line-len body-rev pending-crp body-size line-limit body-limit))
+         body-size))
+
+(defthm fn-wire-state-line-limit-of-fn-wire-make-state
+  (equal (fn-wire-state-line-limit (fn-wire-make-state mode line-rev line-len body-rev pending-crp body-size line-limit body-limit))
+         line-limit))
+
+(defthm fn-wire-state-body-limit-of-fn-wire-make-state
+  (equal (fn-wire-state-body-limit (fn-wire-make-state mode line-rev line-len body-rev pending-crp body-size line-limit body-limit))
+         body-limit))
+
+(in-theory (disable (:d fn-wire-state-shapep) (:d fn-wire-make-state) (:d fn-wire-state-mode) (:d fn-wire-state-line-rev) (:d fn-wire-state-line-len) (:d fn-wire-state-body-rev) (:d fn-wire-state-pending-crp) (:d fn-wire-state-body-size) (:d fn-wire-state-line-limit) (:d fn-wire-state-body-limit)))
 
 (defun fn-wire-line-cost (line)
   (declare (xargs :guard (fn-wire-octet-listp line)
@@ -161,8 +219,7 @@
          (+ (fn-wire-line-cost line) (fn-wire-lines-size lines))))
 
 (defun fn-wire-statep (x)
-  (and (true-listp x)
-       (equal (len x) 8)
+  (and (fn-wire-state-shapep x)
        (fn-wire-modep (fn-wire-state-mode x))
        (fn-wire-octet-listp (fn-wire-state-line-rev x))
        (fn-wire-octet-linesp (fn-wire-state-body-rev x))
@@ -195,20 +252,39 @@
 (defthm fn-wire-initial-state-is-state
   (implies (and (posp line-limit) (posp body-limit))
            (fn-wire-statep (fn-wire-initial-state line-limit body-limit)))
-  :hints (("Goal" :in-theory (enable fn-wire-initial-state fn-wire-statep))))
+  :hints (("Goal" :in-theory (enable fn-wire-initial-state fn-wire-statep fn-wire-state-shapep))))
+
+(defun fn-wire-result-shapep (x)
+  (declare (xargs :guard t))
+  (consp x))
 
 (defun fn-wire-result-state (x)
-  (declare (xargs :guard (or (consp x) (null x))
-                  :verify-guards nil))
-  (car x))
+  (declare (xargs :guard t))
+  (fn-wire-ag-car x))
 
 (defun fn-wire-result-events (x)
-  (declare (xargs :guard (or (consp x) (null x))
-                  :verify-guards nil))
-  (cdr x))
+  (declare (xargs :guard t))
+  (fn-wire-ag-cdr x))
 
 (defun fn-wire-make-result (wire-state events)
   (cons wire-state events))
+
+
+; Record lemmas for the result record (a state consed onto an event list).
+
+(defthm fn-wire-result-shapep-of-fn-wire-make-result
+  (fn-wire-result-shapep (fn-wire-make-result wire-state events)))
+
+(defthm fn-wire-result-state-of-fn-wire-make-result
+  (equal (fn-wire-result-state (fn-wire-make-result wire-state events))
+         wire-state))
+
+(defthm fn-wire-result-events-of-fn-wire-make-result
+  (equal (fn-wire-result-events (fn-wire-make-result wire-state events))
+         events))
+
+(in-theory (disable (:d fn-wire-result-shapep) (:d fn-wire-make-result)
+                    (:d fn-wire-result-state) (:d fn-wire-result-events)))
 
 (defun fn-wire-command-event (line)
   (list :command line))
@@ -233,9 +309,12 @@
            (fn-wire-statep
             (fn-wire-result-state (fn-wire-close wire-state reason))))
   :hints (("Goal" :in-theory (enable fn-wire-close fn-wire-statep
-                                      fn-wire-make-result fn-wire-result-state
-                                      fn-wire-make-state))))
+                                      ))))
 
+; A car-form restatement of the accessor-form fact above, kept because the
+; framing loops in books/wire-invariants.lisp reason about the result
+; record's pairing and leave goals in car form.  It is a `-by-definition`
+; twin, not a registry event.
 (defthm fn-wire-close-is-statep-car-form
   (implies (fn-wire-statep wire-state)
            (fn-wire-statep (car (fn-wire-close wire-state reason))))
@@ -286,8 +365,7 @@
          (not (fn-wire-begin-article-admissiblep wire-state)))
   :hints (("Goal" :in-theory (enable fn-wire-begin-article
                                       fn-wire-begin-article-refusedp
-                                      fn-wire-result-events
-                                      fn-wire-make-result))))
+                                      ))))
 
 (defthm fn-wire-begin-article-refusal-keeps-state
   (implies (not (fn-wire-begin-article-admissiblep wire-state))
@@ -296,9 +374,7 @@
                 (equal (fn-wire-result-events (fn-wire-begin-article wire-state))
                        (list (fn-wire-reject-event :begin-article-unquiesced)))))
   :hints (("Goal" :in-theory (enable fn-wire-begin-article
-                                      fn-wire-result-state
-                                      fn-wire-result-events
-                                      fn-wire-make-result))))
+                                      ))))
 
 (defthm fn-wire-begin-article-acceptance-enters-empty-article-mode
   (implies (fn-wire-begin-article-admissiblep wire-state)
@@ -316,8 +392,6 @@
                          (fn-wire-state-body-limit wire-state)))))
   :hints (("Goal" :in-theory (enable fn-wire-begin-article
                                       fn-wire-begin-article-admissiblep
-                                      fn-wire-result-state
-                                      fn-wire-make-result
                                       fn-wire-statep))))
 
 (defthm fn-wire-begin-article-preserves-statep
@@ -326,8 +400,6 @@
             (fn-wire-result-state (fn-wire-begin-article wire-state))))
   :hints (("Goal" :in-theory (enable fn-wire-begin-article
                                       fn-wire-begin-article-admissiblep
-                                      fn-wire-result-state
-                                      fn-wire-make-result
                                       fn-wire-statep))))
 
 ; -----------------------------------------------------------------------------
@@ -425,8 +497,13 @@
                                       fn-wire-close
                                       fn-wire-statep))))
 
-; The same fact in the accessor-free form the framing loops leave behind after
-; fn-wire-result-state is expanded.  This is a restatement, not a new property.
+; The retained-input bound is carried, not recomputed: the two counters the
+; step maintains are exactly the measurements of the lists they bound, so the
+; bound on retained octets survives every step.
+; A car-form restatement of the accessor-form fact above, kept because the
+; framing loops in books/wire-invariants.lisp reason about the result
+; record's pairing and leave goals in car form.  It is a `-by-definition`
+; twin, not a registry event.
 (defthm fn-wire-feed-byte-preserves-statep-car-form
   (implies (fn-wire-statep wire-state)
            (fn-wire-statep (car (fn-wire-feed-byte wire-state byte))))
@@ -435,9 +512,6 @@
            :in-theory (e/d (fn-wire-result-state)
                            (fn-wire-feed-byte fn-wire-statep)))))
 
-; The retained-input bound is carried, not recomputed: the two counters the
-; step maintains are exactly the measurements of the lists they bound, so the
-; bound on retained octets survives every step.
 (defthm fn-wire-feed-byte-retained-input-is-bounded
   (implies (fn-wire-statep wire-state)
            (let ((next (fn-wire-result-state
@@ -550,6 +624,15 @@
           (fn-wire-feed-proper wire-state octets)
         (fn-wire-close wire-state :malformed)))))
 
+; A guard fact, not a rule: with the result record opaque the events field is
+; still a true list whenever the record is.  Stated once, :rule-classes nil,
+; and cited by the verify-guards of fn-wire-continue below.
+(defthm fn-wire-result-events-of-a-true-list-is-a-true-list
+  (implies (true-listp result)
+           (true-listp (fn-wire-result-events result)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-wire-result-events))))
+
 (defun fn-wire-continue (result octets)
   (declare (xargs :guard (true-listp result)
                   :verify-guards nil))
@@ -565,20 +648,45 @@
 ; fixed-mode composition helper.
 ; Result fields are (state event unconsumed-octets), where event is NIL when
 ; the supplied octets contain no complete event.
+(defun fn-wire-next-shapep (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 3)))
+
 (defun fn-wire-next-state (x)
-  (declare (xargs :guard (true-listp x) :verify-guards nil))
-  (car x))
+  (declare (xargs :guard t))
+  (fn-wire-ag-car x))
 
 (defun fn-wire-next-event (x)
-  (declare (xargs :guard (true-listp x) :verify-guards nil))
-  (car (cdr x)))
+  (declare (xargs :guard t))
+  (fn-wire-ag-car (fn-wire-ag-cdr x)))
 
 (defun fn-wire-next-unconsumed (x)
-  (declare (xargs :guard (true-listp x) :verify-guards nil))
-  (car (cdr (cdr x))))
+  (declare (xargs :guard t))
+  (fn-wire-ag-car (fn-wire-ag-cdr (fn-wire-ag-cdr x))))
 
 (defun fn-wire-make-next (wire-state event unconsumed)
   (list wire-state event unconsumed))
+
+
+; Record lemmas for the next record: its shape and one accessor-of-constructor
+; equality per field.  Below this point nothing opens the record.
+
+(defthm fn-wire-next-shapep-of-fn-wire-make-next
+  (fn-wire-next-shapep (fn-wire-make-next wire-state event unconsumed)))
+
+(defthm fn-wire-next-state-of-fn-wire-make-next
+  (equal (fn-wire-next-state (fn-wire-make-next wire-state event unconsumed))
+         wire-state))
+
+(defthm fn-wire-next-event-of-fn-wire-make-next
+  (equal (fn-wire-next-event (fn-wire-make-next wire-state event unconsumed))
+         event))
+
+(defthm fn-wire-next-unconsumed-of-fn-wire-make-next
+  (equal (fn-wire-next-unconsumed (fn-wire-make-next wire-state event unconsumed))
+         unconsumed))
+
+(in-theory (disable (:d fn-wire-next-shapep) (:d fn-wire-make-next) (:d fn-wire-next-state) (:d fn-wire-next-event) (:d fn-wire-next-unconsumed)))
 
 ; The chunk loop.  fn-wire-statep is established once, by fn-wire-next, before
 ; this loop starts; each iteration performs the constant-work per-byte step and
@@ -692,7 +800,14 @@
                   (fn-wire-result-events
                    (fn-wire-feed-proper
                     (fn-wire-result-state (fn-wire-feed-proper wire-state left))
-                    right))))))
+                    right)))))
+  ; This is the one theorem in the book that is *about* the pairing inside the
+  ; result record rather than about a field of it, so it opens that record
+  ; locally.  Nothing is exported open: the export event below withdraws the
+  ; record again for every includer.
+  :hints (("Goal" :in-theory (enable fn-wire-make-result
+                                     fn-wire-result-state
+                                     fn-wire-result-events))))
 
 ; -----------------------------------------------------------------------------
 ; Executable guard closure
@@ -705,21 +820,11 @@
 (verify-guards fn-wire-reverse-octets-aux)
 (verify-guards fn-wire-reverse-octets)
 (verify-guards fn-wire-modep)
-(verify-guards fn-wire-state-mode)
-(verify-guards fn-wire-state-line-rev)
-(verify-guards fn-wire-state-line-len)
-(verify-guards fn-wire-state-body-rev)
-(verify-guards fn-wire-state-pending-crp)
-(verify-guards fn-wire-state-body-size)
-(verify-guards fn-wire-state-line-limit)
-(verify-guards fn-wire-state-body-limit)
 (verify-guards fn-wire-make-state)
 (verify-guards fn-wire-line-cost)
 (verify-guards fn-wire-lines-size)
 (verify-guards fn-wire-statep)
 (verify-guards fn-wire-initial-state)
-(verify-guards fn-wire-result-state)
-(verify-guards fn-wire-result-events)
 (verify-guards fn-wire-make-result)
 (verify-guards fn-wire-command-event)
 (verify-guards fn-wire-article-event)
@@ -733,11 +838,33 @@
 (verify-guards fn-wire-feed-byte-reference)
 (verify-guards fn-wire-feed-proper)
 (verify-guards fn-wire-feed)
-(verify-guards fn-wire-continue)
-(verify-guards fn-wire-next-state)
-(verify-guards fn-wire-next-event)
-(verify-guards fn-wire-next-unconsumed)
+(verify-guards fn-wire-continue
+  :hints (("Goal" :use ((:instance fn-wire-result-events-of-a-true-list-is-a-true-list)))))
 (verify-guards fn-wire-make-next)
 (verify-guards fn-wire-next-loop)
 (verify-guards fn-wire-next)
 (verify-guards fn-wire-next-reference)
+
+; ---------------------------------------------------------------------------
+; Export theory
+;
+; What leaves this book enabled: the keystones, the record lemmas, the
+; list-recursive vocabulary proofs induct on (fn-wire-octet-listp,
+; fn-wire-octet-linesp, fn-wire-lines-size, fn-wire-reverse-octets) and the
+; total fn-wire-ag- selectors.  Every record accessor, constructor and shape
+; was withdrawn at its record above.  Withdrawn here: the state recognizer,
+; the initial state and every transition, so an includer computes with them
+; but never inherits their unfolding.
+
+(deftheory fn-wire-step-vocabulary
+  '(fn-wire-statep fn-wire-modep fn-wire-initial-state
+    fn-wire-line-cost fn-wire-close
+    fn-wire-begin-article-admissiblep fn-wire-begin-article
+    fn-wire-begin-article-refusedp
+    fn-wire-after-line fn-wire-feed-byte fn-wire-feed-byte-reference
+    fn-wire-feed-proper fn-wire-feed fn-wire-continue
+    fn-wire-next-loop fn-wire-next fn-wire-next-reference
+    fn-wire-command-event fn-wire-article-event fn-wire-reject-event
+    fn-wire-stuff-line fn-wire-unstuff-line))
+
+(in-theory (disable fn-wire-step-vocabulary))
