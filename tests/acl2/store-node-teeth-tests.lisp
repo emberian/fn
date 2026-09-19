@@ -16,8 +16,7 @@
 ; phases are replaced by the composed crash-choice cases below.
 
 (in-package "ACL2")
-(include-book "../../books/store-observed-traces")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "../../books/store-observed")
 
 ; -----------------------------------------------------------------------------
 ; A reachable, non-degenerate witness: the composed store driven from its
@@ -88,10 +87,7 @@
 (assert-event
  (not (fn-sn-record-bindsp (fn-sn-node *snt-prepared*) *snt-other-record*)))
 
-(local
- (must-fail
-  (defthm snt-teeth-installs-record-without-binding
-    (fn-sn-committed-recordp
+(assert-event (with-guard-checking :none (not (fn-sn-committed-recordp
      (fn-node-complete (fn-sn-node *snt-prepared*)
                        (fn-record-txid *snt-other-record*)
                        (fn-record-generation *snt-other-record*)
@@ -119,15 +115,9 @@
         (fn-sf-successes (fn-sn-files *snt-prepared*))))
 (assert-event (not (fn-sn-completion-enabledp *snt-prepared*)))
 
-(local
- (must-fail
-  (defthm snt-teeth-new-success-without-a-new-success
-    (fn-sn-completion-enabledp *snt-prepared*))))
+(assert-event (with-guard-checking :none (not (fn-sn-completion-enabledp *snt-prepared*))))
 
-(local
- (must-fail
-  (defthm snt-teeth-committed-record-without-a-new-success
-    (fn-sn-committed-recordp (fn-sn-node (fn-sn-finish *snt-prepared*))
+(assert-event (with-guard-checking :none (not (fn-sn-committed-recordp (fn-sn-node (fn-sn-finish *snt-prepared*))
                              (fn-sn-completion-record *snt-prepared*)))))
 
 ; -----------------------------------------------------------------------------
@@ -142,19 +132,13 @@
 ; The no-op theorem's sole hypothesis dropped: where completion IS enabled,
 ; finish is exactly the step that is not a no-op.
 (assert-event (fn-sn-completion-enabledp *snt-completing*))
-(local
- (must-fail
-  (defthm snt-teeth-finish-is-a-no-op-without-being-disabled
-    (equal (fn-sn-finish *snt-completing*) *snt-completing*))))
+(assert-event (with-guard-checking :none (not (equal (fn-sn-finish *snt-completing*) *snt-completing*))))
 
 ; The acknowledgement theorem's sole hypothesis dropped: where completion is
 ; not enabled, the success list does not grow by the completion pair.  In the
 ; staged state that pair is not even bound.
 (assert-event (null (fn-sf-completion (fn-sn-files *snt-prepared*))))
-(local
- (must-fail
-  (defthm snt-teeth-acknowledges-exact-pair-without-enablement
-    (equal (fn-sf-successes (fn-sn-files (fn-sn-finish *snt-prepared*)))
+(assert-event (with-guard-checking :none (not (equal (fn-sf-successes (fn-sn-files (fn-sn-finish *snt-prepared*)))
            (append (fn-sf-successes (fn-sn-files *snt-prepared*))
                    (list (fn-sf-completion (fn-sn-files *snt-prepared*))))))))
 
@@ -190,10 +174,7 @@
 (assert-event (fn-sf-crash-choicep :old :present))
 (assert-event (equal (fn-sn-crash *snt-forged* :old :present) *snt-forged*))
 
-(local
- (must-fail
-  (defthm snt-teeth-composed-crash-is-kernel-crash-without-statep
-    (equal (fn-sn-files (fn-sn-crash *snt-forged* :old :present))
+(assert-event (with-guard-checking :none (not (equal (fn-sn-files (fn-sn-crash *snt-forged* :old :present))
            (fn-sf-crash (fn-sn-files *snt-forged*) :old :present)))))
 
 ; H2 has no teeth, and none is forged.  Outside `fn-sf-crash-choicep' both
@@ -225,10 +206,7 @@
 ; there is no state for the relation to hold of.
 (assert-event
  (fn-sn-open-errorp (fn-sn-open-observed *snt-groups* 10 0 (list *snt-record*))))
-(local
- (must-fail
-  (defthm snt-teeth-live-history-relation-without-a-successful-open
-    (fn-snt-relation
+(assert-event (with-guard-checking :none (not (fn-snt-relation
      (fn-sn-open-state (fn-sn-open-observed *snt-groups* 10 0 (list *snt-record*)))))))
 
 ; -----------------------------------------------------------------------------
@@ -264,10 +242,7 @@
  (fn-sn-open-okp
   (fn-sn-open-observed (fn-sn-groups *snt-finished*) (fn-sn-capacity *snt-finished*)
                        1 nil)))
-(local
- (must-fail
-  (defthm snt-teeth-acknowledged-record-survives-without-admissible-image
-    (fn-sf-record-has-pairp
+(assert-event (with-guard-checking :none (not (fn-sf-record-has-pairp
      '(0 . 0)
      (fn-sf-records
       (fn-sn-files
@@ -287,10 +262,7 @@
  (fn-sf-crash-imagep (fn-sn-files *snt-relation-forged*) 1 (list *snt-record*)))
 (assert-event
  (member-equal '(0 . 0) (fn-sf-successes (fn-sn-files *snt-relation-forged*))))
-(local
- (must-fail
-  (defthm snt-teeth-acknowledged-record-survives-without-the-relation
-    (fn-sn-open-okp
+(assert-event (with-guard-checking :none (not (fn-sn-open-okp
      (fn-sn-open-observed (fn-sn-groups *snt-relation-forged*)
                           (fn-sn-capacity *snt-relation-forged*)
                           1 (list *snt-record*))))))
@@ -299,10 +271,7 @@
 ; reopened history, on exactly the admissible image that retains the one that
 ; was.
 (assert-event (not (member-equal '(9 . 9) (fn-sf-successes (fn-sn-files *snt-finished*)))))
-(local
- (must-fail
-  (defthm snt-teeth-acknowledged-record-survives-without-membership
-    (fn-sf-record-has-pairp
+(assert-event (with-guard-checking :none (not (fn-sf-record-has-pairp
      '(9 . 9)
      (fn-sf-records
       (fn-sn-files

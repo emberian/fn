@@ -106,7 +106,7 @@
         "tests/evidence/2026-09-18-fields-transfer.json",
         "tests/evidence/2026-09-18-assurance.md",
         "tests/evidence/2026-09-18-assurance.json",
-        "books/store-node-resolution-traces.lisp",
+        "books/store-node-resolution.lisp",
         "books/store-observed.lisp",
         "tests/test_store_corruption.py"
       ],
@@ -459,8 +459,8 @@
         "tests/evidence/2026-09-18-assurance.md",
         "tests/evidence/2026-09-18-assurance.json",
         "books/node-traces.lisp",
-        "tests/acl2/node-traces-tests.lisp",
-        "books/store-node-resolution-traces.lisp"
+        "tests/acl2/node-tests.lisp",
+        "books/store-node-resolution.lisp"
       ],
       "execution_scope": "Arbitrary finite actual node and mixed storage traces preserve state and prior bindings/acknowledgements. Successful prepare/durable publication, refusal, stale completion, indeterminate/committed/absent resolution and later retry vectors pass; physical adapter correspondence remains a separately validated layer."
     },

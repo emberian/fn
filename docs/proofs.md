@@ -161,6 +161,90 @@ Its limits, stated so nobody reads a clean report as a clean bill of health:
   `tests/acl2/assumptions-tests.lisp` are for.
 - The absence of a flag is not evidence of strength. Teeth are.
 
+### The two export lints
+
+Besides the suspect detector, `tools/ledger.py` reports two WARN lints, counted
+in the generated ledger and listed in full under `lints` in `ledger.json`.
+Neither judges truth; each names a cost this tree has already paid.
+*Export hygiene* flags a theorem a book leaves enabled whose conclusion is an
+equality between two *different* one-argument applications, or a `consp`/`len`
+conclusion backchained to a `len` hypothesis. The same accessor on both sides
+is a preservation lemma, which is the shape the export policy asks for, and is
+not flagged; `local`, `defthmd`, `:rule-classes nil` and a non-local closing
+`in-theory (disable ...)` each exempt a rule, because none of them leaves it
+enabled downstream. A book that withdraws its helpers by naming them --
+`(deftheory fn-x-vocabulary '(...))` and then disabling that name, including
+through `(:d name)`/`(:e name)` runes, `set-difference-theories` or
+`union-theories` over names the book defines -- is read the same way: the
+theory is resolved to its rules, and each counts as withdrawn. What cannot be
+read literally, such as a computed theory over `current-theory`, contributes
+nothing, so an unresolvable withdrawal warns rather than going quiet. *Teeth form* flags a `must-fail` whose body is a bare
+`thm`/`defthm` whose statement mentions no constant -- no keyword, literal,
+string or `defconst` -- so it refutes a general claim rather than a specific
+violating value. `make check` prints both as `WARN`;
+`python3 tools/ledger.py --check --strict` fails on them, which is how a book
+or a cluster that has been cleaned keeps its state.
+
+### Certificates, the cache, and the farm
+
+Every fn tool that starts ACL2 sets `ACL2_BOOK_HASH_ALISTP=NIL`, so ACL2 8.7
+hashes book *contents* rather than write dates and absolute paths: a
+`.cert`/`.port` pair is valid in any worktree and on any host whose book
+content matches. [`tools/certs.py`](../tools/certs.py) is the consequence.
+Two rules, each paid for by a poisoned cache. First, **a pair is published
+only against a certification manifest**: a `.cert` lying beside a book proves
+nothing, since after a merge it can be the previous source's certificate, so
+`publish` reads the manifests `tools/certify_books.py` writes
+(`--manifest PATH`, or every `build/acl2/certify-*/manifest.json` under the
+worktree) and caches a book only when the source beside it still hashes to
+that run's `source_digests_sha256` (and `source_digests_sha256_after` when the
+run recorded one) and the certificate beside it still hashes to that run's
+`certificate_digests_sha256`. There is no other publish path, and a manifest
+that did not pass vouches for nothing. Second, **the key is the closure**: a
+certificate is valid only for a book *and every book it includes*, so the key
+is the SHA-256 of the sorted `<path>:<sha256>` listing of the book and its
+whole local include closure, resolved as ACL2 resolves `include-book` and
+ignoring `:dir :system`. Same book bytes over a changed dependency is a
+different key, not a hit ACL2 would then refuse; the listing is recorded in
+the entry's metadata. A third rule decides *where* a pair may be installed. An ACL2
+certificate's post-alist names every sub-book by its **absolute**
+full-book-name, so a pair made in worktree X and installed in worktree Y on
+one machine makes Y include X's books -- X's paths still resolve -- and Y's
+own later certificates then conflict with them (`its certificate requires
+.../X/books/acceptance.lisp, but .../Y/books/acceptance.lisp has been
+included`). Each entry therefore records the `origin_root` it was produced in,
+taken from its manifest's evidence path, and `install` takes this worktree's
+own entry, else one whose origin does not exist on this machine, and otherwise
+refuses and reports `foreign-local`. A pair whose bytes match a refused entry
+is removed, so a worktree an earlier origin-blind install poisoned recovers.
+Farm runs are the reusable case: `farm.py submit --remote-root` runs under a
+path that does not exist here, and `wait` publishes with that path as the
+origin, so those pairs install into any local worktree. `install` computes the
+same closure key per book and copies in each matching pair, keeping a
+byte-identical local certificate; `status` prints coverage, counting
+foreign-local entries separately. `tools/certify_books.py` publishes against its own manifest
+after a passing run, which `--no-publish` suppresses, and `make certs-install`
+/ `make certs-publish` are the manual ends. What this does not establish:
+nothing here proves a book certifies. That is the runner's fresh success
+marker per book, and ACL2 checks the installed pair again at include time.
+
+Two further controls on ACL2 processes. `--affected-by BOOK` keeps only the
+requested roots that are, or transitively include, a named book, in the
+requested (Makefile) order, so a change certifies what it can have invalidated
+and nothing else; `--dry-run` prints that list. Every ACL2 this project starts
+first takes a slot from a machine-wide pool of `flock` files
+([`tools/acl2_slots.py`](../tools/acl2_slots.py), `FN_ACL2_SLOTS`, default 4 on
+darwin and 16 on linux), waits rather than starting when the pool is full,
+reports the wait once a minute, and records each wait in the run manifest. The
+lock lives on the open file description, so a killed run leaks no slot.
+[`tools/farm.py`](../tools/farm.py) moves a wide run to persvati or hbox:
+`submit` mirrors the worktree to the same absolute path and starts the runner
+detached with its own log and status file, `wait` blocks with a bounded
+sleep-and-report loop and then rsyncs back the evidence directory and the new
+pairs and publishes them locally, and `status` lists the runs on a host. On
+hbox the runner is wrapped in `swarm-build`, which is where that box's memory
+cap is enforced.
+
 ### Qualifying a platform against A-DURABILITY
 
 [`books/assumptions.lisp`](../books/assumptions.lisp) introduces each named
