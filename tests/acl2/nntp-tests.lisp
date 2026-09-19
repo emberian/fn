@@ -359,17 +359,47 @@
        archive)))
 
 ; fn-nntp-step-effects-well-formed: a session that claims a projection the
-; archive does not have emits a 215 block whose line carries CRLF, so the
-; conclusion is false without the hypothesis.
+; archive does not have escapes the 460-octet group cap, which is the only
+; reason every generated initial line fits, so the conclusion is false
+; without the hypothesis.
 (defconst *fn-nntp-forged-session* (fn-nntp-make-session t nil nil t))
 (assert-event (fn-nntp-sessionp *fn-nntp-forged-session*))
 (assert-event (not (fn-nntp-session-consistentp
                     *fn-nntp-forged-session* *fn-nntp-unsafe-group-archive*)))
+; The witness is LISTGROUP over a 497-octet group name, the widest argument
+; token a command line may carry: the name alone is 497 octets and
+; " list follows" adds 13, so the initial line cannot fit 512 once its CRLF
+; is charged, and the emitted effect is not a reply.
+(defconst *fn-nntp-oversize-group-archive*
+  (fn-initial-state (list *fn-nntp-group-497*)))
+(assert-event (fn-statep *fn-nntp-oversize-group-archive*))
+(assert-event (not (fn-nntp-projectionp *fn-nntp-oversize-group-archive*)))
+(assert-event (not (fn-nntp-session-consistentp
+                    *fn-nntp-forged-session* *fn-nntp-oversize-group-archive*)))
+(assert-event
+ (< *fn-nntp-max-response-octets*
+    (+ (len (fn-nntp-listgroup-initial *fn-nntp-oversize-group-archive*
+                                       *fn-nntp-group-497*))
+       2)))
 (assert-event
  (not (fn-nntp-effectsp
        (fn-nntp-result-effects
-        (fn-nntp-step *fn-nntp-forged-session* *fn-nntp-unsafe-group-archive*
-                      '(:command (76 73 83 84)))))))
+        (fn-nntp-step *fn-nntp-forged-session* *fn-nntp-oversize-group-archive*
+                      (list :command
+                            (append (fn-nntp-string-octets "LISTGROUP ")
+                                    (fn-nntp-string-octets *fn-nntp-group-497*))))))))
+; The CRLF-bearing group name is not a witness on this axis, and the honest
+; record of that is the fact itself.  LIST emits the name inside a multi-line
+; block, where the injected CRLF reads as an ordinary line break and the
+; octets re-parse as a well-formed response.  Effect typing is a grammar over
+; emitted octets: it frames and bounds them, and does not claim to detect a
+; splice that is grammatically a line.  What keeps such a name off the wire is
+; the configuration refusal above, which denies the projection outright.
+(assert-event
+ (fn-nntp-effectsp
+  (fn-nntp-result-effects
+   (fn-nntp-step *fn-nntp-forged-session* *fn-nntp-unsafe-group-archive*
+                 '(:command (76 73 83 84))))))
 (must-fail
  (thm (fn-nntp-effectsp
        (fn-nntp-result-effects (fn-nntp-step session archive wire-event)))))
