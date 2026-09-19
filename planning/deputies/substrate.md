@@ -18,11 +18,14 @@ records-invariants 34 s.
 | `books/statement` | 6 s |
 | `books/statement-invariants` | 76 s |
 | `books/principal` | 1 s |
-| `books/principal-invariants` | see `build/acl2/` (run in flight at budget end) |
-| the remaining eleven roots | see `build/acl2/` |
+| `books/principal-invariants` | 28 s |
+| `books/lace` | 1 s |
+| `books/lace-invariants` | 1 s |
+| `books/policy` and the nine roots after it | still running at this lane's budget end; see `build/acl2/` and the `.cert` files |
 
-Every root that reported before this lane's budget ran out was green, which is
-the load-bearing fact: `crypto-seam`, `statement` and `statement-invariants`
+Eight of eighteen roots reported before this lane's budget ran out and every
+one was green, with no failure anywhere in the sequence. That is the
+load-bearing fact: `crypto-seam`, `statement` and `statement-invariants`
 certify unchanged with their export theories and the 35 record lemmas in
 place, so the withdrawal pattern and the in-cluster local re-enables are
 sound, not just balanced. The remaining roots run the same pattern.
