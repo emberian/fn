@@ -28,7 +28,8 @@
          (fn-bp-binding-statep fn-bp-statep fn-bp-works-boundp
           fn-bp-work-boundp fn-bp-workp fn-bp-attemptp
           fn-bp-transport-statusp fn-bp-find-work
-          fn-bp-work-with-status fn-bp-replace-work fn-bp-make-state)))))
+          fn-bp-work-with-status fn-bp-replace-work fn-bp-make-state
+          fn-bp-live-statusp fn-bp-status-rank)))))
 
 (defthm fn-bp-request-retry-preserves-binding-state
   (implies (fn-bp-binding-statep s)

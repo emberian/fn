@@ -13,16 +13,19 @@
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car (cdr (cdr x)))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
+(verify-guards fn-checkpoint-groups)
 
 (defun fn-checkpoint-capacity (x)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car (cdr (cdr (cdr x))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
+(verify-guards fn-checkpoint-capacity)
 
 (defun fn-checkpoint-frontier (x)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car (cdr (cdr (cdr (cdr x)))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
+(verify-guards fn-checkpoint-frontier)
 
 (defun fn-checkpoint-sequence (x)
   (declare (xargs :guard t :verify-guards nil))
@@ -30,6 +33,7 @@
        :exec (fn-ag-car
               (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
                                       (fn-ag-cdr (fn-ag-cdr x))))))))
+(verify-guards fn-checkpoint-sequence)
 
 (defun fn-checkpoint-node (x)
   (declare (xargs :guard t :verify-guards nil))
@@ -37,13 +41,21 @@
        :exec (fn-ag-car
               (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
                          (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))))
+(verify-guards fn-checkpoint-node)
 
+; FN-RETAIN-CAPACITY's guard is (TRUE-LISTP S), not T, so this needs NODE
+; constrained: FN-NODE-STATEP implies FN-RETAIN-STATEP of its retention
+; component, which implies TRUE-LISTP.  Every call site (FN-CHECKPOINT-CAPTURE
+; below; the test book's *CP-WRONG-FRONTIER*, built from an already-FN-NODE-
+; STATEP node) supplies exactly this.
 (defun fn-checkpoint-make (frontier sequence node)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-node-statep node) :verify-guards nil))
   (list :fn-checkpoint 1
         (fn-state-groups (fn-node-acceptance node))
         (fn-retain-capacity (fn-node-retention node))
         frontier sequence node))
+(verify-guards fn-checkpoint-make
+  :hints (("Goal" :in-theory (enable fn-node-statep fn-retain-statep))))
 
 ; Capture below derives sequence from actual replay.  A later byte refinement
 ; must integrity-bind every stored field together; the logical recognizer
@@ -66,6 +78,28 @@
          (equal (fn-retain-capacity (fn-node-retention node))
                 (fn-checkpoint-capacity x))
          (fn-replay-advance-okp node (fn-checkpoint-frontier x)))))
+(verify-guards fn-checkpointp
+  :hints (("Goal" :in-theory (enable len fn-node-statep fn-retain-statep))))
+
+; Standalone, non-recursive bridging facts for the guard proofs below.  Each
+; is a flat one-step unfolding of a non-recursive predicate (FN-REPLAY-OKP,
+; FN-RECORD-UINT32P); stated over a free ANSWER/N rather than a call to
+; FN-REPLAY, so proving them cannot trigger induction over an arbitrary
+; RECORDS list the way enabling FN-REPLAY-OKP at a call site that also
+; exposes FN-REPLAY/FN-REPLAY-LOOP does.
+(defthm fn-replay-okp-implies-node-statep
+  (implies (fn-replay-okp answer)
+           (fn-node-statep (fn-replay-result-node answer)))
+  :hints (("Goal" :in-theory (enable fn-replay-okp))))
+
+(defthm fn-record-uint32p-implies-natp
+  (implies (fn-record-uint32p n) (natp n))
+  :hints (("Goal" :in-theory (enable fn-record-uint32p))))
+
+(defthm fn-node-statep-implies-retention-true-listp
+  (implies (fn-node-statep node)
+           (true-listp (fn-node-retention node)))
+  :hints (("Goal" :in-theory (enable fn-node-statep fn-retain-statep))))
 
 ; Capture returns either (:ok checkpoint) or (:error reason).  The prefix is
 ; replayed here once to obtain the exact state being snapshotted.  Restore below
@@ -92,11 +126,19 @@
                  (fn-replay-result-sequence answer)
                  (fn-replay-result-node answer)))
         (list :error :replay))))))
+(verify-guards fn-checkpoint-capture
+  :hints (("Goal"
+           :in-theory (disable fn-replay fn-replay-loop fn-replay-okp
+                               fn-node-statep fn-retain-statep)
+           :use ((:instance fn-record-uint32p-implies-natp (n frontier))
+                 (:instance fn-replay-okp-implies-node-statep
+                            (answer (fn-replay groups capacity records)))))))
 
 (defun fn-checkpoint-capture-value (result)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car (cdr result))
        :exec (fn-ag-car (fn-ag-cdr result))))
+(verify-guards fn-checkpoint-capture-value)
 
 ; A successful replay is normalized to the persistent allocator frontier.
 ; The result preserves the actual replay sequence and exact node state.
@@ -112,6 +154,7 @@
              (fn-replay-result-node answer) frontier)
             (fn-replay-result-sequence answer)
             frontier))))
+(verify-guards fn-checkpoint-finish)
 
 ; Restore validates the checkpoint's configuration binding and the suffix's
 ; journal/allocator interval before invoking the actual replay loop.  In
@@ -139,6 +182,9 @@
                      records
                      (fn-checkpoint-sequence checkpoint))
      frontier))))
+(verify-guards fn-checkpoint-restore
+  :hints (("Goal" :in-theory (e/d (fn-checkpointp fn-record-uint32p)
+                                  (fn-replay fn-replay-loop)))))
 
 ; Reference result for full committed-history replay under the same persistent
 ; allocator frontier.  It is used by the correspondence theorem and tests; it
@@ -146,6 +192,7 @@
 (defun fn-checkpoint-full-replay (groups capacity records frontier)
   (declare (xargs :guard t :verify-guards nil))
   (fn-checkpoint-finish (fn-replay groups capacity records) frontier))
+(verify-guards fn-checkpoint-full-replay)
 
 ; This recognizer states the executable admissibility conditions for a split.
 ; It contains no equality between checkpoint and full results.  In particular,
@@ -155,7 +202,10 @@
   (groups capacity prefix checkpoint-frontier suffix final-frontier)
   (declare (xargs :guard t :verify-guards nil))
   (let ((prefix-answer (fn-replay groups capacity prefix))
-        (full-answer (fn-replay groups capacity (append prefix suffix))))
+        ; APPEND's guard needs (TRUE-LISTP PREFIX), not guaranteed for this
+        ; guard-T function's unconstrained parameter; FN-AG-APPEND is the
+        ; guard-T equivalent (FN-AG-APPEND-IS-APPEND, acceptance.lisp).
+        (full-answer (fn-replay groups capacity (fn-ag-append prefix suffix))))
     (and (fn-string-listp groups)
          (fn-no-duplicatesp groups)
          (natp capacity)
@@ -180,6 +230,20 @@
          (fn-replay-okp full-answer)
          (fn-replay-advance-okp (fn-replay-result-node full-answer)
                                 final-frontier))))
+(verify-guards fn-checkpoint-admissible-splitp
+  :hints (("Goal"
+           :in-theory (disable fn-replay fn-replay-loop fn-replay-okp
+                               fn-node-statep fn-retain-statep
+                               fn-record-uint32p)
+           :use ((:instance fn-record-uint32p-implies-natp
+                            (n checkpoint-frontier))
+                 (:instance fn-record-uint32p-implies-natp
+                            (n final-frontier))
+                 (:instance fn-replay-okp-implies-node-statep
+                            (answer (fn-replay groups capacity prefix)))
+                 (:instance fn-node-statep-implies-retention-true-listp
+                            (node (fn-replay-result-node
+                                   (fn-replay groups capacity prefix))))))))
 
 ; -----------------------------------------------------------------------------
 ; Correspondence facts
@@ -315,3 +379,28 @@
                  fn-replay-okp fn-replay-advance-okp
                  fn-sf-record-listp fn-record-uint32p
                  fn-string-listp fn-no-duplicatesp)))))
+
+; The equivalence theorem above never exercises rejection: both sides reduce
+; to the same FN-SN-REPLAY-LOOP-APPEND expression when the split is
+; admissible, so it says nothing about the checkpoint frontier's rejecting
+; role.  This theorem does: a suffix whose first record's transaction id
+; reuses a value below the checkpoint's consumed frontier is refused with
+; (:ERROR :SUFFIX) before FN-REPLAY-LOOP ever runs, for any continuation of
+; the suffix and regardless of whether the record is otherwise well formed.
+; FN-SF-RECORD-LISTP's own LOWER bound (:guard (and (natp sequence) (natp
+; lower) (natp frontier)); body clause (<= lower (fn-record-txid record))) is
+; the mechanism: passing the checkpoint's stored frontier as LOWER is what
+; makes reuse impossible to satisfy.
+(defthm fn-checkpoint-restore-rejects-frontier-reuse
+  (implies
+   (and (fn-checkpointp checkpoint)
+        (equal groups (fn-checkpoint-groups checkpoint))
+        (equal capacity (fn-checkpoint-capacity checkpoint))
+        (fn-record-uint32p frontier)
+        (<= (fn-checkpoint-frontier checkpoint) frontier)
+        (< (fn-record-txid record) (fn-checkpoint-frontier checkpoint)))
+   (equal
+    (fn-checkpoint-restore checkpoint groups capacity
+                           (cons record more) frontier)
+    (list :error :suffix)))
+  :hints (("Goal" :in-theory (enable fn-checkpoint-restore fn-sf-record-listp))))
