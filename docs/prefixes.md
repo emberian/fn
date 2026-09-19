@@ -8,7 +8,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | Tag | Books | Meaning |
 | --- | --- | --- |
 | `fn-state-`, `fn-pending-`, `fn-accept-`, `fn-install-`, `fn-allocate-`, `fn-initial-`, `fn-articles-`, `fn-membership(s)-`, `fn-next-`, `fn-bump-`, `fn-clear-`, `fn-find-`, `fn-all-`, `fn-advance-`, `fn-make-`, `fn-pair-`, `fn-string-`, `fn-octet-`, `fn-no-`, `fn-selection-` | `acceptance`, `acceptance-invariants` | Logical acceptance machine: staged allocation, durable completion, fences, primitive domains |
-| `fn-ag-` | `acceptance` | Guard-verified executable helpers (`car`, `cdr`, `member`, `append`) used in `mbe :exec` branches of the acceptance graph |
+| `fn-ag-` | `acceptance-alloc` | Total executable helpers (`car`, `cdr`, `member`, `append`, `less`) that are their logical primitives by `mbe`; used in `:exec` branches across the tree |
 | `fn-retain-` | `retention`, `retention-invariants` | Abstract retention accounting: pins, charges, evidence-gated release |
 | `fn-node-` | `node`, `node-invariants`, `node-traces` | One-transaction composition of acceptance and retention; article-to-pin bindings; event dispatcher |
 | `fn-record-` | `records`, `records-invariants`, `records-canonicality` | Schema-0 transaction record grammar over CBOR primitives |

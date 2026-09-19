@@ -3,308 +3,77 @@
 ; This book deliberately models no bytes-on-disk, network, or cryptography.  A
 ; host supplies a generation and reports an abstract persistence result.  The
 ; machine makes publication conditional on the matching durable result.
+;
+; Records are opaque (docs/proof-style.md): each record has a shape
+; recognizer, a constructor and accessors; the shape lemma and the
+; accessor-of-constructor lemmas are proved once and the record is disabled.
+; The state recognizer `fn-statep' is a carried invariant: the three host
+; transitions take it as their guard, the :exec path never recomputes it, and
+; the :logic body is unchanged so every theorem below keeps its statement.
+; Its preservation is proved in acceptance-invariants.lisp.
 
 (in-package "ACL2")
-
-(defun fn-ag-less (x y)
-  (declare (xargs :guard t))
-  (if (and (rationalp x) (rationalp y))
-      (< x y)
-    (let ((x1 (if (acl2-numberp x) x 0))
-          (y1 (if (acl2-numberp y) y 0)))
-      (or (< (realpart x1) (realpart y1))
-          (and (equal (realpart x1) (realpart y1))
-               (< (imagpart x1) (imagpart y1)))))))
-(defthm fn-ag-less-is-less
-  (equal (fn-ag-less x y) (< x y))
-  :hints (("Goal" :use completion-of-<)))
-; Raw Common Lisp CAR/CDR and list primitives have narrower domains than
-; ACL2's total logic.  These guard-verified executable helpers reproduce the
-; existing logical values on atoms and dotted lists.  MBE below keeps the
-; original logical bodies and proves the alternate execution equal.
-(defun fn-ag-car (x)
-  (declare (xargs :guard t))
-  (if (consp x) (car x) nil))
-(defun fn-ag-cdr (x)
-  (declare (xargs :guard t))
-  (if (consp x) (cdr x) nil))
-(defthm fn-ag-car-is-car (equal (fn-ag-car x) (car x)))
-(defthm fn-ag-cdr-is-cdr (equal (fn-ag-cdr x) (cdr x)))
-(defun fn-ag-member (x xs)
-  (declare (xargs :guard t))
-  (if (consp xs)
-      (if (equal x (car xs)) xs (fn-ag-member x (cdr xs)))
-    nil))
-(defthm fn-ag-member-is-member
-  (equal (fn-ag-member x xs) (member-equal x xs)))
-(defun fn-ag-append (xs ys)
-  (declare (xargs :guard t))
-  (if (consp xs) (cons (car xs) (fn-ag-append (cdr xs) ys)) ys))
-(defthm fn-ag-append-is-append
-  (equal (fn-ag-append xs ys) (append xs ys)))
-
-
+(include-book "acceptance-alloc")
 
 ; -----------------------------------------------------------------------------
-; Primitive domains and list helpers
-
-(defun fn-octetp (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (and (integerp x) (<= 0 x) (<= x 255)))
-
-(verify-guards fn-octetp)
-
-(defun fn-octet-listp (xs)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp xs)
-      (and (fn-octetp (car xs))
-           (fn-octet-listp (cdr xs)))
-    (null xs)))
-
-(verify-guards fn-octet-listp)
-
-(defun fn-string-listp (xs)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp xs)
-      (and (stringp (car xs))
-           (fn-string-listp (cdr xs)))
-    (null xs)))
-
-(verify-guards fn-string-listp)
-
-(defun fn-no-duplicatesp (xs)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(if (consp xs)
-      (and (not (member-equal (car xs) (cdr xs)))
-           (fn-no-duplicatesp (cdr xs)))
-    t)
-       :exec
-(if (consp xs)
-      (and (not (fn-ag-member (fn-ag-car xs) (fn-ag-cdr xs)))
-           (fn-no-duplicatesp (fn-ag-cdr xs)))
-    t)))
-
-(verify-guards fn-no-duplicatesp)
-
-(defun fn-subsetp (xs ys)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(if (consp xs)
-      (and (member-equal (car xs) ys)
-           (fn-subsetp (cdr xs) ys))
-    t)
-       :exec
-(if (consp xs)
-      (and (fn-ag-member (fn-ag-car xs) ys)
-           (fn-subsetp (fn-ag-cdr xs) ys))
-    t)))
-
-(verify-guards fn-subsetp)
-
-(defun fn-selection-validp (selection configured)
-  (declare (xargs :guard t :verify-guards nil))
-  (and (consp selection)
-       (fn-string-listp selection)
-       (fn-no-duplicatesp selection)
-       (fn-subsetp selection configured)))
-
-(verify-guards fn-selection-validp)
-
-(defun fn-fencedp (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (or (null x) (equal x t)))
-
-(verify-guards fn-fencedp)
-
-; -----------------------------------------------------------------------------
-; Local group watermarks and membership allocation
-
-; A nexts list is kept in configured-group order.  Its entries are
-; (group . next-number); numbers are allocated from the current watermark.
-(defun fn-nexts-for-p (groups nexts)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp groups)
-      (and (consp nexts)
-           (consp (car nexts))
-           (equal (car (car nexts)) (car groups))
-           (posp (cdr (car nexts)))
-           (fn-nexts-for-p (cdr groups) (cdr nexts)))
-    (null nexts)))
-
-(verify-guards fn-nexts-for-p)
-
-(defun fn-initial-nexts (groups)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp groups)
-      (cons (cons (car groups) 1)
-            (fn-initial-nexts (cdr groups)))
-    nil))
-
-(verify-guards fn-initial-nexts)
-
-(defun fn-next-number (group nexts)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(if (consp nexts)
-      (if (equal group (car (car nexts)))
-          (cdr (car nexts))
-        (fn-next-number group (cdr nexts)))
-    0)
-       :exec
-(if (consp nexts)
-      (if (equal group (fn-ag-car (fn-ag-car nexts)))
-          (fn-ag-cdr (fn-ag-car nexts))
-        (fn-next-number group (fn-ag-cdr nexts)))
-    0)))
-
-(verify-guards fn-next-number)
-
-(defun fn-bump-number (group nexts)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(if (consp nexts)
-      (if (equal group (car (car nexts)))
-          (cons (cons (car (car nexts))
-                      (1+ (cdr (car nexts))))
-                (cdr nexts))
-        (cons (car nexts)
-              (fn-bump-number group (cdr nexts))))
-    nil)
-       :exec
-(if (consp nexts)
-      (if (equal group (fn-ag-car (fn-ag-car nexts)))
-          (cons (cons (fn-ag-car (fn-ag-car nexts))
-                      (1+ (fix (fn-ag-cdr (fn-ag-car nexts)))))
-                (fn-ag-cdr nexts))
-        (cons (fn-ag-car nexts)
-              (fn-bump-number group (fn-ag-cdr nexts))))
-    nil)))
-
-(verify-guards fn-bump-number)
-
-(defun fn-allocate-memberships (groups nexts)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp groups)
-      (cons (cons (car groups)
-                  (fn-next-number (car groups) nexts))
-            (fn-allocate-memberships
-             (cdr groups)
-             (fn-bump-number (car groups) nexts)))
-    nil))
-
-(verify-guards fn-allocate-memberships)
-
-(defun fn-advance-nexts (groups nexts)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp groups)
-      (fn-advance-nexts (cdr groups)
-                        (fn-bump-number (car groups) nexts))
-    nexts))
-
-(verify-guards fn-advance-nexts)
-
-(defun fn-membership-listp (groups memberships)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp groups)
-      (and (consp memberships)
-           (consp (car memberships))
-           (equal (car (car memberships)) (car groups))
-           (posp (cdr (car memberships)))
-           (fn-membership-listp (cdr groups) (cdr memberships)))
-    (null memberships)))
-
-(verify-guards fn-membership-listp)
-
-(defun fn-memberships-at-watermarkp (memberships nexts)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(if (consp memberships)
-      (and (equal (cdr (car memberships))
-                  (fn-next-number (car (car memberships)) nexts))
-           (fn-memberships-at-watermarkp (cdr memberships) nexts))
-    t)
-       :exec
-(if (consp memberships)
-      (and (equal (fn-ag-cdr (fn-ag-car memberships))
-                  (fn-next-number (fn-ag-car (fn-ag-car memberships)) nexts))
-           (fn-memberships-at-watermarkp (fn-ag-cdr memberships) nexts))
-    t)))
-
-(verify-guards fn-memberships-at-watermarkp)
-
-(defun fn-memberships-below-nextsp (memberships nexts)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(if (consp memberships)
-      (and (< (cdr (car memberships))
-              (fn-next-number (car (car memberships)) nexts))
-           (fn-memberships-below-nextsp (cdr memberships) nexts))
-    t)
-       :exec
-(if (consp memberships)
-      (and (fn-ag-less (fn-ag-cdr (fn-ag-car memberships))
-              (fn-next-number (fn-ag-car (fn-ag-car memberships)) nexts))
-           (fn-memberships-below-nextsp (fn-ag-cdr memberships) nexts))
-    t)))
-
-(verify-guards fn-memberships-below-nextsp)
-
-; -----------------------------------------------------------------------------
-; Articles, pending proposals, and state
-
 ; Article: (message-id payload requested-groups memberships archive-pin)
-(defun fn-article-msgid (x) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(car x)
-       :exec
-(fn-ag-car x)))
 
+(defun fn-article-shapep (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 5)))
+
+(defun fn-article-msgid (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car x) :exec (fn-ag-car x)))
 (verify-guards fn-article-msgid)
-(defun fn-article-payload (x) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(car (cdr x))
-       :exec
-(fn-ag-car (fn-ag-cdr x))))
-
+(defun fn-article-payload (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
 (verify-guards fn-article-payload)
-(defun fn-article-groups (x) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(car (cdr (cdr x)))
-       :exec
-(fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
-
+(defun fn-article-groups (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr x)))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
 (verify-guards fn-article-groups)
-(defun fn-article-memberships (x) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(car (cdr (cdr (cdr x))))
-       :exec
-(fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
-
+(defun fn-article-memberships (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr (cdr x))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
 (verify-guards fn-article-memberships)
-(defun fn-article-pin (x) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(car (cdr (cdr (cdr (cdr x)))))
-       :exec
-(fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
-
+(defun fn-article-pin (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr (cdr (cdr x)))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
 (verify-guards fn-article-pin)
 
 (defun fn-make-article (msgid payload groups memberships pin)
-  (declare (xargs :guard t :verify-guards nil))
-  (cons msgid
-        (cons payload
-              (cons groups
-                    (cons memberships
-                          (cons pin nil))))))
+  (declare (xargs :guard t))
+  (list msgid payload groups memberships pin))
 
-(verify-guards fn-make-article)
+(defthm fn-article-shapep-of-fn-make-article
+  (fn-article-shapep (fn-make-article msgid payload groups memberships pin)))
+(defthm fn-article-msgid-of-fn-make-article
+  (equal (fn-article-msgid (fn-make-article msgid payload groups memberships pin))
+         msgid))
+(defthm fn-article-payload-of-fn-make-article
+  (equal (fn-article-payload (fn-make-article msgid payload groups memberships pin))
+         payload))
+(defthm fn-article-groups-of-fn-make-article
+  (equal (fn-article-groups (fn-make-article msgid payload groups memberships pin))
+         groups))
+(defthm fn-article-memberships-of-fn-make-article
+  (equal (fn-article-memberships
+          (fn-make-article msgid payload groups memberships pin))
+         memberships))
+(defthm fn-article-pin-of-fn-make-article
+  (equal (fn-article-pin (fn-make-article msgid payload groups memberships pin))
+         pin))
+
+(in-theory (disable (:d fn-article-shapep) (:d fn-article-msgid) (:d fn-article-payload) (:d fn-article-groups) (:d fn-article-memberships) (:d fn-article-pin) (:d fn-make-article)))
 
 (defun fn-articlep (configured x)
   (declare (xargs :guard t :verify-guards nil))
-  (and (consp x)
-       (true-listp x)
-       (equal (len x) 5)
+  (and (fn-article-shapep x)
        (stringp (fn-article-msgid x))
        (fn-octet-listp (fn-article-payload x))
        (fn-selection-validp (fn-article-groups x) configured)
@@ -374,15 +143,15 @@
 (defun fn-all-article-memberships (articles)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic
-(if (consp articles)
-      (append (fn-article-memberships (car articles))
-              (fn-all-article-memberships (cdr articles)))
-    nil)
+       (if (consp articles)
+           (append (fn-article-memberships (car articles))
+                   (fn-all-article-memberships (cdr articles)))
+         nil)
        :exec
-(if (consp articles)
-      (fn-ag-append (fn-article-memberships (fn-ag-car articles))
-              (fn-all-article-memberships (fn-ag-cdr articles)))
-    nil)))
+       (if (consp articles)
+           (fn-ag-append (fn-article-memberships (fn-ag-car articles))
+                         (fn-all-article-memberships (fn-ag-cdr articles)))
+         nil)))
 
 (verify-guards fn-all-article-memberships)
 
@@ -417,79 +186,94 @@
 
 (verify-guards fn-articles-below-nextsp)
 
+; -----------------------------------------------------------------------------
 ; Pending: (txid generation message-id payload groups memberships archive-pin)
-(defun fn-pending-txid (x) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(car x)
-       :exec
-(fn-ag-car x)))
 
+(defun fn-pending-shapep (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 7)))
+
+(defun fn-pending-txid (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car x) :exec (fn-ag-car x)))
 (verify-guards fn-pending-txid)
-(defun fn-pending-generation (x) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(car (cdr x))
-       :exec
-(fn-ag-car (fn-ag-cdr x))))
-
+(defun fn-pending-generation (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
 (verify-guards fn-pending-generation)
-(defun fn-pending-msgid (x) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(car (cdr (cdr x)))
-       :exec
-(fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
-
+(defun fn-pending-msgid (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr x)))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
 (verify-guards fn-pending-msgid)
-(defun fn-pending-payload (x) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(car (cdr (cdr (cdr x))))
-       :exec
-(fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
-
+(defun fn-pending-payload (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr (cdr x))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
 (verify-guards fn-pending-payload)
-(defun fn-pending-groups (x) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(car (cdr (cdr (cdr (cdr x)))))
-       :exec
-(fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
-
+(defun fn-pending-groups (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr (cdr (cdr x)))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
 (verify-guards fn-pending-groups)
 (defun fn-pending-memberships (x)
   (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(car (cdr (cdr (cdr (cdr (cdr x))))))
-       :exec
-(fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))))
-
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr x))))))
+       :exec (fn-ag-car
+              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))))
 (verify-guards fn-pending-memberships)
 (defun fn-pending-pin (x)
   (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(car (cdr (cdr (cdr (cdr (cdr (cdr x)))))))
-       :exec
-(fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))))
-
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr x)))))))
+       :exec (fn-ag-car
+              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
+                                     (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))))
 (verify-guards fn-pending-pin)
 
 (defun fn-make-pending (txid generation msgid payload groups memberships pin)
-  (declare (xargs :guard t :verify-guards nil))
-  (cons txid
-        (cons generation
-              (cons msgid
-                    (cons payload
-                          (cons groups
-                                (cons memberships
-                                      (cons pin nil))))))))
+  (declare (xargs :guard t))
+  (list txid generation msgid payload groups memberships pin))
 
-(verify-guards fn-make-pending)
+(defthm fn-pending-shapep-of-fn-make-pending
+  (fn-pending-shapep
+   (fn-make-pending txid generation msgid payload groups memberships pin)))
+(defthm fn-pending-txid-of-fn-make-pending
+  (equal (fn-pending-txid
+          (fn-make-pending txid generation msgid payload groups memberships pin))
+         txid))
+(defthm fn-pending-generation-of-fn-make-pending
+  (equal (fn-pending-generation
+          (fn-make-pending txid generation msgid payload groups memberships pin))
+         generation))
+(defthm fn-pending-msgid-of-fn-make-pending
+  (equal (fn-pending-msgid
+          (fn-make-pending txid generation msgid payload groups memberships pin))
+         msgid))
+(defthm fn-pending-payload-of-fn-make-pending
+  (equal (fn-pending-payload
+          (fn-make-pending txid generation msgid payload groups memberships pin))
+         payload))
+(defthm fn-pending-groups-of-fn-make-pending
+  (equal (fn-pending-groups
+          (fn-make-pending txid generation msgid payload groups memberships pin))
+         groups))
+(defthm fn-pending-memberships-of-fn-make-pending
+  (equal (fn-pending-memberships
+          (fn-make-pending txid generation msgid payload groups memberships pin))
+         memberships))
+(defthm fn-pending-pin-of-fn-make-pending
+  (equal (fn-pending-pin
+          (fn-make-pending txid generation msgid payload groups memberships pin))
+         pin))
+
+(in-theory (disable (:d fn-pending-shapep) (:d fn-pending-txid) (:d fn-pending-generation) (:d fn-pending-msgid) (:d fn-pending-payload) (:d fn-pending-groups) (:d fn-pending-memberships) (:d fn-pending-pin) (:d fn-make-pending)))
 
 (defun fn-pendingp (configured nexts next-txid x)
   (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(and (consp x)
-       (true-listp x)
-       (equal (len x) 7)
+  (and (fn-pending-shapep x)
        (natp (fn-pending-txid x))
-       (< (fn-pending-txid x) next-txid)
+       (mbe :logic (< (fn-pending-txid x) next-txid)
+            :exec (fn-ag-less (fn-pending-txid x) next-txid))
        (natp (fn-pending-generation x))
        (stringp (fn-pending-msgid x))
        (fn-octet-listp (fn-pending-payload x))
@@ -498,84 +282,84 @@
                             (fn-pending-memberships x))
        (fn-memberships-at-watermarkp
         (fn-pending-memberships x) nexts)
-       (equal (fn-pending-pin x) t))
-       :exec
-(and (consp x)
-       (true-listp x)
-       (equal (len x) 7)
-       (natp (fn-pending-txid x))
-       (fn-ag-less (fn-pending-txid x) next-txid)
-       (natp (fn-pending-generation x))
-       (stringp (fn-pending-msgid x))
-       (fn-octet-listp (fn-pending-payload x))
-       (fn-selection-validp (fn-pending-groups x) configured)
-       (fn-membership-listp (fn-pending-groups x)
-                            (fn-pending-memberships x))
-       (fn-memberships-at-watermarkp
-        (fn-pending-memberships x) nexts)
-       (equal (fn-pending-pin x) t))))
+       (equal (fn-pending-pin x) t)))
 
 (verify-guards fn-pendingp)
 
+; -----------------------------------------------------------------------------
+; State: (groups nexts articles next-txid pending fenced)
+
+(defun fn-state-shapep (s)
+  (declare (xargs :guard t))
+  (and (true-listp s) (equal (len s) 6)))
+
 (defun fn-make-state (groups nexts articles next-txid pending fenced)
+  (declare (xargs :guard t))
+  (list groups nexts articles next-txid pending fenced))
+
+(defun fn-state-groups (s)
   (declare (xargs :guard t :verify-guards nil))
-  (cons groups
-        (cons nexts
-              (cons articles
-                    (cons next-txid
-                          (cons pending
-                                (cons fenced nil)))))))
-
-(verify-guards fn-make-state)
-
-(defun fn-state-groups (s) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(car s)
-       :exec
-(fn-ag-car s)))
-
+  (mbe :logic (car s) :exec (fn-ag-car s)))
 (verify-guards fn-state-groups)
-(defun fn-state-nexts (s) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(car (cdr s))
-       :exec
-(fn-ag-car (fn-ag-cdr s))))
-
+(defun fn-state-nexts (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr s)) :exec (fn-ag-car (fn-ag-cdr s))))
 (verify-guards fn-state-nexts)
-(defun fn-state-articles (s) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(car (cdr (cdr s)))
-       :exec
-(fn-ag-car (fn-ag-cdr (fn-ag-cdr s)))))
-
+(defun fn-state-articles (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr s)))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr s)))))
 (verify-guards fn-state-articles)
-(defun fn-state-next-txid (s) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(car (cdr (cdr (cdr s))))
-       :exec
-(fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s))))))
-
+(defun fn-state-next-txid (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr (cdr s))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s))))))
 (verify-guards fn-state-next-txid)
-(defun fn-state-pending (s) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(car (cdr (cdr (cdr (cdr s)))))
-       :exec
-(fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s)))))))
-
+(defun fn-state-pending (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr (cdr (cdr s)))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s)))))))
 (verify-guards fn-state-pending)
-(defun fn-state-fenced (s) (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic
-(car (cdr (cdr (cdr (cdr (cdr s))))))
-       :exec
-(fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s))))))))
-
+(defun fn-state-fenced (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr s))))))
+       :exec (fn-ag-car
+              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s))))))))
 (verify-guards fn-state-fenced)
+
+(defthm fn-state-shapep-of-fn-make-state
+  (fn-state-shapep
+   (fn-make-state groups nexts articles next-txid pending fenced)))
+(defthm fn-state-groups-of-fn-make-state
+  (equal (fn-state-groups
+          (fn-make-state groups nexts articles next-txid pending fenced))
+         groups))
+(defthm fn-state-nexts-of-fn-make-state
+  (equal (fn-state-nexts
+          (fn-make-state groups nexts articles next-txid pending fenced))
+         nexts))
+(defthm fn-state-articles-of-fn-make-state
+  (equal (fn-state-articles
+          (fn-make-state groups nexts articles next-txid pending fenced))
+         articles))
+(defthm fn-state-next-txid-of-fn-make-state
+  (equal (fn-state-next-txid
+          (fn-make-state groups nexts articles next-txid pending fenced))
+         next-txid))
+(defthm fn-state-pending-of-fn-make-state
+  (equal (fn-state-pending
+          (fn-make-state groups nexts articles next-txid pending fenced))
+         pending))
+(defthm fn-state-fenced-of-fn-make-state
+  (equal (fn-state-fenced
+          (fn-make-state groups nexts articles next-txid pending fenced))
+         fenced))
+
+(in-theory (disable (:d fn-state-shapep) (:d fn-state-groups) (:d fn-state-nexts) (:d fn-state-articles) (:d fn-state-next-txid) (:d fn-state-pending) (:d fn-state-fenced) (:d fn-make-state)))
 
 (defun fn-statep (s)
   (declare (xargs :guard t :verify-guards nil))
-  (and (consp s)
-       (true-listp s)
-       (equal (len s) 6)
+  (and (fn-state-shapep s)
        (fn-string-listp (fn-state-groups s))
        (fn-no-duplicatesp (fn-state-groups s))
        (fn-nexts-for-p (fn-state-groups s) (fn-state-nexts s))
@@ -604,13 +388,13 @@
 
 (verify-guards fn-initial-state)
 
-(defthm fn-initial-nexts-are-valid
-  (implies (fn-string-listp groups)
-           (fn-nexts-for-p groups (fn-initial-nexts groups)))
-  :hints (("Goal" :induct (fn-initial-nexts groups))))
-
 ; -----------------------------------------------------------------------------
-; Transitions
+; Transitions.
+;
+; Each host transition is guarded by `fn-statep'.  The :logic body is the
+; original total definition, which returns a non-state unchanged; under the
+; guard that branch is dead, so the :exec path omits the recognizer and no
+; served operation revalidates the whole state.
 
 (defun fn-pending-matchesp (pending txid generation)
   (declare (xargs :guard t :verify-guards nil))
@@ -658,8 +442,8 @@
 ; Prepare reserves a unique txid and stages every local membership.  It does
 ; not change committed articles or group watermarks.
 (defun fn-accept-prepare (s generation msgid payload groups)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (not (fn-statep s))
+  (declare (xargs :guard (fn-statep s) :verify-guards nil))
+  (if (mbe :logic (not (fn-statep s)) :exec nil)
       s
     (if (or (equal (fn-state-fenced s) t)
             (consp (fn-state-pending s))
@@ -691,8 +475,8 @@
 ; result retains it and fences ordinary submissions and completions until
 ; recovery resolves the proposal.
 (defun fn-accept-complete (s txid generation completion-status)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (not (fn-statep s))
+  (declare (xargs :guard (fn-statep s) :verify-guards nil))
+  (if (mbe :logic (not (fn-statep s)) :exec nil)
       s
     (if (or (equal (fn-state-fenced s) t)
             (not (fn-pending-matchesp (fn-state-pending s)
@@ -716,8 +500,8 @@
 ; Recovery is an abstract host observation, not a disk algorithm.  It may
 ; resolve only the still-fenced matching proposal as committed or absent.
 (defun fn-accept-recover (s txid generation recovery-result)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (not (fn-statep s))
+  (declare (xargs :guard (fn-statep s) :verify-guards nil))
+  (if (mbe :logic (not (fn-statep s)) :exec nil)
       s
     (if (or (not (equal (fn-state-fenced s) t))
             (not (fn-pending-matchesp (fn-state-pending s)
@@ -733,8 +517,8 @@
 
 ; -----------------------------------------------------------------------------
 ; First proof events.  These are ordinary theorem events with no proof
-; shortcuts or trust tags.  The current bounded slice intentionally leaves
-; the larger allocation/refinement preservation chain for a later book.
+; shortcuts or trust tags.  The larger allocation/refinement preservation
+; chain is in acceptance-invariants.lisp.
 
 (defthm fn-initial-state-is-state
   (implies (and (fn-string-listp groups)
@@ -822,7 +606,7 @@
                         (fn-accept-complete s txid generation :durable))
                        nil)
                 (equal (fn-state-fenced
-                       (fn-accept-complete s txid generation :durable))
+                        (fn-accept-complete s txid generation :durable))
                        nil)))
   :hints (("Goal" :in-theory (enable fn-accept-complete fn-install-pending))))
 
@@ -834,7 +618,7 @@
            (equal
             (fn-acceptedp
              (fn-pending-msgid (fn-state-pending s))
-            (fn-state-articles
+             (fn-state-articles
               (fn-accept-complete s txid generation :durable)))
             t))
   :hints (("Goal" :in-theory (enable fn-accept-complete fn-install-pending
@@ -873,3 +657,11 @@
                   (fn-accept-prepare s generation msgid payload groups))
                  (1+ (fn-state-next-txid s)))))
   :hints (("Goal" :in-theory (enable fn-accept-prepare))))
+
+; -----------------------------------------------------------------------------
+; Export.  Records were disabled at their definitions.  The recognizers of
+; records and of the state, the initial state, the transition halves and the
+; three host transitions are withdrawn here; a book that must open one
+; enables it locally.  Keystones and record lemmas stay enabled.  The list
+; vocabulary of acceptance-alloc.lisp is untouched.
+(in-theory (disable (:d fn-articlep) (:d fn-pendingp) (:d fn-statep) (:d fn-initial-state) (:d fn-install-pending) (:d fn-clear-pending) (:d fn-accept-prepare) (:d fn-accept-complete) (:d fn-accept-recover)))

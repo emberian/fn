@@ -831,10 +831,12 @@ branches), and that is what the registry cites.
 ### 4.2 Teeth whose witness fails only the shape clause (prove nothing)
 
 `must-fail` cases that drop a recognizer hypothesis and supply a witness
-that is not even the right shape: `acc-teeth-install-without-statep`
-(`*acc-teeth-forged*`, `tests/acl2/acceptance-teeth-tests.lisp:104`),
-`node-teeth-install-without-node-statep` (`node-teeth-tests.lisp:92`),
-`ret-teeth-records-evidence-without-statep` (`retention-teeth-tests.lisp:88`),
+that is not even the right shape (the core cluster's three are now concrete
+`assert-event` witnesses, 2026-09-19, and the finding still applies to what
+they separate): the `*acc-teeth-forged*` install witness
+(`tests/acl2/acceptance-tests.lisp`), the `*node-teeth-forged*` install
+witness (`tests/acl2/node-tests.lisp`), the `*ret-teeth-forged*` release
+witness (`tests/acl2/retention-tests.lisp`),
 `sft-teeth-crash-prefix-without-statep` (`store-files-teeth-tests.lisp:147`),
 `snt-teeth-composed-crash-is-kernel-crash-without-statep`,
 `snt-teeth-acknowledged-record-survives-without-the-relation`

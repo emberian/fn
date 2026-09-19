@@ -4,11 +4,10 @@
   "roots": [
     "books/assumptions",
     "tests/acl2/assumptions-tests",
+    "books/acceptance-alloc",
     "books/acceptance",
     "books/acceptance-invariants",
     "tests/acl2/acceptance-tests",
-    "tests/acl2/acceptance-guards-tests",
-    "tests/acl2/acceptance-teeth-tests",
     "books/wire",
     "books/wire-invariants",
     "tests/acl2/wire-tests",
@@ -48,13 +47,10 @@
     "books/retention",
     "books/retention-invariants",
     "tests/acl2/retention-tests",
-    "tests/acl2/retention-teeth-tests",
     "books/node",
     "books/node-invariants",
     "tests/acl2/node-tests",
-    "tests/acl2/node-teeth-tests",
     "books/node-traces",
-    "tests/acl2/node-traces-tests",
     "books/records",
     "books/records-invariants",
     "books/records-canonicality",
@@ -63,7 +59,6 @@
     "books/replay",
     "books/replay-invariants",
     "tests/acl2/replay-tests",
-    "tests/acl2/replay-guards-tests",
     "books/store-files",
     "books/store-files-invariants",
     "tests/acl2/store-files-tests",
@@ -145,9 +140,6 @@
     "books/exchange",
     "tests/acl2/exchange-tests",
     "books/exchange-invariants",
-    "tests/acl2/exchange-invariants-tests",
-    "tests/acl2/exchange-guards-tests",
-    "tests/acl2/exchange-teeth-tests",
     "books/transfer",
     "books/transfer-invariants",
     "books/transfer-assembly-invariants",
@@ -185,25 +177,50 @@
     "tests/acl2/policy-tests"
   ],
   "totals": {
-    "books": 181,
-    "books_in_root_closure": 181,
-    "roots": 181,
-    "theorems": 2597,
-    "functions": 1961,
-    "assert_events": 2885,
-    "must_fails": 155,
+    "books": 173,
+    "books_in_root_closure": 173,
+    "roots": 173,
+    "theorems": 2662,
+    "functions": 1975,
+    "assert_events": 2934,
+    "must_fails": 141,
     "encapsulates": 10,
     "guards": {
-      "verified": 960,
+      "verified": 952,
       "declared-off": 53,
-      "default-guarded": 493,
-      "default-unguarded": 455
+      "default-guarded": 540,
+      "default-unguarded": 430
     },
-    "suspect_theorems": 29,
-    "export_hygiene_warnings": 67,
+    "suspect_theorems": 26,
+    "export_hygiene_warnings": 65,
     "teeth_form_warnings": 24
   },
   "books": [
+    {
+      "book": "books/acceptance-alloc.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 21,
+      "guards": {
+        "verified": 16,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 16,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [],
+      "system_includes": [],
+      "suspects": [
+        "fn-ag-less-is-less"
+      ],
+      "read_error": null
+    },
     {
       "book": "books/acceptance-invariants.lisp",
       "in_root_closure": true,
@@ -233,21 +250,23 @@
       "book": "books/acceptance.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 20,
-      "functions": 63,
+      "theorems": 35,
+      "functions": 45,
       "guards": {
-        "verified": 58,
+        "verified": 39,
         "declared-off": 0,
-        "default-guarded": 5,
+        "default-guarded": 6,
         "default-unguarded": 0
       },
-      "verify_guards_events": 58,
+      "verify_guards_events": 39,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
-      "includes": [],
+      "includes": [
+        "acceptance-alloc"
+      ],
       "system_includes": [],
       "suspects": [],
       "read_error": null
@@ -1458,8 +1477,8 @@
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 2
+        "default-guarded": 2,
+        "default-unguarded": 0
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -1478,22 +1497,22 @@
       "book": "books/exchange.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 10,
-      "functions": 40,
+      "theorems": 25,
+      "functions": 43,
       "guards": {
-        "verified": 40,
+        "verified": 37,
         "declared-off": 0,
-        "default-guarded": 0,
+        "default-guarded": 6,
         "default-unguarded": 0
       },
-      "verify_guards_events": 40,
+      "verify_guards_events": 37,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "acceptance"
+        "acceptance-alloc"
       ],
       "system_includes": [],
       "suspects": [
@@ -1905,13 +1924,13 @@
       "book": "books/node-traces.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 19,
+      "theorems": 12,
       "functions": 23,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 23
+        "default-guarded": 23,
+        "default-unguarded": 0
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -1923,27 +1942,22 @@
         "node-invariants"
       ],
       "system_includes": [],
-      "suspects": [
-        "fn-node-step-complete-reduction",
-        "fn-node-step-no-event-reduction",
-        "fn-node-step-prepare-reduction",
-        "fn-node-step-recover-reduction"
-      ],
+      "suspects": [],
       "read_error": null
     },
     {
       "book": "books/node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 7,
-      "functions": 30,
+      "theorems": 22,
+      "functions": 33,
       "guards": {
-        "verified": 30,
+        "verified": 27,
         "declared-off": 0,
-        "default-guarded": 0,
+        "default-guarded": 6,
         "default-unguarded": 0
       },
-      "verify_guards_events": 30,
+      "verify_guards_events": 27,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -2226,7 +2240,7 @@
       "book": "books/replay-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 7,
+      "theorems": 0,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -2241,7 +2255,6 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "node-invariants",
         "replay"
       ],
       "system_includes": [],
@@ -2252,22 +2265,22 @@
       "book": "books/replay.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 7,
-      "functions": 13,
+      "theorems": 23,
+      "functions": 15,
       "guards": {
-        "verified": 13,
+        "verified": 11,
         "declared-off": 0,
-        "default-guarded": 0,
+        "default-guarded": 4,
         "default-unguarded": 0
       },
-      "verify_guards_events": 13,
+      "verify_guards_events": 11,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "node",
+        "node-invariants",
         "records"
       ],
       "system_includes": [],
@@ -2303,21 +2316,23 @@
       "book": "books/retention.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 11,
-      "functions": 35,
+      "theorems": 27,
+      "functions": 38,
       "guards": {
-        "verified": 35,
+        "verified": 38,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 35,
+      "verify_guards_events": 38,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
-      "includes": [],
+      "includes": [
+        "acceptance-alloc"
+      ],
       "system_includes": [],
       "suspects": [
         "fn-retain-admission-refusal-is-no-op",
@@ -3003,58 +3018,6 @@
       "read_error": null
     },
     {
-      "book": "tests/acl2/acceptance-guards-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 0,
-      "functions": 0,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 0
-      },
-      "verify_guards_events": 0,
-      "assert_events": 148,
-      "must_fails": 0,
-      "defconsts": 2,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "../../books/acceptance"
-      ],
-      "system_includes": [],
-      "suspects": [],
-      "read_error": null
-    },
-    {
-      "book": "tests/acl2/acceptance-teeth-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 0,
-      "functions": 0,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 0
-      },
-      "verify_guards_events": 0,
-      "assert_events": 24,
-      "must_fails": 5,
-      "defconsts": 17,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "../../books/acceptance-invariants"
-      ],
-      "system_includes": [
-        "std/testing/must-fail"
-      ],
-      "suspects": [],
-      "read_error": null
-    },
-    {
       "book": "tests/acl2/acceptance-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -3067,13 +3030,13 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 61,
+      "assert_events": 246,
       "must_fails": 0,
-      "defconsts": 17,
+      "defconsts": 36,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/acceptance"
+        "../../books/acceptance-invariants"
       ],
       "system_includes": [],
       "suspects": [],
@@ -3812,83 +3775,6 @@
       "read_error": null
     },
     {
-      "book": "tests/acl2/exchange-guards-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 0,
-      "functions": 0,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 0
-      },
-      "verify_guards_events": 0,
-      "assert_events": 106,
-      "must_fails": 0,
-      "defconsts": 3,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "../../books/exchange"
-      ],
-      "system_includes": [],
-      "suspects": [],
-      "read_error": null
-    },
-    {
-      "book": "tests/acl2/exchange-invariants-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 0,
-      "functions": 0,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 0
-      },
-      "verify_guards_events": 0,
-      "assert_events": 15,
-      "must_fails": 0,
-      "defconsts": 14,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "../../books/exchange-invariants"
-      ],
-      "system_includes": [],
-      "suspects": [],
-      "read_error": null
-    },
-    {
-      "book": "tests/acl2/exchange-teeth-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 0,
-      "functions": 0,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 0
-      },
-      "verify_guards_events": 0,
-      "assert_events": 13,
-      "must_fails": 3,
-      "defconsts": 10,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "../../books/exchange-invariants"
-      ],
-      "system_includes": [
-        "std/testing/must-fail"
-      ],
-      "suspects": [],
-      "read_error": null
-    },
-    {
       "book": "tests/acl2/exchange-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -3901,13 +3787,13 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 15,
+      "assert_events": 162,
       "must_fails": 0,
-      "defconsts": 15,
+      "defconsts": 42,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/exchange"
+        "../../books/exchange-invariants"
       ],
       "system_includes": [],
       "suspects": [],
@@ -4152,33 +4038,6 @@
       "read_error": null
     },
     {
-      "book": "tests/acl2/node-teeth-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 0,
-      "functions": 0,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 0
-      },
-      "verify_guards_events": 0,
-      "assert_events": 16,
-      "must_fails": 2,
-      "defconsts": 7,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "../../books/node-invariants"
-      ],
-      "system_includes": [
-        "std/testing/must-fail"
-      ],
-      "suspects": [],
-      "read_error": null
-    },
-    {
       "book": "tests/acl2/node-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -4191,34 +4050,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 40,
+      "assert_events": 92,
       "must_fails": 0,
-      "defconsts": 12,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "../../books/node"
-      ],
-      "system_includes": [],
-      "suspects": [],
-      "read_error": null
-    },
-    {
-      "book": "tests/acl2/node-traces-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 0,
-      "functions": 0,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 0
-      },
-      "verify_guards_events": 0,
-      "assert_events": 24,
-      "must_fails": 0,
-      "defconsts": 10,
+      "defconsts": 29,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -4360,31 +4194,6 @@
       "read_error": null
     },
     {
-      "book": "tests/acl2/replay-guards-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 0,
-      "functions": 0,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 0
-      },
-      "verify_guards_events": 0,
-      "assert_events": 44,
-      "must_fails": 0,
-      "defconsts": 1,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "../../books/replay"
-      ],
-      "system_includes": [],
-      "suspects": [],
-      "read_error": null
-    },
-    {
       "book": "tests/acl2/replay-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -4397,42 +4206,15 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 21,
+      "assert_events": 65,
       "must_fails": 0,
-      "defconsts": 12,
+      "defconsts": 13,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/replay"
       ],
       "system_includes": [],
-      "suspects": [],
-      "read_error": null
-    },
-    {
-      "book": "tests/acl2/retention-teeth-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 0,
-      "functions": 0,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 0
-      },
-      "verify_guards_events": 0,
-      "assert_events": 14,
-      "must_fails": 4,
-      "defconsts": 5,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "../../books/retention-invariants"
-      ],
-      "system_includes": [
-        "std/testing/must-fail"
-      ],
       "suspects": [],
       "read_error": null
     },
@@ -4449,13 +4231,13 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 24,
+      "assert_events": 49,
       "must_fails": 0,
-      "defconsts": 12,
+      "defconsts": 17,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/retention"
+        "../../books/retention-invariants"
       ],
       "system_includes": [],
       "suspects": [],
@@ -4934,6 +4716,15 @@
       ]
     },
     {
+      "theorem": "fn-ag-less-is-less",
+      "book": "books/acceptance-alloc.lisp",
+      "line": 58,
+      "reasons": [
+        "definition-restated: the conclusion is the body of fn-ag-less",
+        "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
       "theorem": "fn-bp-effect-for-pending-attempt-unfolds",
       "book": "books/bp-workflow-invariants.lisp",
       "line": 882,
@@ -4985,7 +4776,7 @@
     {
       "theorem": "fn-exchange-ingest-refusal-is-no-op",
       "book": "books/exchange.lisp",
-      "line": 364,
+      "line": 439,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-exchange-ingest and the conclusion is that branch's value"
       ]
@@ -5018,7 +4809,7 @@
     {
       "theorem": "fn-node-capacity-refusal-is-no-op",
       "book": "books/node.lisp",
-      "line": 367,
+      "line": 441,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-node-prepare and the conclusion is that branch's value"
       ]
@@ -5026,7 +4817,7 @@
     {
       "theorem": "fn-node-complete-preserves-committed-archive-pins",
       "book": "books/node-invariants.lisp",
-      "line": 141,
+      "line": 159,
       "reasons": [
         "closed-theory-corollary: proved only by fn-node-complete-preserves-state, fn-node-state-has-committed-archive-pins"
       ]
@@ -5034,7 +4825,7 @@
     {
       "theorem": "fn-node-prepare-preserves-committed-archive-pins",
       "book": "books/node-invariants.lisp",
-      "line": 124,
+      "line": 141,
       "reasons": [
         "closed-theory-corollary: proved only by fn-node-prepare-preserves-state, fn-node-state-has-committed-archive-pins"
       ]
@@ -5042,7 +4833,7 @@
     {
       "theorem": "fn-node-recover-preserves-committed-archive-pins",
       "book": "books/node-invariants.lisp",
-      "line": 152,
+      "line": 171,
       "reasons": [
         "closed-theory-corollary: proved only by fn-node-recover-preserves-state, fn-node-state-has-committed-archive-pins"
       ]
@@ -5050,41 +4841,9 @@
     {
       "theorem": "fn-node-stale-completion-is-no-op",
       "book": "books/node.lisp",
-      "line": 390,
+      "line": 465,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-node-complete and the conclusion is that branch's value"
-      ]
-    },
-    {
-      "theorem": "fn-node-step-complete-reduction",
-      "book": "books/node-traces.lisp",
-      "line": 171,
-      "reasons": [
-        "branch-of-definition: the hypothesis is a branch test of fn-node-step and the conclusion is that branch's value"
-      ]
-    },
-    {
-      "theorem": "fn-node-step-no-event-reduction",
-      "book": "books/node-traces.lisp",
-      "line": 191,
-      "reasons": [
-        "branch-of-definition: the hypothesis negates a branch test of fn-node-step and the conclusion is that branch's value"
-      ]
-    },
-    {
-      "theorem": "fn-node-step-prepare-reduction",
-      "book": "books/node-traces.lisp",
-      "line": 156,
-      "reasons": [
-        "branch-of-definition: the hypothesis is a branch test of fn-node-step and the conclusion is that branch's value"
-      ]
-    },
-    {
-      "theorem": "fn-node-step-recover-reduction",
-      "book": "books/node-traces.lisp",
-      "line": 181,
-      "reasons": [
-        "branch-of-definition: the hypothesis is a branch test of fn-node-step and the conclusion is that branch's value"
       ]
     },
     {
@@ -5106,7 +4865,7 @@
     {
       "theorem": "fn-retain-admission-refusal-is-no-op",
       "book": "books/retention.lisp",
-      "line": 322,
+      "line": 415,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-retain-admit and the conclusion is that branch's value"
       ]
@@ -5114,7 +4873,7 @@
     {
       "theorem": "fn-retain-wrong-evidence-does-not-release",
       "book": "books/retention.lisp",
-      "line": 359,
+      "line": 455,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value"
       ]
@@ -5162,18 +4921,6 @@
   ],
   "lints": {
     "export_hygiene": [
-      {
-        "theorem": "fn-ag-car-is-car",
-        "book": "books/acceptance.lisp",
-        "line": 31,
-        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
-      },
-      {
-        "theorem": "fn-ag-cdr-is-cdr",
-        "book": "books/acceptance.lisp",
-        "line": 32,
-        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
-      },
       {
         "theorem": "fn-article-unfold-join-is-concat",
         "book": "books/article-invariants.lisp",

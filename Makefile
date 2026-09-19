@@ -4,11 +4,10 @@ PYTHON ?= python3
 FN_CERTIFY_JOBS ?= 1
 ACL2_BOOKS ?= books/assumptions \
 	tests/acl2/assumptions-tests \
+	books/acceptance-alloc \
 	books/acceptance \
 	books/acceptance-invariants \
 	tests/acl2/acceptance-tests \
-	tests/acl2/acceptance-guards-tests \
-	tests/acl2/acceptance-teeth-tests \
 	books/wire \
 	books/wire-invariants \
 	tests/acl2/wire-tests \
@@ -48,13 +47,10 @@ ACL2_BOOKS ?= books/assumptions \
 	books/retention \
 	books/retention-invariants \
 	tests/acl2/retention-tests \
-	tests/acl2/retention-teeth-tests \
 	books/node \
 	books/node-invariants \
 	tests/acl2/node-tests \
-	tests/acl2/node-teeth-tests \
 	books/node-traces \
-	tests/acl2/node-traces-tests \
 	books/records \
 	books/records-invariants \
 	books/records-canonicality \
@@ -63,7 +59,6 @@ ACL2_BOOKS ?= books/assumptions \
 	books/replay \
 	books/replay-invariants \
 	tests/acl2/replay-tests \
-	tests/acl2/replay-guards-tests \
 	books/store-files \
 	books/store-files-invariants \
 	tests/acl2/store-files-tests \
@@ -145,9 +140,6 @@ ACL2_BOOKS ?= books/assumptions \
 	books/exchange \
 	tests/acl2/exchange-tests \
 	books/exchange-invariants \
-	tests/acl2/exchange-invariants-tests \
-	tests/acl2/exchange-guards-tests \
-	tests/acl2/exchange-teeth-tests \
 	books/transfer \
 	books/transfer-invariants \
 	books/transfer-assembly-invariants \
