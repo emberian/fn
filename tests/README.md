@@ -55,6 +55,26 @@ Behavior-changing batches use the [assurance scope rules](../docs/proofs.md#assu
 and update the [closure inventory](../planning/assurance-closure.md). Avoid a
 single coverage percentage combining proofs, tests and platform assumptions.
 
+## Contact scheduling
+
+`tests/acl2/scheduler-tests.lisp` carries the evidence for C2-06. Its
+starvation counterexample is one trace run under two policies: under the
+stated unfair policy (`fn-sched-unfair-step`, deterministic priority with the
+promotion queue removed) the large article receives no submit, and under the
+aging policy the same trace submits it on the third contact tick. The rest of
+the book is the reachable witness for each keystone in
+`books/scheduler-invariants.lisp` and one `must-fail` per hypothesis.
+
+`tests/test_scheduler.py` tests only what the host owns: the bounded contact
+plan reader, the durable decision log's trailer and sequencing, and the order
+the driver calls the `:program` wrappers in -- select, durable decision,
+durable attempt, commit -- with a fake host, so that no test here re-implements
+a decision `books/scheduler.lisp` makes. `tests/bp-dtn7/fn_sender_lab.py`
+runs the same driver against a two-window contact plan with an expiry, using
+`MockBpa` when the pinned dtn7-rs build is unavailable; that mock transmits no
+bundle and has no peer, and a report using it says so rather than claiming an
+exchange.
+
 ## Crash campaign
 
 `tests/campaign/` replaces hand-enumerated process-death cuts with a table
