@@ -13,6 +13,7 @@
 (in-package "ACL2")
 
 (include-book "clock")
+(local (in-theory (enable fn-clock-vocabulary)))
 
 (local (include-book "arithmetic/top" :dir :system))
 
@@ -164,4 +165,8 @@
   (equal (fn-clock-may-drop-local-copyp
           (fn-clock-expiry-decision creation-time lifetime bundle-age obs))
          (equal (fn-clock-expiry-decision creation-time lifetime bundle-age obs)
-                :expired)))
+                :expired))
+  :rule-classes nil)
+
+; Export theory: every theorem above is a keystone; nothing is withdrawn.
+(in-theory (current-theory :here))

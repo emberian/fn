@@ -2,6 +2,11 @@
 ; all request, Store, policy, and receipt decisions are made by fn-bpr.
 (in-package "ACL2")
 (include-book "bp-receipt")
+; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
+; this book reasons under them, so open them here, locally.
+(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary
+                          fn-record-invariants-vocabulary fn-cbor-record-vocabulary
+                          fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary)))
 
 (defun fn-bprr-nth (n x)
  (declare (xargs :guard t :measure (nfix n)))
@@ -83,3 +88,12 @@
   (let ((st (fn-bpr-initial-state (fn-bprr-config (car records)))))
    (if (not (fn-bpr-statep st)) (list nil nil)
     (fn-bprr-replay-rest st store (cdr records))))))
+
+; Export theory.  The journal-record recognizers, decoder, replay step and
+; replay are proof vocabulary for the receiver books, which open them locally
+; (fn-bp-receiver-records-vocabulary).  fn-bprr-nth, fn-bprr-textp and
+; fn-bprr-octetsp stay enabled as total readers.
+(deftheory fn-bp-receiver-records-vocabulary
+  '(fn-bprr-configp fn-bprr-config fn-bprr-recordp fn-bprr-decode-value
+    fn-bprr-apply-record fn-bprr-replay-rest fn-bprr-replay))
+(in-theory (disable fn-bp-receiver-records-vocabulary))
