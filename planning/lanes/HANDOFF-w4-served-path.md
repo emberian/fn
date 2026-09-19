@@ -123,37 +123,36 @@ byte equality asserted for seven partitions.
 
 ## Certification state, exactly
 
-`books/served.lisp` is **admitted by ACL2 in full**: every form of it
-processed by `ld` with no failure, ACL2 8.7 / SBCL 2.6.8 on this laptop
-(`ACL2_CUSTOMIZATION=NONE`, `ACL2_BOOK_HASH_ALISTP=NIL`,
-`(set-prover-step-limit 2000000)`). Every one of the values the test book
-asserts was evaluated in that same session and came out as the test book says
-it does -- the greeting, the whole reply, both required cuts, the bytewise
-partition, the close, the effect typing, the forged-connection teeth, and the
-3-of-30 work figure.
+Merged `dev` (convergence fixes) at `b7b8c11`; conflicts were BOARD.md
+(unioned), `planning/ledger.{json,md}` (regenerated). `make certs-install`
+installs 26 of 210, so the closure was certified **in place, one root at a
+time**, `FN_ACL2_TIMEOUT_SECONDS=1800`, ACL2 8.7 / SBCL 2.6.8. Certified, in
+order, each with its evidence directory in `build/acl2/`:
 
-`books/ideal.lisp` and `tests/acl2/served-tests.lisp` have **not been run
-through ACL2 at all**. They were written against the admitted book and the
-probed values, and the certification attempts stopped at `include-book`,
-before reaching any form of theirs. Treat them as unadmitted source until
-someone runs them; the first lane with a certified tree should `ld` both
-before trusting a line of this handoff about them.
+    books/wire  books/wire-invariants  books/wildmat  books/nntp-syntax
+    books/nntp-session  books/nntp-projection  books/nntp-responses  books/nntp
 
-They are **not certified by `tools/certify_books.py`**, and the reason is not
-in this lane: this worktree holds 19 certificates for about 180 books, and
-`make certs-install` leaves 183 uncached. `certify-book` refuses an
-uncertified sub-book, so `books/wire-invariants` fails on `books/wire`,
-`books/nntp-effects` fails on `books/nntp-invariants`, and `books/served`
-fails on both (evidence:
-`build/acl2/certify-20260919T220053Z-10758`,
-`-220420Z-15472`, `-220459Z-16309`). Interactive `include-book` only warns,
-which is why the `ld` evidence above exists. Certifying the nntp closure from
-source is a whole-tree job for the convergence lane; when the cache is
-published, the three roots certify in this order: `books/served`,
-`tests/acl2/served-tests`, `books/ideal`.
+`books/nntp-invariants` was still certifying when this lane's budget ran out,
+and the four roots behind it -- `books/nntp-effects`, `books/served`,
+`books/ideal`, `tests/acl2/served-tests` -- were therefore **not reached**.
+The chain is `certify_books.py` invocations in dependency order; re-running
 
-The Python suites (`tests/test_reader.py`, `tests/test_reader_partitions.py`,
-`tests/test_served_differential.py`) were launched in this worktree and their
-result is NOT known to this lane -- do not read the commit as saying they
-passed; they drive the same uncertified-include bridge and
-their result is recorded by the lane that runs them against a certified tree.
+    for b in books/nntp-invariants books/nntp-effects books/served \
+             books/ideal tests/acl2/served-tests; do
+      FN_ACL2_TIMEOUT_SECONDS=1800 python3 tools/certify_books.py "$b" || break
+    done
+
+finishes it. Do not read this handoff as saying the three new books are
+certified. What IS established: `books/served.lisp` is admitted by ACL2 in
+full (`ld`, every form, no failure) and every value `tests/acl2/served-tests.lisp`
+asserts was evaluated in that session and came out as the book says.
+`books/ideal.lisp` and `tests/acl2/served-tests.lisp` have not been run
+through ACL2 at all.
+
+The Python suites are `unittest`, not pytest:
+
+    python3 -m unittest tests.test_reader tests.test_reader_partitions \
+                        tests.test_served_differential -v
+
+They were queued behind the certification chain and did not run. Their result
+is unknown to this lane; the next lane runs them first.
