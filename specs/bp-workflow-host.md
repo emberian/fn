@@ -30,6 +30,40 @@ barriers, and replays through ACL2 against the recovered node. A lone intent
 remains fenced. Ordinary completion is refused after recovery; an explicit
 recovery outcome resolves it. Committed attempt recovery emits no submission.
 
+`fn-bp-replay-journal` is the function `host/workflow-host.lisp` calls on open
+and for the history preflight; `fn-bp-apply-journal-record` is the function it
+calls for record preflight and application. `books/bp-workflow-records-invariants.lisp`
+proves, over arbitrary record lists: both preserve `fn-bp-statep`,
+`fn-bp-binding-statep` and the exact node; a malformed record, or a
+configuration record after the first, anywhere in the list makes replay return
+a refusal rather than skipping it (`fn-bp-replay-journal-rejects-any-malformed-record`);
+a successful live application is exactly one `fn-bp-step` on the record's
+event (`fn-bp-apply-journal-record-is-step-when-ok`); and a successful replay
+is exactly `fn-bp-trace` of the initial state over the journal's denotation
+(`fn-bp-replay-journal-is-trace-when-ok`). The denotation
+(`fn-bp-journal-denotation`) is the records after the configuration, each
+ordinary outcome as its `:storage-complete` event, each recovery outcome as the
+crash-implied `:storage-complete ... :indeterminate` fence followed by its
+`:storage-recover` event, and a trailing `:restart`. Replay's effect list is
+the trace's effects with the fences' `:recover-required` demands removed
+(`fn-bp-actionable-effects`), because the next event in the denotation is their
+recorded resolution; the host discards replay effects in any case. A live
+recovery outcome is refused unless the image is already fenced, which after a
+process restart is what the trailing `:restart` establishes for a lone intent.
+
+The model's "durable intent before submission" theorems
+(`fn-bp-step-submit-requires-matching-durable-attempt-completion`,
+`fn-bp-apply-journal-record-submit-requires-ordinary-durable-attempt-outcome`)
+make a `:submit` effect impossible before the `:ordinary :durable` outcome of
+the pending attempt is applied. The word durable is the host's. A-HOST here is
+exactly: `tools/workflow_journal.py` writes, fsyncs and links the `:attempt`
+intent record before the ACL2 prepare transition runs; it writes, fsyncs and
+links the `:outcome` record before that completion is applied; and it calls
+the BPA only after `fn-workflow-take-submit` has consumed the single `:submit`
+effect of that application. The theorems are about the model's refusal to
+grant earlier, not about the host obeying the grant, and not about the drive
+honouring `fsync`.
+
 A live durable attempt outcome grants one exact submit permission, consumed
 before the BPA call. Historical replay effects are non-actionable. A lost call
 or reply remains uncertainty. Delivery, deletion, expiry and contact observations
