@@ -1638,3 +1638,74 @@ after w3 lands and P3; P10 last.
 
 What lands on `dev` first: P0 and P1 together, because P1's teeth are the
 first evidence that the model says something a strawman does not.
+
+## 7. Status per keystone (2026-09-19, lane `w4/byte-store`, packets P0-P3)
+
+The books are the source; where a book and §1-§3 differ, this section says
+so. Certification evidence directories are named in
+`planning/lanes/HANDOFF-w4-byte-store.md`.
+
+### The model (`books/byte-store.lisp`, §1.2-1.6)
+
+Admitted as written, with three changes the well-formedness proofs forced:
+`fn-bs-statep` carries two more conjuncts (every inode id in the table is
+below `next-ino`; every pending `:write` names a table inode), without
+which `fn-bs-create` and `fn-bs-crash` do not preserve the inode table;
+`fn-bs-write` reports `:ebadf` for an inode the table does not hold and
+`fn-bs-mkdir` reports `:eexist` for a directory id already present;
+`fn-bs-tear-write` takes its measure from `fn-bs-unit-count` stated as an
+integer. The state is an opaque record (`docs/proof-style.md` §1). Guards
+are not verified on the model (`:guard t :verify-guards nil`, as §1 itself
+prescribes); guard verification is open.
+
+| Statement | Book | Status |
+| --- | --- | --- |
+| K0 (model well-formedness): `fn-bs-statep` preserved by `fn-bs-crash` (admissible choices), both fences, and every syscall for every outcome | `byte-store-invariants` | **proved**: `fn-bs-{crash,fence-file,fence-dir,create,write,fsync-file,fsync-dir,link,rename,unlink,mkdir}-preserves-statep`. `unlink` and the source path of `rename` need no `dir-idp`/`namep` hypotheses (the lookup types them). |
+| `fn-bs-fence-file-drains-exactly-its-inode`, `fn-bs-fence-dir-drains-exactly-its-directory` | `byte-store-invariants` | **proved**, no `fn-bs-statep` hypothesis; plus `-touches-only-its-{inode,directory}` |
+| `fn-bs-crash-keeps-fenced-content` (A-DURABILITY positive half) | `byte-store-invariants` | **proved**, no `fn-bs-statep` hypothesis. `fn-bs-crash-invents-nothing` and `fn-bs-tear-touches-only-its-inode` are the same statement (`fn-bs-fencedp` unfolds to their hypothesis; the latter's `ino` is unused) and are not separate events. |
+| `fn-bs-crash-keeps-quiet-directory` | `byte-store-invariants` | **proved** (the directory half of the above; not in §1.7) |
+| `fn-bs-crash-entry-is-old-or-a-pending-target` (A-WRITE-ISOLATION namespace half) | `byte-store-invariants` | **proved** with `(fn-bs-dir-idp dir) (fn-bs-namep name)` in place of `fn-bs-statep` |
+| `fn-bs-refence-after-error-fences-nothing` (fsyncgate) | `byte-store-invariants` | **proved** with no hypothesis: after `:ok` the set was drained, after an error discarded; either way a second fence finds nothing |
+| `fn-bs-lose-everything-is-an-admissible-image`, `fn-bs-crash-with-no-choices-is-the-durable-state` | `byte-store-invariants` | **proved** (the bottom of the image lattice; the top is the view, below) |
+| `fn-bs-view-is-an-admissible-image` | — | **open**. Obligation: the all-`:new` choice reproduces each write from its unit pieces; needs `(fn-bs-splice (fn-bs-splice old o a) (+ o (len a)) b) = (fn-bs-splice old o (append a b))` over contiguous pieces of `fn-bs-unit-count`. |
+| `fn-bs-image-admissiblep` and `-iff-crash-imagep` (§1.5 decision procedure) | — | **open** (P1 residual; P6 needs it) |
+| A-CRASH-IMAGE `fn-assume-physical-crash`, A-CRYPTO-TRAILER `fn-assume-crash-tearp` (§3.6) | `byte-store-invariants` | **admitted** as encapsulates with the stated constraints; proposed home `books/assumptions.lisp` (P7). The tearp witness is "no tears, of an empty write" until the view theorem lands. |
+
+### The programs (`books/byte-store-programs.lisp`, §2)
+
+P-FRONTIER, P-RECORD, P-FINISH, P-RECOVER and P-INIT are transcribed with a
+`:cut` after every durable syscall (rule §2.3), which adds the cut names
+`frontier-created`, `frontier-written`, `record-created`, `record-written`,
+`record-stage-unlinked` and the `init-*` names: P2's host half must add
+those `faults.at` sites. The directory observations are the kernel's real
+events `:frontier-dir` / `:record-dir`, not §2.2's `:frontier-directory` /
+`:record-directory`. D1-D3 are `assert-event`s over the constants with one
+violating program each; D4 is `fn-bs-run-stops-at-first-error-by-definition`
+(`:rule-classes nil`); D5 is asserted on the ground runs at every step
+(`fn-bs-run-pending-disjointp`), not yet the theorem
+`fn-bs-program-pending-disjoint`. P-JOURNAL, P-INBOX, P-CHECKPOINT: not
+transcribed (P5, P8).
+
+### The keystones of §3
+
+| Keystone | Status |
+| --- | --- |
+| K0 `fn-bs-program-step-preserves-relation` | **open** (P3): needs `fn-bs-store-relation`. Ground form: `fn-bs-run-statep` holds on every ground run (`byte-store-programs`) and the composed runs reach `:reserved`, `:completing`, `:ready` and recover to `:ready` (`tests/acl2/byte-store-tests.lisp`). |
+| K1 `fn-bs-store-crash-image-scans` | **open** (P3): needs `fn-bs-scan-store` and the relation; its byte-level inputs are proved (`fn-bs-crash-keeps-fenced-content` for every authority inode, `fn-bs-crash-keeps-quiet-directory`, `fn-bs-crash-entry-is-old-or-a-pending-target` for the one pending entry the phase allows). |
+| K2 `fn-bs-store-crash-image-is-kernel-admissible` | **open** (P3, store deputy's seam): stated as a comment in `byte-store-invariants` with the exact obligation against `fn-sf-crash-imagep` (`store-files.lisp:499`). |
+| K3 `fn-bs-store-recovery-is-a-kernel-crash` | **open** (P3): from K2 and `fn-sf-crash-realizes-every-admissible-image`. |
+| K4-K8 | **open** (P3) |
+| K9, K9b, K9c, K10 | **open** (P5) |
+| K11a-d | **open** (P4) |
+| K12 | **open** (P8) |
+
+### Witnesses (`tests/acl2/byte-store-tests.lisp`)
+
+Reached through the production syscalls from an initialized store at unit
+4: a torn record (`:new :zero (:garble ...)` over a 10-octet frame), a
+truncated and a zero-length record, a lost and a kept link, a failed
+`fsync` (EIO after one unit; the retried `fsync` changes nothing), a
+dropped rename and a staging orphan; the composed runs of the five
+programs against the real `fn-sf` kernel; and one concrete violating value
+per hypothesis of each keystone above, or the statement that none exists
+and why.

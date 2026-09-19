@@ -82,6 +82,10 @@
     "tests/acl2/store-observed-tests",
     "books/store-observed-traces",
     "tests/acl2/store-observed-traces-tests",
+    "books/byte-store",
+    "books/byte-store-invariants",
+    "books/byte-store-programs",
+    "tests/acl2/byte-store-tests",
     "tests/acl2/store-node-guards-tests",
     "tests/acl2/store-node-teeth-tests",
     "books/checkpoint",
@@ -186,19 +190,19 @@
     "tests/acl2/policy-tests"
   ],
   "totals": {
-    "books": 182,
-    "books_in_root_closure": 182,
-    "roots": 182,
-    "theorems": 2797,
-    "functions": 1988,
-    "assert_events": 3000,
+    "books": 186,
+    "books_in_root_closure": 186,
+    "roots": 186,
+    "theorems": 2914,
+    "functions": 2077,
+    "assert_events": 3083,
     "must_fails": 107,
-    "encapsulates": 10,
+    "encapsulates": 12,
     "guards": {
-      "verified": 945,
-      "declared-off": 53,
-      "default-guarded": 560,
-      "default-unguarded": 430
+      "verified": 950,
+      "declared-off": 121,
+      "default-guarded": 573,
+      "default-unguarded": 433
     },
     "suspect_theorems": 26,
     "export_hygiene_warnings": 57,
@@ -1321,6 +1325,88 @@
         "node-invariants"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/byte-store-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 106,
+      "functions": 9,
+      "guards": {
+        "verified": 0,
+        "declared-off": 6,
+        "default-guarded": 0,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 2,
+      "includes": [
+        "byte-store",
+        "frame"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/byte-store-programs.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 23,
+      "guards": {
+        "verified": 0,
+        "declared-off": 23,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 18,
+      "must_fails": 0,
+      "defconsts": 23,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store",
+        "store-files-traces"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/byte-store.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 10,
+      "functions": 57,
+      "guards": {
+        "verified": 5,
+        "declared-off": 39,
+        "default-guarded": 13,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 5,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "acceptance-alloc",
+        "cbor-invariants"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -3880,6 +3966,32 @@
       "system_includes": [
         "std/testing/must-fail"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/byte-store-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 65,
+      "must_fails": 0,
+      "defconsts": 34,
+      "defmacros": 2,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/byte-store-invariants",
+        "../../books/byte-store-programs"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
