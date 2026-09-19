@@ -73,6 +73,21 @@
 (defconst *fn-nntp-max-command-octets* 510)
 (defconst *fn-nntp-max-argument-octets* 497)
 
+; RFC 3977 section 3.1 bounds the initial line of a response at 512 octets
+; including its CRLF, and section 6 bounds a local article number at
+; 2,147,483,647.  The widest initial line this profile generates is the
+; LISTGROUP 211 line "211 <count> <low> <high> <group> list follows": four
+; status octets, three decimal fields of at most ten digits with their three
+; separating spaces, the thirteen octets of " list follows", and CRLF, which is
+; 52 octets before the group name.  Bounding a projected group name at 460
+; octets therefore keeps every generated initial line at or inside 512.
+(defconst *fn-nntp-max-response-octets* 512)
+(defconst *fn-nntp-max-initial-line-octets* 510)
+(defconst *fn-nntp-max-article-number* 2147483647)
+(defconst *fn-nntp-max-group-octets* 460)
+(defconst *fn-nntp-max-message-id-octets* 250)
+(defconst *fn-nntp-max-decimal-octets* 10)
+
 ; -----------------------------------------------------------------------------
 ; Octet and command syntax helpers
 
@@ -391,11 +406,30 @@
       (fn-nntp-decimal-rev number)
     nil))
 
+; Every number a response renders passes through this field renderer, so the
+; RFC 3977 section 3.1 length argument for an initial line is structural rather
+; than conditional: a rendered field is always a nonempty run of at most ten
+; decimal digits.  Section 6 bounds every number this profile renders, so the
+; guard is inactive across the whole legal range; see
+; fn-nntp-decimal-field-is-exact-in-range in books/nntp-effects.lisp and the
+; boundary transcripts in tests/acl2/nntp-tests.lisp.
+(defun fn-nntp-decimal-field (number)
+  (let ((octets (fn-nntp-decimal number)))
+    (if (and (consp octets)
+             (fn-nntp-decimal-tokenp octets)
+             (<= (len octets) *fn-nntp-max-decimal-octets*))
+        octets
+      '(48))))
+
 ; -----------------------------------------------------------------------------
 ; Session, effects, and exact article projection
 
-; Session fields are (openp selected-group current-number).  NIL selected-group
-; and NIL current-number are the RFC's invalid values.
+; Session fields are (openp selected-group current-number projected).  NIL
+; selected-group and NIL current-number are the RFC's invalid values.
+; `projected` is the archive-configuration verdict, computed once by
+; fn-nntp-open-session when the reader opens the connection and carried from
+; then on.  No command recomputes it: see
+; fn-nntp-step-preserves-carried-projection in books/nntp-invariants.lisp.
 (defun fn-nntp-session-openp (x)
   (mbe :logic (car x) :exec (fn-ag-car x)))
 (defun fn-nntp-session-group (x)
@@ -403,25 +437,28 @@
 (defun fn-nntp-session-current (x)
   (mbe :logic (car (cdr (cdr x)))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
+(defun fn-nntp-session-projected (x)
+  (mbe :logic (car (cdr (cdr (cdr x))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
 
-(defun fn-nntp-make-session (openp group current)
-  (list openp group current))
+(defun fn-nntp-make-session (openp group current projected)
+  (list openp group current projected))
 
 (defun fn-nntp-sessionp (x)
   (and (true-listp x)
-       (equal (len x) 3)
+       (equal (len x) 4)
        (or (equal (fn-nntp-session-openp x) t)
            (null (fn-nntp-session-openp x)))
        (or (stringp (fn-nntp-session-group x))
            (null (fn-nntp-session-group x)))
        (or (posp (fn-nntp-session-current x))
-           (null (fn-nntp-session-current x)))))
-
-(defun fn-nntp-initial-session ()
-  (fn-nntp-make-session t nil nil))
+           (null (fn-nntp-session-current x)))
+       (or (equal (fn-nntp-session-projected x) t)
+           (null (fn-nntp-session-projected x)))))
 
 (defun fn-nntp-set-cursor (session group number)
-  (fn-nntp-make-session (fn-nntp-session-openp session) group number))
+  (fn-nntp-make-session (fn-nntp-session-openp session) group number
+                        (fn-nntp-session-projected session)))
 
 (defthm fn-nntp-set-cursor-preserves-group
   (equal (fn-nntp-session-group (fn-nntp-set-cursor session group number))
@@ -483,7 +520,9 @@
                          (fn-nntp-append-pieces (fn-ag-cdr pieces)))
          nil)))
 
-; Return (:ok lines) only when every stored line is complete CRLF-framed.
+; Return (:ok lines) only when every stored line is complete CRLF-framed and
+; carries none of the octets RFC 3977 section 3.1.1 forbids in a multi-line
+; block: NUL, a bare LF, or a CR that does not begin a CRLF pair.
 (defun fn-nntp-crlf-lines-aux (bytes line-rev lines-rev)
   (declare (xargs :measure (acl2-count bytes)))
   (mbe :logic
@@ -493,7 +532,7 @@
                    (fn-nntp-crlf-lines-aux (cdr (cdr bytes)) nil
                                            (cons (reverse line-rev) lines-rev))
                  (list :error))
-             (if (equal (car bytes) 10)
+             (if (or (equal (car bytes) 10) (equal (car bytes) 0))
                  (list :error)
                (fn-nntp-crlf-lines-aux (cdr bytes) (cons (car bytes) line-rev)
                                        lines-rev)))
@@ -508,7 +547,7 @@
                    (fn-nntp-crlf-lines-aux (fn-ag-cdr (fn-ag-cdr bytes)) nil
                                            (cons (fn-ng-reverse line-rev) lines-rev))
                  (list :error))
-             (if (equal (fn-ag-car bytes) 10)
+             (if (or (equal (fn-ag-car bytes) 10) (equal (fn-ag-car bytes) 0))
                  (list :error)
                (fn-nntp-crlf-lines-aux (fn-ag-cdr bytes)
                                        (cons (fn-ag-car bytes) line-rev)
@@ -584,35 +623,72 @@
 ; NNTP projection must be stricter before interpolating any stored field into a
 ; response line.  These checks are local projection guards, not a change to the
 ; broader durable acceptance domain.
-(defun fn-nntp-safe-string-tokenp (text)
-  (and (stringp text)
-       (<= (len (fn-nntp-string-octets text)) *fn-wildmat-max-octets*)
-       (fn-nntp-printable-tokenp (fn-nntp-string-octets text))))
+;
+; They are split by cost and by blast radius.  The configuration checks are
+; whole-archive and run exactly once, in fn-nntp-open-session, when the reader
+; opens a connection; the served path reads the carried verdict instead
+; (AGENTS.md, "no whole-state revalidation on a served path").  The per-article
+; checks run only for the one article a command names, and a stored article
+; that fails them degrades only itself.
 
-(defun fn-nntp-safe-string-listp (texts)
+; A projected group name is interpolated into 211 and 215 lines, so it must be
+; a nonempty printable US-ASCII token short enough to keep every generated
+; initial line inside RFC 3977 section 3.1's 512 octets.
+(defun fn-nntp-safe-group-namep (text)
+  (and (stringp text)
+       (let ((octets (fn-nntp-string-octets text)))
+         (and (consp octets)
+              (<= (len octets) *fn-nntp-max-group-octets*)
+              (fn-nntp-printable-tokenp octets)))))
+
+(defun fn-nntp-safe-group-listp (texts)
   (if (consp texts)
-      (and (fn-nntp-safe-string-tokenp (car texts))
-           (fn-nntp-safe-string-listp (cdr texts)))
+      (and (fn-nntp-safe-group-namep (car texts))
+           (fn-nntp-safe-group-listp (cdr texts)))
     (null texts)))
 
-(defun fn-nntp-projection-articlep (article)
+; Watermarks are rendered as the low and high numbers of an empty group, so
+; RFC 3977 section 6's maximum article number bounds their decimal length.
+(defun fn-nntp-nexts-boundedp (nexts)
+  (if (consp nexts)
+      (and (consp (car nexts))
+           (natp (cdr (car nexts)))
+           (<= (cdr (car nexts)) *fn-nntp-max-article-number*)
+           (fn-nntp-nexts-boundedp (cdr nexts)))
+    (null nexts)))
+
+; Per-article: the stored identifier.  The string length is checked before the
+; octets are built, so this costs at most 251 octets of work for any stored
+; article, however large its identifier.  STAT, NEXT, and LAST need only this.
+(defun fn-nntp-article-idp (article)
+  (let ((text (fn-article-msgid article)))
+    (and (stringp text)
+         (<= (length text) *fn-nntp-max-message-id-octets*)
+         (fn-nntp-message-id-tokenp (fn-nntp-string-octets text)))))
+
+; Per-article: the stored bytes.  Only ARTICLE, HEAD, and BODY need this, and
+; they pay for the one article they name.
+(defun fn-nntp-article-framedp (article)
   (let ((payload (fn-article-payload article)))
-    (and (fn-nntp-message-id-tokenp
-          (fn-nntp-string-octets (fn-article-msgid article)))
-         (fn-nntp-safe-string-listp (fn-article-groups article))
-         (equal (car (fn-nntp-crlf-lines payload)) :ok)
+    (and (equal (car (fn-nntp-crlf-lines payload)) :ok)
          (fn-nntp-split-okp (fn-nntp-split-article payload)))))
 
-(defun fn-nntp-projection-articlesp (articles)
-  (if (consp articles)
-      (and (fn-nntp-projection-articlep (car articles))
-           (fn-nntp-projection-articlesp (cdr articles)))
-    (null articles)))
+(defun fn-nntp-projection-articlep (article)
+  (and (fn-nntp-article-idp article)
+       (fn-nntp-article-framedp article)))
 
+; Configuration-level projection.  This is the whole-archive recognizer.  It
+; says nothing about the contents of individual articles: a committed article
+; whose stored bytes cannot be projected no longer denies the service.
 (defun fn-nntp-projectionp (archive)
   (and (fn-statep archive)
-       (fn-nntp-safe-string-listp (fn-state-groups archive))
-       (fn-nntp-projection-articlesp (fn-state-articles archive))))
+       (fn-nntp-safe-group-listp (fn-state-groups archive))
+       (fn-nntp-nexts-boundedp (fn-state-nexts archive))
+       (<= (len (fn-state-articles archive)) *fn-nntp-max-article-number*)))
+
+(defun fn-nntp-open-session (archive)
+  (fn-nntp-make-session t nil nil
+                        (if (fn-nntp-projectionp archive) t nil)))
 
 ; -----------------------------------------------------------------------------
 ; Projection from the committed acceptance state
@@ -631,14 +707,57 @@
              (fn-nntp-membership-number group (fn-ag-cdr memberships)))
          0)))
 
+; The available local number of `article` in `group`, or 0.  An article is
+; available at a number only when the number is a valid RFC 3977 section 6
+; article number and the stored identifier can be rendered: STAT, NEXT, and
+; LAST answer with that identifier and nothing else.  An article that fails
+; this is excluded from group counts, water marks, LISTGROUP ranges, and
+; NEXT/LAST, and a command that names its number is answered explicitly.
+(defun fn-nntp-article-number (group article)
+  (let ((number (fn-nntp-membership-number
+                 group (fn-article-memberships article))))
+    (if (and (posp number)
+             (<= number *fn-nntp-max-article-number*)
+             (fn-nntp-article-idp article))
+        number
+      0)))
+
+(defthm fn-nntp-article-number-natp
+  (natp (fn-nntp-article-number group article))
+  :rule-classes (:type-prescription :rewrite))
+
+(defthm fn-nntp-article-number-bounded
+  (<= (fn-nntp-article-number group article) *fn-nntp-max-article-number*)
+  :rule-classes (:rewrite :linear))
+
+(defthm fn-nntp-available-number-article-is-projectable
+  (implies (posp (fn-nntp-article-number group article))
+           (fn-nntp-article-idp article)))
+
+; The article committed at a raw local number, whether or not it is available.
+; Retrieval by number uses this so that a request naming an unavailable article
+; is answered explicitly rather than silently.
 (defun fn-nntp-find-group-number (group number articles)
   (if (consp articles)
-      (if (equal (fn-nntp-membership-number group
-                                            (fn-article-memberships (car articles)))
+      (if (equal (fn-nntp-membership-number
+                  group (fn-article-memberships (car articles)))
                  number)
           (car articles)
         (fn-nntp-find-group-number group number (cdr articles)))
     nil))
+
+; The article available at a number.  This is the cursor's referent.
+(defun fn-nntp-available-article (group number articles)
+  (if (consp articles)
+      (if (and (posp number)
+               (equal (fn-nntp-article-number group (car articles)) number))
+          (car articles)
+        (fn-nntp-available-article group number (cdr articles)))
+    nil))
+
+(defthm fn-nntp-available-article-is-projectable
+  (implies (consp (fn-nntp-available-article group number articles))
+           (fn-nntp-article-idp (fn-nntp-available-article group number articles))))
 
 (defun fn-nntp-insert-number (number numbers)
   (mbe :logic
@@ -655,75 +774,168 @@
                    (fn-nntp-insert-number number (fn-ag-cdr numbers))))
          (list number))))
 
-(defun fn-nntp-group-numbers (group articles)
+(defun fn-nntp-orderedp (numbers)
+  (if (consp numbers)
+      (if (consp (cdr numbers))
+          (and (fn-ng-less-equal (car numbers) (car (cdr numbers)))
+               (fn-nntp-orderedp (cdr numbers)))
+        t)
+    t))
+
+(defthm fn-nntp-insert-number-preserves-ordered
+  (implies (and (fn-nntp-orderedp numbers) (rationalp number))
+           (fn-nntp-orderedp (fn-nntp-insert-number number numbers)))
+  :hints (("Goal" :induct (fn-nntp-orderedp numbers)
+           :in-theory (enable fn-nntp-orderedp fn-nntp-insert-number))))
+
+(defthm fn-nntp-insert-number-members
+  (iff (member-equal value (fn-nntp-insert-number number numbers))
+       (or (equal value number) (member-equal value numbers)))
+  :hints (("Goal" :induct (fn-nntp-insert-number number numbers)
+           :in-theory (enable fn-nntp-insert-number))))
+
+; One pass over the committed articles.  The count, the water marks, NEXT, and
+; LAST never build or sort a number list; only LISTGROUP does, and it sorts
+; only the numbers inside the range its own argument names.
+(defun fn-nntp-group-count (group articles)
   (if (consp articles)
-      (let ((number (fn-nntp-membership-number group
-                                                 (fn-article-memberships (car articles)))))
-        (if (posp number)
-            (fn-nntp-insert-number number
-                                   (fn-nntp-group-numbers group (cdr articles)))
-          (fn-nntp-group-numbers group (cdr articles))))
+      (if (posp (fn-nntp-article-number group (car articles)))
+          (+ 1 (fn-nntp-group-count group (cdr articles)))
+        (fn-nntp-group-count group (cdr articles)))
+    0))
+
+(defthm fn-nntp-group-count-natp
+  (natp (fn-nntp-group-count group articles))
+  :rule-classes (:type-prescription :rewrite))
+
+(defthm fn-nntp-group-count-at-most-articles
+  (<= (fn-nntp-group-count group articles) (len articles))
+  :rule-classes (:rewrite :linear))
+
+(defun fn-nntp-group-low (group articles)
+  (if (consp articles)
+      (let ((number (fn-nntp-article-number group (car articles)))
+            (rest (fn-nntp-group-low group (cdr articles))))
+        (if (and (posp number)
+                 (or (not (posp rest)) (< number rest)))
+            number
+          rest))
+    0))
+
+(defthm fn-nntp-group-low-natp
+  (natp (fn-nntp-group-low group articles))
+  :rule-classes (:type-prescription :rewrite))
+
+(defthm fn-nntp-group-low-bounded
+  (<= (fn-nntp-group-low group articles) *fn-nntp-max-article-number*)
+  :rule-classes (:rewrite :linear))
+
+(defthm fn-nntp-group-low-is-available
+  (implies (posp (fn-nntp-group-low group articles))
+           (consp (fn-nntp-available-article
+                   group (fn-nntp-group-low group articles) articles))))
+
+(defun fn-nntp-group-high (group articles)
+  (if (consp articles)
+      (let ((number (fn-nntp-article-number group (car articles)))
+            (rest (fn-nntp-group-high group (cdr articles))))
+        (if (and (posp number) (< rest number)) number rest))
+    0))
+
+(defthm fn-nntp-group-high-natp
+  (natp (fn-nntp-group-high group articles))
+  :rule-classes (:type-prescription :rewrite))
+
+(defthm fn-nntp-group-high-bounded
+  (<= (fn-nntp-group-high group articles) *fn-nntp-max-article-number*)
+  :rule-classes (:rewrite :linear))
+
+(defthm fn-nntp-group-high-is-available
+  (implies (posp (fn-nntp-group-high group articles))
+           (consp (fn-nntp-available-article
+                   group (fn-nntp-group-high group articles) articles))))
+
+(defun fn-nntp-group-next-number (group current articles)
+  ; The least available number strictly greater than `current`, or 0.
+  (if (consp articles)
+      (let ((number (fn-nntp-article-number group (car articles)))
+            (rest (fn-nntp-group-next-number group current (cdr articles))))
+        (if (and (posp number)
+                 (fn-ag-less current number)
+                 (or (not (posp rest)) (< number rest)))
+            number
+          rest))
+    0))
+
+(defthm fn-nntp-group-next-number-natp
+  (natp (fn-nntp-group-next-number group current articles))
+  :rule-classes (:type-prescription :rewrite))
+
+(defthm fn-nntp-group-next-number-is-available
+  (implies (posp (fn-nntp-group-next-number group current articles))
+           (consp (fn-nntp-available-article
+                   group (fn-nntp-group-next-number group current articles)
+                   articles))))
+
+(defun fn-nntp-group-last-number (group current articles)
+  ; The greatest available number strictly less than `current`, or 0.
+  (if (consp articles)
+      (let ((number (fn-nntp-article-number group (car articles)))
+            (rest (fn-nntp-group-last-number group current (cdr articles))))
+        (if (and (posp number)
+                 (fn-ag-less number current)
+                 (< rest number))
+            number
+          rest))
+    0))
+
+(defthm fn-nntp-group-last-number-natp
+  (natp (fn-nntp-group-last-number group current articles))
+  :rule-classes (:type-prescription :rewrite))
+
+(defthm fn-nntp-group-last-number-is-available
+  (implies (posp (fn-nntp-group-last-number group current articles))
+           (consp (fn-nntp-available-article
+                   group (fn-nntp-group-last-number group current articles)
+                   articles))))
+
+; LISTGROUP's list.  Only the numbers inside the requested range are inserted,
+; so the sort is charged to the command's own range and not to the archive.
+(defun fn-nntp-group-range-numbers (group low high articles)
+  (if (consp articles)
+      (let ((number (fn-nntp-article-number group (car articles))))
+        (if (and (posp number)
+                 (fn-ng-less-equal low number)
+                 (fn-ng-less-equal number high))
+            (fn-nntp-insert-number
+             number (fn-nntp-group-range-numbers group low high (cdr articles)))
+          (fn-nntp-group-range-numbers group low high (cdr articles))))
     nil))
 
-(defun fn-nntp-range-numbers (numbers low high)
-  (mbe :logic
-       (if (consp numbers)
-           (if (and (<= low (car numbers)) (<= (car numbers) high))
-               (cons (car numbers)
-                     (fn-nntp-range-numbers (cdr numbers) low high))
-             (fn-nntp-range-numbers (cdr numbers) low high))
-         nil)
-       :exec
-       (if (consp numbers)
-           (if (and (fn-ng-less-equal low (fn-ag-car numbers))
-                    (fn-ng-less-equal (fn-ag-car numbers) high))
-               (cons (fn-ag-car numbers)
-                     (fn-nntp-range-numbers (fn-ag-cdr numbers) low high))
-             (fn-nntp-range-numbers (fn-ag-cdr numbers) low high))
-         nil)))
+(defthm fn-nntp-group-range-numbers-are-ordered
+  (fn-nntp-orderedp (fn-nntp-group-range-numbers group low high articles)))
+
+(defthm fn-nntp-group-range-numbers-are-available
+  (implies (member-equal value
+                         (fn-nntp-group-range-numbers group low high articles))
+           (and (posp value)
+                (consp (fn-nntp-available-article group value articles))))
+  :rule-classes nil)
 
 (defun fn-nntp-number-lines (numbers)
   (if (consp numbers)
-      (cons (fn-nntp-decimal (car numbers))
+      (cons (fn-nntp-decimal-field (car numbers))
             (fn-nntp-number-lines (cdr numbers)))
     nil))
 
-(defun fn-nntp-next-number (current numbers)
-  (mbe :logic
-       (if (consp numbers)
-           (if (< current (car numbers))
-               (car numbers)
-             (fn-nntp-next-number current (cdr numbers)))
-         0)
-       :exec
-       (if (consp numbers)
-           (if (fn-ag-less current (fn-ag-car numbers))
-               (fn-ag-car numbers)
-             (fn-nntp-next-number current (fn-ag-cdr numbers)))
-         0)))
-
-(defun fn-nntp-last-number (current numbers)
-  (mbe :logic
-       (if (consp numbers)
-           (if (< (car numbers) current)
-               (let ((candidate (fn-nntp-last-number current (cdr numbers))))
-                 (if (posp candidate) candidate (car numbers)))
-             0)
-         0)
-       :exec
-       (if (consp numbers)
-           (if (fn-ag-less (fn-ag-car numbers) current)
-               (let ((candidate (fn-nntp-last-number current (fn-ag-cdr numbers))))
-                 (if (posp candidate) candidate (fn-ag-car numbers)))
-             0)
-         0)))
-
 (defun fn-nntp-group-summary (archive group)
-  (let ((numbers (fn-nntp-group-numbers group (fn-state-articles archive))))
-    (if (consp numbers)
-        (list (len numbers) (car numbers) (fn-nntp-last numbers))
-      (let ((low (fn-next-number group (fn-state-nexts archive))))
-        (list 0 low (if (posp low) (1- low) 0))))))
+  (let ((low (fn-nntp-group-low group (fn-state-articles archive))))
+    (if (posp low)
+        (list (fn-nntp-group-count group (fn-state-articles archive))
+              low
+              (fn-nntp-group-high group (fn-state-articles archive)))
+      (let ((watermark (fn-next-number group (fn-state-nexts archive))))
+        (list 0 watermark (if (posp watermark) (- watermark 1) 0))))))
 
 (defun fn-nntp-summary-count (x)
   (mbe :logic (car x) :exec (fn-ag-car x)))
@@ -737,16 +949,16 @@
   (let ((summary (fn-nntp-group-summary archive group)))
     (fn-nntp-append-pieces
      (list (fn-nntp-string-octets "211 ")
-           (fn-nntp-decimal (fn-nntp-summary-count summary)) '(32)
-           (fn-nntp-decimal (fn-nntp-summary-low summary)) '(32)
-           (fn-nntp-decimal (fn-nntp-summary-high summary)) '(32)
+           (fn-nntp-decimal-field (fn-nntp-summary-count summary)) '(32)
+           (fn-nntp-decimal-field (fn-nntp-summary-low summary)) '(32)
+           (fn-nntp-decimal-field (fn-nntp-summary-high summary)) '(32)
            (fn-nntp-string-octets group)))))
 
 (defun fn-nntp-group-result (session archive group)
   (if (mbe :logic (member-equal group (fn-state-groups archive))
            :exec (fn-ag-member group (fn-state-groups archive)))
-      (let* ((numbers (fn-nntp-group-numbers group (fn-state-articles archive)))
-             (current (if (consp numbers) (car numbers) nil))
+      (let* ((low (fn-nntp-group-low group (fn-state-articles archive)))
+             (current (if (posp low) low nil))
              (next-session (fn-nntp-set-cursor session group current)))
         (fn-nntp-make-result
          next-session
@@ -766,12 +978,13 @@
 (defun fn-nntp-listgroup-result (session archive group range)
   (if (mbe :logic (member-equal group (fn-state-groups archive))
            :exec (fn-ag-member group (fn-state-groups archive)))
-      (let* ((numbers (fn-nntp-group-numbers group (fn-state-articles archive)))
-             (current (if (consp numbers) (car numbers) nil))
+      (let* ((low (fn-nntp-group-low group (fn-state-articles archive)))
+             (current (if (posp low) low nil))
              (next-session (fn-nntp-set-cursor session group current))
-             (shown (fn-nntp-range-numbers numbers
-                                           (fn-nntp-range-low range)
-                                           (fn-nntp-range-high range))))
+             (shown (fn-nntp-group-range-numbers group
+                                                 (fn-nntp-range-low range)
+                                                 (fn-nntp-range-high range)
+                                                 (fn-state-articles archive))))
         (fn-nntp-multi-octets next-session
                               (fn-nntp-listgroup-initial archive group)
                               (fn-nntp-number-lines shown)))
@@ -815,31 +1028,43 @@
                ((equal kind :head) (fn-nntp-string-octets "221 "))
                ((equal kind :body) (fn-nntp-string-octets "222 "))
                (t (fn-nntp-string-octets "223 ")))
-         (fn-nntp-decimal number) '(32)
+         (fn-nntp-decimal-field number) '(32)
          (fn-nntp-string-octets (fn-article-msgid article))
          (cond ((equal kind :article) (fn-nntp-string-octets " article follows"))
                ((equal kind :head) (fn-nntp-string-octets " headers follow"))
                ((equal kind :body) (fn-nntp-string-octets " body follows"))
                (t (fn-nntp-string-octets " retrieved"))))))
 
+; A stored article that cannot be projected degrades only itself, and it says
+; which of the two reasons applies.  RFC 3977 section 3.2.1 assigns 503 to a
+; recognized command whose legitimate case the server handles only in part.
+; The cursor moves only on a success; every refusal returns `session`.
+;
+; The first branch is defensive.  fn-nntp-available-article never returns an
+; article that fails fn-nntp-article-idp, and a Message-ID retrieval matched the
+; stored identifier against a token that is itself at most 250 printable
+; octets, so no composed path reaches it; it is not the subject of any theorem.
 (defun fn-nntp-article-response (session article number kind updatep group)
-  (let ((section (fn-nntp-article-section article kind))
-        (next-session (if updatep
-                          (fn-nntp-set-cursor session group number)
-                        session)))
-    (if (equal kind :stat)
-        (fn-nntp-make-result
-         next-session
-         (list (fn-nntp-reply-effect
-                (fn-nntp-crlf (fn-nntp-retrieval-initial kind number article)))))
-      (if (equal (car section) :ok)
+  (if (not (fn-nntp-article-idp article))
+      (fn-nntp-single session "503 stored article identifier unavailable")
+    (let ((next-session (if updatep
+                            (fn-nntp-set-cursor session group number)
+                          session)))
+      (if (equal kind :stat)
           (fn-nntp-make-result
            next-session
            (list (fn-nntp-reply-effect
-                  (append (fn-nntp-crlf (fn-nntp-retrieval-initial kind number article))
-                          (fn-nntp-stuff-lines (car (cdr section)))
-                          '(46 13 10)))))
-        (fn-nntp-single session "503 stored article framing unavailable")))))
+                  (fn-nntp-crlf (fn-nntp-retrieval-initial kind number article)))))
+        (let ((section (fn-nntp-article-section article kind)))
+          (if (and (fn-nntp-article-framedp article)
+                   (equal (car section) :ok))
+              (fn-nntp-make-result
+               next-session
+               (list (fn-nntp-reply-effect
+                      (append (fn-nntp-crlf (fn-nntp-retrieval-initial kind number article))
+                              (fn-nntp-stuff-lines (car (cdr section)))
+                              '(46 13 10)))))
+            (fn-nntp-single session "503 stored article framing unavailable")))))))
 
 (defun fn-nntp-current-retrieval (session archive kind)
   (let ((group (fn-nntp-session-group session))
@@ -848,8 +1073,8 @@
         (fn-nntp-single session "412 no newsgroup selected")
       (if (null current)
           (fn-nntp-single session "420 no current article")
-        (let ((article (fn-nntp-find-group-number group current
-                                                   (fn-state-articles archive))))
+        (let ((article (fn-nntp-available-article group current
+                                                  (fn-state-articles archive))))
           (if (consp article)
               (fn-nntp-article-response session article current kind t group)
             (fn-nntp-single session "420 no current article")))))))
@@ -862,7 +1087,7 @@
       (if (null group)
           (fn-nntp-single session "412 no newsgroup selected")
         (let ((article (fn-nntp-find-group-number group number
-                                                   (fn-state-articles archive))))
+                                                  (fn-state-articles archive))))
           (if (consp article)
               (fn-nntp-article-response session article number kind t group)
             (fn-nntp-single session "423 no article with that number")))))))
@@ -910,13 +1135,14 @@
         (fn-nntp-single session "412 no newsgroup selected")
       (if (null current)
           (fn-nntp-single session "420 no current article")
-        (let* ((numbers (fn-nntp-group-numbers group (fn-state-articles archive)))
-               (number (if (equal direction :next)
-                           (fn-nntp-next-number current numbers)
-                         (fn-nntp-last-number current numbers))))
+        (let ((number (if (equal direction :next)
+                          (fn-nntp-group-next-number
+                           group current (fn-state-articles archive))
+                        (fn-nntp-group-last-number
+                         group current (fn-state-articles archive)))))
           (if (posp number)
-              (let ((article (fn-nntp-find-group-number group number
-                                                         (fn-state-articles archive))))
+              (let ((article (fn-nntp-available-article
+                              group number (fn-state-articles archive))))
                 (fn-nntp-article-response session article number :stat t group))
             (if (equal direction :next)
                 (fn-nntp-single session "421 no next article")
@@ -926,8 +1152,8 @@
   (let ((summary (fn-nntp-group-summary archive group)))
     (fn-nntp-append-pieces
      (list (fn-nntp-string-octets group) '(32)
-           (fn-nntp-decimal (fn-nntp-summary-high summary)) '(32)
-           (fn-nntp-decimal (fn-nntp-summary-low summary))
+           (fn-nntp-decimal-field (fn-nntp-summary-high summary)) '(32)
+           (fn-nntp-decimal-field (fn-nntp-summary-low summary))
            (fn-nntp-string-octets " y")))))
 
 (defun fn-nntp-active-lines (archive groups)
@@ -1064,69 +1290,98 @@
                  (list (fn-nntp-string-octets "CAPABILITIES HEAD HELP QUIT STAT")
                        (fn-nntp-string-octets "GROUP ARTICLE BODY NEXT LAST LIST LISTGROUP"))))
 
+; The dispatcher is split by whether a command reads the archive at all.  No
+; archive content can deny CAPABILITIES, HELP, QUIT, an unrecognized command,
+; or a syntax error: see fn-nntp-archive-free-step-ignores-the-archive in
+; books/nntp-invariants.lisp.
+(defun fn-nntp-archive-keywordp (keyword)
+  (or (fn-nntp-keywordp keyword "GROUP")
+      (fn-nntp-keywordp keyword "LISTGROUP")
+      (fn-nntp-keywordp keyword "LIST")
+      (fn-nntp-keywordp keyword "NEXT")
+      (fn-nntp-keywordp keyword "LAST")
+      (fn-nntp-keywordp keyword "ARTICLE")
+      (fn-nntp-keywordp keyword "HEAD")
+      (fn-nntp-keywordp keyword "BODY")
+      (fn-nntp-keywordp keyword "STAT")))
+
+(defun fn-nntp-session-command (session keyword args)
+  (cond
+   ((fn-nntp-keywordp keyword "CAPABILITIES")
+    (if (or (null args)
+            (and (consp args) (null (cdr args))
+                 (fn-nntp-keyword-tokenp (car args))))
+        (fn-nntp-capabilities session)
+      (fn-nntp-single session "501 syntax error")))
+   ((fn-nntp-keywordp keyword "HELP")
+    (if (null args) (fn-nntp-help session)
+      (fn-nntp-single session "501 syntax error")))
+   ((fn-nntp-keywordp keyword "QUIT")
+    (if (null args)
+        (fn-nntp-make-result (fn-nntp-make-session nil
+                                                   (fn-nntp-session-group session)
+                                                   (fn-nntp-session-current session)
+                                                   (fn-nntp-session-projected session))
+                             (list (fn-nntp-reply-effect
+                                    (fn-nntp-crlf (fn-nntp-string-octets "205 closing connection")))
+                                   (fn-nntp-close-effect)))
+      (fn-nntp-single session "501 syntax error")))
+   (t (fn-nntp-single session "500 command not recognized"))))
+
+(defun fn-nntp-archive-command (session archive keyword args)
+  (cond
+   ((fn-nntp-keywordp keyword "GROUP")
+    (if (and (consp args) (null (cdr args)) (fn-nntp-printable-tokenp (car args)))
+        (fn-nntp-group-result session archive (fn-nntp-token-string (car args)))
+      (fn-nntp-single session "501 syntax error")))
+   ((fn-nntp-keywordp keyword "LISTGROUP")
+    (fn-nntp-listgroup-command session archive args))
+   ((fn-nntp-keywordp keyword "LIST") (fn-nntp-list-response session archive args))
+   ((fn-nntp-keywordp keyword "NEXT")
+    (if (null args) (fn-nntp-next-or-last session archive :next)
+      (fn-nntp-single session "501 syntax error")))
+   ((fn-nntp-keywordp keyword "LAST")
+    (if (null args) (fn-nntp-next-or-last session archive :last)
+      (fn-nntp-single session "501 syntax error")))
+   ((fn-nntp-keywordp keyword "ARTICLE") (fn-nntp-retrieval session archive :article args))
+   ((fn-nntp-keywordp keyword "HEAD") (fn-nntp-retrieval session archive :head args))
+   ((fn-nntp-keywordp keyword "BODY") (fn-nntp-retrieval session archive :body args))
+   (t (fn-nntp-retrieval session archive :stat args))))
+
 (defun fn-nntp-command (session archive tokens)
   (let ((keyword (mbe :logic (car tokens) :exec (fn-ag-car tokens)))
         (args (mbe :logic (cdr tokens) :exec (fn-ag-cdr tokens))))
     (if (not (fn-nntp-keyword-tokenp keyword))
         (fn-nntp-single session "501 syntax error")
-      (cond
-     ((fn-nntp-keywordp keyword "CAPABILITIES")
-      (if (or (null args)
-              (and (consp args) (null (cdr args))
-                   (fn-nntp-keyword-tokenp (car args))))
-          (fn-nntp-capabilities session)
-        (fn-nntp-single session "501 syntax error")))
-     ((fn-nntp-keywordp keyword "HELP")
-      (if (null args) (fn-nntp-help session) (fn-nntp-single session "501 syntax error")))
-     ((fn-nntp-keywordp keyword "QUIT")
-      (if (null args)
-          (fn-nntp-make-result (fn-nntp-make-session nil
-                                                       (fn-nntp-session-group session)
-                                                       (fn-nntp-session-current session))
-                               (list (fn-nntp-reply-effect
-                                      (fn-nntp-crlf (fn-nntp-string-octets "205 closing connection")))
-                                     (fn-nntp-close-effect)))
-        (fn-nntp-single session "501 syntax error")))
-     ((fn-nntp-keywordp keyword "GROUP")
-      (if (and (consp args) (null (cdr args)) (fn-nntp-printable-tokenp (car args)))
-          (fn-nntp-group-result session archive (fn-nntp-token-string (car args)))
-        (fn-nntp-single session "501 syntax error")))
-     ((fn-nntp-keywordp keyword "LISTGROUP")
-      (fn-nntp-listgroup-command session archive args))
-     ((fn-nntp-keywordp keyword "LIST") (fn-nntp-list-response session archive args))
-     ((fn-nntp-keywordp keyword "NEXT")
-      (if (null args) (fn-nntp-next-or-last session archive :next)
-        (fn-nntp-single session "501 syntax error")))
-     ((fn-nntp-keywordp keyword "LAST")
-      (if (null args) (fn-nntp-next-or-last session archive :last)
-        (fn-nntp-single session "501 syntax error")))
-     ((fn-nntp-keywordp keyword "ARTICLE") (fn-nntp-retrieval session archive :article args))
-     ((fn-nntp-keywordp keyword "HEAD") (fn-nntp-retrieval session archive :head args))
-     ((fn-nntp-keywordp keyword "BODY") (fn-nntp-retrieval session archive :body args))
-     ((fn-nntp-keywordp keyword "STAT") (fn-nntp-retrieval session archive :stat args))
-     (t (fn-nntp-single session "500 command not recognized"))))))
+      (if (not (fn-nntp-archive-keywordp keyword))
+          (fn-nntp-session-command session keyword args)
+        ; RFC 3977 section 3.2.1 assigns 503 to a recognized command the server
+        ; cannot carry out because it does not hold the required information.
+        (if (fn-nntp-session-projected session)
+            (fn-nntp-archive-command session archive keyword args)
+          (fn-nntp-single session "503 archive projection unavailable"))))))
 
 ; A single command event is the integration boundary.  Other wire events are
-; rejected as syntax, and a closed session produces no further effects.
+; rejected as syntax, and a closed session produces no further effects.  The
+; archive projection is not revalidated here: fn-nntp-open-session decided it
+; once and the session carries the verdict.
 (defun fn-nntp-step (session archive wire-event)
   (if (or (not (fn-nntp-sessionp session))
           (not (equal (fn-nntp-session-openp session) t)))
       (fn-nntp-make-result session nil)
-    (if (not (fn-nntp-projectionp archive))
-        (fn-nntp-single session "503 archive projection unavailable")
-      (if (and (consp wire-event)
-               (equal (car wire-event) :command)
-               (consp (cdr wire-event))
-               (null (cdr (cdr wire-event))))
-          (let ((line (car (cdr wire-event))))
-            (if (not (fn-nntp-command-inputp line))
-                (fn-nntp-single session "501 syntax error")
-              (let ((tokens (fn-nntp-tokenize line)))
-                (if (and (consp tokens)
-                         (fn-nntp-command-arguments-at-mostp tokens))
-                    (fn-nntp-command session archive tokens)
-                  (fn-nntp-single session "501 syntax error")))))
-        (fn-nntp-single session "501 syntax error")))))
+    (if (and (consp wire-event)
+             (equal (car wire-event) :command)
+             (consp (cdr wire-event))
+             (null (cdr (cdr wire-event))))
+        (let ((line (car (cdr wire-event))))
+          (if (not (fn-nntp-command-inputp line))
+              (fn-nntp-single session "501 syntax error")
+            (let ((tokens (fn-nntp-tokenize line)))
+              (if (and (consp tokens)
+                       (fn-nntp-command-arguments-at-mostp tokens))
+                  (fn-nntp-command session archive tokens)
+                (fn-nntp-single session "501 syntax error")))))
+      (fn-nntp-single session "501 syntax error"))))
 
 (verify-guards fn-nntp-space-or-tabp)
 (verify-guards fn-nntp-command-bytep)
@@ -1166,12 +1421,13 @@
 (verify-guards fn-nntp-message-id-tokenp)
 (verify-guards fn-nntp-decimal-rev)
 (verify-guards fn-nntp-decimal)
+(verify-guards fn-nntp-decimal-field)
 (verify-guards fn-nntp-session-openp)
 (verify-guards fn-nntp-session-group)
 (verify-guards fn-nntp-session-current)
+(verify-guards fn-nntp-session-projected)
 (verify-guards fn-nntp-make-session)
 (verify-guards fn-nntp-sessionp)
-(verify-guards fn-nntp-initial-session)
 (verify-guards fn-nntp-set-cursor)
 (verify-guards fn-nntp-result-session)
 (verify-guards fn-nntp-result-effects)
@@ -1192,19 +1448,27 @@
 (verify-guards fn-nntp-split-head)
 (verify-guards fn-nntp-split-body)
 (verify-guards fn-nntp-article-section)
-(verify-guards fn-nntp-safe-string-tokenp)
-(verify-guards fn-nntp-safe-string-listp)
+(verify-guards fn-nntp-safe-group-namep)
+(verify-guards fn-nntp-safe-group-listp)
+(verify-guards fn-nntp-nexts-boundedp)
+(verify-guards fn-nntp-article-idp)
+(verify-guards fn-nntp-article-framedp)
 (verify-guards fn-nntp-projection-articlep)
-(verify-guards fn-nntp-projection-articlesp)
 (verify-guards fn-nntp-projectionp)
+(verify-guards fn-nntp-open-session)
 (verify-guards fn-nntp-membership-number)
+(verify-guards fn-nntp-article-number)
 (verify-guards fn-nntp-find-group-number)
+(verify-guards fn-nntp-available-article)
 (verify-guards fn-nntp-insert-number)
-(verify-guards fn-nntp-group-numbers)
-(verify-guards fn-nntp-range-numbers)
+(verify-guards fn-nntp-orderedp)
+(verify-guards fn-nntp-group-count)
+(verify-guards fn-nntp-group-low)
+(verify-guards fn-nntp-group-high)
+(verify-guards fn-nntp-group-next-number)
+(verify-guards fn-nntp-group-last-number)
+(verify-guards fn-nntp-group-range-numbers)
 (verify-guards fn-nntp-number-lines)
-(verify-guards fn-nntp-next-number)
-(verify-guards fn-nntp-last-number)
 (verify-guards fn-nntp-group-summary)
 (verify-guards fn-nntp-summary-count)
 (verify-guards fn-nntp-summary-low)
@@ -1235,5 +1499,8 @@
 (verify-guards fn-nntp-list-response)
 (verify-guards fn-nntp-capabilities)
 (verify-guards fn-nntp-help)
+(verify-guards fn-nntp-archive-keywordp)
+(verify-guards fn-nntp-session-command)
+(verify-guards fn-nntp-archive-command)
 (verify-guards fn-nntp-command)
 (verify-guards fn-nntp-step)

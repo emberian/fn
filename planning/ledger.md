@@ -13,16 +13,16 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 131 |
 | Certification roots in the Makefile | 131 |
 | Books inside the root closure | 131 |
-| `defthm` and `defthmd` events | 1650 |
-| `defun` events | 1324 |
-| Functions with verified guards | 713 |
+| `defthm` and `defthmd` events | 1728 |
+| `defun` events | 1347 |
+| Functions with verified guards | 725 |
 | Functions declared `:verify-guards nil` and never verified | 36 |
 | Functions left at the default with an explicit guard | 187 |
-| Functions left at the default with no guard | 388 |
-| `assert-event` checks | 1868 |
-| `must-fail` checks | 90 |
+| Functions left at the default with no guard | 399 |
+| `assert-event` checks | 1948 |
+| `must-fail` checks | 94 |
 | `encapsulate` events | 7 |
-| Theorems flagged SUSPECT by shape | 21 |
+| Theorems flagged SUSPECT by shape | 22 |
 
 ## Per book
 
@@ -71,9 +71,9 @@ that `make certify` requests.
 | `books/exchange.lisp` | root | 10 | 40 | 40/0/0/0 | 0 | 0 | 1 |
 | `books/index.lisp` | root | 24 | 22 | 22/0/0/0 | 0 | 0 | 0 |
 | `books/journal.lisp` | root | 9 | 61 | 0/0/0/61 | 0 | 0 | 0 |
-| `books/nntp-effects.lisp` | root | 57 | 3 | 0/0/0/3 | 0 | 0 | 0 |
-| `books/nntp-invariants.lisp` | root | 49 | 3 | 0/0/0/3 | 0 | 0 | 0 |
-| `books/nntp.lisp` | root | 10 | 115 | 109/0/6/0 | 0 | 0 | 0 |
+| `books/nntp-effects.lisp` | root | 97 | 12 | 0/0/0/12 | 0 | 0 | 1 |
+| `books/nntp-invariants.lisp` | root | 67 | 4 | 0/0/0/4 | 0 | 0 | 0 |
+| `books/nntp.lisp` | root | 30 | 127 | 121/0/6/0 | 0 | 0 | 0 |
 | `books/node-invariants.lisp` | root | 20 | 0 | 0/0/0/0 | 0 | 0 | 3 |
 | `books/node-traces.lisp` | root | 19 | 23 | 0/0/0/23 | 0 | 0 | 4 |
 | `books/node.lisp` | root | 7 | 30 | 30/0/0/0 | 0 | 0 | 2 |
@@ -136,7 +136,7 @@ that `make certify` requests.
 | `tests/acl2/index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 0 | 0 |
 | `tests/acl2/journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/nntp-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 2 | 0 |
-| `tests/acl2/nntp-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 76 | 0 | 0 |
+| `tests/acl2/nntp-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 156 | 4 | 0 |
 | `tests/acl2/node-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 16 | 2 | 0 |
 | `tests/acl2/node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 0 | 0 |
 | `tests/acl2/node-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 24 | 0 | 0 |
@@ -177,6 +177,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bp-effect-for-pending-attempt-unfolds` | `books/bp-workflow-invariants.lisp` | 882 | branch-of-definition: the hypothesis is a branch test of fn-bp-effect-for-pending and the conclusion is that branch's value |
 | `fn-bpr-context-from-request-is-constructor` | `books/bp-receiver-state-invariants.lisp` | 86 | definition-restated: the conclusion is the body of fn-bpr-context-from-request |
 | `fn-exchange-ingest-refusal-is-no-op` | `books/exchange.lisp` | 364 | branch-of-definition: the hypothesis negates a branch test of fn-exchange-ingest and the conclusion is that branch's value |
+| `fn-nntp-block-scan-start-without-a-dot` | `books/nntp-effects.lisp` | 395 | branch-of-definition: the hypothesis negates a branch test of fn-nntp-block-scan and the conclusion is that branch's value |
 | `fn-node-capacity-refusal-is-no-op` | `books/node.lisp` | 367 | branch-of-definition: the hypothesis is a branch test of fn-node-prepare and the conclusion is that branch's value |
 | `fn-node-complete-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 141 | closed-theory-corollary: proved only by fn-node-complete-preserves-state, fn-node-state-has-committed-archive-pins |
 | `fn-node-prepare-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 124 | closed-theory-corollary: proved only by fn-node-prepare-preserves-state, fn-node-state-has-committed-archive-pins |

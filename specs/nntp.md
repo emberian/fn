@@ -34,6 +34,14 @@ not move either; successful numeric retrieval updates the current article number
 Use the specified 412/420/423/430 cases and error precedence. Later expiry can
 invalidate a once-valid cursor; do not bake eternal existence into the invariant.
 
+NNT-007: the session also carries the archive-configuration verdict computed
+when the connection opens. No command recomputes a whole-archive recognizer:
+`fn-nntp-open-session` decides once, `fn-nntp-step` reads the carried value, and
+`fn-nntp-step-preserves-carried-projection` states that every step keeps it. A
+committed article the projection cannot render answers for itself and does not
+deny the service; see the served-path section of
+[the implementation checklist](nntp-audit.md).
+
 NNT-003: interpret CRLF framing and dot-stuffed multi-line data independently of
 socket chunk boundaries. A line containing only the terminator ends article
 input; command-like body text stays body text. Bound buffers and drain rejected
