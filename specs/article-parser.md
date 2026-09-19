@@ -63,6 +63,23 @@ Unknown and duplicate fields remain separate field views in source order.
 returns all matching views.  Matching uses the lowercased ftext octet name only.
 Neither helper gives a semantic meaning to a field.
 
+The invariant book proves that this `fields` view corresponds to the preserved
+header octets, which is what `books/bp-ingress.lisp` consumes through the
+semantic field layer.  `fn-article-successful-parse-fields-recompose-header`
+proves that concatenating every field's `raw-lines` in field order, each
+followed by CRLF, is exactly the `header` octets;
+`fn-article-successful-parse-fields-correspond` proves, for every field of every
+successful parse, that `lower-name` is the ASCII-lowercasing of the octets
+before the first colon of the field's first raw line and that `unfolded-value`
+is `fn-article-unfold-reference` of its raw lines.  That reference is the
+RFC 5322 §2.2.3 rule "unfolding is accomplished by simply removing any CRLF
+that is immediately followed by WSP" (cited from memory; RFC 5322 is not in
+this repository), defined over the field's folded octets in
+`fn-article-unfold-octets` independently of how the parser builds a value, with
+the field name and its colon removed afterwards.  Together with exact-source
+preservation, the fields view is a partition of the received header rather than
+a summary of it.
+
 ## Deliberate exclusions
 
 RFC 5536 §2.2 says compliant generation has a space after a colon, uses
