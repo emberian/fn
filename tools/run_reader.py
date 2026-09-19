@@ -256,6 +256,9 @@ def main():
     args = parser.parse_args()
     if not 0 <= args.port <= 65535:
         parser.error("--port must be from 0 through 65535")
+    if os.environ.get("FN_HOST") == "native":
+        from tools import fn_native
+        return fn_native.exec_reader(args)
 
     reader = None
     store = None
