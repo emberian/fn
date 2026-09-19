@@ -31,6 +31,15 @@ A release candidate still needs the selected D05/D18 scope and a documented
 platform/authority profile. Mission qualification, public deployment and private
 group encryption do not follow from completing this plan.
 
+## Roles
+
+Terra, Sol, Luna and Astra are the 2026-09-18 Codex worker roles: Terra is
+`gpt-5.6-terra`, Sol is `gpt-5.6-sol`, Luna is `gpt-5.6-luna`, and Astra is the
+Codex root. These names are staffing allocations for this plan, not correctness
+claims — a role's output is evidence only when it carries its own
+certification, tests and theorem statements, not because of which model
+produced it.
+
 ## Parallel execution
 
 Use up to **ten independent implementation/proof owners**, root integration,
@@ -86,25 +95,46 @@ They are local engineering contracts, not publication of a permanent ABI.
 
 ## C1 packets
 
-Suggested launch set: C1-01 through C1-08, C1-11 and C1-12. Start C1-09/10 as
-slots free; neither needs a public signing suite. C1-05 and C1-11 publish their
-interfaces before C1-06's final adoption. This is a broad first wave, not a
-requirement to finish all existing proofs before beginning local service work.
+The launch order below adopts the independent review's re-sequencing
+(`review-2026-09-18-independent.md` §8): substrate — identity, causality, the
+crash model and named assumptions — before service, because C1-11, C2-06 and
+C2-12 were previously deferred while gating everything built on top of them.
+Six packets are new or reshaped (C1-00, C1-13 through C1-16, and reshapes of
+C1-04/07/09/10/12); the rest keep their existing IDs and scope from the table
+this replaces. Tier is a staffing allocation (see Roles above), not a
+correctness claim.
 
-| ID / owner | Concrete artifact and boundary | Required exit and ledger |
-| --- | --- | --- |
-| C1-01 / Terra | Remaining BP guard graph: `bp-ingress`, workflow records, receipt, receipt records, outbound; preserve existing logical behavior | Actual world inventory closes the remaining 97 unverified functions; malformed public calls exercise their stated guards. Sender workflow/ADU are already guarded. `PRF-014/016`, `SCN-013/015`; work/allocation bounds and raw host packaging remain separate. |
-| C1-02 / Sol | FNWF bounded codec and byte/live/replay relation, in new workflow codec/refinement books and the owned workflow adapter | Exact record encode/decode and canonical accepted bytes; append/live/replay equality; lone intent fences; replay cannot resubmit; durable attempt grants one consumed permission. Include restart-only retry trap and syscall ambiguity. `PRF-001/005/007/014`, `SCN-008/015/017`. |
-| C1-03 / Sol | FNRJ bounded codec and byte/live/replay relation, separate receipt codec/refinement books and receipt adapter | Request/context/intent/decision correspond to actual bytes and receiver transitions; no delete/receipt before the appropriate durable decision; wrong context/corruption/refusal retain prior obligations. Compose with existing fixed-Store results. `PRF-005/007/012/014`, `SCN-008/013/017`. |
-| C1-04 / Sol or Astra | New receiver/Store interleaving relation over actual Store append, fence and observed recovery; also state the sender snapshot compatibility/reopen rule | Arbitrary finite permitted interleavings preserve article/subject/archive and receipt bindings, including unrelated accepts, duplicates, refusal and uncertain recovery. Nonempty traces exercise article-before-context. Do not merely assume the Store stayed compatible. Depends on stable C1-03 relation for final byte composition. `PRF-001/003/007/012`, `SCN-002/003/008/015`. |
-| C1-05 / Terra + convergence | One mutable service owner over the actual ACL2 Store; bounded per-connection state, persisted group configuration/creation facts and explicit clock observations | Readers see a committed version; exact-generation completion is consumed once; post-disconnect durability survives; stalled output cannot monopolize owner/memory. Configuration recovery supplies honest NEWGROUPS dates. `PRF-001/002/007/014/015`, `SCN-002/003/015`. |
-| C1-06 / Terra | Injection and POST helpers, explicit gateway provenance, preserved received bytes and separate injected projection; adopt through C1-05 | RFC 3977 §6.3.1 and RFC 5536/5537 injection branches have independent transcripts. `240` follows matching durable retained acceptance; bounded rejection drains safely or closes; lost reply/exact retry allocates once; conflicting source cannot overwrite. Native signing is not yet claimed. C1-11 supplies source/provenance contract. `PRF-003/006/013/015/016`, `SCN-002/007/012/014/015`. |
-| C1-07 / Terra | DATE, NEWGROUPS, appropriate MODE READER, OVER and OVERVIEW.FMT helper books and field views; complete missing reader branches | Full chosen RFC clause matrix including ranges, sparse/empty groups, missing overview fields, octet/line counts, clock/date input and advertised variants; actual newsreader plus independent client. Extend session/effect/partition proofs to the changed surface. C1-05 supplies persisted group facts; no fabricated timestamps. `PRF-006/010/014/015`, `SCN-014/015`. |
-| C1-08 / Sol + Terra adoption | Conservative resource model and configured profile, then reservation hooks in Store/staging/BP journals | Count physical framed bytes, retained metadata/history, resolution records and operational headroom, not only article count. Durable reservations/refusal preserve prior obligations; actual ENOSPC remains an uncertain I/O outcome when appropriate. Free-space observation is not a reservation. `PRF-004/007/016`, `SCN-003/007/009/015`. |
-| C1-09 / Terra | Adopt proved rebuildable index as a generation-bound cache, with new host query module and reader hook | Rebuild only from ready authoritative state; invalidate on mutation/fence/recovery; complete range answers equal authoritative enumeration after reopen. No persistent index or performance claim without measurement. `PRF-010/014`, `SCN-004/014`. |
-| C1-10 / Sol | Bounded local checkpoint codec and candidate validator, using the existing complete logical checkpoint | Canonical whole-state round trip, exact prefix/allocator/config binding and decoded checkpoint-plus-suffix equivalence; hostile length/corrupt/mismatched candidate cases. Initially non-authoritative: do not shorten recovery history yet. `PRF-005/008/016`, `SCN-004/013`. |
-| C1-11 / Astra/profile owner | Executable source/provenance/authority types and exact native/legacy vectors; selected D01 source boundary and concrete D08/D09/D11 decision packet with independent primitive/library evidence | Distinguish author, delegated host and gateway; immutable source versus trace projection; group/policy authority; conflicts; version/domain/algorithm tags. Prove basic authority confinement and prototype preimage properties. Present key custody, rotation/recovery and classical/PQ/hybrid tradeoffs before a suite is selected. Current crypto sources must be checked during this task. `PRF-003/005/013`, `SCN-012/013`; no public format freeze without the relevant decision. |
-| C1-12 / Terra | Reusable isolated contact/fault laboratory and early existing-LTP implementation feasibility packet | Pin sources/configuration; identify an actual BPA/LTP adapter route, EID/CLA and restart/API constraints, build/run a minimal loopback experiment if supported. Existing dtn7 TCP success is not LTP evidence. Produce exact blockers if the candidate cannot run; do not quietly rename feasibility as interoperability. `REP-006`, `SCN-010/017`. |
+| Order | Packet | Change | Tier |
+| --- | --- | --- | --- |
+| 0 | C1-00 repair (new) | D1, D2, D3, D10, D11, D12, D13, D14 and the small items from the review; registry hygiene from review §4 (cite keystones, retitle tautologies, retract "certified" where the theorem is on an uncalled API); stale evidence lines | Sonnet |
+| 1 | C1-11 substrate (promoted, reshaped) | Adopt the block shape as the fn statement header; import CellId and capability-chain authority; hybrid signature profile; policy term plus evidence hash in every receipt and journal record (closes D9). Emits the profile and vectors from Lean; ACL2 consumes. Gates C1-06 and all of C2 | Fable design, Opus implementation |
+| 2 | C1-13 bytes into ACL2 (new) | Frame codecs (FNST/FNWF/FNRJ/FNBI + trailer), content-identity derivation, Message-ID bound, charge policy, group table: one owner in ACL2; Python becomes a byte pump. Kills the §4 twins | Opus |
+| 3 | C1-14 crash-model fidelity (new) | Add the two syscall-returned-unobserved crash points (D4); restate acknowledged-history retention over records or make `successes` survive `open-observed` (D5); prove `open-observed ⇒ fn-snt-relation` (D6); `F_FULLFSYNC` and staged init | Fable |
+| 4 | C1-15 assumptions as encapsulates (new) | A-DURABILITY, A-HOST, A-CRYPTO, A-PEER, A-POLICY as constrained functions with local witnesses; functional instantiation is the platform-qualification hook | Opus |
+| 5 | C1-16 teeth ledger (new) | For every keystone: a must-fail sibling per hypothesis, checked as `must-fail`; `proofs.json` `events` generated from the books, not hand-listed | Sonnet |
+| 6 | C1-01 BP guards | Unchanged | Sonnet |
+| 7 | C1-02 / C1-03 FNWF / FNRJ refinement | Add: lift sender theorems to `fn-bp-replay-journal` and `fn-bp-apply-journal-record` (D7); state "durable intent before submit" as a theorem (D8); fix status regression to `:intent` | Fable |
+| 8 | C1-04 evolving Store | Reshape: the Store must be indexed by the relation, not positional; depends on C1-14 | Fable |
+| 9 | C1-05 mutable owner | Add: reader version pin; clock observation type | Opus |
+| 10 | C1-07 reader | Fix D3 first; real effect typing (status code, CRLF, dot-stuffing, 512-octet initial line) | Opus |
+| 11 | C1-08 resource | Per-principal accounting; depends on C1-11 | Opus |
+| 12 | C1-09 index / C1-10 checkpoint | Fix `X ⊆ X`; verify checkpoint guards; strengthen the equivalence to exhibit the frontier's rejecting role | Sonnet / Opus |
+| 13 | C1-06 POST | After C1-11 and C1-13 | Opus |
+| 14 | C1-12 LTP | Reshape: model the BP primary block first; LTP feasibility only against that | Opus |
+
+Non-negotiable prompt content for every C1 lane, learned from the review: paste
+real signatures and absolute paths; forbid `inv ⇒ inv` corollaries as
+deliverables; require a must-fail witness per hypothesis; require that the
+theorem subject be the function the host calls, named; build the whole tree
+after any shared-struct edit; report the pessimistic number with its covered
+scope in the same sentence.
+
+The hygiene lane's 2026-09-18 pass already closed part of order 12: the index
+`X ⊆ X` tautology is replaced with soundness/completeness against authoritative
+memberships, and `books/checkpoint.lisp` is fully guard verified with a new
+`fn-checkpoint-restore-rejects-frontier-reuse` theorem exhibiting the frontier's
+rejecting role. See `planning/assurance-closure.md` and `HANDOFF.md` in that
+lane's worktree for the exact theorem statements.
 
 C1 acceptance demonstration: initialize and recover; two clients post/read a
 cross-post; drop a success and retry; kill during publication; recover one
