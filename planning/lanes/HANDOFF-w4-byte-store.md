@@ -1,6 +1,6 @@
 # HANDOFF: lane `w4/byte-store` (crash model v2, packets P0-P3)
 
-HEAD: `@@HEAD@@` on branch `w4/byte-store` from `dev` at `ca66782`.
+HEAD: `c96e03a` on branch `w4/byte-store` from `dev` at `ca66782`.
 Worktree `build/lanes/w4-byte-store` (remove when the lane lands).
 
 ## Per book
