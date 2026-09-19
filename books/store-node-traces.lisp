@@ -3,6 +3,9 @@
 (include-book "store-node-invariants")
 (include-book "store-files-traces")
 (local (include-book "arithmetic/top" :dir :system))
+; The codecs cluster withdraws the record and codec definitions at export
+; (2026-09-19); the proofs here open fn-record-p and the record accessors.
+(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))
 
 ; The core definitions these correspondence proofs open (the core exports
 ; keystones only, docs/proof-style.md s2); local, named once.
@@ -192,13 +195,21 @@
                            fn-state-fenced
                          fn-replay-advance-txid fn-node-statep fn-statep fn-retain-statep fn-snx-core-definitions))))
 
+; Typed as forward-chaining and type-prescription: the counters must be
+; known naturals for the frontier arithmetic below to normalise.
 (defthm fn-snt-record-counters-natural
   (implies (fn-record-p record)
            (and (natp (fn-record-txid record))
                 (natp (fn-record-generation record))
                 (natp (fn-record-sequence record))))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-record-p))))
+  :rule-classes ((:forward-chaining)
+                 (:type-prescription :corollary
+                  (implies (fn-record-p record) (natp (fn-record-txid record))))
+                 (:type-prescription :corollary
+                  (implies (fn-record-p record) (natp (fn-record-generation record))))
+                 (:type-prescription :corollary
+                  (implies (fn-record-p record) (natp (fn-record-sequence record)))))
+  :hints (("Goal" :in-theory (enable fn-record-p fn-record-uint32p))))
 
 (defthm fn-snt-state-reconstruction
   (implies (fn-sn-statep s)
@@ -274,11 +285,28 @@
   :rule-classes :forward-chaining
   :hints (("Goal" :in-theory (disable fn-node-pending-matchesp))))
 
+; The reserved frontier is the candidate's successor, so the node the
+; relation carries (replay at frontier - 1) is replay at the candidate txid.
+; Stated as the arithmetic fact, :rule-classes nil, so the main proof does not
+; depend on which way the rewriter orients the candidate equality.
+(local
+ (defthm fn-snt-candidate-is-frontier-predecessor
+   (implies (fn-sf-candidatep record records frontier)
+            (equal (+ -1 frontier) (fn-record-txid record)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-sf-candidatep)
+                                   (fn-sf-next-lower fn-record-p
+                                    fn-record-sequence fn-record-txid
+                                    fn-record-generation))))))
+
 (defthm fn-snt-prepare-preserves-relation
   (implies (fn-snt-relation s)
            (fn-snt-relation (fn-sn-prepare s record)))
   :hints (("Goal"
     :use (fn-sn-prepare-preserves-state fn-snt-record-counters-natural
+          (:instance fn-snt-candidate-is-frontier-predecessor
+            (records (fn-sf-records (fn-sn-files s)))
+            (frontier (fn-sf-frontier (fn-sn-files s))))
           (:instance fn-snt-bound-record-is-matching-proposal
             (node (fn-sn-prepare-node (fn-sn-node s) record)))
           (:instance fn-sf-state-records-are-true-list (s (fn-sn-files s)))

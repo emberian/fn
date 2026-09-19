@@ -18,6 +18,9 @@
 
 (in-package "ACL2")
 (include-book "store-node-resolution")
+; The codecs cluster withdraws the record and codec definitions at export
+; (2026-09-19); the proofs here open fn-record-p and the record accessors.
+(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))
 (local (in-theory (enable fn-store-files-invariants-vocabulary
                           fn-store-node-invariants-vocabulary
                           fn-replay-apply-record fn-replay-okp fn-replay-faultp
@@ -85,7 +88,7 @@
                                     :trigger-terms ((fn-sn-open-state x)))
                  (:forward-chaining :corollary (implies (fn-sn-open-code x) (consp x))
                                     :trigger-terms ((fn-sn-open-code x))))
-  :hints (("Goal" :in-theory (enable fn-sn-open-okp))))
+  :hints (("Goal" :in-theory (enable fn-sn-open-kind fn-sn-open-state fn-sn-open-code))))
 
 (defun fn-sn-open-okp (result)
   (declare (xargs :guard t :verify-guards nil))
@@ -390,7 +393,6 @@
                             (st (fn-sn-observed-seed groups capacity
                                                      frontier records))))
            :in-theory (e/d (fn-sn-open-observed fn-sn-open-okp
-                                                  fn-sn-open-ok
                                                  fn-sn-observed-seed)
                             (fn-sn-recover fn-sn-statep fn-sf-statep
                              fn-sf-history-recoverablep fn-sf-replay-node)))))
@@ -456,7 +458,7 @@
            :in-theory (disable fn-sn-open-observed-success-is-state
                                fn-sn-open-observed-success-remains-recovering
                                fn-sn-observed-four-ok-barriers-remain-recovering
-                               fn-sn-open-observed fn-sn-open-state
+                               fn-sn-open-observed
                                fn-sn-open-okp fn-sn-observed-rebarrier
                                 ))))
 
@@ -477,7 +479,7 @@
            :in-theory (disable fn-sn-open-observed-success-is-state
                                fn-sn-open-observed-success-remains-recovering
                                fn-sn-observed-five-ok-barriers-is-ready
-                               fn-sn-open-observed fn-sn-open-state
+                               fn-sn-open-observed
                                fn-sn-open-okp fn-sn-observed-rebarrier
                                 ))))
 
@@ -509,7 +511,7 @@
                          (fn-sn-open-observed groups capacity frontier records)))
                        capacity)))
   :hints (("Goal"
-           :in-theory (e/d (fn-sn-open-observed fn-sn-open-okp fn-sn-open-state
+           :in-theory (e/d (fn-sn-open-observed fn-sn-open-okp
                                                   fn-sn-observed-seed
                                                  fn-sn-recover fn-sn-update
                                                   
@@ -523,7 +525,7 @@
   (implies (fn-sn-open-okp (fn-sn-open-observed groups capacity frontier records))
            (fn-sf-history-recoverablep groups capacity records frontier))
   :hints (("Goal"
-           :in-theory (e/d (fn-sn-open-observed fn-sn-open-okp fn-sn-open-state
+           :in-theory (e/d (fn-sn-open-observed fn-sn-open-okp
                                                   fn-sn-observed-seed
                                                  fn-sn-recover fn-sf-recover
                                                  fn-sn-update 
@@ -546,7 +548,7 @@
                  fn-sn-open-observed-success-configuration
                  fn-sn-open-observed-success-implies-recoverable-history)
            :in-theory (e/d (fn-snt-relation fn-snt-idle-phasep)
-                            (fn-sn-open-observed fn-sn-open-okp fn-sn-open-state
+                            (fn-sn-open-observed fn-sn-open-okp
                              fn-sn-statep fn-sf-statep fn-sf-history-recoverablep
                              fn-sf-replay-node fn-snt-pending-linkp
                              fn-sn-completion-enabledp  
@@ -588,8 +590,7 @@
                             (s (fn-sn-observed-seed groups capacity frontier records)))
                  (:instance fn-sn-recover-of-recoverable-replaying-is-recovering
                             (st (fn-sn-observed-seed groups capacity frontier records))))
-           :in-theory (e/d (fn-sn-open-observed fn-sn-open-okp fn-sn-open-state
-                                                 fn-sn-open-ok
+           :in-theory (e/d (fn-sn-open-observed fn-sn-open-okp
                                                  fn-sn-observed-configurationp
                                                  fn-sn-observed-historyp
                                                  fn-sn-observed-seed 

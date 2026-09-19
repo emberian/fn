@@ -7,6 +7,9 @@
 (in-package "ACL2")
 (include-book "store-files")
 (local (include-book "arithmetic/top" :dir :system))
+; The codecs cluster withdraws the record and codec definitions at export
+; (2026-09-19); the proofs here open fn-record-p and the record accessors.
+(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))
 
 ; The preservation keystones open the kernel definitions locally (docs/
 ; proof-style.md s2); the record stays opaque, so goals are in accessor

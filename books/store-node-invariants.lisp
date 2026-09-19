@@ -1,6 +1,9 @@
 ; Correspondence for actual live node/file completion, without a trusted reply.
 (in-package "ACL2")
 (include-book "store-node")
+; The codecs cluster withdraws the record and codec definitions at export
+; (2026-09-19); the proofs here open fn-record-p and the record accessors.
+(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))
 
 ; The core definitions these correspondence proofs open (the core exports
 ; keystones only, docs/proof-style.md s2); local, named once.

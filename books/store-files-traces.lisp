@@ -18,6 +18,9 @@
 
 (in-package "ACL2")
 (include-book "store-files-invariants")
+; The codecs cluster withdraws the record and codec definitions at export
+; (2026-09-19); the proofs here open fn-record-p and the record accessors.
+(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))
 (local (in-theory (enable fn-store-files-invariants-vocabulary)))
 
 (defconst *fn-sf-max-trace-events* 4096)
