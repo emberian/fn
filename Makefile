@@ -72,6 +72,8 @@ ACL2_BOOKS ?= books/assumptions \
 	tests/acl2/store-node-resolution-traces-tests \
 	books/store-observed \
 	tests/acl2/store-observed-tests \
+	books/store-observed-traces \
+	tests/acl2/store-observed-traces-tests \
 	tests/acl2/store-node-guards-tests \
 	tests/acl2/store-node-teeth-tests \
 	books/checkpoint \

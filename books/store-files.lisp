@@ -5,6 +5,24 @@
 ; POSIX calls or prove that a platform implements these events.  Candidate
 ; records are checked by the existing record predicate and replay engine; no
 ; second acceptance implementation is introduced here.
+;
+; Composition scope.  The host (host/store-node-host.lisp) drives this kernel
+; only through the fn-sn composition in store-node.lisp and
+; store-node-resolution.lisp.  Two phases are transient in that composition:
+; :aborting exists only inside fn-sn-known-abort and :completed only inside
+; fn-sn-finish, so no host call can leave the kernel in either; each is marked
+; unreachable-in-composition where it appears.  Result values that the host
+; never reports (an uncertain refusal, a lost or rejected core completion
+; reply) are not transitions here: the host fences on its own side and reopens
+; through fn-sn-open-observed instead of reporting them.
+;
+; Crash points.  A crash choice is live from the moment the corresponding
+; namespace syscall may have been issued, not from the moment its result was
+; reported: the host issues os.replace before it reports :frontier-replace and
+; os.link before it reports :record-link, and process death between the syscall
+; returning and the report is a real cut (tests/store_crash_child.py, points
+; frontier-replace and final-link).  fn-sf-frontier-new-visiblep and
+; fn-sf-record-present-visiblep therefore include the data-durable phases.
 
 (in-package "ACL2")
 (include-book "replay-invariants")
@@ -61,6 +79,10 @@
   (list :store-files phase frontier frontier-candidate records record-candidate
         completion successes barriers))
 
+; Every phase below is either observable between host calls or transient
+; inside one composed host call (:aborting, :completed).  The kernel has no
+; fenced phase for an uncertain refusal, an uncertain known abort, or a lost
+; core completion reply: the host never reports those results.
 (defun fn-sf-phasep (x)
   (declare (xargs :guard t :verify-guards nil))
   (member-equal x
@@ -69,16 +91,12 @@
                   :record-staged :record-data-durable :aborting
                   :record-attempted :completing :completed
                   :replaying :recovering :fault
-                  :fenced-frontier :fenced-reservation
-                  :fenced-before-record :fenced-record
-                  :fenced-core :fenced-recovery)))
+                  :fenced-frontier :fenced-record :fenced-recovery)))
 
 (defun fn-sf-fencedp (s)
   (declare (xargs :guard t :verify-guards nil))
   (member-equal (fn-sf-phase s)
-                '(:fenced-frontier :fenced-reservation
-                  :fenced-before-record :fenced-record
-                  :fenced-core :fenced-recovery)))
+                '(:fenced-frontier :fenced-record :fenced-recovery)))
 
 (defun fn-sf-pairp (x)
   (declare (xargs :guard t :verify-guards nil))
@@ -158,11 +176,11 @@
   (declare (xargs :guard t :verify-guards nil))
   (member-equal phase
                 '(:record-staged :record-data-durable :aborting
-                  :record-attempted :fenced-before-record :fenced-record)))
+                  :record-attempted :fenced-record)))
 
 (defun fn-sf-completion-phasep (phase)
   (declare (xargs :guard t :verify-guards nil))
-  (member-equal phase '(:completing :completed :fenced-core)))
+  (member-equal phase '(:completing :completed)))
 
 (defun fn-sf-phase-shapep (s)
   (declare
@@ -208,9 +226,6 @@
      ((equal phase :fenced-recovery)
       (and (null fc) (null rc) (null completion)
            (< barriers *fn-sf-recovery-barrier-count*)))
-     ((equal phase :fenced-reservation)
-      (and (null fc) (null rc) (null completion)
-           (equal barriers *fn-sf-recovery-barrier-count*)))
      ((equal phase :fault)
       (and (null fc) (null rc) (null completion)))
      (t nil))))
@@ -243,6 +258,8 @@
                   (fn-sf-successes s) (fn-sf-barriers s))
     s))
 
+; :known-fail is reported by the host for a staging failure before any
+; replacement attempt (tools/run_store.py advance_frontier, OSError branch).
 (defun fn-sf-frontier-file-result (s result)
   (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :frontier-staged))
@@ -306,22 +323,16 @@
          (equal (fn-state-next-txid (fn-node-acceptance node)) frontier))))
 
 ; A synchronous semantic refusal consumes the already durable reservation but
-; publishes no record.  Invalid or mismatched events are no-ops.  An uncertain
-; reply fences; crash/recovery will use the durable frontier without restoring a
-; reservation token.
-(defun fn-sf-refuse-reservation (s txid result)
+; publishes no record.  Invalid or mismatched requests are no-ops.  The host
+; reports only a refusal (fn-sn-refuse-reservation); a lost reply is a
+; host-side fence followed by crash/recovery, which uses the durable frontier
+; without restoring a reservation token.
+(defun fn-sf-refuse-reservation (s txid)
   (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :reserved)
            (natp txid) (equal (1+ txid) (fn-sf-frontier s)))
-      (cond
-       ((equal result :refused)
-        (fn-sf-make :ready (fn-sf-frontier s) nil (fn-sf-records s) nil nil
-                    (fn-sf-successes s) (fn-sf-barriers s)))
-       ((equal result :uncertain)
-        (fn-sf-make :fenced-reservation (fn-sf-frontier s) nil
-                    (fn-sf-records s) nil nil (fn-sf-successes s)
-                    (fn-sf-barriers s)))
-       (t s))
+      (fn-sf-make :ready (fn-sf-frontier s) nil (fn-sf-records s) nil nil
+                  (fn-sf-successes s) (fn-sf-barriers s))
     s))
 
 (defun fn-sf-prepare-record (s record groups capacity)
@@ -335,6 +346,9 @@
                   record nil (fn-sf-successes s) (fn-sf-barriers s))
     s))
 
+; :known-fail here is reached only inside fn-sn-known-abort
+; (store-node-resolution.lisp); the host reports a staging failure by calling
+; that composed operation, never as a bare file observation.
 (defun fn-sf-record-file-result (s result)
   (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :record-staged))
@@ -350,6 +364,9 @@
        (t s))
     s))
 
+; :aborting is unreachable-in-composition as an observable phase: it is the
+; intermediate state inside the single host call fn-sn-known-abort, which
+; continues with fn-sf-abort-completion before returning.
 (defun fn-sf-prepublish-abort (s)
   (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s)
@@ -359,20 +376,16 @@
                   (fn-sf-barriers s))
     s))
 
-(defun fn-sf-abort-completion (s sequence txid result)
+; The composed known abort derives sequence and txid from the bound candidate
+; and calls the actual aborted node completion; the kernel step only checks
+; that the pair names the staged candidate.
+(defun fn-sf-abort-completion (s sequence txid)
   (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :aborting)
            (equal (cons sequence txid)
                   (fn-sf-record-pair (fn-sf-record-candidate s))))
-      (cond
-       ((equal result :matching)
-        (fn-sf-make :ready (fn-sf-frontier s) nil (fn-sf-records s) nil nil
-                    (fn-sf-successes s) (fn-sf-barriers s)))
-       ((or (equal result :lost) (equal result :rejected))
-        (fn-sf-make :fenced-before-record (fn-sf-frontier s) nil
-                    (fn-sf-records s) (fn-sf-record-candidate s) nil
-                    (fn-sf-successes s) (fn-sf-barriers s)))
-       (t s))
+      (fn-sf-make :ready (fn-sf-frontier s) nil (fn-sf-records s) nil nil
+                  (fn-sf-successes s) (fn-sf-barriers s))
     s))
 
 (defun fn-sf-record-link-result (s result)
@@ -408,22 +421,19 @@
        (t s))
     s))
 
-; The adapter's mutation gate is already closed in :completing.  Only the exact
-; matching reply opens an acknowledgement decision; lost/rejected replies fence.
-(defun fn-sf-core-completion (s sequence txid result)
+; The adapter's mutation gate is already closed in :completing.  The only
+; kernel step out of it is the exact matching completion performed by
+; fn-sn-finish; a lost or rejected reply to that call is a host-side fence with
+; the kernel left in :completing, resolved by crash/recovery.
+; :completed is unreachable-in-composition as an observable phase: fn-sn-finish
+; continues with fn-sf-emit-success in the same host call.
+(defun fn-sf-core-completion (s sequence txid)
   (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :completing)
            (equal (cons sequence txid) (fn-sf-completion s)))
-      (cond
-       ((equal result :matching)
-        (fn-sf-make :completed (fn-sf-frontier s) nil (fn-sf-records s) nil
-                    (fn-sf-completion s) (fn-sf-successes s)
-                    (fn-sf-barriers s)))
-       ((or (equal result :lost) (equal result :rejected))
-        (fn-sf-make :fenced-core (fn-sf-frontier s) nil (fn-sf-records s) nil
-                    (fn-sf-completion s) (fn-sf-successes s)
-                    (fn-sf-barriers s)))
-       (t s))
+      (fn-sf-make :completed (fn-sf-frontier s) nil (fn-sf-records s) nil
+                  (fn-sf-completion s) (fn-sf-successes s)
+                  (fn-sf-barriers s))
     s))
 
 (defun fn-sf-emit-success (s sequence txid)
@@ -435,6 +445,12 @@
                   (fn-sf-barriers s))
     s))
 
+; unreachable-in-composition: fn-sn-finish performs fn-sf-core-completion and
+; fn-sf-emit-success in one host call, so no host path reaches :completed and
+; then drops the success.  A reply lost after fn-sn-finish returns is a crash
+; from :ready with the pair already in the ghost history (the core-durable cut
+; in tests/store_crash_child.py).  The definition is retained because other
+; books name it in theory lists; it is not evidence for any host claim.
 (defun fn-sf-lose-success (s sequence txid)
   (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :completed)
@@ -452,13 +468,44 @@
   (and (or (equal frontier-choice :old) (equal frontier-choice :new))
        (or (equal record-choice :absent) (equal record-choice :present))))
 
+; The new frontier may be visible from :frontier-data-durable onward: the
+; host issues os.replace after the file barrier and before it reports the
+; replacement result, so a crash in that window (crash point frontier-replace)
+; can leave either whole value.  Before :frontier-data-durable no replacement
+; can have been issued.
 (defun fn-sf-frontier-new-visiblep (s)
   (declare (xargs :guard t :verify-guards nil))
-  (member-equal (fn-sf-phase s) '(:frontier-attempted :fenced-frontier)))
+  (member-equal (fn-sf-phase s)
+                '(:frontier-data-durable :frontier-attempted :fenced-frontier)))
 
+; The candidate record may be present from :record-data-durable onward: the
+; host issues os.link after the file barrier and before it reports the link
+; result (crash point final-link).  Before :record-data-durable no final name
+; can have been created.
 (defun fn-sf-record-present-visiblep (s)
   (declare (xargs :guard t :verify-guards nil))
-  (member-equal (fn-sf-phase s) '(:record-attempted :fenced-record)))
+  (member-equal (fn-sf-phase s)
+                '(:record-data-durable :record-attempted :fenced-record)))
+
+; A-DURABILITY and A-WRITE-ISOLATION as a hypothesis, not a constructor.  An
+; observed post-crash image (frontier, records) is admissible for kernel state
+; s when the frontier is the stable value or, only while a replacement may
+; have been issued, the candidate; and the records are the stable list or,
+; only while a link may have been issued, that list extended by the exact
+; data-durable candidate.  Theorems about the host's reopen path
+; (store-observed.lisp) take this predicate as their premise.  fn-sf-crash
+; below is one constructor that satisfies it and shows the premise is
+; inhabited; the guarantee comes from the predicate, not from the constructor.
+(defun fn-sf-crash-imagep (s frontier records)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-sf-statep s)
+       (or (equal frontier (fn-sf-frontier s))
+           (and (fn-sf-frontier-new-visiblep s)
+                (equal frontier (fn-sf-frontier-candidate s))))
+       (or (equal records (fn-sf-records s))
+           (and (fn-sf-record-present-visiblep s)
+                (equal records (append (fn-sf-records s)
+                                       (list (fn-sf-record-candidate s))))))))
 
 (defun fn-sf-crash (s frontier-choice record-choice)
   (declare (xargs :guard t :verify-guards nil))
@@ -588,6 +635,8 @@
 (verify-guards fn-sf-crash-choicep)
 (verify-guards fn-sf-frontier-new-visiblep)
 (verify-guards fn-sf-record-present-visiblep)
+(verify-guards fn-sf-crash-imagep
+ :hints (("Goal" :use fn-sfg-state-records-have-guard-domain)))
 (verify-guards fn-sf-crash
  :hints (("Goal" :use fn-sfg-state-records-have-guard-domain)))
 (verify-guards fn-sf-recover)
@@ -632,9 +681,14 @@
                 (equal (fn-sf-phase s) :frontier-data-durable))
            (fn-sf-fencedp (fn-sf-frontier-replace-result s :error))))
 
-(defthm fn-sf-lost-core-completion-fences
+; A mutation cannot leave :completing except through the exact matching
+; completion pair.  This is the kernel half of the completion gate; the
+; composed half is fn-sn-new-success-requires-actual-matching-durable-node-completion.
+(defthm fn-sf-completing-admits-only-matching-completion
   (implies (and (fn-sf-statep s)
-                (equal (fn-sf-phase s) :completing)
-                (equal (cons sequence txid) (fn-sf-completion s)))
-           (fn-sf-fencedp
-            (fn-sf-core-completion s sequence txid :lost))))
+                (equal (fn-sf-phase s) :completing))
+           (and (equal (fn-sf-start-frontier s) s)
+                (equal (fn-sf-prepare-record s record groups capacity) s)
+                (equal (fn-sf-emit-success s sequence txid) s)
+                (implies (not (equal (cons sequence txid) (fn-sf-completion s)))
+                         (equal (fn-sf-core-completion s sequence txid) s)))))

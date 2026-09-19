@@ -9,6 +9,13 @@ certified. The [54-root checkpoint](../tests/evidence/2026-09-18-assurance.md)
 records the frozen subset before that last mixed-trace addition. Actual adapter adoption passed the [75-root/67-test batch](../tests/evidence/2026-09-18-composed-store.md);
 byte/effect correspondence and platform qualification remain work;
 no checkpoint or experimental disk-format change follows from these proofs.
+The 2026-09-19 crash-fidelity revision makes every process-death cut of
+`tests/store_crash_child.py` a model crash point, states A-DURABILITY as the
+hypothesis `fn-sf-crash-imagep` of the reopen theorems in
+[`store-observed-traces`](../books/store-observed-traces.lisp) instead of as the crash
+constructor, and roots every trace theorem at the host's process entry
+`fn-sn-open-observed` as well as at `fn-sn-initial`; see
+[store-node.md](store-node.md#observed-physical-image-entry).
 
 ## Why the isolated-slot journal is not the adapter model
 
@@ -52,7 +59,12 @@ relation and general trace proof; host adoption now sends physical observations 
 The machine state contains:
 
 ```text
-mode             : ready | reserved | preparing | completing | fenced | recovering | fault
+phase            : ready | reserved
+                 | frontier-staged | frontier-data-durable | frontier-attempted
+                 | record-staged | record-data-durable | aborting
+                 | record-attempted | completing | completed
+                 | replaying | recovering | fault
+                 | fenced-frontier | fenced-record | fenced-recovery
 config           : fixed groups, capacity, and bounds
 stable-frontier  : next unused acceptance txid
 frontier-update  : none | (old, new, staged | attempted | visible)
@@ -66,7 +78,16 @@ barriers         : recovery prerequisite flags, cleared by crash
 
 `successes` is trace state, not bytes claimed to exist in this adapter. It lets a
 conditional crash theorem state what happened before the crash. A later external
-freshness anchor would refine it; the current implementation does not.
+freshness anchor would refine it; the current implementation does not. Because
+no anchor exists, a reopened process starts with `successes = nil`; the
+cross-restart guarantee is therefore stated over records
+(`fn-sn-acknowledged-record-survives-observed-reopen`), not over a
+reconstructed ghost list. Two phases, `aborting` and `completed`, are
+transient: each is the intermediate state of one composed host call
+(`fn-sn-known-abort`, `fn-sn-finish`) and is marked unreachable-in-composition
+in the kernel book. The kernel has no phase for an uncertain refusal, an
+uncertain known abort or a lost core-completion reply, because the host never
+reports those results: it fences on its own side and reopens.
 
 The physical crash image contains a configuration candidate, one frontier
 candidate, final-name entries, and ignored staging entries. It contains no node,
@@ -91,8 +112,11 @@ Use explicit result events rather than an event called simply `commit`:
    node counter and stable frontier. It stages the checksummed value `f+1`.
 6. `reserve-file-barrier(ok | known-fail)` precedes any replacement attempt. A
    known failure discards the staged candidate and changes no durable state.
-7. `reserve-replace-attempt(result)` records that namespace publication was
-   attempted. Every error from or after this event is uncertain and fences.
+7. `reserve-replace-attempt(result)` records the result of the replacement
+   syscall. The syscall itself is issued before this event, so from
+   `frontier-data-durable` onward a crash may already leave the new whole
+   value (`fn-sf-frontier-new-visiblep`); every error from this event on is
+   uncertain and fences.
 8. `reserve-dir-barrier(ok | uncertain)` makes `f+1` the stable frontier only on
    success, and enters `reserved` with a one-use preparation token. Preparation
    is forbidden before this success and without that token.
@@ -105,29 +129,46 @@ Use explicit result events rather than an event called simply `commit`:
 10. `record-write(result)` creates an exclusive staging file. Write/create/file
     barrier failures before a final-name operation are known aborts. After a
     successful file barrier the candidate is `data-durable`.
-11. `record-publish-attempt(result)` is the hard-link invocation. From the moment
-    it starts, success, error, interruption, and process death are uncertain. An
+11. `record-publish-attempt(result)` records the result of the hard-link
+    invocation. The link is issued before this event, so from
+    `record-data-durable` onward a crash may already leave the exact candidate
+    as a final name (`fn-sf-record-present-visiblep`); from the moment the link
+    starts, success, error, interruption, and process death are uncertain. An
     error does not become a known abort merely because the final name is absent
-    when inspected.
+    when inspected. A known abort (`fn-sn-known-abort`) is the host's
+    classification that no link was issued; it is a host claim under A-HOST,
+    not something the kernel can check.
 12. `record-dir-barrier(ok | uncertain)` appends the record to stable records on
     success. An error fences and requires recovery. Cleanup of the staging name
     is outside authority and cannot revoke a stable record.
-13. `core-complete(durable | aborted | indeterminate)` must match the exact
-    pending txid and generation. A successful transaction directory barrier
-    first enters `completing`, which blocks every new mutation while the adapter
-    supplies `durable` to the core. Only its exact matching success returns to
-    ready; a rejected or lost completion reply leaves the adapter fenced.
-    `aborted` is allowed only before publication was attempted, and every
-    indeterminate result fences.
+13. `core-complete` is `fn-sn-finish`: a successful transaction directory
+    barrier first enters `completing`, which blocks every new mutation
+    (`fn-sf-completing-admits-only-matching-completion`); `fn-sn-finish` then
+    performs the actual `fn-node-complete` with `:durable` for the exact
+    pending txid and generation and the kernel's matching completion and
+    acknowledgement in one host call. A rejected or lost reply to that call is
+    a host-side fence with the kernel left in `completing`; the only route
+    onward is crash and observed recovery, which retains the record. Abort
+    resolution is `fn-sn-known-abort` and exists only before publication was
+    attempted.
 14. `emit-success(sequence, txid)` is allowed only after matching durable core
     completion and appends to the ghost success history. Socket delivery is not
     this event. Loss of the reply does not remove the record.
 15. `crash(choice)` clears process state and barriers. Under the namespace
-    atomicity hypotheses, a pending frontier replacement yields the old whole
-    value or the new whole value, and a pending record publication yields no
-    final name or the exact data-durable file. Completed barriers remove the
-    old/absent choice as specified below. Malformed images are separate inputs
-    to detected-fault tests, not normal crash outcomes under those hypotheses.
+    atomicity hypotheses, a frontier replacement that may have been issued
+    (from `frontier-data-durable` on) yields the old whole value or the new
+    whole value, and a record link that may have been issued (from
+    `record-data-durable` on) yields no final name or the exact data-durable
+    file (`fn-sf-unobserved-frontier-replacement-crash-is-old-or-new`,
+    `fn-sf-unobserved-record-link-crash-is-absent-or-present`). A completed
+    directory barrier, not the crash constructor, removes the old or absent
+    choice (`fn-sf-completed-frontier-barrier-removes-old-choice`,
+    `fn-sf-completed-record-barrier-removes-absent-choice`). The set of images
+    a crash may leave is the predicate `fn-sf-crash-imagep`; `fn-sf-crash` is
+    one constructor that realizes every admissible image
+    (`fn-sf-crash-realizes-every-admissible-image`). Malformed images are
+    separate inputs to detected-fault tests, not normal crash outcomes under
+    those hypotheses.
 
 The model should make illegal transitions return the unchanged state plus
 `reject`, rather than assume their preconditions. No mutation transition is
@@ -200,10 +241,18 @@ single-record examples:
 - **Fence safety:** after any publication-attempt uncertainty or rejected core
   completion, no reserve, prepare, publish, complete, or success event is
   permitted until successful recovery and all rebarriers.
-- **Acknowledged-prefix retention:** given completed barriers, retained stable
-  storage, and the crash constructor's platform hypotheses, every pair in
-  `successes` occurs with the same record in recovered history. This is a trace
-  safety theorem, not a recovery check implemented by the current adapter.
+- **Acknowledged-prefix retention:** within one process, every pair in
+  `successes` remains a stable record after any finite mixed trace
+  (`fn-snrt-acknowledged-history-retained-through-mixed-trace`, hypotheses:
+  `fn-snt-relation` of the start state and membership of the pair). Across a
+  process death, for every image admissible under `fn-sf-crash-imagep`
+  (A-DURABILITY and A-WRITE-ISOLATION as hypothesis), the host's reopen
+  `fn-sn-open-observed` succeeds and the pair names a record of the reopened
+  state, and it still does after any further mixed trace
+  (`fn-sn-acknowledged-record-survives-observed-reopen`,
+  `fn-snrt-acknowledged-record-retained-across-observed-reopen`). Neither is a
+  recovery check implemented by the adapter, and neither reconstructs the
+  acknowledgement list: a reopened process has `successes = nil`.
 - **Unacknowledged survival:** recovery may include the exact candidate whose
   success was never emitted; replaying or retrying it preserves duplicate
   behavior and does not allocate a second article or pin.
@@ -231,6 +280,20 @@ A-DURABILITY, A-WRITE-ISOLATION, and A-HOST:
   with the correct operation, and no out-of-band actor mutates the store;
 - stable data needed by earlier completed barriers remains retained across the
   modeled crash. Media corruption and whole-device loss are separate models.
+
+These facts are the predicate `fn-sf-crash-imagep` in `books/store-files.lisp`:
+an observed image is admissible for a kernel state when its frontier is the
+stable value or, only while a replacement may have been issued, the candidate,
+and its records are the stable list or, only while a link may have been issued,
+that list plus the exact data-durable candidate. The reopen theorems in
+`books/store-observed-traces.lisp` take that predicate as their premise. What remains
+physical and is assumed by name: a torn write inside a staged file that a
+completed `fsync` nevertheless reported durable (A-DURABILITY); a replacement
+or link that is neither wholly old nor wholly new (A-WRITE-ISOLATION); a
+directory barrier that returned without retaining the namespace change; the
+drive cache behind `fsync(2)` on APFS (review D12); and whole-store rollback to
+an older valid image, which no theorem here detects. The Python known-abort and
+refusal classifications are host claims under A-HOST.
 
 The frame checksum supplies only the predicate that damaged bytes in the stated
 fault class are rejected. Do not assume SHA-256 is injective, that it authenticates
@@ -263,12 +326,14 @@ The completion-gate regression also covers rejection, a failed reply before core
 completion, and a lost reply after actual core completion: each leaves the host
 fenced and emits no success, while reopening retains the published article/pin.
 
-The [fault matrix](store-fault-matrix.md) now covers 47 before/after-effect
+The [fault matrix](store-fault-matrix.md) covers before/after-effect
 filesystem/completion rows, including partial/zero writes and all recovery
-barriers. Actual process deaths cover six publication/allocation/completion
-boundaries with lost-success duplicate retries. The [bounded explorer](store-exploration.md)
-exhausts 211 states and 9,038 edges, including allocator/record crash choices and
-recovery barrier counts. The [corruption matrix](store-corruption-matrix.md)
+barriers, and tabulates the six process-death cuts against their model crash
+points. The [bounded explorer](store-exploration.md) exhausts the two-record,
+frontier-2 domain with a txid-gap record and reports states, applications and
+state-changing transitions as distinct counts; the crash choices in the
+data-durable phases and the recovery barrier counts are asserted covered.
+The [corruption matrix](store-corruption-matrix.md)
 adds malformed frontier/frame/namespace cases and multiple prior commits plus
 an uncertain tail. Its independent targeted result is subsequent to the frozen
 54-root checkpoint. Physical power-loss outcomes, freshness and all possible

@@ -100,6 +100,10 @@
   :hints (("Goal"
            :in-theory (enable fn-sf-crash))))
 
+; Whenever the present choice is live (from :record-data-durable, where the
+; link may already have been issued, through the fenced link phase) the
+; surviving record is exactly the data-durable candidate and its txid is
+; below the frontier the image carries.
 (defthm fn-sf-surviving-candidate-is-exact-and-dominated
   (implies (and (fn-sf-statep s)
                 (fn-sf-crash-choicep frontier-choice :present)
@@ -179,6 +183,191 @@
                     fn-sf-success-listp fn-sf-record-has-pairp))))
 
 ; -----------------------------------------------------------------------------
+; Crash-point fidelity.  Where a crash choice is genuine, where no choice
+; exists yet, and where a completed barrier has already removed one.
+
+; From :frontier-data-durable the replacement may or may not have been
+; issued (crash point frontier-replace): both whole-file values are outcomes.
+(defthm fn-sf-unobserved-frontier-replacement-crash-is-old-or-new
+  (implies (and (fn-sf-statep s)
+                (equal (fn-sf-phase s) :frontier-data-durable)
+                (or (equal record-choice :absent)
+                    (equal record-choice :present)))
+           (and (equal (fn-sf-frontier (fn-sf-crash s :old record-choice))
+                       (fn-sf-frontier s))
+                (equal (fn-sf-frontier (fn-sf-crash s :new record-choice))
+                       (fn-sf-frontier-candidate s))
+                (equal (fn-sf-records (fn-sf-crash s :old record-choice))
+                       (fn-sf-records s))
+                (equal (fn-sf-records (fn-sf-crash s :new record-choice))
+                       (fn-sf-records s))))
+  :hints (("Goal" :in-theory (enable fn-sf-crash
+                                     fn-sf-frontier-new-visiblep
+                                     fn-sf-record-present-visiblep))))
+
+; From :record-data-durable the link may or may not have been issued (crash
+; point final-link): absence and the exact candidate are both outcomes.
+(defthm fn-sf-unobserved-record-link-crash-is-absent-or-present
+  (implies (and (fn-sf-statep s)
+                (equal (fn-sf-phase s) :record-data-durable)
+                (or (equal frontier-choice :old)
+                    (equal frontier-choice :new)))
+           (and (equal (fn-sf-records (fn-sf-crash s frontier-choice :absent))
+                       (fn-sf-records s))
+                (equal (fn-sf-records (fn-sf-crash s frontier-choice :present))
+                       (append (fn-sf-records s)
+                               (list (fn-sf-record-candidate s))))
+                (equal (fn-sf-frontier (fn-sf-crash s frontier-choice :absent))
+                       (fn-sf-frontier s))
+                (equal (fn-sf-frontier (fn-sf-crash s frontier-choice :present))
+                       (fn-sf-frontier s))))
+  :hints (("Goal" :in-theory (enable fn-sf-crash
+                                     fn-sf-frontier-new-visiblep
+                                     fn-sf-record-present-visiblep))))
+
+; Before any namespace syscall can have been issued, and after every barrier
+; has completed, a crash leaves the image unchanged whatever choice is given.
+(defthm fn-sf-crash-outside-namespace-window-keeps-image
+  (implies (and (fn-sf-statep s)
+                (not (fn-sf-frontier-new-visiblep s))
+                (not (fn-sf-record-present-visiblep s)))
+           (and (equal (fn-sf-frontier
+                        (fn-sf-crash s frontier-choice record-choice))
+                       (fn-sf-frontier s))
+                (equal (fn-sf-records
+                        (fn-sf-crash s frontier-choice record-choice))
+                       (fn-sf-records s))))
+  :hints (("Goal" :in-theory (enable fn-sf-crash))))
+
+; A completed allocator directory barrier has moved the candidate into the
+; stable frontier, so no later crash choice selects the old value.  The
+; barrier step is the hypothesis; fn-sf-crash asserts nothing about it.
+(defthm fn-sf-completed-frontier-barrier-removes-old-choice
+  (implies (and (fn-sf-statep s)
+                (equal (fn-sf-phase s) :frontier-attempted))
+           (equal (fn-sf-frontier
+                   (fn-sf-crash (fn-sf-frontier-dir-result s :ok)
+                                frontier-choice record-choice))
+                  (fn-sf-frontier-candidate s)))
+  :hints (("Goal" :in-theory (enable fn-sf-crash fn-sf-frontier-dir-result
+                                     fn-sf-frontier-new-visiblep
+                                     fn-sf-record-present-visiblep))))
+
+; A completed transaction directory barrier has appended the candidate to the
+; stable records, so no later crash choice can make it absent.
+(defthm fn-sf-completed-record-barrier-removes-absent-choice
+  (implies (and (fn-sf-statep s)
+                (equal (fn-sf-phase s) :record-attempted))
+           (equal (fn-sf-records
+                   (fn-sf-crash (fn-sf-record-dir-result s :ok)
+                                frontier-choice record-choice))
+                  (append (fn-sf-records s)
+                          (list (fn-sf-record-candidate s)))))
+  :hints (("Goal"
+           :use ((:instance fn-sf-record-pair-present-after-append
+                            (records (fn-sf-records s))
+                            (record (fn-sf-record-candidate s))))
+           :in-theory (e/d (fn-sf-crash fn-sf-record-dir-result
+                                        fn-sf-frontier-new-visiblep
+                                        fn-sf-record-present-visiblep)
+                           (fn-sf-record-pair-present-after-append)))))
+
+; -----------------------------------------------------------------------------
+; The admissible-image premise and the constructor that inhabits it.
+
+(defthm fn-sf-crash-image-is-admissible
+  (implies (and (fn-sf-statep s)
+                (fn-sf-crash-choicep frontier-choice record-choice))
+           (fn-sf-crash-imagep s
+                               (fn-sf-frontier
+                                (fn-sf-crash s frontier-choice record-choice))
+                               (fn-sf-records
+                                (fn-sf-crash s frontier-choice record-choice))))
+  :hints (("Goal" :in-theory (enable fn-sf-crash fn-sf-crash-imagep))))
+
+; The choice that reproduces a given admissible image.
+(defun fn-sf-image-frontier-choice (s frontier)
+  (if (equal frontier (fn-sf-frontier s)) :old :new))
+
+(defun fn-sf-image-record-choice (s records)
+  (if (equal records (fn-sf-records s)) :absent :present))
+
+(defthm fn-sf-image-choices-are-choices
+  (fn-sf-crash-choicep (fn-sf-image-frontier-choice s frontier)
+                       (fn-sf-image-record-choice s records)))
+
+(defthm fn-sf-crash-realizes-every-admissible-image
+  (implies (fn-sf-crash-imagep s frontier records)
+           (let ((crashed (fn-sf-crash s
+                                       (fn-sf-image-frontier-choice s frontier)
+                                       (fn-sf-image-record-choice s records))))
+             (and (equal (fn-sf-frontier crashed) frontier)
+                  (equal (fn-sf-records crashed) records)
+                  (equal (fn-sf-phase crashed) :replaying)
+                  (equal (fn-sf-successes crashed) (fn-sf-successes s)))))
+  :hints (("Goal" :in-theory (enable fn-sf-crash fn-sf-crash-imagep))))
+
+; Everything a reopen proof needs from an admissible image: the image is a
+; valid frontier and record list, and every acknowledged pair of the pre-crash
+; state names a record in it.
+(defthm fn-sf-crash-imagep-implies-state
+  (implies (fn-sf-crash-imagep s frontier records)
+           (fn-sf-statep s))
+  :hints (("Goal" :in-theory (e/d (fn-sf-crash-imagep) (fn-sf-statep)))))
+
+(defthm fn-sf-state-image-components-typed
+  (implies (fn-sf-statep s)
+           (and (fn-record-uint32p (fn-sf-frontier s))
+                (fn-sf-record-listp (fn-sf-records s) 0 0 (fn-sf-frontier s))
+                (true-listp (fn-sf-records s))))
+  :hints (("Goal"
+           :use ((:instance fn-sf-record-listp-is-true-list
+                            (records (fn-sf-records s)) (sequence 0) (lower 0)
+                            (frontier (fn-sf-frontier s))))
+           :in-theory (e/d (fn-sf-statep)
+                           (fn-sf-phasep fn-sf-phase-shapep fn-sf-record-listp
+                            fn-sf-success-listp fn-sf-frontier fn-sf-records)))))
+
+(defthm fn-sf-admissible-image-facts
+  (implies (fn-sf-crash-imagep s frontier records)
+           (and (fn-sf-statep s)
+                (fn-record-uint32p frontier)
+                (fn-sf-record-listp records 0 0 frontier)
+                (true-listp records)
+                (implies (member-equal pair (fn-sf-successes s))
+                         (fn-sf-record-has-pairp pair records))))
+  :hints (("Goal"
+           :use (fn-sf-crash-imagep-implies-state
+                 fn-sf-crash-realizes-every-admissible-image
+                 (:instance fn-sf-crash-preserves-state
+                            (frontier-choice
+                             (fn-sf-image-frontier-choice s frontier))
+                            (record-choice
+                             (fn-sf-image-record-choice s records)))
+                 (:instance fn-sf-prior-success-has-record-after-one-crash
+                            (frontier-choice
+                             (fn-sf-image-frontier-choice s frontier))
+                            (record-choice
+                             (fn-sf-image-record-choice s records)))
+                 (:instance fn-sf-state-image-components-typed
+                            (s (fn-sf-crash s
+                                            (fn-sf-image-frontier-choice s frontier)
+                                            (fn-sf-image-record-choice s records)))))
+           :in-theory (disable fn-sf-statep fn-sf-crash fn-sf-crash-imagep
+                               fn-sf-crash-choicep
+                               fn-sf-image-frontier-choice
+                               fn-sf-image-record-choice
+                               fn-sf-record-listp fn-sf-success-listp
+                               fn-sf-record-has-pairp
+                               fn-sf-frontier fn-sf-records fn-sf-successes
+                               fn-sf-phase
+                               fn-sf-crash-imagep-implies-state
+                               fn-sf-crash-realizes-every-admissible-image
+                               fn-sf-crash-preserves-state
+                               fn-sf-prior-success-has-record-after-one-crash
+                               fn-sf-state-image-components-typed))))
+
+; -----------------------------------------------------------------------------
 ; Selected non-crash transition preservation.
 
 (defthm fn-sf-frontier-file-result-preserves-state
@@ -202,7 +391,7 @@
 
 (defthm fn-sf-refuse-reservation-preserves-state
   (implies (fn-sf-statep s)
-           (fn-sf-statep (fn-sf-refuse-reservation s txid result))))
+           (fn-sf-statep (fn-sf-refuse-reservation s txid))))
 
 (defthm fn-sf-prepare-record-preserves-state
   (implies (fn-sf-statep s)
@@ -223,7 +412,7 @@
 (defthm fn-sf-abort-completion-preserves-state
   (implies (fn-sf-statep s)
            (fn-sf-statep
-            (fn-sf-abort-completion s sequence txid result))))
+            (fn-sf-abort-completion s sequence txid))))
 
 (defthm fn-sf-record-link-result-preserves-state
   (implies (fn-sf-statep s)
@@ -241,7 +430,7 @@
 (defthm fn-sf-core-completion-preserves-state
   (implies (fn-sf-statep s)
            (fn-sf-statep
-            (fn-sf-core-completion s sequence txid result))))
+            (fn-sf-core-completion s sequence txid))))
 
 (defthm fn-sf-emit-success-preserves-state
   (implies (fn-sf-statep s)
@@ -253,6 +442,7 @@
                             (pair (fn-sf-completion s))))
            :in-theory (disable fn-sf-success-list-append-covered-pair))))
 
+; unreachable-in-composition: see fn-sf-lose-success in store-files.lisp.
 (defthm fn-sf-lose-success-preserves-state
   (implies (fn-sf-statep s)
            (fn-sf-statep (fn-sf-lose-success s sequence txid))))

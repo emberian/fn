@@ -6,10 +6,17 @@
 ; enters the existing :replaying file state with no inherited acknowledgements,
 ; and calls the actual fn-sn-recover transition.  Recovered operation remains
 ; gated on five subsequent host fsync observations through fn-sn-io.
+;
+; This is the root of every process: host/store-node-host.lisp:27 calls
+; fn-sn-open-observed on each start.  The theorems that root the trace
+; relation at this entry (D6) and carry acknowledged-record retention across
+; the reopen boundary with A-DURABILITY as the hypothesis fn-sf-crash-imagep
+; (D5) live in store-observed-traces.lisp, which includes this book and the
+; resolution trace book.  The opening theorems below stay in the lighter
+; theory of store-node-invariants, where they certify; under the rewrite
+; rules the trace books export, fn-sn-observed-one-ok-barrier does not.
 
 (in-package "ACL2")
-; The live I/O preservation theorem lets the five observed barriers compose
-; through the actual node/file transition without assuming output validity.
 (include-book "store-node-invariants")
 
 ; The host-facing tagged boundary.  It exposes a recovering node/file state or
@@ -151,7 +158,11 @@
     (fn-sn-observed-rebarrier
      (fn-sn-io st :recovery-barrier :ok) (1- count)))))
 
-(verify-guards fn-sn-observed-rebarrier)
+; The mbe conjecture is zp versus not-posp; keep the composed-machine
+; definitions out of it (the composed-machine rules otherwise stall it).
+(verify-guards fn-sn-observed-rebarrier
+  :hints (("Goal" :in-theory (union-theories '(zp posp)
+                                             (theory 'minimal-theory)))))
 
 (defthm fn-sn-statep-implies-files-statep
   (implies (fn-sn-statep st)

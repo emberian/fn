@@ -344,7 +344,7 @@
         "books/store-observed.lisp",
         "tests/test_store_node_host.py"
       ],
-      "implementation_note": "General finite file traces retain earlier acknowledged records under named stable-storage and ghost-history premises; 211-state/9038-edge bounded exploration, fault injection and actual process reopen/lost-success retries pass. Freshness, host composition and platform qualification remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open."
+      "implementation_note": "General finite file traces retain earlier acknowledged records under named stable-storage and ghost-history premises, and across a real reopen under fn-sf-crash-imagep (A-DURABILITY as hypothesis); the bounded exploration with a txid-gap record, fault injection and actual process reopen/lost-success retries pass, and every process-death cut is a model crash point. Freshness, host composition and platform qualification remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open."
     },
     {
       "id": "STO-006",

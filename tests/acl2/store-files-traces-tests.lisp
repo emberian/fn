@@ -35,7 +35,7 @@
          '(:record-file :ok)
          '(:record-link :ok)
          '(:record-dir :ok)
-         '(:core-completion 0 0 :matching)
+         '(:core-completion 0 0)
          '(:emit-success 0 0))))
 
 (assert-event (fn-sf-tracep *sf-trace-first*))
@@ -46,9 +46,11 @@
                      (list (cons 0 0))))
 
 ; Two more crash/recovery cycles follow.  The first publishes and acknowledges
-; record 1.  The second crashes after record 2's hard-link attempt and selects
-; the exact present candidate, so recovery retains an unacknowledged tail while
-; both earlier emitted successes remain covered.
+; record 1.  The second dies in :record-data-durable, after the record file
+; barrier but before any link result was observed (the final-link cut of
+; tests/store_crash_child.py), and selects the exact present candidate, so
+; recovery retains an unacknowledged tail while both earlier emitted successes
+; remain covered.
 (defconst *sf-trace-repeated*
   (fn-sf-trace-make
    *sf-trace-groups* 10
@@ -67,7 +69,7 @@
          '(:record-file :ok)
          '(:record-link :ok)
          '(:record-dir :ok)
-         '(:core-completion 1 1 :matching)
+         '(:core-completion 1 1)
          '(:emit-success 1 1)
          '(:start-frontier)
          '(:frontier-file :ok)
@@ -75,7 +77,6 @@
          '(:frontier-dir :ok)
          (list :prepare-record *sf-trace-record-2*)
          '(:record-file :ok)
-         '(:record-link :ok)
          '(:crash :old :present)
          '(:recover)
          '(:recovery-barrier :ok)
