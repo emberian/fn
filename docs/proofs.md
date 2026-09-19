@@ -172,7 +172,13 @@ conclusion backchained to a `len` hypothesis. The same accessor on both sides
 is a preservation lemma, which is the shape the export policy asks for, and is
 not flagged; `local`, `defthmd`, `:rule-classes nil` and a non-local closing
 `in-theory (disable ...)` each exempt a rule, because none of them leaves it
-enabled downstream. *Teeth form* flags a `must-fail` whose body is a bare
+enabled downstream. A book that withdraws its helpers by naming them --
+`(deftheory fn-x-vocabulary '(...))` and then disabling that name, including
+through `(:d name)`/`(:e name)` runes, `set-difference-theories` or
+`union-theories` over names the book defines -- is read the same way: the
+theory is resolved to its rules, and each counts as withdrawn. What cannot be
+read literally, such as a computed theory over `current-theory`, contributes
+nothing, so an unresolvable withdrawal warns rather than going quiet. *Teeth form* flags a `must-fail` whose body is a bare
 `thm`/`defthm` whose statement mentions no constant -- no keyword, literal,
 string or `defconst` -- so it refutes a general claim rather than a specific
 violating value. `make check` prints both as `WARN`;
