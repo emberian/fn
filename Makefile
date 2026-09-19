@@ -1,14 +1,18 @@
 PYTHON ?= python3
-ACL2_BOOKS ?= books/acceptance \
+ACL2_BOOKS ?= books/assumptions \
+	tests/acl2/assumptions-tests \
+	books/acceptance \
 	books/acceptance-invariants \
 	tests/acl2/acceptance-tests \
 	tests/acl2/acceptance-guards-tests \
+	tests/acl2/acceptance-teeth-tests \
 	books/wire \
 	books/wire-invariants \
 	tests/acl2/wire-tests \
 	books/cbor \
 	books/cbor-invariants \
 	tests/acl2/cbor-tests \
+	tests/acl2/cbor-teeth-tests \
 	books/wildmat \
 	books/wildmat-utf8-invariants \
 	books/wildmat-parser-invariants \
@@ -16,10 +20,12 @@ ACL2_BOOKS ?= books/acceptance \
 	books/wildmat-work \
 	tests/acl2/wildmat-parser-invariants-tests \
 	tests/acl2/wildmat-tests \
+	tests/acl2/wildmat-teeth-tests \
 	books/article \
 	books/article-invariants \
 	books/article-properties \
 	tests/acl2/article-tests \
+	tests/acl2/article-teeth-tests \
 	books/article-work-primitives \
 	books/article-work-scanners \
 	books/article-work \
@@ -32,15 +38,18 @@ ACL2_BOOKS ?= books/acceptance \
 	books/retention \
 	books/retention-invariants \
 	tests/acl2/retention-tests \
+	tests/acl2/retention-teeth-tests \
 	books/node \
 	books/node-invariants \
 	tests/acl2/node-tests \
+	tests/acl2/node-teeth-tests \
 	books/node-traces \
 	tests/acl2/node-traces-tests \
 	books/records \
 	books/records-invariants \
 	books/records-canonicality \
 	tests/acl2/records-tests \
+	tests/acl2/records-teeth-tests \
 	books/replay \
 	books/replay-invariants \
 	tests/acl2/replay-tests \
@@ -51,6 +60,7 @@ ACL2_BOOKS ?= books/acceptance \
 	books/store-files-traces \
 	tests/acl2/store-files-traces-tests \
 	tests/acl2/store-files-exploration-tests \
+	tests/acl2/store-files-teeth-tests \
 	books/store-node \
 	books/store-node-invariants \
 	tests/acl2/store-node-tests \
@@ -63,6 +73,7 @@ ACL2_BOOKS ?= books/acceptance \
 	books/store-observed \
 	tests/acl2/store-observed-tests \
 	tests/acl2/store-node-guards-tests \
+	tests/acl2/store-node-teeth-tests \
 	books/checkpoint \
 	tests/acl2/checkpoint-tests \
 	books/index \
@@ -78,6 +89,7 @@ ACL2_BOOKS ?= books/acceptance \
 	books/bp-workflow-binding-invariants \
 	tests/acl2/bp-workflow-binding-invariants-tests \
 	tests/acl2/bp-workflow-tests \
+	tests/acl2/bp-workflow-teeth-tests \
 	books/bp-workflow-records \
 	tests/acl2/bp-workflow-records-tests \
 	books/bp-receipt \
@@ -92,6 +104,7 @@ ACL2_BOOKS ?= books/acceptance \
 	books/bp-receiver-state-invariants \
 	books/bp-receiver-trace-invariants \
 	tests/acl2/bp-receiver-invariants-tests \
+	tests/acl2/bp-receiver-teeth-tests \
 	books/bp-outbound \
 	tests/acl2/bp-outbound-tests \
 	books/journal \
@@ -101,6 +114,7 @@ ACL2_BOOKS ?= books/acceptance \
 	books/exchange-invariants \
 	tests/acl2/exchange-invariants-tests \
 	tests/acl2/exchange-guards-tests \
+	tests/acl2/exchange-teeth-tests \
 	books/transfer \
 	books/transfer-invariants \
 	books/transfer-assembly-invariants \
@@ -111,7 +125,8 @@ ACL2_BOOKS ?= books/acceptance \
 	books/nntp \
 	books/nntp-invariants \
 	books/nntp-effects \
-	tests/acl2/nntp-tests
+	tests/acl2/nntp-tests \
+	tests/acl2/nntp-teeth-tests
 
 .PHONY: check certify model-test tooling-test test
 check:
