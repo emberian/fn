@@ -12,6 +12,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 import bpa_dtn7 as bpa  # noqa: E402
 
+sys.path.insert(0, str(ROOT))
+from tests.test_bp_receive import lab_bundles  # noqa: E402
+from tools import bundle_bridge  # noqa: E402
+
 
 class _Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
     daemon_threads = True
@@ -160,6 +164,88 @@ class BpaDtn7ClientTests(unittest.TestCase):
             bpa.BpaDtn7Client(3000, total_deadline_seconds=0)
         with self.assertRaises(bpa.BpaDtn7ProtocolError):
             bpa.BpaDtn7Client(3000, total_deadline_seconds=bpa.MAX_TOTAL_DEADLINE_SECONDS + 1)
+
+
+def parse_dtn7_bid(bid: str) -> tuple[str, int, int]:
+    """Read the three identity fields dtn7-rs spells into its own BID.
+
+    dtn7-rs (crate `bp7` 0.10.7, `bundle.rs`) names a bundle
+    `<source EID>-<creation DTN time>-<sequence number>`, appending a fourth
+    `-<fragment offset>` for a fragment.  That string is the agent's inventory
+    metadata about identity, and it is the only identity statement the pinned
+    agent publishes without a second decode.  This reads it; it does not decode
+    BP, and its result is compared against ACL2's, never substituted for it.
+    """
+    head, _, sequence = bid.rpartition("-")
+    source, _, creation = head.rpartition("-")
+    if not source or not creation.isdigit() or not sequence.isdigit():
+        raise ValueError("not a dtn7-rs bundle identifier: {!r}".format(bid))
+    return source, int(creation), int(sequence)
+
+
+class Dtn7IdentityDifferentialTests(unittest.TestCase):
+    """ACL2's decoded identity against the agent's own inventory metadata.
+
+    The pinned dtn7-rs lab (`tests/bp-dtn7/`) needs a Cargo build of a pinned
+    checkout and is not run here; this exercises the same comparison against
+    the mock BPA, with bundles the ACL2 encoder built.  A disagreement fails
+    the test rather than being reconciled.
+    """
+
+    SOURCE = "dtn://node1/incoming"
+    CREATION = 1_687_000_000_000
+    SEQUENCE = 3
+
+    def setUp(self):
+        _Handler.routes = {}
+        _Handler.seen = []
+        self.server = _Server(("::1", 0), _Handler)
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        self.client = bpa.BpaDtn7Client(self.server.server_port, timeout_seconds=2.0,
+                                        max_bundle_bytes=64 * 1024)
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join()
+
+    def test_acl2_and_the_agent_agree_on_source_timestamp_and_sequence(self):
+        raw, fragment = lab_bundles([
+            dict(source=b"//node1/incoming", creation=self.CREATION,
+                 sequence=self.SEQUENCE),
+            dict(source=b"//node1/incoming", creation=self.CREATION,
+                 sequence=self.SEQUENCE, flags=1, offset=64, total=256)])
+        bids = {"{}-{}-{}".format(self.SOURCE, self.CREATION, self.SEQUENCE): raw,
+                "{}-{}-{}-64".format(self.SOURCE, self.CREATION, self.SEQUENCE):
+                    fragment}
+        _Handler.routes["/status/bundles"] = (
+            200, {"Content-Length": str(len(json.dumps(list(bids)).encode()))},
+            json.dumps(list(bids)).encode())
+        for bid, octets in bids.items():
+            body = octets
+            _Handler.routes["/download?" + bid] = (
+                200, {"Content-Length": str(len(body))}, body)
+
+        bridge = bundle_bridge.BundleBridge()
+        inventory = self.client.inventory()
+        self.assertEqual(len(inventory), 2)
+        for bid in inventory:
+            agent_source, agent_creation, agent_sequence = parse_dtn7_bid(
+                bid[:bid.rindex("-")] if bid.count("-") > 2 else bid)
+            report = bridge.report(self.client.download_bundle(bid))
+            self.assertEqual(report.source, agent_source,
+                             "source EID disagreement for {}".format(bid))
+            self.assertEqual(report.creation_time, agent_creation,
+                             "creation timestamp disagreement for {}".format(bid))
+            self.assertEqual(report.sequence, agent_sequence,
+                             "sequence number disagreement for {}".format(bid))
+        # The fragment's own offset is identity too, and the whole bundle and
+        # the fragment are not the same bundle.
+        whole = bridge.report(raw)
+        piece = bridge.report(fragment)
+        self.assertEqual((whole.fragment_offset, piece.fragment_offset), (None, 64))
+        self.assertNotEqual(whole.identity, piece.identity)
 
 
 if __name__ == "__main__":

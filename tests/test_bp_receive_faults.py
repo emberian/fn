@@ -7,7 +7,23 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import zlib
+
+from tests.test_bp_receive import lab_bundles
 from tools import run_bp_ingress, run_bp_receive, run_store
+
+
+class _Bundles(dict):
+    """One distinct ACL2-built bundle per BID, built when first asked for.
+
+    These tests are about crash cuts, not about identity, so each BID stands
+    for its own bundle; the identity is still ACL2's and never the BID.
+    """
+
+    def __missing__(self, bid: str) -> bytes:
+        value = lab_bundles([dict(sequence=zlib.crc32(bid.encode("ascii")) + 1)])[0]
+        self[bid] = value
+        return value
 
 
 class ReceiveFaultTests(unittest.TestCase):
@@ -19,6 +35,7 @@ class ReceiveFaultTests(unittest.TestCase):
         self.receipts = base / "receipts"
         run_store.Store(self.store, True).initialize()
         self.inventory: dict[str, bytes] = {}
+        self.bundles = _Bundles()
         self.deleted: list[str] = []
 
     def tearDown(self) -> None:
@@ -59,6 +76,7 @@ class ReceiveFaultTests(unittest.TestCase):
             store_root=self.store, inbox_root=self.inbox, receipt_root=self.receipts,
             bid=bid, source_eid="dtn://sender.lab", inventory=lambda: list(self.inventory),
             download=lambda found: self.inventory[found],
+            bundle=lambda found: self.bundles[found],
             delete=default_delete if delete is None else delete, **kwargs)
 
     def recovered_counts(self) -> tuple[int, int, int]:

@@ -96,7 +96,7 @@
         *fn-frame-overhead-octets* *fn-frame-max-store-payload*
         *fn-frame-max-workflow-payload* *fn-frame-max-receipt-payload*
         *fn-frame-max-inbound-payload* *fn-frame-max-text*
-        *fn-frame-max-blob*))
+        *fn-frame-max-blob* *fn-frame-max-identity*))
 
 (defun fn-store-frame-result (frame)
   ; (:ok payload) or (:error reason) for a frame whose payload is opaque.
@@ -165,14 +165,16 @@
 (defun fn-store-frame-receipt-decode (octets digest)
   (fn-store-frame-record-result (fn-frame-receipt-decode octets digest)))
 
-(defun fn-store-frame-inbound-prefix (bid bundle-length)
-  (fn-frame-inbound-prefix bid bundle-length))
+(defun fn-store-frame-inbound-prefix (bid identity bundle-length)
+  (fn-frame-inbound-prefix bid identity bundle-length))
 
 (defun fn-store-frame-inbound-open (head total-length trailer digest)
   (let ((frame (fn-frame-inbound-open head total-length trailer digest)))
     (if (fn-frame-result-okp frame)
-        ; kind slot carries the BID and payload slot the bundle length.
-        (list :ok (fn-frame-result-kind frame) (fn-frame-result-payload frame))
+        ; kind slot carries (BID identity), payload slot the bundle length.
+        (list :ok (car (fn-frame-result-kind frame))
+              (car (cdr (fn-frame-result-kind frame)))
+              (fn-frame-result-payload frame))
       frame)))
 
 ; -----------------------------------------------------------------------------

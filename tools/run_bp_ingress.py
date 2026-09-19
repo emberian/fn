@@ -19,6 +19,7 @@ from typing import Callable, Iterable
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import run_store  # noqa: E402
+from tools import bundle_bridge  # noqa: E402
 
 DEFAULT_DESTINATION = "dtn://fn.lab/inbox"
 DEFAULT_LIFETIME = 3600
@@ -143,19 +144,36 @@ def _defer_bpa_delete(_bid: str) -> None:
     raise OSError("defer BPA deletion until Store acceptance")
 
 
-def _staged_item(journal, journal_module, bid: str, inventory, download) -> Path:
+def identify_bundle(bid: str, bundle: Callable[[str], bytes],
+                    wall_error_ms: int = bundle_bridge.DEFAULT_WALL_ERROR_MS,
+                    bridge=None) -> bundle_bridge.BundleReport:
+    """Ask ACL2 what this bundle is and whether it is still live.
+
+    The raw octets the agent holds are the only evidence used.  A refusal here
+    means nothing is staged at all: the BID stays in the agent's inventory for
+    an explicit operator decision, which is a different thing from a bundle fn
+    staged and then declined to accept.
+    """
+    raw = bundle(bid)
+    if not isinstance(raw, bytes) or not raw:
+        raise BpIngressError("BPA returned no bundle octets for the BID")
+    return bundle_bridge.session(bridge).report(raw, wall_error_ms)
+
+
+def _staged_item(journal, journal_module, bid: str, identity: bytes,
+                 inventory, download) -> Path:
     try:
-        journal.stage_inbound(bid, inventory, download, _defer_bpa_delete)
+        journal.stage_inbound(bid, identity, inventory, download, _defer_bpa_delete)
     except journal_module.InboundDeletePending:
         # The journal has fsynced and published the inbound item.  Reopen it
         # before use so recovery validates the durable image rather than a
         # pre-publication in-memory path.
         journal.close()
         journal.open()
-        for found_bid, path in journal.inbound_items:
-            if found_bid == bid:
+        for _found_bid, found_identity, path in journal.inbound_items:
+            if found_identity == identity:
                 return path
-        raise BpIngressError("journal lost its durably staged inbound BID")
+        raise BpIngressError("journal lost its durably staged bundle identity")
     raise BpIngressError("workflow journal deleted BPA before Store acceptance")
 
 
@@ -186,8 +204,10 @@ def _publish_accepted(store, bridge, records, record) -> None:
 def ingest_bpa_adu(*, store_root: Path, journal_root: Path, journal_module_path: Path,
                    bid: str, inventory: Callable[[], Iterable[str]],
                    download: Callable[[str], bytes], delete: Callable[[str], None],
+                   bundle: Callable[[str], bytes],
                    destination: str = DEFAULT_DESTINATION,
-                   source_eid: str, lifetime: int = DEFAULT_LIFETIME) -> IngressResult:
+                   source_eid: str, lifetime: int = DEFAULT_LIFETIME,
+                   wall_error_ms: int = bundle_bridge.DEFAULT_WALL_ERROR_MS) -> IngressResult:
     """Stage one BPA BID, then accept its exact legacy ADU through ACL2.
 
     A valid existing durable article is a duplicate replay and permits BPA
@@ -211,10 +231,22 @@ def ingest_bpa_adu(*, store_root: Path, journal_root: Path, journal_module_path:
     journal.open()
     store = bridge = None
     try:
-        staged_path = _staged_item(journal, workflow, bid, inventory, download)
-        staged_bid, adu = workflow.decode_inbound(staged_path.read_bytes())
-        if staged_bid != bid:
-            raise BpIngressError("staged BPA BID does not match requested BID")
+        try:
+            report = identify_bundle(bid, bundle, wall_error_ms)
+        except bundle_bridge.BundleRefused as refusal:
+            # Staged nowhere, deleted nowhere: refused, and distinct from a
+            # bundle whose expiry this node cannot decide.
+            return IngressResult("refused-identity:" + refusal.reason, bid, None)
+        if report.decision == "expired":
+            return IngressResult("refused-expired", bid, None)
+        if report.decision == "uncertain":
+            return IngressResult("uncertain-expiry", bid, None)
+        staged_path = _staged_item(journal, workflow, bid, report.identity,
+                                   inventory, download)
+        _staged_bid, staged_identity, adu = workflow.decode_inbound(
+            staged_path.read_bytes())
+        if staged_identity != report.identity:
+            raise BpIngressError("staged bundle identity does not match the bundle")
         if not isinstance(adu, bytes):
             raise BpIngressError("workflow journal returned non-byte ADU")
         if len(adu) > run_store.DEFAULT_CONFIG["max_payload_bytes"]:
@@ -273,6 +305,9 @@ def main(argv=None):
                         help="test/lab newline BID inventory snapshot")
     parser.add_argument("--adu", required=True, type=Path,
                         help="test/lab non-destructive downloaded ADU for --bid")
+    parser.add_argument("--bundle", required=True, type=Path,
+                        help="the raw BP bundle octets the BPA holds for --bid; "
+                             "ACL2 derives the identity and expiry from these")
     parser.add_argument("--source-eid", required=True)
     parser.add_argument("--destination", default=DEFAULT_DESTINATION)
     parser.add_argument("--lifetime", type=int, default=DEFAULT_LIFETIME)
@@ -284,8 +319,17 @@ def main(argv=None):
         result = ingest_bpa_adu(store_root=args.store, journal_root=args.journal,
                                 journal_module_path=args.workflow_journal, bid=args.bid,
                                 inventory=inventory, download=download,
+                                bundle=lambda found_bid: (
+                                    args.bundle.read_bytes()
+                                    if found_bid == args.bid else b""),
                                 delete=deleted.append, destination=args.destination,
                                 source_eid=args.source_eid, lifetime=args.lifetime)
+        if result.outcome == "uncertain-expiry":
+            print(f"{result.outcome} bid={result.bid} staged=none bpa-delete=none")
+            return run_store.EXIT_UNCERTAIN
+        if result.outcome.startswith("refused-"):
+            print(f"{result.outcome} bid={result.bid} staged=none bpa-delete=none")
+            return run_store.EXIT_REFUSED
         print(f"{result.outcome} bid={result.bid} staged={result.staged_path} bpa-delete=done")
         return run_store.EXIT_OK
     except BpDeletePending as pending:

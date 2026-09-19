@@ -721,6 +721,13 @@
 (defconst *fn-frame-max-workflow-payload* 16342)
 (defconst *fn-frame-max-receipt-payload* 269958)
 (defconst *fn-frame-max-inbound-payload* 4194304)
+; The canonical primary-block identity of a staged inbound bundle, as
+; `books/bp-primary.lisp` encodes it: a CBOR array of an endpoint ID and three
+; or five unsigned integers.  The endpoint's scheme-specific part is the only
+; unbounded part and that codec caps it at 1024 octets, so this cap leaves
+; room for the array and integer heads and still keeps the frame head small
+; enough to cross the decimal octet bridge in one call.
+(defconst *fn-frame-max-identity* 1152)
 
 (defconst *fn-frame-transport-statuses*
   '(:intent :bpa-submit-replied :bpa-accepted :attempted :forwarded
@@ -931,28 +938,36 @@
 ; whole protected prefix through the BID text field, and on the way back in it
 ; validates magic, version, kind, the declared length, the BID field and the
 ; trailer.  The host concatenates and compares bytes it never interprets.
-(defun fn-frame-inbound-prefix (bid bundle-length)
+(defun fn-frame-inbound-prefix (bid identity bundle-length)
   (declare (xargs :guard t :verify-guards nil))
   (if (not (and (fn-frame-textp bid)
+                (fn-frame-blobp identity)
+                (<= (len identity) *fn-frame-max-identity*)
                 (natp bundle-length)
-                (<= bundle-length (- *fn-frame-max-inbound-payload* 2))))
+                (<= (+ 2 (len bid) 4 (len identity) bundle-length)
+                    *fn-frame-max-inbound-payload*)))
       :bad
-    (let ((bid-field (fn-frame-field-octets :text bid)))
+    (let ((fields (append (fn-frame-field-octets :text bid)
+                          (fn-frame-field-octets :blob identity))))
       (append (fn-frame-header *fn-frame-magic-inbound* *fn-frame-version*
                                *fn-frame-inbound-kind*
-                               (+ (len bid-field) bundle-length))
-              bid-field))))
+                               (+ (len fields) bundle-length))
+              fields))))
 
 (verify-guards fn-frame-inbound-prefix)
 
 (defun fn-frame-inbound-open (head total-length trailer digest)
   ; `head` is a bounded prefix of the stored frame (the host sends at most
-  ; header + text field), `total-length` its whole size, `trailer` its last 32
-  ; octets and `digest` the host's digest over everything but those 32.
+  ; header + the two identity fields), `total-length` its whole size, `trailer`
+  ; its last 32 octets and `digest` the host's digest over everything but those
+  ; 32.  The BID is the transport handle the agent issued; the identity is what
+  ; the bundle itself says it is, and the two are returned together so that a
+  ; caller cannot read one without the other.
   (declare (xargs :guard t :verify-guards nil))
   (if (not (and (fn-cbor-octet-listp head)
                 (fn-cbor-at-mostp head (+ *fn-frame-header-octets* 2
-                                          *fn-frame-max-text*))
+                                          *fn-frame-max-text* 4
+                                          *fn-frame-max-identity*))
                 (natp total-length)
                 (fn-frame-digestp trailer)
                 (fn-frame-digestp digest)))
@@ -986,13 +1001,24 @@
                       (let ((parsed (fn-frame-field-parse :text (cdr split))))
                         (if (not (fn-frame-parse-okp parsed))
                             (fn-frame-error :field-length)
-                          (let ((bid (fn-frame-parse-value parsed)))
-                            (if (< declared (+ 2 (len bid)))
-                                (fn-frame-error :length)
-                              (fn-frame-ok *fn-frame-magic-inbound*
-                                           *fn-frame-version* bid
-                                           (- declared
-                                              (+ 2 (len bid)))))))))))))))))))
+                          (let ((second (fn-frame-field-parse
+                                         :blob (fn-frame-parse-rest parsed))))
+                            (if (not (fn-frame-parse-okp second))
+                                (fn-frame-error :field-length)
+                              (let ((bid (fn-frame-parse-value parsed))
+                                    (identity (fn-frame-parse-value second)))
+                                (if (< *fn-frame-max-identity* (len identity))
+                                    (fn-frame-error :limit)
+                                  (if (< declared
+                                         (+ 2 (len bid) 4 (len identity)))
+                                      (fn-frame-error :length)
+                                    (fn-frame-ok
+                                     *fn-frame-magic-inbound*
+                                     *fn-frame-version*
+                                     (list bid identity)
+                                     (- declared
+                                        (+ 2 (len bid)
+                                           4 (len identity))))))))))))))))))))))
 
 (verify-guards fn-frame-inbound-open
   :hints (("Goal" :in-theory (disable fn-cbor-u16-from fn-cbor-u32-from

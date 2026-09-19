@@ -414,3 +414,53 @@
 (defthm fn-bpp-hop-count-limit-is-bounded
   (implies (fn-bpp-hop-countp x)
            (and (<= 1 (nth 1 x)) (<= (nth 1 x) 255))))
+
+; -----------------------------------------------------------------------------
+; The primary-block identity
+;
+; The first is the keystone the staging path depends on: the identity is an
+; octet list, so it can be hashed and framed at the host boundary at all.  The
+; second and third say what the identity projects: exactly the fields
+; `fn-bpp-adu-key` reads plus, for a fragment, the two fragment fields, and
+; nothing about routing, lifetime or CRC type.  Separation of two distinct
+; identities is bitten by witness in `tests/acl2/bp-primary-tests`.
+
+(defthm fn-bpp-primary-identity-value-is-shape
+  (implies (fn-bpp-blockp b)
+           (fn-bpc-shapep :item (fn-bpp-primary-identity-value b)))
+  :hints (("Goal" :in-theory (disable fn-bpp-eid-value))))
+
+(defthm fn-bpp-primary-identity-is-octets
+  (implies (fn-bpp-blockp b)
+           (fn-cbor-octet-listp (fn-bpp-primary-identity b)))
+  :hints (("Goal"
+           :use ((:instance fn-bpc-enc-are-octets
+                            (flg :item) (x (fn-bpp-primary-identity-value b))))
+           :in-theory (disable fn-bpc-enc-are-octets fn-bpc-enc
+                               fn-bpp-primary-identity-value))))
+
+(defthm fn-bpp-primary-identity-ignores-destination-lifetime-and-crc-type-by-definition
+  (implies (and (fn-bpp-blockp b) (fn-bpp-eidp d) (fn-bpp-timep l)
+                (fn-bpp-crc-typep type))
+           (and (equal (fn-bpp-primary-identity (fn-bpp-with-destination b d))
+                       (fn-bpp-primary-identity b))
+                (equal (fn-bpp-primary-identity (fn-bpp-with-lifetime b l))
+                       (fn-bpp-primary-identity b))
+                (equal (fn-bpp-primary-identity (fn-bpp-with-crc-type b type))
+                       (fn-bpp-primary-identity b))))
+  :hints (("Goal" :in-theory (disable fn-bpp-blockp fn-bpp-eidp fn-bpp-timep
+                                      fn-bpp-crc-typep fn-bpc-enc
+                                      fn-bpp-eid-value))))
+
+(defthm fn-bpp-primary-identity-determines-adu-key
+  (implies (and (fn-bpp-blockp a) (fn-bpp-blockp b)
+                (equal (fn-bpp-primary-identity-value a)
+                       (fn-bpp-primary-identity-value b)))
+           (equal (fn-bpp-adu-key a) (fn-bpp-adu-key b)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-bpp-value-eid-of-eid-value
+                            (e (fn-bpp-source a)))
+                 (:instance fn-bpp-value-eid-of-eid-value
+                            (e (fn-bpp-source b))))
+           :in-theory (disable fn-bpp-eid-value fn-bpp-value-eid))))
