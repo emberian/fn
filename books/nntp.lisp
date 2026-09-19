@@ -1793,25 +1793,26 @@
 
 (defun fn-nov-okp (x)
   (mbe :logic (equal (car x) :ok) :exec (equal (fn-ag-car x) :ok)))
-(defun fn-nov-subject (x) (mbe :logic (nth 1 x) :exec (fn-ag-car (fn-ag-cdr x))))
+(defun fn-nov-subject (x)
+  (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
 (defun fn-nov-from (x)
-  (mbe :logic (nth 2 x) :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
+  (mbe :logic (car (cdr (cdr x))) :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
 (defun fn-nov-date (x)
-  (mbe :logic (nth 3 x)
+  (mbe :logic (car (cdr (cdr (cdr x))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
 (defun fn-nov-msgid (x)
-  (mbe :logic (nth 4 x)
+  (mbe :logic (car (cdr (cdr (cdr (cdr x)))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
 (defun fn-nov-references (x)
-  (mbe :logic (nth 5 x)
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr x))))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
                                                           (fn-ag-cdr x))))))))
 (defun fn-nov-bytes (x)
-  (mbe :logic (nth 6 x)
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr x)))))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
                                                           (fn-ag-cdr (fn-ag-cdr x)))))))))
 (defun fn-nov-lines (x)
-  (mbe :logic (nth 7 x)
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr x))))))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
                                                           (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))))) 
 
