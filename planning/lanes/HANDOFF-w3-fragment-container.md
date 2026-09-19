@@ -15,8 +15,8 @@ book are byte-identical to `dev`.
 | --- | --- | --- | --- |
 | `books/transfer-journal.lisp` | **certified** | `certify-20260919T215540Z-3210` | 26 |
 | `books/transfer-journal-invariants.lisp` | **certified** | `certify-20260919T221000Z-26241` | |
-| `tests/acl2/transfer-journal-tests.lisp` | **certified** | `certify-20260919T221011Z-26555` | |
-| `books/container.lisp` | open | `certify-20260919T221242Z-39944` | |
+| `tests/acl2/transfer-journal-tests.lisp` | **certified** | `certify-20260919T221011Z-26555` | 0 (44 assert-event witnesses) |
+| `books/container.lisp` | open: guard conjecture of `fn-ct-deps-resolvep` | `certify-20260919T221242Z-39944` | 1 |
 | `books/container-invariants.lisp` | open | `certify-20260919T221244Z-40051` | |
 | `tests/acl2/container-tests.lisp` | open | `certify-20260919T221251Z-40513` | |
 
