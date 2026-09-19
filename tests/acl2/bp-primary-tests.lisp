@@ -385,39 +385,84 @@
                 (equal (fn-bpp-value-block (fn-bpp-block-value b crc-octets))
                        b)))))
 
-;   without `fn-bpp-blockp`.
-(local
- (must-fail
-  (thm (implies (and (fn-cbor-octet-listp crc-octets)
-                     (equal (len crc-octets)
-                            (fn-bpp-crc-width (fn-bpp-crc-type b))))
-                (equal (fn-bpp-value-block (fn-bpp-block-value b crc-octets))
-                       b)))))
+;   without `fn-bpp-blockp`: a non-record has no fields to build the value
+;   from, so the reader cannot give the non-record back.  Stated generally
+;   over a free `b`, the negated goal opens the builder and the reader on
+;   every branch at once and does not settle, so the tooth is bitten by an
+;   instance: b = 0 with crc-octets = nil satisfies both surviving hypotheses,
+;   because `fn-bpp-crc-type` of 0 is not a CRC type and `fn-bpp-crc-width` of
+;   a non-type is 0.  The body is false: the reader answers nil, not 0.  The
+;   instance is evaluated logically, because 0 is outside
+;   `fn-bpp-block-value`'s guard -- which is the point.
+(assert-event
+ (with-guard-checking :none
+  (equal (fn-bpp-crc-width (fn-bpp-crc-type 0)) 0)))
+(assert-event
+ (with-guard-checking :none
+  (not (implies (and (fn-cbor-octet-listp nil)
+                     (equal (len nil)
+                            (fn-bpp-crc-width (fn-bpp-crc-type 0))))
+                (equal (fn-bpp-value-block (fn-bpp-block-value 0 nil))
+                       0)))))
 
 ; fn-bpp-accepted-input-is-canonical-by-construction
-;   without the success hypothesis.
-(local
- (must-fail
-  (thm (equal (fn-bpp-encode (fn-bpp-result-block (fn-bpp-decode octets)))
-              octets))))
+;   without the success hypothesis: a refused input is not re-encoded.  Stated
+;   generally over free `octets`, the negated goal opens the whole decoder and
+;   the whole encoder at once and does not settle, so the tooth is bitten by
+;   an instance: octets = (1) is refused as malformed, and re-encoding the
+;   block the refusal does not carry gives the all-default block's octets, not
+;   (1).  Evaluated logically, because that non-block is outside
+;   `fn-bpp-encode`'s guard -- which is the point.
+(assert-event (not (fn-bpp-result-okp (fn-bpp-decode '(1)))))
+(assert-event
+ (with-guard-checking :none
+  (not (equal (fn-bpp-encode (fn-bpp-result-block (fn-bpp-decode '(1))))
+              '(1)))))
 
 ; fn-bpp-adu-key-ignores-destination-lifetime-and-crc-type-by-definition
-;   without `fn-bpp-blockp`: the accessors have nothing to read.
+;   without `fn-bpp-blockp`: HYPOTHESIS UNNECESSARY for the conclusion, so
+;   this tooth has no witness and is not claimed.  `fn-bpp-adu-key` reads
+;   positions 4, 6 and 7 of the record, and `fn-bpp-with-destination`,
+;   `fn-bpp-with-lifetime` and `fn-bpp-with-crc-type` copy exactly those three
+;   positions through `fn-bpp-make-block`, which is a `list`.  The conclusion
+;   therefore holds for every `b`, block or not, and the theorem keeps
+;   `fn-bpp-blockp` for its guard, not for its truth.  The fact is proved here
+;   rather than asserted, so the claim is checked:
 (local
- (must-fail
-  (thm (implies (and (fn-bpp-eidp d) (fn-bpp-timep l))
-                (equal (fn-bpp-adu-key (fn-bpp-with-destination b d))
-                       (fn-bpp-adu-key b))))))
+ (defthm fn-bpp-adu-key-ignores-destination-for-any-object
+   (equal (fn-bpp-adu-key (fn-bpp-with-destination b d))
+          (fn-bpp-adu-key b))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-bpp-adu-key fn-bpp-with-destination
+                                      fn-bpp-make-block fn-bpp-source
+                                      fn-bpp-creation-time
+                                      fn-bpp-sequence)))))
 
 ; fn-bpp-previous-node-round-trip
 ;   without `fn-bpp-previous-nodep`: an endpoint that is not a node ID is not
-;   a Previous Node value and does not come back.
-(local
- (must-fail
-  (thm (equal (fn-bpp-data-previous-node (fn-bpp-previous-node-data e)) e))))
+;   a Previous Node value and does not come back.  Stated generally over a
+;   free `e`, the negated goal opens the endpoint encoder and the CBOR decoder
+;   at once and does not settle, so the tooth is bitten by an instance: the
+;   dtn endpoint //n2/inbox has a non-empty demux, so it is not a node ID, and
+;   the round trip on it answers nil.  Evaluated logically, because it is
+;   outside `fn-bpp-previous-node-data`'s guard -- which is the point.
+(assert-event (not (fn-bpp-previous-nodep *bpp-dtn-inbox*)))
+(assert-event
+ (with-guard-checking :none
+  (not (equal (fn-bpp-data-previous-node
+               (fn-bpp-previous-node-data *bpp-dtn-inbox*))
+              *bpp-dtn-inbox*))))
 
 ; fn-bpp-hop-count-round-trip
 ;   without `fn-bpp-hop-countp`: a hop limit of zero or over 255 is refused.
-(local
- (must-fail
-  (thm (equal (fn-bpp-data-hop-count (fn-bpp-hop-count-data x)) x))))
+;   Stated generally over a free `x`, the negated goal opens the CBOR array
+;   encoder and decoder at once and does not settle, so the tooth is bitten by
+;   an instance: the hop count with limit 0 is not a hop count, and the round
+;   trip on it answers nil.  Evaluated logically, because it is outside
+;   `fn-bpp-hop-count-data`'s guard -- which is the point.
+(assert-event (not (fn-bpp-hop-countp (fn-bpp-make-hop-count 0 0))))
+(assert-event
+ (with-guard-checking :none
+  (not (equal (fn-bpp-data-hop-count
+               (fn-bpp-hop-count-data (fn-bpp-make-hop-count 0 0)))
+              (fn-bpp-make-hop-count 0 0)))))

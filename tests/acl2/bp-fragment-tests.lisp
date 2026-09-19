@@ -184,14 +184,18 @@
                 (equal (fn-bpf-reassemble fs (len payload))
                        (list :ok payload))))))
 
-;   without `fn-bpf-covers-all`: a gap yields `:missing`, not `:ok`.
-(local
- (must-fail
-  (thm (implies (and (fn-cbor-octet-listp payload)
-                     (fn-bpf-inputsp fs (len payload))
-                     (fn-bpf-all-agreep fs payload))
-                (equal (fn-bpf-reassemble fs (len payload))
-                       (list :ok payload))))))
+;   without `fn-bpf-covers-all`: a gap yields `:missing`, not `:ok`.  Stated
+;   generally, the negated goal opens `fn-bpf-reassemble` past the rewriter's
+;   call-depth limit -- a hard error, not a fast refutation -- so the tooth is
+;   bitten by an instance: payload = *bpf-payload* and fs = *bpf-gap*, whose
+;   two fragments agree with the payload and are in bounds but leave indices
+;   3 and 4 uncovered.  The body is false: the reassembly is (:missing 3 5).
+(assert-event
+ (not (implies (and (fn-cbor-octet-listp *bpf-payload*)
+                    (fn-bpf-inputsp *bpf-gap* (len *bpf-payload*))
+                    (fn-bpf-all-agreep *bpf-gap* *bpf-payload*))
+               (equal (fn-bpf-reassemble *bpf-gap* (len *bpf-payload*))
+                      (list :ok *bpf-payload*)))))
 
 ;   without `fn-bpf-inputsp`: an out-of-bounds input list is refused.
 (local
@@ -203,14 +207,31 @@
                        (list :ok payload))))))
 
 ;   without `fn-cbor-octet-listp` on the payload: agreement with a non-octet
-;   list cannot produce that list back, because cells are octets.
-(local
- (must-fail
-  (thm (implies (and (fn-bpf-inputsp fs (len payload))
-                     (fn-bpf-all-agreep fs payload)
-                     (fn-bpf-covers-all fs (len payload)))
-                (equal (fn-bpf-reassemble fs (len payload))
-                       (list :ok payload))))))
+;   list cannot produce that list back, because cells are octets and the
+;   canvas is a proper list.  Stated generally, the negated goal opens
+;   `fn-bpf-reassemble` past the rewriter's call-depth limit -- a hard error,
+;   not a fast refutation -- so the tooth is bitten by an instance: the
+;   improper list (10 20 30 . 7) has length 3 and its first three elements are
+;   octets, so a single fragment carrying (10 20 30) at offset 0 of total 3 is
+;   in bounds, agrees with it and covers it.  The body is false: the
+;   reassembly is (:ok (10 20 30)), which drops the 7 in the final cdr.
+;   Evaluated logically, because an improper list is outside
+;   `fn-bpf-all-agreep`'s guard -- which is the point.
+(assert-event
+ (with-guard-checking :none
+  (not (fn-cbor-octet-listp '(10 20 30 . 7)))))
+(assert-event
+ (with-guard-checking :none
+  (not (implies
+        (and (fn-bpf-inputsp (list '(:fn-bp-fragment 0 (10 20 30) 3))
+                             (len '(10 20 30 . 7)))
+             (fn-bpf-all-agreep (list '(:fn-bp-fragment 0 (10 20 30) 3))
+                                '(10 20 30 . 7))
+             (fn-bpf-covers-all (list '(:fn-bp-fragment 0 (10 20 30) 3))
+                                (len '(10 20 30 . 7))))
+        (equal (fn-bpf-reassemble (list '(:fn-bp-fragment 0 (10 20 30) 3))
+                                  (len '(10 20 30 . 7)))
+               (list :ok '(10 20 30 . 7)))))))
 
 ; fn-bpf-reassemble-ok-agrees-with-every-fragment
 ;   without `member-equal`: a fragment that was not consumed says nothing.
@@ -231,55 +252,98 @@
                             (fn-bpf-reassemble *bpf-cut* 8)))))))
 
 ;   without the `:ok` hypothesis: a refused reassembly has no output to agree
-;   with.
-(local
- (must-fail
-  (thm (implies (and (member-equal f fs)
-                     (natp k)
-                     (< k (len (fn-bpf-bytes f))))
-                (equal (nth k (fn-bpf-bytes f))
-                       (nth (+ (fn-bpf-offset f) k)
-                            (fn-bpf-result-bytes
-                             (fn-bpf-reassemble fs total))))))))
+;   with.  Stated generally, the negated goal drives the rewriter past its
+;   call-depth limit inside `fn-bpf-reassemble` just as the tooth above does,
+;   so the tooth is bitten by an instance: fs = *bpf-gap*, total = 8, f the
+;   first fragment of that list and k = 0 satisfy every surviving hypothesis
+;   and the body is false, because the reassembly is (:missing 3 5), whose
+;   "bytes" position is the index 3, and the nth of an index is nil rather
+;   than the fragment's byte 10.  The body is evaluated logically, because
+;   an index is not a byte list and `nth` of it is outside `nth`'s guard --
+;   which is the point.
+(assert-event (equal (fn-bpf-reassemble *bpf-gap* 8) '(:missing 3 5)))
+(assert-event
+ (with-guard-checking :none
+  (not (implies
+        (and (member-equal '(:fn-bp-fragment 0 (10 20 30) 8) *bpf-gap*)
+             (natp 0)
+             (< 0 (len (fn-bpf-bytes '(:fn-bp-fragment 0 (10 20 30) 8)))))
+        (equal (nth 0 (fn-bpf-bytes '(:fn-bp-fragment 0 (10 20 30) 8)))
+               (nth (+ (fn-bpf-offset '(:fn-bp-fragment 0 (10 20 30) 8)) 0)
+                    (fn-bpf-result-bytes
+                     (fn-bpf-reassemble *bpf-gap* 8))))))))
 
 ; fn-bpf-disagreeing-fragments-yield-conflict
 ;   without the disagreement hypothesis: identical overlap is not a conflict.
 ;   This is the theorem that distinguishes this lane from the transfer kernel.
-(local
- (must-fail
-  (thm (implies (and (fn-bpf-inputsp fs total)
-                     (member-equal f fs)
-                     (member-equal g fs)
-                     (natp i) (< i total)
-                     (not (equal (fn-bpf-cell-of f i) :gap))
-                     (not (equal (fn-bpf-cell-of g i) :gap)))
-                (equal (fn-bpf-result-tag (fn-bpf-reassemble fs total))
-                       :conflict)))))
+;   Stated generally, the negated goal opens `fn-bpf-reassemble` past the
+;   rewriter's call-depth limit, so the tooth is bitten by an instance:
+;   fs = *bpf-overlap*, total = 8, f and g its two fragments and i = 4 satisfy
+;   every surviving hypothesis -- both fragments carry a real byte at index 4
+;   -- and the body is false, because that overlap is byte-identical and
+;   reassembles :ok.
+(assert-event
+ (not (implies
+       (and (fn-bpf-inputsp *bpf-overlap* 8)
+            (member-equal (nth 0 *bpf-overlap*) *bpf-overlap*)
+            (member-equal (nth 1 *bpf-overlap*) *bpf-overlap*)
+            (natp 4) (< 4 8)
+            (not (equal (fn-bpf-cell-of (nth 0 *bpf-overlap*) 4) :gap))
+            (not (equal (fn-bpf-cell-of (nth 1 *bpf-overlap*) 4) :gap)))
+       (equal (fn-bpf-result-tag (fn-bpf-reassemble *bpf-overlap* 8))
+              :conflict))))
 
 ;   without `member-equal` for g: a fragment outside the list cannot force a
-;   conflict inside it.
-(local
- (must-fail
-  (thm (implies (and (fn-bpf-inputsp fs total)
-                     (member-equal f fs)
-                     (natp i) (< i total)
-                     (not (equal (fn-bpf-cell-of f i) :gap))
-                     (not (equal (fn-bpf-cell-of g i) :gap))
-                     (not (equal (fn-bpf-cell-of f i) (fn-bpf-cell-of g i))))
-                (equal (fn-bpf-result-tag (fn-bpf-reassemble fs total))
-                       :conflict)))))
+;   conflict inside it.  Stated generally the negated goal opens
+;   `fn-bpf-reassemble` past the rewriter's call-depth limit, so the tooth is
+;   bitten by an instance: fs = *bpf-cut*, total = 8, f its first fragment,
+;   i = 0, and g a fragment carrying 99 at offset 0 that is not in the list.
+;   Every surviving hypothesis holds and the two cells disagree, yet the body
+;   is false, because *bpf-cut* reassembles :ok.
+(assert-event (not (member-equal '(:fn-bp-fragment 0 (99) 8) *bpf-cut*)))
+(assert-event
+ (not (implies (and (fn-bpf-inputsp *bpf-cut* 8)
+                    (member-equal (nth 0 *bpf-cut*) *bpf-cut*)
+                    (natp 0) (< 0 8)
+                    (not (equal (fn-bpf-cell-of (nth 0 *bpf-cut*) 0) :gap))
+                    (not (equal (fn-bpf-cell-of '(:fn-bp-fragment 0 (99) 8) 0)
+                                :gap))
+                    (not (equal (fn-bpf-cell-of (nth 0 *bpf-cut*) 0)
+                                (fn-bpf-cell-of '(:fn-bp-fragment 0 (99) 8)
+                                                0))))
+               (equal (fn-bpf-result-tag (fn-bpf-reassemble *bpf-cut* 8))
+                      :conflict))))
 
 ; fn-bpf-missing-low-index-is-uncovered
-;   without the `:missing` hypothesis.
-(local
- (must-fail
-  (thm (not (fn-bpf-coveredp
-             fs (fn-bpf-result-bytes (fn-bpf-reassemble fs total)))))))
+;   without the `:missing` hypothesis: the second position of a result that is
+;   not a gap report is not an uncovered index.  Stated generally the negated
+;   goal opens `fn-bpf-reassemble` past the rewriter's call-depth limit, so
+;   the tooth is bitten by an instance: fs = *bpf-conflict* and total = 8
+;   reassemble to (:conflict 4), whose second position is the conflicting
+;   index 4 -- and index 4 is covered, by both fragments.  Dropping the
+;   hypothesis leaves the bare conclusion, so the witness asserts its negation
+;   directly.
+(assert-event (equal (fn-bpf-reassemble *bpf-conflict* 8) '(:conflict 4)))
+(assert-event
+ (fn-bpf-coveredp *bpf-conflict*
+                  (fn-bpf-result-bytes (fn-bpf-reassemble *bpf-conflict* 8))))
 
 ; fn-bpf-fragment-block-preserves-adu-key
-;   without `fn-bpp-blockp`: a non-block has no fields to carry across.
+;   without `fn-bpp-blockp`: HYPOTHESIS UNNECESSARY for the conclusion, so
+;   this tooth has no witness and is not claimed.  `fn-bpp-adu-key` reads
+;   positions 4, 6 and 7 of the record -- source, creation time, sequence --
+;   and `fn-bpf-fragment-block` copies exactly those three positions through
+;   `fn-bpp-make-block`, which is a `list`; only the flags, the offset and the
+;   total ADU length change.  The conclusion therefore holds for every `b`,
+;   block or not, and the theorem keeps `fn-bpp-blockp` for its guard, not for
+;   its truth.  The fact is proved here rather than asserted, so the claim is
+;   checked:
 (local
- (must-fail
-  (thm (implies (and (natp offset) (natp total))
-                (equal (fn-bpp-adu-key (fn-bpf-fragment-block b offset total))
-                       (fn-bpp-adu-key b))))))
+ (defthm fn-bpf-fragment-block-preserves-adu-key-for-any-object
+   (equal (fn-bpp-adu-key (fn-bpf-fragment-block b offset total))
+          (fn-bpp-adu-key b))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-bpp-adu-key fn-bpf-fragment-block
+                                      fn-bpp-make-block fn-bpp-source
+                                      fn-bpp-creation-time
+                                      fn-bpp-sequence)))))

@@ -146,10 +146,10 @@
     "books": 139,
     "books_in_root_closure": 139,
     "roots": 139,
-    "theorems": 1698,
+    "theorems": 1700,
     "functions": 1420,
-    "assert_events": 1782,
-    "must_fails": 87,
+    "assert_events": 1804,
+    "must_fails": 72,
     "encapsulates": 7,
     "guards": {
       "verified": 832,
@@ -2508,7 +2508,7 @@
       "book": "tests/acl2/bp-fragment-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
+      "theorems": 1,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -2517,8 +2517,8 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 52,
-      "must_fails": 10,
+      "assert_events": 63,
+      "must_fails": 2,
       "defconsts": 9,
       "defmacros": 0,
       "encapsulates": 0,
@@ -2585,7 +2585,7 @@
       "book": "tests/acl2/bp-primary-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
+      "theorems": 1,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -2594,8 +2594,8 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 89,
-      "must_fails": 11,
+      "assert_events": 100,
+      "must_fails": 4,
       "defconsts": 13,
       "defmacros": 0,
       "encapsulates": 0,

@@ -199,13 +199,11 @@ exactly the interoperability claim the assurance rules forbid.
   reassembly is proved to reconstruct a complete agreeing cover, not yet to
   agree with each fragment it consumed). Nothing else in this document cites
   them.
-- **The two test books are not certified.** `tests/acl2/bp-primary-tests`
-  times out (1800 s) in the `must-fail` tooth that drops the item-budget
-  hypothesis from `fn-bpc-decode-of-encode`, and `tests/acl2/bp-fragment-tests`
-  times out in the tooth for `fn-bpf-reassemble-ok-agrees-with-every-fragment`
-  (a rewriter call-depth loop); a tooth must fail fast, and these do not. Until
-  they certify, every witness and tooth for the primary and fragment keystones
-  is written, not accepted.
+- **Two theorem hypotheses are kept for their guards, not for their truth.**
+  `fn-bpp-adu-key-ignores-destination-lifetime-and-crc-type-by-definition` and
+  `fn-bpf-fragment-block-preserves-adu-key` both hold without `fn-bpp-blockp`;
+  neither has a tooth, and each test book proves the unconditional fact
+  instead. The section below records this.
 - **No host calls any of this.** The theorem subject rule applies: these are
   theorems about functions with no caller. `tools/bpa_dtn7.py` still treats
   bundles as opaque and `tools/bpa_payload_extract.rs` still uses the pinned
@@ -232,33 +230,84 @@ exactly the interoperability claim the assurance rules forbid.
   resource-cost bound is proved for CRC computation; the CRC is linear in the
   encoded block length, which is itself bounded by the codec's input preflight.
 
-## Teeth bitten by instance, and teeth still open
+## Teeth bitten by instance, and hypotheses that are unnecessary
 
-Three teeth in the two test books asked the prover to refute a general
-statement and did not terminate. Each is now bitten by a concrete
-counterexample instead — an `assert-event` that evaluates the theorem body on
+Twelve teeth in the two test books asked the prover to refute a general
+statement and did not finish: some ran past a 1800 s budget, and some aborted
+with a hard rewriter call-depth error, which is not a fast refutation either.
+In each the negated goal opens the very recursion the hypothesis was there to
+escape. Each is now bitten by a concrete
+counterexample instead -- an `assert-event` that evaluates the theorem body on
 one witness violating the dropped hypothesis and checks the body is false. No
 theorem was weakened; the witness is a strictly sharper refutation than
-`must-fail`, which only reports that ACL2 did not find a proof.
+`must-fail`, which only reports that ACL2 did not find a proof. Where the
+witness is outside a callee's guard the body is evaluated under
+`with-guard-checking :none`, which is the point of the witness.
+
+In `tests/acl2/bp-primary-tests`:
 
 - `fn-bpc-decode-of-encode`, item-budget hypothesis dropped: flg `:item`,
   x `(:uint . 1)`, rest `nil`, budget `0`. The decoder answers
   `(:error :budget)`.
 - `fn-bpp-decode-of-encode`, `fn-bpp-blockp` dropped: b `0`, evaluated
   logically because `0` is outside `fn-bpp-encode`'s guard.
+- `fn-bpp-value-block-of-block-value`, `fn-bpp-blockp` dropped: b `0`,
+  crc-octets `nil`. `fn-bpp-crc-width` of a non-type is 0, so both surviving
+  hypotheses hold, and the reader answers `nil` rather than `0`.
+- `fn-bpp-accepted-input-is-canonical-by-construction`, success hypothesis
+  dropped: octets `(1)`, which the decoder refuses as `:malformed`.
+  Re-encoding the block that refusal does not carry gives the all-default
+  block's octets, not `(1)`.
+- `fn-bpp-previous-node-round-trip`, `fn-bpp-previous-nodep` dropped: the dtn
+  endpoint `//n2/inbox`, whose demux is non-empty, so it is not a node ID.
+  The round trip answers `nil`.
+- `fn-bpp-hop-count-round-trip`, `fn-bpp-hop-countp` dropped: the hop count
+  with limit `0`, which is out of the 1..255 range. The round trip answers
+  `nil`.
+
+In `tests/acl2/bp-fragment-tests`:
+
+- `fn-bpf-complete-agreeing-cover-reassembles-to-payload`, `fn-bpf-covers-all`
+  dropped: payload `*bpf-payload*`, fs `*bpf-gap*`, whose two fragments agree
+  and are in bounds but leave indices 3 and 4 uncovered. The reassembly is
+  `(:missing 3 5)`.
+- `fn-bpf-complete-agreeing-cover-reassembles-to-payload`,
+  `fn-cbor-octet-listp` on the payload dropped: payload `(10 20 30 . 7)`, an
+  improper list of length 3 whose elements are octets, and one fragment
+  carrying `(10 20 30)` at offset 0 of total 3. It is in bounds, agrees and
+  covers, yet the reassembly is `(:ok (10 20 30))`, which drops the final
+  cdr.
 - `fn-bpf-reassemble-ok-agrees-with-every-fragment`, `member-equal` dropped:
   fs `*bpf-cut*`, total `8`, k `0`, and a fragment outside the list.
+- `fn-bpf-reassemble-ok-agrees-with-every-fragment`, `:ok` dropped: fs
+  `*bpf-gap*`, total `8`, f its first fragment, k `0`. The reassembly is
+  `(:missing 3 5)`, whose bytes position is the index `3`, and the nth of an
+  index is `nil`, not the fragment's byte `10`.
+- `fn-bpf-disagreeing-fragments-yield-conflict`, disagreement dropped: fs
+  `*bpf-overlap*`, total `8`, its two fragments, i `4`. Both carry a real byte
+  at index 4, and the byte-identical overlap reassembles `:ok`.
+- `fn-bpf-disagreeing-fragments-yield-conflict`, `member-equal` for g dropped:
+  fs `*bpf-cut*`, total `8`, i `0`, and g a fragment carrying `99` at offset 0
+  that is not in the list. `*bpf-cut*` still reassembles `:ok`.
+- `fn-bpf-missing-low-index-is-uncovered`, `:missing` dropped: fs
+  `*bpf-conflict*`, total `8`. The result is `(:conflict 4)`, whose second
+  position is the conflicting index `4`, and index 4 is covered by both
+  fragments.
 
-Certifying past those three uncovered further teeth of the same shape, which
-earlier runs never reached. They are open, not retired:
+### Two hypotheses that are unnecessary for the conclusion
 
-- `tests/acl2/bp-primary-tests`: `fn-bpp-value-block-of-block-value` without
-  `fn-bpp-blockp`, and the teeth after it.
-- `tests/acl2/bp-fragment-tests`:
-  `fn-bpf-reassemble-ok-agrees-with-every-fragment` without the `:ok`
-  hypothesis, and the teeth after it.
+Two teeth have no witness, and are recorded as hypothesis-unnecessary rather
+than claimed:
 
-Each opens the recursion it was meant to escape, so the general refutation
-runs past the rewriter's call-depth limit or past a 1800 s budget. The
-remedy is the same instance treatment; it is not yet applied, so neither book
-certifies.
+- `fn-bpp-adu-key-ignores-destination-lifetime-and-crc-type-by-definition`
+  without `fn-bpp-blockp`.
+- `fn-bpf-fragment-block-preserves-adu-key` without `fn-bpp-blockp`.
+
+`fn-bpp-adu-key` reads positions 4, 6 and 7 of the record -- source, creation
+time and sequence -- and `fn-bpp-with-destination`, `fn-bpp-with-lifetime`,
+`fn-bpp-with-crc-type` and `fn-bpf-fragment-block` each rebuild the record
+through `fn-bpp-make-block`, which is a `list`, copying exactly those three
+positions. The conclusion therefore holds for every object, block or not. Each
+test book proves that fact locally, so the claim is checked and not merely
+asserted, and both theorems keep `fn-bpp-blockp` for their guards rather than
+for their truth.
