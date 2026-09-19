@@ -84,11 +84,27 @@ def record_path(root: Path, identifier: str) -> Path:
     return root / "build" / "farm" / f"{identifier}.json"
 
 
-def push(host: str, root: Path) -> None:
+def remote_root(root: Path, identifier: str, override: str | None = None) -> Path:
+    """Where the run lives on the box: the recorded path, or this one.
+
+    Certificates name their sub-books by absolute path, so the path the run
+    used on the box is what `certs.py` records as their origin.  When it is
+    not a path on this machine, the pairs install into any worktree here.
+    """
+    if override:
+        return Path(override)
+    try:
+        record = json.loads(record_path(root, identifier).read_text())
+    except (OSError, ValueError):
+        return root
+    return Path(record.get("remote_path", str(root)))
+
+
+def push(host: str, root: Path, remote: Path) -> None:
     command = ["rsync", "-a", "--delete"]
     for pattern in EXCLUDES:
         command.append(f"--exclude={pattern}")
-    command.extend([f"{root}/", f"{host}:{root}/"])
+    command.extend([f"{root}/", f"{host}:{remote}/"])
     run(command)
 
 
@@ -115,15 +131,18 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
 
 
 def submit(host: str, root: Path, books: list[str], jobs: int,
-           timeout_seconds: int, affected_by: list[str]) -> str:
+           timeout_seconds: int, affected_by: list[str],
+           remote: Path | None = None) -> str:
     identifier = run_id()
-    push(host, root)
-    ssh(host, remote_script(host, root, identifier, books, jobs,
+    remote = remote or root
+    push(host, root, remote)
+    ssh(host, remote_script(host, remote, identifier, books, jobs,
                             timeout_seconds, affected_by))
     record = {
         "run_id": identifier,
         "host": host,
         "path": str(root),
+        "remote_path": str(remote),
         "books": books,
         "affected_by": affected_by,
         "jobs": jobs,
@@ -162,8 +181,9 @@ def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
          timeout_seconds: int = DEFAULT_WAIT_SECONDS) -> int:
     """Block until the remote run writes its status file, then fetch evidence."""
     started = time.monotonic()
+    remote = remote_root(root, identifier)
     while True:
-        progress = parse_progress(ssh(host, progress_script(root, identifier),
+        progress = parse_progress(ssh(host, progress_script(remote, identifier),
                                       check=False).stdout)
         state = progress.get("STATUS", "running")
         if state != "running":
@@ -180,26 +200,31 @@ def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
         code = int(state)
     except ValueError:
         code = 1
-    fetch(host, identifier, root)
+    fetch(host, identifier, root, remote)
     print(f"{identifier} on {host}: finished with exit code {code}")
     return code
 
 
-def fetch(host: str, identifier: str, root: Path) -> None:
+def fetch(host: str, identifier: str, root: Path,
+          remote: Path | None = None) -> None:
     """Bring back the evidence directory, the new pairs, and cache the pairs."""
-    log = ssh(host, f"cat {shlex.quote(str(root))}/build/farm/{identifier}.log",
+    remote = remote or remote_root(root, identifier)
+    log = ssh(host, f"cat {shlex.quote(str(remote))}/build/farm/{identifier}.log",
               check=False).stdout
     (root / "build" / "farm").mkdir(parents=True, exist_ok=True)
     (root / "build" / "farm" / f"{identifier}.log").write_text(log, encoding="utf-8")
     for directory in sorted(set(EVIDENCE.findall(log))):
         local = root / directory
         local.mkdir(parents=True, exist_ok=True)
-        run(["rsync", "-a", f"{host}:{root}/{directory}/", f"{local}/"], check=False)
+        run(["rsync", "-a", f"{host}:{remote}/{directory}/", f"{local}/"], check=False)
     for directory in certs.BOOK_DIRECTORIES:
         run(["rsync", "-a", "--update", "--include=*/", "--include=*.cert",
              "--include=*.port", "--exclude=*",
-             f"{host}:{root}/{directory}/", f"{root}/{directory}/"], check=False)
-    report = certs.publish(root, certs.cache_directory())
+             f"{host}:{remote}/{directory}/", f"{root}/{directory}/"], check=False)
+    # The pairs were produced under the *remote* path, which is what their
+    # sub-book entries name; record that as their origin.
+    report = certs.publish(root, certs.cache_directory(),
+                           origin=str(remote), origin_host=host)
     for line in report.lines():
         print(line)
 
@@ -236,12 +261,18 @@ def main(argv: list[str] | None = None) -> int:
                         help="how long `wait` blocks before giving up")
     parser.add_argument("--poll-seconds", type=int, default=POLL_SECONDS)
     parser.add_argument("--root", default=str(ROOT))
+    parser.add_argument("--remote-root", default=None,
+                        help="the path to use on the host (default: --root); a "
+                             "path that does not exist here makes the resulting "
+                             "certificates installable in any local worktree")
     arguments = parser.parse_args(argv)
     root = Path(arguments.root).resolve()
     if arguments.action == "submit":
         identifier = submit(arguments.host, root, list(arguments.rest),
                             arguments.jobs, arguments.timeout_seconds,
-                            list(arguments.affected_by))
+                            list(arguments.affected_by),
+                            Path(arguments.remote_root) if arguments.remote_root
+                            else None)
         print(identifier)
         return 0
     if arguments.action == "wait":
@@ -249,7 +280,8 @@ def main(argv: list[str] | None = None) -> int:
             parser.error("wait takes exactly one run id")
         return wait(arguments.host, arguments.rest[0], root,
                     arguments.poll_seconds, arguments.wait_seconds)
-    return status(arguments.host, root)
+    return status(arguments.host,
+                  Path(arguments.remote_root) if arguments.remote_root else root)
 
 
 if __name__ == "__main__":
