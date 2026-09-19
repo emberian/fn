@@ -1,0 +1,342 @@
+# HANDOFF — w3/scheduler (C2-06, the durable contact/retry scheduler)
+
+Worktree `/Users/ember/dev/fn/build/lanes/w3-scheduler`, branch `w3/scheduler`,
+branched from `dev` at `9321344`.
+
+HEAD: see `git -C /Users/ember/dev/fn/build/lanes/w3-scheduler rev-parse HEAD`.
+The lane's single commit is "C2-06: the durable contact/retry scheduler".
+
+## Per book: certified, or open
+
+| Artifact | Status | Evidence |
+| --- | --- | --- |
+| `books/scheduler.lisp` | OPEN — not certified in this lane | see "Certification" below |
+| `books/scheduler-invariants.lisp` | OPEN — not certified in this lane | — |
+| `tests/acl2/scheduler-tests.lisp` | OPEN — not certified in this lane | — |
+| `host/scheduler-host.lisp` | `:program` mode, outside the proof boundary | — |
+| `tools/scheduler.py`, `tests/test_scheduler.py` | PASS | 22 tests, below |
+| `make check` | PASS | `Scaffold OK` / `Ledger OK`, below |
+
+### Certification
+
+The lane's step-1 baseline `make certify` ran locally for about an hour and
+reached 29 of roughly 170 book certificates before the root coordinator moved
+the baseline to a remote box and killed the local run (laptop at load 98,
+nineteen ACL2 processes). Per that instruction this lane started no further
+certification and did not restart the baseline. **No `fn-sched-` book has been
+certified.** Every theorem below is a *proposed* theorem, in the AGENTS.md
+sense: "A proposed theorem is not a theorem proved by ACL2."
+
+The remaining step, once `books/*.cert` and `tests/acl2/*.cert` are installed
+at the same absolute path, is exactly three commands, one book at a time:
+
+```
+FN_ACL2_TIMEOUT_SECONDS=1800 python3 tools/certify_books.py books/scheduler
+FN_ACL2_TIMEOUT_SECONDS=1800 python3 tools/certify_books.py books/scheduler-invariants
+FN_ACL2_TIMEOUT_SECONDS=1800 python3 tools/certify_books.py tests/acl2/scheduler-tests
+```
+
+Known risk points, in the order they will bite:
+
+1. `tests/acl2/scheduler-tests.lisp` builds a node holding **two** articles
+   (`*sched-node-2*`). If the second `fn-node-prepare`/`fn-node-complete` pair
+   does not bind `<big@fn.invalid>`, the `work-big` enqueue is refused and the
+   book's first `assert-event` fails. Fix by adjusting the generation/txid
+   pair, not by weakening the assertion.
+2. Guard verification is eager (every `fn-sched-` definition carries an
+   explicit `:guard t`). Comparisons against unconstrained parameters were
+   wrapped in `nfix` for this reason; `fn-sched-admissiblep`,
+   `fn-sched-contact-holdsp` and `fn-sched-observe-expiry` are the three whose
+   obligations depend on unfolding a recognizer.
+3. `fn-sched-promotion-position-decreases` needs ACL2 to case-split on whether
+   the selected work-id is `w`; if it stalls, add
+   `:cases ((equal w (fn-sched-item-work-id (fn-sched-selection ss wf))))`.
+4. `fn-sched-decision-protected` / `fn-sched-decision-decode` mirror
+   `fn-frame-workflow-encode` / `-decode` exactly, including the
+   `:verify-guards nil` plus explicit `verify-guards` pattern.
+
+If a theorem does not go through, delete it and record it here as open. No
+`skip-proofs`, `defaxiom` or trust tag is present in any file this lane added
+(`grep -n 'skip-proofs\|defaxiom\|defttag' books/scheduler*.lisp
+tests/acl2/scheduler-tests.lisp host/scheduler-host.lisp` is empty).
+
+## Verbatim keystones
+
+### Safety — no fairness hypothesis anywhere below
+
+```lisp
+(defthm fn-sched-step-preserves-state
+  (implies (fn-sched-statep ss)
+           (fn-sched-statep (fn-sched-result-ss (fn-sched-step ss wf event)))))
+
+(defthm fn-sched-trace-preserves-state
+  (implies (fn-sched-statep ss)
+           (fn-sched-statep (fn-sched-result-ss (fn-sched-trace ss wf events)))))
+
+(defthm fn-sched-step-preserves-queued
+  (implies (fn-sched-queuedp id (fn-sched-queue ss))
+           (fn-sched-queuedp
+            id (fn-sched-queue (fn-sched-result-ss (fn-sched-step ss wf event))))))
+
+(defthm fn-sched-only-a-tick-or-a-relay-touches-the-workflow
+  (implies (and (not (equal (fn-bp-nth 0 event) :tick))
+                (not (equal (fn-bp-nth 0 event) :transport)))
+           (equal (fn-sched-result-wf (fn-sched-step ss wf event)) wf)))
+
+(defthm fn-sched-expiry-preserves-workflow
+  (equal (fn-sched-result-wf
+          (fn-sched-step ss wf (fn-sched-expiry-event id ct lt anchor obs)))
+         wf))
+
+(defthm fn-sched-contact-loss-preserves-queue-and-workflow
+  (and (equal (fn-sched-result-wf (fn-sched-step ss wf (fn-sched-close-event)))
+              wf)
+       (equal (fn-sched-queue
+               (fn-sched-result-ss (fn-sched-step ss wf (fn-sched-close-event))))
+              (fn-sched-queue ss))
+       (equal (fn-sched-aged
+               (fn-sched-result-ss (fn-sched-step ss wf (fn-sched-close-event))))
+              (fn-sched-aged ss))))
+```
+
+Every selected attempt is a durable intent. The workhorse is
+`fn-bp-step-submit-requires-matching-durable-attempt-completion`
+(`books/bp-workflow-invariants.lisp`); this lifts it to the scheduler's tick:
+
+```lisp
+(defthm fn-sched-selected-submit-is-a-workflow-submit
+  (implies
+   (member-equal e (fn-sched-result-effects
+                    (fn-sched-tick-step ss wf attempt-id)))
+   (let* ((sel (fn-sched-selection ss wf))
+          (s1 (fn-bp-result-state
+               (fn-bp-step wf (fn-bp-attempt-prepare-event
+                               (fn-sched-next-tx ss) 0
+                               (fn-sched-item-work-id sel) attempt-id))))
+          (pending (fn-bp-state-pending s1)))
+     (and (equal (fn-bp-nth 0 e) :submit)
+          (fn-bp-statep s1)
+          (not (fn-bp-state-fenced s1))
+          (consp pending)
+          (equal (fn-bp-pending-kind pending) :attempt)
+          (equal (fn-bp-pending-txid pending) (fn-sched-next-tx ss))
+          (equal (fn-bp-pending-generation pending) 0)
+          (equal e
+                 (list :submit
+                       (fn-bp-work-id (fn-bp-pending-work pending))
+                       (fn-bp-attempt-id
+                        (fn-bp-work-attempt (fn-bp-pending-work pending)))
+                       (fn-bp-attempt-generation
+                        (fn-bp-work-attempt (fn-bp-pending-work pending)))
+                       (fn-bp-config-local-eid (fn-bp-state-config s1))
+                       (fn-bp-config-peer-eid (fn-bp-state-config s1))
+                       (fn-bp-attempt-lifetime
+                        (fn-bp-work-attempt (fn-bp-pending-work pending))))))))
+  :rule-classes nil)
+```
+
+The theorem subject is the function the host calls. `fn-sched-tick-step` is the
+composition of `fn-sched-host-selection`, the journal's durable attempt, and
+`fn-sched-host-commit` (`tools/scheduler.py:run_plan`), and that equation is
+itself a theorem:
+
+```lisp
+(defthm fn-sched-tick-step-is-select-drive-take
+  (implies (and (fn-sched-admissiblep ss)
+                (consp (fn-sched-selection ss wf))
+                (fn-sched-drive-okp ss wf attempt-id))
+           (and (equal (fn-sched-result-ss (fn-sched-tick-step ss wf attempt-id))
+                       (fn-sched-with-decisions
+                        (fn-sched-take ss wf (fn-sched-selection ss wf))
+                        (fn-sched-record-decision
+                         ss wf (fn-sched-selection ss wf) attempt-id)))
+                (equal (fn-sched-result-wf (fn-sched-tick-step ss wf attempt-id))
+                       (fn-bp-result-state
+                        (fn-sched-drive-attempt
+                         wf (fn-sched-next-tx ss)
+                         (fn-sched-item-work-id (fn-sched-selection ss wf))
+                         attempt-id))))))
+```
+
+A refused submit charges no retry and records no decision, which is what keeps
+"retries bounded per contact" from being an accounting fiction:
+
+```lisp
+(defthm fn-sched-refused-submit-is-a-no-op
+  (implies (and (consp (fn-sched-selection ss wf))
+                (not (fn-sched-submit-for-idp
+                      (fn-sched-item-work-id (fn-sched-selection ss wf))
+                      (fn-bp-result-effects
+                       (fn-sched-drive-attempt
+                        wf (fn-sched-next-tx ss)
+                        (fn-sched-item-work-id (fn-sched-selection ss wf))
+                        attempt-id))))
+                (fn-sched-admissiblep ss))
+           (and (equal (fn-sched-result-ss (fn-sched-tick-step ss wf attempt-id)) ss)
+                (equal (fn-sched-result-wf (fn-sched-tick-step ss wf attempt-id)) wf)
+                (equal (fn-sched-result-effects
+                        (fn-sched-tick-step ss wf attempt-id))
+                       nil))))
+
+(defthm fn-sched-retries-stay-within-the-contact-bound
+  (implies (and (fn-sched-statep ss)
+                (<= (fn-sched-retries ss)
+                    (fn-sched-retry-bound (fn-sched-conf ss))))
+           (<= (fn-sched-retries
+                (fn-sched-result-ss (fn-sched-tick-step ss wf attempt-id)))
+               (fn-sched-retry-bound (fn-sched-conf ss)))))
+```
+
+### The aging bound
+
+```lisp
+(defthm fn-sched-promotion-position-decreases
+  (implies (and (fn-sched-admissiblep ss)
+                (fn-sched-drive-okp ss wf attempt-id)
+                (member-equal w (fn-sched-aged ss))
+                (fn-sched-eligiblep (fn-sched-find w (fn-sched-queue ss)) wf)
+                (not (fn-sched-submit-for-idp
+                      w (fn-sched-result-effects
+                         (fn-sched-tick-step ss wf attempt-id)))))
+           (and (member-equal
+                 w (fn-sched-aged
+                    (fn-sched-result-ss (fn-sched-tick-step ss wf attempt-id))))
+                (< (fn-sched-pos
+                    w (fn-sched-aged
+                       (fn-sched-result-ss
+                        (fn-sched-tick-step ss wf attempt-id))))
+                   (fn-sched-pos w (fn-sched-aged ss))))))
+
+(defthm fn-sched-aging-bound
+  (implies (and (fn-sched-aged-fitsp ss)
+                (member-equal w (fn-sched-aged ss))
+                (fn-sched-contact-runp ss wf n attempt-id)
+                (fn-sched-eligible-runp ss wf n attempt-id w)
+                (< (nfix (fn-sched-queue-bound (fn-sched-conf ss))) n))
+           (fn-sched-selected-withinp ss wf n attempt-id w)))
+```
+
+N is a function of configuration: `queue-bound` + 1. The stated horizon
+`aging-limit` + `queue-bound` composes this with the single-tick promotion fact
+`fn-sched-passed-over-work-reaches-the-promotion-queue`; the multi-tick
+promotion induction is **not** done and is listed for C3-03 in
+`specs/scheduler.md`.
+
+### The starvation counterexample
+
+The policy is written down, not described: `fn-sched-unfair-selection` /
+`fn-sched-unfair-step` in `books/scheduler.lisp` are the scheduler with the
+promotion queue removed and nothing else changed. The trace is exhibited in
+`tests/acl2/scheduler-tests.lisp`:
+
+```lisp
+(defconst *sched-starvation-trace*
+  (list (fn-sched-tick-event "attempt:0" *sched-obs*)
+        (fn-sched-transport-event "work-small" "attempt:0" 0 :no-contact)
+        (fn-sched-tick-event "attempt:1" *sched-obs*)
+        (fn-sched-transport-event "work-small" "attempt:1" 1 :no-contact)
+        (fn-sched-tick-event "attempt:2" *sched-obs*)))
+
+(assert-event
+ (not (fn-sched-unfair-submitted-in-trace *sched-ss* *sched-wf*
+                                          *sched-starvation-trace* "work-big")))
+(assert-event
+ (fn-sched-unfair-submitted-in-trace *sched-ss* *sched-wf*
+                                     *sched-starvation-trace* "work-small"))
+(assert-event
+ (fn-sched-submitted-in-trace *sched-ss* *sched-wf* *sched-starvation-trace*
+                              "work-big"))
+```
+
+One trace, two policies: under priority-without-aging the 1000-octet article
+receives no submit at all while the 10-octet one is submitted at every tick;
+under the aging policy the same trace submits the large one on the third tick,
+with the decision's reason recorded as `:aged` rather than `:priority`.
+
+### Conditional progress, with A-FAIRNESS as its hypothesis
+
+```lisp
+(defthm fn-sched-conditional-progress-under-a-fairness
+  (implies (and (fn-sched-aged-fitsp ss)
+                (member-equal w (fn-sched-aged ss))
+                (equal n (+ 1
+                            (nfix (fn-sched-queue-bound (fn-sched-conf ss)))
+                            (fn-assume-fairness-contact-index route schedule)))
+                (fn-sched-contact-runp ss wf n attempt-id)
+                (fn-sched-eligible-runp ss wf n attempt-id w))
+           (fn-sched-selected-withinp ss wf n attempt-id w)))
+```
+
+`fn-assume-fairness-contact-index` is the constrained function in
+`books/assumptions.lisp`; the constraint it contributes is
+`fn-assume-fairness-contact-index-is-finite`, so the horizon is a natural
+number of ticks. The other three hypotheses are capacity
+(`fn-sched-contact-runp`: a contact is open, the retry budget is not spent, and
+the durable store accepts the intent), the peer/receipt condition
+(`fn-sched-eligible-runp`), and promotion. **A simulation is not the liveness
+theorem** — `tests/test_scheduler.py` and the lab run one trace each; this
+quantifies over all of them. No safety theorem above mentions A-FAIRNESS, per
+FLR-004.
+
+Teeth: `tests/acl2/scheduler-tests.lisp` has one `must-fail` per hypothesis of
+each keystone — 13 in total, including one per hypothesis of
+`fn-sched-promotion-position-decreases` and of `fn-sched-aging-bound`, and one
+showing the conditional-progress conclusion fails when the horizon is the bare
+fairness index rather than the index plus the configured bound.
+
+## Python results
+
+```
+$ python3 -m unittest tests.test_scheduler
+Ran 22 tests — OK
+```
+
+`tests.test_workflow_journal` and `tests.test_workflow_faults` were **not
+run**: they start an ACL2 session through `tools/frame_bridge`, and the lane
+was instructed to run no ACL2 while the baseline moved to the remote box. Run
+them together with the three certifications:
+
+```
+python3 -m unittest tests.test_scheduler tests.test_workflow_journal \
+                    tests.test_workflow_faults -v
+```
+
+`make check`: `Scaffold OK: 105 Markdown files, 50 requirements, 18 proof
+targets, 18 scenario specifications. Ledger OK: cited events exist, are not
+SUSPECT, and planning/ledger.md is current.` `python3 tools/ledger.py --write`
+regenerated `planning/ledger.json`, `planning/ledger.md` and the
+`planning/proofs.json` event arrays; it must be re-run after any book edit made
+while fixing the certifications.
+
+Smoke-tested without ACL2: `tests/bp-dtn7/fn_sender_lab.py` imports, its
+`CONTACT_PLAN` (two windows `[10,20]` and `[5100,5200]`, one expiry at tick 2,
+`queue-bound` 8, `aging-limit` 2, `retry-bound` 2) reads through
+`tools/scheduler.plan_from`, and `MockBpa` serves the dtn7-rs inventory surface
+that `tools/bpa_dtn7.BpaDtn7Client` speaks. The mock transmits no bundle and
+has no peer; any report that uses it must say so.
+
+## Proposals
+
+1. **FNWF `:schedule` record.** `books/frame` should gain
+   `(cons :schedule (list :nat :nat :text :text :text :nat (cons :enum
+   '(:aged :priority)) :nat))` — `(generation tick peer work-id attempt-id
+   attempt-generation reason passes)` — appended to `*fn-frame-workflow-kinds*`
+   so existing kind codes stay stable, and `books/bp-workflow-records` should
+   accept it as an audit record that is a no-op on workflow state. Until then
+   `books/scheduler.lisp` models the shape and validates it against
+   `fn-frame-values-okp`, and the host writes it as an FNSC frame under
+   `<journal>/schedule/` with the same header, field encoding and A-CRYPTO
+   trailer. This lane deliberately did not edit `books/frame.lisp` or
+   `books/bp-workflow-records.lisp`, which other w3 lanes may hold.
+2. **`fn-sched-aged-fitsp` should become a preserved invariant**, not a
+   hypothesis. It needs the promotion queue's freedom from duplicates, which
+   follows from the `agedp` flag but is not yet a theorem.
+3. **The transport relay** (`:transport` in `fn-sched-step`) was added because
+   without it no composed trace can re-arm a work whose attempt ended
+   `:no-contact`, and therefore no starvation trace can be written at all. It
+   decides nothing: `fn-sched-transport-relay-is-fn-bp-step` states that it is
+   `fn-bp-step` with the scheduler state untouched and no effect.
+4. **C3-03 inherits** the multi-tick promotion induction, delivery as opposed
+   to selection (needs C2-07/C2-08 transitions), scheduler-level safety under
+   clock jumps and outages, and a real BPv7 run of the contact plan against the
+   pinned dtn7-rs build. `specs/scheduler.md` carries this list.
