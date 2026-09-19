@@ -25,7 +25,7 @@ Request fields are ordered as follows:
 The first eight are nonempty octet-domain strings of at most 256 octets. The
 article is an opaque octet list of at most 32,768 octets. Encoding and decoding
 preserve it exactly. The current receiver composition unwraps it with this codec
-and pass only those exact octets to the existing article parser and Store
+and passes only those exact octets to the existing article parser and Store
 acceptance path. Envelope source, subject, policy and terms are context inputs;
 they do not override article fields or authorize local acceptance.
 
