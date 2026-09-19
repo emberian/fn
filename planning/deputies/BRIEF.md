@@ -23,6 +23,9 @@ cross-cluster steps you could not take alone.
   (e.g. `commit-<cluster>-<n>.txt` in the scratchpad: two lanes sharing
   `msg.txt` swapped commit messages on 2026-09-19); never search under
   `build/` or `/`.
+- Commit named files at each milestone (a book certifies, a spec section
+  lands), not only at the end: a harness restart ends your agent for good and
+  a successor lane picks up your worktree cold from what is on disk.
 - Hard budget: the tool-call number in your prompt. When it is spent, commit
   what certifies, write the report, stop.
 
