@@ -67,7 +67,14 @@ class ProtocolError(Exception):
 
 
 class NineError(Exception):
-    """A request refused with Rerror; the connection continues."""
+    """A request refused with Rerror; the connection continues.
+
+    Base 9P2000 carries a reason string, and the Linux client maps it through
+    its own table: a string that is not in the table becomes ESERVERFAULT, so
+    an ordinary miss reads as "Unknown error 526" at the shell.  Conditions a
+    file system already has a name for use that name; the projection's own
+    refusals keep the reason NNTP would give.
+    """
 
 
 class Node:
@@ -318,7 +325,7 @@ class Connection:
             mode = message.u1()
             node = self.fid(fid)
             if mode & 3 not in (OREAD, OEXEC) or mode & (OTRUNC | ORCLOSE):
-                raise NineError("9P view is read-only")
+                raise NineError("Read-only file system")
             if node.refusal is not None:
                 raise NineError(node.refusal)
             self.open_fids.add(fid)
@@ -336,7 +343,7 @@ class Connection:
             entry = stat_bytes(node)
             self.reply(RSTAT, tag, struct.pack("<H", len(entry)) + entry)
         elif kind in (TCREATE, TWRITE, TREMOVE, TWSTAT):
-            raise NineError("9P view is read-only")
+            raise NineError("Read-only file system")
         else:
             raise ProtocolError("unsupported 9P message type")
 
@@ -363,7 +370,7 @@ class Connection:
             walked += 1
         if walked < count:
             if walked == 0:
-                raise NineError("file not found")
+                raise NineError("No such file or directory")
             # A partial walk leaves newfid unaffected, per section 5 of the
             # protocol; only a complete walk binds it.
             self.reply(RWALK, tag, struct.pack("<H", walked) + qids)
