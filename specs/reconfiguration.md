@@ -945,3 +945,54 @@ STO-006 will have to preserve when compaction arrives — the history is exactly
 the "relevant policy context" that clause already requires a checkpoint to keep.
 No multi-node configuration agreement: a configuration generation is local, and
 D11's portable group authority is M4 work.
+
+## 8. Status
+
+Packets R1 and R2 landed on lane `w4/config-records`; R3 to R6 remain design.
+Everything above this section is still a *proposal* except what this section
+names. The landed books do not follow the design's shapes exactly, and the
+differences are deliberate:
+
+- **What landed.** [`books/config.lisp`](../books/config.lisp) (the typed
+  value, the typed deltas, node-derivable admissibility, the configuration
+  record, its canonical CBOR encoding, and `fn-config-replay`),
+  [`books/config-invariants.lisp`](../books/config-invariants.lisp) (the five
+  replay properties), [`books/config-records.lisp`](../books/config-records.lisp)
+  (the two-kind journal record and `fn-config-aware-replay`), and
+  [`tests/acl2/config-tests.lisp`](../tests/acl2/config-tests.lisp).
+  `tools/run_store.py initialize` writes one default configuration record
+  through the bridge and `recover` replays it, refusing a store that has none.
+- **Keystones proved.** `fn-config-replay-loop-splits-at-any-prefix` (replay is
+  a fold, which is what determinism means for a resumed recovery);
+  `fn-config-replay-generation-counts-config-records` (the generation is the
+  configuration-record count, so a busy posting period does not move it);
+  `fn-cfg-groups-retire-keeps-the-watermark` and
+  `fn-cfg-groups-create-resumes-the-watermark` (retirement never deletes;
+  NNT-006 made structural); `fn-cfg-apply-preserves-valuep` (an admissible
+  change preserves the typed value, hence every format ceiling);
+  `fn-cfg-recovered-generation-is-at-most-the-live-generation` (STO-004's `<=`,
+  with the `=` direction explicitly not claimed);
+  `fn-cfg-inadmissible-record-is-not-applied` (the refusal direction: no state
+  holds a partially applied delta list); and
+  `fn-config-aware-replay-is-fn-replay-on-transaction-only-histories`, which is
+  what lets the two-kind stream be adopted without reproving article replay.
+- **Shape differences from section 1.** Quotas, policies, listeners, peers and
+  limits are one typed row (three labels and a natural) rather than five
+  shapes, and a delta is `(kind a b n rows)` rather than eight variant forms,
+  with the design's surface syntax kept as constructors (`fn-cfg-create-group`,
+  `fn-cfg-set-capacity`, ...). One row type means one codec reader and one
+  round trip instead of six.
+- **Ceilings that are arguments, not copies.** The reservation total and RFC
+  3977 section 3.1's initial-line ceiling enter `fn-cfg-admissible-reason` as
+  arguments, so `books/retention` and `books/nntp-syntax` stay their only
+  owners. `host/config-host.lisp` currently repeats the number 510 at the one
+  call site; that is an open twin, closed by R5.
+- **Not landed, and not claimed.** The node's fifth slot, the two
+  `fn-node-statep` coherence conjuncts, `fn-initial-state` losing its groups
+  argument, `fn-sf-replay-node`/`fn-sn-open-observed`/`fn-sn-make` losing their
+  configuration parameters, the owner event `(:reconfigure id deltas)`, the
+  per-connection pinned generation, the per-generation projection verdict and
+  NEWGROUPS. `*fn-store-groups*` and every `defconst` of section 1.7 are still
+  in place; R4 deletes them. The schema-0 stamp fields are uint32, so a clock
+  time beyond 2^32 is outside the codec; the 64-bit stamp is an open item for
+  the next codec schema.

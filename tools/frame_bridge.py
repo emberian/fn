@@ -324,6 +324,25 @@ class FrameSession:
     def group_table_id(self) -> str:
         return _as_bytes(self.call("(fn-store-group-table-id)")).decode("utf-8")
 
+    def config_record_default(self) -> bytes:
+        """The one default configuration record, encoded by `books/config`."""
+        return _as_bytes(self.call("(fn-cfg-host-default-octets)"))
+
+    def config_record_replay(self, octets: bytes):
+        """Replay one durable configuration record; ACL2 owns every value."""
+        value = self.call(
+            "(fn-cfg-host-replay-octets " + _octets(octets) + ")")
+        if isinstance(value, Keyword):
+            raise BridgeError("ACL2 refused the durable configuration record")
+        if not isinstance(value, list) or len(value) != 3:
+            raise BridgeError("ACL2 returned an unexpected configuration")
+        generation, names, capacity = value
+        if not isinstance(generation, int) or not isinstance(capacity, int):
+            raise BridgeError("ACL2 returned an unexpected configuration")
+        return (generation,
+                tuple(_as_bytes(name).decode("utf-8") for name in names),
+                capacity)
+
     def group_codes(self, names) -> list[int]:
         forms = " ".join(_octets(name.encode("utf-8", "strict"))
                          for name in names)
