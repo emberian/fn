@@ -31,6 +31,11 @@
 (include-book "principal")
 (include-book "statement-invariants")
 
+
+;; Convergence: the codecs cluster withdraws its proof vocabulary on export;
+;; re-open it locally (agreed on the deputy board, codecs ANSWER to substrate).
+(local (in-theory (enable fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary fn-record-invariants-vocabulary)))
+
 ; cluster-local theory: this book is inside the substrate cluster and opens
 ; the definitions its neighbours withdraw at export (docs/proof-style.md 2).
 (local (in-theory (enable fn-crypto-seam-internals
