@@ -1,7 +1,8 @@
 # Decision workbook
 
-Status: architectural direction recorded; D02, D03, and D04 resolved by the user on
-2026-09-18; other choices remain proposals. This is the agenda for discussion, not an approval
+Status: D01, D02, D03, D04, and D17 have selected directions from the user on
+2026-09-18. Exact native encodings and cryptographic profiles remain open; other
+choices remain proposals. This is the agenda for discussion, not an approval
 gate for routine work. Record answers here with their rationale and consequences.
 No unanswered recommendation is silently promoted to an agreed decision.
 
@@ -13,7 +14,9 @@ user-facing tradeoffs forward with concrete examples as they become relevant.
 The [three-cycle plan](swarm-cycles.md) schedules concrete decision packets
 alongside implementation. Independent local service, storage and DTN work can
 proceed under explicit experimental profiles. Its proposed sequencing and UI
-placement do not select a source grammar, cryptographic suite or release scope.
+placement do not independently select a source grammar, cryptographic suite or
+release scope. The later D01/D17 answers below now fix the source boundary and
+NNTP/command-line-first sequencing.
 
 ## Already agreed
 
@@ -33,13 +36,13 @@ authorship support are resolved below.
 
 ## Decisions to make together
 
-The first three questions put to the user, D02, D03, and D04, are resolved. The
-remaining table is a long-term backlog. The [privacy note](../specs/privacy.md)
-keeps the eventual group-encryption protocol choice open.
+D01–D04 and D17 now have selected directions. The remaining table is a long-term
+backlog; detailed byte profiles and key lifecycle still need design. The
+[privacy note](../specs/privacy.md) keeps the eventual group-encryption protocol choice open.
 
 | ID | Question | Recommendation | Main alternative / cost | Needed by |
 | --- | --- | --- | --- | --- |
-| D01 | What is the durable source of a native article? | Immutable source bytes plus a versioned envelope; NNTP trace fields belong to an explicit projection. Preserve legacy wire input separately. | Treat every wire variant as the only source; simpler ingestion, harder portable authorship and semantic conflict handling. | M1 model, M2 bytes |
+| D01 — decided | What is the durable source of a native article? | **Selected:** sign the exact authored source bytes; mutable Path/Xref and gateway injection records live in separate projections. Preserve unknown headers and MIME bytes. Envelope/signature encoding remains D08/D09. | Treat every wire variant as the only source; simpler ingestion, harder portable authorship and semantic conflict handling. | M1 model, M2 bytes |
 | D02 — decided | Do native messages support author signatures in the first release? | **Selected:** native author signatures plus explicit gateway provenance for ordinary unsigned NNTP clients. | Gateway-only first was declined. Concrete suites/key workflow remain D09. | M1 identity model, M3 release |
 | D03 — decided | What does a successful local post promise to retain? | **Selected:** keep until explicit authorized release, no automatic expiry; refuse new obligations when capacity is unavailable. | Automatic bounded retention was declined. Exact release authority/terms still need specification. | M1 obligation model |
 | D04 — decided | Is private encrypted communication in the first release? | **Selected:** shared community groups first; design confidentiality and metadata boundaries now. | Private encrypted groups in the initial release are deferred. The later cryptosystem remains open. | M1 scope |
@@ -55,7 +58,7 @@ keeps the eventual group-encryption protocol choice open.
 | D14 | Which platform and fault claims come first? | Pure crash model first; qualify one Linux local-filesystem profile before deployment durability claims, while supporting macOS development. | Qualify macOS and Linux together; more adapter/platform work before the first durability claim. | M2 |
 | D15 | How should long-delay exchange use scarce contacts? | Bounded proactive batches, resumable objects, cached peer knowledge, explicit quotas; add optimized reconciliation later. | Interactive inventory negotiation first; efficient on good links, consumes more round trips. | M4 |
 | D16 | What resource envelope are we designing for? | Define a small-community reference profile and a simulator stress profile; measure before fixing article/chunk/segment sizes. | Select hard universal limits now; earlier ABI certainty but less evidence. | M1 bounds, M2 layout |
-| D17 | What is the first human interface? | Use an existing newsreader for interoperability, then a web reader over the same acceptance path. | Build the web experience before reader interoperability; earlier bespoke UX, weaker early protocol feedback. | M3 validation, M6 |
+| D17 — decided | What is the first human interface? | **Selected:** NNTP and command-line clients first; web later. Prioritize native signing/posting and operator CLI tools in the current cycles. | Build the web experience before reader interoperability; earlier bespoke UX, weaker early protocol feedback. | M3 validation, M6 |
 | D18 | How much should we prove before calling the first release usable? | Core invariants, codec properties, and conditional crash recovery first; state host/crypto/platform assumptions explicitly. | Ship an experimental server sooner with a smaller proved subset and equally explicit limits. | M1 proof scope, M3 release |
 
 ## Consequences worth thinking through
@@ -65,8 +68,10 @@ keeps the eventual group-encryption protocol choice open.
 We need a concrete example containing native author data, generated injection
 fields, relay-mutated headers, an unknown header, and a legacy unsigned article.
 The [article-byte examples](../docs/article-byte-examples.md) now supply those
-views and two candidate signing preimages; they remain proposals for discussion.
-Specify which exact bytes are signed and how an ordinary reader sees the article.
+views and two candidate signing-preimage encodings. D01 selects exact authored
+source bytes, with mutable trace and gateway injection records outside that
+source signature in separate projections. The encoding candidates, precise
+profile grammar and legacy-variant comparison policy remain design work.
 Do not settle this by saying “canonicalize headers”: that hides the difficult
 part. Acceptance must still handle ordinary NNTP clients without fn extensions.
 
@@ -187,3 +192,30 @@ service development. They do not wait for complete NNTP, compaction, indexes or
 UI work. This selects architectural priority, not a particular BPA, EID scheme,
 cryptographic suite, portable encoding or qualified mission profile. The
 [BP path](../specs/bp-path.md) defines the first complete experimental slice.
+
+### 2026-09-18: D01 — exact authored source and separate projections
+
+User selected “Yes, exact source bytes plus separate projections.” Native author
+signatures bind the exact authored source octets, preserving unknown allowed
+headers, folding and MIME/body bytes. Mutable NNTP Path/Xref and gateway injection
+records belong to separate projections/provenance, outside that source signature.
+Projection changes must not rewrite the signed source or require stripping fields
+after signing. Legacy received bytes and gateway evidence remain explicit; this
+does not infer an unsigned legacy article's original authored bytes.
+
+This resolves the architectural source/signature boundary for OBJ-003, OBJ-007,
+ENC-003 and NNT-004. It does not select the concrete native envelope, either
+example preimage encoding, CBOR/COSE, a hash/signature suite, key lifecycle, or
+legacy equivalence/quarantine policy. D08/D09 and those profile details remain
+open. C1-11 can now design against this fixed boundary rather than compare the
+two source architectures. No implementation or proof completion follows.
+
+### 2026-09-18: D17 — NNTP and command-line clients first
+
+User selected “NNTP and command-line clients first; web later.” The next cycles
+prioritize ordinary newsreader interoperability, native signing/posting tools
+and operator/agent CLI workflows over the same durable owner path. C2-11 becomes
+that client/operator task; a web reader/composer stays later M6 interface work.
+This supersedes the provisional proposal to bring web into C2. It introduces no
+new protocol or release requirement and does not defer the selected D02 native
+signature capability.

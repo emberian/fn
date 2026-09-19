@@ -48,7 +48,10 @@ Validate required fields; supply permitted missing injection fields under a
 specified policy. Preserve MIME content and unknown allowable fields. `From` is
 not authenticated identity. References permit missing ancestors. Article dates,
 field folding, generated Message-IDs, and Path/Xref behavior require the RFC 5536/
-5537 dependency audit and D01's native/legacy boundary.
+5537 dependency audit and the concrete native/legacy profile. D01 now fixes
+the native boundary: exact authored source bytes are signed; mutable Path/Xref
+and gateway injection records belong to separate projections. Injection must
+not rewrite those signed bytes. Legacy input keeps its explicit provenance.
 
 NNT-005: positive POST acceptance follows fn's durable transaction contract and
 the selected local retention policy: keep until explicit authorized release,

@@ -1,8 +1,9 @@
 # Objects and identities
 
 Status: behavioral requirements; native author-signature support plus legacy
-gateway provenance is selected (D02). Field layouts and native source profile
-are provisional. Decisions D01, D08, D09, D10, and D11 in the
+gateway provenance is selected (D02). D01 selects exact authored source bytes
+with separate mutable trace/injection projections. Concrete field layouts and
+profile grammar remain open under D08, D09, D10, and D11 in the
 [decision workbook](../planning/decisions.md) govern their realization.
 
 ## Logical records
@@ -30,10 +31,16 @@ domain-looking portion. Keep Message-IDs distinct from content digests, origin
 event IDs, transaction IDs, paths, and local group numbers. See RFC 5536 §3.1.3.
 
 OBJ-003: preserve original received representations and their provenance. Native
-fn source objects travel unchanged; a projection may add NNTP trace information.
+fn source objects travel unchanged. Per D01, author signatures bind exact
+authored source bytes, including unknown allowed headers and MIME/body octets.
+Mutable Path/Xref and gateway injection records live in separate projections
+or provenance and are outside that source signature. Projection changes must
+not rewrite signed source or silently strip fields after signing.
 Legacy imports may have no author signature and may arrive with different Path
 or Xref values. Neither whole-file digest inequality nor Message-ID equality alone
-establishes conflicting authored content. D01 must define the comparison rules.
+establishes conflicting authored content. Legacy-variant comparison and local
+conflict/quarantine policy still need an explicit profile; stripping trace
+fields cannot establish the original authored bytes of an unsigned import.
 
 OBJ-004: preserve conflicting claims as distinguishable evidence. Selecting a
 local served variant does not declare that arrival order establishes global

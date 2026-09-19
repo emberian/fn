@@ -1,7 +1,8 @@
 # Article-byte examples for the D01/D09 discussion
 
-Status: worked examples and a recommendation for review. These examples do not
-freeze the native article schema, signing algorithm, or persistent ABI. They make
+Status: D01 selects exact authored source bytes plus separate projections. The
+worked examples and candidate encodings below do not freeze the native article
+schema, signing algorithm, or persistent ABI. They make
 the byte boundaries visible so those choices can be made against concrete input.
 
 The examples use `\r\n` escapes in code blocks. They describe octets; the escapes
@@ -11,8 +12,9 @@ views refer to the first example, without adding another trailing CRLF. A
 placeholder such as `SIG(illustrative)` or `digest=EXAMPLE` is not a valid
 signature or digest and must not be used as cryptographic evidence.
 
-The relevant project direction is D01's proposal of immutable source bytes plus a
-versioned envelope, with NNTP trace fields kept in an explicit projection. D02 is
+D01 now selects signing the exact authored source bytes, preserving unknown
+allowed headers and MIME/body octets, with mutable NNTP Path/Xref and gateway
+injection records kept in separate projections. The envelope encoding is open. D02 is
 selected: native author signatures are supported, while ordinary unsigned NNTP
 posts retain explicit gateway provenance. D09's algorithm, key workflow, and
 signature container are still open. The proposed deterministic CBOR profile in
@@ -316,11 +318,11 @@ and verify another.
 Carry Candidate B forward as the preferred design direction because D08 already
 proposes restricted deterministic CBOR and D09 calls for algorithm-tagged,
 versioned containers. Keep Candidate A as a minimal reference grammar and test
-oracle. In either case, the signed value should contain the exact source byte
-string, not a reconstructed header map or normalized display text. Path, Xref,
-local article numbers, and other mutable projections should be outside this
-source signature and retained as separately authenticated provenance/evidence when
-that is needed. To make this consistent with signing an exact proto-article, a
+oracle. The user selected the shared source boundary of both candidates: the
+signed value binds the exact authored source byte string, not a reconstructed
+header map or normalized display text. Mutable Path/Xref, local article numbers
+and gateway injection records are outside this source signature. Separate
+provenance signatures, if needed, have their own specified subjects. To make this consistent with signing an exact proto-article, a
 native submission profile must forbid mutable trace fields in its source (or
 define them as immutable authored claims with separate projected trace fields).
 It cannot silently strip fields after the author signs them.
@@ -335,16 +337,16 @@ the RFC wire behavior.
 
 ## Decisions this document leaves for later
 
-The examples narrow the real questions without answering them:
+D01 resolves the source/projection architecture. The remaining profile questions
+are more specific:
 
-1. Is the signed native source exactly the submitted proto-article, or does the
-   native profile define a separate authored-field grammar with the original
-   proto-article retained as evidence?
-2. Are generated `Injection-*` fields always outside the author preimage, or can
-   an explicit native profile sign a selected injection fact as a separate
-   statement?
-3. Which unknown headers are preserved opaquely, and which bounded parsed fields
-   are safe to expose to search or policy?
+1. What exact native submission grammar and envelope fields carry the authored
+   octets, and how does it reject mutable trace fields without rewriting a
+   source after signing?
+2. Which separate gateway/injection statements need signatures, and what are
+   their exact subjects and authority contexts?
+3. Which preserved unknown headers may the bounded parsed view expose to search
+   or policy, without treating their contents as authority?
 4. When the same Message-ID has conflicting source bytes, which evidence is
    retained, which variant is served locally, and how are quotas applied?
 5. What stable author reference and policy context are signed, and how do key
@@ -353,6 +355,7 @@ The examples narrow the real questions without answering them:
    deterministic namespaced transformation when its source identifier is absent
    or collides?
 
-Those are D01/D09 and later policy questions. They should be answered with byte
-vectors, collision/variant traces, and an implementation/profile audit before a
-format or cryptographic suite is called selected.
+These profile/D08/D09 questions need byte vectors, collision/variant traces and
+an implementation/profile audit before a format or cryptographic suite is called
+selected. The two preimage encodings above remain candidates; D01 did not select
+either one.

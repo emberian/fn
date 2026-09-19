@@ -39,7 +39,8 @@ with named dependent milestones.
 
 ## M1: executable model
 
-Before completing all of M1, finish D01/D05's semantic details (D02/D03/D04 are selected),
+Before completing all of M1, finish the native-profile/D05 semantic details
+(D01's source boundary and D02/D03/D04/D17 directions are selected),
 D07, local D10/D11, D12's first handoff
 terms, D13's initial history rule, resource bounds in D16, and proof scope D18.
 
@@ -184,7 +185,8 @@ duplicate/resurrection argument; indefinite acceptance is not promised.
   initial BP integration belongs to the active M3/M4 path.
 - Simulate long/asymmetric contacts, interrupted transfers, clock uncertainty,
   quota pressure, and eventual-contact assumptions.
-- Build the chosen human web interface; explore 9p projections and submission
+- After the selected NNTP/command-line-first path (D17), build the human web
+  interface; explore 9p projections and submission
   files using the same acceptance rules. Private messaging follows D04's scope.
 
 Exit: demonstrate actual adapter interoperability and report its version/profile.

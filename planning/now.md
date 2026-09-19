@@ -141,8 +141,9 @@ complete the selected reader profile. The isolated-slot journal is not the real
 adapter model; store-files/store-node are the selected refinement path.
 The next user-facing design discussion has
 [concrete native-versus-legacy byte examples](../docs/article-byte-examples.md)
-for D01, followed by principal/key custody (D09). These proposals do not silently
-select a signing grammar or cryptographic suite.
+for D01's now-selected exact-source/separate-projection boundary, followed by
+principal/key custody (D09). The examples do not select a concrete preimage
+encoding or cryptographic suite.
 
 Private-group cryptography remains a separate requirements/research track.
 Shared community groups come first; MLS is a candidate, not a commitment.
@@ -173,7 +174,8 @@ refinement and receiver composition with an evolving Store, followed by
 contact-plan/relay/carried-media composition with expiry, reorder and staging
 exhaustion, and the D01/D09 identity and authenticated receipt design. Scheduling fairness/LTP/physical power-loss qualification remain
 explicit. The first loop's local A-POLICY is trusted and receipts are unsigned.
-D01/D09 are not silently selected by the experimental CBOR ADU.
+The experimental CBOR ADU selects neither a native envelope nor D09 crypto;
+D01's source/projection boundary is separately selected by the user.
 
 The [article work batch](../tests/evidence/2026-09-18-article-work.md) passed all
 seven new roots. Complete public parser value correspondence and structural-work
@@ -219,7 +221,7 @@ before dependent adoption; only actual consumers wait for a missing dependency.
 
 C2 targets native signatures/authority, persistent fragments and complete-object
 validation, scheduled relay undertakings, carried media, checkpoint authority,
-origin restore and the proposed local web client. C3 adopts physical compaction,
+origin restore and native/operator command-line clients; web remains later work. C3 adopts physical compaction,
 operational repair/restore, conditional progress and extended transport, then
 runs a complete fault and release assessment.
 
@@ -229,8 +231,10 @@ manual enqueue does not close it. Body reclamation also needs explicit separatio
 of content from retained duplicate/evidence history; current inline article
 records do not supply that feature automatically.
 
-D01's exact-source/separate-projection direction and bringing web UI forward
-were presented as optional user questions during planning; no answer has been
-recorded. D09's suite/key lifecycle gets a concrete research/vector packet early
-in C1. Existing D02/D03/D04 decisions remain binding. All other routine reversible
-work proceeds within current authorization and the named experimental profiles.
+The user selected D01's exact authored source bytes plus separate mutable
+NNTP/gateway projections, and D17's NNTP/command-line-first sequencing. C1-11 now
+uses that fixed source boundary; C2-11 owns native signing/posting and operator
+CLI tools. Web reader/composer remains later M6 work. D09's suite/key lifecycle
+still gets a concrete research/vector packet early in C1. Existing D02/D03/D04
+decisions remain binding. These decisions change design and work sequencing;
+they are not implementation or proof evidence.
