@@ -10,12 +10,18 @@ import subprocess
 import sys
 import time
 
-from run_store import Acl2Store, Store
+from run_store import (Acl2Store, EXIT_FAULT, EXIT_OK, Store, UsageParser,
+                       decimal_list)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROMPT = b"ACL2 !>"
 MAX_READ = 512
 MAX_ACL2_OUTPUT = 1024 * 1024
+
+
+class ReaderBridgeFault(RuntimeError):
+    """The ACL2 bridge lost correlation; this reader cannot keep serving."""
+
 
 def read_prompt(proc, timeout=5):
     out = b""
@@ -45,14 +51,20 @@ def fail_on_acl2_error(output):
 
 
 def acl2_octet_list(output):
-    """Accept only ACL2's printed NIL or a proper list of decimal octets."""
-    match = re.fullmatch(rb"(?:NIL|\((?:\s*[0-9]+)*\s*\))\s*ACL2 !>", output)
-    if not match:
+    """Accept only ACL2's printed NIL or a proper list of decimal octets.
+
+    The scan is linear: a repeated-group regular expression backtracks
+    exponentially on malformed bridge output.
+    """
+    trimmed = output.strip()
+    if not trimmed.endswith(PROMPT):
         raise RuntimeError("unexpected ACL2 octet-list result")
-    body = output.split(b"ACL2 !>", 1)[0].strip()
+    body = trimmed[:-len(PROMPT)].strip()
     if body == b"NIL":
         return []
-    values = [int(token) for token in body[1:-1].split()]
+    values = decimal_list(body)
+    if values is None:
+        raise RuntimeError("unexpected ACL2 octet-list result")
     if any(value > 255 for value in values):
         raise RuntimeError("ACL2 emitted a non-octet bridge result")
     return values
@@ -80,6 +92,7 @@ class Acl2Reader:
         self.store_bridge = store_bridge
         self.owns_process = store_bridge is None
         self.proc = None
+        self.own_poisoned = False
         env = os.environ.copy()
         env["ACL2_CUSTOMIZATION"] = "NONE"
         try:
@@ -101,13 +114,26 @@ class Acl2Reader:
             self.close()
             raise
 
+    @property
+    def poisoned(self):
+        """True once this reader's ACL2 pipe can no longer be correlated."""
+        if self.store_bridge is not None:
+            return self.store_bridge.poisoned
+        return self.own_poisoned
+
     def _load(self, text):
         self.call(text)
 
     def call(self, text):
         if self.store_bridge is not None:
             return self.store_bridge.call(text)
-        return fail_on_acl2_error(form(self.proc, text))
+        try:
+            output = form(self.proc, text)
+        except (RuntimeError, OSError):
+            # A lost prompt leaves this pipe one reply behind for good.
+            self.own_poisoned = True
+            raise
+        return fail_on_acl2_error(output)
 
     def reset(self):
         self.call("(fn-reader-reset state)")
@@ -150,7 +176,12 @@ class Acl2Reader:
 
 
 def serve_client(reader, client):
-    """Serve one connection; a broken peer cannot end the listener."""
+    """Serve one connection; a broken peer cannot end the listener.
+
+    A poisoned bridge is not a broken peer.  Once correlation is lost the
+    reader can no longer tell one command's reply from another's, so it
+    refuses to keep serving and the caller fails closed.
+    """
     with client:
         try:
             client.settimeout(10)
@@ -170,6 +201,8 @@ def serve_client(reader, client):
                     except RuntimeError:
                         # An invalid bridge result is not a protocol reply.
                         # Do not retain this connection's input for reuse.
+                        if reader.poisoned:
+                            raise ReaderBridgeFault("ACL2 bridge poisoned")
                         return
                     if reply:
                         client.sendall(reply)
@@ -179,7 +212,11 @@ def serve_client(reader, client):
                     # ACL2 wire state holds the bounded prefix.
                     if not pending:
                         break
+        except ReaderBridgeFault:
+            raise
         except (RuntimeError, ConnectionError, OSError):
+            if reader.poisoned:
+                raise ReaderBridgeFault("ACL2 bridge poisoned")
             return
 
 
@@ -188,7 +225,7 @@ def terminate_on_signal(signum, unused_frame):
 
 def main():
     signal.signal(signal.SIGTERM, terminate_on_signal)
-    parser = argparse.ArgumentParser()
+    parser = UsageParser()
     parser.add_argument("--port", type=int, default=8119)
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--store", help="durable store snapshot to serve")
@@ -217,9 +254,17 @@ def main():
             print("LISTENING {}".format(listener.getsockname()[1]), flush=True)
             while True:
                 client, _ = listener.accept()
-                serve_client(reader, client)
+                try:
+                    serve_client(reader, client)
+                except ReaderBridgeFault as fault:
+                    # Correlation is unrecoverable within this process.  Fail
+                    # closed rather than answer the next client from a pipe
+                    # whose replies can no longer be matched to its commands.
+                    print("reader: {}".format(fault), file=sys.stderr)
+                    return EXIT_FAULT
                 if args.once:
                     break
+        return EXIT_OK
     finally:
         if reader is not None:
             reader.close()
@@ -227,4 +272,4 @@ def main():
             store_bridge.close()
         if store is not None:
             store.close()
-if __name__=='__main__': main()
+if __name__=='__main__': sys.exit(main())
