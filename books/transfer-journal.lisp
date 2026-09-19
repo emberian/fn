@@ -38,6 +38,13 @@
 (include-book "transfer")
 (include-book "frame")
 
+; The codecs cluster withdraws the frame vocabulary at its export theory
+; (BOARD, 2026-09-19 codecs).  This book opens it only where a guard proof
+; needs it, in that event's own hint, never book-wide: `fn-frame-octet-
+; vocabulary` is the `len`-backchaining cascade codecs measured at 108 s on a
+; single `append` goal, and with it live the admission of the replay folds
+; case-split past a 1800 s timeout (measured here, 2026-09-19).
+
 ; -----------------------------------------------------------------------------
 ; Frame family
 
@@ -72,7 +79,7 @@
 (defthm fn-tj-spec-for-is-spec-list
   (implies (not (equal (fn-tj-spec-for kind) :none))
            (fn-frame-spec-listp (fn-tj-spec-for kind)))
-  :hints (("Goal" :in-theory (enable fn-tj-spec-for))))
+  :hints (("Goal" :in-theory (enable fn-tj-spec-for fn-frame-spec-listp))))
 
 (in-theory (disable fn-tj-spec-for))
 
@@ -143,7 +150,9 @@
 
 ; The journal a live run leaves behind, and the state that run reaches.
 (defun fn-tj-journal (st inputs)
-  (declare (xargs :guard t))
+  ; The measure is named: ACL2's first guess is over `st`, and refuting it
+  ; opens the whole transfer kernel inside the termination proof.
+  (declare (xargs :guard t :measure (acl2-count inputs)))
   (if (consp inputs)
       (cons (fn-tj-write st (car inputs))
             (fn-tj-journal (fn-transfer-result-state
@@ -152,7 +161,7 @@
     nil))
 
 (defun fn-tj-run (st inputs)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :measure (acl2-count inputs)))
   (if (consp inputs)
       (fn-tj-run (fn-transfer-result-state
                   (fn-tj-transition st (car inputs)))
@@ -175,7 +184,7 @@
         (list :ok (fn-transfer-result-state result))))))
 
 (defun fn-tj-replay-records (st records index)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :measure (acl2-count records)))
   (if (consp records)
       (let ((step (fn-tj-apply st (car records))))
         (if (equal (fn-frame-item 0 step) :ok)
@@ -205,7 +214,9 @@
          (<= (len (fn-frame-fields-octets spec (cdr r)))
              *fn-tj-max-payload*))))
 
-(verify-guards fn-tj-record-okp)
+(verify-guards fn-tj-record-okp
+  :hints (("Goal" :in-theory (enable fn-frame-fields-vocabulary
+                                     fn-frame-record-vocabulary))))
 
 (defun fn-tj-records-okp (rs)
   (declare (xargs :guard t))
@@ -233,7 +244,9 @@
         (fn-frame-encode *fn-tj-magic* *fn-tj-version* code
                          (fn-tj-payload r) digest)))))
 
-(verify-guards fn-tj-encode)
+(verify-guards fn-tj-encode
+  :hints (("Goal" :in-theory (enable fn-frame-fields-vocabulary
+                                     fn-frame-record-vocabulary))))
 
 (defun fn-tj-decode (octets digest)
   ; The host entry point.  Every bound is checked by `fn-frame-decode` before
@@ -259,7 +272,11 @@
                     (fn-frame-ok *fn-tj-magic* *fn-tj-version* kind
                                  (fn-frame-parse-value parsed))))))))))))
 
-(verify-guards fn-tj-decode)
+(verify-guards fn-tj-decode
+  :hints (("Goal" :in-theory (enable fn-frame-fields-vocabulary
+                                     fn-frame-record-vocabulary
+                                     fn-frame-octet-vocabulary
+                                     fn-frame-codec-vocabulary))))
 
 ; The logical record a decoded frame carries.
 (defun fn-tj-frame-record (frame)
@@ -294,7 +311,7 @@
 ; Replay over frames.  A frame that does not open is a typed `:corrupt`
 ; fault carrying the frame decoder's reason; the state is the one before it.
 (defun fn-tj-replay-frames (st frames index)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count frames)))
   (if (consp frames)
       (let ((frame (fn-tj-open (car frames))))
         (if (not (fn-frame-result-okp frame))
@@ -308,7 +325,7 @@
 
 ; The host entry point: the same replay with the host's digests.
 (defun fn-tj-replay-frames-with (st frames digests index)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :measure (acl2-count frames)))
   (if (consp frames)
       (let ((frame (fn-tj-decode (car frames)
                                  (if (consp digests) (car digests) nil))))
@@ -336,3 +353,26 @@
                 (fn-transfer-assemble-from 0 (fn-transfer-entry-length entry)
                                            (fn-transfer-entry-chunks entry)))
         nil))))
+
+; -----------------------------------------------------------------------------
+; Export theory (docs/proof-style.md §2).  What leaves this book enabled: the
+; record shape lemma `fn-tj-spec-for-is-spec-list`, and the list-recursive
+; `fn-tj-records-okp` (the induction vocabulary of the frame keystones).  The
+; accessors lose their definition rune only -- ground evaluation and type
+; prescriptions still decide -- and every recognizer, transition, fold and
+; codec entry point is withdrawn under one name.  A book above that must open
+; one says so in a single `(local (in-theory (enable fn-tj-vocabulary)))`.
+
+(in-theory (disable (:d fn-tj-kind) (:d fn-tj-label) (:d fn-tj-arg)
+                    (:d fn-tj-octets) (:d fn-tj-outcome)
+                    (:d fn-tj-profile-of) (:d fn-tj-profile-record)))
+
+(deftheory fn-tj-vocabulary
+  '(fn-tj-transition-recordp fn-tj-profile-recordp fn-tj-transition
+    fn-tj-write fn-tj-journal fn-tj-run fn-tj-apply fn-tj-replay-records
+    fn-tj-replay fn-tj-record-okp fn-tj-code fn-tj-payload fn-tj-encode
+    fn-tj-decode fn-tj-frame-record fn-tj-seal fn-tj-open fn-tj-seal-journal
+    fn-tj-digests-of fn-tj-replay-frames fn-tj-replay-frames-with
+    fn-tj-candidate))
+
+(in-theory (disable fn-tj-vocabulary))

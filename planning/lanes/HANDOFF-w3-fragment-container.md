@@ -13,12 +13,12 @@ book are byte-identical to `dev`.
 
 | Book | Status | Evidence dir (`build/acl2/`) | Theorems |
 | --- | --- | --- | --- |
-| `books/transfer-journal.lisp` | PENDING | | |
-| `books/transfer-journal-invariants.lisp` | PENDING | | |
-| `tests/acl2/transfer-journal-tests.lisp` | PENDING | | |
-| `books/container.lisp` | PENDING | | |
-| `books/container-invariants.lisp` | PENDING | | |
-| `tests/acl2/container-tests.lisp` | PENDING | | |
+| `books/transfer-journal.lisp` | **certified** | `certify-20260919T215540Z-3210` | 26 |
+| `books/transfer-journal-invariants.lisp` | open | `certify-20260919T215542Z-3266` | 24 |
+| `tests/acl2/transfer-journal-tests.lisp` | open (blocked on the row above) | `certify-20260919T215545Z-3351` | 0 |
+| `books/container.lisp` | open | `certify-20260919T215545Z-3410` | 1 |
+| `books/container-invariants.lisp` | open (blocked on the row above) | `certify-20260919T215547Z-3506` | 17 |
+| `tests/acl2/container-tests.lisp` | open (blocked on the row above) | `certify-20260919T215547Z-3557` | 0 |
 
 Makefile roots added after `tests/acl2/transfer-tests`, in that order.
 `docs/prefixes.md` rows `fn-tj-` and `fn-ct-`. `python3 tools/ledger.py
@@ -26,7 +26,48 @@ Makefile roots added after `tests/acl2/transfer-tests`, in that order.
 
 ## Baseline
 
-PENDING (filled in when "BASELINE CERTS INSTALLED" arrives).
+`make certs-install` on the realigned tree installed nothing usable: it
+reported `installed 0, kept identical local 24, no cached pair 164`, and the
+certificates already in the worktree are **not relocatable** -- certifying
+`books/transfer-journal` against them failed with "its certificate requires
+the book .../w3-fragment-container/books/acceptance.lisp, but ... the book
+.../dep-core/books/acceptance.lisp ... has been included". The cache is keyed
+by content but the certificates record the absolute path of the worktree that
+produced them. **This is a tooling defect worth a board entry**: a lane that
+trusts `certs-install` gets a green-looking worktree in which nothing can
+certify.
+
+The baseline this lane therefore built itself: the twenty books of the
+include closure, certified from source in this worktree, one ACL2 process at
+a time, all passing --
+`build/acl2/certify-20260919T201615Z-65567`: acceptance-alloc, acceptance,
+acceptance-invariants, retention, node, node-invariants, cbor,
+cbor-invariants, wildmat, records, identity, frame-octets, frame-fields,
+frame-journal, frame, frame-invariants, transfer, transfer-reservation,
+transfer-union, transfer-invariants. ACL2 8.7, SBCL 2.6.8, this laptop,
+co-tenant with three other lanes.
+
+## Why the lane had never certified (measured, not guessed)
+
+1. **No named measure on the folds.** `fn-tj-journal`, `fn-tj-run`,
+   `fn-tj-replay-records`, `fn-tj-replay-frames`, `fn-tj-replay-frames-with`
+   and `fn-ct-publish-list` all recur on a list *and* thread a kernel state.
+   ACL2 guesses a measure over the first formal, so refuting the guess opens
+   the whole transfer kernel (`fn-transfer-complete-fromp`,
+   `fn-transfer-replace-entry-with-chunks`) inside the termination proof:
+   measured at **1800 s timeout, still at Subgoal 51.2.5**. With
+   `:measure (acl2-count <list>)` named, `books/transfer-journal` certifies in
+   seconds. The same guess would have opened the acceptance and retention
+   kernels under `fn-ct-publish-list`.
+2. **The node guard.** Core's realignment put `(fn-node-statep s)` on
+   `fn-node-prepare`/`fn-node-complete`, so `fn-ct-publish-article` cannot
+   verify guards without carrying it, and `fn-ct-publish-list` needs
+   `fn-ct-publish-article-preserves-node-statep` to carry it across the
+   recursion rather than re-checking the recognizer.
+3. **The frame vocabulary is not free.** Enabling `fn-frame-octet-vocabulary`
+   book-wide (the `len`-backchaining cascade codecs measured at 108 s on one
+   `append` goal) is what made the admission explode; it is now enabled in
+   exactly one event, the guard proof of `fn-tj-decode`.
 
 ## Subject and host line
 

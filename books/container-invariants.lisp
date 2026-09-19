@@ -17,6 +17,12 @@
 (include-book "node-invariants")
 (local (include-book "arithmetic/top" :dir :system))
 
+; This book opens the container definitions, the node one layer at a time and
+; the identity rule; all three are withdrawn at their export theories (the
+; export theory of `books/container.lisp`; BOARD, 2026-09-19 core and
+; substrate).  Every enable is local: no includer inherits a definition rune.
+(local (in-theory (enable fn-ct-vocabulary fn-id-definitions)))
+
 ; -----------------------------------------------------------------------------
 ; Identity: the executable check with the constrained digest is the
 ; specification.
@@ -418,3 +424,15 @@
                                    fn-ct-articles fn-ct-unknowns fn-frame-item)
                                   (fn-ct-publish-list fn-ct-conflict-evidence
                                    fn-ct-unknowns-okp)))))
+
+; -----------------------------------------------------------------------------
+; Export theory (docs/proof-style.md §2).  The ten keystones leave this book
+; enabled, together with `fn-ct-all-in-store`, the list-recursive glue
+; predicate the independence keystone is stated in.  The two composition
+; lemmas are proof vocabulary and are withdrawn under one name.
+
+(deftheory fn-ct-invariants-vocabulary
+  '(fn-ct-store-resolved-deps-resolve
+    fn-ct-prepare-then-durable-complete-accepts))
+
+(in-theory (disable fn-ct-invariants-vocabulary))

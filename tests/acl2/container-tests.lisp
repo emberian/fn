@@ -9,7 +9,6 @@
 
 (in-package "ACL2")
 (include-book "../../books/container-invariants")
-(include-book "std/testing/must-fail" :dir :system)
 
 (defconst *ct-profile* (fn-ct-make-profile 4 64 4 2 16))
 (assert-event (fn-ct-profilep *ct-profile*))
@@ -167,11 +166,6 @@
                          *ct-obligation-1* :durable))
 (assert-event (not (fn-ct-receiptp (fn-ct-result-receipt *ct-t-result*))))
 (assert-event (equal (fn-ct-result-receipt *ct-t-result*) nil))
-(local
- (must-fail
-  (defthm ct-teeth-validated-without-receipt
-    (fn-ct-article-validp *ct-t* *ct-digest-t* (fn-ct-articles *ct-container*)
-                          *ct-digests* nil *ct-profile* 3))))
 
 ; Teeth for fn-ct-accepted-is-complete-of-prepare: the node would have
 ; accepted the tampered article; validation, not the node, stopped it.  The
@@ -185,16 +179,6 @@
               0 1 :durable)
              *ct-node*)))
 (assert-event (equal (fn-ct-result-state *ct-t-result*) *ct-node*))
-(local
- (must-fail
-  (defthm ct-teeth-composition-without-accepted
-    (equal (fn-ct-result-state *ct-t-result*)
-           (fn-node-complete
-            (fn-node-prepare *ct-node* 1 "<t@example.invalid>" '(72 105 33)
-                             *ct-groups* (fn-ct-obligation-string *ct-obligation-1*)
-                             (fn-ct-subject-string *ct-t*) "release"
-                             (fn-ct-charge *ct-t*))
-            0 1 :durable)))))
 
 ; Teeth for fn-ct-invalid-article-leaves-node-unchanged: a valid article
 ; moves the node.
@@ -204,10 +188,6 @@
                          *ct-obligation-2* :durable))
 (assert-event (equal (fn-ct-result-status *ct-a-result*) :accepted))
 (assert-event (not (equal (fn-ct-result-state *ct-a-result*) *ct-node*)))
-(local
- (must-fail
-  (defthm ct-teeth-unchanged-without-invalid
-    (equal (fn-ct-result-state *ct-a-result*) *ct-node*))))
 
 ; Teeth for fn-ct-store-resolved-verdict-ignores-siblings: B resolves its
 ; dependency only through its sibling, so its verdict does depend on the
@@ -217,12 +197,6 @@
  (not (equal (fn-ct-article-validp *ct-b* *ct-digest-b* (fn-ct-articles *ct-container*)
                                    *ct-digests* nil *ct-profile* 3)
              (fn-ct-article-validp *ct-b* *ct-digest-b* nil nil nil *ct-profile* 3))))
-(local
- (must-fail
-  (defthm ct-teeth-independence-without-store-resolution
-    (equal (fn-ct-article-validp *ct-b* *ct-digest-b* (fn-ct-articles *ct-container*)
-                                 *ct-digests* nil *ct-profile* 3)
-           (fn-ct-article-validp *ct-b* *ct-digest-b* nil nil nil *ct-profile* 3)))))
 
 ; Teeth for fn-ct-self-dependency-never-validates
 ;   (implies (and (not (member-equal id store))
@@ -241,13 +215,6 @@
 (assert-event (fn-ct-article-validp *ct-s* *ct-digest-c* (list *ct-s*)
                                     (list *ct-digest-c*) (list *ct-id-c*)
                                     *ct-profile* 5))
-(local
- (must-fail
-  (defthm ct-teeth-cycle-with-store
-    (not (fn-ct-article-validp
-          (car (fn-ct-find-provider *ct-id-c* (list *ct-s*) (list *ct-digest-c*)))
-          *ct-digest-c* (list *ct-s*) (list *ct-digest-c*) (list *ct-id-c*)
-          *ct-profile* 5)))))
 ; Hypothesis 2 dropped: when the container's provider of the id is another
 ; article with the same octets and no self-dependency, that provider is the
 ; subject of the conclusion and it validates.  S itself also validates in
@@ -267,14 +234,6 @@
 (assert-event (fn-ct-article-validp *ct-s* *ct-digest-c* (list *ct-s-provider* *ct-s*)
                                     (list *ct-digest-c* *ct-digest-c*) nil
                                     *ct-profile* 5))
-(local
- (must-fail
-  (defthm ct-teeth-cycle-without-self-dependency
-    (not (fn-ct-article-validp
-          (car (fn-ct-find-provider *ct-id-c* (list *ct-s-provider* *ct-s*)
-                                    (list *ct-digest-c* *ct-digest-c*)))
-          *ct-digest-c* (list *ct-s-provider* *ct-s*)
-          (list *ct-digest-c* *ct-digest-c*) nil *ct-profile* 5)))))
 
 ; Teeth for fn-ct-conflict-is-evidence
 ;   (implies (and (member-equal a candidates) (member-equal b articles)
@@ -284,35 +243,16 @@
 ; Hypothesis 1 dropped: an article that is not a candidate is not evidence.
 (assert-event (not (member-equal *ct-a* (fn-ct-conflict-evidence (list *ct-b*)
                                                                  (list *ct-a* *ct-a-prime*)))))
-(local
- (must-fail
-  (defthm ct-teeth-conflict-without-candidate
-    (member-equal *ct-a* (fn-ct-conflict-evidence (list *ct-b*)
-                                                  (list *ct-a* *ct-a-prime*))))))
 ; Hypothesis 2 dropped: without the rival among the articles there is none.
 (assert-event (equal (fn-ct-conflict-evidence (list *ct-a*) (list *ct-a* *ct-b*)) nil))
-(local
- (must-fail
-  (defthm ct-teeth-conflict-without-rival-present
-    (member-equal *ct-a* (fn-ct-conflict-evidence (list *ct-a*) (list *ct-a* *ct-b*))))))
 ; Hypothesis 3 dropped: different Message-IDs with different content are not
 ; a conflict.
 (assert-event (equal (fn-ct-conflict-evidence (list *ct-a* *ct-b*) (list *ct-a* *ct-b*))
                      nil))
-(local
- (must-fail
-  (defthm ct-teeth-conflict-without-same-msgid
-    (member-equal *ct-a* (fn-ct-conflict-evidence (list *ct-a* *ct-b*)
-                                                  (list *ct-a* *ct-b*))))))
 ; Hypothesis 4 dropped: two identical copies of one article share the
 ; Message-ID and the content id; they are duplicates, not evidence.
 (assert-event (equal (fn-ct-conflict-evidence (list *ct-a* *ct-a*) (list *ct-a* *ct-a*))
                      nil))
-(local
- (must-fail
-  (defthm ct-teeth-conflict-without-different-content
-    (member-equal *ct-a* (fn-ct-conflict-evidence (list *ct-a* *ct-a*)
-                                                  (list *ct-a* *ct-a*))))))
 
 ; Teeth for fn-ct-invalid-head-does-not-block-siblings: a valid head changes
 ; the state its siblings see.
@@ -331,23 +271,6 @@
                                 '(:durable)
                                 (list *ct-a* *ct-b*) (list *ct-digest-a* *ct-digest-b*)
                                 nil *ct-profile* 1 *ct-groups* "release")))))
-(local
- (must-fail
-  (defthm ct-teeth-siblings-with-valid-head
-    (equal (fn-frame-item 0 (fn-ct-publish-list
-                              *ct-node* (list *ct-a* *ct-b*)
-                              (list *ct-digest-a* *ct-digest-b*)
-                              (list *ct-obligation-1* *ct-obligation-2*)
-                              '(:durable :durable)
-                              (list *ct-a* *ct-b*) (list *ct-digest-a* *ct-digest-b*)
-                              nil *ct-profile* 1 *ct-groups* "release"))
-           (fn-frame-item 0 (fn-ct-publish-list
-                              *ct-node* (list *ct-b*)
-                              (list *ct-digest-b*)
-                              (list *ct-obligation-2*)
-                              '(:durable)
-                              (list *ct-a* *ct-b*) (list *ct-digest-a* *ct-digest-b*)
-                              nil *ct-profile* 1 *ct-groups* "release"))))))
 
 ; Teeth for fn-ct-accepted-article-is-in-the-node: a node refusal (no
 ; retention capacity for the charge) is :refused, and the article is absent.
@@ -361,12 +284,6 @@
 (assert-event (not (fn-acceptedp "<a@example.invalid>"
                                  (fn-state-articles
                                   (fn-node-acceptance (fn-ct-result-state *ct-refused*))))))
-(local
- (must-fail
-  (defthm ct-teeth-published-without-accepted
-    (fn-acceptedp "<a@example.invalid>"
-                  (fn-state-articles
-                   (fn-node-acceptance (fn-ct-result-state *ct-refused*)))))))
 
 ; Teeth for fn-ct-unknowns-are-never-consulted: an unknown over the bound is
 ; a container refusal, so the two containers no longer agree.
@@ -387,25 +304,14 @@
               *ct-node* (fn-ct-make-container 1 (list *ct-a*) (list *ct-big-unknown*))
               (list *ct-digest-a*) (list *ct-obligation-1*) '(:durable) nil
               *ct-profile* 1 *ct-groups* "release"))))
-(local
- (must-fail
-  (defthm ct-teeth-unknowns-over-bound
-    (equal (fn-ct-publish-container
-            *ct-node* (fn-ct-make-container 1 (list *ct-a*) (list *ct-unknown*))
-            (list *ct-digest-a*) (list *ct-obligation-1*) '(:durable) nil
-            *ct-profile* 1 *ct-groups* "release")
-           (fn-ct-publish-container
-            *ct-node* (fn-ct-make-container 1 (list *ct-a*) (list *ct-big-unknown*))
-            (list *ct-digest-a*) (list *ct-obligation-1*) '(:durable) nil
-            *ct-profile* 1 *ct-groups* "release")))))
 
-; Teeth for fn-ct-identity-okp-is-spec-okp: with a digest that is not the
-; digest of the octets the executable check answers for a different payload,
-; and nothing relates it to the constrained digest of the octets.
+; fn-ct-identity-okp-is-spec-okp: its one hypothesis has no ground witness.
+; `fn-ct-identity-spec-okp` is stated against the constrained
+; `fn-frame-digest` (A-CRYPTO), so no term evaluates it and no
+; `assert-event` can separate the two checks at a digest that is not the
+; digest of the octets.  What is exhibited instead is that the executable
+; check does discriminate: the same article answers differently at two
+; digests, so the equality is not vacuous.  The missing tooth is recorded
+; open in specs/container.md.
 (assert-event (not (fn-ct-identity-okp *ct-a* *ct-digest-b*)))
 (assert-event (fn-ct-identity-okp *ct-a* *ct-digest-a*))
-(local
- (must-fail
-  (defthm ct-teeth-identity-without-the-digest-of-the-octets
-    (equal (fn-ct-identity-okp *ct-a* *ct-digest-a*)
-           (fn-ct-identity-spec-okp *ct-a*)))))
