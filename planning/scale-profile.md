@@ -57,8 +57,8 @@ axes are bounded by ACL2 constants, not by configuration:
   `/tank/fn/gates/dev-9321344` (pre-change) and in this tree, so every existing
   store still opens; the scale profile's checksum is `37902a4bf826…`.
 
-N=10000 was not reached. The grid completed N=512 within its budget; the
-measured curve below says why 10000 is not a matter of waiting longer.
+N=10000 was not reached, and neither was N=512 inside this lane's budget. The
+measured curve below says why that is the curve's doing and not the schedule's.
 
 ## Post throughput versus N (G=2, both groups per article, P=1024)
 
@@ -72,7 +72,7 @@ that serves both the node and the framing/identity wrappers.
 | 64 | dev | 0.0412 | 0.1128 | 8.86 | 1.132 | 1.157 | 5 | 467,948 |
 | 128 | dev | 0.0749 | 0.2751 | 3.63 | 2.673 | 2.718 | 5 | 1,002,472 |
 | 256 | scale | 0.0471 | 0.9365 | 1.07 | 12.540 | 12.729 | 3 | 1,881,056 |
-| 512 | scale | (see below) | | | | | | |
+| 512 | scale | — | — | — | — | — | — | — |
 
 The pessimistic figure, with its scope: reopening a 256-record store whose
 articles are 1 KiB each took 12.7 s (median of three runs, 12.5 s min) on a
@@ -80,6 +80,15 @@ articles are 1 KiB each took 12.7 s (median of three runs, 12.5 s min) on a
 the store. Subtracting the ~0.75 s fixed cost of starting ACL2 and loading the
 books, the replay term grows by 3.2, 3.2, 4.8 and 6.1 across the four
 doublings from 16 to 256 records: faster than N², approaching N³.
+
+N=512 and N=1024 were launched at 10:56 under a 90-minute per-point budget and
+had not completed when this lane closed at 11:16; `tests/bench/grid.sh` is
+still running them on hbox and writes their results to
+`/tank/fn/scale/build/bench/n512-*.json` and `n1024-*.json` for whoever
+harvests next. The completed points already settle the question the grid was
+asked: building and measuring N=256 took 6 min 45 s against 56 s for N=128, so
+a 4096-transaction store is not reachable by waiting longer. The profile's
+transaction bound is a ceiling for measurement, not a supported capacity.
 
 ## Reader latency versus N (same grid, milliseconds)
 
