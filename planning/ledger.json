@@ -136,18 +136,18 @@
     "books": 129,
     "books_in_root_closure": 129,
     "roots": 129,
-    "theorems": 1590,
-    "functions": 1306,
-    "assert_events": 1690,
+    "theorems": 1586,
+    "functions": 1304,
+    "assert_events": 1695,
     "must_fails": 62,
-    "encapsulates": 8,
+    "encapsulates": 7,
     "guards": {
       "verified": 712,
       "declared-off": 29,
       "default-guarded": 180,
-      "default-unguarded": 385
+      "default-unguarded": 383
     },
-    "suspect_theorems": 21
+    "suspect_theorems": 22
   },
   "books": [
     {
@@ -1152,27 +1152,27 @@
       "book": "books/nntp-effects.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 101,
-      "functions": 14,
+      "theorems": 97,
+      "functions": 12,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 14
+        "default-unguarded": 12
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
       "defmacros": 0,
-      "encapsulates": 1,
+      "encapsulates": 0,
       "includes": [
         "nntp-invariants"
       ],
-      "system_includes": [
-        "arithmetic-5/top"
+      "system_includes": [],
+      "suspects": [
+        "fn-nntp-block-scan-start-without-a-dot"
       ],
-      "suspects": [],
       "read_error": null
     },
     {
@@ -2836,9 +2836,9 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 151,
+      "assert_events": 156,
       "must_fails": 4,
-      "defconsts": 57,
+      "defconsts": 58,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -3520,6 +3520,14 @@
       "line": 364,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-exchange-ingest and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-nntp-block-scan-start-without-a-dot",
+      "book": "books/nntp-effects.lisp",
+      "line": 395,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-nntp-block-scan and the conclusion is that branch's value"
       ]
     },
     {

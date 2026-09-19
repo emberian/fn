@@ -485,9 +485,15 @@ Teeth present, per keystone:
   cursor names no available article, shown inconsistent before and after a step,
   plus a `must-fail` of the hypothesis-free claim.
 - `fn-nntp-step-effects-well-formed`: a session claiming a projection the
-  archive does not have emits a 215 block whose line carries CRLF;
-  `assert-event` that `fn-nntp-effectsp` is false there, plus a `must-fail`.
+  archive does not have escapes the 460-octet group cap, so `LISTGROUP` over a
+  497-octet group name renders an initial line past 512 octets; `assert-event`
+  that `fn-nntp-effectsp` is false there, plus a `must-fail`.
   Also `(not (fn-nntp-effectp '(:reply (65))))` — the review's own example.
+  The CRLF-bearing group name is *not* a witness here, and the test records
+  why as a fact: `LIST` emits it inside a multi-line block, where the injected
+  CRLF reads as an ordinary line break and the octets re-parse as a well-formed
+  response.  Effect typing is a grammar over emitted octets; the configuration
+  refusal, not the grammar, is what keeps such a name off the wire.
 - `fn-nntp-group-selects-the-first-available-article`: counterexamples for both
   hypotheses plus a `must-fail`.
 
