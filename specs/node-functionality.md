@@ -768,7 +768,7 @@ connection whose pin is not advanced:
 
 Its lemmas are the w2 owner keystones `fn-own-reader-sees-pinned-prefix-replay-after-any-trace`
 and `fn-own-pinned-prefix-survives-any-trace`
-([owner](../build/lanes/w2-mutable-owner/specs/owner.md)): the session is a
+(the owner design, `specs/owner.md`, on the pending owner lane): the session is a
 function of the pinned prefix, and the prefix only grows. Together with 3.5
 this is the whole "we implement the semantics" claim for readers: the reply
 stream of a connection is a function of its own octets and the version it

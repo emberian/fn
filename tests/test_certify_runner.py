@@ -38,7 +38,16 @@ case " ${FAKE_FAIL:-} " in
     echo "ACL2 Error in ( CERTIFY-BOOK ...):  the fake harness refused this book."
     exit 1 ;;
 esac
-: > "$book.cert"
+# A certificate shaped like ACL2's, so the cache hook has something to judge.
+cat > "$book.cert" <<CERT
+(IN-PACKAGE "ACL2")
+"ACL2 Version 8.7"
+:BEGIN-PORTCULLIS-CMDS
+:END-PORTCULLIS-CMDS
+:EXPANSION-ALIST
+NIL
+CERT
+printf '(in-package "ACL2")\n' > "$book.port"
 printf 'end %s\n' "$book" >> "$FAKE_EVENTS"
 echo "ACL2 !>$marker"
 exit 0
@@ -58,9 +67,12 @@ class FakeRepository:
         self.acl2.write_text(FAKE_ACL2)
         self.acl2.chmod(self.acl2.stat().st_mode | stat.S_IXUSR)
         self.events = self.root / "events.log"
+        self.cache = self.root / "cert-cache"
         self.runs = 0
 
-    def certify(self, books: list[str], jobs: int, fail: str = "") -> tuple[int, dict]:
+    def certify(self, books: list[str], jobs: int, fail: str = "",
+                slots: int = 16, extra: list[str] | None = None) -> tuple[int, dict]:
+        extra = extra or []
         self.runs += 1
         self.events.write_text("")
         build = self.root / "build" / f"acl2-{self.runs}"
@@ -69,8 +81,14 @@ class FakeRepository:
             "FAKE_EVENTS": str(self.events),
             "FAKE_FAIL": fail,
             "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+            # A private slot pool and a private certificate cache: a unit test
+            # must not contend with this machine's real ACL2 runs or publish
+            # fake certificates into the developer's cache.
+            "FN_ACL2_SLOTS": str(slots),
+            "FN_ACL2_SLOT_DIR": str(self.root / "slots"),
+            "FN_CERT_CACHE": str(self.cache),
         }
-        argv = ["certify_books.py", "--jobs", str(jobs), *books]
+        argv = ["certify_books.py", "--jobs", str(jobs), *extra, *books]
         with mock.patch.object(runner, "ROOT", self.root), \
                 mock.patch.object(runner, "BUILD_ROOT", build), \
                 mock.patch.dict(os.environ, environment, clear=True), \
@@ -80,6 +98,28 @@ class FakeRepository:
             code = runner.main()
         run_dir = next(build.iterdir())
         return code, json.loads((run_dir / "manifest.json").read_text())
+
+    def dry_run(self, books: list[str], affected: list[str]) -> tuple[int, list[str]]:
+        argv = ["certify_books.py", "--dry-run"]
+        for target in affected:
+            argv.extend(["--affected-by", target])
+        argv.extend(books)
+        buffer = io.StringIO()
+        with mock.patch.object(runner, "ROOT", self.root), \
+                mock.patch.object(runner, "BUILD_ROOT", self.root / "build" / "dry"), \
+                mock.patch.dict(os.environ, {"PATH": os.environ.get("PATH", "/bin")},
+                                clear=True), \
+                mock.patch.object(runner.sys, "argv", argv), \
+                contextlib.redirect_stdout(buffer), \
+                contextlib.redirect_stderr(io.StringIO()):
+            code = runner.main()
+        return code, buffer.getvalue().split()
+
+    def cached_books(self) -> list[str]:
+        if not self.cache.is_dir():
+            return []
+        return sorted(json.loads(meta.read_text())["book"]
+                      for meta in self.cache.rglob("meta.json"))
 
     def event_log(self) -> list[str]:
         return self.events.read_text().split()
@@ -191,6 +231,111 @@ class ParallelScheduleTests(unittest.TestCase):
                                  manifest["expected_success_markers"])
                 self.assertEqual([marker.split()[-1] for marker in manifest["observed_success_markers"]],
                                  [runner.success_token(book, "n").split()[-1] for book in self.ORDER])
+
+
+class AffectedByTests(unittest.TestCase):
+    """Certify what a change can have invalidated, and nothing else."""
+
+    def test_dry_run_lists_the_affected_roots_in_requested_order(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
+            code, listed = repository.dry_run(ParallelScheduleTests.ORDER,
+                                              ["books/mid.lisp"])
+            self.assertEqual(code, 0)
+            self.assertEqual(listed, ["books/mid", "books/leaf-a",
+                                      "books/leaf-b", "books/leaf-c"])
+            self.assertEqual(repository.dry_run(ParallelScheduleTests.ORDER,
+                                                ["books/free-a"])[1],
+                             ["books/free-a"])
+            # Two targets select the union, still in requested order.
+            self.assertEqual(repository.dry_run(ParallelScheduleTests.ORDER,
+                                                ["books/free-b", "books/leaf-a"])[1],
+                             ["books/leaf-a", "books/free-b"])
+
+    def test_a_deep_change_selects_every_root_above_it(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
+            self.assertEqual(repository.dry_run(ParallelScheduleTests.ORDER,
+                                                ["books/base"])[1],
+                             ["books/base", "books/mid", "books/leaf-a",
+                              "books/leaf-b", "books/leaf-c"])
+
+    def test_only_the_affected_books_are_certified(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
+            code, manifest = repository.certify(
+                ParallelScheduleTests.ORDER, jobs=4,
+                extra=["--affected-by", "books/leaf-a.lisp"])
+            self.assertEqual((code, manifest["status"]), (0, "passed"))
+            self.assertEqual(manifest["requested_books"], ["books/leaf-a"])
+            self.assertEqual(manifest["affected_by"], ["books/leaf-a.lisp"])
+            self.assertEqual(manifest["requested_before_filter"],
+                             ParallelScheduleTests.ORDER)
+            self.assertEqual(repository.event_log(),
+                             ["start", "books/leaf-a", "end", "books/leaf-a"])
+
+    def test_an_unknown_affected_book_is_refused_rather_than_selecting_nothing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
+            with self.assertRaises(SystemExit) as refused:
+                repository.dry_run(ParallelScheduleTests.ORDER, ["books/typo"])
+            self.assertEqual(refused.exception.code, 2)
+
+
+class SlotTests(unittest.TestCase):
+    """The machine-wide ACL2 cap, with a fake ACL2 that sleeps."""
+
+    def test_one_slot_serializes_four_jobs_and_the_waits_are_recorded(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
+            code, manifest = repository.certify(ParallelScheduleTests.ORDER,
+                                                jobs=4, slots=1)
+            self.assertEqual((code, manifest["status"]), (0, "passed"))
+            self.assertEqual(repository.peak_concurrency(), 1)
+            self.assertEqual(manifest["acl2_slots"], 1)
+            self.assertCountEqual(list(manifest["slot_wait_seconds"]),
+                                  ["version-probe"] + ParallelScheduleTests.ORDER)
+            self.assertGreater(max(manifest["slot_wait_seconds"].values()), 0,
+                               "no book ever waited for the single slot")
+
+    def test_slots_above_the_job_count_do_not_constrain_the_schedule(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
+            _, manifest = repository.certify(ParallelScheduleTests.ORDER,
+                                             jobs=4, slots=16)
+            self.assertGreater(repository.peak_concurrency(), 1)
+            self.assertEqual(manifest["acl2_slots"], 16)
+
+
+class CachePublishTests(unittest.TestCase):
+    """A successful root publishes its pair; a failed one publishes nothing."""
+
+    def test_a_passing_run_publishes_every_certificate_to_the_cache(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
+            _, manifest = repository.certify(ParallelScheduleTests.ORDER, jobs=2)
+            self.assertEqual(manifest["cert_cache"]["published"],
+                             len(ParallelScheduleTests.ORDER))
+            self.assertEqual(manifest["cert_cache"]["not_published"], [])
+            self.assertEqual(repository.cached_books(),
+                             sorted(ParallelScheduleTests.ORDER))
+
+    def test_no_publish_leaves_the_cache_untouched(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
+            _, manifest = repository.certify(ParallelScheduleTests.ORDER, jobs=2,
+                                             extra=["--no-publish"])
+            self.assertEqual(manifest["status"], "passed")
+            self.assertNotIn("cert_cache", manifest)
+            self.assertEqual(repository.cached_books(), [])
+
+    def test_a_failing_run_publishes_nothing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
+            _, manifest = repository.certify(ParallelScheduleTests.ORDER, jobs=2,
+                                             fail="books/leaf-b")
+            self.assertEqual(manifest["status"], "failed")
+            self.assertEqual(repository.cached_books(), [])
 
 
 class CertificationEvidenceTests(unittest.TestCase):

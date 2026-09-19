@@ -161,6 +161,59 @@ Its limits, stated so nobody reads a clean report as a clean bill of health:
   `tests/acl2/assumptions-tests.lisp` are for.
 - The absence of a flag is not evidence of strength. Teeth are.
 
+### The two export lints
+
+Besides the suspect detector, `tools/ledger.py` reports two WARN lints, counted
+in the generated ledger and listed in full under `lints` in `ledger.json`.
+Neither judges truth; each names a cost this tree has already paid.
+*Export hygiene* flags a theorem a book leaves enabled whose conclusion is an
+equality between two *different* one-argument applications, or a `consp`/`len`
+conclusion backchained to a `len` hypothesis. The same accessor on both sides
+is a preservation lemma, which is the shape the export policy asks for, and is
+not flagged; `local`, `defthmd`, `:rule-classes nil` and a non-local closing
+`in-theory (disable ...)` each exempt a rule, because none of them leaves it
+enabled downstream. *Teeth form* flags a `must-fail` whose body is a bare
+`thm`/`defthm` whose statement mentions no constant -- no keyword, literal,
+string or `defconst` -- so it refutes a general claim rather than a specific
+violating value. `make check` prints both as `WARN`;
+`python3 tools/ledger.py --check --strict` fails on them, which is how a book
+or a cluster that has been cleaned keeps its state.
+
+### Certificates, the cache, and the farm
+
+Every fn tool that starts ACL2 sets `ACL2_BOOK_HASH_ALISTP=NIL`, so ACL2 8.7
+hashes book *contents* rather than write dates and absolute paths: a
+`.cert`/`.port` pair is valid in any worktree and on any host whose book
+content matches. [`tools/certs.py`](../tools/certs.py) is the consequence.
+`publish` stores each valid-looking pair under the SHA-256 of its book's
+content (and, below that, the book's own name, so two books with identical
+bytes never share one entry); `install` copies into a worktree every pair whose
+key matches a book there, never over a local certificate that already matches
+its book and is no older than the cached one; `status` prints coverage.
+`tools/certify_books.py` publishes automatically after a passing run, which
+`--no-publish` suppresses, and `make certs-install` / `make certs-publish` are
+the manual ends. What this does not establish: the cache cannot tell that a
+pair describes the book beside it, only that the book hashes to the key. The
+certification gate is unchanged -- a fresh success marker and a certificate per
+requested book, from `tools/certify_books.py`.
+
+Two further controls on ACL2 processes. `--affected-by BOOK` keeps only the
+requested roots that are, or transitively include, a named book, in the
+requested (Makefile) order, so a change certifies what it can have invalidated
+and nothing else; `--dry-run` prints that list. Every ACL2 this project starts
+first takes a slot from a machine-wide pool of `flock` files
+([`tools/acl2_slots.py`](../tools/acl2_slots.py), `FN_ACL2_SLOTS`, default 4 on
+darwin and 16 on linux), waits rather than starting when the pool is full,
+reports the wait once a minute, and records each wait in the run manifest. The
+lock lives on the open file description, so a killed run leaks no slot.
+[`tools/farm.py`](../tools/farm.py) moves a wide run to persvati or hbox:
+`submit` mirrors the worktree to the same absolute path and starts the runner
+detached with its own log and status file, `wait` blocks with a bounded
+sleep-and-report loop and then rsyncs back the evidence directory and the new
+pairs and publishes them locally, and `status` lists the runs on a host. On
+hbox the runner is wrapped in `swarm-build`, which is where that box's memory
+cap is enforced.
+
 ### Qualifying a platform against A-DURABILITY
 
 [`books/assumptions.lisp`](../books/assumptions.lisp) introduces each named
