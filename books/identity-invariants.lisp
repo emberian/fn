@@ -64,14 +64,41 @@
 
 ; KEYSTONE: the byte direction.  An accepted lowercase hex string of even
 ; length is the only spelling of the octets it denotes.
+; A digit's value is a nibble.  Stated once so that the quotient and
+; remainder of `16a + b` below are rewritten rather than computed by opening
+; `floor` and `mod` on every pair of octets.
+
+(defthm fn-id-hex-value-natp
+  (implies (fn-id-hex-digitp octet) (natp (fn-id-hex-value octet)))
+  :hints (("Goal" :in-theory (enable fn-id-hex-value fn-id-hex-digitp)))
+  :rule-classes (:rewrite :type-prescription))
+
+(defthm fn-id-hex-value-bound
+  (implies (fn-id-hex-digitp octet) (< (fn-id-hex-value octet) 16))
+  :hints (("Goal" :in-theory (enable fn-id-hex-value fn-id-hex-digitp)))
+  :rule-classes :linear)
+
+(local
+ (defthm fn-id-mod-16
+   (implies (and (natp a) (natp b) (< b 16))
+            (equal (mod (+ (* 16 a) b) 16) b))))
+
+(local
+ (defthm fn-id-floor-16
+   (implies (and (natp a) (natp b) (< b 16))
+            (equal (floor (+ (* 16 a) b) 16) a))
+   :hints (("Goal" :in-theory (disable floor mod)
+            :use ((:instance floor-mod-elim (x (+ (* 16 a) b)) (y 16))
+                  fn-id-mod-16)))))
+
 (defthm fn-id-hex-octets-of-unhex
   (implies (and (fn-id-hex-listp octets)
                 (equal (mod (len octets) 2) 0))
            (equal (fn-id-hex-octets (fn-id-unhex octets)) octets))
   :hints (("Goal" :induct (fn-id-unhex octets)
-           :in-theory (e/d (fn-id-unhex fn-id-hex-octets fn-id-hex-listp
-                            fn-id-hex-digit fn-id-hex-value fn-id-hex-digitp)
-                           (floor mod)))))
+           :in-theory (e/d (fn-id-unhex fn-id-hex-octets fn-id-hex-listp)
+                           (floor mod fn-id-hex-digit fn-id-hex-value
+                            fn-id-hex-digitp)))))
 
 ; KEYSTONE: distinct digests never collide in the identity string, so an
 ; identity comparison is a digest comparison.
