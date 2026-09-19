@@ -58,9 +58,11 @@ of asking for the flush rather than assuming it.
 
 ## CLI exit codes
 
-Uncertain, refused and accepted stay distinct all the way out (HST-003). Every
-CLI in `tools/` maps one host outcome to one code through
-`run_store.exit_code_for`:
+Uncertain, refused and accepted stay distinct all the way out (HST-003). The
+store and BP-ingress CLIs map one host outcome to one code through
+`run_store.exit_code_for`; the reader returns the same codes directly.
+`tools/run_simulator.py` and `tools/certify_books.py` are evidence runners with
+their own conventions and are outside this table.
 
 | Code | Meaning | Source |
 | --- | --- | --- |
