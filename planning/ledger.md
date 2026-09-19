@@ -13,17 +13,17 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 182 |
 | Certification roots in the Makefile | 182 |
 | Books inside the root closure | 182 |
-| `defthm` and `defthmd` events | 2856 |
-| `defun` events | 1995 |
+| `defthm` and `defthmd` events | 2871 |
+| `defun` events | 2000 |
 | Functions with verified guards | 952 |
 | Functions declared `:verify-guards nil` and never verified | 53 |
-| Functions left at the default with an explicit guard | 560 |
+| Functions left at the default with an explicit guard | 565 |
 | Functions left at the default with no guard | 430 |
-| `assert-event` checks | 3010 |
+| `assert-event` checks | 3020 |
 | `must-fail` checks | 95 |
 | `encapsulate` events | 10 |
 | Theorems flagged SUSPECT by shape | 26 |
-| Export-hygiene warnings | 57 |
+| Export-hygiene warnings | 59 |
 | Teeth-form warnings | 0 |
 
 ## Lints
@@ -105,8 +105,8 @@ that `make certify` requests.
 | `books/frame-journal.lisp` | root | 2 | 10 | 7/0/3/0 | 0 | 0 | 0 |
 | `books/frame-octets.lisp` | root | 27 | 7 | 2/0/4/1 | 0 | 0 | 0 |
 | `books/frame.lisp` | root | 0 | 5 | 5/0/0/0 | 0 | 0 | 0 |
-| `books/identity-invariants.lisp` | root | 25 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/identity.lisp` | root | 0 | 16 | 3/0/13/0 | 0 | 0 | 0 |
+| `books/identity-invariants.lisp` | root | 39 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/identity.lisp` | root | 1 | 21 | 3/0/18/0 | 0 | 0 | 0 |
 | `books/index.lisp` | root | 24 | 22 | 22/0/0/0 | 0 | 0 | 0 |
 | `books/journal.lisp` | root | 9 | 61 | 0/0/0/61 | 0 | 0 | 0 |
 | `books/lace-invariants.lisp` | root | 65 | 1 | 0/0/0/1 | 0 | 0 | 1 |
@@ -197,7 +197,7 @@ that `make certify` requests.
 | `tests/acl2/crypto-seam-tests.lisp` | root | 11 | 7 | 0/0/7/0 | 18 | 0 | 0 |
 | `tests/acl2/exchange-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 162 | 0 | 0 |
 | `tests/acl2/frame-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 47 | 0 | 0 |
-| `tests/acl2/identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 30 | 0 | 0 |
+| `tests/acl2/identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 0 | 0 |
 | `tests/acl2/index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 0 | 0 |
 | `tests/acl2/journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 52 | 0 | 0 |

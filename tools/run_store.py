@@ -35,14 +35,17 @@ MAX_TRANSACTION_COUNT = 128
 MAX_RECOVERY_RECORD_BYTES = MAX_TRANSACTION_COUNT * 65538
 UINT32_MAX = (1 << 32) - 1
 DEFAULT_CONFIG = {
-    # Format 3 is the first written under the ACL2-owned frame grammar, which
+    # Format 5 is the first written under the v1 content identity profile of
+    # `books/identity`; a store holding pre-v1 `"sha256:"`/`"archive:"`
+    # identities is format 4 and is refused at open rather than misread.
+    # Format 3 was the first written under the ACL2-owned frame grammar, which
     # carries the record kind octet the Python framing lacked.  The configured
     # group list is no longer copied here: `books/store-config` owns it and a
     # store records only which version of that table it was written under.
     # The encoded-record bound left with it: `books/frame` owns
     # `*fn-frame-max-store-payload*`, the host reads it from the bridge, and a
     # configuration that could disagree with the model is not written at all.
-    "format": "fn-store-experiment-4",
+    "format": "fn-store-experiment-5",
     "group_table": "fn-store-groups-1",
     "capacity": 1048576,
     "max_payload_bytes": 32768,
@@ -1050,25 +1053,32 @@ class Store:
 
 
 def metadata(msgid, payload, bridge=None):
-    """Content identity, derived in ACL2 by `books/identity`.
+    """Content identity, derived in ACL2 by `books/identity`, v1 profile.
 
-    The host hashes two byte strings it does not interpret and ACL2 decides
-    the labels, the hexadecimal spelling, the separator octet and the order of
-    the obligation preimage.  The evidence label stays a host constant: it
+    The host hashes two byte strings it does not interpret; ACL2 decides the
+    domain labels, the length prefixes, the version and algorithm octets, the
+    order of each preimage and the rendering.  The obligation binds the
+    CANONICAL subject identity octets; what comes back here is each identity's
+    text, because a store record metadata field, a journal record and an NNTP
+    header are all strings.  The evidence label stays a host constant: it
     names a provenance the model only compares.
     """
     session = frame_bridge.session(bridge)
     try:
         subject = session.subject_id(payload)
         obligation = session.obligation_id(msgid, subject)
+        return (session.identity_text(obligation),
+                session.identity_text(subject),
+                b"unsigned-legacy-v0")
     except frame_bridge.BridgeError as error:
         raise StoreError("ACL2 refused to derive content identity") from error
-    return obligation, subject, b"unsigned-legacy-v0"
 
 
 def group_codes(groups, config, bridge=None):
     """`books/store-config` owns the group table; this asks it for the codes."""
     session = frame_bridge.session(bridge)
+    if config.get("format") != session.format_id():
+        raise StoreFault("store was written under a different store format")
     if config.get("group_table") != session.group_table_id():
         raise StoreFault("store was written under a different group table")
     if not groups:
