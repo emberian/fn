@@ -7,6 +7,11 @@
 (include-book "ihs/quotient-remainder-lemmas" :dir :system)
 (include-book "cbor")
 
+; This book is the codec's proof book: every theorem below is about the
+; definitions in `cbor', so it opens them locally.  Results stay opaque; the
+; record lemmas exported by `cbor' are what close the goals about them.
+(local (in-theory (enable fn-cbor-codec-vocabulary)))
+
 (defthm fn-cbor-u16-from-u16-bytes
   (implies (and (natp n) (< n 65536))
            (equal (fn-cbor-u16-from (fn-cbor-u16-bytes n)) n))
@@ -159,9 +164,6 @@
                               fn-cbor-encode-argument
                               fn-cbor-decode-unsigned
                               fn-cbor-decode-argument
-                              fn-cbor-result-okp
-                              fn-cbor-result-value
-                              fn-cbor-result-rest
                               fn-cbor-canonical-argumentp)
                              (fn-cbor-u16-bytes
                               fn-cbor-u16-from
@@ -337,3 +339,53 @@
                   octets))
   :hints (("Goal" :use fn-cbor-decode-reencode-prefix
            :in-theory (disable fn-cbor-decode fn-cbor-encode))))
+
+; -----------------------------------------------------------------------------
+; Export theory.
+;
+; The keystones leave this book enabled: `fn-cbor-uint32-round-trip',
+; `fn-cbor-byte-string-round-trip', `fn-cbor-value-round-trip',
+; `fn-cbor-decode-reencode-prefix' and `fn-cbor-accepted-input-is-canonical'.
+; Everything else here is arithmetic and list vocabulary, including every rule
+; that backchains into `len', `consp' or `true-listp'; those were the rules
+; that made a plain `append' associativity goal take 108 s in
+; `frame-invariants' (planning/lanes/LANEDUMP-twins-into-acl2.md, 3.1b).  A
+; book that needs them enables this one name and says why.
+
+(deftheory fn-cbor-invariants-vocabulary
+  '(fn-cbor-u16-from-u16-bytes fn-cbor-u16-bytes-are-octets
+    fn-cbor-u32-from-u32-bytes fn-cbor-u32-bytes-are-octets
+    fn-cbor-u16-bytes-fit-decoder-tail fn-cbor-u16-bytes-have-two-octets
+    fn-cbor-u32-bytes-fit-decoder-tail fn-cbor-u32-bytes-have-four-octets
+    fn-cbor-octet-listp-implies-true-listp fn-cbor-at-mostp-from-length
+    fn-cbor-at-mostp-append fn-cbor-byte-header-fits
+    fn-cbor-byte-encoding-fits-input-bound fn-cbor-octet-listp-append
+    fn-cbor-byte-header-are-octets fn-cbor-byte-encoding-are-octets
+    fn-cbor-take-whole-list fn-cbor-nthcdr-whole-list
+    fn-cbor-u16-prefix-fields fn-cbor-take-and-rest-reconstruct
+    fn-cbor-take-has-length fn-cbor-take-preserves-octets
+    fn-cbor-u16-from-bounds fn-cbor-u32-from-bounds
+    fn-cbor-u16-from-upper-bound fn-cbor-u32-from-upper-bound
+    fn-cbor-u16-to-from-octets fn-cbor-u32-to-from-octets
+    fn-cbor-unsigned-reencode-prefix fn-cbor-bytes-reencode-prefix
+    fn-cbor-encoding-is-true-list))
+
+(in-theory (disable fn-cbor-u16-from-u16-bytes fn-cbor-u16-bytes-are-octets
+             fn-cbor-u32-from-u32-bytes fn-cbor-u32-bytes-are-octets
+             fn-cbor-u16-bytes-fit-decoder-tail
+             fn-cbor-u16-bytes-have-two-octets
+             fn-cbor-u32-bytes-fit-decoder-tail
+             fn-cbor-u32-bytes-have-four-octets
+             fn-cbor-octet-listp-implies-true-listp
+             fn-cbor-at-mostp-from-length fn-cbor-at-mostp-append
+             fn-cbor-byte-header-fits
+             fn-cbor-byte-encoding-fits-input-bound
+             fn-cbor-octet-listp-append fn-cbor-byte-header-are-octets
+             fn-cbor-byte-encoding-are-octets fn-cbor-take-whole-list
+             fn-cbor-nthcdr-whole-list fn-cbor-u16-prefix-fields
+             fn-cbor-take-and-rest-reconstruct fn-cbor-take-has-length
+             fn-cbor-take-preserves-octets fn-cbor-u16-from-bounds
+             fn-cbor-u32-from-bounds fn-cbor-u16-from-upper-bound
+             fn-cbor-u32-from-upper-bound fn-cbor-u16-to-from-octets
+             fn-cbor-u32-to-from-octets fn-cbor-unsigned-reencode-prefix
+             fn-cbor-bytes-reencode-prefix fn-cbor-encoding-is-true-list))
