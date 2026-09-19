@@ -29,15 +29,10 @@
   (true-listp (fn-cbor-u16-bytes n))
   :rule-classes (:rewrite :type-prescription)
   :hints (("Goal" :in-theory (e/d (fn-cbor-u16-bytes) (floor mod)))))
-
 (defthm fn-frame-u32-bytes-true-listp
   (true-listp (fn-cbor-u32-bytes n))
   :rule-classes (:rewrite :type-prescription)
   :hints (("Goal" :in-theory (e/d (fn-cbor-u32-bytes) (floor mod)))))
-
-; -----------------------------------------------------------------------------
-; Fixed-width canonicality: a big-endian field reconstructs its own octets.
-
 (defthm fn-frame-u16-bytes-of-u16-from
   (implies (and (fn-cbor-octet-listp xs) (equal (len xs) 2))
            (equal (fn-cbor-u16-bytes (fn-cbor-u16-from xs)) xs))
@@ -76,6 +71,26 @@
 (defthm fn-frame-u32-from-bounded
   (implies (and (fn-cbor-octet-listp xs) (equal (len xs) 4))
            (< (fn-cbor-u32-from xs) 4294967296))
+  :hints (("Goal" :in-theory (enable fn-cbor-u32-from fn-cbor-octet-listp
+                                     fn-cbor-octetp)))
+  :rule-classes :linear)
+
+(defthm fn-frame-u16-from-is-natural
+  (implies (and (fn-cbor-octet-listp xs) (equal (len xs) 2))
+           (natp (fn-cbor-u16-from xs)))
+  :hints (("Goal" :in-theory (enable fn-cbor-u16-from fn-cbor-octet-listp
+                                     fn-cbor-octetp)))
+  :rule-classes (:rewrite :type-prescription))
+(defthm fn-frame-u16-from-nonnegative
+  (implies (and (fn-cbor-octet-listp xs) (equal (len xs) 2))
+           (<= 0 (fn-cbor-u16-from xs)))
+  :hints (("Goal" :in-theory (enable fn-cbor-u16-from fn-cbor-octet-listp
+                                     fn-cbor-octetp)))
+  :rule-classes :linear)
+
+(defthm fn-frame-u32-from-nonnegative
+  (implies (and (fn-cbor-octet-listp xs) (equal (len xs) 4))
+           (<= 0 (fn-cbor-u32-from xs)))
   :hints (("Goal" :in-theory (enable fn-cbor-u32-from fn-cbor-octet-listp
                                      fn-cbor-octetp)))
   :rule-classes :linear)
@@ -144,10 +159,32 @@
                             (b (cdr (fn-frame-split 4 xs))))
                  (:instance fn-frame-split-reassembles (n 4))))))
 
-; -----------------------------------------------------------------------------
-; Enumerations: a 1-based position is invertible exactly when the keyword list
-; has no duplicates, which `fn-frame-enum-specp` requires.
+(defthm fn-frame-u64-from-bounded
+  (implies (and (fn-cbor-octet-listp xs) (equal (len xs) 8))
+           (<= (fn-frame-u64-from xs) *fn-frame-max-nat*))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-frame-u64-from) (fn-cbor-u32-from))
+           :use ((:instance fn-frame-u32-from-bounded
+                            (xs (car (fn-frame-split 4 xs))))
+                 (:instance fn-frame-u32-from-bounded
+                            (xs (cdr (fn-frame-split 4 xs)))))))
+  :rule-classes :linear)
 
+(defthm fn-frame-u64-from-nonnegative
+  (implies (and (fn-cbor-octet-listp xs) (equal (len xs) 8))
+           (<= 0 (fn-frame-u64-from xs)))
+  :hints (("Goal" :do-not-induct t :in-theory (disable fn-frame-u64-from)))
+  :rule-classes :linear)
+
+; Four rules exported by `books/frame` rewrite every `(consp x)` in every goal
+; by backchaining into `len`, and the two value predicates open into the
+; wildmat decoder and `fn-cbor-at-mostp`.  Together they made plain append
+; associativity take minutes.  All are closed from here; the facts they carry
+; are re-stated below on the specific terms that need them.
+(local (in-theory (disable fn-frame-len-2-conses fn-frame-len-4-conses
+                           fn-frame-len-8-conses fn-frame-not-consp-when-len-zero
+                           fn-cbor-u16-bytes fn-cbor-u32-bytes fn-frame-u64-bytes
+                           fn-frame-textp fn-frame-blobp)))
 (defthm fn-frame-item-of-enum-index
   (implies (not (equal (fn-frame-enum-index value keys) 0))
            (equal (fn-frame-item (- (fn-frame-enum-index value keys) 1) keys)
@@ -175,88 +212,143 @@
                   (+ 1 n)))
   :hints (("Goal" :induct (fn-frame-item n keys))))
 
-; -----------------------------------------------------------------------------
-; One field, both directions
-;
-; The two value predicates are used only through these shape facts from here
-; on.  `fn-frame-textp` calls the wildmat decoder and `fn-frame-blobp` calls
-; `fn-cbor-at-mostp`; opening either one on a payload sends the prover
-; inducting down the octets instead of using the splitter lemmas.
+; Shape facts about the two value predicates, forward-chaining only.  As
+; rewrite or linear rules on `(consp x)`, `(fn-cbor-octet-listp x)` or
+; `(len x)` they fire in every goal of every book that includes this one and
+; backchain into the predicates; where `fn-frame-textp` is enabled that
+; unrolls `fn-cbor-at-mostp` to its literal bound.  The two proofs that need
+; these facts as hypotheses `:use` them.
 
 (defthm fn-frame-textp-is-octets
   (implies (fn-frame-textp value) (fn-cbor-octet-listp value))
-  :rule-classes (:rewrite :forward-chaining)
+  :rule-classes :forward-chaining
   :hints (("Goal" :do-not-induct t :in-theory (enable fn-frame-textp))))
-
 (defthm fn-frame-textp-is-consp
   (implies (fn-frame-textp value) (consp value))
-  :rule-classes (:rewrite :forward-chaining)
+  :rule-classes :forward-chaining
   :hints (("Goal" :do-not-induct t :in-theory (enable fn-frame-textp))))
-
 (defthm fn-frame-textp-len-bound
   (implies (fn-frame-textp value) (<= (len value) *fn-frame-max-text*))
-  :rule-classes (:linear :forward-chaining)
+  :rule-classes :forward-chaining
   :hints (("Goal" :do-not-induct t :in-theory (enable fn-frame-textp))))
-
 (defthm fn-frame-blobp-is-octets
   (implies (fn-frame-blobp value) (fn-cbor-octet-listp value))
-  :rule-classes (:rewrite :forward-chaining)
+  :rule-classes :forward-chaining
   :hints (("Goal" :do-not-induct t :in-theory (enable fn-frame-blobp))))
-
 (defthm fn-frame-blobp-is-consp
   (implies (fn-frame-blobp value) (consp value))
-  :rule-classes (:rewrite :forward-chaining)
+  :rule-classes :forward-chaining
   :hints (("Goal" :do-not-induct t :in-theory (enable fn-frame-blobp))))
-
 (defthm fn-frame-blobp-len-bound
   (implies (fn-frame-blobp value) (<= (len value) *fn-frame-max-blob*))
-  :rule-classes (:linear :forward-chaining)
+  :rule-classes :forward-chaining
   :hints (("Goal" :do-not-induct t :in-theory (enable fn-frame-blobp))))
 
-; `append` is associated to the right so that the length-prefix lemma sees a
-; two-octet first argument rather than the whole field.
+; List and splitter helpers, each proved in a minimal theory.
 (local
  (defthm fn-frame-append-assoc
-   (equal (append (append a b) c) (append a (append b c)))))
-
+   (equal (append (append a b) c) (append a (append b c)))
+   :hints (("Goal" :induct (binary-append a b)
+            :in-theory (union-theories (theory 'minimal-theory)
+                                       '(binary-append car-cons cdr-cons))))))
 (local
- (defthm fn-frame-len-positive-when-consp
-   (implies (consp x) (< 0 (len x)))
-   :rule-classes :linear
-   :hints (("Goal" :expand ((len x))))))
-
-; The same closure `books/frame.lisp` makes locally, and for the same reason:
-; a big-endian encoder opened on a computed length unrolls into floor and mod
-; and defeats every shape lemma above.
-(local (in-theory (disable fn-cbor-u16-bytes fn-cbor-u32-bytes
-                           fn-frame-u64-bytes
-                           fn-frame-textp fn-frame-blobp)))
-
-; The parse result is a tagged triple.  Its constructor and accessors are
-; reasoned about through these four rules and then closed: opening
-; `fn-frame-item` on a result whose shape is not yet known explodes the
-; grammar branches into nested ifs, and that is what makes the field proofs
-; below diverge rather than any induction.
-
+ (defthm fn-frame-append-nil
+   (implies (true-listp x) (equal (append x nil) x))
+   :hints (("Goal" :induct (binary-append x nil)
+            :in-theory (union-theories (theory 'minimal-theory)
+                                       '(binary-append true-listp
+                                         car-cons cdr-cons))))))
+(local
+ (defthm fn-frame-len-not-zero-when-consp
+   (implies (consp x) (not (equal (len x) 0)))
+   :hints (("Goal" :expand ((len x))
+            :in-theory (union-theories (theory 'minimal-theory)
+                                       '((:type-prescription len)))))))
+(local
+ (defthm fn-frame-at-mostp-when-len-bounded
+   (implies (and (natp bound) (<= (len xs) bound))
+            (fn-cbor-at-mostp xs bound))
+   :hints (("Goal" :induct (fn-cbor-at-mostp xs bound)
+            :in-theory (union-theories (theory 'minimal-theory)
+                                       '(fn-cbor-at-mostp len zp natp
+                                         (:type-prescription len)))))))
+(local
+ (defthm fn-frame-split-prefix-consp
+   (implies (and (not (zp n)) (fn-frame-split n xs))
+            (consp (car (fn-frame-split n xs))))
+   :hints (("Goal" :do-not-induct t :expand ((fn-frame-split n xs))))))
+(local
+ (defthm fn-frame-split-whole
+   (implies (and (true-listp xs) (equal (len xs) (nfix n)))
+            (equal (fn-frame-split n xs) (cons xs nil)))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-frame-split-of-append (a xs) (b nil)))))))
+(local
+ (defthm fn-frame-split-prefix-when-no-suffix
+   (implies (and (true-listp xs) (fn-frame-split n xs)
+                 (not (cdr (fn-frame-split n xs))))
+            (equal (car (fn-frame-split n xs)) xs))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-frame-split-reassembles))))))
+(local
+ (defthm fn-frame-split-2-of-cons-cons
+   (equal (fn-frame-split 2 (cons a (cons b c))) (cons (list a b) c))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                                              '(fn-frame-split zp
+                                                car-cons cdr-cons))))))
+(local
+ (defthm fn-frame-item-1-of-two
+   (implies (and (true-listp xs) (equal (len xs) 2))
+            (equal (fn-frame-item 1 xs) (car (cdr xs))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (enable fn-frame-item fn-frame-len-2-conses)))))
+(local
+ (defthm fn-frame-true-listp-of-append
+   (equal (true-listp (append a b)) (true-listp b))
+   :hints (("Goal" :induct (binary-append a b)
+            :in-theory (union-theories (theory 'minimal-theory)
+                                       '(binary-append true-listp
+                                         car-cons cdr-cons))))))
+; A two-element list spelled out is that list appended to its tail.  The
+; `syntaxp` keeps the rule off explicit lists such as the head-fields record,
+; whose positional reads must still see their conses.
+(local
+ (defthm fn-frame-two-list
+   (implies (and (syntaxp (not (and (consp rest) (eq (car rest) 'cons))))
+                 (true-listp xs) (equal (len xs) 2))
+            (equal (cons (car xs) (cons (car (cdr xs)) rest))
+                   (append xs rest)))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (enable fn-frame-len-2-conses)
+            :expand ((len xs) (len (cdr xs)) (len (cdr (cdr xs)))
+                     (true-listp xs) (true-listp (cdr xs))
+                     (true-listp (cdr (cdr xs))))))))
 (defthm fn-frame-parse-okp-of-parse-ok
   (fn-frame-parse-okp (fn-frame-parse-ok value rest)))
-
 (defthm fn-frame-parse-okp-of-parse-error
   (not (fn-frame-parse-okp (fn-frame-parse-error reason))))
-
 (defthm fn-frame-parse-value-of-parse-ok
   (equal (fn-frame-parse-value (fn-frame-parse-ok value rest)) value))
-
 (defthm fn-frame-parse-rest-of-parse-ok
   (equal (fn-frame-parse-rest (fn-frame-parse-ok value rest)) rest))
-
 (local (in-theory (disable fn-frame-parse-ok fn-frame-parse-error
                            fn-frame-parse-okp fn-frame-parse-value
                            fn-frame-parse-rest fn-frame-item)))
 
-; One case per spec shape.  Each is a straight-line rewrite: the splitter
-; lemma consumes the length prefix, the width lemma reads it back, and the
-; splitter lemma consumes the payload.  Nothing inducts.
+; The counted tail once, over a variable length; then one case per spec
+; shape, each a straight-line rewrite under an explicit theory.
+(defthm fn-frame-parse-counted-of-append
+  (implies (and (true-listp value) (consp value)
+                (natp maximum) (<= (len value) maximum))
+           (equal (fn-frame-parse-counted (append value rest) (len value) maximum)
+                  (fn-frame-parse-ok value rest)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories
+                       (theory 'minimal-theory)
+                       '(fn-frame-parse-counted fn-frame-split-of-append
+                         fn-frame-len-not-zero-when-consp
+                         nfix natp (:type-prescription len)
+                         car-cons cdr-cons)))))
 
 (defthm fn-frame-field-parse-of-octets-text
   (implies (and (fn-frame-textp value)
@@ -265,13 +357,23 @@
                    :text (append (fn-frame-field-octets :text value) rest))
                   (fn-frame-parse-ok value rest)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-frame-field-parse fn-frame-field-octets
-                            fn-frame-parse-counted)
-                           (floor mod fn-cbor-u16-from fn-cbor-u32-from
-                            fn-frame-u64-from fn-frame-item
-                            fn-frame-parse-ok fn-frame-parse-error
-                            fn-frame-parse-okp fn-frame-parse-value
-                            fn-frame-parse-rest)))))
+           :use ((:instance fn-frame-textp-is-octets)
+                 (:instance fn-frame-textp-is-consp)
+                 (:instance fn-frame-textp-len-bound))
+           :in-theory (union-theories
+                       (theory 'minimal-theory)
+                       '(fn-frame-field-parse fn-frame-field-octets
+                         fn-frame-append-assoc fn-frame-split-of-append
+                         fn-frame-u16-bytes-len fn-frame-u16-bytes-true-listp
+                         fn-cbor-u16-from-u16-bytes
+                         fn-frame-parse-counted-of-append
+                         fn-frame-textp-is-octets fn-frame-textp-is-consp
+                         fn-frame-textp-len-bound
+                         fn-frame-octet-listp-true-listp
+                         fn-frame-parse-okp-of-parse-ok
+                         fn-frame-parse-value-of-parse-ok
+                         nfix natp (:type-prescription len)
+                         car-cons cdr-cons)))))
 
 (defthm fn-frame-field-parse-of-octets-blob
   (implies (and (fn-frame-blobp value)
@@ -280,13 +382,21 @@
                    :blob (append (fn-frame-field-octets :blob value) rest))
                   (fn-frame-parse-ok value rest)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-frame-field-parse fn-frame-field-octets
-                            fn-frame-parse-counted)
-                           (floor mod fn-cbor-u16-from fn-cbor-u32-from
-                            fn-frame-u64-from fn-frame-item
-                            fn-frame-parse-ok fn-frame-parse-error
-                            fn-frame-parse-okp fn-frame-parse-value
-                            fn-frame-parse-rest)))))
+           :use ((:instance fn-frame-blobp-is-octets)
+                 (:instance fn-frame-blobp-is-consp)
+                 (:instance fn-frame-blobp-len-bound))
+           :in-theory (union-theories
+                       (theory 'minimal-theory)
+                       '(fn-frame-field-parse fn-frame-field-octets
+                         fn-frame-append-assoc fn-frame-split-of-append
+                         fn-frame-u32-bytes-len fn-frame-u32-bytes-true-listp
+                         fn-cbor-u32-from-u32-bytes
+                         fn-frame-parse-counted-of-append
+                         fn-frame-blobp-is-octets fn-frame-blobp-is-consp
+                         fn-frame-blobp-len-bound
+                         fn-frame-octet-listp-true-listp
+                         nfix natp (:type-prescription len)
+                         car-cons cdr-cons)))))
 
 (defthm fn-frame-field-parse-of-octets-nat
   (implies (and (fn-frame-natp value)
@@ -295,13 +405,15 @@
                    :nat (append (fn-frame-field-octets :nat value) rest))
                   (fn-frame-parse-ok value rest)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-frame-field-parse fn-frame-field-octets
-                            fn-frame-natp)
-                           (floor mod fn-cbor-u16-from fn-cbor-u32-from
-                            fn-frame-u64-from fn-frame-item
-                            fn-frame-parse-ok fn-frame-parse-error
-                            fn-frame-parse-okp fn-frame-parse-value
-                            fn-frame-parse-rest)))))
+           :in-theory (union-theories
+                       (theory 'minimal-theory)
+                       '(fn-frame-field-parse fn-frame-field-octets
+                         fn-frame-natp fn-frame-split-of-append
+                         fn-frame-u64-bytes-len fn-frame-u64-bytes-are-octets
+                         fn-frame-u64-from-of-u64-bytes
+                         fn-frame-octet-listp-true-listp
+                         nfix natp (:type-prescription len)
+                         car-cons cdr-cons)))))
 
 (defthm fn-frame-field-parse-of-octets-enum
   (implies (and (fn-frame-enum-specp spec)
@@ -311,17 +423,15 @@
                    spec (append (fn-frame-field-octets spec value) rest))
                   (fn-frame-parse-ok value rest)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-frame-field-parse fn-frame-field-octets
-                            fn-frame-enum-specp)
-                           (floor mod fn-cbor-u16-from fn-cbor-u32-from
-                            fn-frame-u64-from fn-frame-item
-                            fn-frame-parse-ok fn-frame-parse-error
-                            fn-frame-parse-okp fn-frame-parse-value
-                            fn-frame-parse-rest)))))
+           :in-theory (union-theories
+                       (theory 'minimal-theory)
+                       '(fn-frame-field-parse fn-frame-field-octets
+                         fn-frame-enum-specp binary-append
+                         fn-frame-enum-index-natp fn-frame-enum-index-bound
+                         fn-frame-item-of-enum-index
+                         posp natp (:type-prescription len)
+                         car-cons cdr-cons)))))
 
-; Re-assembled from the four cases.  `fn-frame-field-parse` and
-; `fn-frame-field-octets` stay closed here so the case rules fire on the
-; term rather than the prover opening the grammar a fifth time.
 (defthm fn-frame-field-parse-of-octets
   (implies (and (fn-frame-specp spec)
                 (fn-frame-field-okp spec value)
@@ -330,9 +440,19 @@
                    spec (append (fn-frame-field-octets spec value) rest))
                   (fn-frame-parse-ok value rest)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-frame-specp fn-frame-field-okp)
-                           (fn-frame-field-parse fn-frame-field-octets
-                            floor mod)))))
+           :in-theory (union-theories
+                       (theory 'minimal-theory)
+                       '(fn-frame-specp fn-frame-field-okp
+                         fn-frame-field-parse-of-octets-text
+                         fn-frame-field-parse-of-octets-blob
+                         fn-frame-field-parse-of-octets-nat
+                         fn-frame-field-parse-of-octets-enum)))))
+
+
+; -----------------------------------------------------------------------------
+; One field, the byte direction: a parsed field re-encodes to the octets it
+; consumed, and its value satisfies the field predicate.  The big-endian
+; readers stay closed so that the width lemmas can match their images.
 
 (defthm fn-frame-field-octets-of-parse
   (implies (and (fn-frame-specp spec)
@@ -343,9 +463,12 @@
                                  (fn-frame-field-parse spec octets)))
                           (fn-frame-parse-rest (fn-frame-field-parse spec octets)))
                   octets))
-  :hints (("Goal" :in-theory (enable fn-frame-field-parse fn-frame-field-octets
-                                     fn-frame-parse-counted fn-frame-specp
-                                     fn-frame-enum-specp))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-frame-field-parse fn-frame-field-octets
+                            fn-frame-parse-counted fn-frame-specp
+                            fn-frame-enum-specp)
+                           (fn-cbor-u16-from fn-cbor-u32-from
+                            fn-frame-u64-from floor mod)))))
 
 (defthm fn-frame-field-parse-value-okp
   (implies (and (fn-frame-specp spec)
@@ -353,13 +476,16 @@
                 (fn-frame-parse-okp (fn-frame-field-parse spec octets)))
            (fn-frame-field-okp
             spec (fn-frame-parse-value (fn-frame-field-parse spec octets))))
-  :hints (("Goal" :in-theory (enable fn-frame-field-parse fn-frame-field-okp
-                                     fn-frame-parse-counted fn-frame-specp
-                                     fn-frame-enum-specp fn-frame-blobp
-                                     fn-frame-natp))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-frame-field-parse fn-frame-field-okp
+                            fn-frame-parse-counted fn-frame-specp
+                            fn-frame-enum-specp fn-frame-blobp fn-frame-natp)
+                           (fn-cbor-u16-from fn-cbor-u32-from
+                            fn-frame-u64-from floor mod)))))
 
 ; -----------------------------------------------------------------------------
-; A record's fields, both directions
+; A record's fields, both directions.  The single-field rules do the work, so
+; the field grammar stays closed here.
 
 (defthm fn-frame-fields-parse-aux-of-octets
   (implies (and (fn-frame-spec-listp specs)
@@ -369,8 +495,10 @@
                    specs (append (fn-frame-fields-octets specs values) rest))
                   (fn-frame-parse-ok values rest)))
   :hints (("Goal" :induct (fn-frame-values-okp specs values)
-           :in-theory (enable fn-frame-fields-parse-aux fn-frame-fields-octets
-                              fn-frame-values-okp fn-frame-spec-listp))))
+           :in-theory (e/d (fn-frame-fields-parse-aux fn-frame-fields-octets
+                            fn-frame-values-okp fn-frame-spec-listp)
+                           (fn-frame-field-parse fn-frame-field-octets
+                            fn-frame-parse-counted)))))
 
 (defthm fn-frame-fields-parse-of-octets
   (implies (and (fn-frame-spec-listp specs)
@@ -378,7 +506,10 @@
            (equal (fn-frame-fields-parse
                    specs (fn-frame-fields-octets specs values))
                   (fn-frame-parse-ok values nil)))
-  :hints (("Goal" :in-theory (enable fn-frame-fields-parse)
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-frame-fields-parse)
+                           (fn-frame-fields-parse-aux fn-frame-fields-octets
+                            fn-frame-field-parse fn-frame-field-octets))
            :use ((:instance fn-frame-fields-parse-aux-of-octets (rest nil))))))
 
 (defthm fn-frame-fields-parse-aux-round-trip
@@ -395,8 +526,10 @@
                                 (fn-frame-fields-parse-aux specs octets)))
                        octets)))
   :hints (("Goal" :induct (fn-frame-fields-parse-aux specs octets)
-           :in-theory (enable fn-frame-fields-parse-aux fn-frame-fields-octets
-                              fn-frame-values-okp fn-frame-spec-listp))))
+           :in-theory (e/d (fn-frame-fields-parse-aux fn-frame-fields-octets
+                            fn-frame-values-okp fn-frame-spec-listp)
+                           (fn-frame-field-parse fn-frame-field-octets
+                            fn-frame-parse-counted)))))
 
 (defthm fn-frame-fields-octets-of-parse
   (implies (and (fn-frame-spec-listp specs)
@@ -406,10 +539,16 @@
                    specs (fn-frame-parse-value
                           (fn-frame-fields-parse specs octets)))
                   octets))
-  :hints (("Goal" :in-theory (enable fn-frame-fields-parse))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-frame-fields-parse)
+                           (fn-frame-fields-parse-aux fn-frame-fields-octets
+                            fn-frame-field-parse fn-frame-field-octets))
+           :use ((:instance fn-frame-fields-parse-aux-round-trip)))))
 
 ; -----------------------------------------------------------------------------
-; Shape facts the frame theorems need
+; Shape facts the frame theorems need.  `fn-frame-header` and
+; `fn-frame-protected` are then read only through these, so that the splitter
+; lemma sees a ten-octet header and not its four parts.
 
 (defthm fn-frame-header-octets
   (implies (and (fn-frame-magicp magic) (fn-cbor-octetp version)
@@ -426,8 +565,29 @@
            (equal (fn-frame-head-fields
                    (fn-frame-header magic version kind length))
                   (list magic version kind (fn-cbor-u32-bytes length))))
-  :hints (("Goal" :in-theory (enable fn-frame-head-fields fn-frame-header
-                                     fn-frame-magicp))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (enable fn-frame-head-fields fn-frame-header
+                              fn-frame-magicp fn-frame-item))))
+
+(defthm fn-frame-protected-true-listp
+  (implies (true-listp payload)
+           (true-listp (fn-frame-protected magic version kind payload)))
+  :hints (("Goal" :in-theory (e/d (fn-frame-protected) (fn-frame-header)))))
+
+; The trailer split of a frame that is known to be an encoding.  Stated on a
+; separate variable `xs` so that the equation can be substituted into the
+; split; the theorem below instantiates `xs` with the decoded octets.
+(local
+ (defthm fn-frame-split-tail-of-encode
+   (implies (and (true-listp payload)
+                 (fn-frame-digestp digest)
+                 (equal (fn-frame-encode magic version kind payload digest) xs))
+            (equal (fn-frame-split (- (len xs) *fn-frame-trailer-octets*) xs)
+                   (cons (fn-frame-protected magic version kind payload)
+                         digest)))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-frame-encode fn-frame-digestp)
+                            (fn-frame-protected fn-frame-header))))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE: the value direction.  Everything the host encodes decodes back.
@@ -439,9 +599,12 @@
                    (fn-frame-encode magic version kind payload digest)
                    digest max-payload)
                   (fn-frame-ok magic version kind payload)))
-  :hints (("Goal" :in-theory (enable fn-frame-decode fn-frame-encode
-                                     fn-frame-protected fn-frame-inputp
-                                     fn-frame-magicp fn-frame-digestp))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-frame-decode fn-frame-encode
+                            fn-frame-protected fn-frame-inputp
+                            fn-frame-magicp fn-frame-digestp fn-frame-item)
+                           (fn-frame-header fn-frame-head-fields
+                            fn-cbor-u32-from floor mod)))))
 
 ; KEYSTONE: the byte direction.  An accepted frame has exactly one spelling,
 ; so a decode followed by an encode is the identity on accepted octets.
@@ -462,9 +625,11 @@
                                                              max-payload))
                    digest)
                   octets))
-  :hints (("Goal" :in-theory (enable fn-frame-decode fn-frame-encode
-                                     fn-frame-protected fn-frame-header
-                                     fn-frame-head-fields fn-frame-digestp))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-frame-decode fn-frame-encode
+                            fn-frame-protected fn-frame-header
+                            fn-frame-head-fields fn-frame-digestp fn-frame-item)
+                           (fn-cbor-u32-from floor mod)))))
 
 ; KEYSTONE: the bound direction.  An input longer than the caller's cap is
 ; refused by the cons preflight: the conclusion holds with no hypothesis about
@@ -488,7 +653,9 @@
            (<= (len (fn-frame-result-payload
                      (fn-frame-decode octets digest max-payload)))
                max-payload))
-  :hints (("Goal" :in-theory (enable fn-frame-decode)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-frame-decode fn-frame-item)
+                           (fn-frame-head-fields fn-cbor-u32-from floor mod))))
   :rule-classes :linear)
 
 ; KEYSTONE: an accepted frame's stored trailer is the digest the caller
@@ -512,10 +679,24 @@
                          (fn-frame-result-payload
                           (fn-frame-decode octets digest max-payload)))
                         digest)))
-  :hints (("Goal"
-           :use ((:instance fn-frame-encode-of-decode))
-           :in-theory (e/d (fn-frame-encode fn-frame-digestp)
-                           (fn-frame-encode-of-decode fn-frame-decode)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-frame-encode-of-decode)
+                 (:instance fn-frame-split-tail-of-encode
+                            (xs octets)
+                            (magic (fn-frame-result-magic
+                                    (fn-frame-decode octets digest max-payload)))
+                            (version (fn-frame-result-version
+                                      (fn-frame-decode octets digest max-payload)))
+                            (kind (fn-frame-result-kind
+                                   (fn-frame-decode octets digest max-payload)))
+                            (payload (fn-frame-result-payload
+                                      (fn-frame-decode octets digest max-payload)))))
+           :in-theory (disable fn-frame-encode-of-decode fn-frame-decode
+                               fn-frame-encode fn-frame-protected
+                               fn-frame-split-tail-of-encode
+                               fn-frame-result-okp fn-frame-result-magic
+                               fn-frame-result-version fn-frame-result-kind
+                               fn-frame-result-payload))))
 
 ; -----------------------------------------------------------------------------
 ; A-CRYPTO: relating the functions the host calls to the specification
@@ -535,9 +716,10 @@
            (equal (fn-frame-protected-prefix
                    (fn-frame-encode magic version kind payload digest))
                   (fn-frame-protected magic version kind payload)))
-  :hints (("Goal" :in-theory (enable fn-frame-protected-prefix fn-frame-encode
-                                     fn-frame-protected fn-frame-inputp
-                                     fn-frame-magicp fn-frame-digestp))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-frame-protected-prefix fn-frame-encode
+                            fn-frame-inputp fn-frame-digestp)
+                           (fn-frame-protected fn-frame-header)))))
 
 (defthm fn-frame-encode-is-seal
   (implies (equal digest
@@ -553,6 +735,12 @@
                   (fn-frame-open octets max-payload)))
   :hints (("Goal" :in-theory (enable fn-frame-open))))
 
+; The two bridging theorems are exported disabled: each is the inverse of
+; opening its specification function, and as an enabled rewrite rule it loops
+; against that definition in any book where `fn-frame-open` or
+; `fn-frame-seal` appears.  A proof that needs one names it in a hint.
+(in-theory (disable fn-frame-encode-is-seal fn-frame-decode-is-open))
+
 ; KEYSTONE under A-CRYPTO: the sealed frame opens to the value that was
 ; sealed.  Both sides use the constrained digest; no host obligation remains.
 
@@ -561,18 +749,11 @@
            (equal (fn-frame-open (fn-frame-seal magic version kind payload)
                                  max-payload)
                   (fn-frame-ok magic version kind payload)))
-  :hints (("Goal"
-           :in-theory (e/d (fn-frame-open fn-frame-seal fn-frame-encode
-                            fn-frame-inputp fn-frame-magicp)
-                           (fn-frame-decode fn-frame-decode-of-encode))
-           :use ((:instance fn-frame-decode-of-encode
-                            (digest (fn-frame-digest
-                                     (fn-frame-protected magic version kind
-                                                         payload))))
-                 (:instance fn-frame-protected-prefix-of-encode
-                            (digest (fn-frame-digest
-                                     (fn-frame-protected magic version kind
-                                                         payload))))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-frame-open fn-frame-seal)
+                           (fn-frame-encode fn-frame-protected
+                            fn-frame-protected-prefix fn-frame-inputp
+                            fn-frame-decode)))))
 
 ; -----------------------------------------------------------------------------
 ; The journal record entry points, both directions
@@ -585,9 +766,10 @@
                    (fn-frame-store-encode record digest) digest)
                   (fn-frame-ok *fn-frame-magic-store* *fn-frame-version*
                                *fn-frame-store-kind* record)))
-  :hints (("Goal" :in-theory (e/d (fn-frame-store-encode fn-frame-store-decode
-                                   fn-frame-inputp fn-frame-magicp)
-                                  (fn-frame-decode fn-frame-encode)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-frame-store-encode fn-frame-store-decode
+                            fn-frame-inputp fn-frame-magicp fn-frame-item)
+                           (fn-frame-decode fn-frame-encode)))))
 
 (defthm fn-frame-workflow-decode-of-encode
   (implies (and (fn-frame-workflow-record-okp kind values)
@@ -600,11 +782,14 @@
                    (fn-frame-workflow-encode kind values digest) digest)
                   (fn-frame-ok *fn-frame-magic-workflow* *fn-frame-version*
                                kind values)))
-  :hints (("Goal" :in-theory (e/d (fn-frame-workflow-encode
-                                   fn-frame-workflow-decode
-                                   fn-frame-workflow-record-okp
-                                   fn-frame-inputp fn-frame-magicp)
-                                  (fn-frame-decode fn-frame-encode)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-frame-workflow-encode
+                            fn-frame-workflow-decode
+                            fn-frame-workflow-record-okp
+                            fn-frame-inputp fn-frame-magicp fn-frame-item)
+                           (fn-frame-decode fn-frame-encode
+                            fn-frame-fields-parse fn-frame-fields-parse-aux
+                            fn-frame-fields-octets)))))
 
 (defthm fn-frame-receipt-decode-of-encode
   (implies (and (fn-frame-receipt-record-okp kind values)
@@ -617,11 +802,14 @@
                    (fn-frame-receipt-encode kind values digest) digest)
                   (fn-frame-ok *fn-frame-magic-receipt* *fn-frame-version*
                                kind values)))
-  :hints (("Goal" :in-theory (e/d (fn-frame-receipt-encode
-                                   fn-frame-receipt-decode
-                                   fn-frame-receipt-record-okp
-                                   fn-frame-inputp fn-frame-magicp)
-                                  (fn-frame-decode fn-frame-encode)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-frame-receipt-encode
+                            fn-frame-receipt-decode
+                            fn-frame-receipt-record-okp
+                            fn-frame-inputp fn-frame-magicp fn-frame-item)
+                           (fn-frame-decode fn-frame-encode
+                            fn-frame-fields-parse fn-frame-fields-parse-aux
+                            fn-frame-fields-octets)))))
 
 ; -----------------------------------------------------------------------------
 ; What the host is allowed to do with the protected prefix
@@ -637,9 +825,10 @@
                 (fn-frame-digestp digest))
            (equal (fn-frame-store-encode record digest)
                   (append (fn-frame-store-protected record) digest)))
-  :hints (("Goal" :in-theory (enable fn-frame-store-encode
-                                     fn-frame-store-protected
-                                     fn-frame-encode))))
+  :hints (("Goal" :in-theory (e/d (fn-frame-store-encode
+                                   fn-frame-store-protected
+                                   fn-frame-encode)
+                                  (fn-frame-protected)))))
 
 (defthm fn-frame-workflow-encode-is-protected-plus-digest
   (implies (and (fn-frame-workflow-record-okp kind values)
@@ -650,9 +839,10 @@
                 (fn-frame-digestp digest))
            (equal (fn-frame-workflow-encode kind values digest)
                   (append (fn-frame-workflow-protected kind values) digest)))
-  :hints (("Goal" :in-theory (enable fn-frame-workflow-encode
-                                     fn-frame-workflow-protected
-                                     fn-frame-encode))))
+  :hints (("Goal" :in-theory (e/d (fn-frame-workflow-encode
+                                   fn-frame-workflow-protected
+                                   fn-frame-encode)
+                                  (fn-frame-protected fn-frame-fields-octets)))))
 
 (defthm fn-frame-receipt-encode-is-protected-plus-digest
   (implies (and (fn-frame-receipt-record-okp kind values)
@@ -663,13 +853,20 @@
                 (fn-frame-digestp digest))
            (equal (fn-frame-receipt-encode kind values digest)
                   (append (fn-frame-receipt-protected kind values) digest)))
-  :hints (("Goal" :in-theory (enable fn-frame-receipt-encode
-                                     fn-frame-receipt-protected
-                                     fn-frame-encode))))
+  :hints (("Goal" :in-theory (e/d (fn-frame-receipt-encode
+                                   fn-frame-receipt-protected
+                                   fn-frame-encode)
+                                  (fn-frame-protected fn-frame-fields-octets)))))
 
 ; The inbound case, where the host also concatenates the bundle.  The head it
 ; sends back is a bounded prefix of the stored frame, which is why `tail` is
 ; arbitrary here: everything the opener decides comes out of the prefix.
+
+(local
+ (defthm fn-frame-text-field-octets-len
+   (implies (fn-frame-textp bid)
+            (equal (len (fn-frame-field-octets :text bid)) (+ 2 (len bid))))
+   :hints (("Goal" :in-theory (enable fn-frame-field-octets)))))
 
 (defthm fn-frame-inbound-open-of-prefix
   (implies (and (fn-frame-textp bid)
@@ -687,7 +884,10 @@
                    digest digest)
                   (fn-frame-ok *fn-frame-magic-inbound* *fn-frame-version*
                                bid bundle-length)))
-  :hints (("Goal" :in-theory (enable fn-frame-inbound-open
-                                     fn-frame-inbound-prefix
-                                     fn-frame-header fn-frame-magicp
-                                     fn-frame-field-octets))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-frame-inbound-open fn-frame-inbound-prefix
+                            fn-frame-magicp fn-frame-digestp fn-frame-item)
+                           (fn-frame-header fn-frame-head-fields
+                            fn-frame-field-octets fn-frame-field-parse
+                            fn-frame-parse-counted fn-cbor-u32-from
+                            fn-cbor-u16-from floor mod)))))

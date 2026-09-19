@@ -311,6 +311,42 @@ Three things were learned, each paid for by a run:
    lemma, not as an `ld` of the whole book: each full-book run costs four
    minutes of admitted preamble before it reaches the form under test.
 
+### 3.1b Resolved (2026-09-19, later session): the stall was never in `-text`
+
+`books/frame-invariants.lisp`, `books/identity.lisp`,
+`books/identity-invariants.lisp`, `tests/acl2/frame-tests.lisp` and
+`tests/acl2/identity-tests.lisp` all certify (evidence under
+`build/acl2/certify-20260919T0829*` and `-T0830*`; `frame-invariants` in
+13 s). No definition in `books/frame.lisp` changed. What was actually wrong:
+
+1. The cost was a rewrite cascade on every `(consp x)` and
+   `(fn-cbor-octet-listp x)` term, not any one theorem. `books/frame` exports
+   `fn-frame-len-{2,4,8}-conses` and `fn-frame-not-consp-when-len-zero`
+   (rewrite rules on `(consp x)` that backchain into `len`), and the §3.1a
+   shape lemmas `fn-frame-textp-is-consp`/`-is-octets`/`-len-bound` were
+   `:rewrite`/`:linear` rules whose hypothesis opens `fn-frame-textp`, which
+   unrolls `fn-cbor-at-mostp x 512` to its literal bound. With those live,
+   plain `(equal (append (append a b) c) (append a (append b c)))` took
+   108 s and `fn-id-hex-octets-are-octets` in `identity-invariants` took
+   619 s (163M prover steps). Measured with `accumulated-persistence`; the
+   `certify_books.py` buffering had hidden which form was grinding.
+2. Fix: the four frame rules and the two value predicates are disabled
+   locally right after the u64 lemmas; the shape lemmas are
+   `:forward-chaining` only and the two proofs that need them `:use` them;
+   every list/splitter helper is proved under `minimal-theory` plus named
+   runes; `fn-frame-parse-counted-of-append` is proved once over a variable
+   length; the field cases are straight-line rewrites. `fn-frame-encode-is-seal`
+   and `fn-frame-decode-is-open` are exported *disabled* (each loops against
+   the definition it inverts; the `must-fail` in `frame-tests` hit the
+   rewriter call-depth limit with them enabled).
+3. `fn-frame-decode-trailer-is-the-supplied-digest` is proved through a
+   local lemma stated on a separate variable `xs` with the encoding as an
+   equation, because ACL2 cannot substitute a term for `octets` when `octets`
+   occurs inside that term.
+4. `fn-id-hex-octets-of-unhex` had its own `Waterfall-loop` with `floor`,
+   `mod` and the digit functions all open; it now uses nibble bounds and
+   `floor`/`mod` of `16a+b` as rewrite lemmas, statement unchanged.
+
 ### 3.2 Never attempted
 
 - `books/identity.lisp`, `books/identity-invariants.lisp` — written, never
