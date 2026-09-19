@@ -88,6 +88,10 @@
     "tests/acl2/store-node-teeth-tests",
     "books/checkpoint",
     "tests/acl2/checkpoint-tests",
+    "books/checkpoint-codec",
+    "tests/acl2/checkpoint-codec-tests",
+    "books/checkpoint-publish",
+    "tests/acl2/checkpoint-publish-tests",
     "books/index",
     "tests/acl2/index-tests",
     "books/bp-ingress",
@@ -166,21 +170,21 @@
     "tests/acl2/relay-tests"
   ],
   "totals": {
-    "books": 162,
-    "books_in_root_closure": 162,
-    "roots": 162,
-    "theorems": 2272,
-    "functions": 1667,
-    "assert_events": 2567,
-    "must_fails": 133,
+    "books": 166,
+    "books_in_root_closure": 166,
+    "roots": 166,
+    "theorems": 2369,
+    "functions": 1747,
+    "assert_events": 2672,
+    "must_fails": 149,
     "encapsulates": 8,
     "guards": {
-      "verified": 934,
+      "verified": 947,
       "declared-off": 52,
-      "default-guarded": 284,
-      "default-unguarded": 397
+      "default-guarded": 348,
+      "default-unguarded": 400
     },
-    "suspect_theorems": 27
+    "suspect_theorems": 28
   },
   "books": [
     {
@@ -1322,6 +1326,62 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/checkpoint-codec.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 69,
+      "functions": 32,
+      "guards": {
+        "verified": 13,
+        "declared-off": 0,
+        "default-guarded": 18,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 13,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 16,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "checkpoint",
+        "frame-invariants",
+        "records-canonicality"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-cpc-uint32p-bridge"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/checkpoint-publish.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 28,
+      "functions": 46,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 46,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "checkpoint-codec"
+      ],
       "system_includes": [],
       "suspects": [],
       "read_error": null
@@ -3401,6 +3461,60 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/checkpoint-codec-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 60,
+      "must_fails": 8,
+      "defconsts": 14,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/checkpoint-codec"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/checkpoint-publish-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 45,
+      "must_fails": 8,
+      "defconsts": 31,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/checkpoint-publish"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/checkpoint-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -4463,6 +4577,14 @@
       "reasons": [
         "definition-restated: the conclusion is the body of fn-clock-may-drop-local-copyp",
         "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
+      "theorem": "fn-cpc-uint32p-bridge",
+      "book": "books/checkpoint-codec.lisp",
+      "line": 862,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-record-uint32p"
       ]
     },
     {

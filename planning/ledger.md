@@ -10,19 +10,19 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 162 |
-| Certification roots in the Makefile | 162 |
-| Books inside the root closure | 162 |
-| `defthm` and `defthmd` events | 2272 |
-| `defun` events | 1667 |
-| Functions with verified guards | 934 |
+| Books read | 166 |
+| Certification roots in the Makefile | 166 |
+| Books inside the root closure | 166 |
+| `defthm` and `defthmd` events | 2369 |
+| `defun` events | 1747 |
+| Functions with verified guards | 947 |
 | Functions declared `:verify-guards nil` and never verified | 52 |
-| Functions left at the default with an explicit guard | 284 |
-| Functions left at the default with no guard | 397 |
-| `assert-event` checks | 2567 |
-| `must-fail` checks | 133 |
+| Functions left at the default with an explicit guard | 348 |
+| Functions left at the default with no guard | 400 |
+| `assert-event` checks | 2672 |
+| `must-fail` checks | 149 |
 | `encapsulate` events | 8 |
-| Theorems flagged SUSPECT by shape | 27 |
+| Theorems flagged SUSPECT by shape | 28 |
 
 ## Per book
 
@@ -76,6 +76,8 @@ that `make certify` requests.
 | `books/bp-workflow.lisp` | root | 0 | 111 | 0/0/111/0 | 0 | 0 | 0 |
 | `books/cbor-invariants.lisp` | root | 36 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/cbor.lisp` | root | 3 | 21 | 21/0/0/0 | 0 | 0 | 0 |
+| `books/checkpoint-codec.lisp` | root | 69 | 32 | 13/0/18/1 | 0 | 0 | 1 |
+| `books/checkpoint-publish.lisp` | root | 28 | 46 | 0/0/46/0 | 0 | 0 | 0 |
 | `books/checkpoint.lisp` | root | 10 | 13 | 13/0/0/0 | 0 | 0 | 0 |
 | `books/clock-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/clock.lisp` | root | 1 | 17 | 17/0/0/0 | 0 | 0 | 0 |
@@ -155,6 +157,8 @@ that `make certify` requests.
 | `tests/acl2/bp-workflow-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 50 | 7 | 0 |
 | `tests/acl2/cbor-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 3 | 0 |
 | `tests/acl2/cbor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
+| `tests/acl2/checkpoint-codec-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 60 | 8 | 0 |
+| `tests/acl2/checkpoint-publish-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 45 | 8 | 0 |
 | `tests/acl2/checkpoint-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/clock-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 26 | 8 | 0 |
 | `tests/acl2/exchange-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 106 | 0 | 0 |
@@ -211,6 +215,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bpf-out-of-bounds-input-allocates-nothing` | `books/bp-fragment-invariants.lisp` | 387 | branch-of-definition: the hypothesis is a branch test of fn-bpf-reassemble and the conclusion is that branch's value |
 | `fn-bpr-context-from-request-is-constructor` | `books/bp-receiver-state-invariants.lisp` | 86 | definition-restated: the conclusion is the body of fn-bpr-context-from-request |
 | `fn-clock-drop-permission-is-exactly-expired-by-definition` | `books/clock-invariants.lisp` | 163 | definition-restated: the conclusion is the body of fn-clock-may-drop-local-copyp; reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-cpc-uint32p-bridge` | `books/checkpoint-codec.lisp` | 862 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-record-uint32p |
 | `fn-exchange-ingest-refusal-is-no-op` | `books/exchange.lisp` | 364 | branch-of-definition: the hypothesis negates a branch test of fn-exchange-ingest and the conclusion is that branch's value |
 | `fn-frame-decode-refuses-oversize-before-validation` | `books/frame-invariants.lisp` | 638 | branch-of-definition: the hypothesis is a branch test of fn-frame-decode and the conclusion is that branch's value |
 | `fn-nntp-block-scan-start-without-a-dot` | `books/nntp-effects.lisp` | 395 | branch-of-definition: the hypothesis negates a branch test of fn-nntp-block-scan and the conclusion is that branch's value |
