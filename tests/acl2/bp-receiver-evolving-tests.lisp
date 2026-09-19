@@ -336,8 +336,11 @@
   (fn-sn-make *bpr-groups* 20 (fn-sf-make :ready 3 nil (cons *bpr-record* 7) nil nil nil 5)
               (fn-sn-node *bpr-store*)))
 (assert-event (not (fn-sn-statep *bpre-untyped-store*)))
-(assert-event (equal (fn-snrt-step *bpre-untyped-store* '(:io :start-frontier nil))
-                     *bpre-untyped-store*))
+; fn-snrt-step carries (fn-sn-statep s) now (store, 2026-09-19); this witness is a
+; non-state on purpose, so it is evaluated on the :logic body.
+(assert-event (with-guard-checking :none
+               (equal (fn-snrt-step *bpre-untyped-store* '(:io :start-frontier nil))
+                      *bpre-untyped-store*)))
 (local
  (must-fail
   (defthm bpre-teeth-live-extension-without-relation
