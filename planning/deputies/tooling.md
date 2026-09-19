@@ -19,6 +19,12 @@ beside a freshly merged source is `unverified`, never cached. The key is the
 and its whole local include closure (`include-book` resolved relative to the
 including file, `:dir :system` ignored), so a changed dependency changes the
 key of an unchanged book and the cache cannot report a hit ACL2 would refuse.
+Each entry also records `origin_root`, the absolute worktree the run happened
+in, because a certificate names its sub-books by absolute path: `install`
+takes this worktree's own entry, else one whose origin does not exist on this
+machine, else refuses (`foreign-local`) and removes a local pair that is
+provably one of the refused ones. `farm.py submit --remote-root` plus `wait`
+publishes under the remote path, which is the relocatable case.
 `install` computes the same key and keeps a byte-identical local certificate;
 `status` prints coverage; `valid_looking` accepts both ACL2 8.7's serialized
 `#Z` format and the textual one; no rule anywhere depends on mtime. Entry meta

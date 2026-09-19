@@ -141,6 +141,14 @@ class Acl2Reader:
         return bytes(acl2_octet_list(self.call("(@ fn-reader-output)")))
 
     def chunk(self, octets):
+        """One socket read, consumed whole by one certified call.
+
+        `fn-served-step' (books/served.lisp) is fn-wire-drive followed by
+        fn-nntp-step per framed event, with the reply concatenation.  It
+        consumes the entire chunk, so there is never an unconsumed suffix to
+        hand back and no re-feeding loop here; the empty list is returned in
+        that position for callers that still drain one.
+        """
         if not octets:
             return b"", False, []
         literal = "(" + " ".join(str(byte) for byte in octets) + ")"
@@ -150,8 +158,7 @@ class Acl2Reader:
         self.call("(fn-reader-chunk '" + literal + " " + str(unix_ms) + " state)")
         reply = bytes(acl2_octet_list(self.call("(@ fn-reader-output)")))
         closing = acl2_boolean(self.call("(@ fn-reader-closep)"))
-        suffix = acl2_octet_list(self.call("(@ fn-reader-suffix)"))
-        return reply, closing, suffix
+        return reply, closing, []
 
     def close(self):
         if self.proc is None or not self.owns_process:
@@ -213,7 +220,6 @@ def serve_client(reader, client):
         try:
             client.settimeout(10)
             client.sendall(reader.reset())
-            pending = []
             while True:
                 try:
                     incoming = client.recv(MAX_READ)
@@ -221,25 +227,24 @@ def serve_client(reader, client):
                     return
                 if not incoming:
                     return
-                pending.extend(incoming)
-                while pending:
-                    try:
-                        reply, closing, pending = reader.chunk(pending)
-                    except RuntimeError:
-                        # An invalid bridge result is not a protocol reply.
-                        # Do not retain this connection's input for reuse.
-                        if reader.poisoned:
-                            raise ReaderBridgeFault("ACL2 bridge poisoned")
-                        return
-                    if reply:
-                        client.sendall(reply)
-                    if closing:
-                        graceful_close(client)
-                        return
-                    # No complete wire event consumed this input.  The retained
-                    # ACL2 wire state holds the bounded prefix.
-                    if not pending:
-                        break
+                # One read, one certified step.  The loop that used to live
+                # here re-fed an unconsumed suffix and so computed
+                # fn-wire-drive in Python; books/served.lisp now owns that
+                # loop, and fn-served-run-is-the-concatenated-step says the
+                # cut points the network chose are invisible.
+                try:
+                    reply, closing, unused_suffix = reader.chunk(list(incoming))
+                except RuntimeError:
+                    # An invalid bridge result is not a protocol reply.
+                    # Do not retain this connection's input for reuse.
+                    if reader.poisoned:
+                        raise ReaderBridgeFault("ACL2 bridge poisoned")
+                    return
+                if reply:
+                    client.sendall(reply)
+                if closing:
+                    graceful_close(client)
+                    return
         except ReaderBridgeFault:
             raise
         except (RuntimeError, ConnectionError, OSError):

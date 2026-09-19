@@ -19,7 +19,10 @@ cross-cluster steps you could not take alone.
   Never a polling loop; never `pgrep -f` on other lanes' processes; never
   `pkill`, `killall` or any pattern kill.
 - Never `git stash`; never `git add -A`; commit named files with
-  `git commit -F <msgfile>`; never search under `build/` or `/`.
+  `git commit -F <msgfile>` where `<msgfile>` is named after your lane
+  (e.g. `commit-<cluster>-<n>.txt` in the scratchpad: two lanes sharing
+  `msg.txt` swapped commit messages on 2026-09-19); never search under
+  `build/` or `/`.
 - Hard budget: the tool-call number in your prompt. When it is spent, commit
   what certifies, write the report, stop.
 
