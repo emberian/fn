@@ -23,6 +23,21 @@ stale. Counts describe artifacts, not coverage; see
 | `must-fail` checks | 155 |
 | `encapsulate` events | 10 |
 | Theorems flagged SUSPECT by shape | 29 |
+| Export-hygiene warnings | 67 |
+| Teeth-form warnings | 24 |
+
+## Lints
+
+Two WARN lints, counted above and listed in full under `lints` in
+[`ledger.json`](ledger.json). *Export hygiene* counts theorems a book
+leaves enabled whose shape rewrites downstream goals out of accessor
+vocabulary: an equality between two one-argument applications, or a
+`consp`/`len` conclusion backchained to a `len` hypothesis. A theorem
+that is `local`, `defthmd`, `:rule-classes nil`, or disabled by a
+closing `in-theory` is not counted. *Teeth form* counts `must-fail`
+checks whose body is a bare `thm`/`defthm` mentioning no constant, so
+nothing in particular is refuted. Neither lint judges truth;
+`python3 tools/ledger.py --check --strict` turns both into errors.
 
 ## Per book
 
