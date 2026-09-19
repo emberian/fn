@@ -69,18 +69,19 @@ class PublishTests(unittest.TestCase):
             self.assertEqual(certs.publish(root, cache).published, 0)
             self.assertEqual(certs.publish(root, cache).already, 1)
 
-    def test_a_certificate_older_than_its_book_is_never_published(self):
+    def test_a_certificate_is_published_by_content_regardless_of_mtime(self):
+        """Under ACL2_BOOK_HASH_ALISTP=NIL the certificate records the book's
+        checksum, so a fresh checkout (book newer than its certificate) is
+        still a valid pair; ACL2 refuses a real mismatch at include time."""
         with tempfile.TemporaryDirectory() as directory:
             root = worktree(directory, BOOKS, ["books/alpha"])
-            source = root / "books/alpha.lisp"
-            source.write_text(source.read_text() + "(defun later (x) x)\n")
-            edited = time.time() + 30  # the edit is later than the certificate
-            os.utime(source, (edited, edited))
+            book = root / "books/alpha.lisp"
+            cert = root / "books/alpha.cert"
+            later = cert.stat().st_mtime + 100
+            os.utime(book, (later, later))
             report = certs.publish(root, root / "cache")
-            self.assertEqual(report.published, 0)
-            self.assertEqual(report.stale, ["books/alpha"])
-            self.assertFalse((root / "cache").exists()
-                             and any((root / "cache").iterdir()))
+            self.assertEqual(report.published, 1)
+            self.assertEqual(report.stale, [])
 
     def test_an_empty_or_truncated_certificate_is_not_valid_looking(self):
         with tempfile.TemporaryDirectory() as directory:
