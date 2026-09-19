@@ -89,7 +89,10 @@ Two consequences are deliberate:
 
 The snapshot is bounded before it is built: `--max-bytes` (64 MiB by default)
 caps the octets of the whole view, and a larger store is refused rather than
-served by a host that has already committed to holding it.
+served by a host that has already committed to holding it.  One file is
+additionally bounded by the ACL2 bridge's own reply limit, since a payload
+crosses it as a printed list of decimal octets: roughly a megabyte of article
+per read, which is the same limit the reader bridge works under.
 
 ## What is not served
 
