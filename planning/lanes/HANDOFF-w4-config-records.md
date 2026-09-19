@@ -96,3 +96,26 @@ decode or replay it -- both refusals, distinct from an uncertain persistence
 observation. `DEFAULT_CONFIG` is unchanged in this packet; R4 shrinks it to
 the four pure format keys and deletes `*fn-store-groups*`, at which point
 `fn-cfg-default-change` is the single line that decides a new store's table.
+
+## Certification status at handoff (2026-09-19, lane close)
+
+Honest state, not a claim: **no `.cert` for the four new books exists yet.**
+`books/cbor`, `books/cbor-invariants`, `books/records` and
+`books/records-invariants` certified in this worktree. `books/config` was
+still in `certify-book` when the lane's budget ran out (the run was relaunched
+in the background at close; its log is the scratchpad's `w4-certify.log`), and
+the machine was contended with the codecs deputy re-certifying the same
+`books/records` closure at the same time. Two defects were found and fixed
+during the attempts -- a `member-equal` guard obligation in
+`fn-cfg-no-duplicate-namesp`, and missing `:measure (len deltas)` on
+`fn-cfg-apply` and `fn-cfg-admissible-reason` -- and the general
+decode-of-encode lemma was removed and recorded open when it did not close.
+`books/config-invariants`, `tests/acl2/config-tests` and the Python suite
+(`tests.test_store tests.test_store_lifecycle tests.test_store_corruption
+tests.test_reader`) were queued behind `books/config` and did not run.
+
+Whoever picks this up: `python3 tools/certs.py install` then
+`FN_ACL2_TIMEOUT_SECONDS=1800 python3 tools/certify_books.py --jobs 1
+books/config books/config-invariants books/store-config
+tests/acl2/config-tests`, one at a time, and treat every `defthm` in
+`books/config-invariants.lisp` as unproved until its certificate exists.
