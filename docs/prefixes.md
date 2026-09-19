@@ -66,9 +66,10 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-pol-` | `policy`, `policy-invariants` | Group policy statements, the policy in force, authorization, policy term and receipts |
 | `fn-toy-`, `fn-t-` | `tests/acl2/*-tests` | Test-only executable realisers attached with `defattach`, and test witnesses; never in `books/`.  `fn-t-anchor-{leaf-digest,sig-verify}` (`tests/acl2/anchor-teeth-tests`) realise the two A-CRYPTO seams of `books/anchor` so the keystones' own subjects evaluate |
 | `fn-me-` | `membership-epochs`, `membership-epochs-invariants` | Group membership as epochs: commits over a base epoch, adopted chain and evidence set, the lace-shaped merge with explicit fork evidence, rosters, revocation knowledge, and the four-way admissibility decision for a late message. A policy model: no keys, no ciphertext, no digest |
+| `fn-cfg-`, `fn-config-`, `fn-jrec-` | `config`, `config-invariants`, `config-records` | Durable configuration: the typed value (group-table history with created/retired generations and stamps, capacity, quota/policy/listener/peer/limit rows), the typed deltas and their admissibility, the configuration record and its canonical CBOR encoding, the replay fold into `(generation value)`, and the two-kind journal record over which `fn-config-aware-replay` agrees with `fn-replay` on transaction-only histories |
 
 Host-only wrappers in `host/*.lisp` use `fn-store-`, `fn-bpreq-`, `fn-bpwf-`,
 `fn-bprj-` and similar; they are `:program` mode and outside the proof boundary.
-The `fn-store-` tag is shared: `books/store-config` owns the group table under
+`host/config-host.lisp` marshals under `fn-cfg-host-`. The `fn-store-` tag is shared: `books/store-config` owns the group table under
 it and `host/store-host.lisp` marshals under it. A host wrapper never decides
 anything a book does not already decide.

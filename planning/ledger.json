@@ -59,9 +59,13 @@
     "books/records-canonicality",
     "tests/acl2/records-tests",
     "tests/acl2/records-teeth-tests",
+    "books/config",
+    "books/config-invariants",
     "books/replay",
     "books/replay-invariants",
     "tests/acl2/replay-tests",
+    "books/config-records",
+    "tests/acl2/config-tests",
     "books/store-files",
     "books/store-files-invariants",
     "tests/acl2/store-files-tests",
@@ -202,22 +206,22 @@
     "tests/acl2/policy-tests"
   ],
   "totals": {
-    "books": 199,
-    "books_in_root_closure": 198,
-    "roots": 198,
-    "theorems": 3233,
-    "functions": 2273,
-    "assert_events": 3355,
+    "books": 203,
+    "books_in_root_closure": 202,
+    "roots": 202,
+    "theorems": 3319,
+    "functions": 2417,
+    "assert_events": 3409,
     "must_fails": 59,
     "encapsulates": 14,
     "guards": {
-      "verified": 988,
+      "verified": 991,
       "declared-off": 131,
-      "default-guarded": 718,
+      "default-guarded": 859,
       "default-unguarded": 436
     },
     "suspect_theorems": 29,
-    "export_hygiene_warnings": 60,
+    "export_hygiene_warnings": 62,
     "teeth_form_warnings": 0
   },
   "books": [
@@ -1633,6 +1637,83 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/config-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 32,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/config-records.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 12,
+      "functions": 15,
+      "guards": {
+        "verified": 2,
+        "declared-off": 0,
+        "default-guarded": 13,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 2,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config",
+        "replay"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/config.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 42,
+      "functions": 128,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 127,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 12,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "clock",
+        "records-invariants"
+      ],
       "system_includes": [],
       "suspects": [],
       "read_error": null
@@ -4383,6 +4464,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/config-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 54,
+      "must_fails": 0,
+      "defconsts": 16,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/config-invariants",
+        "../../books/config-records",
+        "../../books/store-config"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/container-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -5817,6 +5925,18 @@
         "theorem": "fn-checkpoint-capacity-of-fn-checkpoint-make",
         "book": "books/checkpoint.lisp",
         "line": 71,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-jrec-article-sequence-agrees",
+        "book": "books/config-records.lisp",
+        "line": 84,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-jrec-config-sequence-agrees",
+        "book": "books/config-records.lisp",
+        "line": 87,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
