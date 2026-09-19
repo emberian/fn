@@ -152,7 +152,7 @@ octet; today only `*fn-frame-store-kind*` = 1 is used.
 
 A configuration record is a transaction record with the same durability fields
 as an article record, plus the typed change and the clock observation that
-stamps it (the clock discipline is [the owner design](owner.md)'s
+stamps it (the clock discipline is the owner design (`specs/owner.md`, on the pending owner lane)'s
 `fn-own-every-fact-is-clock-stamped`, generalized from group facts to all of
 configuration):
 
@@ -313,7 +313,7 @@ The owner's event list gains one event and loses one:
 (:reconfigure id deltas)
 ```
 
-`(:declare-group name)` of [the owner design](owner.md) becomes the special case
+`(:declare-group name)` of the owner design (`specs/owner.md`, on the pending owner lane) becomes the special case
 `(:reconfigure id ((:create-group name policy-id)))`, and the in-process,
 non-persisted fact log it kept — the first open item of that document — is
 deleted: the fact log *is* the configuration record history.
@@ -846,7 +846,7 @@ migration is by re-init with a configuration record, because no deployed store
 exists (`specs/store-experiment.md` is an experiment).
 
 **`fn-own-every-fact-is-clock-stamped` and friends.** The three group-fact
-theorems of [the owner design](owner.md) are subsumed:
+theorems of the owner design (`specs/owner.md`, on the pending owner lane) are subsumed:
 `fn-own-declared-group-is-replayed` becomes §3.5's replay statements over the
 real record history, and `fn-own-declare-group-without-clock-is-refused` becomes
 `fn-own-reconfigure-without-clock-is-refused` with reason `:no-clock`. The
