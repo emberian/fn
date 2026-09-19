@@ -73,6 +73,16 @@ conflicting request rejection without a second Store record, Store durable
 publication before FNRJ context followed by close/reopen binding, and explicit
 matching pending-intent recovery.
 
+`tests/test_bp_receive_process_crash.py` exercises five actual process deaths:
+after durable FNBI staging, after Store acceptance before receiver context,
+after context before intent, after intent before decision, and after decision
+before BPA deletion. A parent readiness pipe selects the cut, then SIGKILL
+terminates the dedicated receiver/ACL2 process group. Fresh recovery checks
+exact staged and article bytes, record/article/pin counts, explicit pending
+decision recovery and receipt equality before/after death or duplicate delivery.
+These are additional process/cache-retention tests, distinct from exception
+injection and from physical power-loss qualification.
+
 This is an experimental trusted-loopback lab path.  It performs no
 cryptographic verification, does not infer an authenticated author from BP or
 NNTP fields, does not transmit the returned receipt, and does not establish
