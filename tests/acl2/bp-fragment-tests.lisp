@@ -214,16 +214,21 @@
 
 ; fn-bpf-reassemble-ok-agrees-with-every-fragment
 ;   without `member-equal`: a fragment that was not consumed says nothing.
-(local
- (must-fail
-  (thm (implies (and (equal (fn-bpf-result-tag (fn-bpf-reassemble fs total))
-                            :ok)
-                     (natp k)
-                     (< k (len (fn-bpf-bytes f))))
-                (equal (nth k (fn-bpf-bytes f))
-                       (nth (+ (fn-bpf-offset f) k)
-                            (fn-bpf-result-bytes
-                             (fn-bpf-reassemble fs total))))))))
+;   Stated generally over free `fs` and `total`, the negated goal drives the
+;   rewriter past its call-depth limit inside `fn-bpf-reassemble`, so the tooth
+;   is bitten by an instance instead: the theorem body at fs = *bpf-cut*,
+;   total = 8, k = 0 and a fragment f that is not in *bpf-cut* satisfies every
+;   surviving hypothesis and is false, because f's byte 99 is not the
+;   reassembled byte 10 at that offset.
+(assert-event
+ (not (implies (and (equal (fn-bpf-result-tag (fn-bpf-reassemble *bpf-cut* 8))
+                           :ok)
+                    (natp 0)
+                    (< 0 (len (fn-bpf-bytes '(:fn-bp-fragment 0 (99) 8)))))
+               (equal (nth 0 (fn-bpf-bytes '(:fn-bp-fragment 0 (99) 8)))
+                      (nth (+ (fn-bpf-offset '(:fn-bp-fragment 0 (99) 8)) 0)
+                           (fn-bpf-result-bytes
+                            (fn-bpf-reassemble *bpf-cut* 8)))))))
 
 ;   without the `:ok` hypothesis: a refused reassembly has no output to agree
 ;   with.
