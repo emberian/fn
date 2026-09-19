@@ -13,6 +13,25 @@
 (in-package "ACL2")
 (include-book "wire")
 
+; books/wire.lisp made its three records opaque and withdrew its step
+; vocabulary at its export event.  This book is the one place that reasons
+; about how a step composes -- how the result record's state and events and the
+; next record's state, event and unconsumed suffix split across a chunk
+; boundary -- so it opens both the transitions and the records, locally and
+; only locally.  Every includer above (books/nntp-syntax.lisp,
+; tests/acl2/wire-tests.lisp, host/reader-host.lisp) still sees them closed.
+(local (in-theory (enable fn-wire-step-vocabulary
+                          fn-wire-state-shapep fn-wire-make-state
+                          fn-wire-state-mode fn-wire-state-line-rev
+                          fn-wire-state-line-len fn-wire-state-body-rev
+                          fn-wire-state-pending-crp fn-wire-state-body-size
+                          fn-wire-state-line-limit fn-wire-state-body-limit
+                          fn-wire-result-shapep fn-wire-make-result
+                          fn-wire-result-state fn-wire-result-events
+                          fn-wire-next-shapep fn-wire-make-next
+                          fn-wire-next-state fn-wire-next-event
+                          fn-wire-next-unconsumed)))
+
 (defun fn-wire-suffixp (suffix octets)
   (if (equal suffix octets)
       t
@@ -590,3 +609,17 @@
                                fn-wire-statep
                                fn-wire-drive-is-feed-proper
                                fn-wire-feed-proper-append))))
+
+; ---------------------------------------------------------------------------
+; Export theory
+;
+; The keystones leave enabled (fn-wire-drive-partition-independence,
+; fn-wire-drive-is-feed-proper, fn-wire-drive-preserves-statep and the
+; fn-wire-next-* results the reader host relies on).  The suffix vocabulary and
+; the drive definition are proof vocabulary, withdrawn under one name.
+
+(deftheory fn-wire-invariants-vocabulary
+  '(fn-wire-suffixp fn-wire-suffixp-refl fn-wire-suffixp-cdr
+    fn-wire-suffixp-implies-length-bound fn-wire-octet-list-is-true-list))
+
+(in-theory (disable fn-wire-invariants-vocabulary fn-wire-drive))

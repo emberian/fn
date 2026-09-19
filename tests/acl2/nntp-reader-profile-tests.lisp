@@ -12,6 +12,11 @@
 (include-book "../../books/nntp-effects")
 (include-book "std/testing/must-fail" :dir :system)
 
+; This book reasons about the NNTP transitions themselves, so it opens the
+; vocabularies the five books of the nntp cluster withdraw at their export
+; events (2026-09-19 split of books/nntp.lisp).
+(local (in-theory (enable fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary fn-nntp-projection-vocabulary fn-nntp-responses-vocabulary fn-nntp-vocabulary)))
+
 (defconst *rp-groups* '("fn.letters" "fn.empty"))
 (defconst *rp-id* "<Case@Id.invalid>")
 (defconst *rp-payload* '(77 101 115 115 97 103 101 45 73 68 58 32 60 67 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62 13 10 83 117 98 106 101 99 116 58 32 84 101 115 116 13 10 13 10 72 101 108 108 111 13 10 46 100 111 116 13 10))

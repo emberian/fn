@@ -12,6 +12,10 @@
 (include-book "../../books/nntp-invariants")
 (include-book "std/testing/must-fail" :dir :system)
 
+; This book reasons about the NNTP transitions themselves, so it opens the
+; vocabularies the five books of the nntp cluster withdraw at their export
+; events (2026-09-19 split of books/nntp.lisp).
+(local (in-theory (enable fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary fn-nntp-projection-vocabulary fn-nntp-responses-vocabulary fn-nntp-vocabulary)))
 ; The reader environment every transcript below runs against: one wall clock
 ; reading (2026-09-19T12:34:56Z as DTN milliseconds) and one persisted group
 ; creation fact.  No transcript lets the reader invent either.
