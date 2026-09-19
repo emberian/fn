@@ -239,10 +239,6 @@ def head(form: object) -> str | None:
     return None
 
 
-def is_sym(form: object, name: str) -> bool:
-    return isinstance(form, Sym) and str(form) == name
-
-
 def keyword_plist(items: list) -> dict[str, object]:
     """Keyword arguments in a tail, first occurrence winning."""
     result: dict[str, object] = {}
@@ -288,17 +284,6 @@ def calls(form: object, found: set[str] | None = None) -> set[str]:
         found.add(str(form[0]))
     for item in form[1:] if isinstance(form[0], Sym) else form:
         calls(item, found)
-    return found
-
-
-def mentions(form: object, found: set[str] | None = None) -> set[str]:
-    """Every symbol anywhere in a form, including quoted positions."""
-    found = set() if found is None else found
-    if isinstance(form, Sym):
-        found.add(str(form))
-    elif isinstance(form, list):
-        for item in form:
-            mentions(item, found)
     return found
 
 
@@ -774,17 +759,6 @@ def if_branches(form: object, found: list | None = None) -> list:
         for item in form:
             if_branches(item, found)
     return found
-
-
-def find_call(form: object, name: str, arity: int) -> list | None:
-    if isinstance(form, list) and head(form) != "quote":
-        if head(form) == name and len(form) - 1 == arity:
-            return form
-        for item in form:
-            found = find_call(item, name, arity)
-            if found is not None:
-                return found
-    return None
 
 
 # --------------------------------------------------------------------------
