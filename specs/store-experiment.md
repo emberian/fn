@@ -125,8 +125,39 @@ and 8,388,864 aggregate record octets on recovery. Configuration is checksummed
 and exact-versioned; the adapter refuses other profiles rather than silently
 using host defaults. The aggregate cap bounds the temporary all-record replay
 input. A future streaming/checkpoint implementation requires its own argument.
+The group list is no longer written into the configuration:
+[`books/store-config.lisp`](../books/store-config.lisp) owns it, the two
+directions of the name/code mapping are proved inverse, and a store records
+only which version of the table it was written under (`fn-store-groups-1`).
+The Message-ID bound is `books/article-fields`'s `fn-af-message-idp` for every
+caller, and the charge is `books/identity`'s `fn-charge-for-payload`.
 
-An integrity trailer detects the classes of damage covered by its primitive
+## Framing: what is proved and what is assumed
+
+A transaction file is one frame of the grammar in
+[`books/frame.lisp`](../books/frame.lisp), shared with both journals:
+magic `FNST`, version, record kind, a four-octet big-endian payload length,
+the encoded record, and a 32-octet integrity trailer. Store format
+`fn-store-experiment-3` is the first written under it; a store written under
+the previous Python framing is refused by its configuration version rather
+than misread.
+
+Proved, in [`books/frame-invariants.lisp`](../books/frame-invariants.lisp):
+`fn-frame-decode-of-encode` recovers every accepted value, and
+`fn-frame-encode-of-decode` reproduces every accepted octet string, so an
+accepted frame has exactly one spelling; `fn-frame-decode-bounds-its-payload`
+holds the payload inside the caller's cap; and
+`fn-frame-decode-refuses-oversize-before-validation` refuses an over-long input
+with no hypothesis about its contents, so the refusal precedes octet validation
+and every allocation. `tools/run_store.py` computes none of this: `frame` and
+`unframe` are bridge calls to `fn-frame-store-protected` and
+`fn-frame-store-decode`.
+
+Assumed, as A-CRYPTO: the trailer function. ACL2 constrains `fn-frame-digest`
+to yield 32 octets and knows nothing else about it; SHA-256 is computed by the
+host over byte strings it does not interpret, and the theorems that connect the
+host's entry points to the specification name `fn-frame-digest` in their
+hypotheses. An integrity trailer detects the classes of damage covered by that
 assumption. It cannot detect replacement by an older entirely valid store.
 The earlier journal book's independent acknowledgement anchor is not silently
 instantiated by these filenames: anchor realization and the relation between
