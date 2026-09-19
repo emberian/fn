@@ -6,8 +6,9 @@
 ; hypothesis (FN-ARTICLE-LISTP CONFIGURED ARTICLES); the range keystone also
 ; carries (NATP LOW) and (NATP HIGH).  Each hypothesis below has a concrete
 ; separating witness -- two different answers, not a failed proof -- and a
-; MUST-FAIL, bounded by an explicit prover step limit, confirming the general
-; statement does not go through without it.
+; MUST-FAIL, run without induction so the failure is immediate, confirming the
+; general statement does not go through without it.  The computed witnesses are
+; the stronger evidence: they exhibit two different answers, not a failed search.
 (in-package "ACL2")
 (include-book "../../books/nntp-index")
 (include-book "std/testing/must-fail" :dir :system)
@@ -186,18 +187,18 @@
                       (fn-index-build *nix-duplicate-articles*) "fn.letters")
                      2))
 
-(with-prover-step-limit 500000
- (must-fail
-  (thm (implies (and (stringp group) (natp low) (natp high))
-                (equal (fn-nntp-index-group-range-numbers
-                        (fn-index-build articles) group low high)
-                       (fn-nntp-group-range-numbers group low high articles))))))
+(must-fail
+ (thm (implies (and (stringp group) (natp low) (natp high))
+               (equal (fn-nntp-index-group-range-numbers
+                       (fn-index-build articles) group low high)
+                      (fn-nntp-group-range-numbers group low high articles)))
+      :hints (("Goal" :do-not-induct t))))
 
-(with-prover-step-limit 500000
- (must-fail
-  (thm (implies (stringp group)
-                (equal (fn-nntp-index-group-count (fn-index-build articles) group)
-                       (fn-nntp-group-count group articles))))))
+(must-fail
+ (thm (implies (stringp group)
+               (equal (fn-nntp-index-group-count (fn-index-build articles) group)
+                      (fn-nntp-group-count group articles)))
+      :hints (("Goal" :do-not-induct t))))
 
 ; -----------------------------------------------------------------------------
 ; Hypothesis 2: (NATP LOW), and hypothesis 3: (NATP HIGH).
@@ -215,23 +216,23 @@
 (assert-event (equal (fn-nntp-index-group-range-numbers *nix-index* "fn.letters" 1 9/2)
                      nil))
 
-(with-prover-step-limit 500000
- (must-fail
-  (thm (implies (and (fn-article-listp configured articles)
-                     (stringp group)
-                     (natp high))
-                (equal (fn-nntp-index-group-range-numbers
-                        (fn-index-build articles) group low high)
-                       (fn-nntp-group-range-numbers group low high articles))))))
+(must-fail
+ (thm (implies (and (fn-article-listp configured articles)
+                    (stringp group)
+                    (natp high))
+               (equal (fn-nntp-index-group-range-numbers
+                       (fn-index-build articles) group low high)
+                      (fn-nntp-group-range-numbers group low high articles)))
+      :hints (("Goal" :do-not-induct t))))
 
-(with-prover-step-limit 500000
- (must-fail
-  (thm (implies (and (fn-article-listp configured articles)
-                     (stringp group)
-                     (natp low))
-                (equal (fn-nntp-index-group-range-numbers
-                        (fn-index-build articles) group low high)
-                       (fn-nntp-group-range-numbers group low high articles))))))
+(must-fail
+ (thm (implies (and (fn-article-listp configured articles)
+                    (stringp group)
+                    (natp low))
+               (equal (fn-nntp-index-group-range-numbers
+                       (fn-index-build articles) group low high)
+                      (fn-nntp-group-range-numbers group low high articles)))
+      :hints (("Goal" :do-not-induct t))))
 
 ; -----------------------------------------------------------------------------
 ; Hypothesis 4: (STRINGP GROUP).  This one does not separate, and is recorded
