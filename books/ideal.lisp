@@ -102,15 +102,16 @@
   (declare (xargs :guard t))
   (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
 
-(defun fn-ideal-make-result (state effects)
+; The formal is `node', not `state': ACL2 reserves `state'.
+(defun fn-ideal-make-result (node effects)
   (declare (xargs :guard t))
-  (list state effects))
+  (list node effects))
 
 (defthm fn-ideal-result-state-of-fn-ideal-make-result
-  (equal (fn-ideal-result-state (fn-ideal-make-result state effects)) state))
+  (equal (fn-ideal-result-state (fn-ideal-make-result node effects)) node))
 
 (defthm fn-ideal-result-effects-of-fn-ideal-make-result
-  (equal (fn-ideal-result-effects (fn-ideal-make-result state effects)) effects))
+  (equal (fn-ideal-result-effects (fn-ideal-make-result node effects)) effects))
 
 (in-theory (disable (:d fn-ideal-result-state) (:d fn-ideal-result-effects)
                     (:d fn-ideal-make-result)))

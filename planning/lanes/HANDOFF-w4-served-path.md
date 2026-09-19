@@ -121,38 +121,38 @@ byte equality asserted for seven partitions.
 - **M7 (connection isolation)** needs `fn-ideal-conn-find`/`-put` to carry ids
   and the w2 owner keystones; the dispatcher already keys connections by id.
 
-## Certification state, exactly
+## Certification and test evidence
 
 Merged `dev` (convergence fixes) at `b7b8c11`; conflicts were BOARD.md
-(unioned), `planning/ledger.{json,md}` (regenerated). `make certs-install`
-installs 26 of 210, so the closure was certified **in place, one root at a
-time**, `FN_ACL2_TIMEOUT_SECONDS=1800`, ACL2 8.7 / SBCL 2.6.8. Certified, in
-order, each with its evidence directory in `build/acl2/`:
+(unioned) and `planning/ledger.{json,md}` (regenerated). `make certs-install`
+installs only 26 of 210 books on this tree, so the closure was certified
+**in place, one root at a time**, `FN_ACL2_TIMEOUT_SECONDS=1800`, ACL2 8.7 /
+SBCL 2.6.8 on this laptop, `ACL2_BOOK_HASH_ALISTP=NIL`. All thirteen roots
+pass, each with an evidence directory under `build/acl2/`:
 
     books/wire  books/wire-invariants  books/wildmat  books/nntp-syntax
-    books/nntp-session  books/nntp-projection  books/nntp-responses  books/nntp
+    books/nntp-session  books/nntp-projection  books/nntp-responses
+    books/nntp  books/nntp-invariants  books/nntp-effects
+    books/served               certify-20260919T221440Z-46133
+    books/ideal                certify-20260919T221527Z-48280
+    tests/acl2/served-tests    certify-20260919T221528Z-48327
 
-`books/nntp-invariants` was still certifying when this lane's budget ran out,
-and the four roots behind it -- `books/nntp-effects`, `books/served`,
-`books/ideal`, `tests/acl2/served-tests` -- were therefore **not reached**.
-The chain is `certify_books.py` invocations in dependency order; re-running
+`books/ideal` failed once and was fixed, not worked around: `fn-ideal-make-result`
+had a formal named `state`, which ACL2 reserves. The formal is `node` now.
 
-    for b in books/nntp-invariants books/nntp-effects books/served \
-             books/ideal tests/acl2/served-tests; do
-      FN_ACL2_TIMEOUT_SECONDS=1800 python3 tools/certify_books.py "$b" || break
-    done
-
-finishes it. Do not read this handoff as saying the three new books are
-certified. What IS established: `books/served.lisp` is admitted by ACL2 in
-full (`ld`, every form, no failure) and every value `tests/acl2/served-tests.lisp`
-asserts was evaluated in that session and came out as the book says.
-`books/ideal.lisp` and `tests/acl2/served-tests.lisp` have not been run
-through ACL2 at all.
+`tests/acl2/served-tests` certifying means every `assert-event` in it passed
+under real ACL2: the guard-world audit (`fn-served-step` is
+`:common-lisp-compliant` with guard `T`), the transcript witness, both
+required cuts, the bytewise partition, the forged-connection teeth, and the
+3-dispatcher-steps-for-30-octets work figure.
 
 The Python suites are `unittest`, not pytest:
 
     python3 -m unittest tests.test_reader tests.test_reader_partitions \
                         tests.test_served_differential -v
 
-They were queued behind the certification chain and did not run. Their result
-is unknown to this lane; the next lane runs them first.
+**Ran 24 tests in 78.6 s, OK.** `tests/test_reader.py` and
+`tests/test_reader_partitions.py` are byte-identical to their pre-lane
+versions and pass unchanged, including the every-two-piece-cut matrices. The
+seven new differential tests compare the socket's bytes to `fn-served-run`
+evaluated inside ACL2 over the same octets and agree on every partition.
