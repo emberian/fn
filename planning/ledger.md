@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 165 |
 | Certification roots in the Makefile | 165 |
 | Books inside the root closure | 165 |
-| `defthm` and `defthmd` events | 2330 |
+| `defthm` and `defthmd` events | 2331 |
 | `defun` events | 1766 |
 | Functions with verified guards | 936 |
 | Functions declared `:verify-guards nil` and never verified | 52 |
@@ -103,7 +103,7 @@ that `make certify` requests.
 | `books/replay.lisp` | root | 7 | 13 | 13/0/0/0 | 0 | 0 | 0 |
 | `books/retention-invariants.lisp` | root | 16 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/retention.lisp` | root | 11 | 35 | 35/0/0/0 | 0 | 0 | 2 |
-| `books/scheduler-invariants.lisp` | root | 58 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/scheduler-invariants.lisp` | root | 59 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/scheduler.lisp` | root | 0 | 99 | 2/0/97/0 | 0 | 0 | 0 |
 | `books/store-config.lisp` | root | 8 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/store-files-invariants.lisp` | root | 43 | 3 | 0/0/0/3 | 0 | 0 | 0 |
