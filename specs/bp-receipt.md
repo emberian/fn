@@ -33,3 +33,9 @@ decision before BPA deletion, and regenerates the same receipt after reopen.
 The older `bp-receipt-host` wrapper remains a process-local model harness.
 No signature is selected and this experiment makes no cryptographic or
 authenticated-transport claim.
+
+The [receiver proof scope](bp-receiver-proofs.md) records the certified state,
+context/Store, receipt/decision and finite journal-replay invariants. Existing
+receipt ADUs remain unchanged through later replay. These results fix the Store
+argument; composition with Store evolution, physical journal-byte refinement,
+and the trusted policy/durability observations remain separate obligations.

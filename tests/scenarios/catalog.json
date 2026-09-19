@@ -237,9 +237,12 @@
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-bp-workflow.md",
-        "tests/evidence/2026-09-18-bp-exchange.md"
+        "tests/evidence/2026-09-18-bp-exchange.md",
+        "tests/evidence/2026-09-18-bp-composition-assurance.md",
+        "tests/test_bp_receive_process_crash.py",
+        "tests/acl2/bp-receiver-invariants-tests.lisp"
       ],
-      "execution_scope": "Partial: actual receiver undertaking and receipt decision survive reopen; a new-BID duplicate regenerates identical receipt, then real BP returns it to a durably reopened sender. Stale/wrong-context/unauthorized model tests and sender trace proofs are integrated. Authenticated remote evidence and general receiver trace/refinement remain open."
+      "execution_scope": "Partial: actual receiver undertaking and receipt decision survive reopen; distinct-BID duplicate regenerates identical receipt and real BP returns it to a durably reopened sender. Five actual receiver SIGKILL cuts verify exact staged request/article, single record/article/pin, explicit pending recovery and identical receipts. Joint sender binding and fixed-Store receiver decision/replay/receipt-byte invariants are certified with nonvacuity and rejected-extension cases. Authenticated remote evidence, changing-Store composition and general journal-byte/host refinement remain open."
     },
     {
       "id": "SCN-009",

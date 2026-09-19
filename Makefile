@@ -89,6 +89,9 @@ ACL2_BOOKS ?= books/acceptance \
 	books/bp-receiver-journal-invariants \
 	books/bp-receiver-invariants \
 	books/bp-receiver-retention-invariants \
+	books/bp-receiver-state-invariants \
+	books/bp-receiver-trace-invariants \
+	tests/acl2/bp-receiver-invariants-tests \
 	books/bp-outbound \
 	tests/acl2/bp-outbound-tests \
 	books/journal \

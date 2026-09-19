@@ -435,9 +435,10 @@
         "tests/evidence/2026-09-18-storage.md",
         "tests/evidence/2026-09-18-storage.json",
         "tests/evidence/2026-09-18-wildmat-storage.md",
-        "tests/evidence/2026-09-18-wildmat-storage.json"
+        "tests/evidence/2026-09-18-wildmat-storage.json",
+        "tests/evidence/2026-09-18-bp-composition-assurance.md"
       ],
-      "implementation_note": "Attempted-publication and completion uncertainty fence mutation; real rejected/lost completion and allocator-barrier recovery tests pass. File-kernel traces model absent/exact and old/new crash choices; general trace refinement remains open."
+      "implementation_note": "Uncertain publication/completion fences mutation. File-kernel traces and real Store recovery have scoped evidence; sender binding covers uncertain completion/restart/recovery. Five actual BP receiver process-death cuts distinguish durable staging, article, context, pending intent requiring explicit recovery, and committed receipt before deletion. General physical byte/host correspondence remains open."
     },
     {
       "id": "FLR-003",
@@ -525,8 +526,10 @@
         "proof",
         "scenario"
       ],
-      "evidence": [],
-      "implementation_note": " A06 now places BPv7 integration, durable workflow records and application receipts on the active path; current design/exit is specs/bp-path.md. This is an assignment, not completion evidence."
+      "evidence": [
+        "tests/evidence/2026-09-18-bp-composition-assurance.md"
+      ],
+      "implementation_note": "Actual sender workflow distinguishes transport observations from committed matching application receipts; finite transport traces preserve receipt decisions. The trusted loopback BP exchange and fixed-Store receiver decision/replay proofs are integrated. Concrete authenticated undertaking and full cooperative-peer handoff remain open."
     },
     {
       "id": "RET-004",
@@ -547,9 +550,10 @@
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-articles.md",
-        "tests/evidence/2026-09-18-articles.json"
+        "tests/evidence/2026-09-18-articles.json",
+        "tests/evidence/2026-09-18-bp-composition-assurance.md"
       ],
-      "implementation_note": "Exact supplied evidence gates ledger release; general release preserves valid accounting, unrelated pins, and known identities. Real authorization, committed-receipt verification, and durable node-level release remain open. A06 now places BPv7 integration, durable workflow records and application receipts on the active path; current design/exit is specs/bp-path.md. This is an assignment, not completion evidence."
+      "implementation_note": "Exact supplied evidence gates abstract ledger release and preserves unrelated pins. BP sender discharge requires a matching locally authorized committed receipt decision; receiver replayed receipts are grounded in exact ready Store records and matching journal decisions. Real D01/D09 authority, host refinement and durable node-level archive release remain open; completing onward work does not release either node's archive pin."
     },
     {
       "id": "RET-005",
@@ -700,9 +704,10 @@
         "tests/evidence/2026-09-18-bp-ingress.md",
         "tests/evidence/2026-09-18-bpa-boundary.md",
         "tests/evidence/2026-09-18-bp-workflow.md",
-        "tests/evidence/2026-09-18-bp-exchange.md"
+        "tests/evidence/2026-09-18-bp-exchange.md",
+        "tests/evidence/2026-09-18-bp-composition-assurance.md"
       ],
-      "implementation_note": "A real pinned dtn7-rs TCP-CLA loopback exchange exercised fn sender work, outage/restart, receiver acceptance, lost receipt, receiver restart, new-BID duplicate and return receipt into durable sender state. BPA observations cannot discharge application work or archive pins. Authentication, LTP, multi-relay contact plans and physical/platform qualification remain open; the evidence also retains a subsequent forwarding-deadline failure."
+      "implementation_note": "Actual pinned dtn7-rs TCP-CLA exchange exercised durable fn work, outage/restart, lost receipt, duplicate recognition and return receipt. Joint sender binding and fixed-Store receiver replay are certified; five receiver SIGKILL cuts and the 133-test suite passed. BPA observations never discharge application work/archive pins. The prior inert-bundle restart failure and explicit fn retry are retained in evidence. Authentication, changing-Store/host refinement, LTP, multi-relay and physical qualification remain open."
     },
     {
       "id": "NNT-001",
@@ -909,9 +914,11 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
-        "tests/evidence/2026-09-18-integrated.json"
+        "tests/evidence/2026-09-18-integrated.json",
+        "tests/evidence/2026-09-18-bp-composition-assurance.md",
+        "tests/evidence/2026-09-18-bp-guards.md"
       ],
-      "implementation_note": "Logical certification excludes program-mode host helpers; evidence documents trusted ACL2/runtime/adapter boundaries."
+      "implementation_note": "Logical certification excludes program-mode host helpers and retains ACL2/runtime/adapter assumptions. BP composition evidence records 11 scoped roots, unchanged source digests and 133 Python tests without an all-roots or power-loss claim. A separate seven-book inventory records the complete 41-function ADU guard graph and 97 remaining unverified BP functions."
     },
     {
       "id": "SEC-001",

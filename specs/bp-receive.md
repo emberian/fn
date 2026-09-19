@@ -88,3 +88,9 @@ cryptographic verification, does not infer an authenticated author from BP or
 NNTP fields, does not transmit the returned receipt, and does not establish
 BPA, filesystem, or physical media guarantees beyond its explicitly modeled
 and host-boundary operations.
+
+The [composition assurance record](../tests/evidence/2026-09-18-bp-composition-assurance.md)
+contains the five process-death cuts and combined 133-test result. The
+[receiver proofs](bp-receiver-proofs.md) establish general logical replay and
+receipt preservation against a fixed Store; they do not certify this adapter's
+physical I/O or BPA calls.

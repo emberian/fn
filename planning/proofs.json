@@ -35,7 +35,14 @@
         "fn-sn-recover-preserves-state",
         "fn-node-trace-preserves-state",
         "fn-node-trace-preserves-old-bindings",
-        "fn-snrt-mixed-trace-preserves-live-history-relation"
+        "fn-snrt-mixed-trace-preserves-live-history-relation",
+        "fn-bp-initial-state-is-binding-state",
+        "fn-bp-step-preserves-binding-state",
+        "fn-bp-trace-preserves-binding-state",
+        "fn-bprv-initial-invariant",
+        "fn-bprv-actual-record-preserves-invariant",
+        "fn-bprv-actual-finite-replay-preserves-invariant",
+        "fn-bprv-successful-replay-has-invariant"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -54,9 +61,11 @@
         "tests/evidence/2026-09-18-assurance.json",
         "books/node-traces.lisp",
         "books/store-node-resolution-traces.lisp",
-        "tests/evidence/2026-09-18-composed-store.md"
+        "tests/evidence/2026-09-18-composed-store.md",
+        "tests/evidence/2026-09-18-bp-composition-assurance.md",
+        "tests/evidence/2026-09-18-bp-composition-assurance.json"
       ],
-      "progress_note": "Actual finite node traces preserve state and prior bindings; mixed live file/node traces including refusal, known abort and recovery preserve the phase/history relation. Provenance, complete runtime guards and physical refinement remain open."
+      "progress_note": "Actual finite node traces preserve state and prior bindings; mixed live file/node traces including refusal, known abort and recovery preserve the phase/history relation. Provenance, complete runtime guards and physical refinement remain open. BP joint durable/pending sender binding and fixed-Store receiver state/context/decision invariants now hold through actual transitions and arbitrary finite replay; changing-Store composition remains open."
     },
     {
       "id": "PRF-002",
@@ -290,7 +299,11 @@
         "fn-snrt-new-success-is-actual-matching-durable-completion",
         "fn-sn-open-observed-success-exact-history",
         "fn-sn-open-observed-not-ready-before-five-barriers",
-        "fn-sn-open-observed-five-barriers-open-ready"
+        "fn-sn-open-observed-five-barriers-open-ready",
+        "fn-bprv-successful-replay-has-invariant",
+        "fn-bprv-replay-no-receipt-before-committed-decision",
+        "fn-bprv-replayed-receipt-is-grounded",
+        "fn-bprv-replay-rest-preserves-receipt-adu"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -317,9 +330,13 @@
         "books/store-node-resolution-traces.lisp",
         "books/store-observed.lisp",
         "tests/acl2/store-observed-tests.lisp",
-        "tests/evidence/2026-09-18-composed-store.md"
+        "tests/evidence/2026-09-18-composed-store.md",
+        "tests/evidence/2026-09-18-bp-composition-assurance.md",
+        "tests/evidence/2026-09-18-bp-composition-assurance.json",
+        "tests/test_bp_receive_process_crash.py",
+        "books/bp-receiver-trace-invariants.lisp"
       ],
-      "progress_note": "Arbitrary mixed live/file traces including refusal/abort preserve exact ready-state replay and prior acknowledged records, conditional on the kernel crash model. Observed-image opening uses actual recovery with no fabricated acknowledgements or barriers; zero through four barriers remain gated, the fifth opens ready. Host adoption passed the integrated suite; physical byte correspondence, freshness and platform qualification remain separate from these targeted proofs."
+      "progress_note": "Arbitrary mixed live/file traces including refusal/abort preserve exact ready-state replay and prior acknowledged records, conditional on the kernel crash model. Observed-image opening uses actual recovery with no fabricated acknowledgements or barriers; zero through four barriers remain gated, the fifth opens ready. Host adoption passed the integrated suite; physical byte correspondence, freshness and platform qualification remain separate from these targeted proofs. Receiver logical replay now preserves exact contexts and committed receipt ADUs against a fixed Store. Five actual receiver process-death cuts passed in the 133-test suite; process death is separate from power loss and general FNWF/FNRJ byte/live/replay refinement."
     },
     {
       "id": "PRF-008",
@@ -482,7 +499,17 @@
         "fn-bp-transport-trace-preserves-receipt",
         "fn-bp-unchecked-receipt-is-no-op",
         "fn-bpo-receipt-success-requires-local-policy",
-        "fn-bpo-receipt-success-is-actual-journal-preparation"
+        "fn-bpo-receipt-success-is-actual-journal-preparation",
+        "fn-bp-initial-state-is-binding-state",
+        "fn-bp-step-preserves-binding-state",
+        "fn-bp-trace-preserves-binding-state",
+        "fn-bprv-initial-invariant",
+        "fn-bprv-actual-record-preserves-invariant",
+        "fn-bprv-actual-finite-replay-preserves-invariant",
+        "fn-bprv-successful-replay-has-invariant",
+        "fn-bprv-replay-no-receipt-before-committed-decision",
+        "fn-bprv-replayed-receipt-is-grounded",
+        "fn-bprv-replay-rest-preserves-receipt-adu"
       ],
       "evidence": [
         "books/bp-workflow.lisp",
@@ -491,9 +518,14 @@
         "books/bp-workflow-invariants.lisp",
         "books/bp-workflow-transport-invariants.lisp",
         "books/bp-outbound.lisp",
-        "tests/evidence/2026-09-18-bp-exchange.md"
+        "tests/evidence/2026-09-18-bp-exchange.md",
+        "tests/evidence/2026-09-18-bp-composition-assurance.md",
+        "tests/evidence/2026-09-18-bp-composition-assurance.json",
+        "books/bp-workflow-binding-invariants.lisp",
+        "books/bp-receiver-trace-invariants.lisp",
+        "specs/bp-receiver-proofs.md"
       ],
-      "progress_note": "Certified finite sender event traces preserve state and exact accepted node; transport traces preserve recorded receipts. Outbound projection checks actual article binding and local-policy-authorized receipt preparation. Real durable receiver regeneration and BP return transport passed in the trusted loopback profile. Joint durable/pending work-to-node induction, general receiver trace/journal refinement, authenticated cooperative-peer handoff and physical durability remain open; no complete handoff theorem is claimed."
+      "progress_note": "Certified sender finite traces preserve state, exact node and joint durable/pending work binding; transport traces preserve recorded receipts. Receiver actual record/replay transitions preserve typed context/Store/receipt relations against a fixed Store, require matching committed journal decisions for receipt emission, and retain byte-identical existing receipt ADUs. Real BP return and five receiver process-death cuts have separate test evidence under trusted local policy. General journal byte/live/replay and host refinement, receiver composition with Store evolution, authenticated cooperative-peer handoff and physical durability remain open; no complete handoff theorem is claimed."
     },
     {
       "id": "PRF-013",

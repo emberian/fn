@@ -1,10 +1,11 @@
 # Development milestones
 
 Current stage: an assurance-closure wave over the executable M1/M2/M3/M4
-components. The current bounded batch targets sender work/node binding, receiver
-trace/replay invariants and real receiver process-death recovery, before adding
-dependent features. The user prioritized general preservation, crash traces, systematic
-fault injection, and mechanized correspondence. No full implementation/proof
+components. The bounded BP composition assurance batch now closes sender
+work/node binding, fixed-Store receiver trace/replay invariants and five real
+receiver process-death cuts. Next are remaining BP guards and journal
+byte/live/replay refinement, including receiver composition with Store evolution.
+The user prioritized general preservation, crash traces, systematic fault injection, and mechanized correspondence. No full implementation/proof
 milestone is complete. See
 [current work](now.md) for scope and ownership. Remaining decisions in the
 [workbook](decisions.md) are a backlog; they do not all block this abstract model.
@@ -149,8 +150,11 @@ Finite sender state/node and transport receipt preservation are certified.
 Persistent fragmented transfer, complete dependency validation, portable batches,
 authenticated handoff, multi-relay/carried-media contact plans and conditional
 progress remain open. Next complete M4 steps are authenticated identity/receipt
-design (D01/D09), the joint work/node and receiver replay proof boundaries, and
-an interrupted relay/contact-plan experiment with expiry and staging exhaustion.
+design (D01/D09), FNWF/FNRJ byte/live/replay refinement and receiver/Store
+evolution, and an interrupted relay/contact-plan experiment with expiry and
+staging exhaustion. The [composition assurance batch](../tests/evidence/2026-09-18-bp-composition-assurance.md)
+certifies joint pending/durable work binding and fixed-Store receiver replay,
+with five actual receiver process-death cuts; it leaves those wider seams open.
 
 ## M5: bounded long-lived operation
 
