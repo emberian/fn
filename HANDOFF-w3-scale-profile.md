@@ -34,9 +34,10 @@ All on hbox (Linux 6.11.0-29, 24 cores, ACL2 8.7 over SBCL 2.6.8, CPython
 3.12.7), load average 2.7 to 5.7, five runs per measurement point (three at
 N ≥ 256).
 
-- N ∈ {16, 32, 64, 128, 256, 512} at G=2, both groups per article, P=1024.
-  N=1024 was launched with a 90-minute per-point budget; see the document for
-  its outcome.
+- N ∈ {16, 32, 64, 128, 256} at G=2, both groups per article, P=1024. N=512
+  and N=1024 were launched under a 90-minute per-point budget and had not
+  completed when the lane closed; `tests/bench/grid.sh` is still running on
+  hbox and writes `/tank/fn/scale/build/bench/n512-*.json` and `n1024-*.json`.
 - P ∈ {512, 1024, 4096, 16384, 32768} at N=64 — the payload bound is reached
   exactly.
 - G ∈ {1, 2} and groups-per-article ∈ {1, 2} at N=64. **The axis stops there**:
@@ -100,10 +101,13 @@ premise named as A-CRYPTO with `OBJ-001`'s quarantine case. Details in
 
 ## Open and not done here
 
-- N=1024 and above: see the document for what completed.
+- N=512 and above: unharvested on hbox, as above. Nothing in the document
+  depends on them; the N=16..256 curve is what the conclusions rest on.
 - No book was edited and none needed recertification; the 28-book closure was
   certified once in `/tank/fn/scale` for the measurements.
-- `tests/test_store_corruption.py` exercises the configuration refusal this
-  lane touched; it needs a local ACL2 and was not run to completion on the
-  development machine. The control used instead is exact: the development
-  profile's configuration checksum is byte-identical to the pre-change tree.
+- `python3 -m unittest tests.test_store_corruption` ran against real ACL2 on
+  the development machine: 7 tests, 464.6 s, OK — including
+  `test_config_and_history_inconsistency_matrix`, which is the test that
+  asserts an unrecognized configuration is refused. The second control is
+  exact: the development profile's configuration checksum is byte-identical to
+  the pre-change tree in `/tank/fn/gates/dev-9321344`.
