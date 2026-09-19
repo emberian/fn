@@ -4,7 +4,7 @@
 ; (tools/run_bp_receive.py), whose state is the replay of its journal.
 (in-package "ACL2")
 (include-book "bp-receiver-evolving-node-invariants")
-(include-book "store-observed-traces")
+(include-book "store-observed")
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
 ; this book reasons under them, so open them here, locally.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary
