@@ -104,6 +104,18 @@ shape. Validation and acceptance are [the container](container.md).
 
 ## Open (recorded, not weakened)
 
+- **`fn-tj-refused-record-replays-to-same-state` is removed, not weakened.**
+  Stated over an arbitrary record it is false: `fn-tj-apply` answers
+  `(list :fault :not-a-transition st)` for a record outside the two
+  transition shapes, and item 1 of that answer is the reason, not the state,
+  so the goal reduces to `(equal :not-a-transition st)`. The provable
+  statement carries `(fn-tj-transition-recordp r)` and reads item 2 on the
+  fault branch. Adopting it is a keystone statement change and belongs to
+  whoever owns the contract, not to a rebase lane. Until then the refusal
+  property rests on the concrete witnesses in
+  `tests/acl2/transfer-journal-tests.lisp`: a duplicate, a differing overlap
+  and a malformed record each replay to exactly the prior state.
+
 - **Teeth bounded by A-CRYPTO.** `fn-tj-seal` and `fn-tj-open` are stated
   against the constrained `fn-frame-digest`, so no ground term evaluates them.
   The hypotheses of `fn-tj-open-of-seal`, and the sealed-frame hypotheses of
