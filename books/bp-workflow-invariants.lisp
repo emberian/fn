@@ -616,7 +616,7 @@
          (fn-bp-statep fn-bp-workp fn-bp-configp fn-bp-attemptp
           fn-node-statep fn-bp-work-listp fn-bp-receipt-listp
           fn-bp-pendingp fn-bp-tx-key-listp fn-bp-make-state
-          fn-bp-work-with-status)))))
+          fn-bp-work-with-status fn-bp-live-statusp fn-bp-status-rank)))))
 
 (defthm fn-bp-request-retry-preserves-state
   (implies (fn-bp-statep s)
@@ -792,3 +792,160 @@
                             (fn-bp-step fn-bp-result-state
                              fn-bp-state-node)))))
 
+
+; -----------------------------------------------------------------------------
+; Effects.  Which event can emit which effect, and from which pre-state.
+; These formulas expose the effect branches of the production transitions so
+; that the durable-intent-before-submission result below is about fn-bp-step,
+; the dispatcher every host entry point goes through.
+
+(defthm fn-bp-result-effects-of-make-result
+  (equal (fn-bp-result-effects (fn-bp-make-result st effects)) effects)
+  :hints (("Goal" :in-theory (enable fn-bp-result-effects
+                                      fn-bp-make-result))))
+
+(defthm fn-bp-complete-effects-formula
+  (equal (fn-bp-result-effects (fn-bp-complete s txid generation outcome))
+         (if (or (not (fn-bp-pending-matchesp s txid generation))
+                 (fn-bp-state-fenced s))
+             nil
+           (if (equal outcome :durable)
+               (list (fn-bp-effect-for-pending s (fn-bp-state-pending s)))
+             (if (equal outcome :indeterminate)
+                 (list (list :recover-required txid generation))
+               nil))))
+  :hints
+  (("Goal" :in-theory
+    (e/d (fn-bp-complete fn-bp-result-effects fn-bp-make-result)
+         (fn-bp-pending-matchesp fn-bp-state-fenced fn-bp-state-pending
+          fn-bp-state-node fn-bp-state-config fn-bp-state-works
+          fn-bp-state-receipts fn-bp-state-used-txs fn-bp-apply-pending
+          fn-bp-effect-for-pending fn-bp-make-state)))))
+
+(defthm fn-bp-recover-effects-formula
+  (equal (fn-bp-result-effects (fn-bp-recover s txid generation result))
+         (if (or (not (fn-bp-pending-matchesp s txid generation))
+                 (not (equal (fn-bp-state-fenced s) t))
+                 (not (equal result :committed))
+                 (equal (fn-bp-pending-kind (fn-bp-state-pending s)) :attempt))
+             nil
+           (list (fn-bp-effect-for-pending s (fn-bp-state-pending s)))))
+  :hints
+  (("Goal" :in-theory
+    (e/d (fn-bp-recover fn-bp-result-effects fn-bp-make-result)
+         (fn-bp-pending-matchesp fn-bp-state-fenced fn-bp-state-pending
+          fn-bp-state-node fn-bp-state-config fn-bp-state-works
+          fn-bp-state-receipts fn-bp-state-used-txs fn-bp-apply-pending
+          fn-bp-effect-for-pending fn-bp-make-state
+          fn-bp-recovery-pending fn-bp-pending-kind)))))
+
+(defthm fn-bp-step-effects-formula
+  (equal (fn-bp-result-effects (fn-bp-step s event))
+         (let ((kind (fn-bp-event-kind event)))
+           (if (equal kind :storage-complete)
+               (fn-bp-result-effects
+                (fn-bp-complete s (fn-bp-nth 1 event) (fn-bp-nth 2 event)
+                                (fn-bp-nth 3 event)))
+             (if (equal kind :storage-recover)
+                 (fn-bp-result-effects
+                  (fn-bp-recover s (fn-bp-nth 1 event) (fn-bp-nth 2 event)
+                                 (fn-bp-nth 3 event)))
+               nil))))
+  :hints
+  (("Goal" :in-theory
+    (e/d (fn-bp-step)
+         (fn-bp-result-effects fn-bp-make-result fn-bp-complete fn-bp-recover
+          fn-bp-prepare-enqueue fn-bp-prepare-attempt fn-bp-prepare-receipt
+          fn-bp-observe-transport fn-bp-request-retry fn-bp-restart
+          fn-bp-event-kind fn-bp-nth
+          fn-bp-complete-effects-formula fn-bp-recover-effects-formula)))))
+
+(defthm fn-bp-nth-0-of-cons
+  (equal (fn-bp-nth 0 (cons a b)) a)
+  :hints (("Goal" :in-theory (enable fn-bp-nth))))
+
+(defthm fn-bp-effect-for-pending-kind
+  (equal (fn-bp-nth 0 (fn-bp-effect-for-pending s pending))
+         (if (equal (fn-bp-pending-kind pending) :enqueue)
+             :enqueue-ack
+           (if (equal (fn-bp-pending-kind pending) :attempt)
+               :submit
+             :receipt-ack)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-bp-effect-for-pending)
+                (fn-bp-pending-kind fn-bp-pending-work fn-bp-pending-receipt
+                 fn-bp-work-id fn-bp-work-attempt fn-bp-attempt-id
+                 fn-bp-attempt-generation fn-bp-attempt-lifetime
+                 fn-bp-state-config fn-bp-config-local-eid
+                 fn-bp-config-peer-eid fn-bp-receipt-id)))))
+
+(defthm fn-bp-effect-for-pending-attempt-unfolds
+  (implies (equal (fn-bp-pending-kind pending) :attempt)
+           (equal (fn-bp-effect-for-pending s pending)
+                  (list :submit
+                        (fn-bp-work-id (fn-bp-pending-work pending))
+                        (fn-bp-attempt-id
+                         (fn-bp-work-attempt (fn-bp-pending-work pending)))
+                        (fn-bp-attempt-generation
+                         (fn-bp-work-attempt (fn-bp-pending-work pending)))
+                        (fn-bp-config-local-eid (fn-bp-state-config s))
+                        (fn-bp-config-peer-eid (fn-bp-state-config s))
+                        (fn-bp-attempt-lifetime
+                         (fn-bp-work-attempt (fn-bp-pending-work pending))))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-bp-effect-for-pending)
+                (fn-bp-pending-kind fn-bp-pending-work fn-bp-pending-receipt
+                 fn-bp-work-id fn-bp-work-attempt fn-bp-attempt-id
+                 fn-bp-attempt-generation fn-bp-attempt-lifetime
+                 fn-bp-state-config fn-bp-config-local-eid
+                 fn-bp-config-peer-eid fn-bp-receipt-id)))))
+
+; Durable intent before submission (D8).  A :submit effect leaves fn-bp-step
+; only from the :durable branch of fn-bp-complete, only when the pre-state
+; holds an unfenced pending :attempt intent whose transaction pair the
+; completion names, and the effect names exactly that intent's work, attempt
+; id and attempt generation.  It is the only effect of that step.  The
+; "durable" word is the host's: A-HOST is that the intent record was on disk
+; before fn-bp-prepare-attempt was called and the :durable outcome record was
+; on disk before this completion event was fed (specs/bp-workflow-host.md).
+(defthm fn-bp-step-submit-requires-matching-durable-attempt-completion
+  (implies (and (member-equal e (fn-bp-result-effects (fn-bp-step s event)))
+                (equal (fn-bp-nth 0 e) :submit))
+           (let ((pending (fn-bp-state-pending s)))
+             (and (fn-bp-statep s)
+                  (not (fn-bp-state-fenced s))
+                  (consp pending)
+                  (equal (fn-bp-pending-kind pending) :attempt)
+                  (equal (fn-bp-event-kind event) :storage-complete)
+                  (equal (fn-bp-nth 1 event) (fn-bp-pending-txid pending))
+                  (equal (fn-bp-nth 2 event) (fn-bp-pending-generation pending))
+                  (equal (fn-bp-nth 3 event) :durable)
+                  (equal (fn-bp-result-effects (fn-bp-step s event)) (list e))
+                  (equal e
+                         (list :submit
+                               (fn-bp-work-id (fn-bp-pending-work pending))
+                               (fn-bp-attempt-id
+                                (fn-bp-work-attempt
+                                 (fn-bp-pending-work pending)))
+                               (fn-bp-attempt-generation
+                                (fn-bp-work-attempt
+                                 (fn-bp-pending-work pending)))
+                               (fn-bp-config-local-eid (fn-bp-state-config s))
+                               (fn-bp-config-peer-eid (fn-bp-state-config s))
+                               (fn-bp-attempt-lifetime
+                                (fn-bp-work-attempt
+                                 (fn-bp-pending-work pending))))))))
+  :rule-classes nil
+  :hints
+  (("Goal" :in-theory
+    (e/d (fn-bp-step-effects-formula fn-bp-complete-effects-formula
+          fn-bp-recover-effects-formula fn-bp-pending-matchesp
+          fn-bp-effect-for-pending-kind
+          fn-bp-effect-for-pending-attempt-unfolds member-equal)
+         (fn-bp-step fn-bp-complete fn-bp-recover fn-bp-effect-for-pending
+          fn-bp-statep fn-bp-state-pending fn-bp-state-fenced
+          fn-bp-pending-kind fn-bp-pending-txid fn-bp-pending-generation
+          fn-bp-pending-work fn-bp-work-id fn-bp-work-attempt
+          fn-bp-attempt-id fn-bp-attempt-generation fn-bp-attempt-lifetime
+          fn-bp-state-config fn-bp-config-local-eid fn-bp-config-peer-eid
+          fn-bp-event-kind fn-bp-nth fn-bp-result-effects)))))

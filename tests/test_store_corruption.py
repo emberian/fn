@@ -91,7 +91,8 @@ class StoreCorruptionTests(unittest.TestCase):
                           "--payload", self.payload_for_refusal(),
                           "--group", "fn.letters"))):
             with self.subTest(command=command):
-                result = self.invoke(path, command, *arguments, expected=2)
+                result = self.invoke(path, command, *arguments,
+                                     expected=run_store.EXIT_FAULT)
                 self.assertIn(diagnostic.encode("utf-8"), result.stderr)
 
     def payload_for_refusal(self):
@@ -208,7 +209,8 @@ class StoreCorruptionTests(unittest.TestCase):
     def test_multiple_prior_crossposts_and_uncertain_tail_replay_atomically(self):
         path = self.store_with_prior("uncertain-tail", count=2)
         tail = self.post(path, "<uncertain-tail@example.invalid>", b"tail",
-                         fault="postpublish", expected=2)
+                         fault="postpublish",
+                         expected=run_store.EXIT_UNCERTAIN)
         self.assertIn(b"indeterminate", tail.stderr)
         with self.reopened(path) as (bridge, records):
             self.assertEqual(len(records), 3)
