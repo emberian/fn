@@ -59,9 +59,13 @@
     "books/records-canonicality",
     "tests/acl2/records-tests",
     "tests/acl2/records-teeth-tests",
+    "books/config",
+    "books/config-invariants",
     "books/replay",
     "books/replay-invariants",
     "tests/acl2/replay-tests",
+    "books/config-records",
+    "tests/acl2/config-tests",
     "books/store-files",
     "books/store-files-invariants",
     "tests/acl2/store-files-tests",
@@ -159,6 +163,12 @@
     "books/transfer-public-work",
     "books/transfer-public-bound",
     "tests/acl2/transfer-tests",
+    "books/transfer-journal",
+    "books/transfer-journal-invariants",
+    "tests/acl2/transfer-journal-tests",
+    "books/container",
+    "books/container-invariants",
+    "tests/acl2/container-tests",
     "books/nntp-syntax",
     "books/nntp-session",
     "books/nntp-projection",
@@ -198,22 +208,22 @@
     "tests/acl2/policy-tests"
   ],
   "totals": {
-    "books": 195,
-    "books_in_root_closure": 194,
-    "roots": 194,
-    "theorems": 3222,
-    "functions": 2275,
-    "assert_events": 3333,
+    "books": 205,
+    "books_in_root_closure": 204,
+    "roots": 204,
+    "theorems": 3368,
+    "functions": 2496,
+    "assert_events": 3507,
     "must_fails": 59,
     "encapsulates": 14,
     "guards": {
-      "verified": 1063,
-      "declared-off": 125,
-      "default-guarded": 652,
-      "default-unguarded": 435
+      "verified": 1069,
+      "declared-off": 131,
+      "default-guarded": 859,
+      "default-unguarded": 437
     },
     "suspect_theorems": 30,
-    "export_hygiene_warnings": 61,
+    "export_hygiene_warnings": 63,
     "teeth_form_warnings": 0
   },
   "books": [
@@ -771,7 +781,8 @@
       "includes": [
         "article-fields",
         "article-properties",
-        "store-node"
+        "store-node",
+        "store-node-invariants"
       ],
       "system_includes": [],
       "suspects": [],
@@ -1033,7 +1044,7 @@
       "encapsulates": 0,
       "includes": [
         "bp-receiver-evolving-node-invariants",
-        "store-observed-traces"
+        "store-observed"
       ],
       "system_includes": [],
       "suspects": [],
@@ -1630,6 +1641,140 @@
       "encapsulates": 0,
       "includes": [],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/config-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 32,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/config-records.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 12,
+      "functions": 15,
+      "guards": {
+        "verified": 2,
+        "declared-off": 0,
+        "default-guarded": 13,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 2,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config",
+        "replay"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/config.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 42,
+      "functions": 128,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 127,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 12,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "clock",
+        "records-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/container-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 25,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "container",
+        "node-invariants"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/container.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 43,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 42,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "identity",
+        "node-invariants",
+        "records"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -3161,6 +3306,61 @@
       "read_error": null
     },
     {
+      "book": "books/transfer-journal-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 32,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "frame-invariants",
+        "transfer-invariants",
+        "transfer-journal"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/transfer-journal.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 31,
+      "guards": {
+        "verified": 3,
+        "declared-off": 5,
+        "default-guarded": 23,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 3,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "frame",
+        "transfer"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/transfer-public-bound.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -4297,6 +4497,58 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/config-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 54,
+      "must_fails": 0,
+      "defconsts": 16,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/config-invariants",
+        "../../books/config-records",
+        "../../books/store-config"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/container-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 62,
+      "must_fails": 0,
+      "defconsts": 39,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/container-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/crypto-seam-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -5164,6 +5416,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/transfer-journal-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 58,
+      "must_fails": 0,
+      "defconsts": 29,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/transfer-journal-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/transfer-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -5716,6 +5993,18 @@
         "theorem": "fn-checkpoint-capacity-of-fn-checkpoint-make",
         "book": "books/checkpoint.lisp",
         "line": 71,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-jrec-article-sequence-agrees",
+        "book": "books/config-records.lisp",
+        "line": 84,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-jrec-config-sequence-agrees",
+        "book": "books/config-records.lisp",
+        "line": 87,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
