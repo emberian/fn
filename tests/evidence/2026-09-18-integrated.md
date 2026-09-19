@@ -17,7 +17,7 @@ substitute for its corresponding source and actual successful certification run.
 | Area | Actual evidence |
 | --- | --- |
 | Acceptance | Initial validity; general prepare/complete/recover state preservation; exact preservation of existing article bindings; fresh local numbers; atomic cross-post, retry, stale event, abort, and uncertainty traces |
-| Node composition | General prepare/complete/recover state preservation; committed article-to-archive-pin relation and old bindings preserved; refusal and staged publication scenarios; mismatched and orphaned metadata rejected |
+| Node composition | General prepare/complete/recover state preservation; article-to-pin binding as a `(msgid subject pin-id)` string triple, with old bindings preserved across transitions (the binding proof does not relate `subject` to the article payload; see `node.lisp:139-157`); refusal and staged publication scenarios; mismatched and orphaned metadata rejected |
 | Retention | Admission preserves the ledger; no wrong-evidence release; independently charged archive/forward pins; repeated release retains history cost and eventually exhausts capacity |
 | Wire | Dot transformation inverse; one-byte state preservation with explicit buffer bounds; proper-input fixed-mode partition composition; event-yield tests at coalesced POST/article boundaries; closure discards rejected tails |
 | CBOR | All uint32 encode/decode round trips; big-endian reconstruction and octet/bound helpers; accepted/rejected uint and byte-string vectors |

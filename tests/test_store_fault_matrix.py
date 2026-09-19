@@ -405,7 +405,13 @@ class StoreFaultMatrixTests(unittest.TestCase):
                     self.assertEqual(self.assert_recovered(path, 2, 2, boundary), [0, 1])
 
     def test_store_lock_close_after_success_matrix(self):
-        """Actual lock closes can change caller result after a valid operation."""
+        """A teardown I/O fault keeps its own outcome, distinct from the work's.
+
+        The transaction is durably committed and reported as committed.  The
+        failing lock close is an I/O fault at teardown: it is classified as a
+        fault, never as a refusal of the post and never as an uncertain
+        acceptance, and the committed transaction survives unchanged.
+        """
         for operation in ("writer", "reader"):
             with self.subTest(operation=operation):
                 path = self.initialized_with_prior(operation + "-close")
@@ -435,9 +441,15 @@ class StoreFaultMatrixTests(unittest.TestCase):
                 with mock.patch("run_store.open_live_store", return_value=(store, bridge, records)), \
                      mock.patch("run_store.os.close", side_effect=fail_lock_close), \
                      contextlib.redirect_stdout(output):
-                    with self.assertRaises(OSError):
+                    with self.assertRaises(OSError) as raised:
                         command(args)
                 self.assertIn(expected, output.getvalue())
+                # The work reached its own outcome first, and the teardown
+                # failure is reported as a fault distinct from refusal (1) and
+                # from uncertain acceptance (3).
+                self.assertEqual(run_store.exit_code_for(raised.exception),
+                                 run_store.EXIT_FAULT)
+                self.assertNotIsInstance(raised.exception, run_store.StoreError)
                 # The descriptor was actually closed before the injected
                 # exception; a fresh process can reopen the durable state.
                 if operation == "writer":

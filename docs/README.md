@@ -47,6 +47,7 @@ reading stored articles over loopback NNTP.
 | What should happen next? | [Three swarm cycles](../planning/swarm-cycles.md), with packet dependencies and exits; [milestones](../planning/milestones.md) define the full contracts |
 | Which examples must be exercised? | [Scenario catalog](../tests/scenarios/catalog.json) |
 | Which standards support the design? | [References](references.md) |
+| What evidence exists, and what does it not show? | [Evidence index](../planning/evidence-index.md), one row per record in `tests/evidence/` |
 
 The registries track requirement and proof status. Narrative documents explain
 contracts rather than maintain competing completion counts. Scenario entries are
