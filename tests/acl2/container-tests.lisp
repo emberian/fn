@@ -40,7 +40,7 @@
 (defconst *ct-id-d* (fn-id-subject *ct-digest-d*))
 
 ; A: no dependencies.  B: depends on A.  T: declares A's identity over other
-; octets, so the host digest of its octets is not A's.
+; octets, so the host digest of its subject preimage is not A's.
 (defconst *ct-a* (fn-ct-make-article "<a@example.invalid>" *ct-id-a* '(72 105) nil))
 (defconst *ct-b* (fn-ct-make-article "<b@example.invalid>" *ct-id-b* '(66 121 101)
                                      (list *ct-id-a*)))
@@ -309,7 +309,7 @@
 ; `fn-ct-identity-spec-okp` is stated against the constrained
 ; `fn-frame-digest` (A-CRYPTO), so no term evaluates it and no
 ; `assert-event` can separate the two checks at a digest that is not the
-; digest of the octets.  What is exhibited instead is that the executable
+; digest of the subject preimage.  What is exhibited instead is that the executable
 ; check does discriminate: the same article answers differently at two
 ; digests, so the equality is not vacuous.  The missing tooth is recorded
 ; open in specs/container.md.

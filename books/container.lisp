@@ -12,7 +12,7 @@
 ; Validation of one article, all of it before anything is allocated:
 ;   shape and sizes against the profile (`fn-ct-article-shapep`);
 ;   identity: the declared content id equals `fn-id-subject` of the digest of
-;     the article's octets (`fn-ct-identity-okp` with the host's digest;
+;     the article's subject preimage (`fn-ct-identity-okp` with the host's digest;
 ;     `fn-ct-identity-spec-okp` against the constrained `fn-frame-digest`, the
 ;     two agree when the digest is the constrained one);
 ;   dependencies: each resolves in the local store (an input set of content
@@ -93,7 +93,10 @@
 ; goal (`(not (natp profile9))`) with no induction scheme (measured here).
 ; What opacity takes away it exports back as forward-chaining, never rewrite
 ; (docs/proof-style.md §1): the five field facts the guard proofs below used
-; to get by opening the recognizer.
+; to get by opening the recognizer.  (Measured after that: the conjecture
+; never needed the profile at all.  Its two checkpoints were `(integerp fuel)`
+; and `(<= 0 fuel)`, the guard of `zp` on `fuel`; `(natp fuel)` in the guard
+; of the three fuel-carrying validators closes it in 0.03 s.)
 (defthm fn-ct-profilep-forward-fields
   (implies (fn-ct-profilep p)
            (and (true-listp p)
@@ -197,7 +200,8 @@
 ; Identity
 
 (defun fn-ct-identity-okp (a digest)
-  ; The executable check: `digest` is the host's SHA-256 of the octets.
+  ; The executable check: `digest` is the host's SHA-256 of the article's
+  ; subject preimage (`fn-id-subject-preimage` of the octets).
   (declare (xargs :guard t))
   (and (fn-id-digestp digest)
        (equal (fn-ct-article-content-id a) (fn-id-subject digest))))
@@ -211,7 +215,7 @@
 
 ; -----------------------------------------------------------------------------
 ; Dependencies.  `articles` and `digests` are the container's articles and,
-; in the same order, the host's digest of each one's octets.
+; in the same order, the host's digest of each one's subject preimage.
 
 ; The first sibling that declares `content-id` and whose identity checks.  A
 ; sibling that merely claims the identity provides nothing.
@@ -225,7 +229,8 @@
     nil))
 
 (defun fn-ct-deps-resolvep (deps articles digests store profile fuel)
-  (declare (xargs :guard (and (fn-ct-profilep profile) (true-listp store))
+  (declare (xargs :guard (and (fn-ct-profilep profile) (true-listp store)
+                              (natp fuel))
                   :measure (make-ord 1 (+ 1 (nfix fuel)) (len deps))))
   (if (consp deps)
       (and (or (member-equal (car deps) store)
@@ -243,7 +248,8 @@
 
 ; One dependency, for stating membership facts.
 (defun fn-ct-dep-resolvep (dep articles digests store profile fuel)
-  (declare (xargs :guard (and (fn-ct-profilep profile) (true-listp store))))
+  (declare (xargs :guard (and (fn-ct-profilep profile) (true-listp store)
+                              (natp fuel))))
   (or (member-equal dep store)
       (and (not (zp fuel))
            (let ((found (fn-ct-find-provider dep articles digests)))
@@ -256,7 +262,8 @@
 ; The whole validation of one article.  Nothing is allocated here; the node
 ; is not even an argument.
 (defun fn-ct-article-validp (a digest articles digests store profile fuel)
-  (declare (xargs :guard (and (fn-ct-profilep profile) (true-listp store))))
+  (declare (xargs :guard (and (fn-ct-profilep profile) (true-listp store)
+                              (natp fuel))))
   (and (fn-ct-article-shapep a profile)
        (fn-ct-identity-okp a digest)
        (fn-ct-deps-resolvep (fn-ct-article-deps a) articles digests store
