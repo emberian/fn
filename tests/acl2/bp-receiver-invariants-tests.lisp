@@ -1,6 +1,11 @@
 (in-package "ACL2")
 (include-book "../../books/bp-receiver-trace-invariants")
 (include-book "bp-receipt-records-tests")
+; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
+; this book reasons under them, so open them here, locally.
+(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary
+                          fn-record-invariants-vocabulary fn-cbor-record-vocabulary
+                          fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary)))
 
 (defconst *bprv-journal*
  (list *bprr-config-record* *bprr-request-record* *bprr-intent-record* *bprr-decision-record*))
