@@ -42,6 +42,8 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-bprv-` | `bp-receiver-*-invariants`, `bp-receiver-evolving-*-invariants` | Receiver relation invariants over a Store, contexts, decisions and replay; the history-indexed relation over an evolving Store |
 | `fn-bpr-live-` | `bp-receiver-evolving-store-invariants` | Live receiver trace model over the host's call sequence (`tools/run_bp_receive.py`): Store global, receiver global, journal on disk |
 | `fn-bpo-` | `bp-outbound` | Outbound projection of sender work to request ADUs and receipt validation |
+| `fn-bprl-` | `bp-release`, `bp-release-invariants` | Sender-side forwarding-obligation release: typed release evidence and term, the `:forward` pin undertaking, the release decision over the node image, and the journal wrapper for the proposed `:undertake`/`:release` records |
+| `fn-relay-` | `relay`, `relay-invariants`, `relay-crash-invariants` | Relay undertaking: receiver-then-sender composition over the receiver and sender public entry points, terms table, undertakings ledger, typed `:archived`/`:forwarding` receipts, crash-then-replay over both journals |
 
 Host-only wrappers in `host/*.lisp` use `fn-store-`, `fn-bpreq-`, `fn-bpwf-`,
 `fn-bprj-` and similar; they are `:program` mode and outside the proof boundary.

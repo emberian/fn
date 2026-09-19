@@ -143,7 +143,14 @@ ACL2_BOOKS ?= books/assumptions \
 	books/nntp-invariants \
 	books/nntp-effects \
 	tests/acl2/nntp-tests \
-	tests/acl2/nntp-teeth-tests
+	tests/acl2/nntp-teeth-tests \
+	books/bp-release \
+	books/bp-release-invariants \
+	tests/acl2/bp-release-tests \
+	books/relay \
+	books/relay-invariants \
+	books/relay-crash-invariants \
+	tests/acl2/relay-tests
 
 .PHONY: check certify model-test tooling-test test
 check:
