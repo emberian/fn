@@ -157,6 +157,9 @@ ACL2_BOOKS ?= books/assumptions \
 	books/bp-release \
 	books/bp-release-invariants \
 	tests/acl2/bp-release-tests \
+	books/scheduler \
+	books/scheduler-invariants \
+	tests/acl2/scheduler-tests \
 	books/relay \
 	books/relay-invariants \
 	books/relay-crash-invariants \
