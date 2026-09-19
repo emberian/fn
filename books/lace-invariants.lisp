@@ -23,6 +23,13 @@
 (include-book "lace")
 (include-book "statement-invariants")
 
+; cluster-local theory: this book is inside the substrate cluster and opens
+; the definitions its neighbours withdraw at export (docs/proof-style.md 2).
+(local (in-theory (enable fn-crypto-seam-internals
+                          fn-stmt-internals
+                          fn-stmt-invariants-vocabulary
+                          fn-lace-internals)))
+
 (local (in-theory (disable fn-stmt-id fn-stmt-p fn-stmt-creator
                            fn-stmt-incarnation fn-stmt-sequence fn-stmt-preds
                            fn-stmt-payload fn-stmt-header fn-stmt-kind
@@ -532,3 +539,76 @@
                            (fn-lace-closed-inp-monotone
                             fn-lace-closed-inp-of-new
                             fn-lace-closed-inp fn-lace-ids-subsetp)))))
+
+; -----------------------------------------------------------------------------
+; Export theory (docs/proof-style.md section 2).
+;
+; The keystones below stay enabled on include; everything else this book
+; proves is proof vocabulary and is withdrawn under `fn-lace-invariants-vocabulary',
+; which a book inside this cluster enables locally in one line.
+;
+; * fn-lace-merge-ids-are-union
+; * fn-lace-merge-idempotent
+; * fn-lace-merge-commutative-ids
+; * fn-lace-merge-associative-ids
+; * fn-lace-merge-lub
+; * fn-lace-merge-preserves-canonical
+; * fn-lace-distinct-same-slot-is-equivocation
+; * fn-lace-reissue-detected-after-merge
+; * fn-lace-merge-preserves-equivocation
+; * fn-lace-merge-preserves-closure
+; * fn-lace-same-view-of-cross-canonical
+; * fn-lace-merge-is-lace
+; * fn-lace-new-is-lace
+
+(deftheory fn-lace-invariants-vocabulary
+  '(
+    fn-lace-member-of-append
+    fn-lace-ids-of-append
+    fn-lace-member-implies-id-in-ids
+    fn-lace-new-is-sublist
+    fn-lace-new-ids-are-new
+    fn-lace-member-of-new
+    fn-lace-member-of-merge
+    fn-lace-new-is-true-list
+    fn-lace-member-ids-of-new
+    fn-lace-ids-subsetp-elim
+    fn-lace-ids-subsetp-elim-member
+    fn-lace-ids-witness-is-member-or-nil
+    fn-lace-ids-subsetp-by-witness
+    fn-lace-ids-subsetp-reflexive
+    fn-lace-ids-subsetp-transitive
+    fn-lace-new-of-included-delta-is-nil
+    fn-lace-new-of-self-is-nil
+    fn-lace-merge-monotone
+    fn-lace-merge-absorbs-delta
+    fn-lace-no-conflictp-elim
+    fn-lace-no-conflictp-of-member-of-cross
+    fn-lace-cross-canonicalp-symmetric
+    fn-lace-no-conflictp-of-append
+    fn-lace-cross-canonicalp-of-append-left
+    fn-lace-cross-canonicalp-of-append-right
+    fn-lace-canonical-append-iff
+    fn-lace-lookup-is-member-with-id
+    fn-lace-lookup-absent
+    fn-lace-lookup-of-member
+    fn-lace-no-conflictp-of-new-when-present
+    fn-lace-cross-canonicalp-lace-new
+    fn-lace-no-conflictp-of-sublist
+    fn-lace-cross-canonicalp-new-right
+    fn-lace-cross-canonicalp-new-left
+    fn-lace-merge-drops-at-collision
+    fn-lace-slot-conflictp-intro
+    fn-lace-equivocator-scan-intro
+    fn-lace-slot-conflictp-monotone
+    fn-lace-equivocator-scan-monotone-lace
+    fn-lace-equivocator-scan-monotone-rest
+    fn-lace-sign-fields
+    fn-lace-reissue-statements-differ
+    fn-lace-reissue-is-equivocation
+    fn-lace-ids-presentp-monotone
+    fn-lace-closed-inp-monotone
+    fn-lace-closed-inp-of-append
+    fn-lace-closed-inp-of-new))
+
+(in-theory (disable fn-lace-invariants-vocabulary))

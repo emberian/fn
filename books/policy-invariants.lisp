@@ -28,6 +28,15 @@
 (include-book "lace-invariants")
 (include-book "principal-invariants")
 
+; cluster-local theory: this book is inside the substrate cluster and opens
+; the definitions its neighbours withdraw at export (docs/proof-style.md 2).
+(local (in-theory (enable fn-crypto-seam-internals
+                          fn-stmt-internals
+                          fn-stmt-invariants-vocabulary
+                          fn-prin-internals
+                          fn-lace-internals
+                          fn-pol-internals)))
+
 (local (in-theory (disable fn-stmt-id fn-stmt-p fn-stmt-creator
                            fn-stmt-incarnation fn-stmt-sequence fn-stmt-kind
                            fn-stmt-payload fn-prin-verifiedp
@@ -372,3 +381,49 @@
                                fn-stmt-receipt-p fn-stmt-sign fn-stmt-kind
                                fn-stmt-payload fn-stmt-header fn-stmt-ok
                                fn-stmt-okp fn-stmt-value))))
+
+; -----------------------------------------------------------------------------
+; Export theory (docs/proof-style.md section 2).
+;
+; The keystones below stay enabled on include; everything else this book
+; proves is proof vocabulary and is withdrawn under `fn-pol-invariants-vocabulary',
+; which a book inside this cluster enables locally in one line.
+;
+; * fn-pol-current-unchanged-by-foreign-delta
+; * fn-pol-authorizedp-unchanged-by-foreign-delta
+; * fn-pol-admitp-unchanged-by-foreign-delta
+; * fn-pol-policy-change-needs-authority-signature
+; * fn-pol-latest-is-maximal
+; * fn-pol-current-is-not-superseded
+; * fn-pol-admission-is-grounded
+; * fn-pol-receipt-commits-to-term-by-construction
+; * fn-pol-receipt-re-verifiable
+; * fn-pol-signed-receipt-carries-term
+; * fn-pol-current-is-candidate-in-lace
+
+(deftheory fn-pol-invariants-vocabulary
+  '(
+    fn-pol-stmt-is-consp
+    fn-pol-candidatep-implies-authority-stmt
+    fn-pol-candidates-is-true-list
+    fn-pol-candidates-of-append
+    fn-pol-candidates-of-foreign-delta
+    fn-pol-delta-without-authority-p-of-new
+    fn-pol-candidates-of-merge-with-foreign-delta
+    fn-pol-first-authority-stmt-when-not-foreign
+    fn-pol-candidates-members-are-candidates
+    fn-pol-member-candidate-is-in-candidates
+    fn-pol-slot-lessp-irreflexive
+    fn-pol-slot-lessp-asymmetric
+    fn-pol-slot-lessp-negative-transitive
+    fn-pol-slot-lessp-below-atom
+    fn-pol-unverified-is-not-candidate-by-definition
+    fn-pol-unverified-is-not-admitted-by-definition
+    fn-pol-no-policy-in-force-admits-nothing-by-definition
+    fn-pol-stmt-id-is-digest
+    fn-pol-evidence-digest-is-digest
+    fn-pol-receipt-is-receipt
+    fn-pol-sign-kind
+    (:d fn-pol-first-authority-stmt)))
+
+(in-theory (disable fn-pol-invariants-vocabulary))
