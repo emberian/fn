@@ -103,6 +103,11 @@ ACL2_BOOKS ?= books/assumptions \
 	books/clock \
 	books/clock-invariants \
 	tests/acl2/clock-tests \
+	books/tcpcl-records \
+	books/tcpcl-octets \
+	books/tcpcl-session \
+	books/tcpcl-invariants \
+	tests/acl2/tcpcl-tests \
 	books/membership-epochs \
 	books/membership-epochs-invariants \
 	tests/acl2/membership-epochs-tests \
