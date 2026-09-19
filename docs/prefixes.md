@@ -44,6 +44,11 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-bpo-` | `bp-outbound` | Outbound projection of sender work to request ADUs and receipt validation |
 | `fn-bprl-` | `bp-release`, `bp-release-invariants` | Sender-side forwarding-obligation release: typed release evidence and term, the `:forward` pin undertaking, the release decision over the node image, and the journal wrapper for the proposed `:undertake`/`:release` records |
 | `fn-relay-` | `relay`, `relay-invariants`, `relay-crash-invariants` | Relay undertaking: receiver-then-sender composition over the receiver and sender public entry points, terms table, undertakings ledger, typed `:archived`/`:forwarding` receipts, crash-then-replay over both journals |
+| `fn-bprv-` | `bp-receiver-*-invariants` | Receiver relation invariants over a Store, contexts, decisions and replay |
+| `fn-bpc-` | `bp-primary-cbor` | Deterministic CBOR vocabulary RFC 9171 §4.3.1 needs over `fn-cbor-`: definite arrays and text strings, unsigned integers to 2^64-1 |
+| `fn-bpp-` | `bp-primary`, `bp-primary-invariants` | BPv7 primary bundle block: flags, CRC-16/CRC32C, `dtn` and `ipn` endpoint IDs, creation timestamp, lifetime, fragment fields, bundle identity, §4.4 extension block data |
+| `fn-bpf-` | `bp-fragment`, `bp-fragment-invariants` | BPv7 fragmentation and ADU reassembly over identical-overlap covers; fragment primary blocks |
+| `fn-clock-` | `clock`, `clock-invariants` | Host clock observations, Bundle Age anchors and the three-way bundle expiry decision |
 
 Host-only wrappers in `host/*.lisp` use `fn-store-`, `fn-bpreq-`, `fn-bpwf-`,
 `fn-bprj-` and similar; they are `:program` mode and outside the proof boundary.

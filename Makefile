@@ -92,6 +92,16 @@ ACL2_BOOKS ?= books/assumptions \
 	tests/acl2/bp-ingress-guards-tests \
 	books/bp-adu \
 	tests/acl2/bp-adu-tests \
+	books/bp-primary-cbor \
+	books/bp-primary \
+	books/bp-primary-invariants \
+	tests/acl2/bp-primary-tests \
+	books/bp-fragment \
+	books/bp-fragment-invariants \
+	tests/acl2/bp-fragment-tests \
+	books/clock \
+	books/clock-invariants \
+	tests/acl2/clock-tests \
 	books/bp-workflow \
 	books/bp-workflow-invariants \
 	books/bp-workflow-transport-invariants \
