@@ -391,3 +391,12 @@
                   (78 69 87 71 82 79 85 80 83 32 49 57 55 48 48 49 48 49 32 48 48 48 48 48 48 32 71 77 84))
         (list (fn-nntp-reply-effect
                '(50 51 49 32 108 105 115 116 32 111 102 32 110 101 119 32 110 101 119 115 103 114 111 117 112 115 32 102 111 108 108 111 119 115 13 10 46 13 10)))))
+
+
+; fn-nov-fmt-lines-are-clean is stated over *fn-nov-fmt-lines*, not over
+; arbitrary texts: a text carrying CR renders the CR, so the general form is
+; not a theorem.  The constant, which is all the server renders, is clean.
+(assert-event
+ (not (fn-nov-clean-line-listp
+       (fn-nov-fmt-octet-lines (list (coerce (list (code-char 13)) 'string))))))
+(assert-event (fn-nov-clean-line-listp (fn-nov-fmt-octet-lines *fn-nov-fmt-lines*)))

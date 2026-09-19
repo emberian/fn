@@ -203,7 +203,7 @@
     "roots": 194,
     "theorems": 3222,
     "functions": 2275,
-    "assert_events": 3331,
+    "assert_events": 3333,
     "must_fails": 59,
     "encapsulates": 14,
     "guards": {
@@ -4537,7 +4537,7 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 92,
+      "assert_events": 94,
       "must_fails": 0,
       "defconsts": 18,
       "defmacros": 0,
@@ -4826,7 +4826,7 @@
       "verify_guards_events": 0,
       "assert_events": 30,
       "must_fails": 0,
-      "defconsts": 15,
+      "defconsts": 16,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -5442,7 +5442,7 @@
     {
       "theorem": "fn-nov-missing-header-is-empty",
       "book": "books/nntp-overview.lisp",
-      "line": 91,
+      "line": 99,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-nov-header-content and the conclusion is that branch's value"
       ]
@@ -5482,7 +5482,7 @@
     {
       "theorem": "fn-served-next-strictly-consumes-linear",
       "book": "books/served.lisp",
-      "line": 630,
+      "line": 635,
       "reasons": [
         "instance-corollary: the statement is fn-wire-next-strictly-consumes instantiated, discharging nothing"
       ]
@@ -5733,7 +5733,7 @@
       {
         "theorem": "fn-nov-lines-counts-the-retained-body-lines",
         "book": "books/nntp-overview.lisp",
-        "line": 125,
+        "line": 147,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
