@@ -102,6 +102,10 @@ ACL2_BOOKS ?= books/assumptions \
 	books/clock \
 	books/clock-invariants \
 	tests/acl2/clock-tests \
+	books/anchor \
+	books/anchor-invariants \
+	tests/acl2/anchor-tests \
+	tests/acl2/anchor-teeth-tests \
 	books/bp-workflow \
 	books/bp-workflow-invariants \
 	books/bp-workflow-transport-invariants \
