@@ -14,11 +14,11 @@ book are byte-identical to `dev`.
 | Book | Status | Evidence dir (`build/acl2/`) | Theorems |
 | --- | --- | --- | --- |
 | `books/transfer-journal.lisp` | **certified** | `certify-20260919T215540Z-3210` | 26 |
-| `books/transfer-journal-invariants.lisp` | **certified** | `certify-20260919T221000Z-26241` | 23 |
-| `tests/acl2/transfer-journal-tests.lisp` | open | `certify-20260919T220717Z-22415` | |
-| `books/container.lisp` | open | `certify-20260919T220828Z-23468` | |
-| `books/container-invariants.lisp` | open | `certify-20260919T220917Z-24484` | |
-| `tests/acl2/container-tests.lisp` | open | `certify-20260919T220917Z-24572` | |
+| `books/transfer-journal-invariants.lisp` | **certified** | `certify-20260919T221000Z-26241` | |
+| `tests/acl2/transfer-journal-tests.lisp` | **certified** | `certify-20260919T221011Z-26555` | |
+| `books/container.lisp` | open | `certify-20260919T221242Z-39944` | |
+| `books/container-invariants.lisp` | open | `certify-20260919T221244Z-40051` | |
+| `tests/acl2/container-tests.lisp` | open | `certify-20260919T221251Z-40513` | |
 
 Makefile roots added after `tests/acl2/transfer-tests`, in that order.
 `docs/prefixes.md` rows `fn-tj-` and `fn-ct-`. `python3 tools/ledger.py
