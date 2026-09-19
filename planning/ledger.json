@@ -94,6 +94,7 @@
     "tests/acl2/bp-workflow-tests",
     "tests/acl2/bp-workflow-teeth-tests",
     "books/bp-workflow-records",
+    "books/bp-workflow-records-invariants",
     "tests/acl2/bp-workflow-records-tests",
     "books/bp-receipt",
     "tests/acl2/bp-receipt-tests",
@@ -132,21 +133,21 @@
     "tests/acl2/nntp-teeth-tests"
   ],
   "totals": {
-    "books": 128,
-    "books_in_root_closure": 128,
-    "roots": 128,
-    "theorems": 1430,
-    "functions": 1262,
-    "assert_events": 1537,
-    "must_fails": 43,
+    "books": 129,
+    "books_in_root_closure": 129,
+    "roots": 129,
+    "theorems": 1508,
+    "functions": 1281,
+    "assert_events": 1615,
+    "must_fails": 58,
     "encapsulates": 7,
     "guards": {
-      "verified": 685,
-      "declared-off": 34,
-      "default-guarded": 178,
-      "default-unguarded": 365
+      "verified": 700,
+      "declared-off": 29,
+      "default-guarded": 180,
+      "default-unguarded": 372
     },
-    "suspect_theorems": 24
+    "suspect_theorems": 21
   },
   "books": [
     {
@@ -846,7 +847,7 @@
       "book": "books/bp-workflow-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 51,
+      "theorems": 59,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -862,6 +863,34 @@
       "encapsulates": 0,
       "includes": [
         "bp-workflow"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-bp-effect-for-pending-attempt-unfolds"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-workflow-records-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 43,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 8,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-workflow-binding-invariants",
+        "bp-workflow-records"
       ],
       "system_includes": [],
       "suspects": [],
@@ -896,7 +925,7 @@
       "book": "books/bp-workflow-transport-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 25,
+      "theorems": 32,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -922,11 +951,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 109,
+      "functions": 111,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 109,
+        "default-guarded": 111,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -997,15 +1026,15 @@
       "book": "books/checkpoint.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 6,
+      "theorems": 10,
       "functions": 13,
       "guards": {
-        "verified": 0,
-        "declared-off": 13,
+        "verified": 13,
+        "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 13,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -1074,15 +1103,15 @@
       "book": "books/index.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 8,
-      "functions": 20,
+      "theorems": 24,
+      "functions": 22,
       "guards": {
-        "verified": 20,
+        "verified": 22,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 20,
+      "verify_guards_events": 22,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -1093,12 +1122,7 @@
         "acceptance-invariants"
       ],
       "system_includes": [],
-      "suspects": [
-        "fn-index-build-complete",
-        "fn-index-build-correspondence",
-        "fn-index-build-sound",
-        "fn-index-build-subset-self"
-      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -2438,23 +2462,25 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 0,
+      "functions": 2,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 0
+        "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 12,
-      "must_fails": 0,
-      "defconsts": 16,
+      "assert_events": 23,
+      "must_fails": 2,
+      "defconsts": 20,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/bp-workflow-binding-invariants"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -2463,23 +2489,25 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 0,
+      "functions": 3,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 0
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 17,
-      "must_fails": 0,
-      "defconsts": 12,
+      "assert_events": 60,
+      "must_fails": 6,
+      "defconsts": 32,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/bp-workflow-records"
+        "../../books/bp-workflow-records-invariants"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -2515,23 +2543,25 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 0,
+      "functions": 2,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 0
+        "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 27,
-      "must_fails": 0,
-      "defconsts": 30,
+      "assert_events": 50,
+      "must_fails": 7,
+      "defconsts": 32,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/bp-workflow-transport-invariants"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -2600,7 +2630,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 19,
+      "assert_events": 20,
       "must_fails": 0,
       "defconsts": 11,
       "defmacros": 0,
@@ -3465,6 +3495,14 @@
       ]
     },
     {
+      "theorem": "fn-bp-effect-for-pending-attempt-unfolds",
+      "book": "books/bp-workflow-invariants.lisp",
+      "line": 882,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-bp-effect-for-pending and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-bpr-context-from-request-is-constructor",
       "book": "books/bp-receiver-state-invariants.lisp",
       "line": 86,
@@ -3478,39 +3516,6 @@
       "line": 364,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-exchange-ingest and the conclusion is that branch's value"
-      ]
-    },
-    {
-      "theorem": "fn-index-build-complete",
-      "book": "books/index.lisp",
-      "line": 204,
-      "reasons": [
-        "reflexive-conclusion: a conjunct is (fn-subsetp X X)"
-      ]
-    },
-    {
-      "theorem": "fn-index-build-correspondence",
-      "book": "books/index.lisp",
-      "line": 209,
-      "reasons": [
-        "reflexive-conclusion: a conjunct is (fn-subsetp X X)"
-      ]
-    },
-    {
-      "theorem": "fn-index-build-sound",
-      "book": "books/index.lisp",
-      "line": 199,
-      "reasons": [
-        "reflexive-conclusion: a conjunct is (fn-subsetp X X)"
-      ]
-    },
-    {
-      "theorem": "fn-index-build-subset-self",
-      "book": "books/index.lisp",
-      "line": 194,
-      "reasons": [
-        "instance-corollary: the statement is fn-subset-self instantiated, discharging nothing",
-        "reflexive-conclusion: a conjunct is (fn-subsetp X X)"
       ]
     },
     {
