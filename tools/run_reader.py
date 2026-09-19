@@ -95,6 +95,7 @@ class Acl2Reader:
         self.own_poisoned = False
         env = os.environ.copy()
         env["ACL2_CUSTOMIZATION"] = "NONE"
+        env["ACL2_BOOK_HASH_ALISTP"] = "NIL"  # content-hashed certificates: relocatable across worktrees and hosts
         try:
             if self.owns_process:
                 self.proc = subprocess.Popen(

@@ -398,6 +398,7 @@ class Acl2Store:
     def __init__(self):
         env = os.environ.copy()
         env["ACL2_CUSTOMIZATION"] = "NONE"
+        env["ACL2_BOOK_HASH_ALISTP"] = "NIL"  # content-hashed certificates: relocatable across worktrees and hosts
         self.proc = None
         # A bridge whose correlation is lost cannot be repaired by reading
         # further: a new ACL2 process is the only recovery.

@@ -375,6 +375,7 @@ def run_acl2(
     # A user customization can alter the ACL2 world before certification.  Do
     # not allow such ambient state into project evidence.
     environment["ACL2_CUSTOMIZATION"] = "NONE"
+    environment["ACL2_BOOK_HASH_ALISTP"] = "NIL"  # content-hashed certificates: relocatable across worktrees and hosts
     environment.pop("ACL2_SYSTEM_BOOKS", None)
     return subprocess.run(
         [str(executable)],
@@ -503,7 +504,7 @@ def main() -> int:
 
     manifest: dict[str, Any] = {
         "command": [configured],
-        "environment": {"ACL2_CUSTOMIZATION": "NONE", "ACL2_SYSTEM_BOOKS": None},
+        "environment": {"ACL2_CUSTOMIZATION": "NONE", "ACL2_BOOK_HASH_ALISTP": "NIL", "ACL2_SYSTEM_BOOKS": None},
         "platform": platform.platform(),
         "python": platform.python_version(),
         "requested_books": args.books,
