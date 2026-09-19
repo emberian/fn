@@ -185,17 +185,28 @@ Every fn tool that starts ACL2 sets `ACL2_BOOK_HASH_ALISTP=NIL`, so ACL2 8.7
 hashes book *contents* rather than write dates and absolute paths: a
 `.cert`/`.port` pair is valid in any worktree and on any host whose book
 content matches. [`tools/certs.py`](../tools/certs.py) is the consequence.
-`publish` stores each valid-looking pair under the SHA-256 of its book's
-content (and, below that, the book's own name, so two books with identical
-bytes never share one entry); `install` copies into a worktree every pair whose
-key matches a book there, never over a local certificate that already matches
-its book and is no older than the cached one; `status` prints coverage.
-`tools/certify_books.py` publishes automatically after a passing run, which
-`--no-publish` suppresses, and `make certs-install` / `make certs-publish` are
-the manual ends. What this does not establish: the cache cannot tell that a
-pair describes the book beside it, only that the book hashes to the key. The
-certification gate is unchanged -- a fresh success marker and a certificate per
-requested book, from `tools/certify_books.py`.
+Two rules, each paid for by a poisoned cache. First, **a pair is published
+only against a certification manifest**: a `.cert` lying beside a book proves
+nothing, since after a merge it can be the previous source's certificate, so
+`publish` reads the manifests `tools/certify_books.py` writes
+(`--manifest PATH`, or every `build/acl2/certify-*/manifest.json` under the
+worktree) and caches a book only when the source beside it still hashes to
+that run's `source_digests_sha256` (and `source_digests_sha256_after` when the
+run recorded one) and the certificate beside it still hashes to that run's
+`certificate_digests_sha256`. There is no other publish path, and a manifest
+that did not pass vouches for nothing. Second, **the key is the closure**: a
+certificate is valid only for a book *and every book it includes*, so the key
+is the SHA-256 of the sorted `<path>:<sha256>` listing of the book and its
+whole local include closure, resolved as ACL2 resolves `include-book` and
+ignoring `:dir :system`. Same book bytes over a changed dependency is a
+different key, not a hit ACL2 would then refuse; the listing is recorded in
+the entry's metadata. `install` computes the same key per book and copies in
+each matching pair, keeping a byte-identical local certificate; `status`
+prints coverage. `tools/certify_books.py` publishes against its own manifest
+after a passing run, which `--no-publish` suppresses, and `make certs-install`
+/ `make certs-publish` are the manual ends. What this does not establish:
+nothing here proves a book certifies. That is the runner's fresh success
+marker per book, and ACL2 checks the installed pair again at include time.
 
 Two further controls on ACL2 processes. `--affected-by BOOK` keeps only the
 requested roots that are, or transitively include, a named book, in the
