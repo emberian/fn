@@ -9,12 +9,20 @@ receipts, release eligibility, or transport success.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import errno
 import hashlib
 import fcntl
 import os
 from pathlib import Path
+import stat
 import struct
 from typing import Callable, Iterable, Sequence
+
+# The durability barrier and the fault-point protocol have exactly one owner.
+try:
+    from tools.run_store import FaultPoints, NO_FAULTS, durable_barrier
+except ImportError:  # loaded with tools/ itself on sys.path
+    from run_store import FaultPoints, NO_FAULTS, durable_barrier
 
 MAGIC = b"FNWF"
 SCHEMA = 1
@@ -84,8 +92,63 @@ class InboundDeletePending(JournalError): pass
 
 def fsync_dir(path: Path) -> None:
     fd = os.open(path, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
-    try: os.fsync(fd)
+    try: durable_barrier(fd)
     finally: os.close(fd)
+
+
+def read_regular_barriered(path: Path, maximum: int) -> bytes:
+    """Read and barrier one regular file through a single no-follow descriptor.
+
+    Checking the pathname and then opening it again admits a replacement
+    between the two calls, so the type check, the size, the bytes and the
+    barrier all come from the same open descriptor.
+    """
+    try:
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except OSError as error:
+        if error.errno == errno.ELOOP: raise JournalFault("refusing journal symlink") from error
+        raise
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode): raise JournalFault("refusing non-regular journal file")
+        if info.st_size > maximum: raise JournalFault("journal file exceeds bound")
+        chunks, remaining = [], maximum + 1
+        while remaining:
+            chunk = os.read(fd, min(65536, remaining))
+            if not chunk: break
+            chunks.append(chunk); remaining -= len(chunk)
+        data = b"".join(chunks)
+        if len(data) != info.st_size: raise JournalFault("record changed while reading")
+        durable_barrier(fd)
+        return data
+    finally:
+        os.close(fd)
+
+
+def open_exclusive_lock(path: Path, owned: str) -> int:
+    """Open one regular non-symlink lock pathname and take it exclusively.
+
+    Opening the pathname and contending for the lock are distinct outcomes: a
+    missing or unusable lock pathname is an invalid journal state, and only a
+    refused lock means another owner holds the journal.
+    """
+    try:
+        fd = os.open(path, os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    except OSError as error:
+        if error.errno == errno.ELOOP:
+            raise JournalFault(f"refusing {owned} lock symlink") from error
+        raise JournalFault(f"cannot open {owned} lock: {error}") from error
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            raise JournalFault(f"refusing non-regular {owned} lock")
+    except BaseException:
+        os.close(fd); raise
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError as error:
+        os.close(fd)
+        raise JournalFault(f"{owned} journal is already owned") from error
+    return fd
 
 
 def write_all(fd: int, data: bytes) -> None:
@@ -182,24 +245,20 @@ class Published:
 
 
 class WorkflowJournal:
-    def __init__(self, root: Path, replay: Callable[[Sequence[tuple[str, dict]]], object]):
+    def __init__(self, root: Path, replay: Callable[[Sequence[tuple[str, dict]]], object],
+                 faults: FaultPoints = NO_FAULTS):
         self.root = Path(root); self.records = self.root / "records"; self.staging = self.root / "staging"
         self.inbound = self.root / "inbound"
         self.replay = replay; self.fenced = True; self.image = None; self.lock_fd = None
         self.inbound_items = ()
+        self.faults = faults
 
     def open(self) -> object:
         self.fenced=True; self.image=None; self.inbound_items=()
         if self.lock_fd is not None:
             raise JournalFault("workflow journal is already open")
         self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
-        lock_path=self.root/"workflow.lock"
-        lock_fd=os.open(lock_path, os.O_RDWR|os.O_CREAT, 0o600)
-        try: fcntl.flock(lock_fd, fcntl.LOCK_EX|fcntl.LOCK_NB)
-        except OSError as error:
-            os.close(lock_fd)
-            raise JournalFault("workflow journal is already owned") from error
-        self.lock_fd=lock_fd
+        self.lock_fd=open_exclusive_lock(self.root/"workflow.lock", "workflow")
         try:
             self.records.mkdir(mode=0o700, exist_ok=True); self.staging.mkdir(mode=0o700, exist_ok=True)
             self.inbound.mkdir(mode=0o700, exist_ok=True)
@@ -208,28 +267,21 @@ class WorkflowJournal:
             entries=sorted(self.records.iterdir())
             if len(entries) > MAX_RECORDS: raise JournalFault("record count")
             for sequence, path in enumerate(entries):
-                if path.is_symlink() or not path.is_file() or path.name != f"{sequence:016x}.wf":
-                    raise JournalFault("record namespace")
-                size=path.stat().st_size
-                if size < 42 or size > MAX_RECORD: raise JournalFault("record size")
-                aggregate += size
+                if path.name != f"{sequence:016x}.wf": raise JournalFault("record namespace")
+                data=read_regular_barriered(path, MAX_RECORD)
+                if len(data) < 42: raise JournalFault("record size")
+                aggregate += len(data)
                 if aggregate > MAX_AGGREGATE: raise JournalFault("aggregate bytes")
-                data=path.read_bytes()
-                if len(data) != size: raise JournalFault("record changed while reading")
                 decoded.append(decode_record(data))
-                fd=os.open(path, os.O_RDONLY)
-                try: os.fsync(fd)
-                finally: os.close(fd)
             fsync_dir(self.records)
             inbox=[]; inbound_aggregate=0; inbound_entries=list(self.inbound.iterdir())
             if len(inbound_entries) > MAX_INBOUND_COUNT: raise JournalFault("inbound count")
             for path in inbound_entries:
-                if path.is_symlink() or not path.is_file() or path.suffix != ".bp":
-                    raise JournalFault("inbound namespace")
-                size=path.stat().st_size; inbound_aggregate += size
-                if size > MAX_INBOUND_BUNDLE + MAX_TEXT + 42: raise JournalFault("inbound size")
+                if path.suffix != ".bp": raise JournalFault("inbound namespace")
+                data=read_regular_barriered(path, MAX_INBOUND_BUNDLE + MAX_TEXT + 42)
+                inbound_aggregate += len(data)
                 if inbound_aggregate > MAX_INBOUND_AGGREGATE: raise JournalFault("inbound aggregate")
-                bid, _payload = decode_inbound(path.read_bytes())
+                bid, _payload = decode_inbound(data)
                 expected=hashlib.sha256(bid.encode("utf-8")).hexdigest()+".bp"
                 if path.name != expected: raise JournalFault("inbound name")
                 inbox.append((bid,path))
@@ -247,7 +299,7 @@ class WorkflowJournal:
             fcntl.flock(self.lock_fd, fcntl.LOCK_UN)
             os.close(self.lock_fd); self.lock_fd=None
 
-    def publish(self, kind: str, values: dict[str, object], fault: str | None=None,
+    def publish(self, kind: str, values: dict[str, object],
                 replay_image: bool=True) -> Published:
         if self.fenced: raise JournalFault("journal is fenced")
         record=(kind, values)
@@ -274,9 +326,9 @@ class WorkflowJournal:
         attempted=False
         try:
             write_all(fd, encoded)
-            if fault == "write": raise OSError("injected write fault")
-            os.fsync(fd)
-            if fault == "file-fsync": raise OSError("injected file barrier fault")
+            self.faults.at("write")
+            durable_barrier(fd)
+            self.faults.at("file-fsync")
         except Exception:
             os.close(fd)
             try: stage.unlink()
@@ -284,13 +336,11 @@ class WorkflowJournal:
             raise
         os.close(fd)
         try:
-            if fault == "process-prepublish": os._exit(91)
-            if fault == "prepublish": raise JournalError("known prepublication failure")
+            self.faults.at("prepublish")
             attempted=True; os.link(stage, final)
-            if fault == "process-postlink": os._exit(92)
-            if fault == "link": raise OSError("injected link uncertainty")
+            self.faults.at("postlink")
             fsync_dir(self.records)
-            if fault == "directory-fsync": raise OSError("injected directory uncertainty")
+            self.faults.at("directory-fsync")
         except Exception as error:
             if attempted:
                 self.fenced=True
@@ -319,8 +369,7 @@ class WorkflowJournal:
                 raise
         return published
 
-    def publish_intent(self, kind: str, values: dict[str, object],
-                       fault: str | None=None) -> Published:
+    def publish_intent(self, kind: str, values: dict[str, object]) -> Published:
         """Publish an intent only when one worst-case resolution still fits."""
         if kind not in {"enqueue", "attempt", "receipt-intent"}:
             raise JournalError("record is not a workflow intent")
@@ -331,12 +380,12 @@ class WorkflowJournal:
             raise JournalFault("record count lacks resolution headroom")
         if aggregate + len(encoded) + MAX_RECORD > MAX_AGGREGATE:
             raise JournalFault("aggregate lacks resolution headroom")
-        return self.publish(kind, values, fault, replay_image=False)
+        return self.publish(kind, values, replay_image=False)
 
     def publish_outcome(self, txid: int, generation: int, phase: str,
-                        result: str, fault: str | None=None) -> Published:
+                        result: str) -> Published:
         return self.publish("outcome", {"txid": txid, "tx-generation": generation,
-                            "phase": phase, "result": result}, fault)
+                            "phase": phase, "result": result})
 
     def abort_intent(self, values: dict[str, object]) -> Published:
         """Persist a known abort; the reserved pair remains consumed in ACL2."""
@@ -383,15 +432,18 @@ class WorkflowJournal:
                       delete: Callable[[str], None]) -> Path:
         """Durably stage a BPA bundle before explicitly deleting it by BID."""
         if self.fenced: raise JournalFault("journal is fenced")
-        found=False
-        for count, item in enumerate(inventory()):
-            if count >= MAX_BPA_INVENTORY: raise JournalError("BPA inventory bound")
-            if item == bid: found=True
-        if not isinstance(bid, str) or not bid or not found:
-            raise JournalError("BID is not present in inventory")
-        existing=list(self.inbound.iterdir())
+        if not isinstance(bid, str) or not bid: raise JournalError("BID is not present in inventory")
+        found=self._in_inventory(bid, inventory)
         local_name=hashlib.sha256(bid.encode("utf-8", "strict")).hexdigest()+".bp"
         final=self.inbound/local_name
+        if not found:
+            # A BID that is durably staged here and absent from the inventory
+            # reconciles an earlier pending delete as completed: the request
+            # took effect and only its reply was lost.  Absence without a
+            # durable frame is an ordinary missing bundle.
+            if not final.exists(): raise JournalError("BID is not present in inventory")
+            return self._validated_durable_frame(bid, final)
+        existing=list(self.inbound.iterdir())
         if not final.exists() and len(existing) >= MAX_INBOUND_COUNT:
             raise JournalError("inbound count")
         aggregate=sum(path.stat().st_size for path in existing)
@@ -403,11 +455,8 @@ class WorkflowJournal:
             raise JournalError("inbound aggregate")
         stage=self.staging/(local_name+f".{os.getpid()}.tmp")
         if final.exists():
-            if final.is_symlink() or final.read_bytes() != framed:
+            if final.is_symlink() or read_regular_barriered(final, MAX_INBOUND_BUNDLE+MAX_TEXT+42) != framed:
                 self.fenced=True; raise JournalFault("conflicting staged BID")
-            fd=os.open(final,os.O_RDONLY)
-            try: os.fsync(fd)
-            finally: os.close(fd)
             fsync_dir(self.inbound)
             try: delete(bid)
             except Exception as error:
@@ -416,7 +465,12 @@ class WorkflowJournal:
         fd=os.open(stage, os.O_WRONLY|os.O_CREAT|os.O_EXCL, 0o600)
         attempted=False
         try:
-            write_all(fd, framed); os.fsync(fd); os.close(fd); fd=-1
+            write_all(fd, framed); durable_barrier(fd)
+            # Retire the descriptor number before closing it: a failing close
+            # may already have released it, and closing again would close a
+            # descriptor this journal does not own.
+            handle, fd = fd, -1
+            os.close(handle)
             attempted=True; os.link(stage, final); fsync_dir(self.inbound)
         except Exception as error:
             if fd >= 0: os.close(fd)
@@ -430,26 +484,41 @@ class WorkflowJournal:
             raise InboundDeletePending(f"durable inbound awaits BPA delete: {bid}") from error
         return final
 
-    def retry_staged_delete(self, bid: str, inventory: Callable[[], Iterable[str]],
-                            delete: Callable[[str], None]) -> Path:
-        """Finish BPA deletion for an already durable frame without downloading again."""
-        if self.fenced: raise JournalFault("journal is fenced")
+    def _in_inventory(self, bid: str, inventory: Callable[[], Iterable[str]]) -> bool:
         present=False
         for count, item in enumerate(inventory()):
             if count >= MAX_BPA_INVENTORY: raise JournalError("BPA inventory bound")
             if item == bid: present=True
-        if not present: raise JournalError("BID is not present in inventory")
-        name=hashlib.sha256(bid.encode("utf-8", "strict")).hexdigest()+".bp"
-        final=self.inbound/name
+        return present
+
+    def _validated_durable_frame(self, bid: str, final: Path) -> Path:
+        """Re-barrier one durable inbound frame and recheck its stored BID."""
         if final.is_symlink() or not final.is_file():
             raise JournalFault("durable inbound frame is absent")
-        stored_bid, _payload=decode_inbound(final.read_bytes())
+        stored_bid, _payload=decode_inbound(
+            read_regular_barriered(final, MAX_INBOUND_BUNDLE+MAX_TEXT+42))
         if stored_bid != bid:
             self.fenced=True; raise JournalFault("conflicting staged BID")
-        fd=os.open(final,os.O_RDONLY)
-        try: os.fsync(fd)
-        finally: os.close(fd)
         fsync_dir(self.inbound)
+        return final
+
+    def retry_staged_delete(self, bid: str, inventory: Callable[[], Iterable[str]],
+                            delete: Callable[[str], None]) -> Path:
+        """Finish BPA deletion for an already durable frame without downloading again.
+
+        A BID still in the inventory is retried.  A BID absent from it is
+        reconciled as a completed delete: the only local evidence a lost delete
+        reply leaves is the bundle's absence, and a durable frame proves the
+        request was ours.  Absence is never treated as an fn acceptance event.
+        """
+        if self.fenced: raise JournalFault("journal is fenced")
+        name=hashlib.sha256(bid.encode("utf-8", "strict")).hexdigest()+".bp"
+        final=self.inbound/name
+        if not self._in_inventory(bid, inventory):
+            # Returning normally is what clears the pending state, because the
+            # caller raised InboundDeletePending to create it.
+            return self._validated_durable_frame(bid, final)
+        self._validated_durable_frame(bid, final)
         try: delete(bid)
         except Exception as error:
             raise InboundDeletePending(f"durable inbound awaits BPA delete: {bid}") from error

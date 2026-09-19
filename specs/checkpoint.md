@@ -36,7 +36,13 @@ frontier. The hypotheses require both journal intervals to satisfy the
 immutable-file ordering rules and the actual prefix and full replays to
 succeed. The theorem permits allocator gaps both before and after the
 checkpoint. It does not assume the two results equal and restore does not call
-full replay.
+full replay. That equivalence theorem is silent on rejection: both sides reduce
+to the same replay-loop expression, so it does not by itself show the frontier
+doing any rejecting work. `fn-checkpoint-restore-rejects-frontier-reuse` is the
+companion result that does: for any checkpoint, matching configuration, and
+valid persisted frontier, a suffix whose first record's transaction id reuses a
+value below the checkpoint's consumed frontier is refused with `(:error
+:suffix)` before any replay runs, regardless of the rest of the suffix.
 
 The logical recognizer cannot detect substitution of one wholly well-formed
 checkpoint for another. The logical checkpoint object is not a native or

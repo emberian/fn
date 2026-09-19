@@ -30,7 +30,16 @@ class BpIngressError(RuntimeError):
 
 
 class BpDeletePending(BpIngressError):
-    """The article was accepted, but the BPA BID remains for a later delete."""
+    """The article is durably accepted; the BPA BID remains for a later delete.
+
+    This is an acceptance carrying a pending transport obligation, not a
+    refusal and not an uncertain acceptance, so it keeps the outcome it earned.
+    """
+    def __init__(self, message: str, outcome: str, bid: str, staged_path: Path):
+        super().__init__(message)
+        self.outcome = outcome
+        self.bid = bid
+        self.staged_path = staged_path
 
 
 @dataclass(frozen=True)
@@ -223,7 +232,8 @@ def ingest_bpa_adu(*, store_root: Path, journal_root: Path, journal_module_path:
             try:
                 delete(bid)
             except Exception as error:
-                raise BpDeletePending("exact durable ADU awaits BPA delete") from error
+                raise BpDeletePending("exact durable ADU awaits BPA delete",
+                                      "duplicate", bid, staged_path) from error
             return IngressResult("duplicate", bid, staged_path)
         if len(records) >= store.config["max_transactions"]:
             raise BpIngressError("Store transaction capacity reached")
@@ -237,7 +247,8 @@ def ingest_bpa_adu(*, store_root: Path, journal_root: Path, journal_module_path:
         try:
             delete(bid)
         except Exception as error:
-            raise BpDeletePending("durably accepted ADU awaits BPA delete") from error
+            raise BpDeletePending("durably accepted ADU awaits BPA delete",
+                                  "accepted", bid, staged_path) from error
         return IngressResult("accepted", bid, staged_path)
     finally:
         if bridge is not None:
@@ -252,7 +263,7 @@ def _file_inventory(path: Path):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = run_store.UsageParser(description=__doc__)
     parser.add_argument("--store", required=True, type=Path)
     parser.add_argument("--journal", required=True, type=Path)
     parser.add_argument("--workflow-journal", required=True, type=Path,
@@ -275,11 +286,20 @@ def main(argv=None):
                                 inventory=inventory, download=download,
                                 delete=deleted.append, destination=args.destination,
                                 source_eid=args.source_eid, lifetime=args.lifetime)
-        print(f"{result.outcome} bid={result.bid} staged={result.staged_path}")
-        return 0
+        print(f"{result.outcome} bid={result.bid} staged={result.staged_path} bpa-delete=done")
+        return run_store.EXIT_OK
+    except BpDeletePending as pending:
+        # A durable acceptance whose BPA delete has not completed is still an
+        # acceptance; the pending transport obligation is named, not encoded
+        # as a failure the caller would read as a refusal.
+        print(f"{pending.outcome} bid={pending.bid} staged={pending.staged_path} "
+              f"bpa-delete=pending")
+        return run_store.EXIT_OK
     except (BpIngressError, run_store.StoreError, OSError, UnicodeError) as error:
         print(f"bp-ingress: {error}", file=sys.stderr)
-        return 2
+        return run_store.exit_code_for(
+            error, default=run_store.EXIT_REFUSED if isinstance(error, BpIngressError)
+            else run_store.EXIT_FAULT)
 
 
 if __name__ == "__main__":

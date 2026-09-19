@@ -120,11 +120,17 @@ class ReceiverProcessCrashTests(unittest.TestCase):
 
     @staticmethod
     def _kill_group(child: subprocess.Popen[bytes]) -> None:
-        if child.poll() is None:
-            try:
-                os.killpg(child.pid, signal.SIGKILL)
-            except (PermissionError, ProcessLookupError):
-                child.kill()
+        """Kill the dedicated group, then reap the helper.
+
+        The helper can exit while its ACL2 subprocess still owns the group, so
+        the group is always killed, not only when the leader is still live.
+        """
+        try:
+            os.killpg(child.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        except PermissionError:
+            child.kill()
         try:
             child.wait(timeout=10)
         except subprocess.TimeoutExpired:
