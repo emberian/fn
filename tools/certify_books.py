@@ -10,6 +10,7 @@ log must not contain an ACL2 certification/error marker.
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import datetime as dt
 import hashlib
 import json
@@ -21,10 +22,21 @@ import secrets
 import shutil
 import subprocess
 import sys
+import threading
+import time
 from typing import Any
+
+# The runner and `tools/ledger.py` read books with one s-expression reader, so
+# the dependency graph that schedules certification and the generated ledger
+# cannot disagree about what a book includes.  `tools/` is not a package.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import acl2_slots  # noqa: E402
+import certs  # noqa: E402
+import ledger  # noqa: E402
 
 
 ROOT = Path(__file__).resolve().parent.parent
+READER = Path(ledger.__file__).resolve()
 BUILD_ROOT = ROOT / "build" / "acl2"
 SUCCESS_PREFIX = "FN_CERTIFY_SUCCESS "
 FAILURE_MARKERS = (
@@ -34,10 +46,10 @@ FAILURE_MARKERS = (
 )
 BOOK_NAME = re.compile(r"(?:books|tests/acl2)/(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+$")
 DEFAULT_BOOKS = (
+    "books/acceptance-alloc",
     "books/acceptance",
     "books/acceptance-invariants",
     "tests/acl2/acceptance-tests",
-    "tests/acl2/acceptance-guards-tests",
     "books/wire",
     "books/wire-invariants",
     "tests/acl2/wire-tests",
@@ -64,7 +76,6 @@ DEFAULT_BOOKS = (
     "books/node-invariants",
     "tests/acl2/node-tests",
     "books/node-traces",
-    "tests/acl2/node-traces-tests",
     "books/records",
     "books/records-invariants",
     "books/records-canonicality",
@@ -72,7 +83,6 @@ DEFAULT_BOOKS = (
     "books/replay",
     "books/replay-invariants",
     "tests/acl2/replay-tests",
-    "tests/acl2/replay-guards-tests",
     "books/store-files",
     "books/store-files-invariants",
     "tests/acl2/store-files-tests",
@@ -86,8 +96,6 @@ DEFAULT_BOOKS = (
     "tests/acl2/store-node-traces-tests",
     "books/store-node-resolution",
     "tests/acl2/store-node-resolution-tests",
-    "books/store-node-resolution-traces",
-    "tests/acl2/store-node-resolution-traces-tests",
     "books/store-observed",
     "tests/acl2/store-observed-tests",
     "books/store-observed-traces",
@@ -98,8 +106,6 @@ DEFAULT_BOOKS = (
     "books/exchange",
     "tests/acl2/exchange-tests",
     "books/exchange-invariants",
-    "tests/acl2/exchange-invariants-tests",
-    "tests/acl2/exchange-guards-tests",
     "books/transfer",
     "books/transfer-invariants",
     "books/transfer-assembly-invariants",
@@ -112,7 +118,6 @@ DEFAULT_BOOKS = (
     "books/nntp-effects",
     "tests/acl2/nntp-tests",
 )
-INCLUDE_BOOK = re.compile(r'\(\s*include-book\s+"([^"\\]+)"([^)]*)\)', re.IGNORECASE)
 FORBIDDEN_FACILITIES = {"skip-proofs", "defaxiom", "defttag", "set-raw-mode", "include-raw"}
 
 
@@ -235,13 +240,18 @@ def book_source(book: str) -> Path:
 
 
 def local_include_books(book: str, source: Path) -> list[str]:
+    """Repository-relative books this book includes, in source order.
+
+    `ledger.analyze_book` separates a bare `(include-book "x")`, which is local
+    and must be pinned, from an `:dir`-qualified one, which selects an ACL2
+    system/project book outside the local source closure.  Nothing is interned,
+    evaluated, or macro-expanded, so reading a book cannot run a book.
+    """
+    analysis = ledger.analyze_book(source, f"{book}.lisp")
+    if analysis.read_error:
+        raise ValueError(f"unreadable book source: {book}.lisp: {analysis.read_error}")
     dependencies: list[str] = []
-    for match in INCLUDE_BOOK.finditer(source.read_text(encoding="utf-8")):
-        reference, suffix = match.groups()
-        # :dir selects an ACL2 system/project book, which is outside the local
-        # source closure.  A bare include-book is local and must be pinned.
-        if re.search(r"(?<![A-Za-z0-9_-]):dir(?![A-Za-z0-9_-])", suffix, re.IGNORECASE):
-            continue
+    for reference in analysis.includes:
         dependency_source = (source.parent / reference).with_suffix(".lisp").resolve()
         if not dependency_source.is_relative_to(ROOT):
             raise ValueError(f"local include-book escapes the repository: {reference} in {book}.lisp")
@@ -251,17 +261,126 @@ def local_include_books(book: str, source: Path) -> list[str]:
     return dependencies
 
 
-def collect_book_sources(roots: list[str]) -> dict[str, str]:
+def local_closure(roots: list[str]) -> dict[str, list[str]]:
+    """Every book reachable from `roots` through local include-book, with edges.
+
+    Raises on a source that is missing, unreadable, or that includes a local
+    book which does not resolve inside the repository.
+    """
     pending = list(roots)
-    sources: dict[str, str] = {}
+    closure: dict[str, list[str]] = {}
     while pending:
         book = pending.pop()
-        if book in sources:
+        if book in closure:
             continue
-        source = book_source(book)
-        sources[book] = digest(source)
-        pending.extend(local_include_books(book, source))
-    return {f"{book}.lisp": sources[book] for book in sorted(sources)}
+        closure[book] = local_include_books(book, book_source(book))
+        pending.extend(closure[book])
+    return closure
+
+
+def collect_book_sources(roots: list[str]) -> dict[str, str]:
+    closure = local_closure(roots)
+    return {f"{book}.lisp": digest(book_source(book)) for book in sorted(closure)}
+
+
+def cycle_through(closure: dict[str, list[str]]) -> list[str] | None:
+    """A local include-book cycle as a path, or None.  ACL2 cannot certify one."""
+    state: dict[str, int] = {}
+    for start in sorted(closure):
+        if state.get(start):
+            continue
+        # Iterative depth-first search: 1 marks a book on the current path.
+        stack: list[tuple[str, list[str]]] = [(start, list(closure[start]))]
+        state[start] = 1
+        path = [start]
+        while stack:
+            book, rest = stack[-1]
+            if not rest:
+                state[book] = 2
+                stack.pop()
+                path.pop()
+                continue
+            dependency = rest.pop()
+            if state.get(dependency) == 1:
+                return path[path.index(dependency):] + [dependency]
+            if state.get(dependency) == 2:
+                continue
+            state[dependency] = 1
+            path.append(dependency)
+            stack.append((dependency, list(closure[dependency])))
+    return None
+
+
+def dependency_graph(books: list[str]) -> dict[str, set[str]]:
+    """For each requested book, the requested books that must certify first.
+
+    An include-book of an unrequested book is not an edge: that book is not
+    being written during this run, so its certificate is already whatever it
+    is.  Its own local includes are still followed, so a requested book reached
+    only through unrequested intermediates is still an edge.  Reaching a
+    requested book ends that search: whatever is below it is ordered before it.
+    """
+    closure = local_closure(books)
+    cycle = cycle_through(closure)
+    if cycle is not None:
+        raise ValueError("local include-book cycle: " + " -> ".join(cycle))
+    requested = set(books)
+    graph: dict[str, set[str]] = {}
+    for book in books:
+        predecessors: set[str] = set()
+        seen: set[str] = set()
+        stack = list(closure[book])
+        while stack:
+            dependency = stack.pop()
+            if dependency in seen:
+                continue
+            seen.add(dependency)
+            if dependency in requested:
+                predecessors.add(dependency)
+            else:
+                stack.extend(closure[dependency])
+        predecessors.discard(book)
+        graph[book] = predecessors
+    return graph
+
+
+def normalize_book(value: str) -> str:
+    """A `--affected-by` argument as a repository-relative book name."""
+    path = Path(value)
+    if path.is_absolute():
+        resolved = path.resolve()
+        if not resolved.is_relative_to(ROOT):
+            raise ValueError(f"path is outside the repository: {value}")
+        path = resolved.relative_to(ROOT)
+    text = path.as_posix()
+    name = text[:-len(".lisp")] if text.endswith(".lisp") else text
+    book_source(name)  # a typo must not silently select nothing
+    return name
+
+
+def affected_roots(books: list[str], targets: list[str]) -> list[str]:
+    """The requested books that are, or transitively include, a named book.
+
+    Order is the requested order, which is the Makefile order under `make
+    certify`, so a filtered run certifies in the same sequence as a full one.
+    A book's own dependencies are not selected: a book whose content did not
+    change has a valid content-hashed certificate already.
+    """
+    names = {normalize_book(target) for target in targets}
+    closure = local_closure(books)
+    selected: list[str] = []
+    for book in books:
+        reached = {book}
+        stack = list(closure[book])
+        while stack:
+            dependency = stack.pop()
+            if dependency in reached:
+                continue
+            reached.add(dependency)
+            stack.extend(closure[dependency])
+        if reached & names:
+            selected.append(book)
+    return selected
 
 
 def make_driver(book: str, nonce: str) -> str:
@@ -291,6 +410,7 @@ def run_acl2(
     # A user customization can alter the ACL2 world before certification.  Do
     # not allow such ambient state into project evidence.
     environment["ACL2_CUSTOMIZATION"] = "NONE"
+    environment["ACL2_BOOK_HASH_ALISTP"] = "NIL"  # content-hashed certificates: relocatable across worktrees and hosts
     environment.pop("ACL2_SYSTEM_BOOKS", None)
     return subprocess.run(
         [str(executable)],
@@ -302,6 +422,60 @@ def run_acl2(
         check=False,
         timeout=timeout_seconds,
     )
+
+
+def run_schedule(
+    books: list[str],
+    graph: dict[str, set[str]],
+    jobs: int,
+    certify: Any,
+) -> None:
+    """Certify `books`, starting one only once every requested dependency's
+    ACL2 process has exited.  At most `jobs` ACL2 processes exist at a time.
+
+    Why independent books do not race: each invocation writes only artifacts
+    named for the book it certifies -- `<book>.cert`, `<book>.port`, the
+    compiled file, and `<book>@expansion.lsp` -- and the requested list is
+    rejected if it repeats a book, so no two processes write the same path.
+    Two books that both include the same certified dependency only *read* that
+    dependency's certificate and compiled file; the scheduler already waited
+    for the process that wrote them to exit, so nothing is writing those files
+    while they are read, and concurrent readers do not race.
+
+    A dependency that failed still releases its dependents, because the
+    sequential runner also ran every requested book regardless of an earlier
+    failure and keeping that preserves its diagnostics.  The dependents then
+    fail too: the pass rule is one fresh marker and one certificate for every
+    requested book, so no failure here can be reported as a pass.
+
+    Ready books start in requested order, which is a topological order for the
+    project roots, so `--jobs 1` starts books in exactly the requested order.
+    """
+    waiting = {book: set(graph[book]) for book in books}
+    queue = list(books)
+    futures: dict[concurrent.futures.Future, str] = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as pool:
+        while queue or futures:
+            while queue and len(futures) < jobs:
+                ready = next((book for book in queue if not waiting[book]), None)
+                if ready is None:
+                    break
+                queue.remove(ready)
+                futures[pool.submit(certify, ready)] = ready
+            if not futures:
+                # Unreachable once `dependency_graph` has refused cycles.  Fail
+                # loudly rather than quietly certifying a truncated batch.
+                raise ValueError(
+                    "certification schedule stalled with books unstarted: " + ", ".join(queue)
+                )
+            done, _ = concurrent.futures.wait(
+                list(futures), return_when=concurrent.futures.FIRST_COMPLETED
+            )
+            for future in done:
+                finished = futures.pop(future)
+                future.result()
+                for pending in waiting.values():
+                    pending.discard(finished)
 
 
 def write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -330,6 +504,35 @@ def main() -> int:
         default=int(os.environ.get("FN_ACL2_TIMEOUT_SECONDS", "600")),
         help="per-ACL2-invocation timeout in seconds (default: 600, or FN_ACL2_TIMEOUT_SECONDS)",
     )
+    parser.add_argument(
+        "--jobs",
+        type=int,
+        default=int(os.environ.get("FN_CERTIFY_JOBS", "1")),
+        help=(
+            "maximum concurrent ACL2 processes (default: 1, or FN_CERTIFY_JOBS). "
+            "Books still certify in local include-book dependency order"
+        ),
+    )
+    parser.add_argument(
+        "--affected-by",
+        action="append",
+        default=[],
+        metavar="BOOK",
+        help=(
+            "certify only the requested books that are, or transitively "
+            "include, this book (repeatable; .lisp optional)"
+        ),
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print the books this invocation would certify and exit",
+    )
+    parser.add_argument(
+        "--no-publish",
+        action="store_true",
+        help="do not publish the resulting certificates to the local cache",
+    )
     args = parser.parse_args()
 
     invalid = [book for book in args.books if not BOOK_NAME.fullmatch(book)]
@@ -338,8 +541,28 @@ def main() -> int:
             "book names must be repository-relative paths below books/ or tests/acl2/ "
             "without .lisp: " + ", ".join(invalid)
         )
+    repeated = sorted({book for book in args.books if args.books.count(book) > 1})
+    if repeated:
+        # Two ACL2 processes certifying one book would write the same .cert.
+        parser.error("each book may be requested once: " + ", ".join(repeated))
     if args.timeout_seconds <= 0:
         parser.error("--timeout-seconds must be positive")
+    if args.jobs <= 0:
+        parser.error("--jobs must be positive")
+    requested_before_filter = list(args.books)
+    if args.affected_by:
+        try:
+            args.books = affected_roots(args.books, args.affected_by)
+        except ValueError as error:
+            parser.error(str(error))
+    if args.dry_run:
+        for book in args.books:
+            print(book)
+        return 0
+    if not args.books:
+        print("No requested book is affected by: " + ", ".join(args.affected_by))
+        return 0
+    effective_jobs = max(1, min(args.jobs, len(args.books)))
 
     configured = os.environ.get("FN_ACL2", "acl2")
     acl2 = resolve_executable(configured)
@@ -349,12 +572,18 @@ def main() -> int:
 
     manifest: dict[str, Any] = {
         "command": [configured],
-        "environment": {"ACL2_CUSTOMIZATION": "NONE", "ACL2_SYSTEM_BOOKS": None},
+        "environment": {"ACL2_CUSTOMIZATION": "NONE", "ACL2_BOOK_HASH_ALISTP": "NIL", "ACL2_SYSTEM_BOOKS": None},
         "platform": platform.platform(),
         "python": platform.python_version(),
         "requested_books": args.books,
+        "affected_by": list(args.affected_by),
+        "requested_before_filter": requested_before_filter,
+        "acl2_slots": acl2_slots.slot_count(),
         "timeout_seconds": args.timeout_seconds,
+        "jobs": args.jobs,
+        "jobs_effective": effective_jobs,
         "runner_sha256": digest(Path(__file__).resolve()),
+        "reader_sha256": digest(READER),
         "status": "failed",
     }
 
@@ -370,6 +599,7 @@ def main() -> int:
 
     try:
         source_digests = collect_book_sources(args.books)
+        schedule = dependency_graph(args.books)
     except ValueError as error:
         manifest["acl2_executable"] = str(acl2)
         manifest["acl2_executable_sha256"] = digest(acl2)
@@ -394,8 +624,14 @@ def main() -> int:
 
     manifest["acl2_executable"] = str(acl2)
     manifest["acl2_executable_sha256"] = digest(acl2)
+    slot_wait_seconds: dict[str, float] = {}
     try:
-        version_result = run_acl2(acl2, acl2_version_driver(), args.timeout_seconds)
+        # Every ACL2 this runner starts, the version probe included, holds one
+        # machine-wide slot for its lifetime.  Waiting here is correct: an
+        # over-subscribed box swaps instead of certifying.
+        with acl2_slots.slot("certify version probe") as held:
+            slot_wait_seconds["version-probe"] = held.seconds
+            version_result = run_acl2(acl2, acl2_version_driver(), args.timeout_seconds)
     except subprocess.TimeoutExpired as error:
         (run_dir / "version.log").write_bytes(timeout_output(error))
         manifest["failure"] = f"ACL2 version probe timed out after {args.timeout_seconds} seconds."
@@ -415,30 +651,56 @@ def main() -> int:
     manifest["host_lisp_banner"] = host_lisp_lines[0] if host_lisp_lines else None
     manifest["acl2_version_probe_exit_code"] = version_result.returncode
 
-    log_parts: list[str] = []
-    markers: list[str] = []
-    exit_codes: dict[str, int | str] = {}
     driver_digests: dict[str, str] = {}
+    drivers: dict[str, str] = {}
     nonce = secrets.token_hex(16)
     for book in args.books:
         driver = make_driver(book, nonce)
-        artifact_name = book.replace("/", "--")
-        driver_path = run_dir / (artifact_name + ".certify.lsp")
+        driver_path = run_dir / (book.replace("/", "--") + ".certify.lsp")
         driver_path.write_text(driver, encoding="utf-8")
         driver_digests[book] = digest(driver_path)
-        try:
-            result = run_acl2(acl2, driver, args.timeout_seconds)
-            output = result.stdout.decode("utf-8", errors="replace")
-            exit_codes[book] = result.returncode
-        except subprocess.TimeoutExpired as error:
-            output_bytes = timeout_output(error)
-            output = output_bytes.decode("utf-8", errors="replace")
-            exit_codes[book] = f"timed out after {args.timeout_seconds} seconds"
-        (run_dir / (artifact_name + ".certify.log")).write_text(output, encoding="utf-8")
-        log_parts.append(output)
-        markers.extend(success_markers(output, nonce))
+        drivers[book] = driver
 
-    combined_log = "\n".join(log_parts)
+    outputs: dict[str, str] = {}
+    exit_codes: dict[str, int | str] = {}
+    book_wall_seconds: dict[str, float] = {}
+    start_order: list[str] = []
+    record_lock = threading.Lock()
+
+    def certify(book: str) -> None:
+        with acl2_slots.slot(f"certify {book}") as held:
+            with record_lock:
+                # Started means started, not queued: a book waiting for a slot
+                # is not occupying one, and the schedule tests read this order.
+                start_order.append(book)
+                slot_wait_seconds[book] = held.seconds
+            started = time.monotonic()
+            try:
+                result = run_acl2(acl2, drivers[book], args.timeout_seconds)
+                output = result.stdout.decode("utf-8", errors="replace")
+                code: int | str = result.returncode
+            except subprocess.TimeoutExpired as error:
+                output = timeout_output(error).decode("utf-8", errors="replace")
+                code = f"timed out after {args.timeout_seconds} seconds"
+            elapsed = time.monotonic() - started
+        (run_dir / (book.replace("/", "--") + ".certify.log")).write_text(output, encoding="utf-8")
+        with record_lock:
+            outputs[book] = output
+            exit_codes[book] = code
+            book_wall_seconds[book] = round(elapsed, 3)
+
+    certify_started = time.monotonic()
+    run_schedule(args.books, schedule, effective_jobs, certify)
+    certify_wall_seconds = round(time.monotonic() - certify_started, 3)
+
+    # Evidence is assembled in requested order, never completion order, so the
+    # combined log, the marker sequence and the exit codes do not depend on how
+    # the scheduler interleaved the runs.
+    markers: list[str] = []
+    for book in args.books:
+        markers.extend(success_markers(outputs[book], nonce))
+    exit_codes = {book: exit_codes[book] for book in args.books}
+    combined_log = "\n".join(outputs[book] for book in args.books)
     (run_dir / "certify.log").write_text(combined_log, encoding="utf-8")
     expected_markers = [success_token(book, nonce) for book in args.books]
     marker_ok = markers == expected_markers
@@ -454,10 +716,16 @@ def main() -> int:
     except ValueError as error:
         source_digests_after = {"closure-error": str(error)}
     sources_unchanged = source_digests_after == manifest["source_digests_sha256"]
-    runner_unchanged = digest(Path(__file__).resolve()) == manifest["runner_sha256"]
+    runner_unchanged = (
+        digest(Path(__file__).resolve()) == manifest["runner_sha256"]
+        and digest(READER) == manifest["reader_sha256"]
+    )
     manifest.update(
         {
             "acl2_exit_codes": exit_codes,
+            "book_wall_seconds": book_wall_seconds,
+            "certify_wall_seconds": certify_wall_seconds,
+            "start_order": start_order,
             "expected_success_markers": expected_markers,
             "observed_success_markers": markers,
             "failure_markers": found_failures,
@@ -465,6 +733,8 @@ def main() -> int:
             "certificate_digests_sha256": certificates,
             "source_digests_sha256_after": source_digests_after,
             "runner_unchanged": runner_unchanged,
+            "slot_wait_seconds": {key: round(value, 3)
+                                  for key, value in slot_wait_seconds.items()},
         }
     )
     success = (
@@ -479,6 +749,30 @@ def main() -> int:
     )
     if success:
         manifest["status"] = "passed"
+        if not args.no_publish:
+            # Publish against *this* run's manifest, which is the only thing
+            # that ties a certificate to the source it was produced from.  The
+            # cache keys on the whole include closure, so a pair is offered
+            # back only to a worktree where every dependency also matches.  A
+            # cache failure is recorded, never fatal: the certification itself
+            # already succeeded.
+            try:
+                published = certs.publish(
+                    ROOT, certs.cache_directory(),
+                    [{**manifest, "evidence": str(run_dir)}], args.books,
+                    # These certificates name their sub-books by absolute path
+                    # inside *this* worktree, so that is where they may be
+                    # installed; another live worktree must not take them.
+                    origin=str(ROOT.resolve()))
+                manifest["cert_cache"] = {
+                    "directory": published.cache,
+                    "published": published.published,
+                    "already_cached": published.already,
+                    "not_published": sorted(published.uncached + published.unverified
+                                            + published.unreadable),
+                }
+            except OSError as error:
+                manifest["cert_cache"] = {"error": str(error)}
     else:
         manifest["failure"] = "ACL2 did not produce complete clean certification evidence. See certify.log."
     write_json(run_dir / "manifest.json", manifest)

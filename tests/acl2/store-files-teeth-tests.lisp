@@ -19,7 +19,6 @@
 
 (in-package "ACL2")
 (include-book "../../books/store-files-invariants")
-(include-book "std/testing/must-fail" :dir :system)
 
 ; -----------------------------------------------------------------------------
 ; A reachable, non-degenerate witness: the whole publication sequence, driven
@@ -93,10 +92,7 @@
 (assert-event (equal (fn-sf-phase *sft-completed*) :completed))
 (assert-event (equal (cons 0 0) (fn-sf-completion *sft-completed*)))
 
-(local
- (must-fail
-  (defthm sft-teeth-emit-success-without-mismatch
-    (equal (fn-sf-emit-success *sft-completed* 0 0) *sft-completed*))))
+(assert-event (with-guard-checking :none (not (equal (fn-sf-emit-success *sft-completed* 0 0) *sft-completed*))))
 
 ; -----------------------------------------------------------------------------
 ; Teeth for `fn-sf-completing-admits-only-matching-completion'
@@ -110,19 +106,13 @@
 ; The phase hypothesis dropped.  In :reserved the staging transition is live,
 ; so the second conjunct is false there: it is the :completing phase, not the
 ; shape of the call, that closes the mutation gate.
-(local
- (must-fail
-  (defthm sft-teeth-completing-gate-without-the-completing-phase
-    (equal (fn-sf-prepare-record *sft-reserved* *sft-record* *sft-groups* 10)
+(assert-event (with-guard-checking :none (not (equal (fn-sf-prepare-record *sft-reserved* *sft-record* *sft-groups* 10)
            *sft-reserved*))))
 
 ; The inner mismatch hypothesis of the last conjunct dropped.  For the pair
 ; the core actually produced, `fn-sf-core-completion' is exactly the step out
 ; of :completing, so it is not a no-op.
-(local
- (must-fail
-  (defthm sft-teeth-core-completion-without-pair-mismatch
-    (equal (fn-sf-core-completion *sft-published* 0 0) *sft-published*))))
+(assert-event (with-guard-checking :none (not (equal (fn-sf-core-completion *sft-published* 0 0) *sft-published*))))
 
 ; -----------------------------------------------------------------------------
 ; Teeth for `fn-sf-stable-records-prefix-of-crash'
@@ -143,10 +133,7 @@
 (assert-event
  (not (fn-sf-prefixp (fn-sf-records *sft-forged*) (fn-sf-records *sft-forged*))))
 
-(local
- (must-fail
-  (defthm sft-teeth-crash-prefix-without-statep
-    (fn-sf-prefixp (fn-sf-records *sft-forged*)
+(assert-event (with-guard-checking :none (not (fn-sf-prefixp (fn-sf-records *sft-forged*)
                    (fn-sf-records (fn-sf-crash *sft-forged* :old :absent))))))
 
 ; H2 has no teeth, and none is forged.  `fn-sf-crash' returns its argument
@@ -191,10 +178,7 @@
                                                  (fn-sf-records *sft-record-durable*))))
         1))
 
-(local
- (must-fail
-  (defthm sft-teeth-crash-realizes-without-admissible-image
-    (equal (fn-sf-frontier
+(assert-event (with-guard-checking :none (not (equal (fn-sf-frontier
             (fn-sf-crash *sft-record-durable*
                          (fn-sf-image-frontier-choice *sft-record-durable* 2)
                          (fn-sf-image-record-choice
@@ -222,10 +206,7 @@
 (assert-event (equal (fn-sf-frontier-candidate *sft-frontier-staged*) 1))
 (assert-event (equal (fn-sf-frontier (fn-sf-crash *sft-frontier-staged* :new :absent)) 0))
 
-(local
- (must-fail
-  (defthm sft-teeth-new-frontier-before-the-replace-window
-    (equal (fn-sf-frontier (fn-sf-crash *sft-frontier-staged* :new :absent))
+(assert-event (with-guard-checking :none (not (equal (fn-sf-frontier (fn-sf-crash *sft-frontier-staged* :new :absent))
            (fn-sf-frontier-candidate *sft-frontier-staged*)))))
 
 ; -----------------------------------------------------------------------------
@@ -247,10 +228,7 @@
 
 ; The phase hypothesis dropped.  One transition earlier, in :record-staged, no
 ; os.link can have been issued, so :present does not publish the candidate.
-(local
- (must-fail
-  (defthm sft-teeth-present-record-before-the-link-window
-    (equal (fn-sf-records (fn-sf-crash *sft-staged* :old :present))
+(assert-event (with-guard-checking :none (not (equal (fn-sf-records (fn-sf-crash *sft-staged* :old :present))
            (append (fn-sf-records *sft-staged*)
                    (list (fn-sf-record-candidate *sft-staged*)))))))
 
@@ -265,19 +243,13 @@
 ; H1 dropped: the frontier window is open in :frontier-data-durable, and the
 ; image does change there.
 (assert-event (fn-sf-frontier-new-visiblep *sft-frontier-durable*))
-(local
- (must-fail
-  (defthm sft-teeth-image-kept-with-the-frontier-window-open
-    (equal (fn-sf-frontier (fn-sf-crash *sft-frontier-durable* :new :absent))
+(assert-event (with-guard-checking :none (not (equal (fn-sf-frontier (fn-sf-crash *sft-frontier-durable* :new :absent))
            (fn-sf-frontier *sft-frontier-durable*)))))
 
 ; H2 dropped: the link window is open in :record-data-durable, and the record
 ; list does change there.
 (assert-event (fn-sf-record-present-visiblep *sft-record-durable*))
-(local
- (must-fail
-  (defthm sft-teeth-image-kept-with-the-link-window-open
-    (equal (fn-sf-records (fn-sf-crash *sft-record-durable* :old :present))
+(assert-event (with-guard-checking :none (not (equal (fn-sf-records (fn-sf-crash *sft-record-durable* :old :present))
            (fn-sf-records *sft-record-durable*)))))
 
 ; -----------------------------------------------------------------------------
@@ -299,10 +271,7 @@
 ; open and :old still selects the old frontier.
 (assert-event (equal (fn-sf-frontier-dir-result *sft-frontier-durable* :ok)
                      *sft-frontier-durable*))
-(local
- (must-fail
-  (defthm sft-teeth-frontier-barrier-without-the-barrier
-    (equal (fn-sf-frontier
+(assert-event (with-guard-checking :none (not (equal (fn-sf-frontier
             (fn-sf-crash (fn-sf-frontier-dir-result *sft-frontier-durable* :ok)
                          :old :absent))
            (fn-sf-frontier-candidate *sft-frontier-durable*)))))
@@ -326,10 +295,7 @@
 ; the empty history.
 (assert-event (equal (fn-sf-record-dir-result *sft-record-durable* :ok)
                      *sft-record-durable*))
-(local
- (must-fail
-  (defthm sft-teeth-record-barrier-without-the-barrier
-    (equal (fn-sf-records
+(assert-event (with-guard-checking :none (not (equal (fn-sf-records
             (fn-sf-crash (fn-sf-record-dir-result *sft-record-durable* :ok)
                          :old :absent))
            (append (fn-sf-records *sft-record-durable*)

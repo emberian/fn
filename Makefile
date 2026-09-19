@@ -1,11 +1,13 @@
 PYTHON ?= python3
+# Maximum concurrent ACL2 processes. Books still certify in local
+# include-book dependency order; 1 reproduces the sequential run.
+FN_CERTIFY_JOBS ?= 1
 ACL2_BOOKS ?= books/assumptions \
 	tests/acl2/assumptions-tests \
+	books/acceptance-alloc \
 	books/acceptance \
 	books/acceptance-invariants \
 	tests/acl2/acceptance-tests \
-	tests/acl2/acceptance-guards-tests \
-	tests/acl2/acceptance-teeth-tests \
 	books/wire \
 	books/wire-invariants \
 	tests/acl2/wire-tests \
@@ -36,6 +38,9 @@ ACL2_BOOKS ?= books/assumptions \
 	books/article-fields \
 	tests/acl2/article-fields-tests \
 	books/store-config \
+	books/frame-octets \
+	books/frame-fields \
+	books/frame-journal \
 	books/frame \
 	books/frame-invariants \
 	tests/acl2/frame-tests \
@@ -45,22 +50,22 @@ ACL2_BOOKS ?= books/assumptions \
 	books/retention \
 	books/retention-invariants \
 	tests/acl2/retention-tests \
-	tests/acl2/retention-teeth-tests \
 	books/node \
 	books/node-invariants \
 	tests/acl2/node-tests \
-	tests/acl2/node-teeth-tests \
 	books/node-traces \
-	tests/acl2/node-traces-tests \
 	books/records \
 	books/records-invariants \
 	books/records-canonicality \
 	tests/acl2/records-tests \
 	tests/acl2/records-teeth-tests \
+	books/config \
+	books/config-invariants \
 	books/replay \
 	books/replay-invariants \
 	tests/acl2/replay-tests \
-	tests/acl2/replay-guards-tests \
+	books/config-records \
+	tests/acl2/config-tests \
 	books/store-files \
 	books/store-files-invariants \
 	tests/acl2/store-files-tests \
@@ -75,12 +80,14 @@ ACL2_BOOKS ?= books/assumptions \
 	tests/acl2/store-node-traces-tests \
 	books/store-node-resolution \
 	tests/acl2/store-node-resolution-tests \
-	books/store-node-resolution-traces \
-	tests/acl2/store-node-resolution-traces-tests \
 	books/store-observed \
 	tests/acl2/store-observed-tests \
 	books/store-observed-traces \
 	tests/acl2/store-observed-traces-tests \
+	books/byte-store \
+	books/byte-store-invariants \
+	books/byte-store-programs \
+	tests/acl2/byte-store-tests \
 	tests/acl2/store-node-guards-tests \
 	tests/acl2/store-node-teeth-tests \
 	books/checkpoint \
@@ -102,6 +109,14 @@ ACL2_BOOKS ?= books/assumptions \
 	books/clock \
 	books/clock-invariants \
 	tests/acl2/clock-tests \
+	books/anchor \
+	books/anchor-record \
+	books/anchor-invariants \
+	tests/acl2/anchor-tests \
+	tests/acl2/anchor-teeth-tests \
+	books/membership-epochs \
+	books/membership-epochs-invariants \
+	tests/acl2/membership-epochs-tests \
 	books/bp-workflow \
 	books/bp-workflow-invariants \
 	books/bp-workflow-transport-invariants \
@@ -139,38 +154,76 @@ ACL2_BOOKS ?= books/assumptions \
 	books/exchange \
 	tests/acl2/exchange-tests \
 	books/exchange-invariants \
-	tests/acl2/exchange-invariants-tests \
-	tests/acl2/exchange-guards-tests \
-	tests/acl2/exchange-teeth-tests \
 	books/transfer \
+	books/transfer-reservation \
+	books/transfer-union \
 	books/transfer-invariants \
 	books/transfer-assembly-invariants \
 	books/transfer-work \
 	books/transfer-public-work \
 	books/transfer-public-bound \
 	tests/acl2/transfer-tests \
+	books/transfer-journal \
+	books/transfer-journal-invariants \
+	tests/acl2/transfer-journal-tests \
+	books/container \
+	books/container-invariants \
+	tests/acl2/container-tests \
+	books/nntp-syntax \
+	books/nntp-session \
+	books/nntp-projection \
+	books/nntp-responses \
 	books/nntp \
 	books/nntp-invariants \
 	books/nntp-effects \
 	tests/acl2/nntp-tests \
 	tests/acl2/nntp-teeth-tests \
+	books/served \
+	tests/acl2/served-tests \
 	books/owner \
 	books/owner-invariants \
 	tests/acl2/owner-tests \
+	books/ideal \
+	books/nntp-index \
+	tests/acl2/nntp-index-tests \
 	books/bp-release \
 	books/bp-release-invariants \
 	tests/acl2/bp-release-tests \
 	books/relay \
 	books/relay-invariants \
 	books/relay-crash-invariants \
-	tests/acl2/relay-tests
+	tests/acl2/relay-tests \
+	books/crypto-seam \
+	tests/acl2/crypto-seam-tests \
+	books/statement \
+	books/statement-invariants \
+	tests/acl2/statement-tests \
+	books/principal \
+	books/principal-invariants \
+	tests/acl2/principal-tests \
+	books/lace \
+	books/lace-invariants \
+	tests/acl2/lace-tests \
+	books/policy \
+	books/policy-invariants \
+	tests/acl2/policy-tests
 
-.PHONY: check certify model-test tooling-test test
+.PHONY: check certify certs-install certs-publish model-test tooling-test test
 check:
 	$(PYTHON) tools/check_scaffold.py
 
 certify:
-	$(PYTHON) tools/certify_books.py $(ACL2_BOOKS)
+	$(PYTHON) tools/certify_books.py --jobs $(FN_CERTIFY_JOBS) $(ACL2_BOOKS)
+
+# Content-hashed certificates are valid in any worktree whose book content
+# matches, so a lane installs what the cache already has instead of certifying
+# it again.  `certify` publishes automatically; this target is for a tree
+# certified some other way.  FN_CERT_REMOTE=hbox also mirrors to that box.
+certs-install:
+	$(PYTHON) tools/certs.py install
+
+certs-publish:
+	$(PYTHON) tools/certs.py publish $(if $(FN_CERT_REMOTE),--remote $(FN_CERT_REMOTE))
 
 model-test: certify
 	$(PYTHON) tools/run_simulator.py

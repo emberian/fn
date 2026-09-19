@@ -15,11 +15,26 @@
 (in-package "ACL2")
 (include-book "cbor")
 
+; The group table is encoded with the CBOR primitives, opened locally here.
+(local (in-theory (enable fn-cbor-codec-vocabulary)))
+
 (defconst *fn-store-groups* '("fn.letters" "fn.test"))
 
 ; "fn-store-groups-1"
 (defconst *fn-store-group-table-id*
   '(102 110 45 115 116 111 114 101 45 103 114 111 117 112 115 45 49))
+
+; The durable store's configuration format.  A store records this string and
+; a host refuses to open one whose format it does not recognise, so a store
+; written under an earlier set of decisions is rejected by its configuration
+; rather than read with today's meaning.  Format 5 is the first written under
+; the v1 content identity profile (`books/identity.lisp`); a store written
+; under the pre-v1 `"sha256:"`/`"archive:"` derivation is format 4 and is
+; refused at open.
+; "fn-store-experiment-5"
+(defconst *fn-store-format-id*
+  '(102 110 45 115 116 111 114 101 45 101 120 112 101 114 105 109
+    101 110 116 45 53))
 
 (defun fn-store-group-name (code groups)
   ; The group at a zero-based code, or nil.
@@ -139,3 +154,17 @@
            (equal (fn-store-groups-from-codes
                    (fn-store-codes-from-groups names))
                   names)))
+
+; -----------------------------------------------------------------------------
+; Export theory.
+;
+; The keystones are the two inversions between a group name and its code.
+; The membership and type facts are proof vocabulary.
+
+(deftheory fn-store-config-vocabulary
+  '(    fn-store-group-code-in-natp fn-store-group-name-of-code-in
+    fn-store-group-name-is-a-member fn-store-codes-from-groups-member))
+
+(in-theory (disable fn-store-group-code-in-natp fn-store-group-name-of-code-in
+             fn-store-group-name-is-a-member
+             fn-store-codes-from-groups-member))
