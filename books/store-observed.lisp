@@ -6,11 +6,22 @@
 ; enters the existing :replaying file state with no inherited acknowledgements,
 ; and calls the actual fn-sn-recover transition.  Recovered operation remains
 ; gated on five subsequent host fsync observations through fn-sn-io.
+;
+; This is the root of every process: host/store-node-host.lisp:27 calls
+; fn-sn-open-observed on each start.  The theorems at the end of this book
+; therefore (1) establish fn-snt-relation at that root, so every trace theorem
+; in store-node-traces.lisp and store-node-resolution-traces.lisp applies to
+; the state the host actually resumes from, and (2) carry acknowledged-record
+; retention across the reopen boundary with A-DURABILITY as the hypothesis
+; fn-sf-crash-imagep rather than as the crash constructor.  Acknowledgement
+; history is not reconstructed from the image: the adapter persists no
+; acknowledgement anchor, so a reconstruction would have to guess.  The
+; retention claim is stated over records, which the adapter does persist.
 
 (in-package "ACL2")
-; The live I/O preservation theorem lets the five observed barriers compose
-; through the actual node/file transition without assuming output validity.
-(include-book "store-node-invariants")
+; The resolution trace book brings the live-history relation, the resolution
+; operations the host calls, and the record-prefix theorems for traces.
+(include-book "store-node-resolution-traces")
 
 ; The host-facing tagged boundary.  It exposes a recovering node/file state or
 ; a refusal code; callers never inspect an intermediate replay result.
@@ -151,7 +162,11 @@
     (fn-sn-observed-rebarrier
      (fn-sn-io st :recovery-barrier :ok) (1- count)))))
 
-(verify-guards fn-sn-observed-rebarrier)
+; The mbe conjecture is zp versus not-posp; keep the composed-machine
+; definitions out of it (the trace books are in scope here).
+(verify-guards fn-sn-observed-rebarrier
+  :hints (("Goal" :in-theory (union-theories '(zp posp)
+                                             (theory 'minimal-theory)))))
 
 (defthm fn-sn-statep-implies-files-statep
   (implies (fn-sn-statep st)
@@ -393,3 +408,239 @@
                                fn-sn-open-observed fn-sn-open-state
                                fn-sn-open-okp fn-sn-observed-rebarrier
                                fn-sf-phase fn-sn-files))))
+
+; -----------------------------------------------------------------------------
+; The process root establishes the live-history relation (D6).
+
+(defthm fn-sn-open-observed-success-configuration
+  (implies (fn-sn-open-okp (fn-sn-open-observed groups capacity frontier records))
+           (and (equal (fn-sn-groups
+                        (fn-sn-open-state
+                         (fn-sn-open-observed groups capacity frontier records)))
+                       groups)
+                (equal (fn-sn-capacity
+                        (fn-sn-open-state
+                         (fn-sn-open-observed groups capacity frontier records)))
+                       capacity)))
+  :hints (("Goal"
+           :in-theory (e/d (fn-sn-open-observed fn-sn-open-okp fn-sn-open-state
+                                                 fn-sn-open-ok fn-sn-observed-seed
+                                                 fn-sn-recover fn-sn-update
+                                                 fn-sn-make fn-sn-groups
+                                                 fn-sn-capacity)
+                            (fn-sn-statep fn-sf-statep fn-sf-history-recoverablep
+                             fn-sf-replay-node fn-sf-recover)))))
+
+; The opened kernel state reached :recovering, which fn-sf-recover grants only
+; to a replayable history at its own frontier.
+(defthm fn-sn-open-observed-success-implies-recoverable-history
+  (implies (fn-sn-open-okp (fn-sn-open-observed groups capacity frontier records))
+           (fn-sf-history-recoverablep groups capacity records frontier))
+  :hints (("Goal"
+           :in-theory (e/d (fn-sn-open-observed fn-sn-open-okp fn-sn-open-state
+                                                 fn-sn-open-ok fn-sn-observed-seed
+                                                 fn-sn-recover fn-sf-recover
+                                                 fn-sn-update fn-sn-make
+                                                 fn-sn-files fn-sf-make fn-sf-phase)
+                            (fn-sn-statep fn-sf-statep fn-sf-history-recoverablep
+                             fn-sf-replay-node)))))
+
+; Every process starts here.  A successful open satisfies the same relation
+; that fn-sn-initial satisfies, so fn-snrt-mixed-trace-preserves-live-history-relation
+; and its consequences hold for the host's actual starting state.
+(defthm fn-sn-open-observed-success-has-live-history-relation
+  (implies (fn-sn-open-okp (fn-sn-open-observed groups capacity frontier records))
+           (fn-snt-relation
+            (fn-sn-open-state
+             (fn-sn-open-observed groups capacity frontier records))))
+  :hints (("Goal"
+           :use (fn-sn-open-observed-success-is-state
+                 fn-sn-open-observed-success-remains-recovering
+                 fn-sn-open-observed-success-exact-history
+                 fn-sn-open-observed-success-configuration
+                 fn-sn-open-observed-success-implies-recoverable-history)
+           :in-theory (e/d (fn-snt-relation fn-snt-idle-phasep)
+                            (fn-sn-open-observed fn-sn-open-okp fn-sn-open-state
+                             fn-sn-statep fn-sf-statep fn-sf-history-recoverablep
+                             fn-sf-replay-node fn-snt-pending-linkp
+                             fn-sn-completion-enabledp fn-sn-files fn-sn-node
+                             fn-sn-groups fn-sn-capacity fn-sf-records
+                             fn-sf-frontier fn-sf-phase fn-sf-barriers
+                             fn-sf-record-phasep
+                             fn-sn-open-observed-success-is-state
+                             fn-sn-open-observed-success-remains-recovering
+                             fn-sn-open-observed-success-exact-history
+                             fn-sn-open-observed-success-configuration
+                             fn-sn-open-observed-success-implies-recoverable-history)))))
+
+; -----------------------------------------------------------------------------
+; Reopen succeeds on every structurally valid replayable image, and retains
+; every acknowledged record under A-DURABILITY as a hypothesis (D5).
+
+(defthm fn-sn-recover-of-recoverable-replaying-is-recovering
+  (implies (and (fn-sn-statep st)
+                (equal (fn-sf-phase (fn-sn-files st)) :replaying)
+                (fn-sf-history-recoverablep (fn-sn-groups st) (fn-sn-capacity st)
+                                            (fn-sf-records (fn-sn-files st))
+                                            (fn-sf-frontier (fn-sn-files st))))
+           (equal (fn-sf-phase (fn-sn-files (fn-sn-recover st))) :recovering))
+  :hints (("Goal"
+           :use ((:instance fn-sn-statep-implies-files-statep (st st)))
+           :in-theory (e/d (fn-sn-recover fn-sf-recover fn-sn-update fn-sn-make
+                                           fn-sf-make)
+                            (fn-sn-statep fn-sf-statep fn-sf-history-recoverablep
+                             fn-sf-replay-node)))))
+
+(defthm fn-sn-open-observed-succeeds-on-recoverable-image
+  (implies (and (fn-sn-observed-configurationp groups capacity)
+                (fn-sn-observed-historyp frontier records)
+                (fn-sf-history-recoverablep groups capacity records frontier))
+           (fn-sn-open-okp (fn-sn-open-observed groups capacity frontier records)))
+  :hints (("Goal"
+           :use (fn-sn-observed-seed-is-state
+                 (:instance fn-sn-recover-preserves-state
+                            (s (fn-sn-observed-seed groups capacity frontier records)))
+                 (:instance fn-sn-recover-of-recoverable-replaying-is-recovering
+                            (st (fn-sn-observed-seed groups capacity frontier records))))
+           :in-theory (e/d (fn-sn-open-observed fn-sn-open-okp fn-sn-open-state
+                                                 fn-sn-open-ok
+                                                 fn-sn-observed-configurationp
+                                                 fn-sn-observed-historyp
+                                                 fn-sn-observed-seed fn-sn-make
+                                                 fn-sn-files fn-sn-groups
+                                                 fn-sn-capacity fn-sf-make
+                                                 fn-sf-phase fn-sf-records
+                                                 fn-sf-frontier)
+                            (fn-sn-statep fn-sf-statep fn-sf-history-recoverablep
+                             fn-sf-replay-node fn-sn-recover
+                             fn-sn-observed-seed-is-state
+                             fn-sn-recover-preserves-state
+                             fn-sn-recover-of-recoverable-replaying-is-recovering)))))
+
+; A-DURABILITY as hypothesis.  For every image the platform may leave behind
+; from a related live state (fn-sf-crash-imagep, store-files.lisp), the host's
+; reopen entry succeeds and every pair acknowledged before the crash names a
+; record of the reopened state.  The acknowledgement list itself is nil after
+; reopen (fn-sn-open-observed-success-exact-history); the guarantee is carried
+; by the records the adapter persists, not by a reconstructed ghost.
+(defthm fn-sn-acknowledged-record-survives-observed-reopen
+  (implies (and (fn-snt-relation s)
+                (fn-sf-crash-imagep (fn-sn-files s) frontier records)
+                (member-equal pair (fn-sf-successes (fn-sn-files s))))
+           (and (fn-sn-open-okp
+                 (fn-sn-open-observed (fn-sn-groups s) (fn-sn-capacity s)
+                                      frontier records))
+                (fn-sf-record-has-pairp
+                 pair
+                 (fn-sf-records
+                  (fn-sn-files
+                   (fn-sn-open-state
+                    (fn-sn-open-observed (fn-sn-groups s) (fn-sn-capacity s)
+                                         frontier records)))))))
+  :hints (("Goal"
+           :use (fn-snt-relation-implies-structural-state
+                 fn-snt-admissible-crash-image-is-recoverable
+                 (:instance fn-sf-admissible-image-facts (s (fn-sn-files s)))
+                 (:instance fn-sn-open-observed-succeeds-on-recoverable-image
+                            (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s)))
+                 (:instance fn-sn-open-observed-success-exact-history
+                            (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))))
+           :in-theory (e/d (fn-sn-statep fn-sn-observed-configurationp
+                                         fn-sn-observed-historyp)
+                            (fn-snt-relation fn-sf-statep fn-node-statep
+                             fn-sf-crash-imagep fn-sn-open-observed fn-sn-open-okp
+                             fn-sn-open-state fn-sf-history-recoverablep
+                             fn-sf-replay-node fn-sf-record-has-pairp
+                             fn-sf-record-listp fn-sn-files fn-sn-groups
+                             fn-sn-capacity fn-sf-records fn-sf-successes
+                             fn-snt-admissible-crash-image-is-recoverable
+                             fn-sf-admissible-image-facts
+                             fn-sn-open-observed-succeeds-on-recoverable-image
+                             fn-sn-open-observed-success-exact-history)))))
+
+; -----------------------------------------------------------------------------
+; The trace theorems re-rooted at the process entry.
+
+(defthm fn-snrt-observed-open-mixed-trace-preserves-live-history-relation
+  (implies (fn-sn-open-okp (fn-sn-open-observed groups capacity frontier records))
+           (fn-snt-relation
+            (fn-snrt-run
+             (fn-sn-open-state
+              (fn-sn-open-observed groups capacity frontier records))
+             events)))
+  :hints (("Goal"
+           :use (fn-sn-open-observed-success-has-live-history-relation
+                 (:instance fn-snrt-mixed-trace-preserves-live-history-relation
+                            (s (fn-sn-open-state
+                                (fn-sn-open-observed groups capacity frontier records)))))
+           :in-theory (disable fn-snt-relation fn-snrt-run fn-sn-open-observed
+                               fn-sn-open-okp fn-sn-open-state))))
+
+; The ready or recovered node of any process that started from an observed
+; image and ran any finite mixed trace is exact replay of its own surviving
+; history and frontier.
+(defthm fn-snrt-observed-open-ready-node-is-exact-replay
+  (let ((final (fn-snrt-run
+                (fn-sn-open-state
+                 (fn-sn-open-observed groups capacity frontier records))
+                events)))
+    (implies (and (fn-sn-open-okp
+                   (fn-sn-open-observed groups capacity frontier records))
+                  (member-equal (fn-sf-phase (fn-sn-files final))
+                                '(:ready :recovering :fenced-recovery)))
+             (equal (fn-sn-node final)
+                    (fn-sf-replay-node (fn-sn-groups final) (fn-sn-capacity final)
+                                       (fn-sf-records (fn-sn-files final))
+                                       (fn-sf-frontier (fn-sn-files final))))))
+  :hints (("Goal"
+           :use (fn-sn-open-observed-success-has-live-history-relation
+                 (:instance fn-snrt-mixed-trace-ready-node-is-exact-replay
+                            (s (fn-sn-open-state
+                                (fn-sn-open-observed groups capacity frontier records)))))
+           :in-theory (disable fn-snt-relation fn-snrt-run fn-sn-open-observed
+                               fn-sn-open-okp fn-sn-open-state fn-sf-replay-node))))
+
+; Acknowledged before the crash, present after reopen, present after any
+; further mixed trace of the reopened process.
+(defthm fn-snrt-acknowledged-record-retained-across-observed-reopen
+  (let ((final (fn-snrt-run
+                (fn-sn-open-state
+                 (fn-sn-open-observed (fn-sn-groups s) (fn-sn-capacity s)
+                                      frontier records))
+                events)))
+    (implies (and (fn-snt-relation s)
+                  (fn-sf-crash-imagep (fn-sn-files s) frontier records)
+                  (member-equal pair (fn-sf-successes (fn-sn-files s))))
+             (fn-sf-record-has-pairp pair (fn-sf-records (fn-sn-files final)))))
+  :hints (("Goal"
+           :use (fn-sn-acknowledged-record-survives-observed-reopen
+                 (:instance fn-sn-open-observed-success-has-live-history-relation
+                            (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s)))
+                 (:instance fn-snrt-mixed-trace-records-prefix
+                            (s (fn-sn-open-state
+                                (fn-sn-open-observed (fn-sn-groups s) (fn-sn-capacity s)
+                                                     frontier records))))
+                 (:instance fn-sf-record-pair-preserved-by-prefix
+                            (records
+                             (fn-sf-records
+                              (fn-sn-files
+                               (fn-sn-open-state
+                                (fn-sn-open-observed (fn-sn-groups s) (fn-sn-capacity s)
+                                                     frontier records)))))
+                            (more-records
+                             (fn-sf-records
+                              (fn-sn-files
+                               (fn-snrt-run
+                                (fn-sn-open-state
+                                 (fn-sn-open-observed (fn-sn-groups s) (fn-sn-capacity s)
+                                                      frontier records))
+                                events))))))
+           :in-theory (disable fn-snt-relation fn-snrt-run fn-sn-open-observed
+                               fn-sn-open-okp fn-sn-open-state fn-sf-crash-imagep
+                               fn-sf-record-has-pairp fn-sf-prefixp fn-sn-files
+                               fn-sf-records fn-sf-successes fn-sn-groups
+                               fn-sn-capacity
+                               fn-sn-acknowledged-record-survives-observed-reopen
+                               fn-sn-open-observed-success-has-live-history-relation
+                               fn-snrt-mixed-trace-records-prefix
+                               fn-sf-record-pair-preserved-by-prefix))))

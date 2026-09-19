@@ -161,8 +161,7 @@
            :use ((:instance fn-sf-core-completion-preserves-state
                     (s (fn-sn-files s))
                     (sequence (fn-record-sequence (fn-sn-completion-record s)))
-                    (txid (fn-record-txid (fn-sn-completion-record s)))
-                    (result :matching)))
+                    (txid (fn-record-txid (fn-sn-completion-record s)))))
            :in-theory (e/d (fn-sf-core-completion fn-sf-emit-success)
                             (fn-sn-record-bindsp fn-sn-completion-record)))))
 
@@ -199,6 +198,11 @@
   :hints (("Goal" :use ((:instance fn-replay-advance-reconstructs-recorded-txid
                                    (recorded-txid (fn-record-txid record)))))))
 
+; unreachable-in-composition: fn-sn-fence-node and fn-sn-resolve-node have
+; no host caller (see store-node.lisp).  The two correspondence theorems below
+; are retained as documentation of the in-process resolution primitives; the
+; host-relevant statement of the same fact is fn-snt-pending-linkp in
+; store-node-traces.lisp, which relates the pending node to replay.
 (defthm fn-sn-indeterminate-committed-resolution-equals-durable
   (implies (fn-node-pending-matchesp node (fn-record-txid record)
                                          (fn-record-generation record))
@@ -244,6 +248,20 @@
 (defthm fn-sn-recovery-cannot-acknowledge
   (equal (fn-sf-successes (fn-sn-files (fn-sn-recover s)))
          (fn-sf-successes (fn-sn-files s))))
+
+; The composed crash is exactly the kernel crash on the file component with
+; the configuration retained and the live node discarded.
+(defthm fn-sn-crash-files-are-kernel-crash
+  (implies (and (fn-sn-statep s)
+                (fn-sf-crash-choicep frontier-choice record-choice))
+           (and (equal (fn-sn-files (fn-sn-crash s frontier-choice record-choice))
+                       (fn-sf-crash (fn-sn-files s) frontier-choice record-choice))
+                (equal (fn-sn-groups (fn-sn-crash s frontier-choice record-choice))
+                       (fn-sn-groups s))
+                (equal (fn-sn-capacity (fn-sn-crash s frontier-choice record-choice))
+                       (fn-sn-capacity s))))
+  :hints (("Goal" :in-theory (e/d (fn-sn-crash fn-sn-update fn-sn-make)
+                                  (fn-sn-statep fn-sf-crash fn-sf-crash-choicep)))))
 
 (defthm fn-sn-prepare-installs-bound-candidate
   (implies (not (equal (fn-sn-prepare s record) s))

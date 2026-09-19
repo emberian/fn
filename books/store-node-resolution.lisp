@@ -21,7 +21,7 @@
   (if (fn-sn-refuse-reservation-enabledp s txid)
       (fn-sn-update
        s
-       (fn-sf-refuse-reservation (fn-sn-files s) txid :refused)
+       (fn-sf-refuse-reservation (fn-sn-files s) txid)
        (fn-replay-advance-txid
         (fn-sn-node s) (fn-sf-frontier (fn-sn-files s))))
     s))
@@ -57,7 +57,7 @@
   (let* ((record (fn-sf-record-candidate files))
          (aborting (fn-sn-known-abort-file-start files)))
     (fn-sf-abort-completion
-     aborting (fn-record-sequence record) (fn-record-txid record) :matching)))
+     aborting (fn-record-sequence record) (fn-record-txid record))))
 
 (verify-guards fn-sn-known-abort-files)
 
@@ -105,7 +105,7 @@
   :hints (("Goal"
            :cases ((fn-sn-refuse-reservation-enabledp s txid))
            :use ((:instance fn-sf-refuse-reservation-preserves-state
-                            (s (fn-sn-files s)) (result :refused))
+                            (s (fn-sn-files s)))
                  (:instance fn-replay-advance-preserves-node-statep
                             (node (fn-sn-node s))
                             (recorded-txid
@@ -130,8 +130,7 @@
                             (sequence (fn-record-sequence
                                        (fn-sf-record-candidate files)))
                             (txid (fn-record-txid
-                                   (fn-sf-record-candidate files)))
-                            (result :matching)))
+                                   (fn-sf-record-candidate files)))))
            :in-theory (enable fn-sn-known-abort-files))))
 
 (defthm fn-sn-known-abort-preserves-state
@@ -172,7 +171,7 @@
          (fn-sf-successes (fn-sn-files s)))
   :hints (("Goal"
            :use ((:instance fn-sf-successes-of-refuse-reservation
-                            (s (fn-sn-files s)) (result :refused)))
+                            (s (fn-sn-files s))))
            :in-theory (e/d (fn-sn-refuse-reservation fn-sn-update)
                            (fn-sf-refuse-reservation fn-sf-successes)))))
 
@@ -193,8 +192,7 @@
                             (sequence (fn-record-sequence
                                        (fn-sf-record-candidate (fn-sn-files s))))
                             (txid (fn-record-txid
-                                   (fn-sf-record-candidate (fn-sn-files s))))
-                            (result :matching)))
+                                   (fn-sf-record-candidate (fn-sn-files s))))))
            :in-theory (e/d (fn-sn-known-abort fn-sn-known-abort-files
                              fn-sn-update)
                            (fn-sn-known-abort-file-start

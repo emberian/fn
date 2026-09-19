@@ -148,7 +148,7 @@
                                      (fn-record-generation record) :durable))
              (files (fn-sf-core-completion
                      (fn-sn-files s) (fn-record-sequence record)
-                     (fn-record-txid record) :matching)))
+                     (fn-record-txid record))))
         (fn-sn-update s
                       (fn-sf-emit-success files (fn-record-sequence record)
                                            (fn-record-txid record))
@@ -162,6 +162,9 @@
                     fn-sn-pending-record fn-sn-prepare-node))))
 
 ; The I/O surface cannot inject a core-completion observation or emit success.
+; There is deliberately no :core-completion operation here: the kernel's
+; fn-sf-core-completion is reachable only inside fn-sn-finish above, so a host
+; word claiming completion is a no-op (fn-sn-io-cannot-acknowledge).
 (defun fn-sn-file-step (files operation result)
   (declare (xargs :guard t :verify-guards nil))
   (case operation
@@ -187,7 +190,10 @@
 
 ; A crash discards the live process view.  Recovery reconstructs a new node
 ; through the existing replay interpreter, whose individual records call the
-; same actual fn-node-prepare/fn-node-complete pair used above.
+; same actual fn-node-prepare/fn-node-complete pair used above.  The kernel
+; crash is one constructor of an admissible image; the host never calls it.
+; A real process reopens through fn-sn-open-observed (store-observed.lisp),
+; whose theorems take fn-sf-crash-imagep as the platform premise.
 (defun fn-sn-crash (s frontier-choice record-choice)
   (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sn-statep s)
@@ -214,8 +220,11 @@
 
 (verify-guards fn-sn-recover)
 
-; In-process uncertain completion can also be resolved through the actual node
-; recovery primitive.  These helpers expose no new acceptance implementation.
+; unreachable-in-composition: no host path calls fn-sn-fence-node or
+; fn-sn-resolve-node (host/store-node-host.lisp resolves every uncertainty by
+; reopening through fn-sn-open-observed).  They remain as proof notation for
+; the in-process resolution correspondence and because other books name them
+; in theory lists; they are not evidence for any host claim.
 (defun fn-sn-fence-node (node record)
   (declare (xargs :guard (true-listp record) :verify-guards nil))
   (fn-node-complete node (fn-record-txid record)

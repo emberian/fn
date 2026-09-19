@@ -45,6 +45,16 @@
           '((:io :record-file :ok) (:io :record-link :error)
             (:finish) (:unrecognized) (:crash :old :present) (:recover))
           *snt-barriers*))
+
+; The same publication, dying in :record-data-durable with the link issued
+; but unobserved (final-link cut), reaches the identical recovered node.
+(defconst *snt-second-unobserved-link*
+  (append *snt-reserve* (list (list :prepare *snt-second*))
+          '((:io :record-file :ok) (:crash :old :present) (:recover))
+          *snt-barriers*))
+(assert-event (equal (fn-sn-node (fn-snt-run *snt-first-state* *snt-second-unobserved-link*))
+                     (fn-sn-node (fn-snt-run *snt-first-state* *snt-second-events*))))
+(assert-event (fn-snt-relation (fn-snt-run *snt-first-state* *snt-second-unobserved-link*)))
 (defconst *snt-final* (fn-snt-run *snt-first-state* *snt-second-events*))
 (assert-event (fn-snt-relation *snt-final*))
 (assert-event (equal (fn-sf-successes (fn-sn-files *snt-final*)) '((0 . 1))))

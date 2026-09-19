@@ -91,12 +91,13 @@ preparation produces the matching proposal. Equality covers the entire node,
 including memberships, watermarks, archive accounting/bindings, and transaction
 ID; aborted transaction-ID gaps are permitted.
 
-For in-process resolution, `fn-sn-fence-node` and `fn-sn-resolve-node` call the
-actual indeterminate completion and `fn-node-recover` primitives. General
-correspondence theorems show committed resolution equals direct durable
-completion and absent resolution equals direct abort. These helpers do not
-claim that an unvalidated external committed/absent observation is trustworthy.
-Crash recovery in the composition derives state from actual replay instead.
+`fn-sn-fence-node` and `fn-sn-resolve-node` are unreachable-in-composition:
+no host path calls them, and every uncertainty is resolved by reopening through
+`fn-sn-open-observed`. They and their two correspondence theorems remain as
+documentation of the in-process resolution primitives and are not evidence for
+any host claim; the host-relevant statement of the same fact is
+`fn-snt-pending-linkp`, which relates the pending node to replay of the current
+and extended histories.
 
 ## Evidence and remaining boundary
 
@@ -105,9 +106,11 @@ crash, and recovery. The assertion book
 [`tests/acl2/store-node-tests.lisp`](../tests/acl2/store-node-tests.lisp)
 checks complete two-group publication, false host completion words, real but
 mismatched pending payload/groups/archive metadata, repeated completion,
-acknowledged reopen, and both uncertain-link crash outcomes. Recovery of a
-present record creates content without inventing an acknowledgement; recovery
-of an absent record retains the consumed transaction frontier.
+acknowledged reopen, both uncertain-link crash outcomes, and the same two
+outcomes from `:record-data-durable`, where the link was issued but its result
+never observed (the `final-link` process-death cut). Recovery of a present
+record creates content without inventing an acknowledgement; recovery of an
+absent record retains the consumed transaction frontier.
 
 The global history/live-node induction is now certified in
 [`books/store-node-traces.lisp`](../books/store-node-traces.lisp).
@@ -192,3 +195,34 @@ actual `fn-sn-io` operation show zero through four successful recovery barriers
 remain `:recovering`; the fifth reaches `:ready`. The host must supply those
 results only after the corresponding physical fsync returns successfully.
 Exact frame decoding and truthful physical observations remain adapter premises.
+
+This entry is the root of every process (`host/store-node-host.lisp`,
+`fn-store-sn-recover`), and the trace theorems are rooted there:
+
+- `fn-sn-open-observed-success-has-live-history-relation`: a successful open
+  satisfies `fn-snt-relation`, with the single hypothesis that the open
+  succeeded (`fn-sn-open-okp`). Every trace theorem of the two trace books
+  therefore applies to the state the host resumes from;
+  `fn-snrt-observed-open-mixed-trace-preserves-live-history-relation` and
+  `fn-snrt-observed-open-ready-node-is-exact-replay` restate preservation and
+  exact replay from this root.
+- `fn-sn-open-observed-succeeds-on-recoverable-image`: opening succeeds for
+  every structurally valid image whose history replays at its frontier; with
+  `fn-sn-open-observed-success-implies-recoverable-history` this makes the
+  refusal codes exhaustive.
+- `fn-sn-acknowledged-record-survives-observed-reopen`: for a live state
+  satisfying `fn-snt-relation`, an image admissible under `fn-sf-crash-imagep`
+  (A-DURABILITY and A-WRITE-ISOLATION as hypothesis) and a pair in its
+  acknowledgement history, the open succeeds and the pair names a record of the
+  reopened state. `fn-snrt-acknowledged-record-retained-across-observed-reopen`
+  extends this through any later mixed trace of the reopened process. The
+  acknowledgement list itself is not reconstructed; the adapter has no anchor
+  from which to do so, and an image that rolled back the acknowledged record is
+  not admissible under the hypothesis but is indistinguishable to the reopen
+  entry from a valid one (the teeth in the test book exhibit exactly this).
+
+The witnesses in [`store-observed-tests`](../tests/acl2/store-observed-tests.lisp)
+open a two-record image with a consumed frontier gap, run refusal, known
+abort, publication with acknowledgement, an uncertain link, crash and recovery,
+then acknowledge a record, die at the `final-link` cut, and reopen on both
+admissible images; each keystone has one refuting witness per hypothesis.
