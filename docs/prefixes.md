@@ -26,6 +26,8 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-wire-` | `wire`, `wire-invariants` | NNTP line framing, dot stuffing, bounded retained input |
 | `fn-nntp-` | `nntp`, `nntp-invariants`, `nntp-effects` | Reader command dispatcher, session cursor, projection, effects |
 | `fn-ng-` | `nntp` | Guard-verified executable helpers for the NNTP graph |
+| `fn-nntp-index-` | `nntp-index` | Index-backed twins of the NNTP number enumerations and the generation-bound index cache |
+| `fn-index-host-` | `host/index-host.lisp` | Trusted adapter that opens the index cache at a recovered generation and asks it; holds no enumeration logic |
 | `fn-wildmat-` | `wildmat`, `wildmat-utf8-invariants`, `wildmat-parser-invariants`, `wildmat-matcher-invariants` | UTF-8 decoding, wildmat grammar parsing, dynamic-programming matcher |
 | `fn-wm-` | `wildmat-matcher-invariants`, `wildmat-work` | Reference matcher and costed matcher shadow |
 | `fn-article-` | `article`, `article-invariants`, `article-properties` | Bounded header/body article parser with exact source preservation |
