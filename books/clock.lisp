@@ -40,46 +40,88 @@
   (declare (xargs :guard t))
   (and (natp x) (<= x *fn-clock-max*)))
 
-(defun fn-clock-observation (monotonic wall wall-error has-wall)
-  (declare (xargs :guard t))
-  (list :fn-clock-observation monotonic wall wall-error (if has-wall t nil)))
-
-(defun fn-clock-observationp (x)
+(defun fn-clock-observation-shapep (x)
   (declare (xargs :guard t))
   (and (true-listp x)
        (equal (len x) 5)
-       (equal (car x) :fn-clock-observation)
-       (fn-clock-timep (nth 1 x))
-       (fn-clock-timep (nth 2 x))
-       (fn-clock-timep (nth 3 x))
-       (booleanp (nth 4 x))))
-
+       (equal (car x) :fn-clock-observation)))
+(defun fn-clock-observation (monotonic wall wall-error has-wall)
+  (declare (xargs :guard t))
+  (list :fn-clock-observation monotonic wall wall-error (if has-wall t nil)))
+; Accessors are total: the :logic branch is the positional reader, the :exec
+; branch its guard-free substitute (docs/proof-style.md, section 1).
 (defun fn-clock-monotonic (x)
-  (declare (xargs :guard (fn-clock-observationp x)))
-  (nth 1 x))
-
+  (declare (xargs :guard t))
+  (mbe :logic (nth 1 x)
+       :exec (and (consp x) (consp (cdr x)) (car (cdr x)))))
 (defun fn-clock-wall (x)
-  (declare (xargs :guard (fn-clock-observationp x)))
-  (nth 2 x))
-
+  (declare (xargs :guard t))
+  (mbe :logic (nth 2 x)
+       :exec (and (consp x) (consp (cdr x)) (consp (cddr x)) (car (cddr x)))))
 (defun fn-clock-wall-error (x)
-  (declare (xargs :guard (fn-clock-observationp x)))
-  (nth 3 x))
-
+  (declare (xargs :guard t))
+  (mbe :logic (nth 3 x)
+       :exec (and (consp x) (consp (cdr x)) (consp (cddr x)) (consp (cdddr x))
+                  (car (cdddr x)))))
 (defun fn-clock-has-wall (x)
-  (declare (xargs :guard (fn-clock-observationp x)))
-  (nth 4 x))
-
+  (declare (xargs :guard t))
+  (mbe :logic (nth 4 x)
+       :exec (and (consp x) (consp (cdr x)) (consp (cddr x)) (consp (cdddr x))
+                  (consp (cddddr x)) (car (cddddr x)))))
+(defun fn-clock-observationp (x)
+  (declare (xargs :guard t))
+  (and (fn-clock-observation-shapep x)
+       (fn-clock-timep (fn-clock-monotonic x))
+       (fn-clock-timep (fn-clock-wall x))
+       (fn-clock-timep (fn-clock-wall-error x))
+       (booleanp (fn-clock-has-wall x))))
 (verify-guards fn-clock-timep)
+(verify-guards fn-clock-observation-shapep)
 (verify-guards fn-clock-observation)
-(verify-guards fn-clock-observationp)
 (verify-guards fn-clock-monotonic)
 (verify-guards fn-clock-wall)
 (verify-guards fn-clock-wall-error)
 (verify-guards fn-clock-has-wall)
+(verify-guards fn-clock-observationp)
 
-; An age anchor is nil (this node holds no Bundle Age information) or the pair
-; (age . monotonic-at-anchor).
+(defthm fn-clock-observation-shapep-of-fn-clock-observation
+  (fn-clock-observation-shapep (fn-clock-observation monotonic wall wall-error has-wall)))
+(defthm fn-clock-monotonic-of-fn-clock-observation
+  (equal (fn-clock-monotonic (fn-clock-observation monotonic wall wall-error has-wall))
+         monotonic))
+(defthm fn-clock-wall-of-fn-clock-observation
+  (equal (fn-clock-wall (fn-clock-observation monotonic wall wall-error has-wall))
+         wall))
+(defthm fn-clock-wall-error-of-fn-clock-observation
+  (equal (fn-clock-wall-error (fn-clock-observation monotonic wall wall-error has-wall))
+         wall-error))
+(defthm fn-clock-has-wall-of-fn-clock-observation
+  (equal (fn-clock-has-wall (fn-clock-observation monotonic wall wall-error has-wall))
+         (if has-wall t nil)))
+(defthm fn-clock-observation-shapep-forward-shape
+  (implies (fn-clock-observation-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
+(defthm fn-clock-observation-accessors-forward-consp
+  (and (implies (fn-clock-monotonic x) (consp x))
+       (implies (fn-clock-wall x) (consp x))
+       (implies (fn-clock-wall-error x) (consp x))
+       (implies (fn-clock-has-wall x) (consp x)))
+  :rule-classes ((:forward-chaining :corollary (implies (fn-clock-monotonic x) (consp x))
+                                    :trigger-terms ((fn-clock-monotonic x)))
+                 (:forward-chaining :corollary (implies (fn-clock-wall x) (consp x))
+                                    :trigger-terms ((fn-clock-wall x)))
+                 (:forward-chaining :corollary (implies (fn-clock-wall-error x) (consp x))
+                                    :trigger-terms ((fn-clock-wall-error x)))
+                 (:forward-chaining :corollary (implies (fn-clock-has-wall x) (consp x))
+                                    :trigger-terms ((fn-clock-has-wall x)))))
+(defthm fn-clock-observationp-forward-shape
+  (implies (fn-clock-observationp x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-clock-observationp fn-clock-observation-shapep))))
+(in-theory (disable (:d fn-clock-observation-shapep) (:d fn-clock-monotonic)
+                    (:d fn-clock-wall) (:d fn-clock-wall-error) (:d fn-clock-has-wall)
+                    (:d fn-clock-observation)))
+
 (defun fn-clock-age-anchorp (x)
   (declare (xargs :guard t))
   (or (null x)
@@ -218,3 +260,13 @@
   (equal decision :expired))
 
 (verify-guards fn-clock-may-drop-local-copyp)
+
+; Export theory.  The observation record is opaque above.  The recognizers,
+; readings and the decision are proof vocabulary for clock-invariants, which
+; opens them locally; fn-clock-timep stays enabled as glue.
+(deftheory fn-clock-vocabulary
+  '(fn-clock-observationp fn-clock-age-anchorp fn-clock-anchor-age
+    fn-clock-anchor-monotonic fn-clock-earliest-true fn-clock-latest-true
+    fn-clock-admissible-truep fn-clock-age-estimate fn-clock-expiry-decision
+    fn-clock-later-observationp fn-clock-may-drop-local-copyp))
+(in-theory (disable fn-clock-vocabulary))

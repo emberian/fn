@@ -180,20 +180,20 @@
     "books": 173,
     "books_in_root_closure": 173,
     "roots": 173,
-    "theorems": 2662,
-    "functions": 1975,
-    "assert_events": 2934,
-    "must_fails": 141,
+    "theorems": 2721,
+    "functions": 1982,
+    "assert_events": 2944,
+    "must_fails": 129,
     "encapsulates": 10,
     "guards": {
-      "verified": 952,
+      "verified": 959,
       "declared-off": 53,
       "default-guarded": 540,
       "default-unguarded": 430
     },
     "suspect_theorems": 26,
     "export_hygiene_warnings": 65,
-    "teeth_form_warnings": 24
+    "teeth_form_warnings": 21
   },
   "books": [
     {
@@ -646,15 +646,15 @@
       "book": "books/bp-ingress.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 7,
-      "functions": 42,
+      "theorems": 22,
+      "functions": 44,
       "guards": {
-        "verified": 35,
+        "verified": 41,
         "declared-off": 0,
-        "default-guarded": 7,
+        "default-guarded": 3,
         "default-unguarded": 0
       },
-      "verify_guards_events": 35,
+      "verify_guards_events": 41,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -807,12 +807,12 @@
       "book": "books/bp-receipt.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
-      "functions": 41,
+      "theorems": 35,
+      "functions": 45,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 0,
+        "default-guarded": 4,
         "default-unguarded": 41
       },
       "verify_guards_events": 0,
@@ -1088,7 +1088,7 @@
       "book": "books/bp-release-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 45,
+      "theorems": 46,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -1424,15 +1424,15 @@
       "book": "books/clock.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 1,
-      "functions": 17,
+      "theorems": 9,
+      "functions": 18,
       "guards": {
-        "verified": 17,
+        "verified": 18,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 17,
+      "verify_guards_events": 18,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 1,
@@ -3336,17 +3336,15 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 100,
-      "must_fails": 4,
+      "assert_events": 103,
+      "must_fails": 0,
       "defconsts": 13,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/bp-primary-invariants"
       ],
-      "system_includes": [
-        "std/testing/must-fail"
-      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -3733,17 +3731,15 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 26,
-      "must_fails": 8,
-      "defconsts": 6,
+      "assert_events": 33,
+      "must_fails": 0,
+      "defconsts": 8,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/clock-invariants"
       ],
-      "system_includes": [
-        "std/testing/must-fail"
-      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -4727,7 +4723,7 @@
     {
       "theorem": "fn-bp-effect-for-pending-attempt-unfolds",
       "book": "books/bp-workflow-invariants.lisp",
-      "line": 882,
+      "line": 884,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-bp-effect-for-pending and the conclusion is that branch's value"
       ]
@@ -4759,7 +4755,7 @@
     {
       "theorem": "fn-bpr-context-from-request-is-constructor",
       "book": "books/bp-receiver-state-invariants.lisp",
-      "line": 86,
+      "line": 89,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-bpr-context-from-request"
       ]
@@ -4767,7 +4763,7 @@
     {
       "theorem": "fn-clock-drop-permission-is-exactly-expired-by-definition",
       "book": "books/clock-invariants.lisp",
-      "line": 163,
+      "line": 164,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-clock-may-drop-local-copyp",
         "reflexive-conclusion: a conjunct is (equal X X)"
@@ -5056,37 +5052,37 @@
       {
         "theorem": "fn-bpp-decode-of-encode",
         "book": "books/bp-primary-invariants.lisp",
-        "line": 217,
+        "line": 218,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-bpp-accepted-block-has-valid-crc",
         "book": "books/bp-primary-invariants.lisp",
-        "line": 270,
+        "line": 271,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-bpr-record-metadata-is-bpa-metadata",
         "book": "books/bp-receiver-state-invariants.lisp",
-        "line": 38,
+        "line": 41,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-bp-recover-event-effects-actionable",
         "book": "books/bp-workflow-records-invariants.lisp",
-        "line": 454,
+        "line": 455,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-bp-complete-event-effects-actionable",
         "book": "books/bp-workflow-records-invariants.lisp",
-        "line": 466,
+        "line": 467,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-bp-actionable-trace-effects-of-record-events",
         "book": "books/bp-workflow-records-invariants.lisp",
-        "line": 524,
+        "line": 525,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -5313,24 +5309,6 @@
       }
     ],
     "teeth_form": [
-      {
-        "check": "thm",
-        "book": "tests/acl2/bp-primary-tests.lisp",
-        "line": 360,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "thm",
-        "book": "tests/acl2/bp-primary-tests.lisp",
-        "line": 381,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "thm",
-        "book": "tests/acl2/clock-tests.lisp",
-        "line": 159,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
       {
         "check": "thm",
         "book": "tests/acl2/crypto-seam-tests.lisp",

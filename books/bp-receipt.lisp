@@ -23,6 +23,19 @@
   (equal (fn-bpr-config-policy-id (fn-bpr-make-config destination policy issuer)) policy))
 (defthm fn-bpr-config-issuer-of-fn-bpr-make-config
   (equal (fn-bpr-config-issuer (fn-bpr-make-config destination policy issuer)) issuer))
+(defthm fn-bpr-config-shapep-forward-shape
+  (implies (fn-bpr-config-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
+(defthm fn-bpr-config-accessors-forward-consp
+  (and (implies (fn-bpr-config-destination x) (consp x))
+       (implies (fn-bpr-config-policy-id x) (consp x))
+       (implies (fn-bpr-config-issuer x) (consp x)))
+  :rule-classes ((:forward-chaining :corollary (implies (fn-bpr-config-destination x) (consp x))
+                                    :trigger-terms ((fn-bpr-config-destination x)))
+                 (:forward-chaining :corollary (implies (fn-bpr-config-policy-id x) (consp x))
+                                    :trigger-terms ((fn-bpr-config-policy-id x)))
+                 (:forward-chaining :corollary (implies (fn-bpr-config-issuer x) (consp x))
+                                    :trigger-terms ((fn-bpr-config-issuer x)))))
 (in-theory (disable (:d fn-bpr-config-shapep) (:d fn-bpr-config-destination) (:d fn-bpr-config-policy-id) (:d fn-bpr-config-issuer)
                     (:d fn-bpr-make-config)))
 (defun fn-bpr-configp (x)
@@ -33,6 +46,11 @@
 
 ; Durable request context: (work-id msgid subject archive-id peer-eid policy-id
 ; origin-incarnation authorization-context terms-id exact-request).
+(defthm fn-bpr-configp-forward-shape
+  (implies (fn-bpr-configp x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-bpr-configp fn-bpr-config-shapep))))
+
 (defun fn-bpr-context-shapep (x)
   (declare (xargs :guard t))
   (and (true-listp x) (equal (len x) 10)))
@@ -84,6 +102,40 @@
 (defthm fn-bpr-context-request-of-fn-bpr-make-context
   (equal (fn-bpr-context-request (fn-bpr-make-context work-id msgid subject archive-id peer policy
                                      incarnation auth-context terms request)) request))
+(defthm fn-bpr-context-shapep-forward-shape
+  (implies (fn-bpr-context-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
+(defthm fn-bpr-context-accessors-forward-consp
+  (and (implies (fn-bpr-context-work-id x) (consp x))
+       (implies (fn-bpr-context-msgid x) (consp x))
+       (implies (fn-bpr-context-subject x) (consp x))
+       (implies (fn-bpr-context-archive-id x) (consp x))
+       (implies (fn-bpr-context-peer-eid x) (consp x))
+       (implies (fn-bpr-context-policy-id x) (consp x))
+       (implies (fn-bpr-context-incarnation x) (consp x))
+       (implies (fn-bpr-context-auth-context x) (consp x))
+       (implies (fn-bpr-context-terms-id x) (consp x))
+       (implies (fn-bpr-context-request x) (consp x)))
+  :rule-classes ((:forward-chaining :corollary (implies (fn-bpr-context-work-id x) (consp x))
+                                    :trigger-terms ((fn-bpr-context-work-id x)))
+                 (:forward-chaining :corollary (implies (fn-bpr-context-msgid x) (consp x))
+                                    :trigger-terms ((fn-bpr-context-msgid x)))
+                 (:forward-chaining :corollary (implies (fn-bpr-context-subject x) (consp x))
+                                    :trigger-terms ((fn-bpr-context-subject x)))
+                 (:forward-chaining :corollary (implies (fn-bpr-context-archive-id x) (consp x))
+                                    :trigger-terms ((fn-bpr-context-archive-id x)))
+                 (:forward-chaining :corollary (implies (fn-bpr-context-peer-eid x) (consp x))
+                                    :trigger-terms ((fn-bpr-context-peer-eid x)))
+                 (:forward-chaining :corollary (implies (fn-bpr-context-policy-id x) (consp x))
+                                    :trigger-terms ((fn-bpr-context-policy-id x)))
+                 (:forward-chaining :corollary (implies (fn-bpr-context-incarnation x) (consp x))
+                                    :trigger-terms ((fn-bpr-context-incarnation x)))
+                 (:forward-chaining :corollary (implies (fn-bpr-context-auth-context x) (consp x))
+                                    :trigger-terms ((fn-bpr-context-auth-context x)))
+                 (:forward-chaining :corollary (implies (fn-bpr-context-terms-id x) (consp x))
+                                    :trigger-terms ((fn-bpr-context-terms-id x)))
+                 (:forward-chaining :corollary (implies (fn-bpr-context-request x) (consp x))
+                                    :trigger-terms ((fn-bpr-context-request x)))))
 (in-theory (disable (:d fn-bpr-context-shapep) (:d fn-bpr-context-work-id) (:d fn-bpr-context-msgid) (:d fn-bpr-context-subject) (:d fn-bpr-context-archive-id) (:d fn-bpr-context-peer-eid) (:d fn-bpr-context-policy-id) (:d fn-bpr-context-incarnation) (:d fn-bpr-context-auth-context) (:d fn-bpr-context-terms-id) (:d fn-bpr-context-request)
                     (:d fn-bpr-make-context)))
 
@@ -99,6 +151,11 @@
        (fn-bpa-metadatap (fn-bpr-context-auth-context x))
        (fn-bpa-metadatap (fn-bpr-context-terms-id x))
        (fn-bpa-requestp (fn-bpr-context-request x))))
+(defthm fn-bpr-contextp-forward-shape
+  (implies (fn-bpr-contextp config x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-bpr-contextp fn-bpr-context-shapep))))
+
 (defun fn-bpr-context-listp (config xs)
   (if (consp xs)
       (and (fn-bpr-contextp config (car xs))
@@ -138,6 +195,22 @@
   (equal (fn-bpr-state-receipts (fn-bpr-make-state config contexts receipts pending)) receipts))
 (defthm fn-bpr-state-pending-of-fn-bpr-make-state
   (equal (fn-bpr-state-pending (fn-bpr-make-state config contexts receipts pending)) pending))
+(defthm fn-bpr-state-shapep-forward-shape
+  (implies (fn-bpr-state-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
+(defthm fn-bpr-state-accessors-forward-consp
+  (and (implies (fn-bpr-state-config x) (consp x))
+       (implies (fn-bpr-state-contexts x) (consp x))
+       (implies (fn-bpr-state-receipts x) (consp x))
+       (implies (fn-bpr-state-pending x) (consp x)))
+  :rule-classes ((:forward-chaining :corollary (implies (fn-bpr-state-config x) (consp x))
+                                    :trigger-terms ((fn-bpr-state-config x)))
+                 (:forward-chaining :corollary (implies (fn-bpr-state-contexts x) (consp x))
+                                    :trigger-terms ((fn-bpr-state-contexts x)))
+                 (:forward-chaining :corollary (implies (fn-bpr-state-receipts x) (consp x))
+                                    :trigger-terms ((fn-bpr-state-receipts x)))
+                 (:forward-chaining :corollary (implies (fn-bpr-state-pending x) (consp x))
+                                    :trigger-terms ((fn-bpr-state-pending x)))))
 (in-theory (disable (:d fn-bpr-state-shapep) (:d fn-bpr-state-config) (:d fn-bpr-state-contexts) (:d fn-bpr-state-receipts) (:d fn-bpr-state-pending)
                     (:d fn-bpr-make-state)))
 (defun fn-bpr-receipt-entry-shapep (x)
@@ -153,12 +226,27 @@
   (equal (fn-bpr-receipt-entry-context (fn-bpr-make-receipt-entry context receipt)) context))
 (defthm fn-bpr-receipt-entry-receipt-of-fn-bpr-make-receipt-entry
   (equal (fn-bpr-receipt-entry-receipt (fn-bpr-make-receipt-entry context receipt)) receipt))
+(defthm fn-bpr-receipt-entry-shapep-forward-shape
+  (implies (fn-bpr-receipt-entry-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
+(defthm fn-bpr-receipt-entry-accessors-forward-consp
+  (and (implies (fn-bpr-receipt-entry-context x) (consp x))
+       (implies (fn-bpr-receipt-entry-receipt x) (consp x)))
+  :rule-classes ((:forward-chaining :corollary (implies (fn-bpr-receipt-entry-context x) (consp x))
+                                    :trigger-terms ((fn-bpr-receipt-entry-context x)))
+                 (:forward-chaining :corollary (implies (fn-bpr-receipt-entry-receipt x) (consp x))
+                                    :trigger-terms ((fn-bpr-receipt-entry-receipt x)))))
 (in-theory (disable (:d fn-bpr-receipt-entry-shapep) (:d fn-bpr-receipt-entry-context) (:d fn-bpr-receipt-entry-receipt)
                     (:d fn-bpr-make-receipt-entry)))
 (defun fn-bpr-receipt-entryp (config x)
   (and (fn-bpr-receipt-entry-shapep x)
        (fn-bpr-contextp config (fn-bpr-receipt-entry-context x))
        (fn-bpa-receiptp (fn-bpr-receipt-entry-receipt x))))
+(defthm fn-bpr-receipt-entryp-forward-shape
+  (implies (fn-bpr-receipt-entryp config x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-bpr-receipt-entryp fn-bpr-receipt-entry-shapep))))
+
 (defun fn-bpr-receipt-listp (config xs)
   (if (consp xs)
       (and (fn-bpr-receipt-entryp config (car xs))
@@ -172,6 +260,11 @@
        (or (null (fn-bpr-state-pending x))
            (fn-bpr-receipt-entryp (fn-bpr-state-config x)
                                   (fn-bpr-state-pending x)))))
+(defthm fn-bpr-statep-forward-shape
+  (implies (fn-bpr-statep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-bpr-statep fn-bpr-state-shapep))))
+
 (defun fn-bpr-initial-state (config)
   (if (fn-bpr-configp config) (fn-bpr-make-state config nil nil nil) nil))
 

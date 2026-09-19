@@ -54,6 +54,12 @@
                                       fn-node-retention fn-node-stage
                                       fn-node-bindings))))
 
+; The rebuilt node has the node-state shape (core's record lemma
+; fn-node-state-shapep-of-fn-node-make-state, opaque records 2026-09-19).
+(defthm fn-bprl-node-with-retention-is-shaped
+  (fn-node-state-shapep (fn-bprl-node-with-retention node r))
+  :hints (("Goal" :in-theory (enable fn-bprl-node-with-retention))))
+
 (defthm fn-bprl-with-node-components
   (and (true-listp (fn-bprl-with-node s node))
        (equal (len (fn-bprl-with-node s node)) 7)
