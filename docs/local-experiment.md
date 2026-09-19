@@ -68,8 +68,18 @@ ownership model precedes a shared live state owner. Startup refuses payloads tha
 the ACL2 reader cannot safely project as NNTP. That projection check is not full
 RFC article validation.
 
+Each command's exit code names its outcome: `0` accepted, `1` refused, `3`
+uncertain and needing recovery, `4` fault, `5` usage. The
+[host boundary](../specs/host.md#cli-exit-codes) holds the table. `recover` and
+`status` also report `staging-orphans=`, naming any staged file an interrupted
+publication left behind; recovery reports them and never deletes them.
+
 For injected storage outcomes, `post --inject-fault prepublish` reports a known
-abort. `post --inject-fault postpublish` reports an indeterminate result and
-requires recovery; the complete article may then be present. Neither operation
-reports a successful post before the required commit barriers. These are
-process/I/O experiments, not power-loss qualification.
+abort and exits `1`. `post --inject-fault postpublish` reports an indeterminate
+result and exits `3`; recovery is required, and the complete article may then be
+present. `--inject-fault` is a documented test-only hook that selects one
+scripted fault point; the durable publication path itself holds no injection
+branch. Neither operation reports a successful post before the required commit
+barriers. These are process/I/O experiments, not power-loss qualification. On
+darwin those barriers are `F_FULLFSYNC`, which asks the drive to flush its own
+cache and is roughly a hundred times more expensive per call than `fsync(2)`.
