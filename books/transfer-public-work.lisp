@@ -349,8 +349,8 @@
                 (fn-transfer-work-cost entry)
                 (fn-transfer-work-cost missing)))))))))
 
-; Value-projection theorem tranche.  Certification is intentionally deferred
-; during the integrated shared-certification hold.
+; Value-projection theorem tranche.  These are certified: this book is a root
+; of the integrated batch in the Makefile and carries a certificate.
 
 (defthm fn-transfer-true-list-work-value
   (equal (fn-transfer-work-value (fn-transfer-true-list-work x))
