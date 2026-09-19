@@ -49,6 +49,12 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-bpp-` | `bp-primary`, `bp-primary-invariants` | BPv7 primary bundle block: flags, CRC-16/CRC32C, `dtn` and `ipn` endpoint IDs, creation timestamp, lifetime, fragment fields, bundle identity, §4.4 extension block data |
 | `fn-bpf-` | `bp-fragment`, `bp-fragment-invariants` | BPv7 fragmentation and ADU reassembly over identical-overlap covers; fragment primary blocks |
 | `fn-clock-` | `clock`, `clock-invariants` | Host clock observations, Bundle Age anchors and the three-way bundle expiry decision |
+| `fn-digest-`, `fn-sig-` | `crypto-seam` | Constrained digest and signature seam with shape-only constraints; tagged preimages; hex rendering |
+| `fn-prin-` | `principal`, `principal-invariants` | Principal ids from (public key, token), key succession chains, keyrings |
+| `fn-stmt-` | `statement`, `statement-invariants` | Block-shaped statement header, item-sequence codec, content id, signing, receipt payloads |
+| `fn-lace-` | `lace`, `lace-invariants` | Statement sets keyed by content id: merge, canonicity, cross-canonicity, equivocation, causal closure |
+| `fn-pol-` | `policy`, `policy-invariants` | Group policy statements, the policy in force, authorization, policy term and receipts |
+| `fn-toy-`, `fn-t-` | `tests/acl2/*-tests` (substrate) | Test-only executable realisers attached with `defattach`, and test witnesses; never in `books/` |
 
 Host-only wrappers in `host/*.lisp` use `fn-store-`, `fn-bpreq-`, `fn-bpwf-`,
 `fn-bprj-` and similar; they are `:program` mode and outside the proof boundary.
