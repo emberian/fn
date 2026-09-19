@@ -15,6 +15,15 @@
 (in-package "ACL2")
 (include-book "identity")
 (include-book "frame-invariants")
+
+; This book is about the definitions in `identity`, so it opens them, the
+; frame vocabulary and the CBOR list vocabulary locally.
+(local (in-theory (enable fn-id-definitions
+                          fn-frame-octet-vocabulary
+                          fn-frame-fields-vocabulary
+                          fn-frame-codec-vocabulary
+                          fn-frame-invariants-vocabulary
+                          fn-cbor-invariants-vocabulary)))
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -212,3 +221,21 @@
            (<= (fn-charge-for-payload length) *fn-cbor-max-uint*))
   :hints (("Goal" :in-theory (enable fn-charge-for-payload)))
   :rule-classes :linear)
+
+; -----------------------------------------------------------------------------
+; Export theory.
+;
+; The keystones leave this book enabled: the hex round trips
+; (`fn-id-unhex-of-hex-octets', `fn-id-hex-octets-of-unhex'), the two shape
+; theorems, the domain separation facts and the charge properties.  The
+; digit-level arithmetic and `fn-id-subject-is-subject-of-payload' (an
+; accessor equality) are proof vocabulary.
+
+(deftheory fn-id-invariants-vocabulary
+  '(    fn-id-hex-digit-is-a-hex-digit fn-id-hex-value-of-hex-digit
+    fn-id-hex-digit-of-hex-value fn-id-hex-value-natp
+    fn-id-hex-value-bound fn-id-subject-is-subject-of-payload))
+
+(in-theory (disable fn-id-hex-digit-is-a-hex-digit fn-id-hex-value-of-hex-digit
+             fn-id-hex-digit-of-hex-value fn-id-hex-value-natp
+             fn-id-hex-value-bound fn-id-subject-is-subject-of-payload))

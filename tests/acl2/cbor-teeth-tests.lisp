@@ -8,7 +8,6 @@
 
 (in-package "ACL2")
 (include-book "../../books/cbor-invariants")
-(include-book "std/testing/must-fail" :dir :system)
 
 ; -----------------------------------------------------------------------------
 ; Reachable, non-degenerate witnesses.
@@ -60,21 +59,19 @@
 (defconst *cbor-teeth-foreign* '(:float . 1))
 (assert-event (not (fn-cbor-valuep *cbor-teeth-foreign*)))
 
-(local
- (must-fail
-  (defthm cbor-teeth-round-trip-without-valuep
-    (equal (fn-cbor-decode-exact (fn-cbor-encode *cbor-teeth-foreign*))
-           (fn-cbor-ok *cbor-teeth-foreign* nil)))))
+(assert-event
+ (with-guard-checking :none
+  (not (equal (fn-cbor-decode-exact (fn-cbor-encode *cbor-teeth-foreign*))
+              (fn-cbor-ok *cbor-teeth-foreign* nil)))))
 
 ; A second malformed value, this time in range but over the profile bound.
 (defconst *cbor-teeth-oversize* '(:uint . 4294967296))
 (assert-event (not (fn-cbor-valuep *cbor-teeth-oversize*)))
 
-(local
- (must-fail
-  (defthm cbor-teeth-round-trip-without-bound
-    (equal (fn-cbor-decode-exact (fn-cbor-encode *cbor-teeth-oversize*))
-           (fn-cbor-ok *cbor-teeth-oversize* nil)))))
+(assert-event
+ (with-guard-checking :none
+  (not (equal (fn-cbor-decode-exact (fn-cbor-encode *cbor-teeth-oversize*))
+              (fn-cbor-ok *cbor-teeth-oversize* nil)))))
 
 ; -----------------------------------------------------------------------------
 ; Teeth for `fn-cbor-accepted-input-is-canonical'
@@ -88,9 +85,9 @@
 (assert-event
  (not (fn-cbor-result-okp (fn-cbor-decode-exact *cbor-teeth-noncanonical*))))
 
-(local
- (must-fail
-  (defthm cbor-teeth-canonical-without-accepted-decode
-    (equal (fn-cbor-encode
-            (fn-cbor-result-value (fn-cbor-decode-exact *cbor-teeth-noncanonical*)))
-           *cbor-teeth-noncanonical*))))
+(assert-event
+ (with-guard-checking :none
+  (not (equal (fn-cbor-encode
+               (fn-cbor-result-value
+                (fn-cbor-decode-exact *cbor-teeth-noncanonical*)))
+              *cbor-teeth-noncanonical*))))
