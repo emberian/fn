@@ -147,7 +147,12 @@ step limit. After the change that book contains no `must-fail` and no `thm`.
    two list types generated 78 theorems, all enabled on include, into every
    book above — the pollution `docs/proof-style.md` exists to stop.
 
-Recommendation to the root: **do not migrate**, and in particular do not
+**Settled by the root, 2026-09-19:** no migration; opaque raw-list records
+are the discipline, this lane's measurement and core's independent one
+agreeing on both the `-fix` normal forms and the 78 enabled theorems per
+prod pushed into every includer.
+
+Recommendation as measured: **do not migrate**, and in particular do not
 migrate the statement header, the future portable object, until there is a
 concrete need for congruence reasoning over record equivalences. If that need
 appears, the cheapest shape is a local `statement-fty.lisp` behind the

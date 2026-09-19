@@ -35,6 +35,8 @@
                           fn-stmt-invariants-vocabulary
                           fn-prin-internals
                           fn-lace-internals
+                          fn-lace-invariants-vocabulary
+                          fn-prin-invariants-vocabulary
                           fn-pol-internals)))
 
 (local (in-theory (disable fn-stmt-id fn-stmt-p fn-stmt-creator
