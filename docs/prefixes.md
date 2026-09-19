@@ -50,6 +50,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-bpc-` | `bp-primary-cbor` | Deterministic CBOR vocabulary RFC 9171 §4.3.1 needs over `fn-cbor-`: definite arrays and text strings, unsigned integers to 2^64-1 |
 | `fn-bpp-` | `bp-primary`, `bp-primary-invariants` | BPv7 primary bundle block: flags, CRC-16/CRC32C, `dtn` and `ipn` endpoint IDs, creation timestamp, lifetime, fragment fields, bundle identity, §4.4 extension block data |
 | `fn-bpf-` | `bp-fragment`, `bp-fragment-invariants` | BPv7 fragmentation and ADU reassembly over identical-overlap covers; fragment primary blocks |
+| `fn-tcl-` | `tcpcl-records`, `tcpcl-octets`, `tcpcl-session`, `tcpcl-invariants` | TCPCLv4 convergence layer (RFC 9174): opaque message and session records, the exact octet grammar with bounds before allocation, the section 3.3 session machine (contact, SESS_INIT negotiation, one inbound and one outbound transfer, refusal, keepalive and idle timeout, SESS_TERM, MSG_REJECT), the served drive loop and its keystones C1 to C4 |
 | `fn-clock-` | `clock`, `clock-invariants` | Host clock observations, Bundle Age anchors and the three-way bundle expiry decision |
 | `fn-digest-`, `fn-sig-` | `crypto-seam` | Constrained digest and signature seam with shape-only constraints; tagged preimages; hex rendering |
 | `fn-prin-` | `principal`, `principal-invariants` | Principal ids from (public key, token), key succession chains, keyrings |
