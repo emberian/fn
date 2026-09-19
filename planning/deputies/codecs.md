@@ -47,6 +47,46 @@ round trip, a non-minimal head for canonicality, `(0)` as a one-octet trailer an
 two-octet magic for the frame round trip, `32768`/`0` for charge monotonicity and
 `(48)` for the odd-length hex projection.
 
+## Per book: certified (worktree, ACL2 8.7, `build/acl2/certify-20260919T19*`)
+
+All 23 roots of the cluster closure certify. Wall time per root, each run alone
+after `make certs-install`:
+
+| root | s | root | s |
+| --- | --- | --- | --- |
+| books/cbor | 0 | books/frame-journal | 34 |
+| books/cbor-invariants | 1 | books/frame | 63 |
+| books/records | 4 | books/frame-invariants | 14 |
+| books/records-invariants | 34 | books/identity | 1 |
+| books/records-canonicality | 38 | books/identity-invariants | 4 |
+| books/store-config | 0 | books/bp-adu | 19 |
+| books/frame-octets | 1 | books/bp-primary-cbor | 51 |
+| books/frame-fields | 2 | books/wildmat (unchanged) | 1 |
+| tests/acl2/cbor-tests | 0 | tests/acl2/records-tests | 1 |
+| tests/acl2/cbor-teeth-tests | 0 | tests/acl2/records-teeth-tests | 1 |
+| tests/acl2/frame-tests | 1 | tests/acl2/identity-tests | 0 |
+
+Two numbers worth reading against 3.1b of the lane dump: `frame-invariants` is
+14 s (it was 13 s there, after the hand-disables that this cluster now makes
+structural), and `identity-invariants` is 4 s, the book whose
+`fn-id-hex-octets-are-octets` cost 619 s and 163M prover steps with the frame
+shape rules live. No pre-realignment baseline is quoted: the before times are in
+`~/fn-gates/dev-0a16592/build/acl2/*/manifest.json` on persvati, which is not
+reachable from this host, and `cbor` is included by almost everything, so the
+honest comparison is the convergence gate's, not mine.
+
+**The one trap this cluster paid for, for the convergence merge.** A `local`
+in-theory disable inside a book stops protecting the books above it the moment
+that book is split. The old `frame.lisp` closed `fn-frame-split` and
+`fn-frame-u64-bytes` locally, so `frame-invariants` and `identity-invariants`
+inherited them *open* and their proofs were tuned that way; making those
+disables non-local in `frame-octets` (which the split requires, or parts 2 to 4
+prove in a theory the original book never had) closed them for the proof books
+too, and `fn-frame-fields-parse-aux-of-octets` and `fn-id-subject-shape` failed.
+The fix is one line in each proof book: name `(:d fn-frame-split)` and
+`(:d fn-frame-u64-bytes)` in its local enable. Any deputy splitting a book with
+`local` theory events should expect exactly this.
+
 ## Open, recorded rather than weakened
 
 1. `fn-frame-decode-is-open` keeps its crypto hypothesis and has **no** tooth:
