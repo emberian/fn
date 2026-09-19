@@ -230,13 +230,13 @@
 (verify-guards fn-bpf-canvas)
 
 (defun fn-bpf-first-index (cells from marker)
-  (declare (xargs :guard (and (true-listp cells) (natp from))))
+  (declare (xargs :guard (and (true-listp cells) (natp from) (symbolp marker))))
   (cond ((not (consp cells)) nil)
         ((eq (car cells) marker) from)
         (t (fn-bpf-first-index (cdr cells) (+ 1 from) marker))))
 
 (defun fn-bpf-run-end (cells from marker)
-  (declare (xargs :guard (and (true-listp cells) (natp from))))
+  (declare (xargs :guard (and (true-listp cells) (natp from) (symbolp marker))))
   (if (and (consp cells) (eq (car cells) marker))
       (fn-bpf-run-end (cdr cells) (+ 1 from) marker)
     from))

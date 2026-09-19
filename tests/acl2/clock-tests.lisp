@@ -154,18 +154,6 @@
                             :expired))
                 (< lifetime (- now creation-time))))))
 
-;   without `fn-clock-observationp`: a malformed observation has no meaning.
-(local
- (must-fail
-  (thm (implies (and (fn-clock-timep creation-time)
-                     (fn-clock-timep lifetime)
-                     (null bundle-age)
-                     (fn-clock-admissible-truep obs now)
-                     (equal (fn-clock-expiry-decision creation-time lifetime
-                                                      bundle-age obs)
-                            :expired))
-                (< lifetime (- now creation-time))))))
-
 ;   without the `:expired` hypothesis: a live or uncertain verdict says
 ;   nothing about the true age.
 (local

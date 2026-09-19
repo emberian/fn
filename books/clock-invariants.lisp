@@ -55,9 +55,11 @@
 ; Keystone 1: an `:expired` verdict on the wall path is sound against every
 ; clock reading this node's own declared error bound admits.
 
+; No `fn-clock-observationp` hypothesis: the wall path answers `:expired` only
+; from `fn-clock-has-wall` and the two bounds, which `fn-clock-admissible-truep`
+; already fixes, so the conclusion holds for a malformed observation too.
 (defthm fn-clock-expired-requires-every-admissible-clock-to-agree
-  (implies (and (fn-clock-observationp obs)
-                (fn-clock-timep creation-time)
+  (implies (and (fn-clock-timep creation-time)
                 (fn-clock-timep lifetime)
                 (null bundle-age)
                 (fn-clock-admissible-truep obs now)

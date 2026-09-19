@@ -563,6 +563,11 @@
   (declare (xargs :guard (fn-bpp-blockp b)))
   (fn-bpc-enc :item (fn-bpp-block-value b (fn-bpp-zero-crc (fn-bpp-crc-type b)))))
 
+; From here on the guard proofs need only that an encoding is an octet list
+; (`fn-bpc-enc-are-octets`); opening `fn-bpc-enc` over the whole block array
+; instead does not terminate in practice.
+(local (in-theory (disable fn-bpc-enc)))
+
 (defun fn-bpp-block-crc (b)
   (declare (xargs :guard (fn-bpp-blockp b)))
   (fn-bpp-crc-octets (fn-bpp-crc-type b) (fn-bpp-zeroed-encoding b)))
