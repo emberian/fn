@@ -526,3 +526,18 @@
                  fn-bpa-encode
                  fn-cbor-at-mostp
                  fn-cbor-octet-listp)))))
+
+; Complete the streaming decoder guard graph without changing logical bodies.
+(verify-guards fn-bpa-read-fields
+ :hints (("Goal" :in-theory (disable fn-record-read-bytes fn-record-parse-rest
+                                      fn-cbor-octet-listp fn-record-parse-okp))))
+(verify-guards fn-bpa-decode-fields
+ :hints (("Goal" :in-theory (disable fn-record-read-uint fn-record-parse-rest
+                                      fn-cbor-octet-listp fn-record-parse-okp))))
+(verify-guards fn-bpa-decode-after-magic
+ :hints (("Goal" :in-theory (disable fn-record-read-uint fn-record-parse-rest
+                                      fn-cbor-octet-listp fn-record-parse-okp))))
+(verify-guards fn-bpa-decode-candidate
+ :hints (("Goal" :in-theory (disable fn-record-read-bytes fn-record-parse-rest
+                                      fn-cbor-octet-listp fn-record-parse-okp))))
+(verify-guards fn-bpa-decode-exact)
