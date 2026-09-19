@@ -119,6 +119,7 @@
   (fn-lace-ids-subsetp a a)
   :hints (("Goal" :use ((:instance fn-lace-ids-subsetp-by-witness (b a)))
            :in-theory (disable fn-lace-ids-subsetp-by-witness
+                               fn-lace-ids-witness-is-member-or-nil
                                fn-lace-ids-witness fn-lace-ids-subsetp))))
 
 (defthm fn-lace-ids-subsetp-transitive
@@ -127,6 +128,7 @@
            (fn-lace-ids-subsetp a c))
   :hints (("Goal" :use ((:instance fn-lace-ids-subsetp-by-witness (b c)))
            :in-theory (disable fn-lace-ids-subsetp-by-witness
+                               fn-lace-ids-witness-is-member-or-nil
                                fn-lace-ids-witness fn-lace-ids-subsetp))))
 
 ; -----------------------------------------------------------------------------
@@ -148,6 +150,7 @@
   :hints (("Goal" :use ((:instance fn-lace-ids-subsetp-by-witness
                                    (a lace) (b (fn-lace-merge lace delta))))
            :in-theory (disable fn-lace-ids-subsetp-by-witness
+                               fn-lace-ids-witness-is-member-or-nil
                                fn-lace-ids-witness fn-lace-ids-subsetp
                                fn-lace-merge))))
 
@@ -156,6 +159,7 @@
   :hints (("Goal" :use ((:instance fn-lace-ids-subsetp-by-witness
                                    (a delta) (b (fn-lace-merge lace delta))))
            :in-theory (disable fn-lace-ids-subsetp-by-witness
+                               fn-lace-ids-witness-is-member-or-nil
                                fn-lace-ids-witness fn-lace-ids-subsetp
                                fn-lace-merge))))
 
@@ -166,6 +170,7 @@
   :hints (("Goal" :use ((:instance fn-lace-ids-subsetp-by-witness
                                    (a (fn-lace-merge lace delta)) (b u)))
            :in-theory (disable fn-lace-ids-subsetp-by-witness
+                               fn-lace-ids-witness-is-member-or-nil
                                fn-lace-ids-witness fn-lace-ids-subsetp
                                fn-lace-merge))))
 
@@ -520,7 +525,9 @@
                  (:instance fn-lace-closed-inp-monotone
                             (stmts (fn-lace-new lace delta)) (a delta)
                             (b (fn-lace-merge lace delta)))
-                 (:instance fn-lace-closed-inp-of-new (x lace) (lace delta)))
+                 (:instance fn-lace-closed-inp-of-new (x lace) (lace delta))
+                 (:instance fn-lace-merge-monotone)
+                 (:instance fn-lace-merge-absorbs-delta))
            :in-theory (e/d (fn-lace-causally-closedp)
                            (fn-lace-closed-inp-monotone
                             fn-lace-closed-inp-of-new

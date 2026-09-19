@@ -118,7 +118,8 @@
 
 (defthm fn-prin-verified-implies-stmt-p
   (implies (fn-stmt-verifiedp s pk)
-           (fn-stmt-p s)))
+           (fn-stmt-p s))
+  :hints (("Goal" :in-theory '(fn-stmt-verifiedp))))
 
 (defthm fn-prin-sign-succession-is-stmt
   (implies (and (fn-prin-statep st)
@@ -127,8 +128,7 @@
            (fn-stmt-p (fn-prin-sign-succession sk st new-pk)))
   :hints (("Goal"
            :use ((:instance fn-prin-sign-succession-is-verified))
-           :in-theory (disable fn-prin-sign-succession fn-stmt-p
-                               fn-prin-sign-succession-is-verified))))
+           :in-theory '(fn-stmt-verifiedp))))
 
 (defthm fn-prin-sign-succession-is-acceptable
   (implies (and (fn-prin-statep st)
@@ -192,12 +192,18 @@
            :in-theory (disable fn-prin-succession-acceptablep
                                fn-prin-apply-succession))))
 
+(defthm fn-prin-apply-succession-when-not-acceptable
+  (implies (not (fn-prin-succession-acceptablep st s))
+           (equal (fn-prin-apply-succession st s) st))
+  :hints (("Goal" :in-theory '(fn-prin-apply-succession))))
+
 (defthm fn-prin-resolve-is-resolve-of-trail
   (equal (fn-prin-resolve st (fn-prin-trail st stmts))
          (fn-prin-resolve st stmts))
   :hints (("Goal" :induct (fn-prin-trail st stmts)
-           :in-theory (e/d (fn-prin-apply-succession)
-                           (fn-prin-succession-acceptablep)))))
+           :in-theory (disable fn-prin-apply-succession
+                               fn-prin-succession-acceptablep
+                               fn-prin-statep))))
 
 ; Every step of a valid chain is a :succession by the principal, verified under
 ; the key held before that step.  Definitional; stated so the chain theorem
@@ -209,7 +215,9 @@
                 (equal (fn-stmt-creator (car trail)) (fn-prin-state-id st))
                 (equal (fn-stmt-kind (car trail)) :succession)
                 (fn-prin-chain-validp (fn-prin-apply-succession st (car trail))
-                                      (cdr trail)))))
+                                      (cdr trail))))
+  :hints (("Goal" :in-theory '(fn-prin-chain-validp
+                               fn-prin-succession-acceptablep))))
 
 (defthm fn-prin-first-key-move-is-verified-under-prior-key
   (implies (and (fn-prin-statep st)

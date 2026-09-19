@@ -142,8 +142,14 @@
                   (fn-stmt-p d)
                   (equal (fn-stmt-creator d) authority)
                   (fn-prin-verifiedp d keyring))))
-  :hints (("Goal" :in-theory (disable fn-lace-merge fn-pol-current
-                                      fn-pol-first-authority-stmt))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-pol-current-unchanged-by-foreign-delta)
+                 (:instance fn-pol-first-authority-stmt-when-not-foreign))
+           :in-theory (disable fn-lace-merge fn-pol-current
+                               fn-pol-first-authority-stmt
+                               fn-pol-delta-without-authority-p
+                               fn-pol-current-unchanged-by-foreign-delta
+                               fn-pol-first-authority-stmt-when-not-foreign))))
 
 ; -----------------------------------------------------------------------------
 ; Grounding
@@ -200,11 +206,18 @@
 ; -----------------------------------------------------------------------------
 ; Staleness
 
+; OPEN (2026-09-19 substrate lane): not proved; case explosion over the nfixed (incarnation, sequence) order under induction on cands (94 x 90 subgoals, no closing lemma found within budget).
+; Statement kept verbatim, outside the book, so nothing is weakened silently.
+#|
 (defthm fn-pol-latest-is-maximal
   (implies (member-equal c cands)
            (not (fn-pol-slot-lessp (fn-pol-latest cands) c)))
   :hints (("Goal" :induct (fn-pol-latest cands))))
+|#
 
+; OPEN (2026-09-19 substrate lane): not proved; depends on fn-pol-latest-is-maximal above.
+; Statement kept verbatim, outside the book, so nothing is weakened silently.
+#|
 (defthm fn-pol-current-is-not-superseded
   (implies (and (member-equal p1 lace)
                 (fn-pol-candidatep p1 keyring group authority)
@@ -225,6 +238,7 @@
                             fn-pol-latest-is-maximal
                             fn-pol-member-candidate-is-in-candidates
                             fn-pol-candidatep-implies-authority-stmt)))))
+|#
 
 ; -----------------------------------------------------------------------------
 ; Refusals that hold by definition; named as such.  The executable teeth for

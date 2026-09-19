@@ -28,6 +28,12 @@
 (in-package "ACL2")
 (include-book "statement")
 
+(local (in-theory (disable fn-stmt-id fn-stmt-p fn-stmt-creator
+                           fn-stmt-incarnation fn-stmt-sequence fn-stmt-preds
+                           fn-stmt-payload fn-stmt-header fn-stmt-kind
+                           fn-stmt-sign fn-stmt-payload-ref
+                           fn-stmt-signing-preimage)))
+
 ; -----------------------------------------------------------------------------
 ; Laces and ids
 
