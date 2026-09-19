@@ -29,6 +29,19 @@
 (include-book "identity")
 (include-book "frame-invariants")
 (include-book "cbor-invariants")
+
+; This book is about the definitions in `identity', so it opens them, the
+; frame vocabulary and the CBOR list vocabulary locally.
+(local (in-theory (enable fn-id-definitions
+                          fn-frame-octet-vocabulary
+                          fn-frame-fields-vocabulary
+                          fn-frame-codec-vocabulary
+                          fn-frame-journal-vocabulary
+                          fn-frame-invariants-vocabulary
+                          fn-cbor-codec-vocabulary
+                          fn-cbor-invariants-vocabulary
+                          (:d fn-frame-split)
+                          (:d fn-frame-u64-bytes))))
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -206,6 +219,39 @@
   :hints (("Goal" :in-theory (e/d (fn-id-obligation-preimage)
                                   (fn-cbor-u32-bytes fn-cbor-u32-from)))))
 
+; Three steps the subject-length read needs and the msgid-length read does not.
+; Its offset is `(+ 21 (len msgid))`, so the fixed head has to be cut off
+; before the Message-ID can be: `fn-id-nthcdr-of-sum' splits the offset so the
+; constant 21 evaluates, `fn-id-nthcdr-past-u32-bytes' steps over a length
+; prefix that stays CLOSED (four octets by `fn-frame-u32-bytes-len', never by
+; opening a floor/mod term), and `fn-id-nthcdr-len-of-append' steps over a
+; field whose own length was just read back.  All three are instances of
+; `fn-id-nthcdr-len-append' above, stated as rewrite rules.  Two ways of not
+; doing this were measured: reaching the cut by `:use` and leaving the
+; arithmetic library to find the rest by induction loops
+; (`GENERALIZE-CLAUSE` three times on one subgoal, under the `mod` rules), and
+; opening `fn-cbor-u32-bytes` to get the four octets does not come back at all
+; (1800 s timeout in an arithmetic induction).
+(local
+ (defthm fn-id-nthcdr-of-sum
+   (implies (and (natp a) (natp b))
+            (equal (nthcdr (+ a b) x) (nthcdr b (nthcdr a x))))
+   :hints (("Goal" :induct (nthcdr a x)))))
+
+(local
+ (defthm fn-id-nthcdr-past-u32-bytes
+   (equal (nthcdr 4 (append (fn-cbor-u32-bytes n) tail)) tail)
+   :hints (("Goal" :use ((:instance fn-id-nthcdr-len-append
+                                    (a (fn-cbor-u32-bytes n)) (b tail) (k 0)))
+            :in-theory (disable fn-id-nthcdr-len-append
+                                fn-cbor-u32-bytes fn-cbor-u32-from)))))
+
+(local
+ (defthm fn-id-nthcdr-len-of-append
+   (equal (nthcdr (len a) (append a b)) b)
+   :hints (("Goal" :use ((:instance fn-id-nthcdr-len-append (k 0)))
+            :in-theory (disable fn-id-nthcdr-len-append)))))
+
 ; And so is the subject length, past the Message-ID the first prefix measured.
 (defthm fn-id-obligation-preimage-subject-length-is-recoverable
   (implies (and (fn-cbor-octet-listp subject)
@@ -215,11 +261,7 @@
                            (fn-id-obligation-preimage msgid subject)))
                   (len subject)))
   :hints (("Goal" :in-theory (e/d (fn-id-obligation-preimage)
-                                  (fn-cbor-u32-bytes fn-cbor-u32-from))
-           :use ((:instance fn-id-nthcdr-len-append
-                            (a msgid) (k 0)
-                            (b (append (fn-cbor-u32-bytes (len subject))
-                                       subject)))))))
+                                  (fn-cbor-u32-bytes fn-cbor-u32-from)))))
 
 (defthm fn-id-subject-preimage-octets
   (implies (and (fn-cbor-octet-listp payload)
@@ -334,3 +376,21 @@
            (<= (fn-charge-for-payload length) *fn-cbor-max-uint*))
   :hints (("Goal" :in-theory (enable fn-charge-for-payload)))
   :rule-classes :linear)
+
+; -----------------------------------------------------------------------------
+; Export theory.
+;
+; The keystones leave this book enabled: the hex round trips
+; (`fn-id-unhex-of-hex-octets', `fn-id-hex-octets-of-unhex'), the two shape
+; theorems, the domain separation facts and the charge properties.  The
+; digit-level arithmetic and `fn-id-subject-is-subject-of-payload' (an
+; accessor equality) are proof vocabulary.
+
+(deftheory fn-id-invariants-vocabulary
+  '(    fn-id-hex-digit-is-a-hex-digit fn-id-hex-value-of-hex-digit
+    fn-id-hex-digit-of-hex-value fn-id-hex-value-natp
+    fn-id-hex-value-bound fn-id-subject-is-subject-of-payload))
+
+(in-theory (disable fn-id-hex-digit-is-a-hex-digit fn-id-hex-value-of-hex-digit
+             fn-id-hex-digit-of-hex-value fn-id-hex-value-natp
+             fn-id-hex-value-bound fn-id-subject-is-subject-of-payload))

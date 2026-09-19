@@ -85,6 +85,39 @@ reported ACL2/Lisp versions, source/dependency hashes, drivers, certificates,
 process results, and logs under `build/acl2/`. Missing ACL2 or failed proof events
 fail the command. Custom ACL2 startup files are disabled for certification.
 
+Certification of one book is single-threaded, so the runner can certify
+independent books at the same time. `FN_CERTIFY_JOBS=N make certify` (or
+`tools/certify_books.py --jobs N`) runs at most `N` ACL2 processes at once and
+starts a book only after every requested book it reaches through local
+`include-book` has finished, using the same s-expression reader as
+`tools/ledger.py`. A dependency cycle or an unresolvable local include fails the
+command; it is never quietly serialized. The evidence is unchanged by the
+schedule: per-book logs, per-book timeout, nonce-tagged markers, source digests
+before and after, certificate digests, the forbidden-facility audit and the
+pass rule are all assembled in requested order. The manifest additionally
+records `jobs`, `jobs_effective`, `start_order`, `book_wall_seconds` and
+`certify_wall_seconds`, and `--jobs 1` keeps the requested order exactly.
+
+Measured on 2026-09-19 with ACL2 8.7 on SBCL 2.6.8, 12-core laptop, all 162
+Makefile roots, `FN_ACL2_TIMEOUT_SECONDS=1800 FN_CERTIFY_JOBS=8 make certify`
+(evidence `build/acl2/certify-20260919T154722Z-89314`, load average 12.6 during
+the run and 6.5 after; an earlier identical run that started at load average 119
+took 4023 s). The manifest's own per-book wall times are the sequential
+comparison: each certification is single-threaded, so their sum is what one
+ACL2 at a time would have spent.
+
+| Scope | Sum of per-book wall | `--jobs 8` wall |
+| --- | --- | --- |
+| 160 roots, excluding `bp-receiver-evolving-store-invariants` and its test | 4473 s (1 h 15 m) | 1263 s (21 m) |
+| All 162 roots | 6273 s (1 h 45 m) | 3063 s (51 m) |
+
+The 3.5x on the 160 roots is what the schedule can deliver; the whole-batch 2.1x
+is what one book costs. `books/bp-receiver-evolving-store-invariants` exceeds
+1800 s on its own, on a quiet machine, and `tests/acl2/bp-receiver-evolving-tests`
+includes it, so the full batch currently fails on that timeout at any `--jobs`
+setting, including 1. Until that book is split, no amount of concurrency brings
+this gate below about half an hour.
+
 Books use ordinary ACL2 events, without proof-skipping, added axioms, or trust
 tags. A certified book contains proved events and admitted definitions; it does
 not imply that all its functions have verified guards or that its whole subsystem

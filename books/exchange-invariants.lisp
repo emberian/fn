@@ -4,10 +4,18 @@
 ; They do not model batch serialization, durable acceptance, signatures, or a
 ; peer's honesty.  In particular, capacity is charged by distinct retained facts
 ; in this model, not by bytes or storage obligations.
+;
+; The exchange recognizers, ingest and the set lemmas are opened locally;
+; nothing here opens a record.  The traces carry `fn-exchange-statep'.
 
 (in-package "ACL2")
 
 (include-book "exchange")
+
+(local (in-theory (enable fn-exchange-factp fn-exchange-policyp
+                          fn-exchange-statep fn-exchange-initial-state
+                          fn-exchange-admissible-batchp fn-exchange-ingest
+                          fn-exchange-set-vocabulary)))
 
 ; -----------------------------------------------------------------------------
 ; Set and well-formedness facts used by the ingest transition.
@@ -88,9 +96,6 @@
            (fn-exchange-statep (fn-exchange-ingest s batch policy)))
   :hints
   (("Goal" :cases ((fn-exchange-admissible-batchp s batch policy))
-    :in-theory (enable fn-exchange-ingest
-                       fn-exchange-admissible-batchp
-                       fn-exchange-statep)
     :use ((:instance fn-exchange-merge-preserves-fact-listp
                      (facts (fn-exchange-facts s)))
           (:instance fn-exchange-merge-preserves-no-duplicatesp
@@ -104,17 +109,15 @@
                   (+ (len (fn-exchange-facts s))
                      (len (fn-exchange-new-facts
                            batch (fn-exchange-facts s))))))
-  :hints (("Goal" :in-theory (enable fn-exchange-ingest)
-           :use ((:instance fn-exchange-merge-length-is-old-plus-new
-                            (facts (fn-exchange-facts s)))))))
+  :hints (("Goal" :use ((:instance fn-exchange-merge-length-is-old-plus-new
+                                   (facts (fn-exchange-facts s)))))))
 
 (defthm fn-exchange-ingest-preserves-existing-facts
   (implies (fn-exchange-statep s)
            (fn-exchange-subsetp
             (fn-exchange-facts s)
             (fn-exchange-facts (fn-exchange-ingest s batch policy))))
-  :hints (("Goal" :cases ((fn-exchange-admissible-batchp s batch policy))
-           :in-theory (enable fn-exchange-ingest))))
+  :hints (("Goal" :cases ((fn-exchange-admissible-batchp s batch policy)))))
 
 (defthm fn-exchange-ingest-retains-existing-fact
   (implies (and (fn-exchange-statep s)
@@ -143,22 +146,22 @@
                       (fn-exchange-facts (fn-exchange-ingest s batch policy)))))
   :hints (("Goal"
            :use ((:instance fn-exchange-admitted-ingest-member (x stored))
-                 (:instance fn-exchange-admitted-ingest-member (x incoming))))))
+                 (:instance fn-exchange-admitted-ingest-member (x incoming)))
+           :in-theory (disable fn-exchange-ingest
+                               fn-exchange-admissible-batchp))))
 
 ; Validation refusal is atomic, before capacity is considered.
 (defthm fn-exchange-invalid-batch-refuses-atomically
   (implies (not (fn-exchange-batch-validp batch policy))
            (equal (fn-exchange-ingest s batch policy) s))
-  :hints (("Goal" :use ((:instance fn-exchange-ingest-refusal-is-no-op))
-           :in-theory (enable fn-exchange-admissible-batchp))))
+  :hints (("Goal" :use ((:instance fn-exchange-ingest-refusal-is-no-op)))))
 
 (defthm fn-exchange-unknown-schema-batch-refuses-atomically
   (implies (not (fn-exchange-known-schemap
                  (fn-exchange-schema fact) policy))
            (equal (fn-exchange-ingest s (cons fact batch) policy) s))
   :hints (("Goal" :use ((:instance fn-exchange-invalid-batch-refuses-atomically
-                                         (batch (cons fact batch)))
-                         )
+                                   (batch (cons fact batch))))
            :in-theory (enable fn-exchange-batch-validp
                               fn-exchange-validatep))))
 
@@ -167,8 +170,7 @@
                  (fn-exchange-provenance fact) policy))
            (equal (fn-exchange-ingest s (cons fact batch) policy) s))
   :hints (("Goal" :use ((:instance fn-exchange-invalid-batch-refuses-atomically
-                                         (batch (cons fact batch)))
-                         )
+                                   (batch (cons fact batch))))
            :in-theory (enable fn-exchange-batch-validp
                               fn-exchange-validatep))))
 
@@ -176,6 +178,9 @@
 ; Finite traces of actual calls to `fn-exchange-ingest'.
 
 (defun fn-exchange-ingest-trace (s batches policy)
+  (declare (xargs :guard (fn-exchange-statep s)
+                  :guard-hints (("Goal" :in-theory (disable fn-exchange-statep
+                                                            fn-exchange-ingest)))))
   (if (consp batches)
       (fn-exchange-ingest-trace
        (fn-exchange-ingest s (car batches) policy)
@@ -187,7 +192,8 @@
   (implies (fn-exchange-statep s)
            (fn-exchange-statep
             (fn-exchange-ingest-trace s batches policy)))
-  :hints (("Goal" :induct (fn-exchange-ingest-trace s batches policy))))
+  :hints (("Goal" :induct (fn-exchange-ingest-trace s batches policy)
+           :in-theory (disable fn-exchange-statep fn-exchange-ingest))))
 
 (defthm fn-exchange-ingest-trace-preserves-facts
   (implies (fn-exchange-statep s)
@@ -197,7 +203,7 @@
              (fn-exchange-ingest-trace s batches policy))))
   :hints
   (("Goal" :induct (fn-exchange-ingest-trace s batches policy)
-    :in-theory (enable fn-exchange-ingest-trace))
+    :in-theory (disable fn-exchange-statep fn-exchange-ingest))
    ("Subgoal *1/1"
     :use ((:instance fn-exchange-ingest-preserves-existing-facts)
           (:instance fn-exchange-subsetp-transitive
@@ -212,6 +218,9 @@
 ; A policy trace permits the authority policy to change between actual ingest
 ; calls.  It stops when either finite input list ends.
 (defun fn-exchange-policy-ingest-trace (s batches policies)
+  (declare (xargs :guard (fn-exchange-statep s)
+                  :guard-hints (("Goal" :in-theory (disable fn-exchange-statep
+                                                            fn-exchange-ingest)))))
   (if (and (consp batches) (consp policies))
       (fn-exchange-policy-ingest-trace
        (fn-exchange-ingest s (car batches) (car policies))
@@ -223,7 +232,8 @@
   (implies (fn-exchange-statep s)
            (fn-exchange-statep
             (fn-exchange-policy-ingest-trace s batches policies)))
-  :hints (("Goal" :induct (fn-exchange-policy-ingest-trace s batches policies))))
+  :hints (("Goal" :induct (fn-exchange-policy-ingest-trace s batches policies)
+           :in-theory (disable fn-exchange-statep fn-exchange-ingest))))
 
 (defthm fn-exchange-policy-ingest-trace-preserves-facts
   (implies (fn-exchange-statep s)
@@ -233,7 +243,7 @@
              (fn-exchange-policy-ingest-trace s batches policies))))
   :hints
   (("Goal" :induct (fn-exchange-policy-ingest-trace s batches policies)
-    :in-theory (enable fn-exchange-policy-ingest-trace))
+    :in-theory (disable fn-exchange-statep fn-exchange-ingest))
    ("Subgoal *1/1"
     :use ((:instance fn-exchange-ingest-preserves-existing-facts
                      (batch (car batches)) (policy (car policies)))
@@ -259,4 +269,22 @@
   :hints (("Goal"
            :use ((:instance fn-exchange-invalid-batch-refuses-atomically
                             (batch (car batches))
-                            (policy (car policies)))))))
+                            (policy (car policies))))
+           :in-theory (disable fn-exchange-ingest
+                               fn-exchange-invalid-batch-refuses-atomically))))
+
+; -----------------------------------------------------------------------------
+; Export.  Keystones stay enabled: the ingest preservation, count, retention
+; and refusal theorems and the four trace theorems.  The set and length lemmas
+; are proof vocabulary and are withdrawn.
+(deftheory fn-exchange-invariants-vocabulary
+  '(fn-exchange-batch-validp-implies-fact-listp
+    fn-exchange-add-fact-preserves-fact-listp
+    fn-exchange-add-fact-preserves-no-duplicatesp
+    fn-exchange-merge-preserves-fact-listp
+    fn-exchange-merge-preserves-no-duplicatesp
+    fn-exchange-add-fact-length
+    fn-exchange-merge-length-is-old-plus-new
+    fn-exchange-subsetp-merge-right
+    fn-exchange-subsetp-transitive))
+(in-theory (disable fn-exchange-invariants-vocabulary))
