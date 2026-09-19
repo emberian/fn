@@ -1,16 +1,24 @@
 ; fn: keystones of the mutable service owner (C1-05).
 ;
 ; The subject of every theorem here is a function tools/run_owner.py calls
-; through host/owner-host.lisp: fn-own-start (fn-owner-recover), fn-own-step
-; through fn-own-open / fn-own-read-step / fn-own-advance / fn-own-close /
-; fn-own-begin / fn-own-store-step / fn-own-complete / fn-own-observe /
-; fn-own-declare-group, and fn-own-run as the arbitrary finite event list the
-; host produces.  fn-own-reopen is the process restart the host performs by
-; calling fn-owner-recover again over the image on disk.
+; through host/owner-host.lisp: fn-own-start (fn-owner-recover), fn-own-read
+; (fn-owner-chunk: the served port, one fn-served-step per socket read over
+; the pinned archive), fn-own-step through fn-own-open / fn-own-advance /
+; fn-own-close / fn-own-begin / fn-own-store-step / fn-own-complete /
+; fn-own-observe / fn-own-declare-group, and fn-own-run as the arbitrary
+; finite event list the host produces.  fn-own-reopen is the process restart
+; the host performs by calling fn-owner-recover again over the image on disk.
+; fn-own-read-step is the per-event law under the served port: the fold
+; fn-served-nntp-run inside fn-served-step applies fn-nntp-step once per
+; framed event (books/served.lisp), and fn-own-read-step is that one step
+; with the owner's bookkeeping around it.
 ;
-; Keystones (each has a reachable witness and must-fail teeth per hypothesis
-; in tests/acl2/owner-tests.lisp):
-;   fn-own-reader-sees-pinned-prefix-replay            (K1)
+; Keystones (each has a reachable witness and one concrete violating value
+; per hypothesis in tests/acl2/owner-tests.lisp; statements unchanged from
+; the first cut of this lane except where a name is new):
+;   fn-own-read-is-served-step-on-pinned-prefix         (K1, served port; new)
+;   fn-own-read-is-served-step-on-pinned-prefix-after-any-trace   (new)
+;   fn-own-reader-sees-pinned-prefix-replay            (K1, per event)
 ;   fn-own-reader-sees-pinned-prefix-replay-after-any-trace
 ;   fn-own-completion-consumed-once                    (K2)
 ;   fn-own-pinned-prefix-survives-any-trace            (K3)
@@ -19,30 +27,31 @@
 ;   fn-own-completed-post-survives-close-and-any-trace (K5)
 ;   fn-own-run-preserves-relation, fn-own-run-preserves-store-relation (K6)
 ;   fn-own-open-observed-start-relation                (root)
+;   fn-own-every-fact-is-clock-stamped, fn-own-declare-group-without-clock-
+;   is-refused, fn-own-declared-group-is-replayed      (facts)
+;
+; Local vocabulary opened here (named on the deputy board): the owner's own
+; fn-own-vocabulary; store's fn-snt-relation (fn-own-idle-node-is-replay),
+; fn-snrt-step, fn-snt-step and the fn-sn-* transitions
+; (fn-own-snrt-step-keeps-configuration), fn-sn-completion-enabledp
+; (fn-own-completion-needs-completing-phase), fn-sf-crash-imagep
+; (fn-own-crash-image-extends-records), fn-sn-open-okp and fn-sn-open-errorp
+; (fn-own-open-kind-ok-is-okp); nntp's session record
+; (fn-own-open-session-boundedp); served's fn-served-open (the same lemma).
 
 (in-package "ACL2")
 (include-book "owner")
 (local (include-book "arithmetic/top" :dir :system))
 
-(local (in-theory (disable fn-sn-statep fn-sf-statep fn-node-statep
-                           fn-snt-relation fn-snrt-step fn-snt-step
-                           fn-sn-finish fn-sn-completion-enabledp
-                           fn-sn-completion-record fn-sf-replay-node
-                           fn-sf-history-recoverablep fn-sn-open-observed
-                           fn-sn-open-okp fn-sn-open-state fn-sf-crash-imagep
-                           fn-nntp-step fn-nntp-open-session fn-nntp-sessionp
-                           fn-nntp-set-cursor fn-nntp-result-session
-                           fn-nntp-result-effects fn-nntp-session-group
-                           fn-nntp-session-current fn-nntp-projectionp
-                           fn-clock-observationp fn-clock-later-observationp
-                           fn-node-acceptance fn-sn-files fn-sn-node
-                           fn-sn-groups fn-sn-capacity fn-sf-records
-                           fn-sf-frontier fn-sf-phase fn-sf-completion
-                           fn-sf-record-has-pairp fn-sf-prefixp
-                           fn-snt-idle-phasep fn-sn-refuse-reservation
-                           fn-sn-known-abort fn-sn-prepare fn-sn-io
-                           fn-sn-crash fn-sn-recover fn-sn-update fn-sn-make
-                           fn-sf-record-pair fn-record-p)))
+(local (in-theory (enable fn-own-vocabulary fn-ag-append fn-ag-member)))
+
+; List-recursive vocabulary of other clusters that must stay closed here so
+; the proofs below see it only through the cited keystones.
+(local (in-theory (disable fn-sf-record-has-pairp fn-sf-prefixp
+                           fn-served-nntp-run fn-served-reply-octets
+                           fn-served-closingp fn-served-chunk-listp
+                           fn-served-concat fn-nntp-session-consistentp
+                           fn-nntp-projectionp)))
 
 ; -----------------------------------------------------------------------------
 ; Prefixes of the durable history
@@ -87,10 +96,10 @@
   (member-equal x (append l (list x))))
 
 ; -----------------------------------------------------------------------------
-; The owner relation
+; The owner relation (proof vocabulary; never executed)
 
 (defun fn-own-conn-okp (conn groups capacity records)
-  (and (true-listp conn) (equal (len conn) 5)
+  (and (fn-own-conn-shapep conn)
        (natp (fn-own-conn-id conn))
        (natp (fn-own-conn-version conn))
        (<= (fn-own-conn-version conn) (len records))
@@ -108,7 +117,7 @@
     (null conns)))
 
 (defun fn-own-view-okp (view groups capacity records)
-  (and (true-listp view) (equal (len view) 3)
+  (and (fn-own-view-shapep view)
        (natp (fn-own-view-version view))
        (<= (fn-own-view-version view) (len records))
        (natp (fn-own-view-frontier view))
@@ -128,7 +137,7 @@
          (groups (fn-sn-groups s))
          (capacity (fn-sn-capacity s))
          (records (fn-sf-records (fn-sn-files s))))
-    (and (true-listp o) (equal (len o) 9)
+    (and (fn-own-shapep o)
          (fn-snt-relation s)
          (fn-own-view-okp (fn-own-view o) groups capacity records)
          (fn-own-conns-okp (fn-own-conns o) groups capacity records)
@@ -189,7 +198,7 @@
 
 (defthm fn-own-find-conn-id
   (implies (fn-own-find-conn id conns)
-           (equal (car (fn-own-find-conn id conns)) id))
+           (equal (fn-own-conn-id (fn-own-find-conn id conns)) id))
   :hints (("Goal" :induct (fn-own-find-conn id conns))))
 
 (defthm fn-own-replace-conn-okp
@@ -244,8 +253,7 @@
   :hints (("Goal" :in-theory (e/d (fn-snrt-step fn-snt-step fn-sn-prepare fn-sn-io
                                    fn-sn-finish fn-sn-crash fn-sn-recover
                                    fn-sn-refuse-reservation fn-sn-known-abort
-                                   fn-sn-update fn-sn-make fn-sn-groups
-                                   fn-sn-capacity)
+                                   fn-sn-update)
                                   (fn-sn-record-bindsp fn-sn-prepare-node
                                    fn-sf-prepare-record fn-sn-file-step
                                    fn-sf-core-completion fn-sf-emit-success
@@ -310,6 +318,18 @@
                  (:instance fn-sf-prefixp-append (xs (fn-sf-records files))
                             (ys (list (fn-sf-record-candidate files))))))))
 
+; The host's dispatch on the typed open result (store proposal 2): a result
+; whose kind is :ok is fn-sn-open-okp, so fn-owner-recover never runs the
+; whole-state recognizer that fn-sn-open-okp carries.  :rule-classes nil, a
+; guard-style fact cited by the host comment, not a registry event.
+(defthm fn-own-open-kind-ok-is-okp
+  (implies (equal (fn-sn-open-kind (fn-sn-open-observed groups capacity frontier records))
+                  :ok)
+           (fn-sn-open-okp (fn-sn-open-observed groups capacity frontier records)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-sn-open-observed-result-is-typed
+           :in-theory (e/d (fn-sn-open-okp fn-sn-open-errorp) (fn-sn-open-observed)))))
+
 ; -----------------------------------------------------------------------------
 ; Refresh
 
@@ -340,19 +360,37 @@
 ; -----------------------------------------------------------------------------
 ; Each event preserves the relation
 
+; The session a served open installs is bounded: open, no group, no cursor.
+; Opens served's fn-served-open and nntp's session record locally.
 (defthm fn-own-open-session-boundedp
   (fn-own-conn-boundedp
-   (list id version frontier archive (fn-nntp-open-session archive))
+   (fn-own-conn-make id version frontier wire
+                     (fn-served-conn-session
+                      (fn-served-result-conn (fn-served-open archive line-limit body-limit)))
+                     archive)
    groups)
-  :hints (("Goal" :in-theory (enable fn-nntp-open-session fn-nntp-make-session
-                                     fn-nntp-sessionp fn-nntp-session-openp
-                                     fn-nntp-session-group fn-nntp-session-current
+  :hints (("Goal" :in-theory (enable fn-served-open fn-nntp-open-session
+                                     fn-nntp-make-session fn-nntp-sessionp
+                                     fn-nntp-session-openp fn-nntp-session-group
+                                     fn-nntp-session-current
                                      fn-nntp-session-projected))))
 
 (defthm fn-own-open-preserves-relation
   (implies (fn-own-relation o)
-           (fn-own-relation (fn-own-open o)))
+           (fn-own-relation (cdr (fn-own-open o))))
   :hints (("Goal" :in-theory (e/d (fn-own-relation) (fn-own-conn-boundedp)))))
+
+(defthm fn-own-read-preserves-relation
+  (implies (fn-own-relation o)
+           (fn-own-relation (cdr (fn-own-read o id octets))))
+  :hints (("Goal"
+           :use ((:instance fn-own-find-conn-okp
+                            (conns (fn-own-conns o))
+                            (groups (fn-sn-groups (fn-own-store o)))
+                            (capacity (fn-sn-capacity (fn-own-store o)))
+                            (records (fn-sf-records (fn-sn-files (fn-own-store o))))))
+           :in-theory (e/d (fn-own-relation)
+                           (fn-own-conn-boundedp fn-own-find-conn-okp)))))
 
 (defthm fn-own-read-step-preserves-relation
   (implies (fn-own-relation o)
@@ -474,8 +512,7 @@
   (implies (fn-own-relation o)
            (fn-own-relation (fn-own-declare-group o name)))
   :hints (("Goal" :in-theory (e/d (fn-own-relation)
-                                  (fn-own-facts-okp fn-own-group-factp
-                                   fn-own-group-fact-make)))))
+                                  (fn-own-facts-okp fn-own-group-factp)))))
 
 ; -----------------------------------------------------------------------------
 ; K6: every step, and every finite trace, preserves the relation; the store
@@ -484,10 +521,11 @@
 (defthm fn-own-step-preserves-relation
   (implies (fn-own-relation o)
            (fn-own-relation (fn-own-step o event)))
-  :hints (("Goal" :in-theory (disable fn-own-relation fn-own-open fn-own-read-step
-                                      fn-own-advance fn-own-close fn-own-begin
-                                      fn-own-store-step fn-own-complete fn-own-reopen
-                                      fn-own-observe fn-own-declare-group))))
+  :hints (("Goal" :in-theory (disable fn-own-relation fn-own-open fn-own-read
+                                      fn-own-read-step fn-own-advance fn-own-close
+                                      fn-own-begin fn-own-store-step fn-own-complete
+                                      fn-own-reopen fn-own-observe
+                                      fn-own-declare-group))))
 
 (defthm fn-own-run-preserves-relation
   (implies (fn-own-relation o)
@@ -540,8 +578,65 @@
            :in-theory (disable fn-own-start fn-own-start-relation))))
 
 ; -----------------------------------------------------------------------------
-; K1: every reader sees exactly the replay of the record prefix at its pinned
-; version.  The effects the host writes for a command are those of
+; K1, served port: one socket read of a connection is one fn-served-step over
+; the connection's wire and session and the acceptance projection of
+; fn-sf-replay-node over the first `version` durable records, advanced to the
+; pinned frontier.  The effects the host writes are exactly this call's.
+
+(defthm fn-own-read-is-served-step-on-pinned-prefix
+  (implies (and (fn-own-relation o)
+                (fn-own-find-conn id (fn-own-conns o)))
+           (let* ((conn (fn-own-find-conn id (fn-own-conns o)))
+                  (s (fn-own-store o)))
+             (equal (car (fn-own-read o id octets))
+                    (fn-served-result-effects
+                     (fn-served-step
+                      (fn-served-make-conn
+                       (fn-own-conn-wire conn)
+                       (fn-own-conn-session conn)
+                       (fn-node-acceptance
+                        (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
+                                           (fn-own-take (fn-own-conn-version conn)
+                                                        (fn-sf-records (fn-sn-files s)))
+                                           (fn-own-conn-frontier conn))))
+                      octets)))))
+  :hints (("Goal"
+           :use ((:instance fn-own-find-conn-okp
+                            (conns (fn-own-conns o))
+                            (groups (fn-sn-groups (fn-own-store o)))
+                            (capacity (fn-sn-capacity (fn-own-store o)))
+                            (records (fn-sf-records (fn-sn-files (fn-own-store o))))))
+           :in-theory (e/d (fn-own-relation)
+                           (fn-own-conn-boundedp fn-own-find-conn-okp)))))
+
+(defthm fn-own-read-is-served-step-on-pinned-prefix-after-any-trace
+  (implies (and (fn-own-relation o)
+                (fn-own-find-conn id (fn-own-conns (fn-own-run o events))))
+           (let* ((final (fn-own-run o events))
+                  (conn (fn-own-find-conn id (fn-own-conns final)))
+                  (s (fn-own-store final)))
+             (equal (car (fn-own-read final id octets))
+                    (fn-served-result-effects
+                     (fn-served-step
+                      (fn-served-make-conn
+                       (fn-own-conn-wire conn)
+                       (fn-own-conn-session conn)
+                       (fn-node-acceptance
+                        (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
+                                           (fn-own-take (fn-own-conn-version conn)
+                                                        (fn-sf-records (fn-sn-files s)))
+                                           (fn-own-conn-frontier conn))))
+                      octets)))))
+  :hints (("Goal" :use (fn-own-run-preserves-relation
+                        (:instance fn-own-read-is-served-step-on-pinned-prefix
+                                   (o (fn-own-run o events))))
+           :in-theory (disable fn-own-run fn-own-read fn-own-relation
+                               fn-own-run-preserves-relation
+                               fn-own-read-is-served-step-on-pinned-prefix))))
+
+; -----------------------------------------------------------------------------
+; K1, per event: every reader sees exactly the replay of the record prefix at
+; its pinned version.  The effects of one framed event are those of
 ; fn-nntp-step against the acceptance projection of fn-sf-replay-node over
 ; the first `version` durable records, advanced to the pinned frontier.
 
@@ -815,3 +910,40 @@
            (member-equal name (fn-own-replay-facts
                                (fn-own-facts (fn-own-declare-group o name)))))
   :hints (("Goal" :in-theory (disable fn-own-group-factp))))
+
+; -----------------------------------------------------------------------------
+; Export theory.  Keystones and the relation's list vocabulary stay enabled;
+; the relation itself, the per-event preservation lemmas and the store facts
+; proved here for the owner's own use are withdrawn under one name.
+
+(deftheory fn-own-invariants-vocabulary
+  '(fn-own-take-of-len fn-own-prefixp-len fn-own-take-of-prefix
+    fn-own-prefix-archive-of-prefix fn-own-has-pairp-of-prefix
+    fn-own-member-of-append-last
+    fn-own-conn-okp fn-own-view-okp fn-own-relation
+    fn-own-conns-okp-of-prefix fn-own-view-okp-of-prefix
+    fn-own-ledger-durablep-of-prefix fn-own-ledger-durablep-append
+    fn-own-ledger-durablep-member fn-own-facts-okp-append
+    fn-own-find-conn-okp fn-own-find-conn-id fn-own-replace-conn-okp
+    fn-own-replace-conn-len fn-own-remove-conn-okp fn-own-remove-conn-len
+    fn-own-idle-node-is-replay fn-own-related-records-true-list
+    fn-own-related-frontier-natural fn-own-snrt-step-keeps-configuration
+    fn-own-snrt-step-preserves-relation fn-own-snrt-step-records-prefix
+    fn-own-completion-pair-has-record fn-own-completion-needs-completing-phase
+    fn-own-crash-image-extends-records
+    fn-own-refresh-keeps-fields fn-own-refresh-preserves-relation
+    fn-own-open-session-boundedp fn-own-open-preserves-relation
+    fn-own-read-preserves-relation fn-own-read-step-preserves-relation
+    fn-own-advance-preserves-relation fn-own-close-preserves-relation
+    fn-own-begin-preserves-relation fn-own-store-step-preserves-relation
+    fn-own-complete-preserves-relation fn-own-reopen-preserves-relation
+    fn-own-observe-preserves-relation fn-own-group-fact-make-is-fact
+    fn-own-declare-group-preserves-relation fn-own-step-preserves-relation
+    fn-own-start-relation fn-own-complete-ledger-is-exact-pair
+    fn-own-step-records-prefix fn-own-run-records-prefix
+    fn-own-min-pinned-below-floor fn-own-min-pinned-below-found
+    fn-own-conns-okp-are-bounded fn-own-step-keeps-max-conns
+    fn-own-run-keeps-max-conns fn-own-step-ledger-grows fn-own-run-ledger-grows
+    fn-own-facts-okp-member fn-own-replay-facts-append))
+
+(in-theory (disable fn-own-invariants-vocabulary))

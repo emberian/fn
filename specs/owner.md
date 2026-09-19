@@ -25,16 +25,30 @@ The committed version is the generation: the length of the durable record
 history. The committed view is refreshed only when the store is at an idle
 phase, where [`fn-snt-relation`](../books/store-node-traces.lisp) says the
 live node is the exact replay of the durable records. A connection pins the
-committed view when it opens and keeps it until the host advances it; its
-NNTP session runs `fn-nntp-step` against the pinned archive and never against
-the live node.
+committed view when it opens and keeps it until the host advances it. Each
+connection carries one served connection (wire framing state, NNTP session,
+pinned archive; [`books/served.lisp`](../books/served.lisp)): the served
+port `fn-own-read` is one `fn-served-step` per socket read over that
+connection, never over the live node, and `fn-own-read-step` is its
+per-event law (one `fn-nntp-step` against the pinned archive).
 
-Events: `(:open)`, `(:read id wire-event)`, `(:advance id)`, `(:close id)`,
+Events: `(:open)`, `(:octets id octets)` (the served port),
+`(:read id wire-event)` (its per-event law), `(:advance id)`, `(:close id)`,
 `(:begin id)`, `(:store fn-snrt-event)`, `(:complete)`,
 `(:reopen frontier records)`, `(:observe clock-observation)`,
-`(:declare-group name)`. Every store transition, including the resolution
-transitions, goes through the proved `fn-snrt-step`; completion is the actual
-`fn-sn-finish`.
+`(:declare-group name)`, and `(:outcome id outcome)`, reserved for the POST
+fold (w4/post) and a no-op until it lands. Every store transition, including
+the resolution transitions, goes through the proved `fn-snrt-step`;
+completion is the actual `fn-sn-finish`.
+
+Records are opaque (`docs/proof-style.md` section 1): the owner, the view,
+the connection and the group fact each have a shape predicate, a
+constructor, total accessors and exported record lemmas. The served port and
+the connection events are guard `t` verified; the store events carry
+`(fn-sn-statep (fn-own-store o))`, the invariant their callees carry, and
+`fn-own-complete` is verified. `fn-own-store-step`, `fn-own-step` and
+`fn-own-run` are declared but not verified because `fn-snrt-step` (store) is
+not guard verified; that is an open item below.
 
 ## Keystones
 
@@ -43,7 +57,9 @@ that order. Counts live in the generated ledger.
 
 | Keystone | Property | Hypotheses | Covered scope |
 | --- | --- | --- | --- |
-| `fn-own-reader-sees-pinned-prefix-replay` | The effects a reader step produces are those of `fn-nntp-step` on the connection's session against `fn-node-acceptance` of `fn-sf-replay-node` over the first `version` durable records at the pinned frontier | `fn-own-relation`, the connection exists | One `fn-own-read-step`, the call `fn-owner-chunk` makes for every wire event |
+| `fn-own-read-is-served-step-on-pinned-prefix` | The effects one socket read produces are those of `fn-served-step` over the connection's wire and session and `fn-node-acceptance` of `fn-sf-replay-node` over the first `version` durable records at the pinned frontier | `fn-own-relation`, the connection exists | One `fn-own-read`, the call `fn-owner-chunk` makes for every socket read |
+| `fn-own-read-is-served-step-on-pinned-prefix-after-any-trace` | The same equality on the state after any finite owner-event list | `fn-own-relation` at the start, the connection exists at the end | Every reachable owner state |
+| `fn-own-reader-sees-pinned-prefix-replay` | The effects of one framed wire event are those of `fn-nntp-step` on the connection's session against the same pinned-prefix archive | `fn-own-relation`, the connection exists | One `fn-own-read-step`: the per-event law of the served port (`fn-served-step` is `fn-wire-drive` then the fold `fn-served-nntp-run` of `fn-nntp-step`, `books/served.lisp`); the host calls `fn-own-read` |
 | `fn-own-reader-sees-pinned-prefix-replay-after-any-trace` | The same equality on the state after any finite owner-event list | `fn-own-relation` at the start, the connection exists at the end | Every reachable owner state |
 | `fn-own-completion-consumed-once` | `fn-own-complete` is idempotent on the whole owner: a second completion consumes nothing and appends nothing | none | Every owner state; the ledger grows by the kernel's own `fn-sf-completion` pair exactly once per `:completing` phase (`fn-own-complete-ledger-is-exact-pair`) |
 | `fn-own-pinned-prefix-survives-any-trace` | The prefix of the durable history a connection pinned is unchanged after any finite trace, reopen included | `fn-own-relation`, the connection exists at the start | Records only grow along owner traces (`fn-own-run-records-prefix`); nothing below a pin may be reclaimed |
@@ -55,18 +71,28 @@ that order. Counts live in the generated ledger.
 | `fn-own-every-fact-is-clock-stamped`, `fn-own-declare-group-without-clock-is-refused`, `fn-own-declared-group-is-replayed` | A group-configuration fact carries the clock observation current when it was created; none is created without one; the live group view is the replay of the fact log | `fn-own-relation`; a clock observation present | The fact record kind and its replay |
 
 Witnesses (`tests/acl2/owner-tests.lisp`): two readers at versions 0 and 1
-with a post between them answering `GROUP fn.letters` differently, a stalled
-reader that stays pinned through a second post, a close, an exact-image
-reopen after which a fresh reader sees version 2, and the whole sequence as
-one `fn-own-run` trace. One `must-fail` per hypothesis per keystone, as
-concrete instances with that hypothesis dropped.
+with a post between them answering `GROUP fn.letters` differently through
+the served port and through its per-event law, a read cut inside the command
+line, a stalled reader that stays pinned through a second post, a close, an
+exact-image reopen after which a fresh reader sees version 2, and the whole
+sequence as one `fn-own-run` trace. One concrete violating value per
+hypothesis per keystone, each an `assert-event` on the negated conclusion.
+Recorded open there: the connection-exists hypothesis of
+`fn-own-pinned-prefix-survives-any-trace` has no violating value (an absent
+connection makes both sides `nil`), so it is unnecessary and stays only
+because the statement is frozen this wave.
 
 ## Host
 
 `tools/run_owner.py` is a single-threaded event loop. Loopback NNTP
-connections are served one wire event per `fn-owner-chunk`; a peer that does
-not consume its output stops being read once its backlog reaches 64 KiB and
-costs nothing else, so a stalled reader cannot block a post. The control
+connections are served one socket read per `fn-owner-chunk`, which is one
+`fn-own-read`; the reply stream and the close verdict are the book's two
+projections of the effect list (`fn-served-reply-octets`,
+`fn-served-closingp`). A peer that does not consume its output stops being
+read once its backlog reaches 64 KiB and costs nothing else, so a stalled
+reader cannot block a post. The process root `fn-owner-recover` dispatches
+on `fn-sn-open-kind` under `fn-own-open-kind-ok-is-okp`, never on
+`fn-sn-open-okp`, so no whole-state recognizer runs per recovery. The control
 channel is a Unix socket with one request line per connection: `POST`,
 `VERSION`, `CONNECTIONS`, `ADVANCE <id>|ALL`, `OBSERVE`, `DECLARE-GROUP`,
 `QUIT`. `run_store.py post --owner <socket>` is the thin client; the reply
@@ -81,10 +107,10 @@ before every post and control command. `fn-own-observe` accepts only a later
 observation of the same clock (`fn-clock-later-observationp`); a wall reading
 that moves the earliest admissible time backwards is rejected and reported.
 
-Host-only, outside the proof: socket I/O, the per-connection wire staging
-(`fn-wire-initial-state 510 8192`, as in the reader), the output backlog
-bound, the control line grammar, the clock readings themselves, and the
-decision to advance a connection. The group-fact log is kept in the owner
+Host-only, outside the proof: socket I/O, the output backlog bound, the
+control line grammar, the clock readings themselves, and the decision to
+advance a connection. The wire framing state is inside the owner's
+connection record, not in the host. The group-fact log is kept in the owner
 process and is not yet persisted to disk: persistence of facts as a durable
 record kind is the open item below.
 
@@ -100,3 +126,15 @@ record kind is the open item below.
 - `tools/run_reader.py --store` keeps its shared-lock snapshot path and
   cannot run alongside an owner on the same store; making it a thin client
   of the owner is the next step once partial-output tracking (HST-002) lands.
+- `fn-own-store-step`, `fn-own-step` and `fn-own-run` are not guard verified:
+  `fn-snrt-step` and `fn-snt-step` (store) have no guard and call
+  transitions that carry `(fn-sn-statep s)`. Store gives the dispatchers
+  that guard and verifies them; the owner then verifies its three.
+- The relation does not carry `fn-served-connp` per connection, so the owner
+  does not yet inherit `fn-served-step-effects-are-typed`; carrying it needs
+  the served port to refuse a non-octet read (`fn-wire-octet-listp`), which
+  the host never sends.
+- The POST fold (w4/post): the served step will produce a submission effect;
+  `Owner.submit` in `tools/run_owner.py` runs the durable path for it and
+  feeds the outcome back through `fn-owner-outcome` / `(:outcome id outcome)`,
+  which the book ignores until the fold gives it a meaning.
