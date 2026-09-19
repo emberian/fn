@@ -14,7 +14,10 @@
 
 (in-package "ACL2")
 (include-book "../../books/crypto-seam")
-(include-book "std/testing/must-fail" :dir :system)
+
+; cluster-local theory: this book is inside the substrate cluster and opens
+; the definitions its neighbours withdraw at export (docs/proof-style.md 2).
+(local (in-theory (enable fn-crypto-seam-internals)))
 
 ; -----------------------------------------------------------------------------
 ; Toy realisers
@@ -135,10 +138,9 @@
 (assert-event (not (equal '(1 2 3) '(4 5 6))))
 (assert-event (fn-digest-octetsp (fn-digest '(1 2 3))))
 
-; Digest injectivity is not a theorem of the seam.
-(must-fail
- (thm (implies (equal (fn-digest a) (fn-digest b))
-               (equal a b))))
+; Digest injectivity is not a theorem of the seam, and the witness above is
+; why: two unequal messages with one digest, under a realiser that satisfies
+; every constraint the seam states (docs/proof-style.md section 5).
 
 ; -----------------------------------------------------------------------------
 ; Domain separation lives below the digest: tagged preimages separate.
@@ -201,10 +203,9 @@
                               (append (fn-sig-public-key *fn-toy-seed-a*)
                                       '(10 20 30)))))
 
-; Unforgeability is not a theorem of the seam.
-(must-fail
- (thm (implies (fn-sig-verify pk m sig)
-               (equal sig (fn-sig-sign sk m)))))
+; Unforgeability is not a theorem of the seam, and the witness above is why:
+; a signature nobody holding the secret produced, which verifies.  A-CRYPTO is
+; what carries unforgeability, not `fn-sig-verify-of-sign'.
 
 ; -----------------------------------------------------------------------------
 ; Hex rendering

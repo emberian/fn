@@ -19,6 +19,13 @@
 (include-book "principal")
 (include-book "statement-invariants")
 
+; cluster-local theory: this book is inside the substrate cluster and opens
+; the definitions its neighbours withdraw at export (docs/proof-style.md 2).
+(local (in-theory (enable fn-crypto-seam-internals
+                          fn-stmt-internals
+                          fn-stmt-invariants-vocabulary
+                          fn-prin-internals)))
+
 ; -----------------------------------------------------------------------------
 ; Identity
 
@@ -236,3 +243,35 @@
                             fn-prin-succession-key fn-stmt-p
                             fn-stmt-incarnation fn-stmt-sequence
                             fn-prin-statep)))))
+
+; -----------------------------------------------------------------------------
+; Export theory (docs/proof-style.md section 2).
+;
+; The keystones below stay enabled on include; everything else this book
+; proves is proof vocabulary and is withdrawn under `fn-prin-invariants-vocabulary',
+; which a book inside this cluster enables locally in one line.
+;
+; * fn-prin-preimage-injective
+; * fn-prin-sign-succession-is-acceptable
+; * fn-prin-sign-succession-advances-key
+; * fn-prin-apply-succession-preserves-statep
+; * fn-prin-resolve-preserves-statep
+; * fn-prin-trail-is-valid-chain
+; * fn-prin-first-key-move-is-verified-under-prior-key
+; * fn-prin-verified-implies-stmt-p
+
+(deftheory fn-prin-invariants-vocabulary
+  '(
+    fn-prin-preimage-decodes
+    fn-prin-id-unfolds
+    fn-prin-succession-payload-is-payload
+    fn-prin-succession-key-of-payload
+    fn-prin-succession-key-of-sign
+    fn-prin-sign-succession-is-verified
+    fn-prin-sign-succession-fields
+    fn-prin-sign-succession-is-stmt
+    fn-prin-apply-succession-when-not-acceptable
+    fn-prin-resolve-is-resolve-of-trail
+    fn-prin-chain-step-unfolds))
+
+(in-theory (disable fn-prin-invariants-vocabulary))

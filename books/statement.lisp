@@ -40,6 +40,15 @@
 (in-package "ACL2")
 (include-book "crypto-seam")
 
+
+;; Convergence: the codecs cluster withdraws its proof vocabulary on export;
+;; re-open it locally (agreed on the deputy board, codecs ANSWER to substrate).
+(local (in-theory (enable fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary fn-record-invariants-vocabulary)))
+
+; cluster-local theory: this book is inside the substrate cluster and opens
+; the definitions its neighbours withdraw at export (docs/proof-style.md 2).
+(local (in-theory (enable fn-crypto-seam-internals)))
+
 ; -----------------------------------------------------------------------------
 ; Bounds and tags
 
@@ -637,3 +646,131 @@
       (if (not (fn-stmt-okp items))
           items
         (fn-stmt-receipt-of-items (fn-stmt-value items))))))
+
+; -----------------------------------------------------------------------------
+; Record lemmas (docs/proof-style.md section 1).  Accessor of constructor,
+; one per field, so nothing above this book opens a record.
+
+(defthm fn-stmt-header-creator-of-fn-stmt-make-header
+  (equal (fn-stmt-header-creator (fn-stmt-make-header creator incarnation sequence preds kind ref))
+         creator))
+(defthm fn-stmt-header-incarnation-of-fn-stmt-make-header
+  (equal (fn-stmt-header-incarnation (fn-stmt-make-header creator incarnation sequence preds kind ref))
+         incarnation))
+(defthm fn-stmt-header-sequence-of-fn-stmt-make-header
+  (equal (fn-stmt-header-sequence (fn-stmt-make-header creator incarnation sequence preds kind ref))
+         sequence))
+(defthm fn-stmt-header-preds-of-fn-stmt-make-header
+  (equal (fn-stmt-header-preds (fn-stmt-make-header creator incarnation sequence preds kind ref))
+         preds))
+(defthm fn-stmt-header-kind-of-fn-stmt-make-header
+  (equal (fn-stmt-header-kind (fn-stmt-make-header creator incarnation sequence preds kind ref))
+         kind))
+(defthm fn-stmt-header-ref-of-fn-stmt-make-header
+  (equal (fn-stmt-header-ref (fn-stmt-make-header creator incarnation sequence preds kind ref))
+         ref))
+
+(defthm fn-stmt-header-of-fn-stmt-make
+  (equal (fn-stmt-header (fn-stmt-make header payload signature))
+         header))
+(defthm fn-stmt-payload-of-fn-stmt-make
+  (equal (fn-stmt-payload (fn-stmt-make header payload signature))
+         payload))
+(defthm fn-stmt-signature-of-fn-stmt-make
+  (equal (fn-stmt-signature (fn-stmt-make header payload signature))
+         signature))
+
+(defthm fn-stmt-receipt-subject-of-fn-stmt-make-receipt
+  (equal (fn-stmt-receipt-subject (fn-stmt-make-receipt subject obligation policy-id evidence))
+         subject))
+(defthm fn-stmt-receipt-obligation-of-fn-stmt-make-receipt
+  (equal (fn-stmt-receipt-obligation (fn-stmt-make-receipt subject obligation policy-id evidence))
+         obligation))
+(defthm fn-stmt-receipt-policy-id-of-fn-stmt-make-receipt
+  (equal (fn-stmt-receipt-policy-id (fn-stmt-make-receipt subject obligation policy-id evidence))
+         policy-id))
+(defthm fn-stmt-receipt-evidence-of-fn-stmt-make-receipt
+  (equal (fn-stmt-receipt-evidence (fn-stmt-make-receipt subject obligation policy-id evidence))
+         evidence))
+
+; -----------------------------------------------------------------------------
+; Export theory (docs/proof-style.md section 2).
+;
+; Records (header, statement, receipt), the parse-result vocabulary,
+; the codec and the derived accessors are withdrawn; the item-list vocabulary
+; the round-trip proofs induct on stays.
+;
+; Only the `:definition' rune is withdrawn, so type prescriptions and
+; executable counterparts still decide ground terms.  A book inside this
+; cluster that must open one of these enables `fn-stmt-internals' locally.
+
+; The `true-listp'/`consp' backchaining rules below are withdrawn with the
+; definitions: an includer that inherits them pays for them on every goal
+; shaped like a list (docs/proof-style.md section 8).
+
+(deftheory fn-stmt-internals
+  '(
+    (:d fn-stmt-ok)
+    (:d fn-stmt-ok2)
+    (:d fn-stmt-error)
+    (:d fn-stmt-okp)
+    (:d fn-stmt-value)
+    (:d fn-stmt-rest)
+    (:d fn-stmt-uint-item-p)
+    (:d fn-stmt-bytes-item-p)
+    (:d fn-stmt-kindp)
+    (:d fn-stmt-kind-code)
+    (:d fn-stmt-kind-of-code)
+    (:d fn-stmt-make-header)
+    (:d fn-stmt-header-creator)
+    (:d fn-stmt-header-incarnation)
+    (:d fn-stmt-header-sequence)
+    (:d fn-stmt-header-preds)
+    (:d fn-stmt-header-kind)
+    (:d fn-stmt-header-ref)
+    (:d fn-stmt-predsp)
+    (:d fn-stmt-headerp)
+    (:d fn-stmt-header-items)
+    (:d fn-stmt-header-of-items)
+    (:d fn-stmt-header-encode)
+    (:d fn-stmt-header-decode-exact)
+    (:d fn-stmt-content-id)
+    (:d fn-stmt-signing-preimage)
+    (:d fn-stmt-payloadp)
+    (:d fn-stmt-payload-ref)
+    (:d fn-stmt-make)
+    (:d fn-stmt-header)
+    (:d fn-stmt-payload)
+    (:d fn-stmt-signature)
+    (:d fn-stmt-p)
+    (:d fn-stmt-creator)
+    (:d fn-stmt-incarnation)
+    (:d fn-stmt-sequence)
+    (:d fn-stmt-preds)
+    (:d fn-stmt-kind)
+    (:d fn-stmt-id)
+    (:d fn-stmt-sign)
+    (:d fn-stmt-verifiedp)
+    (:d fn-stmt-items)
+    (:d fn-stmt-encode)
+    (:d fn-stmt-of-items)
+    (:d fn-stmt-decode-exact)
+    (:d fn-stmt-termp)
+    (:d fn-stmt-make-receipt)
+    (:d fn-stmt-receipt-subject)
+    (:d fn-stmt-receipt-obligation)
+    (:d fn-stmt-receipt-policy-id)
+    (:d fn-stmt-receipt-evidence)
+    (:d fn-stmt-obligationp)
+    (:d fn-stmt-receipt-p)
+    (:d fn-stmt-receipt-term)
+    (:d fn-stmt-receipt-items)
+    (:d fn-stmt-receipt-of-items)
+    (:d fn-stmt-receipt-encode)
+    (:d fn-stmt-receipt-decode-exact)
+    fn-stmt-id-listp-implies-true-listp
+    fn-stmt-encode-items-is-true-list
+    fn-stmt-header-items-is-true-list
+    fn-stmt-take-id-items-value-is-true-list))
+
+(in-theory (disable fn-stmt-internals))
