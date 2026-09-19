@@ -1,6 +1,7 @@
 ; Executable BPv7 durable-outbox workflow scenarios.
 (in-package "ACL2")
 (include-book "../../books/bp-workflow-transport-invariants")
+(include-book "std/testing/must-fail" :dir :system)
 
 (defconst *bp-groups* '("fn.letters"))
 (defconst *bp-payload* '(72 105 13 10))
@@ -149,3 +150,126 @@
                       (fn-bp-find-work "work-1"
                                        (fn-bp-state-works *bp-mixed-result*)))
                      *bp-receipt*))
+
+; ---------------------------------------------------------------------------
+; F11: a transport observation never moves an attempt backward in its
+; lifecycle (fn-bp-observe-transport-never-moves-status-backward,
+; fn-bp-observe-transport-never-returns-to-intent).  Witnesses branch from the
+; live attempt-0 after its BPA reply.
+(defconst *bp-accepted*
+  (fn-bp-observe-transport *bp-submit-replied* "work-1" "attempt-0" 0
+                           :bpa-accepted))
+(defun fn-bpt-status (s)
+  (fn-bp-attempt-status
+   (fn-bp-work-attempt (fn-bp-find-work "work-1" (fn-bp-state-works s)))))
+(assert-event (equal (fn-bpt-status *bp-accepted*) :bpa-accepted))
+; The defect: an accepted attempt regressing to :intent was admitted.  Refused.
+(assert-event
+ (equal (fn-bp-observe-transport *bp-accepted* "work-1" "attempt-0" 0 :intent)
+        *bp-accepted*))
+(must-fail (assert-event (fn-bp-transport-transition-okp :bpa-accepted :intent)))
+; Any backward step is refused, not only the step to :intent.
+(defconst *bp-forwarded*
+  (fn-bp-observe-transport *bp-accepted* "work-1" "attempt-0" 0 :forwarded))
+(assert-event (equal (fn-bpt-status *bp-forwarded*) :forwarded))
+(assert-event
+ (equal (fn-bp-observe-transport *bp-forwarded* "work-1" "attempt-0" 0
+                                 :bpa-submit-replied)
+        *bp-forwarded*))
+(assert-event
+ (equal (fn-bp-observe-transport *bp-forwarded* "work-1" "attempt-0" 0
+                                 :bpa-accepted)
+        *bp-forwarded*))
+(must-fail (assert-event (fn-bp-transport-transition-okp :forwarded :attempted)))
+; The relation is not "refuse everything": forward steps are accepted and a
+; repeated observation is a no-op.
+(assert-event
+ (equal (fn-bpt-status (fn-bp-observe-transport *bp-forwarded* "work-1"
+                                                "attempt-0" 0 :delivered))
+        :delivered))
+(assert-event
+ (equal (fn-bp-observe-transport *bp-forwarded* "work-1" "attempt-0" 0
+                                 :forwarded)
+        *bp-forwarded*))
+(assert-event (fn-bp-transport-transition-okp :bpa-accepted :forwarded))
+(assert-event (< (fn-bp-status-rank :bpa-accepted) (fn-bp-status-rank :forwarded)))
+; :delivered leaves only through policy retry; a retryable status leaves only
+; through a new attempt.  Both were already refused and remain refused.
+(assert-event
+ (equal (fn-bp-observe-transport *bp-delivered* "work-1" "attempt-0" 0 :expired)
+        *bp-delivered*))
+(assert-event (equal (fn-bpt-status *bp-retryable*) :unknown))
+(assert-event
+ (equal (fn-bp-observe-transport *bp-retryable* "work-1" "attempt-0" 0
+                                 :delivered)
+        *bp-retryable*))
+(must-fail (assert-event (fn-bp-transport-transition-okp :delivered :expired)))
+(must-fail (assert-event (fn-bp-transport-transition-okp :unknown :delivered)))
+; The rank conclusion, executed on a refused and on an accepted observation.
+(assert-event
+ (<= (fn-bp-status-rank (fn-bpt-status *bp-accepted*))
+     (fn-bp-status-rank
+      (fn-bpt-status (fn-bp-observe-transport *bp-accepted* "work-1"
+                                              "attempt-0" 0 :intent)))))
+(assert-event
+ (<= (fn-bp-status-rank (fn-bpt-status *bp-accepted*))
+     (fn-bp-status-rank (fn-bpt-status *bp-forwarded*))))
+
+; ---------------------------------------------------------------------------
+; D8: :submit leaves fn-bp-step only from the :durable completion of the
+; pending attempt intent (fn-bp-step-submit-requires-matching-durable-
+; attempt-completion).  *bp-attempt-pending* holds the intent without an
+; outcome: prepared, and in the host's terms persisted but not yet durable.
+(defun fn-bpt-submitp (effects)
+  (and (consp effects) (equal (fn-bp-nth 0 (car effects)) :submit)))
+(assert-event (fn-bpt-submitp (fn-bp-result-effects *bp-attempt-result*)))
+(assert-event (equal (len (fn-bp-result-effects *bp-attempt-result*)) 1))
+; The pending intent alone yields no :submit under any other event.
+(assert-event
+ (not (fn-bpt-submitp
+       (fn-bp-result-effects
+        (fn-bp-step *bp-attempt-pending*
+                    (fn-bp-storage-complete-event 12 0 :aborted))))))
+(assert-event
+ (not (fn-bpt-submitp
+       (fn-bp-result-effects
+        (fn-bp-step *bp-attempt-pending*
+                    (fn-bp-storage-complete-event 12 0 :indeterminate))))))
+(assert-event
+ (not (fn-bpt-submitp
+       (fn-bp-result-effects
+        (fn-bp-step *bp-attempt-pending*
+                    (fn-bp-storage-complete-event 99 0 :durable))))))
+(assert-event
+ (not (fn-bpt-submitp
+       (fn-bp-result-effects
+        (fn-bp-step *bp-attempt-pending*
+                    (fn-bp-transport-event "work-1" "attempt-0" 0
+                                           :delivered))))))
+(assert-event
+ (not (fn-bpt-submitp
+       (fn-bp-result-effects
+        (fn-bp-step *bp-attempt-pending* (fn-bp-restart-event))))))
+; After a restart the fenced intent found committed installs :unknown and
+; still emits no :submit: the attempt has to be retried under policy.
+(must-fail
+ (assert-event
+  (fn-bpt-submitp
+   (fn-bp-result-effects
+    (fn-bp-step (fn-bp-restart *bp-attempt-pending*)
+                (fn-bp-storage-recover-event 12 0 :committed))))))
+; Teeth for the hypothesis (equal (fn-bp-nth 0 e) :submit): an :enqueue-ack
+; is emitted from a pending :enqueue, so the conclusion's pending kind fails.
+(assert-event (member-equal '(:enqueue-ack "work-1")
+                            (fn-bp-result-effects *bp-enqueue-result*)))
+(must-fail
+ (assert-event
+  (equal (fn-bp-pending-kind (fn-bp-state-pending *bp-enqueue-pending*))
+         :attempt)))
+; Teeth for the membership hypothesis: the initial state emits nothing, and
+; its conclusion (a pending intent) fails.
+(assert-event
+ (equal (fn-bp-result-effects
+         (fn-bp-step *bp-empty* (fn-bp-storage-complete-event 12 0 :durable)))
+        nil))
+(must-fail (assert-event (consp (fn-bp-state-pending *bp-empty*))))

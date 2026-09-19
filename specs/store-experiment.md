@@ -67,10 +67,30 @@ durable. It must not produce a success reply or permit another mutation through
 the same host object. Recovery reconciles the retained transaction; it does not
 silently discard it to match an older in-memory view.
 
-Configuration creation also needs data and namespace barriers. A stable lock
-file mediates cooperating writers; its pathname must not be replaced to evade
-an existing lock. Locking is an adapter ownership mechanism, not proof against
+Configuration creation also needs data and namespace barriers, and it publishes
+the same way a transaction does. Initialization writes `config.json` and
+`allocation-frontier.json` to exclusively created staging names, completes
+their data barriers, links them into place without overwriting an existing
+name, and completes the store directory's barrier. Writing them at their final
+names in place would let an interrupted first write leave an unparseable store
+that no retry can repair. A final name that already exists is loaded and
+checked, never replaced.
+
+A stable lock file mediates cooperating writers; its pathname must not be
+replaced to evade an existing lock, and opening that pathname is a distinct
+outcome from contending for the lock. A missing, non-regular or symlinked lock
+pathname is an invalid store state; only a refused lock means another owner
+holds the store. Locking is an adapter ownership mechanism, not proof against
 an administrator modifying the store behind its back.
+
+Every barrier named here is the platform's strongest available primitive: on
+darwin `fcntl(fd, F_FULLFSYNC)`, which asks the device to flush its own write
+cache, because `fsync(2)` on APFS returns before that flush. A filesystem that
+rejects the request falls back to `fsync(2)` and then carries only the
+`fsync(2)` contract. [The host boundary](host.md#durability-barriers-by-platform)
+holds the platform table. This chooses the strongest primitive offered; it does
+not qualify power-loss behavior, and A-DURABILITY and A-WRITE-ISOLATION remain
+assumptions about the device and filesystem.
 
 The bounded, checksummed allocation frontier is replaced atomically only after
 its new file data barrier; its directory barrier precedes use of the reserved
@@ -116,8 +136,14 @@ barrier; merely validating their bytes does not settle an earlier I/O failure.
 The initial adapter bounds the number and aggregate bytes of recovered records
 before building the process input. These are provisional operational limits and
 must also restrict new publication, so the adapter does not create a store it
-would refuse to reopen. Staging orphans remain outside recovery authority;
-best-effort cleanup after a completed commit does not revoke that commit.
+would refuse to reopen. Every admission path enforces the transaction bound
+before allocating or charging, including the BP receiver: a record published
+past the bound would make every later reopen fault with no recovery path.
+Staging orphans remain outside recovery authority; best-effort cleanup after a
+completed commit does not revoke that commit. Recovery enumerates the staging
+namespace and reports what it found, bounded for reporting, so an interrupted
+publication is visible to an operator; it never deletes a staged name and never
+treats one as history.
 
 The tested development profile fixes two groups (`fn.letters`, `fn.test`), 128
 transactions, 32,768 payload octets per article, 65,538 encoded record octets,

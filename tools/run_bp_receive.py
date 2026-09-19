@@ -19,9 +19,21 @@ DESTINATION = "dtn://fn.lab/inbox"
 POLICY_ID = "bp-lab-policy-v0"
 ISSUER = "dtn://fn.lab/issuer"
 LIFETIME = 300
+MAX_BID_OCTETS = 512
+MAX_RECEIPT_ID_OCTETS = 256
 
 class BpReceiveError(RuntimeError): pass
-class BpReceiveDeletePending(BpReceiveError): pass
+class BpReceiveDeletePending(BpReceiveError):
+    """The receipt decision is durable; the BPA BID awaits a later delete.
+
+    It carries the acceptance it earned so a caller can tell this apart from a
+    refusal or an uncertain decision.
+    """
+    def __init__(self, message, outcome="accepted", receipt_adu=b"", staged_path=None):
+        super().__init__(message)
+        self.outcome = outcome
+        self.receipt_adu = receipt_adu
+        self.staged_path = staged_path
 @dataclass(frozen=True)
 class ReceiveResult:
     outcome: str
@@ -62,20 +74,22 @@ def _request_status(bridge, request_adu):
         raise BpReceiveError("ACL2 request-status boundary")
     return statuses[body]
 
-def _receipt_identity(bridge, request_adu):
+def _work_identity(bridge, request_adu):
+    """Derive the receipt identity from ACL2's work id, before any mutation.
+
+    The length bound is a property of the identity, so it is known here rather
+    than after the article has been charged and its context persisted.
+    """
     work_id = _acl2_octets(bridge, "(fn-bpreq-work-id '" + bridge.literal(request_adu) + " state)")
     if not work_id:
         raise BpReceiveError("ACL2 request work-id boundary")
     receipt_id = b"receipt:" + work_id
-    if len(receipt_id) > 256:
-        raise BpReceiveError("receipt id boundary")
     try:
-        return work_id.decode("ascii"), receipt_id.decode("ascii")
+        return work_id.decode("ascii"), receipt_id.decode("ascii"), len(receipt_id)
     except UnicodeDecodeError as error:
         raise BpReceiveError("ACL2 request metadata encoding") from error
 
-def _durably_decide(receipt_journal, bridge, request_adu):
-    work_id, receipt_id = _receipt_identity(bridge, request_adu)
+def _durably_decide(receipt_journal, request_adu, work_id, receipt_id):
     receipt_journal.prepare_receipt(work_id, receipt_id)
     receipt_journal.commit_receipt(work_id, receipt_id, "committed")
     receipt = receipt_journal.receipt_adu(request_adu)
@@ -83,11 +97,12 @@ def _durably_decide(receipt_journal, bridge, request_adu):
         raise BpReceiveError("receipt decision did not regenerate canonical ADU")
     return receipt
 
-def _delete_after_decision(delete, bid):
+def _delete_after_decision(delete, bid, outcome="accepted", receipt=b"", staged=None):
     try:
         delete(bid)
     except Exception as error:
-        raise BpReceiveDeletePending("committed receipt awaits BPA delete") from error
+        raise BpReceiveDeletePending("committed receipt awaits BPA delete",
+                                     outcome, receipt, staged) from error
 
 def receive_bpa_request(*, store_root, inbox_root, receipt_root, bid, inventory,
                         download, delete, source_eid, local_policy_authorized=True,
@@ -99,7 +114,15 @@ def receive_bpa_request(*, store_root, inbox_root, receipt_root, bid, inventory,
     """
     if local_policy_authorized is not True:
         raise BpReceiveError("local A_POLICY did not authorize receiver request")
-    if not isinstance(bid, str) or not bid or len(bid.encode("ascii", "strict")) > 512:
+    if not isinstance(bid, str) or not bid:
+        raise BpReceiveError("BPA BID boundary")
+    try:
+        encoded_bid = bid.encode("ascii", "strict")
+    except UnicodeEncodeError as error:
+        # A non-ASCII BID is a bounded-transport-metadata refusal, not a codec
+        # exception escaping the receiver boundary.
+        raise BpReceiveError("BPA BID boundary") from error
+    if len(encoded_bid) > MAX_BID_OCTETS:
         raise BpReceiveError("BPA BID boundary")
     source_bytes = run_bp_ingress.bounded_ascii_text(source_eid, "observed BPA source EID")
     inbox, staged = _stage(inbox_root, bid, inventory, download)
@@ -126,10 +149,16 @@ def receive_bpa_request(*, store_root, inbox_root, receipt_root, bid, inventory,
             raise BpReceiveError("request context is not safely reusable")
         if status == "blocked":
             raise BpReceiveError("another receipt intent is pending recovery")
+        # Preflight the receipt identity before any Store mutation, charge or
+        # receiver-journal write.  A work id whose receipt id cannot be
+        # represented is refused with the BPA request still present, rather
+        # than after the article has been charged and its context persisted.
+        work_id, receipt_id, receipt_id_octets = _work_identity(bridge, request_adu)
+        if receipt_id_octets > MAX_RECEIPT_ID_OCTETS:
+            return ReceiveResult("refused-receipt-id", b"", staged)
         if status == "pending":
             if pending_outcome not in {"committed", "absent"}:
                 raise BpReceiveError("pending receipt needs explicit recovery outcome")
-            work_id, receipt_id = _receipt_identity(bridge, request_adu)
             receipt_journal.commit_receipt(work_id, receipt_id, pending_outcome)
             if pending_outcome == "absent":
                 # The durable intent has been resolved absent, but the BPA
@@ -138,17 +167,17 @@ def receive_bpa_request(*, store_root, inbox_root, receipt_root, bid, inventory,
             receipt = receipt_journal.receipt_adu(request_adu)
             if not receipt:
                 raise BpReceiveError("committed recovery did not regenerate receipt")
-            _delete_after_decision(delete, bid)
+            _delete_after_decision(delete, bid, "duplicate", receipt, staged)
             return ReceiveResult("duplicate", receipt, staged)
         if status == "committed":
             prior = receipt_journal.receipt_adu(request_adu)
             if not prior:
                 raise BpReceiveError("committed request did not regenerate receipt")
-            _delete_after_decision(delete, bid)
+            _delete_after_decision(delete, bid, "duplicate", prior, staged)
             return ReceiveResult("duplicate", prior, staged)
         if status == "context":
-            receipt = _durably_decide(receipt_journal, bridge, request_adu)
-            _delete_after_decision(delete, bid)
+            receipt = _durably_decide(receipt_journal, request_adu, work_id, receipt_id)
+            _delete_after_decision(delete, bid, "duplicate", receipt, staged)
             return ReceiveResult("duplicate", receipt, staged)
         existing_record = _acl2_octets(
             bridge, "(fn-bpreq-existing-record '" + bridge.literal(request_adu) + " state)")
@@ -158,9 +187,15 @@ def receive_bpa_request(*, store_root, inbox_root, receipt_root, bid, inventory,
             # allocate a replacement transaction or charge a second article.
             receipt_journal.accept_request(bid, request_adu, existing_record,
                                            policy_authorized=True)
-            receipt = _durably_decide(receipt_journal, bridge, request_adu)
-            _delete_after_decision(delete, bid)
+            receipt = _durably_decide(receipt_journal, request_adu, work_id, receipt_id)
+            _delete_after_decision(delete, bid, "accepted", receipt, staged)
             return ReceiveResult("accepted", receipt, staged)
+        if len(records) >= store.config["max_transactions"]:
+            # A transaction published past the configured bound makes every
+            # later Store.recover() fault, so the store would be unopenable
+            # with no recovery path.  Refuse before any frontier advance or
+            # charge; the BPA request and its staged frame stay present.
+            return ReceiveResult("refused-capacity", b"", staged)
         article = _acl2_octets(bridge, "(fn-bpreq-article '" + bridge.literal(request_adu) + " state)")
         if not article or len(article) > run_store.DEFAULT_CONFIG["max_payload_bytes"]:
             raise BpReceiveError("ACL2 rejected request/article boundary")
@@ -181,8 +216,8 @@ def receive_bpa_request(*, store_root, inbox_root, receipt_root, bid, inventory,
         record = bridge.pending_record()
         run_bp_ingress._publish_accepted(store, bridge, records, record)
         receipt_journal.accept_request(bid, request_adu, record, policy_authorized=True)
-        receipt = _durably_decide(receipt_journal, bridge, request_adu)
-        _delete_after_decision(delete, bid)
+        receipt = _durably_decide(receipt_journal, request_adu, work_id, receipt_id)
+        _delete_after_decision(delete, bid, "accepted", receipt, staged)
         return ReceiveResult("accepted", receipt, staged)
     finally:
         if receipt_journal is not None: receipt_journal.close()
