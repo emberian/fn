@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 162 |
 | Certification roots in the Makefile | 162 |
 | Books inside the root closure | 162 |
-| `defthm` and `defthmd` events | 2272 |
-| `defun` events | 1667 |
+| `defthm` and `defthmd` events | 2283 |
+| `defun` events | 1672 |
 | Functions with verified guards | 934 |
 | Functions declared `:verify-guards nil` and never verified | 52 |
-| Functions left at the default with an explicit guard | 284 |
+| Functions left at the default with an explicit guard | 289 |
 | Functions left at the default with no guard | 397 |
-| `assert-event` checks | 2567 |
+| `assert-event` checks | 2577 |
 | `must-fail` checks | 133 |
 | `encapsulate` events | 8 |
 | Theorems flagged SUSPECT by shape | 27 |
@@ -83,8 +83,8 @@ that `make certify` requests.
 | `books/exchange.lisp` | root | 10 | 40 | 40/0/0/0 | 0 | 0 | 1 |
 | `books/frame-invariants.lisp` | root | 79 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/frame.lisp` | root | 36 | 58 | 27/0/30/1 | 0 | 0 | 0 |
-| `books/identity-invariants.lisp` | root | 25 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/identity.lisp` | root | 0 | 16 | 3/0/13/0 | 0 | 0 | 0 |
+| `books/identity-invariants.lisp` | root | 36 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/identity.lisp` | root | 0 | 21 | 3/0/18/0 | 0 | 0 | 0 |
 | `books/index.lisp` | root | 24 | 22 | 22/0/0/0 | 0 | 0 | 0 |
 | `books/journal.lisp` | root | 9 | 61 | 0/0/0/61 | 0 | 0 | 0 |
 | `books/nntp-effects.lisp` | root | 97 | 12 | 0/0/0/12 | 0 | 0 | 1 |
@@ -162,7 +162,7 @@ that `make certify` requests.
 | `tests/acl2/exchange-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 3 | 0 |
 | `tests/acl2/exchange-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
 | `tests/acl2/frame-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 41 | 3 | 0 |
-| `tests/acl2/identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 24 | 2 | 0 |
+| `tests/acl2/identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 34 | 2 | 0 |
 | `tests/acl2/index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 0 | 0 |
 | `tests/acl2/journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/nntp-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 2 | 0 |

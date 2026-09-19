@@ -169,15 +169,15 @@
     "books": 162,
     "books_in_root_closure": 162,
     "roots": 162,
-    "theorems": 2272,
-    "functions": 1667,
-    "assert_events": 2567,
+    "theorems": 2283,
+    "functions": 1672,
+    "assert_events": 2577,
     "must_fails": 133,
     "encapsulates": 8,
     "guards": {
       "verified": 934,
       "declared-off": 52,
-      "default-guarded": 284,
+      "default-guarded": 289,
       "default-unguarded": 397
     },
     "suspect_theorems": 27
@@ -1517,7 +1517,7 @@
       "book": "books/identity-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 25,
+      "theorems": 36,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -1532,6 +1532,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "cbor-invariants",
         "frame-invariants",
         "identity"
       ],
@@ -1546,17 +1547,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 16,
+      "functions": 21,
       "guards": {
         "verified": 3,
         "declared-off": 0,
-        "default-guarded": 13,
+        "default-guarded": 18,
         "default-unguarded": 0
       },
       "verify_guards_events": 3,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 7,
+      "defconsts": 10,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -2058,7 +2059,7 @@
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 2,
+      "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -3594,9 +3595,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 24,
+      "assert_events": 34,
       "must_fails": 2,
-      "defconsts": 3,
+      "defconsts": 4,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
