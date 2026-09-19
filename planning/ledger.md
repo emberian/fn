@@ -258,7 +258,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-node-prepare-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 141 | closed-theory-corollary: proved only by fn-node-prepare-preserves-state, fn-node-state-has-committed-archive-pins |
 | `fn-node-recover-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 171 | closed-theory-corollary: proved only by fn-node-recover-preserves-state, fn-node-state-has-committed-archive-pins |
 | `fn-node-stale-completion-is-no-op` | `books/node.lisp` | 561 | branch-of-definition: the hypothesis is a branch test of fn-node-complete and the conclusion is that branch's value |
-| `fn-prin-apply-succession-when-not-acceptable` | `books/principal-invariants.lisp` | 202 | branch-of-definition: the hypothesis negates a branch test of fn-prin-apply-succession and the conclusion is that branch's value |
+| `fn-prin-apply-succession-when-not-acceptable` | `books/principal-invariants.lisp` | 205 | branch-of-definition: the hypothesis negates a branch test of fn-prin-apply-succession and the conclusion is that branch's value |
 | `fn-record-result-okp-is-parse-okp` | `books/records-canonicality.lisp` | 600 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-retain-admission-refusal-is-no-op` | `books/retention.lisp` | 508 | branch-of-definition: the hypothesis negates a branch test of fn-retain-admit and the conclusion is that branch's value |
 | `fn-retain-wrong-evidence-does-not-release` | `books/retention.lisp` | 548 | branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value |
