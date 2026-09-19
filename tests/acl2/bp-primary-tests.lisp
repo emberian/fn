@@ -466,3 +466,78 @@
   (not (equal (fn-bpp-data-hop-count
                (fn-bpp-hop-count-data (fn-bpp-make-hop-count 0 0)))
               (fn-bpp-make-hop-count 0 0)))))
+
+; -----------------------------------------------------------------------------
+; The primary-block identity: witnesses that it separates, and that it is the
+; canonical CBOR of exactly the projection the book documents.
+;
+; `fn-bpp-primary-identity-determines-adu-key` proves one direction over all
+; blocks.  Separation is the other direction and is bitten here by instance:
+; each pair below differs in exactly one identity field and nothing else.
+
+(defconst *bpp-id-n1* (cons :dtn '(47 47 110 49 47)))
+(defconst *bpp-id-n2* (cons :dtn '(47 47 110 50 47)))
+
+(defun bpp-id-block (source time sequence)
+  (fn-bpp-make-block 0 0 *bpp-id-n1* source *bpp-id-n1* time sequence 1000 nil nil))
+
+(defun bpp-id-fragment (source time sequence offset total)
+  (fn-bpp-make-block 1 0 *bpp-id-n1* source *bpp-id-n1* time sequence 1000
+                     offset total))
+
+(assert-event (fn-bpp-blockp (bpp-id-block *bpp-id-n1* 100 1)))
+(assert-event (fn-bpp-blockp (bpp-id-fragment *bpp-id-n1* 100 1 0 8)))
+
+; A non-degenerate witness: the identity is a non-empty octet list and it is
+; not the identity of the block that differs only in its source.
+(assert-event (consp (fn-bpp-primary-identity (bpp-id-block *bpp-id-n1* 100 1))))
+(assert-event
+ (not (equal (fn-bpp-primary-identity (bpp-id-block *bpp-id-n1* 100 1))
+             (fn-bpp-primary-identity (bpp-id-block *bpp-id-n2* 100 1)))))
+
+; ... nor of the block that differs only in the creation time ...
+(assert-event
+ (not (equal (fn-bpp-primary-identity (bpp-id-block *bpp-id-n1* 100 1))
+             (fn-bpp-primary-identity (bpp-id-block *bpp-id-n1* 101 1)))))
+
+; ... nor only in the sequence number.
+(assert-event
+ (not (equal (fn-bpp-primary-identity (bpp-id-block *bpp-id-n1* 100 1))
+             (fn-bpp-primary-identity (bpp-id-block *bpp-id-n1* 100 2)))))
+
+; A fragment is never confused with the whole bundle of the same ADU key,
+; because the encoded array has five elements rather than three.
+(assert-event
+ (not (equal (fn-bpp-primary-identity (bpp-id-block *bpp-id-n1* 100 1))
+             (fn-bpp-primary-identity (bpp-id-fragment *bpp-id-n1* 100 1 0 8)))))
+
+; Two fragments of one ADU are not duplicates of each other.
+(assert-event
+ (not (equal (fn-bpp-primary-identity (bpp-id-fragment *bpp-id-n1* 100 1 0 8))
+             (fn-bpp-primary-identity (bpp-id-fragment *bpp-id-n1* 100 1 4 8)))))
+
+; The documented limit of the projection, stated as a fact rather than as
+; prose: two fragments at one offset whose payload lengths differ have
+; identical primary blocks, so this identity cannot tell them apart.  RFC 9171
+; section 4.3.1 does, by the payload length, which is not in this block.
+(assert-event
+ (equal (fn-bpp-primary-identity (bpp-id-fragment *bpp-id-n1* 100 1 0 8))
+        (fn-bpp-primary-identity (bpp-id-fragment *bpp-id-n1* 100 1 0 8))))
+
+; Routing, lifetime and CRC type are outside the projection, by witness as
+; well as by the general theorem.
+(assert-event
+ (equal (fn-bpp-primary-identity
+         (fn-bpp-with-destination (bpp-id-block *bpp-id-n1* 100 1) *bpp-id-n2*))
+        (fn-bpp-primary-identity (bpp-id-block *bpp-id-n1* 100 1))))
+
+; The identity octets are this profile's canonical CBOR: they decode back to
+; the projection with nothing trailing.
+(assert-event
+ (fn-cbor-result-okp
+  (fn-bpc-decode-exact (fn-bpp-primary-identity (bpp-id-block *bpp-id-n1* 100 1)))))
+(assert-event
+ (equal (fn-cbor-result-value
+         (fn-bpc-decode-exact
+          (fn-bpp-primary-identity (bpp-id-block *bpp-id-n1* 100 1))))
+        (fn-bpp-primary-identity-value (bpp-id-block *bpp-id-n1* 100 1))))

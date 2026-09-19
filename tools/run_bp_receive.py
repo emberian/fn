@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Callable, Iterable
 import sys
 
-from tools import run_bp_ingress, run_store, workflow_journal
+from tools import bundle_bridge, run_bp_ingress, run_store, workflow_journal
 from tools.receipt_bridge import Acl2ReceiptBridge
 from tools.receipt_journal import ReceiptJournal, JournalError, JournalFault, JournalUncertain
 
@@ -44,17 +44,17 @@ class ReceiveResult:
 def _defer_delete(_bid):
     raise OSError("defer BPA deletion until receipt decision commits")
 
-def _stage(inbox_root, bid, inventory, download, faults=run_store.NO_FAULTS):
+def _stage(inbox_root, bid, identity, inventory, download, faults=run_store.NO_FAULTS):
     journal = workflow_journal.WorkflowJournal(Path(inbox_root), lambda records: () if not records else (_ for _ in ()).throw(BpReceiveError("nonempty sender workflow journal")), faults=faults)
     journal.open()
     try:
         try:
-            journal.stage_inbound(bid, inventory, download, _defer_delete)
+            journal.stage_inbound(bid, identity, inventory, download, _defer_delete)
         except workflow_journal.InboundDeletePending:
             journal.close(); journal.open()
-            for found, path in journal.inbound_items:
-                if found == bid: return journal, path
-            raise BpReceiveError("durably staged BID was not recovered")
+            for _found, found_identity, path in journal.inbound_items:
+                if found_identity == identity: return journal, path
+            raise BpReceiveError("durably staged identity was not recovered")
         raise BpReceiveError("staging deleted BPA before receiver decision")
     except BaseException:
         journal.close(); raise
@@ -111,7 +111,9 @@ def _delete_after_decision(delete, bid, outcome="accepted", receipt=b"", staged=
                                      outcome, receipt, staged) from error
 
 def receive_bpa_request(*, store_root, inbox_root, receipt_root, bid, inventory,
-                        download, delete, source_eid, local_policy_authorized=True,
+                        download, delete, bundle, source_eid,
+                        local_policy_authorized=True,
+                        wall_error_ms=bundle_bridge.DEFAULT_WALL_ERROR_MS,
                         pending_outcome=None, faults=run_store.NO_FAULTS,
                         store_faults=run_store.NO_FAULTS,
                         inbox_faults=run_store.NO_FAULTS,
@@ -134,12 +136,30 @@ def receive_bpa_request(*, store_root, inbox_root, receipt_root, bid, inventory,
     if len(encoded_bid) > MAX_BID_OCTETS:
         raise BpReceiveError("BPA BID boundary")
     source_bytes = run_bp_ingress.bounded_ascii_text(source_eid, "observed BPA source EID")
-    inbox, staged = _stage(inbox_root, bid, inventory, download, inbox_faults)
+    # Identity and expiry are settled from the bundle's own primary block before
+    # anything is written.  A refusal, an expiry and an undecidable expiry are
+    # three different answers and each leaves the BPA bundle exactly where it
+    # was: nothing is staged, nothing is deleted.
+    try:
+        report = run_bp_ingress.identify_bundle(bid, bundle, wall_error_ms)
+    except bundle_bridge.BundleRefused as refusal:
+        return ReceiveResult("refused-identity:" + refusal.reason, b"", None)
+    if report.decision == "expired":
+        return ReceiveResult("refused-expired", b"", None)
+    if report.decision == "uncertain":
+        return ReceiveResult("uncertain-expiry", b"", None)
+    inbox, staged = _stage(inbox_root, bid, report.identity, inventory, download,
+                           inbox_faults)
     faults.at("staged")
     store = bridge = receipt_journal = None
     try:
-        staged_bid, request_adu = workflow_journal.decode_inbound(staged.read_bytes())
-        if staged_bid != bid or len(request_adu) > 65538:
+        # The staged frame keeps whichever BID first carried this bundle; the
+        # identity is what must agree with the bundle in hand.
+        _staged_bid, staged_identity, request_adu = workflow_journal.decode_inbound(
+            staged.read_bytes())
+        if staged_identity != report.identity:
+            raise BpReceiveError("staged bundle identity boundary")
+        if len(request_adu) > 65538:
             raise BpReceiveError("staged request boundary")
         store, bridge, records = run_bp_ingress.open_live_bp_store(
             Path(store_root), writable=True, faults=store_faults)

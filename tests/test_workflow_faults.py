@@ -19,6 +19,10 @@ from tools.workflow_journal import (InboundDeletePending, JournalError,
 from tools.run_store import Acl2Store
 from tools.workflow_bridge import Acl2WorkflowReplay
 
+# Opaque to this journal; ACL2 derives it from the bundle's primary block.
+IDENTITY = b"\x83\x82\x01\x65//n1/\x18\x64\x01"
+
+
 
 CONFIG = {"local-eid": "dtn://local/", "peer-eid": "dtn://peer/",
           "policy-id": "policy:local:1", "receipt-authority": "dtn://peer/",
@@ -31,7 +35,7 @@ def crash_after_inbound_link(root: str) -> None:
     journal = WorkflowJournal(Path(root), lambda records: records)
     journal.open()
     with mock.patch("tools.workflow_journal.fsync_dir", side_effect=lambda path: os._exit(93)):
-        journal.stage_inbound("bid-crash", lambda: ["bid-crash"],
+        journal.stage_inbound("bid-crash", IDENTITY, lambda: ["bid-crash"],
                               lambda bid: b"crash-payload", lambda bid: None)
 
 
@@ -72,14 +76,13 @@ class WorkflowFaultTests(unittest.TestCase):
             raise OSError("delete completion lost")
 
         with self.assertRaises(InboundDeletePending):
-            journal.stage_inbound("bid-1", lambda: ["bid-1"], download,
+            journal.stage_inbound("bid-1", IDENTITY, lambda: ["bid-1"], download,
                                   delete_after_effect)
 
-        retry = journal.retry_staged_delete("bid-1", lambda: ["bid-1"],
+        retry = journal.retry_staged_delete("bid-1", IDENTITY, lambda: ["bid-1"],
                                             lambda bid: deletes.append(bid))
         self.assertTrue(retry.exists())
-        self.assertEqual(decode_inbound(retry.read_bytes()),
-                         ("bid-1", b"opaque-bundle"))
+        self.assertEqual(decode_inbound(retry.read_bytes()), ("bid-1", IDENTITY, b"opaque-bundle"))
         self.assertEqual(downloads, ["bid-1"])
         self.assertEqual(deletes, ["bid-1", "bid-1"])
         journal.close()
@@ -89,11 +92,11 @@ class WorkflowFaultTests(unittest.TestCase):
         journal.open()
         deleted = []
         with self.assertRaises(InboundDeletePending):
-            journal.stage_inbound("bid-conflict", lambda: ["bid-conflict"],
+            journal.stage_inbound("bid-conflict", IDENTITY, lambda: ["bid-conflict"],
                                   lambda bid: b"first", 
                                   lambda bid: (_ for _ in ()).throw(OSError("lost delete")))
         with self.assertRaisesRegex(JournalFault, "conflicting"):
-            journal.stage_inbound("bid-conflict", lambda: ["bid-conflict"],
+            journal.stage_inbound("bid-conflict", IDENTITY, lambda: ["bid-conflict"],
                                   lambda bid: b"different", deleted.append)
         self.assertTrue(journal.fenced)
         self.assertEqual(deleted, [])
@@ -105,7 +108,7 @@ class WorkflowFaultTests(unittest.TestCase):
         deleted = []
         with mock.patch("tools.workflow_journal.fsync_dir", side_effect=OSError("inbound barrier")):
             with self.assertRaises(JournalUncertain):
-                journal.stage_inbound("bid-link", lambda: ["bid-link"],
+                journal.stage_inbound("bid-link", IDENTITY, lambda: ["bid-link"],
                                       lambda bid: b"linked", deleted.append)
         self.assertTrue(journal.fenced)
         self.assertEqual(deleted, [])
@@ -114,7 +117,7 @@ class WorkflowFaultTests(unittest.TestCase):
         reopened = WorkflowJournal(self.root, lambda records: records)
         reopened.open()
         self.assertEqual([(bid, decode_inbound(path.read_bytes()))
-                          for bid, path in reopened.inbound_items],
+                          for bid, _identity, path in reopened.inbound_items],
                          [("bid-link", ("bid-link", b"linked"))])
         reopened.close()
 
@@ -133,7 +136,7 @@ class WorkflowFaultTests(unittest.TestCase):
         journal = WorkflowJournal(self.root, lambda records: records)
         journal.open()
         with self.assertRaises(InboundDeletePending):
-            journal.stage_inbound("bid-restart", lambda: ["bid-restart"],
+            journal.stage_inbound("bid-restart", IDENTITY, lambda: ["bid-restart"],
                                   lambda bid: b"restart-payload",
                                   lambda bid: (_ for _ in ()).throw(OSError("lost delete")))
         journal.close()
@@ -144,7 +147,7 @@ class WorkflowFaultTests(unittest.TestCase):
         self.assertEqual(reopened.open(), "reopened")
         self.assertEqual(replayed, [()])
         self.assertEqual(len(reopened.inbound_items), 1)
-        bid, path = reopened.inbound_items[0]
+        bid, _identity, path = reopened.inbound_items[0]
         self.assertEqual((bid, decode_inbound(path.read_bytes())),
                          ("bid-restart", ("bid-restart", b"restart-payload")))
         reopened.close()
@@ -160,7 +163,7 @@ class WorkflowFaultTests(unittest.TestCase):
         reopened = WorkflowJournal(self.root, lambda records: records)
         reopened.open()
         self.assertEqual([(bid, decode_inbound(path.read_bytes()))
-                          for bid, path in reopened.inbound_items],
+                          for bid, _identity, path in reopened.inbound_items],
                          [("bid-crash", ("bid-crash", b"crash-payload"))])
         reopened.close()
 
@@ -171,7 +174,7 @@ class WorkflowFaultTests(unittest.TestCase):
         downloaded = []
         with mock.patch("tools.workflow_journal.MAX_BPA_INVENTORY", 2):
             with self.assertRaisesRegex(JournalError, "inventory"):
-                journal.stage_inbound("bid", lambda: iter(("bid", "x", "y")),
+                journal.stage_inbound("bid", IDENTITY, lambda: iter(("bid", "x", "y")),
                                       lambda bid: downloaded.append(bid) or b"payload",
                                       lambda bid: None)
         self.assertEqual(downloaded, [])
@@ -180,7 +183,7 @@ class WorkflowFaultTests(unittest.TestCase):
 
         with mock.patch("tools.workflow_journal.MAX_INBOUND_COUNT", 0):
             with self.assertRaisesRegex(JournalError, "count"):
-                journal.stage_inbound("bid", lambda: ["bid"],
+                journal.stage_inbound("bid", IDENTITY, lambda: ["bid"],
                                       lambda bid: downloaded.append(bid) or b"payload",
                                       lambda bid: None)
         self.assertEqual(downloaded, [])
@@ -188,7 +191,7 @@ class WorkflowFaultTests(unittest.TestCase):
 
         with mock.patch("tools.workflow_journal.MAX_INBOUND_AGGREGATE", 1):
             with self.assertRaisesRegex(JournalError, "aggregate"):
-                journal.stage_inbound("bid", lambda: ["bid"],
+                journal.stage_inbound("bid", IDENTITY, lambda: ["bid"],
                                       lambda bid: downloaded.append(bid) or b"payload",
                                       lambda bid: None)
         self.assertEqual(downloaded, ["bid"])
@@ -199,7 +202,7 @@ class WorkflowFaultTests(unittest.TestCase):
     def test_open_rejects_excess_inbox_before_replay(self) -> None:
         root = self.root
         (root / "inbound").mkdir(parents=True)
-        (root / "inbound" / "x.bp").write_bytes(encode_inbound("bid", b"payload"))
+        (root / "inbound" / "x.bp").write_bytes(encode_inbound("bid", IDENTITY, b"payload"))
         replayed = []
         with mock.patch("tools.workflow_journal.MAX_INBOUND_COUNT", 0):
             opened = WorkflowJournal(root, lambda records: replayed.append(records))

@@ -116,9 +116,58 @@ A source node ID of `dtn:none` makes a bundle not uniquely identifiable at all
 (§4.2.3); `fn-bpp-identifiablep` says so, and
 `fn-bpf-anonymous-conformant-bundle-is-not-fragmentable` shows the consequence.
 
-### fn's current BID
+## What the host now calls, and what it decides
 
-fn's BP adapter (`tools/bpa_dtn7.py`) carries a **BID**: a bounded visible-ASCII
+`host/bp-ingress-host.lisp` adds four `:program`-mode wrappers over the books
+above, and `tools/bundle_bridge.py` is the only Python that reaches them. It
+marshals decimal octets in, reads a regex-checked form back, and computes
+SHA-256 over an octet string it does not interpret. It spells no BP field.
+
+| Host wrapper | What it decides | Called from |
+| --- | --- | --- |
+| `fn-bpi-host-primary-octets` | the RFC 9171 §4.1 indefinite-array head, then exactly one CBOR item decoded by `fn-bpc-decode`; the consumed prefix and nothing else is the primary block | `fn-bpi-host-bundle-block` |
+| `fn-bpi-host-bundle-block` | `fn-bpp-decode` over those octets, then `fn-bpp-identifiablep`; three refusals stay apart (`:not-a-bundle`, the codec's own reason, `:anonymous`) | `fn-bpi-host-bundle-report` |
+| `fn-bpi-host-observation` | milliseconds from `time.monotonic_ns`/`time.time_ns` and the DTN epoch offset, then `fn-clock-observation` | `fn-bpi-host-bundle-report` |
+| `fn-bpi-host-bundle-report` | `fn-bpp-primary-identity` and `fn-clock-expiry-decision`, in one call | `BundleBridge.report`, from `run_bp_ingress.identify_bundle`, from `run_bp_receive.receive_bpa_request` and `run_bp_ingress.ingest_bpa_adu` |
+
+### The identity the host uses, and what it costs
+
+`fn-bpp-primary-identity` is the canonical CBOR encoding of the projection the
+primary block alone determines: the source node ID, the creation time, the
+sequence number and, when the fragment flag is set, the fragment offset and
+the **total ADU length**. Its octets are the inbox key (through SHA-256) and
+the duplicate key, and `books/frame.lisp` carries them in the FNBI frame
+beside the BID, with `fn-frame-inbound-open-of-prefix` proving the round trip
+over both fields.
+
+It is **not** `fn-bpp-bundle-id`, and the difference is a real loss, stated
+here rather than in a comment: RFC 9171 §4.3.1 identifies a fragment by *this
+bundle's* payload length, which lives in the payload block and is not modeled.
+Two fragments of one ADU at the same offset whose payload lengths differ have
+identical primary blocks and therefore one identity here. A whole bundle and a
+fragment never collide, because the encoded array has three elements in the
+first case and five in the second, and
+`tests/acl2/bp-primary-tests.lisp` bites each separation by witness.
+`fn-bpp-primary-identity-determines-adu-key` proves the other direction over
+all blocks. A receiver that reassembles must compare payload lengths as well;
+until the payload block is modeled, fn does not reassemble.
+
+### Where the pinned agent's identity is checked against ACL2's
+
+`tests/test_bpa_dtn7.py::Dtn7IdentityDifferentialTests` reads the three
+identity fields dtn7-rs spells into its own BID --
+`<source EID>-<creation DTN time>-<sequence number>`, with a fourth
+`-<fragment offset>` for a fragment -- and requires ACL2's decoded source EID,
+creation timestamp and sequence number to equal them for every bundle in the
+inventory. A disagreement fails the test; it is not reconciled. The pinned
+lab (`tests/bp-dtn7/`) needs a Cargo build of the pinned checkout and was not
+run in this lane, so the comparison ran against the mock BPA over bundles the
+ACL2 encoder built. Running it against the live agent is open work.
+
+### fn's former BID
+
+Before this wiring, the BID was the only key fn had. fn's BP adapter
+(`tools/bpa_dtn7.py`) carries a **BID**: a bounded visible-ASCII
 string of at most 512 octets, obtained from the pinned dtn7-rs agent's
 `/status/bundles` inventory and used as the raw query argument of `/download?`
 and `/delete?`. Nothing in fn parses it. It is a key into one agent's table.
@@ -131,7 +180,10 @@ and `/delete?`. Nothing in fn parses it. It is a key into one agent's table.
 | stability across agents | none: the BID is meaningful only to the agent instance that issued it |
 | stability across that agent's restart | not established by any fn test; inventory is re-read after restart and the BID is re-used as found |
 
-The consequences, in order of severity:
+The table above is why the BID is now the transport handle only: the inbox and
+the duplicate check are keyed by the identity, and the BID is what `/download?`
+and `/delete?` are called with. The consequences it used to have, in order of
+severity, and where each now stands:
 
 1. **A relay cannot be built on it.** Forwarding a bundle received from agent A
    through agent B requires constructing a primary block for B, which requires
@@ -204,11 +256,12 @@ exactly the interoperability claim the assurance rules forbid.
   `fn-bpf-fragment-block-preserves-adu-key` both hold without `fn-bpp-blockp`;
   neither has a tooth, and each test book proves the unconditional fact
   instead. The section below records this.
-- **No host calls any of this.** The theorem subject rule applies: these are
-  theorems about functions with no caller. `tools/bpa_dtn7.py` still treats
-  bundles as opaque and `tools/bpa_payload_extract.rs` still uses the pinned
-  upstream decoder. Wiring is the next packet, and until it lands no BPv7
-  conformance or interoperability claim may cite a host line.
+- **The reassembly half is still uncalled.** `books/bp-fragment.lisp` has an
+  input now -- the identity below carries the fragment offset and total ADU
+  length -- but no host calls `fn-bpf-*`. `tools/bpa_payload_extract.rs` still
+  uses the pinned upstream decoder for the *payload*; fn no longer relies on it
+  for identity. No BPv7 conformance or interoperability claim follows from the
+  wiring recorded in the next section.
 - **BPSec (RFC 9172) and its default security contexts (RFC 9173)** are not
   modeled. This matters for one specific allowance: RFC 9171 §4.3.1 permits the
   primary block's CRC type to be zero only when the bundle carries a Block

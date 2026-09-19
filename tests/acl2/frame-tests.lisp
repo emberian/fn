@@ -222,32 +222,32 @@
 ; Inbound bundles: the head is ACL2's, the bulk is opaque host bytes
 
 (assert-event
- (equal (fn-frame-inbound-prefix '(98 105 100) 5)
-        '(70 78 66 73 1 1 0 0 0 10 0 3 98 105 100)))
+ (equal (fn-frame-inbound-prefix '(98 105 100) '(1 2) 5)
+        '(70 78 66 73 1 1 0 0 0 16 0 3 98 105 100 0 0 0 2 1 2)))
 
 (assert-event
- (equal (fn-frame-inbound-open '(70 78 66 73 1 1 0 0 0 10 0 3 98 105 100)
-                               52 *fn-frame-test-digest*
-                               *fn-frame-test-digest*)
-        (fn-frame-ok *fn-frame-magic-inbound* 1 '(98 105 100) 5)))
+ (equal (fn-frame-inbound-open
+         '(70 78 66 73 1 1 0 0 0 16 0 3 98 105 100 0 0 0 2 1 2)
+         58 *fn-frame-test-digest* *fn-frame-test-digest*)
+        (fn-frame-ok *fn-frame-magic-inbound* 1 (list '(98 105 100) '(1 2)) 5)))
 
 (assert-event
- (equal (fn-frame-inbound-open '(70 78 66 73 1 1 0 0 0 10 0 3 98 105 100)
-                               52 *fn-frame-test-digest*
+ (equal (fn-frame-inbound-open '(70 78 66 73 1 1 0 0 0 16 0 3 98 105 100 0 0 0 2 1 2)
+                               58 *fn-frame-test-digest*
                                *fn-frame-test-other-digest*)
         (fn-frame-error :integrity)))
 
 ; One octet past the frame the header describes is `:length`; one octet short
 ; of it is `:truncated`.
 (assert-event
- (equal (fn-frame-inbound-open '(70 78 66 73 1 1 0 0 0 10 0 3 98 105 100)
-                               53 *fn-frame-test-digest*
+ (equal (fn-frame-inbound-open '(70 78 66 73 1 1 0 0 0 16 0 3 98 105 100 0 0 0 2 1 2)
+                               59 *fn-frame-test-digest*
                                *fn-frame-test-digest*)
         (fn-frame-error :length)))
 
 (assert-event
- (equal (fn-frame-inbound-open '(70 78 66 73 1 1 0 0 0 10 0 3 98 105 100)
-                               51 *fn-frame-test-digest*
+ (equal (fn-frame-inbound-open '(70 78 66 73 1 1 0 0 0 16 0 3 98 105 100 0 0 0 2 1 2)
+                               57 *fn-frame-test-digest*
                                *fn-frame-test-digest*)
         (fn-frame-error :truncated)))
 
@@ -289,3 +289,11 @@
   (fn-frame-decode (fn-frame-encode *fn-frame-magic-store* 1 1 '(7)
                                     *fn-frame-test-digest*)
                    *fn-frame-test-digest* 1)))
+
+; The identity travels with the BID or not at all: an inbound frame whose
+; second field is absent is refused, rather than opened with the BID alone.
+(assert-event
+ (equal (fn-frame-inbound-open '(70 78 66 73 1 1 0 0 0 10 0 3 98 105 100)
+                               52 *fn-frame-test-digest*
+                               *fn-frame-test-digest*)
+        (fn-frame-error :field-length)))

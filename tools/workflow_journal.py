@@ -32,9 +32,15 @@ MAX_RECORD = 16_384
 MAX_RECORDS = 4_096
 MAX_AGGREGATE = 16 * 1024 * 1024
 MAX_INBOUND_BUNDLE = 4 * 1024 * 1024
+# `*fn-frame-max-identity*`: the canonical primary-block identity ACL2 derives
+# from a staged bundle.  The inbox is keyed by this, never by the agent's BID.
+MAX_IDENTITY = 1_152
 MAX_INBOUND_COUNT = 1_024
 MAX_INBOUND_AGGREGATE = 64 * 1024 * 1024
 MAX_BPA_INVENTORY = 8_192
+# Frame head (10) + BID text field (2 + cap) + identity blob field (4 + cap)
+# + trailer (32); the same slice bound ACL2 checks on the way back in.
+MAX_INBOUND_FRAME = MAX_INBOUND_BUNDLE + MAX_TEXT + MAX_IDENTITY + 48
 
 # The record kinds, their field names, their field types and the transport,
 # phase, result and authorization enumerations all live in `books/frame`.
@@ -173,13 +179,16 @@ class WorkflowJournal:
             if len(inbound_entries) > MAX_INBOUND_COUNT: raise JournalFault("inbound count")
             for path in inbound_entries:
                 if path.suffix != ".bp": raise JournalFault("inbound namespace")
-                data=read_regular_barriered(path, MAX_INBOUND_BUNDLE + MAX_TEXT + 42)
+                data=read_regular_barriered(path, MAX_INBOUND_FRAME)
                 inbound_aggregate += len(data)
                 if inbound_aggregate > MAX_INBOUND_AGGREGATE: raise JournalFault("inbound aggregate")
-                bid, _payload = decode_inbound(data)
-                expected=hashlib.sha256(bid.encode("utf-8")).hexdigest()+".bp"
+                bid, identity, _payload = decode_inbound(data)
+                # The file name is the identity's digest, so a recovered inbox
+                # is keyed by what the bundle says it is and not by the handle
+                # whichever agent happened to hand it over.
+                expected=hashlib.sha256(identity).hexdigest()+".bp"
                 if path.name != expected: raise JournalFault("inbound name")
-                inbox.append((bid,path))
+                inbox.append((bid,identity,path))
             fsync_dir(self.inbound)
             self.image=self.replay(tuple(decoded)); self.inbound_items=tuple(inbox); self.fenced=False
             return self.image
@@ -323,14 +332,27 @@ class WorkflowJournal:
         return self.publish_outcome(values["txid"], values["tx-generation"],
                                     "ordinary", "durable")
 
-    def stage_inbound(self, bid: str, inventory: Callable[[], Iterable[str]],
+    def stage_inbound(self, bid: str, identity: bytes,
+                      inventory: Callable[[], Iterable[str]],
                       download: Callable[[str], bytes],
                       delete: Callable[[str], None]) -> Path:
-        """Durably stage a BPA bundle before explicitly deleting it by BID."""
+        """Durably stage a BPA bundle before explicitly deleting it by BID.
+
+        `identity` is the canonical primary-block identity ACL2 derived from the
+        bundle's own octets; this journal never derives it and never inspects
+        it.  It is the inbox key, so a redelivery under a fresh BID lands on the
+        same file and reconciles, while two bundles that merely carry the same
+        payload stay apart.  The BID remains the transport handle and nothing
+        else: it is what `delete` is called with.
+        """
         if self.fenced: raise JournalFault("journal is fenced")
         if not isinstance(bid, str) or not bid: raise JournalError("BID is not present in inventory")
+        if not isinstance(identity, (bytes, bytearray)) or not identity \
+                or len(identity) > MAX_IDENTITY:
+            raise JournalError("bundle identity bound")
+        identity=bytes(identity)
         found=self._in_inventory(bid, inventory)
-        local_name=hashlib.sha256(bid.encode("utf-8", "strict")).hexdigest()+".bp"
+        local_name=hashlib.sha256(identity).hexdigest()+".bp"
         final=self.inbound/local_name
         if not found:
             # A BID that is durably staged here and absent from the inventory
@@ -338,7 +360,7 @@ class WorkflowJournal:
             # took effect and only its reply was lost.  Absence without a
             # durable frame is an ordinary missing bundle.
             if not final.exists(): raise JournalError("BID is not present in inventory")
-            return self._validated_durable_frame(bid, final)
+            return self._validated_durable_frame(identity, final)
         existing=list(self.inbound.iterdir())
         if not final.exists() and len(existing) >= MAX_INBOUND_COUNT:
             raise JournalError("inbound count")
@@ -346,13 +368,21 @@ class WorkflowJournal:
         payload=download(bid)
         if not isinstance(payload, bytes) or len(payload) > MAX_INBOUND_BUNDLE:
             raise JournalError("inbound bundle bound")
-        framed=encode_inbound(bid,payload)
+        framed=encode_inbound(bid,identity,payload)
         if not final.exists() and aggregate + len(framed) > MAX_INBOUND_AGGREGATE:
             raise JournalError("inbound aggregate")
         stage=self.staging/(local_name+f".{os.getpid()}.tmp")
         if final.exists():
-            if final.is_symlink() or read_regular_barriered(final, MAX_INBOUND_BUNDLE+MAX_TEXT+42) != framed:
-                self.fenced=True; raise JournalFault("conflicting staged BID")
+            # The stored frame keeps the BID it was first staged under: a
+            # redelivery of one bundle under a fresh transport handle is the
+            # same bundle, so the BID is not part of what must agree.  The
+            # identity and the bundle octets are.
+            if final.is_symlink():
+                self.fenced=True; raise JournalFault("conflicting staged bundle")
+            _stored_bid, stored_identity, stored_payload=decode_inbound(
+                read_regular_barriered(final, MAX_INBOUND_FRAME))
+            if stored_identity != identity or stored_payload != payload:
+                self.fenced=True; raise JournalFault("conflicting staged bundle")
             fsync_dir(self.inbound)
             self.faults.at("inbound-reconciled")
             try: delete(bid)
@@ -393,18 +423,19 @@ class WorkflowJournal:
             if item == bid: present=True
         return present
 
-    def _validated_durable_frame(self, bid: str, final: Path) -> Path:
-        """Re-barrier one durable inbound frame and recheck its stored BID."""
+    def _validated_durable_frame(self, identity: bytes, final: Path) -> Path:
+        """Re-barrier one durable inbound frame and recheck its identity."""
         if final.is_symlink() or not final.is_file():
             raise JournalFault("durable inbound frame is absent")
-        stored_bid, _payload=decode_inbound(
-            read_regular_barriered(final, MAX_INBOUND_BUNDLE+MAX_TEXT+42))
-        if stored_bid != bid:
-            self.fenced=True; raise JournalFault("conflicting staged BID")
+        _stored_bid, stored_identity, _payload=decode_inbound(
+            read_regular_barriered(final, MAX_INBOUND_FRAME))
+        if stored_identity != bytes(identity):
+            self.fenced=True; raise JournalFault("conflicting staged identity")
         fsync_dir(self.inbound)
         return final
 
-    def retry_staged_delete(self, bid: str, inventory: Callable[[], Iterable[str]],
+    def retry_staged_delete(self, bid: str, identity: bytes,
+                            inventory: Callable[[], Iterable[str]],
                             delete: Callable[[str], None]) -> Path:
         """Finish BPA deletion for an already durable frame without downloading again.
 
@@ -414,13 +445,15 @@ class WorkflowJournal:
         request was ours.  Absence is never treated as an fn acceptance event.
         """
         if self.fenced: raise JournalFault("journal is fenced")
-        name=hashlib.sha256(bid.encode("utf-8", "strict")).hexdigest()+".bp"
+        if not isinstance(identity, (bytes, bytearray)) or not identity:
+            raise JournalError("bundle identity bound")
+        name=hashlib.sha256(bytes(identity)).hexdigest()+".bp"
         final=self.inbound/name
         if not self._in_inventory(bid, inventory):
             # Returning normally is what clears the pending state, because the
             # caller raised InboundDeletePending to create it.
-            return self._validated_durable_frame(bid, final)
-        self._validated_durable_frame(bid, final)
+            return self._validated_durable_frame(identity, final)
+        self._validated_durable_frame(identity, final)
         try: delete(bid)
         except Exception as error:
             raise InboundDeletePending(f"durable inbound awaits BPA delete: {bid}") from error
@@ -428,21 +461,22 @@ class WorkflowJournal:
         return final
 
 
-def encode_inbound(bid: str, payload: bytes, bridge=None) -> bytes:
+def encode_inbound(bid: str, identity: bytes, payload: bytes, bridge=None) -> bytes:
     """ACL2 builds the frame head through the BID field; the bundle is opaque.
 
     An inbound bundle is up to four mebibytes, which cannot cross the decimal
     octet bridge, so the host concatenates the bundle and appends the trailer
     over bytes it never interprets.  Every decision -- magic, version, kind,
-    the declared length, the BID text field and its bounds -- is ACL2's.
+    the declared length, the BID and identity fields and their bounds -- is
+    ACL2's.
     """
     try:
-        return frame_bridge.session(bridge).inbound_frame(bid, payload)
+        return frame_bridge.session(bridge).inbound_frame(bid, identity, payload)
     except frame_bridge.BridgeError as error:
         raise JournalError(str(error)) from error
 
 
-def decode_inbound(data: bytes, bridge=None) -> tuple[str, bytes]:
+def decode_inbound(data: bytes, bridge=None) -> tuple[str, bytes, bytes]:
     try:
         return frame_bridge.session(bridge).inbound_unframe(data)
     except (frame_bridge.BridgeError, UnicodeDecodeError) as error:

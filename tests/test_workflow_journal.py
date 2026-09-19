@@ -7,7 +7,14 @@ from unittest import mock
 from tools.run_store import ScriptedFaults
 from tools.workflow_journal import (InboundDeletePending, JournalError, JournalFault,
                                     JournalUncertain, WorkflowJournal, decode_record,
-                                    decode_inbound, encode_record)
+                                    decode_inbound, encode_inbound, encode_record)
+
+# The journal never derives, parses or compares these octets against anything
+# but each other: ACL2 derives them from a bundle's primary block and the inbox
+# is keyed by their digest.  Two distinct values stand for two distinct bundles.
+IDENTITY = b"\x83\x82\x01\x65//n1/\x18\x64\x01"
+OTHER_IDENTITY = b"\x83\x82\x01\x65//n2/\x18\x64\x01"
+
 
 
 ATTEMPT = {"txid": 7, "tx-generation": 3, "work-id": "work:a",
@@ -151,10 +158,10 @@ class WorkflowJournalTests(unittest.TestCase):
     def test_inbound_inventory_download_fsync_then_explicit_delete(self):
         order=[]
         path=self.journal.stage_inbound(
-            "local-bid-7", lambda: order.append("inventory") or ["local-bid-7"],
+            "local-bid-7", IDENTITY, lambda: order.append("inventory") or ["local-bid-7"],
             lambda bid: order.append(("download",bid)) or b"bundle",
             lambda bid: order.append(("delete",bid)))
-        self.assertEqual(decode_inbound(path.read_bytes()), ("local-bid-7", b"bundle"))
+        self.assertEqual(decode_inbound(path.read_bytes()), ("local-bid-7", IDENTITY, b"bundle"))
         self.assertEqual(order, ["inventory", ("download","local-bid-7"),
                                  ("delete","local-bid-7")])
 
@@ -163,54 +170,54 @@ class WorkflowJournalTests(unittest.TestCase):
         with mock.patch("tools.workflow_journal.fsync_dir",
                         side_effect=OSError("inbound barrier")):
             with self.assertRaises(JournalUncertain):
-                self.journal.stage_inbound("bid", lambda:["bid"], lambda bid:b"bundle",
+                self.journal.stage_inbound("bid", IDENTITY, lambda:["bid"], lambda bid:b"bundle",
                                            lambda bid:deleted.append(bid))
         self.assertEqual(deleted, [])
 
     def test_inbound_lost_delete_retry_matches_and_deletes(self):
         with self.assertRaises(InboundDeletePending):
-            self.journal.stage_inbound("bid", lambda:["bid"], lambda bid:b"bundle",
+            self.journal.stage_inbound("bid", IDENTITY, lambda:["bid"], lambda bid:b"bundle",
                                        lambda bid:(_ for _ in ()).throw(RuntimeError("lost")))
         deleted=[]
-        path=self.journal.stage_inbound("bid", lambda:["bid"], lambda bid:b"bundle",
+        path=self.journal.stage_inbound("bid", IDENTITY, lambda:["bid"], lambda bid:b"bundle",
                                         lambda bid:deleted.append(bid))
-        self.assertEqual(decode_inbound(path.read_bytes()), ("bid",b"bundle"))
+        self.assertEqual(decode_inbound(path.read_bytes()), ("bid", IDENTITY, b"bundle"))
         self.assertEqual(deleted,["bid"])
 
     def test_pending_delete_with_the_bid_gone_reconciles_as_completed(self):
         """D14: a lost delete reply is resolved by the bundle's absence."""
         with self.assertRaises(InboundDeletePending):
-            self.journal.stage_inbound("bid", lambda:["bid"], lambda bid:b"bundle",
+            self.journal.stage_inbound("bid", IDENTITY, lambda:["bid"], lambda bid:b"bundle",
                                        lambda bid:(_ for _ in ()).throw(RuntimeError("lost")))
         deleted=[]
         # The BPA no longer lists the BID: the earlier request took effect.
-        path=self.journal.retry_staged_delete("bid", lambda:[], deleted.append)
-        self.assertEqual(decode_inbound(path.read_bytes()), ("bid", b"bundle"))
+        path=self.journal.retry_staged_delete("bid", IDENTITY, lambda:[], deleted.append)
+        self.assertEqual(decode_inbound(path.read_bytes()), ("bid", IDENTITY, b"bundle"))
         self.assertEqual(deleted, [])
         # Staging the same BID again is the same reconciliation, not a refusal
         # and not a second download.
         downloads=[]
         again=self.journal.stage_inbound(
-            "bid", lambda:[], lambda bid:downloads.append(bid) or b"bundle",
+            "bid", IDENTITY, lambda:[], lambda bid:downloads.append(bid) or b"bundle",
             lambda bid:deleted.append(bid))
         self.assertEqual(again, path)
         self.assertEqual((downloads, deleted), ([], []))
 
     def test_pending_delete_with_the_bid_present_is_retried(self):
         with self.assertRaises(InboundDeletePending):
-            self.journal.stage_inbound("bid", lambda:["bid"], lambda bid:b"bundle",
+            self.journal.stage_inbound("bid", IDENTITY, lambda:["bid"], lambda bid:b"bundle",
                                        lambda bid:(_ for _ in ()).throw(RuntimeError("lost")))
         deleted=[]
-        path=self.journal.retry_staged_delete("bid", lambda:["bid"], deleted.append)
+        path=self.journal.retry_staged_delete("bid", IDENTITY, lambda:["bid"], deleted.append)
         self.assertEqual(deleted, ["bid"])
-        self.assertEqual(decode_inbound(path.read_bytes()), ("bid", b"bundle"))
+        self.assertEqual(decode_inbound(path.read_bytes()), ("bid", IDENTITY, b"bundle"))
 
     def test_absent_bid_without_a_durable_frame_is_still_refused(self):
         with self.assertRaisesRegex(JournalError, "not present in inventory"):
-            self.journal.stage_inbound("missing", lambda:[], lambda bid:b"bundle",
+            self.journal.stage_inbound("missing", IDENTITY, lambda:[], lambda bid:b"bundle",
                                        lambda bid:None)
         with self.assertRaisesRegex(JournalFault, "absent"):
-            self.journal.retry_staged_delete("missing", lambda:[], lambda bid:None)
+            self.journal.retry_staged_delete("missing", IDENTITY, lambda:[], lambda bid:None)
 
     def test_a_record_replaced_by_a_symlink_is_refused_on_reopen(self):
         published=self.journal.publish("attempt", ATTEMPT)
@@ -249,7 +256,7 @@ class WorkflowJournalTests(unittest.TestCase):
             with mock.patch("tools.workflow_journal.os.open", side_effect=record_open), \
                  mock.patch("tools.workflow_journal.os.close", side_effect=close_then_fail):
                 with self.assertRaises(OSError):
-                    self.journal.stage_inbound("bid", lambda:["bid"],
+                    self.journal.stage_inbound("bid", IDENTITY, lambda:["bid"],
                                                lambda bid:b"bundle", lambda bid:None)
             self.assertIsNotNone(replacement)
             os.fstat(replacement)
@@ -257,13 +264,37 @@ class WorkflowJournalTests(unittest.TestCase):
             if replacement is not None: real_close(replacement)
 
     def test_open_rediscovers_durable_inbound_metadata(self):
-        self.journal.stage_inbound("bid", lambda:["bid"], lambda bid:b"bundle", lambda bid:None)
+        self.journal.stage_inbound("bid", IDENTITY, lambda:["bid"], lambda bid:b"bundle", lambda bid:None)
         self.journal.close()
         reopened=WorkflowJournal(self.root, lambda records: records)
         reopened.open()
-        self.assertEqual([(bid,path.name) for bid,path in reopened.inbound_items],
-                         [("bid", __import__("hashlib").sha256(b"bid").hexdigest()+".bp")])
+        self.assertEqual([(bid,identity,path.name)
+                          for bid,identity,path in reopened.inbound_items],
+                         [("bid", IDENTITY,
+                           __import__("hashlib").sha256(IDENTITY).hexdigest()+".bp")])
         reopened.close()
+
+    def test_inbox_is_keyed_by_identity_and_not_by_the_agents_bid(self):
+        """A redelivery under a fresh BID is the same bundle; two identities are not."""
+        first=self.journal.stage_inbound("bid-a", IDENTITY, lambda:["bid-a"],
+                                         lambda bid:b"bundle", lambda bid:None)
+        again=self.journal.stage_inbound("bid-b", IDENTITY, lambda:["bid-b"],
+                                         lambda bid:b"bundle", lambda bid:None)
+        self.assertEqual(again, first)
+        # Same payload, different identity: two bundles, two staged frames.
+        other=self.journal.stage_inbound("bid-c", OTHER_IDENTITY, lambda:["bid-c"],
+                                         lambda bid:b"bundle", lambda bid:None)
+        self.assertNotEqual(other, first)
+        self.assertEqual(len(list(self.journal.inbound.iterdir())), 2)
+
+    def test_a_frame_staged_under_a_different_identity_fences(self):
+        self.journal.stage_inbound("bid", IDENTITY, lambda:["bid"],
+                                   lambda bid:b"bundle", lambda bid:None)
+        digest=__import__("hashlib").sha256(IDENTITY).hexdigest()+".bp"
+        (self.journal.inbound/digest).write_bytes(
+            encode_inbound("bid", OTHER_IDENTITY, b"bundle"))
+        with self.assertRaisesRegex(JournalFault, "inbound name"):
+            reopened=WorkflowJournal(self.root, lambda records: records); reopened.open()
 
 
 if __name__ == "__main__": unittest.main()
