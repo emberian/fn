@@ -25,7 +25,12 @@ so rather than extrapolating.
 
 `tests/bench/grid.sh` and `tests/bench/grid2.sh` are the exact loops that ran;
 every point writes its own `-gen.json` and `-meas.json` with the load average
-at the time and the per-article timings behind each summary.
+at the time and the per-article timings behind each summary. The two scripts
+overlap: `grid2.sh` ran the payload, group and stress points first, at load
+average 4.8 to 5.7, and `grid.sh` re-ran those same point names afterwards at
+load average 8.4 to 8.8, overwriting their JSON files. **Every figure in the
+tables below is from the first pass**, so the files now on hbox will not match
+them exactly; the tables, not the files, are the record of what was measured.
 
 Reopen, GROUP, LISTGROUP, ARTICLE and the OVER-equivalent were measured five
 times per point (three at N ≥ 256, where one reopen costs more than ten
@@ -57,8 +62,9 @@ axes are bounded by ACL2 constants, not by configuration:
   `/tank/fn/gates/dev-9321344` (pre-change) and in this tree, so every existing
   store still opens; the scale profile's checksum is `37902a4bf826…`.
 
-N=10000 was not reached, and neither was N=512 inside this lane's budget. The
-measured curve below says why that is the curve's doing and not the schedule's.
+N=10000 was not reached, and neither was N=512: both N=512 and N=1024 ended in
+a bridge timeout inside a single prepare call, which the next section reports
+as a cliff of its own rather than as a missing measurement.
 
 ## Post throughput versus N (G=2, both groups per article, P=1024)
 
@@ -72,7 +78,8 @@ that serves both the node and the framing/identity wrappers.
 | 64 | dev | 0.0412 | 0.1128 | 8.86 | 1.132 | 1.157 | 5 | 467,948 |
 | 128 | dev | 0.0749 | 0.2751 | 3.63 | 2.673 | 2.718 | 5 | 1,002,472 |
 | 256 | scale | 0.0471 | 0.9365 | 1.07 | 12.540 | 12.729 | 3 | 1,881,056 |
-| 512 | scale | — | — | — | — | — | — | — |
+| 512 | scale | bridge timeout during prepare after ~35 min | | | | | | |
+| 1024 | scale | bridge timeout during prepare after ~36 min | | | | | | |
 
 The pessimistic figure, with its scope: reopening a 256-record store whose
 articles are 1 KiB each took 12.7 s (median of three runs, 12.5 s min) on a
@@ -81,14 +88,31 @@ the store. Subtracting the ~0.75 s fixed cost of starting ACL2 and loading the
 books, the replay term grows by 3.2, 3.2, 4.8 and 6.1 across the four
 doublings from 16 to 256 records: faster than N², approaching N³.
 
-N=512 and N=1024 were launched at 10:56 under a 90-minute per-point budget and
-had not completed when this lane closed at 11:16; `tests/bench/grid.sh` is
-still running them on hbox and writes their results to
-`/tank/fn/scale/build/bench/n512-*.json` and `n1024-*.json` for whoever
-harvests next. The completed points already settle the question the grid was
-asked: building and measuring N=256 took 6 min 45 s against 56 s for N=128, so
-a 4096-transaction store is not reachable by waiting longer. The profile's
-transaction bound is a ceiling for measurement, not a supported capacity.
+**N=512 and N=1024 did not fail on wall clock. They failed on the bridge's own
+per-call timeout.** Both runs raised `StoreError: ACL2 prompt timeout` from
+`read_prompt` inside a single `fn-store-sn-prepare` call: N=512 after about 35
+minutes of posting (10:56 to 11:31), N=1024 after about 36 minutes (11:31 to
+12:07, at load average 9.4). `tools/run_store.py` allows a call
+`ACL2_CALL_BASE_SECONDS` = 20 s plus 0.004 s per KiB of form, so a 9 KiB
+prepare form gets 20.04 s; one prepare therefore crossed twenty seconds
+somewhere between 256 and 512 committed articles, with the median prepare at
+N=256 still under one second. That is the per-operation cliff of §1 arriving as
+an outage rather than as slowness, and it is a sixth cliff in its own right:
+
+**Cliff 6 — the bridge's refutation bound is a capacity bound.** The 20-second
+per-call timeout is documented in `tools/run_store.py` as a refutation bound
+rather than a budget, and it is the right shape: a store that cannot answer a
+prepare in twenty seconds should fail closed. It did fail closed — the store
+refused, the generator reported the failure, and the grid moved on. But it
+means the effective transaction ceiling of this build is **not** the scale
+profile's 4096; it is wherever one operation first exceeds twenty seconds, and
+on this host with 1 KiB articles that is between 256 and 512. Raising the
+timeout without removing the per-operation recognizer would only convert the
+outage back into an unbounded wait.
+
+Neither point produced a JSON result: `generate.py` re-raises and writes no
+file on failure, so a partial curve is lost. A follow-up should record the
+committed count and the per-article timings before re-raising.
 
 ## Reader latency versus N (same grid, milliseconds)
 
