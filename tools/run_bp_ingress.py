@@ -122,8 +122,8 @@ class Acl2BpIngress(run_store.Acl2Store):
         return run_store.acl2_boolean(self.call(form))
 
 
-def open_live_bp_store(path: Path, writable: bool):
-    store = run_store.Store(path, writable=writable)
+def open_live_bp_store(path: Path, writable: bool, faults=run_store.NO_FAULTS):
+    store = run_store.Store(path, writable=writable, faults=faults)
     store.acquire()
     bridge = None
     try:
