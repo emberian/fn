@@ -30,7 +30,7 @@ class ReceiveFaultTests(unittest.TestCase):
                 f"body for {name}\r\n").encode("ascii")
 
     def request(self, name: str, *, destination: bytes = b"dtn://fn.lab/inbox",
-                policy: bytes = b"bp-lab-policy-v0") -> bytes:
+                policy: bytes = b"bp-lab-policy-v0", work_id: bytes | None = None) -> bytes:
         article = self.article(name)
         bridge = run_bp_ingress.Acl2BpIngress()
         try:
@@ -41,7 +41,8 @@ class ReceiveFaultTests(unittest.TestCase):
             def text(value: bytes) -> str:
                 return "(fn-store-octets->string '" + bridge.literal(value) + ")"
 
-            fields = [f"work:{name}".encode(), subject, b"dtn://sender.lab",
+            fields = [f"work:{name}".encode() if work_id is None else work_id,
+                      subject, b"dtn://sender.lab",
                       destination, policy, b"origin:1", b"wire-auth", b"terms:1"]
             form = "(fn-bpa-encode (fn-bpa-make-request " + " ".join(
                 text(value) for value in fields) + " '" + bridge.literal(article) + "))"
@@ -157,6 +158,58 @@ class ReceiveFaultTests(unittest.TestCase):
                 self.receive("bid-full")
         self.assertIn("bid-full", self.inventory)
         self.assertEqual(self.deleted, ["bid-prior"])
+        self.assertEqual(self.recovered_counts(), (1, 1, 1))
+
+    def test_store_at_its_transaction_bound_refuses_and_stays_openable(self) -> None:
+        """D1: the 129th request must not publish a store that cannot reopen.
+
+        The configured bound is reduced for the test; what the store's
+        reopenability depends on is the guard, not the particular number.
+        The refusal precedes any frontier advance or charge.
+        """
+        bounded = Path(self.temp.name) / "bounded"
+        with mock.patch.dict(run_store.DEFAULT_CONFIG, {"max_transactions": 1}):
+            run_store.Store(bounded, True).initialize()
+            self.store = bounded
+            self.inventory["bid-at-bound"] = self.request("at-bound")
+            self.assertEqual(self.receive("bid-at-bound").outcome, "accepted")
+            frontier_before = (bounded / "allocation-frontier.json").read_bytes()
+
+            self.inventory["bid-beyond"] = self.request("beyond")
+            refused = self.receive("bid-beyond")
+            self.assertEqual(refused.outcome, "refused-capacity")
+            self.assertEqual(refused.receipt_adu, b"")
+            # The BPA request and its staged frame are retained for an operator.
+            self.assertIn("bid-beyond", self.inventory)
+            self.assertEqual(self.deleted, ["bid-at-bound"])
+            self.assertTrue(refused.staged_path.exists())
+            # No transaction was allocated, charged, or published.
+            self.assertEqual((bounded / "allocation-frontier.json").read_bytes(),
+                             frontier_before)
+            self.assertEqual(len(list((bounded / "transactions").iterdir())), 1)
+            # The store still opens: that is what the 129th record would break.
+            self.assertEqual(self.recovered_counts(), (1, 1, 1))
+
+    def test_unreceiptable_work_id_refuses_before_any_store_mutation(self) -> None:
+        """D11: the receipt-id bound is a preflight, not a post-charge error."""
+        self.inventory["bid-long"] = self.request(
+            "long", work_id=b"w" * (run_bp_receive.MAX_RECEIPT_ID_OCTETS - 7))
+        refused = self.receive("bid-long")
+        self.assertEqual(refused.outcome, "refused-receipt-id")
+        self.assertEqual(refused.receipt_adu, b"")
+        self.assertIn("bid-long", self.inventory)
+        self.assertEqual(self.deleted, [])
+        self.assertEqual(self.recovered_counts(), (0, 0, 0))
+        # A retry reaches the same refusal instead of a stuck context.
+        self.assertEqual(self.receive("bid-long").outcome, "refused-receipt-id")
+        self.assertEqual(self.recovered_counts(), (0, 0, 0))
+        # Only the receiver config exists: no context, intent or decision.
+        self.assertEqual(len(list((self.receipts / "records").iterdir())), 1)
+
+    def test_a_receiptable_work_id_at_the_bound_is_still_accepted(self) -> None:
+        self.inventory["bid-edge"] = self.request(
+            "edge", work_id=b"w" * (run_bp_receive.MAX_RECEIPT_ID_OCTETS - 8))
+        self.assertEqual(self.receive("bid-edge").outcome, "accepted")
         self.assertEqual(self.recovered_counts(), (1, 1, 1))
 
 
