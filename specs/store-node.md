@@ -197,7 +197,12 @@ results only after the corresponding physical fsync returns successfully.
 Exact frame decoding and truthful physical observations remain adapter premises.
 
 This entry is the root of every process (`host/store-node-host.lisp`,
-`fn-store-sn-recover`), and the trace theorems are rooted there:
+`fn-store-sn-recover`), and the trace theorems are rooted there in
+[`store-observed-traces`](../books/store-observed-traces.lisp), which includes
+`store-observed` and `store-node-resolution-traces`. The two books are
+separate because the opening theorems above certify in the theory of
+`store-node-invariants` and stall under the rewrite rules the trace books
+export; the host includes only `store-observed`.
 
 - `fn-sn-open-observed-success-has-live-history-relation`: a successful open
   satisfies `fn-snt-relation`, with the single hypothesis that the open
@@ -221,7 +226,7 @@ This entry is the root of every process (`host/store-node-host.lisp`,
   not admissible under the hypothesis but is indistinguishable to the reopen
   entry from a valid one (the teeth in the test book exhibit exactly this).
 
-The witnesses in [`store-observed-tests`](../tests/acl2/store-observed-tests.lisp)
+The witnesses in [`store-observed-traces-tests`](../tests/acl2/store-observed-traces-tests.lisp)
 open a two-record image with a consumed frontier gap, run refusal, known
 abort, publication with acknowledgement, an uncertain link, crash and recovery,
 then acknowledge a record, die at the `final-link` cut, and reopen on both

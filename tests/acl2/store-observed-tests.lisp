@@ -1,10 +1,9 @@
-; Observed-image opening vectors, the process-root witnesses for the trace
-; relation (D6) and acknowledged-record retention across a real reopen (D5),
-; and the teeth for both.  Records have already passed exact codec decoding
-; before this ACL2 entry point receives them.
+; Observed-image opening vectors.  Records have already passed exact codec
+; decoding before this ACL2 entry point receives them.  The process-root
+; relation witnesses (D6), the reopen retention witnesses (D5) and their
+; teeth are in store-observed-traces-tests.
 (in-package "ACL2")
 (include-book "../../books/store-observed")
-(include-book "std/testing/must-fail" :dir :system)
 
 (defconst *fn-so-groups* '("fn.letters"))
 (defconst *fn-so-empty*
@@ -14,7 +13,6 @@
                      :recovering))
 (assert-event (equal (fn-sf-successes (fn-sn-files (fn-sn-open-state *fn-so-empty*)))
                      nil))
-(assert-event (fn-snt-relation (fn-sn-open-state *fn-so-empty*)))
 
 (defconst *fn-so-record0*
   (fn-record-make 0 0 0 "<observed@example>" '(65) *fn-so-groups*
@@ -45,9 +43,8 @@
  (equal (fn-sn-open-observed *fn-so-groups* 10 0 (list *fn-so-record0*))
         '(:error :history)))
 ; Structurally valid but unreplayable: a record in a group this store does
-; not configure.  This is the witness that :replay is a distinct refusal and
-; the teeth for the recoverability hypothesis of
-; fn-sn-open-observed-succeeds-on-recoverable-image.
+; not configure is refused with the distinct :replay code.  The teeth built on
+; this witness live in store-observed-traces-tests.
 (defconst *fn-so-alien*
   (fn-record-make 0 0 0 "<alien@example>" '(65) '("fn.other")
                   "alien-pin" "alien-content" "alien-release" 1))
@@ -55,12 +52,6 @@
 (assert-event (not (fn-sf-history-recoverablep *fn-so-groups* 10 (list *fn-so-alien*) 1)))
 (assert-event (equal (fn-sn-open-observed *fn-so-groups* 10 1 (list *fn-so-alien*))
                      '(:error :replay)))
-(must-fail (thm (fn-sn-open-okp (fn-sn-open-observed *fn-so-groups* 10 1 (list *fn-so-alien*)))))
-; Teeth for fn-sn-open-observed-success-has-live-history-relation: a refused
-; open carries no state and the relation fails on what it does carry.
-(must-fail (thm (fn-snt-relation
-                 (fn-sn-open-state
-                  (fn-sn-open-observed *fn-so-groups* 10 1 (list *fn-so-alien*))))))
 
 (defconst *fn-so-four*
   (fn-sn-observed-rebarrier (fn-sn-open-state *fn-so-replayed*) 4))
@@ -68,201 +59,3 @@
   (fn-sn-observed-rebarrier (fn-sn-open-state *fn-so-replayed*) 5))
 (assert-event (equal (fn-sf-phase (fn-sn-files *fn-so-four*)) :recovering))
 (assert-event (equal (fn-sf-phase (fn-sn-files *fn-so-five*)) :ready))
-
-; -----------------------------------------------------------------------------
-; D6 witness: open from a two-record image with a consumed frontier gap and
-; run a mixed trace including refusal, known abort, publication with
-; acknowledgement, an uncertain link, crash and recovery.
-
-(defconst *fn-so-live-groups* '("fn.letters" "fn.test"))
-(defconst *fn-so-first*
-  (fn-record-make 0 0 0 "<first@example>" '(65) *fn-so-live-groups*
-                  "first-pin" "first-content" "first-release" 1))
-; txid 1 was consumed without a record before this image was taken.
-(defconst *fn-so-second*
-  (fn-record-make 1 2 2 "<second@example>" '(66) '("fn.test")
-                  "second-pin" "second-content" "second-release" 1))
-; txid 3 was also consumed: the image frontier is 4.
-(defconst *fn-so-gap-open*
-  (fn-sn-open-observed *fn-so-live-groups* 10 4 (list *fn-so-first* *fn-so-second*)))
-(assert-event (fn-sn-open-okp *fn-so-gap-open*))
-(defconst *fn-so-gap-opened* (fn-sn-open-state *fn-so-gap-open*))
-(assert-event (fn-snt-relation *fn-so-gap-opened*))
-(assert-event (equal (fn-sn-node *fn-so-gap-opened*)
-                     (fn-sf-replay-node *fn-so-live-groups* 10
-                                        (list *fn-so-first* *fn-so-second*) 4)))
-(assert-event (equal (fn-state-next-txid (fn-node-acceptance (fn-sn-node *fn-so-gap-opened*)))
-                     4))
-(assert-event (fn-sn-committed-recordp (fn-sn-node *fn-so-gap-opened*) *fn-so-first*))
-(assert-event (fn-sn-committed-recordp (fn-sn-node *fn-so-gap-opened*) *fn-so-second*))
-
-(defconst *fn-so-barriers*
-  '((:io :recovery-barrier :ok) (:io :recovery-barrier :ok)
-    (:io :recovery-barrier :ok) (:io :recovery-barrier :ok)
-    (:io :recovery-barrier :ok)))
-(defconst *fn-so-reserve*
-  '((:io :start-frontier nil) (:io :frontier-file :ok)
-    (:io :frontier-replace :ok) (:io :frontier-directory :ok)))
-; txid 4 is refused; txid 5 is prepared then known-aborted; txid 6 is
-; published and acknowledged; txid 7 is linked with an uncertain result.
-(defconst *fn-so-third*
-  (fn-record-make 2 5 5 "<third@example>" '(67) *fn-so-live-groups*
-                  "third-pin" "third-content" "third-release" 1))
-(defconst *fn-so-fourth*
-  (fn-record-make 2 6 6 "<fourth@example>" '(68) '("fn.letters")
-                  "fourth-pin" "fourth-content" "fourth-release" 1))
-(defconst *fn-so-fifth*
-  (fn-record-make 3 7 7 "<fifth@example>" '(69) '("fn.test")
-                  "fifth-pin" "fifth-content" "fifth-release" 1))
-
-(defconst *fn-so-acked*
-  (fn-snrt-run *fn-so-gap-opened*
-               (append *fn-so-barriers*
-                       *fn-so-reserve* '((:refuse-reservation 4))
-                       *fn-so-reserve* (list (list :prepare *fn-so-third*))
-                       '((:known-abort))
-                       *fn-so-reserve* (list (list :prepare *fn-so-fourth*))
-                       '((:io :record-file :ok) (:io :record-link :ok)
-                         (:io :record-directory :ok) (:finish)))))
-(assert-event (fn-snt-relation *fn-so-acked*))
-(assert-event (equal (fn-sf-phase (fn-sn-files *fn-so-acked*)) :ready))
-(assert-event (equal (fn-sf-frontier (fn-sn-files *fn-so-acked*)) 7))
-(assert-event (equal (fn-sf-successes (fn-sn-files *fn-so-acked*)) '((2 . 6))))
-(assert-event (equal (fn-sf-records (fn-sn-files *fn-so-acked*))
-                     (list *fn-so-first* *fn-so-second* *fn-so-fourth*)))
-(assert-event (fn-sn-committed-recordp (fn-sn-node *fn-so-acked*) *fn-so-fourth*))
-(assert-event (not (fn-sn-committed-recordp (fn-sn-node *fn-so-acked*) *fn-so-third*)))
-
-(defconst *fn-so-mixed-final*
-  (fn-snrt-run *fn-so-acked*
-               (append *fn-so-reserve* (list (list :prepare *fn-so-fifth*))
-                       '((:io :record-file :ok) (:io :record-link :error)
-                         (:known-abort) (:finish)
-                         (:crash :old :present) (:recover))
-                       *fn-so-barriers*)))
-(assert-event (fn-snt-relation *fn-so-mixed-final*))
-(assert-event (equal (fn-sf-phase (fn-sn-files *fn-so-mixed-final*)) :ready))
-(assert-event (equal (fn-sf-records (fn-sn-files *fn-so-mixed-final*))
-                     (list *fn-so-first* *fn-so-second* *fn-so-fourth* *fn-so-fifth*)))
-(assert-event (equal (fn-sf-successes (fn-sn-files *fn-so-mixed-final*)) '((2 . 6))))
-(assert-event (equal (fn-sn-node *fn-so-mixed-final*)
-                     (fn-sf-replay-node *fn-so-live-groups* 10
-                                        (list *fn-so-first* *fn-so-second*
-                                              *fn-so-fourth* *fn-so-fifth*)
-                                        8)))
-(assert-event (fn-sn-committed-recordp (fn-sn-node *fn-so-mixed-final*) *fn-so-fifth*))
-
-; -----------------------------------------------------------------------------
-; D5 witness: acknowledge, die at the final-link cut, reopen through the host
-; entry on each admissible image.
-
-(defconst *fn-so-pre-crash*
-  (fn-snrt-run *fn-so-acked*
-               (append *fn-so-reserve* (list (list :prepare *fn-so-fifth*))
-                       '((:io :record-file :ok)))))
-(assert-event (fn-snt-relation *fn-so-pre-crash*))
-(assert-event (equal (fn-sf-phase (fn-sn-files *fn-so-pre-crash*)) :record-data-durable))
-(assert-event (equal (fn-sf-frontier (fn-sn-files *fn-so-pre-crash*)) 8))
-(assert-event (equal (fn-sf-successes (fn-sn-files *fn-so-pre-crash*)) '((2 . 6))))
-
-(defconst *fn-so-image-absent*
-  (list *fn-so-first* *fn-so-second* *fn-so-fourth*))
-(defconst *fn-so-image-present*
-  (list *fn-so-first* *fn-so-second* *fn-so-fourth* *fn-so-fifth*))
-; The platform may leave either image (A-DURABILITY as hypothesis)...
-(assert-event (fn-sf-crash-imagep (fn-sn-files *fn-so-pre-crash*) 8 *fn-so-image-absent*))
-(assert-event (fn-sf-crash-imagep (fn-sn-files *fn-so-pre-crash*) 8 *fn-so-image-present*))
-; ...but not one that drops the acknowledged record, nor one whose frontier
-; is neither the stable value nor a live candidate.
-(assert-event (not (fn-sf-crash-imagep (fn-sn-files *fn-so-pre-crash*) 8
-                                       (list *fn-so-first* *fn-so-second*))))
-(assert-event (not (fn-sf-crash-imagep (fn-sn-files *fn-so-pre-crash*) 7 *fn-so-image-absent*)))
-(assert-event (not (fn-sf-crash-imagep (fn-sn-files *fn-so-pre-crash*) 9 *fn-so-image-absent*)))
-
-(defconst *fn-so-reopen-absent*
-  (fn-sn-open-observed *fn-so-live-groups* 10 8 *fn-so-image-absent*))
-(defconst *fn-so-reopen-present*
-  (fn-sn-open-observed *fn-so-live-groups* 10 8 *fn-so-image-present*))
-(assert-event (fn-sn-open-okp *fn-so-reopen-absent*))
-(assert-event (fn-sn-open-okp *fn-so-reopen-present*))
-(assert-event (fn-snt-relation (fn-sn-open-state *fn-so-reopen-absent*)))
-(assert-event (fn-snt-relation (fn-sn-open-state *fn-so-reopen-present*)))
-(assert-event (fn-sf-record-has-pairp
-               '(2 . 6) (fn-sf-records (fn-sn-files (fn-sn-open-state *fn-so-reopen-absent*)))))
-(assert-event (fn-sf-record-has-pairp
-               '(2 . 6) (fn-sf-records (fn-sn-files (fn-sn-open-state *fn-so-reopen-present*)))))
-(assert-event (fn-sn-committed-recordp
-               (fn-sn-node (fn-sn-open-state *fn-so-reopen-present*)) *fn-so-fourth*))
-; Honest about what is not carried: the acknowledgement list is nil after
-; reopen; the guarantee rides on records.
-(assert-event (equal (fn-sf-successes (fn-sn-files (fn-sn-open-state *fn-so-reopen-present*)))
-                     nil))
-; Unacknowledged survival: the present image installs the fifth record; the
-; absent image burns its txid and installs nothing.
-(assert-event (fn-sn-committed-recordp
-               (fn-sn-node (fn-sn-open-state *fn-so-reopen-present*)) *fn-so-fifth*))
-(assert-event (not (fn-sn-committed-recordp
-                    (fn-sn-node (fn-sn-open-state *fn-so-reopen-absent*)) *fn-so-fifth*)))
-(assert-event (equal (fn-state-next-txid
-                      (fn-node-acceptance (fn-sn-node (fn-sn-open-state *fn-so-reopen-absent*))))
-                     8))
-
-; The core-durable cut: death after fn-sn-finish returned is a crash from
-; :ready; the only admissible image carries the acknowledged record.
-(assert-event (fn-sf-crash-imagep (fn-sn-files *fn-so-acked*) 7 *fn-so-image-absent*))
-(assert-event (not (fn-sf-crash-imagep (fn-sn-files *fn-so-acked*) 7
-                                       (list *fn-so-first* *fn-so-second*))))
-(assert-event (fn-sf-record-has-pairp
-               '(2 . 6)
-               (fn-sf-records
-                (fn-sn-files
-                 (fn-sn-open-state
-                  (fn-sn-open-observed *fn-so-live-groups* 10 7 *fn-so-image-absent*))))))
-
-; The reopened process continues: five barriers, another publication, another
-; crash; the acknowledged record is still there
-; (fn-snrt-acknowledged-record-retained-across-observed-reopen).
-(defconst *fn-so-sixth*
-  (fn-record-make 4 8 8 "<sixth@example>" '(70) *fn-so-live-groups*
-                  "sixth-pin" "sixth-content" "sixth-release" 1))
-(defconst *fn-so-after-reopen*
-  (fn-snrt-run (fn-sn-open-state *fn-so-reopen-present*)
-               (append *fn-so-barriers*
-                       *fn-so-reserve* (list (list :prepare *fn-so-sixth*))
-                       '((:io :record-file :ok) (:crash :old :absent) (:recover))
-                       *fn-so-barriers*)))
-(assert-event (fn-snt-relation *fn-so-after-reopen*))
-(assert-event (fn-sf-record-has-pairp '(2 . 6) (fn-sf-records (fn-sn-files *fn-so-after-reopen*))))
-(assert-event (equal (fn-sf-records (fn-sn-files *fn-so-after-reopen*)) *fn-so-image-present*))
-(assert-event (equal (fn-sf-frontier (fn-sn-files *fn-so-after-reopen*)) 9))
-
-; -----------------------------------------------------------------------------
-; Teeth for fn-sn-acknowledged-record-survives-observed-reopen.
-
-; crash-imagep dropped: an image that rolled back the acknowledged record is
-; structurally valid and replayable, so the reopen succeeds, and the pair
-; then has no record.  This is exactly the whole-store rollback the adapter
-; cannot detect without a freshness anchor.
-(defconst *fn-so-reopen-rolled-back*
-  (fn-sn-open-observed *fn-so-live-groups* 10 8 (list *fn-so-first* *fn-so-second*)))
-(assert-event (fn-sn-open-okp *fn-so-reopen-rolled-back*))
-(must-fail (thm (fn-sf-record-has-pairp
-                 '(2 . 6)
-                 (fn-sf-records (fn-sn-files (fn-sn-open-state *fn-so-reopen-rolled-back*))))))
-; member dropped: a pair that was never acknowledged names no record.
-(must-fail (thm (fn-sf-record-has-pairp
-                 '(9 . 9)
-                 (fn-sf-records (fn-sn-files (fn-sn-open-state *fn-so-reopen-present*))))))
-; relation dropped (weakened to fn-sn-statep): a structurally valid state whose
-; history is not replayable carries an acknowledged pair and an admissible
-; image, and the reopen refuses it.
-(defconst *fn-so-unrelated*
-  (fn-sn-make *fn-so-live-groups* 10
-              (fn-sf-make :ready 1 nil (list *fn-so-alien*) nil nil '((0 . 0)) 5)
-              (fn-node-initial-state *fn-so-live-groups* 10)))
-(assert-event (fn-sn-statep *fn-so-unrelated*))
-(assert-event (not (fn-snt-relation *fn-so-unrelated*)))
-(assert-event (fn-sf-crash-imagep (fn-sn-files *fn-so-unrelated*) 1 (list *fn-so-alien*)))
-(assert-event (member-equal '(0 . 0) (fn-sf-successes (fn-sn-files *fn-so-unrelated*))))
-(must-fail (thm (fn-sn-open-okp
-                 (fn-sn-open-observed *fn-so-live-groups* 10 1 (list *fn-so-alien*)))))

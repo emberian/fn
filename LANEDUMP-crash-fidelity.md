@@ -305,6 +305,20 @@ requirements, 18 proof targets, 18 scenario specifications.`
 
 ## 3. IN PROGRESS: `books/store-observed.lisp` and its two test books
 
+**Resolved 2026-09-19 (successor):** the recommended split was adopted.
+`books/store-observed.lisp` includes `store-node-invariants` again (minimal-theory
+guard hint kept); the D5/D6 section moved to `books/store-observed-traces.lisp`
+(includes `store-observed` and `store-node-resolution-traces`), with one new
+helper `fn-snt-relation-implies-observed-configuration` that the D5 keystone
+now uses in place of opening `fn-sn-statep`. Tests split likewise into
+`tests/acl2/store-observed-traces-tests.lisp`. All four certified
+(`certify-20260919T071830Z-49794`, `certify-20260919T072017Z-51384`,
+`certify-20260919T072031Z-51638`, `certify-20260919T072032Z-51648`).
+PRF-007 now cites `fn-sf-crash-realizes-every-admissible-image`,
+`fn-sn-open-observed-success-has-live-history-relation`,
+`fn-sn-acknowledged-record-survives-observed-reopen`; `make check` is green.
+The section below is kept as the record of the failure.
+
 State: the book is fully written (D6, D5 and the re-rooted theorems, listed
 below) but does NOT yet certify. It now includes
 `store-node-resolution-traces` instead of `store-node-invariants`.

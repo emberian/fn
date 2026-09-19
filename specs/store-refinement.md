@@ -12,7 +12,7 @@ no checkpoint or experimental disk-format change follows from these proofs.
 The 2026-09-19 crash-fidelity revision makes every process-death cut of
 `tests/store_crash_child.py` a model crash point, states A-DURABILITY as the
 hypothesis `fn-sf-crash-imagep` of the reopen theorems in
-[`store-observed`](../books/store-observed.lisp) instead of as the crash
+[`store-observed-traces`](../books/store-observed-traces.lisp) instead of as the crash
 constructor, and roots every trace theorem at the host's process entry
 `fn-sn-open-observed` as well as at `fn-sn-initial`; see
 [store-node.md](store-node.md#observed-physical-image-entry).
@@ -286,7 +286,7 @@ an observed image is admissible for a kernel state when its frontier is the
 stable value or, only while a replacement may have been issued, the candidate,
 and its records are the stable list or, only while a link may have been issued,
 that list plus the exact data-durable candidate. The reopen theorems in
-`books/store-observed.lisp` take that predicate as their premise. What remains
+`books/store-observed-traces.lisp` take that predicate as their premise. What remains
 physical and is assumed by name: a torn write inside a staged file that a
 completed `fsync` nevertheless reported durable (A-DURABILITY); a replacement
 or link that is neither wholly old nor wholly new (A-WRITE-ISOLATION); a
