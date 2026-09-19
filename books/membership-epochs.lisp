@@ -541,3 +541,109 @@
        (equal (fn-me-window a) (fn-me-window b))
        (fn-me-chain-prefixp (fn-me-chain a) (fn-me-chain b))
        (fn-me-ids-subsetp (fn-me-commits a) (fn-me-commits b))))
+
+; -----------------------------------------------------------------------------
+; Record lemmas (docs/proof-style.md section 1).  Accessor of constructor,
+; one per field, so nothing above this book opens a record.
+
+(defthm fn-me-commit-id-of-fn-me-commit
+  (equal (fn-me-commit-id (fn-me-commit id base actor op subject))
+         id))
+(defthm fn-me-commit-base-of-fn-me-commit
+  (equal (fn-me-commit-base (fn-me-commit id base actor op subject))
+         base))
+(defthm fn-me-commit-actor-of-fn-me-commit
+  (equal (fn-me-commit-actor (fn-me-commit id base actor op subject))
+         actor))
+(defthm fn-me-commit-op-of-fn-me-commit
+  (equal (fn-me-commit-op (fn-me-commit id base actor op subject))
+         op))
+(defthm fn-me-commit-subject-of-fn-me-commit
+  (equal (fn-me-commit-subject (fn-me-commit id base actor op subject))
+         subject))
+
+(defthm fn-me-msg-sender-of-fn-me-message
+  (equal (fn-me-msg-sender (fn-me-message sender epoch content))
+         sender))
+(defthm fn-me-msg-epoch-of-fn-me-message
+  (equal (fn-me-msg-epoch (fn-me-message sender epoch content))
+         epoch))
+(defthm fn-me-msg-content-of-fn-me-message
+  (equal (fn-me-msg-content (fn-me-message sender epoch content))
+         content))
+
+(defthm fn-me-site-id-of-fn-me-site
+  (equal (fn-me-site-id (fn-me-site id founding chain commits window hold-limit held))
+         id))
+(defthm fn-me-founding-of-fn-me-site
+  (equal (fn-me-founding (fn-me-site id founding chain commits window hold-limit held))
+         founding))
+(defthm fn-me-chain-of-fn-me-site
+  (equal (fn-me-chain (fn-me-site id founding chain commits window hold-limit held))
+         chain))
+(defthm fn-me-commits-of-fn-me-site
+  (equal (fn-me-commits (fn-me-site id founding chain commits window hold-limit held))
+         commits))
+(defthm fn-me-window-of-fn-me-site
+  (equal (fn-me-window (fn-me-site id founding chain commits window hold-limit held))
+         window))
+(defthm fn-me-hold-limit-of-fn-me-site
+  (equal (fn-me-hold-limit (fn-me-site id founding chain commits window hold-limit held))
+         hold-limit))
+(defthm fn-me-held-of-fn-me-site
+  (equal (fn-me-held (fn-me-site id founding chain commits window hold-limit held))
+         held))
+
+; -----------------------------------------------------------------------------
+; Export theory (docs/proof-style.md section 2).
+;
+; The commit, message and site records, the site projections
+; and the admissibility decision are withdrawn; the chain and roster folds stay.
+;
+; Only the `:definition' rune is withdrawn, so type prescriptions and
+; executable counterparts still decide ground terms.  A book inside this
+; cluster that must open one of these enables `fn-me-internals' locally.
+
+; The `true-listp'/`consp' backchaining rules below are withdrawn with the
+; definitions: an includer that inherits them pays for them on every goal
+; shaped like a list (docs/proof-style.md section 8).
+
+(deftheory fn-me-internals
+  '(
+    (:d fn-me-opp)
+    (:d fn-me-commit)
+    (:d fn-me-commitp)
+    (:d fn-me-commit-id)
+    (:d fn-me-commit-base)
+    (:d fn-me-commit-actor)
+    (:d fn-me-commit-op)
+    (:d fn-me-commit-subject)
+    (:d fn-me-commit-epoch)
+    (:d fn-me-forkedp)
+    (:d fn-me-no-readmissionp)
+    (:d fn-me-message)
+    (:d fn-me-messagep)
+    (:d fn-me-msg-sender)
+    (:d fn-me-msg-epoch)
+    (:d fn-me-msg-content)
+    (:d fn-me-site)
+    (:d fn-me-sitep)
+    (:d fn-me-site-id)
+    (:d fn-me-founding)
+    (:d fn-me-chain)
+    (:d fn-me-commits)
+    (:d fn-me-window)
+    (:d fn-me-hold-limit)
+    (:d fn-me-held)
+    (:d fn-me-epoch)
+    (:d fn-me-roster-at)
+    (:d fn-me-revoked-at)
+    (:d fn-me-decide)
+    (:d fn-me-receive)
+    (:d fn-me-site-merge)
+    (:d fn-me-adopt)
+    (:d fn-me-knowledge-extendsp)
+    fn-me-commitsp-implies-true-listp
+    fn-me-messagesp-implies-true-listp))
+
+(in-theory (disable fn-me-internals))

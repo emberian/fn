@@ -26,6 +26,10 @@
 
 (in-package "ACL2")
 (include-book "membership-epochs")
+
+; cluster-local theory: this book is inside the substrate cluster and opens
+; the definitions its neighbours withdraw at export (docs/proof-style.md 2).
+(local (in-theory (enable fn-me-internals)))
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -295,3 +299,49 @@
                 (fn-me-messagep msg))
            (equal (fn-me-decide (fn-me-site-merge site delta) msg)
                   (fn-me-decide site msg))))
+
+; -----------------------------------------------------------------------------
+; Export theory (docs/proof-style.md section 2).
+;
+; The keystones below stay enabled on include; everything else this book
+; proves is proof vocabulary and is withdrawn under `fn-me-invariants-vocabulary',
+; which a book inside this cluster enables locally in one line.
+;
+; * fn-me-revoked-refusal-is-monotone
+; * fn-me-site-merge-never-revises-admissibility
+; * fn-me-revoked-sender-is-not-admitted
+; * fn-me-ahead-message-is-held
+; * fn-me-hold-count-bounded
+; * fn-me-hold-resolves-on-reaching-epoch
+; * fn-me-merge-exposes-the-partition
+; * fn-me-merge-ids-are-order-independent
+; * fn-me-merge-invents-no-ids
+; * fn-me-adopt-extends-chain
+; * fn-me-adopt-advances-epoch
+; * fn-me-receive-preserves-sitep
+; * fn-me-site-merge-preserves-sitep
+; * fn-me-decide-outcome
+; * fn-me-roster-fold-omits-removed
+
+(deftheory fn-me-invariants-vocabulary
+  '(
+    fn-me-len-of-append
+    fn-me-member-of-append
+    fn-me-member-of-remove-equal
+    fn-me-commit-ids-of-append
+    fn-me-revoked-scan-stable-under-prefix
+    fn-me-receive-preserves-chain
+    fn-me-chain-prefixp-of-append
+    fn-me-chain-prefixp-reflexive
+    fn-me-merge-keeps-left-ids
+    fn-me-new-keeps-unknown-ids
+    fn-me-merge-keeps-right-ids
+    fn-me-new-ids-come-from-delta
+    fn-me-commitsp-of-merge
+    fn-me-commitp-implies-consp
+    fn-me-conflict-with-finds-a-conflict
+    fn-me-fork-scan-detects-a-conflict
+    fn-me-new-retains-unknown-commits
+    fn-me-site-merge-preserves-chain))
+
+(in-theory (disable fn-me-invariants-vocabulary))

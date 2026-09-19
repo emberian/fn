@@ -243,3 +243,28 @@
 
 (defthm fn-digest-hex-chars-length
   (equal (len (fn-digest-hex-chars octets)) (* 2 (len octets))))
+
+; -----------------------------------------------------------------------------
+; Export theory (docs/proof-style.md section 2).
+;
+; The seam exports its constrained functions' shape theorems and the
+; preimage separation laws.  The shape recognizers, the tagged preimage and the
+; hex helpers are proof vocabulary and are withdrawn.
+;
+; Only the `:definition' rune is withdrawn, so type prescriptions and
+; executable counterparts still decide ground terms.  A book inside this
+; cluster that must open one of these enables `fn-crypto-seam-internals' locally.
+
+(deftheory fn-crypto-seam-internals
+  '(
+    (:d fn-digest-octetsp)
+    (:d fn-sig-seed-p)
+    (:d fn-sig-public-key-p)
+    (:d fn-sig-signature-p)
+    (:d fn-digest-tagp)
+    (:d fn-digest-tagged-preimage)
+    (:d fn-digest-tagged)
+    (:d fn-digest-hex-char)
+    (:d fn-digest-hex)))
+
+(in-theory (disable fn-crypto-seam-internals))

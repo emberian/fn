@@ -180,10 +180,10 @@
     "books": 173,
     "books_in_root_closure": 173,
     "roots": 173,
-    "theorems": 2662,
+    "theorems": 2697,
     "functions": 1975,
-    "assert_events": 2934,
-    "must_fails": 141,
+    "assert_events": 2985,
+    "must_fails": 123,
     "encapsulates": 10,
     "guards": {
       "verified": 952,
@@ -193,7 +193,7 @@
     },
     "suspect_theorems": 26,
     "export_hygiene_warnings": 65,
-    "teeth_form_warnings": 24
+    "teeth_form_warnings": 15
   },
   "books": [
     {
@@ -1766,7 +1766,7 @@
       "book": "books/membership-epochs.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 21,
+      "theorems": 36,
       "functions": 51,
       "guards": {
         "verified": 0,
@@ -2005,7 +2005,7 @@
       "book": "books/policy.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 10,
+      "theorems": 13,
       "functions": 29,
       "guards": {
         "verified": 1,
@@ -2060,7 +2060,7 @@
       "book": "books/principal.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 2,
+      "theorems": 6,
       "functions": 27,
       "guards": {
         "verified": 0,
@@ -2369,7 +2369,7 @@
       "book": "books/statement.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 17,
+      "theorems": 30,
       "functions": 65,
       "guards": {
         "verified": 0,
@@ -3761,16 +3761,14 @@
       },
       "verify_guards_events": 0,
       "assert_events": 18,
-      "must_fails": 2,
+      "must_fails": 0,
       "defconsts": 5,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/crypto-seam"
       ],
-      "system_includes": [
-        "std/testing/must-fail"
-      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -3942,17 +3940,15 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 49,
-      "must_fails": 16,
-      "defconsts": 21,
+      "assert_events": 100,
+      "must_fails": 0,
+      "defconsts": 29,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/membership-epochs-invariants"
       ],
-      "system_includes": [
-        "std/testing/must-fail"
-      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -4792,7 +4788,7 @@
     {
       "theorem": "fn-lace-cross-canonical-self",
       "book": "books/lace-invariants.lisp",
-      "line": 282,
+      "line": 289,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-lace-canonicalp",
         "reflexive-conclusion: a conjunct is (equal X X)"
@@ -4849,7 +4845,7 @@
     {
       "theorem": "fn-prin-apply-succession-when-not-acceptable",
       "book": "books/principal-invariants.lisp",
-      "line": 195,
+      "line": 202,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-prin-apply-succession and the conclusion is that branch's value"
       ]
@@ -5134,43 +5130,43 @@
       {
         "theorem": "fn-stmt-encode-bytes-item-consp",
         "book": "books/statement-invariants.lisp",
-        "line": 68,
+        "line": 73,
         "reason": "len-backchaining: an enabled consp conclusion backchained to a len hypothesis"
       },
       {
         "theorem": "fn-stmt-header-round-trip",
         "book": "books/statement-invariants.lisp",
-        "line": 262,
+        "line": 267,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-stmt-content-id-unfolds",
         "book": "books/statement-invariants.lisp",
-        "line": 313,
+        "line": 318,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-stmt-of-items-of-items",
         "book": "books/statement-invariants.lisp",
-        "line": 342,
+        "line": 347,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-stmt-round-trip",
         "book": "books/statement-invariants.lisp",
-        "line": 354,
+        "line": 359,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-stmt-receipt-of-items-of-receipt-items",
         "book": "books/statement-invariants.lisp",
-        "line": 458,
+        "line": 463,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-stmt-receipt-round-trip",
         "book": "books/statement-invariants.lisp",
-        "line": 473,
+        "line": 478,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -5332,18 +5328,6 @@
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
-        "check": "thm",
-        "book": "tests/acl2/crypto-seam-tests.lisp",
-        "line": 139,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "thm",
-        "book": "tests/acl2/crypto-seam-tests.lisp",
-        "line": 205,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
         "check": "fn-frame-decode-of-encode-needs-a-digest-shape",
         "book": "tests/acl2/frame-tests.lisp",
         "line": 260,
@@ -5371,48 +5355,6 @@
         "check": "fn-id-hex-octets-of-unhex-without-even-length",
         "book": "tests/acl2/identity-tests.lisp",
         "line": 126,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "teeth-stable-needs-a-revocation",
-        "book": "tests/acl2/membership-epochs-tests.lisp",
-        "line": 201,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "teeth-roster-needs-no-readmission",
-        "book": "tests/acl2/membership-epochs-tests.lisp",
-        "line": 209,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "teeth-held-needs-the-hold-verdict",
-        "book": "tests/acl2/membership-epochs-tests.lisp",
-        "line": 246,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "teeth-bound-needs-the-incoming-bound",
-        "book": "tests/acl2/membership-epochs-tests.lisp",
-        "line": 253,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "teeth-partition-needs-distinct-ids",
-        "book": "tests/acl2/membership-epochs-tests.lisp",
-        "line": 321,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "teeth-partition-needs-the-same-base",
-        "book": "tests/acl2/membership-epochs-tests.lisp",
-        "line": 330,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "teeth-partition-needs-the-right-commit-to-be-new",
-        "book": "tests/acl2/membership-epochs-tests.lisp",
-        "line": 339,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {

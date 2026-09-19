@@ -19,6 +19,11 @@
 (in-package "ACL2")
 (include-book "statement")
 
+; cluster-local theory: this book is inside the substrate cluster and opens
+; the definitions its neighbours withdraw at export (docs/proof-style.md 2).
+(local (in-theory (enable fn-crypto-seam-internals
+                          fn-stmt-internals)))
+
 ; -----------------------------------------------------------------------------
 ; Result algebra
 
@@ -533,3 +538,71 @@
   :rule-classes nil
   :hints (("Goal" :use fn-stmt-receipt-encode-injective
            :in-theory (disable fn-stmt-receipt-encode fn-stmt-receipt-p))))
+
+; -----------------------------------------------------------------------------
+; Export theory (docs/proof-style.md section 2).
+;
+; The keystones below stay enabled on include; everything else this book
+; proves is proof vocabulary and is withdrawn under `fn-stmt-invariants-vocabulary',
+; which a book inside this cluster enables locally in one line.
+;
+; * fn-stmt-header-round-trip
+; * fn-stmt-header-accepted-input-is-canonical
+; * fn-stmt-round-trip
+; * fn-stmt-accepted-input-is-canonical
+; * fn-stmt-receipt-round-trip
+; * fn-stmt-receipt-accepted-input-is-canonical
+; * fn-stmt-sign-is-verified
+; * fn-stmt-header-encoding-bound
+; * fn-stmt-encoding-bound
+; * fn-stmt-receipt-encoding-bound
+; * fn-stmt-header-of-items-sound
+; * fn-stmt-of-items-sound
+; * fn-stmt-receipt-of-items-sound
+; * fn-stmt-payload-ref-is-digest
+
+(deftheory fn-stmt-invariants-vocabulary
+  '(
+    fn-stmt-okp-of-ok
+    fn-stmt-value-of-ok
+    fn-stmt-okp-of-ok2
+    fn-stmt-value-of-ok2
+    fn-stmt-rest-of-ok2
+    fn-stmt-error-is-not-ok
+    fn-stmt-ok-is-not-error-shaped
+    fn-stmt-append-nil
+    fn-stmt-bytes-item-reconstruct
+    fn-stmt-uint-item-reconstruct
+    fn-stmt-encode-value-consp
+    fn-stmt-encode-uint-item-consp
+    fn-stmt-encode-bytes-item-consp
+    fn-stmt-consp-of-append
+    fn-stmt-cbor-stream-round-trip
+    fn-stmt-encode-items-of-append
+    fn-stmt-decode-items-of-encode-items
+    fn-stmt-encode-items-of-decode-items
+    fn-stmt-decode-ok-implies-octets
+    fn-stmt-decode-items-value-is-item-list
+    fn-stmt-take-id-items-of-id-items
+    fn-stmt-take-id-items-reconstruct
+    fn-stmt-encode-items-of-id-items-bound
+    fn-stmt-kind-of-code-of-kind-code
+    fn-stmt-kind-code-of-kind-of-code
+    fn-stmt-kind-code-is-uint32
+    fn-stmt-header-reconstruct
+    fn-stmt-id-items-length
+    fn-stmt-header-items-length
+    fn-stmt-headerp-preds-bound
+    fn-stmt-header-of-items-of-header-items
+    fn-stmt-header-of-items-of-header-items-exact
+    fn-stmt-content-id-unfolds
+    fn-stmt-reconstruct
+    fn-stmt-items-length
+    fn-stmt-of-items-of-items
+    fn-stmt-receipt-reconstruct
+    fn-stmt-receipt-items-are-items
+    fn-stmt-receipt-of-items-of-receipt-items
+    fn-stmt-receipt-items-length
+    (:d fn-stmt-items-fuel-induct)))
+
+(in-theory (disable fn-stmt-invariants-vocabulary))

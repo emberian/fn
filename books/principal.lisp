@@ -26,6 +26,11 @@
 (in-package "ACL2")
 (include-book "statement")
 
+; cluster-local theory: this book is inside the substrate cluster and opens
+; the definitions its neighbours withdraw at export (docs/proof-style.md 2).
+(local (in-theory (enable fn-crypto-seam-internals
+                          fn-stmt-internals)))
+
 (defconst *fn-prin-id-tag* (fn-record-string-octets "fn-principal-v1"))
 (defconst *fn-prin-max-token-octets* 64)
 
@@ -242,3 +247,54 @@
        (let ((pk (fn-prin-key-for (fn-stmt-creator s) keyring)))
          (and (fn-sig-public-key-p pk)
               (fn-stmt-verifiedp s pk)))))
+
+; -----------------------------------------------------------------------------
+; Record lemmas (docs/proof-style.md section 1).  Accessor of constructor,
+; one per field, so nothing above this book opens a record.
+
+(defthm fn-prin-state-id-of-fn-prin-make-state
+  (equal (fn-prin-state-id (fn-prin-make-state id key incarnation next))
+         id))
+(defthm fn-prin-state-key-of-fn-prin-make-state
+  (equal (fn-prin-state-key (fn-prin-make-state id key incarnation next))
+         key))
+(defthm fn-prin-state-incarnation-of-fn-prin-make-state
+  (equal (fn-prin-state-incarnation (fn-prin-make-state id key incarnation next))
+         incarnation))
+(defthm fn-prin-state-next-of-fn-prin-make-state
+  (equal (fn-prin-state-next (fn-prin-make-state id key incarnation next))
+         next))
+
+; -----------------------------------------------------------------------------
+; Export theory (docs/proof-style.md section 2).
+;
+; The key-chain record, the id derivation and the succession
+; transitions are withdrawn; the chain-walking vocabulary stays.
+;
+; Only the `:definition' rune is withdrawn, so type prescriptions and
+; executable counterparts still decide ground terms.  A book inside this
+; cluster that must open one of these enables `fn-prin-internals' locally.
+
+(deftheory fn-prin-internals
+  '(
+    (:d fn-prin-tokenp)
+    (:d fn-prin-idp)
+    (:d fn-prin-preimage)
+    (:d fn-prin-id)
+    (:d fn-prin-genesis-bindsp)
+    (:d fn-prin-make-state)
+    (:d fn-prin-state-id)
+    (:d fn-prin-state-key)
+    (:d fn-prin-state-incarnation)
+    (:d fn-prin-state-next)
+    (:d fn-prin-statep)
+    (:d fn-prin-genesis-state)
+    (:d fn-prin-succession-key)
+    (:d fn-prin-succession-acceptablep)
+    (:d fn-prin-apply-succession)
+    (:d fn-prin-succession-payload)
+    (:d fn-prin-sign-succession)
+    (:d fn-prin-state-entry)
+    (:d fn-prin-verifiedp)))
+
+(in-theory (disable fn-prin-internals))
