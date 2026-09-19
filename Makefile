@@ -104,6 +104,7 @@ ACL2_BOOKS ?= books/assumptions \
 	books/clock-invariants \
 	tests/acl2/clock-tests \
 	books/anchor \
+	books/anchor-record \
 	books/anchor-invariants \
 	tests/acl2/anchor-tests \
 	tests/acl2/anchor-teeth-tests \

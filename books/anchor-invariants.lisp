@@ -22,10 +22,9 @@
 ; and by name, and ends with its own export theory.
 
 (in-package "ACL2")
-(include-book "anchor")
-; The FNAN round trip at the end of this book rests on frame's own round trip,
-; `fn-frame-decode-of-encode' (books/frame-invariants.lisp).
-(include-book "frame-invariants")
+; `anchor-record' is `anchor' plus the FNAN durable record family; this book
+; needs both, and never opens frame's grammar itself.
+(include-book "anchor-record")
 (local (include-book "arithmetic/top" :dir :system))
 
 ; Local vocabulary re-enable (docs/proof-style.md sec. 2): this book is about
@@ -273,45 +272,6 @@
   (implies (equal (and verdict t) (fn-anchor-verifiedp presented))
            (equal (fn-anchor-restore-observed node image presented verdict)
                   (fn-anchor-restore node image presented))))
-
-; -----------------------------------------------------------------------------
-; The durable record family
-;
-; Local vocabulary re-enable: the FNAN round trip is the only place in this
-; book that opens frame's grammar and its two result records, so the enable
-; sits here rather than at the top (docs/deputies BOARD, 2026-09-19 codecs).
-
-(local (in-theory (enable fn-frame-codec-vocabulary
-                          fn-frame-record-vocabulary
-                          fn-frame-fields-vocabulary
-                          fn-frame-invariants-vocabulary
-                          fn-frame-octet-vocabulary
-                          (:d fn-frame-split) (:d fn-frame-u64-bytes))))
-
-; `fn-anchor-record-anchor-is-an-anchor' is the third conjunct of
-; `fn-anchor-record-okp' restated with that predicate as its hypothesis: it is
-; true by definition and is not a registry event (docs/proof-style.md sec. 7).
-(defthm fn-anchor-record-anchor-is-an-anchor
-  (implies (fn-anchor-record-okp kind values)
-           (fn-anchor-p (fn-anchor-record-anchor kind values)))
-  :rule-classes nil)
-
-; The value direction for FNAN: everything the host encodes decodes back to the
-; kind and the field values it started from.
-(defthm fn-anchor-decode-of-encode
-  (implies (and (fn-anchor-record-okp kind values)
-                (fn-frame-digestp digest)
-                (not (equal (fn-anchor-encode kind values digest) :bad)))
-           (equal (fn-anchor-decode (fn-anchor-encode kind values digest)
-                                    digest)
-                  (fn-frame-ok *fn-anchor-magic* *fn-frame-version* kind
-                               values)))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-anchor-encode fn-anchor-decode
-                            fn-frame-inputp fn-frame-magicp fn-frame-item)
-                           (fn-frame-decode fn-frame-encode
-                            fn-frame-fields-parse fn-frame-fields-parse-aux
-                            fn-frame-fields-octets)))))
 
 ; -----------------------------------------------------------------------------
 ; Export theory (docs/proof-style.md sec. 2)
