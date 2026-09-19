@@ -262,6 +262,7 @@ class WorkflowJournal:
             except Exception:
                 self.fenced=True
                 raise
+        self.faults.at("image-applied")
         return published
 
     def publish_intent(self, kind: str, values: dict[str, object]) -> Published:
@@ -353,6 +354,7 @@ class WorkflowJournal:
             if final.is_symlink() or read_regular_barriered(final, MAX_INBOUND_BUNDLE+MAX_TEXT+42) != framed:
                 self.fenced=True; raise JournalFault("conflicting staged BID")
             fsync_dir(self.inbound)
+            self.faults.at("inbound-reconciled")
             try: delete(bid)
             except Exception as error:
                 raise InboundDeletePending(f"durable inbound awaits BPA delete: {bid}") from error
@@ -361,12 +363,16 @@ class WorkflowJournal:
         attempted=False
         try:
             write_all(fd, framed); durable_barrier(fd)
+            self.faults.at("inbound-staged-durable")
             # Retire the descriptor number before closing it: a failing close
             # may already have released it, and closing again would close a
             # descriptor this journal does not own.
             handle, fd = fd, -1
             os.close(handle)
-            attempted=True; os.link(stage, final); fsync_dir(self.inbound)
+            attempted=True; os.link(stage, final)
+            self.faults.at("inbound-linked")
+            fsync_dir(self.inbound)
+            self.faults.at("inbound-durable")
         except Exception as error:
             if fd >= 0: os.close(fd)
             if attempted: self.fenced=True; raise JournalUncertain("inbound staging uncertain") from error
@@ -377,6 +383,7 @@ class WorkflowJournal:
         try: delete(bid)
         except Exception as error:
             raise InboundDeletePending(f"durable inbound awaits BPA delete: {bid}") from error
+        self.faults.at("inbound-deleted")
         return final
 
     def _in_inventory(self, bid: str, inventory: Callable[[], Iterable[str]]) -> bool:
@@ -417,6 +424,7 @@ class WorkflowJournal:
         try: delete(bid)
         except Exception as error:
             raise InboundDeletePending(f"durable inbound awaits BPA delete: {bid}") from error
+        self.faults.at("inbound-retry-deleted")
         return final
 
 

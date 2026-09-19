@@ -807,6 +807,7 @@ class Store:
             self.fenced = True
             raise StoreFault(
                 "cannot reconstruct committed history: {}".format(error)) from error
+        self.faults.at("recover-replayed")
         # A directory-barrier failure may have left an observed link in cache.
         # Validate and replay first, then establish the recovered namespace
         # frontier before treating it as a usable durable state.
@@ -827,6 +828,7 @@ class Store:
                 phase = self._observe(acl2, "recovery-barrier", "ok")
                 if phase not in {"recovering", "ready"}:
                     raise StoreFault("ACL2 rejected recovered barrier ordering")
+                self.faults.at("recover-barrier")
             if phase != "ready":
                 raise StoreFault("ACL2 did not complete all recovery barriers")
         except OSError as error:
@@ -867,6 +869,7 @@ class Store:
             self.fenced = True
             if self._observe(acl2, "frontier-file", "ok") != "frontier-data-durable":
                 raise StoreFault("ACL2 rejected durable allocator file")
+            self.faults.at("frontier-staged-durable")
             publication_attempted = True
             # Replacement is a namespace attempt; close the mutation gate
             # before both the syscall and its corresponding ACL2 observation.
@@ -876,17 +879,20 @@ class Store:
             except OSError:
                 self._observe(acl2, "frontier-replace", "error")
                 raise
+            self.faults.at("frontier-replaced")
             if self._observe(acl2, "frontier-replace", "ok") != "frontier-attempted":
                 # The replacement already reached the namespace; a core that
                 # will not record it leaves the frontier unresolved.
                 raise StoreIndeterminate(
                     "ACL2 rejected allocator replacement after the namespace attempt")
+            self.faults.at("frontier-attempted")
             self.fenced = True
             try:
                 fsync_dir(self.root)
             except OSError:
                 self._observe(acl2, "frontier-directory", "error")
                 raise
+            self.faults.at("frontier-durable")
             if self._observe(acl2, "frontier-directory", "ok") != "reserved":
                 raise StoreIndeterminate(
                     "ACL2 rejected durable allocator frontier after its barrier")
@@ -894,6 +900,7 @@ class Store:
             # remains the next ACL2 gate while the writer lock is still held.
             self.fenced = False
             self.frontier = next_frontier
+            self.faults.at("frontier-reserved")
             return next_frontier
         except OSError as error:
             if publication_attempted:
@@ -935,6 +942,7 @@ class Store:
             except OSError:
                 self._observe(acl2, "record-link", "error")
                 raise
+            self.faults.at("record-linked")
             if self._observe(acl2, "record-link", "ok") != "record-attempted":
                 # The final-name attempt already reached the filesystem.  A
                 # core that will not record it leaves publication unresolved,
@@ -948,12 +956,14 @@ class Store:
             except OSError:
                 self._observe(acl2, "record-directory", "error")
                 raise
+            self.faults.at("record-durable")
             if self._observe(acl2, "record-directory", "ok") != "completing":
                 raise StoreIndeterminate(
                     "ACL2 rejected record directory barrier after publication")
             # The directory barrier and its ACL2 reply were both observed.
             # This sole opportunity is consumed before any finish call.
             self.completion_pending = True
+            self.faults.at("record-completing")
             # Staging files are ignored by recovery.  Their best-effort cleanup
             # occurs only after the final namespace barrier succeeded.
             try:
@@ -961,6 +971,7 @@ class Store:
                 fsync_dir(self.staging)
             except OSError:
                 pass
+            self.faults.at("record-staging-cleaned")
             return "durable"
         except StoreIndeterminate:
             raise
@@ -985,6 +996,7 @@ class Store:
         # Consume before the ACL2 call: a rejected or lost reply cannot be
         # retried on this owner, even if the core completed before its reply.
         self.completion_pending = False
+        self.faults.at("finish-consumed")
         try:
             completion = acl2.finish()
         except (StoreError, OSError) as error:
@@ -994,6 +1006,7 @@ class Store:
             self.fenced = True
             raise StoreIndeterminate("ACL2 rejected durable completion after publication")
         self.fenced = False
+        self.faults.at("finish-durable")
         return completion
 
     def _require_writer(self):
@@ -1098,10 +1111,12 @@ CLI_FAULTS = {
 }
 
 
-def command_post(args):
+def command_post(args, faults=NO_FAULTS):
+    """Post one article.  `faults` is the test-only injector; the CLI hook wins."""
     msgid = args.message_id.encode("ascii")
     payload = read_regular_bounded(args.payload, DEFAULT_CONFIG["max_payload_bytes"])
-    faults = NO_FAULTS if args.inject_fault is None else CLI_FAULTS[args.inject_fault]()
+    if args.inject_fault is not None:
+        faults = CLI_FAULTS[args.inject_fault]()
     store, bridge, records = open_live_store(args.store, writable=True, faults=faults)
     try:
         codes = group_codes(args.group, store.config)

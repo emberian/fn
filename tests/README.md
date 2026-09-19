@@ -55,6 +55,56 @@ Behavior-changing batches use the [assurance scope rules](../docs/proofs.md#assu
 and update the [closure inventory](../planning/assurance-closure.md). Avoid a
 single coverage percentage combining proofs, tests and platform assumptions.
 
+## Crash campaign
+
+`tests/campaign/` replaces hand-enumerated process-death cuts with a table
+generated from the host itself. `cuts.py` reads `tools/run_store.py`,
+`tools/workflow_journal.py`, `tools/receipt_journal.py` and
+`tools/run_bp_receive.py`, collects every `faults.at("<name>")` injection site
+with the write path that encloses it, and refuses to run when the declared
+table and the injector disagree: a fault point added to a durable path is
+automatically a new cut, and a removed one is a loud failure rather than a
+silently dropped check. Each cut names the model crash point it corresponds
+to -- the `fn-sf-crash` frontier and record choices of `books/store-files.lisp`
+for the store, the `fn-journal-crash` slot choices of `books/journal.lisp` for
+the two journals -- and a cut the model cannot express carries that gap in the
+table instead of being skipped. `python3 tests/campaign/cuts.py` prints the
+table, the pairs, the cuts no scenario reaches with the reason, and the model
+gaps.
+
+`campaign.py` runs each (scenario, cut) pair: it copies a prepared scenario
+template, runs the real entry point (`run_store.command_post`,
+`run_bp_receive.receive_bpa_request`, `WorkflowJournal.persist_enqueue`) in its
+own process group, SIGKILLs that group at the named cut, and reopens the store
+and journals through the real recovery path. It then checks that previously
+acknowledged content and its pins are intact; that the interrupted operation
+is absent or complete and never partial, against the crash choice the cut
+declares; that a retry reaches exactly the state a run with no kill reaches;
+that the receipt ADU regenerates byte-identically, including against bytes the
+killed process had already produced; and that what the host had told the caller
+or the transport before the kill is consistent with the recovered state -- a
+receipt acknowledged without a durable record is a failure, and a pending
+receipt intent must be reported as needing explicit recovery rather than
+guessed. A failing pair is recorded as a minimal trace: scenario, cut,
+durable-state digest before and after the kill, ACL2 replay result, the
+pre-kill observation, and the checks that failed.
+
+Run it with `python3 tests/campaign/campaign.py [--quick] [--json report.json]`
+or as `python3 -m unittest tests.campaign.test_campaign`; `FN_CAMPAIGN=quick`
+selects the marked subset for iteration. The subset is the iteration loop, not
+the gate.
+
+What the campaign does not show. It kills a process; the operating system page
+cache survives, so nothing here is evidence about power loss, about a drive
+cache that discards a `F_FULLFSYNC` acknowledgement, or about torn sectors and
+partially written blocks. It does not corrupt bytes: `tests/test_store_corruption.py`
+and `specs/store-fault-matrix.md` own that axis. It uses a single writer on one
+host with a held lock, so it says nothing about concurrent writers or about a
+filesystem losing cached metadata across a mount. The journals' cuts are
+expressed by analogy with `fn-journal-crash`: no theorem binds an FNWF or FNRJ
+record file to a journal slot, so those cuts are checked against the host
+contract and the model's shape, not against a proved correspondence.
+
 ## Evidence record
 
 Each meaningful validation summary records: requirement/scenario/proof IDs;

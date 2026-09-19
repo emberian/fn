@@ -149,6 +149,17 @@ and `fn-sf-record-present-visiblep` now include the data-durable phases;
 directory barrier, not the crash constructor, is what removes the old or absent
 outcome. No new host observation is needed for these cuts.
 
+Those six cuts are hand-enumerated. `tests/campaign/` generates the same kind
+of evidence for every named barrier and side-effect boundary of every write
+path -- the store's `advance_frontier`, `publish`, `finish` and `recover`, the
+workflow journal's `publish` and `stage_inbound`, the receiver journal's
+`publish`, and the composite `receive_bpa_request` -- by reading the host's own
+fault-point names and refusing to run when its table and the host disagree.
+Each generated cut carries the model crash point it corresponds to, as above
+for the store and as a `fn-journal-crash` slot choice for the two journals; a
+cut the model cannot express is reported, not skipped. `tests/README.md`
+describes the campaign, its checks and its limits.
+
 What remains physical rather than modeled, and is assumed by name in
 [store-refinement.md](store-refinement.md#assumptions-and-claim-boundary): a
 torn write within a staged file that a completed `fsync` nevertheless reported
