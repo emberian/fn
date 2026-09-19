@@ -4,6 +4,11 @@
 (in-package "ACL2")
 (include-book "bp-adu")
 (include-book "bp-ingress")
+; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
+; this book reasons under them, so open them here, locally.
+(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary
+                          fn-record-invariants-vocabulary fn-cbor-record-vocabulary
+                          fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary)))
 
 ; Local receiver configuration: (destination-eid policy-id issuer-eid).
 (defun fn-bpr-config-shapep (x)
