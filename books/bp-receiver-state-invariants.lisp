@@ -88,7 +88,7 @@
         (fn-bpa-requestp request)))
   :hints (("Goal"
            :in-theory
-           (e/d (fn-bpr-contextp fn-bpr-make-context)
+           (e/d (fn-bpr-contextp)
                 (fn-bpa-metadatap fn-bpa-requestp)))))
 
 (defthm fn-bpr-context-from-request-is-constructor

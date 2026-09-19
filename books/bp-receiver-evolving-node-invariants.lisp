@@ -300,7 +300,10 @@
                 (or (not (equal (fn-state-fenced (fn-node-acceptance s)) t))
                     (consp (fn-node-stage s)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (union-theories '(car-cons cdr-cons fn-node-statep len)
+  ; core exports the shape facts as forward-chaining rules (fn-node-state-shapep-forward-shape,
+  ; docs/proof-style.md s1); it supplies (consp s) here now that fn-node-statep is opaque.
+  :hints (("Goal" :in-theory (union-theories '(car-cons cdr-cons fn-node-statep len
+                                               fn-node-state-shapep-forward-shape)
                                              (theory 'minimal-theory)))))
 (defthm fn-bprv-node-statep-consp
   (implies (fn-node-statep s) (consp s))
@@ -600,7 +603,11 @@
                             (node (fn-node-initial-state groups capacity))
                             (records history) (sequence 0)))
            :in-theory (union-theories '(car-cons cdr-cons fn-sf-replay-node fn-replay fn-bprv-node-initial-idle
-                         fn-bprv-advance-keeps-committed)
+                         fn-bprv-advance-keeps-committed
+                         ; fn-replay now tests the initial node once and returns a fault otherwise
+                         ; (core, 2026-09-19); that branch closes by the record lemma
+                         ; fn-replay-result-kind-of-fn-replay-fault under the opened recognizer.
+                         fn-replay-okp fn-replay-result-kind-of-fn-replay-fault)
                        (theory 'minimal-theory)))))
 
 (defthm fn-bprv-history-record-is-node-committed-when-idle
