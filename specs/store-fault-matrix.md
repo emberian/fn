@@ -106,11 +106,55 @@ hardware write caches, concurrent out-of-band modification, hard-link/rename
 semantics on platforms other than this development profile, corruption that
 preserves the checksum, whole-store rollback to an older valid snapshot, full
 disk accounting, segment packing/checkpoints/compaction, or arbitrary multi-step
-fault traces. Abrupt child-process kill cases are deliberately outside this file
-and belong to their dedicated test owner.
+fault traces. Abrupt child-process kill cases live in
+`tests/test_store_process_crash.py`; their correspondence to model crash points
+is tabulated below.
 
 The `after` cases model an exception after a call returns to the wrapper, not a
 claim that the operating system actually performed the effect before reporting
 an error. The physical correspondence, platform assumptions, and required
 general trace theorems remain the open work listed in
 [store-refinement.md](store-refinement.md#existing-and-missing-adapter-traces).
+
+## Process-death cuts and their model crash points
+
+`tests/test_store_process_crash.py` kills the helper process in
+`tests/store_crash_child.py` after a real syscall or ACL2 call has returned and
+before the next ACL2 observation, then reopens through `fn-sn-open-observed`.
+Every such cut is a model crash point: the table names, for each cut, the
+kernel phase the ACL2 process is in when it dies, the crash choice the model
+allows from that phase, and the image the test observes. The choice sets are
+those of `fn-sf-crash-imagep` in `books/store-files.lisp`; the test observes
+one element of each set, never the set.
+
+| Cut (after this returned) | Kernel phase at death | Modeled image set | Observed by the test |
+| --- | --- | --- | --- |
+| `frontier-replace` (`os.replace`) | `:frontier-data-durable` | frontier old or new; records unchanged | new frontier, no record |
+| `frontier-dir-barrier` (`fsync_dir(root)`) | `:frontier-attempted` | frontier old or new; records unchanged | new frontier, no record |
+| `staged-data-barrier` (second `fsync_file`) | `:record-staged` | frontier unchanged; records unchanged | frontier already advanced, no record |
+| `final-link` (`os.link`) | `:record-data-durable` | frontier unchanged; records unchanged or plus the exact candidate | candidate present |
+| `directory-barrier` (`fsync_dir(transactions)`) | `:record-attempted` | frontier unchanged; records unchanged or plus the exact candidate | candidate present |
+| `core-durable` (`fn-sn-finish` returned `:durable`) | `:ready`, pair in the ghost history | frontier unchanged; records unchanged | acknowledged record present; retry is `duplicate` |
+
+Before the 2026-09-19 crash-fidelity revision the model allowed only the old
+frontier from `:frontier-data-durable` and only absence from
+`:record-data-durable`, so the `frontier-replace` and `final-link` cuts were
+observed outcomes the model could not express. `fn-sf-frontier-new-visiblep`
+and `fn-sf-record-present-visiblep` now include the data-durable phases;
+`fn-sf-unobserved-frontier-replacement-crash-is-old-or-new` and
+`fn-sf-unobserved-record-link-crash-is-absent-or-present` in
+`books/store-files-invariants.lisp` state the choice, and
+`fn-sf-completed-frontier-barrier-removes-old-choice` and
+`fn-sf-completed-record-barrier-removes-absent-choice` state that the completed
+directory barrier, not the crash constructor, is what removes the old or absent
+outcome. No new host observation is needed for these cuts.
+
+What remains physical rather than modeled, and is assumed by name in
+[store-refinement.md](store-refinement.md#assumptions-and-claim-boundary): a
+torn write within a staged file that a completed `fsync` nevertheless reported
+durable (A-DURABILITY); a replacement or link that is neither wholly old nor
+wholly new (A-WRITE-ISOLATION, namespace atomicity); a directory barrier that
+returned without retaining the namespace change; the drive cache behind
+`fsync(2)` on APFS, which needs `F_FULLFSYNC` (review D12, host lane); and
+replacement of the whole store by an older valid image, which no theorem here
+detects.

@@ -11,6 +11,10 @@
 ; and its crash choices.  In particular, it does not establish that POSIX I/O
 ; implements an event, or that the ghost success list has an independent
 ; durable representation.
+;
+; The event vocabulary is the kernel's.  :lose-success is retained for the
+; kernel trace but is unreachable-in-composition (see fn-sf-lose-success);
+; the composed dispatchers in store-node-traces.lisp never issue it.
 
 (in-package "ACL2")
 (include-book "store-files-invariants")
@@ -36,9 +40,8 @@
      (and (equal (len event) 2)
           (member-equal (car (cdr event)) '(:ok :error))))
     ((equal (car event) :refuse-reservation)
-     (and (equal (len event) 3)
-          (fn-record-uint32p (car (cdr event)))
-          (member-equal (car (cdr (cdr event))) '(:refused :uncertain))))
+     (and (equal (len event) 2)
+          (fn-record-uint32p (car (cdr event)))))
     ((equal (car event) :prepare-record)
      (and (equal (len event) 2)
           (fn-record-p (car (cdr event)))))
@@ -47,11 +50,9 @@
           (member-equal (car (cdr event)) '(:ok :known-fail))))
     ((equal event '(:prepublish-abort)) t)
     ((equal (car event) :abort-completion)
-     (and (equal (len event) 4)
+     (and (equal (len event) 3)
           (fn-record-uint32p (car (cdr event)))
-          (fn-record-uint32p (car (cdr (cdr event))))
-          (member-equal (car (cdr (cdr (cdr event))))
-                        '(:matching :lost :rejected))))
+          (fn-record-uint32p (car (cdr (cdr event))))))
     ((equal (car event) :record-link)
      (and (equal (len event) 2)
           (member-equal (car (cdr event)) '(:ok :error))))
@@ -59,11 +60,9 @@
      (and (equal (len event) 2)
           (member-equal (car (cdr event)) '(:ok :error))))
     ((equal (car event) :core-completion)
-     (and (equal (len event) 4)
+     (and (equal (len event) 3)
           (fn-record-uint32p (car (cdr event)))
-          (fn-record-uint32p (car (cdr (cdr event))))
-          (member-equal (car (cdr (cdr (cdr event))))
-                        '(:matching :lost :rejected))))
+          (fn-record-uint32p (car (cdr (cdr event))))))
     ((equal (car event) :emit-success)
      (and (equal (len event) 3)
           (fn-record-uint32p (car (cdr event)))
@@ -121,8 +120,7 @@
    ((equal (car event) :frontier-dir)
     (fn-sf-frontier-dir-result s (car (cdr event))))
    ((equal (car event) :refuse-reservation)
-    (fn-sf-refuse-reservation s (car (cdr event))
-                              (car (cdr (cdr event)))))
+    (fn-sf-refuse-reservation s (car (cdr event))))
    ((equal (car event) :prepare-record)
     (fn-sf-prepare-record s (car (cdr event)) groups capacity))
    ((equal (car event) :record-file)
@@ -131,16 +129,14 @@
     (fn-sf-prepublish-abort s))
    ((equal (car event) :abort-completion)
     (fn-sf-abort-completion s (car (cdr event))
-                            (car (cdr (cdr event)))
-                            (car (cdr (cdr (cdr event))))))
+                            (car (cdr (cdr event)))))
    ((equal (car event) :record-link)
     (fn-sf-record-link-result s (car (cdr event))))
    ((equal (car event) :record-dir)
     (fn-sf-record-dir-result s (car (cdr event))))
    ((equal (car event) :core-completion)
     (fn-sf-core-completion s (car (cdr event))
-                           (car (cdr (cdr event)))
-                           (car (cdr (cdr (cdr event))))))
+                           (car (cdr (cdr event)))))
    ((equal (car event) :emit-success)
     (fn-sf-emit-success s (car (cdr event))
                         (car (cdr (cdr event)))))
@@ -219,7 +215,7 @@
   :hints (("Goal" :in-theory (enable fn-sf-frontier-dir-result))))
 
 (defthm fn-sf-records-of-refuse-reservation
-  (equal (fn-sf-records (fn-sf-refuse-reservation s txid result))
+  (equal (fn-sf-records (fn-sf-refuse-reservation s txid))
          (fn-sf-records s))
   :hints (("Goal" :in-theory (enable fn-sf-refuse-reservation))))
 
@@ -239,7 +235,7 @@
 
 (defthm fn-sf-records-of-abort-completion
   (equal (fn-sf-records
-          (fn-sf-abort-completion s sequence txid result))
+          (fn-sf-abort-completion s sequence txid))
          (fn-sf-records s))
   :hints (("Goal" :in-theory (enable fn-sf-abort-completion))))
 
@@ -250,7 +246,7 @@
 
 (defthm fn-sf-records-of-core-completion
   (equal (fn-sf-records
-          (fn-sf-core-completion s sequence txid result))
+          (fn-sf-core-completion s sequence txid))
          (fn-sf-records s))
   :hints (("Goal" :in-theory (enable fn-sf-core-completion))))
 
@@ -259,6 +255,7 @@
          (fn-sf-records s))
   :hints (("Goal" :in-theory (enable fn-sf-emit-success))))
 
+; unreachable-in-composition: see fn-sf-lose-success in store-files.lisp.
 (defthm fn-sf-records-of-lose-success
   (equal (fn-sf-records (fn-sf-lose-success s sequence txid))
          (fn-sf-records s))
@@ -316,7 +313,7 @@
   :hints (("Goal" :in-theory (enable fn-sf-frontier-dir-result))))
 
 (defthm fn-sf-successes-of-refuse-reservation
-  (equal (fn-sf-successes (fn-sf-refuse-reservation s txid result))
+  (equal (fn-sf-successes (fn-sf-refuse-reservation s txid))
          (fn-sf-successes s))
   :hints (("Goal" :in-theory (enable fn-sf-refuse-reservation))))
 
@@ -337,7 +334,7 @@
 
 (defthm fn-sf-successes-of-abort-completion
   (equal (fn-sf-successes
-          (fn-sf-abort-completion s sequence txid result))
+          (fn-sf-abort-completion s sequence txid))
          (fn-sf-successes s))
   :hints (("Goal" :in-theory (enable fn-sf-abort-completion))))
 
@@ -353,10 +350,11 @@
 
 (defthm fn-sf-successes-of-core-completion
   (equal (fn-sf-successes
-          (fn-sf-core-completion s sequence txid result))
+          (fn-sf-core-completion s sequence txid))
          (fn-sf-successes s))
   :hints (("Goal" :in-theory (enable fn-sf-core-completion))))
 
+; unreachable-in-composition: see fn-sf-lose-success in store-files.lisp.
 (defthm fn-sf-successes-of-lose-success
   (equal (fn-sf-successes (fn-sf-lose-success s sequence txid))
          (fn-sf-successes s))

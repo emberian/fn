@@ -333,8 +333,7 @@
            :use ((:instance fn-sf-core-completion-preserves-state
                     (s (fn-sn-files s))
                     (sequence (fn-record-sequence (fn-sn-completion-record s)))
-                    (txid (fn-record-txid (fn-sn-completion-record s)))
-                    (result :matching)))
+                    (txid (fn-record-txid (fn-sn-completion-record s)))))
            :in-theory (disable fn-sn-record-bindsp fn-sn-completion-record))))
 
 (defthm fn-snt-finish-preserves-relation
@@ -500,3 +499,127 @@
             (ys (fn-sf-successes (fn-sn-files (fn-snt-run s events))))))
     :in-theory (disable fn-snt-run fn-snt-relation fn-sn-files
                         fn-sf-successes fn-sf-records fn-sf-record-has-pairp))))
+
+; -----------------------------------------------------------------------------
+; Stable records only grow along composed traces.  These footprint theorems
+; carry the kernel's record prefix through every composed operation, so a
+; record present when a process reopens remains present for the rest of that
+; process (used across the reopen boundary by store-observed.lisp).
+
+(defthm fn-snt-prepare-keeps-records
+  (equal (fn-sf-records (fn-sn-files (fn-sn-prepare s record)))
+         (fn-sf-records (fn-sn-files s)))
+  :hints (("Goal" :in-theory (e/d (fn-sn-prepare fn-sn-update fn-sn-make)
+                                  (fn-sn-statep fn-sn-record-bindsp
+                                   fn-sf-prepare-record fn-sf-records)))))
+
+(defthm fn-snt-io-records-prefix
+  (implies (fn-sn-statep s)
+           (fn-sf-prefixp (fn-sf-records (fn-sn-files s))
+                          (fn-sf-records (fn-sn-files (fn-sn-io s operation result)))))
+  :hints (("Goal"
+           :use ((:instance fn-sf-state-records-are-true-list (s (fn-sn-files s)))
+                 (:instance fn-sf-stable-records-prefix-of-record-dir-result
+                            (s (fn-sn-files s))))
+           :in-theory (e/d (fn-sn-io fn-sn-file-step fn-sn-update fn-sn-make)
+                           (fn-sn-statep fn-sf-statep fn-sf-records fn-sf-prefixp
+                            fn-sf-start-frontier fn-sf-frontier-file-result
+                            fn-sf-frontier-replace-result fn-sf-frontier-dir-result
+                            fn-sf-record-file-result fn-sf-record-link-result
+                            fn-sf-record-dir-result fn-sf-recovery-barrier)))))
+
+(defthm fn-snt-finish-keeps-records
+  (equal (fn-sf-records (fn-sn-files (fn-sn-finish s)))
+         (fn-sf-records (fn-sn-files s)))
+  :hints (("Goal" :in-theory (e/d (fn-sn-finish fn-sn-update fn-sn-make)
+                                  (fn-sn-completion-enabledp fn-sn-completion-record
+                                   fn-sf-records fn-sf-core-completion
+                                   fn-sf-emit-success)))))
+
+(defthm fn-snt-crash-records-prefix
+  (implies (fn-sn-statep s)
+           (fn-sf-prefixp (fn-sf-records (fn-sn-files s))
+                          (fn-sf-records
+                           (fn-sn-files (fn-sn-crash s frontier-choice record-choice)))))
+  :hints (("Goal"
+           :use ((:instance fn-sf-state-records-are-true-list (s (fn-sn-files s)))
+                 (:instance fn-sf-stable-records-prefix-of-crash (s (fn-sn-files s))))
+           :in-theory (e/d (fn-sn-crash fn-sn-update fn-sn-make)
+                           (fn-sn-statep fn-sf-statep fn-sf-records fn-sf-prefixp
+                            fn-sf-crash fn-sf-crash-choicep)))))
+
+(defthm fn-snt-recover-keeps-records
+  (equal (fn-sf-records (fn-sn-files (fn-sn-recover s)))
+         (fn-sf-records (fn-sn-files s)))
+  :hints (("Goal" :in-theory (e/d (fn-sn-recover fn-sn-update fn-sn-make)
+                                  (fn-sn-statep fn-sf-records fn-sf-recover
+                                   fn-sf-replay-node)))))
+
+(defthm fn-snt-related-records-true-list
+  (implies (fn-snt-relation s)
+           (true-listp (fn-sf-records (fn-sn-files s))))
+  :hints (("Goal" :use (fn-snt-relation-implies-structural-state
+                         fn-snt-typed-store-components
+                         (:instance fn-sf-state-records-are-true-list
+                          (s (fn-sn-files s))))
+           :in-theory (disable fn-snt-relation fn-sn-statep))))
+
+(defthm fn-snt-step-records-prefix
+  (implies (fn-snt-relation s)
+           (fn-sf-prefixp (fn-sf-records (fn-sn-files s))
+                          (fn-sf-records (fn-sn-files (fn-snt-step s event)))))
+  :hints (("Goal"
+           :use (fn-snt-relation-implies-structural-state
+                 fn-snt-related-records-true-list
+                 (:instance fn-snt-io-records-prefix
+                            (operation (cadr event)) (result (caddr event)))
+                 (:instance fn-snt-crash-records-prefix
+                            (frontier-choice (cadr event)) (record-choice (caddr event))))
+           :in-theory (e/d (fn-snt-step)
+                           (fn-snt-relation fn-sn-statep fn-sn-prepare fn-sn-io
+                            fn-sn-finish fn-sn-crash fn-sn-recover fn-sn-files
+                            fn-sf-records fn-sf-prefixp
+                            fn-snt-io-records-prefix fn-snt-crash-records-prefix)))))
+
+(defthm fn-snt-mixed-trace-records-prefix
+  (implies (fn-snt-relation s)
+           (fn-sf-prefixp (fn-sf-records (fn-sn-files s))
+                          (fn-sf-records (fn-sn-files (fn-snt-run s events)))))
+  :hints (("Goal" :induct (fn-snt-run s events)
+           :in-theory (disable fn-snt-relation fn-snt-step fn-sn-files
+                               fn-sf-records fn-sf-prefixp))
+          ("Subgoal *1/1" :use ((:instance fn-sf-prefixp-transitive
+                                 (xs (fn-sf-records (fn-sn-files s)))
+                                 (ys (fn-sf-records (fn-sn-files (fn-snt-step s (car events)))))
+                                 (zs (fn-sf-records (fn-sn-files (fn-snt-run
+                                       (fn-snt-step s (car events)) (cdr events))))))))))
+
+; An admissible crash image of a related live state is replayable at its own
+; frontier.  This is the fact that lets the observed reopen path succeed on
+; every image the platform may leave behind (A-DURABILITY as hypothesis).
+(defthm fn-snt-admissible-crash-image-is-recoverable
+  (implies (and (fn-snt-relation s)
+                (fn-sf-crash-imagep (fn-sn-files s) frontier records))
+           (fn-sf-history-recoverablep (fn-sn-groups s) (fn-sn-capacity s)
+                                       records frontier))
+  :hints (("Goal"
+           :use (fn-snt-relation-implies-structural-state
+                 (:instance fn-snt-crash-preserves-relation
+                            (frontier-choice
+                             (fn-sf-image-frontier-choice (fn-sn-files s) frontier))
+                            (record-choice
+                             (fn-sf-image-record-choice (fn-sn-files s) records)))
+                 (:instance fn-snt-relation-implies-structural-state
+                            (s (fn-sn-crash s
+                                 (fn-sf-image-frontier-choice (fn-sn-files s) frontier)
+                                 (fn-sf-image-record-choice (fn-sn-files s) records)))))
+           :in-theory (e/d (fn-snt-relation)
+                           (fn-sn-statep fn-sf-statep fn-sf-history-recoverablep
+                            fn-sf-replay-node fn-snt-pending-linkp
+                            fn-sn-completion-enabledp fn-snt-idle-phasep
+                            fn-sf-record-phasep fn-sn-crash fn-sf-crash
+                            fn-sf-crash-imagep fn-sf-image-frontier-choice
+                            fn-sf-image-record-choice fn-sn-files fn-sn-groups
+                            fn-sn-capacity fn-sf-records fn-sf-frontier
+                            fn-sf-phase fn-sn-node
+                            fn-snt-crash-preserves-relation)))))
