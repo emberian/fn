@@ -3,6 +3,14 @@
 (include-book "records")
 (include-book "cbor-invariants")
 
+; This book proves the codec's round trip, so it opens the codec and the
+; arithmetic vocabulary locally.  Records and results stay opaque.
+(local (in-theory (enable fn-cbor-codec-vocabulary
+                          fn-cbor-invariants-vocabulary
+                          fn-record-codec-vocabulary
+                          fn-record-guard-vocabulary
+                          fn-record-record-vocabulary)))
+
 (defthm fn-record-chars-octets-chars
   (implies (character-listp chars)
            (equal (fn-record-octets-chars (fn-record-string-octets-aux chars))
@@ -186,3 +194,65 @@
                                fn-record-groups fn-record-obligation-id
                                fn-record-content-subject fn-record-release-evidence
                                fn-record-charge floor mod))))
+
+; -----------------------------------------------------------------------------
+; Export theory.  `fn-record-round-trip' is the keystone; everything else here
+; is arithmetic, list and prefix vocabulary, including every rule that
+; backchains into `len', `true-listp' or `append'.
+
+(deftheory fn-record-invariants-vocabulary
+  '(    fn-record-chars-octets-chars fn-record-string-round-trip
+    fn-record-ascii-implies-octets
+    fn-record-ascii-string-implies-octet-string
+    fn-record-at-most-is-length-bound fn-record-length-append
+    fn-record-cbor-encode-octets fn-record-cbor-uint-encoding-bound
+    fn-record-cbor-byte-encoding-bound fn-record-take-prefix
+    fn-record-nthcdr-prefix fn-record-u32-prefix-fields
+    fn-record-cbor-stream-uint-round-trip fn-record-append-associative
+    fn-record-cbor-stream-bytes-round-trip fn-record-read-uint-encoded
+    fn-record-read-bytes-encoded fn-record-encoded-groups-are-octets
+    fn-record-group-encoding-bound fn-record-groups-prefix-round-trip
+    fn-record-reconstruct fn-record-read-magic-prefix
+    fn-record-read-version-prefix fn-record-read-last-uint))
+
+(in-theory (disable fn-record-chars-octets-chars fn-record-string-round-trip
+             fn-record-ascii-implies-octets
+             fn-record-ascii-string-implies-octet-string
+             fn-record-at-most-is-length-bound fn-record-length-append
+             fn-record-cbor-encode-octets
+             fn-record-cbor-uint-encoding-bound
+             fn-record-cbor-byte-encoding-bound fn-record-take-prefix
+             fn-record-nthcdr-prefix fn-record-u32-prefix-fields
+             fn-record-cbor-stream-uint-round-trip
+             fn-record-append-associative
+             fn-record-cbor-stream-bytes-round-trip
+             fn-record-read-uint-encoded fn-record-read-bytes-encoded
+             fn-record-encoded-groups-are-octets
+             fn-record-group-encoding-bound
+             fn-record-groups-prefix-round-trip fn-record-reconstruct
+             fn-record-read-magic-prefix fn-record-read-version-prefix
+             fn-record-read-last-uint))
+
+; -----------------------------------------------------------------------------
+; The one name a non-codec book re-enables.
+;
+; A book outside this cluster that builds a codec, constructs an octet list or
+; reasons about a CBOR value needs the same arithmetic and list vocabulary the
+; codec proofs use: the `len', `consp', `true-listp', `append', `take' and
+; `nthcdr' rules of `cbor-invariants' and `records-invariants', plus the two
+; value recognizers (`fn-cbor-valuep', `fn-record-p') whose definitions this
+; cluster withdrew.  Enabling the six fine-grained vocabularies one at a time
+; is the precise thing to do inside the cluster; outside it, the includer
+; almost always wants all of them, and getting one name wrong costs a
+; certification round.  So this theory is THE name: one `(local (in-theory
+; (enable fn-codecs-includer-vocabulary)))' at the top of a book that includes
+; `records-invariants' restores exactly the vocabulary an includer had before
+; the realignment, and nothing else -- records and results stay opaque, and
+; the record lemmas and the two `-forward-shape' rules are already enabled.
+; The six fine-grained names remain, for a book that wants less.
+
+(deftheory fn-codecs-includer-vocabulary
+  (union-theories
+   (union-theories (theory 'fn-cbor-invariants-vocabulary)
+                   (theory 'fn-record-invariants-vocabulary))
+   '((:d fn-cbor-valuep) (:d fn-record-p))))

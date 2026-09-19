@@ -1,0 +1,22 @@
+{
+  "format": "fn-roughtime-servers-1",
+  "comment": "Long-term Ed25519 public keys pinned by fn. A key here is trust: an anchor is only as fresh as the servers whose keys appear in this file. Taken from the published Roughtime ecosystem list; each entry records the date fn last saw the key answer.",
+  "servers": [
+    {
+      "name": "int08h",
+      "host": "roughtime.int08h.com",
+      "port": 2002,
+      "protocol": "roughtime-v1-classic",
+      "public_key_base64": "AW5uAoTSTDfG5NfY1bTh08GUnOqlRb+HVhbJ3ODJvsE=",
+      "verified_answering": "2026-09-19"
+    },
+    {
+      "name": "cloudflare",
+      "host": "roughtime.cloudflare.com",
+      "port": 2002,
+      "protocol": "roughtime-v1-classic",
+      "public_key_base64": "gD63hSj3ScS+wuOeGrubXlq35N1c5Lby/S+T7MNTjxo=",
+      "verified_answering": null
+    }
+  ]
+}

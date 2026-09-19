@@ -3,8 +3,7 @@
 ; opens through fn-sn-open-observed, the entry host/store-node-host.lisp:27
 ; calls on each process start.
 (in-package "ACL2")
-(include-book "../../books/store-observed-traces")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "../../books/store-observed")
 
 (defconst *fn-so-groups* '("fn.letters"))
 (defconst *fn-so-empty*
@@ -30,12 +29,12 @@
 (assert-event (not (fn-sf-history-recoverablep *fn-so-groups* 10 (list *fn-so-alien*) 1)))
 (assert-event (equal (fn-sn-open-observed *fn-so-groups* 10 1 (list *fn-so-alien*))
                      '(:error :replay)))
-(must-fail (thm (fn-sn-open-okp (fn-sn-open-observed *fn-so-groups* 10 1 (list *fn-so-alien*)))))
+(assert-event (with-guard-checking :none (not (fn-sn-open-okp (fn-sn-open-observed *fn-so-groups* 10 1 (list *fn-so-alien*))))))
 ; Teeth for fn-sn-open-observed-success-has-live-history-relation: a refused
 ; open carries no state and the relation fails on what it does carry.
-(must-fail (thm (fn-snt-relation
+(assert-event (with-guard-checking :none (not (fn-snt-relation
                  (fn-sn-open-state
-                  (fn-sn-open-observed *fn-so-groups* 10 1 (list *fn-so-alien*))))))
+                  (fn-sn-open-observed *fn-so-groups* 10 1 (list *fn-so-alien*)))))))
 
 ; -----------------------------------------------------------------------------
 ; D6 witness: open from a two-record image with a consumed frontier gap and
@@ -214,13 +213,13 @@
 (defconst *fn-so-reopen-rolled-back*
   (fn-sn-open-observed *fn-so-live-groups* 10 8 (list *fn-so-first* *fn-so-second*)))
 (assert-event (fn-sn-open-okp *fn-so-reopen-rolled-back*))
-(must-fail (thm (fn-sf-record-has-pairp
+(assert-event (with-guard-checking :none (not (fn-sf-record-has-pairp
                  '(2 . 6)
-                 (fn-sf-records (fn-sn-files (fn-sn-open-state *fn-so-reopen-rolled-back*))))))
+                 (fn-sf-records (fn-sn-files (fn-sn-open-state *fn-so-reopen-rolled-back*)))))))
 ; member dropped: a pair that was never acknowledged names no record.
-(must-fail (thm (fn-sf-record-has-pairp
+(assert-event (with-guard-checking :none (not (fn-sf-record-has-pairp
                  '(9 . 9)
-                 (fn-sf-records (fn-sn-files (fn-sn-open-state *fn-so-reopen-present*))))))
+                 (fn-sf-records (fn-sn-files (fn-sn-open-state *fn-so-reopen-present*)))))))
 ; relation dropped (weakened to fn-sn-statep): a structurally valid state whose
 ; history is not replayable carries an acknowledged pair and an admissible
 ; image, and the reopen refuses it.
@@ -232,5 +231,5 @@
 (assert-event (not (fn-snt-relation *fn-so-unrelated*)))
 (assert-event (fn-sf-crash-imagep (fn-sn-files *fn-so-unrelated*) 1 (list *fn-so-alien*)))
 (assert-event (member-equal '(0 . 0) (fn-sf-successes (fn-sn-files *fn-so-unrelated*))))
-(must-fail (thm (fn-sn-open-okp
-                 (fn-sn-open-observed *fn-so-live-groups* 10 1 (list *fn-so-alien*)))))
+(assert-event (with-guard-checking :none (not (fn-sn-open-okp
+                 (fn-sn-open-observed *fn-so-live-groups* 10 1 (list *fn-so-alien*))))))

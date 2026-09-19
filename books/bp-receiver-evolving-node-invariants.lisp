@@ -5,6 +5,19 @@
 ; changes a transition.
 (in-package "ACL2")
 (include-book "bp-receiver-evolving-history-invariants")
+; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
+; this book reasons under them, so open them here, locally.
+(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary
+                          fn-record-invariants-vocabulary fn-cbor-record-vocabulary
+                          fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary)))
+; Withdrawn at the core export (2026-09-19); this book reasons under them
+; as it did when they were enabled on include.
+(local (in-theory (enable fn-accept-complete fn-accept-prepare fn-clear-pending fn-initial-state
+                          fn-install-pending fn-node-complete fn-node-initial-state
+                          fn-node-pending-matchesp fn-node-prepare fn-node-recover fn-node-stagep
+                          fn-node-statep fn-replay fn-replay-advance-txid fn-replay-apply-record
+                          fn-replay-faultp fn-replay-loop fn-replay-okp fn-retain-admissiblep
+                          fn-retain-admit fn-retain-statep fn-statep)))
 (local (in-theory (disable
  fn-bprr-nth
  fn-bprr-textp
@@ -287,7 +300,10 @@
                 (or (not (equal (fn-state-fenced (fn-node-acceptance s)) t))
                     (consp (fn-node-stage s)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (union-theories '(car-cons cdr-cons fn-node-statep len)
+  ; core exports the shape facts as forward-chaining rules (fn-node-state-shapep-forward-shape,
+  ; docs/proof-style.md s1); it supplies (consp s) here now that fn-node-statep is opaque.
+  :hints (("Goal" :in-theory (union-theories '(car-cons cdr-cons fn-node-statep len
+                                               fn-node-state-shapep-forward-shape)
                                              (theory 'minimal-theory)))))
 (defthm fn-bprv-node-statep-consp
   (implies (fn-node-statep s) (consp s))
@@ -587,7 +603,11 @@
                             (node (fn-node-initial-state groups capacity))
                             (records history) (sequence 0)))
            :in-theory (union-theories '(car-cons cdr-cons fn-sf-replay-node fn-replay fn-bprv-node-initial-idle
-                         fn-bprv-advance-keeps-committed)
+                         fn-bprv-advance-keeps-committed
+                         ; fn-replay now tests the initial node once and returns a fault otherwise
+                         ; (core, 2026-09-19); that branch closes by the record lemma
+                         ; fn-replay-result-kind-of-fn-replay-fault under the opened recognizer.
+                         fn-replay-okp fn-replay-result-kind-of-fn-replay-fault)
                        (theory 'minimal-theory)))))
 
 (defthm fn-bprv-history-record-is-node-committed-when-idle

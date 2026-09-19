@@ -1,6 +1,6 @@
 ; Refusal/abort gaps mixed with publication and actual crash replay.
 (in-package "ACL2")
-(include-book "../../books/store-node-resolution-traces")
+(include-book "../../books/store-node-resolution")
 
 (defconst *snrt-groups* '("fn.test"))
 (defconst *snrt-reserve*
