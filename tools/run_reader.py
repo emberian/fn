@@ -175,6 +175,29 @@ class Acl2Reader:
                     stream.close()
 
 
+def graceful_close(client):
+    """End a connection after its final reply without a reset.
+
+    Closing a socket that still holds unread input makes Linux send RST
+    instead of FIN, and the peer then loses the reply it was owed (the 501
+    for an over-long command, for example).  Signal end of output first, then
+    drain what the peer already sent for a bounded interval, then let the
+    caller close.  The drain is bounded in time, not trusted to end.
+    """
+    try:
+        client.shutdown(socket.SHUT_WR)
+    except OSError:
+        return
+    deadline = time.monotonic() + 1.0
+    try:
+        while time.monotonic() < deadline:
+            client.settimeout(max(0.05, deadline - time.monotonic()))
+            if not client.recv(MAX_READ):
+                return
+    except (socket.timeout, OSError):
+        return
+
+
 def serve_client(reader, client):
     """Serve one connection; a broken peer cannot end the listener.
 
@@ -207,6 +230,7 @@ def serve_client(reader, client):
                     if reply:
                         client.sendall(reply)
                     if closing:
+                        graceful_close(client)
                         return
                     # No complete wire event consumed this input.  The retained
                     # ACL2 wire state holds the bounded prefix.
