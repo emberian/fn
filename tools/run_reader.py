@@ -143,7 +143,10 @@ class Acl2Reader:
         if not octets:
             return b"", False, []
         literal = "(" + " ".join(str(byte) for byte in octets) + ")"
-        self.call("(fn-reader-chunk '" + literal + " state)")
+        # The host observes its clock here; ACL2 decides what the reading
+        # means (books/nntp.lisp fn-nntp-unix-dtn-ms) and what DATE reports.
+        unix_ms = int(time.time() * 1000)
+        self.call("(fn-reader-chunk '" + literal + " " + str(unix_ms) + " state)")
         reply = bytes(acl2_octet_list(self.call("(@ fn-reader-output)")))
         closing = acl2_boolean(self.call("(@ fn-reader-closep)"))
         suffix = acl2_octet_list(self.call("(@ fn-reader-suffix)"))

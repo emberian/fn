@@ -150,10 +150,12 @@ ACL2_BOOKS ?= books/assumptions \
 	books/transfer-public-bound \
 	tests/acl2/transfer-tests \
 	books/nntp \
+	books/nntp-overview \
 	books/nntp-invariants \
 	books/nntp-effects \
 	tests/acl2/nntp-tests \
 	tests/acl2/nntp-teeth-tests \
+	tests/acl2/nntp-reader-profile-tests \
 	books/bp-release \
 	books/bp-release-invariants \
 	tests/acl2/bp-release-tests \

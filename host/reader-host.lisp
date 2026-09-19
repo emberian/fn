@@ -53,6 +53,7 @@
 (defun fn-reader-use-seed (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-reader-archive *fn-reader-archive* state))
+         (state (f-put-global 'fn-reader-facts *fn-reader-seed-facts* state))
          (state (f-put-global 'fn-reader-action :ready state)))
     (value :ready)))
 
@@ -71,6 +72,10 @@
         (let ((archive (fn-node-acceptance node)))
           (if (fn-nntp-projectionp archive)
               (let* ((state (f-put-global 'fn-reader-archive archive state))
+                     ; The store adapter persists no creation facts yet, so
+                     ; NEWGROUPS over a store archive reports an empty list
+                     ; rather than an invented date.
+                     (state (f-put-global 'fn-reader-facts nil state))
                      (state (f-put-global 'fn-reader-action :ready state)))
                 (value :ready))
             (let ((state (f-put-global 'fn-reader-action :refused state)))
@@ -101,7 +106,32 @@
 ; One call consumes at most one wire event.  The Python boundary preserves any
 ; returned suffix as transport bytes; protocol state is never reconstructed in
 ; Python.
-(defun fn-reader-chunk (octets state)
+; The reader's environment.  The adapter observes a clock and reads persisted
+; group-creation facts; it decides nothing about them.  `unix-ms' is the host's
+; POSIX millisecond reading, shifted to DTN time by fn-nntp-unix-dtn-ms in
+; books/nntp.lisp, and `has-wall' is false when the host has no trusted
+; reading, in which case DATE answers the RFC-permitted 503 refusal.
+(defconst *fn-reader-clock-error-ms* 1000)
+
+; One laboratory seed creation fact for the seed archive's single group.  It is
+; configuration, recorded with the observation it was established under; the
+; reader never back-fills a creation time from its own clock.
+(defconst *fn-reader-seed-facts*
+  (list (fn-nntp-group-fact
+         "fn.letters" 0
+         (fn-clock-observation 0 0 0 nil))))
+
+(defun fn-reader-env-from (unix-ms state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-nntp-env
+   (fn-nntp-host-observation
+    unix-ms unix-ms *fn-reader-clock-error-ms*
+    (and (natp unix-ms) (< 0 unix-ms)))
+   (if (boundp-global 'fn-reader-facts state)
+       (f-get-global 'fn-reader-facts state)
+     nil)))
+
+(defun fn-reader-chunk (octets unix-ms state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((next (fn-wire-next (f-get-global 'fn-reader-wire state) octets))
          (wire (fn-wire-next-state next))
@@ -109,7 +139,10 @@
          (suffix (fn-wire-next-unconsumed next))
          (session (f-get-global 'fn-reader-session state))
          (archive (f-get-global 'fn-reader-archive state))
-         (result (if event (fn-nntp-step session archive event)
+         (env (fn-reader-env-from unix-ms state))
+         ; fn-nntp-step, called here, is the function every reader theorem in
+         ; books/nntp-invariants.lisp and books/nntp-effects.lisp is about.
+         (result (if event (fn-nntp-step session archive env event)
                    (fn-nntp-make-result session nil)))
          ; A framing rejection closes the wire state.  It receives the core's
          ; syntax response, then the adapter closes the socket without taking
