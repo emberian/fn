@@ -120,6 +120,13 @@
     "tests/acl2/bp-receiver-teeth-tests",
     "books/bp-outbound",
     "tests/acl2/bp-outbound-tests",
+    "books/bp-release",
+    "books/bp-release-invariants",
+    "tests/acl2/bp-release-tests",
+    "books/relay",
+    "books/relay-invariants",
+    "books/relay-crash-invariants",
+    "tests/acl2/relay-tests",
     "books/journal",
     "tests/acl2/journal-tests",
     "books/exchange",
@@ -142,19 +149,19 @@
     "tests/acl2/nntp-teeth-tests"
   ],
   "totals": {
-    "books": 138,
-    "books_in_root_closure": 138,
-    "roots": 138,
-    "theorems": 1876,
-    "functions": 1427,
-    "assert_events": 2013,
-    "must_fails": 99,
+    "books": 145,
+    "books_in_root_closure": 145,
+    "roots": 145,
+    "theorems": 1980,
+    "functions": 1496,
+    "assert_events": 2139,
+    "must_fails": 107,
     "encapsulates": 8,
     "guards": {
       "verified": 755,
-      "declared-off": 36,
-      "default-guarded": 236,
-      "default-unguarded": 400
+      "declared-off": 64,
+      "default-guarded": 274,
+      "default-unguarded": 403
     },
     "suspect_theorems": 23
   },
@@ -797,6 +804,59 @@
       "includes": [
         "bp-receiver-retention-invariants",
         "bp-receiver-state-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-release-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 45,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-release",
+        "bp-workflow-binding-core",
+        "retention-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-release.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 34,
+      "guards": {
+        "verified": 0,
+        "declared-off": 13,
+        "default-guarded": 21,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "assumptions",
+        "bp-workflow-records"
       ],
       "system_includes": [],
       "suspects": [],
@@ -1511,6 +1571,83 @@
       "encapsulates": 0,
       "includes": [
         "cbor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/relay-crash-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "relay-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/relay-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 52,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "relay"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/relay.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 32,
+      "guards": {
+        "verified": 0,
+        "declared-off": 15,
+        "default-guarded": 17,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "assumptions",
+        "bp-receipt",
+        "bp-workflow-binding-invariants"
       ],
       "system_includes": [],
       "suspects": [],
@@ -2633,6 +2770,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/bp-release-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 65,
+      "must_fails": 4,
+      "defconsts": 27,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-release-invariants"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/bp-workflow-binding-invariants-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -3203,6 +3367,33 @@
         "../../books/records"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/relay-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 61,
+      "must_fails": 4,
+      "defconsts": 35,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/relay-crash-invariants"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
