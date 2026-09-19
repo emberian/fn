@@ -20,8 +20,9 @@ specific audited profile. This list is a reading map, not that audit.
 | [tin reference collection](https://www.tin.org/docs.html) | Discovery index; not itself a conformance specification |
 | [RFC 5325](https://www.rfc-editor.org/rfc/rfc5325.html) | LTP motivation and long-delay link assumptions |
 | [RFC 5326](https://www.rfc-editor.org/rfc/rfc5326.html) | LTP specification, reliable red data and link session semantics |
-| [RFC 9171](https://www.rfc-editor.org/rfc/rfc9171.html) | BPv7 architecture and services; application acceptance remains separate |
-| [RFC 9172](https://www.rfc-editor.org/rfc/rfc9172.html) | BPSec; transport protection is distinct from portable application statements |
+| [RFC 9171](https://www.rfc-editor.org/rfc/rfc9171.html), [local copy](../rfc9171.txt) | BPv7 bundle format and processing; §4.2 data structures, §4.3.1 primary block, §4.4 extension blocks, §5.5 expiration, §5.8–5.9 fragmentation and reassembly. Application acceptance remains separate |
+| [RFC 9172](https://www.rfc-editor.org/rfc/rfc9172.html), [local copy](../rfc9172.txt) | BPSec; Block Integrity Blocks are the precondition RFC 9171 §4.3.1 attaches to a zero CRC type. Transport protection is distinct from portable application statements |
+| [RFC 9173](https://www.rfc-editor.org/rfc/rfc9173.html), [local copy](../rfc9173.txt) | BPSec default security contexts; not selected, and no fn book depends on it |
 | [RFC 8949](https://www.rfc-editor.org/rfc/rfc8949.html) | CBOR, especially deterministic profiles in §4.2 |
 | [RFC 9052](https://www.rfc-editor.org/rfc/rfc9052.html) | COSE structures, a candidate for signed-statement encoding |
 | [RFC 9420](https://www.rfc-editor.org/rfc/rfc9420.html) | MLS, candidate group encryption; no selection implied |
