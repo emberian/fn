@@ -13,7 +13,6 @@
 
 (in-package "ACL2")
 (include-book "../../books/frame-invariants")
-(include-book "std/testing/must-fail" :dir :system)
 
 (defconst *fn-frame-test-digest*
   '(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
@@ -257,30 +256,43 @@
 ; Without `fn-frame-digestp`, the round trip is false: a host that supplies a
 ; trailer of the wrong width produces a frame whose declared length no longer
 ; matches its contents.
-(must-fail
- (defthm fn-frame-decode-of-encode-needs-a-digest-shape
-   (implies (fn-frame-inputp magic version kind payload max-payload)
-            (equal (fn-frame-decode
-                    (fn-frame-encode magic version kind payload digest)
-                    digest max-payload)
-                   (fn-frame-ok magic version kind payload)))))
+; Witness for the `fn-frame-digestp' hypothesis: `(0)`.  The input shape
+; holds, the trailer is one octet instead of 32, and the frame the host
+; writes does not decode back to the value it framed.
+(assert-event (fn-frame-inputp *fn-frame-magic-store* 1 1 '(7) 65538))
+(assert-event (not (fn-frame-digestp '(0))))
+(assert-event
+ (with-guard-checking :none
+  (not (equal (fn-frame-decode
+               (fn-frame-encode *fn-frame-magic-store* 1 1 '(7) '(0))
+               '(0) 65538)
+              (fn-frame-ok *fn-frame-magic-store* 1 1 '(7))))))
 
 ; Without `fn-frame-inputp`, the round trip is false: a magic of the wrong
 ; width shifts every later field.
-(must-fail
- (defthm fn-frame-decode-of-encode-needs-an-input-shape
-   (implies (fn-frame-digestp digest)
-            (equal (fn-frame-decode
-                    (fn-frame-encode magic version kind payload digest)
-                    digest max-payload)
-                   (fn-frame-ok magic version kind payload)))))
+; Witness for the `fn-frame-inputp' hypothesis: a two-octet magic.  The
+; digest is the right shape, the frame is refused before it is written, and
+; nothing decodes back to the value.
+(assert-event (not (fn-frame-inputp '(70 78) 1 1 '(7) 65538)))
+(assert-event (fn-frame-digestp *fn-frame-test-digest*))
+(assert-event
+ (with-guard-checking :none
+  (not (equal (fn-frame-decode
+               (fn-frame-encode '(70 78) 1 1 '(7) *fn-frame-test-digest*)
+               *fn-frame-test-digest* 65538)
+              (fn-frame-ok '(70 78) 1 1 '(7))))))
 
 ; Without the supplied digest being the constrained digest of the protected
 ; prefix, the host's decoder is not the specification decoder.
-(must-fail
- (defthm fn-frame-decode-is-open-without-the-crypto-hypothesis
-   (equal (fn-frame-decode octets digest max-payload)
-          (fn-frame-open octets max-payload))))
+; `fn-frame-decode-is-open' has one hypothesis, that the supplied digest is
+; `(fn-frame-digest (fn-frame-protected ...))'.  It has no witness here and
+; cannot have one: `fn-frame-digest' is constrained (A-CRYPTO), so no ground
+; term evaluates it and no `assert-event' separates the host decoder from the
+; specification decoder on a concrete input.  The general negated `must-fail'
+; that stood here proved only that the prover found no proof, and with the
+; seal rules enabled it looped (3.1b of
+; planning/lanes/LANEDUMP-twins-into-acl2.md).  It is removed and the missing
+; tooth is recorded open in planning/deputies/codecs.md.
 
 ; The bound refusal is not vacuous: a short input of the same shape is
 ; accepted, so `:limit` above separates by the bound and not by the shape.
