@@ -10,17 +10,17 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 141 |
-| Certification roots in the Makefile | 141 |
-| Books inside the root closure | 141 |
-| `defthm` and `defthmd` events | 1883 |
-| `defun` events | 1434 |
+| Books read | 145 |
+| Certification roots in the Makefile | 145 |
+| Books inside the root closure | 145 |
+| `defthm` and `defthmd` events | 1976 |
+| `defun` events | 1459 |
 | Functions with verified guards | 802 |
 | Functions declared `:verify-guards nil` and never verified | 24 |
 | Functions left at the default with an explicit guard | 243 |
-| Functions left at the default with no guard | 365 |
-| `assert-event` checks | 2182 |
-| `must-fail` checks | 99 |
+| Functions left at the default with no guard | 390 |
+| `assert-event` checks | 2252 |
+| `must-fail` checks | 111 |
 | `encapsulate` events | 8 |
 | Theorems flagged SUSPECT by shape | 23 |
 
@@ -51,6 +51,9 @@ that `make certify` requests.
 | `books/bp-receipt-records.lisp` | root | 0 | 10 | 0/9/1/0 | 0 | 0 | 0 |
 | `books/bp-receipt.lisp` | root | 0 | 41 | 0/0/0/41 | 0 | 0 | 0 |
 | `books/bp-receiver-context-invariants.lisp` | root | 20 | 4 | 0/0/0/4 | 0 | 0 | 0 |
+| `books/bp-receiver-evolving-history-invariants.lisp` | root | 34 | 8 | 0/0/0/8 | 0 | 0 | 0 |
+| `books/bp-receiver-evolving-node-invariants.lisp` | root | 31 | 1 | 0/0/0/1 | 0 | 0 | 0 |
+| `books/bp-receiver-evolving-store-invariants.lisp` | root | 28 | 11 | 0/0/0/11 | 0 | 0 | 0 |
 | `books/bp-receiver-invariants.lisp` | root | 14 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/bp-receiver-journal-invariants.lisp` | root | 10 | 4 | 0/0/0/4 | 0 | 0 | 0 |
 | `books/bp-receiver-retention-invariants.lisp` | root | 15 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -127,6 +130,7 @@ that `make certify` requests.
 | `tests/acl2/bp-outbound-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 29 | 0 | 0 |
 | `tests/acl2/bp-receipt-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
 | `tests/acl2/bp-receipt-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 26 | 0 | 0 |
+| `tests/acl2/bp-receiver-evolving-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 70 | 12 | 0 |
 | `tests/acl2/bp-receiver-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/bp-receiver-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 2 | 0 |
 | `tests/acl2/bp-workflow-binding-invariants-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 23 | 2 | 0 |
