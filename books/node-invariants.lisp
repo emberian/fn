@@ -1,15 +1,30 @@
 ; Preservation for the composite logical acceptance/retention transaction.
 ; Durability observations and authorization remain external assumptions.
+;
+; The node, acceptance and retention recognizers and transitions are opened
+; locally; nothing here opens a record.  The export theory keeps the three
+; node preservation keystones and the install-stage keystone.
 (in-package "ACL2")
 (include-book "node")
 (include-book "acceptance-invariants")
+
+(local (in-theory (enable fn-acceptance-invariants-vocabulary
+                          fn-node-stagep fn-node-bindingp fn-node-statep
+                          fn-node-initial-state fn-node-pending-matchesp
+                          fn-node-prepare fn-node-complete fn-node-recover
+                          fn-articlep fn-pendingp fn-statep fn-initial-state
+                          fn-install-pending fn-clear-pending
+                          fn-accept-prepare fn-accept-complete fn-accept-recover
+                          fn-retain-obligationp fn-retain-releasep
+                          fn-retain-statep fn-retain-initial-state
+                          fn-retain-admissiblep fn-retain-admit
+                          fn-retain-release)))
 
 (defthm fn-node-prepare-preserves-state
   (implies (fn-node-statep s)
            (fn-node-statep
             (fn-node-prepare s generation msgid payload groups
-                             obligation-id subject evidence charge)))
-  :hints (("Goal" :in-theory (enable fn-node-prepare fn-node-statep))))
+                             obligation-id subject evidence charge))))
 
 (defthm fn-member-of-subset
   (implies (and (fn-subsetp xs ys)
@@ -121,6 +136,8 @@
             (fn-node-bindings s)
             (fn-retain-pins (fn-node-retention s)))))
 
+; The three facts below are corollaries: the invariant projected through the
+; preservation keystones.  They are not registry events and not rewrite rules.
 (defthm fn-node-prepare-preserves-committed-archive-pins
   (implies (fn-node-statep s)
            (fn-node-articles-have-archive-bindingsp
@@ -135,6 +152,7 @@
              (fn-node-retention
               (fn-node-prepare s generation msgid payload groups
                                obligation-id subject evidence charge)))))
+  :rule-classes nil
   :hints (("Goal" :in-theory '(fn-node-prepare-preserves-state
                                fn-node-state-has-committed-archive-pins))))
 
@@ -146,6 +164,7 @@
             (fn-node-bindings (fn-node-complete s txid generation completion-status))
             (fn-retain-pins
              (fn-node-retention (fn-node-complete s txid generation completion-status)))))
+  :rule-classes nil
   :hints (("Goal" :in-theory '(fn-node-complete-preserves-state
                                fn-node-state-has-committed-archive-pins))))
 
@@ -157,6 +176,7 @@
             (fn-node-bindings (fn-node-recover s txid generation recovery-result))
             (fn-retain-pins
              (fn-node-retention (fn-node-recover s txid generation recovery-result)))))
+  :rule-classes nil
   :hints (("Goal" :in-theory '(fn-node-recover-preserves-state
                                fn-node-state-has-committed-archive-pins))))
 
@@ -187,3 +207,21 @@
                           (fn-node-recover s txid generation recovery-result)))
                   (fn-node-find-binding msgid (fn-node-bindings s))))
   :hints (("Goal" :in-theory (disable fn-install-pending))))
+
+; -----------------------------------------------------------------------------
+; Export.  Keystones stay enabled: the three node preservation theorems,
+; `fn-node-install-stage-preserves-state',
+; `fn-node-state-has-committed-archive-pins', `fn-node-prepare-preserves-bindings'
+; and the two existing-binding theorems.  The subset and stage lemmas are proof
+; vocabulary and are withdrawn.
+(deftheory fn-node-invariants-vocabulary
+  '(fn-member-of-subset
+    fn-retain-find-id-absent
+    fn-node-old-archive-bindings-preserved
+    fn-not-member-of-subset
+    fn-node-new-msgid-not-bound
+    fn-node-stage-retention-is-state
+    fn-node-stage-retention-pins
+    fn-node-pending-message-is-new
+    fn-node-find-binding-absent))
+(in-theory (disable fn-node-invariants-vocabulary))
