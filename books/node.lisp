@@ -92,6 +92,40 @@
           (fn-node-make-stage msgid generation id subject evidence charge retention))
          retention))
 
+; What opacity takes away, exported back: the shape and a well-typed field
+; each imply the record is a cons (forward-chaining, never rewrite).
+(defthm fn-node-stage-shapep-forward-shape
+  (implies (fn-node-stage-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-node-stage-shapep))))
+(defthm fn-node-stage-accessors-forward-consp
+  (and
+   (implies (fn-node-stage-msgid x) (consp x))
+   (implies (fn-node-stage-generation x) (consp x))
+   (implies (fn-node-stage-id x) (consp x))
+   (implies (fn-node-stage-subject x) (consp x))
+   (implies (fn-node-stage-evidence x) (consp x))
+   (implies (fn-node-stage-charge x) (consp x))
+   (implies (fn-node-stage-retention x) (consp x))
+   )
+  :rule-classes
+  ((:forward-chaining :corollary (implies (fn-node-stage-msgid x) (consp x))
+                      :trigger-terms ((fn-node-stage-msgid x)))
+   (:forward-chaining :corollary (implies (fn-node-stage-generation x) (consp x))
+                      :trigger-terms ((fn-node-stage-generation x)))
+   (:forward-chaining :corollary (implies (fn-node-stage-id x) (consp x))
+                      :trigger-terms ((fn-node-stage-id x)))
+   (:forward-chaining :corollary (implies (fn-node-stage-subject x) (consp x))
+                      :trigger-terms ((fn-node-stage-subject x)))
+   (:forward-chaining :corollary (implies (fn-node-stage-evidence x) (consp x))
+                      :trigger-terms ((fn-node-stage-evidence x)))
+   (:forward-chaining :corollary (implies (fn-node-stage-charge x) (consp x))
+                      :trigger-terms ((fn-node-stage-charge x)))
+   (:forward-chaining :corollary (implies (fn-node-stage-retention x) (consp x))
+                      :trigger-terms ((fn-node-stage-retention x)))
+   )
+  :hints (("Goal" :in-theory (enable fn-node-stage-msgid fn-node-stage-generation fn-node-stage-id fn-node-stage-subject fn-node-stage-evidence fn-node-stage-charge fn-node-stage-retention))))
+
 (in-theory (disable (:d fn-node-stage-shapep) (:d fn-node-stage-msgid)
                     (:d fn-node-stage-generation) (:d fn-node-stage-id)
                     (:d fn-node-stage-subject) (:d fn-node-stage-evidence)
@@ -126,6 +160,11 @@
                                (fn-node-stage-evidence x)
                                (fn-node-stage-charge x)))))
 
+(defthm fn-node-stagep-forward-shape
+  (implies (fn-node-stagep acceptance committed x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-node-stagep))))
+
 ; Binding: (message-id immutable-content-subject archive-obligation-id).  This
 ; persists the article-to-archive relationship after the pending stage clears.
 (defun fn-node-binding-shapep (x)
@@ -155,6 +194,28 @@
 (defthm fn-node-binding-id-of-fn-node-make-binding
   (equal (fn-node-binding-id (fn-node-make-binding msgid subject id)) id))
 
+; What opacity takes away, exported back: the shape and a well-typed field
+; each imply the record is a cons (forward-chaining, never rewrite).
+(defthm fn-node-binding-shapep-forward-shape
+  (implies (fn-node-binding-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-node-binding-shapep))))
+(defthm fn-node-binding-accessors-forward-consp
+  (and
+   (implies (fn-node-binding-msgid x) (consp x))
+   (implies (fn-node-binding-subject x) (consp x))
+   (implies (fn-node-binding-id x) (consp x))
+   )
+  :rule-classes
+  ((:forward-chaining :corollary (implies (fn-node-binding-msgid x) (consp x))
+                      :trigger-terms ((fn-node-binding-msgid x)))
+   (:forward-chaining :corollary (implies (fn-node-binding-subject x) (consp x))
+                      :trigger-terms ((fn-node-binding-subject x)))
+   (:forward-chaining :corollary (implies (fn-node-binding-id x) (consp x))
+                      :trigger-terms ((fn-node-binding-id x)))
+   )
+  :hints (("Goal" :in-theory (enable fn-node-binding-msgid fn-node-binding-subject fn-node-binding-id))))
+
 (in-theory (disable (:d fn-node-binding-shapep) (:d fn-node-binding-msgid)
                     (:d fn-node-binding-subject) (:d fn-node-binding-id)
                     (:d fn-node-make-binding)))
@@ -165,6 +226,11 @@
        (stringp (fn-node-binding-msgid x))
        (stringp (fn-node-binding-subject x))
        (stringp (fn-node-binding-id x))))
+
+(defthm fn-node-bindingp-forward-shape
+  (implies (fn-node-bindingp x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-node-bindingp))))
 
 (defun fn-node-binding-msgids (xs)
   (declare (xargs :guard t :verify-guards nil))
@@ -256,6 +322,31 @@
   (equal (fn-node-bindings (fn-node-make-state acceptance retention stage bindings))
          bindings))
 
+; What opacity takes away, exported back: the shape and a well-typed field
+; each imply the record is a cons (forward-chaining, never rewrite).
+(defthm fn-node-state-shapep-forward-shape
+  (implies (fn-node-state-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-node-state-shapep))))
+(defthm fn-node-state-accessors-forward-consp
+  (and
+   (implies (fn-node-acceptance x) (consp x))
+   (implies (fn-node-retention x) (consp x))
+   (implies (fn-node-stage x) (consp x))
+   (implies (fn-node-bindings x) (consp x))
+   )
+  :rule-classes
+  ((:forward-chaining :corollary (implies (fn-node-acceptance x) (consp x))
+                      :trigger-terms ((fn-node-acceptance x)))
+   (:forward-chaining :corollary (implies (fn-node-retention x) (consp x))
+                      :trigger-terms ((fn-node-retention x)))
+   (:forward-chaining :corollary (implies (fn-node-stage x) (consp x))
+                      :trigger-terms ((fn-node-stage x)))
+   (:forward-chaining :corollary (implies (fn-node-bindings x) (consp x))
+                      :trigger-terms ((fn-node-bindings x)))
+   )
+  :hints (("Goal" :in-theory (enable fn-node-acceptance fn-node-retention fn-node-stage fn-node-bindings))))
+
 (in-theory (disable (:d fn-node-state-shapep) (:d fn-node-acceptance)
                     (:d fn-node-retention) (:d fn-node-stage)
                     (:d fn-node-bindings) (:d fn-node-make-state)))
@@ -284,6 +375,11 @@
        ; An indeterminate storage result retains both proposals until recovery.
        (or (not (equal (fn-state-fenced (fn-node-acceptance s)) t))
            (consp (fn-node-stage s)))))
+
+(defthm fn-node-statep-forward-shape
+  (implies (fn-node-statep s) (and (consp s) (true-listp s)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-node-statep))))
 
 (defun fn-node-initial-state (groups capacity)
   (declare (xargs :guard t :verify-guards nil))
