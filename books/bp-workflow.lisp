@@ -7,6 +7,8 @@
 (in-package "ACL2")
 
 (include-book "node-invariants")
+; fn-node-statep is withdrawn at node's export (core, 2026-09-19); the guards below open it.
+(local (in-theory (enable fn-node-statep)))
 
 ; -----------------------------------------------------------------------------
 ; Total record selectors
