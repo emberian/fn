@@ -14,47 +14,13 @@
 (include-book "assumptions")
 (include-book "bp-workflow-invariants")
 
-; -----------------------------------------------------------------------------
-; Field access.  The constructors are lists, so every accessor-of-constructor
-; fact is an unfolding, named as such and used only to drive the real proofs.
-
-(defthm fn-sched-state-fields-unfold
-  (and (equal (fn-sched-generation (fn-sched-state g c q a k r tk tx d)) g)
-       (equal (fn-sched-conf (fn-sched-state g c q a k r tk tx d)) c)
-       (equal (fn-sched-queue (fn-sched-state g c q a k r tk tx d)) q)
-       (equal (fn-sched-aged (fn-sched-state g c q a k r tk tx d)) a)
-       (equal (fn-sched-open-contact (fn-sched-state g c q a k r tk tx d)) k)
-       (equal (fn-sched-retries (fn-sched-state g c q a k r tk tx d)) r)
-       (equal (fn-sched-tick (fn-sched-state g c q a k r tk tx d)) tk)
-       (equal (fn-sched-next-tx (fn-sched-state g c q a k r tk tx d)) tx)
-       (equal (fn-sched-decisions (fn-sched-state g c q a k r tk tx d)) d))
-  :hints (("Goal" :in-theory (enable fn-sched-state fn-sched-generation
-                                     fn-sched-conf fn-sched-queue fn-sched-aged
-                                     fn-sched-open-contact fn-sched-retries
-                                     fn-sched-tick fn-sched-next-tx
-                                     fn-sched-decisions fn-bp-nth))))
-
-(defthm fn-sched-item-fields-unfold
-  (and (equal (fn-sched-item-work-id (fn-sched-item w c s q p a e)) w)
-       (equal (fn-sched-item-class (fn-sched-item w c s q p a e)) c)
-       (equal (fn-sched-item-size (fn-sched-item w c s q p a e)) s)
-       (equal (fn-sched-item-seq (fn-sched-item w c s q p a e)) q)
-       (equal (fn-sched-item-passes (fn-sched-item w c s q p a e)) p)
-       (equal (fn-sched-item-agedp (fn-sched-item w c s q p a e)) a)
-       (equal (fn-sched-item-expiredp (fn-sched-item w c s q p a e)) e))
-  :hints (("Goal" :in-theory (enable fn-sched-item fn-sched-item-work-id
-                                     fn-sched-item-class fn-sched-item-size
-                                     fn-sched-item-seq fn-sched-item-passes
-                                     fn-sched-item-agedp
-                                     fn-sched-item-expiredp fn-bp-nth))))
-
-(defthm fn-sched-result-fields-unfold
-  (and (equal (fn-sched-result-ss (fn-sched-result ss wf fx)) ss)
-       (equal (fn-sched-result-wf (fn-sched-result ss wf fx)) wf)
-       (equal (fn-sched-result-effects (fn-sched-result ss wf fx)) fx))
-  :hints (("Goal" :in-theory (enable fn-sched-result fn-sched-result-ss
-                                     fn-sched-result-wf
-                                     fn-sched-result-effects fn-bp-nth))))
+; This book is the scheduler cluster's property book, so it opens the cluster's
+; own definitions (`fn-sched-vocabulary', exported by books/scheduler) locally.
+; It also opens `fn-clock-vocabulary' (deputy board 2026-09-19 bp: clock's
+; recognizers, readings and `fn-clock-expiry-decision' are withdrawn on
+; include), which the expiry theorems read.  Nothing else is re-enabled: the
+; records stay opaque here as everywhere.
+(local (in-theory (enable fn-sched-vocabulary fn-clock-vocabulary)))
 
 ; -----------------------------------------------------------------------------
 ; Queue and state preservation
@@ -97,32 +63,6 @@
 (defthm fn-sched-item-listp-of-append
   (implies (and (fn-sched-item-listp a) (fn-sched-item-listp b))
            (fn-sched-item-listp (append a b))))
-
-(defthm fn-sched-string-listp-of-append
-  (implies (and (fn-sched-string-listp a) (fn-sched-string-listp b))
-           (fn-sched-string-listp (append a b))))
-
-(defthm fn-sched-string-listp-of-aged-advance
-  (implies (fn-sched-string-listp aged)
-           (fn-sched-string-listp (fn-sched-aged-advance aged q wf)))
-  :hints (("Goal" :in-theory (disable fn-sched-eligiblep fn-sched-find))))
-
-(defthm fn-sched-string-listp-of-cdr
-  (implies (fn-sched-string-listp aged)
-           (fn-sched-string-listp (cdr aged))))
-
-(defthm fn-sched-string-listp-of-promotions
-  (implies (fn-sched-item-listp q)
-           (fn-sched-string-listp (fn-sched-promotions q wf sel limit)))
-  :hints (("Goal" :in-theory (disable fn-sched-eligiblep))))
-
-(defthm fn-sched-string-listp-of-next-aged
-  (implies (and (fn-sched-string-listp (fn-sched-aged ss))
-                (fn-sched-item-listp (fn-sched-queue ss)))
-           (fn-sched-string-listp (fn-sched-next-aged ss wf sel)))
-  :hints (("Goal" :in-theory (e/d (fn-sched-next-aged)
-                                  (fn-sched-aged-advance fn-sched-promotions
-                                   fn-sched-eligiblep)))))
 
 (defthm fn-sched-statep-of-admit
   (implies (fn-sched-statep ss)
@@ -705,3 +645,32 @@
                             fn-sched-eligible-runp fn-sched-selected-withinp
                             fn-assume-fairness-contact-index
                             fn-sched-queue-bound fn-sched-conf)))))
+
+; -----------------------------------------------------------------------------
+; Export theory (docs/proof-style.md §2)
+;
+; The keystones above and the small arithmetic facts about `fn-sched-pos' (the
+; list-recursive position function the aging proofs induct on) leave this book
+; enabled.  Everything else here is proof vocabulary for the aging bound; it is
+; withdrawn under one name so that a book above re-opens exactly it.
+
+(deftheory fn-sched-invariants-vocabulary
+  '(fn-sched-find-returns-its-id fn-sched-find-is-a-member
+    fn-sched-itemp-of-bump fn-sched-item-listp-of-bump-queue
+    fn-sched-itemp-of-mark-expired fn-sched-item-listp-of-expire-queue
+    fn-sched-item-listp-of-append
+    fn-sched-statep-of-admit fn-sched-statep-of-open fn-sched-statep-of-close
+    fn-sched-statep-of-restart fn-sched-statep-of-observe-expiry
+    fn-sched-statep-of-with-tick fn-sched-statep-of-pass-over
+    fn-sched-statep-of-take fn-sched-statep-of-with-decisions
+    fn-sched-true-listp-of-record-decision fn-sched-statep-of-tick-step
+    fn-sched-bump-queue-preserves-queued fn-sched-expire-queue-preserves-queued
+    fn-sched-append-preserves-queued fn-sched-admit-preserves-queued
+    fn-sched-aged-advance-keeps-eligible-member
+    fn-sched-aged-advance-head-is-eligible fn-sched-pos-of-aged-advance
+    fn-sched-pos-of-cons-other fn-sched-pos-of-append-when-member
+    fn-sched-selection-is-the-promotion-head
+    fn-sched-promotion-position-decreases
+    fn-sched-promoted-work-is-selected-within-its-position))
+
+(in-theory (disable fn-sched-invariants-vocabulary))

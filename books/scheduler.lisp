@@ -48,8 +48,20 @@
 (include-book "clock")
 (include-book "frame")
 
+; This book opens two other clusters' definitions, and each is named on the
+; deputy board.  `fn-clock-vocabulary' (board 2026-09-19 bp) carries
+; `fn-clock-observationp', `fn-clock-age-anchorp' and `fn-clock-expiry-decision',
+; which this book's guards and refusal branches read.  `fn-frame-codec-vocabulary'
+; (books/frame.lisp) carries the field grammar; it is opened only around the two
+; FNSC entry points below, never over a wide spec (board 2026-09-19 time-anchor).
+(local (in-theory (enable fn-clock-vocabulary)))
+
 ; -----------------------------------------------------------------------------
 ; Contact-plan observations
+
+(defun fn-sched-contact-shapep (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 4) (equal (car x) :fn-sched-contact)))
 
 (defun fn-sched-contact (peer start end)
   (declare (xargs :guard t))
@@ -59,15 +71,46 @@
 (defun fn-sched-contact-start (x) (declare (xargs :guard t)) (fn-bp-nth 2 x))
 (defun fn-sched-contact-end (x) (declare (xargs :guard t)) (fn-bp-nth 3 x))
 
+(defthm fn-sched-contact-shapep-of-fn-sched-contact
+  (fn-sched-contact-shapep (fn-sched-contact peer start end)))
+(defthm fn-sched-contact-peer-of-fn-sched-contact
+  (equal (fn-sched-contact-peer (fn-sched-contact peer start end)) peer))
+(defthm fn-sched-contact-start-of-fn-sched-contact
+  (equal (fn-sched-contact-start (fn-sched-contact peer start end)) start))
+(defthm fn-sched-contact-end-of-fn-sched-contact
+  (equal (fn-sched-contact-end (fn-sched-contact peer start end)) end))
+(defthm fn-sched-contact-shapep-forward-shape
+  (implies (fn-sched-contact-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
+(defthm fn-sched-contact-accessors-forward-consp
+  (and (implies (fn-sched-contact-peer x) (consp x))
+       (implies (fn-sched-contact-start x) (consp x))
+       (implies (fn-sched-contact-end x) (consp x)))
+  :rule-classes ((:forward-chaining
+                  :corollary (implies (fn-sched-contact-peer x) (consp x))
+                  :trigger-terms ((fn-sched-contact-peer x)))
+                 (:forward-chaining
+                  :corollary (implies (fn-sched-contact-start x) (consp x))
+                  :trigger-terms ((fn-sched-contact-start x)))
+                 (:forward-chaining
+                  :corollary (implies (fn-sched-contact-end x) (consp x))
+                  :trigger-terms ((fn-sched-contact-end x)))))
+(in-theory (disable (:d fn-sched-contact-shapep) (:d fn-sched-contact)
+                    (:d fn-sched-contact-peer) (:d fn-sched-contact-start)
+                    (:d fn-sched-contact-end)))
+
 (defun fn-sched-contactp (x)
   (declare (xargs :guard t))
-  (and (true-listp x)
-       (equal (len x) 4)
-       (equal (car x) :fn-sched-contact)
+  (and (fn-sched-contact-shapep x)
        (stringp (fn-sched-contact-peer x))
        (fn-clock-timep (fn-sched-contact-start x))
        (fn-clock-timep (fn-sched-contact-end x))
        (<= (fn-sched-contact-start x) (fn-sched-contact-end x))))
+
+(defthm fn-sched-contactp-forward-shape
+  (implies (fn-sched-contactp x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-sched-contact-shapep))))
 
 ; A contact window contains a monotonic reading.  The scheduler uses this only
 ; to refuse a tick outside the window it was told about; it is not a clock.
@@ -81,6 +124,10 @@
 ; -----------------------------------------------------------------------------
 ; Configuration
 
+(defun fn-sched-config-shapep (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 4) (equal (car x) :fn-sched-config)))
+
 (defun fn-sched-config (queue-bound aging-limit retry-bound)
   (declare (xargs :guard t))
   (list :fn-sched-config queue-bound aging-limit retry-bound))
@@ -89,14 +136,48 @@
 (defun fn-sched-aging-limit (x) (declare (xargs :guard t)) (fn-bp-nth 2 x))
 (defun fn-sched-retry-bound (x) (declare (xargs :guard t)) (fn-bp-nth 3 x))
 
+(defthm fn-sched-config-shapep-of-fn-sched-config
+  (fn-sched-config-shapep (fn-sched-config queue-bound aging-limit retry-bound)))
+(defthm fn-sched-queue-bound-of-fn-sched-config
+  (equal (fn-sched-queue-bound (fn-sched-config queue-bound aging-limit retry-bound))
+         queue-bound))
+(defthm fn-sched-aging-limit-of-fn-sched-config
+  (equal (fn-sched-aging-limit (fn-sched-config queue-bound aging-limit retry-bound))
+         aging-limit))
+(defthm fn-sched-retry-bound-of-fn-sched-config
+  (equal (fn-sched-retry-bound (fn-sched-config queue-bound aging-limit retry-bound))
+         retry-bound))
+(defthm fn-sched-config-shapep-forward-shape
+  (implies (fn-sched-config-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
+(defthm fn-sched-config-accessors-forward-consp
+  (and (implies (fn-sched-queue-bound x) (consp x))
+       (implies (fn-sched-aging-limit x) (consp x))
+       (implies (fn-sched-retry-bound x) (consp x)))
+  :rule-classes ((:forward-chaining
+                  :corollary (implies (fn-sched-queue-bound x) (consp x))
+                  :trigger-terms ((fn-sched-queue-bound x)))
+                 (:forward-chaining
+                  :corollary (implies (fn-sched-aging-limit x) (consp x))
+                  :trigger-terms ((fn-sched-aging-limit x)))
+                 (:forward-chaining
+                  :corollary (implies (fn-sched-retry-bound x) (consp x))
+                  :trigger-terms ((fn-sched-retry-bound x)))))
+(in-theory (disable (:d fn-sched-config-shapep) (:d fn-sched-config)
+                    (:d fn-sched-queue-bound) (:d fn-sched-aging-limit)
+                    (:d fn-sched-retry-bound)))
+
 (defun fn-sched-configp (x)
   (declare (xargs :guard t))
-  (and (true-listp x)
-       (equal (len x) 4)
-       (equal (car x) :fn-sched-config)
+  (and (fn-sched-config-shapep x)
        (posp (fn-sched-queue-bound x))
        (posp (fn-sched-aging-limit x))
        (posp (fn-sched-retry-bound x))))
+
+(defthm fn-sched-configp-forward-shape
+  (implies (fn-sched-configp x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-sched-config-shapep))))
 
 ; -----------------------------------------------------------------------------
 ; Queue items
@@ -107,6 +188,10 @@
 ; the item has already been appended to the promotion queue, so that one item
 ; occupies at most one promotion slot; `expiredp' records an `:expired'
 ; decision from books/clock.
+
+(defun fn-sched-item-shapep (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 7)))
 
 (defun fn-sched-item (work-id class size seq passes agedp expiredp)
   (declare (xargs :guard t))
@@ -120,14 +205,67 @@
 (defun fn-sched-item-agedp (x) (declare (xargs :guard t)) (fn-bp-nth 5 x))
 (defun fn-sched-item-expiredp (x) (declare (xargs :guard t)) (fn-bp-nth 6 x))
 
+(defthm fn-sched-item-shapep-of-fn-sched-item
+  (fn-sched-item-shapep (fn-sched-item w c s q p a e)))
+(defthm fn-sched-item-work-id-of-fn-sched-item
+  (equal (fn-sched-item-work-id (fn-sched-item w c s q p a e)) w))
+(defthm fn-sched-item-class-of-fn-sched-item
+  (equal (fn-sched-item-class (fn-sched-item w c s q p a e)) c))
+(defthm fn-sched-item-size-of-fn-sched-item
+  (equal (fn-sched-item-size (fn-sched-item w c s q p a e)) s))
+(defthm fn-sched-item-seq-of-fn-sched-item
+  (equal (fn-sched-item-seq (fn-sched-item w c s q p a e)) q))
+(defthm fn-sched-item-passes-of-fn-sched-item
+  (equal (fn-sched-item-passes (fn-sched-item w c s q p a e)) p))
+(defthm fn-sched-item-agedp-of-fn-sched-item
+  (equal (fn-sched-item-agedp (fn-sched-item w c s q p a e)) a))
+(defthm fn-sched-item-expiredp-of-fn-sched-item
+  (equal (fn-sched-item-expiredp (fn-sched-item w c s q p a e)) e))
+(defthm fn-sched-item-shapep-forward-shape
+  (implies (fn-sched-item-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
+(defthm fn-sched-item-accessors-forward-consp
+  (and (implies (fn-sched-item-work-id x) (consp x))
+       (implies (fn-sched-item-class x) (consp x))
+       (implies (fn-sched-item-size x) (consp x))
+       (implies (fn-sched-item-seq x) (consp x))
+       (implies (fn-sched-item-passes x) (consp x))
+       (implies (fn-sched-item-agedp x) (consp x))
+       (implies (fn-sched-item-expiredp x) (consp x)))
+  :rule-classes ((:forward-chaining
+                  :corollary (implies (fn-sched-item-work-id x) (consp x))
+                  :trigger-terms ((fn-sched-item-work-id x)))
+                 (:forward-chaining
+                  :corollary (implies (fn-sched-item-class x) (consp x))
+                  :trigger-terms ((fn-sched-item-class x)))
+                 (:forward-chaining
+                  :corollary (implies (fn-sched-item-size x) (consp x))
+                  :trigger-terms ((fn-sched-item-size x)))
+                 (:forward-chaining
+                  :corollary (implies (fn-sched-item-seq x) (consp x))
+                  :trigger-terms ((fn-sched-item-seq x)))
+                 (:forward-chaining
+                  :corollary (implies (fn-sched-item-passes x) (consp x))
+                  :trigger-terms ((fn-sched-item-passes x)))
+                 (:forward-chaining
+                  :corollary (implies (fn-sched-item-agedp x) (consp x))
+                  :trigger-terms ((fn-sched-item-agedp x)))
+                 (:forward-chaining
+                  :corollary (implies (fn-sched-item-expiredp x) (consp x))
+                  :trigger-terms ((fn-sched-item-expiredp x)))))
+(in-theory (disable (:d fn-sched-item-shapep) (:d fn-sched-item)
+                    (:d fn-sched-item-work-id) (:d fn-sched-item-class)
+                    (:d fn-sched-item-size) (:d fn-sched-item-seq)
+                    (:d fn-sched-item-passes) (:d fn-sched-item-agedp)
+                    (:d fn-sched-item-expiredp)))
+
 (defun fn-sched-classp (x)
   (declare (xargs :guard t))
   (if (member-equal x '(:receipt :article)) t nil))
 
 (defun fn-sched-itemp (x)
   (declare (xargs :guard t))
-  (and (true-listp x)
-       (equal (len x) 7)
+  (and (fn-sched-item-shapep x)
        (stringp (fn-sched-item-work-id x))
        (fn-sched-classp (fn-sched-item-class x))
        (natp (fn-sched-item-size x))
@@ -136,17 +274,37 @@
        (booleanp (fn-sched-item-agedp x))
        (booleanp (fn-sched-item-expiredp x))))
 
+(defthm fn-sched-itemp-forward-shape
+  (implies (fn-sched-itemp x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-sched-item-shapep))))
+
 (defun fn-sched-item-listp (xs)
   (declare (xargs :guard t))
   (if (consp xs)
       (and (fn-sched-itemp (car xs)) (fn-sched-item-listp (cdr xs)))
     (null xs)))
 
+(defthm fn-sched-item-listp-forward-true-listp
+  (implies (fn-sched-item-listp xs) (true-listp xs))
+  :rule-classes :forward-chaining)
+
 (defun fn-sched-string-listp (xs)
   (declare (xargs :guard t))
   (if (consp xs)
       (and (stringp (car xs)) (fn-sched-string-listp (cdr xs)))
     (null xs)))
+
+(defthm fn-sched-string-listp-forward-true-listp
+  (implies (fn-sched-string-listp xs) (true-listp xs))
+  :rule-classes :forward-chaining)
+
+(defthm fn-sched-string-listp-of-cdr
+  (implies (fn-sched-string-listp xs) (fn-sched-string-listp (cdr xs))))
+
+(defthm fn-sched-string-listp-of-append
+  (implies (and (fn-sched-string-listp a) (fn-sched-string-listp b))
+           (fn-sched-string-listp (append a b))))
 
 (defun fn-sched-find (work-id xs)
   (declare (xargs :guard t))
@@ -167,6 +325,10 @@
 ; moves it.  It advances only on `:restart', which is what distinguishes one
 ; run of the scheduler from the next in the decision log.
 
+(defun fn-sched-state-shapep (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 10) (equal (car x) :fn-sched-state)))
+
 (defun fn-sched-state (generation config queue aged contact retries tick
                                   next-tx decisions)
   (declare (xargs :guard t))
@@ -183,11 +345,76 @@
 (defun fn-sched-next-tx (x) (declare (xargs :guard t)) (fn-bp-nth 8 x))
 (defun fn-sched-decisions (x) (declare (xargs :guard t)) (fn-bp-nth 9 x))
 
+(defthm fn-sched-state-shapep-of-fn-sched-state
+  (fn-sched-state-shapep (fn-sched-state g c q a k r tk tx d)))
+(defthm fn-sched-generation-of-fn-sched-state
+  (equal (fn-sched-generation (fn-sched-state g c q a k r tk tx d)) g))
+(defthm fn-sched-conf-of-fn-sched-state
+  (equal (fn-sched-conf (fn-sched-state g c q a k r tk tx d)) c))
+(defthm fn-sched-queue-of-fn-sched-state
+  (equal (fn-sched-queue (fn-sched-state g c q a k r tk tx d)) q))
+(defthm fn-sched-aged-of-fn-sched-state
+  (equal (fn-sched-aged (fn-sched-state g c q a k r tk tx d)) a))
+(defthm fn-sched-open-contact-of-fn-sched-state
+  (equal (fn-sched-open-contact (fn-sched-state g c q a k r tk tx d)) k))
+(defthm fn-sched-retries-of-fn-sched-state
+  (equal (fn-sched-retries (fn-sched-state g c q a k r tk tx d)) r))
+(defthm fn-sched-tick-of-fn-sched-state
+  (equal (fn-sched-tick (fn-sched-state g c q a k r tk tx d)) tk))
+(defthm fn-sched-next-tx-of-fn-sched-state
+  (equal (fn-sched-next-tx (fn-sched-state g c q a k r tk tx d)) tx))
+(defthm fn-sched-decisions-of-fn-sched-state
+  (equal (fn-sched-decisions (fn-sched-state g c q a k r tk tx d)) d))
+(defthm fn-sched-state-shapep-forward-shape
+  (implies (fn-sched-state-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
+(defthm fn-sched-state-accessors-forward-consp
+  (and (implies (fn-sched-generation x) (consp x))
+       (implies (fn-sched-conf x) (consp x))
+       (implies (fn-sched-queue x) (consp x))
+       (implies (fn-sched-aged x) (consp x))
+       (implies (fn-sched-open-contact x) (consp x))
+       (implies (fn-sched-retries x) (consp x))
+       (implies (fn-sched-tick x) (consp x))
+       (implies (fn-sched-next-tx x) (consp x))
+       (implies (fn-sched-decisions x) (consp x)))
+  :rule-classes ((:forward-chaining
+                  :corollary (implies (fn-sched-generation x) (consp x))
+                  :trigger-terms ((fn-sched-generation x)))
+                 (:forward-chaining
+                  :corollary (implies (fn-sched-conf x) (consp x))
+                  :trigger-terms ((fn-sched-conf x)))
+                 (:forward-chaining
+                  :corollary (implies (fn-sched-queue x) (consp x))
+                  :trigger-terms ((fn-sched-queue x)))
+                 (:forward-chaining
+                  :corollary (implies (fn-sched-aged x) (consp x))
+                  :trigger-terms ((fn-sched-aged x)))
+                 (:forward-chaining
+                  :corollary (implies (fn-sched-open-contact x) (consp x))
+                  :trigger-terms ((fn-sched-open-contact x)))
+                 (:forward-chaining
+                  :corollary (implies (fn-sched-retries x) (consp x))
+                  :trigger-terms ((fn-sched-retries x)))
+                 (:forward-chaining
+                  :corollary (implies (fn-sched-tick x) (consp x))
+                  :trigger-terms ((fn-sched-tick x)))
+                 (:forward-chaining
+                  :corollary (implies (fn-sched-next-tx x) (consp x))
+                  :trigger-terms ((fn-sched-next-tx x)))
+                 (:forward-chaining
+                  :corollary (implies (fn-sched-decisions x) (consp x))
+                  :trigger-terms ((fn-sched-decisions x)))))
+(in-theory (disable (:d fn-sched-state-shapep) (:d fn-sched-state)
+                    (:d fn-sched-generation) (:d fn-sched-conf)
+                    (:d fn-sched-queue) (:d fn-sched-aged)
+                    (:d fn-sched-open-contact) (:d fn-sched-retries)
+                    (:d fn-sched-tick) (:d fn-sched-next-tx)
+                    (:d fn-sched-decisions)))
+
 (defun fn-sched-statep (x)
   (declare (xargs :guard t))
-  (and (true-listp x)
-       (equal (len x) 10)
-       (equal (car x) :fn-sched-state)
+  (and (fn-sched-state-shapep x)
        (natp (fn-sched-generation x))
        (fn-sched-configp (fn-sched-conf x))
        (fn-sched-item-listp (fn-sched-queue x))
@@ -198,6 +425,18 @@
        (natp (fn-sched-tick x))
        (natp (fn-sched-next-tx x))
        (true-listp (fn-sched-decisions x))))
+
+(defthm fn-sched-statep-forward-shape
+  (implies (fn-sched-statep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-sched-state-shapep))))
+
+(defthm fn-sched-statep-forward-components
+  (implies (fn-sched-statep x)
+           (and (fn-sched-item-listp (fn-sched-queue x))
+                (fn-sched-string-listp (fn-sched-aged x))
+                (fn-sched-configp (fn-sched-conf x))))
+  :rule-classes :forward-chaining)
 
 (defun fn-sched-initial-state (config next-tx)
   (declare (xargs :guard t))
@@ -271,6 +510,11 @@
         (fn-sched-aged-advance (cdr aged) queue wf))
     nil))
 
+(defthm fn-sched-string-listp-of-aged-advance
+  (implies (fn-sched-string-listp aged)
+           (fn-sched-string-listp (fn-sched-aged-advance aged queue wf)))
+  :hints (("Goal" :in-theory (disable fn-sched-eligiblep fn-sched-find))))
+
 ; -----------------------------------------------------------------------------
 ; Selection
 ;
@@ -295,6 +539,13 @@
       (if (consp advanced)
           (fn-sched-find (car advanced) (fn-sched-queue ss))
         (fn-sched-priority-pick (fn-sched-queue ss) wf nil)))))
+
+; The admissibility test carries the state recognizer, so every transition it
+; gates discharges its own guard from it and no transition re-runs the
+; recognizer (docs/proof-style.md 4).
+(defthm fn-sched-admissiblep-forward-statep
+  (implies (fn-sched-admissiblep ss) (fn-sched-statep ss))
+  :rule-classes :forward-chaining)
 
 (defun fn-sched-selection-reason (ss wf)
   (declare (xargs :guard t))
@@ -370,8 +621,14 @@
           (fn-sched-promotions (cdr queue) wf selected-id limit)))
     nil))
 
+(defthm fn-sched-string-listp-of-promotions
+  (implies (fn-sched-item-listp queue)
+           (fn-sched-string-listp
+            (fn-sched-promotions queue wf selected-id limit)))
+  :hints (("Goal" :in-theory (disable fn-sched-eligiblep))))
+
 (defun fn-sched-next-aged (ss wf selected-id)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-sched-statep ss)))
   (let* ((limit (fn-sched-aging-limit (fn-sched-conf ss)))
          (advanced (fn-sched-aged-advance (fn-sched-aged ss)
                                           (fn-sched-queue ss) wf))
@@ -380,6 +637,13 @@
                  advanced)))
     (append rest (fn-sched-promotions (fn-sched-queue ss) wf selected-id
                                       limit))))
+
+(defthm fn-sched-string-listp-of-next-aged
+  (implies (fn-sched-statep ss)
+           (fn-sched-string-listp (fn-sched-next-aged ss wf selected-id)))
+  :hints (("Goal" :in-theory (disable fn-sched-aged-advance
+                                      fn-sched-promotions
+                                      fn-sched-eligiblep))))
 
 ; -----------------------------------------------------------------------------
 ; The durable decision record
@@ -413,6 +677,16 @@
 (defconst *fn-sched-kind* 1)
 (defconst *fn-sched-max-payload* 4096)
 
+; The frame grammar never opens here (board 2026-09-19 time-anchor, NOTE on
+; `fn-anchor-encode'): `fn-frame-fields-octets' has `fn-frame-values-okp' as its
+; guard, and that is exactly the conjunct `fn-sched-decision-recordp' already
+; checked.  The two guard obligations below are discharged from that one
+; equality, stated `:rule-classes nil' and cited by `:use'.
+(defthm fn-sched-decision-recordp-is-frame-values-okp
+  (implies (fn-sched-decision-recordp values)
+           (fn-frame-values-okp *fn-sched-decision-spec* values))
+  :rule-classes nil)
+
 (defun fn-sched-decision-protected (values)
   (declare (xargs :guard t :verify-guards nil))
   (if (not (fn-sched-decision-recordp values))
@@ -423,7 +697,8 @@
         (fn-frame-protected *fn-sched-magic* *fn-frame-version*
                             *fn-sched-kind* payload)))))
 
-(verify-guards fn-sched-decision-protected)
+(verify-guards fn-sched-decision-protected
+  :hints (("Goal" :use fn-sched-decision-recordp-is-frame-values-okp)))
 
 (defun fn-sched-decision-decode (octets digest)
   (declare (xargs :guard t :verify-guards nil))
@@ -443,10 +718,18 @@
               (fn-frame-ok *fn-sched-magic* *fn-frame-version* *fn-sched-kind*
                            (fn-frame-parse-value parsed)))))))))
 
-(verify-guards fn-sched-decision-decode)
+; `fn-frame-decode-payload-octets' is withdrawn under
+; `fn-frame-fields-vocabulary' (books/frame-fields.lisp); cited, not enabled.
+(verify-guards fn-sched-decision-decode
+  :hints (("Goal" :use ((:instance fn-frame-decode-payload-octets
+                                   (max-payload *fn-sched-max-payload*))))))
 
 ; -----------------------------------------------------------------------------
 ; Results
+
+(defun fn-sched-result-shapep (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 3)))
 
 (defun fn-sched-result (ss wf effects)
   (declare (xargs :guard t))
@@ -455,6 +738,34 @@
 (defun fn-sched-result-ss (x) (declare (xargs :guard t)) (fn-bp-nth 0 x))
 (defun fn-sched-result-wf (x) (declare (xargs :guard t)) (fn-bp-nth 1 x))
 (defun fn-sched-result-effects (x) (declare (xargs :guard t)) (fn-bp-nth 2 x))
+
+(defthm fn-sched-result-shapep-of-fn-sched-result
+  (fn-sched-result-shapep (fn-sched-result ss wf fx)))
+(defthm fn-sched-result-ss-of-fn-sched-result
+  (equal (fn-sched-result-ss (fn-sched-result ss wf fx)) ss))
+(defthm fn-sched-result-wf-of-fn-sched-result
+  (equal (fn-sched-result-wf (fn-sched-result ss wf fx)) wf))
+(defthm fn-sched-result-effects-of-fn-sched-result
+  (equal (fn-sched-result-effects (fn-sched-result ss wf fx)) fx))
+(defthm fn-sched-result-shapep-forward-shape
+  (implies (fn-sched-result-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
+(defthm fn-sched-result-accessors-forward-consp
+  (and (implies (fn-sched-result-ss x) (consp x))
+       (implies (fn-sched-result-wf x) (consp x))
+       (implies (fn-sched-result-effects x) (consp x)))
+  :rule-classes ((:forward-chaining
+                  :corollary (implies (fn-sched-result-ss x) (consp x))
+                  :trigger-terms ((fn-sched-result-ss x)))
+                 (:forward-chaining
+                  :corollary (implies (fn-sched-result-wf x) (consp x))
+                  :trigger-terms ((fn-sched-result-wf x)))
+                 (:forward-chaining
+                  :corollary (implies (fn-sched-result-effects x) (consp x))
+                  :trigger-terms ((fn-sched-result-effects x)))))
+(in-theory (disable (:d fn-sched-result-shapep) (:d fn-sched-result)
+                    (:d fn-sched-result-ss) (:d fn-sched-result-wf)
+                    (:d fn-sched-result-effects)))
 
 ; -----------------------------------------------------------------------------
 ; The contact tick
@@ -482,7 +793,7 @@
                   (fn-sched-decisions ss)))
 
 (defun fn-sched-pass-over (ss wf)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-sched-statep ss)))
   (let ((limit (fn-sched-aging-limit (fn-sched-conf ss))))
     (fn-sched-state
      (fn-sched-generation ss) (fn-sched-conf ss)
@@ -493,7 +804,7 @@
      (fn-sched-decisions ss))))
 
 (defun fn-sched-take (ss wf selected)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-sched-statep ss)))
   (let* ((limit (fn-sched-aging-limit (fn-sched-conf ss)))
          (id (fn-sched-item-work-id selected)))
     (fn-sched-state
@@ -736,8 +1047,11 @@
            (fn-sched-result (fn-sched-restart ss) wf nil))
           (t (fn-sched-result ss wf nil)))))
 
+; A fold that recurs on a list while threading two kernel states must NAME its
+; measure: ACL2 guesses the first formal and then opens the whole scheduler
+; inside the termination proof (deputy board 2026-09-19, w3-fragment-container).
 (defun fn-sched-trace (ss wf events)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :measure (acl2-count events)))
   (if (consp events)
       (let ((r (fn-sched-step ss wf (car events))))
         (fn-sched-trace (fn-sched-result-ss r) (fn-sched-result-wf r)
@@ -765,38 +1079,42 @@
                                   (fn-sched-item-work-id selected)
                                   attempt-id))))))
 
-; N consecutive admissible contact ticks on which the store accepts.
+; N consecutive admissible contact ticks on which the store accepts.  The
+; countdown is `(- (nfix n) 1)' in all three run predicates: and the test is `(zp (nfix n))':
+; `zp' has `natp' for a guard and `-' needs a number, and these predicates are
+; hypotheses of keystones that must not carry a `natp'. Under `(not (zp n))'
+; both forms are `n' itself, so no statement changes.
 (defun fn-sched-contact-runp (ss wf n attempt-id)
   (declare (xargs :guard t :measure (nfix n)))
-  (if (zp n)
+  (if (zp (nfix n))
       t
     (and (fn-sched-admissiblep ss)
          (fn-sched-drive-okp ss wf attempt-id)
          (let ((r (fn-sched-tick-step ss wf attempt-id)))
            (fn-sched-contact-runp (fn-sched-result-ss r)
-                                  (fn-sched-result-wf r) (- n 1) attempt-id)))))
+                                  (fn-sched-result-wf r) (- (nfix n) 1) attempt-id)))))
 
 ; WORK-ID is eligible at each of N consecutive ticks.
 (defun fn-sched-eligible-runp (ss wf n attempt-id work-id)
   (declare (xargs :guard t :measure (nfix n)))
-  (if (zp n)
+  (if (zp (nfix n))
       t
     (and (fn-sched-eligible-idp work-id ss wf)
          (let ((r (fn-sched-tick-step ss wf attempt-id)))
            (fn-sched-eligible-runp (fn-sched-result-ss r)
-                                   (fn-sched-result-wf r) (- n 1) attempt-id
+                                   (fn-sched-result-wf r) (- (nfix n) 1) attempt-id
                                    work-id)))))
 
 ; WORK-ID receives a submit within N ticks.
 (defun fn-sched-selected-withinp (ss wf n attempt-id work-id)
   (declare (xargs :guard t :measure (nfix n)))
-  (if (zp n)
+  (if (zp (nfix n))
       nil
     (let ((r (fn-sched-tick-step ss wf attempt-id)))
       (if (fn-sched-submit-for-idp work-id (fn-sched-result-effects r))
           t
         (fn-sched-selected-withinp (fn-sched-result-ss r)
-                                   (fn-sched-result-wf r) (- n 1) attempt-id
+                                   (fn-sched-result-wf r) (- (nfix n) 1) attempt-id
                                    work-id)))))
 
 ; The position of a work-id in the promotion queue; the length when absent.
@@ -872,7 +1190,7 @@
     (fn-sched-step ss wf event)))
 
 (defun fn-sched-unfair-trace (ss wf events)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :measure (acl2-count events)))
   (if (consp events)
       (let ((r (fn-sched-unfair-step ss wf (car events))))
         (fn-sched-unfair-trace (fn-sched-result-ss r) (fn-sched-result-wf r)
@@ -882,7 +1200,7 @@
 ; Whether any tick of a trace emitted a submit for WORK-ID, under each policy.
 ; The starvation counterexample is the pair of answers on one trace.
 (defun fn-sched-submitted-in-trace (ss wf events work-id)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :measure (acl2-count events)))
   (if (consp events)
       (let ((r (fn-sched-step ss wf (car events))))
         (or (fn-sched-submit-for-idp work-id (fn-sched-result-effects r))
@@ -892,7 +1210,7 @@
     nil))
 
 (defun fn-sched-unfair-submitted-in-trace (ss wf events work-id)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :measure (acl2-count events)))
   (if (consp events)
       (let ((r (fn-sched-unfair-step ss wf (car events))))
         (or (fn-sched-submit-for-idp work-id (fn-sched-result-effects r))
@@ -900,3 +1218,48 @@
              (fn-sched-result-ss r) (fn-sched-result-wf r) (cdr events)
              work-id)))
     nil))
+
+; -----------------------------------------------------------------------------
+; Export theory (docs/proof-style.md §2)
+;
+; What leaves this book enabled: the keystones proved above, the record lemmas
+; and the three forward-chaining shape facts of each of the five records, the
+; list-recursive vocabulary the proofs induct on (`fn-sched-item-listp',
+; `fn-sched-string-listp', `fn-sched-find', `fn-sched-queuedp',
+; `fn-sched-eventp-listp', `fn-sched-pos'), and the small glue predicates
+; written in accessor vocabulary (`fn-sched-classp', `fn-sched-class-rank',
+; `fn-sched-betterp', `fn-sched-submit-effectp', `fn-sched-submit-for-idp').
+;
+; What is withdrawn: the recognizers, the initial state, every transition, the
+; selection machinery and the two FNSC codec entry points.  `scheduler-invariants'
+; opens them under this one name.
+
+(deftheory fn-sched-vocabulary
+  '(fn-sched-contactp fn-sched-contact-holdsp fn-sched-configp fn-sched-itemp
+    fn-sched-statep fn-sched-initial-state
+    fn-sched-eligiblep fn-sched-eligible-idp
+    fn-sched-priority-pick fn-sched-aged-advance
+    fn-sched-admissiblep fn-sched-selection fn-sched-selection-reason
+    fn-sched-drive-attempt
+    fn-sched-bump-item fn-sched-bump-queue fn-sched-promotions
+    fn-sched-next-aged
+    fn-sched-with-tick fn-sched-pass-over fn-sched-take
+    fn-sched-record-decision fn-sched-with-decisions fn-sched-tick-step
+    fn-sched-admit fn-sched-open fn-sched-close
+    fn-sched-mark-expired fn-sched-expire-queue fn-sched-observe-expiry
+    fn-sched-restart
+    fn-sched-admit-event fn-sched-open-event fn-sched-close-event
+    fn-sched-tick-event fn-sched-expiry-event fn-sched-transport-event
+    fn-sched-restart-event
+    fn-sched-eventp fn-sched-step fn-sched-trace
+    fn-sched-drive-okp fn-sched-contact-runp fn-sched-eligible-runp
+    fn-sched-selected-withinp fn-sched-aging-horizon fn-sched-aged-fitsp
+    fn-sched-unfair-selection fn-sched-unfair-take fn-sched-unfair-tick-step
+    fn-sched-unfair-step fn-sched-unfair-trace
+    fn-sched-submitted-in-trace fn-sched-unfair-submitted-in-trace))
+
+(deftheory fn-sched-codec-vocabulary
+  '(fn-sched-decision fn-sched-decision-recordp fn-sched-decision-protected
+    fn-sched-decision-decode))
+
+(in-theory (disable fn-sched-vocabulary fn-sched-codec-vocabulary))
