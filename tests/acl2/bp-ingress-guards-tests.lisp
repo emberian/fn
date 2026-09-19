@@ -108,8 +108,9 @@
 ; Agreement with the narrow readers off their guards is not testable here:
 ; assert-event evaluates under guard checking, and fn-article-result-article /
 ; fn-record-* carry a (true-listp x) guard, so naming them on malformed input
-; is itself the violation.  Agreement is instead proved for all inputs by the
-; fn-bpi-ag-*-is-* equality theorems in books/bp-ingress.lisp; what these
+; is itself the violation.  Agreement holds for all inputs by definition: each
+; helper is its narrow reader by mbe (the :logic branch is the reader, the
+; :exec branch the total substitute; books/bp-ingress.lisp); what these
 ; assertions add is that the total helpers themselves run on malformed input.
 (assert-event (equal (fn-bpi-ag-result-article 7) nil))
 (assert-event (equal (fn-bpi-ag-record-msgid 7) nil))

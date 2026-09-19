@@ -5,6 +5,14 @@
 ; changes a transition.
 (in-package "ACL2")
 (include-book "bp-receiver-evolving-history-invariants")
+; Withdrawn at the core export (2026-09-19); this book reasons under them
+; as it did when they were enabled on include.
+(local (in-theory (enable fn-accept-complete fn-accept-prepare fn-clear-pending fn-initial-state
+                          fn-install-pending fn-node-complete fn-node-initial-state
+                          fn-node-pending-matchesp fn-node-prepare fn-node-recover fn-node-stagep
+                          fn-node-statep fn-replay fn-replay-advance-txid fn-replay-apply-record
+                          fn-replay-faultp fn-replay-loop fn-replay-okp fn-retain-admissiblep
+                          fn-retain-admit fn-retain-statep fn-statep)))
 (local (in-theory (disable
  fn-bprr-nth
  fn-bprr-textp

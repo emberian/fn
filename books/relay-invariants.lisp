@@ -16,6 +16,8 @@
 ; the 1800-second budget).
 (in-package "ACL2")
 (include-book "relay")
+; The relay proofs open the receiver definitions; enable them here, locally.
+(local (in-theory (enable fn-bp-receiver-vocabulary fn-bp-receiver-records-vocabulary)))
 
 ; Opening either of these turns a one-line shape lemma into an 80-second
 ; proof (measured); every theorem below that mentions fn-relay-statep pays

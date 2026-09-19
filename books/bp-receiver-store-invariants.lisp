@@ -1,5 +1,8 @@
 (in-package "ACL2")
 (include-book "bp-receipt-records")
+; This book reasons under the receiver definitions; open them here, locally.
+(local (in-theory (enable fn-bp-receiver-vocabulary fn-bp-receiver-records-vocabulary
+                          fn-bpi-node-record-committedp)))
 (local (in-theory (disable
  fn-bprr-nth
  fn-bprr-textp

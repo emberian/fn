@@ -7,6 +7,8 @@
 ;   fn-relay-receipt-kind-is-archived-or-forwarding
 (in-package "ACL2")
 (include-book "relay-invariants")
+; The relay proofs open the receiver definitions; enable them here, locally.
+(local (in-theory (enable fn-bp-receiver-vocabulary fn-bp-receiver-records-vocabulary)))
 
 ; Crash then replay over both journals: the receiver's pending intent goes to
 ; either outcome; the sender restarts and recovers its fenced intent to either

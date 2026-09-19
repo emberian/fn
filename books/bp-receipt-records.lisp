@@ -83,3 +83,12 @@
   (let ((st (fn-bpr-initial-state (fn-bprr-config (car records)))))
    (if (not (fn-bpr-statep st)) (list nil nil)
     (fn-bprr-replay-rest st store (cdr records))))))
+
+; Export theory.  The journal-record recognizers, decoder, replay step and
+; replay are proof vocabulary for the receiver books, which open them locally
+; (fn-bp-receiver-records-vocabulary).  fn-bprr-nth, fn-bprr-textp and
+; fn-bprr-octetsp stay enabled as total readers.
+(deftheory fn-bp-receiver-records-vocabulary
+  '(fn-bprr-configp fn-bprr-config fn-bprr-recordp fn-bprr-decode-value
+    fn-bprr-apply-record fn-bprr-replay-rest fn-bprr-replay))
+(in-theory (disable fn-bp-receiver-records-vocabulary))
