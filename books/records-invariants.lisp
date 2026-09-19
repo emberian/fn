@@ -3,6 +3,14 @@
 (include-book "records")
 (include-book "cbor-invariants")
 
+; This book proves the codec's round trip, so it opens the codec and the
+; arithmetic vocabulary locally.  Records and results stay opaque.
+(local (in-theory (enable fn-cbor-codec-vocabulary
+                          fn-cbor-invariants-vocabulary
+                          fn-record-codec-vocabulary
+                          fn-record-guard-vocabulary
+                          fn-record-record-vocabulary)))
+
 (defthm fn-record-chars-octets-chars
   (implies (character-listp chars)
            (equal (fn-record-octets-chars (fn-record-string-octets-aux chars))
@@ -186,3 +194,41 @@
                                fn-record-groups fn-record-obligation-id
                                fn-record-content-subject fn-record-release-evidence
                                fn-record-charge floor mod))))
+
+; -----------------------------------------------------------------------------
+; Export theory.  `fn-record-round-trip' is the keystone; everything else here
+; is arithmetic, list and prefix vocabulary, including every rule that
+; backchains into `len', `true-listp' or `append'.
+
+(deftheory fn-record-invariants-vocabulary
+  '(    fn-record-chars-octets-chars fn-record-string-round-trip
+    fn-record-ascii-implies-octets
+    fn-record-ascii-string-implies-octet-string
+    fn-record-at-most-is-length-bound fn-record-length-append
+    fn-record-cbor-encode-octets fn-record-cbor-uint-encoding-bound
+    fn-record-cbor-byte-encoding-bound fn-record-take-prefix
+    fn-record-nthcdr-prefix fn-record-u32-prefix-fields
+    fn-record-cbor-stream-uint-round-trip fn-record-append-associative
+    fn-record-cbor-stream-bytes-round-trip fn-record-read-uint-encoded
+    fn-record-read-bytes-encoded fn-record-encoded-groups-are-octets
+    fn-record-group-encoding-bound fn-record-groups-prefix-round-trip
+    fn-record-reconstruct fn-record-read-magic-prefix
+    fn-record-read-version-prefix fn-record-read-last-uint))
+
+(in-theory (disable fn-record-chars-octets-chars fn-record-string-round-trip
+             fn-record-ascii-implies-octets
+             fn-record-ascii-string-implies-octet-string
+             fn-record-at-most-is-length-bound fn-record-length-append
+             fn-record-cbor-encode-octets
+             fn-record-cbor-uint-encoding-bound
+             fn-record-cbor-byte-encoding-bound fn-record-take-prefix
+             fn-record-nthcdr-prefix fn-record-u32-prefix-fields
+             fn-record-cbor-stream-uint-round-trip
+             fn-record-append-associative
+             fn-record-cbor-stream-bytes-round-trip
+             fn-record-read-uint-encoded fn-record-read-bytes-encoded
+             fn-record-encoded-groups-are-octets
+             fn-record-group-encoding-bound
+             fn-record-groups-prefix-round-trip fn-record-reconstruct
+             fn-record-read-magic-prefix fn-record-read-version-prefix
+             fn-record-read-last-uint))

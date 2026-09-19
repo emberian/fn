@@ -38,6 +38,9 @@ ACL2_BOOKS ?= books/assumptions \
 	books/article-fields \
 	tests/acl2/article-fields-tests \
 	books/store-config \
+	books/frame-octets \
+	books/frame-fields \
+	books/frame-journal \
 	books/frame \
 	books/frame-invariants \
 	tests/acl2/frame-tests \
