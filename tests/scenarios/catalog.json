@@ -335,15 +335,16 @@
       ],
       "steps": [
         "Import native signed content, gateway provenance, and legacy wire variants.",
-        "Change trace fields and separately change signed source content.",
+        "Change Path/Xref and gateway injection projections while keeping exact authored source octets, including unknown allowed headers and MIME bytes; separately alter signed source content.",
         "Present unrelated signatures and forged administrative requests."
       ],
       "expected": [
         "Provenance categories remain distinct.",
-        "Signatures use the specified preimage.",
+        "The selected signing preimage binds exact authored source bytes. Changing mutable projections does not rewrite those bytes; changing authored content is not a projection-only change.",
         "Relay mutation and authored conflict are distinguished; unrelated signers gain no authority."
       ],
-      "evidence": []
+      "evidence": [],
+      "design_note": "D01 selects this source boundary; concrete envelope/preimage encoding and D09 verification profile remain open. These are scenario requirements, not executed signature tests."
     },
     {
       "id": "SCN-013",

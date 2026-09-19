@@ -1,8 +1,9 @@
 # Encoding and format evolution
 
 Status: requirements with a proposed restricted deterministic CBOR profile.
-The byte grammar is not frozen. Resolve D01, D08, and D09 before publishing
-persistent or interoperable formats.
+D01 selects exact authored source bytes with separate mutable trace/injection
+projections. The byte grammar is not frozen: settle D08/D09 and the concrete
+native profile before publishing persistent or interoperable formats.
 
 `books/cbor.lisp` currently implements uint32 and definite byte strings as
 experimental primitives. `books/cbor-invariants.lisp` proves full value round
@@ -37,7 +38,10 @@ intern arbitrary remote symbols, or execute data. Bound checks precede allocatio
 ENC-003: identity and signature preimages specify a domain, schema version,
 algorithm identifiers, field encoding, and exact bytes. Do not hash native Lisp
 printing, platform-endian memory, ambiguous concatenations, or normalized display
-text. Byte-string payloads preserve the news octets unchanged. The initial hash
+text. Per D01, the native source signature binds the exact authored octets;
+mutable Path/Xref and gateway injection records are separate projections. The
+preimage must bind its version/domain/context without normalizing that source.
+Byte-string payloads preserve the news octets unchanged. The initial hash
 and signature suites remain D09; algorithm agility is part of the container.
 
 ENC-004: evolution distinguishes known-and-interpreted objects from unknown

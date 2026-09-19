@@ -59,7 +59,8 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [],
+      "implementation_note": "D01 selected: native signatures bind exact authored source bytes; mutable Path/Xref and gateway injection records live in separate projections. Unknown allowed headers and MIME/body bytes are preserved. Concrete native grammar and legacy-variant comparison/quarantine policy remain open; no new implementation evidence."
     },
     {
       "id": "OBJ-004",
@@ -128,7 +129,8 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [],
+      "implementation_note": "D02 requires native author signatures plus explicit legacy gateway provenance. D01 now fixes exact authored source bytes as the signed source and keeps mutable trace/injection projections separate. D09 suites, principal/key lifecycle and real verification/authority remain open."
     },
     {
       "id": "ENC-001",
@@ -193,7 +195,8 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [],
+      "implementation_note": "D01 fixes the exact authored-byte signing subject and separate mutable projections. Neither candidate preimage encoding, native envelope, CBOR/COSE nor any hash/signature suite is selected by this decision; D08/D09 and implementation/proofs remain open."
     },
     {
       "id": "ENC-004",
@@ -791,7 +794,7 @@
         "tests/evidence/2026-09-18-fields-transfer.md",
         "tests/evidence/2026-09-18-fields-transfer.json"
       ],
-      "implementation_note": "A narrow proto-article subset checks Message-ID/Newsgroups multiplicity/grammar and absence of Injection-Info/Xref while preserving source field views. Full injection, gateway provenance, dates, native signatures and authority policy remain open."
+      "implementation_note": "A narrow proto-article subset checks Message-ID/Newsgroups multiplicity/grammar and absence of Injection-Info/Xref while preserving source field views. Full injection, gateway provenance, dates, native signatures and authority policy remain open. D01 selects exact authored source plus separate mutable trace/injection projections; full injection must honor that boundary without rewriting signed bytes."
     },
     {
       "id": "NNT-005",

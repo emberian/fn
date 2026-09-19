@@ -92,8 +92,11 @@ context of acceptance must be recoverable.
 The first usable site has configured unmoderated groups, a complete planned
 NNTP reader/posting surface, and all accepted visible articles retained. BP-backed disconnected exchange
 proceeds alongside this local service under the same acceptance and retention
-contracts. A web reader, 9p views, private correspondence and moderation are
-later interfaces or policy features.
+contracts. D17 selects NNTP and command-line clients first; a web reader/composer
+comes later. 9p views, private correspondence and moderation are also later
+interfaces or policy features. D01 fixes the native source boundary: exact
+authored bytes are signed, with mutable NNTP trace and gateway injection records
+in separate projections. Concrete native encoding and key profiles remain open.
 
 Human/agent identity is a principal with recorded provenance and authorization.
 The `From` header is presentation content, not authentication. The first deployment

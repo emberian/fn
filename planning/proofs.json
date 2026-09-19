@@ -207,7 +207,7 @@
         "books/bp-adu.lisp",
         "tests/evidence/2026-09-18-bp-workflow.md"
       ],
-      "progress_note": "Primitive and full schema-0 value round trips and accepted-input canonicality are certified. Exact article source preservation remains checked. An independent cbor2 6.1.4 run passed 38 cases. Native/batch/signature schemas and domain-separated preimages remain open. Experimental BP request/receipt ADU roundtrip and exact accepted-input canonicality are also certified, without selecting D01/D09."
+      "progress_note": "Primitive and full schema-0 value round trips and accepted-input canonicality are certified. Exact article source preservation remains checked. An independent cbor2 6.1.4 run passed 38 cases. Native/batch/signature schemas and domain-separated preimages remain open. Experimental BP request/receipt ADU roundtrip and exact accepted-input canonicality are also certified, without selecting D01/D09. D01 was subsequently selected by the user for exact authored source bytes and separate projections; native encoding/preimage proofs and D09 remain open."
     },
     {
       "id": "PRF-006",
@@ -548,7 +548,8 @@
       ],
       "status": "planned",
       "events": [],
-      "evidence": []
+      "evidence": [],
+      "planning_note": "D01 now fixes exact authored source signatures versus separate mutable trace/gateway projections. C1-11 and C2-02/03 must prove authority confinement for that boundary under explicit D09 verification/policy assumptions. No theorem completion follows from this design choice."
     },
     {
       "id": "PRF-014",
