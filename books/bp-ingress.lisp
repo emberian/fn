@@ -17,6 +17,11 @@
 ; this one; bp-receiver-evolving-store-invariants went from six minutes to
 ; an 1800 s timeout on the include alone (measured 2026-09-19).
 (local (include-book "article-properties"))
+; store-node-invariants is included locally for one guard proof: the wrappers
+; fn-sn-io and fn-sn-finish carry (fn-sn-statep s) now (store, 2026-09-19), so
+; fn-bpi-finish-prepared carries it too and discharges its nested calls from
+; fn-sn-io-preserves-state and fn-sn-finish-preserves-state.
+(local (include-book "store-node-invariants"))
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
 ; this book reasons under them, so open them here, locally.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary
@@ -551,7 +556,7 @@
 ; a file-kernel observation, not a BP acknowledgement.  The only final step is
 ; the actual fn-sn-finish durable-node completion.
 (defun fn-bpi-finish-prepared (store)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-sn-statep store)))
   (fn-sn-finish
    (fn-sn-io
     (fn-sn-io

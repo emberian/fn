@@ -775,7 +775,8 @@
       "includes": [
         "article-fields",
         "article-properties",
-        "store-node"
+        "store-node",
+        "store-node-invariants"
       ],
       "system_includes": [],
       "suspects": [],
@@ -1037,7 +1038,7 @@
       "encapsulates": 0,
       "includes": [
         "bp-receiver-evolving-node-invariants",
-        "store-observed-traces"
+        "store-observed"
       ],
       "system_includes": [],
       "suspects": [],

@@ -4,6 +4,8 @@
 ; composed wrappers, fn-node-statep on the node helpers, fn-sf-statep on the
 ; file helpers; the observed entry point and the constructors stay total.
 (in-package "ACL2")
+; guard returns the translated guard term, so a two-conjunct guard reads
+; (if a b 'nil), never (and a b).
 (include-book "../../books/store-node-resolution")
 (include-book "../../books/store-observed")
 (assert-event (equal (symbol-class 'fn-sn-groups (w state)) :common-lisp-compliant))
@@ -27,7 +29,7 @@
 (assert-event (equal (symbol-class 'fn-sn-record-bindsp (w state)) :common-lisp-compliant))
 (assert-event (equal (guard 'fn-sn-record-bindsp nil (w state)) '(fn-node-statep node)))
 (assert-event (equal (symbol-class 'fn-sn-prepare-node (w state)) :common-lisp-compliant))
-(assert-event (equal (guard 'fn-sn-prepare-node nil (w state)) '(and (fn-node-statep node) (true-listp record))))
+(assert-event (equal (guard 'fn-sn-prepare-node nil (w state)) '(if (fn-node-statep node) (true-listp record) 'nil)))
 (assert-event (equal (symbol-class 'fn-sn-prepare (w state)) :common-lisp-compliant))
 (assert-event (equal (guard 'fn-sn-prepare nil (w state)) '(fn-sn-statep s)))
 (assert-event (equal (symbol-class 'fn-sn-find-record (w state)) :common-lisp-compliant))
@@ -47,9 +49,9 @@
 (assert-event (equal (symbol-class 'fn-sn-recover (w state)) :common-lisp-compliant))
 (assert-event (equal (guard 'fn-sn-recover nil (w state)) '(fn-sn-statep s)))
 (assert-event (equal (symbol-class 'fn-sn-fence-node (w state)) :common-lisp-compliant))
-(assert-event (equal (guard 'fn-sn-fence-node nil (w state)) '(and (fn-node-statep node) (true-listp record))))
+(assert-event (equal (guard 'fn-sn-fence-node nil (w state)) '(if (fn-node-statep node) (true-listp record) 'nil)))
 (assert-event (equal (symbol-class 'fn-sn-resolve-node (w state)) :common-lisp-compliant))
-(assert-event (equal (guard 'fn-sn-resolve-node nil (w state)) '(and (fn-node-statep node) (true-listp record))))
+(assert-event (equal (guard 'fn-sn-resolve-node nil (w state)) '(if (fn-node-statep node) (true-listp record) 'nil)))
 (assert-event (equal (symbol-class 'fn-sn-refuse-reservation-enabledp (w state)) :common-lisp-compliant))
 (assert-event (equal (guard 'fn-sn-refuse-reservation-enabledp nil (w state)) '(fn-sn-statep s)))
 (assert-event (equal (symbol-class 'fn-sn-refuse-reservation (w state)) :common-lisp-compliant))
@@ -59,7 +61,7 @@
 (assert-event (equal (symbol-class 'fn-sn-known-abort-file-start (w state)) :common-lisp-compliant))
 (assert-event (equal (guard 'fn-sn-known-abort-file-start nil (w state)) '(fn-sf-statep files)))
 (assert-event (equal (symbol-class 'fn-sn-known-abort-files (w state)) :common-lisp-compliant))
-(assert-event (equal (guard 'fn-sn-known-abort-files nil (w state)) '(and (fn-sf-statep files) (true-listp (fn-sf-record-candidate files)))))
+(assert-event (equal (guard 'fn-sn-known-abort-files nil (w state)) '(if (fn-sf-statep files) (true-listp (fn-sf-record-candidate files)) 'nil)))
 (assert-event (equal (symbol-class 'fn-sn-known-abort (w state)) :common-lisp-compliant))
 (assert-event (equal (guard 'fn-sn-known-abort nil (w state)) '(fn-sn-statep s)))
 (assert-event (equal (symbol-class 'fn-sn-open-ok (w state)) :common-lisp-compliant))
@@ -85,7 +87,7 @@
 (assert-event (equal (symbol-class 'fn-sn-open-observed (w state)) :common-lisp-compliant))
 (assert-event (equal (guard 'fn-sn-open-observed nil (w state)) ''t))
 (assert-event (equal (symbol-class 'fn-sn-observed-rebarrier (w state)) :common-lisp-compliant))
-(assert-event (equal (guard 'fn-sn-observed-rebarrier nil (w state)) '(and (fn-sn-statep st) (natp count))))
+(assert-event (equal (guard 'fn-sn-observed-rebarrier nil (w state)) '(if (fn-sn-statep st) (natp count) 'nil)))
 
 ; Malformed logical inputs.  The wrappers now carry the composed recognizer
 ; as their guard, so these regressions run under with-guard-checking :none:
@@ -123,8 +125,8 @@
                      '(:error :configuration))))
 (assert-event (with-guard-checking :none (equal (fn-sn-open-observed '("fn.test") 10 #c(1 2) nil)
                      '(:error :frontier))))
-(assert-event (with-guard-checking :none (equal (fn-sn-open-observed '("fn.test") 10 0 '(7 . tail)))
-                     '(:error :history)))
+(assert-event (with-guard-checking :none (equal (fn-sn-open-observed '("fn.test") 10 0 '(7 . tail))
+                                                '(:error :history))))
 (assert-event (with-guard-checking :none (equal (fn-sn-observed-rebarrier 7 'count) 7)))
 (assert-event (with-guard-checking :none (equal (fn-sn-observed-rebarrier 7 #c(1 2)) 7)))
 (assert-event (with-guard-checking :none (equal (fn-sn-observed-rebarrier 7 -1) 7)))

@@ -80,7 +80,7 @@
 (assert-event (equal (symbol-class 'fn-bpi-result-record (w state)) :common-lisp-compliant))
 (assert-event (equal (guard 'fn-bpi-result-record nil (w state)) ''t))
 (assert-event (equal (symbol-class 'fn-bpi-finish-prepared (w state)) :common-lisp-compliant))
-(assert-event (equal (guard 'fn-bpi-finish-prepared nil (w state)) ''t))
+(assert-event (equal (guard 'fn-bpi-finish-prepared nil (w state)) '(fn-sn-statep store)))
 (assert-event (equal (symbol-class 'fn-bpi-node-record-committedp (w state)) :common-lisp-compliant))
 (assert-event (equal (guard 'fn-bpi-node-record-committedp nil (w state)) ''t))
 (assert-event (equal (symbol-class 'fn-bpi-durably-acceptedp (w state)) :common-lisp-compliant))
