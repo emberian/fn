@@ -27,16 +27,46 @@ so rather than extrapolating.
 every point writes its own `-gen.json` and `-meas.json` with the load average
 at the time and the per-article timings behind each summary. The two scripts
 overlap: `grid2.sh` ran the payload, group and stress points first, at load
-average 4.8 to 5.7, and `grid.sh` re-ran those same point names afterwards at
-load average 8.4 to 8.8, overwriting their JSON files. **Every figure in the
-tables below is from the first pass**, so the files now on hbox will not match
-them exactly; the tables, not the files, are the record of what was measured.
+average 4.8 to 5.7, and `grid.sh` re-ran those same ten point names afterwards
+at load average 8.4 to 9.1, overwriting their JSON files. **Every figure in the
+tables below is from the first pass**; the tables, not the files now on hbox,
+are the record of what was measured. The accidental second pass is useful
+evidence in its own right, and the next section reports it.
 
 Reopen, GROUP, LISTGROUP, ARTICLE and the OVER-equivalent were measured five
 times per point (three at N ≥ 256, where one reopen costs more than ten
 seconds); the tables give min and median of those runs. Posting a store is one
 run per point: its min and median are over that point's own articles, after
 discarding the first quarter (at most eight) as warm-up.
+
+## Replication at a higher load, and what it costs
+
+The ten payload, group and stress points were measured twice by accident: once
+at load average 4.8 to 5.7 and again, 75 minutes later, at 8.4 to 9.1 on the
+same host with the same tree and the same seed. That is a free replication, and
+it says which figures here are stable and which are not.
+
+| Quantity | Second pass versus first, across the ten points |
+| --- | --- |
+| Reopen median | +15% to +21%, every point, median +20% |
+| OVER-equivalent per article, median | +18% to +47%, median +23% |
+| Post seconds per article, median | −41% to +46%, no consistent sign |
+
+Three consequences, applied to the rest of this document:
+
+- **Absolute reopen and reader latencies carry roughly ±20% between load 5 and
+  load 9 on a 24-core host.** Quote them with that, not to three significant
+  figures. The N-curve was measured at load 3.6 to 4.6 throughout, so its
+  points are comparable with each other.
+- **Median seconds per article is too noisy to compare across points.** It
+  moved by up to 46% at an unchanged configuration. The min figure alongside it
+  is the stabler statistic, and the post-throughput conclusions in this
+  document rest on order-of-magnitude changes (0.11 s at N=16 against 0.94 s at
+  N=256), not on the third digit.
+- **The ratios survive.** The folding finding — the headline hostile-input
+  result — is 4.106/0.670 = 6.1x in the first pass and 5.044/0.847 = 6.0x in
+  the second. A ratio taken between two points measured in the same pass is
+  what this campaign can defend; a single absolute number is not.
 
 ## What the grid could cover, and what the model forbids
 

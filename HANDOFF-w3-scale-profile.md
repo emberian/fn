@@ -112,10 +112,16 @@ premise named as A-CRYPTO with `OBJ-001`'s quarantine case. Details in
   recognizer goes: the bridge fails closed first. `generate.py` re-raises
   without writing its JSON, so a failed point loses its partial curve — record
   the committed count and per-article timings before re-raising.
-- The two grid scripts overlap: `grid.sh` re-ran the payload/group/stress point
-  names after the N curve, at load average 8.4 to 8.8, overwriting the JSON
-  files the tables were built from (first pass, load 4.8 to 5.7). The document
-  says so; the tables are the record, not the files on hbox.
+- The two grid scripts overlap: `grid.sh` re-ran the ten payload/group/stress
+  point names after the N curve, at load average 8.4 to 9.1, overwriting the
+  JSON the tables were built from (first pass, load 4.8 to 5.7). That accident
+  is a free replication and the document now reports it: reopen +15% to +21%
+  across every point, OVER-equivalent +18% to +47%, and post seconds per
+  article moving −41% to +46% with no consistent sign. So absolute latencies
+  here carry about ±20% with load, median seconds per article is too noisy to
+  compare across points, and **the ratios survive** — the folding finding is
+  6.1x in the first pass and 6.0x in the second. The tables are the record, not
+  the files on hbox.
 - No book was edited and none needed recertification; the 28-book closure was
   certified once in `/tank/fn/scale` for the measurements.
 - `python3 -m unittest tests.test_store_corruption` ran against real ACL2 on
