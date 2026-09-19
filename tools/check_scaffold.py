@@ -9,6 +9,8 @@ from urllib.parse import unquote, urlsplit
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from tools import ledger  # noqa: E402  (after ROOT is on the path)
 ERRORS: list[str] = []
 IGNORED = {".git", ".venv", ".cache", "build", "var", "__pycache__"}
 
@@ -170,6 +172,13 @@ def main() -> int:
     for ident in proofs:
         visit(ident)
 
+    # The generated half of the ledger: `python3 tools/ledger.py --check'.  It
+    # reads the books themselves, so it fails on an event name that no book
+    # defines, on a theorem whose shape disqualifies it as evidence, and on a
+    # stale planning/ledger.md.  Counts are never typed into prose.
+    for problem in ledger.check_problems():
+        fail(f"ledger: {problem}")
+
     covered = set()
     for ident, entry in scenarios.items():
         references(entry.get("requirements", []), requirements, ident)
@@ -186,6 +195,7 @@ def main() -> int:
         return 1
     print(f"Scaffold OK: {len(markdown)} Markdown files, {len(requirements)} requirements, "
           f"{len(proofs)} proof targets, {len(scenarios)} scenario specifications.")
+    print("Ledger OK: cited events exist, are not SUSPECT, and planning/ledger.md is current.")
     print("Structural checks only; no ACL2 certification or scenario execution performed.")
     return 0
 
