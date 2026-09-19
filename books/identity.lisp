@@ -25,6 +25,13 @@
 
 (in-package "ACL2")
 (include-book "frame")
+
+; The derivations are built on the frame field grammar, so this book opens
+; it locally; results stay opaque.
+(local (in-theory (enable fn-frame-octet-vocabulary
+                          fn-frame-fields-vocabulary
+                          fn-frame-codec-vocabulary
+                          fn-cbor-invariants-vocabulary)))
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -153,3 +160,27 @@
   (declare (xargs :guard (natp length)))
   (+ 1 (floor (+ (nfix length) (- *fn-id-charge-page-octets* 1))
               *fn-id-charge-page-octets*)))
+
+; -----------------------------------------------------------------------------
+; Export theory.
+;
+; Enabled on include: nothing but the derivations themselves as executable
+; functions.  A book that reasons about them opens this theory locally;
+; `identity-invariants' does exactly that and exports the hex keystones.
+
+(deftheory fn-id-definitions
+  '(    (:d fn-id-hex-digit) (:d fn-id-hex-digitp) (:d fn-id-hex-value)
+    (:d fn-id-hex-octets) (:d fn-id-hex-listp) (:d fn-id-unhex)
+    (:d fn-id-digestp) (:d fn-id-subject) (:d fn-id-obligation)
+    (:d fn-id-obligation-preimage) (:d fn-id-subject-of-payload)
+    (:d fn-id-obligation-of) (:d fn-id-labelledp) (:d fn-id-subjectp)
+    (:d fn-id-obligationp) (:d fn-charge-for-payload)))
+
+(in-theory (disable (:d fn-id-hex-digit) (:d fn-id-hex-digitp)
+             (:d fn-id-hex-value) (:d fn-id-hex-octets)
+             (:d fn-id-hex-listp) (:d fn-id-unhex) (:d fn-id-digestp)
+             (:d fn-id-subject) (:d fn-id-obligation)
+             (:d fn-id-obligation-preimage) (:d fn-id-subject-of-payload)
+             (:d fn-id-obligation-of) (:d fn-id-labelledp)
+             (:d fn-id-subjectp) (:d fn-id-obligationp)
+             (:d fn-charge-for-payload)))

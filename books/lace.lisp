@@ -28,6 +28,16 @@
 (in-package "ACL2")
 (include-book "statement")
 
+
+;; Convergence: the codecs cluster withdraws its proof vocabulary on export;
+;; re-open it locally (agreed on the deputy board, codecs ANSWER to substrate).
+(local (in-theory (enable fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary fn-record-invariants-vocabulary)))
+
+; cluster-local theory: this book is inside the substrate cluster and opens
+; the definitions its neighbours withdraw at export (docs/proof-style.md 2).
+(local (in-theory (enable fn-crypto-seam-internals
+                          fn-stmt-internals)))
+
 (local (in-theory (disable fn-stmt-id fn-stmt-p fn-stmt-creator
                            fn-stmt-incarnation fn-stmt-sequence fn-stmt-preds
                            fn-stmt-payload fn-stmt-header fn-stmt-kind
@@ -209,3 +219,33 @@
 (defun fn-lace-causally-closedp (lace)
   (declare (xargs :guard (fn-lace-p lace)))
   (fn-lace-closed-inp lace lace))
+
+; -----------------------------------------------------------------------------
+; Export theory (docs/proof-style.md section 2).
+;
+; The derived predicates (canonicality, equivocation, slot conflict)
+; are withdrawn; the list recursions merge and closure induct on stay.
+;
+; Only the `:definition' rune is withdrawn, so type prescriptions and
+; executable counterparts still decide ground terms.  A book inside this
+; cluster that must open one of these enables `fn-lace-internals' locally.
+
+; The `true-listp'/`consp' backchaining rules below are withdrawn with the
+; definitions: an includer that inherits them pays for them on every goal
+; shaped like a list (docs/proof-style.md section 8).
+
+(deftheory fn-lace-internals
+  '(
+    (:d fn-lace-hasp)
+    (:d fn-lace-same-idsp)
+    (:d fn-lace-canonicalp)
+    (:d fn-lace-same-slotp)
+    (:d fn-lace-slot-conflictp)
+    (:d fn-lace-equivocatorp)
+    (:d fn-lace-reissue)
+    (:d fn-lace-causally-closedp)
+    fn-lace-p-implies-true-listp
+    fn-lace-ids-is-true-list
+    fn-lace-stmt-preds-are-true-list))
+
+(in-theory (disable fn-lace-internals))

@@ -284,3 +284,10 @@
   ; quantified over one would be vacuous.
   (defthm fn-assume-fairness-contact-index-is-finite
     (natp (fn-assume-fairness-contact-index route schedule))))
+
+; -----------------------------------------------------------------------------
+; Export theory (docs/proof-style.md section 2).  This book withdraws
+; nothing: every event in it is a constraint on a named assumption, and a
+; theorem that takes an assumption as a hypothesis needs its constraints.
+
+(in-theory (current-theory :here))
