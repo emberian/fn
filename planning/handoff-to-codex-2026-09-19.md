@@ -69,9 +69,12 @@ review's §8 rows 8 to 14 plus C2-01/C2-07.
 
 - `tools/certify_books.py` defaults to 600 s per book; `books/article-properties`
   exceeds it under contention. Always `FN_ACL2_TIMEOUT_SECONDS=1800`.
-- A `make certify ... &` launched from an agent's shell is SIGTERM'd when the
-  agent's turn ends. Detach (`setsid nohup ... < /dev/null &`) or use the
-  harness's background mechanism.
+- Long certifications were repeatedly SIGTERM'd mid-run (at 20, 76, 84, 85 of
+  113 roots). A detached run died too, and one lane admitted running
+  `pkill -f` on an ACL2 pattern, so the likely cause is cross-lane friendly
+  fire. **Never `pkill -f`, `killall sbcl` or any pattern kill on this shared
+  box; kill only PIDs you started.** Also prefer the harness's background
+  mechanism over a bare `&`.
 - ACL2 certificates are not relocatable: copying `.cert` files into a worktree
   yields "Uncertified" warnings. Each worktree certifies its own closure.
 - Never `find /` or search under `build/` (a gigabyte of old lane copies; it
