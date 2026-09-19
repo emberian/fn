@@ -80,6 +80,19 @@
                                (list *cp-stale-txid*) 6)
         '(:error :suffix)))
 
+; Teeth for FN-CHECKPOINT-RESTORE-REJECTS-FRONTIER-REUSE: *CP-STALE-TXID*'s
+; txid 2 is below *CP-VALUE*'s consumed frontier 3, a reachable non-degenerate
+; witness reusing this same checkpoint. Each hypothesis is separately shown
+; necessary elsewhere in this file: dropping "matching groups" or "matching
+; capacity" instead yields :CONFIGURATION (above); dropping "valid/ordered
+; frontier" yields :CHECKPOINT or :FRONTIER (above and below); and dropping
+; the reuse condition itself (*CP-R1*'s txid 4 is at or above the frontier)
+; yields :OK, not :SUFFIX, in the primary restore assertion above.
+(assert-event
+ (equal (fn-checkpoint-restore *cp-value* *cp-groups* 10
+                               (list *cp-stale-txid* *cp-r1*) 6)
+        '(:error :suffix)))
+
 ; A syntactically ordered suffix that the actual node refuses is a replay
 ; failure, preserving the distinction from stale/duplicate storage metadata.
 (defconst *cp-over-capacity*
