@@ -85,6 +85,16 @@
     "tests/acl2/bp-ingress-tests",
     "books/bp-adu",
     "tests/acl2/bp-adu-tests",
+    "books/bp-primary-cbor",
+    "books/bp-primary",
+    "books/bp-primary-invariants",
+    "tests/acl2/bp-primary-tests",
+    "books/bp-fragment",
+    "books/bp-fragment-invariants",
+    "tests/acl2/bp-fragment-tests",
+    "books/clock",
+    "books/clock-invariants",
+    "tests/acl2/clock-tests",
     "books/bp-workflow",
     "books/bp-workflow-invariants",
     "books/bp-workflow-transport-invariants",
@@ -133,21 +143,21 @@
     "tests/acl2/nntp-teeth-tests"
   ],
   "totals": {
-    "books": 129,
-    "books_in_root_closure": 129,
-    "roots": 129,
-    "theorems": 1508,
-    "functions": 1281,
-    "assert_events": 1615,
-    "must_fails": 58,
+    "books": 139,
+    "books_in_root_closure": 139,
+    "roots": 139,
+    "theorems": 1676,
+    "functions": 1417,
+    "assert_events": 1782,
+    "must_fails": 88,
     "encapsulates": 7,
     "guards": {
-      "verified": 700,
+      "verified": 832,
       "declared-off": 29,
-      "default-guarded": 180,
-      "default-unguarded": 372
+      "default-guarded": 183,
+      "default-unguarded": 373
     },
-    "suspect_theorems": 21
+    "suspect_theorems": 24
   },
   "books": [
     {
@@ -513,6 +523,62 @@
       "read_error": null
     },
     {
+      "book": "books/bp-fragment-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 38,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-fragment"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-bpf-out-of-bounds-input-allocates-nothing"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-fragment.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 6,
+      "functions": 30,
+      "guards": {
+        "verified": 30,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 30,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-primary"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/bp-ingress.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -561,6 +627,89 @@
         "bp-workflow-records"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-primary-cbor.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 73,
+      "functions": 16,
+      "guards": {
+        "verified": 12,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 12,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "cbor-invariants"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-bpc-decode-refuses-overlong-input"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-primary-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 31,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-primary"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-primary.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 9,
+      "functions": 73,
+      "guards": {
+        "verified": 73,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 73,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 15,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-primary-cbor"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -1043,6 +1192,58 @@
       "includes": [
         "store-node-invariants"
       ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/clock-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 10,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "clock"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-clock-drop-permission-is-exactly-expired-by-definition"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/clock.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 17,
+      "guards": {
+        "verified": 17,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 17,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [],
       "system_includes": [],
       "suspects": [],
       "read_error": null
@@ -2303,6 +2504,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/bp-fragment-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 52,
+      "must_fails": 10,
+      "defconsts": 9,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-fragment-invariants"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/bp-ingress-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -2349,6 +2577,33 @@
         "../../books/bp-outbound"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bp-primary-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 89,
+      "must_fails": 11,
+      "defconsts": 13,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-primary-invariants"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -2639,6 +2894,33 @@
         "../../books/checkpoint"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/clock-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 26,
+      "must_fails": 9,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/clock-invariants"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -3503,11 +3785,36 @@
       ]
     },
     {
+      "theorem": "fn-bpc-decode-refuses-overlong-input",
+      "book": "books/bp-primary-cbor.lisp",
+      "line": 1066,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-bpc-decode and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-bpf-out-of-bounds-input-allocates-nothing",
+      "book": "books/bp-fragment-invariants.lisp",
+      "line": 314,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-bpf-reassemble and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-bpr-context-from-request-is-constructor",
       "book": "books/bp-receiver-state-invariants.lisp",
       "line": 86,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-bpr-context-from-request"
+      ]
+    },
+    {
+      "theorem": "fn-clock-drop-permission-is-exactly-expired-by-definition",
+      "book": "books/clock-invariants.lisp",
+      "line": 161,
+      "reasons": [
+        "definition-restated: the conclusion is the body of fn-clock-may-drop-local-copyp",
+        "reflexive-conclusion: a conjunct is (equal X X)"
       ]
     },
     {

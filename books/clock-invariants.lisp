@@ -19,7 +19,10 @@
 ; `arithmetic/top`'s generalization rule for `mod` introduces fresh `mod`
 ; terms into case trees that never had one, and loops the waterfall on the
 ; bit-level recursions below.  Local, so nothing downstream inherits it.
-(local (in-theory (disable mod-x-y-=-x+y-for-rationals)))
+; The defensive disable of `mod-x-y-=-x+y-for-rationals` that the other books
+; in this lane carry is not repeated here: this book includes no arithmetic
+; library, so that rune does not exist in its theory and naming it is a
+; translate error, not a no-op.
 
 ; -----------------------------------------------------------------------------
 ; Shape

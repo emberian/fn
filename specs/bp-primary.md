@@ -1,6 +1,9 @@
 # The BPv7 primary bundle block
 
-Status: executable model, codec and certified properties. This is not a bundle
+Status: executable model and codec. The properties below are **stated and not
+yet certified**: `books/bp-primary-cbor` does not certify, so no book in this
+group has been accepted by ACL2 and every theorem named here is a proposed
+theorem, not a proved one. `HANDOFF.md` records what is open. This is not a bundle
 protocol agent, a forwarder, a BPSec implementation, or a claim of
 interoperability with any deployed BPv7 node.
 
@@ -43,6 +46,20 @@ specified in §4.3.1 as fields of the primary block. The sections above are the
 RFC's own.
 
 ### Both directions, and canonicality
+
+**Not certified.** `books/bp-primary` has not been accepted by ACL2, so the two
+`fn-bpp-` theorems in this subsection are stated, not proved. Underneath them,
+the CBOR round trip for encoder output is certified
+(`fn-bpc-decode-of-encode`, `fn-bpc-value-round-trip`), and so is the fact that
+a successful decode yields a value in the domain (`fn-bpc-dec-yields-shape`).
+Canonicality over *arbitrary* accepted input is **open**:
+`fn-bpc-accepted-input-is-canonical` and its helper
+`fn-bpc-argument-of-decode-head` are commented out of
+`books/bp-primary-cbor.lisp`, because the helper needs the base-256 inverse of
+`fn-bpc-u64-from`, a digit-extraction argument over `floor` and `mod` that the
+book deliberately keeps out of the decoder theory. Until that is proved, nothing
+here rules out a second spelling of an accepted block; only encoder output is
+covered. Read the paragraph below as the intended design, not as a result.
 
 `fn-bpp-decode-of-encode` proves every valid block decodes back from its own
 encoding, CRC included. `fn-bpp-accepted-input-is-canonical-by-construction`

@@ -648,4 +648,51 @@ is listed there as certified.
 
 ### Certification status
 
-RESULTS-PLACEHOLDER
+| Root | Result | Evidence |
+| --- | --- | --- |
+| `books/clock` | **certified** | `build/acl2/certify-20260919T073819Z-58496` |
+| `books/clock-invariants` | **certified** | `build/acl2/certify-20260919T073819Z-58496` |
+| `tests/acl2/clock-tests` | **open** | one `make-event` form fails; the keystones it provides teeth for are certified in `books/clock-invariants`, the teeth are not |
+| `books/bp-primary-cbor` | **open** at `fn-bpc-argument-length-bound` | `build/acl2/certify-20260919T072700Z-55617` |
+| `books/bp-primary`, `books/bp-primary-invariants`, `tests/acl2/bp-primary-tests` | **not submitted** | blocked behind `books/bp-primary-cbor` |
+| `books/bp-fragment`, `books/bp-fragment-invariants`, `tests/acl2/bp-fragment-tests` | **not submitted** | blocked behind `books/bp-primary` |
+
+What moved in `books/bp-primary-cbor` this round, all by removing reasons ACL2
+could not see rather than by adding strength:
+
+1. The `:expand` hint on `fn-bpc-decode-of-encode` was written with all four
+   arguments free, so `budget` matched its own `(- budget 1)` and the expansion
+   never terminated: 1679 seconds of waterfall for 148 prover steps. Pinning the
+   fourth argument to the goal's own `budget` variable bounds it to one
+   expansion per goal. With that, `fn-bpc-decode-of-encode` and
+   `fn-bpc-value-round-trip` certify.
+2. The decoder dispatches on the head octet with adjacent integer literals, and
+   `95 < head < 96` is consistent over the rationals. Integrality was available
+   only as a `:rewrite` rule, which never reaches type-set, so linear arithmetic
+   could not refute the wrong branch. `fn-bpc-argument-head-is-natural` was
+   added, and `fn-bpc-car-of-octet-list-is-natural` and
+   `fn-bpc-decode-head-value-is-natural` were given `:forward-chaining` rule
+   classes. With that, `fn-bpc-dec-yields-shape` and
+   `fn-bpc-decode-exact-yields-value` certify.
+3. `fn-bpc-dec-list-is-true-list` was **false** as written: a refusal is
+   `(:error reason)`, whose value field is the reason keyword, so the
+   unconditional claim fails at budget zero. It now carries the same
+   `fn-cbor-result-okp` hypothesis as its sibling.
+4. `fn-bpc-argument-of-decode-head`, `fn-bpc-dec-reencodes-consumed-prefix` and
+   `fn-bpc-accepted-input-is-canonical` are commented out and recorded as open,
+   with the reason in the book: the first needs the 27-form counterpart of
+   `fn-bpc-u64-from-u64-bytes`, a digit-extraction argument over `floor` and
+   `mod`.
+
+`books/clock-invariants` failed in 0.05 s on an `in-theory` form naming
+`mod-x-y-=-x+y-for-rationals`. That is a translate error, not a proof failure:
+the rune does not exist in a book that loads no arithmetic library. The line was
+defensive and is gone; the book then certified.
+
+Defect 8 of the lane dump (`must-fail` leaking `ACL2 Error` past the runner's
+`FAILURE_MARKERS`) is **resolved and was never real**:
+`tests/acl2/bp-workflow-tests` uses `must-fail` and carries a `.cert`.
+
+No claim in `specs/bp-primary.md` or `specs/time.md` states an uncertified
+theorem in the present tense any more; both status lines say what ACL2 has
+accepted.

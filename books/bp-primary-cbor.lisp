@@ -342,11 +342,18 @@
   (implies (fn-cbor-octet-listp xs)
            (fn-cbor-octet-listp (cdr xs))))
 
+; Forward-chained, not only rewritten.  The decoder dispatches on the head
+; octet with literal range comparisons, and linear arithmetic cannot refute a
+; context that places the head strictly between two adjacent integers unless
+; integrality reaches type-set.  A :rewrite rule never does; a :forward-chaining
+; rule triggered on the head term does.
 (defthm fn-bpc-car-of-octet-list-is-natural
   (implies (and (fn-cbor-octet-listp xs) (consp xs))
            (and (natp (car xs))
                 (integerp (car xs))
-                (<= 0 (car xs)))))
+                (<= 0 (car xs))))
+  :rule-classes
+  (:rewrite (:forward-chaining :trigger-terms ((car xs)))))
 
 (defthm fn-bpc-car-of-octet-list-is-bounded
   (implies (and (fn-cbor-octet-listp xs) (consp xs))
@@ -609,7 +616,11 @@
                 (acl2-numberp (fn-cbor-result-value
                                (fn-bpc-decode-head additional xs)))
                 (<= 0 (fn-cbor-result-value
-                       (fn-bpc-decode-head additional xs))))))
+                       (fn-bpc-decode-head additional xs)))))
+  :rule-classes
+  (:rewrite
+   (:forward-chaining
+    :trigger-terms ((fn-cbor-result-value (fn-bpc-decode-head additional xs))))))
 
 (defthm fn-bpc-decode-head-value-is-bounded
   (implies (and (natp additional) (fn-cbor-octet-listp xs)
@@ -798,6 +809,23 @@
                             fn-cbor-result-rest fn-cbor-ok)
                            (floor mod)))))
 
+; The decoder dispatches by comparing the head octet against adjacent integer
+; literals.  Without integrality, linear arithmetic cannot refute a context that
+; places the head strictly between two of them -- 95 < head < 96 is consistent
+; over the rationals -- so the text and bytes branches of the round trip stay
+; open.  `fn-cbor-octet-listp` is closed inside those proofs, so the fact is
+; stated here directly, with a forward-chaining trigger on the head term so it
+; reaches the linear pot rather than waiting to be rewritten.
+(defthm fn-bpc-argument-head-is-natural
+  (implies (and (natp major) (< major 8) (natp n))
+           (natp (car (fn-bpc-argument major n))))
+  :rule-classes
+  (:rewrite
+   (:forward-chaining :trigger-terms ((car (fn-bpc-argument major n)))))
+  :hints (("Goal"
+           :cases ((< n 24) (< n 256) (< n 65536) (< n 4294967296))
+           :in-theory (e/d (fn-cbor-encode-argument) (floor mod)))))
+
 ; Per-major-type corollaries.  The decoder dispatches on the head octet's
 ; range and subtracts a literal, so a rule whose left-hand side still mentions
 ; `(* 32 major)` would not match the goal; these four do.
@@ -893,7 +921,7 @@
                   (fn-cbor-ok x rest)))
   :hints (("Goal"
            :induct (fn-bpc-round-trip-induction flg x rest budget)
-           :expand ((:free (a b c d) (fn-bpc-dec a b c d)))
+           :expand ((:free (a b c) (fn-bpc-dec a b c budget)))
            :in-theory (disable fn-bpc-argument fn-bpc-decode-head
                                fn-cbor-ok fn-cbor-error fn-cbor-result-okp
                                fn-cbor-result-value fn-cbor-result-rest
@@ -928,8 +956,13 @@
                                fn-cbor-result-value fn-cbor-result-rest
                                take nthcdr floor mod))))
 
+; The `okp` hypothesis is not decoration: a refusal is `(:error reason)`, whose
+; value field is the reason keyword, so the unconditional form is false at
+; budget zero.
 (defthm fn-bpc-dec-list-is-true-list
-  (true-listp (fn-cbor-result-value (fn-bpc-dec :list count octets budget)))
+  (implies (fn-cbor-result-okp (fn-bpc-dec :list count octets budget))
+           (true-listp (fn-cbor-result-value
+                        (fn-bpc-dec :list count octets budget))))
   :hints (("Goal" :induct (fn-bpc-dec :list count octets budget)
            :in-theory (disable fn-cbor-octet-listp fn-bpc-decode-head
                                fn-cbor-ok fn-cbor-error fn-cbor-result-okp
@@ -965,54 +998,64 @@
 ; deterministic one cannot pass, because a successful decode is required to
 ; re-encode to exactly the octets it consumed.
 
-(defthm fn-bpc-argument-of-decode-head
-  (implies (and (fn-cbor-octet-listp tail)
-                (natp additional) (< additional 32)
-                (natp major) (< major 8)
-                (fn-cbor-result-okp (fn-bpc-decode-head additional tail)))
-           (equal (append (fn-bpc-argument
-                           major
-                           (fn-cbor-result-value
-                            (fn-bpc-decode-head additional tail)))
-                          (fn-cbor-result-rest
-                           (fn-bpc-decode-head additional tail)))
-                  (cons (+ (* 32 major) additional) tail)))
-  :hints (("Goal"
-           :in-theory (e/d (fn-bpc-decode-argument
-                            fn-cbor-decode-argument
-                            fn-cbor-encode-argument
-                            fn-cbor-result-okp fn-cbor-result-value
-                            fn-cbor-result-rest fn-cbor-ok)
-                           (floor mod take nthcdr)))))
-
-(defthm fn-bpc-dec-reencodes-consumed-prefix
-  (implies (and (fn-cbor-octet-listp octets)
-                (natp count)
-                (fn-cbor-result-okp (fn-bpc-dec flg count octets budget)))
-           (equal (append (fn-bpc-enc flg (fn-cbor-result-value
-                                           (fn-bpc-dec flg count octets budget)))
-                          (fn-cbor-result-rest
-                           (fn-bpc-dec flg count octets budget)))
-                  octets))
-  :hints (("Goal"
-           :induct (fn-bpc-dec flg count octets budget)
-           :expand ((:free (a b c d) (fn-bpc-dec a b c d)))
-           :in-theory (disable fn-bpc-argument fn-bpc-decode-head
-                               fn-cbor-ok fn-cbor-error fn-cbor-result-okp
-                               fn-cbor-result-value fn-cbor-result-rest
-                               fn-cbor-octet-listp take nthcdr floor mod))))
-
-(defthm fn-bpc-accepted-input-is-canonical
-  (implies (fn-cbor-result-okp (fn-bpc-decode-exact octets))
-           (equal (fn-bpc-encode (fn-cbor-result-value
-                                  (fn-bpc-decode-exact octets)))
-                  octets))
-  :hints (("Goal"
-           :use ((:instance fn-bpc-dec-reencodes-consumed-prefix
-                            (flg :item) (count 0)
-                            (budget *fn-bpc-max-items*)))
-           :in-theory (disable fn-bpc-dec fn-bpc-enc
-                               fn-bpc-dec-reencodes-consumed-prefix))))
+;; OPEN, not certified.  The three forms below are commented out because
+;; `fn-bpc-argument-of-decode-head` needs the base-256 inverse
+;; (equal (append (fn-bpc-u64-bytes (fn-bpc-u64-from xs)) (nthcdr 8 xs)) xs),
+;; the 27-form counterpart of `fn-bpc-u64-from-u64-bytes`.  This book
+;; deliberately keeps floor and mod out of the decoder theory, and that
+;; inverse is exactly a digit-extraction argument over them.  Round trip and
+;; canonicality-of-encoder-output (`fn-bpc-value-round-trip`) are certified;
+;; canonicality over ARBITRARY accepted input is not.  `specs/bp-primary.md`
+;; records this.  Restoring it means proving that inverse first.
+;;
+;; (defthm fn-bpc-argument-of-decode-head
+;;   (implies (and (fn-cbor-octet-listp tail)
+;;                 (natp additional) (< additional 32)
+;;                 (natp major) (< major 8)
+;;                 (fn-cbor-result-okp (fn-bpc-decode-head additional tail)))
+;;            (equal (append (fn-bpc-argument
+;;                            major
+;;                            (fn-cbor-result-value
+;;                             (fn-bpc-decode-head additional tail)))
+;;                           (fn-cbor-result-rest
+;;                            (fn-bpc-decode-head additional tail)))
+;;                   (cons (+ (* 32 major) additional) tail)))
+;;   :hints (("Goal"
+;;            :in-theory (e/d (fn-bpc-decode-argument
+;;                             fn-cbor-decode-argument
+;;                             fn-cbor-encode-argument
+;;                             fn-cbor-result-okp fn-cbor-result-value
+;;                             fn-cbor-result-rest fn-cbor-ok)
+;;                            (floor mod take nthcdr)))))
+;;
+;; (defthm fn-bpc-dec-reencodes-consumed-prefix
+;;   (implies (and (fn-cbor-octet-listp octets)
+;;                 (natp count)
+;;                 (fn-cbor-result-okp (fn-bpc-dec flg count octets budget)))
+;;            (equal (append (fn-bpc-enc flg (fn-cbor-result-value
+;;                                            (fn-bpc-dec flg count octets budget)))
+;;                           (fn-cbor-result-rest
+;;                            (fn-bpc-dec flg count octets budget)))
+;;                   octets))
+;;   :hints (("Goal"
+;;            :induct (fn-bpc-dec flg count octets budget)
+;;            :expand ((:free (a b c) (fn-bpc-dec a b c budget)))
+;;            :in-theory (disable fn-bpc-argument fn-bpc-decode-head
+;;                                fn-cbor-ok fn-cbor-error fn-cbor-result-okp
+;;                                fn-cbor-result-value fn-cbor-result-rest
+;;                                fn-cbor-octet-listp take nthcdr floor mod))))
+;;
+;; (defthm fn-bpc-accepted-input-is-canonical
+;;   (implies (fn-cbor-result-okp (fn-bpc-decode-exact octets))
+;;            (equal (fn-bpc-encode (fn-cbor-result-value
+;;                                   (fn-bpc-decode-exact octets)))
+;;                   octets))
+;;   :hints (("Goal"
+;;            :use ((:instance fn-bpc-dec-reencodes-consumed-prefix
+;;                             (flg :item) (count 0)
+;;                             (budget *fn-bpc-max-items*)))
+;;            :in-theory (disable fn-bpc-dec fn-bpc-enc
+;;                                fn-bpc-dec-reencodes-consumed-prefix))))
 
 ; -----------------------------------------------------------------------------
 ; Bounds before allocation
