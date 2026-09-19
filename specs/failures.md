@@ -1,7 +1,10 @@
 # Failure model and assumptions
 
-Status: assumptions to formalize and qualify. None has been validated against
-a running fn host or storage platform yet.
+Status: named assumptions for conditional proofs and qualification. Actual fn
+host/process/fault tests now exercise portions of the boundary; they do not
+qualify physical power-loss behavior or establish the assumptions universally.
+See the [store refinement contract](store-refinement.md) and the
+[BP exchange evidence](../tests/evidence/2026-09-18-bp-exchange.md).
 
 ## Named assumptions
 

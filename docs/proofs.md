@@ -6,6 +6,39 @@ larger targets, which remain open until their complete statements are supported.
 See [implementation status](implementation.md) for executable scope. Partial
 lemmas do not close an entire subsystem proof target.
 
+## Assurance grows with the implemented surface
+
+Each new reachable command, persistent record, transition, codec or adapter
+operation adds assurance obligations. A proof about an older component does not
+automatically cover a new caller or the composition between components. Keep
+three things distinct in the [closure inventory](../planning/assurance-closure.md):
+evidence for implemented behavior, missing evidence for implemented behavior,
+and requirements for features that have not been implemented.
+
+For each behavior-changing batch, record the affected stable requirement/proof/
+scenario IDs and the following change in scope:
+
+| Changed surface | Evidence to add or explicitly leave open |
+| --- | --- |
+| State or transition | Meaningful initial/reachable invariant, rejection behavior, preservation of prior accepted facts, and finite traces |
+| Caller or composition | Relation to the actual callee's state and hypotheses, including pending work; shape validity alone is insufficient |
+| Durable record or side effect | Byte/record correspondence, barriers and uncertainty, live-versus-replay agreement, restart and lost-completion cuts |
+| External bytes or raw execution | Decoder domain/canonicality, limits and work, guard status of the executed call graph |
+| Authority or release | Exact evidence/context binding, durable decision, explicit policy/crypto/peer premises, preservation of independent obligations |
+| Transport or scheduling | Duplicate/reorder/expiry/contact behavior; safety and conditional progress stated separately |
+
+A feature checkpoint may remain experimental with an exact open list. It does
+not count as assurance closure until its applicable claims have evidence.
+Changing a profile or a trust assumption to avoid an obligation changes the
+contract and must be recorded as such. Keep critical missing composition/recovery
+evidence in a bounded closure batch before building dependent behavior on it.
+
+Theorem, root, test and guarded-function counts describe artifacts, not a
+percentage of system correctness. Report the property, supported domain,
+source digest and assumptions. A growing count does not demonstrate that the
+assurance gap is shrinking. Review the frozen batch once, fix concrete defects,
+and keep independent work moving; this discipline adds no approval ceremony.
+
 ## Refinement ladder
 
 1. **Abstract executable state:** finite maps/records and event transitions.

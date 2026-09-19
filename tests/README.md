@@ -43,6 +43,18 @@ When a scenario is only partially executable, report the modeled boundary and
 unmodeled effects. Process-kill tests alone do not establish power-loss behavior.
 Tests of the logical core do not establish RFC compatibility of its future codec.
 
+For a new durable path, enumerate its authoritative publication and externally
+visible side-effect boundaries. Distinguish exception injection, actual child
+process death, modeled loss of unflushed bytes, and physical power loss in the
+evidence. After each supported recovery cut, check previously acknowledged
+content and independent obligations as well as the interrupted operation.
+Exercise rejection before mutation and lost completions after publication.
+Passing an endpoint example is not coverage of every cut in its composition.
+
+Behavior-changing batches use the [assurance scope rules](../docs/proofs.md#assurance-grows-with-the-implemented-surface)
+and update the [closure inventory](../planning/assurance-closure.md). Avoid a
+single coverage percentage combining proofs, tests and platform assumptions.
+
 ## Evidence record
 
 Each meaningful validation summary records: requirement/scenario/proof IDs;
