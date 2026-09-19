@@ -27,8 +27,13 @@
 ; Identity: the executable check with the constrained digest is the
 ; specification.
 
+; `digest` is the host's SHA-256 of the article's subject preimage
+; (`fn-id-subject-preimage` of the octets), which is what `fn-id-subject`
+; renders and what `fn-id-subject-of-payload` hashes (`books/identity.lisp`);
+; the hypothesis names that preimage, not the bare octets.
 (defthm fn-ct-identity-okp-is-spec-okp
-  (implies (equal digest (fn-frame-digest (fn-ct-article-octets a)))
+  (implies (equal digest (fn-frame-digest
+                          (fn-id-subject-preimage (fn-ct-article-octets a))))
            (equal (fn-ct-identity-okp a digest)
                   (fn-ct-identity-spec-okp a)))
   :hints (("Goal" :in-theory (enable fn-ct-identity-okp fn-ct-identity-spec-okp
@@ -80,6 +85,10 @@
                          (fn-ct-subject-string a) evidence (fn-ct-charge a))
                         (fn-state-next-txid (fn-node-acceptance s))
                         generation :durable))))
+  ; A `:use` fact, not a rewrite rule: the conjunct `(equal completion
+  ; :durable)` would rewrite a variable, which ACL2 refuses, and the trigger
+  ; would carry six free variables.  The statement is the keystone.
+  :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-ct-publish-article fn-ct-result-status
                                    fn-ct-result-state fn-frame-item)
                                   (fn-ct-article-validp fn-node-prepare
@@ -172,14 +181,20 @@
             (not (fn-ct-deps-resolvep
                   (fn-ct-article-deps (car (fn-ct-find-provider id articles digests)))
                   articles digests store profile fuel)))
+   ; ACL2 refuses `:induct` and `:use` on one subgoal; the membership
+   ; instance is attached to each case of the fuel induction instead.
    :hints (("Goal" :induct (fn-ct-fuel-induct fuel)
-            :use ((:instance fn-ct-deps-resolvep-member
-                             (deps (fn-ct-article-deps
-                                    (car (fn-ct-find-provider id articles digests))))
-                             (dep id)))
             :in-theory (e/d (fn-ct-dep-resolvep)
                             (fn-ct-find-provider fn-ct-article-shapep
-                             fn-ct-deps-resolvep fn-ct-deps-resolvep-member))))))
+                             fn-ct-deps-resolvep fn-ct-deps-resolvep-member)))
+           ("Subgoal *1/2" :use ((:instance fn-ct-deps-resolvep-member
+                                  (deps (fn-ct-article-deps
+                                         (car (fn-ct-find-provider id articles digests))))
+                                  (dep id))))
+           ("Subgoal *1/1" :use ((:instance fn-ct-deps-resolvep-member
+                                  (deps (fn-ct-article-deps
+                                         (car (fn-ct-find-provider id articles digests))))
+                                  (dep id)))))))
 
 (defthm fn-ct-self-dependency-never-validates
   (implies (and (not (member-equal id store))

@@ -29,9 +29,11 @@ a container refusal, not a partial import.
 
 - shape and sizes against the profile;
 - identity: the declared content id equals `fn-id-subject` of the host's
-  digest of the octets (`fn-ct-identity-okp`).
+  digest of the article's subject preimage, `fn-id-subject-preimage` of the
+  octets (`fn-ct-identity-okp`; the same preimage `fn-id-subject-of-payload`
+  hashes in `books/identity.lisp`).
   `fn-ct-identity-okp-is-spec-okp`: when that digest is the constrained
-  `fn-frame-digest` of the octets, the check is
+  `fn-frame-digest` of that preimage, the check is
   `(equal content-id (fn-id-subject-of-payload octets))`, the identity rule
   of `books/identity.lisp` under A-CRYPTO;
 - dependencies: each content id resolves in the local store (an input set of
@@ -107,7 +109,7 @@ second, and the container result carries both as evidence.
 - **`fn-ct-identity-okp-is-spec-okp` has no per-hypothesis tooth.**
   `fn-ct-identity-spec-okp` is stated against the constrained
   `fn-frame-digest` (A-CRYPTO), so no ground term evaluates it and no
-  `assert-event` exhibits a digest that is not the digest of the octets and
+  `assert-event` exhibits a digest that is not the digest of the preimage and
   separates the two checks. What the test book exhibits instead is that the
   executable check discriminates between two digests for one article, so the
   equality is not vacuous. Same gap as codecs' `fn-frame-decode-is-open`.
@@ -132,7 +134,7 @@ second, and the container result carries both as evidence.
   `uint tag`, `bstr octets`. Decoding must check counts and bounds before
   allocating, as `fn-record-decode-exact` does; a golden vector and a
   round-trip theorem are the acceptance gate for that book.
-- `tools/run_container.py` (proposed): compute each article's SHA-256 and
+- `tools/run_container.py` (proposed): compute each article's subject-preimage SHA-256 and
   obligation digest, call `fn-ct-publish-container` through the host bridge,
   and write the store transaction with the existing store adapter; the
   completion observation comes from that adapter, never from the container.

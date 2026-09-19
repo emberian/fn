@@ -16,9 +16,9 @@ book are byte-identical to `dev`.
 | `books/transfer-journal.lisp` | **certified** | `certify-20260919T215540Z-3210` | 26 |
 | `books/transfer-journal-invariants.lisp` | **certified** | `certify-20260919T221000Z-26241` | |
 | `tests/acl2/transfer-journal-tests.lisp` | **certified** | `certify-20260919T221011Z-26555` | 0 (44 assert-event witnesses) |
-| `books/container.lisp` | open: guard conjecture of `fn-ct-deps-resolvep` | `certify-20260919T221242Z-39944` | 1 |
-| `books/container-invariants.lisp` | open | `certify-20260919T221244Z-40051` | |
-| `tests/acl2/container-tests.lisp` | open | `certify-20260919T221251Z-40513` | |
+| `books/container.lisp` | **certified** | `certify-20260919T222336Z-62495` | 2 |
+| `books/container-invariants.lisp` | **certified** | `certify-20260919T222528Z-64811` | 12 |
+| `tests/acl2/container-tests.lisp` | **certified** | `certify-20260919T222528Z-64811` | 0 (62 assert-event witnesses) |
 
 Makefile roots added after `tests/acl2/transfer-tests`, in that order.
 `docs/prefixes.md` rows `fn-tj-` and `fn-ct-`. `python3 tools/ledger.py
@@ -68,6 +68,43 @@ co-tenant with three other lanes.
    book-wide (the `len`-backchaining cascade codecs measured at 108 s on one
    `append` goal) is what made the admission explode; it is now enabled in
    exactly one event, the guard proof of `fn-tj-decode`.
+
+4. **The guard of `fn-ct-deps-resolvep` never needed the profile.** The two
+   checkpoints of the failing conjecture were `(integerp fuel)` and
+   `(<= 0 fuel)`: the guard of `zp` on `fuel`, which the guard did not carry.
+   `(natp fuel)` in the guards of `fn-ct-deps-resolvep`, `fn-ct-dep-resolvep`
+   and `fn-ct-article-validp` closes it in 0.03 s; every caller passes
+   `(len articles)`. `fn-ct-profilep-forward-fields` and the opaque readers
+   stay as they were.
+
+## Container half closed (2026-09-19, second owner)
+
+The branch merged `dev` at `fc51e46` (ledger regenerated on the conflict).
+The merge changed `books/identity.lisp` and `books/records.lisp` under the
+container, so their certificates failed the content hash; both were deleted
+and certified in place (`certify-20260919T222129Z-61060`, with
+`books/container`, which certified again at `certify-20260919T222336Z-62495`
+after comment-only edits). The merge also changed
+`books/transfer-invariants.lisp`, so `books/transfer-journal.cert` and its two
+dependents are stale by hash and were not recertified here (not roots of this
+task; their evidence rows above predate the merge).
+
+Three forms of `books/container-invariants.lisp` had never reached ACL2 (the
+book failed before them):
+
+- `fn-ct-identity-okp-is-spec-okp`: `dev` moved `fn-id-subject-of-payload`
+  to hash the subject preimage (`fn-id-subject-preimage` of the octets,
+  length-prefixed), so the hypothesis `digest = (fn-frame-digest octets)`
+  became false to the definition. The hypothesis now names the preimage, the
+  same shape as `fn-id-subject-is-subject-of-payload` in
+  `books/identity-invariants.lisp`. This is the one statement that changed;
+  it tracks the identity spec, and `specs/container.md` says so.
+- `fn-ct-accepted-is-complete-of-prepare`: `:rule-classes nil`. Its conjunct
+  `(equal completion :durable)` is not a legal rewrite rule and its trigger
+  carries six free variables; the book already consumes it by `:use`.
+- `fn-ct-provider-self-dependency-never-resolves` (local): ACL2 refuses
+  `:induct` and `:use` on one subgoal; the membership instance moved to
+  `"Subgoal *1/2"` and `"Subgoal *1/1"`.
 
 ## Subject and host line
 
@@ -166,7 +203,8 @@ about them beyond replay.
 
 ```
 (defthm fn-ct-identity-okp-is-spec-okp
-  (implies (equal digest (fn-frame-digest (fn-ct-article-octets a)))
+  (implies (equal digest (fn-frame-digest
+                          (fn-id-subject-preimage (fn-ct-article-octets a))))
            (equal (fn-ct-identity-okp a digest) (fn-ct-identity-spec-okp a))))
 
 (defthm fn-ct-receipt-implies-validated
