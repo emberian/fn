@@ -325,3 +325,19 @@
          (fn-transfer-add-chunk *fn-transfer-degenerate-state*
                                 *fn-transfer-refrag-label* 0 '(1 2 3 4)))
         *fn-transfer-degenerate-state*))
+
+; Executable witness of the cost model on a concrete state.  *fn-transfer-gap*
+; retains (0 (1 2)) and (4 (5 6)) of the six-byte object.  The instrumented
+; missing-ranges read charges exactly this much work, its value is the read it
+; shadows, and the public envelope over the same state allows this much.
+(assert-event
+ (equal (fn-transfer-work-cost
+         (fn-transfer-missing-ranges-work *fn-transfer-gap* *fn-transfer-label*))
+        109))
+(assert-event
+ (equal (fn-transfer-work-value
+         (fn-transfer-missing-ranges-work *fn-transfer-gap* *fn-transfer-label*))
+        (fn-transfer-missing-ranges *fn-transfer-gap* *fn-transfer-label*)))
+(assert-event
+ (equal (fn-transfer-public-bound-for *fn-transfer-gap* *fn-transfer-label*)
+        795064))

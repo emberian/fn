@@ -136,16 +136,16 @@
     "books": 129,
     "books_in_root_closure": 129,
     "roots": 129,
-    "theorems": 1508,
-    "functions": 1281,
-    "assert_events": 1615,
+    "theorems": 1614,
+    "functions": 1311,
+    "assert_events": 1677,
     "must_fails": 58,
     "encapsulates": 7,
     "guards": {
-      "verified": 700,
-      "declared-off": 29,
-      "default-guarded": 180,
-      "default-unguarded": 372
+      "verified": 712,
+      "declared-off": 36,
+      "default-guarded": 187,
+      "default-unguarded": 376
     },
     "suspect_theorems": 21
   },
@@ -229,12 +229,12 @@
       "book": "books/article-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 13,
-      "functions": 0,
+      "theorems": 44,
+      "functions": 14,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 0,
+        "declared-off": 7,
+        "default-guarded": 7,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -1764,13 +1764,13 @@
       "book": "books/transfer-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 39,
-      "functions": 1,
+      "theorems": 66,
+      "functions": 5,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 1
+        "default-unguarded": 5
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -1871,19 +1871,19 @@
       "book": "books/transfer.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 13,
-      "functions": 62,
+      "theorems": 14,
+      "functions": 67,
       "guards": {
-        "verified": 53,
+        "verified": 58,
         "declared-off": 0,
         "default-guarded": 9,
         "default-unguarded": 0
       },
-      "verify_guards_events": 53,
+      "verify_guards_events": 58,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
-      "defmacros": 14,
+      "defmacros": 15,
       "encapsulates": 0,
       "includes": [
         "acceptance"
@@ -2025,15 +2025,15 @@
       "book": "books/wire-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 10,
-      "functions": 1,
+      "theorems": 40,
+      "functions": 2,
       "guards": {
-        "verified": 0,
+        "verified": 1,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 1
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 1,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -2050,15 +2050,15 @@
       "book": "books/wire.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 14,
-      "functions": 38,
+      "theorems": 27,
+      "functions": 44,
       "guards": {
-        "verified": 38,
+        "verified": 44,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 38,
+      "verify_guards_events": 44,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -2213,13 +2213,13 @@
         "default-unguarded": 4
       },
       "verify_guards_events": 0,
-      "assert_events": 24,
+      "assert_events": 38,
       "must_fails": 0,
-      "defconsts": 7,
+      "defconsts": 10,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/article"
+        "../../books/article-invariants"
       ],
       "system_includes": [],
       "suspects": [],
@@ -3370,13 +3370,13 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 40,
+      "assert_events": 60,
       "must_fails": 0,
-      "defconsts": 34,
+      "defconsts": 44,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/transfer"
+        "../../books/transfer-public-bound"
       ],
       "system_includes": [],
       "suspects": [],
@@ -3463,7 +3463,7 @@
       "book": "tests/acl2/wire-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
+      "theorems": 4,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -3472,13 +3472,13 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 21,
+      "assert_events": 49,
       "must_fails": 0,
-      "defconsts": 21,
+      "defconsts": 30,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/wire"
+        "../../books/wire-invariants"
       ],
       "system_includes": [],
       "suspects": [],
@@ -3649,7 +3649,7 @@
     {
       "theorem": "fn-wire-feed-closed-noop",
       "book": "books/wire.lisp",
-      "line": 393,
+      "line": 670,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-wire-feed and the conclusion is that branch's value"
       ]

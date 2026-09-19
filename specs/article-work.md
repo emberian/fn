@@ -91,15 +91,17 @@ post-hoc output filter is assumed.
 In one sentence: the envelope is degree one in `N` — substituting `k = 129` and
 `s = 0` into the closed form gives `3 + 2N + B(129, N, 0) = 532514*N + 1060900`,
 whose quadratic factor is the header fuel `k`, not the input length — and at the
-520-octet maximally folded regression article it allows 277,968,180 units
-against the 17,190 units the instrumented parser actually charges there, about
-1.6 * 10^4 times the cost it bounds. The ratio is structural, not an artifact of
-that input: the envelope charges each of the 129 header steps the whole
-remaining input plus the accumulated state, while the parser scans each octet a
-fixed number of times. `tests/acl2/article-work-tests.lisp` asserts those three
-numbers as executable witnesses, so the distance is checked rather than
-estimated. Closing the gap is a separate, unattempted piece of work; nothing in
-this specification claims the bound is tight.
+520-octet maximally folded regression article it allows 277,968,180 units.
+The distance from the cost it bounds is not quoted, because it has not been
+measured: `books/article-public-bound`, which carries the executable cost
+model, does not certify in this worktree — `books/article-public-work` fails to
+admit `fn-aw-new-field-size` — so there is no measured charge to compare
+against, and this specification states only the closed form and its exponent.
+The envelope is structurally loose whatever that measurement turns out to be:
+it charges each of the 129 header steps the whole remaining input plus the
+accumulated state, while the parser scans each octet a fixed number of times.
+Closing the gap is a separate, unattempted piece of work; nothing in this
+specification claims the bound is tight.
 
 ## The cost side is by construction, not by theorem
 
