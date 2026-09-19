@@ -19,11 +19,12 @@ reader serves the recovered store through the actual ACL2 core. Follow the
 [local walkthrough](docs/local-experiment.md) to post, reopen, and read it.
 Network POST and native signatures remain unfinished. The
 [latest assurance evidence](tests/evidence/2026-09-18-composed-store.md) records
-75 certified roots and 67 filesystem/socket/tooling tests, plus independent NNTP
-client traffic. The physical adapter now uses the composed storage core, with
-mixed crash/recovery traces and 533 guard-verified functions across 15 base books.
-BPv7 is a [current architectural path](specs/bp-path.md), developed alongside
-the local news service.
+a full certified batch plus independent NNTP client traffic (see
+planning/ledger.md for current root/test/guard counts). The physical adapter
+now uses the composed storage core, with mixed
+crash/recovery traces across the base proof books. BPv7 is a
+[current architectural path](specs/bp-path.md), developed alongside the local
+news service.
 An [actual BP-to-fn receiver](tests/evidence/2026-09-18-bp-ingress.md) now passes
 restart and duplicate-delivery tests with real loopback BPAs. Durable sender jobs
 and application receipts remain active work.

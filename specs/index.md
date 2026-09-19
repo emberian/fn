@@ -6,15 +6,18 @@ materializes every membership. `fn-index-query-range` scans only that materializ
 list and preserves authoritative article/membership order; it never merges local
 numbers across groups.
 
-The source membership relation is exposed by `fn-index-entry-sourcedp`.
-`fn-index-soundp` requires every returned entry to be a member of the complete
-source materialization, while `fn-index-completep` requires every source entry to
-be present in the index. These are separate subset directions. The certified
-`fn-index-build-sound`, `fn-index-build-complete`, and
-`fn-index-build-correspondence` theorems establish both directions for rebuilds.
-The range theorem equates the materialized query to an independent
-source-membership enumeration. Thus an omitted entry can remain individually
-well typed and sound while failing completeness and changing its range.
+`fn-index-soundp` requires every index entry to correspond to an actual
+`(group . number)` membership recorded by some article in the source list
+(`fn-index-entry-sourcedp`, which scans `fn-article-memberships` directly, never
+`fn-index-build`), while `fn-index-completep` requires every such membership of
+every source article to appear as an entry in the index. These are separate
+subset directions stated against the authoritative memberships, not against the
+index build's own output. The certified `fn-index-build-sound` and
+`fn-index-build-complete` theorems prove, by induction over the source article
+list, that a fresh `fn-index-build` satisfies both directions; an omitted entry
+fails completeness and a fabricated entry fails soundness, independent of
+whether the rest of the index is correct. The range theorem equates the
+materialized query to an independent source-membership enumeration.
 
 The public query is total: malformed index, group, or range inputs return `nil`.
 Valid calls are guard verified and traverse only the derived index.
