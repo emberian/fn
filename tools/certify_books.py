@@ -96,8 +96,6 @@ DEFAULT_BOOKS = (
     "tests/acl2/store-node-traces-tests",
     "books/store-node-resolution",
     "tests/acl2/store-node-resolution-tests",
-    "books/store-node-resolution-traces",
-    "tests/acl2/store-node-resolution-traces-tests",
     "books/store-observed",
     "tests/acl2/store-observed-tests",
     "books/store-observed-traces",
@@ -761,7 +759,11 @@ def main() -> int:
             try:
                 published = certs.publish(
                     ROOT, certs.cache_directory(),
-                    [{**manifest, "evidence": str(run_dir)}], args.books)
+                    [{**manifest, "evidence": str(run_dir)}], args.books,
+                    # These certificates name their sub-books by absolute path
+                    # inside *this* worktree, so that is where they may be
+                    # installed; another live worktree must not take them.
+                    origin=str(ROOT.resolve()))
                 manifest["cert_cache"] = {
                     "directory": published.cache,
                     "published": published.published,

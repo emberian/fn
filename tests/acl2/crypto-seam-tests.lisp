@@ -19,6 +19,9 @@
 ; the definitions its neighbours withdraw at export (docs/proof-style.md 2).
 (local (in-theory (enable fn-crypto-seam-internals)))
 
+;; Convergence (board, codecs ANSWER to substrate): the toy realisers lean on the withdrawn cbor and records-invariants vocabulary.
+(local (in-theory (enable fn-cbor-invariants-vocabulary fn-record-invariants-vocabulary)))
+
 ; -----------------------------------------------------------------------------
 ; Toy realisers
 

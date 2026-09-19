@@ -18,6 +18,10 @@
 
 (in-package "ACL2")
 (include-book "store-files-invariants")
+; The codecs cluster withdraws the record and codec definitions at export
+; (2026-09-19); the proofs here open fn-record-p and the record accessors.
+(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))
+(local (in-theory (enable fn-store-files-invariants-vocabulary)))
 
 (defconst *fn-sf-max-trace-events* 4096)
 
@@ -168,20 +172,6 @@
 ; -----------------------------------------------------------------------------
 ; One-event facts, established from each underlying transition theorem.
 
-(defthm fn-sf-records-of-make
-  (equal (fn-sf-records
-          (fn-sf-make phase frontier frontier-candidate records
-                      record-candidate completion successes barriers))
-         records)
-  :hints (("Goal" :in-theory (enable fn-sf-records fn-sf-make))))
-
-(defthm fn-sf-successes-of-make
-  (equal (fn-sf-successes
-          (fn-sf-make phase frontier frontier-candidate records
-                      record-candidate completion successes barriers))
-         successes)
-  :hints (("Goal" :in-theory (enable fn-sf-successes fn-sf-make))))
-
 ; Keep recognizers and replay semantics opaque in footprint and induction
 ; proofs.  The dispatcher preservation theorem below is where the already
 ; certified transition theorems discharge those obligations.
@@ -190,7 +180,7 @@
   (disable fn-sf-statep fn-sf-phase-shapep fn-sf-record-listp
            fn-sf-success-listp fn-sf-candidatep
            fn-sf-history-recoverablep fn-sf-replay-node fn-record-p
-           fn-sf-records fn-sf-successes fn-sf-make fn-sf-prefixp)))
+              fn-sf-prefixp)))
 
 ; These footprint lemmas keep the trace proofs at the storage API boundary.
 ; Every listed transition carries stable records through unchanged; publication
@@ -405,7 +395,7 @@
   :hints (("Goal"
            :in-theory
            (e/d (fn-sf-eventp fn-sf-dispatch)
-                (fn-sf-statep fn-sf-records fn-sf-prefixp
+                (fn-sf-statep  fn-sf-prefixp
                  fn-sf-start-frontier
                  fn-sf-frontier-file-result
                  fn-sf-frontier-replace-result
@@ -433,7 +423,7 @@
   :hints (("Goal"
            :in-theory
            (e/d (fn-sf-eventp fn-sf-dispatch)
-                (fn-sf-statep fn-sf-records fn-sf-prefixp
+                (fn-sf-statep  fn-sf-prefixp
                  fn-sf-start-frontier
                  fn-sf-frontier-file-result
                  fn-sf-frontier-replace-result
@@ -461,7 +451,7 @@
   :hints (("Goal"
            :in-theory
            (e/d (fn-sf-eventp fn-sf-dispatch)
-                (fn-sf-statep fn-sf-successes fn-sf-prefixp
+                (fn-sf-statep  fn-sf-prefixp
                  fn-sf-start-frontier
                  fn-sf-frontier-file-result
                  fn-sf-frontier-replace-result
@@ -532,7 +522,7 @@
            :in-theory
            (e/d (fn-sf-run-events fn-sf-event-listp)
                 (fn-sf-statep fn-sf-dispatch fn-sf-eventp
-                 fn-sf-records fn-sf-prefixp)))
+                  fn-sf-prefixp)))
           ("Subgoal *1/1"
            :use ((:instance fn-sf-prefixp-transitive
                             (xs (fn-sf-records s))
@@ -556,7 +546,7 @@
            :in-theory
            (e/d (fn-sf-run-events fn-sf-event-listp)
                 (fn-sf-statep fn-sf-dispatch fn-sf-eventp
-                 fn-sf-successes fn-sf-prefixp)))
+                  fn-sf-prefixp)))
           ("Subgoal *1/1"
            :use ((:instance fn-sf-prefixp-transitive
                             (xs (fn-sf-successes s))
@@ -647,3 +637,34 @@
            :use ((:instance fn-sf-covered-emitted-member-is-ghost-member
                             (ghost-successes (fn-sf-successes s)))
                  (:instance fn-sf-prior-ghost-success-retained-by-run-trace)))))
+
+; -----------------------------------------------------------------------------
+; Export theory.  The per-transition footprint equalities are proof
+; vocabulary (a book above re-enables them by this name); the trace
+; recognizers, dispatcher and interpreter are withdrawn.  Enabled on include:
+; fn-sf-prefixp and its lemmas, the typed-list facts about a kernel state,
+; and the trace keystones.
+(deftheory fn-store-files-traces-vocabulary
+  '(fn-sf-records-of-start-frontier fn-sf-records-of-frontier-file-result
+    fn-sf-records-of-frontier-replace-result fn-sf-records-of-frontier-dir-result
+    fn-sf-records-of-refuse-reservation fn-sf-records-of-prepare-record
+    fn-sf-records-of-record-file-result fn-sf-records-of-prepublish-abort
+    fn-sf-records-of-abort-completion fn-sf-records-of-record-link-result
+    fn-sf-records-of-core-completion fn-sf-records-of-emit-success
+    fn-sf-records-of-lose-success fn-sf-records-of-recover
+    fn-sf-records-of-recovery-barrier
+    fn-sf-stable-records-prefix-of-record-dir-result
+    fn-sf-successes-of-start-frontier fn-sf-successes-of-frontier-file-result
+    fn-sf-successes-of-frontier-replace-result fn-sf-successes-of-frontier-dir-result
+    fn-sf-successes-of-refuse-reservation fn-sf-successes-of-prepare-record
+    fn-sf-successes-of-record-file-result fn-sf-successes-of-prepublish-abort
+    fn-sf-successes-of-abort-completion fn-sf-successes-of-record-link-result
+    fn-sf-successes-of-record-dir-result fn-sf-successes-of-core-completion
+    fn-sf-successes-of-lose-success fn-sf-successes-of-crash
+    fn-sf-successes-of-recover fn-sf-successes-of-recovery-barrier
+    fn-sf-success-listp-is-true-list fn-sf-successes-prefix-of-emit-success
+    fn-sf-covered-emitted-member-is-ghost-member))
+(in-theory (disable fn-store-files-traces-vocabulary
+                    fn-sf-eventp fn-sf-event-listp fn-sf-tracep
+                    fn-sf-dispatch fn-sf-run-events fn-sf-run-trace
+                    fn-sf-ghost-covers-emittedp))

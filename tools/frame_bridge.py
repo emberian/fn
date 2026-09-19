@@ -284,11 +284,24 @@ class FrameSession:
     # -- identity, charge, groups, Message-ID -------------------------------
 
     def subject_id(self, payload: bytes) -> bytes:
-        digest = hashlib.sha256(payload).digest()
+        """The canonical subject-v1 identity octets for an article payload.
+
+        ACL2 owns the preimage.  It hands back the fixed head
+        (`"fn/subject/v1" || 0x00 || uint32-be(len)`) and the host appends the
+        payload and hashes, exactly as with the inbound frame prefix, so a
+        32 KiB article never crosses the bridge.
+        """
+        prefix = _as_bytes(self.call(
+            "(fn-store-subject-prefix {})".format(len(payload))))
+        digest = hashlib.sha256(prefix + payload).digest()
         return _as_bytes(self.call(
             "(fn-store-subject-id " + _octets(digest) + ")"))
 
     def obligation_id(self, msgid: bytes, subject: bytes) -> bytes:
+        """The canonical obligation-v1 identity octets.
+
+        `subject` is the canonical subject identity octets, not its text.
+        """
         preimage = _as_bytes(self.call(
             "(fn-store-obligation-preimage " + _octets(msgid) + " "
             + _octets(subject) + ")"))
@@ -321,8 +334,39 @@ class FrameSession:
         return tuple(_as_bytes(name).decode("utf-8")
                      for name in self.call("(fn-store-group-names)"))
 
+    def identity_text(self, identity: bytes) -> bytes:
+        """The one rendering of a canonical identity where a string is forced.
+
+        The store record metadata fields, the workflow journal JSON and the
+        NNTP header value all carry text; ACL2 decides what that text is.
+        """
+        return _as_bytes(self.call(
+            "(fn-store-identity-text " + _octets(identity) + ")"))
+
     def group_table_id(self) -> str:
         return _as_bytes(self.call("(fn-store-group-table-id)")).decode("utf-8")
+
+    def config_record_default(self) -> bytes:
+        """The one default configuration record, encoded by `books/config`."""
+        return _as_bytes(self.call("(fn-cfg-host-default-octets)"))
+
+    def config_record_replay(self, octets: bytes):
+        """Replay one durable configuration record; ACL2 owns every value."""
+        value = self.call(
+            "(fn-cfg-host-replay-octets " + _octets(octets) + ")")
+        if isinstance(value, Keyword):
+            raise BridgeError("ACL2 refused the durable configuration record")
+        if not isinstance(value, list) or len(value) != 3:
+            raise BridgeError("ACL2 returned an unexpected configuration")
+        generation, names, capacity = value
+        if not isinstance(generation, int) or not isinstance(capacity, int):
+            raise BridgeError("ACL2 returned an unexpected configuration")
+        return (generation,
+                tuple(_as_bytes(name).decode("utf-8") for name in names),
+                capacity)
+
+    def format_id(self) -> str:
+        return _as_bytes(self.call("(fn-store-format-id)")).decode("utf-8")
 
     def group_codes(self, names) -> list[int]:
         forms = " ".join(_octets(name.encode("utf-8", "strict"))

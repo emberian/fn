@@ -232,3 +232,27 @@
              fn-record-groups-prefix-round-trip fn-record-reconstruct
              fn-record-read-magic-prefix fn-record-read-version-prefix
              fn-record-read-last-uint))
+
+; -----------------------------------------------------------------------------
+; The one name a non-codec book re-enables.
+;
+; A book outside this cluster that builds a codec, constructs an octet list or
+; reasons about a CBOR value needs the same arithmetic and list vocabulary the
+; codec proofs use: the `len', `consp', `true-listp', `append', `take' and
+; `nthcdr' rules of `cbor-invariants' and `records-invariants', plus the two
+; value recognizers (`fn-cbor-valuep', `fn-record-p') whose definitions this
+; cluster withdrew.  Enabling the six fine-grained vocabularies one at a time
+; is the precise thing to do inside the cluster; outside it, the includer
+; almost always wants all of them, and getting one name wrong costs a
+; certification round.  So this theory is THE name: one `(local (in-theory
+; (enable fn-codecs-includer-vocabulary)))' at the top of a book that includes
+; `records-invariants' restores exactly the vocabulary an includer had before
+; the realignment, and nothing else -- records and results stay opaque, and
+; the record lemmas and the two `-forward-shape' rules are already enabled.
+; The six fine-grained names remain, for a book that wants less.
+
+(deftheory fn-codecs-includer-vocabulary
+  (union-theories
+   (union-theories (theory 'fn-cbor-invariants-vocabulary)
+                   (theory 'fn-record-invariants-vocabulary))
+   '((:d fn-cbor-valuep) (:d fn-record-p))))

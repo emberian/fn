@@ -1,6 +1,11 @@
 (in-package "ACL2")
 (include-book "../../books/bp-receipt-records")
 (include-book "bp-receipt-tests")
+; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
+; this book reasons under them, so open them here, locally.
+(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary
+                          fn-record-invariants-vocabulary fn-cbor-record-vocabulary
+                          fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary)))
 (defconst *bprr-config-record* '(:config "dtn://fn.lab/inbox" "receiver-policy" "dtn://fn.lab/issuer"))
 (defconst *bprr-request-record* (list :request-context "local-bid-1"
  (fn-bpa-encode *bpr-request*) (fn-record-encode *bpr-record*) t))
