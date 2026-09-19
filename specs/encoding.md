@@ -121,7 +121,7 @@ FNWF and FNRJ frames are byte-identical to the Python frames they replace, and
 `tests/acl2/frame-tests.lisp` asserts that against vectors generated from the
 Python encoders. FNST gains the record kind octet it lacked, so a store written
 under the old framing is refused by its configuration format
-(`fn-store-experiment-3`) rather than misread. FNBI moves its BID length into a
+(`fn-store-experiment-4`) rather than misread. FNBI moves its BID length into a
 payload text field; because an inbound bundle can reach four mebibytes and
 cannot cross the decimal-octet bridge, ACL2 builds and validates the frame head
 and the host concatenates bundle bytes it never interprets.

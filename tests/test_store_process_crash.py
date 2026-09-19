@@ -125,11 +125,10 @@ class StoreProcessCrashTests(unittest.TestCase):
     def _record_txids(self, store, bridge):
         txids = []
         for unused_sequence, path in store.transaction_files():
+            constants = run_store.frame_bridge.session().constants
             txids.append(bridge.record_txid(unframe(
                 run_store.read_regular_bounded(
-                    path, len(run_store.MAGIC) + 4 + store.config["max_record_bytes"]
-                    + run_store.TRAILER_BYTES),
-                store.config["max_record_bytes"])))
+                    path, constants["overhead"] + constants["max_store"]))))
         return txids
 
     def test_process_death_at_publication_boundaries_releases_lock_and_reopens(self):

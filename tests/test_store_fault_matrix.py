@@ -104,8 +104,7 @@ class StoreFaultMatrixTests(unittest.TestCase):
                 self.assertEqual(bridge.lookup(("<{}@example.invalid>".format(tail)).encode("ascii")),
                                  (tail if tail_payload is None else tail_payload).encode("ascii"))
             return [bridge.record_txid(unframe(
-                (path / "transactions" / "{:020d}.txn".format(sequence)).read_bytes(),
-                bridge_max_record_bytes))
+                (path / "transactions" / "{:020d}.txn".format(sequence)).read_bytes()))
                     for sequence in range(len(records))]
 
     def test_prepublication_create_write_and_file_fsync_matrix(self):
@@ -601,10 +600,6 @@ class StoreFaultMatrixTests(unittest.TestCase):
                 self.assertEqual(self.assert_recovered(path, 2, 2,
                                                         "completion-" + outcome, outcome), [0, 1])
 
-
-# Keep this value explicit so record decoding in assertions remains tied to the
-# checked experimental profile instead of duplicating acceptance semantics.
-bridge_max_record_bytes = run_store.DEFAULT_CONFIG["max_record_bytes"]
 
 
 if __name__ == "__main__":
