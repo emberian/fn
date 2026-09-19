@@ -13,7 +13,7 @@
 ; keystones are about, under that one hypothesis.
 
 (in-package "ACL2")
-(include-book "books/anchor-invariants")
+(include-book "../books/anchor-invariants")
 
 (set-state-ok t)
 (program)

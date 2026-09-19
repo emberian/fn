@@ -107,11 +107,29 @@ Certified: `books/anchor`, `books/anchor-record`, `books/anchor-invariants`, `te
 
 `books/clock.cert` was stale after the merge (the bp deputy's clock realignment landed on `dev`) and was rebuilt in place; `make certs-install` installed nothing because the shared cache is being rebuilt.
 
-Python, with the laptop's `python3` (3.14.7) which carries `cryptography` 50.0.1, so no virtual environment was needed. `CryptoSeam` and `RoughtimeClient`: 10 tests, OK, zero skips. Full suite (`python3 -m unittest tests.test_anchor -v`, all four classes):
+Python, with the laptop's `python3` (3.14.7) which carries `cryptography`
+50.0.1, so no virtual environment was needed.
 
-```
+- `CryptoSeam`, `RoughtimeClient`: 10 tests, OK, zero skips.
+- `Acl2OwnsTheSignedOctets`, `StoreAnchorCommands`: these **load and run now**
+  but do not pass. `host/anchor-host.lisp` said
+  `(include-book "books/anchor-invariants")`, which resolves relative to
+  `host/`, so ACL2 looked for `host/books/anchor-invariants.lisp`; every other
+  host wrapper in the tree uses `"../books/..."`. That was a real defect,
+  invisible until the books had certificates and the host book was loaded for
+  the first time. It is fixed. With it fixed the full suite runs 15 tests in
+  129 s and reports 5 failures and 1 error, every visible one presenting as
+  `store: ACL2 prompt timeout` from `tools/run_store.py`.
 
-```
+  **Open, and the next step.** The timeouts were measured while four other
+  lanes' ACL2 processes were saturating this laptop, so contention is the
+  first hypothesis and the cheap refutation is a re-run on a quiet box. If it
+  survives that, it is a host-bridge defect (the `anchor`/`recover` command
+  path in `tools/run_store.py`, not the books): the ACL2 side is certified and
+  `tests/acl2/anchor-tests` already asserts the same decisions by ground
+  evaluation. Do not read the timeouts as a proof gap, and do not raise the
+  prompt bound to make them pass without first establishing which of the two
+  it is.
 
 ## Open, and deliberately so
 
