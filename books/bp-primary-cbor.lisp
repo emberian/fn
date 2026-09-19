@@ -223,6 +223,16 @@
                     fn-cbor-u16-bytes fn-cbor-u32-bytes fn-bpc-u64-bytes
                     fn-cbor-u16-from fn-cbor-u32-from fn-bpc-u64-from))
 
+; Length facts about the now-opaque conversions.  `fn-bpc-argument-length-bound`
+; below needs them once `fn-cbor-u16-bytes` and `fn-cbor-u32-bytes` are closed.
+(defthm fn-bpc-u16-bytes-have-length-two
+  (equal (len (fn-cbor-u16-bytes n)) 2)
+  :hints (("Goal" :in-theory (enable fn-cbor-u16-bytes))))
+
+(defthm fn-bpc-u32-bytes-have-length-four
+  (equal (len (fn-cbor-u32-bytes n)) 4)
+  :hints (("Goal" :in-theory (enable fn-cbor-u32-bytes))))
+
 ; Type facts about the now-opaque conversions, in the forms ACL2's guard
 ; proofs ask for.
 (defthm fn-bpc-u16-from-is-a-number
@@ -341,6 +351,106 @@
 (defthm fn-bpc-octet-listp-cdr
   (implies (fn-cbor-octet-listp xs)
            (fn-cbor-octet-listp (cdr xs))))
+
+; -----------------------------------------------------------------------------
+; The 27-form inverse: eight octets read as a u64 re-encode to themselves.
+;
+; This is the digit-extraction argument the decoder theory keeps out of its
+; case tree.  It is done once, over the two 32-bit halves, on the pattern of
+; `fn-cbor-u32-to-from-octets` in `cbor-invariants`: the halves are recovered
+; by `floor`/`mod` at 2^32, then each half re-encodes by the existing uint32
+; inverse.  Every later use goes through `fn-bpc-u64-bytes-reassemble`.
+
+(local
+ (defthm fn-bpc-split-floor
+   (implies (and (natp hi) (natp lo) (< lo 4294967296))
+            (equal (floor (+ (* 4294967296 hi) lo) 4294967296) hi))
+   :hints (("Goal" :in-theory (disable floor mod) :nonlinearp t))))
+
+(local
+ (defthm fn-bpc-split-mod
+   (implies (and (natp hi) (natp lo) (< lo 4294967296))
+            (equal (mod (+ (* 4294967296 hi) lo) 4294967296) lo))
+   :hints (("Goal" :in-theory (disable floor mod) :nonlinearp t))))
+
+(defthm fn-bpc-u64-bytes-of-u64-from
+  (implies (and (fn-cbor-octet-listp xs)
+                (consp xs) (consp (cdr xs))
+                (consp (cddr xs)) (consp (cdddr xs))
+                (consp (cddddr xs)) (consp (cdr (cddddr xs)))
+                (consp (cddr (cddddr xs))) (consp (cdddr (cddddr xs))))
+           (equal (fn-bpc-u64-bytes (fn-bpc-u64-from xs))
+                  (list (car xs) (cadr xs) (caddr xs) (cadddr xs)
+                        (car (cddddr xs)) (cadr (cddddr xs))
+                        (caddr (cddddr xs)) (cadddr (cddddr xs)))))
+  :rule-classes nil
+  :hints (("Goal"
+           :in-theory (e/d (fn-bpc-u64-bytes fn-bpc-u64-from
+                            fn-bpc-u32-octets-agree-with-fn-cbor-u32-bytes)
+                           (fn-bpc-u32-octets fn-cbor-u32-from fn-cbor-u32-bytes
+                            floor mod))
+           :use ((:instance fn-bpc-split-floor
+                            (hi (fn-cbor-u32-from xs))
+                            (lo (fn-cbor-u32-from (cddddr xs))))
+                 (:instance fn-bpc-split-mod
+                            (hi (fn-cbor-u32-from xs))
+                            (lo (fn-cbor-u32-from (cddddr xs))))
+                 (:instance fn-cbor-u32-from-bounds (xs xs))
+                 (:instance fn-cbor-u32-from-bounds (xs (cddddr xs)))
+                 (:instance fn-cbor-u32-to-from-octets (xs xs))
+                 (:instance fn-cbor-u32-to-from-octets (xs (cddddr xs)))))))
+
+; `car-cdr-elim` as a rewrite rule, so that a re-encoded prefix consed back
+; onto the decoder's remainder collapses to the original list without
+; destructor elimination.
+(defthm fn-bpc-cons-car-cdr
+  (implies (consp x)
+           (equal (cons (car x) (cdr x)) x)))
+
+(defthm fn-bpc-u64-bytes-reassemble
+  (implies (and (fn-cbor-octet-listp xs)
+                (consp xs) (consp (cdr xs))
+                (consp (cddr xs)) (consp (cdddr xs))
+                (consp (cddddr xs)) (consp (cdr (cddddr xs)))
+                (consp (cddr (cddddr xs))) (consp (cdddr (cddddr xs))))
+           (equal (append (fn-bpc-u64-bytes (fn-bpc-u64-from xs))
+                          (cddddr (cddddr xs)))
+                  xs))
+  :hints (("Goal" :use fn-bpc-u64-bytes-of-u64-from
+           :in-theory (disable fn-bpc-u64-bytes fn-bpc-u64-from floor mod))))
+
+(local
+ (defthm fn-bpc-eight-conses-from-length
+   (implies (<= 8 (len xs))
+            (and (consp xs) (consp (cdr xs))
+                 (consp (cddr xs)) (consp (cdddr xs))
+                 (consp (cddddr xs)) (consp (cdr (cddddr xs)))
+                 (consp (cddr (cddddr xs))) (consp (cdddr (cddddr xs)))))
+   :hints (("Goal" :expand ((len xs) (len (cdr xs)) (len (cddr xs))
+                            (len (cdddr xs)) (len (cddddr xs))
+                            (len (cdr (cddddr xs))) (len (cddr (cddddr xs)))
+                            (len (cdddr (cddddr xs))))))))
+
+(local
+ (defthm fn-bpc-nthcdr-eight
+   (equal (nthcdr 8 xs) (cddddr (cddddr xs)))
+   :hints (("Goal" :expand ((nthcdr 8 xs) (nthcdr 7 (cdr xs))
+                            (nthcdr 6 (cddr xs)) (nthcdr 5 (cdddr xs))
+                            (nthcdr 4 (cddddr xs)) (nthcdr 3 (cdr (cddddr xs)))
+                            (nthcdr 2 (cddr (cddddr xs)))
+                            (nthcdr 1 (cdddr (cddddr xs))))))))
+
+; The same inverse in the length-hypothesis form.
+(defthm fn-bpc-u64-octet-round-trip
+  (implies (and (fn-cbor-octet-listp xs) (<= 8 (len xs)))
+           (equal (append (fn-bpc-u64-bytes (fn-bpc-u64-from xs)) (nthcdr 8 xs))
+                  xs))
+  :hints (("Goal"
+           :do-not-induct t
+           :use (fn-bpc-eight-conses-from-length fn-bpc-u64-bytes-reassemble)
+           :in-theory (e/d (fn-bpc-nthcdr-eight)
+                           (fn-bpc-u64-bytes fn-bpc-u64-from floor mod len
+                            nthcdr fn-bpc-u64-bytes-reassemble)))))
 
 ; Forward-chained, not only rewritten.  The decoder dispatches on the head
 ; octet with literal range comparisons, and linear arithmetic cannot refute a
@@ -998,64 +1108,57 @@
 ; deterministic one cannot pass, because a successful decode is required to
 ; re-encode to exactly the octets it consumed.
 
-;; OPEN, not certified.  The three forms below are commented out because
-;; `fn-bpc-argument-of-decode-head` needs the base-256 inverse
-;; (equal (append (fn-bpc-u64-bytes (fn-bpc-u64-from xs)) (nthcdr 8 xs)) xs),
-;; the 27-form counterpart of `fn-bpc-u64-from-u64-bytes`.  This book
-;; deliberately keeps floor and mod out of the decoder theory, and that
-;; inverse is exactly a digit-extraction argument over them.  Round trip and
-;; canonicality-of-encoder-output (`fn-bpc-value-round-trip`) are certified;
-;; canonicality over ARBITRARY accepted input is not.  `specs/bp-primary.md`
-;; records this.  Restoring it means proving that inverse first.
-;;
-;; (defthm fn-bpc-argument-of-decode-head
-;;   (implies (and (fn-cbor-octet-listp tail)
-;;                 (natp additional) (< additional 32)
-;;                 (natp major) (< major 8)
-;;                 (fn-cbor-result-okp (fn-bpc-decode-head additional tail)))
-;;            (equal (append (fn-bpc-argument
-;;                            major
-;;                            (fn-cbor-result-value
-;;                             (fn-bpc-decode-head additional tail)))
-;;                           (fn-cbor-result-rest
-;;                            (fn-bpc-decode-head additional tail)))
-;;                   (cons (+ (* 32 major) additional) tail)))
-;;   :hints (("Goal"
-;;            :in-theory (e/d (fn-bpc-decode-argument
-;;                             fn-cbor-decode-argument
-;;                             fn-cbor-encode-argument
-;;                             fn-cbor-result-okp fn-cbor-result-value
-;;                             fn-cbor-result-rest fn-cbor-ok)
-;;                            (floor mod take nthcdr)))))
-;;
-;; (defthm fn-bpc-dec-reencodes-consumed-prefix
-;;   (implies (and (fn-cbor-octet-listp octets)
-;;                 (natp count)
-;;                 (fn-cbor-result-okp (fn-bpc-dec flg count octets budget)))
-;;            (equal (append (fn-bpc-enc flg (fn-cbor-result-value
-;;                                            (fn-bpc-dec flg count octets budget)))
-;;                           (fn-cbor-result-rest
-;;                            (fn-bpc-dec flg count octets budget)))
-;;                   octets))
-;;   :hints (("Goal"
-;;            :induct (fn-bpc-dec flg count octets budget)
-;;            :expand ((:free (a b c) (fn-bpc-dec a b c budget)))
-;;            :in-theory (disable fn-bpc-argument fn-bpc-decode-head
-;;                                fn-cbor-ok fn-cbor-error fn-cbor-result-okp
-;;                                fn-cbor-result-value fn-cbor-result-rest
-;;                                fn-cbor-octet-listp take nthcdr floor mod))))
-;;
-;; (defthm fn-bpc-accepted-input-is-canonical
-;;   (implies (fn-cbor-result-okp (fn-bpc-decode-exact octets))
-;;            (equal (fn-bpc-encode (fn-cbor-result-value
-;;                                   (fn-bpc-decode-exact octets)))
-;;                   octets))
-;;   :hints (("Goal"
-;;            :use ((:instance fn-bpc-dec-reencodes-consumed-prefix
-;;                             (flg :item) (count 0)
-;;                             (budget *fn-bpc-max-items*)))
-;;            :in-theory (disable fn-bpc-dec fn-bpc-enc
-;;                                fn-bpc-dec-reencodes-consumed-prefix))))
+; The 27 case of `fn-bpc-argument-of-decode-head` is `fn-bpc-u64-bytes-reassemble`;
+; the 24 to 26 cases are the uint32 inverses from `cbor-invariants`.
+
+(defthm fn-bpc-argument-of-decode-head
+  (implies (and (fn-cbor-octet-listp tail)
+                (natp additional) (< additional 32)
+                (natp major) (< major 8)
+                (fn-cbor-result-okp (fn-bpc-decode-head additional tail)))
+           (equal (append (fn-bpc-argument
+                           major
+                           (fn-cbor-result-value
+                            (fn-bpc-decode-head additional tail)))
+                          (fn-cbor-result-rest
+                           (fn-bpc-decode-head additional tail)))
+                  (cons (+ (* 32 major) additional) tail)))
+  :hints (("Goal"
+           :in-theory (e/d (fn-bpc-decode-argument
+                            fn-cbor-decode-argument
+                            fn-cbor-encode-argument
+                            fn-cbor-result-okp fn-cbor-result-value
+                            fn-cbor-result-rest fn-cbor-ok)
+                           (floor mod take nthcdr)))))
+
+(defthm fn-bpc-dec-reencodes-consumed-prefix
+  (implies (and (fn-cbor-octet-listp octets)
+                (natp count)
+                (fn-cbor-result-okp (fn-bpc-dec flg count octets budget)))
+           (equal (append (fn-bpc-enc flg (fn-cbor-result-value
+                                           (fn-bpc-dec flg count octets budget)))
+                          (fn-cbor-result-rest
+                           (fn-bpc-dec flg count octets budget)))
+                  octets))
+  :hints (("Goal"
+           :induct (fn-bpc-dec flg count octets budget)
+           :expand ((:free (a b c) (fn-bpc-dec a b c budget)))
+           :in-theory (disable fn-bpc-argument fn-bpc-decode-head
+                               fn-cbor-ok fn-cbor-error fn-cbor-result-okp
+                               fn-cbor-result-value fn-cbor-result-rest
+                               fn-cbor-octet-listp take nthcdr floor mod))))
+
+(defthm fn-bpc-accepted-input-is-canonical
+  (implies (fn-cbor-result-okp (fn-bpc-decode-exact octets))
+           (equal (fn-bpc-encode (fn-cbor-result-value
+                                  (fn-bpc-decode-exact octets)))
+                  octets))
+  :hints (("Goal"
+           :use ((:instance fn-bpc-dec-reencodes-consumed-prefix
+                            (flg :item) (count 0)
+                            (budget *fn-bpc-max-items*)))
+           :in-theory (disable fn-bpc-dec fn-bpc-enc
+                               fn-bpc-dec-reencodes-consumed-prefix))))
 
 ; -----------------------------------------------------------------------------
 ; Bounds before allocation

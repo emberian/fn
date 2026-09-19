@@ -146,18 +146,18 @@
     "books": 139,
     "books_in_root_closure": 139,
     "roots": 139,
-    "theorems": 1676,
-    "functions": 1417,
+    "theorems": 1698,
+    "functions": 1420,
     "assert_events": 1782,
-    "must_fails": 88,
+    "must_fails": 87,
     "encapsulates": 7,
     "guards": {
       "verified": 832,
       "declared-off": 29,
       "default-guarded": 183,
-      "default-unguarded": 373
+      "default-unguarded": 376
     },
-    "suspect_theorems": 24
+    "suspect_theorems": 25
   },
   "books": [
     {
@@ -526,13 +526,13 @@
       "book": "books/bp-fragment-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 38,
-      "functions": 0,
+      "theorems": 40,
+      "functions": 3,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 0
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -547,6 +547,7 @@
         "arithmetic/top"
       ],
       "suspects": [
+        "fn-bpf-cell-of-uncovered-is-gap",
         "fn-bpf-out-of-bounds-input-allocates-nothing"
       ],
       "read_error": null
@@ -634,7 +635,7 @@
       "book": "books/bp-primary-cbor.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 73,
+      "theorems": 86,
       "functions": 16,
       "guards": {
         "verified": 12,
@@ -663,7 +664,7 @@
       "book": "books/bp-primary-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 31,
+      "theorems": 38,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -2911,7 +2912,7 @@
       },
       "verify_guards_events": 0,
       "assert_events": 26,
-      "must_fails": 9,
+      "must_fails": 8,
       "defconsts": 6,
       "defmacros": 0,
       "encapsulates": 0,
@@ -3787,15 +3788,23 @@
     {
       "theorem": "fn-bpc-decode-refuses-overlong-input",
       "book": "books/bp-primary-cbor.lisp",
-      "line": 1066,
+      "line": 1169,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-bpc-decode and the conclusion is that branch's value"
       ]
     },
     {
+      "theorem": "fn-bpf-cell-of-uncovered-is-gap",
+      "book": "books/bp-fragment-invariants.lisp",
+      "line": 126,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-bpf-cell-of and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-bpf-out-of-bounds-input-allocates-nothing",
       "book": "books/bp-fragment-invariants.lisp",
-      "line": 314,
+      "line": 387,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-bpf-reassemble and the conclusion is that branch's value"
       ]
@@ -3811,7 +3820,7 @@
     {
       "theorem": "fn-clock-drop-permission-is-exactly-expired-by-definition",
       "book": "books/clock-invariants.lisp",
-      "line": 161,
+      "line": 163,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-clock-may-drop-local-copyp",
         "reflexive-conclusion: a conjunct is (equal X X)"

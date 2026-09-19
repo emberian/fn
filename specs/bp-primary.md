@@ -1,9 +1,9 @@
 # The BPv7 primary bundle block
 
-Status: executable model and codec. The properties below are **stated and not
-yet certified**: `books/bp-primary-cbor` does not certify, so no book in this
-group has been accepted by ACL2 and every theorem named here is a proposed
-theorem, not a proved one. `HANDOFF.md` records what is open. This is not a bundle
+Status: executable model and codec, certified by ACL2: `books/bp-primary-cbor`,
+`books/bp-primary` and `books/bp-primary-invariants` certify, and every theorem
+named here is a proved one unless "What remains open" below says otherwise.
+This is not a bundle
 protocol agent, a forwarder, a BPSec implementation, or a claim of
 interoperability with any deployed BPv7 node.
 
@@ -47,19 +47,14 @@ RFC's own.
 
 ### Both directions, and canonicality
 
-**Not certified.** `books/bp-primary` has not been accepted by ACL2, so the two
-`fn-bpp-` theorems in this subsection are stated, not proved. Underneath them,
-the CBOR round trip for encoder output is certified
-(`fn-bpc-decode-of-encode`, `fn-bpc-value-round-trip`), and so is the fact that
-a successful decode yields a value in the domain (`fn-bpc-dec-yields-shape`).
-Canonicality over *arbitrary* accepted input is **open**:
-`fn-bpc-accepted-input-is-canonical` and its helper
-`fn-bpc-argument-of-decode-head` are commented out of
-`books/bp-primary-cbor.lisp`, because the helper needs the base-256 inverse of
-`fn-bpc-u64-from`, a digit-extraction argument over `floor` and `mod` that the
-book deliberately keeps out of the decoder theory. Until that is proved, nothing
-here rules out a second spelling of an accepted block; only encoder output is
-covered. Read the paragraph below as the intended design, not as a result.
+Underneath the two `fn-bpp-` theorems, the CBOR round trip for encoder output
+(`fn-bpc-decode-of-encode`, `fn-bpc-value-round-trip`), the fact that a
+successful decode yields a value in the domain (`fn-bpc-dec-yields-shape`), and
+canonicality over *arbitrary* accepted input (`fn-bpc-accepted-input-is-canonical`,
+through `fn-bpc-argument-of-decode-head`) are all certified. The base-256
+inverse the last of these needed, `fn-bpc-u64-bytes-reassemble`, is proved once
+over the two 32-bit halves of the 27-form argument and is the only place
+`floor` and `mod` enter the decoder theory.
 
 `fn-bpp-decode-of-encode` proves every valid block decodes back from its own
 encoding, CRC included. `fn-bpp-accepted-input-is-canonical-by-construction`
@@ -193,6 +188,24 @@ exactly the interoperability claim the assurance rules forbid.
 
 ## What remains open
 
+- **Four theorems are stated in their books but commented out as open**, each
+  with the reason at its site: `fn-bpp-previous-node-round-trip` and
+  `fn-bpp-hop-count-round-trip` in `books/bp-primary-invariants.lisp` (the
+  Previous Node and Hop Count data therefore have both codec directions
+  executable but only the Bundle Age round trip proved), and
+  `fn-bpf-cut-covers` and `fn-bpf-reassemble-ok-agrees-with-every-fragment` in
+  `books/bp-fragment-invariants.lisp` (a cut's fragments are proved to agree
+  with the payload and to share its total, not yet to cover it; a successful
+  reassembly is proved to reconstruct a complete agreeing cover, not yet to
+  agree with each fragment it consumed). Nothing else in this document cites
+  them.
+- **The two test books are not certified.** `tests/acl2/bp-primary-tests`
+  times out (1800 s) in the `must-fail` tooth that drops the item-budget
+  hypothesis from `fn-bpc-decode-of-encode`, and `tests/acl2/bp-fragment-tests`
+  times out in the tooth for `fn-bpf-reassemble-ok-agrees-with-every-fragment`
+  (a rewriter call-depth loop); a tooth must fail fast, and these do not. Until
+  they certify, every witness and tooth for the primary and fragment keystones
+  is written, not accepted.
 - **No host calls any of this.** The theorem subject rule applies: these are
   theorems about functions with no caller. `tools/bpa_dtn7.py` still treats
   bundles as opaque and `tools/bpa_payload_extract.rs` still uses the pinned

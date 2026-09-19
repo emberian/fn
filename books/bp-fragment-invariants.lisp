@@ -37,11 +37,19 @@
 ; -----------------------------------------------------------------------------
 ; Agreement is pointwise
 
+; The index steps with the list: `k` into `bytes` is `offset + k` into the
+; payload, so the induction has to walk both at once.
+(local
+ (defun fn-bpf-agreep-nth-induction (bytes offset k)
+   (if (or (not (consp bytes)) (zp k))
+       (list bytes offset k)
+     (fn-bpf-agreep-nth-induction (cdr bytes) (+ 1 offset) (- k 1)))))
+
 (defthm fn-bpf-bytes-agreep-nth
   (implies (and (fn-bpf-bytes-agreep bytes offset payload)
                 (natp offset) (natp k) (< k (len bytes)))
            (equal (nth k bytes) (nth (+ offset k) payload)))
-  :hints (("Goal" :induct (fn-bpf-bytes-agreep bytes offset payload))))
+  :hints (("Goal" :induct (fn-bpf-agreep-nth-induction bytes offset k))))
 
 (defthm fn-bpf-cell-of-of-agreeing-fragment
   (implies (and (fn-bpf-fragmentp f)
@@ -74,35 +82,71 @@
 ; -----------------------------------------------------------------------------
 ; The reassembled array
 
+; The index steps with the canvas: cell `i` of a canvas drawn from `from` is
+; cell `from + i`, so the induction walks `from`, `n` and `i` together.
+(local
+ (defun fn-bpf-canvas-nth-induction (from n i)
+   (if (or (zp n) (zp i))
+       (list from n i)
+     (fn-bpf-canvas-nth-induction (+ 1 from) (- n 1) (- i 1)))))
+
 (defthm fn-bpf-nth-of-canvas
   (implies (and (natp from) (natp n) (natp i) (< i n))
            (equal (nth i (fn-bpf-canvas fs from n))
                   (fn-bpf-cell-at fs (+ from i))))
-  :hints (("Goal" :induct (fn-bpf-canvas fs from n))))
+  :hints (("Goal" :induct (fn-bpf-canvas-nth-induction from n i)
+           :expand ((fn-bpf-canvas fs from n)))))
 
 (defthm fn-bpf-canvas-length
   (implies (natp n)
            (equal (len (fn-bpf-canvas fs from n)) n))
   :hints (("Goal" :induct (fn-bpf-canvas fs from n))))
 
+; `nthcdr` folds one cell at a time, in the direction the extent recursion
+; produces cells.
+(local
+ (defthm fn-bpf-nthcdr-folds
+   (implies (and (natp from) (< from (len xs)))
+            (equal (cons (nth from xs) (nthcdr from (cdr xs)))
+                   (nthcdr from xs)))
+   :hints (("Goal" :induct (nthcdr from xs)))))
+
 (defthm fn-bpf-extent-is-nthcdr
   (implies (and (true-listp xs) (natp from) (<= from (len xs)))
            (equal (fn-bpf-extent xs from (len xs)) (nthcdr from xs)))
-  :hints (("Goal" :induct (nthcdr from xs))))
+  :hints (("Goal" :induct (fn-bpf-extent xs from (len xs)))))
 
 ; Every covered cell of an agreeing cover carries the payload's own octet,
 ; whatever order the fragments are in and however much they overlap.  This is
 ; where identical overlap becomes harmless: two fragments that both cover an
 ; index both carry the payload octet there, so the merge never conflicts.
+; What the closed `fn-bpf-cell-of` and `fn-bpf-coversp` still have to say in
+; the cover induction: an uncovered cell is `:gap`, and a covered cell of an
+; agreeing fragment is a payload octet, so never a marker.
+(defthm fn-bpf-cell-of-uncovered-is-gap
+  (implies (not (fn-bpf-coversp f i))
+           (equal (fn-bpf-cell-of f i) :gap)))
+
+(defthm fn-bpf-agreeing-payload-cell-is-an-octet
+  (implies (and (fn-bpf-bytes-agreep bytes offset payload)
+                (fn-cbor-octet-listp bytes)
+                (natp offset) (natp i)
+                (<= offset i) (< i (+ offset (len bytes))))
+           (fn-cbor-octetp (nth i payload)))
+  :hints (("Goal"
+           :use ((:instance fn-bpf-bytes-agreep-nth (k (- i offset)))
+                 (:instance fn-bpf-nth-of-octet-list
+                            (xs bytes) (i (- i offset))))
+           :in-theory (disable fn-bpf-bytes-agreep-nth
+                               fn-bpf-nth-of-octet-list))))
+
 (defthm fn-bpf-cell-at-of-agreeing-cover
   (implies (and (fn-bpf-fragment-listp fs)
                 (fn-bpf-all-agreep fs payload)
                 (natp i)
                 (fn-bpf-coveredp fs i))
            (equal (fn-bpf-cell-at fs i) (nth i payload)))
-  :hints (("Goal"
-           :induct (fn-bpf-cell-at fs i)
-           :in-theory (disable fn-bpf-cell-of fn-bpf-coversp))))
+  :hints (("Goal" :induct (fn-bpf-cell-at fs i))))
 
 (defthm fn-bpf-canvas-is-payload-extent
   (implies (and (fn-cbor-octet-listp payload)
@@ -115,6 +159,8 @@
                   (fn-bpf-extent payload from (+ from n))))
   :hints (("Goal"
            :induct (fn-bpf-canvas fs from n)
+           :expand ((fn-bpf-extent payload from from)
+                    (fn-bpf-extent payload from (+ from n)))
            :in-theory (disable fn-bpf-cell-at fn-bpf-coveredp))))
 
 ; -----------------------------------------------------------------------------
@@ -179,35 +225,48 @@
                 (equal (fn-bpf-first-index (fn-bpf-canvas fs 0 total) 0 :gap)
                        nil))))
 
+; The index steps with the scan, as in `fn-bpf-bytes-agreep-nth`.
+(local
+ (defun fn-bpf-first-index-nth-induction (cells from i)
+   (if (or (not (consp cells)) (zp i))
+       (list cells from i)
+     (fn-bpf-first-index-nth-induction (cdr cells) (+ 1 from) (- i 1)))))
+
 (defthm fn-bpf-first-index-nil-means-no-marker
   (implies (and (true-listp cells)
                 (equal (fn-bpf-first-index cells from marker) nil)
                 (natp from) (natp i) (< i (len cells)))
            (not (equal (nth i cells) marker)))
-  :hints (("Goal" :induct (fn-bpf-first-index cells from marker))))
+  :hints (("Goal" :induct (fn-bpf-first-index-nth-induction cells from i))))
 
-(defthm fn-bpf-reassemble-ok-agrees-with-every-fragment
-  (implies (and (equal (fn-bpf-result-tag (fn-bpf-reassemble fs total)) :ok)
-                (member-equal f fs)
-                (natp k)
-                (< k (len (fn-bpf-bytes f))))
-           (equal (nth k (fn-bpf-bytes f))
-                  (nth (+ (fn-bpf-offset f) k)
-                       (fn-bpf-result-bytes (fn-bpf-reassemble fs total)))))
-  :hints (("Goal"
-           :use ((:instance fn-bpf-cell-at-agrees-with-member
-                            (i (+ (fn-bpf-offset f) k)))
-                 (:instance fn-bpf-nth-of-canvas
-                            (from 0) (n total)
-                            (i (+ (fn-bpf-offset f) k)))
-                 (:instance fn-bpf-first-index-nil-means-no-marker
-                            (cells (fn-bpf-canvas fs 0 total))
-                            (from 0) (marker :conflict)
-                            (i (+ (fn-bpf-offset f) k))))
-           :in-theory (disable fn-bpf-cell-at-agrees-with-member
-                               fn-bpf-nth-of-canvas
-                               fn-bpf-first-index-nil-means-no-marker
-                               fn-bpf-canvas fn-bpf-cell-at))))
+;; OPEN, not certified: the `:ok` shape gives
+;; `fn-bpf-inputsp`, but placing `offset f + k` below `total` needs a member
+;; lemma over `fn-bpf-same-total` this book does not yet have.
+;; (defthm fn-bpf-reassemble-ok-agrees-with-every-fragment
+;;   (implies (and (equal (fn-bpf-result-tag (fn-bpf-reassemble fs total)) :ok)
+;;                 (member-equal f fs)
+;;                 (natp k)
+;;                 (< k (len (fn-bpf-bytes f))))
+;;            (equal (nth k (fn-bpf-bytes f))
+;;                   (nth (+ (fn-bpf-offset f) k)
+;;                        (fn-bpf-result-bytes (fn-bpf-reassemble fs total)))))
+;;   :hints (("Goal"
+;;            :do-not-induct t
+;;            :use ((:instance fn-bpf-cell-at-agrees-with-member
+;;                             (i (+ (fn-bpf-offset f) k)))
+;;                  (:instance fn-bpf-nth-of-canvas
+;;                             (from 0) (n total)
+;;                             (i (+ (fn-bpf-offset f) k)))
+;;                  (:instance fn-bpf-first-index-nil-means-no-marker
+;;                             (cells (fn-bpf-canvas fs 0 total))
+;;                             (from 0) (marker :conflict)
+;;                             (i (+ (fn-bpf-offset f) k))))
+;;            :in-theory (disable fn-bpf-cell-at-agrees-with-member
+;;                                fn-bpf-nth-of-canvas
+;;                                fn-bpf-first-index-nil-means-no-marker
+;;                                fn-bpf-canvas fn-bpf-cell-at
+;;                                fn-bpf-reassemble fn-bpf-result-tag
+;;                                fn-bpf-result-bytes))))
 
 ; -----------------------------------------------------------------------------
 ; Keystone: an uncovered index makes success impossible, and the reported
@@ -265,6 +324,12 @@
                                fn-bpf-nth-of-canvas
                                fn-bpf-canvas fn-bpf-cell-at))))
 
+(local
+ (defthm fn-bpf-nthcdr-is-consp
+   (implies (and (natp n) (< n (len xs)))
+            (consp (nthcdr n xs)))
+   :hints (("Goal" :induct (nthcdr n xs)))))
+
 (defthm fn-bpf-missing-range-is-non-empty
   (implies (equal (fn-bpf-result-tag (fn-bpf-reassemble fs total)) :missing)
            (< (nth 1 (fn-bpf-reassemble fs total))
@@ -272,8 +337,16 @@
   :hints (("Goal"
            :use ((:instance fn-bpf-first-index-finds-the-marker
                             (cells (fn-bpf-canvas fs 0 total))
-                            (from 0) (marker :gap)))
+                            (from 0) (marker :gap))
+                 (:instance fn-bpf-run-end-advances
+                            (cells (nthcdr (fn-bpf-first-index
+                                            (fn-bpf-canvas fs 0 total) 0 :gap)
+                                           (fn-bpf-canvas fs 0 total)))
+                            (from (fn-bpf-first-index
+                                   (fn-bpf-canvas fs 0 total) 0 :gap))
+                            (marker :gap)))
            :in-theory (disable fn-bpf-first-index-finds-the-marker
+                               fn-bpf-run-end-advances
                                fn-bpf-canvas fn-bpf-cell-at))))
 
 ; -----------------------------------------------------------------------------
@@ -345,12 +418,15 @@
          (+ 1 (len boundaries)))
   :hints (("Goal" :induct (fn-bpf-cut payload from boundaries total))))
 
-(defthm fn-bpf-cut-covers
-  (implies (and (natp from) (natp total)
-                (fn-bpf-boundariesp boundaries from total))
-           (fn-bpf-covered-range (fn-bpf-cut payload from boundaries total)
-                                 from (- total from)))
-  :hints (("Goal" :induct (fn-bpf-cut payload from boundaries total))))
+;; OPEN, not certified: the step case needs a covered-range split lemma
+;; (a fragment over [from, b) plus a cover of [b, total) cover [from, total))
+;; that this book does not yet have.
+;; (defthm fn-bpf-cut-covers
+;;   (implies (and (natp from) (natp total)
+;;                 (fn-bpf-boundariesp boundaries from total))
+;;            (fn-bpf-covered-range (fn-bpf-cut payload from boundaries total)
+;;                                  from (- total from)))
+;;   :hints (("Goal" :induct (fn-bpf-cut payload from boundaries total))))
 
 ; -----------------------------------------------------------------------------
 ; Identity is preserved across fragmentation (RFC 9171 section 5.8)
@@ -381,6 +457,8 @@
                 (fn-bpp-flags-conformantp b)
                 (not (fn-bpp-identifiablep b)))
            (not (fn-bpf-fragmentablep b)))
-  :hints (("Goal" :in-theory (enable fn-bpp-identifiablep
-                                     fn-bpp-flags-conformantp
-                                     fn-bpf-fragmentablep))))
+  :hints (("Goal" :in-theory (e/d (fn-bpp-identifiablep
+                                   fn-bpp-flags-conformantp
+                                   fn-bpf-fragmentablep)
+                                  (fn-bpp-blockp fn-bpp-eidp fn-bpp-timep
+                                   fn-bpp-crc-typep fn-bpp-dtn-sspp)))))
