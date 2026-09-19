@@ -4,10 +4,13 @@ These tests drive the real bridge code against a scripted pipe instead of a
 live ACL2 process, so a lost, late or duplicated reply is reproducible.  No
 ACL2 semantics are modelled here; only the host's own transport discipline is.
 """
+import contextlib
+import io
 import os
 from pathlib import Path
 import socket
 import sys
+import threading
 import time
 import unittest
 from unittest import mock
@@ -193,6 +196,9 @@ class ReaderFailClosedTests(unittest.TestCase):
         def chunk(self, octets):
             raise RuntimeError("unexpected ACL2 octet-list result")
 
+        def close(self):
+            return None
+
     def serve(self, poisoned):
         server, client = socket.socketpair()
         self.addCleanup(server.close)
@@ -206,6 +212,47 @@ class ReaderFailClosedTests(unittest.TestCase):
 
     def test_a_merely_invalid_result_still_only_ends_the_connection(self):
         self.assertIsNone(self.serve(poisoned=False))
+
+    def run_listener(self, poisoned):
+        """Drive the real listener loop against one client, and report its code."""
+        output = io.StringIO()
+        result = []
+
+        def serve():
+            with contextlib.redirect_stdout(output):
+                try:
+                    result.append(run_reader.main())
+                except BaseException as error:  # surfaced by the assertion below
+                    result.append(error)
+
+        with mock.patch.object(run_reader, "Acl2Reader",
+                               return_value=self._Reader(poisoned)), \
+             mock.patch.object(run_reader.signal, "signal"), \
+             mock.patch.object(sys, "argv", ["run_reader", "--port", "0", "--once"]):
+            worker = threading.Thread(target=serve, daemon=True)
+            worker.start()
+            deadline = time.monotonic() + 10
+            while "LISTENING" not in output.getvalue() and time.monotonic() < deadline:
+                time.sleep(0.01)
+            port = int(output.getvalue().split("LISTENING ")[1].split()[0])
+            with socket.create_connection(("127.0.0.1", port), timeout=5) as client:
+                client.sendall(b"QUIT\r\n")
+                try:
+                    client.recv(64)
+                except OSError:
+                    pass
+            worker.join(timeout=10)
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(len(result), 1)
+        if isinstance(result[0], BaseException):
+            raise result[0]
+        return result[0]
+
+    def test_a_poisoned_bridge_makes_the_reader_process_exit_non_zero(self):
+        self.assertEqual(self.run_listener(poisoned=True), run_reader.EXIT_FAULT)
+
+    def test_an_ordinary_connection_leaves_the_reader_exit_zero(self):
+        self.assertEqual(self.run_listener(poisoned=False), run_reader.EXIT_OK)
 
 
 if __name__ == "__main__":
