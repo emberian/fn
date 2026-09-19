@@ -57,7 +57,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-stmt-` | `statement`, `statement-invariants` | Block-shaped statement header, item-sequence codec, content id, signing, receipt payloads |
 | `fn-lace-` | `lace`, `lace-invariants` | Statement sets keyed by content id: merge, canonicity, cross-canonicity, equivocation, causal closure |
 | `fn-pol-` | `policy`, `policy-invariants` | Group policy statements, the policy in force, authorization, policy term and receipts |
-| `fn-toy-`, `fn-t-` | `tests/acl2/*-tests` (substrate) | Test-only executable realisers attached with `defattach`, and test witnesses; never in `books/` |
+| `fn-toy-`, `fn-t-` | `tests/acl2/*-tests` | Test-only executable realisers attached with `defattach`, and test witnesses; never in `books/`.  `fn-t-anchor-{leaf-digest,sig-verify}` (`tests/acl2/anchor-teeth-tests`) realise the two A-CRYPTO seams of `books/anchor` so the keystones' own subjects evaluate |
 | `fn-me-` | `membership-epochs`, `membership-epochs-invariants` | Group membership as epochs: commits over a base epoch, adopted chain and evidence set, the lace-shaped merge with explicit fork evidence, rosters, revocation knowledge, and the four-way admissibility decision for a late message. A policy model: no keys, no ciphertext, no digest |
 
 Host-only wrappers in `host/*.lisp` use `fn-store-`, `fn-bpreq-`, `fn-bpwf-`,

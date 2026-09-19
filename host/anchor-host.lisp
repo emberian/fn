@@ -6,8 +6,9 @@
 ; the Ed25519 verdict arrives as an argument, exactly as the integrity trailer
 ; does in host/store-host.lisp.  The octets that verdict is about are produced
 ; here by `fn-anchor-signed-from-root', not by the host:
-; `fn-anchor-restore-observed-is-restore' and
-; `fn-anchor-node-accept-observed-is-node-accept' in
+; `fn-anchor-restore-observed-is-restore',
+; `fn-anchor-node-accept-observed-is-node-accept' and
+; `fn-anchor-node-advance-observed-is-node-advance' in
 ; books/anchor-invariants.lisp equate these entries with the functions the
 ; keystones are about, under that one hypothesis.
 
@@ -64,6 +65,21 @@
                                   incarnation)
                   (fn-anchor-host-fields fields) verdict)))
     (list (fn-anchor-status outcome) (fn-anchor-reason outcome))))
+
+; Advancing this node's incarnation under one observation.  OBJ-006: the new
+; incarnation is opened only under an anchor strictly newer than the one the
+; node holds, which `fn-anchor-incarnation-advances-only-under-a-newer-anchor'
+; is about.
+(defun fn-anchor-host-advance (pinned latest-fields incarnation fields verdict)
+  (let ((outcome (fn-anchor-node-advance-observed
+                  (fn-anchor-node pinned (fn-anchor-host-fields latest-fields)
+                                  incarnation)
+                  (fn-anchor-host-fields fields) verdict)))
+    (list (fn-anchor-status outcome)
+          (fn-anchor-reason outcome)
+          (if (equal (fn-anchor-status outcome) :accepted)
+              (fn-anchor-node-incarnation (fn-anchor-payload outcome))
+            incarnation))))
 
 ; The restore decision over an image the host read off disk.
 (defun fn-anchor-host-restore (pinned image-incarnation image-fields

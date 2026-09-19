@@ -30,12 +30,30 @@
 ; resistant, or that a Roughtime server is honest.  `fn-anchor-sig-verify' and
 ; `fn-anchor-leaf-digest' are constrained functions (A-CRYPTO in shape; see
 ; the note at each encapsulate), and specs/anchor.md carries the trust.
+;
+; Style: docs/proof-style.md.  The four records here -- the anchor statement,
+; the outcome, the node's durable state and a store image -- are opaque: a
+; shape predicate, a constructor, total `:guard t' accessors, one
+; accessor-of-constructor lemma per field, the three forward-chaining shape
+; facts, and then the `:definition' runes withdrawn.  The book ends with an
+; export theory; an includer that must open a definition enables
+; `fn-anchor-vocabulary' (or `fn-anchor-octet-vocabulary') locally.
 
 (in-package "ACL2")
 (include-book "frame")
 (include-book "clock")
 (local (include-book "arithmetic/top" :dir :system))
 (local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
+
+; Local vocabulary re-enable (docs/proof-style.md sec. 2).  This book builds
+; octet lists by `append' and reads its own field widths, so it needs cbor's
+; withdrawn list arithmetic; the frame grammar and the frame result records
+; are opened only in the FNAN section below, and are enabled there.
+(local (in-theory (enable fn-cbor-invariants-vocabulary)))
+
+; The clock book contributes only *fn-clock-max* (a constant), so no clock
+; vocabulary is enabled here; if the bp deputy's realignment gives clock an
+; export theory, this book still needs no edit.
 
 ; -----------------------------------------------------------------------------
 ; Domains
@@ -80,6 +98,32 @@
 (verify-guards fn-anchor-octets-of-lengthp)
 (verify-guards fn-anchor-timep)
 
+; The width predicate is withdrawn at export: its second conjunct is a `len'
+; equality, and a `len'-backchaining rule must not leave a book
+; (docs/proof-style.md sec. 8).  What an includer needs from it lands in the
+; context by forward chaining instead.
+(defthm fn-anchor-octets-of-lengthp-forward
+  (implies (fn-anchor-octets-of-lengthp xs n)
+           (and (fn-cbor-octet-listp xs) (equal (len xs) n)))
+  :rule-classes :forward-chaining)
+
+; -----------------------------------------------------------------------------
+; Total selectors
+;
+; The record accessors below are total (`:guard t') with an `mbe' whose
+; `:logic' is the raw selector chain and whose `:exec' is these two helpers,
+; exactly as `fn-ag-car'/`fn-ag-cdr' serve the core cluster.  Each helper is
+; its logical primitive by `mbe', so opening its definition is the equality
+; and no `-is-' twin is exported.
+
+(defun fn-anchor-ag-car (x)
+  (declare (xargs :guard t))
+  (mbe :logic (car x) :exec (if (consp x) (car x) nil)))
+
+(defun fn-anchor-ag-cdr (x)
+  (declare (xargs :guard t))
+  (mbe :logic (cdr x) :exec (if (consp x) (cdr x) nil)))
+
 ; -----------------------------------------------------------------------------
 ; Little-endian fields
 ;
@@ -104,7 +148,7 @@
   (equal (len (fn-anchor-le-bytes n k)) (nfix k))
   :hints (("Goal" :in-theory (disable floor mod))))
 
-(local (in-theory (disable fn-anchor-le-bytes)))
+(in-theory (disable (:d fn-anchor-le-bytes)))
 
 ; -----------------------------------------------------------------------------
 ; A-CRYPTO, first seam: the Merkle leaf digest
@@ -132,6 +176,10 @@
 ; signature octets to a boolean.  This is the shape the crypto seam another
 ; lane is building will carry; when that book lands, this encapsulate is the
 ; one to retire by functional instantiation rather than a second copy.
+; `books/crypto-seam.lisp' is now on `dev', but its seam is a digest and a
+; tagged-preimage signature over fn's own statements, not an Ed25519 check of
+; a foreign server's message; the retirement is an open cross-cluster item and
+; is recorded in planning/lanes/HANDOFF-w3-time-anchor.md, not done here.
 ;
 ; Two constraints keep the seam from swallowing the theorems that use it: the
 ; verdict is a boolean, and a key or signature of the wrong length is never
@@ -141,6 +189,7 @@
   (((fn-anchor-sig-verify * * *) => *))
 
   (local (defun fn-anchor-sig-verify (key message signature)
+           (declare (xargs :guard t))
            (and (fn-anchor-octets-of-lengthp key *fn-anchor-key-octets*)
                 (fn-anchor-octets-of-lengthp signature *fn-anchor-sig-octets*)
                 (consp message)
@@ -161,7 +210,88 @@
              (not (fn-anchor-sig-verify key message signature)))))
 
 ; -----------------------------------------------------------------------------
-; The anchor statement
+; The anchor statement, as an opaque record
+
+(defun fn-anchor-shapep (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 10) (equal (car x) :fn-anchor)))
+
+(defun fn-anchor-key (a)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr a)) :exec (fn-anchor-ag-car (fn-anchor-ag-cdr a))))
+
+(defun fn-anchor-delegate (a)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr a)))
+       :exec (fn-anchor-ag-car (fn-anchor-ag-cdr (fn-anchor-ag-cdr a)))))
+
+(defun fn-anchor-mint (a)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr (cdr a))))
+       :exec (fn-anchor-ag-car
+              (fn-anchor-ag-cdr (fn-anchor-ag-cdr (fn-anchor-ag-cdr a))))))
+
+(defun fn-anchor-maxt (a)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr (cdr (cdr a)))))
+       :exec (fn-anchor-ag-car
+              (fn-anchor-ag-cdr
+               (fn-anchor-ag-cdr (fn-anchor-ag-cdr (fn-anchor-ag-cdr a)))))))
+
+(defun fn-anchor-delegation-signature (a)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr a))))))
+       :exec (fn-anchor-ag-car
+              (fn-anchor-ag-cdr
+               (fn-anchor-ag-cdr
+                (fn-anchor-ag-cdr
+                 (fn-anchor-ag-cdr (fn-anchor-ag-cdr a))))))))
+
+(defun fn-anchor-midpoint (a)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr a)))))))
+       :exec (fn-anchor-ag-car
+              (fn-anchor-ag-cdr
+               (fn-anchor-ag-cdr
+                (fn-anchor-ag-cdr
+                 (fn-anchor-ag-cdr
+                  (fn-anchor-ag-cdr (fn-anchor-ag-cdr a)))))))))
+
+(defun fn-anchor-radius (a)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr a))))))))
+       :exec (fn-anchor-ag-car
+              (fn-anchor-ag-cdr
+               (fn-anchor-ag-cdr
+                (fn-anchor-ag-cdr
+                 (fn-anchor-ag-cdr
+                  (fn-anchor-ag-cdr
+                   (fn-anchor-ag-cdr (fn-anchor-ag-cdr a))))))))))
+
+(defun fn-anchor-nonce (a)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr a)))))))))
+       :exec (fn-anchor-ag-car
+              (fn-anchor-ag-cdr
+               (fn-anchor-ag-cdr
+                (fn-anchor-ag-cdr
+                 (fn-anchor-ag-cdr
+                  (fn-anchor-ag-cdr
+                   (fn-anchor-ag-cdr
+                    (fn-anchor-ag-cdr (fn-anchor-ag-cdr a)))))))))))
+
+(defun fn-anchor-signature (a)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr a))))))))))
+       :exec (fn-anchor-ag-car
+              (fn-anchor-ag-cdr
+               (fn-anchor-ag-cdr
+                (fn-anchor-ag-cdr
+                 (fn-anchor-ag-cdr
+                  (fn-anchor-ag-cdr
+                   (fn-anchor-ag-cdr
+                    (fn-anchor-ag-cdr
+                     (fn-anchor-ag-cdr (fn-anchor-ag-cdr a))))))))))))
 
 (defun fn-anchor (key-id delegate mint maxt delegation-signature
                   midpoint radius nonce signature)
@@ -169,68 +299,130 @@
   (list :fn-anchor key-id delegate mint maxt delegation-signature
         midpoint radius nonce signature))
 
+(defthm fn-anchor-shapep-of-fn-anchor
+  (fn-anchor-shapep (fn-anchor key-id delegate mint maxt delegation-signature
+                               midpoint radius nonce signature)))
+
+(defthm fn-anchor-key-of-fn-anchor
+  (equal (fn-anchor-key (fn-anchor key-id delegate mint maxt
+                                   delegation-signature midpoint radius
+                                   nonce signature))
+         key-id))
+
+(defthm fn-anchor-delegate-of-fn-anchor
+  (equal (fn-anchor-delegate (fn-anchor key-id delegate mint maxt
+                                        delegation-signature midpoint radius
+                                        nonce signature))
+         delegate))
+
+(defthm fn-anchor-mint-of-fn-anchor
+  (equal (fn-anchor-mint (fn-anchor key-id delegate mint maxt
+                                    delegation-signature midpoint radius
+                                    nonce signature))
+         mint))
+
+(defthm fn-anchor-maxt-of-fn-anchor
+  (equal (fn-anchor-maxt (fn-anchor key-id delegate mint maxt
+                                    delegation-signature midpoint radius
+                                    nonce signature))
+         maxt))
+
+(defthm fn-anchor-delegation-signature-of-fn-anchor
+  (equal (fn-anchor-delegation-signature
+          (fn-anchor key-id delegate mint maxt delegation-signature
+                     midpoint radius nonce signature))
+         delegation-signature))
+
+(defthm fn-anchor-midpoint-of-fn-anchor
+  (equal (fn-anchor-midpoint (fn-anchor key-id delegate mint maxt
+                                        delegation-signature midpoint radius
+                                        nonce signature))
+         midpoint))
+
+(defthm fn-anchor-radius-of-fn-anchor
+  (equal (fn-anchor-radius (fn-anchor key-id delegate mint maxt
+                                      delegation-signature midpoint radius
+                                      nonce signature))
+         radius))
+
+(defthm fn-anchor-nonce-of-fn-anchor
+  (equal (fn-anchor-nonce (fn-anchor key-id delegate mint maxt
+                                     delegation-signature midpoint radius
+                                     nonce signature))
+         nonce))
+
+(defthm fn-anchor-signature-of-fn-anchor
+  (equal (fn-anchor-signature (fn-anchor key-id delegate mint maxt
+                                         delegation-signature midpoint radius
+                                         nonce signature))
+         signature))
+
+; What opacity takes away (docs/proof-style.md sec. 1): the shape facts type
+; reasoning used to supply, exported back as forward-chaining rules only.
+(defthm fn-anchor-shapep-forward-shape
+  (implies (fn-anchor-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
+
+(defthm fn-anchor-accessors-forward-consp
+  (and (implies (fn-anchor-key x) (consp x))
+       (implies (fn-anchor-delegate x) (consp x))
+       (implies (fn-anchor-mint x) (consp x))
+       (implies (fn-anchor-maxt x) (consp x))
+       (implies (fn-anchor-delegation-signature x) (consp x))
+       (implies (fn-anchor-midpoint x) (consp x))
+       (implies (fn-anchor-radius x) (consp x))
+       (implies (fn-anchor-nonce x) (consp x))
+       (implies (fn-anchor-signature x) (consp x)))
+  :rule-classes
+  ((:forward-chaining :corollary (implies (fn-anchor-key x) (consp x))
+                      :trigger-terms ((fn-anchor-key x)))
+   (:forward-chaining :corollary (implies (fn-anchor-delegate x) (consp x))
+                      :trigger-terms ((fn-anchor-delegate x)))
+   (:forward-chaining :corollary (implies (fn-anchor-mint x) (consp x))
+                      :trigger-terms ((fn-anchor-mint x)))
+   (:forward-chaining :corollary (implies (fn-anchor-maxt x) (consp x))
+                      :trigger-terms ((fn-anchor-maxt x)))
+   (:forward-chaining :corollary (implies (fn-anchor-delegation-signature x)
+                                          (consp x))
+                      :trigger-terms ((fn-anchor-delegation-signature x)))
+   (:forward-chaining :corollary (implies (fn-anchor-midpoint x) (consp x))
+                      :trigger-terms ((fn-anchor-midpoint x)))
+   (:forward-chaining :corollary (implies (fn-anchor-radius x) (consp x))
+                      :trigger-terms ((fn-anchor-radius x)))
+   (:forward-chaining :corollary (implies (fn-anchor-nonce x) (consp x))
+                      :trigger-terms ((fn-anchor-nonce x)))
+   (:forward-chaining :corollary (implies (fn-anchor-signature x) (consp x))
+                      :trigger-terms ((fn-anchor-signature x)))))
+
+(in-theory (disable (:d fn-anchor-shapep) (:d fn-anchor)
+                    (:d fn-anchor-key) (:d fn-anchor-delegate)
+                    (:d fn-anchor-mint) (:d fn-anchor-maxt)
+                    (:d fn-anchor-delegation-signature)
+                    (:d fn-anchor-midpoint) (:d fn-anchor-radius)
+                    (:d fn-anchor-nonce) (:d fn-anchor-signature)))
+
 (defun fn-anchor-p (x)
   (declare (xargs :guard t))
-  (and (true-listp x)
-       (equal (len x) 10)
-       (equal (car x) :fn-anchor)
-       (fn-anchor-octets-of-lengthp (nth 1 x) *fn-anchor-key-octets*)
-       (fn-anchor-octets-of-lengthp (nth 2 x) *fn-anchor-key-octets*)
-       (fn-anchor-timep (nth 3 x))
-       (fn-anchor-timep (nth 4 x))
-       (fn-anchor-octets-of-lengthp (nth 5 x) *fn-anchor-sig-octets*)
-       (fn-anchor-timep (nth 6 x))
-       (fn-anchor-timep (nth 7 x))
-       (fn-anchor-octets-of-lengthp (nth 8 x) *fn-anchor-nonce-octets*)
-       (fn-anchor-octets-of-lengthp (nth 9 x) *fn-anchor-sig-octets*)))
+  (and (fn-anchor-shapep x)
+       (fn-anchor-octets-of-lengthp (fn-anchor-key x) *fn-anchor-key-octets*)
+       (fn-anchor-octets-of-lengthp (fn-anchor-delegate x)
+                                    *fn-anchor-key-octets*)
+       (fn-anchor-timep (fn-anchor-mint x))
+       (fn-anchor-timep (fn-anchor-maxt x))
+       (fn-anchor-octets-of-lengthp (fn-anchor-delegation-signature x)
+                                    *fn-anchor-sig-octets*)
+       (fn-anchor-timep (fn-anchor-midpoint x))
+       (fn-anchor-timep (fn-anchor-radius x))
+       (fn-anchor-octets-of-lengthp (fn-anchor-nonce x)
+                                    *fn-anchor-nonce-octets*)
+       (fn-anchor-octets-of-lengthp (fn-anchor-signature x)
+                                    *fn-anchor-sig-octets*)))
 
-(defun fn-anchor-key (a)
-  (declare (xargs :guard (fn-anchor-p a)))
-  (nth 1 a))
-
-(defun fn-anchor-delegate (a)
-  (declare (xargs :guard (fn-anchor-p a)))
-  (nth 2 a))
-
-(defun fn-anchor-mint (a)
-  (declare (xargs :guard (fn-anchor-p a)))
-  (nth 3 a))
-
-(defun fn-anchor-maxt (a)
-  (declare (xargs :guard (fn-anchor-p a)))
-  (nth 4 a))
-
-(defun fn-anchor-delegation-signature (a)
-  (declare (xargs :guard (fn-anchor-p a)))
-  (nth 5 a))
-
-(defun fn-anchor-midpoint (a)
-  (declare (xargs :guard (fn-anchor-p a)))
-  (nth 6 a))
-
-(defun fn-anchor-radius (a)
-  (declare (xargs :guard (fn-anchor-p a)))
-  (nth 7 a))
-
-(defun fn-anchor-nonce (a)
-  (declare (xargs :guard (fn-anchor-p a)))
-  (nth 8 a))
-
-(defun fn-anchor-signature (a)
-  (declare (xargs :guard (fn-anchor-p a)))
-  (nth 9 a))
-
-(verify-guards fn-anchor)
 (verify-guards fn-anchor-p)
-(verify-guards fn-anchor-key)
-(verify-guards fn-anchor-delegate)
-(verify-guards fn-anchor-mint)
-(verify-guards fn-anchor-maxt)
-(verify-guards fn-anchor-delegation-signature)
-(verify-guards fn-anchor-midpoint)
-(verify-guards fn-anchor-radius)
-(verify-guards fn-anchor-nonce)
-(verify-guards fn-anchor-signature)
+
+(defthm fn-anchor-p-forward-shape
+  (implies (fn-anchor-p x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
 
 ; -----------------------------------------------------------------------------
 ; What the server signed
@@ -242,7 +434,7 @@
 ; its own nonce, PATH is empty and INDX is zero.
 
 (defun fn-anchor-root (a)
-  (declare (xargs :guard (fn-anchor-p a)))
+  (declare (xargs :guard t))
   (fn-anchor-leaf-digest (fn-anchor-nonce a)))
 
 (defun fn-anchor-srep-from-root (radius midpoint root)
@@ -272,7 +464,19 @@
                             (fn-anchor-midpoint a)
                             (fn-anchor-root a)))
 
-(verify-guards fn-anchor-srep-octets)
+; The `mbe'/guard equalities below exist to discharge guards and to record the
+; widths of the two reconstructions; they are not rewrite rules
+; (docs/proof-style.md sec. 3) and are cited by `:use'.
+(defthm fn-anchor-srep-octets-guard
+  (implies (fn-anchor-p a)
+           (and (fn-anchor-timep (fn-anchor-radius a))
+                (fn-anchor-timep (fn-anchor-midpoint a))
+                (fn-anchor-octets-of-lengthp (fn-anchor-root a)
+                                             *fn-anchor-root-octets*)))
+  :rule-classes nil)
+
+(verify-guards fn-anchor-srep-octets
+  :hints (("Goal" :use (fn-anchor-srep-octets-guard))))
 
 (defun fn-anchor-signed-from-root (radius midpoint root)
   (declare (xargs :guard (and (fn-anchor-timep radius)
@@ -284,6 +488,15 @@
           (fn-anchor-srep-from-root radius midpoint root)))
 
 (verify-guards fn-anchor-signed-from-root)
+
+(defun fn-anchor-signed-octets (a)
+  (declare (xargs :guard (fn-anchor-p a) :verify-guards nil))
+  (fn-anchor-signed-from-root (fn-anchor-radius a)
+                              (fn-anchor-midpoint a)
+                              (fn-anchor-root a)))
+
+(verify-guards fn-anchor-signed-octets
+  :hints (("Goal" :use (fn-anchor-srep-octets-guard))))
 
 ; The delegation message DELE, rebuilt the same way: three tags in ascending
 ; little-endian order, PUBK then MINT then MAXT, values 32, 8 and 8 octets.
@@ -299,7 +512,7 @@
                                           (append *fn-anchor-tag-maxt*
                                                   (append (fn-anchor-delegate a)
                                                           (append (fn-anchor-le-bytes (fn-anchor-mint a) 8)
-                                                                  (fn-anchor-le-bytes (fn-anchor-maxt a) 8)))))))))) 
+                                                                  (fn-anchor-le-bytes (fn-anchor-maxt a) 8))))))))))
 
 (verify-guards fn-anchor-dele-octets)
 
@@ -315,28 +528,68 @@
 
 (defthm fn-anchor-dele-octets-length
   (implies (fn-anchor-p a)
-           (equal (len (fn-anchor-dele-octets a)) 72)))
+           (equal (len (fn-anchor-dele-octets a)) 72))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-frame-len-of-append))))
 
 (defthm fn-anchor-srep-octets-are-octets
   (fn-cbor-octet-listp (fn-anchor-srep-octets a)))
 
 (defthm fn-anchor-srep-octets-length
-  (equal (len (fn-anchor-srep-octets a)) 100))
+  (equal (len (fn-anchor-srep-octets a)) 100)
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-frame-len-of-append))))
 
 (defthm fn-anchor-signed-octets-are-octets
   (fn-cbor-octet-listp (fn-anchor-signed-octets a)))
 
-; The signed message determines the nonce's digest: two anchors that were
-; signed over the same octets have the same Merkle root.  This is what makes
-; the nonce load-bearing without assuming anything about SHA-512.
+; Equal-length prefixes cancel.  This is the only fact the keystone below
+; needs about `append', and it is proof vocabulary, so it is local and
+; `:rule-classes nil' (docs/proof-style.md sec. 3).
+(local
+ (defun fn-anchor-append-induction (a b)
+   (declare (xargs :guard t))
+   (if (or (atom a) (atom b))
+       (list a b)
+     (fn-anchor-append-induction (cdr a) (cdr b)))))
+
+(local
+ (defthm fn-anchor-append-cancels-equal-length-prefixes
+   (implies (and (equal (len a) (len b))
+                 (equal (append a x) (append b y)))
+            (equal x y))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-anchor-append-induction a b)))))
+
+; KEYSTONE.  The signed message determines the nonce's digest: two anchors that
+; were signed over the same octets have the same Merkle root.  This is what
+; makes the nonce load-bearing without assuming anything about SHA-512.
 (defthm fn-anchor-signed-octets-determine-the-root
   (implies (and (fn-anchor-p a)
                 (fn-anchor-p b)
                 (equal (fn-anchor-signed-octets a) (fn-anchor-signed-octets b)))
            (equal (fn-anchor-root a) (fn-anchor-root b)))
-  :hints (("Goal" :in-theory (enable fn-anchor-signed-octets
-                                     fn-anchor-signed-from-root
-                                     fn-anchor-srep-from-root))))
+  :hints (("Goal"
+           :in-theory (enable fn-anchor-signed-octets
+                              fn-anchor-signed-from-root
+                              fn-anchor-srep-from-root)
+           :use ((:instance fn-anchor-append-cancels-equal-length-prefixes
+                            (a (fn-anchor-le-bytes (fn-anchor-radius a) 4))
+                            (b (fn-anchor-le-bytes (fn-anchor-radius b) 4))
+                            (x (append (fn-anchor-le-bytes
+                                        (fn-anchor-midpoint a) 8)
+                                       (fn-anchor-leaf-digest
+                                        (fn-anchor-nonce a))))
+                            (y (append (fn-anchor-le-bytes
+                                        (fn-anchor-midpoint b) 8)
+                                       (fn-anchor-leaf-digest
+                                        (fn-anchor-nonce b)))))
+                 (:instance fn-anchor-append-cancels-equal-length-prefixes
+                            (a (fn-anchor-le-bytes (fn-anchor-midpoint a) 8))
+                            (b (fn-anchor-le-bytes (fn-anchor-midpoint b) 8))
+                            (x (fn-anchor-leaf-digest (fn-anchor-nonce a)))
+                            (y (fn-anchor-leaf-digest
+                                (fn-anchor-nonce b))))))))
 
 ; -----------------------------------------------------------------------------
 ; Validity and pinning
@@ -407,77 +660,159 @@
 (verify-guards fn-anchor-newerp)
 
 ; -----------------------------------------------------------------------------
-; Outcomes
+; Outcomes, as an opaque record
 ;
 ; Three outcomes stay distinct all the way out (AGENTS.md, D13).  `:uncertain'
 ; is the answer when no anchor could be obtained at all: the node does not know
 ; whether the image is stale, and that is not the same as knowing it is.
 
+(defun fn-anchor-outcome-shapep (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 4) (equal (car x) :fn-anchor-outcome)))
+
+(defun fn-anchor-status (x)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr x)) :exec (fn-anchor-ag-car (fn-anchor-ag-cdr x))))
+
+(defun fn-anchor-reason (x)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr x)))
+       :exec (fn-anchor-ag-car (fn-anchor-ag-cdr (fn-anchor-ag-cdr x)))))
+
+(defun fn-anchor-payload (x)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr (cdr x))))
+       :exec (fn-anchor-ag-car
+              (fn-anchor-ag-cdr (fn-anchor-ag-cdr (fn-anchor-ag-cdr x))))))
+
 (defun fn-anchor-outcome (status reason payload)
   (declare (xargs :guard t))
   (list :fn-anchor-outcome status reason payload))
 
+(defthm fn-anchor-outcome-shapep-of-fn-anchor-outcome
+  (fn-anchor-outcome-shapep (fn-anchor-outcome status reason payload)))
+
+(defthm fn-anchor-status-of-fn-anchor-outcome
+  (equal (fn-anchor-status (fn-anchor-outcome status reason payload)) status))
+
+(defthm fn-anchor-reason-of-fn-anchor-outcome
+  (equal (fn-anchor-reason (fn-anchor-outcome status reason payload)) reason))
+
+(defthm fn-anchor-payload-of-fn-anchor-outcome
+  (equal (fn-anchor-payload (fn-anchor-outcome status reason payload)) payload))
+
+(defthm fn-anchor-outcome-shapep-forward-shape
+  (implies (fn-anchor-outcome-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
+
+(defthm fn-anchor-outcome-accessors-forward-consp
+  (and (implies (fn-anchor-status x) (consp x))
+       (implies (fn-anchor-reason x) (consp x))
+       (implies (fn-anchor-payload x) (consp x)))
+  :rule-classes
+  ((:forward-chaining :corollary (implies (fn-anchor-status x) (consp x))
+                      :trigger-terms ((fn-anchor-status x)))
+   (:forward-chaining :corollary (implies (fn-anchor-reason x) (consp x))
+                      :trigger-terms ((fn-anchor-reason x)))
+   (:forward-chaining :corollary (implies (fn-anchor-payload x) (consp x))
+                      :trigger-terms ((fn-anchor-payload x)))))
+
+(in-theory (disable (:d fn-anchor-outcome-shapep) (:d fn-anchor-outcome)
+                    (:d fn-anchor-status) (:d fn-anchor-reason)
+                    (:d fn-anchor-payload)))
+
 (defun fn-anchor-outcomep (x)
   (declare (xargs :guard t))
-  (and (true-listp x)
-       (equal (len x) 4)
-       (equal (car x) :fn-anchor-outcome)))
+  (fn-anchor-outcome-shapep x))
 
-(defun fn-anchor-status (x)
-  (declare (xargs :guard (fn-anchor-outcomep x)))
-  (nth 1 x))
-
-(defun fn-anchor-reason (x)
-  (declare (xargs :guard (fn-anchor-outcomep x)))
-  (nth 2 x))
-
-(defun fn-anchor-payload (x)
-  (declare (xargs :guard (fn-anchor-outcomep x)))
-  (nth 3 x))
-
-(verify-guards fn-anchor-outcome)
 (verify-guards fn-anchor-outcomep)
-(verify-guards fn-anchor-status)
-(verify-guards fn-anchor-reason)
-(verify-guards fn-anchor-payload)
+
+(defthm fn-anchor-outcomep-forward-shape
+  (implies (fn-anchor-outcomep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
 
 ; -----------------------------------------------------------------------------
-; The node's durable anchor state
+; The node's durable anchor state, as an opaque record
+
+(defun fn-anchor-node-shapep (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 4) (equal (car x) :fn-anchor-node)))
+
+(defun fn-anchor-node-pinned (x)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr x)) :exec (fn-anchor-ag-car (fn-anchor-ag-cdr x))))
+
+(defun fn-anchor-node-latest (x)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr x)))
+       :exec (fn-anchor-ag-car (fn-anchor-ag-cdr (fn-anchor-ag-cdr x)))))
+
+(defun fn-anchor-node-incarnation (x)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr (cdr x))))
+       :exec (fn-anchor-ag-car
+              (fn-anchor-ag-cdr (fn-anchor-ag-cdr (fn-anchor-ag-cdr x))))))
 
 (defun fn-anchor-node (pinned latest incarnation)
   (declare (xargs :guard t))
   (list :fn-anchor-node pinned latest incarnation))
 
+(defthm fn-anchor-node-shapep-of-fn-anchor-node
+  (fn-anchor-node-shapep (fn-anchor-node pinned latest incarnation)))
+
+(defthm fn-anchor-node-pinned-of-fn-anchor-node
+  (equal (fn-anchor-node-pinned (fn-anchor-node pinned latest incarnation))
+         pinned))
+
+(defthm fn-anchor-node-latest-of-fn-anchor-node
+  (equal (fn-anchor-node-latest (fn-anchor-node pinned latest incarnation))
+         latest))
+
+(defthm fn-anchor-node-incarnation-of-fn-anchor-node
+  (equal (fn-anchor-node-incarnation
+          (fn-anchor-node pinned latest incarnation))
+         incarnation))
+
+(defthm fn-anchor-node-shapep-forward-shape
+  (implies (fn-anchor-node-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
+
+(defthm fn-anchor-node-accessors-forward-consp
+  (and (implies (fn-anchor-node-pinned x) (consp x))
+       (implies (fn-anchor-node-latest x) (consp x))
+       (implies (fn-anchor-node-incarnation x) (consp x)))
+  :rule-classes
+  ((:forward-chaining :corollary (implies (fn-anchor-node-pinned x) (consp x))
+                      :trigger-terms ((fn-anchor-node-pinned x)))
+   (:forward-chaining :corollary (implies (fn-anchor-node-latest x) (consp x))
+                      :trigger-terms ((fn-anchor-node-latest x)))
+   (:forward-chaining :corollary (implies (fn-anchor-node-incarnation x)
+                                          (consp x))
+                      :trigger-terms ((fn-anchor-node-incarnation x)))))
+
+(in-theory (disable (:d fn-anchor-node-shapep) (:d fn-anchor-node)
+                    (:d fn-anchor-node-pinned) (:d fn-anchor-node-latest)
+                    (:d fn-anchor-node-incarnation)))
+
 (defun fn-anchor-nodep (x)
   (declare (xargs :guard t))
-  (and (true-listp x)
-       (equal (len x) 4)
-       (equal (car x) :fn-anchor-node)
-       (true-listp (nth 1 x))
-       (or (null (nth 2 x)) (fn-anchor-p (nth 2 x)))
-       (natp (nth 3 x))))
+  (and (fn-anchor-node-shapep x)
+       (true-listp (fn-anchor-node-pinned x))
+       (or (null (fn-anchor-node-latest x))
+           (fn-anchor-p (fn-anchor-node-latest x)))
+       (natp (fn-anchor-node-incarnation x))))
 
-(defun fn-anchor-node-pinned (x)
-  (declare (xargs :guard (fn-anchor-nodep x)))
-  (nth 1 x))
-
-(defun fn-anchor-node-latest (x)
-  (declare (xargs :guard (fn-anchor-nodep x)))
-  (nth 2 x))
-
-(defun fn-anchor-node-incarnation (x)
-  (declare (xargs :guard (fn-anchor-nodep x)))
-  (nth 3 x))
-
-(verify-guards fn-anchor-node)
 (verify-guards fn-anchor-nodep)
-(verify-guards fn-anchor-node-pinned)
-(verify-guards fn-anchor-node-latest)
-(verify-guards fn-anchor-node-incarnation)
+
+(defthm fn-anchor-nodep-forward-shape
+  (implies (fn-anchor-nodep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
 
 ; Accepting an anchor into the node's durable state.  A node that already holds
 ; an anchor accepts only a strictly newer one; the refusal reasons stay apart
-; so an operator can tell an unverified response from a stale one.
+; so an operator can tell an unverified response from a stale one.  The guard
+; carries `fn-anchor-nodep' rather than re-deciding it (docs/proof-style.md
+; sec. 4); the logic body is total and unchanged.
 (defun fn-anchor-node-accept (node a)
   (declare (xargs :guard (fn-anchor-nodep node) :verify-guards nil))
   (if (not (fn-anchor-p a))
@@ -530,7 +865,7 @@
 (verify-guards fn-anchor-node-advance)
 
 ; -----------------------------------------------------------------------------
-; A store image and the restore decision
+; A store image and the restore decision, as an opaque record
 ;
 ; An image is a snapshot offered to a node: the incarnation it claims and the
 ; newest anchor any durable record inside it refers to.  An image that refers
@@ -538,30 +873,65 @@
 ; only under an anchor the node can verify, because there is nothing it could
 ; be stale with respect to.
 
+(defun fn-anchor-image-shapep (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 3) (equal (car x) :fn-anchor-image)))
+
+(defun fn-anchor-image-incarnation (x)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr x)) :exec (fn-anchor-ag-car (fn-anchor-ag-cdr x))))
+
+(defun fn-anchor-image-referenced (x)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr x)))
+       :exec (fn-anchor-ag-car (fn-anchor-ag-cdr (fn-anchor-ag-cdr x)))))
+
 (defun fn-anchor-image (incarnation referenced)
   (declare (xargs :guard t))
   (list :fn-anchor-image incarnation referenced))
 
+(defthm fn-anchor-image-shapep-of-fn-anchor-image
+  (fn-anchor-image-shapep (fn-anchor-image incarnation referenced)))
+
+(defthm fn-anchor-image-incarnation-of-fn-anchor-image
+  (equal (fn-anchor-image-incarnation (fn-anchor-image incarnation referenced))
+         incarnation))
+
+(defthm fn-anchor-image-referenced-of-fn-anchor-image
+  (equal (fn-anchor-image-referenced (fn-anchor-image incarnation referenced))
+         referenced))
+
+(defthm fn-anchor-image-shapep-forward-shape
+  (implies (fn-anchor-image-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
+
+(defthm fn-anchor-image-accessors-forward-consp
+  (and (implies (fn-anchor-image-incarnation x) (consp x))
+       (implies (fn-anchor-image-referenced x) (consp x)))
+  :rule-classes
+  ((:forward-chaining
+    :corollary (implies (fn-anchor-image-incarnation x) (consp x))
+    :trigger-terms ((fn-anchor-image-incarnation x)))
+   (:forward-chaining
+    :corollary (implies (fn-anchor-image-referenced x) (consp x))
+    :trigger-terms ((fn-anchor-image-referenced x)))))
+
+(in-theory (disable (:d fn-anchor-image-shapep) (:d fn-anchor-image)
+                    (:d fn-anchor-image-incarnation)
+                    (:d fn-anchor-image-referenced)))
+
 (defun fn-anchor-imagep (x)
   (declare (xargs :guard t))
-  (and (true-listp x)
-       (equal (len x) 3)
-       (equal (car x) :fn-anchor-image)
-       (natp (nth 1 x))
-       (or (null (nth 2 x)) (fn-anchor-p (nth 2 x)))))
+  (and (fn-anchor-image-shapep x)
+       (natp (fn-anchor-image-incarnation x))
+       (or (null (fn-anchor-image-referenced x))
+           (fn-anchor-p (fn-anchor-image-referenced x)))))
 
-(defun fn-anchor-image-incarnation (x)
-  (declare (xargs :guard (fn-anchor-imagep x)))
-  (nth 1 x))
-
-(defun fn-anchor-image-referenced (x)
-  (declare (xargs :guard (fn-anchor-imagep x)))
-  (nth 2 x))
-
-(verify-guards fn-anchor-image)
 (verify-guards fn-anchor-imagep)
-(verify-guards fn-anchor-image-incarnation)
-(verify-guards fn-anchor-image-referenced)
+
+(defthm fn-anchor-imagep-forward-shape
+  (implies (fn-anchor-imagep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
 
 (defun fn-anchor-restore (node image presented)
   (declare (xargs :guard (and (fn-anchor-nodep node) (fn-anchor-imagep image))
@@ -646,6 +1016,19 @@
 
 (verify-guards fn-anchor-node-accept-observed)
 
+(defun fn-anchor-node-advance-observed (node a verdict)
+  (declare (xargs :guard (fn-anchor-nodep node) :verify-guards nil))
+  (let ((outcome (fn-anchor-node-accept-observed node a verdict)))
+    (if (not (equal (fn-anchor-status outcome) :accepted))
+        outcome
+      (fn-anchor-outcome
+       :accepted nil
+       (fn-anchor-node (fn-anchor-node-pinned node)
+                       a
+                       (+ 1 (fn-anchor-node-incarnation node)))))))
+
+(verify-guards fn-anchor-node-advance-observed)
+
 (defun fn-anchor-restore-observed (node image presented verdict)
   (declare (xargs :guard (and (fn-anchor-nodep node) (fn-anchor-imagep image))
                   :verify-guards nil))
@@ -673,6 +1056,25 @@
 ; A new family over books/frame's grammar; frame.lisp is untouched.  Kind 1 is
 ; an observed anchor, kind 2 is an incarnation advance and the anchor it
 ; advanced under.
+;
+; Local vocabulary re-enable: from here to the end this book opens frame's
+; field grammar, its two result records and the splitter facts under them
+; (docs/deputies BOARD, 2026-09-19 codecs).  Nothing above this point needs
+; them, and the enable is local, so no includer inherits the cascade.
+
+; The field grammar itself stays closed: opening `fn-frame-values-okp' and
+; `fn-frame-field-okp' over a nine-field spec is the case split that made this
+; book's guard proofs unbounded, and neither is needed -- the guard of
+; `fn-frame-fields-octets' IS `fn-frame-values-okp', which is a conjunct of
+; `fn-anchor-record-okp'.  This is the same `e/d' the frame cluster uses for
+; its own journal round trips (books/frame-invariants.lisp:800).
+(local (in-theory (e/d (fn-frame-codec-vocabulary
+                        fn-frame-record-vocabulary
+                        fn-frame-fields-vocabulary)
+                       ((:d fn-frame-values-okp) (:d fn-frame-field-okp)
+                        (:d fn-frame-field-octets) (:d fn-frame-field-parse)
+                        (:d fn-frame-fields-octets) (:d fn-frame-fields-parse)
+                        (:d fn-frame-fields-parse-aux)))))
 
 (defconst *fn-anchor-magic* '(70 78 65 78))   ; FNAN
 (defconst *fn-anchor-max-payload* 1024)
@@ -714,7 +1116,6 @@
          (fn-anchor-p (fn-anchor-record-anchor kind values)))))
 
 (verify-guards fn-anchor-record-okp)
-
 
 (defun fn-anchor-encode (kind values digest)
   (declare (xargs :guard t :verify-guards nil))
@@ -759,3 +1160,95 @@
                                    (fn-frame-parse-value parsed)))))))))))))
 
 (verify-guards fn-anchor-decode)
+
+; -----------------------------------------------------------------------------
+; Export theory (docs/proof-style.md sec. 2)
+;
+; What leaves this book enabled: the record lemmas of the four records, their
+; three forward-chaining shape facts each, the two crypto-seam constraints, and
+; `fn-anchor-signed-octets-determine-the-root'.  Everything else -- every
+; record accessor, constructor and shape, every recognizer, the reconstruction
+; of the signed octets, the interval order, all five transitions, both host
+; entries and the FNAN codec -- is withdrawn here, as `(:d name)' only, so
+; ground evaluation and type prescriptions still decide.
+;
+; An includer that must open one of these enables `fn-anchor-vocabulary'
+; locally and says why; a book that reasons about octet widths also enables
+; `fn-anchor-octet-vocabulary'.
+
+(deftheory fn-anchor-vocabulary
+  '((:d fn-anchor-shapep) (:d fn-anchor) (:d fn-anchor-key)
+    (:d fn-anchor-delegate) (:d fn-anchor-mint) (:d fn-anchor-maxt)
+    (:d fn-anchor-delegation-signature) (:d fn-anchor-midpoint)
+    (:d fn-anchor-radius) (:d fn-anchor-nonce) (:d fn-anchor-signature)
+    (:d fn-anchor-outcome-shapep) (:d fn-anchor-outcome)
+    (:d fn-anchor-status) (:d fn-anchor-reason) (:d fn-anchor-payload)
+    (:d fn-anchor-node-shapep) (:d fn-anchor-node)
+    (:d fn-anchor-node-pinned) (:d fn-anchor-node-latest)
+    (:d fn-anchor-node-incarnation)
+    (:d fn-anchor-image-shapep) (:d fn-anchor-image)
+    (:d fn-anchor-image-incarnation) (:d fn-anchor-image-referenced)
+    (:d fn-anchor-p) (:d fn-anchor-outcomep) (:d fn-anchor-nodep)
+    (:d fn-anchor-imagep) (:d fn-anchor-octets-of-lengthp)
+    (:d fn-anchor-timep) (:d fn-anchor-le-bytes)
+    (:d fn-anchor-ag-car) (:d fn-anchor-ag-cdr)
+    (:d fn-anchor-root) (:d fn-anchor-srep-from-root)
+    (:d fn-anchor-srep-octets) (:d fn-anchor-signed-from-root)
+    (:d fn-anchor-signed-octets) (:d fn-anchor-dele-octets)
+    (:d fn-anchor-delegation-signed-octets)
+    (:d fn-anchor-verifiedp) (:d fn-anchor-pinnedp)
+    (:d fn-anchor-acceptablep) (:d fn-anchor-earliest)
+    (:d fn-anchor-latest) (:d fn-anchor-newerp)
+    (:d fn-anchor-node-accept) (:d fn-anchor-node-accept-list)
+    (:d fn-anchor-node-advance) (:d fn-anchor-restore)
+    (:d fn-anchor-pair-admit) (:d fn-anchor-pair-admittedp)
+    (:d fn-anchor-node-accept-observed)
+    (:d fn-anchor-node-advance-observed) (:d fn-anchor-restore-observed)
+    (:d fn-anchor-record-anchor) (:d fn-anchor-record-okp)
+    (:d fn-anchor-encode) (:d fn-anchor-decode)))
+
+(deftheory fn-anchor-octet-vocabulary
+  '(fn-anchor-le-bytes-are-octets fn-anchor-le-bytes-len
+    fn-anchor-leaf-digest-length fn-anchor-dele-octets-are-octets
+    fn-anchor-srep-octets-are-octets fn-anchor-signed-octets-are-octets
+    fn-anchor-spec-for-is-spec-list))
+
+(in-theory (disable (:d fn-anchor-shapep) (:d fn-anchor) (:d fn-anchor-key)
+             (:d fn-anchor-delegate) (:d fn-anchor-mint) (:d fn-anchor-maxt)
+             (:d fn-anchor-delegation-signature) (:d fn-anchor-midpoint)
+             (:d fn-anchor-radius) (:d fn-anchor-nonce)
+             (:d fn-anchor-signature)
+             (:d fn-anchor-outcome-shapep) (:d fn-anchor-outcome)
+             (:d fn-anchor-status) (:d fn-anchor-reason)
+             (:d fn-anchor-payload)
+             (:d fn-anchor-node-shapep) (:d fn-anchor-node)
+             (:d fn-anchor-node-pinned) (:d fn-anchor-node-latest)
+             (:d fn-anchor-node-incarnation)
+             (:d fn-anchor-image-shapep) (:d fn-anchor-image)
+             (:d fn-anchor-image-incarnation)
+             (:d fn-anchor-image-referenced)
+             (:d fn-anchor-p) (:d fn-anchor-outcomep) (:d fn-anchor-nodep)
+             (:d fn-anchor-imagep) (:d fn-anchor-octets-of-lengthp)
+             (:d fn-anchor-timep) (:d fn-anchor-le-bytes)
+             (:d fn-anchor-ag-car) (:d fn-anchor-ag-cdr)
+             (:d fn-anchor-root) (:d fn-anchor-srep-from-root)
+             (:d fn-anchor-srep-octets) (:d fn-anchor-signed-from-root)
+             (:d fn-anchor-signed-octets) (:d fn-anchor-dele-octets)
+             (:d fn-anchor-delegation-signed-octets)
+             (:d fn-anchor-verifiedp) (:d fn-anchor-pinnedp)
+             (:d fn-anchor-acceptablep) (:d fn-anchor-earliest)
+             (:d fn-anchor-latest) (:d fn-anchor-newerp)
+             (:d fn-anchor-node-accept) (:d fn-anchor-node-accept-list)
+             (:d fn-anchor-node-advance) (:d fn-anchor-restore)
+             (:d fn-anchor-pair-admit) (:d fn-anchor-pair-admittedp)
+             (:d fn-anchor-node-accept-observed)
+             (:d fn-anchor-node-advance-observed)
+             (:d fn-anchor-restore-observed)
+             (:d fn-anchor-record-anchor) (:d fn-anchor-record-okp)
+             (:d fn-anchor-encode) (:d fn-anchor-decode)))
+
+(in-theory (disable fn-anchor-le-bytes-are-octets fn-anchor-le-bytes-len
+             fn-anchor-leaf-digest-length fn-anchor-dele-octets-are-octets
+             fn-anchor-srep-octets-are-octets
+             fn-anchor-signed-octets-are-octets
+             fn-anchor-spec-for-is-spec-list))
