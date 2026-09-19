@@ -103,8 +103,11 @@ well-formed reply.
 
 ### Certification status
 
-**Not yet green.** The baseline `make certify` was still running when this
-lane's tool budget ran out; the new and changed roots
+**Not run.** The lane's baseline `make certify` ran for roughly ninety minutes
+and was then killed by root: the laptop was at load 98 with nineteen ACL2
+processes, and the baseline was moved to a remote box that builds the `.cert`
+files at the same absolute path. No local certification was performed after
+that, by instruction. The new and changed roots
 (`books/nntp`, `books/nntp-overview`, `books/nntp-invariants`,
 `books/nntp-effects`, `tests/acl2/nntp-tests`, `tests/acl2/nntp-teeth-tests`,
 `tests/acl2/nntp-reader-profile-tests`) have **not been certified in this
@@ -118,7 +121,8 @@ FN_ACL2_TIMEOUT_SECONDS=1800 python3 tools/certify_books.py \
   tests/acl2/nntp-reader-profile-tests
 ```
 
-and treat every failure as this lane's defect. Likely first stops: the
+one book at a time, once the remote baseline certificates are installed, and
+treat every failure as this lane's defect. Likely first stops: the
 `fn-nov-line-is-a-clean-line` hint (the accessors are disabled there so the
 eight pieces stay opaque), `fn-nntp-date-octets-length` (needs
 `fn-nntp-append-pieces`, `fn-nntp-pad2` and `fn-nntp-pad4` all enabled), and the
