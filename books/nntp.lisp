@@ -18,6 +18,15 @@
 
 (in-package "ACL2")
 (include-book "nntp-responses")
+
+; The books below this one withdraw their definitions at their export events
+; (2026-09-19 split of books/nntp.lisp).  This book is the continuation of
+; that single file, so it re-enables exactly them, locally: within the
+; chain the theory is the one the original file had at this point.
+(local (in-theory (enable fn-nntp-syntax-vocabulary
+                          fn-nntp-session-vocabulary
+                          fn-nntp-projection-vocabulary
+                          fn-nntp-responses-vocabulary)))
 ; The dispatcher is split by whether a command reads the archive at all.  No
 ; archive content can deny CAPABILITIES, HELP, QUIT, an unrecognized command,
 ; or a syntax error: see fn-nntp-archive-free-step-ignores-the-archive in

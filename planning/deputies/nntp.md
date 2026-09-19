@@ -4,23 +4,31 @@ HEAD `a31ed5f` (dev), lane branch `dep/nntp`, worktree `build/lanes/dep-nntp`.
 
 ## What certifies
 
-| Book | State |
-| --- | --- |
-| `books/wire` | **certified** — `build/acl2/certify-20260919T194605Z-81044` |
-| `books/wire-invariants` | **certified** — same evidence directory |
-| `tests/acl2/wire-tests` | **certified** — same evidence directory |
-| `books/nntp{,-syntax,-session,-projection,-responses}` | split, **not certified**: no usable certificates existed for `acceptance`/`cbor`/`index` while this lane ran |
-| `books/transfer{,-reservation,-union}-invariants` | split, **not certified**, same reason |
-| everything else in the row | untouched |
+| Root | Before (farm) | After (laptop) |
+| --- | --- | --- |
+| `books/wire` | 5.5 s | **1.3 s** |
+| `books/wire-invariants` | 0.8 s | **0.7 s** |
+| `tests/acl2/wire-tests` | 0.1 s | **0.1 s** |
+| `books/nntp-syntax` | — | **0.3 s** |
+| `books/nntp-session` | — | **0.3 s** |
+| `books/nntp-projection` | — | **0.5 s** |
+| `books/nntp-responses` | — | **0.4 s** |
+| `books/nntp` | 0.8 s (whole file) | **0.3 s** (dispatcher only; 1.8 s for the five) |
+| `books/nntp-invariants` | 393.5 s | PENDING |
+| `books/nntp-effects` | 62.5 s | PENDING |
+| `books/transfer-reservation` / `-union` / `-invariants` | 2.8 s (one book) | PENDING |
 
-The certificate cache was empty, then poisoned, for this lane's whole window.
-`tools/certs.py publish` keys an entry by `content_hash(<book>.lisp)` but only
-checks `valid_looking(<book>.cert)`; it never checks that the certificate came
-from that source, so stale certificates in the main checkout were published
-under the new sources' hashes and every include failed with a book-hash
-mismatch. Reported to root with the exact ACL2 error; root wiped the cache and
-is rebuilding the publisher around a certification manifest. `books/wire` has
-no includes, which is why the wire closure could be certified anyway.
+**`books/nntp.lisp` did not certify on `dev` before this lane touched it.** The
+pre-split file, taken from `a31ed5f` and certified unchanged as
+`books/nntp-probe`, fails at `fn-nntp-group-low-is-available` exactly as the
+split chain did. The cause is core's record opacity: when `fn-article-msgid`
+was `(car x)`, `(stringp (fn-article-msgid a))` forced `(consp a)` by type
+reasoning, and withdrawing the definition rune takes that inference away, so
+every projection proof that needed an article to be a cons lost it.
+`books/nntp-projection.lisp` now states that bridge once, locally, as a
+forward-chaining rule on `(fn-article-msgid article)`. **core owns the general
+fix**: export the shape-to-`consp` fact alongside the record lemmas, or every
+includer of an opaque record will re-derive it.
 
 ## Wall times
 

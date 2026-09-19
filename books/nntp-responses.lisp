@@ -4,6 +4,14 @@
 
 (in-package "ACL2")
 (include-book "nntp-projection")
+
+; The books below this one withdraw their definitions at their export events
+; (2026-09-19 split of books/nntp.lisp).  This book is the continuation of
+; that single file, so it re-enables exactly them, locally: within the
+; chain the theory is the one the original file had at this point.
+(local (in-theory (enable fn-nntp-syntax-vocabulary
+                          fn-nntp-session-vocabulary
+                          fn-nntp-projection-vocabulary)))
 ; -----------------------------------------------------------------------------
 ; Command responses
 

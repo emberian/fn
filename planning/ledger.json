@@ -186,7 +186,7 @@
     "books": 179,
     "books_in_root_closure": 179,
     "roots": 179,
-    "theorems": 2679,
+    "theorems": 2680,
     "functions": 1980,
     "assert_events": 2934,
     "must_fails": 133,
@@ -1873,7 +1873,7 @@
       "book": "books/nntp-projection.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 22,
+      "theorems": 23,
       "functions": 22,
       "guards": {
         "verified": 22,
