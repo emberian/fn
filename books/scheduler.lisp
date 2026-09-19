@@ -282,7 +282,8 @@
   (declare (xargs :guard t))
   (and (fn-sched-statep ss)
        (consp (fn-sched-open-contact ss))
-       (< (fn-sched-retries ss) (fn-sched-retry-bound (fn-sched-conf ss)))
+       (< (nfix (fn-sched-retries ss))
+          (nfix (fn-sched-retry-bound (fn-sched-conf ss))))
        t))
 
 (defun fn-sched-selection (ss wf)
@@ -341,7 +342,8 @@
           (fn-sched-item (fn-sched-item-work-id item)
                          (fn-sched-item-class item) (fn-sched-item-size item)
                          (fn-sched-item-seq item) next
-                         (if (or (fn-sched-item-agedp item) (<= limit next))
+                         (if (or (fn-sched-item-agedp item)
+                                 (<= (nfix limit) next))
                              t nil)
                          (fn-sched-item-expiredp item)))
       item)))
@@ -362,7 +364,7 @@
         (if (and (not (equal (fn-sched-item-work-id item) selected-id))
                  (fn-sched-eligiblep item wf)
                  (not (fn-sched-item-agedp item))
-                 (<= limit (+ 1 (nfix (fn-sched-item-passes item)))))
+                 (<= (nfix limit) (+ 1 (nfix (fn-sched-item-passes item)))))
             (cons (fn-sched-item-work-id item)
                   (fn-sched-promotions (cdr queue) wf selected-id limit))
           (fn-sched-promotions (cdr queue) wf selected-id limit)))
@@ -556,7 +558,7 @@
           (not (fn-sched-classp class))
           (not (natp size))
           (fn-sched-queuedp work-id (fn-sched-queue ss))
-          (<= (fn-sched-queue-bound (fn-sched-conf ss))
+          (<= (nfix (fn-sched-queue-bound (fn-sched-conf ss)))
               (len (fn-sched-queue ss))))
       ss
     (fn-sched-state
