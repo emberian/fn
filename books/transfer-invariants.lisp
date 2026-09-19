@@ -49,6 +49,11 @@
                                fn-transfer-entriesp
                                fn-transfer-entryp))))
 
+; A definitional restatement of the stored branch of fn-transfer-add-chunk,
+; kept for the four proofs below that cite it by :use.  It is NOT a rule:
+; exported enabled it rewrote the stored branch into its constructor form
+; before this cluster's own preservation keystones could fire, in every
+; includer (w3/fragment-container lost two proofs to it).  -by-definition.
 (defthm fn-transfer-add-chunk-result-state-normal-form
   (implies (fn-transfer-statep st)
            (equal (fn-transfer-result-state
@@ -65,6 +70,7 @@
                            label (fn-transfer-state-entries st))))
                         (fn-transfer-state-entries st)))
                     st)))
+  :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-transfer-statep-implies-entriesp)
                  (:instance fn-transfer-find-entry-non-nil-is-consp
