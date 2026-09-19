@@ -15,6 +15,31 @@
 (in-package "ACL2")
 (include-book "node-invariants")
 (include-book "records")
+; The codecs cluster withdraws (:d fn-record-p) at export (2026-09-19); the
+; loop's guard proof needs only that a record is a true list.  Interim
+; local fact applied by the store deputy so its closure certifies; the
+; convergence lane owns the final form.
+(local
+ (defthm fn-replay-record-is-a-true-list
+   (implies (fn-record-p record) (true-listp record))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-record-codec-vocabulary
+                                      fn-record-record-vocabulary)))))
+(local
+ (defthm fn-replay-record-counters-are-natural
+   (implies (fn-record-p record)
+            (and (natp (fn-record-sequence record))
+                 (natp (fn-record-txid record))
+                 (natp (fn-record-generation record))))
+   :rule-classes ((:forward-chaining)
+                  (:type-prescription :corollary
+                   (implies (fn-record-p record) (natp (fn-record-sequence record))))
+                  (:type-prescription :corollary
+                   (implies (fn-record-p record) (natp (fn-record-txid record))))
+                  (:type-prescription :corollary
+                   (implies (fn-record-p record) (natp (fn-record-generation record)))))
+   :hints (("Goal" :in-theory (enable fn-record-codec-vocabulary
+                                      fn-record-record-vocabulary)))))
 
 ; -----------------------------------------------------------------------------
 ; Result records

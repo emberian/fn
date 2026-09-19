@@ -5,6 +5,9 @@
 ; fn-sf-emit-success on the result of fn-sf-core-completion, and
 ; fn-sf-core-completion-preserves-state discharges that guard.
 (include-book "store-files-invariants")
+; The codecs cluster withdraws the record and codec definitions at export
+; (2026-09-19); the proofs here open fn-record-p and the record accessors.
+(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))
 
 ; Fixed configuration accompanies the file machine and the actual live node.
 ; No transition accepts a replacement configuration or a host 'matching' reply.

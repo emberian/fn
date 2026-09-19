@@ -1,6 +1,9 @@
 ; fn: synchronous refusal and known prepublication abort for the live store.
 (in-package "ACL2")
 (include-book "store-node-traces")
+; The codecs cluster withdraws the record and codec definitions at export
+; (2026-09-19); the proofs here open fn-record-p and the record accessors.
+(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))
 
 ; A semantic refusal consumes the durable file reservation and advances the
 ; actual idle node over the same txid.  The host supplies only the reservation
