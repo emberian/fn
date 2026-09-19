@@ -1,0 +1,8 @@
+m horizon +0
+a range   +0 +86400  1 2   0
+a range   +0 +86400  1 1   0
+a range   +0 +86400  2 2   0
+a contact +0 +86400  1 1   1000000
+a contact +0 +86400  2 2   1000000
+a contact +0 +86400  1 2   1000000
+a contact +0 +86400  2 1   1000000
