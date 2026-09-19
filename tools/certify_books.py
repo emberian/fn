@@ -761,7 +761,11 @@ def main() -> int:
             try:
                 published = certs.publish(
                     ROOT, certs.cache_directory(),
-                    [{**manifest, "evidence": str(run_dir)}], args.books)
+                    [{**manifest, "evidence": str(run_dir)}], args.books,
+                    # These certificates name their sub-books by absolute path
+                    # inside *this* worktree, so that is where they may be
+                    # installed; another live worktree must not take them.
+                    origin=str(ROOT.resolve()))
                 manifest["cert_cache"] = {
                     "directory": published.cache,
                     "published": published.published,
