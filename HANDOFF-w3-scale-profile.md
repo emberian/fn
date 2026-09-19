@@ -34,10 +34,12 @@ All on hbox (Linux 6.11.0-29, 24 cores, ACL2 8.7 over SBCL 2.6.8, CPython
 3.12.7), load average 2.7 to 5.7, five runs per measurement point (three at
 N ≥ 256).
 
-- N ∈ {16, 32, 64, 128, 256} at G=2, both groups per article, P=1024. N=512
-  and N=1024 were launched under a 90-minute per-point budget and had not
-  completed when the lane closed; `tests/bench/grid.sh` is still running on
-  hbox and writes `/tank/fn/scale/build/bench/n512-*.json` and `n1024-*.json`.
+- N ∈ {16, 32, 64, 128, 256} at G=2, both groups per article, P=1024. **N=512
+  and N=1024 both ended in `StoreError: ACL2 prompt timeout` inside a single
+  `fn-store-sn-prepare` call** — after ~35 and ~36 minutes of posting — not on
+  a wall-clock budget. `tools/run_store.py` gives a call 20 s plus 0.004 s/KiB,
+  so one prepare crossed twenty seconds between 256 and 512 committed
+  articles, with the N=256 median prepare still under a second.
 - P ∈ {512, 1024, 4096, 16384, 32768} at N=64 — the payload bound is reached
   exactly.
 - G ∈ {1, 2} and groups-per-article ∈ {1, 2} at N=64. **The axis stops there**:
@@ -78,6 +80,11 @@ curve.
   120 continuation lines took the OVER-equivalent enumeration from 0.670 ms to
   4.106 ms per article (6.1x); a 250-octet Message-ID took GROUP from 0.226 ms
   to 1.069 ms (4.7x) at N=32. Nothing refused, nothing wedged.
+- **The bridge's 20 s per-call timeout is the real transaction ceiling.** Not
+  the scale profile's 4096: it is wherever one operation first exceeds twenty
+  seconds, between 256 and 512 articles of 1 KiB on this host. It fails closed,
+  which is correct; raising the timeout without removing the per-operation
+  recognizer would convert the outage into an unbounded wait.
 - **OVER does not exist.** `books/nntp.lisp:1297` admits GROUP, LISTGROUP,
   LAST, NEXT, ARTICLE, HEAD, BODY, STAT. The OVER-equivalent measured is
   LISTGROUP plus HEAD per number, and is labelled as a substitution everywhere.
@@ -101,8 +108,14 @@ premise named as A-CRYPTO with `OBJ-001`'s quarantine case. Details in
 
 ## Open and not done here
 
-- N=512 and above: unharvested on hbox, as above. Nothing in the document
-  depends on them; the N=16..256 curve is what the conclusions rest on.
+- N=512 and above cannot be measured on this build until the per-operation
+  recognizer goes: the bridge fails closed first. `generate.py` re-raises
+  without writing its JSON, so a failed point loses its partial curve — record
+  the committed count and per-article timings before re-raising.
+- The two grid scripts overlap: `grid.sh` re-ran the payload/group/stress point
+  names after the N curve, at load average 8.4 to 8.8, overwriting the JSON
+  files the tables were built from (first pass, load 4.8 to 5.7). The document
+  says so; the tables are the record, not the files on hbox.
 - No book was edited and none needed recertification; the 28-book closure was
   certified once in `/tank/fn/scale` for the measurements.
 - `python3 -m unittest tests.test_store_corruption` ran against real ACL2 on
