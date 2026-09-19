@@ -312,3 +312,115 @@ class RepositoryLedgerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ExportHygieneLintTests(unittest.TestCase):
+    """What a book leaves enabled, judged by shape only."""
+
+    ACCESSOR = '''(in-package "ACL2")
+(defun fn-ag-car (x) (if (consp x) (car x) nil))
+(defthm fn-ag-car-is-car (equal (fn-ag-car x) (car x)))
+'''
+
+    def findings(self, source: str) -> list[dict]:
+        return ledger.export_hygiene(tree_from({"books/b.lisp": source}))
+
+    def test_an_enabled_equality_between_two_different_accessors_is_flagged(self):
+        found = self.findings(self.ACCESSOR)
+        self.assertEqual([entry["theorem"] for entry in found], ["fn-ag-car-is-car"])
+        self.assertIn("accessor-equality", found[0]["reason"])
+
+    def test_a_preservation_lemma_in_one_vocabulary_is_not_flagged(self):
+        # The same accessor on both sides keeps the goal in accessor form:
+        # this is the shape the discipline asks for, not a finding.
+        self.assertEqual(self.findings('''(in-package "ACL2")
+(defun fn-articles (s) (car s))
+(defthm fn-prepare-does-not-publish
+  (implies (fn-statep s)
+           (equal (fn-articles (fn-prepare s)) (fn-articles s))))
+'''), [])
+
+    def test_rule_classes_nil_local_and_defthmd_all_exempt(self):
+        header = '(in-package "ACL2")\n(defun fn-ag-car (x) (if (consp x) (car x) nil))\n'
+        claim = "(equal (fn-ag-car x) (car x))"
+        for variant in (
+                f"(defthm fn-ag-car-is-car {claim} :rule-classes nil)",
+                f"(local (defthm fn-ag-car-is-car {claim}))",
+                f"(defthmd fn-ag-car-is-car {claim})"):
+            self.assertEqual(self.findings(header + variant + "\n"), [], variant)
+
+    def test_a_closing_in_theory_disable_exempts_the_rule(self):
+        for closing in ("(in-theory (disable fn-ag-car-is-car))",
+                        "(in-theory (disable (:rewrite fn-ag-car-is-car)))",
+                        "(in-theory (e/d (fn-ag-car) (fn-ag-car-is-car)))"):
+            self.assertEqual(self.findings(self.ACCESSOR + closing), [], closing)
+        # A `local' disable does not change what the book exports.
+        self.assertEqual(len(self.findings(
+            self.ACCESSOR + "(local (in-theory (disable fn-ag-car-is-car)))")), 1)
+
+    def test_len_backchaining_conclusions_are_flagged(self):
+        found = self.findings('''(in-package "ACL2")
+(defthm consp-from-len (implies (< 0 (len x)) (consp x)))
+(defthm len-from-len (implies (equal (len x) 3) (equal (len (cdr x)) 2)))
+(defthm unrelated (implies (consp x) (equal (car (cons a x)) a)))
+''')
+        self.assertEqual([entry["theorem"] for entry in found],
+                         ["consp-from-len", "len-from-len"])
+        self.assertTrue(all("len-backchaining" in entry["reason"] for entry in found))
+
+
+class TeethFormLintTests(unittest.TestCase):
+    """A must-fail earns its name by naming a value."""
+
+    def findings(self, source: str) -> list[dict]:
+        return ledger.teeth_form(tree_from({"tests/acl2/t.lisp": source}))
+
+    def test_a_bare_general_claim_is_flagged(self):
+        found = self.findings('''(in-package "ACL2")
+(must-fail (thm (implies (and (fn-inputsp fs n) (fn-coverp fs)) (fn-agreep fs))))
+''')
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0]["check"], "thm")
+        self.assertIn("bare-general-claim", found[0]["reason"])
+
+    def test_a_must_fail_naming_a_value_is_not_flagged(self):
+        for witness in ("(must-fail (thm (equal (fn-check :indeterminate) :success)))",
+                        "(must-fail (thm (equal (fn-len '(1 2)) 3)))",
+                        "(must-fail (defthm d (equal (fn-parse *fn-sample*) nil)))",
+                        '(must-fail (thm (equal (fn-parse "abc") nil)))'):
+            self.assertEqual(self.findings('(in-package "ACL2")\n' + witness), [],
+                             witness)
+
+    def test_a_keyword_option_is_not_a_witness(self):
+        found = self.findings('''(in-package "ACL2")
+(must-fail (defthm general (implies (fn-p x) (fn-q x)) :rule-classes nil)
+           :with-output-off nil)
+''')
+        self.assertEqual([entry["check"] for entry in found], ["general"])
+
+    def test_a_must_fail_around_something_other_than_a_theorem_is_not_judged(self):
+        self.assertEqual(self.findings('''(in-package "ACL2")
+(must-fail (defun f (x) (car x)))
+'''), [])
+
+
+class LintReportingTests(unittest.TestCase):
+    def test_warnings_carry_the_book_line_and_name(self):
+        tree = tree_from({
+            "books/b.lisp": ExportHygieneLintTests.ACCESSOR,
+            "tests/acl2/t.lisp": '(in-package "ACL2")\n(must-fail (thm (fn-p x)))\n',
+        })
+        warnings = ledger.lint_warnings(tree)
+        self.assertEqual(len(warnings), 2)
+        self.assertTrue(warnings[0].startswith("export hygiene: books/b.lisp:3:"))
+        self.assertTrue(warnings[1].startswith("teeth form: tests/acl2/t.lisp:2:"))
+
+    def test_the_generated_ledger_carries_both_counts(self):
+        ledger_data = ledger.build_ledger(tree_from({
+            "books/b.lisp": ExportHygieneLintTests.ACCESSOR}))
+        self.assertEqual(ledger_data["totals"]["export_hygiene_warnings"], 1)
+        self.assertEqual(ledger_data["totals"]["teeth_form_warnings"], 0)
+        self.assertEqual(ledger_data["lints"]["export_hygiene"][0]["theorem"],
+                         "fn-ag-car-is-car")
+        self.assertIn("Export-hygiene warnings | 1",
+                      ledger.ledger_markdown(ledger_data))

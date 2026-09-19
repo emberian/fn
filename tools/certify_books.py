@@ -30,6 +30,8 @@ from typing import Any
 # the dependency graph that schedules certification and the generated ledger
 # cannot disagree about what a book includes.  `tools/` is not a package.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import acl2_slots  # noqa: E402
+import certs  # noqa: E402
 import ledger  # noqa: E402
 
 
@@ -348,6 +350,45 @@ def dependency_graph(books: list[str]) -> dict[str, set[str]]:
     return graph
 
 
+def normalize_book(value: str) -> str:
+    """A `--affected-by` argument as a repository-relative book name."""
+    path = Path(value)
+    if path.is_absolute():
+        resolved = path.resolve()
+        if not resolved.is_relative_to(ROOT):
+            raise ValueError(f"path is outside the repository: {value}")
+        path = resolved.relative_to(ROOT)
+    text = path.as_posix()
+    name = text[:-len(".lisp")] if text.endswith(".lisp") else text
+    book_source(name)  # a typo must not silently select nothing
+    return name
+
+
+def affected_roots(books: list[str], targets: list[str]) -> list[str]:
+    """The requested books that are, or transitively include, a named book.
+
+    Order is the requested order, which is the Makefile order under `make
+    certify`, so a filtered run certifies in the same sequence as a full one.
+    A book's own dependencies are not selected: a book whose content did not
+    change has a valid content-hashed certificate already.
+    """
+    names = {normalize_book(target) for target in targets}
+    closure = local_closure(books)
+    selected: list[str] = []
+    for book in books:
+        reached = {book}
+        stack = list(closure[book])
+        while stack:
+            dependency = stack.pop()
+            if dependency in reached:
+                continue
+            reached.add(dependency)
+            stack.extend(closure[dependency])
+        if reached & names:
+            selected.append(book)
+    return selected
+
+
 def make_driver(book: str, nonce: str) -> str:
     # `certify-book` must run at the top level of an ACL2 ld.  On an error,
     # the inner ld returns before it reaches the marker; this catches ACL2
@@ -478,6 +519,26 @@ def main() -> int:
             "Books still certify in local include-book dependency order"
         ),
     )
+    parser.add_argument(
+        "--affected-by",
+        action="append",
+        default=[],
+        metavar="BOOK",
+        help=(
+            "certify only the requested books that are, or transitively "
+            "include, this book (repeatable; .lisp optional)"
+        ),
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print the books this invocation would certify and exit",
+    )
+    parser.add_argument(
+        "--no-publish",
+        action="store_true",
+        help="do not publish the resulting certificates to the local cache",
+    )
     args = parser.parse_args()
 
     invalid = [book for book in args.books if not BOOK_NAME.fullmatch(book)]
@@ -494,6 +555,19 @@ def main() -> int:
         parser.error("--timeout-seconds must be positive")
     if args.jobs <= 0:
         parser.error("--jobs must be positive")
+    requested_before_filter = list(args.books)
+    if args.affected_by:
+        try:
+            args.books = affected_roots(args.books, args.affected_by)
+        except ValueError as error:
+            parser.error(str(error))
+    if args.dry_run:
+        for book in args.books:
+            print(book)
+        return 0
+    if not args.books:
+        print("No requested book is affected by: " + ", ".join(args.affected_by))
+        return 0
     effective_jobs = max(1, min(args.jobs, len(args.books)))
 
     configured = os.environ.get("FN_ACL2", "acl2")
@@ -508,6 +582,9 @@ def main() -> int:
         "platform": platform.platform(),
         "python": platform.python_version(),
         "requested_books": args.books,
+        "affected_by": list(args.affected_by),
+        "requested_before_filter": requested_before_filter,
+        "acl2_slots": acl2_slots.slot_count(),
         "timeout_seconds": args.timeout_seconds,
         "jobs": args.jobs,
         "jobs_effective": effective_jobs,
@@ -553,8 +630,14 @@ def main() -> int:
 
     manifest["acl2_executable"] = str(acl2)
     manifest["acl2_executable_sha256"] = digest(acl2)
+    slot_wait_seconds: dict[str, float] = {}
     try:
-        version_result = run_acl2(acl2, acl2_version_driver(), args.timeout_seconds)
+        # Every ACL2 this runner starts, the version probe included, holds one
+        # machine-wide slot for its lifetime.  Waiting here is correct: an
+        # over-subscribed box swaps instead of certifying.
+        with acl2_slots.slot("certify version probe") as held:
+            slot_wait_seconds["version-probe"] = held.seconds
+            version_result = run_acl2(acl2, acl2_version_driver(), args.timeout_seconds)
     except subprocess.TimeoutExpired as error:
         (run_dir / "version.log").write_bytes(timeout_output(error))
         manifest["failure"] = f"ACL2 version probe timed out after {args.timeout_seconds} seconds."
@@ -591,17 +674,21 @@ def main() -> int:
     record_lock = threading.Lock()
 
     def certify(book: str) -> None:
-        with record_lock:
-            start_order.append(book)
-        started = time.monotonic()
-        try:
-            result = run_acl2(acl2, drivers[book], args.timeout_seconds)
-            output = result.stdout.decode("utf-8", errors="replace")
-            code: int | str = result.returncode
-        except subprocess.TimeoutExpired as error:
-            output = timeout_output(error).decode("utf-8", errors="replace")
-            code = f"timed out after {args.timeout_seconds} seconds"
-        elapsed = time.monotonic() - started
+        with acl2_slots.slot(f"certify {book}") as held:
+            with record_lock:
+                # Started means started, not queued: a book waiting for a slot
+                # is not occupying one, and the schedule tests read this order.
+                start_order.append(book)
+                slot_wait_seconds[book] = held.seconds
+            started = time.monotonic()
+            try:
+                result = run_acl2(acl2, drivers[book], args.timeout_seconds)
+                output = result.stdout.decode("utf-8", errors="replace")
+                code: int | str = result.returncode
+            except subprocess.TimeoutExpired as error:
+                output = timeout_output(error).decode("utf-8", errors="replace")
+                code = f"timed out after {args.timeout_seconds} seconds"
+            elapsed = time.monotonic() - started
         (run_dir / (book.replace("/", "--") + ".certify.log")).write_text(output, encoding="utf-8")
         with record_lock:
             outputs[book] = output
@@ -652,6 +739,8 @@ def main() -> int:
             "certificate_digests_sha256": certificates,
             "source_digests_sha256_after": source_digests_after,
             "runner_unchanged": runner_unchanged,
+            "slot_wait_seconds": {key: round(value, 3)
+                                  for key, value in slot_wait_seconds.items()},
         }
     )
     success = (
@@ -666,6 +755,21 @@ def main() -> int:
     )
     if success:
         manifest["status"] = "passed"
+        if not args.no_publish:
+            # The pairs just written are valid in every worktree and on every
+            # host with this book content, so cache them before anything else
+            # can touch the sources.  A cache failure is recorded, never fatal:
+            # the certification itself already succeeded.
+            try:
+                published = certs.publish(ROOT, certs.cache_directory(), args.books)
+                manifest["cert_cache"] = {
+                    "directory": published.cache,
+                    "published": published.published,
+                    "already_cached": published.already,
+                    "not_published": sorted(published.uncached + published.stale),
+                }
+            except OSError as error:
+                manifest["cert_cache"] = {"error": str(error)}
     else:
         manifest["failure"] = "ACL2 did not produce complete clean certification evidence. See certify.log."
     write_json(run_dir / "manifest.json", manifest)
