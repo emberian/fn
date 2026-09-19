@@ -54,3 +54,20 @@ HEAD; per book: certified (evidence dir) or open (failing form); before/after
 ledger numbers for your cluster (global rewrite rules exported, SUSPECT
 count, closure certify wall time); what you changed and why; the proposal:
 the cross-cluster steps, each with the exact interface change and who owns it.
+
+## Talking to other deputies (tested 2026-09-19)
+
+- Your prompt carries a roster: cluster name → agent ID for every sibling
+  (later launches are sent to you by message). Siblings are reachable ONLY
+  by that ID: descriptions and cluster names do not resolve, and you have no
+  agent listing.
+- `SendMessage` is a deferred tool: load it first with
+  `ToolSearch` query `select:SendMessage`, then `SendMessage` with `to` set
+  to the ID. A message arrives at the recipient's next tool round wrapped as
+  `<agent-message from="<id>">` and wakes a finished agent; `to: "main"`
+  reaches the root.
+- A direct message is for a blocking ASK only, and every ASK is also
+  appended to the board with the file:line it concerns. Answer an ASK sent to
+  you in one message and post the ANSWER on the board. Never message to
+  report progress, never poll for replies; keep working and check the board
+  before your final report.
