@@ -109,3 +109,41 @@ live agent is the first open item.
 - Run the differential against the live pinned agent and record the evidence.
 - Carry the decoded primary block, not only the identity, in the FNBI frame, so
   that a relay has the source node ID and creation timestamp as values.
+
+## Certification status: NOT RUN. Do not read this lane as certified.
+
+The lane's `make certify` baseline was started at 10:10 and killed by the root
+coordinator at ~11:05 (laptop at load 98, nineteen ACL2 processes); it was
+moved to a remote box, and the targeted follow-up run over this lane's own
+roots was killed with it (exit 144). **No book in this lane has been certified
+with these edits.** `make check` is green (scaffolding, ledger and
+`planning/ledger.json`/`.md` regenerated); no Python suite has been run,
+because every one of them opens an ACL2 bridge.
+
+What the next session must run, one root at a time, after the baseline
+certificates are installed:
+
+```sh
+FN_ACL2_TIMEOUT_SECONDS=1800 python3 tools/certify_books.py books/frame
+FN_ACL2_TIMEOUT_SECONDS=1800 python3 tools/certify_books.py books/frame-invariants
+FN_ACL2_TIMEOUT_SECONDS=1800 python3 tools/certify_books.py tests/acl2/frame-tests
+FN_ACL2_TIMEOUT_SECONDS=1800 python3 tools/certify_books.py books/bp-primary
+FN_ACL2_TIMEOUT_SECONDS=1800 python3 tools/certify_books.py books/bp-primary-invariants
+FN_ACL2_TIMEOUT_SECONDS=1800 python3 tools/certify_books.py tests/acl2/bp-primary-tests
+python3 -m unittest tests.test_bpa_dtn7 tests.test_bp_receive \
+        tests.test_bp_receive_faults tests.test_workflow_journal -v
+```
+
+The two roots most likely to need work are `books/frame-invariants`
+(`fn-frame-inbound-open-of-prefix` is restated over two fields and an
+arbitrary tail; the hint is the original `e/d`, which should let
+`fn-frame-field-parse-of-octets-text` and `-blob` fire in sequence through
+`fn-frame-parse-rest-of-parse-ok`) and `books/bp-primary-invariants`
+(`fn-bpp-primary-identity-determines-adu-key`, which leans on
+`fn-bpp-value-eid-of-eid-value` to invert the source endpoint). Note that
+`identity` and `second` are ACL2 function names and were deliberately renamed
+to `ident` and `blob` in the frame book; do not reintroduce them as formals.
+
+Because nothing certified, the differential test result reported above is a
+**design claim, not an observation**: the comparison is written and wired, and
+it has not been executed.
