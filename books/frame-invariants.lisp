@@ -28,8 +28,12 @@
 (local (in-theory (enable fn-cbor-invariants-vocabulary
                           fn-cbor-codec-vocabulary
                           fn-frame-octet-vocabulary
+                          fn-frame-fields-vocabulary
+                          fn-frame-journal-vocabulary
                           fn-frame-record-vocabulary
-                          fn-frame-codec-vocabulary)))
+                          fn-frame-codec-vocabulary
+                          (:d fn-frame-split)
+                          (:d fn-frame-u64-bytes))))
 (local (include-book "arithmetic/top" :dir :system))
 
 ; The splitter is reasoned about through its lemmas, never by unrolling it on

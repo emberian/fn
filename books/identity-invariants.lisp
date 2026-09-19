@@ -22,8 +22,11 @@
                           fn-frame-octet-vocabulary
                           fn-frame-fields-vocabulary
                           fn-frame-codec-vocabulary
+                          fn-frame-journal-vocabulary
                           fn-frame-invariants-vocabulary
-                          fn-cbor-invariants-vocabulary)))
+                          fn-cbor-invariants-vocabulary
+                          (:d fn-frame-split)
+                          (:d fn-frame-u64-bytes))))
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
