@@ -1,6 +1,8 @@
-; Executable boundary traces for the bounded NNTP wire framing model.
+; Executable boundary traces for the bounded NNTP wire framing model, and the
+; teeth for the wire keystones: each hypothesis of a keystone gets a concrete
+; input for which the conclusion fails without it.
 (in-package "ACL2")
-(include-book "../../books/wire")
+(include-book "../../books/wire-invariants")
 
 (defconst *fn-wire-empty* (fn-wire-initial-state 32 64))
 (assert-event (fn-wire-statep *fn-wire-empty*))
@@ -15,8 +17,73 @@
  (equal (fn-wire-result-events *fn-wire-command-split-b*)
         '((:command (72 69 76 80)))))
 
+; -----------------------------------------------------------------------------
+; Entering article mode is an explicit accept-or-refuse decision.
+
+(defconst *fn-wire-article-start-result* (fn-wire-begin-article *fn-wire-empty*))
+(defconst *fn-wire-article-start*
+  (fn-wire-result-state *fn-wire-article-start-result*))
+(assert-event (not (fn-wire-begin-article-refusedp *fn-wire-article-start-result*)))
+(assert-event (equal (fn-wire-state-mode *fn-wire-article-start*) :article))
+(assert-event (fn-wire-statep *fn-wire-article-start*))
+
+; Teeth for fn-wire-begin-article-acceptance-enters-empty-article-mode: one
+; refused input per conjunct of fn-wire-begin-article-admissiblep, each with
+; the unchanged state and the explicit reject event, and none of them entering
+; article mode.
+(defconst *fn-wire-partial-command*
+  (fn-wire-result-state (fn-wire-feed *fn-wire-empty* '(72 69))))
+(defconst *fn-wire-pending-cr*
+  (fn-wire-result-state (fn-wire-feed *fn-wire-empty* '(13))))
+
+; mode is not :command
+(assert-event
+ (fn-wire-begin-article-refusedp
+  (fn-wire-begin-article *fn-wire-article-start*)))
+(assert-event
+ (equal (fn-wire-result-state (fn-wire-begin-article *fn-wire-article-start*))
+        *fn-wire-article-start*))
+; line-rev is not empty
+(assert-event (fn-wire-statep *fn-wire-partial-command*))
+(assert-event (not (null (fn-wire-state-line-rev *fn-wire-partial-command*))))
+(assert-event
+ (fn-wire-begin-article-refusedp
+  (fn-wire-begin-article *fn-wire-partial-command*)))
+(assert-event
+ (equal (fn-wire-result-state (fn-wire-begin-article *fn-wire-partial-command*))
+        *fn-wire-partial-command*))
+(assert-event
+ (equal (fn-wire-result-events (fn-wire-begin-article *fn-wire-partial-command*))
+        '((:reject :begin-article-unquiesced))))
+(assert-event
+ (not (equal (fn-wire-state-mode
+              (fn-wire-result-state
+               (fn-wire-begin-article *fn-wire-partial-command*)))
+             :article)))
+; pending-crp is set
+(assert-event (fn-wire-statep *fn-wire-pending-cr*))
+(assert-event (equal (fn-wire-state-pending-crp *fn-wire-pending-cr*) t))
+(assert-event
+ (fn-wire-begin-article-refusedp (fn-wire-begin-article *fn-wire-pending-cr*)))
+(assert-event
+ (not (equal (fn-wire-state-mode
+              (fn-wire-result-state
+               (fn-wire-begin-article *fn-wire-pending-cr*)))
+             :article)))
+; the supplied value is not a wire state at all
+(assert-event (not (fn-wire-statep '(:command nil 0 nil nil 0 32))))
+(assert-event
+ (fn-wire-begin-article-refusedp
+  (fn-wire-begin-article '(:command nil 0 nil nil 0 32))))
+(assert-event
+ (equal (fn-wire-result-state
+         (fn-wire-begin-article '(:command nil 0 nil nil 0 32)))
+        '(:command nil 0 nil nil 0 32)))
+
+; -----------------------------------------------------------------------------
+; Framing traces.
+
 ; A dot-stuffed line is data and a terminator split across chunks ends one body.
-(defconst *fn-wire-article-start* (fn-wire-begin-article *fn-wire-empty*))
 (defconst *fn-wire-article-part-a*
   (fn-wire-feed *fn-wire-article-start* '(46 46 102 105 114 115 116 13 10 46 13)))
 (assert-event (equal (fn-wire-result-events *fn-wire-article-part-a*) nil))
@@ -35,7 +102,8 @@
 ; A line over limit closes the connection.  Its apparent CRLF and a command
 ; after it are discarded, so rejected article tails never become commands.
 (defconst *fn-wire-tiny-article*
-  (fn-wire-begin-article (fn-wire-initial-state 3 64)))
+  (fn-wire-result-state
+   (fn-wire-begin-article (fn-wire-initial-state 3 64))))
 (defconst *fn-wire-overlong*
   (fn-wire-feed *fn-wire-tiny-article*
                 '(97 98 99 100 13 10 72 69 76 80 13 10)))
@@ -65,11 +133,27 @@
 ; Total retained body bytes are bounded, after dot unstuffing and with CRLF
 ; accounted for.  The second line is rejected before it becomes an article.
 (defconst *fn-wire-small-body*
-  (fn-wire-begin-article (fn-wire-initial-state 16 3)))
+  (fn-wire-result-state
+   (fn-wire-begin-article (fn-wire-initial-state 16 3))))
 (defconst *fn-wire-body-overlimit*
   (fn-wire-feed *fn-wire-small-body* '(97 98 13 10 46 13 10)))
 (assert-event
  (equal (fn-wire-result-events *fn-wire-body-overlimit*) '((:reject :body-overlimit))))
+
+; The carried counters are the measurements they stand for, at a nondegenerate
+; retained state: four retained line octets and two retained body lines.
+(defconst *fn-wire-carry-state*
+  (fn-wire-result-state
+   (fn-wire-feed *fn-wire-article-start*
+                 '(97 98 13 10 99 100 13 10 101 102 103 104))))
+(assert-event (fn-wire-statep *fn-wire-carry-state*))
+(assert-event (equal (fn-wire-state-line-len *fn-wire-carry-state*) 4))
+(assert-event (equal (fn-wire-state-line-len *fn-wire-carry-state*)
+                     (len (fn-wire-state-line-rev *fn-wire-carry-state*))))
+(assert-event (equal (fn-wire-state-body-size *fn-wire-carry-state*) 8))
+(assert-event (equal (fn-wire-state-body-size *fn-wire-carry-state*)
+                     (fn-wire-lines-size
+                      (fn-wire-state-body-rev *fn-wire-carry-state*))))
 
 ; The executable partition law is exercised with an article split inside its
 ; CRLF and a separately chunked continuation.
@@ -80,6 +164,9 @@
    (fn-wire-feed *fn-wire-article-start* '(120 13))
    '(10 46 13 10)))
 (assert-event (equal *fn-wire-partition-whole* *fn-wire-partition-split*))
+
+; -----------------------------------------------------------------------------
+; The served path: fn-wire-next, the adapter loop, and the reference.
 
 ; A pull caller can stop after POST, change framing mode, and resume on the
 ; unconsumed bytes of that exact socket chunk.  Thus POST's following article
@@ -92,12 +179,14 @@
 (assert-event (equal (fn-wire-next-event *fn-wire-post-whole*)
                      '(:command (80 79 83 84))))
 (defconst *fn-wire-post-article-whole*
-  (fn-wire-next (fn-wire-begin-article (fn-wire-next-state *fn-wire-post-whole*))
+  (fn-wire-next (fn-wire-result-state
+                 (fn-wire-begin-article (fn-wire-next-state *fn-wire-post-whole*)))
                 (fn-wire-next-unconsumed *fn-wire-post-whole*)))
 (defconst *fn-wire-post-split*
   (fn-wire-next *fn-wire-empty* '(80 79 83 84 13 10)))
 (defconst *fn-wire-post-article-split*
-  (fn-wire-next (fn-wire-begin-article (fn-wire-next-state *fn-wire-post-split*))
+  (fn-wire-next (fn-wire-result-state
+                 (fn-wire-begin-article (fn-wire-next-state *fn-wire-post-split*)))
                 '(72 105 13 10 46 13 10)))
 (assert-event (equal *fn-wire-post-article-whole* *fn-wire-post-article-split*))
 
@@ -121,3 +210,85 @@
 (assert-event
  (equal (fn-wire-next-event (fn-wire-next *fn-wire-empty* '(72 . 105)))
         '(:reject :malformed)))
+
+; The constant-work served path agrees with the recomputing reference on a
+; nondegenerate article chunk: two body lines, a partial third line, and a
+; dot-stuffed line.
+(defconst *fn-wire-reference-chunk*
+  '(46 46 97 13 10 98 99 13 10 100))
+(assert-event
+ (equal (fn-wire-next *fn-wire-article-start* *fn-wire-reference-chunk*)
+        (fn-wire-next-reference *fn-wire-article-start*
+                                *fn-wire-reference-chunk*)))
+(assert-event
+ (equal (fn-wire-next *fn-wire-empty* *fn-wire-post-and-article*)
+        (fn-wire-next-reference *fn-wire-empty* *fn-wire-post-and-article*)))
+
+; Teeth for fn-wire-feed-byte-matches-reference and its lifted forms: the
+; fn-wire-statep hypothesis is doing work.  This eight-field value has the
+; right shape but a carried line length that does not measure its retained
+; line, so the constant-work step and the recomputing reference disagree.
+(defconst *fn-wire-drifted-counter* '(:command (65 66) 0 nil nil 0 32 64))
+(assert-event (not (fn-wire-statep *fn-wire-drifted-counter*)))
+
+(defthm fn-wire-feed-byte-needs-statep-to-match-reference
+  (not (equal (fn-wire-feed-byte '(:command (65 66) 0 nil nil 0 32 64) 67)
+              (fn-wire-feed-byte-reference '(:command (65 66) 0 nil nil 0 32 64)
+                                           67)))
+  :rule-classes nil)
+
+(defthm fn-wire-next-loop-needs-statep-to-match-reference
+  (not (equal (fn-wire-next-loop '(:command (65 66) 0 nil nil 0 32 64) '(67))
+              (fn-wire-next-reference '(:command (65 66) 0 nil nil 0 32 64)
+                                      '(67))))
+  :rule-classes nil)
+
+; Teeth for fn-wire-drive-is-feed-proper: without fn-wire-statep the adapter
+; loop refuses the state and the fixed-mode helper does not.
+(defthm fn-wire-drive-needs-statep-to-be-feed-proper
+  (not (equal (fn-wire-drive '(:command (65 66) 0 nil nil 0 32 64) '(67 13 10))
+              (fn-wire-feed-proper '(:command (65 66) 0 nil nil 0 32 64)
+                                   '(67 13 10))))
+  :rule-classes nil)
+
+; The adapter loop drains a whole chunk into its event sequence, and splitting
+; the chunk anywhere yields the same events and the same final state.  This is
+; the executable witness for fn-wire-drive-partition-independence.
+(defconst *fn-wire-drive-whole*
+  (fn-wire-drive *fn-wire-empty* '(72 69 76 80 13 10 81 85 73 84 13 10)))
+(assert-event
+ (equal (fn-wire-result-events *fn-wire-drive-whole*)
+        '((:command (72 69 76 80)) (:command (81 85 73 84)))))
+(defconst *fn-wire-drive-left*
+  (fn-wire-drive *fn-wire-empty* '(72 69 76 80 13)))
+(defconst *fn-wire-drive-right*
+  (fn-wire-drive (fn-wire-result-state *fn-wire-drive-left*)
+                 '(10 81 85 73 84 13 10)))
+(assert-event
+ (equal *fn-wire-drive-whole*
+        (fn-wire-make-result
+         (fn-wire-result-state *fn-wire-drive-right*)
+         (append (fn-wire-result-events *fn-wire-drive-left*)
+                 (fn-wire-result-events *fn-wire-drive-right*)))))
+
+; Teeth for the fn-wire-octet-listp hypotheses of the partition theorem: an
+; improper left chunk is dropped by append, so the concatenated drive frames a
+; command while the split drive rejects the chunk as malformed.
+(defthm fn-wire-drive-partition-needs-proper-left-chunk
+  (not (equal (fn-wire-drive (fn-wire-initial-state 32 64)
+                             (append '(65 . 66) '(13 10)))
+              (fn-wire-make-result
+               (fn-wire-result-state
+                (fn-wire-drive
+                 (fn-wire-result-state
+                  (fn-wire-drive (fn-wire-initial-state 32 64) '(65 . 66)))
+                 '(13 10)))
+               (append
+                (fn-wire-result-events
+                 (fn-wire-drive (fn-wire-initial-state 32 64) '(65 . 66)))
+                (fn-wire-result-events
+                 (fn-wire-drive
+                  (fn-wire-result-state
+                   (fn-wire-drive (fn-wire-initial-state 32 64) '(65 . 66)))
+                  '(13 10)))))))
+  :rule-classes nil)

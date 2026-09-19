@@ -86,6 +86,38 @@ header fuel, including the separator step, and the actual 32768-cell preflight.
 No successful-parse premise, cost recognizer, prevalidated-input premise, or
 post-hoc output filter is assumed.
 
+## How far the envelope is from the cost it bounds
+
+In one sentence: the envelope is degree one in `N` — substituting `k = 129` and
+`s = 0` into the closed form gives `3 + 2N + B(129, N, 0) = 532514*N + 1060900`,
+whose quadratic factor is the header fuel `k`, not the input length — and at the
+520-octet maximally folded regression article it allows 277,968,180 units
+against the 17,190 units the instrumented parser actually charges there, about
+1.6 * 10^4 times the cost it bounds. The ratio is structural, not an artifact of
+that input: the envelope charges each of the 129 header steps the whole
+remaining input plus the accumulated state, while the parser scans each octet a
+fixed number of times. `tests/acl2/article-work-tests.lisp` asserts those three
+numbers as executable witnesses, so the distance is checked rather than
+estimated. Closing the gap is a separate, unattempted piece of work; nothing in
+this specification claims the bound is tight.
+
+## The cost side is by construction, not by theorem
+
+`fn-article-parse-work-value` proves the **value** side for every ACL2 input:
+`fn-aw-parse` returns exactly what `fn-article-parse` returns. There is no
+theorem relating `fn-aw-parse`'s counter to the work `fn-article-parse`
+performs, and there cannot be one without a second, independent cost semantics
+for the original parser to compare against; none exists in this tree. The
+correspondence between the charges and the parser's recursion is therefore
+established **by construction, not by theorem**: the worker mirrors the
+parser's call graph branch for branch, it is checked by reading, and it is
+checked at specific inputs by the exact-charge vectors in
+`tests/acl2/article-work-tests.lisp`. A reader who accepts
+`fn-article-parse-work-profile-bound` as a bound on the real parser is relying
+on that reading, not on a proof. This is the honest reading of the "exact
+correspondence with the actual parser for every ACL2 input" claim: it is true
+of the value, and it is a construction claim about the cost.
+
 The loop induction uses a size measure consisting of the reversed field count,
 reversed header length, current field's raw-line count, and current field's
 unfolded-value length. Scanner results do not exceed remaining input length;

@@ -1,7 +1,7 @@
 ; Bounded article syntax parser vectors.  These exercise syntax preservation,
 ; folding, unknown/repeated fields, MIME-shaped bytes, and hostile framing.
 (in-package "ACL2")
-(include-book "../../books/article")
+(include-book "../../books/article-invariants")
 
 (defconst *fn-article-test-source*
   '(88 45 84 97 103 58 32 111 110 101 13 10
@@ -120,3 +120,81 @@
                 (append '(88 58 32 120 13 10)
                         (fn-article-test-long-folds 123)))
                '(:error :limit)))
+
+
+; -----------------------------------------------------------------------------
+; Field correspondence, and its teeth.
+;
+; Two fields, the second folded, so the witness is nondegenerate: it separates
+; the theorems by more than their weakest clause.
+;   A: x CRLF B: y CRLF SP z CRLF CRLF body
+(defconst *fn-article-fold-source*
+  '(65 58 32 120 13 10
+    66 58 32 121 13 10
+    32 122 13 10
+    13 10
+    98 111 100 121))
+(assert-event (fn-article-result-okp (fn-article-parse *fn-article-fold-source*)))
+(defconst *fn-article-fold-article*
+  (fn-article-result-article (fn-article-parse *fn-article-fold-source*)))
+(assert-event
+ (equal (fn-article-fields *fn-article-fold-article*)
+        '((((65 58 32 120)) (97) (32 120))
+          (((66 58 32 121) (32 122)) (98) (32 121 32 122)))))
+(assert-event
+ (fn-article-fields-correspondp (fn-article-fields *fn-article-fold-article*)))
+(assert-event
+ (equal (fn-article-fields-octets (fn-article-fields *fn-article-fold-article*))
+        (fn-article-header *fn-article-fold-article*)))
+
+; The unfolding reference is computed from the raw lines alone, independently
+; of the parser's incremental value, and it keeps the continuation WSP.
+(assert-event
+ (equal (fn-article-unfold-reference '((66 58 32 121) (32 122)))
+        '(32 121 32 122)))
+(assert-event
+ (equal (fn-article-unfold-octets '(66 58 32 121 13 10 32 122))
+        '(66 58 32 121 32 122)))
+; A CRLF not followed by WSP is not a fold and is not removed.
+(assert-event
+ (equal (fn-article-unfold-octets '(66 58 32 121 13 10 122))
+        '(66 58 32 121 13 10 122)))
+
+; Teeth 1: a variant that drops a field loses header octets.
+(assert-event
+ (not (equal (fn-article-fields-octets
+              (cdr (fn-article-fields *fn-article-fold-article*)))
+             (fn-article-header *fn-article-fold-article*))))
+
+; Teeth 2: a variant that attaches the fold to the wrong field and adjusts that
+; field's unfolded value consistently still satisfies the per-field
+; correspondence, and is caught only by the header recomposition, because the
+; raw lines no longer appear in source order.
+(defconst *fn-article-misfolded-fields*
+  '((((65 58 32 120) (32 122)) (97) (32 120 32 122))
+    (((66 58 32 121)) (98) (32 121))))
+(assert-event (fn-article-fields-correspondp *fn-article-misfolded-fields*))
+(assert-event
+ (not (equal (fn-article-fields-octets *fn-article-misfolded-fields*)
+             (fn-article-header *fn-article-fold-article*))))
+
+; Teeth 3: attaching the fold to the wrong field without adjusting the value
+; fails the per-field correspondence directly.
+(assert-event
+ (not (fn-article-fields-correspondp
+       '((((65 58 32 120) (32 122)) (97) (32 120))
+         (((66 58 32 121)) (98) (32 121))))))
+
+; Teeth 4: an unfolding that drops the continuation WSP, which is the RFC 5322
+; 2.2.3 mistake, fails the per-field correspondence.
+(assert-event
+ (not (fn-article-fields-correspondp
+       '((((65 58 32 120)) (97) (32 120))
+         (((66 58 32 121) (32 122)) (98) (32 121 122))))))
+
+; Teeth 5: a name that is not the ASCII-lowercasing of the octets before the
+; first colon of the first raw line fails the per-field correspondence.
+(assert-event
+ (not (fn-article-fields-correspondp '((((65 58 32 120)) (65) (32 120))))))
+(assert-event
+ (not (fn-article-fields-correspondp '((((65 58 32 120)) (98) (32 120))))))

@@ -51,11 +51,28 @@ length-one pairs; a later scheduler can coalesce adjacent pairs while preserving
 their covered byte set).
 
 An exact already-retained `(offset octets)` pair is `:duplicate` and leaves the
-state exact. A new overlapping range is `:overlap-conflict`; its diagnostic
-contains the existing retained chunk and the state is exact. This deliberately
-conservative local policy also rejects a partially overlapping byte-identical
-piece: only an exact whole-fragment duplicate is idempotent. No arrival-order or
-wall-clock winner exists. Empty chunks are explicit no-ops after bounds checks.
+state exact. Any other arrival that overlaps retained fragments is compared
+byte by byte on the overlap, which is the case a peer that re-fragments an
+object differently produces. Each declared position the arrival covers that a
+retained fragment also covers must carry the same octet
+(`fn-transfer-agrees-fromp`); the first position whose octets differ makes the
+arrival an `:overlap-conflict` whose diagnostic contains the retained fragment
+covering that position, and the state stays exact. An arrival that agrees
+everywhere it overlaps is accepted and the kernel retains the union: it stores
+the arriving octets that no retained fragment already covers, as maximal
+contiguous runs (`fn-transfer-uncovered-chunks`), so the retained fragments stay
+exact and pairwise nonoverlapping and the state recognizer, its work model and
+the assembly theorems are unchanged. An agreeing arrival that adds no new byte
+is `:covered` and changes nothing. No arrival-order or wall-clock winner
+exists: a differing byte is refused before any octet is retained. Empty chunks
+are explicit no-ops after bounds checks, and a degenerate retained fragment
+with no octets — which no transition can store — still refuses an overlapping
+arrival, because it covers no position that could be compared.
+
+`max-chunks` bounds the retained runs of the union, not the number of arrivals:
+an accepted arrival that fills two gaps stores two runs, and an arrival whose
+runs would exceed the limit is `:chunk-limit` with the retained fragments
+unchanged.
 
 Only when every declared offset is present does the result carry
 `(:candidate assembled-octets)`. Assembly is sorted by declared offset, so its
@@ -93,7 +110,10 @@ infer durable fragment progress from a transport acknowledgement or in-memory
 state update.
 
 The [preservation book](../books/transfer-invariants.lisp) proves general reserve
-and add-chunk state/accounting preservation, including refusal paths. The
+and add-chunk state/accounting preservation, including refusal paths, and
+`fn-transfer-add-chunk-retains-union`: after a stored arrival every declared
+position that was covered is still covered and every position of the arriving
+range is covered. The
 [assembly book](../books/transfer-assembly-invariants.lisp) proves candidate
 length/octet/retained-byte agreement and exact missing positions. The
 [work contract](transfer-work.md) gives value-corresponding costed hot-path

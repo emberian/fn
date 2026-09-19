@@ -1,7 +1,7 @@
 ; Executable scenarios for the bounded resumable transfer staging kernel.
 
 (in-package "ACL2")
-(include-book "../../books/transfer")
+(include-book "../../books/transfer-public-bound")
 
 (defconst *fn-transfer-profile*
   (fn-transfer-make-profile 12 8 4 3 3 4))
@@ -62,6 +62,9 @@
                      *fn-transfer-gap*))
 
 ; A conflicting overlap returns retained evidence and does not select a winner.
+; This is the tooth for the byte-agreement hypothesis of the storing branch:
+; the arriving octet at declared position 1 is 99 where the retained fragment
+; holds 2, so the arrival is refused and nothing is retained from it.
 (defconst *fn-transfer-conflict-result*
   (fn-transfer-add-chunk *fn-transfer-gap* *fn-transfer-label* 1 '(99 98)))
 (assert-event (equal (fn-transfer-result-outcome *fn-transfer-conflict-result*)
@@ -202,3 +205,123 @@
          (fn-transfer-add-chunk *fn-transfer-lisp-state* *fn-transfer-lisp-label*
                                 0 '(40 41)))
         '(:candidate (40 41))))
+
+; -----------------------------------------------------------------------------
+; Byte-identical overlap makes progress instead of stalling.
+
+; *fn-transfer-gap* retains (0 (1 2)) and (4 (5 6)) of the six-byte object.
+; An arrival at offset 1 repeats the retained octet at declared position 1 and
+; carries one new octet at position 2.  It is accepted, and only the uncovered
+; run is retained, so the retained fragments stay exact and nonoverlapping.
+(defconst *fn-transfer-identical-overlap*
+  (fn-transfer-add-chunk *fn-transfer-gap* *fn-transfer-label* 1 '(2 3)))
+(assert-event
+ (equal (fn-transfer-result-outcome *fn-transfer-identical-overlap*) :stored))
+(assert-event
+ (fn-transfer-statep (fn-transfer-result-state *fn-transfer-identical-overlap*)))
+(assert-event
+ (equal (fn-transfer-entry-chunks
+         (fn-transfer-find-entry
+          *fn-transfer-label*
+          (fn-transfer-state-entries
+           (fn-transfer-result-state *fn-transfer-identical-overlap*))))
+        '((2 (3)) (0 (1 2)) (4 (5 6)))))
+(assert-event
+ (equal (fn-transfer-missing-ranges
+         (fn-transfer-result-state *fn-transfer-identical-overlap*)
+         *fn-transfer-label*)
+        '(:ok ((3 1)))))
+
+; An agreeing arrival that adds no new octet is :covered and changes nothing.
+(defconst *fn-transfer-covered-result*
+  (fn-transfer-add-chunk *fn-transfer-gap* *fn-transfer-label* 0 '(1)))
+(assert-event
+ (equal (fn-transfer-result-outcome *fn-transfer-covered-result*) :covered))
+(assert-event
+ (equal (fn-transfer-result-state *fn-transfer-covered-result*) *fn-transfer-gap*))
+
+; A re-fragmenting peer completes the object.  One retained middle fragment and
+; a whole-object arrival that agrees on it retain the union as two runs, and the
+; candidate is the declared-offset assembly of all three fragments.
+(defconst *fn-transfer-refrag-profile*
+  (fn-transfer-make-profile 12 8 8 4 3 2))
+(defconst *fn-transfer-refrag-label* '(7))
+(defconst *fn-transfer-refrag-middle*
+  (fn-transfer-result-state
+   (fn-transfer-add-chunk
+    (fn-transfer-result-state
+     (fn-transfer-reserve
+      (fn-transfer-initial-state *fn-transfer-refrag-profile*)
+      *fn-transfer-refrag-label* 6))
+    *fn-transfer-refrag-label* 2 '(3))))
+(assert-event (fn-transfer-statep *fn-transfer-refrag-middle*))
+(defconst *fn-transfer-refrag-result*
+  (fn-transfer-add-chunk *fn-transfer-refrag-middle* *fn-transfer-refrag-label*
+                         0 '(1 2 3 4 5 6)))
+(assert-event
+ (equal (fn-transfer-result-outcome *fn-transfer-refrag-result*) :stored))
+(assert-event
+ (equal (fn-transfer-entry-chunks
+         (fn-transfer-find-entry
+          *fn-transfer-refrag-label*
+          (fn-transfer-state-entries
+           (fn-transfer-result-state *fn-transfer-refrag-result*))))
+        '((0 (1 2)) (3 (4 5 6)) (2 (3)))))
+(assert-event
+ (equal (fn-transfer-result-candidate *fn-transfer-refrag-result*)
+        '(:candidate (1 2 3 4 5 6))))
+(assert-event
+ (fn-transfer-statep (fn-transfer-result-state *fn-transfer-refrag-result*)))
+
+; The retained-fragment count bounds the runs of the union, not the arrivals:
+; the same delivery at a two-fragment limit is refused with the state exact.
+(defconst *fn-transfer-tight-profile*
+  (fn-transfer-make-profile 12 8 8 2 3 2))
+(defconst *fn-transfer-tight-middle*
+  (fn-transfer-result-state
+   (fn-transfer-add-chunk
+    (fn-transfer-result-state
+     (fn-transfer-reserve
+      (fn-transfer-initial-state *fn-transfer-tight-profile*)
+      *fn-transfer-refrag-label* 6))
+    *fn-transfer-refrag-label* 2 '(3))))
+(defconst *fn-transfer-tight-result*
+  (fn-transfer-add-chunk *fn-transfer-tight-middle* *fn-transfer-refrag-label*
+                         0 '(1 2 3 4 5 6)))
+(assert-event
+ (equal (fn-transfer-result-outcome *fn-transfer-tight-result*) :chunk-limit))
+(assert-event
+ (equal (fn-transfer-result-state *fn-transfer-tight-result*)
+        *fn-transfer-tight-middle*))
+
+; Teeth for fn-transfer-add-chunk-retains-union: without the storing branch's
+; byte agreement the arriving range is not covered afterwards.  Declared
+; position 1 of the refused arrival above is covered only because it was
+; already retained; position 3, which the refused arrival carried, is not.
+(assert-event
+ (not (fn-transfer-present-atp
+       3 (fn-transfer-entry-chunks
+          (fn-transfer-find-entry
+           *fn-transfer-label*
+           (fn-transfer-state-entries
+            (fn-transfer-result-state *fn-transfer-conflict-result*)))))))
+
+; A degenerate empty retained fragment covers no declared position, so it
+; cannot be byte-compared and still refuses an arrival whose range contains it.
+; No transition stores one; this state is built by hand.
+(defconst *fn-transfer-degenerate-state*
+  (fn-transfer-make-state
+   *fn-transfer-refrag-profile*
+   (list (fn-transfer-make-entry *fn-transfer-refrag-label* 6
+                                 (list (fn-transfer-make-chunk 2 nil))))))
+(assert-event (fn-transfer-statep *fn-transfer-degenerate-state*))
+(assert-event
+ (equal (fn-transfer-result-outcome
+         (fn-transfer-add-chunk *fn-transfer-degenerate-state*
+                                *fn-transfer-refrag-label* 0 '(1 2 3 4)))
+        :overlap-conflict))
+(assert-event
+ (equal (fn-transfer-result-state
+         (fn-transfer-add-chunk *fn-transfer-degenerate-state*
+                                *fn-transfer-refrag-label* 0 '(1 2 3 4)))
+        *fn-transfer-degenerate-state*))

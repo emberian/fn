@@ -73,6 +73,15 @@
 (defthm fn-transfer-guard-len-is-len
   (equal (fn-transfer-guard-len xs) (len xs)))
 
+(defun fn-transfer-guard-append (xs ys)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (cons (car xs) (fn-transfer-guard-append (cdr xs) ys))
+    ys))
+
+(defthm fn-transfer-guard-append-is-append
+  (equal (fn-transfer-guard-append xs ys) (append xs ys)))
+
 (defun fn-transfer-guard-nth (n xs)
   (declare (xargs :guard t
                   :measure (nfix n)))
@@ -133,6 +142,10 @@
 (defmacro fn-transfer-safe-endp (x)
   (list 'mbe :logic (list 'endp x)
         :exec (list 'not (list 'consp x))))
+
+(defmacro fn-transfer-safe-append (x y)
+  (list 'mbe :logic (list 'append x y)
+        :exec (list 'fn-transfer-guard-append x y)))
 
 (defmacro fn-transfer-safe-member (x xs)
   (list 'mbe :logic (list 'member-equal x xs)
@@ -511,29 +524,105 @@
                       (fn-transfer-make-result :reserved new-state nil
                                                (fn-transfer-entry-candidate new-entry)))))))))))))
 
-(defun fn-transfer-first-overlap (chunk chunks)
+(defun fn-transfer-covering-chunk (position chunks)
   (if (consp chunks)
-      (if (fn-transfer-ranges-overlapp chunk (car chunks))
+      (if (and (fn-transfer-safe-leq
+                (fn-transfer-chunk-offset (car chunks)) position)
+               (fn-transfer-safe-less
+                position
+                (fn-transfer-safe-add
+                 (fn-transfer-chunk-offset (car chunks))
+                 (fn-transfer-safe-len
+                  (fn-transfer-chunk-octets (car chunks))))))
           (car chunks)
-        (fn-transfer-first-overlap chunk (cdr chunks)))
+        (fn-transfer-covering-chunk position (cdr chunks)))
     nil))
 
-(defun fn-transfer-replace-entry-with-chunk (label chunk entries)
+; Every declared position of an arriving fragment that a retained fragment
+; already covers must carry the same octet.  A position no retained fragment
+; covers imposes no requirement, so this is a byte comparison on the overlap
+; rather than a whole-fragment identity test.
+(defun fn-transfer-agrees-fromp (position octets chunks)
+  (declare (xargs :measure (acl2-count octets)))
+  (if (consp octets)
+      (and (or (not (fn-transfer-present-atp position chunks))
+               (equal (car octets) (fn-transfer-byte-at position chunks)))
+           (fn-transfer-agrees-fromp (fn-transfer-safe-inc position)
+                                     (cdr octets) chunks))
+    t))
+
+; The retained fragment that refuses the arrival: the one covering the first
+; declared position whose retained octet differs from the arriving octet.
+(defun fn-transfer-first-disagreement (position octets chunks)
+  (declare (xargs :measure (acl2-count octets)))
+  (if (consp octets)
+      (if (and (fn-transfer-present-atp position chunks)
+               (not (equal (car octets) (fn-transfer-byte-at position chunks))))
+          (fn-transfer-covering-chunk position chunks)
+        (fn-transfer-first-disagreement (fn-transfer-safe-inc position)
+                                        (cdr octets) chunks))
+    nil))
+
+; A retained fragment with no octets covers no declared position, yet the
+; retained-list invariant treats its offset inside another range as an overlap.
+; Such a degenerate fragment cannot be byte-compared, so it still refuses an
+; arrival, exactly as the earlier whole-range overlap rule did.  No transition
+; stores one: an empty arrival is refused before storage.
+(defun fn-transfer-first-empty-overlap (chunk chunks)
+  (if (consp chunks)
+      (if (and (fn-transfer-ranges-overlapp chunk (car chunks))
+               (not (consp (fn-transfer-chunk-octets (car chunks)))))
+          (car chunks)
+        (fn-transfer-first-empty-overlap chunk (cdr chunks)))
+    nil))
+
+; The union to retain: the arriving octets that no retained fragment already
+; covers, as maximal contiguous runs.  Retained fragments therefore remain
+; exact and pairwise nonoverlapping, so the state recognizer, its work model
+; and the assembly theorems are unchanged; and no arrival-order byte winner is
+; ever chosen, because a differing byte is refused before this is computed.
+(defun fn-transfer-uncovered-chunks (position octets chunks)
+  (declare (xargs :measure (acl2-count octets)))
+  (if (consp octets)
+      (if (fn-transfer-present-atp position chunks)
+          (fn-transfer-uncovered-chunks (fn-transfer-safe-inc position)
+                                        (cdr octets) chunks)
+        (let ((rest (fn-transfer-uncovered-chunks
+                     (fn-transfer-safe-inc position) (cdr octets) chunks)))
+          (if (and (consp rest)
+                   (equal (fn-transfer-chunk-offset (car rest))
+                          (fn-transfer-safe-inc position)))
+              (cons (fn-transfer-make-chunk
+                     position
+                     (cons (car octets)
+                           (fn-transfer-chunk-octets (car rest))))
+                    (cdr rest))
+            (cons (fn-transfer-make-chunk position (list (car octets)))
+                  rest))))
+    nil))
+
+(defun fn-transfer-replace-entry-with-chunks (label new-chunks entries)
   (if (consp entries)
       (if (equal label (fn-transfer-entry-label (car entries)))
           (cons (fn-transfer-make-entry
                  (fn-transfer-entry-label (car entries))
                  (fn-transfer-entry-length (car entries))
-                 (cons chunk (fn-transfer-entry-chunks (car entries))))
+                 (fn-transfer-safe-append
+                  new-chunks (fn-transfer-entry-chunks (car entries))))
                 (cdr entries))
         (cons (car entries)
-              (fn-transfer-replace-entry-with-chunk label chunk (cdr entries))))
+              (fn-transfer-replace-entry-with-chunks label new-chunks
+                                                     (cdr entries))))
     nil))
 
-; Exact range-and-byte duplicates are no-ops.  Any other overlap is a
-; conservative local conflict: the result identifies the retained conflicting
-; chunk and leaves all retained fragments exact.  Thus arrival order cannot
-; silently choose a byte winner.
+; Exact range-and-byte duplicates are no-ops.  An arrival that overlaps
+; retained fragments is compared byte by byte on the overlap: a differing octet
+; is a local conflict whose diagnostic names the retained fragment and leaves
+; every retained fragment exact, and an agreeing arrival is accepted, retaining
+; the union of the covered bytes.  An agreeing arrival that adds no new byte is
+; :covered and changes nothing.  Thus a peer that re-fragments an object
+; differently makes progress instead of stalling, and arrival order still
+; cannot silently choose a byte winner.
 (defun fn-transfer-add-chunk (st label offset octets)
   (if (not (fn-transfer-statep st))
       (fn-transfer-make-result :invalid-state st :invalid-state nil)
@@ -564,40 +653,55 @@
                              chunk (fn-transfer-entry-chunks entry))
                             (fn-transfer-make-result :duplicate st nil
                                                      (fn-transfer-entry-candidate entry))
-                          (let ((overlap (fn-transfer-first-overlap
-                                          chunk (fn-transfer-entry-chunks entry))))
-                            (if overlap
+                          (let ((disagreement
+                                 (fn-transfer-first-disagreement
+                                  offset octets (fn-transfer-entry-chunks entry))))
+                            (if disagreement
                                 (fn-transfer-make-result
                                  :overlap-conflict st
-                                 (list :retained-overlap overlap) nil)
-                              ; A zero maximum admits no nonempty fragment.
-                              ; Keep this after the duplicate branch: replaying
-                              ; an already retained fragment remains a no-op at
-                              ; a full positive limit.
-                              (if (or (fn-transfer-safe-zp
-                                       (fn-transfer-max-chunks profile))
-                                      (not (fn-transfer-at-mostp
-                                            (fn-transfer-entry-chunks entry)
-                                            (fn-transfer-safe-dec
-                                             (fn-transfer-max-chunks profile)))))
-                                  (fn-transfer-make-result :chunk-limit st
-                                                           :chunk-limit nil)
-                                (let* ((new-entries
-                                        (fn-transfer-replace-entry-with-chunk
-                                         label chunk
-                                         (fn-transfer-state-entries st)))
-                                       (new-state
-                                        (fn-transfer-make-state profile new-entries))
-                                       (new-entry
-                                        (fn-transfer-find-entry label new-entries)))
-                                  (fn-transfer-make-result
-                                   :stored new-state nil
-                                   (fn-transfer-entry-candidate new-entry)))))))))))))))))))
+                                 (list :retained-overlap disagreement) nil)
+                              (let ((degenerate
+                                     (fn-transfer-first-empty-overlap
+                                      chunk (fn-transfer-entry-chunks entry))))
+                                (if degenerate
+                                    (fn-transfer-make-result
+                                     :overlap-conflict st
+                                     (list :retained-overlap degenerate) nil)
+                                  (let ((fresh
+                                         (fn-transfer-uncovered-chunks
+                                          offset octets
+                                          (fn-transfer-entry-chunks entry))))
+                                    (if (not (consp fresh))
+                                        (fn-transfer-make-result
+                                         :covered st nil
+                                         (fn-transfer-entry-candidate entry))
+                                      ; A zero maximum admits no fragment, and
+                                      ; the retained count bounds the union's
+                                      ; runs, not the number of arrivals.
+                                      (if (not (fn-transfer-at-mostp
+                                                (fn-transfer-safe-append
+                                                 fresh
+                                                 (fn-transfer-entry-chunks entry))
+                                                (fn-transfer-max-chunks profile)))
+                                          (fn-transfer-make-result :chunk-limit st
+                                                                   :chunk-limit nil)
+                                        (let* ((new-entries
+                                                (fn-transfer-replace-entry-with-chunks
+                                                 label fresh
+                                                 (fn-transfer-state-entries st)))
+                                               (new-state
+                                                (fn-transfer-make-state profile new-entries))
+                                               (new-entry
+                                                (fn-transfer-find-entry label new-entries)))
+                                          (fn-transfer-make-result
+                                           :stored new-state nil
+                                           (fn-transfer-entry-candidate new-entry)))))))))))))))))))))))
 
 ; -----------------------------------------------------------------------------
 ; Executable guard closure.  All original transfer functions retain guard T;
 ; malformed logical inputs therefore keep the same total results.
 
+(verify-guards fn-transfer-guard-append)
 (verify-guards fn-transfer-octetp)
 (verify-guards fn-transfer-octet-listp)
 (verify-guards fn-transfer-at-mostp)
@@ -648,8 +752,12 @@
 (verify-guards fn-transfer-missing-ranges)
 (verify-guards fn-transfer-new-reservation-admissiblep)
 (verify-guards fn-transfer-reserve)
-(verify-guards fn-transfer-first-overlap)
-(verify-guards fn-transfer-replace-entry-with-chunk)
+(verify-guards fn-transfer-covering-chunk)
+(verify-guards fn-transfer-agrees-fromp)
+(verify-guards fn-transfer-first-disagreement)
+(verify-guards fn-transfer-first-empty-overlap)
+(verify-guards fn-transfer-uncovered-chunks)
+(verify-guards fn-transfer-replace-entry-with-chunks)
 (verify-guards fn-transfer-add-chunk)
 
 ; -----------------------------------------------------------------------------
