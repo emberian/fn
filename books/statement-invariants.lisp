@@ -136,7 +136,8 @@
            :in-theory (disable fn-cbor-decode fn-cbor-encode
                                fn-cbor-result-okp fn-cbor-result-value
                                fn-cbor-result-rest
-                               fn-stmt-okp fn-stmt-value fn-stmt-rest))))
+                               fn-stmt-okp fn-stmt-value fn-stmt-rest
+                               fn-stmt-ok fn-stmt-ok2 fn-stmt-error))))
 
 ; -----------------------------------------------------------------------------
 ; Predecessor lists
@@ -190,7 +191,11 @@
                    (fn-stmt-header-creator h) (fn-stmt-header-incarnation h)
                    (fn-stmt-header-sequence h) (fn-stmt-header-preds h)
                    (fn-stmt-header-kind h) (fn-stmt-header-ref h))
-                  h)))
+                  h))
+  :hints (("Goal" :do-not-induct t
+           :expand ((len h) (len (cdr h)) (len (cddr h)) (len (cdddr h))
+                    (len (cddddr h)) (len (cdr (cddddr h)))
+                    (len (cddr (cddddr h)))))))
 
 (defthm fn-stmt-id-items-length
   (equal (len (fn-stmt-id-items ids)) (len ids)))
@@ -203,15 +208,23 @@
 ; -----------------------------------------------------------------------------
 ; Header: items both ways
 
+(defthm fn-stmt-headerp-preds-bound
+  (implies (fn-stmt-headerp h)
+           (<= (len (fn-stmt-header-preds h)) *fn-stmt-max-preds*))
+  :rule-classes :linear)
+
 (defthm fn-stmt-header-of-items-of-header-items
   (implies (fn-stmt-headerp h)
            (equal (fn-stmt-header-of-items
                    (append (fn-stmt-header-items h) rest))
                   (fn-stmt-ok2 h rest)))
-  :hints (("Goal"
+  :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-stmt-take-id-items fn-stmt-id-items
                                fn-stmt-kind-of-code fn-stmt-kind-code
-                               fn-stmt-make-header))))
+                               fn-stmt-make-header fn-stmt-kindp
+                               fn-stmt-header-creator fn-stmt-header-incarnation
+                               fn-stmt-header-sequence fn-stmt-header-preds
+                               fn-stmt-header-kind fn-stmt-header-ref))))
 
 (defthm fn-stmt-header-of-items-of-header-items-exact
   (implies (fn-stmt-headerp h)
@@ -230,9 +243,12 @@
                                 (fn-stmt-value (fn-stmt-header-of-items items)))
                                (fn-stmt-rest (fn-stmt-header-of-items items)))
                        items)))
-  :hints (("Goal"
+  :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-stmt-take-id-items fn-stmt-id-items
-                               fn-stmt-kind-of-code fn-stmt-kind-code))))
+                               fn-stmt-kind-of-code fn-stmt-kind-code
+                               fn-stmt-kindp
+                               fn-stmt-okp fn-stmt-value fn-stmt-rest
+                               fn-stmt-ok fn-stmt-ok2 fn-stmt-error))))
 
 ; -----------------------------------------------------------------------------
 ; Header bytes
@@ -241,7 +257,7 @@
   (implies (fn-stmt-headerp h)
            (<= (len (fn-stmt-encode-items (fn-stmt-header-items h))) 655))
   :rule-classes :linear
-  :hints (("Goal" :in-theory (disable fn-cbor-encode))))
+  :hints (("Goal" :do-not-induct t :in-theory (disable fn-cbor-encode))))
 
 (defthm fn-stmt-header-round-trip
   (implies (fn-stmt-headerp h)
@@ -252,7 +268,8 @@
                             (items (fn-stmt-header-items h))
                             (fuel *fn-stmt-max-header-items*))
                  (:instance fn-stmt-header-encoding-bound)
-                 (:instance fn-stmt-header-items-length))
+                 (:instance fn-stmt-header-items-length)
+                 (:instance fn-stmt-headerp-preds-bound))
            :in-theory (disable fn-stmt-header-items fn-stmt-headerp
                                fn-stmt-decode-items fn-stmt-header-of-items
                                fn-stmt-encode-items
@@ -311,22 +328,28 @@
   (implies (fn-stmt-p s)
            (<= (len (fn-stmt-items s)) 25))
   :rule-classes :linear
-  :hints (("Goal" :in-theory (disable fn-stmt-header-items fn-stmt-headerp))))
+  :hints (("Goal" :in-theory (disable fn-stmt-header-items fn-stmt-headerp
+                                      fn-stmt-header fn-stmt-header-preds))))
 
 (defthm fn-stmt-encoding-bound
   (implies (fn-stmt-p s)
            (<= (len (fn-stmt-encode-items (fn-stmt-items s))) 12949))
   :rule-classes :linear
   :hints (("Goal" :in-theory (disable fn-cbor-encode fn-stmt-header-items
-                                      fn-stmt-headerp))))
+                                      fn-stmt-headerp fn-stmt-header
+                                      fn-stmt-header-preds))))
 
 (defthm fn-stmt-of-items-of-items
   (implies (fn-stmt-p s)
            (equal (fn-stmt-of-items (fn-stmt-items s))
                   (fn-stmt-ok s)))
-  :hints (("Goal"
+    :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-stmt-header-of-items fn-stmt-header-items
-                               fn-stmt-headerp fn-stmt-payload-ref))))
+                               fn-stmt-headerp fn-stmt-payload-ref
+                               fn-stmt-make fn-stmt-header fn-stmt-payload
+                               fn-stmt-signature fn-stmt-header-ref
+                               fn-stmt-okp fn-stmt-value fn-stmt-rest
+                               fn-stmt-ok fn-stmt-ok2 fn-stmt-error))))
 
 (defthm fn-stmt-round-trip
   (implies (fn-stmt-p s)
@@ -344,6 +367,17 @@
                                fn-stmt-decode-items-of-encode-items
                                fn-stmt-encoding-bound
                                fn-stmt-items-length))))
+
+; Generic list facts used by the parser soundness proofs: a list known to have
+; exactly two (four) elements is the list of them.
+(local (defthm fn-stmt-two-list-reconstruct
+  (implies (and (consp x) (consp (cdr x)) (not (cddr x)))
+           (equal (list (car x) (cadr x)) x))))
+
+(local (defthm fn-stmt-four-list-reconstruct
+  (implies (and (consp x) (consp (cdr x)) (consp (cddr x)) (consp (cdddr x))
+                (not (cddddr x)))
+           (equal (list (car x) (cadr x) (caddr x) (cadddr x)) x))))
 
 (defthm fn-stmt-of-items-sound
   (implies (fn-stmt-okp (fn-stmt-of-items items))
@@ -375,6 +409,11 @@
 ; -----------------------------------------------------------------------------
 ; Signing
 
+(defthm fn-stmt-payload-ref-is-digest
+  (fn-digest-octetsp (fn-stmt-payload-ref payload))
+  :hints (("Goal" :in-theory (e/d (fn-stmt-payload-ref fn-digest-tagged)
+                                  (fn-digest-tagged-preimage fn-digest-octetsp)))))
+
 (defthm fn-stmt-sign-is-verified
   (implies (and (fn-sig-seed-p sk)
                 (fn-digest-octetsp creator)
@@ -401,7 +440,10 @@
            (equal (fn-stmt-make-receipt
                    (fn-stmt-receipt-subject r) (fn-stmt-receipt-obligation r)
                    (fn-stmt-receipt-policy-id r) (fn-stmt-receipt-evidence r))
-                  r)))
+                  r))
+  :hints (("Goal" :do-not-induct t
+           :expand ((len r) (len (cdr r)) (len (cddr r)) (len (cdddr r))
+                    (len (cddddr r))))))
 
 (defthm fn-stmt-receipt-items-are-items
   (implies (fn-stmt-receipt-p r)
@@ -416,7 +458,17 @@
 (defthm fn-stmt-receipt-of-items-of-receipt-items
   (implies (fn-stmt-receipt-p r)
            (equal (fn-stmt-receipt-of-items (fn-stmt-receipt-items r))
-                  (fn-stmt-ok r))))
+                  (fn-stmt-ok r)))
+    :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-stmt-make-receipt fn-stmt-receipt-subject
+                               fn-stmt-receipt-obligation
+                               fn-stmt-receipt-policy-id
+                               fn-stmt-receipt-evidence
+                               fn-stmt-okp fn-stmt-value fn-stmt-rest
+                               fn-stmt-ok fn-stmt-ok2 fn-stmt-error))))
+
+(defthm fn-stmt-receipt-items-length
+  (equal (len (fn-stmt-receipt-items r)) 4))
 
 (defthm fn-stmt-receipt-round-trip
   (implies (fn-stmt-receipt-p r)

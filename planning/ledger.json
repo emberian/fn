@@ -130,24 +130,38 @@
     "books/nntp-invariants",
     "books/nntp-effects",
     "tests/acl2/nntp-tests",
-    "tests/acl2/nntp-teeth-tests"
+    "tests/acl2/nntp-teeth-tests",
+    "books/crypto-seam",
+    "tests/acl2/crypto-seam-tests",
+    "books/statement",
+    "books/statement-invariants",
+    "tests/acl2/statement-tests",
+    "books/principal",
+    "books/principal-invariants",
+    "tests/acl2/principal-tests",
+    "books/lace",
+    "books/lace-invariants",
+    "tests/acl2/lace-tests",
+    "books/policy",
+    "books/policy-invariants",
+    "tests/acl2/policy-tests"
   ],
   "totals": {
-    "books": 129,
-    "books_in_root_closure": 129,
-    "roots": 129,
-    "theorems": 1508,
-    "functions": 1281,
-    "assert_events": 1615,
-    "must_fails": 58,
-    "encapsulates": 7,
+    "books": 143,
+    "books_in_root_closure": 143,
+    "roots": 143,
+    "theorems": 1737,
+    "functions": 1498,
+    "assert_events": 1833,
+    "must_fails": 61,
+    "encapsulates": 9,
     "guards": {
-      "verified": 700,
+      "verified": 701,
       "declared-off": 29,
-      "default-guarded": 180,
-      "default-unguarded": 372
+      "default-guarded": 338,
+      "default-unguarded": 430
     },
-    "suspect_theorems": 21
+    "suspect_theorems": 23
   },
   "books": [
     {
@@ -1048,6 +1062,31 @@
       "read_error": null
     },
     {
+      "book": "books/crypto-seam.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 19,
+      "functions": 14,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 10,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 2,
+      "includes": [
+        "records-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/exchange-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -1144,6 +1183,59 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/lace-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 65,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "lace",
+        "statement-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-lace-cross-canonical-self"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/lace.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 5,
+      "functions": 20,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 20,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "statement"
+      ],
       "system_includes": [],
       "suspects": [],
       "read_error": null
@@ -1312,6 +1404,113 @@
         "fn-node-capacity-refusal-is-no-op",
         "fn-node-stale-completion-is-no-op"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/policy-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 25,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "lace-invariants",
+        "policy",
+        "principal-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/policy.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 10,
+      "functions": 29,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 28,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "lace",
+        "principal",
+        "statement-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/principal-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 19,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "principal",
+        "statement-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-prin-apply-succession-when-not-acceptable"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/principal.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 27,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 27,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "statement"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -1493,6 +1692,56 @@
         "fn-retain-admission-refusal-is-no-op",
         "fn-retain-wrong-evidence-does-not-release"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/statement-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 59,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "statement"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/statement.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 17,
+      "functions": 65,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 65,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 13,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "crypto-seam"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -2643,6 +2892,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/crypto-seam-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 8,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 7,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 18,
+      "must_fails": 2,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/crypto-seam"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/exchange-guards-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -2795,6 +3071,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/lace-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 9,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 9
+      },
+      "verify_guards_events": 0,
+      "assert_events": 51,
+      "must_fails": 1,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/lace-invariants",
+        "crypto-seam-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/nntp-teeth-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -2918,6 +3220,58 @@
       "encapsulates": 0,
       "includes": [
         "../../books/node-traces"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/policy-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 27,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 27
+      },
+      "verify_guards_events": 0,
+      "assert_events": 66,
+      "must_fails": 0,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/policy-invariants",
+        "crypto-seam-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/principal-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 12,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 12
+      },
+      "verify_guards_events": 0,
+      "assert_events": 43,
+      "must_fails": 0,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/principal-invariants",
+        "crypto-seam-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -3072,6 +3426,32 @@
       "encapsulates": 0,
       "includes": [
         "../../books/retention"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/statement-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 40,
+      "must_fails": 0,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/statement-invariants",
+        "crypto-seam-tests"
       ],
       "system_includes": [],
       "suspects": [],
@@ -3519,6 +3899,15 @@
       ]
     },
     {
+      "theorem": "fn-lace-cross-canonical-self",
+      "book": "books/lace-invariants.lisp",
+      "line": 282,
+      "reasons": [
+        "definition-restated: the conclusion is the body of fn-lace-canonicalp",
+        "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
       "theorem": "fn-node-capacity-refusal-is-no-op",
       "book": "books/node.lisp",
       "line": 367,
@@ -3588,6 +3977,14 @@
       "line": 181,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-node-step and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-prin-apply-succession-when-not-acceptable",
+      "book": "books/principal-invariants.lisp",
+      "line": 195,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-prin-apply-succession and the conclusion is that branch's value"
       ]
     },
     {

@@ -122,23 +122,22 @@
 (defthm fn-prin-acceptablep-implies-shapes
   (implies (fn-prin-succession-acceptablep st s)
            (and (fn-prin-statep st)
+                (true-listp st)
                 (fn-stmt-p s)
                 (integerp (fn-prin-state-next st))
                 (<= 0 (fn-prin-state-next st))))
   :rule-classes (:rewrite :forward-chaining)
-  :hints (("Goal" :in-theory (disable fn-stmt-verifiedp fn-prin-succession-key
-                                      fn-stmt-decode-items fn-stmt-kind
-                                      fn-stmt-creator fn-stmt-incarnation
-                                      fn-stmt-sequence fn-prin-state-id
-                                      fn-prin-state-key
-                                      fn-prin-state-incarnation))))
+  :hints (("Goal" :in-theory '(fn-prin-succession-acceptablep fn-prin-statep
+                               fn-record-uint32p natp))))
 
 (defun fn-prin-apply-succession (st s)
   (declare (xargs :guard t
                   :guard-hints
                   (("Goal"
                     :use fn-prin-acceptablep-implies-shapes
+                    :do-not-induct t
                     :in-theory (disable fn-prin-succession-acceptablep
+                                        fn-prin-statep
                                         fn-stmt-p fn-prin-succession-key)))))
   (if (fn-prin-succession-acceptablep st s)
       (fn-prin-make-state (fn-prin-state-id st)
@@ -148,7 +147,7 @@
     st))
 
 (defun fn-prin-resolve (st stmts)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :measure (acl2-count stmts)))
   (if (consp stmts)
       (fn-prin-resolve (fn-prin-apply-succession st (car stmts)) (cdr stmts))
     st))
@@ -165,7 +164,7 @@
     nil))
 
 (defun fn-prin-chain-validp (st trail)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :measure (acl2-count trail)))
   (if (consp trail)
       (and (fn-prin-succession-acceptablep st (car trail))
            (fn-prin-chain-validp (fn-prin-apply-succession st (car trail))

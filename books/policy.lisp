@@ -31,6 +31,18 @@
 (include-book "principal")
 (include-book "statement-invariants")
 
+(local (in-theory (disable fn-stmt-id fn-stmt-p fn-stmt-creator
+                           fn-stmt-incarnation fn-stmt-sequence fn-stmt-preds
+                           fn-stmt-payload fn-stmt-header fn-stmt-kind
+                           fn-stmt-sign fn-stmt-payload-ref
+                           fn-stmt-signing-preimage)))
+
+(defthm fn-pol-stmt-p-shape
+  (implies (fn-stmt-p s)
+           (and (true-listp s) (consp s)))
+  :rule-classes (:rewrite :forward-chaining)
+  :hints (("Goal" :in-theory (enable fn-stmt-p))))
+
 (defconst *fn-pol-max-members* 64)
 (defconst *fn-pol-max-name-octets* 128)
 (defconst *fn-pol-max-terms-octets* 256)
@@ -223,7 +235,8 @@
 
 (defthm fn-pol-candidates-are-lace
   (implies (fn-lace-p lace)
-           (fn-lace-p (fn-pol-candidates lace keyring group authority))))
+           (fn-lace-p (fn-pol-candidates lace keyring group authority)))
+  :hints (("Goal" :in-theory (disable fn-pol-candidatep fn-stmt-p))))
 
 (defthm fn-pol-latest-is-member-or-nil
   (implies (consp cands)
@@ -249,6 +262,13 @@
     (cons (fn-stmt-creator p)
           (if (consp policy) (fn-pol-policy-members policy) nil))))
 
+(defthm fn-pol-authorized-set-is-true-list
+  (true-listp (fn-pol-authorized-set p))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-pol-policy-p)
+                           (fn-pol-policy-decode-exact fn-stmt-p
+                            fn-stmt-creator fn-stmt-payload)))))
+
 (defthm fn-pol-current-is-stmt-or-nil
   (implies (fn-lace-p lace)
            (or (null (fn-pol-current lace keyring group authority))
@@ -257,7 +277,17 @@
 
 (defun fn-pol-authorizedp (lace keyring group authority principal action)
   (declare (xargs :guard (and (fn-lace-p lace) (fn-prin-keyringp keyring))
-                  :guard-hints (("Goal" :use fn-pol-current-is-stmt-or-nil))))
+                  :guard-hints (("Goal" :use fn-pol-current-is-stmt-or-nil
+                                 :do-not-induct t
+                                 :in-theory (disable fn-pol-current
+                                                     fn-pol-authorized-set
+                                                     fn-pol-statement-policy
+                                                     fn-pol-policy-decode-exact
+                                                     fn-pol-candidates
+                                                     fn-pol-latest
+                                                     fn-pol-same-slot-conflictp
+                                                     fn-stmt-p fn-stmt-id
+                                                     fn-stmt-creator)))))
   (cond ((equal action :policy)
          (equal principal authority))
         ((equal action :post)
@@ -281,7 +311,15 @@
 ; The policy term and receipts
 
 (defun fn-pol-evidence (keyring authority s)
-  (declare (xargs :guard (and (fn-prin-keyringp keyring) (fn-stmt-p s))))
+  (declare (xargs :guard (and (fn-prin-keyringp keyring) (fn-stmt-p s))
+                  :guard-hints
+                  (("Goal" :do-not-induct t
+                    :use ((:instance fn-stmt-encoding-bound))
+                    :in-theory (disable fn-stmt-p fn-stmt-items
+                                        fn-stmt-encode-items
+                                        fn-stmt-encoding-bound
+                                        fn-prin-key-for fn-stmt-creator
+                                        fn-cbor-octet-listp)))))
   (let ((ak (fn-prin-key-for authority keyring))
         (ck (fn-prin-key-for (fn-stmt-creator s) keyring)))
     (if (and (fn-sig-public-key-p ak) (fn-sig-public-key-p ck))
@@ -290,8 +328,30 @@
                                     (cons :bytes (fn-stmt-encode s))))
       nil)))
 
+; Everything below treats the codec, the seam and the parsed statement as
+; opaque: the shapes come from the lemmas above and in statement-invariants.
+(local (in-theory (disable fn-stmt-verifiedp fn-prin-verifiedp
+                           fn-stmt-encode-items fn-stmt-decode-items
+                           fn-stmt-items fn-stmt-decode-exact
+                           fn-cbor-encode fn-cbor-decode
+                           fn-digest-tagged fn-digest-tagged-preimage
+                           fn-stmt-header-encode fn-stmt-content-id
+                           fn-stmt-receipt-encode fn-stmt-receipt-decode-exact
+                           fn-stmt-receipt-items fn-stmt-receipt-p
+                           fn-pol-current fn-pol-authorizedp fn-pol-admitp
+                           fn-pol-candidates fn-pol-latest
+                           fn-pol-same-slot-conflictp fn-pol-authorized-set
+                           fn-pol-statement-policy fn-pol-policy-decode-exact
+                           fn-pol-evidence)))
+
 (defthm fn-pol-evidence-is-octet-list
-  (fn-cbor-octet-listp (fn-pol-evidence keyring authority s)))
+  (fn-cbor-octet-listp (fn-pol-evidence keyring authority s))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-stmt-encoding-bound))
+           :in-theory (e/d (fn-pol-evidence)
+                           (fn-stmt-p fn-stmt-items fn-stmt-encode-items
+                            fn-stmt-encoding-bound fn-prin-key-for
+                            fn-stmt-creator fn-cbor-octet-listp)))))
 
 (defun fn-pol-evidence-digest (keyring authority s)
   (declare (xargs :guard (and (fn-prin-keyringp keyring) (fn-stmt-p s))))
@@ -301,7 +361,17 @@
 (defun fn-pol-term (lace keyring group authority s)
   (declare (xargs :guard (and (fn-lace-p lace) (fn-prin-keyringp keyring)
                               (fn-stmt-p s))
-                  :guard-hints (("Goal" :use fn-pol-current-is-stmt-or-nil))))
+                  :guard-hints (("Goal" :use fn-pol-current-is-stmt-or-nil
+                                 :do-not-induct t
+                                 :in-theory (disable fn-pol-current
+                                                     fn-pol-authorized-set
+                                                     fn-pol-statement-policy
+                                                     fn-pol-policy-decode-exact
+                                                     fn-pol-candidates
+                                                     fn-pol-latest
+                                                     fn-pol-same-slot-conflictp
+                                                     fn-stmt-p fn-stmt-id
+                                                     fn-stmt-creator)))))
   (let ((cur (fn-pol-current lace keyring group authority)))
     (if (consp cur)
         (cons (fn-stmt-id cur) (fn-pol-evidence-digest keyring authority s))
@@ -310,7 +380,17 @@
 (defun fn-pol-make-receipt (lace keyring group authority s obligation)
   (declare (xargs :guard (and (fn-lace-p lace) (fn-prin-keyringp keyring)
                               (fn-stmt-p s))
-                  :guard-hints (("Goal" :use fn-pol-current-is-stmt-or-nil))))
+                  :guard-hints (("Goal" :use fn-pol-current-is-stmt-or-nil
+                                 :do-not-induct t
+                                 :in-theory (disable fn-pol-current
+                                                     fn-pol-authorized-set
+                                                     fn-pol-statement-policy
+                                                     fn-pol-policy-decode-exact
+                                                     fn-pol-candidates
+                                                     fn-pol-latest
+                                                     fn-pol-same-slot-conflictp
+                                                     fn-stmt-p fn-stmt-id
+                                                     fn-stmt-creator)))))
   (if (fn-pol-admitp lace keyring group authority s)
       (let ((term (fn-pol-term lace keyring group authority s)))
         (fn-stmt-make-receipt (fn-stmt-id s) obligation (car term) (cdr term)))
@@ -320,14 +400,24 @@
 ; must be present and must be a verified policy of `authority` for `group`.
 (defun fn-pol-receipt-groundedp (receipt lace keyring group authority)
   (declare (xargs :guard (and (fn-lace-p lace) (fn-prin-keyringp keyring)
-                              (fn-stmt-receipt-p receipt))))
+                              (fn-stmt-receipt-p receipt))
+                  :guard-hints (("Goal" :do-not-induct t
+                                 :in-theory (enable fn-stmt-receipt-p)))))
   (let ((p (fn-lace-lookup lace (fn-stmt-receipt-policy-id receipt))))
     (and (consp p)
          (fn-pol-candidatep p keyring group authority))))
 
 ; A receipt statement: the receiver principal signs the receipt payload.
 (defun fn-pol-sign-receipt (sk receiver incarnation sequence preds receipt)
-  (declare (xargs :guard (fn-stmt-receipt-p receipt)))
+  (declare (xargs :guard (fn-stmt-receipt-p receipt)
+                  :guard-hints (("Goal" :do-not-induct t
+                                 :use ((:instance fn-stmt-receipt-items-are-items
+                                                  (r receipt)))
+                                 :in-theory (e/d (fn-stmt-receipt-encode)
+                                                 (fn-stmt-receipt-p
+                                                  fn-stmt-receipt-items
+                                                  fn-stmt-encode-items
+                                                  fn-stmt-receipt-items-are-items))))))
   (fn-stmt-sign sk receiver incarnation sequence preds :receipt
                 (fn-stmt-receipt-encode receipt)))
 

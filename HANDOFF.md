@@ -57,20 +57,20 @@ incarnation).
 
 ### `specs/objects.md`
 
-- Line 14 (table row "Statement"): replace `| Statement | Kind, issuer, scope, subject references, terms/dependencies, authenticated encoding |` with `| Statement | Block-shaped header (creator principal, incarnation, sequence, predecessor content ids, kind, payload ref), payload, signature over the content id; see [statement](statement.md) |`.
-- Line 15 (row "Origin event"): replace with `| Origin event | Subsumed by the statement header: (creator, incarnation, sequence) is the slot, predecessors are the causal references; see [lace](lace.md) |`.
+- Line 14 (table row "Statement"): replace `| Statement | Kind, issuer, scope, subject references, terms/dependencies, authenticated encoding |` with `| Statement | Block-shaped header (creator principal, incarnation, sequence, predecessor content ids, kind, payload ref), payload, signature over the content id; see [statement](specs/statement.md) |`.
+- Line 15 (row "Origin event"): replace with `| Origin event | Subsumed by the statement header: (creator, incarnation, sequence) is the slot, predecessors are the causal references; see [lace](specs/lace.md) |`.
 - OBJ-004 paragraph: append the sentence `Two distinct statements at one (creator, incarnation, sequence) are retained and make the creator an equivocator in every lace holding both (fn-lace-distinct-same-slot-is-equivocation); which fork is served is a policy decision.`
 - OBJ-006 paragraph: append `The structural half is fn-lace-reissue-is-equivocation; detection needs no freshness anchor, only both statements.`
-- OBJ-007 paragraph: append `Authorization is a policy statement by the group authority resolved in the local lace (fn-pol-current); admission and receipts commit to the policy term, never to a boolean; see [policy](policy.md).`
+- OBJ-007 paragraph: append `Authorization is a policy statement by the group authority resolved in the local lace (fn-pol-current); admission and receipts commit to the policy term, never to a boolean; see [policy](specs/policy.md).`
 
 ### `specs/encoding.md`
 
-- Status paragraph, after "The byte grammar is not frozen": add `The substrate books use item sequences of the existing primitives (uint32 and byte strings, one item per field, explicit counts) as a local profile; see [statement](statement.md). This is Candidate A of the article-byte examples over CBOR heads and is not a D08 selection.`
+- Status paragraph, after "The byte grammar is not frozen": add `The substrate books use item sequences of the existing primitives (uint32 and byte strings, one item per field, explicit counts) as a local profile; see [statement](specs/statement.md). This is Candidate A of the article-byte examples over CBOR heads and is not a D08 selection.`
 - ENC-003: append `Every digest and signing preimage in the substrate starts with the length-prefixed ASCII tag fn-<purpose>-v1 (fn-digest-tagged-preimage), proved to separate tag from message.`
 
 ### `planning/decisions.md`
 
-- D09 row, Recommendation cell: append `Proposal P1/P2/P4/P5 of [the packet](decision-packet-d09-d11.md): ed25519 now, hybrid ML-DSA-65 profile slot, BLAKE3 derive-key digest, seeds in a host keystore, rotation by :succession statements.`
+- D09 row, Recommendation cell: append `Proposal P1/P2/P4/P5 of [the packet](planning/decision-packet-d09-d11.md): ed25519 now, hybrid ML-DSA-65 profile slot, BLAKE3 derive-key digest, seeds in a host keystore, rotation by :succession statements.`
 - D10 row: append `Proposal P6/P7 of the packet: structural fork detection via equivocation; a fresh incarnation is declared by its first statement; no external anchor for detection.`
 - D11 row: append `Proposal P8 of the packet: a group is (authority principal, name); owner-only policy change; depth-one authority.`
 - D08 row: append `Proposal P3 of the packet: item sequences as the local profile until C2-01.`
