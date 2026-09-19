@@ -11,7 +11,12 @@
 (in-package "ACL2")
 
 (include-book "../../books/anchor-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+
+;; Every assertion below is ground evaluation, so it needs no rule from the
+;; anchor books: `books/anchor.lisp' withdraws only `:definition' runes, and
+;; the executable counterparts still decide.  The teeth for the keystones, and
+;; the `defattach' that makes the constrained Ed25519 seam executable, are in
+;; tests/acl2/anchor-teeth-tests.lisp.
 
 ;; -----------------------------------------------------------------------------
 ;; The captured response

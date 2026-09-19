@@ -16,10 +16,24 @@
 ; Every one of them is conditional on `fn-anchor-verifiedp', which is the
 ; constrained Ed25519 check.  None of them claims a signature cannot be forged
 ; or that a Roughtime server is honest; specs/anchor.md carries that trust.
+;
+; Style: docs/proof-style.md.  This is the properties book of the anchor
+; cluster, so it opens the definitions `books/anchor.lisp' withdrew, locally
+; and by name, and ends with its own export theory.
 
 (in-package "ACL2")
 (include-book "anchor")
+; The FNAN round trip at the end of this book rests on frame's own round trip,
+; `fn-frame-decode-of-encode' (books/frame-invariants.lisp).
+(include-book "frame-invariants")
 (local (include-book "arithmetic/top" :dir :system))
+
+; Local vocabulary re-enable (docs/proof-style.md sec. 2): this book is about
+; the anchor transitions, so it opens every definition `books/anchor.lisp'
+; withdrew, plus the octet-width facts it withdrew with them.  Nothing here
+; leaves those runes enabled for an includer.
+(local (in-theory (enable fn-anchor-vocabulary fn-anchor-octet-vocabulary
+                          fn-cbor-invariants-vocabulary)))
 
 ; -----------------------------------------------------------------------------
 ; The interval order
@@ -41,8 +55,8 @@
                 (fn-anchor-newerp b a))
            (fn-anchor-newerp c a)))
 
-(local (in-theory (disable fn-anchor-newerp fn-anchor-earliest
-                           fn-anchor-latest)))
+(local (in-theory (disable (:d fn-anchor-newerp) (:d fn-anchor-earliest)
+                           (:d fn-anchor-latest))))
 
 ; -----------------------------------------------------------------------------
 ; Acceptance into the node's durable state
@@ -235,8 +249,55 @@
                        (fn-anchor-image-referenced right)))))
 
 ; -----------------------------------------------------------------------------
-; The durable record family
+; The host entries are the theorems' subjects
+;
+; AGENTS.md: "The theorem subject is the function the host calls."  The host
+; calls `fn-anchor-node-accept-observed', `fn-anchor-node-advance-observed' and
+; `fn-anchor-restore-observed' (`tools/run_store.py anchor` and `recover`,
+; through `host/anchor-host.lisp`).  These three equalities are the named
+; theorems that make every keystone above a statement about those calls, under
+; exactly one hypothesis: that the host's Ed25519 verdict is the value the
+; constrained seam names for that anchor.
 
+(defthm fn-anchor-node-accept-observed-is-node-accept
+  (implies (equal (and verdict t) (fn-anchor-verifiedp a))
+           (equal (fn-anchor-node-accept-observed node a verdict)
+                  (fn-anchor-node-accept node a))))
+
+(defthm fn-anchor-node-advance-observed-is-node-advance
+  (implies (equal (and verdict t) (fn-anchor-verifiedp a))
+           (equal (fn-anchor-node-advance-observed node a verdict)
+                  (fn-anchor-node-advance node a))))
+
+(defthm fn-anchor-restore-observed-is-restore
+  (implies (equal (and verdict t) (fn-anchor-verifiedp presented))
+           (equal (fn-anchor-restore-observed node image presented verdict)
+                  (fn-anchor-restore node image presented))))
+
+; -----------------------------------------------------------------------------
+; The durable record family
+;
+; Local vocabulary re-enable: the FNAN round trip is the only place in this
+; book that opens frame's grammar and its two result records, so the enable
+; sits here rather than at the top (docs/deputies BOARD, 2026-09-19 codecs).
+
+(local (in-theory (enable fn-frame-codec-vocabulary
+                          fn-frame-record-vocabulary
+                          fn-frame-fields-vocabulary
+                          fn-frame-invariants-vocabulary
+                          fn-frame-octet-vocabulary
+                          (:d fn-frame-split) (:d fn-frame-u64-bytes))))
+
+; `fn-anchor-record-anchor-is-an-anchor' is the third conjunct of
+; `fn-anchor-record-okp' restated with that predicate as its hypothesis: it is
+; true by definition and is not a registry event (docs/proof-style.md sec. 7).
+(defthm fn-anchor-record-anchor-is-an-anchor
+  (implies (fn-anchor-record-okp kind values)
+           (fn-anchor-p (fn-anchor-record-anchor kind values)))
+  :rule-classes nil)
+
+; The value direction for FNAN: everything the host encodes decodes back to the
+; kind and the field values it started from.
 (defthm fn-anchor-decode-of-encode
   (implies (and (fn-anchor-record-okp kind values)
                 (fn-frame-digestp digest)
@@ -244,28 +305,25 @@
            (equal (fn-anchor-decode (fn-anchor-encode kind values digest)
                                     digest)
                   (fn-frame-ok *fn-anchor-magic* *fn-frame-version* kind
-                               values))))
-
-(defthm fn-anchor-record-anchor-is-an-anchor
-  (implies (fn-anchor-record-okp kind values)
-           (fn-anchor-p (fn-anchor-record-anchor kind values))))
+                               values)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-anchor-encode fn-anchor-decode
+                            fn-frame-inputp fn-frame-magicp fn-frame-item)
+                           (fn-frame-decode fn-frame-encode
+                            fn-frame-fields-parse fn-frame-fields-parse-aux
+                            fn-frame-fields-octets)))))
 
 ; -----------------------------------------------------------------------------
-; The host entries are the theorems' subjects
+; Export theory (docs/proof-style.md sec. 2)
 ;
-; AGENTS.md: "The theorem subject is the function the host calls."  The host
-; calls `fn-anchor-node-accept-observed' and `fn-anchor-restore-observed'
-; (`tools/run_store.py anchor` and `recover`, through `host/anchor-host.lisp`).
-; These two equalities are the named theorems that make every keystone above
-; a statement about those calls, under exactly one hypothesis: that the host's
-; Ed25519 verdict is the value the constrained seam names for that anchor.
+; What leaves this book enabled: the keystones above, the three host-entry
+; equalities, the outcome and node preservation facts and the three order
+; properties of `fn-anchor-newerp'.  Withdrawn: the linear rule relating the
+; interval endpoints, which is proof vocabulary for those order properties and
+; backchains into `fn-anchor-earliest'/`fn-anchor-latest' from every
+; arithmetic goal above this book.
 
-(defthm fn-anchor-node-accept-observed-is-node-accept
-  (implies (equal (and verdict t) (fn-anchor-verifiedp a))
-           (equal (fn-anchor-node-accept-observed node a verdict)
-                  (fn-anchor-node-accept node a))))
+(deftheory fn-anchor-invariants-vocabulary
+  '(fn-anchor-earliest-not-after-latest))
 
-(defthm fn-anchor-restore-observed-is-restore
-  (implies (equal (and verdict t) (fn-anchor-verifiedp presented))
-           (equal (fn-anchor-restore-observed node image presented verdict)
-                  (fn-anchor-restore node image presented))))
+(in-theory (disable fn-anchor-earliest-not-after-latest))

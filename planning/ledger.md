@@ -10,19 +10,19 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 182 |
-| Certification roots in the Makefile | 182 |
-| Books inside the root closure | 182 |
-| `defthm` and `defthmd` events | 2797 |
-| `defun` events | 1988 |
-| Functions with verified guards | 945 |
-| Functions declared `:verify-guards nil` and never verified | 53 |
-| Functions left at the default with an explicit guard | 560 |
-| Functions left at the default with no guard | 430 |
-| `assert-event` checks | 3000 |
+| Books read | 186 |
+| Certification roots in the Makefile | 186 |
+| Books inside the root closure | 186 |
+| `defthm` and `defthmd` events | 2874 |
+| `defun` events | 2054 |
+| Functions with verified guards | 976 |
+| Functions declared `:verify-guards nil` and never verified | 54 |
+| Functions left at the default with an explicit guard | 593 |
+| Functions left at the default with no guard | 431 |
+| `assert-event` checks | 3066 |
 | `must-fail` checks | 107 |
-| `encapsulate` events | 10 |
-| Theorems flagged SUSPECT by shape | 26 |
+| `encapsulate` events | 12 |
+| Theorems flagged SUSPECT by shape | 27 |
 | Export-hygiene warnings | 57 |
 | Teeth-form warnings | 3 |
 
@@ -52,6 +52,8 @@ that `make certify` requests.
 | `books/acceptance-alloc.lisp` | root | 2 | 21 | 16/0/5/0 | 0 | 0 | 1 |
 | `books/acceptance-invariants.lisp` | root | 36 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/acceptance.lisp` | root | 44 | 45 | 39/0/6/0 | 0 | 0 | 0 |
+| `books/anchor-invariants.lisp` | root | 27 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/anchor.lisp` | root | 50 | 63 | 31/1/30/1 | 0 | 0 | 1 |
 | `books/article-fields.lisp` | root | 5 | 30 | 30/0/0/0 | 0 | 0 | 1 |
 | `books/article-invariants.lisp` | root | 44 | 14 | 0/7/7/0 | 0 | 0 | 0 |
 | `books/article-properties.lisp` | root | 42 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -167,6 +169,8 @@ that `make certify` requests.
 | `books/wire-invariants.lisp` | root | 40 | 2 | 1/0/0/1 | 0 | 0 | 0 |
 | `books/wire.lisp` | root | 44 | 49 | 31/0/18/0 | 0 | 0 | 1 |
 | `tests/acl2/acceptance-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 246 | 0 | 0 |
+| `tests/acl2/anchor-teeth-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 26 | 0 | 0 |
+| `tests/acl2/anchor-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 40 | 0 | 0 |
 | `tests/acl2/article-fields-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 31 | 0 | 0 |
 | `tests/acl2/article-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 2 | 0 |
 | `tests/acl2/article-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 38 | 0 | 0 |
@@ -243,6 +247,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | --- | --- | --- | --- |
 | `fn-af-message-id-equalp-is-exact` | `books/article-fields.lisp` | 311 | definition-restated: the conclusion is the body of fn-af-message-id-equalp with the conjuncts the hypotheses already assert struck out |
 | `fn-ag-less-is-less` | `books/acceptance-alloc.lisp` | 58 | definition-restated: the conclusion is the body of fn-ag-less; reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-anchor-octets-of-lengthp-forward` | `books/anchor.lisp` | 105 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-anchor-octets-of-lengthp |
 | `fn-bp-effect-for-pending-attempt-unfolds` | `books/bp-workflow-invariants.lisp` | 882 | branch-of-definition: the hypothesis is a branch test of fn-bp-effect-for-pending and the conclusion is that branch's value |
 | `fn-bpc-decode-refuses-overlong-input` | `books/bp-primary-cbor.lisp` | 1175 | branch-of-definition: the hypothesis is a branch test of fn-bpc-decode and the conclusion is that branch's value |
 | `fn-bpf-cell-of-uncovered-is-gap` | `books/bp-fragment-invariants.lisp` | 126 | branch-of-definition: the hypothesis negates a branch test of fn-bpf-cell-of and the conclusion is that branch's value |
