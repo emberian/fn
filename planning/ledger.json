@@ -157,6 +157,8 @@
     "books/nntp-effects",
     "tests/acl2/nntp-tests",
     "tests/acl2/nntp-teeth-tests",
+    "books/nntp-index",
+    "tests/acl2/nntp-index-tests",
     "books/bp-release",
     "books/bp-release-invariants",
     "tests/acl2/bp-release-tests",
@@ -166,16 +168,16 @@
     "tests/acl2/relay-tests"
   ],
   "totals": {
-    "books": 162,
-    "books_in_root_closure": 162,
-    "roots": 162,
-    "theorems": 2272,
-    "functions": 1667,
-    "assert_events": 2567,
+    "books": 164,
+    "books_in_root_closure": 164,
+    "roots": 164,
+    "theorems": 2304,
+    "functions": 1692,
+    "assert_events": 2617,
     "must_fails": 133,
     "encapsulates": 8,
     "guards": {
-      "verified": 934,
+      "verified": 959,
       "declared-off": 52,
       "default-guarded": 284,
       "default-unguarded": 397
@@ -1642,6 +1644,32 @@
       "suspects": [
         "fn-nntp-block-scan-start-without-a-dot"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/nntp-index.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 32,
+      "functions": 25,
+      "guards": {
+        "verified": 25,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 25,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "index",
+        "nntp"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -3655,6 +3683,33 @@
         "../../books/journal"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/nntp-index-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 50,
+      "must_fails": 0,
+      "defconsts": 18,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/nntp-index"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
