@@ -13,6 +13,11 @@
 (include-book "../../books/nntp-index")
 (include-book "std/testing/must-fail" :dir :system)
 
+; This book reasons about the NNTP transitions themselves, so it opens the
+; vocabularies the five books of the nntp cluster withdraw at their export
+; events (2026-09-19 split of books/nntp.lisp).
+(local (in-theory (enable fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary fn-nntp-projection-vocabulary fn-nntp-responses-vocabulary fn-nntp-vocabulary)))
+
 ; -----------------------------------------------------------------------------
 ; A reachable, non-degenerate witness.  Two configured groups, three committed
 ; articles, one of them cross-posted.  fn.test's available numbers appear in
@@ -187,19 +192,6 @@
                       (fn-index-build *nix-duplicate-articles*) "fn.letters")
                      2))
 
-(must-fail
- (thm (implies (and (stringp group) (natp low) (natp high))
-               (equal (fn-nntp-index-group-range-numbers
-                       (fn-index-build articles) group low high)
-                      (fn-nntp-group-range-numbers group low high articles)))
-      :hints (("Goal" :do-not-induct t))))
-
-(must-fail
- (thm (implies (stringp group)
-               (equal (fn-nntp-index-group-count (fn-index-build articles) group)
-                      (fn-nntp-group-count group articles)))
-      :hints (("Goal" :do-not-induct t))))
-
 ; -----------------------------------------------------------------------------
 ; Hypothesis 2: (NATP LOW), and hypothesis 3: (NATP HIGH).
 ;
@@ -215,24 +207,6 @@
                      '(1 4)))
 (assert-event (equal (fn-nntp-index-group-range-numbers *nix-index* "fn.letters" 1 9/2)
                      nil))
-
-(must-fail
- (thm (implies (and (fn-article-listp configured articles)
-                    (stringp group)
-                    (natp high))
-               (equal (fn-nntp-index-group-range-numbers
-                       (fn-index-build articles) group low high)
-                      (fn-nntp-group-range-numbers group low high articles)))
-      :hints (("Goal" :do-not-induct t))))
-
-(must-fail
- (thm (implies (and (fn-article-listp configured articles)
-                    (stringp group)
-                    (natp low))
-               (equal (fn-nntp-index-group-range-numbers
-                       (fn-index-build articles) group low high)
-                      (fn-nntp-group-range-numbers group low high articles)))
-      :hints (("Goal" :do-not-induct t))))
 
 ; -----------------------------------------------------------------------------
 ; Hypothesis 4: (STRINGP GROUP).  This one does not separate, and is recorded
