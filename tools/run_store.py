@@ -411,6 +411,7 @@ class Acl2Store:
             self.call('(include-book "books/replay")')
             self.call('(ld "host/store-host.lisp" :ld-error-action :return :ld-error-triples t)')
             self.call('(ld "host/store-node-host.lisp" :ld-error-action :return :ld-error-triples t)')
+            self.call('(ld "host/config-host.lisp" :ld-error-action :return :ld-error-triples t)')
             self.reset()
         except BaseException:
             self.close()
@@ -586,6 +587,8 @@ class Store:
     def lock_path(self): return self.root / "writer.lock"
     @property
     def frontier_path(self): return self.root / "allocation-frontier.json"
+    @property
+    def config_record_path(self): return self.root / "config-record"
 
     @staticmethod
     def _frontier_with_checksum(next_txid):
@@ -661,7 +664,10 @@ class Store:
             except OSError:
                 pass
 
-    def initialize(self):
+    def initialize(self, bridge=None):
+        # One durable configuration record, its content decided entirely by
+        # `books/config`: packet R4 deletes the *fn-store-groups* line, not a
+        # Python copy of the table.
         self._safe_directory(self.root, create=True)
         lock_fd = self._open_lock(exclusive=True, create=True)
         try:
@@ -674,6 +680,10 @@ class Store:
                 self._load_config()
             # A missing allocator alongside committed history would permit
             # reuse of an aborted ID.  It is a fault, never an implicit 0.
+            if not check_regular(self.config_record_path):
+                self._publish_initial_file(
+                    self.config_record_path,
+                    frame_bridge.session(bridge).config_record_default())
             if not check_regular(self.frontier_path) and self.transaction_files():
                 raise StoreFault("refusing missing allocator frontier with committed history")
             frontier = canonical_json(self._frontier_with_checksum(0)) + b"\n"
@@ -682,6 +692,7 @@ class Store:
             else:
                 self._load_frontier()
             fsync_regular(self.config_path)
+            fsync_regular(self.config_record_path)
             fsync_regular(self.frontier_path)
             fsync_dir(self.transactions)
             fsync_dir(self.root)
@@ -808,6 +819,26 @@ class Store:
             records.append(record)
         return records
 
+    def _replay_config_record(self, acl2):
+        """Replay the durable configuration record, or refuse the store.
+
+        A store with no configuration record, or with a record whose kind the
+        core does not know, is a refused store -- a distinct outcome from an
+        uncertain persistence observation, and never a compiled-in default.
+        """
+        if not check_regular(self.config_record_path):
+            raise StoreFault("refusing store with no durable configuration record")
+        raw = read_regular_bounded(self.config_record_path, 65538)
+        try:
+            generation, groups, capacity = (
+                frame_bridge.session(acl2).config_record_replay(raw))
+        except frame_bridge.BridgeError as error:
+            raise StoreFault(
+                "unusable durable configuration record: {}".format(error)) from error
+        self.config_generation = generation
+        self.config_groups = groups
+        self.config_capacity = capacity
+
     def recover(self, acl2):
         # Recovery owns the mutation gate from the start of scanning through
         # the final barrier, including unexpected read/runtime failures.
@@ -818,6 +849,7 @@ class Store:
             # barrier failed. Recover the observed frontier under the held
             # store lock, never a cached pre-error allocation value.
             self._load_frontier()
+            self._replay_config_record(acl2)
             records = self.durable_records(acl2)
             self.orphans = self.staging_orphans()
             if acl2.recover(records, self.frontier) != "recovering":

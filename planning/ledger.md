@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 182 |
-| Certification roots in the Makefile | 182 |
-| Books inside the root closure | 182 |
-| `defthm` and `defthmd` events | 2797 |
-| `defun` events | 1988 |
-| Functions with verified guards | 945 |
+| Books read | 186 |
+| Certification roots in the Makefile | 186 |
+| Books inside the root closure | 186 |
+| `defthm` and `defthmd` events | 2876 |
+| `defun` events | 2132 |
+| Functions with verified guards | 947 |
 | Functions declared `:verify-guards nil` and never verified | 53 |
-| Functions left at the default with an explicit guard | 560 |
+| Functions left at the default with an explicit guard | 702 |
 | Functions left at the default with no guard | 430 |
-| `assert-event` checks | 3000 |
+| `assert-event` checks | 3043 |
 | `must-fail` checks | 107 |
 | `encapsulate` events | 10 |
 | Theorems flagged SUSPECT by shape | 26 |
@@ -97,6 +97,9 @@ that `make certify` requests.
 | `books/checkpoint.lisp` | root | 10 | 13 | 13/0/0/0 | 0 | 0 | 0 |
 | `books/clock-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/clock.lisp` | root | 1 | 17 | 17/0/0/0 | 0 | 0 | 0 |
+| `books/config-invariants.lisp` | root | 30 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/config-records.lisp` | root | 8 | 15 | 2/0/13/0 | 0 | 0 | 0 |
+| `books/config.lisp` | root | 41 | 128 | 0/0/128/0 | 0 | 0 | 0 |
 | `books/crypto-seam.lisp` | root | 19 | 14 | 0/0/10/4 | 0 | 0 | 0 |
 | `books/exchange-invariants.lisp` | root | 22 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/exchange.lisp` | root | 34 | 43 | 37/0/6/0 | 0 | 0 | 1 |
@@ -194,6 +197,7 @@ that `make certify` requests.
 | `tests/acl2/cbor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
 | `tests/acl2/checkpoint-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/clock-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 26 | 8 | 0 |
+| `tests/acl2/config-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 43 | 0 | 0 |
 | `tests/acl2/crypto-seam-tests.lisp` | root | 11 | 7 | 0/0/7/0 | 18 | 0 | 0 |
 | `tests/acl2/exchange-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 162 | 0 | 0 |
 | `tests/acl2/frame-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 47 | 0 | 0 |
