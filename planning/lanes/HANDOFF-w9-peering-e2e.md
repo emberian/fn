@@ -45,7 +45,7 @@ which is what it always meant.
 | --- | --- | --- |
 | `books/scheduler-peers` | certified | persvati `run-20260920T180716Z-da35`, `build/acl2/certify-20260920T180719Z-1531308` |
 | `tests/acl2/scheduler-peers-tests` | certified | same run |
-| `books/owner`, `books/owner-invariants` | **no verdict** | persvati `run-20260920T180927Z-a8a4` (`--closure`, 52 uncached books) was still running at 0 books certified when the lane's budget ended. Resubmit the same two roots; the box's cache is warmer now. |
+| `books/owner`, `books/owner-invariants` | **uncertified, blocked on two other lanes' open forms** | persvati `run-20260920T180927Z-a8a4`, evidence `build/acl2/certify-20260920T180931Z-1553858`: 29 books published, and exactly six failed. Two are root causes and neither is this lane's: `books/peer-config` fails at `DEFTHM FN-CFG-SET-PEER-DELTA-IS-ADMISSIBLE` (the form w6/peering-inbound-2 has already closed on its own branch, commit `3901d55`, not yet on dev) and `books/nntp-effects` has no certificate on dev (the board's standing note, `fn-nntp-hdr-labelled-line-is-block-text`). The other four are cascades: `peer-inbound` and `nntp-post` include them, `served` includes `peer-inbound`, `owner` includes `served`. **Nothing in this lane's owner edits has been refuted or confirmed**; the books were never reached. |
 | everything else touched | host and Python only | `make check` green; `tests/test_twonode_gate.py` 19 tests pass |
 
 `tests/test_inn_lab.py` has one error on this branch and the SAME error on
@@ -54,11 +54,14 @@ by running it in the dev checkout, not caused by this lane.
 
 ## What is open, with the obligation each needs
 
-1. **Certify the owner.** `python3 tools/farm.py submit persvati --jobs 6
-   --remote-root /home/ember/fn-lanes/w9-peering-e2e --closure books/owner
-   books/owner-invariants tests/acl2/owner-tests`. Note the board's standing
-   warning that `books/nntp-effects` is open on dev at
-   `fn-nntp-hdr-labelled-line-is-block-text`; owner's closure contains it.
+1. **Certify the owner, after merging the two open forms.** Merge
+   `w6/peering-inbound-2` (its `fn-cfg-set-peer-delta-is-admissible` fix) and
+   whatever closes `books/nntp-effects`, then
+   `python3 tools/farm.py submit persvati --jobs 6 --remote-root
+   /home/ember/fn-lanes/w9-peering-e2e --closure books/owner
+   books/owner-invariants tests/acl2/owner-tests`. Until those two land, no
+   run of this lane's owner books can reach a verdict: they are six levels
+   above the failing forms.
 2. **Teeth for the owner's three transit theorems.** `tests/acl2/owner-tests.lisp`
    needs a transit submission witness (a `(:transit peer kind msgid octets)`
    at the head of the queue) and one violating value per hypothesis. Not

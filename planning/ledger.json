@@ -8260,7 +8260,7 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 378,
+        "line": 383,
         "name": "fn-store-cfg-join-names",
         "source": "host/store-node-host.lisp",
         "reason": "defined in host/store-node-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
