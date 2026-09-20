@@ -883,28 +883,45 @@
 
 ; The outcome reaches exactly the connection whose submission is in flight:
 ; the reply is fn-served-post-outcome over that connection's served state
-; (fn-nntp-post-outcome's line, the only place 240 exists), the connection
-; itself is unchanged (fn-served-post-outcome returns it as it was), and
-; every other connection is untouched.  The result is (effects . owner);
+; (fn-nntp-post-outcome's line, the only place 240 exists), the reply leaves
+; the served state as it was (fn-served-post-outcome returns it), and no
+; other connection is touched at all.  The result is (effects . owner);
 ; with nothing in flight for `id`, or an unknown connection, it is (nil . o).
+;
+; Read-back.  A 240 is a promise the poster can act on, so the poster's own
+; pin moves: when the rendered completion is :durable the poster's
+; connection is re-pinned to the committed view by one fn-own-advance, which
+; is the same event the host's (:advance id) runs, on that connection alone.
+; Its next GROUP or ARTICLE therefore reads the prefix that contains its own
+; article (fn-own-read-is-served-step-on-pinned-prefix over the new pin;
+; fn-own-durable-outcome-repins-the-poster, owner-invariants.lisp).  Every
+; other connection keeps the pin it had: a reader open before the post still
+; sees its own version, which is what K3 and the concurrency case in
+; tests/test_post.py require.  A :refused or :uncertain outcome moves no
+; pin.  The reply itself is rendered over the connection as it was when the
+; submission was taken, so the rendered octets do not depend on the advance.
 (defun fn-own-outcome (o id word)
   (declare (xargs :guard t))
   (let ((conn (fn-own-find-conn id (fn-own-conns o)))
         (sub (fn-own-inflight o)))
     (if (and conn sub (equal (fn-own-sub-id sub) id))
-        (cons (fn-served-result-effects
-               (fn-served-post-outcome
-                (fn-served-make-conn (fn-own-conn-wire conn)
-                                     (fn-own-conn-session conn)
-                                     (fn-own-conn-archive conn)
-                                     (fn-own-conn-config conn)
-                                     (fn-own-conn-observation conn))
-                (fn-own-outcome-completion o word)))
-              (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
-                           (fn-own-next-id o) (fn-own-max-conns o)
-                           (if (equal (fn-own-pending o) id) nil (fn-own-pending o))
-                           (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
-                           (fn-own-config o) (fn-own-queue o) nil))
+        (let ((completion (fn-own-outcome-completion o word))
+              (next (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
+                                 (fn-own-next-id o) (fn-own-max-conns o)
+                                 (if (equal (fn-own-pending o) id) nil (fn-own-pending o))
+                                 (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                                 (fn-own-config o) (fn-own-queue o) nil)))
+          (cons (fn-served-result-effects
+                 (fn-served-post-outcome
+                  (fn-served-make-conn (fn-own-conn-wire conn)
+                                       (fn-own-conn-session conn)
+                                       (fn-own-conn-archive conn)
+                                       (fn-own-conn-config conn)
+                                       (fn-own-conn-observation conn))
+                  completion))
+                (if (equal completion :durable)
+                    (fn-own-advance next id)
+                  next)))
       (cons nil o))))
 
 ; -----------------------------------------------------------------------------

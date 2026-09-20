@@ -81,6 +81,8 @@
     "tests/acl2/store-node-traces-tests",
     "books/store-node-resolution",
     "tests/acl2/store-node-resolution-tests",
+    "books/store-sweep",
+    "tests/acl2/store-sweep-tests",
     "books/store-observed",
     "tests/acl2/store-observed-tests",
     "books/store-observed-traces",
@@ -235,18 +237,18 @@
     "tests/acl2/stx-tests"
   ],
   "totals": {
-    "books": 232,
-    "books_in_root_closure": 231,
-    "roots": 231,
-    "theorems": 4439,
-    "functions": 3167,
-    "assert_events": 4253,
+    "books": 234,
+    "books_in_root_closure": 233,
+    "roots": 233,
+    "theorems": 4451,
+    "functions": 3177,
+    "assert_events": 4271,
     "must_fails": 59,
     "encapsulates": 15,
     "guards": {
-      "verified": 1293,
+      "verified": 1294,
       "declared-off": 141,
-      "default-guarded": 1273,
+      "default-guarded": 1282,
       "default-unguarded": 460
     },
     "suspect_theorems": 32,
@@ -2557,14 +2559,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 5,
-      "functions": 119,
+      "functions": 120,
       "guards": {
-        "verified": 119,
+        "verified": 120,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 119,
+      "verify_guards_events": 120,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 12,
@@ -2774,7 +2776,7 @@
       "book": "books/owner-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 87,
+      "theorems": 92,
       "functions": 7,
       "guards": {
         "verified": 0,
@@ -3249,17 +3251,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 50,
-      "functions": 31,
+      "functions": 32,
       "guards": {
         "verified": 2,
         "declared-off": 4,
-        "default-guarded": 25,
+        "default-guarded": 26,
         "default-unguarded": 0
       },
       "verify_guards_events": 2,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 1,
+      "defconsts": 2,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -3582,6 +3584,31 @@
       "suspects": [
         "fn-sn-open-observed-invalid-history-refuses"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/store-sweep.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 8,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-node-traces"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -5487,9 +5514,9 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 159,
+      "assert_events": 163,
       "must_fails": 0,
-      "defconsts": 63,
+      "defconsts": 65,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -6104,6 +6131,31 @@
       "encapsulates": 0,
       "includes": [
         "../../books/store-observed"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/store-sweep-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 14,
+      "must_fails": 0,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-sweep"
       ],
       "system_includes": [],
       "suspects": [],
@@ -8126,63 +8178,63 @@
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 9,
+        "line": 10,
         "name": "*fn-store-capacity*",
         "source": "host/store-host.lisp",
         "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 41,
+        "line": 42,
         "name": "fn-store-decode-records",
         "source": "host/store-host.lisp",
         "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 102,
+        "line": 103,
         "name": "fn-store-octets->string",
         "source": "host/store-host.lisp",
         "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 158,
+        "line": 159,
         "name": "fn-store-groups-from-codes",
         "source": "books/store-config.lisp",
         "reason": "defined in books/store-config.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 158,
+        "line": 159,
         "name": "fn-store-msgid-octetsp",
         "source": "host/store-host.lisp",
         "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 158,
+        "line": 159,
         "name": "*fn-store-max-payload*",
         "source": "host/store-host.lisp",
         "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 158,
+        "line": 159,
         "name": "fn-store-text-octetsp",
         "source": "host/store-host.lisp",
         "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 158,
+        "line": 159,
         "name": "fn-store-article-match",
         "source": "host/store-host.lisp",
         "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 270,
+        "line": 271,
         "name": "fn-store-group-name",
         "source": "books/store-config.lisp",
         "reason": "defined in books/store-config.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"

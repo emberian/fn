@@ -657,13 +657,27 @@
 
 ; Opening a connection: the one place the whole-archive projection recognizer
 ; runs (fn-nntp-open-session records its verdict in the session and no command
-; recomputes it).  The greeting is RFC 3977 section 5.1.1's 201 response; it
-; does not yet vary with the posting configuration (open item in
-; planning/lanes/HANDOFF-w4-post.md).
+; recomputes it).  The greeting is RFC 3977 section 5.1.1's code for what
+; this connection may do: 200 when its pinned configuration allows posting
+; and 201 when it does not.  The same bit decides the POST capability label
+; (section 5.2.2, fn-nntp-capability-lines) and MODE READER (section 5.3.2),
+; and it is the bit fn-nntp-post-step reads before answering a POST command,
+; so the three can never disagree.
 
 (defconst *fn-served-greeting*
   '(50 48 49 32 102 110 45 110 110 116 112 32 101 120 112 101 114 105 109
     101 110 116 97 108 32 114 101 97 100 101 114 32 114 101 97 100 121 13 10))
+
+(defconst *fn-served-greeting-posting*
+  '(50 48 48 32 102 110 45 110 110 116 112 32 101 120 112 101 114 105 109
+    101 110 116 97 108 32 115 101 114 118 101 114 32 114 101 97 100 121 13
+    10))
+
+(defun fn-served-greeting (config)
+  (declare (xargs :guard t))
+  (if (fn-inj-config-allow config)
+      *fn-served-greeting-posting*
+    *fn-served-greeting*))
 
 (defun fn-served-open (archive line-limit body-limit config observation)
   (declare (xargs :guard t))
@@ -671,7 +685,7 @@
    (fn-served-make-conn (fn-wire-initial-state line-limit body-limit)
                         (fn-post-open-session archive)
                         archive config observation)
-   (list (fn-nntp-reply-effect *fn-served-greeting*))))
+   (list (fn-nntp-reply-effect (fn-served-greeting config)))))
 
 (defthm fn-served-open-is-a-connection
   (implies (and (posp line-limit) (posp body-limit))
@@ -963,7 +977,7 @@
 (deftheory fn-served-vocabulary
   '(fn-served-closed-wirep fn-served-submit-effectp fn-served-effectp
     fn-served-dispatch fn-served-feed fn-served-step fn-served-run
-    fn-served-open fn-served-post-outcome
+    fn-served-greeting fn-served-open fn-served-post-outcome
     fn-served-feed-steps fn-served-step-nntp-steps))
 
 (in-theory (disable fn-served-vocabulary))

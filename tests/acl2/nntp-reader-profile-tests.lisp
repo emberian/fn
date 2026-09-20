@@ -35,8 +35,8 @@
 (defconst *rp-facts*
   (list (fn-nntp-group-fact "fn.letters" 0 *rp-blind-obs*)
         (fn-nntp-group-fact "fn.empty" 811728000000 *rp-blind-obs*)))
-(defconst *rp-env* (fn-nntp-env *rp-obs* *rp-facts*))
-(defconst *rp-blind-env* (fn-nntp-env *rp-blind-obs* *rp-facts*))
+(defconst *rp-env* (fn-nntp-env *rp-obs* *rp-facts* nil))
+(defconst *rp-blind-env* (fn-nntp-env *rp-blind-obs* *rp-facts* nil))
 (assert-event (fn-nntp-envp *rp-env*))
 (assert-event (fn-nntp-envp *rp-blind-env*))
 
@@ -384,7 +384,8 @@
 (defconst *rp-forged-env*
   (fn-nntp-env *rp-obs*
                (list (fn-nntp-group-fact "bad name" 0 *rp-blind-obs*)
-                     (list :fn-nntp-group-fact "fn.letters" 0 :not-an-observation))))
+                     (list :fn-nntp-group-fact "fn.letters" 0 :not-an-observation))
+               nil))
 (assert-event (not (fn-nntp-envp *rp-forged-env*)))
 (assert-event
  (fn-nntp-effectsp

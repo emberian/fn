@@ -40,8 +40,8 @@
 ; which is 1758412800 seconds after 1970-01-01 (811728000 + 946684800).
 (defconst *lg-facts*
   (list (fn-nntp-group-fact "fn.empty" 811728000000 *lg-blind-obs*)))
-(defconst *lg-env* (fn-nntp-env *lg-obs* *lg-facts*))
-(defconst *lg-empty-env* (fn-nntp-env *lg-obs* nil))
+(defconst *lg-env* (fn-nntp-env *lg-obs* *lg-facts* nil))
+(defconst *lg-empty-env* (fn-nntp-env *lg-obs* nil nil))
 (assert-event (fn-nntp-envp *lg-env*))
 (assert-event (equal (fn-nntp-dtn-unix-seconds 811728000000) 1758412800))
 

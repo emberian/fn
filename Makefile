@@ -84,6 +84,8 @@ ACL2_BOOKS ?= books/assumptions \
 	tests/acl2/store-node-traces-tests \
 	books/store-node-resolution \
 	tests/acl2/store-node-resolution-tests \
+	books/store-sweep \
+	tests/acl2/store-sweep-tests \
 	books/store-observed \
 	tests/acl2/store-observed-tests \
 	books/store-observed-traces \
