@@ -22,6 +22,20 @@
                           fn-nntp-vocabulary)))
 (local (in-theory (enable fn-statep fn-articlep fn-pendingp)))
 
+; The consp- and true-listp-backchaining rules books/article.lisp and
+; books/wildmat.lisp export enabled fan every (consp X) and (true-listp X)
+; out through their recursive recognizers (nntp-invariants, same list, with
+; the accumulated-persistence figures); the -is-response-text theorems here
+; ran past 40M prover steps under them on 2026-09-20.  Withdrawn by name; the
+; owning books should withdraw them at their exports (docs/proof-style.md
+; section 8).
+(local (in-theory (disable fn-article-nonempty-true-list-is-consp
+                           fn-article-field-list-true-listp
+                           fn-article-header-bytes-true-listp
+                           fn-article-octet-list-true-listp
+                           fn-wildmat-guard-items-p-true-listp
+                           fn-wildmat-guard-octet-listp-true-listp)))
+
 ; -----------------------------------------------------------------------------
 ; The response grammar
 
@@ -151,6 +165,16 @@
   (implies (fn-octet-listp x)
            (fn-octet-listp (reverse x)))
   :hints (("Goal" :in-theory (enable reverse))))
+
+; std/lists/rev (books/article.lisp:13) rewrites the (revappend x nil) that
+; reverse opens to into (rev x), so every reverse inside an opened
+; fn-nntp-crlf-lines-aux reaches a proof as rev and the lemma above cannot
+; match it (certify-20260920T010731Z-93121).  The same lemma in that normal
+; form, from the one above.
+(defthm fn-nntp-effects-octet-listp-rev
+  (implies (fn-octet-listp x)
+           (fn-octet-listp (rev x)))
+  :hints (("Goal" :use fn-nntp-effects-octet-listp-reverse :in-theory (e/d (reverse) (fn-nntp-effects-octet-listp-reverse)))))
 
 (defthm fn-nntp-effects-string-octets-aux
   (implies (character-listp chars)
@@ -308,6 +332,15 @@
   (implies (fn-nntp-block-textp x) (fn-nntp-block-textp (reverse x)))
   :hints (("Goal" :in-theory (enable reverse))))
 
+; std/lists/rev (books/article.lisp:13) rewrites the (revappend x nil) that
+; reverse opens to into (rev x), so every reverse inside an opened
+; fn-nntp-crlf-lines-aux reaches a proof as rev and the lemma above cannot
+; match it (certify-20260920T010731Z-93121).  The same lemma in that normal
+; form, from the one above.
+(defthm fn-nntp-block-textp-rev
+  (implies (fn-nntp-block-textp x) (fn-nntp-block-textp (rev x)))
+  :hints (("Goal" :use fn-nntp-block-textp-reverse :in-theory (e/d (reverse) (fn-nntp-block-textp-reverse)))))
+
 (defthm fn-nntp-response-textp-revappend
   (implies (and (fn-nntp-response-textp x) (fn-nntp-response-textp accumulator))
            (fn-nntp-response-textp (revappend x accumulator))))
@@ -315,6 +348,15 @@
 (defthm fn-nntp-response-textp-reverse
   (implies (fn-nntp-response-textp x) (fn-nntp-response-textp (reverse x)))
   :hints (("Goal" :in-theory (enable reverse))))
+
+; std/lists/rev (books/article.lisp:13) rewrites the (revappend x nil) that
+; reverse opens to into (rev x), so every reverse inside an opened
+; fn-nntp-crlf-lines-aux reaches a proof as rev and the lemma above cannot
+; match it (certify-20260920T010731Z-93121).  The same lemma in that normal
+; form, from the one above.
+(defthm fn-nntp-response-textp-rev
+  (implies (fn-nntp-response-textp x) (fn-nntp-response-textp (rev x)))
+  :hints (("Goal" :use fn-nntp-response-textp-reverse :in-theory (e/d (reverse) (fn-nntp-response-textp-reverse)))))
 
 (defthm fn-nntp-crlf-lines-aux-is-response-text
   (implies (and (fn-octet-listp bytes)
@@ -762,6 +804,18 @@
                                    fn-nntp-list-active fn-nntp-list-newsgroups
                                    fn-nntp-list-filtered-response)))))
 
+; LIST OVERVIEW.FMT (RFC 3977 section 8.4) is answered from the unmaintained
+; LIST dispatcher below, which keeps fn-nntp-list-overview-fmt closed, so its
+; effects lemma has to exist first: it was stated 300 lines further down and
+; the dispatcher theorem failed on exactly this statement (ld replay,
+; 2026-09-20).  A ground fact: the seven lines are a constant.
+(defthm fn-nntp-effects-list-overview-fmt
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects (fn-nntp-list-overview-fmt session)))
+  :hints (("Goal" :in-theory (enable fn-nntp-list-overview-fmt
+                                     fn-nov-fmt-octet-lines
+                                     fn-nntp-block-textp))))
+
 (defthm fn-nntp-effects-list-unmaintained-response
   (fn-nntp-effectsp
    (fn-nntp-result-effects
@@ -861,13 +915,6 @@
                                    fn-nntp-over-msgid fn-nntp-single
                                    fn-nntp-parse-range
                                    fn-nntp-message-id-tokenp)))))
-
-(defthm fn-nntp-effects-list-overview-fmt
-  (fn-nntp-effectsp
-   (fn-nntp-result-effects (fn-nntp-list-overview-fmt session)))
-  :hints (("Goal" :in-theory (enable fn-nntp-list-overview-fmt
-                                     fn-nov-fmt-octet-lines
-                                     fn-nntp-block-textp))))
 
 ; DATE renders only fixed octets and table-looked-up digits, so its line is a
 ; status line of exactly eighteen octets whatever the clock reads.
