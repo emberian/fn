@@ -148,7 +148,7 @@
 
 (defthm fn-drt-recognizer-forwards-shape
   (implies (fn-drt-markp m)
-           (and (consp m) (true-listp m)))
+           (and (fn-drt-mark-shapep m) (consp m) (true-listp m)))
   :rule-classes nil)
 
 ; -----------------------------------------------------------------------------
@@ -200,6 +200,81 @@
 (assert-event (not (fn-drt-pinp 10 (fn-drt-pin :archive 7))))
 (assert-event (not (fn-drt-pinp 10 (fn-drt-pin "archive" 0))))
 (assert-event (equal (fn-drt-pin-subject *fn-drt-pin*) "archive"))
+
+; -----------------------------------------------------------------------------
+; Constructor of accessors, the dual of the family above and the one every
+; decode-of-encode needs: a decoder rebuilds the record from decoded fields,
+; each field rewrites to the accessor of the original, and this is what
+; collapses the rebuild back to the original.
+;
+; The generated rule is stated under the SHAPE predicate.  The three things
+; that must be true of it, each proved here with NO hint of its own:
+;
+;   * it fires with the recognizer CLOSED, which is the only way a transition
+;     proof may use it (proof-style, "Never open a recognizer"); it does so
+;     because `<recognizer>-forward-shape' forward-chains `(<shape> x)';
+;   * it fires under a recognizer that carries context formals, where a rule
+;     stated under the recognizer would have put a free variable in its
+;     hypothesis;
+;   * the tagged layout rebuilds the tag from the shape, not from an accessor.
+
+(defthm fn-drt-point-rebuilds-under-a-closed-recognizer
+  (implies (fn-drt-pointp p)
+           (equal (fn-drt-point (fn-drt-point-x p) (fn-drt-point-y p)
+                                (fn-drt-point-label p))
+                  p))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-drt-pointp))))
+
+(defthm fn-drt-mark-rebuilds-under-a-closed-recognizer
+  (implies (fn-drt-markp m)
+           (equal (fn-drt-mark (fn-drt-mark-origin m) (fn-drt-mark-color m)
+                               (fn-drt-mark-weight m))
+                  m))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-drt-markp))))
+
+(defthm fn-drt-pin-rebuilds-under-a-context-recognizer
+  (implies (fn-drt-pinp budget p)
+           (equal (fn-drt-pin (fn-drt-pin-subject p) (fn-drt-pin-weight p)) p))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-drt-pinp))))
+
+; Teeth for the shape hypothesis: one concrete value per conjunct of
+; `fn-drt-point-shapep' and of `fn-drt-mark-shapep' on which the rebuild is
+; NOT the original.  The accessors are total, so each of these evaluates.
+;
+;   `(len x)' wrong: three accessors of a four-element list rebuild three.
+(assert-event
+ (not (equal (fn-drt-point (fn-drt-point-x (list 1 2 3 4))
+                           (fn-drt-point-y (list 1 2 3 4))
+                           (fn-drt-point-label (list 1 2 3 4)))
+             (list 1 2 3 4))))
+;   `true-listp' wrong, with the length right: the rebuild is a true list.
+(assert-event
+ (not (equal (fn-drt-point (fn-drt-point-x (list* 1 2 3 4))
+                           (fn-drt-point-y (list* 1 2 3 4))
+                           (fn-drt-point-label (list* 1 2 3 4)))
+             (list* 1 2 3 4))))
+;   not a cons at all.
+(assert-event
+ (not (equal (fn-drt-point (fn-drt-point-x 17) (fn-drt-point-y 17)
+                           (fn-drt-point-label 17))
+             17)))
+;   the tag wrong: the constructor writes its own tag, so a foreign-tagged
+;   value of the right width is not rebuilt either.
+(assert-event
+ (let ((forged (list :fn-drt-other *fn-drt-origin* :green 7)))
+   (not (equal (fn-drt-mark (fn-drt-mark-origin forged)
+                            (fn-drt-mark-color forged)
+                            (fn-drt-mark-weight forged))
+               forged))))
+;   and the witness the hypothesis admits, so none of the above is vacuous.
+(assert-event
+ (equal (fn-drt-mark (fn-drt-mark-origin *fn-drt-mark*)
+                     (fn-drt-mark-color *fn-drt-mark*)
+                     (fn-drt-mark-weight *fn-drt-mark*))
+        *fn-drt-mark*))
 
 ; -----------------------------------------------------------------------------
 ; `fn-defrecord-export' names and withdraws exactly the recognizers it is
