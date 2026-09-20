@@ -121,6 +121,20 @@ An authorized local removal follows explicit policy and records what was removed
 and which claims no longer apply. Global erasure cannot be guaranteed while
 disconnected replicas retain independent copies.
 
+RET-007: the provenance of an accepted obligation is a typed value with a
+named kind and typed fields, not a rendered string. The ledger's evidence slot
+admits a provenance (`fn-provp`, `books/provenance.lisp`), whose kinds are
+`:post` (principal, injection generation), `:peer-transit` (peer name, transit
+command, Path diagnostic, configuration generation), `:bp-receive` (node id,
+bundle identity, ingress label), `:local` (reason) and `:legacy` --- and
+`:legacy` is EVERY STRING, verbatim, so an obligation written before the typed
+value existed stays admissible with the bytes it already has. Each kind renders
+to exactly the string its writer produced before the widening, so no CLI line,
+log line or stored byte changes meaning; the lossless form is the canonical
+wire string (`books/provenance-codec.lisp`), which rides in the existing
+`release-evidence` field and reads back as the record it encodes. A writer
+decides its provenance in ACL2; a host renders it and marshals octets.
+
 RET-006: expiry and history pruning must preserve the defined duplicate and
 resurrection policy. Dropping a Message-ID tombstone while accepting arbitrarily
 old reimports permits resurrection. D13 must choose retained history, admissible

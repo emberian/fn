@@ -212,7 +212,7 @@ class DryRunRowTests(unittest.TestCase):
 
     def test_the_document_indexes_by_requirement_and_scenario(self):
         self.assertIn("V0-NODE-LOOPBACK", self.doc["by_requirement"]["HST-003"])
-        self.assertIn("V0-NODE-LOOPBACK", self.doc["by_scenario"]["SCN-020"])
+        self.assertIn("V0-NODE-LOOPBACK", self.doc["by_scenario"]["SCN-021"])
 
     def test_the_summary_is_over_the_rows(self):
         self.assertEqual(self.doc["summary"]["total"], len(PLANNED_IDS))

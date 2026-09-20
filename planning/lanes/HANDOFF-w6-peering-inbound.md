@@ -83,61 +83,96 @@ run ids and the per-root outcome.
 - `books/owner*.lisp` and the host: not touched; `fn-own-read` still builds
   the served conn with three arguments (board note of w3/reader-profile).
 
-## Per-root state, successor lane `w6/peering-inbound-2` (branch from `dev`
-## at 52eb0db, merged `dev` again at cda964e; worktree
-## `build/lanes/w6-peering-inbound-2`)
+## Per-root state, successor lane `w6/peering-inbound-2`
+
+Branch `w6/peering-inbound-2`, worktree `build/lanes/w6-peering-inbound-2`,
+from `dev` at `52eb0db` and merged with `dev` again at `cda964e`.
+Certification on **persvati**, ACL2 8.7, `/home/ember/fn-lanes/w6-peering-inbound-2`.
 
 | Root | State | Evidence |
 | --- | --- | --- |
-| `books/peer-config` | certified | persvati `run-20260920T173911Z-6cf7`, `build/acl2/certify-20260920T173915Z-1242593`. Closed independently on `dev` as well (clock-seam lane); this lane merged `dev` and kept `dev`'s version. The failure was two missing facts, `(fn-record-ascii-stringp (fn-cfg-peer-name p))` and `(<= (len (fn-cfg-peer-rows p)) 1024)`, plus a hint that disabled `fn-cfg-labelp` as a whole symbol and so withdrew its executable counterpart. |
-| `books/peer-inbound` | **all definitions admit**; open at the theorem `fn-peer-echo-reply-effects-well-formed` | hbox `run-20260920T183108Z-1096`, `/tank/fn/lanes/w6-peering-inbound-2/build/acl2/certify-20260920T183458Z-1061518` (pre-fix), then `ld` on hbox (`/tank/fn/acl2-8.7/saved_acl2`) |
-| `books/peer-inbound-invariants`, `tests/acl2/peer-inbound-tests`, `books/served`, `tests/acl2/served-tests`, `books/owner`, `books/owner-invariants`, `tests/acl2/owner-tests`, `books/ideal` | blocked on `books/peer-inbound` (all fail with "no certificate on file") | same hbox run |
+| `books/peer-config` | certified | `certify-20260920T192710Z-2288223` run set. Closed independently on `dev` too; this lane kept `dev`'s version and added two exported forward-chaining facts (below). |
+| `books/peer-inbound` | **certified** | `certify-20260920T192710Z-2288223` |
+| `books/peer-inbound-invariants` (K1, K2, K3) | **certified**, every statement unchanged | `certify-20260920T194848Z-2492799` |
+| `tests/acl2/peer-inbound-tests` | **certified** | `certify-20260920T195156Z-2522463` |
+| `books/served` | **certified** | `certify-20260920T194106Z-2419178` |
+| `tests/acl2/served-tests` | **certified** | `certify-20260920T195046Z-2511951` |
+| `books/owner`, `books/ideal` | **certified** | `certify-20260920T194347Z-2445219` |
+| `books/owner-invariants`, `tests/acl2/owner-tests` | **open**, owner-side semantics (below) | same run |
 
-### What this lane fixed in `books/peer-inbound`
+### What was wrong, and what closed it
 
-Two translate errors stopped every definition in the book, and with them
-`books/served`, `books/owner` and the served host, whose `ld` loads them:
+`books/peer-inbound` had never run past its includes, so the whole stack
+above it -- `served`, `owner`, `ideal`, and the served host, which loads
+them -- was dead. In order:
 
-1. `fn-peer-decide-offer` called `fn-charge-for-payload`, which
-   `books/identity` defines and which was in no book of the include closure.
-   `(include-book "identity")` added (it includes only `books/frame`).
-2. `fn-nntp-capability-lines` gained a `postingp` argument on `dev`.
-   `fn-peer-capability-lines` takes it too and `fn-peer-command` passes
-   `nil`: a transit connection reads only its session, carries no injection
-   configuration, and so does not promise POST (RFC 3977 3.2.2/3.3.2
-   advertise only what is served). **If the test book pins a CAPABILITIES
-   transcript containing POST on a peer connection, that pin changes.**
+1. Two translate errors killed every definition. `fn-peer-decide-offer`
+   called `fn-charge-for-payload` with `books/identity` in no book of the
+   include closure; `fn-nntp-capability-lines` had gained a `postingp`
+   argument on `dev`.
+2. Six theorems. The two interesting ones are recorded below; the rest
+   were rules that stopped matching because an accessor or an append had
+   been opened under them.
+3. Guard verification was **not** optional: `books/served.lisp`
+   guard-verifies `fn-served-dispatch`, which calls `fn-peer-step`.
+   `fn-peer-decide-offer`, `fn-peer-sessionp`, `fn-peer-open-session`,
+   `fn-peer-delegate`, `fn-peer-command` and `fn-peer-step` are verified.
+4. Four defects in `books/served`, three of them stale references the
+   `dev` merge created and one a false theorem (below).
 
-### The one open form, with its exact remaining obligation
+### Interface changes, all on the board
 
-`fn-peer-echo-reply-effects-well-formed` (`books/peer-inbound.lisp`).
-The `fn-nntp-response-textp` half is now discharged: the hint keeps the
-append closed (`(:d binary-append)`, `(:d fn-nntp-string-octets)` withdrawn)
-and cites `fn-nntp-response-text-of-append` and
-`fn-nntp-printable-token-is-response-text`. The remaining checkpoint is
+- `fn-peer-capability-lines record postingp` (was one argument);
+  `fn-peer-command` passes `nil`, so a transit connection does not
+  advertise POST. Witnessed both ways in the test book.
+- `fn-peer-command` is `:guard (and (fn-peer-sessionp ps) (fn-peer-session-peer ps))`,
+  which is what `fn-peer-step` establishes at the only call site.
+- `books/peer-inbound` includes `books/identity` and exports one new
+  forward-chaining rule, `fn-peer-session-consistentp-forward`.
+- `books/peer-config` exports `fn-cfg-peer-find-is-a-peer` and
+  `fn-cfg-peerp-inbound-fields`, both forward-chaining.
 
-```
-Subgoal 12'
-(IMPLIES (AND (NOT (FN-NNTP-INITIAL-STATUS-LINEP (APPEND '(50 51 56 32) MSGID)))
-              (FN-NNTP-PRINTABLE-TOKENP MSGID)
-              (FN-AF-MESSAGE-IDP MSGID))
-         (FN-NNTP-REPLYP (FN-NNTP-CRLF (APPEND '(50 51 56 32) MSGID))))
-```
+### One false theorem, repaired not weakened
 
-i.e. the RFC 3977 3.1 initial-line bound. What is needed is a length lemma
-`(implies (fn-af-message-idp msgid) (<= (len msgid) <bound>))` (RFC 5536
-bounds a Message-ID) and then `fn-nntp-initial-status-linep` of a
-three-digit code, a space and that many octets. State it once,
-`:rule-classes nil`, in the book that owns `fn-af-message-idp`
-(`books/article-fields.lisp`) or locally here, and `:use` it.
+`fn-served-submission-of-append` (`books/served.lisp`, w9/server-polish's,
+and cited in `specs/nntp-audit.md`) was **false**: with
+`left = ((:submit nil))` and `right = ((:submit 5))` both the left scan
+and the appended scan yield `nil` while the right-hand side yields `5`.
+It now carries `(fn-served-effectsp left)`; `fn-served-submit-effectp`
+requires an `fn-inj-injectedp` or `fn-peer-submissionp` payload and
+neither is `nil`, so on the only effect lists the served path produces
+the equality holds. Discharged at its one use site from
+`fn-served-step-effects-are-typed`.
 
-### Box note
+### Still open
+
+- `books/owner-invariants`: `fn-own-open-session-boundedp` asks for
+  `(fn-post-session-shapep (fn-peer-open-session archive nil nil nil))`.
+  The connection's session is a peer session now, so `fn-own-conn-boundedp`
+  must project it through `fn-peer-session-base` rather than the
+  `fn-post-session-*` accessors. That is an owner-side semantic change and
+  belongs to the owner lane, not a hint. `tests/acl2/owner-tests` is
+  blocked on it.
+- `verify-guards` of `fn-peer-session-consistentp`: it calls
+  `fn-post-session-consistentp` (`books/nntp-post.lisp`), itself
+  `:verify-guards nil`. Both are specification predicates that nothing on
+  the served executable path calls.
+- `fn-peer-transfer`, `fn-peer-decide-transfer` and
+  `fn-peer-injection-arguments` stay `:verify-guards nil`: the owner, not
+  the served path, calls them.
+- The structured-evidence change (`(:peer-transit peer stamp)` in place of
+  the string) is blocked on `fn-retain-admissiblep`'s `(stringp evidence)`
+  requirement, `books/retention.lisp:380`. Cross-cluster.
+- Everything the previous lane listed as open below is still open.
+
+### Box notes
 
 `ld` on hbox is `/tank/fn/acl2-8.7/saved_acl2`, not `$HOME/fn-tools/...`
-(that path is persvati's). persvati was heavily contended during this lane
-and one run lost `books/nntp-effects` to a dependency race under
-`--jobs 12`, cascading "no certificate" failures into six roots; hbox
-answered the same closure with `installed 188, uncached 52`.
+(that path is persvati's, and exits 127 on hbox). A persvati run under
+`--jobs 12` while the box was carrying six other closure certifications
+lost `books/nntp-effects` to a dependency race -- `nntp-post` started
+while `nntp-effects` was still certifying -- and cascaded "no certificate"
+into six roots. `--jobs 6` did not reproduce it.
 
 ## Per-root state at handoff (HEAD after this commit; runs under `build/acl2/` in this worktree)
 
