@@ -398,10 +398,21 @@
                      (fn-served-conn-session
                       (fn-served-result-conn
                        (fn-served-open archive line-limit body-limit config
-                                       observation injection)))
+                                       observation injection acfg)))
                      archive config observation)
    groups)
-  :hints (("Goal" :in-theory (enable fn-served-open fn-post-open-session
+  ; The served session is now fn-auth-step's: an auth session wrapping a
+  ; peer session wrapping the POST-composed reader session, so the three
+  ; wrappers open here too (fn-own-conn-boundedp reaches through them).
+  :hints (("Goal" :in-theory (enable fn-served-open fn-auth-open-session
+                                     fn-auth-make-session fn-auth-sessionp
+                                     fn-auth-session-base fn-auth-configp
+                                     fn-auth-open-config fn-auth-make-config
+                                     fn-auth-cred-listp
+                                     fn-peer-open-session fn-peer-make-session
+                                     fn-peer-sessionp fn-peer-session-base
+                                     fn-peer-transferp
+                                     fn-post-open-session
                                      fn-post-sessionp fn-nntp-open-session
                                      fn-nntp-make-session fn-nntp-sessionp
                                      fn-nntp-session-openp fn-nntp-session-group
@@ -410,7 +421,7 @@
 
 (defthm fn-own-open-preserves-relation
   (implies (fn-own-relation o)
-           (fn-own-relation (cdr (fn-own-open o))))
+           (fn-own-relation (cdr (fn-own-open o acfg))))
   :hints (("Goal" :in-theory (e/d (fn-own-relation) (fn-own-conn-boundedp)))))
 
 (defthm fn-own-read-preserves-relation
@@ -823,9 +834,9 @@
 ; ledger; the trace lemmas below read this instead of opening the served
 ; step, the dispatcher and the outcome renderer inside each event.
 (defthm fn-own-connection-events-keep-store-bound-and-ledger
-  (and (equal (fn-own-store (cdr (fn-own-open o))) (fn-own-store o))
-       (equal (fn-own-max-conns (cdr (fn-own-open o))) (fn-own-max-conns o))
-       (equal (fn-own-ledger (cdr (fn-own-open o))) (fn-own-ledger o))
+  (and (equal (fn-own-store (cdr (fn-own-open o acfg))) (fn-own-store o))
+       (equal (fn-own-max-conns (cdr (fn-own-open o acfg))) (fn-own-max-conns o))
+       (equal (fn-own-ledger (cdr (fn-own-open o acfg))) (fn-own-ledger o))
        (equal (fn-own-store (cdr (fn-own-read o id octets))) (fn-own-store o))
        (equal (fn-own-max-conns (cdr (fn-own-read o id octets))) (fn-own-max-conns o))
        (equal (fn-own-ledger (cdr (fn-own-read o id octets))) (fn-own-ledger o))
