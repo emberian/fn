@@ -522,11 +522,13 @@
 ; A function of the received octets alone -- no peer, no route, no clock.
 (defun fn-stx-authored-source (article)
   (declare (xargs :guard t))
-  (append (fn-stx-authored-header (fn-article-fields article))
-          (append '(13 10)
-                  (if (true-listp (fn-article-body article))
-                      (fn-article-body article)
-                    nil))))
+  (if (not (true-listp article))
+      nil
+    (append (fn-stx-authored-header (fn-article-fields article))
+            (append '(13 10)
+                    (if (true-listp (fn-article-body article))
+                        (fn-article-body article)
+                      nil)))))
 
 ; Kinds other than :article carry their payload as the article body, base64.
 ; The body is accepted only in its canonical unwrapped spelling; the wrapping
@@ -540,9 +542,11 @@
   (declare (xargs :guard t))
   (if (equal (fn-stmt-header-kind header) :article)
       (fn-stx-authored-source article)
-    (let ((r (fn-stx-body-payload (if (true-listp (fn-article-body article))
-                                      (fn-article-body article)
-                                    nil))))
+    (let ((r (fn-stx-body-payload
+              (if (and (true-listp article)
+                       (true-listp (fn-article-body article)))
+                  (fn-article-body article)
+                nil))))
       (if (fn-stx-okp r) (fn-stx-val r) nil))))
 
 (defthm fn-stx-authored-source-is-octet-list

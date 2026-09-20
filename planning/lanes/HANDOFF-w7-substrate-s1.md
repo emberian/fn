@@ -35,6 +35,27 @@ PRF-019, and PRF-020 in part.
   verifies *through an ACL2 session*; no encoder in Python. Exit codes 0/3/4
   keep the three outcomes distinct out to the shell (D13).
 
+## Certification evidence (as of the lane's last call)
+
+| Root | State | Evidence |
+| --- | --- | --- |
+| `books/stx-carrier` | **open** at `(defun fn-stx-authored-source ...)`, guard | persvati `run-20260920T051941Z-384c`, `build/acl2/certify-20260920T051942Z-3002654/books--stx-carrier.certify.log:4151`. The fix (guard the article accessors with `true-listp`) is committed but NOT re-certified. |
+| `books/stx-verify` | **not reached** | cascade of the above |
+| `books/stx-invariants` | **not reached** | cascade of the above |
+| `tests/acl2/stx-tests` | **not reached** | cascade of the above |
+
+Dependencies certified on that run: `books/cbor`, `books/cbor-invariants`,
+`books/records`, `books/records-invariants`, `books/crypto-seam`,
+`books/statement`, `books/statement-invariants`, `books/principal`,
+`books/article` and the rest of the closure. Two earlier runs:
+`run-20260920T045856Z-3a34` (stale tree, superseded) and a local `ld` whose
+per-form failure list drove six fixes (`5affb5b`, `a2757fe`, and the guard fix
+above).
+
+**PRF-019 and PRF-020 stay `planned`.** No theorem in this lane has a
+certificate. Nothing was weakened or removed to reach a green: the remaining
+work is one guard obligation and whatever the three unreached roots report.
+
 ## Three deliberate departures from the design text, each a strengthening
 
 1. **Canonicality is stated about the whitespace-stripped value.** RFC 5536

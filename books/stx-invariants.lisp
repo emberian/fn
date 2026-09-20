@@ -257,7 +257,8 @@
                    (fn-article-make header body (append before after)))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d ((:d fn-stx-authored-source))
-                           (fn-stx-authored-header fn-stx-injected-namep))
+                           (fn-stx-authored-header fn-stx-injected-namep
+                            fn-stx-field-octets))
            :use ((:instance fn-stx-payload-ignores-the-carrier-field)))))
 
 ; -----------------------------------------------------------------------------
