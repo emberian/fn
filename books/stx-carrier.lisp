@@ -382,7 +382,8 @@
     nil))
 
 (defun fn-stx-detached-encode (s)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (enable (:d fn-stmt-p))))))
   (if (fn-stmt-p s)
       (fn-stx-detached-encode-parts (fn-stmt-header s) (fn-stmt-signature s))
     nil))
@@ -390,7 +391,8 @@
 ; Reattachment: the payload comes from the article, never from the field.
 ; NIL when the header's ref does not bind the payload the receiver projected.
 (defun fn-stx-reattach (header signature payload)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (enable (:d fn-stmt-p))))))
   (let ((s (fn-stmt-make header payload signature)))
     (if (fn-stmt-p s) s nil)))
 
