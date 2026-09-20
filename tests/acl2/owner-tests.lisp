@@ -144,7 +144,8 @@
                                  (fn-own-take (fn-own-conn-version conn)
                                               (fn-sf-records (fn-sn-files s)))
                                  (fn-own-conn-frontier conn)))
-             (fn-own-conn-config conn) (fn-own-conn-observation conn))
+             (fn-own-conn-config conn) (fn-own-conn-observation conn)
+             (fn-own-clock *own-c*))
             *own-group-octets*)))))
 (assert-event
  (let* ((conn (fn-own-find-conn 0 (fn-own-conns *own-c*)))
@@ -159,7 +160,8 @@
                                  (fn-own-take (fn-own-conn-version conn)
                                               (fn-sf-records (fn-sn-files s)))
                                  (fn-own-conn-frontier conn)))
-             (fn-own-conn-config conn) (fn-own-conn-observation conn))
+             (fn-own-conn-config conn) (fn-own-conn-observation conn)
+             (fn-own-clock *own-c*))
             *own-group-command*)))))
 
 ; Reader A advances and now sees the newest version.
@@ -418,7 +420,7 @@
   (let* ((archive (fn-own-view-archive (fn-own-view *own-after*)))
          (sconn (fn-served-result-conn
                  (fn-served-open archive *fn-nntp-max-initial-line-octets*
-                                 *fn-own-body-limit* nil nil))))
+                                 *fn-own-body-limit* nil nil nil))))
     (fn-own-make (fn-own-store *own-after*) (fn-own-view *own-after*)
                  (list (fn-own-conn-make 0 0 0 (fn-served-conn-wire sconn)
                                          (fn-served-conn-session sconn) archive nil nil))
@@ -441,7 +443,8 @@
                                       (fn-own-take (fn-own-conn-version conn)
                                                    (fn-sf-records (fn-sn-files s)))
                                       (fn-own-conn-frontier conn)))
-                  (fn-own-conn-config conn) (fn-own-conn-observation conn))
+                  (fn-own-conn-config conn) (fn-own-conn-observation conn)
+                  (fn-own-clock o))
                  *own-group-octets*))))))
 ; K1 (served) without (fn-own-find-conn id conns): an unknown connection
 ; reads nothing, while a served step over the view's prefix answers.
@@ -479,7 +482,8 @@
                                       (fn-own-take (fn-own-conn-version conn)
                                                    (fn-sf-records (fn-sn-files s)))
                                       (fn-own-conn-frontier conn)))
-                  (fn-own-conn-config conn) (fn-own-conn-observation conn))
+                  (fn-own-conn-config conn) (fn-own-conn-observation conn)
+                  (fn-own-clock o))
                  *own-group-command*))))))
 ; K1 (per event) without (fn-own-find-conn id conns).
 (assert-event
@@ -494,7 +498,7 @@
                     (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
                                        (fn-own-take 2 (fn-sf-records (fn-sn-files s)))
                                        (fn-sf-frontier (fn-sn-files s))))
-                   *fn-nntp-max-initial-line-octets* *fn-own-body-limit* nil nil))
+                   *fn-nntp-max-initial-line-octets* *fn-own-body-limit* nil nil nil))
                  *own-group-command*))))))
 ; The after-any-trace forms, on the same values with the empty trace.
 (assert-event (not (fn-own-relation (fn-own-run *own-bogus* nil))))
@@ -618,7 +622,8 @@
            (fn-served-post-outcome
             (fn-served-make-conn (fn-own-conn-wire conn) (fn-own-conn-session conn)
                                  (fn-own-conn-archive conn) (fn-own-conn-config conn)
-                                 (fn-own-conn-observation conn))
+                                 (fn-own-conn-observation conn)
+                                 (fn-own-clock *own-forged-post*))
             :durable)))))
 (assert-event
  (not (fn-sf-record-has-pairp (car (last (fn-own-ledger *own-forged-post*)))
@@ -634,7 +639,8 @@
                  (fn-served-post-outcome
                   (fn-served-make-conn (fn-own-conn-wire conn) (fn-own-conn-session conn)
                                        (fn-own-conn-archive conn) (fn-own-conn-config conn)
-                                       (fn-own-conn-observation conn))
+                                       (fn-own-conn-observation conn)
+                                       (fn-own-clock *own-after-post*))
                   :durable)))
          (null (fn-own-inflight *own-after-post*))))))
 ; Without the 240 hypothesis: the reply on *own-taken* is the uncertain 441

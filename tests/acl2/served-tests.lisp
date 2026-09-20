@@ -65,7 +65,8 @@
   (fn-clock-observation 1000000 843004800000 500 t))
 (defconst *fn-t-served-open*
   (fn-served-open *fn-t-served-archive* 510 8192
-                  *fn-t-served-config* *fn-t-served-observation*))
+                  *fn-t-served-config* *fn-t-served-observation*
+                  *fn-t-served-observation*))
 (defconst *fn-t-served-conn* (fn-served-result-conn *fn-t-served-open*))
 
 (defconst *fn-t-served-greeting*
@@ -211,7 +212,8 @@
   (fn-served-make-conn (fn-wire-initial-state 510 8192)
                        (fn-post-make-session (fn-nntp-make-session t nil nil t)
                                              nil)
-                       nil *fn-t-served-config* *fn-t-served-observation*))
+                       nil *fn-t-served-config* *fn-t-served-observation*
+                       *fn-t-served-observation*))
 
 (assert-event (fn-wire-statep (fn-served-conn-wire *fn-t-served-forged*)))
 (assert-event (fn-post-sessionp (fn-served-conn-session *fn-t-served-forged*)))
@@ -371,7 +373,8 @@
   (fn-served-step
    (fn-served-result-conn
     (fn-served-open *fn-t-served-archive* 510 8192
-                    *fn-t-served-closed-config* *fn-t-served-observation*))
+                    *fn-t-served-closed-config* *fn-t-served-observation*
+                    *fn-t-served-observation*))
    *fn-t-served-post-command*))
 (assert-event (equal (take 4 (fn-served-reply-octets
                               (fn-served-result-effects *fn-t-served-440-result*)))
