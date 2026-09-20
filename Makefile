@@ -188,6 +188,11 @@ ACL2_BOOKS ?= books/assumptions \
 	tests/acl2/injection-tests \
 	books/nntp-post \
 	tests/acl2/nntp-post-tests \
+	books/path \
+	books/peer-config \
+	books/peer-inbound \
+	books/peer-inbound-invariants \
+	tests/acl2/peer-inbound-tests \
 	books/served \
 	tests/acl2/served-tests \
 	books/owner \

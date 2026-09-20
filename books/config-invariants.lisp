@@ -151,6 +151,16 @@
                     (fn-cfg-limit-ceiling (fn-cfg-limit-slot row))))
            (fn-cfg-limits-withinp (fn-cfg-row-upsert rows row))))
 
+; The two peer arms (:set-peer, :remove-peer) rebuild the peers slot from a
+; keyed selection and the delta's rows; both stay row lists.  Local: no
+; `append'-backchaining rule leaves this book.
+(local (defthm fn-cfg-rows-without-key-is-row-listp
+  (implies (fn-cfg-row-listp rows)
+           (fn-cfg-row-listp (fn-cfg-rows-without-key rows a)))))
+(local (defthm fn-cfg-row-listp-of-append
+  (implies (and (fn-cfg-row-listp a) (fn-cfg-row-listp b))
+           (fn-cfg-row-listp (append a b)))))
+
 (defthm fn-cfg-apply-delta-preserves-valuep
   ; `fn-record-uint32p' is opened for the `:set-limit' arm (`nfix' of a
   ; uint32 is itself); `fn-record-string-octets' is kept closed so a label
