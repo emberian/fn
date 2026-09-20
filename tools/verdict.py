@@ -41,7 +41,8 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from deploy_gate import GATE_ROOT, resolve                # noqa: E402
+from deploy_gate import (GATE_ROOT, evidence_path,       # noqa: E402
+                         repo_root, resolve)
 from farm import HOSTS as FARM_HOSTS                      # noqa: E402
 
 DEFAULT_HOST = "persvati"
@@ -583,7 +584,10 @@ def main(argv=None) -> int:
     parser.add_argument("--inn-host", default=DEFAULT_INN_HOST,
                         help="the box with a real INN; the INN lab runs there")
     parser.add_argument("--tree", default="dev", help="gate directory prefix")
-    parser.add_argument("--repo", default=str(ROOT))
+    parser.add_argument("--repo", default=None,
+                        help="the fn worktree to read the commit from and "
+                             "write evidence into (default: the one this "
+                             "command was invoked from)")
     parser.add_argument("--jobs", type=int, default=10)
     parser.add_argument("--cache", default="$HOME/fn-certcache")
     parser.add_argument("--acl2", default=None,
@@ -607,7 +611,7 @@ def main(argv=None) -> int:
                         help="do not lock the hosts (for a dry read only)")
     args = parser.parse_args(argv)
 
-    repo = Path(args.repo).resolve()
+    repo = Path(args.repo).resolve() if args.repo else repo_root()
     commit, rev = resolve(repo, args.commit)
     acl2 = args.acl2 or FARM_HOSTS.get(args.host, {}).get("acl2", "acl2")
 
@@ -663,8 +667,8 @@ def main(argv=None) -> int:
     elapsed = time.monotonic() - clock
     sentence = claim([f for f in plan], gate_facts)
     date = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
-    target = Path(args.evidence) if args.evidence else (
-        repo / "planning/evidence/verdict-{}-{}.md".format(rev, date))
+    target = evidence_path(args.evidence, repo,
+                           "verdict-{}-{}.md".format(rev, date))
     evidence(target, rev, commit, args.host, args.inn_host, started, elapsed,
              plan, gate_facts, sentence)
     print("evidence: {}".format(target))
