@@ -233,3 +233,121 @@
 (assert-event (member-equal '(0 . 0) (fn-sf-successes (fn-sn-files *fn-so-unrelated*))))
 (assert-event (with-guard-checking :none (not (fn-sn-open-okp
                  (fn-sn-open-observed *fn-so-live-groups* 10 1 (list *fn-so-alien*))))))
+
+; -----------------------------------------------------------------------------
+; D14-b: the recovery freedom, the two gates that bound it, and the
+; counterexample that keeps it out of the reliance predicate.
+;
+; *fn-so-gap-opened* is the witness the freedom exists for: a process that
+; opened on a two-record image and has not yet run its five recovery fences.
+; It replayed both records from the scan of the VIEW, so the second one's
+; directory entry may still be the pending link the dead process left, and a
+; crash here drops it.
+
+(assert-event (fn-sf-recovery-visiblep (fn-sn-files *fn-so-gap-opened*)))
+(assert-event (equal (fn-sf-successes (fn-sn-files *fn-so-gap-opened*)) nil))
+(assert-event (fn-sf-record-rollback-visiblep (fn-sn-files *fn-so-gap-opened*)))
+; Non-degenerate: the freedom's image is a two-record list minus its last,
+; not an empty list, and it is not the first disjunct restated.
+(assert-event (fn-sf-recovery-crash-imagep (fn-sn-files *fn-so-gap-opened*) 4
+                                           (list *fn-so-first* *fn-so-second*)))
+(assert-event (fn-sf-recovery-crash-imagep (fn-sn-files *fn-so-gap-opened*) 4
+                                           (list *fn-so-first*)))
+(assert-event (equal (fn-sf-stable-records (fn-sn-files *fn-so-gap-opened*))
+                     (list *fn-so-first*)))
+; ...and no more: two dropped records, a dropped FIRST record, and a
+; rolled-back frontier are all refused.
+(assert-event (not (fn-sf-recovery-crash-imagep (fn-sn-files *fn-so-gap-opened*) 4 nil)))
+(assert-event (not (fn-sf-recovery-crash-imagep (fn-sn-files *fn-so-gap-opened*) 4
+                                                (list *fn-so-second*))))
+(assert-event (not (fn-sf-recovery-crash-imagep (fn-sn-files *fn-so-gap-opened*) 3
+                                                (list *fn-so-first*))))
+; The two predicates are genuinely different here, which is the whole of
+; D14-b: the platform may leave the shorter image, and no consumer of this
+; state may rely on it.
+(assert-event (not (fn-sf-crash-imagep (fn-sn-files *fn-so-gap-opened*) 4
+                                       (list *fn-so-first*))))
+(assert-event (fn-sf-crash-imagep (fn-sn-files *fn-so-gap-opened*) 4
+                                  (list *fn-so-first* *fn-so-second*)))
+; The constructor inhabits the new arm, and reproduces exactly that image.
+(assert-event (equal (fn-sf-records
+                      (fn-sf-crash-rollback (fn-sn-files *fn-so-gap-opened*)))
+                     (list *fn-so-first*)))
+(assert-event (equal (fn-sf-phase
+                      (fn-sf-crash-rollback (fn-sn-files *fn-so-gap-opened*)))
+                     :replaying))
+(assert-event (equal (fn-sf-records
+                      (fn-sf-image-crash (fn-sn-files *fn-so-gap-opened*) 4
+                                         (list *fn-so-first*)))
+                     (list *fn-so-first*)))
+(assert-event (fn-sf-statep
+               (fn-sf-crash-rollback (fn-sn-files *fn-so-gap-opened*))))
+; The rolled-back image still opens, so the freedom is not an image the host
+; would refuse: it is one it cannot tell from the durable one.
+(assert-event (fn-sn-open-okp
+               (fn-sn-open-observed *fn-so-live-groups* 10 4 (list *fn-so-first*))))
+
+; Tooth for the PHASE conjunct.  The same two records, the same empty success
+; history, the same frontier -- but the five recovery fences have run, so the
+; un-fenced tail is fenced and the freedom is closed.
+(defconst *fn-so-gap-ready* (fn-snrt-run *fn-so-gap-opened* *fn-so-barriers*))
+(assert-event (equal (fn-sf-phase (fn-sn-files *fn-so-gap-ready*)) :ready))
+(assert-event (equal (fn-sf-records (fn-sn-files *fn-so-gap-ready*))
+                     (list *fn-so-first* *fn-so-second*)))
+(assert-event (equal (fn-sf-successes (fn-sn-files *fn-so-gap-ready*)) nil))
+(assert-event (not (fn-sf-record-rollback-visiblep (fn-sn-files *fn-so-gap-ready*))))
+(assert-event (not (fn-sf-recovery-crash-imagep (fn-sn-files *fn-so-gap-ready*) 4
+                                                (list *fn-so-first*))))
+(assert-event (equal (fn-sf-stable-records (fn-sn-files *fn-so-gap-ready*))
+                     (list *fn-so-first* *fn-so-second*)))
+
+; Tooth for the SUCCESS conjunct, and the reason it is not prose.  fn-sf-crash
+; carries the ghost history across a crash, so a :replaying state reached that
+; way holds the pair it acknowledged; without the conjunct the freedom would
+; admit an image that drops that pair's record, which is precisely what
+; fn-sf-recovery-admissible-image-facts forbids.
+(defconst *fn-so-acked-replaying*
+  (fn-sn-files (fn-snt-step *fn-so-acked* '(:crash :old :absent))))
+(assert-event (fn-sf-recovery-visiblep *fn-so-acked-replaying*))
+(assert-event (equal (fn-sf-successes *fn-so-acked-replaying*) '((2 . 6))))
+(assert-event (not (fn-sf-record-rollback-visiblep *fn-so-acked-replaying*)))
+(assert-event (equal (fn-sf-records *fn-so-acked-replaying*) *fn-so-image-absent*))
+(assert-event (not (fn-sf-recovery-crash-imagep *fn-so-acked-replaying* 7
+                                                (list *fn-so-first* *fn-so-second*))))
+(assert-event (equal (fn-sf-stable-records *fn-so-acked-replaying*)
+                     *fn-so-image-absent*))
+; ...and the record the dropped image would have lost is the acknowledged one.
+(assert-event (fn-sf-record-has-pairp '(2 . 6) *fn-so-image-absent*))
+(assert-event (with-guard-checking :none
+               (not (fn-sf-record-has-pairp
+                     '(2 . 6) (list *fn-so-first* *fn-so-second*)))))
+
+; The (consp records) conjunct.  On an empty record list the third arm would
+; be the first disjunct restated -- (fn-sf-but-last nil) is nil -- so it
+; admits no image the predicate did not already admit; the conjunct is what
+; makes fn-sf-record-rollback-visiblep mean "a record may be dropped here".
+(assert-event (equal (fn-sf-records (fn-sn-files (fn-sn-open-state *fn-so-empty*))) nil))
+(assert-event (fn-sf-recovery-visiblep (fn-sn-files (fn-sn-open-state *fn-so-empty*))))
+(assert-event (not (fn-sf-record-rollback-visiblep
+                    (fn-sn-files (fn-sn-open-state *fn-so-empty*)))))
+(assert-event (equal (fn-sf-stable-records
+                      (fn-sn-files (fn-sn-open-state *fn-so-empty*))) nil))
+
+; -----------------------------------------------------------------------------
+; Why fn-sf-crash-imagep itself was NOT widened: the counterexample, kernel
+; half.  *fn-so-gap-opened* is a recovery-window state whose success history
+; is empty and whose SECOND record is one an earlier process completed and
+; acknowledged -- the kernel cannot tell that record from the un-fenced tail,
+; because which records are fenced is a fact about the byte store's pending
+; list, not about this state.  A consumer that holds a promise about the
+; second record (the owner's ledger, fn-own-ledger-durablep; the receiver's
+; history, fn-bprv-extendsp) therefore loses it if the reopen gate admits the
+; rolled-back image.  The owner half is in tests/acl2/owner-tests.lisp.
+(assert-event (fn-sf-record-has-pairp '(1 . 2)
+                                      (list *fn-so-first* *fn-so-second*)))
+(assert-event (with-guard-checking :none
+               (not (fn-sf-record-has-pairp '(1 . 2) (list *fn-so-first*)))))
+(assert-event (fn-sf-recovery-crash-imagep (fn-sn-files *fn-so-gap-opened*) 4
+                                           (list *fn-so-first*)))
+(assert-event (not (fn-sf-crash-imagep (fn-sn-files *fn-so-gap-opened*) 4
+                                       (list *fn-so-first*))))

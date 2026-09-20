@@ -275,19 +275,19 @@
     "books": 269,
     "books_in_root_closure": 268,
     "roots": 268,
-    "theorems": 5328,
-    "functions": 3826,
-    "assert_events": 5077,
+    "theorems": 5343,
+    "functions": 3833,
+    "assert_events": 5126,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
-      "verified": 1398,
-      "declared-off": 187,
-      "default-guarded": 1747,
+      "verified": 1403,
+      "declared-off": 188,
+      "default-guarded": 1748,
       "default-unguarded": 494
     },
-    "suspect_theorems": 41,
-    "export_hygiene_warnings": 72,
+    "suspect_theorems": 42,
+    "export_hygiene_warnings": 73,
     "teeth_form_warnings": 0,
     "include_hygiene_warnings": 87,
     "host_names_warnings": 0,
@@ -3910,11 +3910,11 @@
       "book": "books/store-files-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 43,
-      "functions": 3,
+      "theorems": 58,
+      "functions": 4,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 1,
         "default-guarded": 0,
         "default-unguarded": 3
       },
@@ -3930,7 +3930,9 @@
       "system_includes": [
         "arithmetic/top"
       ],
-      "suspects": [],
+      "suspects": [
+        "fn-sf-stable-records-outside-the-window"
+      ],
       "read_error": null
     },
     {
@@ -3963,14 +3965,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 30,
-      "functions": 49,
+      "functions": 55,
       "guards": {
-        "verified": 47,
+        "verified": 52,
         "declared-off": 0,
-        "default-guarded": 2,
+        "default-guarded": 3,
         "default-unguarded": 0
       },
-      "verify_guards_events": 47,
+      "verify_guards_events": 52,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 2,
@@ -6392,9 +6394,9 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 151,
+      "assert_events": 162,
       "must_fails": 0,
-      "defconsts": 56,
+      "defconsts": 57,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7075,9 +7077,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 63,
+      "assert_events": 101,
       "must_fails": 0,
-      "defconsts": 26,
+      "defconsts": 28,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7614,6 +7616,14 @@
       ]
     },
     {
+      "theorem": "fn-sf-stable-records-outside-the-window",
+      "book": "books/store-files-invariants.lisp",
+      "line": 85,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-sf-stable-records and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-sn-finish-disabled-is-no-op",
       "book": "books/store-node-invariants.lisp",
       "line": 155,
@@ -7934,9 +7944,15 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-sf-stable-records-outside-the-window",
+        "book": "books/store-files-invariants.lisp",
+        "line": 85,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-sf-completed-frontier-barrier-removes-old-choice",
         "book": "books/store-files-invariants.lisp",
-        "line": 262,
+        "line": 309,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {

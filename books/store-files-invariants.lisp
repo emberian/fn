@@ -22,7 +22,8 @@
                           fn-sf-abort-completion fn-sf-record-link-result
                           fn-sf-record-dir-result fn-sf-core-completion
                           fn-sf-emit-success fn-sf-lose-success
-                          fn-sf-crash-imagep fn-sf-crash fn-sf-crash-rollback
+                          fn-sf-crash-imagep fn-sf-recovery-crash-imagep
+                          fn-sf-crash fn-sf-crash-rollback
                           fn-sf-stable-records fn-sf-recover
                           fn-sf-recovery-barrier)))
 
@@ -355,6 +356,18 @@
 (defun fn-sf-image-record-choice (s records)
   (if (equal records (fn-sf-records s)) :absent :present))
 
+; The recovery arm is inhabited by its constructor, which is what keeps the
+; platform predicate from admitting an image nothing can produce.
+(defthm fn-sf-crash-rollback-image-is-recovery-admissible
+  (implies (and (fn-sf-statep s) (fn-sf-record-rollback-visiblep s))
+           (fn-sf-recovery-crash-imagep
+            s (fn-sf-frontier (fn-sf-crash-rollback s))
+            (fn-sf-records (fn-sf-crash-rollback s))))
+  :hints (("Goal" :in-theory (enable fn-sf-crash-rollback
+                                     fn-sf-recovery-crash-imagep
+                                     fn-sf-record-rollback-visiblep
+                                     fn-sf-recovery-visiblep))))
+
 (defthm fn-sf-image-choices-are-choices
   (fn-sf-crash-choicep (fn-sf-image-frontier-choice s frontier)
                        (fn-sf-image-record-choice s records)))
@@ -392,25 +405,48 @@
     (fn-sf-crash s (fn-sf-image-frontier-choice s frontier)
                  (fn-sf-image-record-choice s records))))
 
-; K3's engine, widened with the predicate: every admissible image is the image
-; of one of the two constructors, with the same four facts about it.  The old
-; statement (fn-sf-crash with the two choice functions) is the case the
-; recovery arm does not select, so nothing about the namespace windows is
-; weakened; the new arm is reached only where fn-sf-crash cannot express the
-; image at all.
-(defthm fn-sf-crash-realizes-every-admissible-image
-  (implies (fn-sf-crash-imagep s frontier records)
+; K3's engine, over the platform predicate: every image the platform may leave
+; is the image of one of the two constructors, with the same four facts about
+; it.  The old statement -- fn-sf-crash with the two choice functions, over
+; fn-sf-crash-imagep -- is the corollary below; nothing about the namespace
+; windows is weakened, and the new arm is reached only where fn-sf-crash
+; cannot express the image at all.
+(defthm fn-sf-recovery-crash-realizes-every-admissible-image
+  (implies (fn-sf-recovery-crash-imagep s frontier records)
            (let ((crashed (fn-sf-image-crash s frontier records)))
              (and (equal (fn-sf-frontier crashed) frontier)
                   (equal (fn-sf-records crashed) records)
                   (equal (fn-sf-phase crashed) :replaying)
                   (equal (fn-sf-successes crashed) (fn-sf-successes s)))))
-  :hints (("Goal" :in-theory (enable fn-sf-crash fn-sf-crash-imagep
+  :hints (("Goal" :in-theory (enable fn-sf-crash fn-sf-recovery-crash-imagep
                                      fn-sf-crash-rollback fn-sf-image-crash
                                      fn-sf-record-rollback-visiblep
                                      fn-sf-recovery-visiblep
                                      fn-sf-frontier-new-visiblep
                                      fn-sf-record-present-visiblep))))
+
+; The reliance predicate is included in the platform predicate: every theorem
+; below that names the wider one applies wherever the narrower one holds, and
+; no book that already had the narrow premise needs to change.
+(defthm fn-sf-crash-imagep-implies-recovery-crash-imagep
+  (implies (fn-sf-crash-imagep s frontier records)
+           (fn-sf-recovery-crash-imagep s frontier records))
+  :hints (("Goal" :in-theory (enable fn-sf-crash-imagep
+                                     fn-sf-recovery-crash-imagep))))
+
+; K3 as it was, restored verbatim for every consumer that has the narrow
+; premise: on those images fn-sf-image-crash IS fn-sf-crash at the two choice
+; functions, so the old constructor statement is unchanged.
+(defthm fn-sf-crash-realizes-every-admissible-image
+  (implies (fn-sf-crash-imagep s frontier records)
+           (let ((crashed (fn-sf-crash s
+                                       (fn-sf-image-frontier-choice s frontier)
+                                       (fn-sf-image-record-choice s records))))
+             (and (equal (fn-sf-frontier crashed) frontier)
+                  (equal (fn-sf-records crashed) records)
+                  (equal (fn-sf-phase crashed) :replaying)
+                  (equal (fn-sf-successes crashed) (fn-sf-successes s)))))
+  :hints (("Goal" :in-theory (enable fn-sf-crash fn-sf-crash-imagep))))
 
 (defthm fn-sf-image-crash-preserves-state
   (implies (fn-sf-statep s)
@@ -433,6 +469,11 @@
   (implies (fn-sf-crash-imagep s frontier records)
            (fn-sf-statep s))
   :hints (("Goal" :in-theory (e/d (fn-sf-crash-imagep) (fn-sf-statep)))))
+
+(defthm fn-sf-recovery-crash-imagep-implies-state
+  (implies (fn-sf-recovery-crash-imagep s frontier records)
+           (fn-sf-statep s))
+  :hints (("Goal" :in-theory (e/d (fn-sf-recovery-crash-imagep) (fn-sf-statep)))))
 
 (defthm fn-sf-state-image-components-typed
   (implies (fn-sf-statep s)
@@ -458,36 +499,84 @@
   :hints (("Goal"
            :use (fn-sf-crash-imagep-implies-state
                  fn-sf-crash-realizes-every-admissible-image
-                 fn-sf-image-crash-preserves-state
-                 (:instance fn-sf-state-success-member-has-record
-                            (s (fn-sf-image-crash s frontier records)))
+                 (:instance fn-sf-crash-preserves-state
+                            (frontier-choice
+                             (fn-sf-image-frontier-choice s frontier))
+                            (record-choice
+                             (fn-sf-image-record-choice s records)))
+                 (:instance fn-sf-prior-success-has-record-after-one-crash
+                            (frontier-choice
+                             (fn-sf-image-frontier-choice s frontier))
+                            (record-choice
+                             (fn-sf-image-record-choice s records)))
                  (:instance fn-sf-state-image-components-typed
-                            (s (fn-sf-image-crash s frontier records))))
+                            (s (fn-sf-crash s
+                                            (fn-sf-image-frontier-choice s frontier)
+                                            (fn-sf-image-record-choice s records)))))
            :in-theory (disable fn-sf-statep fn-sf-crash fn-sf-crash-imagep
-                               fn-sf-crash-choicep fn-sf-image-crash
-                               fn-sf-crash-rollback
+                               fn-sf-crash-choicep
                                fn-sf-image-frontier-choice
                                fn-sf-image-record-choice
                                fn-sf-record-listp fn-sf-success-listp
                                fn-sf-record-has-pairp
                                fn-sf-crash-imagep-implies-state
                                fn-sf-crash-realizes-every-admissible-image
+                               fn-sf-crash-preserves-state
+                               fn-sf-prior-success-has-record-after-one-crash
+                               fn-sf-state-image-components-typed))))
+
+; The same five facts for the PLATFORM predicate, which is what makes the
+; recovery arm safe to state as K2's conclusion (D14-b).  The fifth is the
+; one that matters and it is K2r proved rather than recorded open: an
+; acknowledged pair of the pre-crash state names a record of EVERY image the
+; platform may leave, including the rolled-back one -- because the arm that
+; drops a record requires the success history to be empty, so its hypothesis
+; and the arm cannot both hold.  No acknowledged outcome is at risk in the
+; recovery window, as a theorem about the kernel rather than as prose about
+; Store.recover running once per process.
+(defthm fn-sf-recovery-admissible-image-facts
+  (implies (fn-sf-recovery-crash-imagep s frontier records)
+           (and (fn-sf-statep s)
+                (fn-record-uint32p frontier)
+                (fn-sf-record-listp records 0 0 frontier)
+                (true-listp records)
+                (implies (member-equal pair (fn-sf-successes s))
+                         (fn-sf-record-has-pairp pair records))))
+  :hints (("Goal"
+           :use (fn-sf-recovery-crash-imagep-implies-state
+                 fn-sf-recovery-crash-realizes-every-admissible-image
+                 fn-sf-image-crash-preserves-state
+                 (:instance fn-sf-state-success-member-has-record
+                            (s (fn-sf-image-crash s frontier records)))
+                 (:instance fn-sf-state-image-components-typed
+                            (s (fn-sf-image-crash s frontier records))))
+           :in-theory (disable fn-sf-statep fn-sf-crash fn-sf-crash-imagep
+                               fn-sf-recovery-crash-imagep
+                               fn-sf-crash-choicep fn-sf-image-crash
+                               fn-sf-crash-rollback
+                               fn-sf-image-frontier-choice
+                               fn-sf-image-record-choice
+                               fn-sf-record-listp fn-sf-success-listp
+                               fn-sf-record-has-pairp
+                               fn-sf-recovery-crash-imagep-implies-state
+                               fn-sf-recovery-crash-realizes-every-admissible-image
                                fn-sf-image-crash-preserves-state
                                fn-sf-state-success-member-has-record
                                fn-sf-state-image-components-typed))))
 
-; The exact stable-prefix guarantee at the kernel, over all three arms
-; (D14-b): no admissible image loses a record of the state's stable prefix.
+; The exact stable-prefix guarantee at the kernel, over all three arms of the
+; PLATFORM predicate (D14-b): no image the platform may leave loses a record
+; of the state's stable prefix.
 ; Outside the recovery window fn-sf-stable-records IS fn-sf-records
 ; (fn-sf-stable-records-outside-the-window), so this is the old
 ; "an admissible image extends the record list" verbatim there, and inside the
 ; window it is the strongest true statement -- the un-fenced tail is exactly
 ; what the platform may drop.
-(defthm fn-sf-crash-image-extends-stable-records
-  (implies (fn-sf-crash-imagep s frontier records)
+(defthm fn-sf-recovery-crash-image-extends-stable-records
+  (implies (fn-sf-recovery-crash-imagep s frontier records)
            (fn-sf-prefixp (fn-sf-stable-records s) records))
   :hints (("Goal"
-           :use (fn-sf-crash-imagep-implies-state
+           :use (fn-sf-recovery-crash-imagep-implies-state
                  (:instance fn-sf-state-image-components-typed)
                  (:instance fn-sf-stable-records-is-a-prefix)
                  (:instance fn-sf-prefixp-reflexive
@@ -495,13 +584,13 @@
                  (:instance fn-sf-prefixp-append
                             (xs (fn-sf-records s))
                             (ys (list (fn-sf-record-candidate s)))))
-           :in-theory (e/d (fn-sf-crash-imagep fn-sf-stable-records
+           :in-theory (e/d (fn-sf-recovery-crash-imagep fn-sf-stable-records
                             fn-sf-record-rollback-visiblep
                             fn-sf-recovery-visiblep
                             fn-sf-record-present-visiblep)
                            (fn-sf-statep fn-sf-but-last fn-sf-prefixp
                             fn-sf-record-listp
-                            fn-sf-crash-imagep-implies-state
+                            fn-sf-recovery-crash-imagep-implies-state
                             fn-sf-state-image-components-typed
                             fn-sf-stable-records-is-a-prefix
                             fn-sf-prefixp-reflexive fn-sf-prefixp-append)))))
@@ -609,5 +698,7 @@
     fn-sf-candidate-append-preserves-record-list
     fn-sf-record-pair-present-after-append fn-sf-record-pair-preserved-by-append
     fn-sf-success-list-preserved-by-append fn-sf-success-list-append-covered-pair
-    fn-sf-success-member-has-record))
+    fn-sf-success-member-has-record
+    fn-sf-but-last-is-a-prefix fn-sf-but-last-preserves-record-list
+    fn-sf-stable-records-is-a-prefix))
 (in-theory (disable fn-store-files-invariants-vocabulary))
