@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import run_store
 import json
 import os
 from pathlib import Path
@@ -46,9 +47,14 @@ OBSERVED: dict[str, object] = {"receipt_sha256": None, "bpa_deleted": False}
 
 
 def enqueue_values(txid: int = ENQUEUE_TXID) -> dict[str, object]:
-    subject = "sha256:" + hashlib.sha256(CAMPAIGN_PAYLOAD).hexdigest()
-    archive = "archive:" + hashlib.sha256(
-        CAMPAIGN_MSGID.encode("ascii") + b"\0" + subject.encode("ascii")).hexdigest()
+    # ACL2 owns the identity derivation (identity v1, domain-separated): ask
+    # the bridge, never re-derive the preimages here.  The old Python twin
+    # (plain SHA-256 of the payload) stopped matching the store's binding
+    # when the v1 profile landed, and the preflight rightly refused it.
+    archive_id, subject_id, _evidence = run_store.metadata(
+        CAMPAIGN_MSGID.encode("ascii"), CAMPAIGN_PAYLOAD)
+    subject = subject_id.decode("ascii")
+    archive = archive_id.decode("ascii")
     return {"txid": txid, "tx-generation": 0, "work-id": "work:campaign",
             "msgid": CAMPAIGN_MSGID, "immutable-subject": subject,
             "archive-obligation-id": archive, "forward-obligation-id": "forward:campaign",
