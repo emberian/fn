@@ -76,6 +76,9 @@
 ; -----------------------------------------------------------------------------
 ; Bounds, checked before any item is parsed.
 
+(local (defthm fn-stx-len-of-append
+         (equal (len (append a b)) (+ (len a) (len b)))))
+
 (defthm fn-stx-detached-items-length
   (implies (fn-stmt-headerp header)
            (<= (len (fn-stx-detached-items header signature))
@@ -233,7 +236,8 @@
            :in-theory (enable (:d fn-stx-authored-header)))))
 
 (defthm fn-stx-payload-ignores-the-carrier-field
-  (implies (fn-stx-injected-namep (fn-article-field-name field))
+  (implies (or (not (true-listp field))
+               (fn-stx-injected-namep (fn-article-field-name field)))
            (equal (fn-stx-authored-header (append before (cons field after)))
                   (fn-stx-authored-header (append before after))))
   :hints (("Goal" :do-not-induct t
@@ -245,7 +249,8 @@
                             (a before) (b after))))))
 
 (defthm fn-stx-authored-source-ignores-the-carrier-field
-  (implies (fn-stx-injected-namep (fn-article-field-name field))
+  (implies (or (not (true-listp field))
+               (fn-stx-injected-namep (fn-article-field-name field)))
            (equal (fn-stx-authored-source
                    (fn-article-make header body (append before (cons field after))))
                   (fn-stx-authored-source
@@ -286,7 +291,8 @@
            :in-theory (e/d ((:d fn-stx-verdict) (:d fn-stx-statement-of)
                             (:d fn-stx-reattach) (:d fn-prin-verifiedp)
                             (:d fn-stmt-verifiedp) (:d fn-stmt-p)
-                            (:d fn-stmt-make) (:d fn-stmt-header)
+                            (:d fn-stmt-make) (:d fn-sig-public-key-p)
+                            (:d fn-stmt-header)
                             (:d fn-stmt-payload) (:d fn-stmt-signature)
                             (:d fn-stmt-creator) (:d fn-stmt-payload-ref))
                            (fn-stx-parse-header fn-stx-payload-for
