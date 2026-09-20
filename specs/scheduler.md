@@ -114,9 +114,11 @@ four, and `tests/acl2/scheduler-tests.lisp` has the `must-fail` case for each:
 
 Covered: safety over arbitrary finite traces; the submit composition; expiry
 and contact loss; the bounded retry accounting; the aging bound from the
-promotion queue, `N = queue-bound + 1`, with `fn-sched-aged-fitsp` as an
-explicit hypothesis; the starvation counterexample as a runnable trace under a
-named unfair policy.
+promotion queue, `N = queue-bound + 1`, over a horizon of `(nfix n)` ticks —
+the statement over a bare `n` was false at `n = 1/2`, where every run
+predicate holds and nothing is selected, and `tests/acl2/scheduler-tests.lisp`
+evaluates that witness — with `fn-sched-aged-fitsp` as an explicit hypothesis;
+the starvation counterexample as a runnable trace under a named unfair policy.
 
 Not covered, and C3-03's:
 

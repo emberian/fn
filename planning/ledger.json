@@ -212,9 +212,9 @@
     "books": 206,
     "books_in_root_closure": 205,
     "roots": 205,
-    "theorems": 3424,
+    "theorems": 3432,
     "functions": 2521,
-    "assert_events": 3507,
+    "assert_events": 3512,
     "must_fails": 59,
     "encapsulates": 14,
     "guards": {
@@ -2887,7 +2887,7 @@
       "book": "books/scheduler-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 51,
+      "theorems": 59,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -5074,7 +5074,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 98,
+      "assert_events": 103,
       "must_fails": 0,
       "defconsts": 42,
       "defmacros": 0,

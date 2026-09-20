@@ -127,6 +127,10 @@
                                    fn-sched-item-listp)))))
 
 ; KEYSTONE.  State preservation over one arbitrary observation.
+; `fn-bp-step' stays closed here and in `fn-sched-step-preserves-queued': the
+; `:transport' branch relays it and returns `ss' itself, and books/bp-workflow
+; exports its whole definition stack enabled -- opened, each of the two proofs
+; ran six minutes (359.9 s and 366.7 s, certify-20260920T014616Z-7729).
 (defthm fn-sched-step-preserves-state
   (implies (fn-sched-statep ss)
            (fn-sched-statep (fn-sched-result-ss (fn-sched-step ss wf event))))
@@ -136,7 +140,9 @@
                                    fn-sched-tick-step fn-sched-with-tick
                                    fn-sched-contact-holdsp fn-bp-nth
                                    fn-sched-statep fn-sched-string-listp
-                                   fn-sched-item-listp)))))
+                                   fn-sched-item-listp
+                                   fn-bp-step fn-bp-transport-event
+                                   fn-bp-result-state)))))
 
 ; KEYSTONE.  State preservation over an arbitrary finite observation trace.
 (defthm fn-sched-trace-preserves-state
@@ -201,7 +207,8 @@
                  fn-sched-queuedp fn-sched-find fn-sched-next-aged
                  fn-sched-selection fn-sched-drive-attempt
                  fn-sched-record-decision fn-sched-submit-for-idp
-                 fn-sched-contact-holdsp fn-clock-expiry-decision fn-bp-nth)))))
+                 fn-sched-contact-holdsp fn-clock-expiry-decision fn-bp-nth
+                 fn-bp-step fn-bp-transport-event fn-bp-result-state)))))
 
 (defthm fn-sched-trace-preserves-queued
   (implies (fn-sched-queuedp id (fn-sched-queue ss))
@@ -516,6 +523,12 @@
 (defthm fn-sched-member-of-append-left
   (implies (member-equal w a) (member-equal w (append a b))))
 
+; The right half: `fn-sched-next-aged' appends the tick's promotions after the
+; advanced tail, and `fn-sched-passed-over-work-reaches-the-promotion-queue'
+; finds its work there.
+(defthm fn-sched-member-of-append-right
+  (implies (member-equal w b) (member-equal w (append a b))))
+
 ; The consp consequence, as its own rule: in the deep case split of
 ; `fn-sched-promotion-position-decreases' the `:use' hypothesis has already been
 ; rewritten away, and the branch closes only if this fires there.
@@ -590,26 +603,6 @@
                                          (fn-sched-queue ss) wf))
                                    (fn-sched-queue ss))))))))
 
-; The member half of the keystone below, isolated: inside the keystone's own
-; case split this goal sat two hundred levels deep and the prover descended
-; without end (certify-20260920T011543Z-94761, -20260920T014616Z-7729).
-; Proved here with the tick, the advance and the promotions all closed.
-(defthm fn-sched-next-aged-keeps-a-non-selected-eligible-member
-  (implies (and (member-equal w (fn-sched-aged ss))
-                (fn-sched-eligiblep (fn-sched-find w (fn-sched-queue ss)) wf)
-                (not (equal w selected-id)))
-           (member-equal w (fn-sched-next-aged ss wf selected-id)))
-  :hints (("Goal" :in-theory (e/d (fn-sched-next-aged)
-                                  (fn-sched-aged-advance fn-sched-promotions
-                                   fn-sched-eligiblep fn-sched-find))
-           :use ((:instance fn-sched-aged-advance-keeps-eligible-member
-                            (aged (fn-sched-aged ss))
-                            (queue (fn-sched-queue ss)))
-                 (:instance fn-sched-member-of-cdr-when-not-the-car
-                            (lst (fn-sched-aged-advance (fn-sched-aged ss)
-                                                        (fn-sched-queue ss)
-                                                        wf)))))))
-
 ; KEYSTONE.  One admissible tick either selects a promoted work or moves it
 ; strictly closer to the head of the promotion queue.
 (defthm fn-sched-promotion-position-decreases
@@ -645,24 +638,63 @@
                  (:instance fn-sched-pos-of-aged-advance
                             (aged (fn-sched-aged ss))
                             (queue (fn-sched-queue ss)))
-                 (:instance
-                  fn-sched-next-aged-keeps-a-non-selected-eligible-member
-                  (selected-id (fn-sched-item-work-id
-                                (fn-sched-selection ss wf))))))))
+                 (:instance fn-sched-member-of-cdr-when-not-the-car
+                            (lst (fn-sched-aged-advance (fn-sched-aged ss)
+                                                        (fn-sched-queue ss)
+                                                        wf)))))))
+
+; The strict-decrease half of the keystone as a `:linear' fact.  The induction
+; in `fn-sched-promoted-work-is-selected-within-its-position' has to relieve
+; `(< pos' (- n 1))' from `(< pos' pos)' and `(< pos n)', and the keystone's
+; `<' conjunct is a rewrite rule whose trigger `(< pos' pos)' never occurs in
+; that goal, so linear arithmetic never saw it: the prover pushed the subgoal
+; for a fresh induction, thirteen levels deep, until the runner's limit
+; (certify-20260920T011543Z-94761, -20260920T014616Z-7729).  Proof vocabulary,
+; withdrawn at export; the registry event is the keystone above.
+(defthm fn-sched-promotion-position-decreases-linear
+  (implies (and (fn-sched-admissiblep ss)
+                (fn-sched-drive-okp ss wf attempt-id)
+                (member-equal w (fn-sched-aged ss))
+                (fn-sched-eligiblep (fn-sched-find w (fn-sched-queue ss)) wf)
+                (not (fn-sched-submit-for-idp
+                      w (fn-sched-result-effects
+                         (fn-sched-tick-step ss wf attempt-id)))))
+           (< (fn-sched-pos
+               w (fn-sched-aged
+                  (fn-sched-result-ss (fn-sched-tick-step ss wf attempt-id))))
+              (fn-sched-pos w (fn-sched-aged ss))))
+  :rule-classes :linear
+  :hints (("Goal" :use fn-sched-promotion-position-decreases
+           :in-theory (e/d nil (fn-sched-promotion-position-decreases
+                                fn-sched-tick-step fn-sched-pos
+                                fn-sched-admissiblep fn-sched-drive-okp
+                                fn-sched-eligiblep fn-sched-find
+                                fn-sched-submit-for-idp)))))
 
 ; KEYSTONE.  A promoted work that stays eligible is selected within one more
 ; tick than its position in the promotion queue.
+; The horizon is `(nfix n)' ticks, which is what the three run predicates
+; count.  Over a bare `n' the statement was false: at n = 1/2 every run
+; predicate is `t' (`(zp (nfix 1/2))'), the head's position 0 is below 1/2
+; and nothing is selected.  tests/acl2/scheduler-tests.lisp evaluates that
+; witness; it is what put `nfix' into this statement and the next.
 (defthm fn-sched-promoted-work-is-selected-within-its-position
   (implies (and (member-equal w (fn-sched-aged ss))
                 (fn-sched-contact-runp ss wf n attempt-id)
                 (fn-sched-eligible-runp ss wf n attempt-id w)
-                (< (fn-sched-pos w (fn-sched-aged ss)) n))
+                (< (fn-sched-pos w (fn-sched-aged ss)) (nfix n)))
            (fn-sched-selected-withinp ss wf n attempt-id w))
   :hints (("Goal"
            :induct (fn-sched-selected-withinp ss wf n attempt-id w)
-           :in-theory (e/d (fn-sched-contact-runp fn-sched-eligible-runp
-                            fn-sched-selected-withinp fn-sched-eligible-idp)
-                           (fn-sched-tick-step fn-sched-pos fn-sched-eligiblep
+           ; the three run predicates open once, at N, and stay closed at N-1
+           :expand ((fn-sched-contact-runp ss wf n attempt-id)
+                    (fn-sched-eligible-runp ss wf n attempt-id w)
+                    (fn-sched-selected-withinp ss wf n attempt-id w))
+           :in-theory (e/d (fn-sched-eligible-idp)
+                           ((:d fn-sched-contact-runp)
+                            (:d fn-sched-eligible-runp)
+                            (:d fn-sched-selected-withinp)
+                            fn-sched-tick-step fn-sched-pos fn-sched-eligiblep
                             fn-sched-find fn-sched-admissiblep
                             fn-sched-drive-okp fn-sched-submit-for-idp)))))
 
@@ -676,7 +708,7 @@
                 (member-equal w (fn-sched-aged ss))
                 (fn-sched-contact-runp ss wf n attempt-id)
                 (fn-sched-eligible-runp ss wf n attempt-id w)
-                (< (nfix (fn-sched-queue-bound (fn-sched-conf ss))) n))
+                (< (nfix (fn-sched-queue-bound (fn-sched-conf ss))) (nfix n)))
            (fn-sched-selected-withinp ss wf n attempt-id w))
   :hints (("Goal" :in-theory (e/d (fn-sched-aged-fitsp)
                                   (fn-sched-pos fn-sched-contact-runp
@@ -685,6 +717,22 @@
            :use ((:instance fn-sched-promoted-work-is-selected-within-its-position)
                  (:instance fn-sched-pos-bounded-by-len
                             (x w) (lst (fn-sched-aged ss)))))))
+
+; A queued, eligible, unaged item that the tick does not select and whose pass
+; count reaches the limit on this tick is among this tick's promotions.  The
+; keystone below reaches `fn-sched-promotions' through the `fn-sched-take'
+; branch of the tick, with the promotions closed; this is the one fact it needs
+; about them.  Proof vocabulary, withdrawn at export.
+(defthm fn-sched-find-reaches-the-promotions
+  (implies (and (fn-sched-eligiblep (fn-sched-find w queue) wf)
+                (not (equal selected-id w))
+                (not (fn-sched-item-agedp (fn-sched-find w queue)))
+                (<= (nfix limit)
+                    (+ 1 (nfix (fn-sched-item-passes (fn-sched-find w queue))))))
+           (member-equal w (fn-sched-promotions queue wf selected-id limit)))
+  :hints (("Goal" :induct (fn-sched-find w queue)
+           :in-theory (e/d (fn-sched-find fn-sched-promotions)
+                           (fn-sched-eligiblep)))))
 
 ; The promotion half of the L + Q horizon, at one tick: an eligible work that
 ; is passed over on the tick at which its pass count reaches the configured
@@ -709,9 +757,19 @@
            (e/d (fn-sched-tick-step fn-sched-take fn-sched-with-decisions
                  fn-sched-next-aged fn-sched-drive-okp)
                 (fn-sched-aged-advance fn-sched-eligiblep fn-sched-find
-                 fn-sched-admissiblep fn-sched-bump-queue
+                 fn-sched-admissiblep fn-sched-bump-queue fn-sched-promotions
                  fn-sched-drive-attempt fn-sched-record-decision
-                 fn-sched-selection fn-bp-result-effects fn-bp-result-state))))
+                 fn-sched-selection fn-bp-result-effects fn-bp-result-state
+                 fn-sched-find-reaches-the-promotions))
+           ; cited at its one instance: relieving its `nfix' bound by rewriting
+           ; inside the case split on the pass count and the limit does not
+           ; close (certify-20260920T024820Z-15346)
+           :use ((:instance fn-sched-find-reaches-the-promotions
+                            (queue (fn-sched-queue ss))
+                            (selected-id (fn-sched-item-work-id
+                                          (fn-sched-selection ss wf)))
+                            (limit (fn-sched-aging-limit
+                                    (fn-sched-conf ss)))))))
   :rule-classes nil)
 
 ; -----------------------------------------------------------------------------
@@ -748,11 +806,17 @@
   :hints (("Goal"
            :use ((:instance fn-sched-aging-bound)
                  (:instance fn-assume-fairness-contact-index-is-finite))
+           ; `fn-assume-fairness-contact-index' is constrained and has no rune
+           ; to withdraw; naming it in a theory is a hard error
+           ; (certify-20260920T024925Z-16147).  Its constraint is withdrawn
+           ; instead: left enabled, it rewrites the `:use'd `natp' fact to `t'
+           ; and type reasoning never learns the index is an integer
+           ; (certify-20260920T024955Z-16659).
            :in-theory (e/d nil
                            (fn-sched-aging-bound fn-sched-aged-fitsp
                             fn-sched-pos fn-sched-contact-runp
                             fn-sched-eligible-runp fn-sched-selected-withinp
-                            fn-assume-fairness-contact-index
+                            fn-assume-fairness-contact-index-is-finite
                             fn-sched-queue-bound fn-sched-conf)))))
 
 ; -----------------------------------------------------------------------------
@@ -776,8 +840,7 @@
     fn-sched-true-listp-of-record-decision fn-sched-statep-of-tick-step
     fn-sched-bump-queue-preserves-queued fn-sched-expire-queue-preserves-queued
     fn-sched-append-preserves-queued fn-sched-admit-preserves-queued
-    fn-sched-member-of-append-left
-    fn-sched-next-aged-keeps-a-non-selected-eligible-member
+    fn-sched-member-of-append-left fn-sched-member-of-append-right
     fn-sched-aged-advance-keeps-eligible-member
     fn-sched-aged-advance-consp-when-an-eligible-member-exists
     fn-sched-aged-advance-head-is-eligible fn-sched-pos-of-aged-advance
@@ -785,6 +848,8 @@
     fn-sched-selection-is-the-promotion-head
     fn-sched-selection-is-consp-when-the-promotion-queue-is-not-empty
     fn-sched-promotion-position-decreases
-    fn-sched-promoted-work-is-selected-within-its-position))
+    fn-sched-promotion-position-decreases-linear
+    fn-sched-promoted-work-is-selected-within-its-position
+    fn-sched-find-reaches-the-promotions))
 
 (in-theory (disable fn-sched-invariants-vocabulary))
