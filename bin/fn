@@ -503,7 +503,7 @@ def toml_quote(text):
     return '"{}"'.format(text)
 
 
-def command_principal(settings, args):
+def _principal_set_password(settings, args):
     """`fn principal set-password NAME` -- an RFC 4643 AUTHINFO login.
 
     The secret is stored as the operator typed it.  It is NOT a digest, and
@@ -513,8 +513,6 @@ def command_principal(settings, args):
     ACL2 compares, which AGENTS.md forbids.  See OB-AUTH-DIGEST in
     specs/nntp-audit.md.  The file is written 0600 and the command says so.
     """
-    if args.principal_command != "set-password":
-        return EXIT_REFUSED, "unknown principal command {!r}".format(args.principal_command)
     name = args.name
     if not name or not all(33 <= ord(c) <= 126 for c in name):
         return EXIT_REFUSED, ("a login name is printable US-ASCII with no space, "
@@ -588,6 +586,44 @@ def command_anchor(settings, args):
 
 
 # -----------------------------------------------------------------------------
+# Statements and principals (specs/substrate-transport.md sections 1 and 5)
+#
+# Every value below is computed by an ACL2 session over books/stx-*: the id,
+# the field value, the verdict and its rendering.  This file marshals
+# arguments and prints what the session decided; it derives nothing.
+
+
+def command_statement(settings, args):
+    from tools import stx
+    arguments = argparse.Namespace(**vars(args))
+    if args.action == "sign":
+        return delegate(stx.sign, arguments, "statement sign")
+    if args.action == "attach":
+        return delegate(stx.attach, arguments, "statement attach")
+    if args.action == "show":
+        return delegate(stx.show, arguments, "statement show")
+    return delegate(stx.verify, arguments, "statement verify")
+
+
+def command_principal(settings, args):
+    if args.action == "set-password":
+        return _principal_set_password(settings, args)
+    from tools import stx
+    root = Path(settings.store) / "principals"
+    if args.action == "new":
+        root.mkdir(parents=True, exist_ok=True)
+        code, summary = delegate(stx.principal_new,
+                                 argparse.Namespace(seed=args.seed, token=args.token),
+                                 "principal new")
+        return code, summary
+    names = sorted(path.name for path in root.glob("*.principal")) if root.is_dir() else []
+    for name in names:
+        print("{} {}".format(name[:-len(".principal")],
+                             (root / name).read_text().strip()))
+    return EXIT_OK, "principal list count={}".format(len(names))
+
+
+# -----------------------------------------------------------------------------
 # Command line
 
 
@@ -597,11 +633,6 @@ def build_parser():
                         help="configuration file (default: ./fn.toml)")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    principal = sub.add_parser(
-        "principal", help="AUTHINFO logins (RFC 4643)")
-    principal.add_argument("principal_command", choices=("set-password",))
-    principal.add_argument("name", help="the AUTHINFO USER name")
-    principal.add_argument("--password", help="the secret; omitted, it is prompted for")
     principal.add_argument("--principal", help="the 32-octet principal id, 64 hex digits")
     principal.add_argument("--posting", dest="posting", action="store_true", default=True)
     principal.add_argument("--no-posting", dest="posting", action="store_false")
@@ -636,6 +667,32 @@ def build_parser():
 
     capacity = sub.add_parser("capacity", help="set the retention capacity")
     capacity.add_argument("capacity", type=int)
+    statement = sub.add_parser(
+        "statement",
+        help="sign, show or verify an FN-Statement (exit 0 verified, "
+             "3 unverified, 4 absent, 2 no verdict)")
+    statement.add_argument("action", choices=("sign", "attach", "show", "verify"))
+    statement.add_argument("--payload", help="sign: the signed payload octets")
+    statement.add_argument("--seed", help="sign: the 32-octet seed, hex")
+    statement.add_argument("--token", default="fn", help="sign: the principal token")
+    statement.add_argument("--incarnation", type=int, default=0)
+    statement.add_argument("--sequence", type=int, default=0)
+    statement.add_argument("--kind", default="article",
+                           choices=("article", "policy", "succession", "receipt"))
+    statement.add_argument("--ed25519", action="store_true",
+                           help="sign: also print a real signature over the preimage")
+    statement.add_argument("--field", help="show: the field value or header line")
+    statement.add_argument("--article", help="verify: the received article octets")
+    statement.add_argument("--keyring", help="verify: the node keyring file")
+    statement.add_argument("--generation", type=int, default=0)
+
+    principal = sub.add_parser("principal", help="derive or list principals; AUTHINFO logins (RFC 4643)")
+    principal.add_argument("action", choices=("new", "list", "set-password"))
+    principal.add_argument("name", nargs="?", help="set-password: the AUTHINFO USER name")
+    principal.add_argument("--password", help="set-password: the secret; omitted, it is prompted for")
+    principal.add_argument("--seed", help="new: the 32-octet seed, hex")
+    principal.add_argument("--token", default="fn")
+    principal.add_argument("--store", help="store root (overrides [store] path)")
 
     status = sub.add_parser("status", help="generation, articles, anchor, owner liveness")
     status.add_argument("--control", help="control socket path")
@@ -678,7 +735,14 @@ COMMANDS = {"init": command_init, "run": command_run, "post": command_post,
             "principal": command_principal,
             "group": command_group, "capacity": command_capacity,
             "status": command_status,
-            "recover": command_recover, "anchor": command_anchor}
+            "recover": command_recover, "anchor": command_anchor,
+            "statement": command_statement}
+
+# A verdict is not a durability outcome, so `statement` does not borrow the
+# store's words: 3 is "unverified" here and "uncertain" there, and the two
+# are reported with different vocabulary rather than the same number meaning
+# two things (D13, three outcomes distinct all the way out).
+STATEMENT_WORDS = {0: "verified", 2: "no-verdict", 3: "unverified", 4: "absent"}
 
 
 def main(argv=None):
@@ -689,7 +753,8 @@ def main(argv=None):
         code, summary = COMMANDS[args.command](settings, args)
     except (StoreError, OSError, UnicodeError) as error:
         code, summary = exit_code_for(error), "{} {}".format(args.command, error)
-    print("{} {}".format(OUTCOME.get(code, "fault"), summary), file=sys.stderr, flush=True)
+    words = STATEMENT_WORDS if args.command == "statement" else OUTCOME
+    print("{} {}".format(words.get(code, "fault"), summary), file=sys.stderr, flush=True)
     return code
 
 

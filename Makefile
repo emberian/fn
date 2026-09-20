@@ -250,7 +250,13 @@ ACL2_BOOKS ?= books/defrecord \
 	books/stx-carrier \
 	books/stx-verify \
 	books/stx-invariants \
-	tests/acl2/stx-tests
+	books/stx-lace \
+	books/stx-index \
+	books/stx-policy \
+	books/stx-epochs \
+	books/stx-authority \
+	tests/acl2/stx-tests \
+	tests/acl2/stx-transit-tests
 
 .PHONY: check certify acl2-ld certs-install certs-publish model-test tooling-test test
 check:

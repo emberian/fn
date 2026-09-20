@@ -247,29 +247,35 @@
     "books/stx-carrier",
     "books/stx-verify",
     "books/stx-invariants",
-    "tests/acl2/stx-tests"
+    "books/stx-lace",
+    "books/stx-index",
+    "books/stx-policy",
+    "books/stx-epochs",
+    "books/stx-authority",
+    "tests/acl2/stx-tests",
+    "tests/acl2/stx-transit-tests"
   ],
   "totals": {
-    "books": 247,
-    "books_in_root_closure": 246,
-    "roots": 246,
-    "theorems": 4753,
-    "functions": 3439,
-    "assert_events": 4648,
+    "books": 253,
+    "books_in_root_closure": 252,
+    "roots": 252,
+    "theorems": 4853,
+    "functions": 3497,
+    "assert_events": 4706,
     "must_fails": 59,
     "encapsulates": 16,
     "guards": {
-      "verified": 1360,
-      "declared-off": 165,
-      "default-guarded": 1425,
+      "verified": 1368,
+      "declared-off": 166,
+      "default-guarded": 1474,
       "default-unguarded": 489
     },
-    "suspect_theorems": 35,
-    "export_hygiene_warnings": 67,
+    "suspect_theorems": 37,
+    "export_hygiene_warnings": 72,
     "teeth_form_warnings": 0,
-    "include_hygiene_warnings": 87,
+    "include_hygiene_warnings": 88,
     "host_names_warnings": 0,
-    "hand_written_record_warnings": 26
+    "hand_written_record_warnings": 27
   },
   "books": [
     {
@@ -3860,6 +3866,32 @@
       "read_error": null
     },
     {
+      "book": "books/stx-authority.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 3,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "stx-index",
+        "stx-policy"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/stx-carrier.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -3888,6 +3920,59 @@
       "read_error": null
     },
     {
+      "book": "books/stx-epochs.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 12,
+      "functions": 12,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 11,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "membership-epochs-invariants",
+        "stx-policy"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/stx-index.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 50,
+      "functions": 26,
+      "guards": {
+        "verified": 8,
+        "declared-off": 0,
+        "default-guarded": 18,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 8,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "stx-lace"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-stx-index-query-is-store-free-by-definition"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/stx-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -3910,6 +3995,61 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/stx-lace.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 19,
+      "functions": 8,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 8,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "lace-invariants",
+        "node",
+        "stx-verify"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/stx-policy.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 16,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "policy-invariants",
+        "stx-lace"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-stx-admission-is-peer-independent-by-definition"
+      ],
       "read_error": null
     },
     {
@@ -6543,6 +6683,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/stx-transit-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 6,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 58,
+      "must_fails": 0,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/stx-authority",
+        "../../books/stx-epochs",
+        "crypto-seam-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/tcpcl-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -6991,6 +7158,23 @@
       ]
     },
     {
+      "theorem": "fn-stx-admission-is-peer-independent-by-definition",
+      "book": "books/stx-policy.lisp",
+      "line": 49,
+      "reasons": [
+        "definition-restated: the conclusion is the body of fn-stx-transit-authority-ok"
+      ]
+    },
+    {
+      "theorem": "fn-stx-index-query-is-store-free-by-definition",
+      "book": "books/stx-index.lisp",
+      "line": 586,
+      "reasons": [
+        "definition-restated: the conclusion is the body of fn-stx-index-lookup",
+        "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
       "theorem": "fn-tcl-segment-never-exceeds-mru",
       "book": "books/tcpcl-octets.lisp",
       "line": 1044,
@@ -7277,6 +7461,36 @@
         "theorem": "fn-stx-strip-wsp-of-b64-encode",
         "book": "books/stx-carrier.lisp",
         "line": 467,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-stx-record-creator-of-fn-stx-equivocation-record",
+        "book": "books/stx-index.lisp",
+        "line": 268,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-stx-record-incarnation-of-fn-stx-equivocation-record",
+        "book": "books/stx-index.lisp",
+        "line": 271,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-stx-record-sequence-of-fn-stx-equivocation-record",
+        "book": "books/stx-index.lisp",
+        "line": 274,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-stx-record-id-held-of-fn-stx-equivocation-record",
+        "book": "books/stx-index.lisp",
+        "line": 277,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-stx-record-id-new-of-fn-stx-equivocation-record",
+        "book": "books/stx-index.lisp",
+        "line": 281,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -8003,6 +8217,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/stx-transit-tests.lisp",
+        "line": 16,
+        "include": "crypto-seam-tests",
+        "included": "tests/acl2/crypto-seam-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/transfer-tests.lisp",
         "line": 4,
         "include": "../../books/transfer-public-bound",
@@ -8250,6 +8471,15 @@
         "accessors": 8,
         "variable": "s",
         "reason": "hand-written record: 1 shape predicate(s) (fn-sf-phase-shapep) and 8 one-argument selector accessors over `s` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
+      },
+      {
+        "book": "books/stx-index.lisp",
+        "line": 195,
+        "shape": "fn-stx-index-shapep",
+        "shapes": 1,
+        "accessors": 3,
+        "variable": "x",
+        "reason": "hand-written record: 1 shape predicate(s) (fn-stx-index-shapep) and 3 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
       },
       {
         "book": "books/tcpcl-records.lisp",

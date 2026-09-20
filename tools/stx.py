@@ -86,6 +86,13 @@ class StxSession:
             raise StoreError("ACL2 returned a non-octet result: {!r}".format(body))
         return bytes(values)
 
+    def number(self, form: str) -> int:
+        body = acl2_result(self.call(form)).decode("ascii", "replace").strip()
+        try:
+            return int(body)
+        except ValueError:
+            raise StoreError("ACL2 returned a non-number result: {!r}".format(body))
+
     def keyword(self, form: str) -> str:
         body = acl2_result(self.call(form)).decode("ascii", "replace").strip()
         return body.upper().lstrip(":")
@@ -181,6 +188,61 @@ def verify(args) -> int:
             "ABSENT": EXIT_ABSENT}.get(token, EXIT_NO_VERDICT)
 
 
+def show(args) -> int:
+    """Print what a field value says, as ACL2 reads it.  No verdict: `show`
+    answers "who claims to have signed this, over what", and `verify` is the
+    only thing that answers "and does the signature check"."""
+    value = open(args.field, "rb").read()
+    if value.lower().startswith(b"fn-statement:"):
+        value = value.split(b":", 1)[1]
+    value = value.strip()
+    session = StxSession()
+    try:
+        parsed = "(fn-stx-parse-header {})".format(octet_form(value))
+        ok = session.keyword("(if (fn-stx-okp {}) :ok :error)".format(parsed))
+        if ok != "OK":
+            why = session.keyword("(fn-stx-why {})".format(parsed))
+            sys.stderr.write("the field does not decode: {}\n".format(why.lower()))
+            return EXIT_UNVERIFIED
+        header = "(fn-stx-val {})".format(parsed)
+        creator = session.octets("(fn-stmt-header-creator {})".format(header))
+        ref = session.octets("(fn-stmt-header-ref {})".format(header))
+        incarnation = session.number("(fn-stmt-header-incarnation {})".format(header))
+        sequence = session.number("(fn-stmt-header-sequence {})".format(header))
+        kind = session.keyword("(fn-stmt-header-kind {})".format(header))
+        signature = session.octets("(fn-stx-val2 {})".format(parsed))
+    finally:
+        session.close()
+    sys.stdout.write("creator {}\n".format(creator.hex()))
+    sys.stdout.write("incarnation {}\n".format(incarnation))
+    sys.stdout.write("sequence {}\n".format(sequence))
+    sys.stdout.write("kind {}\n".format(kind.lower()))
+    sys.stdout.write("ref {}\n".format(ref.hex()))
+    sys.stdout.write("signature-octets {}\n".format(len(signature)))
+    sys.stdout.write("no verdict: `verify` is what checks the signature\n")
+    return 0
+
+
+def principal_new(args) -> int:
+    """A principal is a public key and a token, and its id is what ACL2's
+    fn-prin-id makes of the pair.  The id is not computed here."""
+    seed = bytes.fromhex(open(args.seed).read().strip())
+    session = StxSession()
+    try:
+        public = session.octets("(fn-sig-public-key {})".format(seed_form(seed)))
+        identity = session.octets(
+            "(fn-prin-id {} {})".format(octet_form(public),
+                                        octet_form(args.token.encode())))
+    finally:
+        session.close()
+    sys.stdout.write("id {}\n".format(identity.hex()))
+    sys.stdout.write("public-key {}\n".format(public.hex()))
+    sys.stdout.write("token {}\n".format(args.token))
+    sys.stderr.write("toy realiser (tests/acl2/crypto-seam-tests.lisp): "
+                     "not a cryptographic key\n")
+    return 0
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -201,6 +263,15 @@ def main(argv=None) -> int:
     p.add_argument("--field", required=True)
     p.add_argument("--article", required=True)
     p.set_defaults(func=attach)
+
+    p = sub.add_parser("show", help="print what a FN-Statement field says")
+    p.add_argument("--field", required=True)
+    p.set_defaults(run=show)
+
+    p = sub.add_parser("principal-new", help="derive a principal id from a seed")
+    p.add_argument("--seed", required=True)
+    p.add_argument("--token", default="fn")
+    p.set_defaults(run=principal_new)
 
     p = sub.add_parser("verify", help="print the node's verdict on an article")
     p.add_argument("--article", required=True)
