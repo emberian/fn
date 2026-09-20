@@ -33,7 +33,7 @@ Keystones, each lifted from a named lemma whose statement is unchanged:
   (`books/wire-invariants.lisp:563`) and
   `fn-nntp-finite-trace-preserves-consistent-session`
   (`books/nntp-invariants.lisp:822`), reached through the bridge
-  `fn-served-nntp-run-session-is-nntp-run-session`.
+  `fn-served-nntp-run-session-is-nntp-run-session` (superseded: the w4/post composition replaced the run-and-bridge shape by the byte fold, whose preservation theorem is `fn-served-step-preserves-connp` directly and whose partition independence is the hypothesis-free `fn-served-feed-of-append`; the bridge lemma no longer exists on dev).
 - `fn-served-step-effects-are-typed`, `fn-served-run-effects-are-typed` — from
   `fn-nntp-step-effects-well-formed` (`books/nntp-effects.lisp:846`).
   `fn-nntp-effectsp` **is** the refusal enumeration: every effect of a served
