@@ -210,6 +210,9 @@ ACL2_BOOKS ?= books/assumptions \
 	books/owner \
 	books/owner-invariants \
 	tests/acl2/owner-tests \
+	books/config-stream \
+	tests/acl2/config-stream-tests \
+	books/owner-config \
 	books/ideal \
 	books/nntp-index \
 	tests/acl2/nntp-index-tests \
