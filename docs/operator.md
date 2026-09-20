@@ -89,6 +89,68 @@ except the paths named in `ReadWritePaths`. If you move `[store] path` or
 `MemoryDenyWriteExecute` is deliberately absent: the Lisp runtime under ACL2
 maps writable-executable pages and will not start with it set.
 
+Two things the unit will bite you with, both learned by running it:
+
+- **`--config` precedes the verb.** `fn run --config <path>` exits 2 with
+  `unrecognized arguments`, and under `Restart=on-failure` that is a loop. The
+  shipped `ExecStart` is `fn --config <path> run`; keep that order if you edit
+  it. The unit carries `StartLimitIntervalSec=60` and `StartLimitBurst=5` so a
+  service that cannot start gives up instead of spinning.
+- **The start limit latches.** Once a unit has hit it, every later `restart`
+  is refused with `Start request repeated too quickly` **and exits 0**, which
+  looks exactly like a successful start. Run `systemctl reset-failed fn`
+  before you start it again.
+
+### Without root: a user service under `~/fn-live`
+
+Neither farm box gives us `/usr/local/lib`, `/etc/fn` or an `fn` user, so the
+same unit is installed per-user with its four paths moved under `$HOME` and
+the `User=`, `Group=` and `Protect*`/`Private*` directives a user manager
+cannot apply removed. [`tools/live_service.py`](../tools/live_service.py)
+does that and records every command it ran:
+
+```sh
+python3 tools/live_service.py install <commit> \
+    --host persvati --node fnA --port 11190 \
+    --host hbox     --node fnB --port 11190
+python3 tools/live_service.py status --host persvati
+python3 tools/live_service.py stop   --host hbox
+```
+
+It ships the commit to `~/fn-live/fn`, installs certificates from that box's
+own cache (it never certifies — a book with no cached pair would be certified
+*inside* the service), runs `fn init` with the groups, writes a peer record
+naming the other box at `~/fn-live/peers/<name>.peer`, installs and enables
+the unit, starts it and greets it over a socket. Where a box has no user
+systemd it writes `~/fn-live/run.sh`, a `setsid` wrapper — that is **not** a
+supervised service: nothing restarts it, nothing bounds its stop, and a
+reboot loses it.
+
+`loginctl enable-linger <user>` is what keeps a user service alive after the
+last session closes; it needs an administrator, and without it the service
+stops when you log out.
+
+### Reaching it from a laptop
+
+`[listener] host` must be loopback, so the way in is a tunnel:
+
+```sh
+ssh -N -L 11190:127.0.0.1:11190 persvati &
+python3.12 - <<'PY'
+import nntplib
+n = nntplib.NNTP("127.0.0.1", 11190, timeout=30)
+print(n.getwelcome())
+print(n.getcapabilities())
+print(n.group("fn.letters"))
+n.quit()
+PY
+```
+
+`nntplib` left the standard library in Python 3.13 (PEP 594), so the client
+side wants a 3.12 or older interpreter; the farm boxes have 3.13 and 3.12
+respectively, which is why the deploy gate records `nntplib interpreter NONE`
+on persvati and drives the socket by hand instead.
+
 ## Post and read
 
 Read with any NNTP client against the configured port:
