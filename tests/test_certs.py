@@ -163,6 +163,27 @@ class PublishTests(unittest.TestCase):
             self.assertEqual((report.published, report.unverified),
                              (0, ["books/mid"]))
 
+    def test_a_dependency_edited_after_certification_is_never_published(self):
+        """The book's own source is untouched; its closure is not.
+
+        The key hashes the whole closure, so publishing here would file a
+        real certificate under a key describing source it was never produced
+        from -- and the next worktree would install it and get a sub-book
+        checksum mismatch out of ACL2.  While publishing waited for a wholly
+        successful run, the run-wide `sources_unchanged` check covered this;
+        publishing a failed run's passing books needs it per book.
+        """
+        with tempfile.TemporaryDirectory() as directory:
+            root = worktree(directory, certified=["books/mid"])
+            manifest_for(root, ["books/mid"])
+            (root / "books/base.lisp").write_text(
+                '(in-package "ACL2")\n(defun fn-b (x) (+ 1 x))\n')
+            report = certs.publish(root, root / "cache")
+            self.assertEqual(report.published, 0)
+            self.assertEqual(
+                report.unverified,
+                ["books/mid: closure changed since certification: books/base.lisp"])
+
     def test_a_certificate_replaced_after_certification_is_never_published(self):
         with tempfile.TemporaryDirectory() as directory:
             root = worktree(directory, certified=["books/mid"])
