@@ -231,7 +231,11 @@ ACL2_BOOKS ?= books/assumptions \
 	tests/acl2/lace-tests \
 	books/policy \
 	books/policy-invariants \
-	tests/acl2/policy-tests
+	tests/acl2/policy-tests \
+	books/stx-carrier \
+	books/stx-verify \
+	books/stx-invariants \
+	tests/acl2/stx-tests
 
 .PHONY: check certify acl2-ld certs-install certs-publish model-test tooling-test test
 check:

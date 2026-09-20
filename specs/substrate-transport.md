@@ -503,20 +503,31 @@ as one and is not offered as the proof event.
 
 ```lisp
 (defthm fn-stx-field-round-trip
-  (implies (and (fn-stmt-p s)
-                (<= (len (fn-stx-b64-encode (fn-stx-detached-encode s))) 8192))
-           (equal (fn-stx-field-decode (fn-stx-b64-encode (fn-stx-detached-encode s)))
-                  (list :ok (fn-stmt-header s) (fn-stmt-signature s)))))
+  (implies (fn-stmt-p s)
+           (equal (fn-stx-parse-header (fn-stx-header-value s))
+                  (fn-stx-ok (list (fn-stmt-header s) (fn-stmt-signature s))))))
 
 (defthm fn-stx-field-accepted-input-is-canonical
-  (implies (equal (car (fn-stx-field-decode v)) :ok)
-           (equal (fn-stx-b64-encode
-                   (fn-stx-detached-encode
-                    (fn-stx-reattach (fn-stx-field-header (fn-stx-field-decode v))
-                                     (fn-stx-field-signature (fn-stx-field-decode v))
-                                     payload)))
-                  (fn-stx-canonical-field-value v))))
+  (implies (fn-stx-okp (fn-stx-parse-header v))
+           (equal (fn-stx-header-value-parts (fn-stx-val (fn-stx-parse-header v))
+                                             (fn-stx-val2 (fn-stx-parse-header v)))
+                  (fn-stx-strip-wsp v))))
 ```
+
+Corrected by packet S1 against the book that proves it
+(`books/stx-invariants.lisp`), in two places where the first drafting was
+wrong. **The canonical form is payload free.** The earlier spelling re-encoded
+through `fn-stx-reattach` with a free `payload` variable, and `fn-stx-reattach`
+is `nil` unless the header's `ref` binds exactly that payload, so the theorem
+was false as written. What the field carries is the header and the signature,
+and `fn-stx-header-value-parts` is the canonical rendering of that pair.
+**The canonical form is the whitespace-stripped value.** RFC 5536 §2.2 folding
+is legal, a 6 kB field will be folded, and `fn-article-field-unfolded-value`
+retains the continuation WSP; refusing embedded WSP outright would make
+folding unusable. `fn-stx-parse-header` strips WSP before decoding and the
+theorem concludes about `(fn-stx-strip-wsp v)`, so a middle box can vary only
+the folding the RFC already permits and still cannot offer a second value that
+decodes to the same statement.
 
 Hypotheses: a well-formed statement; the 8192-octet field bound. Scope: the two
 layers this design adds above `fn-stmt-encode`. The second is the one that
