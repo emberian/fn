@@ -32,10 +32,13 @@
 (include-book "store-files-invariants")
 (local (include-book "arithmetic/top" :dir :system))
 
-(local (in-theory (enable fn-bs-statep fn-bs-view fn-bs-lookup fn-bs-content
+; The readers only.  fn-bs-invariants-vocabulary is seventy rules over alists,
+; octets, tears and selections; enabling it book-wide made the name-list
+; induction of section 2 exhaust a 2,000,000 step limit re-deriving table
+; well-formedness in every branch.  It is enabled where section 5 needs it.
+(local (in-theory (enable fn-bs-view fn-bs-lookup fn-bs-content
                           fn-bs-names fn-bs-durable-content fn-bs-durable-entry
-                          fn-bs-fencedp fn-bs-dir-quietp
-                          fn-bs-invariants-vocabulary fn-bs-entry-after)))
+                          fn-bs-fencedp fn-bs-dir-quietp)))
 
 ; -----------------------------------------------------------------------------
 ; 1. The three seams.
@@ -134,6 +137,16 @@
 ; construction.  That is the whole reason the per-directory route failed and
 ; this one does not.
 
+; Exactly the alist rules this section inducts through, and no others.
+(local (in-theory (enable fn-bs-assoc-of-put-assoc-same
+                          fn-bs-assoc-of-put-assoc-other
+                          fn-bs-alistp-of-put-assoc
+                          fn-bs-entriesp-implies-alistp
+                          fn-bs-dir-tablep-entries-are-entries
+                          fn-bs-put-assoc-preserves-entriesp
+                          fn-bs-del-assoc-preserves-entriesp
+                          fn-bs-put-assoc-preserves-dir-tablep)))
+
 (defun fn-bs-name-step (op old)
   (declare (xargs :guard t :verify-guards nil))
   (if (equal (car op) :set-entry)
@@ -176,12 +189,50 @@
   (implies (and (fn-bs-dir-tablep dirs) (fn-bs-op-listp ops))
            (fn-bs-dir-tablep (fn-bs-apply-entries dirs ops))))
 
-; The name-list analogue of fn-bs-apply-entries-entry-is-entry-after.
-(defthm fn-bs-apply-entries-names-is-names-after
-  (implies (and dir (fn-bs-dir-tablep dirs) (fn-bs-op-listp ops))
-           (equal (strip-cars (cdr (assoc-equal dir (fn-bs-apply-entries dirs ops))))
-                  (fn-bs-names-after ops (strip-cars (cdr (assoc-equal dir dirs))) dir)))
-  :hints (("Goal" :induct (fn-bs-apply-entries dirs ops))))
+; The projection onto one directory, as a single IF-producing rewrite.  The
+; two conditional rules fn-bs-assoc-of-put-assoc-{same,other} express the
+; same fact, but as rewrites they leave the induction step below to discover
+; the case split for itself, which exhausted a 2,000,000 step limit twice.
+(local
+ (defthm fn-bs-strip-cars-of-assoc-of-put-assoc
+   (implies (alistp dirs)
+            (equal (strip-cars (cdr (assoc-equal dir (fn-bs-put-assoc k v dirs))))
+                   (if (equal k dir)
+                       (strip-cars v)
+                     (strip-cars (cdr (assoc-equal dir dirs))))))))
+
+; OPEN, with its exact obligation.  The bridge from fn-bs-apply-entries to
+; fn-bs-names-after:
+;
+;   (defthm fn-bs-apply-entries-names-is-names-after
+;     (implies (and dir (fn-bs-dir-tablep dirs) (fn-bs-op-listp ops))
+;              (equal (strip-cars
+;                      (cdr (assoc-equal dir (fn-bs-apply-entries dirs ops))))
+;                     (fn-bs-names-after
+;                      ops (strip-cars (cdr (assoc-equal dir dirs))) dir))))
+;
+; The induction scheme is right -- (fn-bs-apply-entries dirs ops), which
+; generalises DIRS, exactly as fn-bs-apply-entries-entry-is-entry-after does.
+; It exhausts a 2,000,000 and then a 40,000,000 prover-step limit in the
+; :set-entry branch; the checkpoint is Subgoal *1/1.4', where the induction
+; hypothesis is stated over
+;   (fn-bs-put-assoc (nth 1 (car ops))
+;                    (fn-bs-put-assoc (nth 2 (car ops)) (nth 3 (car ops))
+;                                     (cdr (assoc-equal (nth 1 (car ops)) dirs)))
+;                    dirs)
+; and the conclusion's accumulator has to be rewritten into that shape.  Three
+; things were tried and left in place so a successor does not retry them: the
+; book-wide fn-bs-invariants-vocabulary enable narrowed to the eight alist
+; rules this section inducts through (not the cause);
+; fn-bs-strip-cars-of-assoc-of-put-assoc above, which states the projection as
+; one IF-producing rewrite while the two conditional
+; fn-bs-assoc-of-put-assoc-{same,other} are disabled at the form; and
+; :do-not '(generalize fertilize).  The next step is
+; tools/proof_profile.py on this form, before a fourth hint.
+;
+; Blocked on it, and on nothing else: fn-bs-crash-names-is-names-after,
+; fn-bs-crash-image-names-are-an-outcome and
+; fn-bs-crash-image-transaction-names (section 7), and through them K1.
 
 (defthm fn-bs-names-after-of-tear-write
   (equal (fn-bs-names-after (fn-bs-tear-write op sels i unit) old dir) old))
@@ -367,6 +418,9 @@
 ; composition over the transaction directory is an induction over the name
 ; list with fn-record-p and the frame decoder closed.
 
+(local (in-theory (enable fn-bs-statep fn-bs-invariants-vocabulary
+                          fn-bs-entry-after)))
+
 (defthm fn-bs-crash-pending-is-nil
   (equal (fn-bs-pending (fn-bs-crash s choices)) nil)
   :hints (("Goal" :in-theory (enable fn-bs-crash))))
@@ -494,45 +548,45 @@
            (equal (fn-bs-txn-names (1+ n))
                   (append (fn-bs-txn-names n) (list (fn-bs-txn-name n))))))
 
-(defthm fn-bs-crash-names-is-names-after
-  (implies (and (fn-bs-statep s) dir)
-           (equal (fn-bs-durable-names (fn-bs-crash s choices) dir)
-                  (fn-bs-names-after (fn-bs-crash-select (fn-bs-pending s) choices
-                                                         (fn-bs-unit s))
-                                     (fn-bs-durable-names s dir) dir)))
-  :hints (("Goal" :in-theory (e/d (fn-bs-crash) (fn-bs-names-after))
-           :use ((:instance fn-bs-apply-entries-names-is-names-after
-                            (dirs (fn-bs-dirs s))
-                            (ops (fn-bs-crash-select (fn-bs-pending s) choices
-                                                     (fn-bs-unit s))))))))
-
-(defthm fn-bs-crash-image-names-are-an-outcome
-  (implies (and (fn-bs-statep s) dir (fn-bs-crash-imagep s image))
-           (member-equal (fn-bs-durable-names image dir)
-                         (fn-bs-names-outcomes (fn-bs-ops-for-dir (fn-bs-pending s) dir)
-                                               (fn-bs-durable-names s dir) dir)))
-  :hints (("Goal" :in-theory (e/d (fn-bs-crash-imagep)
-                                  (fn-bs-durable-names fn-bs-crash
-                                   fn-bs-names-after fn-bs-names-outcomes))
-           :use ((:instance fn-bs-crash-select-names-are-an-outcome
-                            (ops (fn-bs-pending s)) (unit (fn-bs-unit s))
-                            (old (fn-bs-durable-names s dir)))))))
-
-; The namespace half of K1: under the relation, a crash image's transaction
-; names are the durable ones or the durable ones with the candidate's name
-; appended, and both are contiguous.
-(defthm fn-bs-crash-image-transaction-names
-  (implies (and (fn-bs-store-relation bs ks) (fn-bs-crash-imagep bs image))
-           (let ((m (len (fn-bs-durable-names bs :transactions))))
-             (or (equal (fn-bs-names image :transactions) (fn-bs-txn-names m))
-                 (equal (fn-bs-names image :transactions) (fn-bs-txn-names (1+ m))))))
-  :rule-classes nil
-  :hints (("Goal"
-           :use ((:instance fn-bs-crash-image-names-are-an-outcome
-                            (s bs) (dir :transactions))
-                 (:instance fn-bs-txn-name-not-in-txn-names
-                            (i (len (fn-bs-durable-names bs :transactions)))
-                            (n (len (fn-bs-durable-names bs :transactions)))))
-           :in-theory (e/d (fn-bs-names-outcomes fn-bs-name-step)
-                           (fn-bs-txn-name fn-bs-txn-names
-                            fn-bs-durable-names fn-bs-ops-for-dir)))))
+; The namespace half of K1 -- OPEN, blocked only on the bridge above:
+;
+;   (defthm fn-bs-crash-names-is-names-after
+;     (implies (and (fn-bs-statep s) dir)
+;              (equal (fn-bs-durable-names (fn-bs-crash s choices) dir)
+;                     (fn-bs-names-after
+;                      (fn-bs-crash-select (fn-bs-pending s) choices (fn-bs-unit s))
+;                      (fn-bs-durable-names s dir) dir))))
+;   (defthm fn-bs-crash-image-names-are-an-outcome ...)   ; by fn-bs-crash-imagep
+;   (defthm fn-bs-crash-image-transaction-names           ; the K1 namespace half
+;     (implies (and (fn-bs-store-relation bs ks) (fn-bs-crash-imagep bs image))
+;              (let ((m (len (fn-bs-durable-names bs :transactions))))
+;                (or (equal (fn-bs-names image :transactions) (fn-bs-txn-names m))
+;                    (equal (fn-bs-names image :transactions)
+;                           (fn-bs-txn-names (1+ m)))))))
+;
+; The last is by fn-bs-crash-select-names-are-an-outcome (PROVED above) with
+; the relation's phase clause -- the transaction directory's pending
+; operations are NIL or one :set-entry at (fn-bs-txn-name m) -- and
+; fn-bs-txn-name-not-in-txn-names, which makes fn-bs-name-step append.
+;
+; K1, K2 and K3 themselves stay OPEN.  K1 is the four scan clauses: the config
+; and frontier entries (fn-bs-crash-keeps-untouched-entry, since the phase
+; clause leaves no pending operation at either name) with their contents
+; (fn-bs-crash-keeps-fenced-content through the relation's authority clause),
+; contiguity (the three above, with fn-bs-txn-names-of-1+), and no :fault
+; (fn-bs-read-records-under-agreement against (fn-bs-durable bs)).
+;
+; K2 has a MODEL question in front of it, not a proof one.  Design section 3.2
+; writes the pending transaction entry's name as
+; (fn-bs-txn-name (len (fn-sf-records ks))); this book writes
+; (fn-bs-txn-name (len (fn-bs-durable-names bs :transactions))), because the
+; namespace clause has to be decidable from the byte store alone.  They are
+; not interchangeable: with this book's form, a state whose durable records
+; are already (append (fn-sf-records ks) (list rc)) and which also carries a
+; pending link admits an image holding rc TWICE, which fn-sf-crash-imagep does
+; not admit.  Either fn-bs-store-relation carries
+; (equal (len (fn-bs-durable-records bs)) (len (fn-sf-records ks))) whenever
+; the transaction directory is not quiet, or section 3.2's form is restored
+; and the namespace theorem takes the kernel's record count as an input.
+; Decide that before proving K2; K3 is then fn-sf-crash-realizes-every-
+; admissible-image (books/store-files-invariants.lisp) applied to K2.
