@@ -35,26 +35,37 @@ PRF-019, and PRF-020 in part.
   verifies *through an ACL2 session*; no encoder in Python. Exit codes 0/3/4
   keep the three outcomes distinct out to the shell (D13).
 
-## Certification evidence (as of the lane's last call)
+## Certification evidence
+
+Farm, persvati, ACL2 8.7. Four runs; the closure (cbor, records,
+crypto-seam, statement, statement-invariants, principal, article and the
+rest) is certified and cached there.
 
 | Root | State | Evidence |
 | --- | --- | --- |
-| `books/stx-carrier` | **open** at `(defun fn-stx-authored-source ...)`, guard | persvati `run-20260920T051941Z-384c`, `build/acl2/certify-20260920T051942Z-3002654/books--stx-carrier.certify.log:4151`. The fix (guard the article accessors with `true-listp`) is committed but NOT re-certified. |
-| `books/stx-verify` | **not reached** | cascade of the above |
-| `books/stx-invariants` | **not reached** | cascade of the above |
-| `tests/acl2/stx-tests` | **not reached** | cascade of the above |
+| `books/stx-carrier` | **certified** | `run-20260920T052853Z-b82b`, `build/acl2/certify-20260920T052855Z-*/books--stx-carrier.certify.log`, zero failures |
+| `books/stx-verify` | **open** at `(defthm fn-stx-decimal-octets-are-printable ...)` | same run, `books--stx-verify.certify.log:1754`. Fix committed (`:use` of the revappend lemma with `revappend` closed), not re-certified. |
+| `books/stx-invariants` | **not reached** | cascade: `include-book "stx-verify"` |
+| `tests/acl2/stx-tests` | **not reached** | cascade |
 
-Dependencies certified on that run: `books/cbor`, `books/cbor-invariants`,
-`books/records`, `books/records-invariants`, `books/crypto-seam`,
-`books/statement`, `books/statement-invariants`, `books/principal`,
-`books/article` and the rest of the closure. Two earlier runs:
-`run-20260920T045856Z-3a34` (stale tree, superseded) and a local `ld` whose
-per-form failure list drove six fixes (`5affb5b`, `a2757fe`, and the guard fix
-above).
+`tests/test_stx.py` has not run: it drives `tools/stx.py`, which
+`include-book`s `books/stx-invariants`, and that root has no certificate.
 
-**PRF-019 and PRF-020 stay `planned`.** No theorem in this lane has a
-certificate. Nothing was weakened or removed to reach a green: the remaining
-work is one guard obligation and whatever the three unreached roots report.
+**Removed and recorded open, never weakened**: `fn-stx-authored-source-is-octet-list`
+and `fn-stx-payload-for-is-octet-list`. They do not follow from
+`fn-article-syntax-p`: the projection walks `fn-article-field-raw-lines`,
+which `books/article.lisp` constrains to `true-listp` only. Closing them
+needs a parser theorem about a parsed article's raw lines, or a projection
+written over the unfolded values. The reason is written where they stood.
+
+**PRF-019 and PRF-020 stay `planned`**: S1-1 and the grounding theorem live
+in `books/stx-invariants`, which has no certificate.
+
+Five defect classes the farm named, all mechanical, none a false claim:
+`true-listp` guards on the article-record accessors (three functions), an
+in-induction sextet enable, a missing `len`-of-`append`, a missing `consp`
+for the keyring-membership step, and `fn-stx-printablep-of-append` stated as
+an equality (false when the first argument is not a true list).
 
 ## Three deliberate departures from the design text, each a strengthening
 

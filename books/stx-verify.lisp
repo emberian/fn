@@ -227,7 +227,10 @@
            (fn-stx-printablep (revappend a b))))
 
 (defthm fn-stx-decimal-octets-are-printable
-  (fn-stx-printablep (fn-stx-decimal-octets n)))
+  (fn-stx-printablep (fn-stx-decimal-octets n))
+  :hints (("Goal" :in-theory (disable revappend fn-stx-decimal-rev)
+           :use ((:instance fn-stx-printablep-of-revappend
+                            (a (fn-stx-decimal-rev n)) (b nil))))))
 
 (defthm fn-stx-verified-item-is-printable
   (fn-stx-printablep (fn-stx-verified-item verdict)))
