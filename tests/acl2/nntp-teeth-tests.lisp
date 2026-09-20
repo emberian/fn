@@ -16,6 +16,20 @@
 ; vocabularies the five books of the nntp cluster withdraw at their export
 ; events (2026-09-19 split of books/nntp.lisp).
 (local (in-theory (enable fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary fn-nntp-projection-vocabulary fn-nntp-responses-vocabulary fn-nntp-vocabulary)))
+; The reader environment every transcript below runs against: one wall clock
+; reading (2026-09-19T12:34:56Z as DTN milliseconds) and one persisted group
+; creation fact.  No transcript lets the reader invent either.
+(defconst *fn-nntp-obs0*
+  (fn-clock-observation 1000 843136496000 1000 t))
+(defconst *fn-nntp-blind-obs*
+  (fn-clock-observation 1000 0 0 nil))
+(defconst *fn-nntp-facts0*
+  (list (fn-nntp-group-fact "fn.letters" 0 *fn-nntp-blind-obs*)
+        (fn-nntp-group-fact "fn.empty" 811728000000 *fn-nntp-blind-obs*)))
+(defconst *fn-nntp-env0* (fn-nntp-env *fn-nntp-obs0* *fn-nntp-facts0*))
+(defconst *fn-nntp-blind-env* (fn-nntp-env *fn-nntp-blind-obs* nil))
+(assert-event (fn-nntp-envp *fn-nntp-env0*))
+(assert-event (fn-nntp-envp *fn-nntp-blind-env*))
 
 ; -----------------------------------------------------------------------------
 ; A reachable, non-degenerate witness: a real archive with one committed
@@ -44,7 +58,7 @@
 ; at an article that exists.
 (defconst *nnt-selected*
   (fn-nntp-result-session
-   (fn-nntp-step (fn-nntp-open-session *nnt-archive*) *nnt-archive*
+   (fn-nntp-step (fn-nntp-open-session *nnt-archive*) *nnt-archive* *fn-nntp-env0*
                  '(:command (103 82 111 85 112 32 102 110 46 108 101 116 116
                              101 114 115)))))
 (assert-event (equal (fn-nntp-session-group *nnt-selected*) "fn.letters"))
@@ -56,7 +70,7 @@
 ; separate these two consistent sessions.
 (defconst *nnt-empty-selected*
   (fn-nntp-result-session
-   (fn-nntp-step *nnt-selected* *nnt-archive*
+   (fn-nntp-step *nnt-selected* *nnt-archive* *fn-nntp-env0*
                  '(:command (71 82 79 85 80 32 102 110 46 101 109 112 116 121)))))
 (assert-event (equal (fn-nntp-session-group *nnt-empty-selected*) "fn.empty"))
 (assert-event (null (fn-nntp-session-current *nnt-empty-selected*)))
@@ -66,14 +80,14 @@
 (assert-event
  (fn-nntp-session-consistentp
   (fn-nntp-result-session
-   (fn-nntp-step *nnt-selected* *nnt-archive* '(:command (72 69 65 68))))
+   (fn-nntp-step *nnt-selected* *nnt-archive* *fn-nntp-env0* '(:command (72 69 65 68))))
   *nnt-archive*))
 
 ; -----------------------------------------------------------------------------
 ; Teeth for `fn-nntp-step-preserves-consistent-session'
 ;   (implies (fn-nntp-session-consistentp session archive)        ; H1
 ;            (fn-nntp-session-consistentp
-;             (fn-nntp-result-session (fn-nntp-step session archive wire-event))
+;             (fn-nntp-result-session (fn-nntp-step session archive *fn-nntp-env0* wire-event))
 ;             archive))
 
 ; H1 dropped.  A well-typed session that names a group the archive does not
@@ -87,7 +101,7 @@
 (assert-event
  (not (fn-nntp-session-consistentp
        (fn-nntp-result-session
-        (fn-nntp-step *nnt-forged-session* *nnt-archive*
+        (fn-nntp-step *nnt-forged-session* *nnt-archive* *fn-nntp-env0*
                       '(:command (88 89 90 90 89))))
        *nnt-archive*)))
 
@@ -96,7 +110,7 @@
   (defthm nnt-teeth-step-without-a-consistent-session
     (fn-nntp-session-consistentp
      (fn-nntp-result-session
-      (fn-nntp-step *nnt-forged-session* *nnt-archive*
+      (fn-nntp-step *nnt-forged-session* *nnt-archive* *fn-nntp-env0*
                     '(:command (88 89 90 90 89))))
      *nnt-archive*))))
 
@@ -107,7 +121,7 @@
 (assert-event
  (not (fn-nntp-session-consistentp
        (fn-nntp-result-session
-        (fn-nntp-step *nnt-stale-cursor* *nnt-archive*
+        (fn-nntp-step *nnt-stale-cursor* *nnt-archive* *fn-nntp-env0*
                       '(:command (88 89 90 90 89))))
        *nnt-archive*)))
 
@@ -116,7 +130,7 @@
   (defthm nnt-teeth-step-without-a-valid-cursor
     (fn-nntp-session-consistentp
      (fn-nntp-result-session
-      (fn-nntp-step *nnt-stale-cursor* *nnt-archive*
+      (fn-nntp-step *nnt-stale-cursor* *nnt-archive* *fn-nntp-env0*
                     '(:command (88 89 90 90 89))))
      *nnt-archive*))))
 

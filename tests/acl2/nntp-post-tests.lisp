@@ -79,6 +79,7 @@
                             *fn-tp-quit-event*))
         (fn-nntp-result-effects
          (fn-nntp-step (fn-post-session-base *fn-tp-s0*) *fn-tp-archive*
+                       (fn-nntp-env *fn-tp-obs* nil)
                        *fn-tp-quit-event*))))
 
 ; The terminated body: injected, so a submission and no reply yet.  240 is not

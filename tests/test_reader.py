@@ -84,6 +84,16 @@ class ReaderProcess:
             raise AssertionError("expected {!r}, received {!r}".format(expected, received))
 
     @staticmethod
+    def read_reply(sock, count):
+        received = b""
+        while len(received) < count:
+            chunk = sock.recv(count - len(received))
+            if not chunk:
+                break
+            received += chunk
+        return received
+
+    @staticmethod
     def assert_closed(sock):
         try:
             received = sock.recv(1)
@@ -111,8 +121,62 @@ class ReaderSocketTests(unittest.TestCase):
         self.reader.assert_bytes(sock, b"223 1 <reader@example.invalid> retrieved\r\n")
         self.reader.assert_bytes(
             sock,
-            b"101 capability list follows\r\nVERSION 2\r\n"
+            b"101 capability list follows\r\nVERSION 2\r\nREADER\r\n"
+            b"OVER MSGID\r\nLIST ACTIVE NEWSGROUPS OVERVIEW.FMT\r\n"
             b"IMPLEMENTATION fn-nntp-lab\r\n.\r\n")
+
+    def test_reader_profile_transcript_over_a_real_socket(self):
+        """DATE, NEWGROUPS, MODE READER, OVER and LIST OVERVIEW.FMT.
+
+        Raw octets over the real socket adapter; expected replies are written
+        from RFC 3977 sections 5.3, 7.1, 7.3, 8.3 and 8.4, not recorded from a
+        previous run.  The seed article carries no Subject, From, Date or
+        References, so those four overview fields are empty; :bytes is the 47
+        retained octets and :lines the one retained body line.
+        """
+        sock = self.reader.connect()
+        self.addCleanup(sock.close)
+        sock.sendall(b"MODE READER\r\nLIST OVERVIEW.FMT\r\n")
+        self.reader.assert_bytes(sock, b"201 posting prohibited\r\n")
+        self.reader.assert_bytes(
+            sock,
+            b"215 order of fields in overview database\r\n"
+            b"Subject:\r\nFrom:\r\nDate:\r\nMessage-ID:\r\nReferences:\r\n"
+            b":bytes\r\n:lines\r\n.\r\n")
+
+        sock.sendall(b"GROUP fn.letters\r\nOVER\r\nOVER 1-\r\n")
+        self.reader.assert_bytes(sock, b"211 1 1 1 fn.letters\r\n")
+        overview = (b"224 overview information follows\r\n"
+                    b"1\t\t\t\t<reader@example.invalid>\t\t47\t1\r\n.\r\n")
+        self.reader.assert_bytes(sock, overview)
+        self.reader.assert_bytes(sock, overview)
+
+        # The message-id form reports article number zero (section 8.3.2).
+        sock.sendall(b"OVER <reader@example.invalid>\r\nOVER 5-2\r\n")
+        self.reader.assert_bytes(
+            sock,
+            b"224 overview information follows\r\n"
+            b"0\t\t\t\t<reader@example.invalid>\t\t47\t1\r\n.\r\n")
+        self.reader.assert_bytes(sock, b"423 no articles in that range\r\n")
+
+        sock.sendall(b"NEWGROUPS 19700101 000000 GMT\r\n"
+                     b"NEWGROUPS 20990101 000000 GMT\r\n"
+                     b"NEWGROUPS 20990101 000000 UTC\r\n")
+        self.reader.assert_bytes(
+            sock,
+            b"231 list of new newsgroups follows\r\n.\r\n")
+        self.reader.assert_bytes(
+            sock, b"231 list of new newsgroups follows\r\n.\r\n")
+        self.reader.assert_bytes(sock, b"501 syntax error\r\n")
+
+        # DATE reports the host clock, so only its shape is fixed here.
+        sock.sendall(b"DATE\r\n")
+        reply = self.reader.read_reply(sock, 20)
+        self.assertTrue(reply.startswith(b"111 "), reply)
+        self.assertTrue(reply.endswith(b"\r\n"), reply)
+        self.assertEqual(len(reply), 20, reply)
+        self.assertTrue(reply[4:18].isdigit(), reply)
+        self.assertEqual(reply[4:8], time.strftime("%Y", time.gmtime()).encode())
 
     def test_quit_replies_then_closes(self):
         sock = self.reader.connect()
@@ -260,7 +324,8 @@ class StoreReaderSocketTests(unittest.TestCase):
             client.sendall(b"CAPABILITIES\r\n")
             reader.assert_bytes(
                 client,
-                b"101 capability list follows\r\nVERSION 2\r\n"
+                b"101 capability list follows\r\nVERSION 2\r\nREADER\r\n"
+                b"OVER MSGID\r\nLIST ACTIVE NEWSGROUPS OVERVIEW.FMT\r\n"
                 b"IMPLEMENTATION fn-nntp-lab\r\n.\r\n")
             client.sendall(b"GROUP fn.letters\r\n")
             reader.assert_bytes(client, b"211 2 1 2 fn.letters\r\n")

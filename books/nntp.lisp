@@ -40,9 +40,11 @@
       (fn-nntp-keywordp keyword "ARTICLE")
       (fn-nntp-keywordp keyword "HEAD")
       (fn-nntp-keywordp keyword "BODY")
-      (fn-nntp-keywordp keyword "STAT")))
+      (fn-nntp-keywordp keyword "STAT")
+      (fn-nntp-keywordp keyword "OVER")
+      (fn-nntp-keywordp keyword "NEWGROUPS")))
 
-(defun fn-nntp-session-command (session keyword args)
+(defun fn-nntp-session-command (session env keyword args)
   (cond
    ((fn-nntp-keywordp keyword "CAPABILITIES")
     (if (or (null args)
@@ -66,9 +68,13 @@
                                     (fn-nntp-crlf (fn-nntp-string-octets "205 closing connection")))
                                    (fn-nntp-close-effect)))
       (fn-nntp-single session "501 syntax error")))
+   ((fn-nntp-keywordp keyword "MODE") (fn-nntp-mode-response session args))
+   ((fn-nntp-keywordp keyword "DATE")
+    (if (null args) (fn-nntp-date-response session env)
+      (fn-nntp-single session "501 syntax error")))
    (t (fn-nntp-single session "500 command not recognized"))))
 
-(defun fn-nntp-archive-command (session archive keyword args)
+(defun fn-nntp-archive-command (session archive env keyword args)
   (cond
    ((fn-nntp-keywordp keyword "GROUP")
     (if (and (consp args) (null (cdr args)) (fn-nntp-printable-tokenp (car args)))
@@ -86,25 +92,28 @@
    ((fn-nntp-keywordp keyword "ARTICLE") (fn-nntp-retrieval session archive :article args))
    ((fn-nntp-keywordp keyword "HEAD") (fn-nntp-retrieval session archive :head args))
    ((fn-nntp-keywordp keyword "BODY") (fn-nntp-retrieval session archive :body args))
+   ((fn-nntp-keywordp keyword "OVER") (fn-nntp-over-response session archive args))
+   ((fn-nntp-keywordp keyword "NEWGROUPS")
+    (fn-nntp-newgroups-response session archive env args))
    (t (fn-nntp-retrieval session archive :stat args))))
 
-(defun fn-nntp-command (session archive tokens)
+(defun fn-nntp-command (session archive env tokens)
   (let ((keyword (mbe :logic (car tokens) :exec (fn-ag-car tokens)))
         (args (mbe :logic (cdr tokens) :exec (fn-ag-cdr tokens))))
     (if (not (fn-nntp-keyword-tokenp keyword))
         (fn-nntp-single session "501 syntax error")
       (if (not (fn-nntp-archive-keywordp keyword))
-          (fn-nntp-session-command session keyword args)
+          (fn-nntp-session-command session env keyword args)
         ; RFC 3977 section 3.2.1 assigns 503 to a recognized command the server
         ; cannot carry out because it does not hold the required information.
         (if (fn-nntp-session-projected session)
-            (fn-nntp-archive-command session archive keyword args)
+            (fn-nntp-archive-command session archive env keyword args)
           (fn-nntp-single session "503 archive projection unavailable"))))))
 ; A single command event is the integration boundary.  Other wire events are
 ; rejected as syntax, and a closed session produces no further effects.  The
 ; archive projection is not revalidated here: fn-nntp-open-session decided it
 ; once and the session carries the verdict.
-(defun fn-nntp-step (session archive wire-event)
+(defun fn-nntp-step (session archive env wire-event)
   (if (or (not (fn-nntp-sessionp session))
           (not (equal (fn-nntp-session-openp session) t)))
       (fn-nntp-make-result session nil)
@@ -118,7 +127,7 @@
             (let ((tokens (fn-nntp-tokenize line)))
               (if (and (consp tokens)
                        (fn-nntp-command-arguments-at-mostp tokens))
-                  (fn-nntp-command session archive tokens)
+                  (fn-nntp-command session archive env tokens)
                 (fn-nntp-single session "501 syntax error")))))
       (fn-nntp-single session "501 syntax error"))))
 
