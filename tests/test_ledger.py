@@ -657,6 +657,7 @@ class DefrecordExpansionTests(unittest.TestCase):
                      "fn-x-point-b", "fn-x-point-c", "fn-x-pointp",
                      "fn-x-point-shapep-of-fn-x-point",
                      "fn-x-point-a-of-fn-x-point", "fn-x-point-injective",
+                     "fn-x-point-of-accessors",
                      "fn-x-point-shapep-forward-shape",
                      "fn-x-point-accessors-forward-consp",
                      "fn-x-pointp-forward-shape"):
@@ -733,6 +734,33 @@ class DefrecordExpansionTests(unittest.TestCase):
         self.assertNotIn("fn-x-resultp", book.definitions)
         self.assertNotIn("fn-x-resultp-forward-shape", book.definitions)
         self.assertIn("fn-x-result-ok", book.definitions)
+
+    def test_constructor_of_accessors_is_under_the_shape(self):
+        # The dual of the accessor-of-constructor family, what every
+        # decode-of-encode needs.  Under the shape predicate, so that a
+        # record with `:recognizer nil` has it too and no recognizer formal
+        # becomes a free variable in the hypothesis.
+        theorem = next(t for t in self.book(self.UNTAGGED).theorems
+                       if t.name == "fn-x-point-of-accessors")
+        self.assertEqual(
+            theorem.statement,
+            [ledger.Sym("implies"),
+             [ledger.Sym("fn-x-point-shapep"), ledger.Sym("x")],
+             [ledger.Sym("equal"),
+              [ledger.Sym("fn-x-point"),
+               [ledger.Sym("fn-x-point-a"), ledger.Sym("x")],
+               [ledger.Sym("fn-x-point-b"), ledger.Sym("x")],
+               [ledger.Sym("fn-x-point-c"), ledger.Sym("x")]],
+              ledger.Sym("x")]])
+        names = [t.name for t in self.book(self.NO_RECOGNIZER).theorems]
+        self.assertIn("fn-x-result-of-accessors", names)
+
+    def test_recognizer_forward_chains_the_shape_predicate(self):
+        # What makes the rule above fire with the recognizer CLOSED.
+        theorem = next(t for t in self.book(self.TAGGED).theorems
+                       if t.name == "fn-x-markp-forward-shape")
+        self.assertEqual(theorem.statement[2][1],
+                         [ledger.Sym("fn-x-mark-shapep"), ledger.Sym("x")])
 
     def test_injectivity_is_not_reflexive(self):
         # A synthesis that used the same call on both sides would make the

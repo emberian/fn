@@ -536,6 +536,12 @@ def defrecord_expansion(form: list) -> list:
     for accessor, _type in fields:
         events.append([Sym("defthm"), Sym(f"{accessor}-of-{ctor}"),
                        [Sym("equal"), [Sym(accessor)] + call, Sym("field")]])
+    events.append([Sym("defthm"), Sym(f"{ctor}-of-accessors"),
+                   [Sym("implies"), [Sym(shape), Sym("x")],
+                    [Sym("equal"),
+                     [Sym(ctor)] + [[Sym(accessor), Sym("x")]
+                                    for accessor, _type in fields],
+                     Sym("x")]]])
     primed = [Sym(str(formal) + "-2") for formal in formals]
     events.append([Sym("defthm"), Sym(f"{ctor}-injective"),
                    [Sym("equal"),
@@ -581,7 +587,8 @@ def defrecord_expansion(form: list) -> list:
                        [Sym("and")] + conjuncts_])
         events.append([Sym("defthm"), Sym(f"{recognizer}-forward-shape"),
                        [Sym("implies"), [Sym(recognizer)] + leading + [Sym("x")],
-                        [Sym("and"), [Sym("consp"), Sym("x")],
+                        [Sym("and"), [Sym(shape), Sym("x")],
+                         [Sym("consp"), Sym("x")],
                          [Sym("true-listp"), Sym("x")]]],
                        Sym(":rule-classes"), Sym(":forward-chaining")])
     return events
