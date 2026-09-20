@@ -197,6 +197,9 @@
     "books/bp-release",
     "books/bp-release-invariants",
     "tests/acl2/bp-release-tests",
+    "books/scheduler",
+    "books/scheduler-invariants",
+    "tests/acl2/scheduler-tests",
     "books/relay",
     "books/relay-invariants",
     "books/relay-crash-invariants",
@@ -217,24 +220,24 @@
     "tests/acl2/policy-tests"
   ],
   "totals": {
-    "books": 214,
-    "books_in_root_closure": 213,
-    "roots": 213,
-    "theorems": 3581,
-    "functions": 2689,
-    "assert_events": 3736,
+    "books": 217,
+    "books_in_root_closure": 216,
+    "roots": 216,
+    "theorems": 3694,
+    "functions": 2793,
+    "assert_events": 3839,
     "must_fails": 59,
     "encapsulates": 14,
     "guards": {
-      "verified": 1152,
+      "verified": 1154,
       "declared-off": 138,
-      "default-guarded": 951,
+      "default-guarded": 1053,
       "default-unguarded": 448
     },
     "suspect_theorems": 30,
     "export_hygiene_warnings": 63,
     "teeth_form_warnings": 0,
-    "include_hygiene_warnings": 93
+    "include_hygiene_warnings": 96
   },
   "books": [
     {
@@ -3090,6 +3093,60 @@
       "read_error": null
     },
     {
+      "book": "books/scheduler-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 59,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "assumptions",
+        "bp-workflow-invariants",
+        "scheduler"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/scheduler.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 54,
+      "functions": 104,
+      "guards": {
+        "verified": 2,
+        "declared-off": 0,
+        "default-guarded": 102,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 2,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-workflow",
+        "clock",
+        "frame"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/served.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -5314,6 +5371,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/scheduler-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 103,
+      "must_fails": 0,
+      "defconsts": 45,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/scheduler-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/served-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -6766,6 +6848,27 @@
         "line": 16,
         "include": "acceptance-alloc",
         "included": "books/acceptance-alloc.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/scheduler-invariants.lisp",
+        "line": 14,
+        "include": "assumptions",
+        "included": "books/assumptions.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/scheduler-invariants.lisp",
+        "line": 15,
+        "include": "bp-workflow-invariants",
+        "included": "books/bp-workflow-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/scheduler.lisp",
+        "line": 47,
+        "include": "bp-workflow",
+        "included": "books/bp-workflow.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

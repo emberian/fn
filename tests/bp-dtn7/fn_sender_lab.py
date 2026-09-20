@@ -139,3 +139,161 @@ def article_snapshot(root: Path):
     finally:
         acl2.close()
         store.close()
+
+
+# -----------------------------------------------------------------------------
+# Running the exchange under a contact plan (C2-06)
+#
+# Two windows and one expiry.  The scheduler decides which work each contact
+# tick attempts; `tools/workflow_journal.py` still owns durability, and ACL2
+# still grants the submit permission.  Nothing here selects a work.
+
+import http.server                                          # noqa: E402
+import json                                                 # noqa: E402
+import socket                                               # noqa: E402
+import socketserver                                         # noqa: E402
+import threading                                            # noqa: E402
+
+from tools import scheduler as fn_scheduler                  # noqa: E402
+
+# One contact window that closes before the letter is through, a second window
+# after it, and a bundle whose lifetime runs out in between.  The expiry marks
+# the item; it releases nothing, and the work stays in the queue.
+CONTACT_PLAN = {
+    "peer": CONFIG["peer-eid"],
+    "config": {"queue-bound": 8, "aging-limit": 2, "retry-bound": 2},
+    "works": [{"work-id": WORK_ID, "class": "article", "size": len(ARTICLE)}],
+    "windows": [{"start": 0, "end": 1000, "ticks": [10, 20]},
+                {"start": 5000, "end": 6000, "ticks": [5100, 5200]}],
+    "expiries": [{"at-tick": 2, "work-id": WORK_ID,
+                  "creation-time": 1599999000000, "lifetime": 1000,
+                  "monotonic": 5100, "wall": 1600000000000,
+                  "wall-error": 5000, "has-wall": True}],
+}
+
+
+class _MockServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
+    daemon_threads = True
+    address_family = socket.AF_INET6
+
+
+class _MockHandler(http.server.BaseHTTPRequestHandler):
+    """The handler `tests/test_bpa_dtn7.py` uses, serving one bundle store."""
+
+    bundles: dict = {}
+
+    def log_message(self, _format, *_args):
+        pass
+
+    def do_GET(self):
+        if self.path == "/status/bundles":
+            body = json.dumps(sorted(self.__class__.bundles)).encode("utf-8")
+            status, headers = 200, {"Content-Type": "application/json"}
+        elif self.path.startswith("/download?"):
+            bid = self.path.split("=", 1)[1]
+            body = self.__class__.bundles.get(bid)
+            status = 200 if body is not None else 404
+            headers = {"Content-Type": "application/octet-stream"}
+            body = body or b"not found"
+        elif self.path.startswith("/delete?"):
+            self.__class__.bundles.pop(self.path.split("=", 1)[1], None)
+            status, headers, body = 200, {}, b"deleted"
+        else:
+            status, headers, body = 404, {}, b"not found"
+        self.send_response(status)
+        for name, value in headers.items():
+            self.send_header(name, value)
+        self.end_headers()
+        try:
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+
+
+class MockBpa:
+    """The mock BPA, for when the pinned dtn7-rs build is unavailable.
+
+    It serves the dtn7-rs HTTP surface `tools/bpa_dtn7.BpaDtn7Client` speaks
+    and mints a transport identifier for a submitted ADU.  No BPv7 bundle is
+    transmitted and no second node exists: this exercises the scheduler,
+    journal and ACL2 composition only, and any report that uses it must say
+    so.  `tests/bp-dtn7/lab_bpa.LabBpa` is the real adapter.
+    """
+
+    profile = "mock-bpa: no BPv7 transmission, no peer, no receipt"
+
+    def __init__(self):
+        _MockHandler.bundles = {}
+        self.server = _MockServer(("::1", 0), _MockHandler)
+        self.thread = threading.Thread(target=self.server.serve_forever,
+                                       daemon=True)
+        self.thread.start()
+        self.port = self.server.server_port
+        self.submissions = []
+
+    def submit(self, adu: bytes, destination: str, label: str, lifetime=300) -> str:
+        if not isinstance(adu, bytes) or not 0 < len(adu) <= 65538:
+            raise ValueError("outbound ADU outside lab profile")
+        bid = f"dtn://mock/{label}-{len(self.submissions)}"
+        _MockHandler.bundles[bid] = adu
+        self.submissions.append((bid, destination, lifetime, adu))
+        return bid
+
+    def close(self):
+        self.server.shutdown()
+
+
+def scheduled_submit(sender, bpa, work_id: str, attempt_id: str, txid: int,
+                     generation: int) -> bool:
+    """One durable attempt, named by the scheduler.  Returns ACL2's verdict."""
+    values = {"txid": txid, "tx-generation": 0, "work-id": work_id,
+              "attempt-id": attempt_id, "attempt-generation": generation,
+              "local-eid": CONFIG["local-eid"], "peer-eid": CONFIG["peer-eid"],
+              "policy-id": CONFIG["policy-id"],
+              "bp-lifetime": CONFIG["bp-lifetime"]}
+
+    def external_action():
+        adu = run_store.acl2_octets(sender.acl2.call(
+            "(fn-bpo-host-request-adu " + text_form(work_id) + " state)"))
+        if not adu:
+            raise RuntimeError("ACL2 refused the durable work projection")
+        return bpa.submit(adu, CONFIG["peer-eid"], attempt_id,
+                          CONFIG["bp-lifetime"])
+
+    try:
+        sender.journal.persist_attempt_then_call(values, external_action)
+    except JournalError:
+        return False
+    sender.journal.publish("transport", {
+        "work-id": work_id, "attempt-id": attempt_id,
+        "attempt-generation": generation, "status": "bpa-submit-replied"})
+    return True
+
+
+def run_contact_plan(sender, bpa, plan_document=None, *, next_tx=2000):
+    """Drive the sender's attempts from a contact plan through the scheduler."""
+    plan = fn_scheduler.plan_from(plan_document or CONTACT_PLAN)
+    host = fn_scheduler.Acl2SchedulerHost(sender.acl2)
+    log = fn_scheduler.DecisionLog(sender.journal.root)
+    counter = {"tx": next_tx, "generation": 0}
+
+    def attempt(work_id, attempt_id, tick):
+        granted = scheduled_submit(sender, bpa, work_id, attempt_id,
+                                   counter["tx"], counter["generation"])
+        counter["tx"] += 1
+        if granted:
+            counter["generation"] += 1
+        else:
+            # A refused attempt leaves the work retryable; the scheduler
+            # charges no retry for it, and the next window will pass over it.
+            sender.journal.publish("transport", {
+                "work-id": work_id, "attempt-id": attempt_id,
+                "attempt-generation": counter["generation"],
+                "status": "no-contact"})
+        return granted
+
+    outcomes = fn_scheduler.run_plan(plan, host, log, attempt)
+    return {"outcomes": outcomes, "decisions": len(log.entries()),
+            "submissions": len(getattr(bpa, "submissions", ())),
+            "bpa_profile": getattr(bpa, "profile", "pinned dtn7-rs"),
+            "outstanding": sender.outstanding()}

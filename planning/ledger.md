@@ -10,22 +10,22 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 214 |
-| Certification roots in the Makefile | 213 |
-| Books inside the root closure | 213 |
-| `defthm` and `defthmd` events | 3581 |
-| `defun` events | 2689 |
-| Functions with verified guards | 1152 |
+| Books read | 217 |
+| Certification roots in the Makefile | 216 |
+| Books inside the root closure | 216 |
+| `defthm` and `defthmd` events | 3694 |
+| `defun` events | 2793 |
+| Functions with verified guards | 1154 |
 | Functions declared `:verify-guards nil` and never verified | 138 |
-| Functions left at the default with an explicit guard | 951 |
+| Functions left at the default with an explicit guard | 1053 |
 | Functions left at the default with no guard | 448 |
-| `assert-event` checks | 3736 |
+| `assert-event` checks | 3839 |
 | `must-fail` checks | 59 |
 | `encapsulate` events | 14 |
 | Theorems flagged SUSPECT by shape | 30 |
 | Export-hygiene warnings | 63 |
 | Teeth-form warnings | 0 |
-| Include-hygiene warnings | 93 |
+| Include-hygiene warnings | 96 |
 
 ## Lints
 
@@ -163,6 +163,8 @@ that `make certify` requests.
 | `books/replay.lisp` | root | 30 | 15 | 11/0/4/0 | 0 | 0 | 0 |
 | `books/retention-invariants.lisp` | root | 16 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/retention.lisp` | root | 36 | 38 | 38/0/0/0 | 0 | 0 | 2 |
+| `books/scheduler-invariants.lisp` | root | 59 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/scheduler.lisp` | root | 54 | 104 | 2/0/102/0 | 0 | 0 | 0 |
 | `books/served.lisp` | root | 50 | 31 | 2/4/25/0 | 0 | 0 | 0 |
 | `books/statement-invariants.lisp` | root | 59 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/statement.lisp` | root | 30 | 65 | 0/0/65/0 | 0 | 0 | 0 |
@@ -249,6 +251,7 @@ that `make certify` requests.
 | `tests/acl2/relay-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 61 | 4 | 0 |
 | `tests/acl2/replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 65 | 0 | 0 |
 | `tests/acl2/retention-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 49 | 0 | 0 |
+| `tests/acl2/scheduler-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 103 | 0 | 0 |
 | `tests/acl2/served-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 58 | 0 | 0 |
 | `tests/acl2/statement-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 40 | 0 | 0 |
 | `tests/acl2/store-files-exploration-tests.lisp` | root | 0 | 29 | 0/0/0/29 | 58 | 0 | 0 |
