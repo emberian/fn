@@ -211,3 +211,42 @@
  (equal (fn-cbor-result-value
          (fn-bpb-decode-blocks (fn-bpb-encode-block *bpb-hop*) 0))
         :too-many-blocks))
+
+; The boundary the round trip found (w10/dtn-3).  A bundle carrying the full
+; `*fn-bpb-max-blocks*` canonical blocks is an array of that many PLUS the
+; payload block, so a decoder budgeted at `*fn-bpb-max-blocks*` refuses its
+; own encoder's output: `fn-bpb-decode-of-encode` is false at exactly this
+; value.  `fn-bpb-decode` now budgets `(+ 1 *fn-bpb-max-blocks*)`, and this
+; is the witness at the boundary.
+(defun fn-bpbt-filler-blocks (n)
+  (declare (xargs :guard (natp n)))
+  (if (zp n)
+      nil
+    (cons (fn-bpb-bundle-age-block (+ 1 (nfix n)) 0 0 0)
+          (fn-bpbt-filler-blocks (- (nfix n) 1)))))
+
+(defconst *bpb-full*
+  (fn-bpb-make-bundle *bpb-primary* (fn-bpbt-filler-blocks *fn-bpb-max-blocks*)
+                      *bpb-payload-block*))
+
+(assert-event (equal (len (fn-bpb-bundle-blocks *bpb-full*))
+                     *fn-bpb-max-blocks*))
+(assert-event (fn-bpb-bundlep *bpb-full*))
+(assert-event (equal (fn-bpb-decode (fn-bpb-encode *bpb-full*)
+                                    *fn-bpb-max-input*)
+                     (fn-cbor-ok *bpb-full* nil)))
+
+; And one canonical block more is still refused, by the budget, one block
+; later: the bound on canonical blocks is not loosened by counting the
+; payload.
+(defconst *bpb-over-full*
+  (fn-bpb-make-bundle *bpb-primary*
+                      (fn-bpbt-filler-blocks (+ 1 *fn-bpb-max-blocks*))
+                      *bpb-payload-block*))
+
+(assert-event (not (fn-bpb-bundlep *bpb-over-full*)))
+(assert-event
+ (with-guard-checking :none
+  (equal (fn-cbor-result-value
+          (fn-bpb-decode (fn-bpb-encode *bpb-over-full*) *fn-bpb-max-input*))
+         :too-many-blocks)))
