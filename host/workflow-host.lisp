@@ -52,10 +52,10 @@
  (value (if (fn-bp-state-fenced (f-get-global 'fn-workflow-state state)) t nil)))
 (defun fn-workflow-work-status (work-id state)
  (declare (xargs :stobjs state :mode :program))
- (let* ((s (f-get-global 'fn-workflow-state state))
-        (work (fn-bp-find-work work-id (fn-bp-state-works s)))
-        (attempt (fn-bp-work-attempt work)))
-  (value (if (consp attempt) (fn-bp-attempt-status attempt) :absent))))
+ ; ACL2 owns the projection; this reports it.  :absent means no such work in
+ ; the installed image, never "enqueued but not yet attempted".
+ (value (fn-bp-work-status work-id
+         (fn-bp-state-works (f-get-global 'fn-workflow-state state)))))
 
 (defun fn-workflow-take-submit (work-id attempt-id generation state)
  (declare (xargs :stobjs state :mode :program))
