@@ -993,9 +993,11 @@ def repo_root(start: Path | None = None) -> Path:
         # invisible, because the two trees hold the same file names.  Say
         # which was chosen, every run, so the next occurrence diagnoses
         # itself from the log instead of from a blocked merge.
+        # stderr, not stdout: `tools/tcpcl_lab.py` prints one JSON object
+        # per line and a caller reads every line of it.
         print("repo: {} (this command's tools/ live in {}; evidence and logs "
               "go to the tree it was INVOKED from -- pass --repo to override)"
-              .format(chosen, ROOT), flush=True)
+              .format(chosen, ROOT), file=sys.stderr, flush=True)
     return chosen
 
 

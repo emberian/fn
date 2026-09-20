@@ -225,13 +225,13 @@ class RepoRootTests(unittest.TestCase):
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def test_a_secondary_worktree_is_the_root_not_the_checkout_it_came_from(self):
-        with contextlib.redirect_stdout(io.StringIO()):
+        with contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(deploy_gate.repo_root(self.lane), self.lane)
             self.assertEqual(deploy_gate.repo_root(self.main), self.main)
         # The same answer with no argument, which is how the harnesses call
         # it: the process's working directory decides, not this file's path.
         with contextlib.chdir(self.lane / "books"), \
-                contextlib.redirect_stdout(io.StringIO()):
+                contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(deploy_gate.repo_root(), self.lane)
 
     def test_two_fn_trees_in_play_are_announced_on_every_run(self):
@@ -242,17 +242,19 @@ class RepoRootTests(unittest.TestCase):
         refuses the merge. Saying which was chosen makes the next occurrence
         readable in the log.
         """
-        printed = io.StringIO()
-        with contextlib.redirect_stdout(printed):
+        printed, out = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stderr(printed), contextlib.redirect_stdout(out):
             chosen = deploy_gate.repo_root(self.lane)
         self.assertEqual(chosen, self.lane)
+        # stdout belongs to the harness's own report, which a caller parses.
+        self.assertEqual(out.getvalue(), "")
         said = printed.getvalue()
         self.assertIn(str(self.lane), said)
         self.assertIn(str(deploy_gate.ROOT), said)
         self.assertIn("INVOKED from", said)
         # Nothing to announce when the two are the same tree.
         quiet = io.StringIO()
-        with contextlib.redirect_stdout(quiet):
+        with contextlib.redirect_stderr(quiet):
             deploy_gate.repo_root(deploy_gate.ROOT)
         self.assertEqual(quiet.getvalue(), "")
 
