@@ -278,7 +278,7 @@
     "roots": 269,
     "theorems": 5377,
     "functions": 3837,
-    "assert_events": 5099,
+    "assert_events": 5107,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
@@ -6239,7 +6239,7 @@
         "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 73,
+      "assert_events": 81,
       "must_fails": 0,
       "defconsts": 15,
       "defmacros": 1,
