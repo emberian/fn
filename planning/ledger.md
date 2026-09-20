@@ -374,7 +374,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-ocfg-refused-reconfiguration-changes-nothing` | `books/owner-config.lisp` | 514 | branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value |
 | `fn-prin-apply-succession-when-not-acceptable` | `books/principal-invariants.lisp` | 205 | branch-of-definition: the hypothesis negates a branch test of fn-prin-apply-succession and the conclusion is that branch's value |
 | `fn-prov-transit-kindp-forward` | `books/provenance.lisp` | 56 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-prov-transit-kindp |
-| `fn-prov-wire-of-a-string-is-itself` | `books/provenance-codec.lisp` | 538 | branch-of-definition: the hypothesis is a branch test of fn-prov-wire and the conclusion is that branch's value |
+| `fn-prov-wire-of-a-string-is-itself-by-definition` | `books/provenance-codec.lisp` | 543 | branch-of-definition: the hypothesis is a branch test of fn-prov-wire and the conclusion is that branch's value |
 | `fn-record-result-okp-is-parse-okp` | `books/records-canonicality.lisp` | 600 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-retain-admission-refusal-is-no-op` | `books/retention.lisp` | 287 | branch-of-definition: the hypothesis negates a branch test of fn-retain-admit and the conclusion is that branch's value |
 | `fn-retain-wrong-evidence-does-not-release` | `books/retention.lisp` | 327 | branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value |

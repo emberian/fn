@@ -92,7 +92,11 @@ objects under the stated crash assumptions.
 STO-006: replacing history with a checkpoint preserves the full logical state
 needed for future behavior, including allocation watermarks, duplicate history,
 outstanding obligations, relevant policy context, and receipt/release evidence.
-Never checkpoint just the currently visible article list.
+Never checkpoint just the currently visible article list. Evidence is a typed
+provenance (RET-007, `books/provenance.lisp`), carried through the checkpoint
+as the bounded printable string the record grammar already holds; a
+provenance written before the typed value existed is the `:legacy` kind and
+keeps its bytes and its meaning.
 
 STO-007: compaction preserves every retained object's exact bytes and identity,
 and every required record. The replacement becomes durable and reachable before
