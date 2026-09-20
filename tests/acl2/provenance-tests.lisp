@@ -62,9 +62,14 @@
 (assert-event (equal (fn-prov-kind *prov-bp*) :bp-receive))
 (assert-event (equal (fn-prov-kind *prov-local*) :local))
 
-; The kinds are disjoint on real values, not only in the theorem.
+; The kinds are disjoint on real values, not only in the theorem.  Each
+; recogniser is asserted TRUE of its own kind first: without that half a
+; recogniser that is false of everything passes all three lines below.
+(assert-event (fn-prov-transitp *prov-transit*))
 (assert-event (not (fn-prov-transitp *prov-post*)))
+(assert-event (fn-prov-postp *prov-post*))
 (assert-event (not (fn-prov-postp *prov-transit*)))
+(assert-event (fn-prov-localp *prov-local*))
 (assert-event (not (fn-prov-localp *prov-bp*)))
 (assert-event (not (stringp *prov-transit*)))
 

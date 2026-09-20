@@ -211,6 +211,49 @@
                 '(:open))))
 (assert-event (equal (fn-own-run *own-0* *own-trace*) *own-after*))
 
+; -----------------------------------------------------------------------------
+; D14-b, the owner half of the counterexample: why the recovery freedom is
+; fn-sf-recovery-crash-imagep and NOT a widening of fn-sf-crash-imagep, which
+; is the gate of fn-own-reopen (owner.lisp:911).
+;
+; *own-reopened* is an ordinary reachable owner: its store is a
+; recovery-window state, its own success history is empty (fn-sn-open-observed
+; keeps no ghost), and its LEDGER still names both records -- including the
+; second, which an earlier process completed and acknowledged and which is
+; therefore fenced.  The kernel cannot see that: which of its records are
+; fenced is a fact about the byte store's pending list.  So the platform
+; predicate admits the rolled-back image of this very state, while the ledger
+; clause of fn-own-relation is false on it.  Had fn-sf-crash-imagep been
+; widened, fn-own-reopen would take that image and
+; fn-own-reopen-preserves-relation would be FALSE.
+
+(assert-event (fn-sf-record-rollback-visiblep (fn-sn-files (fn-own-store *own-reopened*))))
+(assert-event (equal (fn-sf-successes (fn-sn-files (fn-own-store *own-reopened*))) nil))
+(assert-event (equal (len (fn-own-ledger *own-reopened*)) 2))
+(defconst *own-rolled-back-image* (fn-sf-but-last *own-image-records*))
+(assert-event (equal (len *own-rolled-back-image*) 1))
+; The platform predicate admits it; the reliance predicate does not.
+(assert-event (fn-sf-recovery-crash-imagep (fn-sn-files (fn-own-store *own-reopened*))
+                                           *own-image-frontier* *own-rolled-back-image*))
+(assert-event (not (fn-sf-crash-imagep (fn-sn-files (fn-own-store *own-reopened*))
+                                       *own-image-frontier* *own-rolled-back-image*)))
+; The reopen on it would hold exactly the shorter list...
+(assert-event (equal (fn-sf-records
+                      (fn-sn-files
+                       (fn-sn-open-state
+                        (fn-sn-open-observed *own-groups* 10 *own-image-frontier*
+                                             *own-rolled-back-image*))))
+                     *own-rolled-back-image*))
+; ...fn-own-reopen carries the ledger across unchanged...
+(assert-event (equal (fn-own-ledger *own-reopened*) (fn-own-ledger *own-closed*)))
+; ...and the ledger clause of fn-own-relation is false on that list, which is
+; the counterexample: relation in, no relation out.
+(assert-event (fn-own-relation *own-reopened*))
+(assert-event (fn-own-ledger-durablep (fn-own-ledger *own-reopened*) *own-image-records*))
+(assert-event (with-guard-checking :none
+               (not (fn-own-ledger-durablep (fn-own-ledger *own-reopened*)
+                                            *own-rolled-back-image*))))
+
 ; The host's restart dispatch: the image's open result has kind :ok, and the
 ; owner started over it satisfies the relation (fn-own-open-kind-ok-is-okp,
 ; fn-own-open-observed-start-relation).
