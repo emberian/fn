@@ -17,6 +17,26 @@
 ;;; wrappers it reaches are the `:program` functions in host/*-host.lisp that
 ;;; tools/run_store.py and tools/run_reader.py drive today.
 ;;;
+;;; SOCKET SURFACE.  host/native/tcpcl.lisp (the DTN wave, planning/lanes/
+;;; HANDOFF-w4-tcpcl.md "Proposed host surface") builds its convergence layer
+;;; on exactly these entry points and opens no socket and makes no syscall of
+;;; its own:
+;;;
+;;;   (fnn-listen port &key family backlog) -> (values socket bound-port)
+;;;   (fnn-connect host port &key family)   -> socket, an active open
+;;;   (fnn-accept-loop listener handler once) -> one handler call per client
+;;;   (fnn-socket-fd socket)                -> the descriptor the three below take
+;;;   (fnn-socket-shut socket)              -> close, errors swallowed
+;;;   (fnn-recv fd seconds)                 -> octets, an empty vector at end
+;;;                                            of input, or :timeout; at most
+;;;                                            +fnn-max-read+ octets per call
+;;;   (fnn-send-all fd octets seconds)      -> t, partial writes resumed
+;;;   (fnn-graceful-close fd)               -> FIN, then a bounded input drain
+;;;
+;;; and into the core: `fnn-call', `fnn-core', `fnn-core-state', `fnn-global',
+;;; with the outcome codes above (`+fnn-exit-refused+' 1,
+;;; `+fnn-exit-uncertain+' 3, `+fnn-exit-fault+' 4).
+;;;
 ;;; The host's decisions are the Python host's decisions, in the same order,
 ;;; with the same messages, so that the two can be compared byte for byte.
 ;;; Where Python holds a decision ACL2 does not (the config and frontier
@@ -646,8 +666,16 @@ power-loss qualification."
   (fnn-nat (fnn-core 'fn-store-record-sequence (fnn-octet-list record))))
 (defun fnn-bridge-record-txid (record)
   (fnn-nat (fnn-core 'fn-store-record-txid (fnn-octet-list record))))
-(defun fnn-bridge-recover (records frontier)
-  (fnn-action (fnn-core-state 'fn-store-sn-recover (mapcar #'fnn-octet-list records) frontier)))
+(defun fnn-bridge-recover (records frontier config-records)
+  "Replay the configuration history and then the article history.
+
+The core replays `config-records' first (`fn-cnode-config-replay'), takes the
+allocation domain and the capacity from the configured node, and only then
+opens the observed store; a store with no configuration record never reaches
+here.  The host supplies octets and decides nothing about them."
+  (fnn-action (fnn-core-state 'fn-store-sn-recover
+                              (mapcar #'fnn-octet-list records) frontier
+                              (mapcar #'fnn-octet-list config-records))))
 (defun fnn-bridge-io (operation result)
   (fnn-action (fnn-core-state 'fn-store-sn-io operation result)))
 (defun fnn-bridge-prepare (msgid payload codes obligation subject evidence charge)
@@ -672,6 +700,31 @@ power-loss qualification."
 (defun fnn-bridge-lookup (msgid)
   (let ((value (fnn-core-state 'fn-store-sn-lookup (fnn-octet-list msgid))))
     (if (null value) (fnn-make-octets 0) (fnn-as-octets value))))
+(defun fnn-bridge-config-generation ()
+  (fnn-nat (fnn-core-state 'fn-store-cfg-generation)))
+
+(defun fnn-bridge-config-names (wrapper)
+  "A replayed name table: the core joins the names with LF, which no group
+name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
+  (let ((octets (fnn-core-state wrapper)))
+    (unless (fnn-octet-list-p octets) (fnn-refuse "ACL2 returned a non-octet list"))
+    (let ((names nil) (current nil))
+      (dolist (octet octets)
+        (if (= octet 10)
+            (progn (push (fnn-octets-string (fnn-octets (nreverse current))) names)
+                   (setq current nil))
+            (push octet current)))
+      (when current (push (fnn-octets-string (fnn-octets (nreverse current))) names))
+      (nreverse names))))
+
+(defun fnn-bridge-config-initial (names)
+  "Generation 1 of a fresh store, built and admitted by the core."
+  (let ((value (fnn-core 'fn-cfg-host-initial-octets
+                         (mapcar (lambda (n) (fnn-octet-list (fnn-string-octets n))) names))))
+    (when (or (keywordp value) (not (fnn-octet-list-p value)))
+      (fnn-refuse "refused initial group table"))
+    (fnn-octets value)))
+
 (defun fnn-bridge-lookup-found-p (msgid)
   (let ((value (fnn-core-state 'fn-store-sn-lookup-foundp (fnn-octet-list msgid))))
     (cond ((eq value t) t) ((null value) nil)
@@ -742,12 +795,13 @@ power-loss qualification."
     (unless (and (integerp value) (> value 0)) (fnn-refuse "ACL2 returned a non-positive charge"))
     value))
 
-(defun fnn-group-table-id ()
-  (fnn-octets-string (fnn-as-octets (fnn-core 'fn-store-group-table-id))))
-
-(defun fnn-group-codes (names)
+(defun fnn-group-codes (names domain)
+  "Codes in the replayed allocation domain the core handed the store at open.
+There is no compiled group table to compare against: `fn-store-group-codes'
+resolves the names against `domain' and the host carries that list verbatim."
   (let ((value (fnn-core 'fn-store-group-codes
-                         (mapcar (lambda (n) (fnn-octet-list (fnn-string-octets n))) names))))
+                         (mapcar (lambda (n) (fnn-octet-list (fnn-string-octets n))) names)
+                         (mapcar (lambda (n) (fnn-octet-list (fnn-string-octets n))) domain))))
     (when (or (keywordp value) (not (listp value)) (/= (length value) (length names)))
       (fnn-refuse "unknown or duplicate configured group"))
     value))
@@ -760,13 +814,20 @@ power-loss qualification."
 (defconstant +fnn-max-payload-bytes+ 32768)
 (defconstant +fnn-uint32-max+ (1- (ash 1 32)))
 (defconstant +fnn-max-staging-report+ 64)
-(defparameter +fnn-group-table+ "fn-store-groups-1")
+(defconstant +fnn-config-record-bytes+ 65538)
+;; Format 5 is the first written under the v1 content identity profile of
+;; books/identity.  The group table is not in this file at all: a store's
+;; served groups are its configuration-record history under config/, replayed
+;; by the core at every open.
+(defparameter +fnn-store-format+ "fn-store-experiment-5")
 (defparameter +fnn-frontier-format+ "fn-store-allocation-frontier-1")
+;; tools/run_store.py's `init --group` default, an operator default and not a
+;; group table: what a store serves is what the core admits and replays.
+(defparameter +fnn-default-groups+ (list "fn.letters" "fn.test"))
 
 (defun fnn-default-config ()
   (list :object
-        (cons "format" "fn-store-experiment-4")
-        (cons "group_table" +fnn-group-table+)
+        (cons "format" +fnn-store-format+)
         (cons "capacity" 1048576)
         (cons "max_payload_bytes" +fnn-max-payload-bytes+)
         (cons "max_recovery_record_bytes" +fnn-max-recovery-record-bytes+)
@@ -793,6 +854,9 @@ power-loss qualification."
 
 (defstruct (fnn-store (:constructor %make-fnn-store))
   root writable lock-fd config frontier fenced (orphans nil) (completion-pending nil)
+  ;; The replayed configuration the core hands back at recover.  The host
+  ;; stores it and passes it back; it derives no name, code or generation.
+  (config-generation nil) (config-served nil) (config-domain nil)
   ;; The one scripted fault point, or NIL: tools/run_store.py's ScriptedFaults.
   (fault-point nil) (fault-class nil) (fault-message nil))
 
@@ -815,6 +879,33 @@ power-loss qualification."
 (defun fnn-staging (s) (fnn-join (fnn-store-root s) "staging"))
 (defun fnn-lock-path (s) (fnn-join (fnn-store-root s) "writer.lock"))
 (defun fnn-frontier-path (s) (fnn-join (fnn-store-root s) "allocation-frontier.json"))
+(defun fnn-config-dir (s) (fnn-join (fnn-store-root s) "config"))
+(defun fnn-config-record-path (s generation)
+  (fnn-join (fnn-config-dir s) (format nil "~8,'0d.cfg" generation)))
+
+(defun fnn-config-record-names (store)
+  "The durable configuration records in generation order; NIL when absent."
+  (sort (remove-if-not (lambda (name)
+                         (let ((n (length name)))
+                           (and (> n 4) (string= ".cfg" (subseq name (- n 4))))))
+                       (handler-case (fnn-list-directory (fnn-config-dir store))
+                         (fnn-os-error () nil)))
+        #'string<))
+
+(defun fnn-config-records (store)
+  "The durable configuration record history, oldest first.
+
+A store with no configuration record is a refused store -- a distinct outcome
+from an uncertain persistence observation, and never a compiled-in default.
+The core decides whether the records replay."
+  (let ((names (fnn-config-record-names store)))
+    (when (null names)
+      (fnn-fault "refusing store with no durable configuration record"))
+    (mapcar (lambda (name)
+              (let ((path (fnn-join (fnn-config-dir store) name)))
+                (fnn-check-regular path)
+                (fnn-read-regular-bounded path +fnn-config-record-bytes+)))
+            names)))
 
 (defun fnn-open-lock (store exclusive create)
   (let ((flags (logior (if exclusive sb-posix:o-rdwr sb-posix:o-rdonly)
@@ -924,17 +1015,24 @@ power-loss qualification."
         (fnn-fault "allocation frontier checksum or range mismatch"))
       (setf (fnn-store-frontier store) next))))
 
-(defun fnn-initialize (store)
+(defun fnn-initialize (store &optional (groups +fnn-default-groups+))
+  ;; One durable configuration record at generation 1, built and admitted by
+  ;; the core from the operator's group names.
   (fnn-safe-directory (fnn-store-root store) t)
   (let ((lock-fd (fnn-open-lock store t t)))
     (unwind-protect
          (progn
            (fnn-safe-directory (fnn-transactions store) t)
            (fnn-safe-directory (fnn-staging store) t)
+           (fnn-safe-directory (fnn-config-dir store) t)
            (let ((config (fnn-with-checksum (fnn-default-config))))
              (if (fnn-publish-initial-file store (fnn-config-path store) (fnn-canonical-line config))
                  (setf (fnn-store-config store) config)
                  (fnn-load-config store)))
+           (when (null (fnn-config-record-names store))
+             (fnn-publish-initial-file store (fnn-config-record-path store 1)
+                                       (fnn-bridge-config-initial groups))
+             (fnn-fsync-dir (fnn-config-dir store)))
            ;; A missing allocator alongside committed history would permit
            ;; reuse of an aborted ID.  It is a fault, never an implicit 0.
            (when (and (null (fnn-check-regular (fnn-frontier-path store)))
@@ -945,6 +1043,8 @@ power-loss qualification."
                (setf (fnn-store-frontier store) 0)
                (fnn-load-frontier store))
            (fnn-fsync-regular (fnn-config-path store))
+           (dolist (name (fnn-config-record-names store))
+             (fnn-fsync-regular (fnn-join (fnn-config-dir store) name)))
            (fnn-fsync-regular (fnn-frontier-path store))
            (fnn-fsync-dir (fnn-transactions store))
            (fnn-fsync-dir (fnn-store-root store))
@@ -999,10 +1099,15 @@ power-loss qualification."
     (handler-case
         (progn
           (fnn-load-frontier store)
-          (setq records (fnn-durable-records store))
-          (setf (fnn-store-orphans store) (fnn-staging-orphans store))
-          (unless (eq (fnn-bridge-recover records (fnn-store-frontier store)) :recovering)
-            (fnn-fault "ACL2 replay rejected committed transaction history")))
+          (let ((config-records (fnn-config-records store)))
+            (setq records (fnn-durable-records store))
+            (setf (fnn-store-orphans store) (fnn-staging-orphans store))
+            (unless (eq (fnn-bridge-recover records (fnn-store-frontier store) config-records)
+                        :recovering)
+              (fnn-fault "ACL2 replay rejected committed transaction history or configuration history")))
+          (setf (fnn-store-config-generation store) (fnn-bridge-config-generation)
+                (fnn-store-config-served store) (fnn-bridge-config-names 'fn-store-cfg-served)
+                (fnn-store-config-domain store) (fnn-bridge-config-names 'fn-store-cfg-domain)))
       ((or fnn-store-fault fnn-store-indeterminate) (e)
         (setf (fnn-store-fenced store) t)
         (error e))
@@ -1157,11 +1262,11 @@ power-loss qualification."
                        (fnn-store-error () (fnn-refuse "ACL2 refused to derive content identity")))))
     (values obligation subject (fnn-string-octets "unsigned-legacy-v0"))))
 
-(defun fnn-group-codes-for (groups)
-  (unless (string= +fnn-group-table+ (fnn-group-table-id))
-    (fnn-fault "store was written under a different group table"))
+(defun fnn-group-codes-for (store groups)
+  (unless (equal +fnn-store-format+ (fnn-json-get (fnn-store-config store) "format"))
+    (fnn-fault "store was written under a different store format"))
   (when (null groups) (fnn-refuse "provide one or more distinct configured groups"))
-  (fnn-group-codes groups))
+  (fnn-group-codes groups (fnn-store-config-domain store)))
 
 (defun fnn-validate-post-boundary (msgid payload groups charge)
   (when (> +fnn-max-payload-bytes+ (fnn-constant :max-store))
@@ -1192,10 +1297,10 @@ power-loss qualification."
 
 ;;; Commands.
 
-(defun fnn-command-init (root)
+(defun fnn-command-init (root groups)
   (let ((store (make-fnn-store root :writable t)))
     (unwind-protect
-         (progn (fnn-initialize store)
+         (progn (fnn-initialize store (or groups +fnn-default-groups+))
                 (fnn-acquire store)
                 (fnn-out "initialized ~a" (fnn-store-root store)))
       (fnn-store-close store))
@@ -1214,7 +1319,7 @@ power-loss qualification."
     (when (and inject (null fault)) (error 'fnn-usage-error :message "unknown fault point"))
     (multiple-value-bind (store records) (fnn-open-live-store root t fault)
       (unwind-protect
-           (let* ((codes (fnn-group-codes-for groups))
+           (let* ((codes (fnn-group-codes-for store groups))
                   (charge (if charge-text (parse-integer charge-text) (fnn-charge (length payload)))))
              (fnn-validate-post-boundary msgid payload codes charge)
              (let ((existing (fnn-bridge-existing-action msgid payload codes)))
@@ -1264,6 +1369,18 @@ power-loss qualification."
                 +fnn-exit-ok+)
       (fnn-store-close store))))
 
+(defun fnn-command-config (root)
+  "The replayed configuration: generation, served table, domain."
+  (multiple-value-bind (store records) (fnn-open-live-store root nil)
+    (declare (ignore records))
+    (unwind-protect
+         (progn (fnn-out "generation=~d served=~{~a~^,~} domain=~{~a~^,~}"
+                         (fnn-store-config-generation store)
+                         (fnn-store-config-served store)
+                         (fnn-store-config-domain store))
+                +fnn-exit-ok+)
+      (fnn-store-close store))))
+
 (defun fnn-command-inspect (root message-id)
   (multiple-value-bind (store records) (fnn-open-live-store root nil)
     (declare (ignore records))
@@ -1292,18 +1409,19 @@ payloads, close, reopen, and report both timings as JSON on stdout."
     (fnn-acquire store)
     (fnn-bridge-reset)
     (fnn-recover store)
+    (let ((codes (fnn-group-codes-for store +fnn-default-groups+)))
     (dotimes (sequence count)
       (let ((msgid (fnn-octets (fnn-ascii-octet-list
                                 (format nil "<capacity-~d@example.invalid>" sequence)))))
         (multiple-value-bind (obligation subject evidence) (fnn-metadata msgid payload)
           (fnn-advance-frontier store (fnn-bridge-next-txid))
-          (unless (eq (fnn-bridge-prepare msgid payload '(0 1) obligation subject evidence
+          (unless (eq (fnn-bridge-prepare msgid payload codes obligation subject evidence
                                           (fnn-charge (length payload)))
                       :prepared)
             (fnn-fault "probe prepare refused"))
           (unless (eq (fnn-publish store sequence (fnn-bridge-pending-record)) :durable)
             (fnn-fault "probe publish refused"))
-          (unless (eq (fnn-finish store) :durable) (fnn-fault "probe finish refused")))))
+          (unless (eq (fnn-finish store) :durable) (fnn-fault "probe finish refused"))))))
     (let ((commit-seconds (/ (- (get-internal-real-time) started)
                              (float internal-time-units-per-second 1d0))))
       (fnn-store-close store)
@@ -1339,32 +1457,81 @@ payloads, close, reopen, and report both timings as JSON on stdout."
   (:report (lambda (c s) (write-string (fnn-message c) s))))
 
 (defun fnn-reader-select (with-store)
+  ;; The operator's posting permission is pinned into the connection at open
+  ;; by fn-reader-reset, so a served step reads it from the connection and
+  ;; never from a global.  This host serves read-only until it owns a writer
+  ;; lock as well: it is set to nil explicitly, never left unbound.
+  (fnn-core-state 'fn-reader-set-posting nil)
   (let ((selection (fnn-core-state (if with-store 'fn-reader-use-store 'fn-reader-use-seed))))
     (unless (member selection '(:ready :refused))
       (fnn-refuse "unexpected ACL2 archive-selection result"))
     (unless (eq selection :ready)
       (fnn-refuse "reader archive is not NNTP-projectable"))))
 
+(defun fnn-reader-octets-of (value)
+  (unless (fnn-octet-list-p value) (fnn-refuse "unexpected ACL2 octet-list result"))
+  (fnn-octets value))
+
 (defun fnn-reader-octets (global)
   (let ((value (fnn-global global)))
     (unless (fnn-octet-list-p value) (fnn-refuse "unexpected ACL2 octet-list result"))
     value))
+
+(defun fnn-model-chunks (path)
+  "The chunk list of a length-prefixed file: a decimal count, LF, that many
+octets, repeated.  Parsed here digit by digit; external data never reaches the
+Lisp reader."
+  (let ((data (fnn-read-regular-bounded path (ash 1 22)))
+        (at 0) (chunks nil))
+    (loop while (< at (length data)) do
+      (let ((eol (position 10 data :start at)) (count 0))
+        (unless eol (fnn-refuse "chunk file: unterminated length"))
+        (when (= eol at) (fnn-refuse "chunk file: empty length"))
+        (loop for index from at below eol do
+          (let ((digit (- (aref data index) 48)))
+            (unless (<= 0 digit 9) (fnn-refuse "chunk file: non-decimal length"))
+            (setq count (+ (* count 10) digit))))
+        (when (> (+ eol 1 count) (length data)) (fnn-refuse "chunk file: truncated chunk"))
+        (push (subseq data (+ eol 1) (+ eol 1 count)) chunks)
+        (setq at (+ eol 1 count))))
+    (nreverse chunks)))
 
 (defun fnn-reader-reset ()
   (fnn-core-state 'fn-reader-reset)
   (fnn-octets (fnn-reader-octets 'fn-reader-output)))
 
 (defun fnn-reader-chunk (octets)
-  "One call consumes at most one wire event: (values reply closing suffix)."
+  "One socket read, consumed whole by one certified call: (values reply closing).
+
+`fn-served-step' (books/served.lisp) is a fold of fn-wire-feed-byte with
+fn-nntp-post-step run on each framed event before the next byte, with the
+reply concatenation; article mode is wire state inside the connection, so a
+POST and its article are the same one call per read.  It consumes the entire
+chunk, so there is no unconsumed suffix to hand back and no wire loop in this
+file: `fn-served-run-is-the-concatenated-step' says the cut points the network
+chose are invisible, and tests/native_differential.py is the evidence that
+this host obeys it."
   (if (null octets)
-      (values (fnn-make-octets 0) nil nil)
+      (values (fnn-make-octets 0) nil)
       (progn
         (fnn-core-state 'fn-reader-chunk octets)
         (let ((closing (fnn-global 'fn-reader-closep)))
           (unless (member closing '(t nil)) (fnn-refuse "unexpected ACL2 boolean result"))
-          (values (fnn-octets (fnn-reader-octets 'fn-reader-output))
-                  closing
-                  (fnn-reader-octets 'fn-reader-suffix))))))
+          (values (fnn-octets (fnn-reader-octets 'fn-reader-output)) closing)))))
+
+(defun fnn-reader-submission ()
+  "The article a served step injected, or NIL.  ACL2 produced every octet."
+  (let ((octets (fnn-global 'fn-reader-submit-octets)))
+    (and octets
+         (progn
+           (unless (fnn-octet-list-p octets) (fnn-refuse "unexpected ACL2 octet-list result"))
+           (list (fnn-octets (fnn-reader-octets 'fn-reader-submit-msgid))
+                 (fnn-octets octets))))))
+
+(defun fnn-reader-outcome (completion)
+  "One durable outcome, served: ACL2 writes the 240 or the 441, never this file."
+  (fnn-core-state 'fn-reader-outcome completion)
+  (fnn-octets (fnn-reader-octets 'fn-reader-output)))
 
 (defun fnn-recv (fd seconds)
   "Up to +fnn-max-read+ octets, an empty vector at end of input, :timeout."
@@ -1397,33 +1564,92 @@ output side, then drain the peer's input for at most one second."
               (return))))
       (fnn-os-error () nil))))
 
+;;; The socket surface host/native/tcpcl.lisp builds its convergence layer on
+;;; (planning/lanes/HANDOFF-w4-tcpcl.md).  Nothing above this point opens a
+;;; socket, and the reader below opens none of its own either.
+
+(defun fnn-socket-fd (socket) (sb-bsd-sockets:socket-file-descriptor socket))
+
+(defun fnn-socket-shut (socket)
+  (ignore-errors (sb-bsd-sockets:socket-close socket))
+  nil)
+
+(defun fnn-socket-class (family)
+  (if (eq family :inet6) 'sb-bsd-sockets:inet6-socket 'sb-bsd-sockets:inet-socket))
+
+(defun fnn-loopback (family)
+  (if (eq family :inet6) #(0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1) #(127 0 0 1)))
+
+(defun fnn-listen (port &key (family :inet) (backlog 1) (address nil))
+  "A bound, listening socket and the port the kernel chose.  ADDRESS defaults
+to loopback: a listener reachable off the box is the operator's decision, made
+by passing one, not this file's default."
+  (let ((listener (make-instance (fnn-socket-class family) :type :stream :protocol :tcp)))
+    (handler-case
+        (progn
+          (setf (sb-bsd-sockets:sockopt-reuse-address listener) t)
+          (sb-bsd-sockets:socket-bind listener (or address (fnn-loopback family)) port)
+          (sb-bsd-sockets:socket-listen listener backlog)
+          (multiple-value-bind (bound-address bound-port) (sb-bsd-sockets:socket-name listener)
+            (declare (ignore bound-address))
+            (values listener bound-port)))
+      (error (e) (fnn-socket-shut listener) (error e)))))
+
+(defun fnn-connect (host port &key (family :inet))
+  "An active open.  HOST is an address vector, or a name resolved here."
+  (let ((socket (make-instance (fnn-socket-class family) :type :stream :protocol :tcp)))
+    (handler-case
+        (progn
+          (sb-bsd-sockets:socket-connect
+           socket
+           (if (stringp host)
+               (sb-bsd-sockets:host-ent-address (sb-bsd-sockets:get-host-by-name host))
+               host)
+           port)
+          socket)
+      (error (e) (fnn-socket-shut socket) (error e)))))
+
+(defun fnn-accept-loop (listener handler &optional once)
+  "Run HANDLER on each accepted connection; HANDLER owns and closes its socket."
+  (loop
+    (funcall handler (sb-bsd-sockets:socket-accept listener))
+    (when once (return))))
+
 (defun fnn-serve-client (socket)
   "Serve one connection; a broken peer cannot end the listener.  A core
 failure that leaves the reader unable to correlate replies is a bridge fault."
-  (let ((fd (sb-bsd-sockets:socket-file-descriptor socket)))
+  (let ((fd (fnn-socket-fd socket)))
     (unwind-protect
          (handler-case
              (progn
                (fnn-send-all fd (fnn-reader-reset) 10)
-               (let ((pending nil))
-                 (loop
-                   (let ((incoming (fnn-recv fd 10)))
-                     (when (or (eq incoming :timeout) (zerop (length incoming)))
-                       (return))
-                     (setq pending (append pending (fnn-octet-list incoming)))
-                     (loop while pending do
-                       (multiple-value-bind (reply closing suffix)
-                           (handler-case (fnn-reader-chunk pending)
-                             (fnn-store-error ()
-                               ;; An invalid bridge result is not a protocol
-                               ;; reply; this connection's input is dropped.
-                               (return-from fnn-serve-client nil)))
-                         (setq pending suffix)
-                         (when (> (length reply) 0) (fnn-send-all fd reply 10))
-                         (when closing
-                           (fnn-graceful-close fd)
-                           (return-from fnn-serve-client nil))
-                         (unless pending (return))))))))
+               (loop
+                 (let ((incoming (fnn-recv fd 10)))
+                   (when (or (eq incoming :timeout) (zerop (length incoming)))
+                     (return))
+                   ;; One read, one certified step.  The loop that used to
+                   ;; live here re-fed an unconsumed suffix and so computed
+                   ;; fn-wire-drive in this file; books/served.lisp owns that
+                   ;; loop now.
+                   (multiple-value-bind (reply closing)
+                       (handler-case (fnn-reader-chunk (fnn-octet-list incoming))
+                         (fnn-store-error ()
+                           ;; An invalid bridge result is not a protocol
+                           ;; reply; this connection's input is dropped.
+                           (return-from fnn-serve-client nil)))
+                     (when (> (length reply) 0) (fnn-send-all fd reply 10))
+                     (when (fnn-reader-submission)
+                       ;; The step submitted an injected article.  This host
+                       ;; holds a shared lock, so the durable attempt is not
+                       ;; its to make: the completion is refused -- distinct
+                       ;; from durable and from uncertain -- and goes back as
+                       ;; one more served input, which ACL2 turns into the
+                       ;; reply.  The owner process lane replaces the constant.
+                       (let ((outcome (fnn-reader-outcome :refused)))
+                         (when (> (length outcome) 0) (fnn-send-all fd outcome 10))))
+                     (when closing
+                       (fnn-graceful-close fd)
+                       (return-from fnn-serve-client nil))))))
            (fnn-os-error () nil)
            (sb-bsd-sockets:socket-error () nil)
            ;; An ACL2 refusal is an answer that leaves the core usable, as an
@@ -1434,48 +1660,71 @@ failure that leaves the reader unable to correlate replies is a bridge fault."
            (serious-condition (e)
              (error 'fnn-reader-bridge-fault
                     :message (format nil "ACL2 bridge failed: ~a" e))))
-      (sb-bsd-sockets:socket-close socket))))
+      (fnn-socket-shut socket))))
+
+(defun fnn-reader-prepare (store-root)
+  "Select the archive a served connection reads, and return the open store.
+
+STORE-ROOT NIL is the seeded archive constant.  A store is fixed under a
+shared lock: posting needs the incompatible exclusive writer lock, so the
+served POST path here is refused rather than silently unowned."
+  (let ((store nil))
+    (when store-root
+      (setq store (make-fnn-store store-root :writable nil))
+      (handler-case
+          (progn (fnn-acquire store) (fnn-bridge-reset) (fnn-recover store))
+        (error (e) (fnn-store-close store) (error e))))
+    (handler-case (fnn-reader-select (not (null store-root)))
+      (error (e) (when store (fnn-store-close store)) (error e)))
+    store))
+
+(defun fnn-command-model (chunk-path store-root)
+  "The reply stream `fn-served-run' produces for the chunk list in CHUNK-PATH.
+
+The model side of tests/test_native_served_differential.py: the same octets
+the socket carries, through the certified fold in one call, with the open
+reply first, exactly as the connection sends it.  This file frames nothing --
+`fn-reader-model-octets' (host/native/reader-model-host.lisp) opens the same
+connection `fn-reader-reset' opens and projects with
+`fn-served-reply-octets'."
+  (let ((store (fnn-reader-prepare store-root)))
+    (unwind-protect
+         (let ((octets (fnn-reader-octets-of
+                        (fnn-core-state 'fn-reader-model-octets
+                                        (mapcar #'fnn-octet-list
+                                                (fnn-model-chunks chunk-path))))))
+           (write-sequence octets *fnn-stdout*)
+           (finish-output *fnn-stdout*)
+           +fnn-exit-ok+)
+      (when store (fnn-store-close store)))))
 
 (defun fnn-command-reader (port once store-root)
   (let ((store nil) (listener nil))
     (unwind-protect
          (progn
-           (when store-root
-             ;; A shared lock fixes this recovered snapshot; posting needs the
-             ;; incompatible exclusive writer lock and is therefore refused.
-             (setq store (make-fnn-store store-root :writable nil))
-             (fnn-acquire store)
-             (fnn-bridge-reset)
-             (fnn-recover store))
-           (fnn-reader-select (not (null store-root)))
-           (setq listener (make-instance 'sb-bsd-sockets:inet-socket :type :stream :protocol :tcp))
-           (setf (sb-bsd-sockets:sockopt-reuse-address listener) t)
-           (sb-bsd-sockets:socket-bind listener #(127 0 0 1) port)
-           (sb-bsd-sockets:socket-listen listener 1)
-           (multiple-value-bind (address bound-port) (sb-bsd-sockets:socket-name listener)
-             (declare (ignore address))
+           (setq store (fnn-reader-prepare store-root))
+           (multiple-value-bind (bound bound-port) (fnn-listen port)
+             (setq listener bound)
              (fnn-out "LISTENING ~d" bound-port))
-           (loop
-             (let ((client (sb-bsd-sockets:socket-accept listener)))
-               (handler-case (fnn-serve-client client)
-                 (fnn-reader-bridge-fault (fault)
-                   ;; Fail closed rather than answer the next client from a
-                   ;; core whose replies can no longer be matched to commands.
-                   (fnn-err "reader: ~a" fault)
-                   (return-from fnn-command-reader +fnn-exit-fault+))))
-             (when once (return)))
+           (handler-case (fnn-accept-loop listener #'fnn-serve-client once)
+             (fnn-reader-bridge-fault (fault)
+               ;; Fail closed rather than answer the next client from a core
+               ;; whose replies can no longer be matched to commands.
+               (fnn-err "reader: ~a" fault)
+               (return-from fnn-command-reader +fnn-exit-fault+)))
            +fnn-exit-ok+)
-      (when listener (ignore-errors (sb-bsd-sockets:socket-close listener)))
+      (when listener (fnn-socket-shut listener))
       (when store (fnn-store-close store)))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Entry.  tools/fn_native.py validates the command line with the Python
 ;;; parsers and hands over a fixed positional protocol after "--fn":
-;;;   store ROOT init | recover | status
+;;;   store ROOT init [GROUP...] | recover | status | config
 ;;;   store ROOT post MESSAGE-ID PAYLOAD CHARGE|- FAULT|- GROUP...
 ;;;   store ROOT inspect MESSAGE-ID
 ;;;   store ROOT probe COUNT
 ;;;   reader PORT ONCE(0|1) STORE-ROOT|-
+;;;   model CHUNK-FILE STORE-ROOT|-
 ;;;   sha256 PATH
 
 (defun fnn-dash-nil (text) (if (string= text "-") nil text))
@@ -1488,9 +1737,10 @@ failure that leaves the reader unable to correlate replies is a bridge fault."
         ((string= verb "store")
          (need 3)
          (let ((root (second args)) (command (third args)) (rest (cdddr args)))
-           (cond ((string= command "init") (fnn-command-init root))
+           (cond ((string= command "init") (fnn-command-init root rest))
                  ((string= command "recover") (fnn-command-recover root))
                  ((string= command "status") (fnn-command-status root))
+                 ((string= command "config") (fnn-command-config root))
                  ((string= command "inspect") (need 4) (fnn-command-inspect root (first rest)))
                  ((string= command "probe") (need 4) (fnn-command-probe root (parse-integer (first rest))))
                  ((string= command "post")
@@ -1502,6 +1752,9 @@ failure that leaves the reader unable to correlate replies is a bridge fault."
          (need 4)
          (fnn-command-reader (parse-integer (second args)) (string= (third args) "1")
                              (fnn-dash-nil (fourth args))))
+        ((string= verb "model")
+         (need 3)
+         (fnn-command-model (second args) (fnn-dash-nil (third args))))
         ((string= verb "sha256")
          (need 2)
          (fnn-out "~a" (fnn-hex (fnn-sha256 (fnn-read-regular-bounded (second args) (ash 1 26)))))
