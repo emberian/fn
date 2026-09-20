@@ -552,6 +552,25 @@ def unsupported(status: str) -> bool:
     return (status or "").strip()[:3] in UNSUPPORTED_CODES
 
 
+def traceback_line(output: str) -> str:
+    """The exception line of a Python traceback in a step's output, if any.
+
+    A harness that raised did not refuse anything: its row is `not-exercised`
+    with the exception as the blocker, never a refusal that reads like the
+    feature saying no.
+    """
+    if "Traceback (most recent call last)" not in (output or ""):
+        return ""
+    for line in reversed(output.strip().splitlines()):
+        line = line.strip()
+        if line and not line.startswith(("File ", "~", "^", "self.", "report =",
+                                         "sys.exit", "return ")) and ":" in line:
+            head = line.split(":", 1)[0]
+            if head.endswith(("Error", "Exception", "Exit")):
+                return line[:300]
+    return "a Python traceback with no recognisable exception line"
+
+
 def exit_verdict(rc) -> str:
     """The outcome class of one exit code (D13, docs/operator.md)."""
     if rc is None:
@@ -1308,9 +1327,15 @@ command -v slrn >/dev/null && echo slrn=yes || echo slrn=no
         for msgid, subject in ((STREAM[node.name], "for the streaming offer"),
                                (STX[node.name], "for the statement exchange")):
             payload = "{}/{}.article".format(node.dir, msgid.strip("<>").split("@")[0])
-            self.push_file(article(msgid, GROUPS[0], subject,
-                                   "Seeded on node {} by the v0 matrix.".format(
-                                       node.upper)), payload)
+            prepared = getattr(self, "statement_file", None)
+            if msgid == STX["a"] and prepared:
+                # The statement article is posted with its field already on it,
+                # so the row that watches it cross is watching the field cross.
+                payload = prepared
+            else:
+                self.push_file(article(msgid, GROUPS[0], subject,
+                                       "Seeded on node {} by the v0 matrix.".format(
+                                           node.upper)), payload)
             step = self.sh("node {} seed {}".format(node.upper, msgid), self.cd(self.fn(
                 "--store {} post --message-id '{}' --payload {} --group {}".format(
                     node.store, msgid, payload, GROUPS[0]))), timeout=900, expect=None)
@@ -1500,11 +1525,18 @@ else echo NONE; fi
         self.from_step("V0-AUTH-NEW", new,
                        limit="one seed; the derivation is tools/stx.py's and ACL2's, "
                              "not this gate's")
-        principal = ""
+        principal, public = "", ""
         for line in new.output.splitlines():
-            for word in line.split():
-                if len(word) == 64 and all(c in "0123456789abcdef" for c in word.lower()):
-                    principal = word
+            words = line.split()
+            if len(words) == 2 and len(words[1]) == 64:
+                if words[0] == "id":
+                    principal = words[1]
+                elif words[0] == "public-key":
+                    public = words[1]
+        # The keyring `tools/stx.py verify` reads: one line, the creator id and
+        # its public key, both hex.  Both come from ACL2 through `principal
+        # new`; nothing here derives either.
+        self.keyring_line = "{} {}".format(principal, public) if principal and public else ""
         for node in self.nodes:
             args = "principal set-password {} --password {}".format(AUTH_USER, AUTH_SECRET)
             if principal:
@@ -2038,6 +2070,17 @@ else echo NONE; fi
         run = self.sh("campaign: run the cuts", self.cd(
             "python3 -m tests.campaign.campaign --quick --json {}/campaign.json "
             "2>&1 | tail -30".format(self.run)), timeout=3600, expect=None)
+        crashed = traceback_line(run.output)
+        if crashed:
+            self.emit("V0-CRASH-CAMPAIGN", NOT_EXERCISED, run.command,
+                      " | ".join(run.output.strip().splitlines()[-2:]) or "(no output)",
+                      exit_code=run.rc,
+                      blocker="the campaign harness raised rather than reporting a "
+                              "cut: {}. That is a broken Python call site, not a "
+                              "refusal; the cuts that ran before it are in the raw "
+                              "output".format(crashed),
+                      owner="w9/runtime")
+            return
         self.emit("V0-CRASH-CAMPAIGN",
                   ACCEPTED if run.rc == 0 else exit_verdict(run.rc), run.command,
                   " | ".join(run.output.strip().splitlines()[-3:]) or "(no output)",
@@ -2124,15 +2167,28 @@ else echo NONE; fi
         """
         return {0: ACCEPTED, 3: REFUSED, 4: REFUSED, 2: UNCERTAIN}.get(rc, UNCERTAIN)
 
-    def statements(self):
+    def statement_prepare(self):
+        """Sign the article that will be posted, before it is posted.
+
+        `fn-stx-payload-for` (books/stx-carrier.lisp:541) projects the
+        AUTHORED SOURCE out of the received article for a `:article`
+        statement, so the octets that are signed have to be the article's
+        own, not a separate payload file: signing anything else draws
+        `unverified ref-mismatch` from a receiver that is working correctly.
+        Measured on persvati 2026-09-20: signing the article file and
+        attaching the field to that same file verifies against a keyring
+        holding the creator and its public key.
+        """
         seed_file = "{}/seed.hex".format(self.deploy)
-        payload = "{}/statement.payload".format(self.deploy)
+        base = "{}/statement.article".format(self.deploy)
         field = "{}/statement.field".format(self.deploy)
-        self.push_file(b"A statement carried between two fn nodes.\r\n", payload)
+        self.statement_file = None
+        self.push_file(article(STX["a"], GROUPS[0], "a carried statement",
+                               "A statement carried between two fn nodes."), base)
         sign = self.sh("statement sign", self.cd(
             "python3 bin/fn --config {}/fn.toml statement sign --payload {} --seed {} "
-            "--ed25519 > {}".format(self.a.dir, payload, seed_file, field)),
-            timeout=900, expect=None)
+            "--ed25519 > {}".format(self.a.dir, base, seed_file, field)),
+            timeout=1800, expect=None)
         self.from_step("V0-STX-SIGN", sign,
                        limit="the signing realiser on this tree is the toy one of "
                              "tests/acl2/crypto-seam-tests.lisp, and `--ed25519` prints "
@@ -2144,16 +2200,23 @@ else echo NONE; fi
                          "existed for the rows below".format(sign.rc, sign.first_line),
                          invocation=sign.command)
             return
-        base = "{}/statement.article".format(self.deploy)
         signed = "{}/statement.signed".format(self.deploy)
-        self.push_file(article(STX["a"], GROUPS[0], "a carried statement",
-                               "A statement carried between two fn nodes."), base)
         attach = self.sh("statement attach", self.cd(
             "python3 bin/fn --config {}/fn.toml statement attach --field {} "
             "--article {} > {}".format(self.a.dir, field, base, signed)),
-            timeout=900, expect=None)
+            timeout=1800, expect=None)
         self.from_step("V0-STX-ATTACH", attach,
                        limit="one field line prepended to one article")
+        if attach.rc == 0:
+            self.statement_file = signed
+
+    def statements(self):
+        signed = getattr(self, "statement_file", None)
+        if signed is None:
+            self.blocked(self.STX_KEYS,
+                         "no signed article was produced earlier in this run, so there "
+                         "is nothing to verify")
+            return
         if "V0-STX-CROSS" in self.emitted:
             pass
         elif not self.b.port:
@@ -2162,7 +2225,8 @@ else echo NONE; fi
         else:
             self.statement_crossed()
         keyring = "{}/keyring".format(self.deploy)
-        self.sh("statement keyring", "printf '' > {}".format(keyring))
+        pair = getattr(self, "keyring_line", "")
+        self.push_file((pair + "\n") if pair else "", keyring)
         verify = self.sh("statement verify on node B's copy", self.cd(
             "python3 bin/fn --config {}/fn.toml statement verify --article {} "
             "--keyring {}".format(self.b.dir, signed, keyring)), timeout=900, expect=None)
@@ -2173,9 +2237,15 @@ else echo NONE; fi
                                               verify.rc, "outside the vocabulary"),
                                          verify.first_line),
                   exit_code=verify.rc,
-                  limit="an empty keyring: with no key for the creator the honest "
-                        "verdict is unverified, and this row records which of the four "
-                        "words the node chose, not that a signature checked")
+                  limit="the octets verified are the signed file on the box, not what "
+                        "node B served: the transit row above says whether the article "
+                        "reached B at all. The keyring holds {}; the realiser behind "
+                        "the signature is "
+                        "the toy one of tests/acl2/crypto-seam-tests.lisp, so a "
+                        "`verified` here is the node's own verdict function agreeing "
+                        "with its own signer, not a cryptographic claim".format(
+                            "the creator and its public key" if pair
+                            else "nothing, because `fn principal new` gave no pair"))
         tampered = "{}/statement.tampered".format(self.deploy)
         self.sh("statement tamper", self.cd(
             "sed 's/A statement carried/A statement altered/' {} > {}".format(
@@ -2208,10 +2278,10 @@ else echo NONE; fi
         result = self.payload(crossed)
         status = result.get("present", {}).get(STX["a"], "(no reply)")
         self.from_reply("V0-STX-CROSS", status, crossed.command,
-                        limit="the seeded article carries no FN-Statement line on this "
-                              "run: the store CLI posted it before the field existed, so "
-                              "this row shows the article crossing, not the field "
-                              "surviving the crossing")
+                        limit="the article node A holds for this row was posted with "
+                              "its FN-Statement field already on it, so what crosses is "
+                              "the field; whether the far side's octets are identical is "
+                              "the transit row, not this one")
 
     # -- F-MEDIA -----------------------------------------------------------
     def media(self):
@@ -2418,6 +2488,8 @@ else echo NONE; fi
             if "YES" in probe.output:
                 self.configured.add(node.name)
         self.phase("loopback refusal", self.loopback_refusal)
+        self.phase("principals", self.principals)
+        self.phase("statement preparation", self.statement_prepare)
         self.phase("outcomes A", self.three_outcomes_node, self.a, ART["a"],
                    "alpha, written on A")
         self.phase("outcomes B", self.three_outcomes_node, self.b, ART["b"],
@@ -2426,7 +2498,6 @@ else echo NONE; fi
             self.phase("seed {}".format(node.name), self.seed_node, node)
             self.phase("second init {}".format(node.name), self.reinit, node)
             self.phase("groups {}".format(node.name), self.groups_and_capacity, node)
-        self.phase("principals", self.principals)
         self.phase("peer records", self.peer_records)
 
         for node in self.nodes:
