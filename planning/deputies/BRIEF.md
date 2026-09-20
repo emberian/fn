@@ -51,6 +51,10 @@ cross-cluster steps you could not take alone.
   another lane is using (a `--jobs 12` race on a busy persvati lost
   `books/nntp-effects` once and cascaded "no certificate" into six roots).
   On hbox every ACL2 run goes through `swarm-build`.
+- A new registry id is allocated by merging dev FIRST and taking the next free
+  number, and it is claimed in one board line the moment you take it. Two
+  lanes assigned PRF-029 on the same afternoon and one target had to be
+  renumbered after the fact (2026-09-20).
 - Registries are shared rows, not files. `planning/requirements.json`,
   `planning/proofs.json`, `tests/scenarios/catalog.json` and `docs/prefixes.md`
   are edited by reading, changing the named rows, and writing, immediately
