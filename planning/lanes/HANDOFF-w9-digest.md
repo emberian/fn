@@ -49,7 +49,8 @@ the identity end to end in logic. `tools/frame_bridge.py` `subject_id` and
 `fnn-sha256`. `tests/identity_differential.py` derives each identity both ways
 through one live session and compares.
 
-**Docs** — `docs/architecture.md` trust boundary: the digest is computed in
+**Docs** — `planning/deputies/BOARD.md` carries two CHANGEs and one NOTE.
+`docs/architecture.md` trust boundary: the digest is computed in
 logic by a proved-executable definition; what remains assumed is collision and
 preimage resistance, A-CRYPTO, stated as before. `specs/nntp.md` carries the
 credential scheme as a table.
@@ -114,4 +115,46 @@ smaller digest.
 
 ## Evidence
 
-See the commit trailer for the certification run id and evidence directory.
+All on hbox, ACL2 8.7 (`/tank/fn/acl2-8.7/saved_acl2`), SBCL, under
+`swarm-build`, with `ACL2_CUSTOMIZATION=NONE` and `ACL2_BOOK_HASH_ALISTP=NIL`
+(set by every tool), `FN_ACL2_TIMEOUT_SECONDS=1800`.
+
+| root | verdict |
+| --- | --- |
+| `books/sha256` | certified |
+| `tests/acl2/sha256-tests` | certified |
+| `books/crypto-attach` | certified |
+| `books/auth-secret` | certified |
+| `tests/acl2/auth-secret-tests` | certified |
+| `books/identity` | certified (unchanged) |
+| `books/identity-invariants` | certified (unchanged) |
+| `tests/acl2/identity-tests` | certified (unchanged) |
+
+Farm run `run-20260920T185055Z-0836` (installed 216 cached certificates, 36
+uncached, 19 certified in the run), evidence
+`/tank/fn/lanes/w9-digest/build/acl2/certify-20260920T185152Z-1079466`;
+the final pass, after the export-hygiene edits, certified all eight roots
+together: `certify-20260920T190013Z-1089503`. **No existing root's closure changed**: `books/crypto-seam.lisp` and
+`books/frame-octets.lisp` were not edited, so nothing downstream of them needed
+recertification, and every existing keystone statement is untouched.
+
+`tests/identity_differential.py`, hbox, one live session: **100 cases,
+235,314 payload octets, every ACL2-derived subject and obligation identity
+equal to the host's old SHA-256 derivation**, 0.104 s for the 200 ACL2
+identity derivations including bridge marshalling. Cases include the empty
+payload, the 56/64/65/119/120-octet padding boundaries and a 32 KiB payload.
+
+`make check`: scaffold OK, ledger OK, `python3 tools/ledger.py --write` run.
+`tools/host_check.py` is SKIPPED locally (no ACL2 on the laptop) and is not
+evidence until it runs with a real ACL2.
+
+### Two ACL2 facts this lane paid for
+
+- **`zp` has guard `(natp x)`**, so a `:guard t` function that tests `(zp n)`
+  on an arbitrary argument does not guard-verify. Bind `(nfix n)` first.
+  Likewise `cddr`/`cadr` on an arbitrary object: `cdr`'s guard is
+  cons-or-nil, so `(car (cdr x))` needs `(consp (cdr x))`, not `(consp x)`.
+- **An attachment must not be called while computing a `defconst`** (`:DOC
+  ignored-attachment`). A test book cannot bind a digest to a constant; the
+  enrolment has to happen inside each `assert-event`. That restriction is
+  worth keeping in mind for any book tempted to precompute a digest.
