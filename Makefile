@@ -205,6 +205,8 @@ ACL2_BOOKS ?= books/assumptions \
 	books/peer-inbound \
 	books/peer-inbound-invariants \
 	tests/acl2/peer-inbound-tests \
+	books/nntp-auth \
+	tests/acl2/nntp-auth-tests \
 	books/served \
 	tests/acl2/served-tests \
 	books/owner \

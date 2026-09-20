@@ -20,6 +20,7 @@ import os
 import selectors
 import signal
 import socket
+import ssl
 import sys
 import time
 
@@ -244,12 +245,28 @@ class Connection:
         self.reading = True
 
 
+def tls_context(cert, key):
+    """The host's TLS facility (RFC 4642 section 2.3), and the whole of it.
+
+    TLS is NOT in the model: books/nntp-auth.lisp sees plaintext octets on
+    both sides of the handshake, and no theorem in this tree says anything
+    about confidentiality, integrity or certificate validation.  This is the
+    trusted part, named so it can be found: specs/nntp.md, "Transport
+    security, and what is trusted".
+    """
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.load_cert_chain(certfile=cert, keyfile=key)
+    return context
+
+
 class Owner:
-    def __init__(self, store, bridge, records, clock):
+    def __init__(self, store, bridge, records, clock, tls=None):
         self.store = store
         self.bridge = bridge
         self.records = len(records)
         self.clock = clock
+        self.tls = tls
         self.selector = selectors.DefaultSelector()
         self.connections = {}
         self.stopping = False
@@ -260,6 +277,19 @@ class Owner:
             sock, _ = listener.accept()
         except OSError:
             return
+        if self.tls is not None:
+            # Implicit TLS: the handshake runs before any NNTP octet, so the
+            # book still sees a plaintext stream and its STARTTLS branch is
+            # never reached on this listener.  RFC 4642 section 2.2's
+            # in-band upgrade needs one more word from the owner bridge and
+            # is recorded open in specs/nntp.md.
+            try:
+                sock = self.tls.wrap_socket(sock, server_side=True)
+            except (ssl.SSLError, OSError):
+                try:
+                    sock.close()
+                finally:
+                    return
         sock.setblocking(False)
         # One clock observation per connection, pinned into it at open
         # (books/clock.lisp says what the host asserts; books/injection.lisp
@@ -518,6 +548,8 @@ def main(argv=None):
     parser.add_argument("--store", required=True)
     parser.add_argument("--port", type=int, default=0)
     parser.add_argument("--control", required=True, help="Unix socket path for the control channel")
+    parser.add_argument("--tls-cert", help="PEM certificate; with --tls-key, the listener is TLS")
+    parser.add_argument("--tls-key", help="PEM private key")
     parser.add_argument("--max-connections", type=int, default=8)
     parser.add_argument("--clock-error-ms", type=int, default=1000)
     args = parser.parse_args(argv)
@@ -554,7 +586,12 @@ def main(argv=None):
             listener.setblocking(False)
             print("LISTENING {}".format(listener.getsockname()[1]), flush=True)
             print("CONTROL {}".format(args.control), flush=True)
-            return Owner(store, bridge, records, clock).run(listener, control)
+            tls = None
+            if bool(args.tls_cert) != bool(args.tls_key):
+                raise StoreError("--tls-cert and --tls-key are both or neither")
+            if args.tls_cert:
+                tls = tls_context(args.tls_cert, args.tls_key)
+            return Owner(store, bridge, records, clock, tls).run(listener, control)
     except (StoreError, OSError) as error:
         print("owner: {}".format(error), file=sys.stderr)
         return exit_code_for(error)
