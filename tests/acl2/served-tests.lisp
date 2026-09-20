@@ -404,7 +404,8 @@
 
 (defconst *fn-t-served-prohibited-open*
   (fn-served-open *fn-t-served-archive* 510 8192
-                  *fn-t-served-closed-config* *fn-t-served-observation*))
+                  *fn-t-served-closed-config* *fn-t-served-observation*
+                  *fn-t-served-observation*))
 (assert-event (equal (fn-served-reply-octets
                       (fn-served-result-effects *fn-t-served-prohibited-open*))
                      *fn-t-served-greeting-prohibited*))
