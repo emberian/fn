@@ -1,19 +1,50 @@
 # Development milestones
 
-Current stage: the BP composition assurance batch is complete for its named
-scope; no full implementation/proof milestone is complete. The user requested
-broader feature and assurance work in parallel. The [three-cycle work plan](swarm-cycles.md)
-now maps 34 planned packets to dependencies, owners, stable IDs and finite exits:
-a writable local pilot; signed disconnected exchange; then long-lived operation
-and release assessment. Packet readiness controls sequencing, so independent
-local service, identity, storage and DTN work can advance together.
+Current stage: the proof-style realignment and the four server waves have
+landed (`0bd0b5c`..`c8886ee`); twenty requirements are `implemented` against
+named keystones certified on the farm gate of `dev` `7a9e89a`. The evidence
+record for that batch, with the measured numbers, the gate table, the defects
+and the open list, is
+[wave-realignment-2026-09-19](evidence/wave-realignment-2026-09-19.md). No full
+implementation/proof milestone is complete.
 
-The next launch is C1: BP guards/journal refinement and receiver/Store composition
-alongside the mutable owner, injection/POST, complete reader/overview, resource
-accounting, index adoption, checkpoint codec, source/authority design and an
-early LTP feasibility experiment. These are planned artifacts, not evidence or
-new decision resolutions. [Current work](now.md) retains the completed baseline;
-the [decision workbook](decisions.md) records the remaining product choices.
+**Current task: make `books/owner` certify.** It is the single blocker named by
+three independent lanes — `fn-own-open` calls `fn-served-open` with three
+arguments where `books/served.lisp` declares five, and `fn-own-read-step` calls
+`fn-nntp-step` with three where it takes four. It is the whole of the gate's
+210-of-213, the four `test_owner` errors, the reason `fn run` does not start,
+and the reason the deploy gate has no concurrent-session evidence. Behind it,
+in order: the owner's three one-line `host/owner-host.lisp` edits from
+w5-config-groups, the POST read-back re-pin, the `NNT-001` capability/dispatch
+mismatch, and `tcpcl-invariants` at C2. See
+[the board](deputies/BOARD.md) for each item's exact form.
+
+The [three-cycle work plan](swarm-cycles.md) maps 34 planned packets to
+dependencies, owners, stable IDs and finite exits. [Current work](now.md)
+retains the completed baseline; the [decision workbook](decisions.md) records
+the remaining product choices.
+
+## Release shape: v0 and v1
+
+Agreed 2026-09-20. **v0 is every feature usable between two peered fn nodes.**
+Not every feature designed, and not a mission profile: the test of v0 is that
+two fn nodes, peered, can do everything fn claims to do, with the assurance
+rules of [`AGENTS.md`](../AGENTS.md) holding for each claim. Six waves, in
+dependency order, each ending with an evidence record:
+
+| Wave | Content | Gate |
+| --- | --- | --- |
+| v0.1 server | The owner certifies and runs; POST is durable end to end; capabilities match dispatch; concurrent sessions | A deploy gate with owner-served evidence and a second reader live across another connection's POST |
+| v0.2 peering | K1 to K7 of [the peering design](lanes/DESIGN-peering-summary.md): transit refines acceptance, loop freedom, merge convergence, duplicate suppression, exactly-once feed | Two fn nodes exchanging articles both ways and converging |
+| v0.3 DTN | The BP path from queued work to receipt across a real contact outage, with the receiver evolving-Store seam closed | An interrupted relay and contact-plan run with expiry and staging exhaustion |
+| v0.4 substrate transport | TCPCLv4 C1 to C4 certified and hosted; the LTP question decided on the feasibility study | A two-node transfer over fn's own convergence layer |
+| v0.5 reconfiguration and storage | Live reconfiguration as an owner event; the byte-level crash model ([K1 to K11](lanes/DESIGN-crash-model-v2-summary.md)); persisted checkpoints; index adoption | Every crash point in the cut table is a transition the model expresses |
+| v0.6 convergence and release | Identity and authority (D01, OBJ-003, OBJ-007), the include-hygiene backlog, one gate over every root on one machine | Every requirement either `implemented`/`validated` with keystones, or `deferred` with a reason |
+
+**v1 is M6 and beyond**: additional convergence-layer and deployment profiles,
+long and asymmetric contacts, the human web interface, 9p projections, and the
+mission-profile work that needs its own hardware, security and reliability
+evidence. Nothing in v0 is a flight-readiness claim.
 
 Each milestone ends with a reviewable artifact and evidence. Sequence is a
 dependency order, not a calendar estimate. Privacy/signature choices may expand
@@ -45,15 +76,28 @@ Before completing all of M1, finish the native-profile/D05 semantic details
 D07, local D10/D11, D12's first handoff
 terms, D13's initial history rule, resource bounds in D16, and proof scope D18.
 
-- Pin ACL2 and host Lisp versions, installation method, book dependencies, and
+- [x] Pin ACL2 and host Lisp versions, installation method, book dependencies, and
   clean certification invocation. Keep the initial book dependency set small.
-- Define octets/IDs, records, invariants, events/effects, one-transaction ownership,
+- [x] Define octets/IDs, records, invariants, events/effects, one-transaction ownership,
   local acceptance, two-group allocation, duplicate suppression, and obligations.
-- Execute the logical portion of the letter lifecycle with lost replies and an
+- [x] Execute the logical portion of the letter lifecycle with lost replies and an
   explicit crash/commit-result abstraction.
-- Prove initial invariants, allocation/identity preservation, idempotent effects,
+- [x] Prove initial invariants, allocation/identity preservation, idempotent effects,
   and the first guard/correspondence obligations. Record actual theorem names.
-- Supply a deterministic simulator host; no network deployment is needed.
+- [x] Supply a deterministic simulator host; no network deployment is needed.
+
+Evidence for the five above, 2026-09-20: ACL2 8.7 and SBCL 2.6.8 are pinned by
+digest in every gate manifest, and `tools/certs.py` will not cache a
+certificate pair except against a passed manifest, keyed on the book's whole
+include closure. `OBJ-002`, `OBJ-005`, `STO-002`, `RET-001` and `FLR-002` in
+[the requirement registry](requirements.json) carry the theorem names for
+identity, allocation, one-transaction ownership, obligations and the three
+outcomes; each is certified on the farm gate of `dev` `7a9e89a`
+([the wave record](evidence/wave-realignment-2026-09-19.md)). M1's own exit
+clause is **not** met: the boundary between proved logic and assumed commit
+events is written, but provenance and signature modelling (`OBJ-003`,
+`OBJ-007`, `PRF-013`, which has no events) is not, and `PRF-013` is what M3
+and v0.6 close.
 
 Incremental evidence: the acceptance and node components now have executable
 traces and preservation work, and the deterministic simulator runs in ACL2.
@@ -75,12 +119,27 @@ events. An abstract commit event is not yet a disk recovery proof.
 Resolve D06, D08, D09's required byte profiles, D14, and measured layout choices.
 
 - Freeze a versioned initial object/frame/checkpoint grammar with golden vectors.
-- Implement bounded codecs and their round-trip/canonicality properties.
+  (Object and frame are frozen with vectors; no checkpoint codec exists.)
+- [x] Implement bounded codecs and their round-trip/canonicality properties.
 - Model torn/reordered writes, barriers, isolation, and uncertain failures.
+  (Barriers, isolation and uncertainty are modelled and certified — `STO-004`,
+  `FLR-001`, `FLR-002`. Crash images are record-granular; byte-level torn
+  writes are [the v2 crash design](lanes/DESIGN-crash-model-v2-summary.md),
+  which is review finding D4 and wave v0.5.)
 - Implement segments, journal, recovery, and checkpoints against that model.
 - Prove conditional recovery and checkpoint equivalence; implement a real adapter
   with explicit platform assumptions and fault-injection evidence.
+  (Both proof halves are done — `STO-005` and `STO-006` — and the adapter runs
+  on a farm box through [the deploy gate](evidence/deploy-cce4b11-2026-09-20.md)
+  with one real kill cut. The platform assumptions are stated, not qualified.)
 - Account for metadata and recovery/compaction headroom under no-space failures.
+
+Codec evidence: `ENC-001` and `ENC-002` in [the requirement registry](requirements.json)
+name the round-trip, canonicality and input-bound keystones for the CBOR
+primitives, the schema-0 record and the BP ADU. The work ceiling they cite is
+pessimistic by roughly 16,000x against the measured traversal cost of the same
+parser on the same inputs, and it is an instrumented shadow, not a host
+measurement.
 
 Exit: acceptance survives the specified crash matrix; uncertain results force
 recovery; no partial cross-post is published. Publish the exact supported fault
@@ -130,6 +189,20 @@ Message-ID and Newsgroups checks over preserved article views. It remains a
 narrow proto-article subset, separate from complete injection; live POST,
 complete READER, overview, provenance, and signatures remain open.
 
+The server waves (2026-09-20) move three of M3's five bullets without closing
+any. `books/served` takes the framing and reply projection out of `:program`-mode
+host Lisp, so the function the host calls per socket read is the one the
+chunk-independence keystones are about (`NNT-003`). The legacy reader commands
+(XOVER, HDR/XHDR, LIST HEADERS/ACTIVE.TIMES) land under the unchanged session
+keystones (`NNT-002`). Configuration, startup, recovery, shutdown and operator
+fault reporting are specified and running: `bin/fn`, `docs/operator.md`,
+`packaging/`. What is not moved: **the owner does not certify**, so there is no
+concurrent server and no live POST read-back; the advertised capability bundle
+does not match the dispatched one (`NNT-001`, an RFC 3977 §5.2.2 defect the
+deploy gate found); principal and authentication mapping is unwritten; and no
+newsreader has ever been run against fn. See
+[the wave record](evidence/wave-realignment-2026-09-19.md).
+
 ## M4: disconnected exchange
 
 - BPv7 is an active architectural path, developed alongside M3; it does not
@@ -164,6 +237,14 @@ evolution, and an interrupted relay/contact-plan experiment with expiry and
 staging exhaustion. The [composition assurance batch](../tests/evidence/2026-09-18-bp-composition-assurance.md)
 certifies joint pending/durable work binding and fixed-Store receiver replay,
 with five actual receiver process-death cuts; it leaves those wider seams open.
+
+Two clusters added after the last gate carry M4 work and have **laptop
+certification only**: the scheduler (all three roots certify; two of its
+keystones were false as stated until `79e5227`, and conditional progress holds
+only under the constrained `fn-assume-fairness-contact-index`, so `REP-005`
+stays `specified`), and TCPCLv4, whose `books/tcpcl-invariants` is open at C2
+with the test root behind it. Neither has been through a farm gate; see
+[the wave record](evidence/wave-realignment-2026-09-19.md) §1.
 
 ## M5: bounded long-lived operation
 
