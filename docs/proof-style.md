@@ -55,6 +55,27 @@ index 0 and shifts the fields by one, which is the tree's existing raw-list
 encoding, so a migration moves no bytes --- `tests/acl2/defrecord-tests.lisp`
 proves both layouts equal to the `list` call they replace.
 
+Three options exist for a recognizer that is not a bare one-argument
+predicate over the record. `:recognizer-formals` prepends formals, for a
+recognizer relative to context the record does not carry --- `(fn-articlep
+configured x)` checks the article's groups against the configured ones,
+`(fn-pendingp configured nexts next-txid x)` checks the transaction against
+the state that holds it. The record variable stays `x` and stays last, so
+field types and `:extra` are unaffected, and the generated forward fact
+carries the same formals. `:recognizer-guard` is its guard, `t` unless the
+context needs one (`fn-node-stagep` reads a `fn-retain-statep`), and
+`:recognizer-verify-guards nil` leaves the verification to the book, for a
+guard proof that needs a hint or a definition that comes later. None of the
+three touches the accessors, which stay `:guard t` and verified on the spot.
+
+A record whose recognizer takes the record FIRST, or that has two
+constructors over one accessor family (`fn-cbor-result`, `fn-replay-result`,
+`fn-record-parse-*`), or whose constructor derives a stored field from
+another (`fn-checkpoint-make` stores the node's groups and capacity), does
+not fit and is left hand-written; the fifth lint counts it, which is the
+honest reading. Widen the macro or leave the record alone --- never reshape
+the record to fit.
+
 ### What it generates, and why each part is there
 
 The accessors are total (`:guard t`) with an `mbe` whose `:logic` is the raw
