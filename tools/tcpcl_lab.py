@@ -253,12 +253,12 @@ class Lab:
         small = root / "small.bundle"
         big = root / "big.bundle"
         small.write_bytes(bundle(900, 4))
-        # Large enough that the kill lands between segments and small enough
-        # that the run finishes: `fn-tcl-drive`'s guard is `fn-tcl-sessionp`,
-        # a whole-session recognizer whose `fn-tcl-octet-listsp` walks every
-        # octet staged so far, so a transfer of n octets costs O(n^2/chunk) in
-        # guard checking alone.  That is the books' served path, not this
-        # lab's; see the evidence record.
+        # Large enough that the kill lands between segments.  This used to
+        # have to stay small as well, because `fn-tcl-drive`'s guard named
+        # `fn-tcl-sessionp`, whose `fn-tcl-octet-listsp` walked every octet
+        # staged so far, and the host checks that guard once per socket chunk.
+        # The guard is now `fn-tcl-session-cheapp`, which reads carried
+        # scalars only; `profile` below is the measurement.
         big.write_bytes(bundle(120000, 5))
 
         # First, a transfer that completes and is acknowledged.
@@ -341,6 +341,62 @@ class Lab:
               and facts["no_partials"])
         self.record("crash", ok, **facts)
 
+    def scenario_profile(self):
+        """The per-chunk guard is not quadratic in the transfer.
+
+        `fn-tcl-drive` is reached through its executable counterpart once per
+        socket chunk, and that counterpart checks the callee's guard.  While
+        the guard named `fn-tcl-sessionp` it walked every octet staged so far,
+        so quadrupling a transfer quadrupled the chunks *and* the walk: about
+        sixteen times the guard work.  With `fn-tcl-session-cheapp` the walk
+        is gone and the cost is linear in the transfer.
+
+        The verdict is the ratio, not the seconds: a box under load moves both
+        measurements together.  The bar is deliberately loose (below 8x for a
+        4x transfer) so that this fails on a quadratic guard and passes on a
+        linear one without becoming a timing flake.
+        """
+        root = self.fresh("profile")
+        small_n, large_n = 64 * 1024, 256 * 1024
+        times = {}
+        staged = {}
+        for name, size, seed in (("small", small_n, 6), ("large", large_n, 7)):
+            spool = root / ("spool-" + name)
+            payload = root / (name + ".bundle")
+            payload.write_bytes(bundle(size, seed))
+            listener = self.spawn(
+                ["tcpcl", "listen", 0, 1, spool, "dtn://fn-b/", "-",
+                 4, 4096, 1048576, "-", "-"], root / ("listen-" + name + ".log"))
+            try:
+                port = self.port_of(listener)
+                started = time.time()
+                sent = subprocess.run(
+                    [self.image, "--fn", "tcpcl", "send", "127.0.0.1", str(port),
+                     str(payload), str(root / ("active-" + name)), "dtn://fn-a/",
+                     "-", "4", "4096", "1048576", "0", "-"],
+                    capture_output=True, timeout=900)
+                times[name] = time.time() - started
+                listener.wait(timeout=120)
+            finally:
+                if listener.poll() is None:
+                    listener.kill()
+                listener.handle.close()
+            landed = spool / "passive-0.bundle"
+            staged[name] = dict(
+                rc=sent.returncode,
+                intact=landed.exists() and landed.read_bytes() == payload.read_bytes())
+        ratio = (times["large"] / times["small"]) if times["small"] > 0 else None
+        facts = dict(small_octets=small_n, large_octets=large_n,
+                     small_seconds=round(times["small"], 3),
+                     large_seconds=round(times["large"], 3),
+                     ratio=(round(ratio, 2) if ratio is not None else None),
+                     size_ratio=large_n // small_n,
+                     small=staged["small"], large=staged["large"])
+        ok = (staged["small"]["rc"] == EXIT_OK and staged["large"]["rc"] == EXIT_OK
+              and staged["small"]["intact"] and staged["large"]["intact"]
+              and ratio is not None and ratio < 8.0)
+        self.record("profile", ok, **facts)
+
     def scenario_replay(self, root: Path, trace: Path):
         """The listener's octets, folded back through `fn-tcl-drive' alone."""
         if not trace.exists():
@@ -375,6 +431,8 @@ class Lab:
             self.scenario_keepalive()
         if which in ("all", "crash"):
             self.scenario_crash()
+        if which in ("all", "profile"):
+            self.scenario_profile()
         if which in ("all", "replay"):
             self.scenario_replay(root, trace)
         summary = dict(scenario="summary",
@@ -391,7 +449,7 @@ def main(argv=None) -> int:
     parser.add_argument("--work", default="/tmp/tcpcl-lab")
     parser.add_argument("--scenario", default="all",
                         choices=["all", "exchange", "refused", "keepalive",
-                                 "crash", "replay"])
+                                 "crash", "profile", "replay"])
     args = parser.parse_args(argv)
     if not Path(args.image).exists():
         print(json.dumps({"scenario": "summary", "ok": False,
