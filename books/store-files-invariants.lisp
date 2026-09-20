@@ -22,7 +22,8 @@
                           fn-sf-abort-completion fn-sf-record-link-result
                           fn-sf-record-dir-result fn-sf-core-completion
                           fn-sf-emit-success fn-sf-lose-success
-                          fn-sf-crash-imagep fn-sf-crash fn-sf-recover
+                          fn-sf-crash-imagep fn-sf-crash fn-sf-crash-rollback
+                          fn-sf-stable-records fn-sf-recover
                           fn-sf-recovery-barrier)))
 
 ; -----------------------------------------------------------------------------
@@ -49,6 +50,51 @@
   (implies (fn-sf-record-listp records sequence lower frontier)
            (true-listp records))
   :rule-classes :forward-chaining)
+
+; -----------------------------------------------------------------------------
+; The recovery freedom's list vocabulary (D14-b).  Dropping the last element
+; of an ordered record list leaves an ordered record list with the same start,
+; and leaves a prefix; those two facts are everything the new arm of
+; fn-sf-crash-imagep needs from the list layer.
+
+(defthm fn-sf-but-last-is-a-true-list
+  (true-listp (fn-sf-but-last xs))
+  :rule-classes (:rewrite :type-prescription))
+
+(defthm fn-sf-but-last-is-a-prefix
+  (fn-sf-prefixp (fn-sf-but-last xs) xs)
+  :hints (("Goal" :induct (fn-sf-but-last xs))))
+
+(defthm fn-sf-but-last-preserves-record-list
+  (implies (fn-sf-record-listp records sequence lower frontier)
+           (fn-sf-record-listp (fn-sf-but-last records) sequence lower frontier))
+  :hints (("Goal" :induct (fn-sf-record-listp records sequence lower frontier))))
+
+; The last element put back: the shape every replay argument about the
+; dropped record reduces to.
+(defthm fn-sf-but-last-append-last
+  (implies (and (true-listp xs) (consp xs))
+           (equal (append (fn-sf-but-last xs) (last xs)) xs))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-sf-but-last xs))))
+
+; Outside the recovery window the stable prefix IS the record list, so every
+; theorem restated over fn-sf-stable-records says exactly what it said before
+; wherever the old statement was true (D14-b, the non-weakening argument).
+(defthm fn-sf-stable-records-outside-the-window
+  (implies (not (fn-sf-record-rollback-visiblep s))
+           (equal (fn-sf-stable-records s) (fn-sf-records s)))
+  :hints (("Goal" :in-theory (enable fn-sf-stable-records))))
+
+(defthm fn-sf-stable-records-is-a-prefix
+  (implies (true-listp (fn-sf-records s))
+           (fn-sf-prefixp (fn-sf-stable-records s) (fn-sf-records s)))
+  :hints (("Goal"
+           :use ((:instance fn-sf-prefixp-reflexive (xs (fn-sf-records s)))
+                 (:instance fn-sf-but-last-is-a-prefix (xs (fn-sf-records s))))
+           :in-theory (e/d (fn-sf-stable-records)
+                           (fn-sf-prefixp-reflexive fn-sf-but-last-is-a-prefix
+                            fn-sf-but-last fn-sf-prefixp)))))
 
 (defthm fn-sf-record-listp-frontier-monotone
   (implies (and (fn-sf-record-listp records sequence lower old-frontier)
@@ -313,16 +359,72 @@
   (fn-sf-crash-choicep (fn-sf-image-frontier-choice s frontier)
                        (fn-sf-image-record-choice s records)))
 
+; The recovery-window constructor preserves the recognizer.  The success list
+; is what carries the proof: fn-sf-record-rollback-visiblep requires it empty,
+; so fn-sf-success-listp holds of the shortened record list for the only
+; reason it can -- there is nothing in it (D14-b).
+(defthm fn-sf-crash-rollback-preserves-state
+  (implies (fn-sf-statep s)
+           (fn-sf-statep (fn-sf-crash-rollback s)))
+  :hints (("Goal"
+           :use ((:instance fn-sf-but-last-preserves-record-list
+                            (records (fn-sf-records s)) (sequence 0) (lower 0)
+                            (frontier (fn-sf-frontier s))))
+           :in-theory (e/d (fn-sf-crash-rollback fn-sf-statep fn-sf-phase-shapep
+                            fn-sf-record-rollback-visiblep fn-sf-recovery-visiblep)
+                           (fn-sf-but-last-preserves-record-list
+                            fn-sf-but-last fn-sf-record-listp)))))
+
+(defthm fn-sf-successes-unchanged-by-crash-rollback
+  (equal (fn-sf-successes (fn-sf-crash-rollback s)) (fn-sf-successes s))
+  :hints (("Goal" :in-theory (enable fn-sf-crash-rollback))))
+
+; The constructor for an admissible image, over all three arms: the two
+; namespace choices, and the recovery rollback D14-b opened.  It is a
+; function of the image rather than of a choice keyword because the third arm
+; has no choice to make -- the window admits exactly one shorter list.
+(defun fn-sf-image-crash (s frontier records)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (and (fn-sf-record-rollback-visiblep s)
+           (equal records (fn-sf-but-last (fn-sf-records s)))
+           (not (equal records (fn-sf-records s))))
+      (fn-sf-crash-rollback s)
+    (fn-sf-crash s (fn-sf-image-frontier-choice s frontier)
+                 (fn-sf-image-record-choice s records))))
+
+; K3's engine, widened with the predicate: every admissible image is the image
+; of one of the two constructors, with the same four facts about it.  The old
+; statement (fn-sf-crash with the two choice functions) is the case the
+; recovery arm does not select, so nothing about the namespace windows is
+; weakened; the new arm is reached only where fn-sf-crash cannot express the
+; image at all.
 (defthm fn-sf-crash-realizes-every-admissible-image
   (implies (fn-sf-crash-imagep s frontier records)
-           (let ((crashed (fn-sf-crash s
-                                       (fn-sf-image-frontier-choice s frontier)
-                                       (fn-sf-image-record-choice s records))))
+           (let ((crashed (fn-sf-image-crash s frontier records)))
              (and (equal (fn-sf-frontier crashed) frontier)
                   (equal (fn-sf-records crashed) records)
                   (equal (fn-sf-phase crashed) :replaying)
                   (equal (fn-sf-successes crashed) (fn-sf-successes s)))))
-  :hints (("Goal" :in-theory (enable fn-sf-crash fn-sf-crash-imagep))))
+  :hints (("Goal" :in-theory (enable fn-sf-crash fn-sf-crash-imagep
+                                     fn-sf-crash-rollback fn-sf-image-crash
+                                     fn-sf-record-rollback-visiblep
+                                     fn-sf-recovery-visiblep
+                                     fn-sf-frontier-new-visiblep
+                                     fn-sf-record-present-visiblep))))
+
+(defthm fn-sf-image-crash-preserves-state
+  (implies (fn-sf-statep s)
+           (fn-sf-statep (fn-sf-image-crash s frontier records)))
+  :hints (("Goal"
+           :use (fn-sf-crash-rollback-preserves-state
+                 (:instance fn-sf-crash-preserves-state
+                            (frontier-choice (fn-sf-image-frontier-choice s frontier))
+                            (record-choice (fn-sf-image-record-choice s records))))
+           :in-theory (e/d (fn-sf-image-crash)
+                           (fn-sf-statep fn-sf-crash fn-sf-crash-rollback
+                            fn-sf-crash-rollback-preserves-state
+                            fn-sf-crash-preserves-state
+                            fn-sf-image-frontier-choice fn-sf-image-record-choice)))))
 
 ; Everything a reopen proof needs from an admissible image: the image is a
 ; valid frontier and record list, and every acknowledged pair of the pre-crash
@@ -356,33 +458,53 @@
   :hints (("Goal"
            :use (fn-sf-crash-imagep-implies-state
                  fn-sf-crash-realizes-every-admissible-image
-                 (:instance fn-sf-crash-preserves-state
-                            (frontier-choice
-                             (fn-sf-image-frontier-choice s frontier))
-                            (record-choice
-                             (fn-sf-image-record-choice s records)))
-                 (:instance fn-sf-prior-success-has-record-after-one-crash
-                            (frontier-choice
-                             (fn-sf-image-frontier-choice s frontier))
-                            (record-choice
-                             (fn-sf-image-record-choice s records)))
+                 fn-sf-image-crash-preserves-state
+                 (:instance fn-sf-state-success-member-has-record
+                            (s (fn-sf-image-crash s frontier records)))
                  (:instance fn-sf-state-image-components-typed
-                            (s (fn-sf-crash s
-                                            (fn-sf-image-frontier-choice s frontier)
-                                            (fn-sf-image-record-choice s records)))))
+                            (s (fn-sf-image-crash s frontier records))))
            :in-theory (disable fn-sf-statep fn-sf-crash fn-sf-crash-imagep
-                               fn-sf-crash-choicep
+                               fn-sf-crash-choicep fn-sf-image-crash
+                               fn-sf-crash-rollback
                                fn-sf-image-frontier-choice
                                fn-sf-image-record-choice
                                fn-sf-record-listp fn-sf-success-listp
                                fn-sf-record-has-pairp
-                                 
-                               
                                fn-sf-crash-imagep-implies-state
                                fn-sf-crash-realizes-every-admissible-image
-                               fn-sf-crash-preserves-state
-                               fn-sf-prior-success-has-record-after-one-crash
+                               fn-sf-image-crash-preserves-state
+                               fn-sf-state-success-member-has-record
                                fn-sf-state-image-components-typed))))
+
+; The exact stable-prefix guarantee at the kernel, over all three arms
+; (D14-b): no admissible image loses a record of the state's stable prefix.
+; Outside the recovery window fn-sf-stable-records IS fn-sf-records
+; (fn-sf-stable-records-outside-the-window), so this is the old
+; "an admissible image extends the record list" verbatim there, and inside the
+; window it is the strongest true statement -- the un-fenced tail is exactly
+; what the platform may drop.
+(defthm fn-sf-crash-image-extends-stable-records
+  (implies (fn-sf-crash-imagep s frontier records)
+           (fn-sf-prefixp (fn-sf-stable-records s) records))
+  :hints (("Goal"
+           :use (fn-sf-crash-imagep-implies-state
+                 (:instance fn-sf-state-image-components-typed)
+                 (:instance fn-sf-stable-records-is-a-prefix)
+                 (:instance fn-sf-prefixp-reflexive
+                            (xs (fn-sf-but-last (fn-sf-records s))))
+                 (:instance fn-sf-prefixp-append
+                            (xs (fn-sf-records s))
+                            (ys (list (fn-sf-record-candidate s)))))
+           :in-theory (e/d (fn-sf-crash-imagep fn-sf-stable-records
+                            fn-sf-record-rollback-visiblep
+                            fn-sf-recovery-visiblep
+                            fn-sf-record-present-visiblep)
+                           (fn-sf-statep fn-sf-but-last fn-sf-prefixp
+                            fn-sf-record-listp
+                            fn-sf-crash-imagep-implies-state
+                            fn-sf-state-image-components-typed
+                            fn-sf-stable-records-is-a-prefix
+                            fn-sf-prefixp-reflexive fn-sf-prefixp-append)))))
 
 ; -----------------------------------------------------------------------------
 ; Selected non-crash transition preservation.
