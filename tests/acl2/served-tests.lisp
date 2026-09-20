@@ -307,8 +307,12 @@
 (assert-event (not (fn-served-closingp *fn-t-served-post-effects*)))
 (assert-event (equal (fn-wire-state-mode (fn-served-conn-wire *fn-t-served-post-conn*))
                      :command))
+; The POST-composed reader session is two wrappers down now: the served
+; session is fn-auth-step's, an auth session over a peer session over it.
 (assert-event (not (fn-post-session-awaiting
-                    (fn-served-conn-session *fn-t-served-post-conn*))))
+                    (fn-peer-session-base
+                     (fn-auth-session-base
+                      (fn-served-conn-session *fn-t-served-post-conn*))))))
 (assert-event (fn-served-connp *fn-t-served-post-conn*))
 (assert-event (equal (fn-served-step-nntp-steps *fn-t-served-conn*
                                                 *fn-t-served-post-read*)
