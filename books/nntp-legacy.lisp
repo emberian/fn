@@ -163,6 +163,80 @@
                                       fn-nntp-hdr-octets fn-nov-scrub))))
 
 ; -----------------------------------------------------------------------------
+; XPAT selects from XHDR's lines (RFC 2980 section 2.9)
+;
+; The parity claim, and the reason XPAT is not a second header projection:
+; every line XPAT emits for a field, a group and a list of numbers is a line
+; fn-nntp-hdr-lines-for-numbers emits for the same three.  The wildmat only
+; decides which of those lines survive.  A client therefore cannot see a
+; header through XPAT that XHDR renders differently, whatever the pattern.
+
+; The filter's "selects everything" condition, as a recognizer over the same
+; recursion, so the agreement theorem below has a hypothesis that can be
+; discharged by evaluation on a concrete transcript rather than by a claim
+; about the matcher.
+(defun fn-nntp-xpat-selects-everythingp (field patterns group numbers articles)
+  (declare (xargs :guard t))
+  (if (consp numbers)
+      (let* ((article (fn-nntp-available-article group (car numbers) articles))
+             (content (if (consp article)
+                          (fn-nntp-hdr-content field article)
+                        (list :error))))
+        (and (or (not (fn-nntp-hdr-okp content))
+                 (fn-nntp-xpat-matchesp patterns (fn-nntp-hdr-octets content)))
+             (fn-nntp-xpat-selects-everythingp field patterns group
+                                               (cdr numbers) articles)))
+    t))
+
+(defthm fn-nntp-xpat-lines-are-hdr-lines
+  (subsetp-equal
+   (fn-nntp-xpat-lines-for-numbers field patterns group numbers articles)
+   (fn-nntp-hdr-lines-for-numbers field group numbers articles))
+  :hints (("Goal" :induct (fn-nntp-xpat-lines-for-numbers field patterns group
+                                                          numbers articles)
+           :in-theory (disable fn-nntp-hdr-content fn-nntp-hdr-line
+                               fn-nntp-hdr-octets fn-nntp-xpat-matchesp
+                               fn-nntp-available-article))))
+
+; A pattern that selects every article gives exactly XHDR's block: the two
+; renderers agree where the filter is the identity.  Stated of the lines, so
+; the only difference left between XPAT and XHDR is the section 2.9.1 initial
+; line, which is XHDR's own (fn-nntp-hdr-initial with legacyp T).
+(defthm fn-nntp-xpat-with-a-total-filter-is-the-hdr-block
+  (implies (fn-nntp-xpat-selects-everythingp field patterns group numbers
+                                             articles)
+           (equal (fn-nntp-xpat-lines-for-numbers field patterns group numbers
+                                                  articles)
+                  (fn-nntp-hdr-lines-for-numbers field group numbers articles)))
+  :hints (("Goal" :induct (fn-nntp-xpat-lines-for-numbers field patterns group
+                                                          numbers articles)
+           :in-theory (disable fn-nntp-hdr-content fn-nntp-hdr-line
+                               fn-nntp-hdr-octets fn-nntp-xpat-matchesp
+                               fn-nntp-available-article))))
+
+(defthm fn-nntp-xpat-msgid-lines-are-clean
+  (fn-nntp-hdr-clean-field-listp
+   (fn-nntp-xpat-msgid-lines field patterns token article))
+  :hints (("Goal"
+           :use fn-nntp-hdr-labelled-line-is-clean
+           :in-theory (e/d (fn-nntp-hdr-clean-field-listp
+                            fn-nntp-xpat-msgid-lines)
+                           (fn-nntp-hdr-labelled-line-is-clean
+                            fn-nntp-hdr-line fn-nntp-hdr-content
+                            fn-nntp-hdr-octets fn-nov-scrub
+                            fn-nntp-xpat-matchesp)))))
+
+(defthm fn-nntp-xpat-lines-are-clean
+  (fn-nntp-hdr-clean-field-listp
+   (fn-nntp-xpat-lines-for-numbers field patterns group numbers articles))
+  :hints (("Goal" :induct (fn-nntp-xpat-lines-for-numbers field patterns group
+                                                          numbers articles)
+           :in-theory (e/d (fn-nntp-hdr-clean-field-listp)
+                           (fn-nntp-hdr-content fn-nntp-hdr-line
+                            fn-nntp-hdr-octets fn-nntp-xpat-matchesp
+                            fn-nntp-available-article)))))
+
+; -----------------------------------------------------------------------------
 ; The LIST variants
 
 (local
@@ -227,5 +301,7 @@
 ; is the rule shape books/nntp-invariants.lisp measured as the cause of its
 ; 1800 s runs.  fn-nntp-hdr-clean-fields-are-clean-lines stays enabled:
 ; books/nntp-effects.lisp cites it to read an HDR block back as block text.
+(verify-guards fn-nntp-xpat-selects-everythingp)
+
 (in-theory (disable fn-nntp-hdr-clean-field-listp
                     fn-nntp-safe-group-name-renders-a-clean-field))

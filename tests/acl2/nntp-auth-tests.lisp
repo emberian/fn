@@ -1,0 +1,418 @@
+; Evidence for AUTHINFO (RFC 4643) and STARTTLS (RFC 4642): books/nntp-auth.lisp.
+;
+; Order follows docs/proof-style.md section 6: the guard-world audit, then
+; the scenario transcripts written out of the RFCs, then the teeth.
+;
+; Every expected reply is written here from the RFC's own response table and
+; assembled by `au-single'/`au-block', never by calling the function under
+; test.
+
+(in-package "ACL2")
+(include-book "../../books/nntp-auth")
+
+(local (in-theory (enable fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
+                          fn-nntp-projection-vocabulary
+                          fn-nntp-responses-vocabulary fn-nntp-vocabulary
+                          fn-nntp-post-vocabulary fn-peer-vocabulary
+                          fn-auth-vocabulary)))
+
+; -----------------------------------------------------------------------------
+; Guard-world audit: the served entry is total in the executable sense.
+
+(assert-event (equal (symbol-class 'fn-auth-step (w state))
+                     :common-lisp-compliant))
+(assert-event (equal (guard 'fn-auth-step nil (w state)) *t*))
+(assert-event (equal (symbol-class 'fn-auth-command (w state))
+                     :common-lisp-compliant))
+(assert-event (equal (guard 'fn-auth-command nil (w state)) *t*))
+(assert-event (equal (symbol-class 'fn-auth-capability-lines (w state))
+                     :common-lisp-compliant))
+(assert-event (equal (symbol-class 'fn-auth-checkp (w state))
+                     :common-lisp-compliant))
+
+; -----------------------------------------------------------------------------
+; The scenario
+
+(defconst *au-groups* '("fn.letters"))
+(defconst *au-id* "<auth@example.invalid>")
+(defconst *au-payload*
+  (append (fn-nntp-string-octets "Message-ID: <auth@example.invalid>")
+          '(13 10) (fn-nntp-string-octets "Subject: hello") '(13 10 13 10)
+          (fn-nntp-string-octets "Hello") '(13 10)))
+(defconst *au-archive*
+  (fn-accept-complete
+   (fn-accept-prepare (fn-initial-state *au-groups*) 1 *au-id* *au-payload*
+                      *au-groups*)
+   0 1 :durable))
+(defconst *au-obs* (fn-clock-observation 1000000 843004800000 500 t))
+(defconst *au-agent* (fn-nntp-string-octets "fn.example.invalid"))
+(defconst *au-config*
+  (fn-inj-make-config t *au-agent*
+                      (list (fn-nntp-string-octets "fn.letters")) 32768))
+
+; A principal id is 32 octets (books/principal.lisp fn-prin-idp, which is the
+; crypto seam's digest shape).  This one stands for a configured login; the
+; test does not derive it, because deriving it needs the seam's fn-digest,
+; which is constrained and cannot be evaluated -- the same fact that keeps
+; the secret out of a digest.  See the header of books/nntp-auth.lisp.
+(defconst *au-principal* (make-list 32 :initial-element 7))
+(assert-event (fn-prin-idp *au-principal*))
+
+(defconst *au-name* (fn-nntp-string-octets "reader"))
+(defconst *au-secret* (fn-nntp-string-octets "correct-horse"))
+(defconst *au-cred*
+  (fn-auth-make-cred *au-name* *au-principal* *au-secret* t))
+(assert-event (fn-auth-credp *au-cred*))
+
+; A second principal, whose credential does not allow posting: the posting
+; allowance is tied to the authenticated principal and not to the connection.
+(defconst *au-principal-ro* (make-list 32 :initial-element 9))
+(defconst *au-cred-ro*
+  (fn-auth-make-cred (fn-nntp-string-octets "guest") *au-principal-ro*
+                     (fn-nntp-string-octets "guest-pass") nil))
+(assert-event (fn-auth-credp *au-cred-ro*))
+(assert-event (not (equal *au-principal* *au-principal-ro*)))
+
+; Three configurations: open (nothing required, no certificate), required
+; (authentication required, a certificate configured), and protected-only.
+(defconst *au-open* (fn-auth-open-config))
+(defconst *au-required*
+  (fn-auth-make-config t nil t (list *au-cred* *au-cred-ro*)))
+(defconst *au-protected*
+  (fn-auth-make-config t t t (list *au-cred*)))
+(assert-event (fn-auth-configp *au-open*))
+(assert-event (fn-auth-configp *au-required*))
+(assert-event (fn-auth-configp *au-protected*))
+
+(defun au-session (acfg tlsp)
+  (fn-auth-open-session *au-archive* nil nil nil acfg tlsp))
+(defconst *au-s-open* (au-session *au-open* nil))
+(defconst *au-s-req* (au-session *au-required* nil))
+(defconst *au-s-req-tls* (au-session *au-required* t))
+(defconst *au-s-prot* (au-session *au-protected* nil))
+(assert-event (fn-auth-sessionp *au-s-open*))
+(assert-event (fn-auth-sessionp *au-s-req*))
+(assert-event (fn-auth-session-consistentp *au-s-req* *au-archive*))
+(assert-event (null (fn-auth-session-subject *au-s-req*)))
+(assert-event (equal (fn-auth-session-tlsp *au-s-req-tls*) t))
+
+(defun au-step (as text)
+  (fn-auth-step as *au-archive* *au-config* *au-obs*
+                (list :command (fn-nntp-string-octets text))))
+(defun au-reply (as text)
+  (fn-post-result-effects (au-step as text)))
+(defun au-after (as text)
+  (fn-post-result-session (au-step as text)))
+
+; The expected-reply assembler: its own CRLFs, no stuffing, independent of
+; fn-nntp-single.
+(defun au-single (text)
+  (list (list :reply (append (fn-nntp-string-octets text) '(13 10)))))
+(defun au-lines (texts)
+  (if (consp texts)
+      (append (fn-nntp-string-octets (car texts)) '(13 10)
+              (au-lines (cdr texts)))
+    nil))
+(defun au-block (initial texts)
+  (list (list :reply (append (fn-nntp-string-octets initial) '(13 10)
+                             (au-lines texts) '(46 13 10)))))
+
+; -----------------------------------------------------------------------------
+; RFC 4643 section 2.3: the AUTHINFO USER/PASS exchange
+
+; Section 2.3.2: AUTHINFO USER is answered 381 unconditionally, so whether
+; the name is configured is not disclosed.  Both a known and an unknown name.
+(assert-event (equal (au-reply *au-s-req* "AUTHINFO USER reader")
+                     (au-single "381 password required")))
+(assert-event (equal (au-reply *au-s-req* "AUTHINFO USER nobody")
+                     (au-single "381 password required")))
+(assert-event (equal (au-reply *au-s-req* "AUTHINFO USER reader")
+                     (au-reply *au-s-req* "AUTHINFO USER nobody")))
+
+; Section 2.3.2: AUTHINFO PASS with no cached username is 482.
+(assert-event (equal (au-reply *au-s-req* "AUTHINFO PASS correct-horse")
+                     (au-single "482 authentication commands issued out of sequence")))
+
+; The accepted exchange: 381 then 281, and the session now names the
+; principal -- not the login string.
+(defconst *au-after-user* (au-after *au-s-req* "AUTHINFO USER reader"))
+(assert-event (equal (fn-auth-session-pending *au-after-user*) *au-name*))
+(assert-event (null (fn-auth-session-subject *au-after-user*)))
+(assert-event (equal (au-reply *au-after-user* "AUTHINFO PASS correct-horse")
+                     (au-single "281 authentication accepted")))
+(defconst *au-authed* (au-after *au-after-user* "AUTHINFO PASS correct-horse"))
+(assert-event (equal (fn-auth-session-subject *au-authed*) *au-principal*))
+(assert-event (fn-auth-sessionp *au-authed*))
+(assert-event (fn-auth-session-consistentp *au-authed* *au-archive*))
+
+; A wrong secret is 481, the session stays unauthenticated, and the cached
+; name is cleared so the password cannot be retried without a fresh USER.
+(assert-event (equal (au-reply *au-after-user* "AUTHINFO PASS wrong")
+                     (au-single "481 authentication failed")))
+(defconst *au-failed* (au-after *au-after-user* "AUTHINFO PASS wrong"))
+(assert-event (null (fn-auth-session-subject *au-failed*)))
+(assert-event (null (fn-auth-session-pending *au-failed*)))
+(assert-event (equal (au-reply *au-failed* "AUTHINFO PASS correct-horse")
+                     (au-single "482 authentication commands issued out of sequence")))
+
+; An unknown username reaches 481 and never 281: the 381 above disclosed
+; nothing and the PASS is where it fails.
+(assert-event (equal (au-reply (au-after *au-s-req* "AUTHINFO USER nobody")
+                               "AUTHINFO PASS anything")
+                     (au-single "481 authentication failed")))
+
+; Section 2.3.1 note [2]: once authenticated the command is unavailable.
+; Never 480 -- section 2.3.2 forbids it here.
+(assert-event (equal (au-reply *au-authed* "AUTHINFO USER reader")
+                     (au-single "502 already authenticated")))
+
+; Section 2.4: SASL is deferred, not refused.  502, and the capability block
+; never carries a SASL argument.
+(assert-event (equal (au-reply *au-s-req* "AUTHINFO SASL PLAIN")
+                     (au-single "502 no SASL mechanism is offered")))
+(assert-event (equal (au-reply *au-s-req* "AUTHINFO")
+                     (au-single "501 syntax error")))
+(assert-event (equal (au-reply *au-s-req* "AUTHINFO USER")
+                     (au-single "501 syntax error")))
+(assert-event (equal (au-reply *au-s-req* "AUTHINFO USER a b")
+                     (au-single "501 syntax error")))
+
+; Section 2.3.2's 483: a cleartext mechanism on an unprotected connection.
+(assert-event (equal (au-reply *au-s-prot* "AUTHINFO USER reader")
+                     (au-single "483 a protected channel is required; use STARTTLS")))
+(assert-event (equal (au-reply (au-session *au-protected* t) "AUTHINFO USER reader")
+                     (au-single "381 password required")))
+
+; -----------------------------------------------------------------------------
+; RFC 4643 section 2.2: 480 before authentication, and the command is not
+; performed.  The keystone, witnessed on a real command.
+
+(assert-event (equal (au-reply *au-s-req* "GROUP fn.letters")
+                     (au-single "480 authentication required")))
+(assert-event (equal (au-reply *au-s-req* "POST")
+                     (au-single "480 authentication required")))
+(assert-event (equal (au-reply *au-s-req* "ARTICLE 1")
+                     (au-single "480 authentication required")))
+; Not performed: the session is untouched, so no group was selected.
+(assert-event (equal (au-after *au-s-req* "GROUP fn.letters") *au-s-req*))
+; ... and the wire was never offered article mode.
+(assert-event (not (fn-post-offeredp (au-reply *au-s-req* "POST"))))
+(assert-event (null (fn-post-result-submission (au-step *au-s-req* "POST"))))
+
+; The control: the same commands DO run once authenticated, so the
+; assertions above are not vacuous.
+(assert-event (not (equal (au-reply *au-authed* "GROUP fn.letters")
+                          (au-single "480 authentication required"))))
+(assert-event (fn-post-offeredp (au-reply *au-authed* "POST")))
+; ... and they run with no configuration requiring authentication at all.
+(assert-event (not (equal (au-reply *au-s-open* "GROUP fn.letters")
+                          (au-single "480 authentication required"))))
+
+; The four commands an unauthenticated client keeps: it can still discover
+; the server and still authenticate (RFC 4643 section 2.2's own reasoning).
+(assert-event (not (fn-auth-restricted-keywordp (fn-nntp-string-octets "CAPABILITIES"))))
+(assert-event (not (fn-auth-restricted-keywordp (fn-nntp-string-octets "HELP"))))
+(assert-event (not (fn-auth-restricted-keywordp (fn-nntp-string-octets "QUIT"))))
+(assert-event (not (fn-auth-restricted-keywordp (fn-nntp-string-octets "AUTHINFO"))))
+(assert-event (not (fn-auth-restricted-keywordp (fn-nntp-string-octets "STARTTLS"))))
+(assert-event (fn-auth-restricted-keywordp (fn-nntp-string-octets "POST")))
+(assert-event (fn-auth-restricted-keywordp (fn-nntp-string-octets "ARTICLE")))
+(assert-event (fn-auth-restricted-keywordp (fn-nntp-string-octets "XPAT")))
+
+; -----------------------------------------------------------------------------
+; The posting allowance is the authenticated principal's
+
+(assert-event (fn-auth-postingp *au-authed*))
+(defconst *au-authed-ro*
+  (au-after (au-after *au-s-req* "AUTHINFO USER guest")
+            "AUTHINFO PASS guest-pass"))
+(assert-event (equal (fn-auth-session-subject *au-authed-ro*) *au-principal-ro*))
+(assert-event (not (fn-auth-postingp *au-authed-ro*)))
+(assert-event (not (fn-auth-postingp *au-s-req*)))
+; With authentication not required the connection's own configuration
+; decides, exactly as before this book existed.
+(assert-event (fn-auth-postingp *au-s-open*))
+
+; -----------------------------------------------------------------------------
+; RFC 4642 section 2.2: STARTTLS
+
+; 382 and the one effect the host acts on.
+(defconst *au-starttls* (au-step *au-s-req* "STARTTLS"))
+(assert-event (equal (fn-post-result-effects *au-starttls*)
+                     (append (au-single "382 continue with TLS negotiation")
+                             (list (list :starttls)))))
+(assert-event (member-equal (fn-auth-starttls-effect)
+                            (fn-post-result-effects *au-starttls*)))
+(assert-event (fn-auth-session-tlsp
+               (fn-post-result-session *au-starttls*)))
+; Section 2.2.2: the protocol state is reset across the handshake.  Nothing
+; cached before it survives.
+(assert-event (null (fn-auth-session-pending
+                     (fn-post-result-session
+                      (au-step *au-after-user* "STARTTLS")))))
+(assert-event (null (fn-auth-session-subject
+                     (fn-post-result-session
+                      (au-step *au-authed* "STARTTLS")))))
+
+; Section 2.2.2: once a TLS layer is active STARTTLS is not a valid command.
+; 502, never 480 or 483, and no second handshake effect.
+(assert-event (equal (au-reply *au-s-req-tls* "STARTTLS")
+                     (au-single "502 a TLS layer is already active")))
+(assert-event (not (member-equal (fn-auth-starttls-effect)
+                                 (au-reply *au-s-req-tls* "STARTTLS"))))
+(assert-event (not (member-equal (fn-auth-starttls-effect)
+                                 (au-reply
+                                  (fn-post-result-session *au-starttls*)
+                                  "STARTTLS"))))
+
+; Section 2.2.2: unable to initiate, for a configuration reason, is 580.
+(assert-event (equal (au-reply *au-s-open* "STARTTLS")
+                     (au-single "580 can not initiate TLS negotiation")))
+(assert-event (not (member-equal (fn-auth-starttls-effect)
+                                 (au-reply *au-s-open* "STARTTLS"))))
+(assert-event (equal (au-reply *au-s-req* "STARTTLS x")
+                     (au-single "501 syntax error")))
+
+; -----------------------------------------------------------------------------
+; RFC 3977 section 5.2 with RFC 4642 section 2.1 and RFC 4643 section 2.1:
+; the capability block in every state
+
+(defconst *au-reader-lines*
+  '("VERSION 2" "READER" "OVER MSGID" "HDR"
+    "LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT"
+    "IMPLEMENTATION fn-nntp-lab"))
+(defconst *au-reader-lines-posting*
+  '("VERSION 2" "READER" "POST" "OVER MSGID" "HDR"
+    "LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT"
+    "IMPLEMENTATION fn-nntp-lab"))
+
+; Unauthenticated, no TLS, a certificate configured: both labels.
+(assert-event
+ (equal (au-reply *au-s-req* "CAPABILITIES")
+        (au-block "101 capability list follows"
+                  (append *au-reader-lines*
+                          '("STARTTLS" "AUTHINFO USER")))))
+; Under TLS, still unauthenticated: STARTTLS gone, AUTHINFO USER kept.
+(assert-event
+ (equal (au-reply *au-s-req-tls* "CAPABILITIES")
+        (au-block "101 capability list follows"
+                  (append *au-reader-lines* '("AUTHINFO USER")))))
+; Authenticated: AUTHINFO USER gone, POST present because this principal may
+; post, STARTTLS still offered because this connection is not yet protected.
+(assert-event
+ (equal (au-reply *au-authed* "CAPABILITIES")
+        (au-block "101 capability list follows"
+                  (append *au-reader-lines-posting* '("STARTTLS")))))
+; Authenticated as the read-only principal: no POST label.
+(assert-event
+ (equal (au-reply *au-authed-ro* "CAPABILITIES")
+        (au-block "101 capability list follows"
+                  (append *au-reader-lines* '("STARTTLS")))))
+; No certificate and nothing required: the reader's own block, unchanged
+; from before this book existed.
+(assert-event
+ (equal (au-reply *au-s-open* "CAPABILITIES")
+        (au-block "101 capability list follows" *au-reader-lines-posting*)))
+; Protected-only and unprotected: AUTHINFO USER is NOT advertised, because
+; the server will not accept it now (RFC 4643 section 2.1).
+(assert-event
+ (equal (au-reply *au-s-prot* "CAPABILITIES")
+        (au-block "101 capability list follows"
+                  (append *au-reader-lines* '("STARTTLS")))))
+; The optional keyword argument of section 5.2.1 is accepted and changes
+; nothing.
+(assert-event (equal (au-reply *au-s-req* "CAPABILITIES READER")
+                     (au-reply *au-s-req* "CAPABILITIES")))
+
+; -----------------------------------------------------------------------------
+; Delegation: every command this book does not claim is the peer/reader
+; profile, value for value.
+
+(assert-event
+ (equal (fn-post-result-effects (au-step *au-s-open* "HELP"))
+        (fn-post-result-effects
+         (fn-peer-step (fn-auth-session-base *au-s-open*) *au-archive*
+                       *au-config* *au-obs*
+                       (list :command (fn-nntp-string-octets "HELP"))))))
+(assert-event
+ (equal (fn-post-result-effects (au-step *au-s-open* "GROUP fn.letters"))
+        (fn-post-result-effects
+         (fn-peer-step (fn-auth-session-base *au-s-open*) *au-archive*
+                       *au-config* *au-obs*
+                       (list :command
+                             (fn-nntp-string-octets "GROUP fn.letters"))))))
+(assert-event
+ (equal (fn-post-result-effects (au-step *au-s-open* "NOSUCHCOMMAND"))
+        (fn-post-result-effects
+         (fn-peer-step (fn-auth-session-base *au-s-open*) *au-archive*
+                       *au-config* *au-obs*
+                       (list :command
+                             (fn-nntp-string-octets "NOSUCHCOMMAND"))))))
+
+; -----------------------------------------------------------------------------
+; Teeth: one concrete violating value per hypothesis
+;
+; fn-auth-gated-command-is-refused-and-not-performed has four hypotheses that
+; can be separated by a value.
+
+; (1) fn-auth-config-requiredp.  With it false the same command is performed:
+; the group IS selected.
+(assert-event (not (fn-auth-config-requiredp *au-open*)))
+(assert-event (not (equal (au-after *au-s-open* "GROUP fn.letters")
+                          *au-s-open*)))
+
+; (2) (not (fn-auth-session-subject as)).  Authenticated, the same command is
+; performed against the same required configuration.
+(assert-event (fn-auth-session-subject *au-authed*))
+(assert-event (not (equal (au-after *au-authed* "GROUP fn.letters")
+                          *au-authed*)))
+
+; (3) fn-auth-restricted-keywordp.  HELP is not restricted and answers its
+; own 100 block rather than 480, under the required configuration.
+(assert-event (not (fn-auth-restricted-keywordp (fn-nntp-string-octets "HELP"))))
+(assert-event (not (equal (au-reply *au-s-req* "HELP")
+                          (au-single "480 authentication required"))))
+
+; (4) fn-nntp-command-inputp.  A line carrying NUL is not command input, so
+; the step delegates and the reader's own 501 answers it, not 480.
+(defconst *au-nul-line* (list 71 0 82))
+(assert-event (not (fn-nntp-command-inputp *au-nul-line*)))
+(assert-event (not (equal (fn-post-result-effects
+                           (fn-auth-step *au-s-req* *au-archive* *au-config*
+                                         *au-obs* (list :command *au-nul-line*)))
+                          (au-single "480 authentication required"))))
+
+; fn-auth-starttls-is-not-advertised-under-tls.  Hypothesis tlsp: with it
+; false and a certificate configured, the label IS in the list, so the
+; theorem is not vacuous.
+(assert-event (member-equal (fn-nntp-string-octets "STARTTLS")
+                            (fn-auth-capability-lines *au-required* nil nil t)))
+(assert-event (not (member-equal (fn-nntp-string-octets "STARTTLS")
+                                 (fn-auth-capability-lines *au-required* nil t t))))
+
+; fn-auth-authinfo-is-not-advertised-once-authenticated.  Hypothesis subject:
+; with it nil the label IS in the list.
+(assert-event (member-equal (fn-nntp-string-octets "AUTHINFO USER")
+                            (fn-auth-capability-lines *au-required* nil nil t)))
+(assert-event (not (member-equal (fn-nntp-string-octets "AUTHINFO USER")
+                                 (fn-auth-capability-lines *au-required*
+                                                           *au-principal* nil t))))
+
+; fn-auth-pass-accepts-only-a-matching-secret.  The separating pair: the same
+; cached name with the configured secret is 281 and with any other octet
+; string is 481.  A secret that differs in one octet:
+(assert-event (not (equal (fn-nntp-string-octets "correct-horsf") *au-secret*)))
+(assert-event (equal (au-reply *au-after-user* "AUTHINFO PASS correct-horsf")
+                     (au-single "481 authentication failed")))
+; ... and fn-auth-checkp itself, on a credential that is not found at all.
+(assert-event (null (fn-auth-find-cred (fn-nntp-string-octets "nobody")
+                                       (fn-auth-config-creds *au-required*))))
+(assert-event (not (fn-auth-checkp nil *au-secret*)))
+(assert-event (fn-auth-checkp *au-cred* *au-secret*))
+
+; fn-auth-second-starttls-is-refused.  Hypothesis fn-auth-session-tlsp: with
+; it false and a certificate configured the reply IS 382 with the effect.
+(assert-event (not (fn-auth-session-tlsp *au-s-req*)))
+(assert-event (member-equal (fn-auth-starttls-effect)
+                            (fn-post-result-effects
+                             (fn-auth-starttls *au-s-req* nil))))
