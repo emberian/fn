@@ -38,7 +38,7 @@ acceptance, refusal and recovery decision below is a call into it.
 ## Initialize
 
 ```
-fn init --config /etc/fn/fn.toml \
+fn --config /etc/fn/fn.toml init \
         --store /var/lib/fn/store \
         --group fn.letters --group fn.test \
         --listen 127.0.0.1:1119 \
