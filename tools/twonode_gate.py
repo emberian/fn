@@ -139,6 +139,55 @@ def split(text):
     return [one for one in text.split(",") if one]
 
 
+def post(args):
+    """POST one article on the live server (RFC 3977 section 6.3.1).
+
+    The owner's feed is driven by what becomes DURABLE, so the gate posts
+    through the server rather than through the CLI: the CLI needs the store
+    lock the running owner holds, and an article written behind the owner's
+    back would never reach fn-own-outcome and so would never be enqueued.
+    """
+    body = article(args.msgid, args.group, "owner-feed", "Posted through the server.")
+    conn = Conn(args.port)
+    out = {"greeting": conn.greeting}
+    first, _ = conn.cmd("POST")
+    out["post"] = first
+    if not first.startswith("340"):
+        conn.close()
+        out["ok"] = False
+        return out
+    send_block(conn, body.decode("ascii", "replace").split("\r\n"))
+    out["result"] = conn.read_line()
+    conn.close()
+    out["ok"] = out["result"].startswith("240")
+    return out
+
+
+def wait(args):
+    """Poll one node until it serves a Message-ID, or the deadline passes.
+
+    This is the only place the gate waits: the feed is asynchronous by
+    construction (the owner offers on its own tick), so "B has it" is a
+    question with a deadline, not an instant.
+    """
+    deadline = time.time() + args.seconds
+    out = {"msgid": args.msgid, "seconds": args.seconds}
+    attempts = 0
+    while time.time() < deadline:
+        attempts += 1
+        try:
+            status, lines = fetch(args.port, args.msgid)
+        except OSError:
+            status, lines = "", []
+        if status.startswith("220"):
+            out.update(ok=True, status=status, attempts=attempts,
+                       lines=len(lines))
+            return out
+        time.sleep(0.5)
+    out.update(ok=False, status=status if "status" in dir() else "", attempts=attempts)
+    return out
+
+
 def presence(args):
     """Every msgid in --present must be served; every one in --absent must not."""
     conn = Conn(args.port)
@@ -280,7 +329,7 @@ def cut(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="phase", required=True)
-    for name in ("presence", "relay", "cut"):
+    for name in ("presence", "relay", "cut", "post", "wait"):
         one = sub.add_parser(name)
         one.add_argument("--port", type=int, default=0)
         one.add_argument("--from-port", type=int, default=0)
@@ -294,8 +343,10 @@ def main():
         one.add_argument("--loop-identity", default="peer.example.invalid")
         one.add_argument("--mode", default="post")
         one.add_argument("--pid", type=int, default=0)
+        one.add_argument("--seconds", type=float, default=30.0)
     args = parser.parse_args()
-    handler = {"presence": presence, "relay": relay, "cut": cut}[args.phase]
+    handler = {"presence": presence, "relay": relay, "cut": cut,
+               "post": post, "wait": wait}[args.phase]
     try:
         result = handler(args)
     except Exception as error:
