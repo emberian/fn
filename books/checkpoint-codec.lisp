@@ -1279,6 +1279,36 @@
    :hints (("Goal" :use fn-cpc-read-strings-domain
             :in-theory (disable fn-cpc-read-strings)))))
 
+; The re-encoded payload must meet the same 4 MiB bound the decoder checked
+; on its input.  Each reader consumes a prefix whose re-encoding is that
+; prefix (the -reencode lemmas above), so the three encoded segments and the
+; final remainder partition OCTETS.  Stated on LEN and cited at the two
+; concrete instances: as a rewrite `(len octets)' on the left would match
+; every length in the conjecture.
+(local
+ (defthm fn-cpc-read-uints-reencode-len
+   (implies (and (fn-cbor-octet-listp octets)
+                 (fn-record-parse-okp (fn-cpc-read-uints n octets)))
+            (equal (+ (len (fn-cpc-encode-uints
+                            (fn-record-parse-value (fn-cpc-read-uints n octets))))
+                      (len (fn-record-parse-rest (fn-cpc-read-uints n octets))))
+                   (len octets)))
+   :rule-classes nil
+   :hints (("Goal" :use fn-cpc-read-uints-reencode
+            :in-theory (disable fn-cpc-read-uints-reencode)))))
+
+(local
+ (defthm fn-cpc-read-strings-reencode-len
+   (implies (and (fn-cbor-octet-listp octets)
+                 (fn-record-parse-okp (fn-cpc-read-strings n octets)))
+            (equal (+ (len (fn-cpc-encode-strings
+                            (fn-record-parse-value (fn-cpc-read-strings n octets))))
+                      (len (fn-record-parse-rest (fn-cpc-read-strings n octets))))
+                   (len octets)))
+   :rule-classes nil
+   :hints (("Goal" :use fn-cpc-read-strings-reencode
+            :in-theory (disable fn-cpc-read-strings-reencode)))))
+
 (defthm fn-cpc-accepted-input-is-canonical
   (implies (fn-cpc-result-okp
             (fn-cpc-decode octets groups capacity max-frontier max-sequence))
@@ -1329,7 +1359,30 @@
                        (xs (fn-record-parse-value
                             (fn-cpc-read-uints
                              5 (fn-record-parse-rest
-                                (fn-cpc-read-bytes octets))))))))))
+                                (fn-cpc-read-bytes octets))))))
+            ; The remaining obligation is the FNCP schema magic rebuilt in
+            ; front of the first reader's remainder.  This is exactly
+            ; fn-cpc-read-bytes-reencode at OCTETS; under the branch
+            ; hypothesis that the read value IS *fn-cpc-magic* its left side
+            ; evaluates to (68 102 110 45 99) appended to that remainder.
+            ; Cited at the instance (row 12b), never left to match.
+            (:instance fn-cpc-read-bytes-reencode)
+            ; ... and the payload bound on the re-encoding: the magic is five
+            ; octets, and each of the two remaining readers consumes exactly
+            ; what its encoder emits, so the segments sum to (len octets).
+            (:instance fn-cpc-read-uints-reencode-len
+                       (n 5)
+                       (octets (fn-record-parse-rest (fn-cpc-read-bytes octets))))
+            (:instance fn-cpc-read-strings-reencode-len
+                       (n (fn-frame-item
+                           4 (fn-record-parse-value
+                              (fn-cpc-read-uints
+                               5 (fn-record-parse-rest
+                                  (fn-cpc-read-bytes octets))))))
+                       (octets (fn-record-parse-rest
+                                (fn-cpc-read-uints
+                                 5 (fn-record-parse-rest
+                                    (fn-cpc-read-bytes octets))))))))))
 
 ; -- hostile headers are refused before the node item is parsed --------------------
 ;
@@ -1605,6 +1658,27 @@
    :hints (("Goal" :in-theory (enable fn-cpc-encode fn-cpc-encode-header
                                       fn-cpc-encodablep)))))
 
+; The two big-endian argument constructors are fixed-length lists.  Their
+; definitions stay closed in the length lemma below (opening them there puts
+; four floor/mod terms into an arithmetic goal that does not need them), so
+; the lengths are stated once, here.
+(local
+ (defthm fn-cpc-u16-bytes-len
+   (equal (len (fn-cbor-u16-bytes n)) 2)
+   :hints (("Goal" :in-theory (enable fn-cbor-u16-bytes)))))
+(local
+ (defthm fn-cpc-u32-bytes-len
+   (equal (len (fn-cbor-u32-bytes n)) 4)
+   :hints (("Goal" :in-theory (enable fn-cbor-u32-bytes)))))
+
+; Every CBOR argument head is at most five octets (1 + u32).  The selection
+; and frame guards ask for this bound on a symbolic major and value.
+(local
+ (defthm fn-cpc-encode-argument-len
+   (<= (len (fn-cbor-encode-argument major n)) 5)
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (enable fn-cbor-encode-argument)))))
+
 (local
  (defthm fn-cpc-uint-encoding-len
    (implies (and (natp n) (<= n *fn-cbor-max-uint*))
@@ -1674,6 +1748,15 @@
                             fn-frame-encode fn-frame-protected
                             fn-frame-protected-prefix fn-frame-open-of-seal)))))
 
+; The empty payload is refused before anything else: fn-cpc-read-bytes of NIL
+; is a parse error, so the frame keystone's degenerate branch is closed by
+; evaluation once the decoder is open in this one fact.
+(local
+ (defthm fn-cpc-decode-of-nil-is-not-accepted
+   (not (equal (car (fn-cpc-decode nil groups capacity max-frontier max-sequence))
+               :ok))
+   :hints (("Goal" :in-theory (enable fn-cpc-decode)))))
+
 (defthm fn-cpc-frame-accepted-is-canonical
   (implies (and (fn-cbor-octet-listp octets)
                 (fn-cpc-result-okp
@@ -1693,7 +1776,13 @@
                             (octets (fn-frame-result-payload
                                      (fn-frame-decode octets digest
                                                       *fn-cpc-max-payload*)))))
-           :in-theory (e/d (fn-cpc-frame-decode fn-cpc-frame-encode)
+           ; FN-FRAME-RESULT-OKP is opened here for the reason row 12a
+           ; opened FN-RECORD-PARSE-OKP: the case split leaves subgoals that
+           ; carry BOTH (not (fn-frame-result-okp (fn-frame-decode ...))) and
+           ; (equal (car (fn-frame-decode ...)) :ok), which is a contradiction
+           ; the closed recognizer hides.
+           :in-theory (e/d (fn-cpc-frame-decode fn-cpc-frame-encode
+                            fn-frame-result-okp)
                            (fn-cpc-decode fn-cpc-encode fn-frame-decode
                             fn-frame-encode fn-cpc-accepted-input-is-canonical
                             fn-frame-encode-of-decode)))))
