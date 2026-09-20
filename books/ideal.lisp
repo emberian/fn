@@ -181,13 +181,8 @@
       ;; the reply stream does not depend on how the network cut the input.
       (let* ((id (fn-ag-car (fn-ag-cdr e)))
              (chunk (fn-ag-car (fn-ag-cdr (fn-ag-cdr e))))
-             ;; The reader environment (clock observation, creation facts)
-             ;; rides on the port event: (:octets id chunk env).  The
-             ;; environment supplies the observation; the machine never
-             ;; reads a clock of its own.
-             (env (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr e)))))
              (result (fn-served-step (fn-ideal-conn-find id (fn-ideal-conns s))
-                                     env chunk)))
+                                     chunk)))
         (fn-ideal-make-result
          (fn-ideal-make-state (fn-ideal-config s)
                               (fn-ideal-relay s)

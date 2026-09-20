@@ -284,7 +284,8 @@
             archive))
   :hints (("Goal"
            :use ((:instance fn-nntp-step-preserves-consistent-session
-                            (session (fn-post-session-base ps)))
+                            (session (fn-post-session-base ps))
+                            (env (fn-nntp-env observation nil)))
                  (:instance fn-nntp-consistent-session-is-session
                             (session (fn-nntp-result-session
                                       (fn-nntp-step (fn-post-session-base ps)
@@ -308,7 +309,8 @@
              (fn-nntp-post-step ps archive config observation wire-event))))
   :hints (("Goal"
            :use ((:instance fn-nntp-step-effects-well-formed
-                            (session (fn-post-session-base ps))))
+                            (session (fn-post-session-base ps))
+                            (env (fn-nntp-env observation nil))))
            :in-theory (e/d (fn-post-single fn-nntp-effectsp
                             fn-post-refusal-line)
                            (fn-nntp-step-effects-well-formed

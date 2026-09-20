@@ -164,7 +164,7 @@ class ReaderSocketTests(unittest.TestCase):
                      b"NEWGROUPS 20990101 000000 UTC\r\n")
         self.reader.assert_bytes(
             sock,
-            b"231 list of new newsgroups follows\r\nfn.letters 1 1 y\r\n.\r\n")
+            b"231 list of new newsgroups follows\r\n.\r\n")
         self.reader.assert_bytes(
             sock, b"231 list of new newsgroups follows\r\n.\r\n")
         self.reader.assert_bytes(sock, b"501 syntax error\r\n")
@@ -324,7 +324,8 @@ class StoreReaderSocketTests(unittest.TestCase):
             client.sendall(b"CAPABILITIES\r\n")
             reader.assert_bytes(
                 client,
-                b"101 capability list follows\r\nVERSION 2\r\n"
+                b"101 capability list follows\r\nVERSION 2\r\nREADER\r\n"
+                b"OVER MSGID\r\nLIST ACTIVE NEWSGROUPS OVERVIEW.FMT\r\n"
                 b"IMPLEMENTATION fn-nntp-lab\r\n.\r\n")
             client.sendall(b"GROUP fn.letters\r\n")
             reader.assert_bytes(client, b"211 2 1 2 fn.letters\r\n")
