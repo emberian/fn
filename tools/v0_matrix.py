@@ -97,8 +97,24 @@ OUTCOMES = (ACCEPTED, REFUSED, UNCERTAIN)
 # than the server deciding.  RFC 3977 section 3.2.1: 400 service discontinued,
 # 403 internal fault, 503 feature not supported for a reason of its own.
 FAULT_CODES = frozenset(("400", "403", "503"))
-# RFC 3977 section 3.2.1 again: the verb is not there at all.
-UNSUPPORTED_CODES = frozenset(("500", "501", "502"))
+# RFC 3977 section 3.2.1: the verb is not there at all.  502 is NOT in this
+# set -- measured on persvati 2026-09-20, an fn node answers `IHAVE` with
+# "502 transit is not permitted on this connection", which is the node
+# dispatching the command and deciding about the caller, not the command
+# being absent.  Reading 502 as "not built" would have reported a working
+# transit surface as missing.
+UNSUPPORTED_CODES = frozenset(("500", "501"))
+# The verb is there and this caller may not use it: a permission answer, not
+# a decision about the argument.
+NOT_PERMITTED_CODES = frozenset(("440", "480", "483", "502"))
+
+# Who made the observation.  The first three are fn's own code talking to fn,
+# which is the weak case: a row seen only by these is marked `independent:
+# false` and counted separately in the summary.
+CLIENT_CLI = "fn CLI (exit code)"
+CLIENT_DRIVER = "the matrix's raw-socket driver"
+CLIENT_LAB = "an fn harness (tcpcl_lab, campaign, scale_gate)"
+FN_CLIENTS = frozenset((CLIENT_CLI, CLIENT_DRIVER, CLIENT_LAB))
 
 FEATURES = (
     ("F-NODE", "node init, configuration, start and stop"),
@@ -469,7 +485,7 @@ PLAN = (
     # -- F-CLIENT --------------------------------------------------------
     S("V0-CLIENT-NNTPLIB", "F-CLIENT",
       "an independent stdlib nntplib client reads a group and an article",
-      ("NNT-002",), ("SCN-014",), ACCEPTED),
+      ("NNT-002", "NNT-003"), ("SCN-014",), ACCEPTED, "node"),
     S("V0-CLIENT-SLRN", "F-CLIENT", "slrn reads a group and an article",
       ("NNT-002",), ("SCN-014",), ACCEPTED),
 )
@@ -483,10 +499,12 @@ class Row:
     """One emitted row: a verdict, and everything needed to check it."""
 
     __slots__ = ("id", "spec", "node", "direction", "verdict", "invocation",
-                 "observed", "exit_code", "log", "limit", "blocker", "owner")
+                 "observed", "exit_code", "log", "limit", "blocker", "owner",
+                 "client")
 
     def __init__(self, rid, spec, verdict, invocation, observed, exit_code,
-                 log, limit, blocker, owner, node=None, direction=None):
+                 log, limit, blocker, owner, node=None, direction=None,
+                 client=None):
         self.id = rid
         self.spec = spec
         self.node = node
@@ -499,6 +517,18 @@ class Row:
         self.limit = limit
         self.blocker = blocker
         self.owner = owner
+        self.client = client
+
+    @property
+    def independent(self):
+        """True only when something that is not fn's own code made the
+        observation. A feature "usable between two peered servers" that only
+        fn's own client has ever seen is a weaker claim than it reads, and
+        the matrix says which rows those are rather than letting the reader
+        assume otherwise."""
+        if self.verdict not in OUTCOMES or not self.client:
+            return None
+        return self.client not in FN_CLIENTS
 
     @property
     def agrees(self):
@@ -520,6 +550,8 @@ class Row:
             "verdict": self.verdict,
             "expected": self.spec.expected,
             "agrees": self.agrees,
+            "client": self.client,
+            "independent": self.independent,
             "invocation": self.invocation,
             "observed": self.observed,
             "exit_code": self.exit_code,
@@ -550,6 +582,24 @@ def reply_verdict(status: str) -> str:
 
 def unsupported(status: str) -> bool:
     return (status or "").strip()[:3] in UNSUPPORTED_CODES
+
+
+def not_permitted(status: str) -> bool:
+    return (status or "").strip()[:3] in NOT_PERMITTED_CODES
+
+
+def available(status: str) -> bool:
+    """Is the command available to this caller (RFC 3977 section 5.2.2)?
+
+    A capability is advertised exactly when the command is available, so the
+    audit needs a reading of "available" that a refusal ABOUT THE ARGUMENT
+    does not fail: `GROUP no.such.group` answering 411 is the command working.
+    """
+    code = (status or "").strip()[:3]
+    if not code.isdigit():
+        return False
+    return code[0] in "123" or (code not in UNSUPPORTED_CODES
+                                and code not in NOT_PERMITTED_CODES)
 
 
 def traceback_line(output: str) -> str:
@@ -612,6 +662,32 @@ def article_lines(msgid, group, subject, body, path=""):
 
 def labels(caps):
     return [c.split()[0].upper() for c in caps if c.strip()]
+
+
+# RFC 3977 section 5.2.2: the capability is advertised exactly when the
+# command is available.  Only labels the RFCs define as capabilities are
+# audited in the reverse direction: XOVER, XHDR, XPAT and LISTGROUP are not
+# capability labels of their own (LISTGROUP is READER's), so dispatching them
+# without a label of their own is not a defect.
+RFC_LABELS = ("READER", "POST", "IHAVE", "STREAMING", "OVER", "HDR", "LIST",
+              "NEWNEWS", "AUTHINFO", "STARTTLS", "MODE-READER")
+# The verb is absent, or present and closed to this caller.  Either way the
+# command is not available and the capability must not be advertised.
+UNAVAILABLE = ("500", "501", "502", "440", "480", "483")
+
+
+def is_available(reply):
+    code = (reply or "")[:3]
+    return code.isdigit() and code not in UNAVAILABLE
+
+
+def login(conn, args, out, prefix=""):
+    """AUTHINFO USER/PASS, when the caller was given a credential."""
+    if not args.user:
+        return False
+    out[prefix + "AUTHINFO USER"] = conn.cmd("AUTHINFO USER " + args.user)[0]
+    out[prefix + "AUTHINFO PASS"] = conn.cmd("AUTHINFO PASS " + args.secret)[0]
+    return out[prefix + "AUTHINFO PASS"].startswith("281")
 
 
 def surface(args):
@@ -701,6 +777,8 @@ def pins(args):
     a transfer and a POST is one per connection on this tree.
     """
     conn = Conn(args.port)
+    out_login = {}
+    login(conn, args, out_login)
     status, caps = conn.cmd("CAPABILITIES", multiline=True)
     advertised = labels(caps)
     conn.close()
@@ -708,6 +786,13 @@ def pins(args):
     for label, template, opens in PROBES:
         probe = Conn(args.port)
         try:
+            # Everything but AUTHINFO itself is probed on an AUTHENTICATED
+            # connection, because that is the connection whose CAPABILITIES
+            # block was read above.  AUTHINFO is withdrawn once authenticated
+            # (RFC 4643 section 2.3), so probing it after a login would test
+            # the withdrawal, not the dispatch.
+            if label != "AUTHINFO":
+                login(probe, args, {})
             reply = probe.cmd(template.format(group=args.group))[0]
             answered[label] = reply
             # A command that opened a transfer is closed with an empty block
@@ -725,15 +810,15 @@ def pins(args):
             probe.close()
         except Exception:
             pass
-    dispatched = [l for l, _, _ in PROBES
-                  if answered.get(l, "")[:3] not in ("500", "501", "502")
-                  and answered.get(l, "")[:1].isdigit()]
+    dispatched = [l for l, _, _ in PROBES if is_available(answered.get(l, ""))]
     out = {"advertised": advertised, "answered": answered,
-           "dispatched": dispatched,
-           # A label with no probe command cannot be checked either way.
+           "dispatched": dispatched, "login": out_login,
+           # A label with no probe command cannot be checked either way, and
+           # only the RFCs' own capability labels are audited in reverse.
            "advertised_not_dispatched": sorted(
                set(advertised) & {l for l, _, _ in PROBES} - set(dispatched)),
-           "dispatched_not_advertised": sorted(set(dispatched) - set(advertised)),
+           "dispatched_not_advertised": sorted(
+               (set(dispatched) & set(RFC_LABELS)) - set(advertised)),
            "capability_lines": caps}
     out["ok"] = not out["advertised_not_dispatched"] and not out["dispatched_not_advertised"]
     return out
@@ -743,6 +828,7 @@ def postcycle(args):
     """One POST on its own connection, with the read-back in three places."""
     out = {}
     poster = Conn(args.port)
+    login(poster, args, out)
     out["GROUP BEFORE"] = poster.cmd("GROUP " + args.group)[0]
     out["POST"] = poster.cmd("POST")[0]
     if out["POST"].startswith("340"):
@@ -756,6 +842,7 @@ def postcycle(args):
     poster.close()
 
     fresh = Conn(args.port)
+    login(fresh, args, {})
     out["FRESH ARTICLE"] = fresh.cmd("ARTICLE " + args.msgid, multiline=True)[0]
     fresh.close()
 
@@ -763,6 +850,7 @@ def postcycle(args):
     # connection at accept, so a second POST on the poster's connection would
     # be refused for a reason that is not duplicate suppression.
     again = Conn(args.port)
+    login(again, args, {})
     out["DUPLICATE POST"] = again.cmd("POST")[0]
     if out["DUPLICATE POST"].startswith("340"):
         send_block(again, article_lines(args.msgid, args.group, "matrix post",
@@ -785,8 +873,10 @@ def concurrent(args):
     """A second reader stays live across another connection's whole POST."""
     out = {}
     watcher = Conn(args.port)
+    login(watcher, args, {})
     out["WATCHER BEFORE"] = watcher.cmd("GROUP " + args.group)[0]
     poster = Conn(args.port)
+    login(poster, args, out)
     out["POST"] = poster.cmd("POST")[0]
     if not out["POST"].startswith("340"):
         out["WATCHER MID"] = "(not attempted)"
@@ -921,7 +1011,7 @@ def main():
         one.add_argument("--group", default="fn.letters")
         one.add_argument("--msgid", default="")
         one.add_argument("--absent", default="<absent@example.invalid>")
-        one.add_argument("--user", default="matrix")
+        one.add_argument("--user", default="")
         one.add_argument("--secret", default="matrix-secret")
         one.add_argument("--socket", default="")
         one.add_argument("--line", default="VERSION")
@@ -937,6 +1027,85 @@ def main():
         return 1
     print(json.dumps(result))
     return 0 if result.get("ok") else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+'''
+
+
+# The independent client.  Everything else in this file speaks to fn through
+# sockets fn's own harnesses opened; this one hands the connection to the
+# Python standard library's own NNTP implementation and lets it frame, parse
+# and decode.  PEP 594 removed `nntplib` in 3.13, so it runs under whichever
+# older interpreter the box has -- on persvati that is a uv-managed CPython
+# 3.12 (`uv python install 3.12`), which is not fn's code by any reading.
+INDEPENDENT_DRIVER = r'''#!/usr/bin/env python3
+"""A stdlib-nntplib reader against a live fn node.  No fn module is imported,
+and no framing, folding or response parsing in this file is fn's: nntplib
+does all of it.  The fixture is passed in, so the probe makes no assumption
+about what the node holds."""
+import argparse, json, nntplib, platform, sys
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--port", type=int, required=True)
+    parser.add_argument("--group", required=True)
+    parser.add_argument("--msgid", required=True)
+    parser.add_argument("--absent", default="<absent@example.invalid>")
+    args = parser.parse_args()
+    out = {"client": "stdlib nntplib", "python": platform.python_version(),
+           "commands": []}
+    try:
+        with nntplib.NNTP("127.0.0.1", port=args.port, timeout=30) as client:
+            out["welcome"] = client.getwelcome()
+            caps = client.getcapabilities()
+            out["capabilities"] = sorted(caps)
+            out["commands"].append("CAPABILITIES")
+            _, count, first, last, name = client.group(args.group)
+            out["group"] = {"count": count, "first": first, "last": last,
+                            "name": name}
+            out["commands"].append("GROUP")
+            _, number, found = client.stat(str(first))
+            out["stat"] = [number, found]
+            out["commands"].append("STAT")
+            _, info = client.article(args.msgid)
+            out["article_lines"] = len(info.lines)
+            out["article_has_msgid"] = any(
+                args.msgid.encode() in line for line in info.lines)
+            out["commands"].append("ARTICLE")
+            _, head = client.head(args.msgid)
+            out["head_lines"] = len(head.lines)
+            out["commands"].append("HEAD")
+            _, body = client.body(args.msgid)
+            out["body_lines"] = len(body.lines)
+            out["commands"].append("BODY")
+            try:
+                _, over = client.over((first, last))
+                out["over_rows"] = len(over)
+                out["commands"].append("OVER")
+            except nntplib.NNTPError as error:
+                out["over_rows"] = "NNTPError: {}".format(error)
+            _, groups = client.list()
+            out["list_groups"] = sorted(g.group for g in groups)
+            out["commands"].append("LIST")
+            try:
+                client.article(args.absent)
+                out["absent"] = "the node served an article it should not hold"
+            except nntplib.NNTPTemporaryError as error:
+                out["absent"] = str(error)
+            out["commands"].append("ARTICLE (absent)")
+            out["quit"] = client.quit()
+            out["commands"].append("QUIT")
+        out["ok"] = (out["group"]["count"] >= 1 and out["article_has_msgid"]
+                     and out["body_lines"] >= 1
+                     and str(out["absent"]).startswith("43"))
+    except Exception as error:
+        out["ok"] = False
+        out["error"] = "{}: {}".format(type(error).__name__, error)
+    print(json.dumps(out, sort_keys=True))
+    return 0 if out.get("ok") else 1
 
 
 if __name__ == "__main__":
@@ -977,6 +1146,7 @@ class V0Matrix(twonode_gate.TwoNodeGate):
         "blocked the row; not-built names the lane that owns the missing feature.",
         "It establishes nothing about the books beyond which certificates ACL2 read.")
     FACT_KEYS = ("os", "kernel", "python3", "acl2version", "certificates",
+                 "uncertified books", "feature probe", "assigned ports",
                  "node a", "node b", "server entry point", "peer records",
                  "three outcomes a", "three outcomes b", "transit", "feed",
                  "kill", "tcpcl", "rows")
@@ -1002,7 +1172,7 @@ class V0Matrix(twonode_gate.TwoNodeGate):
     # -- rows -------------------------------------------------------------
     def emit(self, key, verdict, invocation, observed, *, node=None,
              direction=None, exit_code=None, log=None, limit="", blocker=None,
-             owner=None) -> Row:
+             owner=None, client=None) -> Row:
         """Record one planned row's verdict.  The only way a row is created."""
         spec = PLAN_BY_KEY[key]
         suffix = ""
@@ -1020,9 +1190,11 @@ class V0Matrix(twonode_gate.TwoNodeGate):
                 rid, verdict, VERDICTS))
         if verdict in (NOT_EXERCISED, NOT_BUILT) and not blocker:
             raise GateError("row {}: a {} row must name its blocker".format(rid, verdict))
+        if verdict in OUTCOMES and client is None:
+            client = CLIENT_DRIVER
         row = Row(rid, spec, verdict, invocation, observed, exit_code,
                   log or self.evidence_name, limit, blocker, owner,
-                  node=node, direction=direction)
+                  node=node, direction=direction, client=client)
         self.rows.append(row)
         self.emitted.add(rid)
         return row
@@ -1034,6 +1206,7 @@ class V0Matrix(twonode_gate.TwoNodeGate):
         if verdict == NOT_EXERCISED and not kwargs["blocker"]:
             kwargs["blocker"] = step.note or "the command did not run"
         observed = "rc={} {}".format(step.rc, step.first_line or "(no output)")
+        kwargs.setdefault("client", CLIENT_CLI)
         return self.emit(key, verdict, step.command, observed,
                          exit_code=step.rc, **kwargs)
 
@@ -1100,6 +1273,42 @@ class V0Matrix(twonode_gate.TwoNodeGate):
                              "recorded not-exercised below".format(
                                  label, type(error).__name__, error))
 
+    # -- certificates -------------------------------------------------------
+    def certificates(self):
+        """The deploy gate's gate-directory copy, then the box's own cache.
+
+        `certpick.py` copies a pair only when the `.lisp` beside it in the
+        gate hashes the same as the one here, so a revision the box has no
+        gate for loses a pair per changed book -- and a book whose pair did
+        not come across is included UNCERTIFIED, which is exactly the thing a
+        release gate must not leave unsaid. The box's content-keyed cache
+        (`tools/certs.py install`) is keyed on each book's whole include
+        closure rather than on a revision, so it fills in what a neighbouring
+        gate could not. What is still missing afterwards is recorded by name.
+        """
+        step = super().certificates()
+        cache = self.sh("install from the box certificate cache", self.cd(
+            "python3 tools/certs.py install --root {} --cache $HOME/fn-certcache "
+            "2>&1 | tail -8".format(self.deploy)), timeout=1800, expect=None)
+        summary = " | ".join(cache.output.strip().splitlines()[-3:])
+        self.facts["certificates"] = "{}; cache install rc={}: {}".format(
+            self.facts.get("certificates", "(none)"), cache.rc, summary)
+        missing = self.sh("books with no certificate", self.cd(
+            "for f in books/*.lisp; do b=${f%.lisp}; "
+            "[ -f \"$b.cert\" ] || printf '%s ' \"${b#books/}\"; done; echo"),
+            expect=None)
+        names = missing.output.strip().split()
+        self.facts["uncertified books"] = (
+            "{}: {}".format(len(names), " ".join(names)) if names
+            else "none: every book in the deploy tree has a certificate")
+        if names:
+            self.gaps.append(
+                "{} book(s) in the deploy tree have no certificate and are included "
+                "from source if anything asks for them: {}. Every `not-exercised` row "
+                "below whose blocker names a book is naming one of these."
+                .format(len(names), " ".join(names)))
+        return step
+
     # -- probes -----------------------------------------------------------
     def probe_tree(self):
         """What this commit has.  Every `not-built` row below cites this step."""
@@ -1114,17 +1323,24 @@ python3 tools/run_reader.py --help 2>&1 | grep -q -- '--post' \
 [ -f tools/media.py ] && echo media=yes || echo media=no
 [ -f tools/stx.py ] && echo stx=yes || echo stx=no
 for b in owner served peer-inbound nntp-auth peer-config peer-feed node nntp \
-         tcpcl-session checkpoint; do
+         tcpcl-session checkpoint peer-feed-invariants owner-feed nntp-auth-invariants \
+         auth-secret; do
   [ -f books/$b.cert ] && echo "cert-$b=yes" || echo "cert-$b=no"
 done
 grep -q 'include-book "nntp-auth"' books/served.lisp \
   && echo auth-wired=yes || echo auth-wired=no
-grep -q 'fn-feed-' host/owner-host.lisp 2>/dev/null \
-  && echo feed-in-owner=yes || echo feed-in-owner=no
+grep -q 'fn-owner-feed-configure' host/owner-host.lisp 2>/dev/null \
+  && echo owner-feed=yes || echo owner-feed=no
+[ -f books/bp-node.lisp ] && [ -f tests/bp-dtn7/run_fn_bp_interop.py ] \
+  && echo bp-node=yes || echo bp-node=no
 for p in python3.9 python3.10 python3.11 python3.12; do
   command -v $p >/dev/null && $p -c 'import nntplib' 2>/dev/null \
     && echo "nntplib=$p"; done
+UVPY=$(PATH=$PATH:/snap/bin uv python find 3.12 2>/dev/null || true)
+[ -n "$UVPY" ] && [ -x "$UVPY" ] && "$UVPY" -c 'import nntplib' 2>/dev/null \
+  && echo "nntplib=$UVPY"
 command -v slrn >/dev/null && echo slrn=yes || echo slrn=no
+command -v swarm-build >/dev/null && echo swarm-build=yes || echo swarm-build=no
 """), timeout=300)
         for line in step.output.splitlines():
             if "=" in line:
@@ -1456,6 +1672,7 @@ else echo NONE; fi
             shows = other.name in listing.output
             self.emit("V0-PEER-LIST",
                       ACCEPTED if (listing.rc == EXIT_OK and shows)
+                      else REFUSED if listing.rc == EXIT_OK
                       else exit_verdict(listing.rc), listing.command,
                       "rc={} lists {}: {}".format(listing.rc, other.name, shows),
                       node=node.name, exit_code=listing.rc,
@@ -1552,10 +1769,16 @@ else echo NONE; fi
                               timeout=900, expect=None)
             shows = AUTH_USER in listing.output
             self.emit("V0-AUTH-LIST",
-                      ACCEPTED if (listing.rc == 0 and shows) else exit_verdict(listing.rc),
+                      ACCEPTED if (listing.rc == 0 and shows)
+                      else REFUSED if listing.rc == 0 else exit_verdict(listing.rc),
                       listing.command, "rc={} lists {}: {}".format(
                           listing.rc, AUTH_USER, shows),
-                      node=node.name, exit_code=listing.rc)
+                      node=node.name, exit_code=listing.rc,
+                      limit="`principal set-password` writes a credential to "
+                            "<store>/auth.toml and `principal list` reads the "
+                            "<store>/principals/*.principal files: on this tree they "
+                            "are two registries and a login set by the first does not "
+                            "appear in the second")
 
     def auth_session(self, node: NodeSpec):
         keys = ("V0-AUTH-ADVERTISED", "V0-AUTH-GATED", "V0-AUTH-LOGIN",
@@ -1569,6 +1792,15 @@ else echo NONE; fi
         if not result or "AUTHINFO USER" not in result:
             self.blocked(keys, "the AUTHINFO driver produced no result on node {}: {}"
                          .format(node.upper, result.get("error", step.first_line)),
+                         nodes=(node.name,), invocation=step.command)
+            return
+        if not_permitted(result["AUTHINFO USER"]) and not unsupported(
+                result["AUTHINFO USER"]):
+            self.blocked(keys,
+                         "node {} DISPATCHED `AUTHINFO USER` and answered '{}': the "
+                         "command is there and this connection may not use it yet "
+                         "(RFC 4643 section 2.3.1 requires 483 under a protected-only "
+                         "policy)".format(node.upper, result["AUTHINFO USER"]),
                          nodes=(node.name,), invocation=step.command)
             return
         if unsupported(result["AUTHINFO USER"]):
@@ -1610,16 +1842,36 @@ else echo NONE; fi
 
     # -- F-POST -----------------------------------------------------------
     def post_cycle(self, node: NodeSpec):
+        # RFC 3977 section 6.3.1.1: the node answers 440 when posting is not
+        # permitted, and on this tree the permission is the AUTHENTICATED
+        # PRINCIPAL's (books/nntp-auth, fn-auth-postingp).  So the POST rows
+        # log in first; the row that checks an unauthenticated POST is refused
+        # is V0-AUTH-GATED, and it must stay that way or the two rows would be
+        # measuring each other.
         keys = ("V0-POST-OPEN", "V0-POST-COMMIT", "V0-POST-READBACK",
                 "V0-POST-FRESH", "V0-POST-DUPLICATE")
-        step = self.matrix("postcycle", "--port {} --group {} --msgid '{}'".format(
-            node.port, GROUPS[0], SOCKET_POST[node.name]),
+        step = self.matrix("postcycle", "--port {} --group {} --msgid '{}' "
+                           "--user {} --secret {}".format(
+                               node.port, GROUPS[0], SOCKET_POST[node.name],
+                               AUTH_USER, AUTH_SECRET),
             name="node {} POST cycle".format(node.upper), expect=None)
         result = self.payload(step)
         if not result or "POST" not in result:
             self.blocked(keys, "the POST driver produced no result on node {}: {}".format(
                 node.upper, result.get("error", step.first_line)),
                 nodes=(node.name,), invocation=step.command)
+            return
+        if not_permitted(result["POST"]):
+            self.blocked(keys,
+                         "node {} DISPATCHED `POST` and answered '{}' after the "
+                         "AUTHINFO login this phase performed ({} / {}): posting is "
+                         "permitted by the authenticated principal's credential "
+                         "(fn-auth-postingp), so either the login did not take or the "
+                         "credential does not carry the allowance".format(
+                             node.upper, result["POST"],
+                             result.get("AUTHINFO USER", "no USER reply"),
+                             result.get("AUTHINFO PASS", "no PASS reply")),
+                         nodes=(node.name,), invocation=step.command)
             return
         if unsupported(result["POST"]):
             uncert = self.uncertified("owner", "served")
@@ -1653,8 +1905,10 @@ else echo NONE; fi
             node.accepted.append(SOCKET_POST[node.name])
 
     def post_concurrent(self):
-        step = self.matrix("concurrent", "--port {} --group {} --msgid '{}'".format(
-            self.a.port, GROUPS[0], CONCURRENT_ID),
+        step = self.matrix("concurrent", "--port {} --group {} --msgid '{}' "
+                           "--user {} --secret {}".format(
+                               self.a.port, GROUPS[0], CONCURRENT_ID,
+                               AUTH_USER, AUTH_SECRET),
             name="a second reader across node A's POST", expect=None)
         result = self.payload(step)
         if not result or "POST" not in result:
@@ -1752,7 +2006,8 @@ else echo NONE; fi
                         "keystone is books/wire-invariants', not this row")
 
     def capability_pins(self, node: NodeSpec):
-        step = self.matrix("pins", "--port {} --group {}".format(node.port, GROUPS[0]),
+        step = self.matrix("pins", "--port {} --group {} --user {} --secret {}".format(
+            node.port, GROUPS[0], AUTH_USER, AUTH_SECRET),
                            name="node {} capability pins".format(node.upper),
                            timeout=600, expect=None)
         result = self.payload(step)
@@ -1829,8 +2084,8 @@ else echo NONE; fi
         if way == "ab":
             self.facts["transit"] = "IHAVE -> '{}'; CAPABILITIES lists IHAVE: {}".format(
                 offer or "no answer", result.get("ihave_advertised"))
+        uncert = self.uncertified("peer-inbound", "served", "owner", "peer-config")
         if not offer or unsupported(offer):
-            uncert = self.uncertified("peer-inbound", "served", "owner", "peer-config")
             self.blocked(self.TRANSIT_KEYS,
                          "node {} answered `IHAVE {}` with '{}'. Transit is on the "
                          "served path, the server that started is `{}`, and {}"
@@ -1840,6 +2095,19 @@ else echo NONE; fi
                                  if uncert else
                                  "no entry point on this commit dispatched it"),
                          verdict=NOT_BUILT, owner="w9/peering-e2e (books/owner)",
+                         directions=(way,), invocation=probe.command)
+            return
+        if not_permitted(offer):
+            self.blocked(self.TRANSIT_KEYS,
+                         "node {} DISPATCHED `IHAVE {}` and answered '{}': the transit "
+                         "surface is on this commit and the node decided about the "
+                         "caller. The connection was not resolved as a peer -- node {} "
+                         "is serving from `{}`, and a peer table is read at :open by "
+                         "the owner (specs/peering.md 1.1, "
+                         "fn-owner-peer-for-address){}".format(
+                             target.upper, msgid, offer, target.upper, target.kind,
+                             "" if target.kind.startswith(("owner", "fn"))
+                             else ", which is not the entry point that started here"),
                          directions=(way,), invocation=probe.command)
             return
         served = "node {} is `{}`; the peer record on it names {}".format(
@@ -1904,55 +2172,92 @@ else echo NONE; fi
     def outbound_feed(self):
         """The owner's own feed, with no socket driven by hand.
 
-        `tools/run_feed.py` drives one peer's feed as a separate process; the
-        v0 question is whether the OWNER does it, so the probe is whether the
-        owner host calls the feed seam at all.
+        `tools/twonode_gate.py`'s `scenario_owner_feed` is the run: node A
+        posts through its own server, A's feed table (books/owner-feed.lisp,
+        stepped by the owner) offers the article to B, and then the other
+        way. Nothing here drives a transit socket; the only observations are
+        whether the far side serves the article and what a second offer
+        draws. The rows below are over that scenario's own facts.
         """
-        if not self.has("feed-in-owner"):
-            blocker = ("host/owner-host.lisp names no `fn-feed-` function on this "
-                       "commit, so no accepted article is offered by the owner itself; "
-                       "books/peer-feed exists and tools/run_feed.py drives one peer by "
-                       "hand, which is not the owner doing it")
+        if not self.has("owner-feed"):
+            blocker = (
+                "host/owner-host.lisp names no `fn-owner-feed-configure` on this "
+                "commit, so no accepted article is offered by the owner itself. "
+                "`books/peer-feed` certifies and `tools/run_feed.py` drives one peer "
+                "by hand, which is not the owner doing it; the owner chain cannot be "
+                "read until `books/peer-feed-invariants` certifies, because "
+                "`books/owner-feed` includes it{}".format(
+                    "" if self.support.get("cert-peer-feed-invariants") != "no"
+                    else " and it has no certificate in this deploy tree"))
             self.blocked(self.FEED_KEYS, blocker, verdict=NOT_BUILT,
                          owner="w10/owner-feed",
-                         invocation="grep fn-feed- host/owner-host.lisp")
+                         invocation="grep fn-owner-feed-configure host/owner-host.lisp")
             return
-        journal = "{}/feed-journal".format(self.a.dir)
-        payload = "{}/feed.article".format(self.a.dir)
-        msgid = "<feed@example.invalid>"
-        self.push_file(article(msgid, GROUPS[0], "for the outbound feed",
-                               "Queued for the peer by the owner."), payload)
-        queued = self.sh("feed: accept an article on A", self.cd(self.fn(
-            "--store {} post --message-id '{}' --payload {} --group {}".format(
-                self.a.store, msgid, payload, GROUPS[0]))), timeout=900, expect=None)
-        self.from_step("V0-FEED-QUEUE", queued,
-                       limit="the queue is read from the journal below, not asserted "
-                             "from the post's exit code alone")
-        self.sh("feed: what the owner queued", self.cd(
-            "ls -l {journal}/feed 2>/dev/null || echo NO-JOURNAL".format(
-                journal=journal)), timeout=600, expect=None)
-        presence = self.feed("presence", "--port {} --groups {} --present '{}'".format(
-            self.b.port, GROUPS[0], msgid),
-            name="feed: node B holds the fed article", expect=None)
-        self.from_step("V0-FEED-OFFER", presence,
-                       limit="no socket was driven by hand for this row: the only "
-                             "observation is whether B serves the article")
-        again = self.feed("presence", "--port {} --groups {} --present '{}'".format(
-            self.b.port, GROUPS[0], msgid),
-            name="feed: node B still holds exactly one copy", expect=None)
-        self.from_step("V0-FEED-ONCE", again,
-                       limit="one reread; a second copy under the same Message-ID is "
-                             "not representable, so this row is weak evidence for "
-                             "exactly-once and says so")
-        records = self.sh("feed: the journal", self.cd(
-            "ls -l {}/feed 2>/dev/null || echo NO-JOURNAL".format(journal)), expect=None)
-        self.emit("V0-FEED-JOURNAL",
-                  ACCEPTED if "NO-JOURNAL" not in records.output else REFUSED,
-                  records.command, records.first_line or "(no output)",
-                  exit_code=records.rc,
-                  limit="the journal's existence and size, not its contents: the FNFD "
-                        "record shapes are books/peer-feed's")
-        del offered
+        before = len(self.steps)
+        super().scenario_owner_feed()
+        mine = self.steps[before:]
+        posts = [x for x in mine if "posts <fed-" in x.name]
+        waits = [x for x in mine if "receives <fed-" in x.name]
+        seconds = [x for x in mine if "a second offer of" in x.name]
+        limit = ("both nodes are on one host over loopback, and the offering side is "
+                 "the owner's feed table, not this harness's socket client")
+        if not posts:
+            self.blocked(self.FEED_KEYS,
+                         "the owner-feed scenario posted nothing: {}".format(
+                             "; ".join(x.first_line[:120] for x in mine[:2])
+                             or "it skipped every direction"),
+                         invocation="twonode_gate.scenario_owner_feed")
+            return
+        worst = next((x for x in posts if x.rc != 0), None)
+        self.emit("V0-FEED-QUEUE", ACCEPTED if worst is None else exit_verdict(worst.rc),
+                  posts[0].command,
+                  "{} of {} POSTs through the running server were accepted, so the "
+                  "feed had something durable to offer".format(
+                      sum(1 for x in posts if x.rc == 0), len(posts)),
+                  exit_code=0 if worst is None else worst.rc, limit=limit)
+        if not waits:
+            self.blocked(("V0-FEED-OFFER", "V0-FEED-ONCE"),
+                         "no direction reached the waiting step, so nothing was "
+                         "offered by the owner", invocation=posts[0].command)
+        else:
+            bad = next((x for x in waits if x.rc != 0), None)
+            self.emit("V0-FEED-OFFER",
+                      ACCEPTED if bad is None else exit_verdict(bad.rc),
+                      waits[0].command,
+                      "{}; {}".format(self.facts.get("owner feed", "no verdict"),
+                                      " / ".join(
+                                          "{}: {}".format(
+                                              k, self.facts[k]) for k in sorted(
+                                                  self.facts) if k.startswith(
+                                                      "owner feed ")
+                                          and "duplicate" not in k) or "no per-direction fact"),
+                      exit_code=0 if bad is None else bad.rc, limit=limit)
+            duplicate = " / ".join(self.facts[k] for k in sorted(self.facts)
+                                   if k.startswith("owner feed") and "duplicate" in k)
+            if not seconds:
+                self.emit("V0-FEED-ONCE", NOT_EXERCISED, waits[0].command,
+                          "(no second offer)",
+                          blocker="no direction delivered, so there was nothing to "
+                                  "offer a second time")
+            else:
+                ok = all(self.facts.get(k, "").find("ihave=435") >= 0
+                         for k in self.facts if k.endswith("duplicate"))
+                self.emit("V0-FEED-ONCE", ACCEPTED if ok else REFUSED,
+                          seconds[0].command, duplicate or "(no duplicate fact)",
+                          limit=limit + "; one re-offer per direction, which is the "
+                                        "history answer that makes a restart-by-offer "
+                                        "safe, not a proof of exactly-once")
+        journal = self.sh("feed: the journal on node A", self.cd(
+            "ls -l {}/journal/feed {}/store/journal/feed 2>/dev/null | head -8 "
+            "|| true".format(self.a.dir, self.a.store)), expect=None)
+        found = bool(journal.output.strip())
+        self.emit("V0-FEED-JOURNAL", ACCEPTED if found else REFUSED, journal.command,
+                  (journal.output.strip().splitlines() or ["(no feed journal found)"])[0],
+                  exit_code=journal.rc,
+                  limit="the journal's presence on disk, not its contents: the FNFD "
+                        "record shapes are books/owner-feed's and the restart property "
+                        "(K5) is tools/twonode_gate.py's scenario_feed_restart, which "
+                        "this matrix does not run because it kills node A")
 
     # -- F-CRASH -----------------------------------------------------------
     def checkpoint_row(self):
@@ -2084,7 +2389,7 @@ else echo NONE; fi
         self.emit("V0-CRASH-CAMPAIGN",
                   ACCEPTED if run.rc == 0 else exit_verdict(run.rc), run.command,
                   " | ".join(run.output.strip().splitlines()[-3:]) or "(no output)",
-                  exit_code=run.rc,
+                  exit_code=run.rc, client=CLIENT_LAB,
                   limit="--quick: a subset of the enumerated cuts, each a process "
                         "death, none of them a power loss")
 
@@ -2095,9 +2400,15 @@ else echo NONE; fi
                "profile": "V0-BP-PROFILE", "replay": "V0-BP-REPLAY"}
 
     def bp_phase(self):
+        # CLAUDE.md, measured 2026-07-15: on hbox every build goes through
+        # `swarm-build`, which puts an enforced MemoryMax around it.  `taskset`
+        # caps CPU only, and Lean/SBCL codegen is what takes the box down.
+        wrapper = ("swarm-build " if self.host.label == "hbox"
+                   and self.support.get("swarm-build") == "yes" else "nice -n 10 ")
         build = self.sh("native image for the tcpcl layer",
                         self.cd("FN_ACL2=${FN_ACL2:-$HOME/fn-tools/acl2-8.7/saved_acl2} "
-                                "nice -n 10 sh tools/build_native_host.sh 2>&1 | tail -20"),
+                                + wrapper +
+                                "sh tools/build_native_host.sh 2>&1 | tail -20"),
                         timeout=3600, expect=None)
         built = build.rc == 0 and "built build/fn-host" in build.output
         self.emit("V0-BP-IMAGE", ACCEPTED if built else REFUSED, build.command,
@@ -2141,17 +2452,32 @@ else echo NONE; fi
                 verdict = expected if one.get("ok") else (
                     REFUSED if expected == ACCEPTED else ACCEPTED)
                 self.emit(key, verdict, lab.command, note[:500],
+                          client=CLIENT_LAB,
                           limit="every assertion is over the event digests the two "
                                 "images printed; the lab does not speak TCPCL, and the "
                                 "octets it carries are opaque, not BPv7 bundles")
-        self.emit("V0-BP-NODE", NOT_BUILT,
-                  "tools/run_bp_ingress.py against the convergence layer",
-                  "(not run)",
-                  blocker="no BP node is wired behind the TCPCLv4 layer on this commit: "
-                          "the layer transfers opaque octets and nothing parses a bundle "
-                          "out of them into an fn article "
-                          "(planning/evidence/tcpcl-dtn-w9-2026-09-20.md)",
-                  owner="w9/dtn-2")
+        if self.has("bp-node"):
+            self.emit("V0-BP-NODE", NOT_EXERCISED,
+                      "python3 tests/bp-dtn7/run_fn_bp_interop.py",
+                      "books/bp-node.lisp and tests/bp-dtn7/run_fn_bp_interop.py are "
+                      "both on this commit",
+                      blocker="the BP node is BUILT -- `books/bp-node.lisp` encodes and "
+                              "decodes whole BPv7 bundles and "
+                              "`tests/bp-dtn7/run_fn_bp_interop.py` runs fn against "
+                              "dtn7-rs both ways -- but this matrix does not run it: "
+                              "it needs the pinned dtn7-rs build beside the native "
+                              "image, which is a second harness with its own box "
+                              "requirements. Run it and the row becomes an outcome",
+                      owner="w9/dtn-2")
+        else:
+            self.emit("V0-BP-NODE", NOT_BUILT,
+                      "tools/run_bp_ingress.py against the convergence layer",
+                      "(not run)",
+                      blocker="no BP node is wired behind the TCPCLv4 layer on this "
+                              "commit: the layer transfers opaque octets and nothing "
+                              "parses a bundle out of them into an fn article "
+                              "(planning/evidence/tcpcl-dtn-w9-2026-09-20.md)",
+                      owner="w9/dtn-2")
 
     # -- F-STX -------------------------------------------------------------
     STX_KEYS = ("V0-STX-SIGN", "V0-STX-ATTACH", "V0-STX-CROSS", "V0-STX-VERIFY",
@@ -2272,6 +2598,22 @@ else echo NONE; fi
                   owner="w10/provenance")
 
     def statement_crossed(self):
+        offer = self.feed(
+            "relay",
+            "--from-port {} --to-port {} --msgid '{}' --group {} --loop-msgid '{}' "
+            "--loop-identity {}".format(
+                self.a.port, self.b.port, STX["a"], GROUPS[0],
+                "<statement-loop@example.invalid>", self.b.path_identity),
+            name="statement: offer the statement-bearing article from A to B",
+            expect=None)
+        reply = self.payload(offer).get("offer", "")
+        if not reply or unsupported(reply) or not_permitted(reply):
+            self.emit("V0-STX-CROSS", NOT_EXERCISED, offer.command,
+                      "IHAVE answered '{}'".format(reply or "nothing"),
+                      blocker="the statement-bearing article could not be offered to "
+                              "node B: `IHAVE` answered '{}'. The transit rows above "
+                              "carry the same blocker".format(reply or "nothing"))
+            return
         crossed = self.feed("presence", "--port {} --groups {} --present '{}'".format(
             self.b.port, GROUPS[0], STX["a"]),
             name="statement: node B serves the statement-bearing article", expect=None)
@@ -2317,7 +2659,7 @@ else echo NONE; fi
                 self.rev, self.host.label)), timeout=4 * 3600, expect=None)
         self.emit("V0-SCALE-CEILING", exit_verdict(step.rc), step.command,
                   " | ".join(step.output.strip().splitlines()[-3:]) or "(no output)",
-                  exit_code=step.rc,
+                  exit_code=step.rc, client=CLIENT_LAB,
                   limit="a measured ceiling on one box with one payload grid; it is "
                         "not a bound and not a proof")
 
@@ -2337,25 +2679,58 @@ else echo NONE; fi
             timeout=4 * 3600, expect=None)
         self.emit("V0-INN-INTEROP", exit_verdict(step.rc), step.command,
                   " | ".join(step.output.strip().splitlines()[-3:]) or "(no output)",
-                  exit_code=step.rc,
+                  exit_code=step.rc, client="InterNetNews",
                   limit="one INN version on one box; not a Usenet conformance audit")
 
     def clients(self):
+        """The one observation in this matrix that fn did not make itself.
+
+        Every other row is fn's CLI, fn's harness or this file's socket
+        driver. A feature that only fn's own client has seen is a weaker
+        claim than "usable between two peered servers" reads, so this runs
+        the Python standard library's own NNTP implementation against both
+        nodes and the rows it produces are the ones marked `independent`.
+        """
         interpreter = self.support.get("nntplib", "")
         if not interpreter:
-            self.emit("V0-CLIENT-NNTPLIB", NOT_EXERCISED,
-                      "tests/interop_store_nntplib.py", "(no interpreter)",
-                      blocker="no interpreter on {} has a stdlib nntplib: PEP 594 "
-                              "removed it in Python 3.13 and the box runs {}"
-                              .format(self.host.label,
-                                      self.facts.get("python3", "python3")))
+            self.blocked(("V0-CLIENT-NNTPLIB",),
+                         "no interpreter on {} has a stdlib nntplib: PEP 594 removed "
+                         "it in Python 3.13 and the box runs {}. `uv python install "
+                         "3.12` puts one on the box in seconds and the probe finds it"
+                         .format(self.host.label,
+                                 self.facts.get("python3", "python3")),
+                         invocation="<interpreter> independent.py")
         else:
-            step = self.sh("nntplib client", self.cd(
-                "{} tests/interop_store_nntplib.py --port {} --group {} 2>&1 | tail -20"
-                .format(interpreter, self.a.port, GROUPS[0])), timeout=600, expect=None)
-            self.emit("V0-CLIENT-NNTPLIB", exit_verdict(step.rc), step.command,
-                      step.first_line or "(no output)", exit_code=step.rc,
-                      limit="one client library against node A only")
+            self.push_file(INDEPENDENT_DRIVER, "{}/independent.py".format(self.run),
+                           mode="755")
+            for node in self.nodes:
+                if not node.port:
+                    self.emit("V0-CLIENT-NNTPLIB", NOT_EXERCISED,
+                              "{} independent.py".format(interpreter), "(no listener)",
+                              node=node.name, blocker=self.node_blocker(node))
+                    continue
+                step = self.sh("independent nntplib client on node {}".format(
+                    node.upper), self.cd(
+                        "{} {}/independent.py --port {} --group {} --msgid '{}' "
+                        "--absent '{}'".format(
+                            interpreter, self.run, node.port, GROUPS[0],
+                            node.accepted[0] if node.accepted else ART[node.name],
+                            ABSENT_ID)), timeout=600, expect=None)
+                result = self.payload(step)
+                self.emit("V0-CLIENT-NNTPLIB", exit_verdict(step.rc), step.command,
+                          "nntplib {} drove {}; group={} article_lines={} "
+                          "absent={}".format(
+                              result.get("python", "?"),
+                              ", ".join(result.get("commands", [])) or "nothing",
+                              result.get("group"), result.get("article_lines"),
+                              str(result.get("absent"))[:60])
+                          if result else (step.first_line or "(no output)"),
+                          node=node.name, exit_code=step.rc,
+                          client="stdlib nntplib on {}".format(interpreter),
+                          limit="one client library, and it reads: nothing here is "
+                                "posted or fed by a foreign client. Its framing, "
+                                "folding and response parsing are the standard "
+                                "library's, not fn's, which is the point of the row")
         if self.support.get("slrn") != "yes":
             self.emit("V0-CLIENT-SLRN", NOT_EXERCISED, "slrn -h <host> -p <port>",
                       "(slrn is not installed)",
@@ -2368,7 +2743,7 @@ else echo NONE; fi
                 self.a.port, GROUPS[0])), timeout=900, expect=None)
         self.emit("V0-CLIENT-SLRN", exit_verdict(step.rc), step.command,
                   step.first_line or "(no output)", exit_code=step.rc,
-                  limit="one newsreader against node A only")
+                  client="slrn", limit="one newsreader against node A only")
 
     # -- the server entry point --------------------------------------------
     def server_candidates(self, node: NodeSpec):
@@ -2523,7 +2898,6 @@ else echo NONE; fi
             self.phase("concurrency", self.post_concurrent)
             self.phase("live reconfiguration", self.live_reconfiguration)
             self.phase("outbound feed", self.outbound_feed)
-            self.phase("checkpoint", self.checkpoint_row)
             self.phase("clients", self.clients)
             self.phase("crash", self.crash_phase)
         else:
@@ -2554,6 +2928,9 @@ else echo NONE; fi
             self.sh("node {} log tail".format(node.upper),
                     "tail -12 {}/server-{}-main.log 2>/dev/null || echo NO-LOG".format(
                         node.dir, node.name), expect=None)
+        # `anchor` and `recover` take the writer lock the service holds, so
+        # the checkpoint row runs once both services are down.
+        self.phase("checkpoint", self.checkpoint_row)
         self.phase("peer remove", self.peer_remove)
         self.backfill()
 
@@ -2565,6 +2942,12 @@ else echo NONE; fi
         summary = {v: sum(1 for r in rows if r["verdict"] == v) for v in VERDICTS}
         summary["total"] = len(rows)
         summary["disagreed"] = sum(1 for r in rows if r["agrees"] is False)
+        summary["independent"] = sum(1 for r in rows if r["independent"] is True)
+        summary["fn-observed"] = sum(1 for r in rows if r["independent"] is False)
+        clients = {}
+        for row in rows:
+            if row["client"]:
+                clients[row["client"]] = clients.get(row["client"], 0) + 1
         by_requirement, by_scenario = {}, {}
         for row in rows:
             for ident in row["requirements"]:
@@ -2596,6 +2979,8 @@ else echo NONE; fi
             "verdicts": list(VERDICTS),
             "outcomes": list(OUTCOMES),
             "summary": summary,
+            "clients": {k: clients[k] for k in sorted(clients)},
+            "fn_clients": sorted(FN_CLIENTS),
             "features": features,
             "rows": rows,
             "by_requirement": {k: by_requirement[k] for k in sorted(by_requirement)},
@@ -2618,6 +3003,19 @@ else echo NONE; fi
                 not_exercised=summary[NOT_EXERCISED], not_built=summary[NOT_BUILT],
                 disagreed=summary["disagreed"], tool=self.TOOL, json=MATRIX_JSON),
             "",
+            "",
+            "**Who saw it.** {ind} of the {outcomes} outcome rows were observed by "
+            "something that is not fn's own code; {own} were observed by fn talking to "
+            "fn. A feature that only fn's own client has ever seen is a weaker claim "
+            "than \"usable between two peered servers\" reads, and every row carries "
+            "the client that saw it in its `client` field. Clients in this run: "
+            "{clients}.".format(
+                ind=summary.get("independent", 0),
+                own=summary.get("fn-observed", 0),
+                outcomes=summary[ACCEPTED] + summary[REFUSED] + summary[UNCERTAIN],
+                clients="; ".join("{} ({})".format(k, v)
+                                  for k, v in doc["clients"].items()) or "none"),
+            "",
             "| feature | accepted | refused | uncertain | not exercised | not built "
             "| disagreed |",
             "| --- | --- | --- | --- | --- | --- | --- |",
@@ -2632,14 +3030,15 @@ else echo NONE; fi
             "",
             "### Every row",
             "",
-            "| row | title | verdict | expected | agrees | observed |",
-            "| --- | --- | --- | --- | --- | --- |",
+            "| row | title | verdict | expected | agrees | independent | observed |",
+            "| --- | --- | --- | --- | --- | --- | --- |",
         ]
         for row in doc["rows"]:
-            lines.append("| `{}` | {} | **{}** | {} | {} | {} |".format(
+            lines.append("| `{}` | {} | **{}** | {} | {} | {} | {} |".format(
                 row["id"], row["title"].replace("|", "\\|"), row["verdict"],
                 row["expected"] or "-",
                 {True: "yes", False: "NO", None: "-"}[row["agrees"]],
+                {True: "yes", False: "fn only", None: "-"}[row["independent"]],
                 str(row["observed"]).replace("|", "\\|")[:200]))
         waiting = [r for r in doc["rows"] if r["verdict"] in (NOT_EXERCISED, NOT_BUILT)]
         lines += ["", "### What every row that is not an outcome is waiting for", ""]
@@ -2763,6 +3162,17 @@ def validate(doc) -> list:
         if row.get("verdict") in (NOT_EXERCISED, NOT_BUILT) and not row.get("blocker"):
             problems.append("{}: a {} row must name its blocker".format(
                 rid, row.get("verdict")))
+        if row.get("verdict") in OUTCOMES and not row.get("client"):
+            problems.append("{}: an outcome row must name the client that observed "
+                            "it".format(rid))
+        if row.get("verdict") in OUTCOMES:
+            want = row.get("client") not in FN_CLIENTS
+            if row.get("independent") != want:
+                problems.append("{}: independent is {!r} but the client is {!r}".format(
+                    rid, row.get("independent"), row.get("client")))
+        elif row.get("independent") is not None:
+            problems.append("{}: independent must be null for a {} row".format(
+                rid, row.get("verdict")))
         if row.get("verdict") in OUTCOMES and not row.get("invocation"):
             problems.append("{}: an outcome row must name its invocation".format(rid))
         if not row.get("log"):
@@ -2781,6 +3191,11 @@ def validate(doc) -> list:
             summary.get("total"), len(rows)))
     if summary.get("disagreed") != sum(1 for r in rows if r.get("agrees") is False):
         problems.append("summary[disagreed] does not match the rows")
+    for key, want in (("independent", True), ("fn-observed", False)):
+        counted = sum(1 for r in rows if r.get("independent") is want)
+        if summary.get(key) != counted:
+            problems.append("summary[{}] is {!r}, the rows say {}".format(
+                key, summary.get(key), counted))
     for key, field in (("by_requirement", "requirements"), ("by_scenario", "scenarios")):
         rebuilt = {}
         for row in rows:
