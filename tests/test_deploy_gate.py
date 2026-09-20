@@ -103,8 +103,14 @@ class DryRunTests(unittest.TestCase):
         acl2.mkdir(parents=True)
         (acl2 / "saved_acl2").write_text(FAKE_ACL2)
         (acl2 / "saved_acl2").chmod(0o755)
-        commit = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"],
-                                stdout=subprocess.PIPE, check=True).stdout.decode().strip()
+        # A farm gate runs from a `git archive` tree with no repository; the
+        # fake-host run needs only a revision string, so fall back to a fixed one.
+        try:
+            commit = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"],
+                                    stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                    check=True).stdout.decode().strip()
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            commit = "0123456789abcdef0123456789abcdef01234567"
         cls.rev = commit[:7]
         # A host gate for exactly this revision, so the certificate branch that
         # copies pairs is the one the run takes.

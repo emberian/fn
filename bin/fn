@@ -145,7 +145,12 @@ def render_config(settings):
              ""]
     if settings.anchor_server:
         lines += ["[anchor]", 'server = "{}"'.format(settings.anchor_server), ""]
-    lines += ["[acl2]", 'path = "{}"'.format(settings.acl2_path or "acl2")]
+    # Write the ACL2 path only when one is known: a literal "acl2" would be
+    # exported as FN_ACL2 by every later command and clobber the environment
+    # on a box where ACL2 is not on PATH (the farm), which is how `fn post`
+    # faulted there with "No such file or directory: 'acl2'".
+    acl2_path = settings.acl2_path or os.environ.get("FN_ACL2")
+    lines += ["[acl2]"] + (['path = "{}"'.format(acl2_path)] if acl2_path else [])
     if settings.acl2_slots is not None:
         lines.append("slots = {}".format(int(settings.acl2_slots)))
     lines.append("")

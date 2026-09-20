@@ -927,8 +927,20 @@ head -5 $typescript 2>/dev/null || echo "(the client left no typescript)"
 
 
 def resolve(repo: Path, commit: str) -> tuple[str, str]:
-    full = subprocess.run(["git", "-C", str(repo), "rev-parse", commit],
-                          stdout=subprocess.PIPE, check=True).stdout.decode().strip()
+    """The full and short revision for `commit`.
+
+    Outside a repository (a `git archive` tree, as on the farm) a literal
+    hexadecimal id is accepted as given; anything else still needs git.
+    """
+    try:
+        full = subprocess.run(["git", "-C", str(repo), "rev-parse", commit],
+                              stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                              check=True).stdout.decode().strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        if re.fullmatch(r"[0-9a-fA-F]{7,40}", commit):
+            full = commit.lower()
+        else:
+            raise
     return full, full[:7]
 
 
