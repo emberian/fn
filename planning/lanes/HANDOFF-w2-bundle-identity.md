@@ -136,26 +136,33 @@ damage:
 
 `python3 -m unittest tests.test_bp_receive tests.test_bp_receive_faults
 tests.test_workflow_journal tests.test_bpa_dtn7` ran 57 tests in 425 s against
-the certified books, **55 pass, two fail, and both failures are the same
-defect in the lane's own new tests, not in the model**:
+the certified books, 55 passing and two failing on the lane's own new tests.
+**Both are closed on `w5/bp-receive-tests` (2026-09-20) and the four suites
+are 57 of 57**, including `Dtn7IdentityDifferentialTests` -- against the mock
+BPA, which is the scope caveat in the open list below. What the two were:
 
 - `tests.test_workflow_journal.WorkflowJournalTests.test_a_frame_staged_under_a_different_identity_fences`
-  expects `JournalFault: inbound name` and gets `JournalFault: workflow
-  journal is already owned` (an `flock` `BlockingIOError` underneath). The
-  fixture opens the journal to stage the mismatched frame and the test then
-  reopens it to provoke the fence, so the lock the lane's identity-keyed
-  staging now takes is still held by the first handle. The assertion the test
-  means to make -- that a frame whose file name does not match its identity
-  fences recovery -- is therefore **unverified**: the test never reaches it.
-  Fix is in the fixture (close the staging handle before reopening), not in
-  `tools/workflow_journal.py`.
+  expected `JournalFault: inbound name` and got `JournalFault: workflow
+  journal is already owned` (an `flock` `BlockingIOError` underneath): the
+  fixture staged the mismatched frame through its own open journal and then
+  reopened the root while that handle still held the exclusive lock, so the
+  claim was verified by nothing. The recovering owner is a later process and
+  holds no lock of its own, so the fixture now closes its handle first. The
+  claim is unchanged and reached: the reopen raises `inbound name`, with no
+  image, an empty inbox and the lock released.
 - `tests.test_bp_receive.ReceiveTests.test_store_commit_before_context_reopen_binds_existing_exact_record`
-  errors from the same owned-journal condition.
+  called `ingest_bpa_adu` without its required `bundle`, a `TypeError` before
+  the seeding ingress ran. It now seeds with a bundle of its own under a
+  distinct creation sequence (a distinct identity from the receiver's), and
+  the receiver binds the existing exact record with no second article.
 
-Both are on the identity-keyed staging path this lane introduced and both are
-open. Everything else in these four suites passes, including
-`Dtn7IdentityDifferentialTests` -- against the mock BPA, which is the scope
-caveat in the open list below.
+The same lane found that `host/checkpoint-host.lisp` still named
+`*fn-store-groups*`, deleted with the compiled group table in `4ba5599`: every
+`Acl2Store` bridge on `dev` failed in its constructor, so no ACL2-backed
+Python test could run. The three sites read `(fn-store-sn-domain state)` now.
+Their `*fn-store-capacity*` is still the host constant where
+`fn-store-sn-recover` opens the node with the *configured* capacity; that
+mismatch is older than either lane and is left to the store-config owner.
 
 
 
