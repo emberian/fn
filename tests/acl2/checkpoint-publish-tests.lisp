@@ -6,7 +6,6 @@
 ; digest is a host value (A-CRYPTO); the model only compares it.
 (in-package "ACL2")
 (include-book "../../books/checkpoint-publish")
-(include-book "std/testing/must-fail" :dir :system)
 
 (defconst *cpp-groups* '("fn.letters" "fn.test"))
 (defconst *cpp-r0*
@@ -134,13 +133,11 @@
 (assert-event (equal (car (fn-cpp-recover *cpp-forged-image* *cpp-groups* 10 6 2
                                           *cpp-digest*))
                      :missing))
-(local (must-fail
-        (assert-event
-         (or (equal (fn-cpp-image-marker *cpp-forged-image*)
+(assert-event (not (or (equal (fn-cpp-image-marker *cpp-forged-image*)
                     (fn-cpp-authority *cpp-forged*))
              (equal (fn-cpp-find (fn-cpp-image-marker *cpp-forged-image*)
                                  (fn-cpp-image-generations *cpp-forged-image*))
-                    (fn-cpp-candidate *cpp-forged*))))))
+                    (fn-cpp-candidate *cpp-forged*)))))
 ; The choice hypothesis: an unknown choice is the stable image.
 (assert-event (equal (fn-cpp-crash *cpp-t7* :maybe :absent)
                      (fn-cpp-image-make 0 (fn-cpp-generations *cpp-t7*))))
@@ -154,36 +151,28 @@
                      (list :ok 1 *cpp-cp-1*)))
 ; Teeth.  Digest hypothesis dropped: the host's digest over the bytes
 ; disagrees with the trailer, reported as corruption, never :ok.
-(local (must-fail
-        (assert-event
-         (equal (fn-cpp-recover *cpp-image-1* *cpp-groups* 10 6 2
+(assert-event (not (equal (fn-cpp-recover *cpp-image-1* *cpp-groups* 10 6 2
                                 (cons 1 (cdr *cpp-digest*)))
-                (list :ok 1 *cpp-cp-1*)))))
+                (list :ok 1 *cpp-cp-1*))))
 (assert-event (equal (fn-cpp-recover *cpp-image-1* *cpp-groups* 10 6 2
                                      (cons 1 (cdr *cpp-digest*)))
                      (list :corrupt 1 '(:error :integrity))))
 ; Frontier bound dropped (observed frontier behind the generation's).
-(local (must-fail
-        (assert-event
-         (equal (fn-cpp-recover *cpp-image-1* *cpp-groups* 10 5 2 *cpp-digest*)
-                (list :ok 1 *cpp-cp-1*)))))
+(assert-event (not (equal (fn-cpp-recover *cpp-image-1* *cpp-groups* 10 5 2 *cpp-digest*)
+                (list :ok 1 *cpp-cp-1*))))
 (assert-event (equal (fn-cpp-recover *cpp-image-1* *cpp-groups* 10 5 2 *cpp-digest*)
                      (list :corrupt 1 '(:error :frontier))))
 ; Count bound dropped.
-(local (must-fail
-        (assert-event
-         (equal (fn-cpp-recover *cpp-image-1* *cpp-groups* 10 6 1 *cpp-digest*)
-                (list :ok 1 *cpp-cp-1*)))))
+(assert-event (not (equal (fn-cpp-recover *cpp-image-1* *cpp-groups* 10 6 1 *cpp-digest*)
+                (list :ok 1 *cpp-cp-1*))))
 ; Image well-formedness dropped: the selected entry's bytes are not the
 ; encoding of its ghost capture.
 (defconst *cpp-image-forged*
   (fn-cpp-corrupt *cpp-image-1* 1 (fn-cpp-entry-octets
                                     (fn-cpp-find 0 (fn-cpp-generations *cpp-t8*)))))
 (assert-event (not (fn-cpp-imagep *cpp-image-forged* *cpp-groups* 10)))
-(local (must-fail
-        (assert-event
-         (equal (fn-cpp-recover *cpp-image-forged* *cpp-groups* 10 6 2 *cpp-digest*)
-                (list :ok 1 *cpp-cp-1*)))))
+(assert-event (not (equal (fn-cpp-recover *cpp-image-forged* *cpp-groups* 10 6 2 *cpp-digest*)
+                (list :ok 1 *cpp-cp-1*))))
 ; A marker naming no generation is the fourth, distinct outcome.
 (assert-event (equal (car (fn-cpp-recover (fn-cpp-image-make 7 nil)
                                           *cpp-groups* 10 6 2 *cpp-digest*))
@@ -208,33 +197,27 @@
 ; what recovery returns.
 (assert-event (fn-cpp-find 0 (fn-cpp-image-generations
                               (fn-cpp-corrupt *cpp-image-1* 1 *cpp-garbage*))))
-(local (must-fail
-        (assert-event
-         (equal (car (fn-cpp-recover (fn-cpp-corrupt *cpp-image-1* 1 *cpp-garbage*)
+(assert-event (not (equal (car (fn-cpp-recover (fn-cpp-corrupt *cpp-image-1* 1 *cpp-garbage*)
                                      *cpp-groups* 10 6 2 *cpp-digest*))
-                :ok))))
+                :ok)))
 ; Teeth.  The marker hypothesis dropped: corrupting the unselected
 ; generation 0 is invisible (fn-cpp-corrupting-unselected-generation-is-
 ; invisible), so the :corrupt conclusion fails.
-(local (must-fail
-        (assert-event
-         (equal (car (fn-cpp-recover (fn-cpp-corrupt *cpp-image-1* 0 *cpp-garbage*)
+(assert-event (not (equal (car (fn-cpp-recover (fn-cpp-corrupt *cpp-image-1* 0 *cpp-garbage*)
                                      *cpp-groups* 10 6 2 *cpp-digest*))
-                :corrupt))))
+                :corrupt)))
 (assert-event
  (equal (fn-cpp-recover (fn-cpp-corrupt *cpp-image-1* 0 *cpp-garbage*)
                         *cpp-groups* 10 6 2 *cpp-digest*)
         (fn-cpp-recover *cpp-image-1* *cpp-groups* 10 6 2 *cpp-digest*)))
 ; The refusal hypothesis dropped: bytes the codec accepts are not
 ; corruption, even if they were written by a "corrupt" step.
-(local (must-fail
-        (assert-event
-         (equal (car (fn-cpp-recover
+(assert-event (not (equal (car (fn-cpp-recover
                       (fn-cpp-corrupt *cpp-image-1* 1
                                       (fn-cpp-entry-octets
                                        (fn-cpp-find 1 (fn-cpp-generations *cpp-t8*))))
                       *cpp-groups* 10 6 2 *cpp-digest*))
-                :corrupt))))
+                :corrupt)))
 ; A whole-frame substitution of the older generation's bytes under the newer
 ; name is refused as well: the header's count bound is the newer image's,
 ; but the codec's frontier and configuration checks still hold; what fails

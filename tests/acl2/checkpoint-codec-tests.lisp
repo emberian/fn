@@ -7,7 +7,6 @@
 ; makes the conclusion fail on an executable counterexample.
 (in-package "ACL2")
 (include-book "../../books/checkpoint-codec")
-(include-book "std/testing/must-fail" :dir :system)
 
 (defconst *cpc-groups* '("fn.letters" "fn.test"))
 (defconst *cpc-r0*
@@ -41,15 +40,13 @@
 
 ; Teeth: each hypothesis.  Frontier bound dropped (observed frontier behind
 ; the checkpoint's): refused as :frontier, not :ok.
-(local (must-fail
-        (assert-event (equal (fn-cpc-decode *cpc-octets* *cpc-groups* 10 2 1)
-                             (list :ok *cpc-value*)))))
+(assert-event (not (equal (fn-cpc-decode *cpc-octets* *cpc-groups* 10 2 1)
+                             (list :ok *cpc-value*))))
 (assert-event (equal (fn-cpc-decode *cpc-octets* *cpc-groups* 10 2 1)
                      '(:error :frontier)))
 ; Count bound dropped: refused as :sequence.
-(local (must-fail
-        (assert-event (equal (fn-cpc-decode *cpc-octets* *cpc-groups* 10 3 0)
-                             (list :ok *cpc-value*)))))
+(assert-event (not (equal (fn-cpc-decode *cpc-octets* *cpc-groups* 10 3 0)
+                             (list :ok *cpc-value*))))
 (assert-event (equal (fn-cpc-decode *cpc-octets* *cpc-groups* 10 3 0)
                      '(:error :sequence)))
 ; Encodability dropped: a checkpoint whose node holds a symbol outside the
@@ -58,10 +55,9 @@
   (fn-cpc-assemble *cpc-groups* 10 3 1 (list :not-a-node-symbol)))
 (assert-event (not (fn-cpc-encodablep *cpc-alien*)))
 (assert-event (null (fn-cpc-encode *cpc-alien*)))
-(local (must-fail
-        (assert-event (equal (fn-cpc-decode (fn-cpc-encode *cpc-alien*)
+(assert-event (not (equal (fn-cpc-decode (fn-cpc-encode *cpc-alien*)
                                             *cpc-groups* 10 3 1)
-                             (list :ok *cpc-alien*)))))
+                             (list :ok *cpc-alien*))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE fn-cpc-accepted-input-is-canonical: byte direction.
@@ -83,11 +79,10 @@
 (assert-event (equal (fn-cpc-decode-tree '(5 66 1 2) 4)
                      (fn-record-parse-ok '(1 2) nil)))
 (assert-event (equal (fn-cpc-encode-tree '(1 2)) '(5 66 1 2)))
-(local (must-fail
-        (assert-event (equal (fn-cpc-encode-tree
+(assert-event (not (equal (fn-cpc-encode-tree
                               (fn-record-parse-value
                                (fn-cpc-decode-tree '(4 1 1 4 1 2 0) 7)))
-                             '(4 1 1 4 1 2 0)))))
+                             '(4 1 1 4 1 2 0))))
 ; An empty bytes item under the octet-list tag would be a second spelling
 ; of nil: refused.
 (assert-event (equal (fn-cpc-decode-tree '(5 64) 2) '(:error :noncanonical)))
@@ -145,10 +140,9 @@
 ; Teeth for the before-node theorems: with the header matching, the same
 ; garbage node is what gets refused, so the header verdicts above were not
 ; the node's.
-(local (must-fail
-        (assert-event (equal (fn-cpc-decode (append *cpc-header* '(9))
+(assert-event (not (equal (fn-cpc-decode (append *cpc-header* '(9))
                                             *cpc-groups* 10 3 1)
-                             '(:error :configuration)))))
+                             '(:error :configuration))))
 ; A well-formed node that is not a checkpoint for this header (the frontier
 ; is below the node's next transaction id) is refused as :invalid.
 (assert-event
@@ -176,31 +170,25 @@
    (fn-checkpoint-capture *cpc-groups* 10 (list *cpc-r0* *cpc-r1*) 6)))
 (assert-event (fn-checkpointp *cpc-other*))
 (assert-event (not (fn-cpc-validp *cpc-other* *cpc-groups* 10 *cpc-prefix*)))
-(local (must-fail
-        (assert-event
-         (equal (fn-checkpoint-capture-value
+(assert-event (not (equal (fn-checkpoint-capture-value
                  (fn-checkpoint-capture *cpc-groups* 10 *cpc-prefix*
                                         (fn-checkpoint-frontier *cpc-other*)))
-                *cpc-other*))))
+                *cpc-other*)))
 ; Sequence equality dropped: same node, wrong stored sequence.
 (defconst *cpc-wrong-sequence*
   (fn-cpc-assemble *cpc-groups* 10 3 7 (fn-checkpoint-node *cpc-value*)))
 (assert-event (fn-checkpointp *cpc-wrong-sequence*))
 (assert-event (not (fn-cpc-validp *cpc-wrong-sequence* *cpc-groups* 10 *cpc-prefix*)))
-(local (must-fail
-        (assert-event
-         (equal (fn-checkpoint-capture-value
+(assert-event (not (equal (fn-checkpoint-capture-value
                  (fn-checkpoint-capture *cpc-groups* 10 *cpc-prefix* 3))
-                *cpc-wrong-sequence*))))
+                *cpc-wrong-sequence*)))
 ; Configuration binding dropped: validating against a different group list
 ; is refused by the recognizer's binding, and the capture under that list
 ; is a different checkpoint.
 (assert-event (not (fn-cpc-validp *cpc-value* '("fn.letters") 10 *cpc-prefix*)))
-(local (must-fail
-        (assert-event
-         (equal (fn-checkpoint-capture-value
+(assert-event (not (equal (fn-checkpoint-capture-value
                  (fn-checkpoint-capture '("fn.letters") 10 *cpc-prefix* 3))
-                *cpc-value*))))
+                *cpc-value*)))
 ; The record-list hypothesis: a prefix whose record binds a generation
 ; different from its transaction id violates it; replay refuses that record,
 ; so validation fails with it and the hypothesis is not separately
