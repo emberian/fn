@@ -29,6 +29,17 @@ Use RFC 3977 §§3.4 and 3.4.2, command sections, and Appendix B as the baseline
 The [implementation checklist](nntp-audit.md) tracks branches and remaining work;
 it is not a completed conformance audit.
 
+## Reserved header fields
+
+fn reserves header field names for its own use. Each is an ordinary RFC 5536
+§3.1 header field carried by a relaying agent unchanged — RFC 5537 §3.6 permits
+it to alter Path and Xref and nothing else — and none of them is an instruction
+to the receiving node: fn executes no control message (RFC 5537 §5).
+
+| Field | Reserved for | Defined in |
+| --- | --- | --- |
+| `FN-Statement` | The detached statement about this article: creator, incarnation, sequence, kind, payload reference and signature, base64-encoded. `ARTICLE` and `HEAD` return it byte-identical so a client verifies with its own keyring; the node's own three-valued verdict is the separate `:fn-verified` HDR metadata item, never this field. | [substrate transport](substrate-transport.md#12-the-field) |
+
 ## Clock and group-creation inputs
 
 The reader answers DATE and NEWGROUPS only from inputs an owner or
