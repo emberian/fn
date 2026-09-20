@@ -473,6 +473,38 @@
 ; Step 3: the rebuild of a record's own fields is that record.  This is where
 ; `books/provenance.lisp's four `-of-its-accessors' facts and the octet/string
 ; round trip of `books/records-invariants.lisp' are spent.
+; A diagnostic that is not a `:mismatch' IS the match, by
+; `fn-prov-diagnosticp' (books/provenance.lisp:68).  That book states the
+; disjunction (`fn-prov-diagnosticp-is-match-or-mismatch') and the mismatch
+; direction (`fn-prov-mismatch-diagnostic-shape'), both forward-chaining; a
+; DISJUNCTIVE forward-chained conclusion lands in the context as one `or'
+; term the prover does not split on, so the match direction has to be
+; instantiated by hand.  Without it the rebuild below writes the literal
+; `(:match)' back into a transit record and nothing says that is the
+; diagnostic the record had: key checkpoint `Subgoal 107.6'' at `:IHAVE'.
+(local
+ (defthm fn-prov-a-non-mismatch-diagnostic-is-the-match
+   (implies (and (fn-prov-diagnosticp d)
+                 (not (equal (car d) :mismatch)))
+            (equal d (list :match)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-prov-diagnosticp)))))
+
+; The rebuild writes the kind and the diagnostic back as the LITERALS the
+; case split is on (`:ihave' and `(:match)', ...), where
+; `fn-prov-transit-of-its-accessors' (books/provenance.lisp:334) writes
+; `(fn-prov-transit-kind x)' and `(fn-prov-transit-diagnostic x)'.  Stated
+; with both as variables, this is that fact in the shape the goal has.
+(local
+ (defthm fn-prov-transit-rebuilds-at-its-kind
+   (implies (and (fn-prov-transitp x)
+                 (equal (fn-prov-transit-kind x) k)
+                 (equal (fn-prov-transit-diagnostic x) d))
+            (equal (fn-prov-make-transit (fn-prov-transit-peer x) k d
+                                         (fn-prov-transit-generation x))
+                   x))
+   :hints (("Goal" :use ((:instance fn-prov-transit-of-its-accessors))))))
+
 (local
  (defthm fn-prov-rebuild-of-its-own-fields
    (implies (and (fn-prov-encodablep p) (not (stringp p)))
@@ -488,7 +520,9 @@
             :use ((:instance fn-prov-post-of-its-accessors (x p))
                   (:instance fn-prov-transit-of-its-accessors (x p))
                   (:instance fn-prov-bp-of-its-accessors (x p))
-                  (:instance fn-prov-local-of-its-accessors (x p)))
+                  (:instance fn-prov-local-of-its-accessors (x p))
+                  (:instance fn-prov-a-non-mismatch-diagnostic-is-the-match
+                             (d (fn-prov-transit-diagnostic p))))
             :in-theory (e/d (fn-prov-rebuild fn-prov-kind-code
                              fn-prov-field-a fn-prov-field-b fn-prov-field-c
                              fn-prov-field-m fn-prov-field-n fn-prov-field-o
