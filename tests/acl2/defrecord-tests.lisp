@@ -25,10 +25,15 @@
 ; `(consp a)' once the accessors were opaque).  It is proved with the record
 ; CLOSED; if the generated forward rules were missing or were rewrite rules
 ; rather than forward-chaining rules, it would not close.
+;
+; The last section is `fn-deftransition' (books/deftransition.lisp): a
+; property of a three-branch transition over one of these records, proved with
+; the recognizer shut and the content proved once at the constructor.
 
 (in-package "ACL2")
 (include-book "../../books/acceptance-alloc")
 (include-book "../../books/defrecord")
+(include-book "../../books/deftransition")
 
 ; -----------------------------------------------------------------------------
 ; 1. A three-field untagged record, the `fn-sched-result' shape.
@@ -76,13 +81,16 @@
   :rule-classes nil)
 
 ; The tag really is at index 0 and the fields really are shifted by one, so
-; the host encoding of a tagged record is unchanged by the macro.
-(defthm fn-drt-tagged-layout-is-positional
+; the host encoding of a tagged record is unchanged by the macro.  These two
+; are definitional restatements and are named `-unfolds' and kept
+; `:rule-classes nil' for that reason (proof-style section 7); the ledger
+; flags them SUSPECT by shape, which is the correct reading of them.
+(defthm fn-drt-mark-unfolds-to-a-tagged-list
   (equal (fn-drt-mark o k w) (list :fn-drt-mark o k w))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-drt-mark-internals))))
 
-(defthm fn-drt-untagged-layout-is-positional
+(defthm fn-drt-point-unfolds-to-a-list
   (equal (fn-drt-point a b c) (list a b c))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-drt-point-internals))))
@@ -157,6 +165,49 @@
 ; given.  After this, a book above sees neither `fn-drt-pointp' nor
 ; `fn-drt-markp' opened.
 
+
+; -----------------------------------------------------------------------------
+; `fn-deftransition' (books/deftransition.lisp): a property of a transition
+; proved with the recognizer CLOSED.
+;
+; `fn-drt-recolor' has three branches: not a mark, not a color, and the one
+; that rebuilds.  The content --- that rebuilding a mark with a new color is
+; still a mark --- is proved once at the constructor with the recognizer OPEN,
+; which is the only place it can be proved.  The lift then runs with
+; `fn-drt-markp' shut, so the outer proof never re-derives the four conjuncts
+; of the recognizer (and, on a real session record with eleven sub-recognizers,
+; never produces the 1082 subgoals the C2 lane measured).
+
+(defun fn-drt-recolor (m c)
+  (declare (xargs :guard t))
+  (if (or (not (fn-drt-markp m)) (not (fn-drt-colorp c)))
+      m
+    (fn-drt-mark (fn-drt-mark-origin m) c (fn-drt-mark-weight m))))
+
+(defthm fn-drt-mark-recolored-is-a-mark
+  (implies (and (fn-drt-markp m) (fn-drt-colorp c))
+           (fn-drt-markp (fn-drt-mark (fn-drt-mark-origin m) c
+                                      (fn-drt-mark-weight m)))))
+
+(fn-deftransition-closed fn-drt-mark-closed (fn-drt-markp))
+
+(fn-deftransition fn-drt-recolor-preserves-markp
+  :statement (implies (fn-drt-markp m) (fn-drt-markp (fn-drt-recolor m c)))
+  :closed (fn-drt-mark-closed)
+  :opens (fn-drt-recolor)
+  :branches ((fn-drt-recolor-of-a-non-color-emits-no-change
+              (not (fn-drt-colorp c))
+              (equal (fn-drt-recolor m c) m))))
+
+; Teeth for the transition: it really does recolor, and really is a no-op on
+; the two refusing branches.
+(assert-event (equal (fn-drt-mark-color (fn-drt-recolor *fn-drt-mark* :red)) :red))
+(assert-event (equal (fn-drt-recolor *fn-drt-mark* :puce) *fn-drt-mark*))
+(assert-event (equal (fn-drt-recolor 17 :red) 17))
+
+; -----------------------------------------------------------------------------
+; The book-final export theory.
+
 (fn-defrecord-export fn-drt-vocabulary
   :records (fn-drt-point fn-drt-mark)
-  :also (fn-drt-colorp))
+  :also (fn-drt-colorp fn-drt-recolor))

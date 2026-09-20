@@ -10,27 +10,28 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 239 |
-| Certification roots in the Makefile | 238 |
-| Books inside the root closure | 238 |
-| `defthm` and `defthmd` events | 4522 |
-| `defun` events | 3291 |
-| Functions with verified guards | 1294 |
+| Books read | 242 |
+| Certification roots in the Makefile | 241 |
+| Books inside the root closure | 241 |
+| `defthm` and `defthmd` events | 4549 |
+| `defun` events | 3321 |
+| Functions with verified guards | 1325 |
 | Functions declared `:verify-guards nil` and never verified | 151 |
-| Functions left at the default with an explicit guard | 1381 |
-| Functions left at the default with no guard | 465 |
-| `assert-event` checks | 4416 |
+| Functions left at the default with an explicit guard | 1364 |
+| Functions left at the default with no guard | 481 |
+| `assert-event` checks | 4443 |
 | `must-fail` checks | 59 |
 | `encapsulate` events | 15 |
-| Theorems flagged SUSPECT by shape | 32 |
+| Theorems flagged SUSPECT by shape | 34 |
 | Export-hygiene warnings | 67 |
 | Teeth-form warnings | 0 |
-| Include-hygiene warnings | 86 |
+| Include-hygiene warnings | 87 |
 | Host-names warnings | 81 |
+| Hand-written-record warnings | 24 |
 
 ## Lints
 
-Four WARN lints, counted above and listed in full under `lints` in
+Five WARN lints, counted above and listed in full under `lints` in
 [`ledger.json`](ledger.json). *Export hygiene* counts theorems a book
 leaves enabled whose shape rewrites downstream goals out of accessor
 vocabulary: an equality between two one-argument applications, or a
@@ -50,8 +51,15 @@ one for a single guard hint and turned a six-minute proof into an
 reads -- that nothing those files include, `ld` or inherit from
 `tools/acl2-builtins.txt` defines: the shape of the
 `*fn-store-groups*` reference that survived the group table and broke
-every `Acl2Store` start-up. No lint judges truth;
-`python3 tools/ledger.py --check --strict` turns all four into errors.
+every `Acl2Store` start-up. *Hand-written record* counts books
+whose records are written out event by event instead of generated
+by `fn-defrecord` (`books/defrecord.lisp`): a shape predicate and
+three or more one-argument selector accessors over the same
+variable. Writing the pattern by hand is correct and is how the
+tree lost one of the three forward-chaining shape facts four times
+in one cycle, each time for a rule fan; the count is how the
+migration stays visible. No lint judges truth;
+`python3 tools/ledger.py --check --strict` turns all five into errors.
 
 ## Per book
 
@@ -123,6 +131,8 @@ that `make certify` requests.
 | `books/container-invariants.lisp` | root | 25 | 2 | 0/0/1/1 | 0 | 0 | 0 |
 | `books/container.lisp` | root | 2 | 43 | 0/1/42/0 | 0 | 0 | 0 |
 | `books/crypto-seam.lisp` | root | 19 | 14 | 0/0/10/4 | 0 | 0 | 0 |
+| `books/defrecord.lisp` | root | 0 | 14 | 0/0/0/14 | 0 | 0 | 0 |
+| `books/deftransition.lisp` | root | 0 | 2 | 0/0/0/2 | 0 | 0 | 0 |
 | `books/exchange-invariants.lisp` | root | 22 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/exchange.lisp` | root | 34 | 43 | 37/0/6/0 | 0 | 0 | 1 |
 | `books/frame-fields.lisp` | root | 23 | 38 | 13/0/25/0 | 0 | 0 | 0 |
@@ -177,7 +187,7 @@ that `make certify` requests.
 | `books/retention-invariants.lisp` | root | 16 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/retention.lisp` | root | 36 | 38 | 38/0/0/0 | 0 | 0 | 2 |
 | `books/scheduler-invariants.lisp` | root | 59 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/scheduler.lisp` | root | 54 | 104 | 2/0/102/0 | 0 | 0 | 0 |
+| `books/scheduler.lisp` | root | 59 | 104 | 27/0/77/0 | 0 | 0 | 0 |
 | `books/served.lisp` | root | 52 | 34 | 2/4/28/0 | 0 | 0 | 0 |
 | `books/statement-invariants.lisp` | root | 59 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/statement.lisp` | root | 30 | 65 | 0/0/65/0 | 0 | 0 | 0 |
@@ -198,7 +208,7 @@ that `make certify` requests.
 | `books/tcpcl-invariants.lisp` | root | 51 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/tcpcl-octets.lisp` | root | 172 | 36 | 14/0/22/0 | 0 | 0 | 1 |
 | `books/tcpcl-records.lisp` | root | 133 | 99 | 62/0/37/0 | 0 | 0 | 0 |
-| `books/tcpcl-session.lisp` | root | 55 | 54 | 9/0/45/0 | 0 | 0 | 0 |
+| `books/tcpcl-session.lisp` | root | 54 | 54 | 9/0/45/0 | 0 | 0 | 0 |
 | `books/transfer-assembly-invariants.lisp` | root | 25 | 5 | 0/0/0/5 | 0 | 0 | 0 |
 | `books/transfer-invariants.lisp` | root | 14 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/transfer-journal-invariants.lisp` | root | 32 | 1 | 0/0/0/1 | 0 | 0 | 0 |
@@ -252,6 +262,7 @@ that `make certify` requests.
 | `tests/acl2/config-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 95 | 0 | 0 |
 | `tests/acl2/container-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 62 | 0 | 0 |
 | `tests/acl2/crypto-seam-tests.lisp` | root | 11 | 7 | 0/0/7/0 | 18 | 0 | 0 |
+| `tests/acl2/defrecord-tests.lisp` | root | 23 | 14 | 6/0/8/0 | 27 | 0 | 2 |
 | `tests/acl2/exchange-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 162 | 0 | 0 |
 | `tests/acl2/frame-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 48 | 0 | 0 |
 | `tests/acl2/identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 0 | 0 |
@@ -321,6 +332,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-clock-drop-permission-is-exactly-expired-by-definition` | `books/clock-invariants.lisp` | 164 | definition-restated: the conclusion is the body of fn-clock-may-drop-local-copyp; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-cnode-inadmissible-config-changes-nothing` | `books/node-config.lisp` | 423 | branch-of-definition: the hypothesis is a branch test of fn-cnode-apply-config and the conclusion is that branch's value |
 | `fn-cpc-uint32p-bridge` | `books/checkpoint-codec.lisp` | 1083 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-record-uint32p |
+| `fn-drt-mark-unfolds-to-a-tagged-list` | `tests/acl2/defrecord-tests.lisp` | 88 | definition-restated: the conclusion is the body of fn-drt-mark; reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-drt-point-unfolds-to-a-list` | `tests/acl2/defrecord-tests.lisp` | 93 | definition-restated: the conclusion is the body of fn-drt-point; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-exchange-ingest-refusal-is-no-op` | `books/exchange.lisp` | 529 | branch-of-definition: the hypothesis negates a branch test of fn-exchange-ingest and the conclusion is that branch's value |
 | `fn-frame-decode-refuses-oversize-before-validation` | `books/frame-invariants.lisp` | 653 | branch-of-definition: the hypothesis is a branch test of fn-frame-decode and the conclusion is that branch's value |
 | `fn-inj-instantp-opens` | `books/injection-invariants.lisp` | 207 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-inj-instantp |
