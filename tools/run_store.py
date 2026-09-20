@@ -716,6 +716,8 @@ class Store:
                 pass
             raise
         fsync_dir(self.root)
+
+    @property
     def config_record_path(self): return self.root / "config-record"
 
     @staticmethod
