@@ -96,6 +96,10 @@ ACL2_BOOKS ?= books/assumptions \
 	tests/acl2/store-node-teeth-tests \
 	books/checkpoint \
 	tests/acl2/checkpoint-tests \
+	books/checkpoint-codec \
+	tests/acl2/checkpoint-codec-tests \
+	books/checkpoint-publish \
+	tests/acl2/checkpoint-publish-tests \
 	books/index \
 	tests/acl2/index-tests \
 	books/bp-ingress \
