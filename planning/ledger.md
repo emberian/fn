@@ -13,15 +13,15 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 247 |
 | Certification roots in the Makefile | 246 |
 | Books inside the root closure | 246 |
-| `defthm` and `defthmd` events | 4676 |
-| `defun` events | 3428 |
+| `defthm` and `defthmd` events | 4711 |
+| `defun` events | 3437 |
 | Functions with verified guards | 1360 |
-| Functions declared `:verify-guards nil` and never verified | 156 |
+| Functions declared `:verify-guards nil` and never verified | 165 |
 | Functions left at the default with an explicit guard | 1423 |
 | Functions left at the default with no guard | 489 |
-| `assert-event` checks | 4634 |
+| `assert-event` checks | 4648 |
 | `must-fail` checks | 59 |
-| `encapsulate` events | 15 |
+| `encapsulate` events | 16 |
 | Theorems flagged SUSPECT by shape | 35 |
 | Export-hygiene warnings | 67 |
 | Teeth-form warnings | 0 |
@@ -115,12 +115,12 @@ that `make certify` requests.
 | `books/bp-workflow-records.lisp` | root | 0 | 12 | 10/0/2/0 | 0 | 0 | 0 |
 | `books/bp-workflow-transport-invariants.lisp` | root | 32 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/bp-workflow.lisp` | root | 0 | 111 | 0/0/111/0 | 0 | 0 | 0 |
-| `books/byte-store-invariants.lisp` | root | 106 | 9 | 0/6/0/3 | 0 | 0 | 0 |
-| `books/byte-store-programs.lisp` | root | 1 | 23 | 0/23/0/0 | 18 | 0 | 0 |
-| `books/byte-store.lisp` | root | 10 | 57 | 5/39/13/0 | 0 | 0 | 0 |
+| `books/byte-store-invariants.lisp` | root | 130 | 11 | 0/8/0/3 | 0 | 0 | 0 |
+| `books/byte-store-programs.lisp` | root | 1 | 29 | 0/29/0/0 | 32 | 0 | 0 |
+| `books/byte-store.lisp` | root | 10 | 58 | 5/40/13/0 | 0 | 0 | 0 |
 | `books/cbor-invariants.lisp` | root | 36 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/cbor.lisp` | root | 12 | 24 | 24/0/0/0 | 0 | 0 | 0 |
-| `books/checkpoint-codec.lisp` | root | 88 | 32 | 13/0/18/1 | 0 | 0 | 1 |
+| `books/checkpoint-codec.lisp` | root | 99 | 32 | 13/0/18/1 | 0 | 0 | 1 |
 | `books/checkpoint-publish.lisp` | root | 53 | 49 | 13/0/36/0 | 0 | 0 | 0 |
 | `books/checkpoint.lisp` | root | 18 | 14 | 12/0/2/0 | 0 | 0 | 0 |
 | `books/clock-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 1 |
@@ -336,7 +336,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bpr-context-from-request-is-constructor` | `books/bp-receiver-state-invariants.lisp` | 94 | definition-restated: the conclusion is the body of fn-bpr-context-from-request |
 | `fn-clock-drop-permission-is-exactly-expired-by-definition` | `books/clock-invariants.lisp` | 164 | definition-restated: the conclusion is the body of fn-clock-may-drop-local-copyp; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-cnode-inadmissible-config-changes-nothing` | `books/node-config.lisp` | 423 | branch-of-definition: the hypothesis is a branch test of fn-cnode-apply-config and the conclusion is that branch's value |
-| `fn-cpc-uint32p-bridge` | `books/checkpoint-codec.lisp` | 1083 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-record-uint32p |
+| `fn-cpc-uint32p-bridge` | `books/checkpoint-codec.lisp` | 1193 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-record-uint32p |
 | `fn-drt-mark-unfolds-to-a-tagged-list` | `tests/acl2/defrecord-tests.lisp` | 88 | definition-restated: the conclusion is the body of fn-drt-mark; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-drt-point-unfolds-to-a-list` | `tests/acl2/defrecord-tests.lisp` | 93 | definition-restated: the conclusion is the body of fn-drt-point; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-exchange-ingest-refusal-is-no-op` | `books/exchange.lisp` | 529 | branch-of-definition: the hypothesis negates a branch test of fn-exchange-ingest and the conclusion is that branch's value |
