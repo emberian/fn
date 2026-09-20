@@ -637,15 +637,53 @@
 ; A-DURABILITY and A-WRITE-ISOLATION as a hypothesis, not a constructor.  An
 ; observed post-crash image (frontier, records) is admissible for kernel state
 ; s when the frontier is the stable value or, only while a replacement may
-; have been issued, the candidate; and the records are the stable list, or,
+; have been issued, the candidate; and the records are the stable list or,
 ; only while a link may have been issued, that list extended by the exact
-; data-durable candidate, or, only in the recovery window and only where no
-; outcome has been acknowledged, that list without its last element (D14-b).
-; Theorems about the host's reopen path (store-observed.lisp) take this
-; predicate as their premise.  fn-sf-crash and fn-sf-crash-rollback below are
-; the two constructors that inhabit it (fn-sf-image-crash selects between
-; them); the guarantee comes from the predicate, not from a constructor.
+; data-durable candidate.  Theorems about the host's reopen path
+; (store-observed.lisp) take this predicate as their premise, and the host's
+; own reopen gate is this predicate (fn-own-reopen, owner.lisp:874), so it is
+; the RELIANCE predicate: what a consumer of this state may count on.
+; fn-sf-crash below is one constructor that satisfies it and shows the premise
+; is inhabited; the guarantee comes from the predicate, not from the
+; constructor.
+;
+; D14-b DID NOT WIDEN THIS PREDICATE, and the reason is a counterexample, not
+; caution.  Widening it with the recovery freedom below falsifies
+; fn-own-reopen-preserves-relation (owner-invariants.lisp): fn-own-relation
+; carries fn-own-ledger-durablep, so an owner whose store is a recovery-window
+; state with three records and an empty success list may hold a LEDGER naming
+; the third -- a pair an EARLIER process completed and acknowledged, which
+; this state does not list as its own success.  The widened premise then lets
+; fn-own-reopen take the rollback image, and the reopened owner's ledger names
+; a record the store no longer holds.  The same shape falsifies
+; fn-bprv-crash-image-extends-history.  The kernel's record list is opaque
+; about WHICH of its records are fenced; that bit lives in the byte store
+; (fn-bs-store-relation's pending list), so no gate on kernel state alone can
+; separate "the tail this process replayed" from "a record an earlier process
+; made durable".  tests/acl2/store-observed-traces-tests.lisp carries the
+; witness.  The freedom is therefore a separate recognizer used as a
+; CONCLUSION (specs/crash-model-v2.md K2), never as a reopen premise.
 (defun fn-sf-crash-imagep (s frontier records)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-sf-statep s)
+       (or (equal frontier (fn-sf-frontier s))
+           (and (fn-sf-frontier-new-visiblep s)
+                (equal frontier (fn-sf-frontier-candidate s))))
+       (or (equal records (fn-sf-records s))
+           (and (fn-sf-record-present-visiblep s)
+                (equal records (append (fn-sf-records s)
+                                       (list (fn-sf-record-candidate s))))))))
+
+; What the PLATFORM may leave behind, which in the recovery window is strictly
+; more than what a consumer may rely on (D14-b).  The third arm is the record
+; recovery replayed from the view and has not re-fenced.  Every theorem whose
+; conclusion is "the image the byte model produces is one the kernel admits"
+; -- specs/crash-model-v2.md K2 -- names THIS predicate, and K2 then needs no
+; (not (fn-bs-replay-visiblep ks)) hypothesis and K2r no open row: the
+; emptiness of the success history is a conjunct of the arm rather than a
+; separate obligation, and fn-sf-recovery-admissible-image-facts below proves
+; that nothing acknowledged is at risk under it.
+(defun fn-sf-recovery-crash-imagep (s frontier records)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-sf-statep s)
        (or (equal frontier (fn-sf-frontier s))
@@ -677,19 +715,18 @@
                     (fn-sf-successes s) 0))
     s))
 
-; The second constructor, for the recovery freedom D14-b opened.  It is a
+; The second constructor, the one that inhabits the recovery arm.  It is a
 ; SEPARATE function and fn-sf-crash-choicep gains no third choice, which is a
 ; decision and not an omission: fn-sn-crash (store-node.lisp) is the trace
 ; language's crash EVENT, and giving it a rollback choice would let a trace
 ; drop a record an EARLIER process acknowledged.  A reopened state carries no
 ; success of its own (fn-sn-open-observed-success-exact-history) while its
-; record list still holds those records, so the gate on
-; fn-sf-record-rollback-visiblep does not protect them there, and
+; record list still holds those records, so the arm's own emptiness conjunct
+; does not protect them there, and
 ; fn-snrt-acknowledged-record-retained-across-observed-reopen -- reopen, then
 ; any further trace -- would be false.  Physically no such loss exists: an
-; acknowledged record is fenced and is never the un-fenced tail.  The freedom
-; is therefore a property of the IMAGE the platform hands the reopen path,
-; which is what fn-sf-crash-imagep is, and not of the kernel's own crash step.
+; acknowledged record is fenced and is never the un-fenced tail; the kernel
+; simply cannot see which is which.
 (defun fn-sf-crash-rollback (s)
   (declare (xargs :guard t :verify-guards nil))
   (if (fn-sf-record-rollback-visiblep s)
@@ -837,6 +874,8 @@
 (verify-guards fn-sf-stable-records)
 (verify-guards fn-sf-crash-imagep
  :hints (("Goal" :use fn-sfg-state-records-have-guard-domain)))
+(verify-guards fn-sf-recovery-crash-imagep
+ :hints (("Goal" :use fn-sfg-state-records-have-guard-domain)))
 (verify-guards fn-sf-crash
  :hints (("Goal" :use fn-sfg-state-records-have-guard-domain)))
 (verify-guards fn-sf-crash-rollback
@@ -911,6 +950,7 @@
                     fn-sf-abort-completion fn-sf-record-link-result
                     fn-sf-record-dir-result fn-sf-core-completion
                     fn-sf-emit-success fn-sf-lose-success
-                    fn-sf-crash-imagep fn-sf-crash fn-sf-crash-rollback
+                    fn-sf-crash-imagep fn-sf-recovery-crash-imagep
+                    fn-sf-crash fn-sf-crash-rollback
                     fn-sf-stable-records fn-sf-recover
                     fn-sf-recovery-barrier))
