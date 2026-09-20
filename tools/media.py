@@ -404,3 +404,165 @@ def import_media(*, media_root: Path, store_root: Path, inbox_root: Path,
                              consumed_root=consumed_root, source_eid=source_eid,
                              **kwargs)
                  for item in volume.items)
+
+
+# ---------------------------------------------------------------------------
+# Command line
+#
+# The three outcomes stay distinct all the way out (D13): a carried import
+# exits `run_store.EXIT_OK` only when every item was accepted or recognised as
+# a duplicate, `EXIT_REFUSED` when one was refused with nothing charged, and
+# `EXIT_UNCERTAIN` when one item's staging or publication is undecided.  An
+# uncertain item DOMINATES a refused one in a multi-item volume: reporting the
+# volume as refused would assert that nothing landed, which is exactly what an
+# uncertain cut does not know.  No outcome is decided here -- every line below
+# renders a decision `run_bp_receive`, the workflow journal or the copy digest
+# already made.
+# ---------------------------------------------------------------------------
+
+VOLUME_EXIT = {"accepted": run_store.EXIT_OK, "duplicate": run_store.EXIT_OK,
+               "refused": run_store.EXIT_REFUSED,
+               "uncertain": run_store.EXIT_UNCERTAIN}
+
+
+def volume_exit_code(outcomes: Iterable[ImportOutcome]) -> int:
+    """The volume's exit code: uncertain over refused over accepted."""
+    code = run_store.EXIT_OK
+    for outcome in outcomes:
+        item = VOLUME_EXIT[outcome.outcome]
+        if item == run_store.EXIT_UNCERTAIN:
+            return run_store.EXIT_UNCERTAIN
+        if item == run_store.EXIT_REFUSED:
+            code = run_store.EXIT_REFUSED
+    return code
+
+
+def report_outcome(outcome: ImportOutcome, out=None, err=None) -> None:
+    """One line per item, on the stream its outcome belongs to."""
+    line = "{} {} {}".format(outcome.outcome, outcome.bid, outcome.reason)
+    if outcome.receipt_sha256:
+        line += " receipt={}".format(outcome.receipt_sha256)
+    if VOLUME_EXIT[outcome.outcome] == run_store.EXIT_OK:
+        print(line, file=sys.stdout if out is None else out)
+    else:
+        print("media: {}".format(line), file=sys.stderr if err is None else err)
+
+
+def command_verify(args) -> int:
+    """Read-only copy check: manifest, item presence and copy digest.
+
+    No store, no journal and no ACL2 process.  A volume that fails here is
+    refused before a byte of it reaches staging.
+    """
+    try:
+        volume = MediaVolume(Path(args.media))
+        for item in volume.items:
+            volume.download(item.bid)
+    except (MediaIncomplete, MediaCorrupt) as error:
+        print("media: refused {}".format(error), file=sys.stderr)
+        return run_store.EXIT_REFUSED
+    except MediaError as error:
+        print("media: refused {}".format(error), file=sys.stderr)
+        return run_store.EXIT_REFUSED
+    except OSError as error:
+        print("media: fault {}".format(error), file=sys.stderr)
+        return run_store.EXIT_FAULT
+    print("accepted {} items={} manifest={}".format(
+        args.media, len(volume.items),
+        media_digest(Path(args.media)).get(MANIFEST_NAME, "")))
+    return run_store.EXIT_OK
+
+
+def command_export(args) -> int:
+    """Write a volume from bundle files the sender already projected.
+
+    Each `--bundle <transport-id>=<path>` is an ADU ACL2 produced for that
+    work's own durable attempt.  This command copies octets; it derives no
+    identity, parses no ADU and invents no manifest field beyond the copy
+    digest.
+    """
+    items = []
+    for pair in args.bundle:
+        bid, separator, path = pair.partition("=")
+        if not separator or not bid:
+            print("media: usage --bundle wants <transport-id>=<path>", file=sys.stderr)
+            return run_store.EXIT_USAGE
+        try:
+            items.append((bid, _read_regular_readonly(Path(path), MAX_ITEM_OCTETS)))
+        except MediaError as error:
+            print("media: refused {}".format(error), file=sys.stderr)
+            return run_store.EXIT_REFUSED
+        except OSError as error:
+            print("media: fault {}".format(error), file=sys.stderr)
+            return run_store.EXIT_FAULT
+    try:
+        result = export_media(media_root=Path(args.media), media_id=args.media_id,
+                              items=items)
+    except MediaError as error:
+        print("media: refused {}".format(error), file=sys.stderr)
+        return run_store.EXIT_REFUSED
+    except FileExistsError:
+        # An existing root is a refusal, not a fault: a volume is written once
+        # and never mutated by the node that reads it.
+        print("media: refused {} already exists".format(args.media), file=sys.stderr)
+        return run_store.EXIT_REFUSED
+    except OSError as error:
+        print("media: fault {}".format(error), file=sys.stderr)
+        return run_store.EXIT_FAULT
+    print("accepted {} media-id={} items={} manifest={}".format(
+        result.root, result.media_id, len(result.items), result.manifest_sha256))
+    return run_store.EXIT_OK
+
+
+def command_import(args) -> int:
+    """Import a volume through the network receipt path and report per item."""
+    try:
+        outcomes = import_media(
+            media_root=Path(args.media), store_root=Path(args.store),
+            inbox_root=Path(args.inbox), receipt_root=Path(args.receipts),
+            consumed_root=Path(args.consumed), source_eid=args.source_eid)
+    except MediaError as error:
+        print("media: refused {}".format(error), file=sys.stderr)
+        return run_store.EXIT_REFUSED
+    except OSError as error:
+        print("media: fault {}".format(error), file=sys.stderr)
+        return run_store.EXIT_FAULT
+    for outcome in outcomes:
+        report_outcome(outcome)
+    return volume_exit_code(outcomes)
+
+
+def build_parser():
+    parser = run_store.UsageParser(prog="media", description=__doc__.splitlines()[0])
+    subs = parser.add_subparsers(dest="command", required=True)
+
+    export = subs.add_parser("export", help="write a carried volume")
+    export.add_argument("--media", required=True, help="volume root; must not exist")
+    export.add_argument("--media-id", required=True)
+    export.add_argument("--bundle", action="append", default=[],
+                        metavar="ID=PATH", help="one projected request ADU")
+    export.set_defaults(handler=command_export)
+
+    verify = subs.add_parser("verify", help="copy check only; no store, no ACL2")
+    verify.add_argument("--media", required=True)
+    verify.set_defaults(handler=command_verify)
+
+    importer = subs.add_parser("import", help="import a volume as network receipt")
+    importer.add_argument("--media", required=True)
+    importer.add_argument("--store", required=True)
+    importer.add_argument("--inbox", required=True)
+    importer.add_argument("--receipts", required=True)
+    importer.add_argument("--consumed", required=True)
+    importer.add_argument("--source-eid", required=True,
+                          help="the carrier's observed source EID")
+    importer.set_defaults(handler=command_import)
+    return parser
+
+
+def main(argv=None) -> int:
+    args = build_parser().parse_args(argv)
+    return args.handler(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

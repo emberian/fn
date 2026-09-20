@@ -144,6 +144,9 @@ class MediaImportTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory(prefix="fn-media-import-")
         self.root = Path(self.tmp.name)
         self.node = self.root / "node"
+        # `run_store.Store._safe_directory` creates the store leaf only, never
+        # a parent it did not check; the caller owns the node directory.
+        self.node.mkdir(mode=0o700, parents=True, exist_ok=True)
         run_store.Store(self.node / "store", True).initialize()
         self.volume = media.export_media(
             media_root=self.root / "volume", media_id="volume-1",
@@ -236,6 +239,7 @@ class MediaImportTests(unittest.TestCase):
         run_store.DEFAULT_CONFIG["max_transactions"] = 1
         try:
             quota_node = self.root / "quota"
+            quota_node.mkdir(mode=0o700, parents=True, exist_ok=True)
             run_store.Store(quota_node / "store", True).initialize()
             outcomes = media.import_media(
                 media_root=self.root / "volume", store_root=quota_node / "store",
@@ -270,6 +274,73 @@ class MediaImportTests(unittest.TestCase):
             self.assertIn(outcome.outcome, media.OUTCOMES)
         with self.assertRaises(media.MediaError):
             media.ImportOutcome("b", "maybe", "not a reported outcome")
+
+
+class MediaCommandLineTests(unittest.TestCase):
+    """The three outcomes stay distinct out to the exit code (D13).
+
+    No ACL2 process is started here: `export` and `verify` are copy-integrity
+    commands, and the exit-code arithmetic is exercised on outcome values the
+    receiver would have produced.  `import`'s own outcomes are the cases in
+    `MediaImportTests` above.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(prefix="fn-media-cli-")
+        self.root = Path(self.tmp.name)
+        self.adu = self.root / "one.bp"
+        self.adu.write_bytes(b"carried-adu-one")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def export(self, *extra):
+        return media.main(["export", "--media", str(self.root / "vol"),
+                           "--media-id", "cli-1",
+                           "--bundle", "media:cli-1:one={}".format(self.adu), *extra])
+
+    def test_export_then_verify_reports_accepted(self):
+        self.assertEqual(self.export(), run_store.EXIT_OK)
+        self.assertEqual(media.main(["verify", "--media", str(self.root / "vol")]),
+                         run_store.EXIT_OK)
+
+    def test_a_second_export_over_a_written_volume_is_refused(self):
+        self.assertEqual(self.export(), run_store.EXIT_OK)
+        self.assertEqual(self.export(), run_store.EXIT_REFUSED)
+
+    def test_a_damaged_copy_is_refused_by_verify_with_no_store_touched(self):
+        self.assertEqual(self.export(), run_store.EXIT_OK)
+        item = next((self.root / "vol" / media.ITEM_DIRECTORY).iterdir())
+        os.chmod(item, 0o600)
+        item.write_bytes(b"carried-adu-TWO")
+        self.assertEqual(media.main(["verify", "--media", str(self.root / "vol")]),
+                         run_store.EXIT_REFUSED)
+
+    def test_a_missing_volume_is_refused_not_a_fault(self):
+        self.assertEqual(media.main(["verify", "--media", str(self.root / "absent")]),
+                         run_store.EXIT_REFUSED)
+
+    def test_a_bundle_without_an_identity_is_a_usage_error(self):
+        self.assertEqual(media.main(["export", "--media", str(self.root / "vol2"),
+                                     "--media-id", "cli-2", "--bundle", str(self.adu)]),
+                         run_store.EXIT_USAGE)
+
+    def test_uncertain_dominates_refused_in_a_volume_exit_code(self):
+        accepted = media.ImportOutcome("a", "accepted", "accepted")
+        duplicate = media.ImportOutcome("b", "duplicate", "duplicate")
+        refused = media.ImportOutcome("c", "refused", "refused-capacity")
+        uncertain = media.ImportOutcome("d", "uncertain", "JournalUncertain")
+        self.assertEqual(media.volume_exit_code([accepted, duplicate]),
+                         run_store.EXIT_OK)
+        self.assertEqual(media.volume_exit_code([accepted, refused]),
+                         run_store.EXIT_REFUSED)
+        # An uncertain item never reports as a refusal: refusing the volume
+        # would assert that nothing landed, which is what the cut does not
+        # know.
+        self.assertEqual(media.volume_exit_code([refused, uncertain]),
+                         run_store.EXIT_UNCERTAIN)
+        self.assertEqual(media.volume_exit_code([uncertain, accepted]),
+                         run_store.EXIT_UNCERTAIN)
 
 
 if __name__ == "__main__":
