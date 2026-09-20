@@ -340,9 +340,16 @@
 
 (assert-event (equal (fn-post-result-effects (fn-peer-step *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "MODE STREAM")))
                      (list (pt-reply "203 streaming permitted"))))
-(assert-event (member-equal (pt-o "IHAVE") (fn-peer-capability-lines *pt-peer*)))
-(assert-event (member-equal (pt-o "STREAMING") (fn-peer-capability-lines *pt-peer*)))
-(assert-event (not (member-equal (pt-o "IHAVE") (fn-peer-capability-lines nil))))
+; The second argument is the pinned configuration's posting bit, which
+; fn-nntp-capability-lines gates the POST label on.  fn-peer-command passes
+; nil on a transit connection: it reads only the session and carries no
+; injection configuration, so it does not promise POST.  Witnessed both
+; ways, so the label follows the bit and not the peer record.
+(assert-event (member-equal (pt-o "IHAVE") (fn-peer-capability-lines *pt-peer* nil)))
+(assert-event (member-equal (pt-o "STREAMING") (fn-peer-capability-lines *pt-peer* nil)))
+(assert-event (not (member-equal (pt-o "IHAVE") (fn-peer-capability-lines nil nil))))
+(assert-event (not (member-equal (pt-o "POST") (fn-peer-capability-lines *pt-peer* nil))))
+(assert-event (member-equal (pt-o "POST") (fn-peer-capability-lines *pt-peer* t)))
 (assert-event (fn-nntp-effectsp (fn-post-result-effects (fn-peer-step *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CAPABILITIES")))))
 ; A reader connection: the dispatcher's 502, and MODE STREAM is 501 as before.
 (assert-event (equal (fn-post-result-effects (fn-peer-step *pt-reader* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <a1@example.invalid>")))

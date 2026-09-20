@@ -591,6 +591,34 @@
     },
     {
       "id": "SCN-020",
+      "title": "A provenance survives the store, and a legacy one keeps its meaning",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "RET-007",
+        "RET-001",
+        "STO-006"
+      ],
+      "steps": [
+        "Post one article to a fresh store; ACL2 decides the provenance from the live configuration and hands the host the form the record grammar accepts.",
+        "Close the store and reopen it, which replays the journal into a fresh node.",
+        "Ask the node for the provenance of that Message-ID and for the provenance of a value written before the typed record existed.",
+        "Ask for the provenance of a Message-ID the node does not hold."
+      ],
+      "expected": [
+        "The stored evidence is the canonical wire form: prefixed, printable in octets 33 to 126, and at most 256 octets, so the host boundary guard and the record grammar both admit it.",
+        "The provenance read back after the reopen is the provenance the acceptance recorded, field for field.",
+        "A value written before the typed record existed reads back as the :legacy kind, verbatim, and renders as the string it always rendered as.",
+        "A Message-ID the node does not hold is a refusal (exit 1), distinct from a fault (exit 3)."
+      ],
+      "evidence": [
+        "tests/test_provenance.py",
+        "tests/acl2/provenance-tests.lisp"
+      ],
+      "note": "The transit path is NOT covered: it still stores fn-peer-evidence's rendering. See planning/lanes/HANDOFF-w10-provenance.md."
+    },
+    {
+      "id": "SCN-021",
       "title": "Two peered nodes stand up, reconfigure live, and stop",
       "milestone": "M3",
       "status": "specified",
@@ -621,7 +649,7 @@
       "execution_scope": "Specified. `tools/v0_matrix.py` drives every step between two nodes on one host over loopback; the row verdicts and their blockers are in planning/v0-matrix.json. Nothing here exercises two machines, a real network, or an operator's own configuration."
     },
     {
-      "id": "SCN-021",
+      "id": "SCN-022",
       "title": "AUTHINFO login and posting permission",
       "milestone": "M3",
       "status": "specified",
@@ -647,7 +675,7 @@
       "execution_scope": "Specified. The credential is held in the clear on this tree and the login runs over an unprotected loopback connection, so no confidentiality claim follows. RFC 4643 section 2.3's transport requirement is a separate obligation."
     },
     {
-      "id": "SCN-022",
+      "id": "SCN-023",
       "title": "Transit between two peered fn nodes in both directions",
       "milestone": "M4",
       "status": "specified",
@@ -675,7 +703,7 @@
       "execution_scope": "Specified. Both nodes run on one host over loopback, so nothing here exercises a partition, latency or clock disagreement, and two articles crossing once is not the merge property of specs/peering.md section 4."
     },
     {
-      "id": "SCN-023",
+      "id": "SCN-024",
       "title": "Owner-driven outbound feed",
       "milestone": "M4",
       "status": "specified",
@@ -701,7 +729,7 @@
       "execution_scope": "Specified. `books/peer-feed` exists and `tools/run_feed.py` drives one peer by hand; the owner calling that seam is the open work this scenario is about."
     },
     {
-      "id": "SCN-024",
+      "id": "SCN-025",
       "title": "A bundle each way over fn's own convergence layer",
       "milestone": "M4",
       "status": "specified",

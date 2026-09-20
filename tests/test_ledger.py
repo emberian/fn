@@ -699,6 +699,35 @@ class DefrecordExpansionTests(unittest.TestCase):
         self.assertIn([ledger.Sym("<="),
                        [ledger.Sym("fn-x-mark-weight"), ledger.Sym("x")], 1000], body)
 
+    CONTEXT = ('(in-package "ACL2")\n'
+               '(fn-defrecord fn-x-pin\n'
+               '  :constructor (fn-x-pin subject weight)\n'
+               '  :fields ((fn-x-pin-subject stringp)\n'
+               '           (fn-x-pin-weight (<= (fn-x-pin-weight x) budget)))\n'
+               '  :recognizer-formals (budget)\n'
+               '  :recognizer-guard (posp budget)\n'
+               '  :recognizer-verify-guards nil)\n')
+
+    def test_recognizer_formals_come_before_the_record_variable(self):
+        book = self.book(self.CONTEXT)
+        formals = {f.name: f.formals for f in book.functions}
+        self.assertEqual(formals["fn-x-pinp"], ["budget", "x"])
+        # The accessors keep the one formal the record pattern gives them.
+        self.assertEqual(formals["fn-x-pin-subject"], ["x"])
+        theorem = next(t for t in book.theorems
+                       if t.name == "fn-x-pinp-forward-shape")
+        self.assertEqual(theorem.statement[1],
+                         [ledger.Sym("fn-x-pinp"), ledger.Sym("budget"),
+                          ledger.Sym("x")])
+
+    def test_recognizer_guard_and_deferred_verification(self):
+        book = self.book(self.CONTEXT)
+        statuses = {f.name: f.guard_status for f in book.functions}
+        # Deferred: the book verifies it, so the reader must not count it here.
+        self.assertNotEqual(statuses["fn-x-pinp"], "verified")
+        # The accessors are untouched by either option.
+        self.assertEqual(statuses["fn-x-pin-subject"], "verified")
+
     def test_recognizer_nil_suppresses_it(self):
         book = self.book(self.NO_RECOGNIZER)
         self.assertNotIn("fn-x-resultp", book.definitions)

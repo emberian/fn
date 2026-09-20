@@ -25,16 +25,24 @@
 ;     it as a hypothesis.  Until they do, this book states the assumptions; it
 ;     does not yet discharge or apply them.  That is C1-14 and C1-15 work.
 ;
-; This book deliberately includes nothing.  It is the bottom of the tree, and
-; its constraints are about abstract values, not about any particular book's
-; state representation, so that a later refinement can instantiate them
-; wherever the corresponding theorem lives.
+; Until 2026-09-20 this book deliberately included nothing: its constraints were
+; about abstract values, not about any particular book's state representation,
+; so that a later refinement could instantiate them wherever the corresponding
+; theorem lives.  A-CRASH-IMAGE and A-CRYPTO-TRAILER break that, and are the
+; first assumptions in the tree that are NOT strawmen: they constrain
+; `fn-bs-crash-imagep' and `fn-bs-torn-variantp', the byte model's own
+; predicates, so that the theorems depending on them are about the storage this
+; node actually runs on.  The price is one include-book: `byte-store-invariants',
+; which carries `books/byte-store' and `books/frame'.  There is no cycle --
+; nothing in the byte-store closure includes this book -- and the alternative,
+; a second assumptions book, is the twin the review told us to delete.
 ;
 ; A-CRYPTO is not here.  `books/crypto-seam.lisp' owns the digest and signature
 ; seam (`fn-digest', `fn-sig-verify'); defining a second constrained crypto
 ; function would be exactly the twin the review told us to delete.
 
 (in-package "ACL2")
+(include-book "byte-store-invariants")
 
 ; -----------------------------------------------------------------------------
 ; A-DURABILITY.  "A completed platform barrier preserves the named bytes and
@@ -286,8 +294,84 @@
     (natp (fn-assume-fairness-contact-index route schedule))))
 
 ; -----------------------------------------------------------------------------
+; A-CRASH-IMAGE and A-CRYPTO-TRAILER (design §3.6), moved here from
+; books/byte-store-invariants.lisp on 2026-09-20.
+;
+; These two are the first assumptions in the book that constrain a real model
+; rather than an abstract value: their subjects are fn-bs-crash-imagep and
+; fn-bs-torn-variantp.  The byte model's transitions and its crash are
+; withdrawn by books/byte-store.lisp's export theory, so the witness proofs
+; below re-enable exactly what they open, locally.
+(local (in-theory (enable fn-bs-statep fn-bs-view fn-bs-lookup fn-bs-content
+                          fn-bs-durable-content fn-bs-durable-entry
+                          fn-bs-fencedp fn-bs-dir-quietp fn-bs-crash)))
+
+; A torn variant of a written frame: some unit-aligned pieces replaced by
+; their old content, zeros or garbage, or the whole truncated to a unit
+; boundary.  Defined through the crash machinery on a one-inode store so
+; that "torn" means exactly what fn-bs-crash means.
+(defun fn-bs-torn-variantp (unit observed written)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((s (fn-bs-make unit (list (cons 0 nil)) nil
+                       (list (list :write 0 0 written)) 1)))
+    (fn-bs-crash-imagep s (fn-bs-make unit (list (cons 0 observed)) nil nil 1))))
+
+; A-CRASH-IMAGE.  The platform's crash, whatever it does, leaves an image the
+; byte model admits.  ORACLE is the platform's freedom (power timing, drive
+; cache, scheduler); the constraint is over every oracle.  This one
+; constraint carries: fenced data survives (fn-bs-crash-keeps-fenced-content),
+; quiet directories survive (fn-bs-crash-keeps-quiet-directory), per-entry
+; atomic namespace with no dangling entries
+; (fn-bs-crash-entry-is-old-or-a-pending-target), and that fsync :ok means
+; drained (the definition of fn-bs-fsync-file; on darwin that is F_FULLFSYNC,
+; review D12).  Qualification: functional instantiation with the development
+; profile's crash function (P10), evidenced by the campaign (process death
+; only; no power-loss claim).
+(encapsulate
+  (((fn-assume-physical-crash * *) => *))
+  (local (defun fn-assume-physical-crash (s oracle)
+           (declare (ignore oracle))
+           (fn-bs-crash s nil)))                ; the lose-everything image
+  (defthm fn-assume-physical-crash-is-admissible
+    (implies (fn-bs-statep s)
+             (fn-bs-crash-imagep s (fn-assume-physical-crash s oracle)))))
+
+; A-CRYPTO-TRAILER.  The tears the platform produces are a subset of the
+; model's tears, and none of them validates unless it is the exact write.
+; Its qualification is statistical: the campaign's garble and truncate
+; variants over SHA-256 never validate; a 2^-256 event is not modeled.
+;
+; The local witness is "no tears, of an empty write".  The natural witness
+; "no tears" (observed = written for every written) needs
+; fn-bs-view-is-an-admissible-image, which is OPEN above; the constraints,
+; which are what every dependent theorem uses, do not change with the
+; witness.
+(encapsulate
+  (((fn-assume-crash-tearp * * *) => *))
+  (local (defun fn-assume-crash-tearp (unit observed written)
+           (declare (ignore unit))
+           (and (equal observed written) (null written))))
+  (defthm fn-assume-crash-tear-is-a-model-tear
+    (implies (fn-assume-crash-tearp unit observed written)
+             (fn-bs-torn-variantp unit observed written))
+    :hints (("Goal" :in-theory (enable fn-bs-crash-imagep-suff)
+             :use ((:instance fn-bs-crash-imagep-suff
+                              (s (fn-bs-make unit (list (cons 0 nil)) nil
+                                             (list (list :write 0 0 written)) 1))
+                              (image (fn-bs-make unit (list (cons 0 observed)) nil nil 1))
+                              (choices nil))))))
+  (defthm fn-assume-crash-tear-never-validates-unless-exact
+    (implies (and (fn-assume-crash-tearp unit observed written)
+                  (not (equal observed written)))
+             (not (fn-frame-result-okp (fn-frame-open observed max-payload))))))
+
+; -----------------------------------------------------------------------------
 ; Export theory (docs/proof-style.md section 2).  This book withdraws
 ; nothing: every event in it is a constraint on a named assumption, and a
 ; theorem that takes an assumption as a hypothesis needs its constraints.
+
+; fn-bs-torn-variantp is a recognizer over the byte model, not a constraint:
+; it is withdrawn, as books/byte-store-invariants.lisp withdrew it.
+(in-theory (disable fn-bs-torn-variantp))
 
 (in-theory (current-theory :here))

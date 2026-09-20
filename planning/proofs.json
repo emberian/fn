@@ -815,15 +815,10 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "in-progress",
-      "evidence": [
-        "books/stx-carrier.lisp",
-        "books/stx-verify.lisp",
-        "books/stx-invariants.lisp",
-        "tests/acl2/stx-tests.lisp",
-        "tests/evidence/2026-09-20-substrate-s1.md"
-      ],
-      "progress_note": "S1-1 is certified in books/stx-invariants: the detached codec both ways and the field codec above it, so every accepted FN-Statement value has exactly one canonical form (the whitespace-stripped one, RFC 5536 section 2.2 folding being legal). Open: the INN interoperability run of the packet's acceptance criteria, and the named equality of fn-stx-authored-source with w4/post's injector-side projection, which does not exist yet.",
+      "status": "planned",
+      "evidence": [],
+      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
+      "note": "Events are generated and their book `books/stx-carrier` is certified, but the statement of the target is wider than what has certified: `fn-stx-field-round-trip` and `fn-stx-field-accepted-input-is-canonical` are in `books/stx-invariants`, which errors on `dev` `52eb0db` because `books/stx-verify` is open at `fn-stx-decimal-octets-are-printable`. Stays `in-progress`. Note also that section 6 of the design states `fn-stx-field-accepted-input-is-canonical` over a free `payload` and is FALSE as written; the book states the payload-free form over `fn-stx-header-value-parts`, which is what the field actually carries.",
       "events": [
         "fn-stx-detached-round-trip",
         "fn-stx-detached-accepted-input-is-canonical",
@@ -845,15 +840,10 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "in-progress",
-      "evidence": [
-        "books/stx-carrier.lisp",
-        "books/stx-verify.lisp",
-        "books/stx-invariants.lisp",
-        "tests/acl2/stx-tests.lisp",
-        "tests/evidence/2026-09-20-substrate-s1.md"
-      ],
-      "progress_note": "The grounding theorem is certified in books/stx-invariants: a :verified verdict is backed by a key named in this node's own keyring, a signature check over the statement's own signing preimage, and a ref recomputed from the receiver's projection of the received octets; the peer is not an argument to fn-stx-verdict. Open, and the reason this target is not closed: the companion fn-stx-transit-verdict-is-fn-stx-verdict names fn-peer-transfer and needs K1's transit path, so the assurance rule 'the theorem subject is the function the host calls' is not yet met.",
+      "status": "planned",
+      "evidence": [],
+      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
+      "note": "Two things keep this `in-progress`, and only one is certification. (1) `books/stx-verify` is open at one form. (2) The subject rule is unmet even when it closes: the statement covers the verdict on the transit path, and `fn-stx-transit-verdict-is-fn-stx-verdict` names `fn-peer-transfer`, so it needs the peering K1 path before any certified theorem is about the function a host calls.",
       "events": [
         "fn-stx-verified-implies-signature-over-own-octets",
         "fn-stx-verified-is-the-statement-the-article-carries",
@@ -873,11 +863,8 @@
         "PRF-020"
       ],
       "assumptions": [],
-      "status": "in-progress",
-      "evidence": [
-        "books/stx-lace.lisp",
-        "tests/evidence/2026-09-20-substrate-transit.md"
-      ],
+      "status": "planned",
+      "evidence": [],
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
     },
     {
@@ -894,11 +881,8 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "in-progress",
-      "evidence": [
-        "books/stx-lace.lisp",
-        "tests/evidence/2026-09-20-substrate-transit.md"
-      ],
+      "status": "planned",
+      "evidence": [],
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
     },
     {
@@ -932,11 +916,8 @@
         "A-CRYPTO",
         "A-POLICY"
       ],
-      "status": "in-progress",
-      "evidence": [
-        "books/stx-policy.lisp",
-        "tests/evidence/2026-09-20-substrate-transit.md"
-      ],
+      "status": "planned",
+      "evidence": [],
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
     },
     {
@@ -1002,6 +983,32 @@
       "status": "in-progress",
       "evidence": [],
       "progress_note": "books/config-stream certifies (ACL2 8.7, persvati, 2026-09-20); teeth in tests/acl2/config-stream-tests over a two-group value, with the served TABLE compared at two generations, not only the predicate. The owner-side consumer (books/owner-config, the per-connection pin and LIST ACTIVE at the pin) is written and claims no event: books/owner has no certificate on any box."
+    },
+    {
+      "id": "PRF-029",
+      "title": "Provenance is typed, and its wire form is lossless and legacy-compatible",
+      "statement": "Every string is an admissible provenance (the :legacy kind), so widening the retention evidence slot from stringp to fn-provp changes no stored value; the rendered form of each typed kind is exactly the string that kind's writer produced before the widening; and a provenance the codec can write is the provenance it reads back from its wire form.",
+      "milestone": "M4",
+      "requirements": [
+        "RET-007"
+      ],
+      "depends_on": [
+        "PRF-004"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "events": [
+        "fn-provp-of-string",
+        "fn-prov-render-of-post",
+        "fn-prov-render-of-transit",
+        "fn-prov-render-of-bp",
+        "fn-prov-render-of-local",
+        "fn-prov-render-of-legacy",
+        "fn-prov-of-wire-of-a-plain-string",
+        "fn-prov-of-wire-of-wire",
+        "fn-prov-of-wire-of-a-durable-wire"
+      ],
+      "note": "The transit path's DURABLE provenance is not covered: fn-peer-injection-arguments still passes fn-peer-evidence's rendering, and fn-peer-evidence-is-the-legacy-rendering is the equation between the typed record and that string, not evidence that the record reaches the store. books/peer-inbound and books/peer-inbound-invariants have no certificate on dev (blocked on fn-peer-echo-reply-effects-well-formed), so those two events are admitted, not certified, and are not listed here."
     }
   ]
 }

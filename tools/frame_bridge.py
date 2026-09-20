@@ -3,9 +3,13 @@
 Nothing here decides anything.  ACL2 owns the frame grammar, the field
 grammar, every bound, the Message-ID grammar, the group table, the charge
 policy and the content-identity derivation.  This module marshals octets to
-and from a live ACL2 session and computes SHA-256 over byte strings it does
-not interpret, which is A-CRYPTO: `books/frame.lisp` constrains
-`fn-frame-digest` to 32 octets and nothing else, and the host supplies them.
+and from a live ACL2 session .  Content identity is no longer among the
+things it computes: `books/crypto-attach.lisp` attaches an executable SHA-256
+to `fn-frame-digest`, so `subject_id` and `obligation_id` below are bridge
+calls, not hashes.  The SHA-256 that remains here is the FRAME INTEGRITY
+TRAILER, which is still split (ACL2 owns the protected prefix, the host
+digests it); that is the last twin in this module and is recorded in
+`planning/lanes/HANDOFF-w9-digest.md`.
 
 Every session-level constant Python still holds for slicing (`run_store.MAGIC`,
 `TRAILER_BYTES`, the journal record caps) is checked against the ACL2
@@ -304,28 +308,25 @@ class FrameSession:
     def subject_id(self, payload: bytes) -> bytes:
         """The canonical subject-v1 identity octets for an article payload.
 
-        ACL2 owns the preimage.  It hands back the fixed head
-        (`"fn/subject/v1" || 0x00 || uint32-be(len)`) and the host appends the
-        payload and hashes, exactly as with the inbound frame prefix, so a
-        32 KiB article never crosses the bridge.
+        ACL2 owns the preimage AND the digest.  `books/crypto-attach.lisp`
+        attaches `fn-sha256` to `fn-frame-digest`, so `fn-id-subject-of-payload`
+        is executable and this host no longer hashes anything: a second SHA-256
+        here would be the twin AGENTS.md's one-owner rule forbids.  The payload
+        crosses the bridge, which the old split avoided; the cost is measured in
+        `planning/lanes/HANDOFF-w9-digest.md`.
         """
-        prefix = _as_bytes(self.call(
-            "(fn-store-subject-prefix {})".format(len(payload))))
-        digest = hashlib.sha256(prefix + payload).digest()
         return _as_bytes(self.call(
-            "(fn-store-subject-id " + _octets(digest) + ")"))
+            "(fn-store-subject-id-of-payload " + _octets(payload) + ")"))
 
     def obligation_id(self, msgid: bytes, subject: bytes) -> bytes:
         """The canonical obligation-v1 identity octets.
 
         `subject` is the canonical subject identity octets, not its text.
+        Preimage and digest are both ACL2's; see `subject_id`.
         """
-        preimage = _as_bytes(self.call(
-            "(fn-store-obligation-preimage " + _octets(msgid) + " "
-            + _octets(subject) + ")"))
-        digest = hashlib.sha256(preimage).digest()
         return _as_bytes(self.call(
-            "(fn-store-obligation-id " + _octets(digest) + ")"))
+            "(fn-store-obligation-id-of " + _octets(msgid) + " "
+            + _octets(subject) + ")"))
 
     def post_boundary(self, msgid: bytes, payload_length: int,
                       group_count: int, charge: int) -> str:
