@@ -123,6 +123,51 @@ Run a later A–relay–B contact plan with non-overlapping contact windows, and
 carried-media import through the same fn acceptance boundary. The first two-node
 test is not proof of arbitrary topology, liveness, or mission operation.
 
+## The carried-media path
+
+Carried media is a transport with a very long round-trip time, not a second
+acceptance path. A media directory is `manifest.json` plus one file per bundle
+under `bundles/`; the manifest names each bundle's transport identity, its
+octet count and a copy digest, and the exporter writes the manifest last so an
+interrupted copy is not a media that silently under-reports what it carries.
+`tools/media.py` exports by asking ACL2 for the exact request ADU of each
+durable outbound work (`fn-bpo-host-request-adu`) and imports by handing a
+read-only view of that directory to the *same* callbacks the network receiver
+takes: `WorkflowJournal.stage_inbound` bounds and durably stages the bundle,
+and `run_bp_receive.receive_bpa_request` decides acceptance, receipt, charge
+and local number. Python adds no semantics on either side.
+
+- **The copy digest is a copy check, never an identity.** It refuses damaged
+  bytes before they can be staged. Content identity, immutable subject,
+  archive obligation and receipt identity stay ACL2's, derived from the ADU
+  after staging exactly as for a bundle downloaded from a BPA. A digest that
+  matches buys an item nothing beyond a staging attempt.
+- **The media is read-only.** Every read uses one `O_RDONLY | O_NOFOLLOW`
+  descriptor and no path under the media root is opened for writing, so the
+  same volume can be re-imported or carried onward. What the BPA `delete` step
+  means here is a durable *consumption* record beside the importing node's own
+  journals; it is transport bookkeeping and never an acceptance event.
+- **The outcomes stay distinct and whole.** A partial copy is absent from the
+  inventory rather than short, and is refused; a same-length corruption is
+  refused by the copy digest before staging; an exhausted staging or store
+  quota is the receiver's own refusal, with nothing charged; an ambiguous
+  staging or publication is reported `uncertain`, never as a refusal. An item
+  is accepted whole through the receiver or it changes no acceptance, receipt
+  or pin at all. Re-importing a volume a node has already accepted is a
+  duplicate that regenerates the same receipt bytes.
+
+`tests/bp-dtn7/run_four_node_lab.py` runs `home -> relay-a -> relay-b ->
+destination` with non-overlapping contact windows and one carried-media hop
+(relay-a to relay-b), over `tests/bp-dtn7/mock_bpa.py` when `DTN7_REPO` is
+unset. Its record is [the four-node lab](../tests/evidence/2026-09-20-four-node-lab.md).
+A relay there is receiver-then-sender through two separate host paths: the
+receiver accepts and archives, and an onward sender work is then enqueued for
+the same committed article. That is the manually reenqueued archival relay of
+[the relay undertaking](relay.md); the host emits no relay receipt *kind*, so
+`books/relay.lisp`'s `:forwarding` undertaking and its proposed FNWF
+`(:relay-undertaking upstream onward)` record remain a proposal and no accepted
+forwarding responsibility is demonstrated.
+
 ## Parallel ownership and evidence
 
 - Existing BPA build/API/interoperability and receive/dequeue persistence audit:
