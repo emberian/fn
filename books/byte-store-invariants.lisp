@@ -734,68 +734,17 @@
 ; stays "no tears of an empty write" until it lands.
 
 ; -----------------------------------------------------------------------------
-; The named assumptions (design §3.6).  Proposed home: books/assumptions.lisp
-; (owned by the hygiene lane, P7); until then they live here so that every
-; theorem that will depend on them can already name them.
-
-; A torn variant of a written frame: some unit-aligned pieces replaced by
-; their old content, zeros or garbage, or the whole truncated to a unit
-; boundary.  Defined through the crash machinery on a one-inode store so
-; that "torn" means exactly what fn-bs-crash means.
-(defun fn-bs-torn-variantp (unit observed written)
-  (declare (xargs :guard t :verify-guards nil))
-  (let ((s (fn-bs-make unit (list (cons 0 nil)) nil
-                       (list (list :write 0 0 written)) 1)))
-    (fn-bs-crash-imagep s (fn-bs-make unit (list (cons 0 observed)) nil nil 1))))
-
-; A-CRASH-IMAGE.  The platform's crash, whatever it does, leaves an image the
-; byte model admits.  ORACLE is the platform's freedom (power timing, drive
-; cache, scheduler); the constraint is over every oracle.  This one
-; constraint carries: fenced data survives (fn-bs-crash-keeps-fenced-content),
-; quiet directories survive (fn-bs-crash-keeps-quiet-directory), per-entry
-; atomic namespace with no dangling entries
-; (fn-bs-crash-entry-is-old-or-a-pending-target), and that fsync :ok means
-; drained (the definition of fn-bs-fsync-file; on darwin that is F_FULLFSYNC,
-; review D12).  Qualification: functional instantiation with the development
-; profile's crash function (P10), evidenced by the campaign (process death
-; only; no power-loss claim).
-(encapsulate
-  (((fn-assume-physical-crash * *) => *))
-  (local (defun fn-assume-physical-crash (s oracle)
-           (declare (ignore oracle))
-           (fn-bs-crash s nil)))                ; the lose-everything image
-  (defthm fn-assume-physical-crash-is-admissible
-    (implies (fn-bs-statep s)
-             (fn-bs-crash-imagep s (fn-assume-physical-crash s oracle)))))
-
-; A-CRYPTO-TRAILER.  The tears the platform produces are a subset of the
-; model's tears, and none of them validates unless it is the exact write.
-; Its qualification is statistical: the campaign's garble and truncate
-; variants over SHA-256 never validate; a 2^-256 event is not modeled.
+; The named assumptions (design §3.6) LIVE IN books/assumptions.lisp.
 ;
-; The local witness is "no tears, of an empty write".  The natural witness
-; "no tears" (observed = written for every written) needs
-; fn-bs-view-is-an-admissible-image, which is OPEN above; the constraints,
-; which are what every dependent theorem uses, do not change with the
-; witness.
-(encapsulate
-  (((fn-assume-crash-tearp * * *) => *))
-  (local (defun fn-assume-crash-tearp (unit observed written)
-           (declare (ignore unit))
-           (and (equal observed written) (null written))))
-  (defthm fn-assume-crash-tear-is-a-model-tear
-    (implies (fn-assume-crash-tearp unit observed written)
-             (fn-bs-torn-variantp unit observed written))
-    :hints (("Goal" :in-theory (enable fn-bs-crash-imagep-suff)
-             :use ((:instance fn-bs-crash-imagep-suff
-                              (s (fn-bs-make unit (list (cons 0 nil)) nil
-                                             (list (list :write 0 0 written)) 1))
-                              (image (fn-bs-make unit (list (cons 0 observed)) nil nil 1))
-                              (choices nil))))))
-  (defthm fn-assume-crash-tear-never-validates-unless-exact
-    (implies (and (fn-assume-crash-tearp unit observed written)
-                  (not (equal observed written)))
-             (not (fn-frame-result-okp (fn-frame-open observed max-payload))))))
+; A-CRASH-IMAGE (`fn-assume-physical-crash') and A-CRYPTO-TRAILER
+; (`fn-assume-crash-tearp'), with `fn-bs-torn-variantp', moved there on
+; 2026-09-20 (lane w9/storage-2), which is what the assurance rule "Assumptions
+; are constrained functions" requires: a named assumption is an `encapsulate'
+; with a local witness in `books/assumptions.lisp'.  The move puts this book
+; into the include-closure of `books/assumptions' and therefore of
+; `books/relay', `books/bp-release' and `books/scheduler-invariants'; there is
+; no cycle, because nothing in the byte-store closure includes `assumptions'.
+; The constraints did not change with the move.
 
 ; -----------------------------------------------------------------------------
 ; OPEN keystones, stated with their exact obligations.  None is weakened
@@ -887,5 +836,4 @@
     fn-bs-apply-entries-entry-is-entry-after fn-bs-entry-after-of-append
     fn-bs-entry-after-of-tear-write fn-bs-member-of-append
     fn-bs-crash-select-entry-is-an-outcome))
-(in-theory (disable fn-bs-invariants-vocabulary
-                    fn-bs-torn-variantp fn-bs-entry-after))
+(in-theory (disable fn-bs-invariants-vocabulary fn-bs-entry-after))

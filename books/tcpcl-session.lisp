@@ -1866,6 +1866,11 @@
 ; recognizer, the initial state and every transition are withdrawn under one
 ; name, so an includer computes with them but never inherits their unfolding.
 
+; A book that enables this vocabulary wholesale must close BOTH whole-state
+; recognizers, fn-tcl-sessionp and fn-tcl-session-cheapp: fn-tcl-drive's
+; totality test names the second, so an open one turns every expansion of
+; fn-tcl-drive into a case split over its conjuncts.  books/tcpcl-invariants
+; is the only such book today and says so at its own disable.
 (deftheory fn-tcl-session-vocabulary
   '(fn-tcl-paramsp fn-tcl-peer-initp fn-tcl-negotiatedp fn-tcl-inboundp fn-tcl-outboundp
     fn-tcl-rolep fn-tcl-phasep fn-tcl-pre-establishedp fn-tcl-transferringp fn-tcl-termp

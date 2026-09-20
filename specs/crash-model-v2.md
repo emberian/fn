@@ -1121,6 +1121,21 @@ admissible kernel image, and the pending half adds at most the one namespace
 operation the kernel's phase allows, pointing at a fenced inode that holds
 the candidate.
 
+**Except in the recovery window, where it says the opposite way round**
+(decision D14-a, 2026-09-20). Process death is not power loss: a cut at
+`record-linked` or `frontier-replaced` leaves the entry operation pending in
+the kernel's cache, and the NEXT process scans the *view*, so the kernel it
+builds already holds the value the durable half does not
+(`tools/run_store.py:1100` reads the live directory; `:1164` replays what it
+read; `host/store-node-host.lisp:39` builds the `:replaying` image from it).
+Until the five recovery fences run — `fsync_dir(self.transactions)` at
+`run_store.py:1187` is the one that drains `:transactions` — the kernel's
+record list is the durable list plus one and its frontier may be the pending
+one. So the relation is phase-indexed, and the pending entry's name is
+written from the DURABLE namespace, which is right in both windows;
+`(fn-bs-txn-name (len (fn-sf-records ks)))`, this section's earlier form, is
+off by one at the three recovery cuts and is withdrawn.
+
 ```lisp
 (defun fn-bs-durable-frontier (bs)
   (declare (xargs :guard t))
@@ -1132,36 +1147,84 @@ the candidate.
   (fn-bs-read-records (fn-bs-make (fn-bs-unit bs) (fn-bs-inodes bs) (fn-bs-dirs bs) nil (fn-bs-next-ino bs))
                       0 (len (cdr (assoc-equal :transactions (fn-bs-dirs bs))))))
 
-; Which single pending entry operation each phase allows.
+; The recovery window: the phases a process is in between replaying what it
+; scanned and completing the five recovery fences (run_store.py:1179-1201).
+; A store reaches them with a NON-EMPTY pending list whenever the previous
+; process died between its link or rename and that operation's directory
+; fence.
+(defun fn-bs-replay-visiblep (ks)
+  (declare (xargs :guard t))
+  (member-equal (fn-sf-phase ks)
+                '(:replaying :recovering :fenced-recovery)))
+
+; The single pending entry operation each phase allows, by SHAPE: at most one
+; per authority directory, at the name the durable namespace fixes, pointing
+; at a fenced inode.  Which VALUE that inode must hold is the window's
+; question, below, not this one's.
+(defun fn-bs-pending-shape-okp (bs)
+  (declare (xargs :guard t))
+  (let ((root-ops (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
+        (txn-ops (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
+    (and (or (null root-ops)
+             ; "exactly one" by SPINE, not by (len ops): the enumeration
+             ; fn-bs-names-outcomes walks the spine, and a bound on the
+             ; length leaves it closed -- which is what kept the K1
+             ; namespace clause from proving.
+             (and (consp root-ops) (not (consp (cdr root-ops)))
+                  (equal (car (car root-ops)) :set-entry)
+                  (equal (nth 2 (car root-ops)) *fn-bs-frontier-name*)
+                  (fn-bs-inop (nth 3 (car root-ops)))
+                  (fn-bs-fencedp bs (nth 3 (car root-ops)))))
+         (or (null txn-ops)
+             (and (consp txn-ops) (not (consp (cdr txn-ops)))
+                  (equal (car (car txn-ops)) :set-entry)
+                  ; The DURABLE namespace names it.  In the publish window
+                  ; this is (len (fn-sf-records ks)) as well; in the recovery
+                  ; window it is that number minus one, and only this form is
+                  ; right in both (D14-a).
+                  (equal (nth 2 (car txn-ops))
+                         (fn-bs-txn-name
+                          (len (fn-bs-durable-names bs :transactions))))
+                  (fn-bs-inop (nth 3 (car txn-ops)))
+                  (fn-bs-fencedp bs (nth 3 (car txn-ops))))))))
+
+; The publish window.  The kernel has not seen the directory barrier, so its
+; record list is still the DURABLE list and the pending entry names the
+; candidate.  The equality on the record list -- not on its length -- is what
+; excludes the image that holds the candidate twice: it forces the durable
+; namespace to be the pre-candidate one whenever a link is pending.
 (defun fn-bs-pending-matches-phase (bs ks)
   (declare (xargs :guard t))
   (let ((root-ops (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
         (txn-ops (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
-    (and (if (fn-sf-frontier-new-visiblep ks)
-             (or (null root-ops)
-                 (and (equal (len root-ops) 1)
-                      (equal (car (car root-ops)) :set-entry)
-                      (equal (nth 2 (car root-ops)) *fn-bs-frontier-name*)
-                      (fn-bs-inop (nth 3 (car root-ops)))
-                      (fn-bs-fencedp bs (nth 3 (car root-ops)))
-                      (equal (fn-bs-frontier-decode
-                              (fn-bs-durable-content bs (nth 3 (car root-ops))))
-                             (fn-sf-frontier-candidate ks))))
-           (null root-ops))
-         (if (fn-sf-record-present-visiblep ks)
-             (or (null txn-ops)
-                 (and (equal (len txn-ops) 1)
-                      (equal (car (car txn-ops)) :set-entry)
-                      (equal (nth 2 (car txn-ops))
-                             (fn-bs-txn-name (len (fn-sf-records ks))))
-                      (fn-bs-inop (nth 3 (car txn-ops)))
-                      (fn-bs-fencedp bs (nth 3 (car txn-ops)))
-                      (equal (fn-bs-record-of
-                              (fn-bs-make (fn-bs-unit bs) (fn-bs-inodes bs)
-                                          (fn-bs-dirs bs) nil (fn-bs-next-ino bs))
-                              (nth 3 (car txn-ops)))
-                             (fn-sf-record-candidate ks))))
-           (null txn-ops)))))
+    (and (fn-bs-pending-shape-okp bs)
+         (if root-ops
+             (and (fn-sf-frontier-new-visiblep ks)
+                  (equal (fn-bs-frontier-decode
+                          (fn-bs-durable-content bs (nth 3 (car root-ops))))
+                         (fn-sf-frontier-candidate ks)))
+           t)
+         (if txn-ops
+             (and (fn-sf-record-present-visiblep ks)
+                  (equal (fn-bs-durable-records bs) (fn-sf-records ks))
+                  (equal (fn-bs-record-of (fn-bs-durable bs) (nth 3 (car txn-ops)))
+                         (fn-sf-record-candidate ks)))
+           t))))
+
+; The recovery window.  The kernel is exactly what this process's scan of the
+; VIEW said, and it carries no success: fn-sn-initial starts with none and
+; Store.recover runs once per process, at open (run_store.py:1674,
+; run_owner.py:660, fn9p.py:428, run_reader.py:313, run_bp_ingress.py:132).
+; That last conjunct is why a crash here cannot lose an acknowledged record
+; even though fn-sf-crash-imagep does not admit its image (K2r).
+(defun fn-bs-replay-matches-scan (bs ks)
+  (declare (xargs :guard t))
+  (let ((scan (fn-bs-scan-store bs)))
+    (and (fn-bs-pending-shape-okp bs)
+         (fn-bs-scan-okp scan)
+         (equal (fn-sf-frontier ks) (fn-bs-scan-frontier scan))
+         (equal (fn-sf-records ks) (fn-bs-scan-records scan))
+         (equal (fn-sf-successes ks) nil))))
 
 ; Every inode an authority entry names, durable or pending, is fenced.
 (defun fn-bs-authority-inodes (bs) ...)   ; config, frontier, every :transactions entry, every pending :set-entry target on :root/:transactions
@@ -1175,15 +1238,24 @@ the candidate.
        (fn-bs-inop (fn-bs-durable-entry bs :root *fn-bs-config-name*))
        (fn-bs-config-okp (fn-bs-durable-content bs (fn-bs-durable-entry bs :root *fn-bs-config-name*)))
        (fn-bs-inop (fn-bs-durable-entry bs :root *fn-bs-frontier-name*))
+       (fn-bs-contiguous-namesp (fn-bs-durable-names bs :transactions)
+                                (len (fn-bs-durable-names bs :transactions)))
        (not (equal (fn-bs-durable-records bs) :fault))
-       (fn-sf-crash-imagep ks (fn-bs-durable-frontier bs) (fn-bs-durable-records bs))
-       (fn-bs-pending-matches-phase bs ks)
+       (if (fn-bs-replay-visiblep ks)
+           (fn-bs-replay-matches-scan bs ks)
+         (and (fn-sf-crash-imagep ks (fn-bs-durable-frontier bs)
+                                  (fn-bs-durable-records bs))
+              (fn-bs-pending-matches-phase bs ks)))
        (fn-bs-authority-fencedp bs)))
 ```
 
-The relation is established by `fn-sn-open-observed` at process start (the
-image has no pending operations, so the second and third clauses are
-trivial) and preserved by every step of every program in §2 (`K0` below).
+The relation is established by `fn-sn-open-observed` at process start and
+preserved by every step of every program in §2 (`K0` below). It is NOT
+established with an empty pending list: a process that opens after a
+process-death cut at `record-linked` or `frontier-replaced` inherits the
+previous process's un-fenced entry operation, and the recovery arm is exactly
+that state. The durable-namespace contiguity clause is what makes the scan's
+namespace test decidable from the byte store alone.
 
 ### 3.3 The store keystones
 
@@ -1209,12 +1281,33 @@ trivial) and preserved by every step of every program in §2 (`K0` below).
 
 ; K2. Old-or-new and absent-or-present as a THEOREM: every crash image of a
 ; related state scans to an image the present kernel predicate admits.
+; The recovery-window hypothesis is NOT a convenience (D14-a): in
+; :replaying/:recovering/:fenced-recovery the kernel's record list is this
+; process's SCAN of the view, the durable half may be one authority entry
+; behind it, and fn-sf-crash-imagep has no freedom for "replayed, not yet
+; re-fenced".  That window is K2r.
 (defthm fn-bs-store-crash-image-is-kernel-admissible
   (implies (and (fn-bs-store-relation bs ks)
+                (not (fn-bs-replay-visiblep ks))
                 (fn-bs-crash-imagep bs image))
            (fn-sf-crash-imagep ks
                                (fn-bs-scan-frontier (fn-bs-scan-store image))
                                (fn-bs-scan-records (fn-bs-scan-store image)))))
+
+; K2r. The recovery window, where K2's conclusion is FALSE and does not need
+; to be true.  A crash between the replay and the transaction fence loses the
+; record the replay read, and the kernel of that process admits only the
+; longer list -- but that process has acknowledged nothing, so no acknowledged
+; record is at risk, and the next open reads whichever list survived, which
+; K1 says scans.  What must be proved is the carried emptiness of the success
+; history, not an admissibility the kernel cannot express.
+(defthm fn-bs-replay-window-carries-no-success
+  (implies (and (fn-bs-store-relation bs ks)
+                (fn-bs-replay-visiblep ks))
+           (equal (fn-sf-successes ks) nil)))
+; The alternative -- widening fn-sf-crash-imagep with a recovery freedom -- is
+; a change to the premise books/store-observed.lisp and the store-node closure
+; take from the kernel, and is recorded as an open proposal, not taken.
 
 ; K3. The present constructor as a corollary: fn-sf-crash with the choices
 ; read off the scanned image reproduces it exactly
@@ -1682,7 +1775,7 @@ prescribes); guard verification is open.
 | `fn-bs-splice-composition`, `fn-bs-view-choices`, `fn-bs-view-choices-are-choices` | `byte-store-invariants` | **proved** (w9/storage): the composition lemma the view theorem's obligation named, and the nothing-lost choice list with its admissibility for every pending list and every unit |
 | `fn-bs-view-is-an-admissible-image` | — | **open**, with a smaller obligation stated at its place in the book. The composition lemma is discharged and the witness choice list exists; what remains is two index facts for `1 <= i <= count-1`, `(equal start_i (+ offset k_i))` and `(equal (min (+ offset L) (* (+ u0 i 1) unit)) (+ offset k_(i+1)))`, where `start_i = (max offset (* (+ (floor offset unit) i) unit))` and `k_i = (min L (- start_i offset))`. With them the induction on `i` closes, its step being `fn-bs-splice-composition` then `fn-bs-take-split` and its base `fn-bs-take-of-len-is-identity`. The attempt exhausts a 2,000,000 step limit re-deriving the two facts inside every branch of `fn-bs-tear-write`; state them as `:linear` rules over a named `fn-bs-piece-start` and open the tear once by `:expand`. |
 | `fn-bs-image-admissiblep` and `-iff-crash-imagep` (§1.5 decision procedure) | — | **open** (P1 residual; P6 needs it) |
-| A-CRASH-IMAGE `fn-assume-physical-crash`, A-CRYPTO-TRAILER `fn-assume-crash-tearp` (§3.6) | `byte-store-invariants` | **admitted** as encapsulates with the stated constraints; proposed home `books/assumptions.lisp` (P7). The tearp witness is "no tears, of an empty write" until the view theorem lands. |
+| A-CRASH-IMAGE `fn-assume-physical-crash`, A-CRYPTO-TRAILER `fn-assume-crash-tearp` (§3.6) | `assumptions` | **admitted** as encapsulates with the stated constraints, **moved to `books/assumptions.lisp`** (P7) by lane `w9/storage-2` on 2026-09-20, with `fn-bs-torn-variantp`: that book now includes `byte-store-invariants`, and `books/relay`, `books/bp-release` and `books/scheduler-invariants` carry the byte-store closure. No cycle; the constraints did not change. The tearp witness is "no tears, of an empty write" until the view theorem lands. |
 
 ### The programs (`books/byte-store-programs.lisp`, §2)
 
@@ -1714,20 +1807,9 @@ arm, and a model program that took it stops at `:enoent`.
 | Keystone | Status |
 | --- | --- |
 | K0 `fn-bs-program-step-preserves-relation` | **open** (P3): needs `fn-bs-store-relation`. Ground form: `fn-bs-run-statep` holds on every ground run (`byte-store-programs`) and the composed runs reach `:reserved`, `:completing`, `:ready` and recover to `:ready` (`tests/acl2/byte-store-tests.lisp`). |
-| K1 `fn-bs-store-crash-image-scans` | **open** (P3). Lane `w9/storage` did not create `books/byte-store-scan.lisp`; what it leaves for the successor is the decomposition it worked out. The crux is one lemma, "with at most one pending entry operation on a directory, the image's entries for it are the durable ones or their `put-assoc`": (S1) `(assoc-equal dir (fn-bs-apply-entries dirs ops))` equals `(assoc-equal dir (fn-bs-apply-entries dirs (fn-bs-ops-for-dir ops dir)))`, by induction on `ops` through `fn-bs-assoc-of-put-assoc-other` -- but NOT
-as stated: lane `w9/storage` attempted exactly that form and it is both a
-looping rewrite (its right side matches its own left side with `ops` bound
-to `(fn-bs-ops-for-dir ops dir)`, so it must be `:rule-classes nil`) and an
-induction that does not close, because the branch where the head operation
-names another directory needs the missing lemma "applying one directory's
-operations commutes with a `put-assoc` of a different key". The better
-route, which that attempt found the hard way, is the PER-NAME machinery the
-book already has: `fn-bs-apply-entries-entry-is-entry-after` reduces one
-name's value to `fn-bs-entry-after`, which ignores other directories'
-operations by construction, and `fn-bs-crash-entry-is-old-or-a-pending-
-target` is already the conclusion for a single name. What is then left for
-K1 is only the NAME SET, that is `strip-cars`, and contiguity; (S2) `(fn-bs-ops-for-dir (fn-bs-crash-select ops choices unit) dir)` is a subsequence of `(fn-bs-ops-for-dir ops dir)`, hence `nil` or the whole of it when that has length at most one. Then `fn-bs-put-assoc` of a new key appends at the end, so `fn-bs-names` of the image is the durable names or those plus the candidate's, which is where contiguity and `fn-bs-read-records` follow. The relation must carry the durable side of contiguity (the durable `:transactions` names are exactly `fn-bs-txn-name` 0..m-1 for m its length); `fn-bs-txn-name` should be a constrained function with `fn-bs-namep` and injectivity, because the decimal format is the host's and ACL2 owning it is a separate packet. Also needs `fn-bs-scan-store` and the relation; its byte-level inputs are proved (`fn-bs-crash-keeps-fenced-content` for every authority inode, `fn-bs-crash-keeps-quiet-directory`, `fn-bs-crash-entry-is-old-or-a-pending-target` for the one pending entry the phase allows). |
-| K2 `fn-bs-store-crash-image-is-kernel-admissible` | **open** (P3, store deputy's seam): stated as a comment in `byte-store-invariants` with the exact obligation against `fn-sf-crash-imagep` (`store-files.lisp:499`). |
+| K1 `fn-bs-store-crash-image-scans` | **open** (P3), and its NAMESPACE clause is closed as of 2026-09-20 (lane `w9/storage-3`, hbox `build/acl2/certify-20260920T204940Z-1181403`): `fn-bs-apply-entries-names-is-names-after` (the bridge the previous lane left open; `tools/proof_profile.py` named four opened recognizers as the cause and closing them took it from an induction-depth-limit blowout at 2,016,278 prover steps to 33,789), then `fn-bs-crash-names-is-names-after`, `fn-bs-crash-image-names-are-an-outcome` and `fn-bs-crash-image-transaction-names`, which is the "exactly the durable transaction namespace, or that namespace with the one pending link's name appended" clause. What is left of K1 is the other three scan clauses. |
+| K2 `fn-bs-store-crash-image-is-kernel-admissible` | **open** (P3), and the MODEL question in front of it is now DECIDED: [decision D14-a](../planning/decisions.md) (2026-09-20, lane `w9/storage-3`) keeps `books/byte-store-scan.lisp`'s `(fn-bs-txn-name (len (fn-bs-durable-names bs :transactions)))` and withdraws §3.2's `(fn-bs-txn-name (len (fn-sf-records ks)))`. The evidence is the six cut states between the record write and the pending link's removal in `tools/run_store.py` at `ca8a2ef`. In the PUBLISH window (`record-linked` 1338, `record-attempted` 1346, and the `record-link :error` branch 1336) the two forms agree, because the only transition that appends to `fn-sf-records` is `fn-sf-record-dir-result :ok` (`store-files.lisp:507`), issued at `publish:1353` strictly after the `fsync_dir(self.transactions)` at 1348 that empties the directory's pending list. In the RECOVERY window they do not: process death is not power loss, so a cut at `record-linked` leaves the entry pending, the next process's `durable_records` (1100) scans the VIEW and `acl2.recover` (1164) replays `R+1` records, and at `recover-replayed` (1179) and the first two `recover-barrier` cuts (1200, before `fsync_dir(self.transactions)` at 1187) the durable namespace still holds `R` names. There §3.2's form names `(fn-bs-txn-name (1+ R))`, which names nothing. The rejected candidate `(equal (len (fn-bs-durable-records bs)) (len (fn-sf-records ks)))` is false at exactly those three cuts. The duplicate-record image is excluded instead by the publish window's `(equal (fn-bs-durable-records bs) (fn-sf-records ks))`, an equality of LISTS, and §3.2 now carries a third arm, `fn-bs-replay-matches-scan`, for the recovery window. K2 gains `(not (fn-bs-replay-visiblep ks))` as a hypothesis; the recovery window is the new open row K2r, and the finding it rests on is a GAP IN THE KERNEL, not in the byte model: `fn-sf-crash-imagep` (`store-files.lisp:593`) has no freedom for a record that was replayed and not yet re-fenced. |
+| K2r `fn-bs-replay-window-carries-no-success` | **open** (P3, new 2026-09-20). The recovery window's obligation, stated so it does not need the kernel freedom K2 would need: such a state has `(fn-sf-successes ks)` empty -- `fn-sn-initial nil 0` starts with none and `Store.recover` runs exactly once per process, at open (`run_store.py:1674`, `run_owner.py:660`, `fn9p.py:428`, `run_reader.py:313`, `run_bp_ingress.py:132`) -- so a crash there risks no acknowledged record, and K1 says whichever list survives scans. Widening `fn-sf-crash-imagep` instead is recorded as a proposal and not taken: it changes the premise `books/store-observed.lisp` and the store-node closure take from the kernel. |
 | K3 `fn-bs-store-recovery-is-a-kernel-crash` | **open** (P3): from K2 and `fn-sf-crash-realizes-every-admissible-image`. |
 | K4-K8 | **open** (P3) |
 | K9, K9b, K9c, K10 | **open** (P5) |

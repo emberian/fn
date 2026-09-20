@@ -60,7 +60,7 @@
 ;       It belongs in books/nntp-post.
 ;
 ; With those three, K2 is the append law plus K1.  Recorded in
-; planning/proofs.json as OB-AUTH-FOLD rather than approximated by a
+; planning/proofs.json (PRF-031) as OB-AUTH-FOLD rather than approximated by a
 ; theorem about a branch nobody reaches.
 ;
 ; ALSO NOT PROVED HERE, and not hidden.  The converse -- that a principal

@@ -112,7 +112,7 @@ above as certificates.
 
 ### Open, named, not weakened
 
-- **OB-AUTH-FOLD** (`planning/proofs.json` PRF-029, and the header of
+- **OB-AUTH-FOLD** (`planning/proofs.json` PRF-031, and the header of
   `books/nntp-auth-invariants.lisp`). The fold-level statement — no read of
   a connection under a configuration that grants posting to no one emits a
   submission — is not proved. It is an induction over `fn-served-feed`

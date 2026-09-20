@@ -390,7 +390,7 @@
 ; EXPORTED, forward-chaining only: books/served.lisp carries this
 ; consistency as its connection invariant and needs the session facts of it
 ; wherever a branch test mentions fn-auth-sessionp, exactly as
-; books/peer-inbound.lisp exports fn-peer-consistent-forward.
+; books/peer-inbound.lisp exports fn-peer-session-consistentp-forward.
 (defthm fn-auth-consistent-forward
   (implies (fn-auth-session-consistentp as archive)
            (and (fn-auth-sessionp as)
