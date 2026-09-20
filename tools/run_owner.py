@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
-"""The mutable service owner: one process owns one store (C1-05).
+"""The mutable service owner: one process owns one store (C1-05, C1-06).
 
-It holds the exclusive writer lock, accepts loopback NNTP connections, and
-accepts a local Unix-socket control channel for the post path.  Every state
-decision is one call into the proved owner machine (books/owner.lisp) through
-host/owner-host.lisp; this file moves bytes, reports filesystem observations
-and clock readings, and maps outcomes to exit codes and reply lines.
+It holds the exclusive writer lock, accepts loopback NNTP connections (reads
+and POST), and accepts a local Unix-socket control channel for the CLI post
+path.  Every state decision is one call into the proved owner machine
+(books/owner.lisp) through host/owner-host.lisp; this file moves bytes,
+reports filesystem observations and clock readings, and maps outcomes to
+exit codes and reply lines.
 
 Readers observe a committed version pinned when their connection opened; a
 post advances the committed version without touching any open reader; a
 reader moves to the newest version only when the control channel advances it.
+A served POST is a submission the book queued on the connection's read;
+`drain' takes one at a time through the same durable path the control channel
+uses and feeds the observed word back, and the book renders the 240 or 441.
 """
 import argparse
 import os
@@ -21,8 +25,10 @@ import time
 
 from run_store import (ACL2_RECOVER_BASE_SECONDS, ACL2_RECOVER_PER_RECORD_SECONDS,
                        Acl2Store, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, Store,
-                       StoreError, StoreFault, UsageParser, acl2_nat, acl2_octets,
-                       acl2_symbol, exit_code_for, post_article)
+                       StoreError, StoreFault, StoreIndeterminate, UsageParser,
+                       acl2_nat, acl2_octets, acl2_symbol, conservative_charge,
+                       durable_post, exit_code_for, group_codes, post_article,
+                       validate_post_boundary)
 from run_reader import acl2_boolean, acl2_octet_list
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -133,10 +139,9 @@ class Acl2Owner(Acl2Store):
         connection's wire, session and pinned archive
         (fn-own-read-is-served-step-on-pinned-prefix).  The whole chunk is
         consumed, so there is no unconsumed suffix and no re-feeding loop
-        here.  The third value is the submission the read produced, if any:
-        None until w4/post's POST fold lands a submit effect in
-        fn-nntp-effectp; the owner then runs the durable path for it and
-        feeds the outcome back through `outcome'.
+        here.  The third value says whether the read injected an article:
+        the book queued the submission inside the owner, and `take' is how
+        the writer moves it into the durable path.
         """
         literal = "(" + " ".join(str(byte) for byte in octets) + ")"
         outcome = self._symbol("(fn-owner-chunk {} '{} state)".format(cid, literal))
@@ -144,11 +149,31 @@ class Acl2Owner(Acl2Store):
             raise StoreError("owner does not know connection {}".format(cid))
         reply = bytes(acl2_octet_list(self.call("(@ fn-owner-output)")))
         closing = acl2_boolean(self.call("(@ fn-owner-closep)"))
-        return reply, closing, None
+        submitted = acl2_boolean(self.call("(@ fn-owner-submittedp)"))
+        return reply, closing, submitted
+
+    def take(self):
+        """The writer step: `taken' with one submission now in flight, or `idle'."""
+        return self._symbol("(fn-owner-take state)")
+
+    def inflight(self):
+        """The submission in flight: (cid, msgid, octets, groups), all ACL2's."""
+        cid = self._nat("(@ fn-owner-submit-id)")
+        msgid = bytes(acl2_octet_list(self.call("(@ fn-owner-submit-msgid)")))
+        octets = bytes(acl2_octet_list(self.call("(@ fn-owner-submit-octets)")))
+        count = self._nat("(len (@ fn-owner-submit-groups))")
+        if count > 64:
+            raise StoreError("ACL2 reported an implausible group count")
+        groups = [bytes(acl2_octet_list(self.call(
+            "(fn-inj-nth {} (@ fn-owner-submit-groups))".format(index))))
+            for index in range(count)]
+        return cid, msgid, octets, groups
 
     def outcome(self, cid, word):
-        """Feed a submission's durable outcome back through the book."""
-        return self._symbol("(fn-owner-outcome {} :{} state)".format(cid, word))
+        """Feed the observed word back; the book renders the reply octets."""
+        if self._symbol("(fn-owner-outcome {} :{} state)".format(cid, word)) != "fed":
+            raise StoreError("owner did not accept the outcome")
+        return bytes(acl2_octet_list(self.call("(@ fn-owner-output)")))
 
     def close_connection(self, cid):
         return self._symbol("(fn-owner-close {} state)".format(cid))
@@ -215,6 +240,10 @@ class Owner:
         except OSError:
             return
         sock.setblocking(False)
+        # One clock observation per connection, pinned into it at open
+        # (books/clock.lisp says what the host asserts; books/injection.lisp
+        # is what reads it).
+        self.clock.observe(self.bridge)
         cid, greeting = self.bridge.open()
         if cid is None:
             # The configured bound is reached; the owner installed nothing.
@@ -253,12 +282,12 @@ class Owner:
                 # whole chunk (books/served.lisp owns the framing loop and
                 # fn-served-run-is-the-concatenated-step says the cut points
                 # the network chose are invisible).
-                reply, closing, submission = self.bridge.chunk(conn.cid, list(incoming))
+                reply, closing, submitted = self.bridge.chunk(conn.cid, list(incoming))
                 conn.outbuf += reply
                 if closing:
                     conn.closing = True
-                if submission is not None:
-                    conn.outbuf += self.submit(conn, submission)
+                if submitted:
+                    self.drain()
         if mask & selectors.EVENT_WRITE and conn.outbuf:
             try:
                 sent = conn.sock.send(conn.outbuf)
@@ -278,30 +307,63 @@ class Owner:
         conn.reading = len(conn.outbuf) < MAX_OUTPUT_BACKLOG
         self.rearm(conn)
 
-    def submit(self, conn, submission):
-        """The served POST path, shaped for w4/post's fold.
+    def drain(self):
+        """The served POST path: one submission at a time through the durable path.
 
-        A submission the served step produced runs the same durable path a
-        control-channel POST runs, with this connection as the transaction
-        owner, and its outcome is fed back through fn-owner-outcome so the
-        book, not this file, decides the reply.  Until the fold lands the
-        served step produces no submission and this is never reached.
+        fn-own-take-submission (books/owner.lisp) moves one queued submission
+        into the durable path only when nothing is in flight, no transaction
+        is pending and the store is :ready; this loop is therefore serial by
+        construction.  The submission's octets, Message-ID and groups are the
+        injection decision's (books/injection.lisp), read back from the
+        owner; the word this file observed goes back through fn-owner-outcome
+        and the book renders the reply for that connection alone
+        (fn-own-durable-reply-names-a-durable-record: 240 needs a consumed
+        completion after the take).
         """
-        msgid, payload, groups, charge = submission
-        self.clock.observe(self.bridge)
-        if self.bridge.begin(conn.cid) != "begun":
-            self.bridge.outcome(conn.cid, "refused")
-            return b""
+        while self.bridge.take() == "taken":
+            cid, msgid, payload, groups = self.bridge.inflight()
+            word = self.attempt(msgid, payload, groups)
+            reply = self.bridge.outcome(cid, word)
+            for conn in self.connections.values():
+                if conn.cid == cid:
+                    conn.outbuf += reply
+                    self.rearm(conn)
+                    break
+
+    def attempt(self, msgid, payload, groups):
+        """Carry ACL2's injected octets through the CLI's durable path.
+
+        Returns the word ACL2 turns into 240 or 441.  Three outcomes stay
+        distinct here and all the way out to the wire: `durable' only after
+        fn-sn-finish (durable_post never invents it), `refused' for a typed
+        refusal before anything was staged (a duplicate or conflicting
+        Message-ID, an uncarried group, a bound), `uncertain' for an
+        indeterminate commit and for a host fault, which is logged.
+        """
         try:
-            sequence, _charge = post_article(self.store, self.bridge, self.records,
-                                             msgid, payload, groups, charge)
-        except StoreError as error:
-            self.bridge.outcome(conn.cid, self.outcome_word(error))
-            return b""
-        if sequence is not None:
+            names = [group.decode("ascii") for group in groups]
+            codes = group_codes(names, self.store.config)
+            charge = conservative_charge(payload)
+            validate_post_boundary(msgid, payload, codes, charge, self.store.config)
+            existing = self.bridge.existing_action(msgid, payload, codes)
+            if existing in ("duplicate", "conflict"):
+                return "refused"
+            if self.records >= self.store.config["max_transactions"]:
+                return "refused"
+            durable_post(self.store, self.bridge, self.records, msgid, payload, codes, charge)
             self.records += 1
-        self.bridge.outcome(conn.cid, "duplicate" if sequence is None else "committed")
-        return b""
+            return "durable"
+        except StoreIndeterminate as error:
+            print("owner: uncertain post: {}".format(error), file=sys.stderr)
+            return "uncertain"
+        except UnicodeDecodeError:
+            return "refused"
+        except StoreError as error:
+            word = self.outcome_word(error)
+            if word == "fault":
+                print("owner: post fault: {}".format(error), file=sys.stderr)
+                return "uncertain"
+            return word
 
     def rearm(self, conn):
         events = 0
