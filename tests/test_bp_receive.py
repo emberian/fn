@@ -107,10 +107,15 @@ class ReceiveTests(unittest.TestCase):
   try:self.assertEqual((len(records),b.article_count(),b.pin_count()),(1,1,1))
   finally:b.close();store.close()
  def test_store_commit_before_context_reopen_binds_existing_exact_record(self):
+  # The raw ingress commits the article to the Store under its own bundle and
+  # its own staging journal; the receiver then meets an exact durable record
+  # with no receipt context of its own.
   seeded={'raw-bid':self.article};deleted=[]
+  seed_bundle=lab_bundles([dict(sequence=zlib.crc32(b'raw-bid')+1)])[0]
   result=run_bp_ingress.ingest_bpa_adu(store_root=self.store,journal_root=Path(self.tmp.name)/'seed-inbox',
    journal_module_path=ROOT/'tools/workflow_journal.py',bid='raw-bid',inventory=lambda:list(seeded),
-   download=lambda bid:seeded[bid],delete=lambda bid:(deleted.append(bid),seeded.pop(bid)),source_eid='dtn://seed.lab')
+   download=lambda bid:seeded[bid],bundle=lambda bid:seed_bundle,
+   delete=lambda bid:(deleted.append(bid),seeded.pop(bid)),source_eid='dtn://seed.lab')
   self.assertEqual(result.outcome,'accepted');self.assertEqual(deleted,['raw-bid'])
   self.stage('bid-recover',self.request())
   received=self.invoke('bid-recover');self.assertEqual(received.outcome,'accepted');self.assertTrue(received.receipt_adu)
