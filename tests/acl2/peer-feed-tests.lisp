@@ -313,6 +313,7 @@
                       (fn-feed-entry *ff-a* :queued 0 0))
                 *ff-contact* 0 7 1))
 (assert-event (not (fn-feedp *ff-forged-feed*)))
+(assert-event (fn-feed-distinctp *ff2-fx*))
 (assert-event (not (fn-feed-distinctp (fn-feed-queue *ff-forged-feed*))))
 (assert-event (equal (fn-feed-state-of *ff-a* (fn-feed-queue *ff-forged-feed*))
                      :done))

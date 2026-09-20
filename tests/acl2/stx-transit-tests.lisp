@@ -149,12 +149,29 @@
 (assert-event (equal (fn-lace-ids (fn-stx-lace *stxt-node-1b* *stxt-keyring*))
                      (list (fn-stmt-id *stxt-s1*) (fn-stmt-id *stxt-s1*))))
 
-; The tooth for the durable-completion hypothesis: a transaction that did not
-; publish leaves the store equal, so fn-stx-acceptedp is false and the lace
-; does not move.
+; One must-fail case per hypothesis of fn-stx-lace-of-accept-is-merge
+; (books/stx-lace.lisp), each an assert-event on the NEGATED CONCLUSION.
+;
+; Hypothesis 1, fn-stx-acceptedp, dropped: a transaction that did not publish
+; leaves the store equal.  Freshness still holds here (asserted above), so
+; this witness separates the first hypothesis alone, and the delta is
+; non-empty so the conclusion is not about nothing.
 (assert-event (not (fn-stx-acceptedp *stxt-node-0* *stxt-node-0* *stxt-r1*)))
-(assert-event (equal (fn-stx-lace *stxt-node-0* *stxt-keyring*)
-                     (fn-stx-lace *stxt-node-0* *stxt-keyring*)))
+(assert-event (consp (fn-stx-delta (fn-article-payload *stxt-r1*) *stxt-keyring*)))
+(assert-event (not (equal (fn-stx-lace *stxt-node-0* *stxt-keyring*)
+                          (fn-lace-merge
+                           (fn-stx-lace *stxt-node-0* *stxt-keyring*)
+                           (fn-stx-delta (fn-article-payload *stxt-r1*)
+                                         *stxt-keyring*)))))
+
+; Hypothesis 2, fn-stx-delta-freshp, dropped: the `:have` path above accepts
+; (hypothesis 1 holds there) and is not fresh, and the conclusion fails --
+; the lace of the reached node carries the id twice and the merge dedupes.
+(assert-event (not (equal (fn-stx-lace *stxt-node-1b* *stxt-keyring*)
+                          (fn-lace-merge
+                           (fn-stx-lace *stxt-node-1* *stxt-keyring*)
+                           (fn-stx-delta (fn-article-payload *stxt-r1-again*)
+                                         *stxt-keyring*)))))
 
 ; -----------------------------------------------------------------------------
 ; S3-2: equivocation.  One key, one (creator, incarnation, sequence), two

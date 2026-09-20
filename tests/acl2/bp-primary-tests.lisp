@@ -432,7 +432,9 @@
                                       fn-bpp-creation-time
                                       fn-bpp-sequence)))))
 
-; fn-bpp-previous-node-round-trip
+; fn-bpp-previous-node-round-trip is OPEN: it is commented out at
+; books/bp-primary-invariants.lisp:392 (the event at :395), so what
+; follows is a witness for a theorem that is NOT proved.
 ;   without `fn-bpp-previous-nodep`: an endpoint that is not a node ID is not
 ;   a Previous Node value and does not come back.  Stated generally over a
 ;   free `e`, the negated goal opens the endpoint encoder and the CBOR decoder
@@ -447,7 +449,9 @@
                (fn-bpp-previous-node-data *bpp-dtn-inbox*))
               *bpp-dtn-inbox*))))
 
-; fn-bpp-hop-count-round-trip
+; fn-bpp-hop-count-round-trip is OPEN: it is commented out at
+; books/bp-primary-invariants.lisp:410 (the event at :413), so what
+; follows is a witness for a theorem that is NOT proved.
 ;   without `fn-bpp-hop-countp`: a hop limit of zero or over 255 is refused.
 ;   Stated generally over a free `x`, the negated goal opens the CBOR array
 ;   encoder and decoder at once and does not settle, so the tooth is bitten by

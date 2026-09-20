@@ -387,6 +387,7 @@
 ; fn-nntp-newsgroup-lines-are-clean.  Hypothesis fn-nntp-safe-group-listp: a
 ; group name carrying a CR renders a line that is not clean.
 (defconst *lg-unsafe-group* (coerce (list (code-char 65) (code-char 13)) 'string))
+(assert-event (fn-nntp-safe-group-listp *lg-groups*))
 (assert-event (not (fn-nntp-safe-group-listp (list *lg-unsafe-group*))))
 (assert-event
  (not (fn-nov-clean-line-listp
