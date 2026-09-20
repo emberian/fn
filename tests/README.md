@@ -129,7 +129,7 @@ contract and the model's shape, not against a proved correspondence.
 
 The tools that decide what gets certified are themselves tested, with no ACL2
 and no network: `python3 -m unittest tests.test_certify_runner tests.test_ledger
-tests.test_certs tests.test_farm`. `tests/test_certify_runner.py` drives the
+tests.test_certs tests.test_farm tests.test_proof_profile`. `tests/test_certify_runner.py` drives the
 real runner against a fake ACL2 in a throwaway repository (`FakeRepository`):
 the parallel schedule, `--affected-by` selection and `--dry-run` listing
 (`AffectedByTests`), the machine-wide process cap with one slot serialising
@@ -141,8 +141,13 @@ overwrites a newer matching local pair, and keeps two same-byte books apart.
 `tests/test_farm.py` reads the exact commands `tools/farm.py` would issue --
 the mirror that excludes `build/`, the detached runner, a bounded wait that
 sleeps rather than spins, the fetch of evidence and pairs -- without running
-ssh. `tests/test_ledger.py` covers the reader, the suspect detector and both
-export lints. None of this is evidence about ACL2; it is evidence that the
+ssh. `tests/test_ledger.py` covers the reader, the suspect detector, the export
+lints, the `fn-defrecord` expansion the reader must perform to see a migrated
+book, and the hand-written-record lint.
+`tests/test_proof_profile.py` pins `tools/proof_profile.py`'s parser against
+two real ACL2 8.7 logs in `tests/vectors/` -- one form that closed and one
+that did not -- plus the driver it builds and its choice of the less loaded
+farm box. None of this is evidence about ACL2; it is evidence that the
 harness reports what ACL2 did.
 
 ## Evidence record
