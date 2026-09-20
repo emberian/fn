@@ -18,7 +18,7 @@ milestones 4 and 5 that depend on it.
 | `tools/run_owner.py` (edit) | The `Feed` class and the driver: one outbound client connection per peer with work, the journal replayed and fenced at startup, the FNFD records appended and fsynced BEFORE the bytes they authorize, the reply lines fed back through ACL2. |
 | `tools/run_feed.py` (edit) | The Python status twin is **deleted**. `status()` is gone; `Acl2Feed.response_code` calls `fn-own-feed-response-code`, which is why the module now includes `books/owner-feed`. The file is a thin driver for `tests/test_feed.py`; the live feed is the owner's. |
 | `tools/twonode_gate.py` (edit) | `scenario_owner_feed` (A posts through the server, A's own feed delivers to B, byte-identity, the 435/438 second offer; then B to A) and `scenario_feed_restart` (B down, A posts, `kill -9` A, both restart, B ends with exactly one copy: K5). The driver gains a `post` phase and a `wait` phase. |
-| `books/peer-inbound.lisp` | **Taken from `w10/auth-served` at `e1159a7`** (three local bridge lemmas closing `fn-peer-echo-reply-effects-well-formed`). Not this lane's work; taken because the served chain's blocker made every owner book unloadable. Expect a trivial merge. |
+| `books/peer-inbound.lisp` | Taken from `w10/auth-served` at `e1159a7` mid-lane to unblock loading, then **replaced by dev's** at the merge of `2505a8f` (`w6/peering-inbound-2`), which is the version with a certificate. Nothing of this lane is in that file. |
 | `Makefile`, `docs/prefixes.md`, `specs/peering.md`, `planning/proofs.json`, `planning/requirements.json` | Two roots (`books/owner-feed` and its tests, before `books/owner`, which now includes it); the `fn-own-feed-` row; the wave-10 status section; PRF-029 linked from REP-001, REP-002 and REP-005. |
 
 ## The three design decisions a successor should not undo
@@ -63,6 +63,40 @@ open forms, and both are named exactly.
 | `books/peer-feed-invariants` (dependency) | **open at `fn-feed-apply-record-preserves-feedp`** | persvati `run-20260920T190044Z-c815`, `books--peer-feed-invariants.certify.log:15702`. The residue has MOVED since the w6 handoff: the `find`/`consp` bridge is closed, and what remains is the attempt bound in the `:feed-sent` arm — `(fn-feed-attempts-belowp (fn-feed-queue-set-state (fn-feed-queue f) msgid '(:sent 0)) (fn-feed-next-attempt f))` with `(fn-bp-nth 1 (state)) = 0` in the split. The feed lane owns it. |
 | `make check` | green | 202 Markdown files, 56 requirements, 29 proof targets, 19 scenarios; ledger current. |
 | `tests/test_twonode_gate.py` | 19 tests, green | laptop, `python3 -m unittest tests.test_twonode_gate`. |
+
+## After the merge of dev at `2505a8f`
+
+The lane merged `dev` once the coordinator reported that `books/served`,
+`books/owner` and `books/ideal` have certificates there. Two things follow.
+
+- `books/peer-inbound.lisp` is dev's again (the `w10/auth-served` copy this
+  lane carried mid-run is gone), and `books/peer-feed-invariants.lisp` is
+  dev's at `c34995d`, which is a commit later than the one this lane's
+  earlier farm runs measured. Whether `fn-feed-apply-record-preserves-feedp`
+  closes there — and so whether `books/owner-feed` can certify at all — is
+  answered by a re-`ld` against the merged source: **it is still open.**
+  `fn-feed-apply-record-preserves-feedp` fails at `c34995d` exactly as it did
+  at `8148b04`, so `books/owner-feed` still cannot certify. The decisive farm
+  run is persvati `run-20260920T201914Z-0a52` (remote root
+  `/home/ember/fn-lanes/w10-owner-feed-b`, `--jobs 4 --timeout-seconds 5400
+  --closure books/owner-feed tests/acl2/owner-feed-tests books/owner
+  books/owner-invariants tests/acl2/owner-tests`); it was still running when
+  this lane ended, and `python3 tools/farm.py wait persvati
+  run-20260920T201914Z-0a52 --remote-root /home/ember/fn-lanes/w10-owner-feed-b`
+  brings its evidence and its certificate pairs home.
+- **`fn-own-conn-boundedp` (books/owner.lisp:572) is a live defect and is
+  NOT this lane's to fix** (coordinator, 2026-09-20; the inbound lane owns
+  it). It tests `fn-post-sessionp` on what is now a six-field peer session,
+  so it is false on every connection, the enqueue branch below it is
+  unreachable, and every theorem hypothesising `fn-own-relation` is vacuous
+  on reachable states. This lane did not touch that predicate or the three
+  branches that test it. **None of this lane's keystones hypothesise
+  `fn-own-relation`**: they hypothesise `fn-own-feed-tablep`, the feed
+  table's own carried recognizer, which is independent of the connection
+  shape. The owner-side statements listed as open below are the ones that
+  will need `fn-own-relation`, and they should be written against it AFTER
+  the fix (the connection's session recognizer is the served one, not the
+  post shape).
 
 ## What is open, with the obligation each needs
 
