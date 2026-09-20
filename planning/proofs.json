@@ -953,6 +953,36 @@
       "status": "planned",
       "evidence": [],
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
+    },
+    {
+      "id": "PRF-027",
+      "title": "The two durable kinds are one sequence-ordered stream (R5)",
+      "statement": "fn-cstr-merge-keeps-every-config-record and fn-cstr-merge-keeps-every-article-record: the merge of the configuration-record file and the transaction journal by the sequence field each record carries holds exactly the records of each file, in order -- the left side walks the merge, the right side walks the input file. fn-cstr-merge-is-sequence-ordered: two sequence-ordered files merge to one sequence-ordered stream, so the two-directory layout loses no ordering information. fn-cstr-ok-merged-replay-ends-in-a-configured-node: a merged replay that reports :ok ends in a fn-cnode-statep state, which carries reserved <= capacity, so every configuration record in the history was admitted at a node that had already replayed the article records before it. Covered scope: finite histories of the two record kinds; no on-disk interleaving is claimed.",
+      "milestone": "M2",
+      "requirements": [
+        "STO-004"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [],
+      "progress_note": "books/config-stream certifies (ACL2 8.7, persvati, 2026-09-20). The separating witness in tests/acl2/config-stream-tests is the argument for the decision: one (:set-capacity 1) over a history whose two articles reserve 2, which the configuration-only replay the host runs today accepts and the merged replay refuses with :config-refusal; a raise and a decrease to exactly the reservation total are both admitted, so the merged replay is not refusing every decrease. Open: the host still replays configuration first (specs/reconfiguration.md section 8)."
+    },
+    {
+      "id": "PRF-028",
+      "title": "What a configuration generation serves (R5)",
+      "statement": "fn-cstr-created-group-is-served-exactly-from-its-generation: a group created by the delta that produces generation g is live at every generation from g on and at none below it -- both directions, so a connection pinned below g must not see it. fn-cstr-retired-group-is-served-exactly-below-its-generation: a group retired at g is live exactly at the generations from its creation up to g, and the entry, its stamp and its watermark stay (NNT-006). Covered scope: one delta over a typed configuration value; the per-connection pin that observes these is books/owner-config, which does not certify.",
+      "milestone": "M2",
+      "requirements": [
+        "NNT-006"
+      ],
+      "depends_on": [
+        "PRF-027"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [],
+      "progress_note": "books/config-stream certifies (ACL2 8.7, persvati, 2026-09-20); teeth in tests/acl2/config-stream-tests over a two-group value, with the served TABLE compared at two generations, not only the predicate. The owner-side consumer (books/owner-config, the per-connection pin and LIST ACTIVE at the pin) is written and claims no event: books/owner has no certificate on any box."
     }
   ]
 }
