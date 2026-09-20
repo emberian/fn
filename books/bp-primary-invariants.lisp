@@ -17,6 +17,9 @@
 (include-book "bp-primary")
 
 (local (include-book "arithmetic/top" :dir :system))
+; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
+; this book reasons under them, so open them here, locally.
+(local (in-theory (enable fn-cbor-record-vocabulary fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary)))
 
 ; -----------------------------------------------------------------------------
 ; Endpoint IDs
@@ -159,11 +162,12 @@
    :hints (("Goal" :use fn-bpp-eleven-element-list-reconstructs
             :in-theory (disable fn-bpp-eleven-element-list-reconstructs)))))
 
+; The CRC field is not read back by fn-bpp-value-block, so the former
+; hypotheses (fn-cbor-octet-listp crc-octets) and the width equation had no
+; violating value (probed 2026-09-19: '(0 0 0 0), '(1 2 3) and 'x all round
+; trip); they are dropped rather than kept as teeth-less hypotheses.
 (defthm fn-bpp-value-block-of-block-value
-  (implies (and (fn-bpp-blockp b)
-                (fn-cbor-octet-listp crc-octets)
-                (equal (len crc-octets)
-                       (fn-bpp-crc-width (fn-bpp-crc-type b))))
+  (implies (fn-bpp-blockp b)
            (equal (fn-bpp-value-block (fn-bpp-block-value b crc-octets)) b))
   :hints (("Goal" :in-theory (disable fn-bpp-eid-value fn-bpp-value-eid))))
 

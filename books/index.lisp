@@ -24,14 +24,51 @@
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr entry))))
 (verify-guards fn-index-entry-msgid)
 
+; The entry is an opaque three-field record (docs/proof-style.md s1).
+(defun fn-index-entry-shapep (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 3)))
+(defthm fn-index-entry-shapep-of-fn-index-entry
+  (fn-index-entry-shapep (fn-index-entry group number msgid)))
+(defthm fn-index-entry-group-of-fn-index-entry
+  (equal (fn-index-entry-group (fn-index-entry group number msgid)) group))
+(defthm fn-index-entry-number-of-fn-index-entry
+  (equal (fn-index-entry-number (fn-index-entry group number msgid)) number))
+(defthm fn-index-entry-msgid-of-fn-index-entry
+  (equal (fn-index-entry-msgid (fn-index-entry group number msgid)) msgid))
+(in-theory (disable (:d fn-index-entry-shapep) (:d fn-index-entry)
+                    (:d fn-index-entry-group) (:d fn-index-entry-number)
+                    (:d fn-index-entry-msgid)))
+
+; Shape facts type reasoning used to supply while the record opened
+; (docs/proof-style.md s1), exported as forward-chaining rules only.
+(defthm fn-index-entry-shapep-forward-shape
+  (implies (fn-index-entry-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-index-entry-shapep))))
+(defthm fn-index-entry-accessors-forward-consp
+  (and (implies (fn-index-entry-group x) (consp x))
+       (implies (fn-index-entry-number x) (consp x))
+       (implies (fn-index-entry-msgid x) (consp x)))
+  :rule-classes ((:forward-chaining :corollary (implies (fn-index-entry-group x) (consp x))
+                                    :trigger-terms ((fn-index-entry-group x)))
+                 (:forward-chaining :corollary (implies (fn-index-entry-number x) (consp x))
+                                    :trigger-terms ((fn-index-entry-number x)))
+                 (:forward-chaining :corollary (implies (fn-index-entry-msgid x) (consp x))
+                                    :trigger-terms ((fn-index-entry-msgid x))))
+  :hints (("Goal" :in-theory (enable fn-index-entry-group fn-index-entry-number fn-index-entry-msgid))))
+
 (defun fn-index-entryp (entry)
   (declare (xargs :guard t :verify-guards nil))
-  (and (true-listp entry)
-       (equal (len entry) 3)
+  (and (fn-index-entry-shapep entry)
        (stringp (fn-index-entry-group entry))
        (posp (fn-index-entry-number entry))
        (stringp (fn-index-entry-msgid entry))))
 (verify-guards fn-index-entryp)
+(defthm fn-index-entryp-forward-shape
+  (implies (fn-index-entryp x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-index-entryp fn-index-entry-shapep))))
 
 (defun fn-index-listp (index)
   (declare (xargs :guard t :verify-guards nil))
@@ -228,6 +265,14 @@
           group low high msgid memberships))
   :hints (("Goal" :induct (fn-index-membership-entries msgid memberships))))
 
+(defthm fn-index-query-article-build
+  (equal (fn-index-range-query-raw (fn-index-article-entries article)
+                                   group low high)
+         (fn-index-reference-memberships
+          group low high (fn-article-msgid article)
+          (fn-article-memberships article)))
+  :hints (("Goal" :in-theory (enable fn-index-article-entries))))
+
 ; -----------------------------------------------------------------------------
 ; FN-INDEX-BUILD is guard-t and well typed for a valid article list.  Proved
 ; separately from soundness/completeness so FN-INDEX-RANGE-QUERY-CORRECT below
@@ -258,7 +303,8 @@
 (defthm fn-index-build-listp
   (implies (fn-article-listp configured articles)
            (fn-index-listp (fn-index-build articles)))
-  :hints (("Goal" :induct (fn-index-build articles))))
+  :hints (("Goal" :induct (fn-index-build articles)
+           :in-theory (disable fn-index-article-entries))))
 
 (defthm fn-index-range-query-correct
   (implies (and (fn-article-listp configured articles)
@@ -269,7 +315,8 @@
                    (fn-index-build articles) group low high)
                   (fn-index-reference-range group low high articles)))
   :hints (("Goal" :induct (fn-index-build articles)
-                  :in-theory (enable fn-index-query-range))))
+                  :in-theory (e/d (fn-index-query-range)
+                                  (fn-index-article-entries)))))
 
 ; -----------------------------------------------------------------------------
 ; Soundness and completeness of a fresh build against the authoritative source
@@ -331,7 +378,8 @@
 (defthm fn-index-build-sound
   (implies (fn-article-listp configured articles)
            (fn-index-soundp (fn-index-build articles) articles))
-  :hints (("Goal" :induct (fn-index-build articles))))
+  :hints (("Goal" :induct (fn-index-build articles)
+           :in-theory (disable fn-index-article-entries))))
 
 (defthm fn-index-memberships-completep-cons-index
   (implies (fn-index-memberships-completep msgid memberships index)
@@ -366,7 +414,7 @@
 (defthm fn-index-build-correspondence
   (implies (fn-article-listp configured articles)
            (fn-index-correspondencep (fn-index-build articles) articles))
-  :hints (("Goal" :induct (fn-index-build articles))))
+  :hints (("Goal" :in-theory (disable fn-index-build))))
 
 (defthm fn-index-rebuild-correspondence
   (implies (fn-statep st)
@@ -375,5 +423,26 @@
             (fn-state-articles st)))
   :hints (("Goal" :use (:instance fn-index-build-correspondence
                                       (configured (fn-state-groups st))
-                                      (articles (fn-state-articles st)))))
-)
+                                      (articles (fn-state-articles st)))
+           :in-theory (enable fn-statep))))
+
+; -----------------------------------------------------------------------------
+; Export theory.  Withdrawn: the entry recognizer, the public query, the
+; rebuild and the correspondence recognizer, and under a name the append,
+; cons and membership lemmas.  Enabled on include: the record lemmas, the
+; list-recursive vocabulary (build, scans, reference enumerations) and the
+; keystones fn-index-build-listp, fn-index-range-query-correct,
+; fn-index-build-sound, fn-index-build-complete,
+; fn-index-build-correspondence and fn-index-rebuild-correspondence.
+(deftheory fn-index-vocabulary
+  '(fn-index-query-append fn-index-query-memberships-build fn-index-query-article-build
+    fn-index-membership-entries-listp fn-index-article-entries-listp
+    fn-index-listp-append member-equal-append-right member-equal-append-left
+    fn-index-membership-hasp-of-member fn-index-entry-sourcedp-cons
+    fn-index-soundp-cons-articles fn-index-soundp-append-index
+    fn-index-membership-entries-sourced fn-index-article-entries-self-sourced
+    fn-index-memberships-completep-cons-index fn-index-memberships-completep-self
+    fn-index-memberships-completep-append-right
+    fn-index-memberships-completep-append-left fn-index-completep-append-left))
+(in-theory (disable fn-index-vocabulary fn-index-entryp fn-index-query-range
+                    fn-index-rebuild fn-index-correspondencep))

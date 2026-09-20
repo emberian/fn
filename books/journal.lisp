@@ -1,5 +1,12 @@
 ; fn M2 storage slice: an executable isolated-slot journal and recovery model.
 ;
+; HISTORICAL (2026-09-19 realignment).  This is the retired isolated-slot
+; journal experiment named in docs/prefixes.md.  The adapter the host runs is
+; the file kernel (store-files.lisp) under the composed node (store-node.lisp);
+; nothing in books/ or host/ includes this book.  Its logic is left as it was;
+; it now ends with an export theory so that an includer inherits only its
+; theorems, never its definitions.
+;
 ; This is deliberately a logical record model, not a byte format.  A slot's
 ; `:intact` / `:torn` tag abstracts a bounded frame/integrity check which a
 ; future codec must implement.  It neither chooses a frame grammar nor assumes
@@ -509,3 +516,24 @@
                    sequence objects commits)
                   (fn-journal-result-ok
                    (append commits (list (cons sequence txid)))))))
+
+; -----------------------------------------------------------------------------
+; Export theory (historical book): every definition is withdrawn; the nine
+; scanner and completion-action facts above stay enabled.
+(in-theory (disable fn-journal-integrityp fn-journal-durabilityp
+                    fn-journal-live-kind fn-journal-live-txid fn-journal-live-data
+                    fn-journal-live-durability fn-journal-make-live-object
+                    fn-journal-make-live-commit fn-journal-live-commit-txid
+                    fn-journal-live-commit-refs fn-journal-live-slotp
+                    fn-journal-physical-kind fn-journal-physical-txid
+                    fn-journal-physical-data fn-journal-physical-integrity
+                    fn-journal-make-physical-object fn-journal-make-physical-commit
+                    fn-journal-physical-commit-txid fn-journal-physical-commit-refs
+                    fn-journal-physical-slotp fn-journal-materialize
+                    fn-journal-stage-object fn-journal-stage-commit fn-journal-barrier
+                    fn-journal-host-statusp fn-journal-completion-action
+                    fn-journal-crash-choicep fn-journal-crash fn-journal-crash-matrix
+                    fn-journal-anchorp fn-journal-result-ok fn-journal-result-fault
+                    fn-journal-result-okp fn-journal-result-commits
+                    fn-journal-anchor-satisfiedp fn-journal-recover
+                    fn-journal-durable-commitp))

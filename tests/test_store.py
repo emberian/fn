@@ -290,7 +290,7 @@ class StoreTests(unittest.TestCase):
                         self.assertEqual(real_finish(), "durable")
                     raise run_store.StoreFault("injected core reply failure")
 
-                args = SimpleNamespace(store=self.path, message_id=message_id,
+                args = SimpleNamespace(store=self.path, message_id=message_id, owner=None,
                                        payload=self.payload, group=["fn.letters"],
                                        charge=None, inject_fault=None)
                 output = io.StringIO()

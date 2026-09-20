@@ -25,14 +25,22 @@
 ; fn-sf-record-present-visiblep therefore include the data-durable phases.
 
 (in-package "ACL2")
-(include-book "replay-invariants")
+(include-book "replay")
+; The codecs cluster withdraws the record and codec definitions at export
+; (2026-09-19); the proofs here open fn-record-p and the record accessors.
+(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))
 
 (defconst *fn-sf-max-uint* 4294967295)
 (defconst *fn-sf-recovery-barrier-count* 5)
 
-; State layout:
-; (:store-files phase frontier frontier-candidate records record-candidate
-;               completion-pair successes recovery-barriers)
+; -----------------------------------------------------------------------------
+; The kernel state record (opaque below its lemmas, docs/proof-style.md s1).
+; Layout: (:store-files phase frontier frontier-candidate records
+;          record-candidate completion-pair successes recovery-barriers)
+(defun fn-sf-shapep (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 9) (equal (car x) :store-files)))
+
 (defun fn-sf-phase (s)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car (cdr s)) :exec (fn-ag-car (fn-ag-cdr s))))
@@ -75,9 +83,95 @@
 
 (defun fn-sf-make (phase frontier frontier-candidate records record-candidate
                          completion successes barriers)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (list :store-files phase frontier frontier-candidate records record-candidate
         completion successes barriers))
+
+(verify-guards fn-sf-phase)
+(verify-guards fn-sf-frontier)
+(verify-guards fn-sf-frontier-candidate)
+(verify-guards fn-sf-records)
+(verify-guards fn-sf-record-candidate)
+(verify-guards fn-sf-completion)
+(verify-guards fn-sf-successes)
+(verify-guards fn-sf-barriers)
+
+(defthm fn-sf-shapep-of-fn-sf-make
+  (fn-sf-shapep (fn-sf-make phase frontier frontier-candidate records
+                            record-candidate completion successes barriers)))
+(defthm fn-sf-phase-of-fn-sf-make
+  (equal (fn-sf-phase (fn-sf-make phase frontier frontier-candidate records
+                                  record-candidate completion successes barriers))
+         phase))
+(defthm fn-sf-frontier-of-fn-sf-make
+  (equal (fn-sf-frontier (fn-sf-make phase frontier frontier-candidate records
+                                     record-candidate completion successes barriers))
+         frontier))
+(defthm fn-sf-frontier-candidate-of-fn-sf-make
+  (equal (fn-sf-frontier-candidate
+          (fn-sf-make phase frontier frontier-candidate records
+                      record-candidate completion successes barriers))
+         frontier-candidate))
+(defthm fn-sf-records-of-fn-sf-make
+  (equal (fn-sf-records (fn-sf-make phase frontier frontier-candidate records
+                                    record-candidate completion successes barriers))
+         records))
+(defthm fn-sf-record-candidate-of-fn-sf-make
+  (equal (fn-sf-record-candidate
+          (fn-sf-make phase frontier frontier-candidate records
+                      record-candidate completion successes barriers))
+         record-candidate))
+(defthm fn-sf-completion-of-fn-sf-make
+  (equal (fn-sf-completion (fn-sf-make phase frontier frontier-candidate records
+                                       record-candidate completion successes barriers))
+         completion))
+(defthm fn-sf-successes-of-fn-sf-make
+  (equal (fn-sf-successes (fn-sf-make phase frontier frontier-candidate records
+                                      record-candidate completion successes barriers))
+         successes))
+(defthm fn-sf-barriers-of-fn-sf-make
+  (equal (fn-sf-barriers (fn-sf-make phase frontier frontier-candidate records
+                                     record-candidate completion successes barriers))
+         barriers))
+
+; Nothing below opens the record: goals stay in accessor vocabulary.
+(in-theory (disable (:d fn-sf-shapep) (:d fn-sf-phase) (:d fn-sf-frontier)
+                    (:d fn-sf-frontier-candidate) (:d fn-sf-records)
+                    (:d fn-sf-record-candidate) (:d fn-sf-completion)
+                    (:d fn-sf-successes) (:d fn-sf-barriers) (:d fn-sf-make)))
+
+; Shape facts type reasoning used to supply while the record opened
+; (docs/proof-style.md s1), exported as forward-chaining rules only.
+(defthm fn-sf-shapep-forward-shape
+  (implies (fn-sf-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-sf-shapep))))
+(defthm fn-sf-accessors-forward-consp
+  (and (implies (fn-sf-phase x) (consp x))
+       (implies (fn-sf-frontier x) (consp x))
+       (implies (fn-sf-frontier-candidate x) (consp x))
+       (implies (fn-sf-records x) (consp x))
+       (implies (fn-sf-record-candidate x) (consp x))
+       (implies (fn-sf-completion x) (consp x))
+       (implies (fn-sf-successes x) (consp x))
+       (implies (fn-sf-barriers x) (consp x)))
+  :rule-classes ((:forward-chaining :corollary (implies (fn-sf-phase x) (consp x))
+                                    :trigger-terms ((fn-sf-phase x)))
+                 (:forward-chaining :corollary (implies (fn-sf-frontier x) (consp x))
+                                    :trigger-terms ((fn-sf-frontier x)))
+                 (:forward-chaining :corollary (implies (fn-sf-frontier-candidate x) (consp x))
+                                    :trigger-terms ((fn-sf-frontier-candidate x)))
+                 (:forward-chaining :corollary (implies (fn-sf-records x) (consp x))
+                                    :trigger-terms ((fn-sf-records x)))
+                 (:forward-chaining :corollary (implies (fn-sf-record-candidate x) (consp x))
+                                    :trigger-terms ((fn-sf-record-candidate x)))
+                 (:forward-chaining :corollary (implies (fn-sf-completion x) (consp x))
+                                    :trigger-terms ((fn-sf-completion x)))
+                 (:forward-chaining :corollary (implies (fn-sf-successes x) (consp x))
+                                    :trigger-terms ((fn-sf-successes x)))
+                 (:forward-chaining :corollary (implies (fn-sf-barriers x) (consp x))
+                                    :trigger-terms ((fn-sf-barriers x))))
+  :hints (("Goal" :in-theory (enable fn-sf-phase fn-sf-frontier fn-sf-frontier-candidate fn-sf-records fn-sf-record-candidate fn-sf-completion fn-sf-successes fn-sf-barriers))))
 
 ; Every phase below is either observable between host calls or transient
 ; inside one composed host call (:aborting, :completed).  The kernel has no
@@ -232,7 +326,7 @@
 
 (defun fn-sf-statep (s)
   (declare (xargs :guard t :verify-guards nil))
-  (and (true-listp s) (equal (len s) 9) (equal (car s) :store-files)
+  (and (fn-sf-shapep s)
        (fn-sf-phasep (fn-sf-phase s))
        (fn-record-uint32p (fn-sf-frontier s))
        (fn-sf-record-listp (fn-sf-records s) 0 0 (fn-sf-frontier s))
@@ -250,8 +344,8 @@
 ; Durable allocator replacement.
 
 (defun fn-sf-start-frontier (s)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :ready)
+  (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
+  (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :ready)
            (< (fn-sf-frontier s) *fn-sf-max-uint*))
       (fn-sf-make :frontier-staged (fn-sf-frontier s)
                   (1+ (fn-sf-frontier s)) (fn-sf-records s) nil nil
@@ -261,8 +355,8 @@
 ; :known-fail is reported by the host for a staging failure before any
 ; replacement attempt (tools/run_store.py advance_frontier, OSError branch).
 (defun fn-sf-frontier-file-result (s result)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :frontier-staged))
+  (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
+  (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :frontier-staged))
       (cond
        ((equal result :ok)
         (fn-sf-make :frontier-data-durable (fn-sf-frontier s)
@@ -275,8 +369,8 @@
     s))
 
 (defun fn-sf-frontier-replace-result (s result)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (and (fn-sf-statep s)
+  (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
+  (if (and (mbe :logic (fn-sf-statep s) :exec t)
            (equal (fn-sf-phase s) :frontier-data-durable))
       (cond
        ((equal result :ok)
@@ -291,8 +385,8 @@
     s))
 
 (defun fn-sf-frontier-dir-result (s result)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :frontier-attempted))
+  (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
+  (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :frontier-attempted))
       (cond
        ((equal result :ok)
         (fn-sf-make :reserved (fn-sf-frontier-candidate s) nil
@@ -328,16 +422,16 @@
 ; host-side fence followed by crash/recovery, which uses the durable frontier
 ; without restoring a reservation token.
 (defun fn-sf-refuse-reservation (s txid)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :reserved)
+  (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
+  (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :reserved)
            (natp txid) (equal (1+ txid) (fn-sf-frontier s)))
       (fn-sf-make :ready (fn-sf-frontier s) nil (fn-sf-records s) nil nil
                   (fn-sf-successes s) (fn-sf-barriers s))
     s))
 
 (defun fn-sf-prepare-record (s record groups capacity)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :reserved)
+  (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
+  (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :reserved)
            (fn-sf-candidatep record (fn-sf-records s) (fn-sf-frontier s))
            (fn-sf-history-recoverablep
             groups capacity (append (fn-sf-records s) (list record))
@@ -350,8 +444,8 @@
 ; (store-node-resolution.lisp); the host reports a staging failure by calling
 ; that composed operation, never as a bare file observation.
 (defun fn-sf-record-file-result (s result)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :record-staged))
+  (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
+  (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :record-staged))
       (cond
        ((equal result :ok)
         (fn-sf-make :record-data-durable (fn-sf-frontier s) nil
@@ -368,8 +462,8 @@
 ; intermediate state inside the single host call fn-sn-known-abort, which
 ; continues with fn-sf-abort-completion before returning.
 (defun fn-sf-prepublish-abort (s)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (and (fn-sf-statep s)
+  (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
+  (if (and (mbe :logic (fn-sf-statep s) :exec t)
            (equal (fn-sf-phase s) :record-data-durable))
       (fn-sf-make :aborting (fn-sf-frontier s) nil (fn-sf-records s)
                   (fn-sf-record-candidate s) nil (fn-sf-successes s)
@@ -380,8 +474,8 @@
 ; and calls the actual aborted node completion; the kernel step only checks
 ; that the pair names the staged candidate.
 (defun fn-sf-abort-completion (s sequence txid)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :aborting)
+  (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
+  (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :aborting)
            (equal (cons sequence txid)
                   (fn-sf-record-pair (fn-sf-record-candidate s))))
       (fn-sf-make :ready (fn-sf-frontier s) nil (fn-sf-records s) nil nil
@@ -389,8 +483,8 @@
     s))
 
 (defun fn-sf-record-link-result (s result)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (and (fn-sf-statep s)
+  (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
+  (if (and (mbe :logic (fn-sf-statep s) :exec t)
            (equal (fn-sf-phase s) :record-data-durable))
       (cond
        ((equal result :ok)
@@ -405,8 +499,8 @@
     s))
 
 (defun fn-sf-record-dir-result (s result)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :record-attempted))
+  (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
+  (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :record-attempted))
       (cond
        ((equal result :ok)
         (let ((record (fn-sf-record-candidate s)))
@@ -428,8 +522,8 @@
 ; :completed is unreachable-in-composition as an observable phase: fn-sn-finish
 ; continues with fn-sf-emit-success in the same host call.
 (defun fn-sf-core-completion (s sequence txid)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :completing)
+  (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
+  (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :completing)
            (equal (cons sequence txid) (fn-sf-completion s)))
       (fn-sf-make :completed (fn-sf-frontier s) nil (fn-sf-records s) nil
                   (fn-sf-completion s) (fn-sf-successes s)
@@ -437,8 +531,8 @@
     s))
 
 (defun fn-sf-emit-success (s sequence txid)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :completed)
+  (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
+  (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :completed)
            (equal (cons sequence txid) (fn-sf-completion s)))
       (fn-sf-make :ready (fn-sf-frontier s) nil (fn-sf-records s) nil nil
                   (append (fn-sf-successes s) (list (cons sequence txid)))
@@ -529,8 +623,8 @@
 ; Recovery uses the observed frontier in the crash image.  No process-cached
 ; pre-error frontier is an argument to replay.
 (defun fn-sf-recover (s groups capacity)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :replaying))
+  (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
+  (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :replaying))
       (if (fn-sf-history-recoverablep groups capacity (fn-sf-records s)
                                       (fn-sf-frontier s))
           (fn-sf-make :recovering (fn-sf-frontier s) nil (fn-sf-records s)
@@ -540,8 +634,8 @@
     s))
 
 (defun fn-sf-recovery-barrier (s result)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :recovering))
+  (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
+  (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :recovering))
       (cond
        ((equal result :ok)
         (let ((next (1+ (fn-sf-barriers s))))
@@ -562,6 +656,34 @@
  (defthm fn-sfg-record-values-are-a-true-list
    (implies (fn-sf-record-valuesp records)
             (true-listp records))))
+
+; The record fields the kernel arithmetic touches, typed once so the guard
+; proofs below never open fn-record-p.
+(local
+ (defthm fn-sfg-record-is-a-true-list
+   (implies (fn-record-p record) (true-listp record))
+   :hints (("Goal" :in-theory (enable fn-record-p)))))
+(local
+ (defthm fn-sfg-record-sequence-is-natural
+   (implies (fn-record-p record) (natp (fn-record-sequence record)))
+   :rule-classes (:rewrite :forward-chaining :type-prescription)
+   :hints (("Goal" :in-theory (enable fn-record-p)))))
+(local
+ (defthm fn-sfg-record-txid-is-natural
+   (implies (fn-record-p record) (natp (fn-record-txid record)))
+   :rule-classes (:rewrite :forward-chaining :type-prescription)
+   :hints (("Goal" :in-theory (enable fn-record-p)))))
+(local
+ (defthm fn-sfg-record-generation-is-natural
+   (implies (fn-record-p record) (natp (fn-record-generation record)))
+   :rule-classes (:rewrite :forward-chaining :type-prescription)
+   :hints (("Goal" :in-theory (enable fn-record-p)))))
+(local
+ (defthm fn-sfg-next-lower-is-natural
+   (implies (and (fn-sf-record-valuesp records) (natp lower))
+            (natp (fn-sf-next-lower records lower)))
+   :hints (("Goal" :induct (fn-sf-next-lower records lower)
+            :in-theory (disable fn-record-p fn-record-txid)))))
 
 (local
  (defthm fn-sfg-record-list-implies-values
@@ -585,15 +707,6 @@
 
 ; The complete executable file kernel is guard verified.  Selectors preserve
 ; their original total ACL2 semantics through the guarded acceptance helpers.
-(verify-guards fn-sf-phase)
-(verify-guards fn-sf-frontier)
-(verify-guards fn-sf-frontier-candidate)
-(verify-guards fn-sf-records)
-(verify-guards fn-sf-record-candidate)
-(verify-guards fn-sf-completion)
-(verify-guards fn-sf-successes)
-(verify-guards fn-sf-barriers)
-(verify-guards fn-sf-make)
 (verify-guards fn-sf-phasep)
 (verify-guards fn-sf-fencedp)
 (verify-guards fn-sf-pairp)
@@ -602,7 +715,8 @@
 (verify-guards fn-sf-next-lower)
 (verify-guards fn-sf-record-listp)
 (verify-guards fn-sf-candidatep
- :hints (("Goal" :use fn-sfg-record-values-are-a-true-list)))
+ :hints (("Goal" :in-theory (disable fn-record-p fn-record-sequence
+                                     fn-record-txid fn-record-generation))))
 (verify-guards fn-sf-record-has-pairp)
 (verify-guards fn-sf-success-listp)
 (verify-guards fn-sf-frontier-phasep)
@@ -612,12 +726,17 @@
  :hints (("Goal" :use fn-sfg-record-list-implies-values)))
 (verify-guards fn-sf-statep
  :hints (("Goal" :use fn-sfg-record-list-implies-values)))
+(defthm fn-sf-statep-forward-shape
+  (implies (fn-sf-statep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-sf-statep fn-sf-shapep))))
 (verify-guards fn-sf-initial-state)
 (verify-guards fn-sf-start-frontier)
 (verify-guards fn-sf-frontier-file-result)
 (verify-guards fn-sf-frontier-replace-result)
 (verify-guards fn-sf-frontier-dir-result)
-(verify-guards fn-sf-replay-node)
+(verify-guards fn-sf-replay-node
+ :hints (("Goal" :in-theory (enable fn-replay-advance-okp))))
 (verify-guards fn-sf-history-recoverablep)
 (verify-guards fn-sf-refuse-reservation)
 (verify-guards fn-sf-prepare-record
@@ -692,3 +811,22 @@
                 (equal (fn-sf-emit-success s sequence txid) s)
                 (implies (not (equal (cons sequence txid) (fn-sf-completion s)))
                          (equal (fn-sf-core-completion s sequence txid) s)))))
+
+; -----------------------------------------------------------------------------
+; Export theory (docs/proof-style.md s2).  Enabled on include: the record
+; lemmas, the list-recursive vocabulary (fn-sf-record-listp,
+; fn-sf-success-listp, fn-sf-record-has-pairp, fn-sf-record-valuesp,
+; fn-sf-next-lower), the small phase predicates and the theorems above.
+; Withdrawn: the recognizers, the initial state, replay admission and every
+; transition; books/store-files-invariants.lisp opens them locally.
+(in-theory (disable fn-sf-statep fn-sf-phase-shapep fn-sf-initial-state
+                    fn-sf-start-frontier fn-sf-frontier-file-result
+                    fn-sf-frontier-replace-result fn-sf-frontier-dir-result
+                    fn-sf-replay-node fn-sf-history-recoverablep
+                    fn-sf-refuse-reservation fn-sf-prepare-record
+                    fn-sf-record-file-result fn-sf-prepublish-abort
+                    fn-sf-abort-completion fn-sf-record-link-result
+                    fn-sf-record-dir-result fn-sf-core-completion
+                    fn-sf-emit-success fn-sf-lose-success
+                    fn-sf-crash-imagep fn-sf-crash fn-sf-recover
+                    fn-sf-recovery-barrier))
