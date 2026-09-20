@@ -13,8 +13,13 @@ cache.
     python3 tools/farm.py status hbox
 
 ``submit`` mirrors this worktree to the *same absolute path* on the host,
-starts the runner detached with its own log and status file, and returns a run
-id.  ``wait`` blocks on that id, printing progress every poll and never
+installs everything the box's own certificate cache already holds into the
+mirrored tree, starts the runner detached with its own log and status file,
+and returns a run id.  The install is the difference between certifying what
+changed and certifying a whole dependency closure: on 2026-09-20 a lane's
+``--closure`` run on an empty remote root spent 30 minutes re-certifying the
+substrate for four new books.  ``wait`` publishes the run's pairs back into
+that same cache, so the next lane on the box starts from them.  ``wait`` blocks on that id, printing progress every poll and never
 spinning; it returns the runner's own exit code.  hbox is co-tenant, so its
 runner is wrapped in ``swarm-build``, which enforces the memory cap there.
 """
@@ -56,6 +61,10 @@ EXCLUDES = ("build/", ".git/", "__pycache__/", ".venv/", "*.pyc")
 POLL_SECONDS = 30
 DEFAULT_WAIT_SECONDS = 6 * 60 * 60
 EVIDENCE = re.compile(r"Certification evidence: (build/acl2/[A-Za-z0-9._-]+)")
+# `certs.py install` prints one counted line; these are the numbers worth
+# recording with the run, and their absence means the install did not run.
+INSTALLED = re.compile(r"installed (\d+), kept identical local (\d+), "
+                       r"no cached pair (\d+), foreign-local (\d+)")
 
 # Seams: the tests drive the real command construction through these.
 RUN = subprocess.run
@@ -111,6 +120,47 @@ def expand_remote(host: str, path: Path | str) -> Path:
         raise FarmError(f"{host}: cannot resolve $HOME for {text}: "
                         f"ssh exited {answer.returncode}: {answer.stdout.strip()}")
     return Path(home) if text == "~" else Path(home) / text[2:]
+
+
+def certs_script(host: str, root: Path, action: str,
+                 origin_kind: str | None = None) -> str:
+    """Drive the box's own certificate cache inside the mirrored tree.
+
+    The cache lives on the box (``HOSTS[host]["cache"]``), not here, and a
+    pair in it is usable only if this tree's books hash to the same closure,
+    which ``certs.py`` checks.  `install` runs before the runner; `publish
+    --origin-kind run` runs after it, so the next lane on the box finds the
+    pairs this run made and `install` accepts them: a finished run root is a
+    snapshot, not a live worktree.
+    """
+    cache = host_settings(host)["cache"]
+    kind = f"--origin-kind {origin_kind} " if origin_kind else ""
+    return (f"cd {remote_quote(root)} || exit 9; "
+            f"python3 tools/certs.py --cache {remote_quote(cache)} "
+            f"{kind}{action}")
+
+
+def parse_installed(output: str) -> dict[str, int]:
+    """The counted line `certs.py install` prints, as numbers."""
+    found = INSTALLED.search(output)
+    if not found:
+        return {}
+    return dict(zip(("installed", "kept", "uncached", "foreign_local"),
+                    (int(number) for number in found.groups())))
+
+
+def install_from_cache(host: str, remote: Path) -> dict:
+    """Install the box's cached pairs into the mirrored tree, and say how many.
+
+    A cache miss is not a reason to refuse the run: the runner certifies what
+    it must.  So a failure here is recorded with the run, never raised.
+    """
+    answer = ssh(host, certs_script(host, remote, "install"), check=False)
+    counts = parse_installed(answer.stdout)
+    if counts and answer.returncode == 0:
+        return counts
+    return {"error": (answer.stdout.strip() or
+                      f"ssh exited {answer.returncode}")[-400:]}
 
 
 def run_id() -> str:
@@ -184,6 +234,11 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
         f"FN_ACL2={settings['acl2']} "
         f"FN_ACL2_TIMEOUT_SECONDS={timeout_seconds} "
         f"FN_CERT_CACHE={settings['cache']} "
+        # The runner publishes into the box's cache after each root.  This
+        # run's tree is a snapshot: the pairs are shareable with the next
+        # lane on the box, and saying so at publish time is what lets its
+        # `install` take them.
+        f"FN_CERT_ORIGIN_KIND=run "
         + " ".join(shlex.quote(word) for word in runner)
         + f" > {log} 2>&1; echo $? > {status_file}"
     )
@@ -209,6 +264,10 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
     identifier = run_id()
     remote = expand_remote(host, remote) if remote else root
     push(host, root, remote)
+    cached = install_from_cache(host, remote)
+    print(f"{identifier}: from {host}'s cache, "
+          + ", ".join(f"{name} {value}" for name, value in cached.items()),
+          file=sys.stderr)
     started = ssh(host, remote_script(host, remote, identifier, books, jobs,
                                       timeout_seconds, affected_by, closure),
                   check=False)
@@ -224,6 +283,8 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
         "books": books,
         "affected_by": affected_by,
         "closure": closure,
+        # What the box's cache already held: the run certifies the rest.
+        "cache_install": cached,
         "jobs": jobs,
         "timeout_seconds": timeout_seconds,
         "submitted_at": dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -300,10 +361,17 @@ def fetch(host: str, identifier: str, root: Path,
         run(["rsync", "-a", "--update", "--include=*/", "--include=*.cert",
              "--include=*.port", "--exclude=*",
              f"{host}:{remote}/{directory}/", f"{root}/{directory}/"], check=False)
+    # The box keeps its own copy: the next lane there installs these instead
+    # of certifying them again.  The runner publishes after each root, so this
+    # is the sweep for a run whose last root, or whose own publish, failed.
+    shared = ssh(host, certs_script(host, remote, "publish", "run"), check=False)
+    for line in shared.stdout.strip().splitlines():
+        print(f"{host}: {line}")
     # The pairs were produced under the *remote* path, which is what their
     # sub-book entries name; record that as their origin.
     report = certs.publish(root, certs.cache_directory(),
-                           origin=str(remote), origin_host=host)
+                           origin=str(remote), origin_host=host,
+                           origin_kind="run")
     for line in report.lines():
         print(line)
 

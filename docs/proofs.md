@@ -261,6 +261,35 @@ after a passing run, which `--no-publish` suppresses, and `make certs-install`
 nothing here proves a book certifies. That is the runner's fresh success
 marker per book, and ACL2 checks the installed pair again at include time.
 
+A farm box is where that origin rule cost the most. Its certificates live in
+finished gate directories and in lane roots, all of which still exist on the
+box, so every entry in its cache was `foreign-local` to every lane: a lane's
+`farm.py submit --closure` onto an empty remote root re-certified the whole
+substrate, article and CBOR dependency set for four new books, half an hour of
+ACL2 the box had already run. A gate directory is not a live worktree, though.
+It is made from one commit, certified once by the gate, and never certified
+into again; a finished farm run root is the same kind of thing. So an entry
+also records `origin_kind` -- `worktree`, `gate` or `run` -- and `install`
+takes a snapshot entry wherever it finds it, after this worktree's own entry
+and after a relocatable one, while a `worktree` origin that exists here is
+refused exactly as before. An entry with no recorded kind predates the rule
+and counts as a live worktree. The risk this accepts is bounded and loud: if a
+snapshot origin is later overwritten with different books, ACL2 refuses the
+installed pair at include time on the sub-book content, rather than proving
+anything with it. [`tools/gate_publish.sh`](../tools/gate_publish.sh) is the
+one line a gate script runs after `make certify`
+(`sh tools/gate_publish.sh`); it publishes that gate directory with
+`--origin-kind gate` into `$FN_CERT_CACHE`, `~/fn-certcache` on persvati and
+`/tank/fn/certcache` on hbox. `farm.py submit` then installs that cache into
+the mirrored tree before it starts the runner, and records what it found with
+the run (`cache_install`: installed, kept, uncached, foreign-local), so a
+`--closure` run certifies only what the box lacks; the runner publishes back
+into the same cache as it goes (`FN_CERT_ORIGIN_KIND=run`) and `wait`
+publishes the run's pairs there once more after it, so the next lane on the
+box starts from them. Measured on persvati, 2026-09-20: seeding the cache from
+one finished gate directory published 209 pairs in 1.4 s, and the next
+`submit --closure books/wire` installed 172 of them before the runner started.
+
 Two further controls on ACL2 processes. `--affected-by BOOK` keeps only the
 roots that are, or transitively include, a named book, in Makefile order, so a
 change certifies what it can have invalidated and nothing else. It searches
