@@ -178,7 +178,7 @@ which encodes *strings* — a staging name is an octet list, so
   tests.test_reader`, 31 tests, 171.9 s): **29 pass, 1 skip** (the nntplib
   probe; persvati's 3.13 has no `nntplib`), **1 fail**.
 
-### Open defect this lane introduced, not yet closed
+### Open defect, attribution unconfirmed
 
 `tests.test_post.StorePostTests.test_a_reader_pinned_before_a_post_keeps_its_view`
 fails at its **second** post through the same poster connection: expected
@@ -187,11 +187,26 @@ first post, its 240, the poster's re-pin to `211 2 1 2` and both readers'
 pins are all correct up to that point, and the single-post read-back test
 (`test_post_reaches_240_and_the_article_can_be_read_back`) passes. So the
 defect is in a **second** submission from a connection that has already been
-re-pinned by a 240 — the suspect is the interaction of
-`fn-own-advance`'s rebuilt session with the next POST on the same
-connection, not the re-pin itself. Do not merge this lane before this is
-diagnosed: either the second post is fixed, or `fn-own-outcome`'s advance is
-removed and the read-back recorded open.
+re-pinned by a 240, and the suspect is the interaction of `fn-own-advance`'s
+rebuilt session with the next POST on the same connection, not the re-pin
+itself.
+
+Attribution is **not established**. Against this lane: the failing step is
+the second post on the one connection whose state this lane now changes at
+240. For a defect that predates it: the owner-post lane never got a clean
+local run of this file (its handoff records 25 of 31 passing with six
+failures all charged to the allocation-domain bug, which was fixed in its
+last, locally untested commit), so this case has no green run on any tree.
+`GOOD` carries no `Message-ID` and the second post changes its `Subject`,
+so a duplicate-identity explanation is unlikely but not excluded — the
+assertion truncates the reply at 25 octets, so the reason word was never
+read. **The first diagnostic is to print the whole 441 line**: "the article
+was refused" and "the article was not received" point at opposite halves of
+the system.
+
+Do not merge this lane before this is diagnosed: either the second post is
+fixed, or `fn-own-outcome`'s advance is removed and the read-back recorded
+open. Never weaken `fn-own-durable-outcome-repins-the-poster`.
 
 ### `books/nntp-effects`: no verdict, and it is a wall clock, not a proof
 
