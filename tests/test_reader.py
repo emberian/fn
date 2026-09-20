@@ -20,12 +20,15 @@ class ReaderProcess:
         self.store = store
         self.closed = False
 
-    def __enter__(self):
+    def command(self):
         command = [sys.executable, "tools/run_reader.py", "--port", "0"]
         if self.store is not None:
             command.extend(["--store", str(self.store)])
+        return command
+
+    def __enter__(self):
         self.proc = subprocess.Popen(
-            command,
+            self.command(),
             cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         deadline = time.monotonic() + 30
         while time.monotonic() < deadline:

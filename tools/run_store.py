@@ -1305,25 +1305,16 @@ CLI_FAULTS = {
 }
 
 
-def post_article(store, bridge, records_count, msgid, payload, groups, charge):
-    """Post one article through an open writable store and its bridge.
+def durable_post(store, bridge, records_count, msgid, payload, codes, charge):
+    """The durable acceptance path, shared by the CLI and the served POST.
 
-    Returns (sequence, charge) for a durable commit and (None, charge) for a
-    duplicate.  Every refusal, uncertainty and fault is raised as the store
-    error that names it, so the CLI and the owner map one outcome to one code.
+    ACL2 decides: `bridge.prepare` is fn-node-prepare and `store.finish` is the
+    exact fn-sn durable completion.  This function performs I/O around those
+    decisions and reports the sequence it committed.  It never invents a
+    durable status.
     """
-    codes = group_codes(groups, store.config)
-    charge = charge if charge is not None else conservative_charge(payload)
-    validate_post_boundary(msgid, payload, codes, charge, store.config)
-    existing = bridge.existing_action(msgid, payload, codes)
-    if existing == "duplicate":
-        return None, charge
-    if existing == "conflict":
-        raise StoreError("conflicting immutable Message-ID")
-    if records_count >= store.config["max_transactions"]:
-        raise StoreError("transaction count has reached configured bound")
     current_txid = bridge.next_txid()
-    store.advance_frontier(bridge, current_txid)
+    next_frontier = store.advance_frontier(bridge, current_txid)
     obligation, subject, evidence = metadata(msgid, payload)
     action = bridge.prepare(msgid, payload, codes, obligation,
                             subject, evidence, charge)
@@ -1354,7 +1345,28 @@ def post_article(store, bridge, records_count, msgid, payload, groups, charge):
     # node durable completion; there is no host durable-status string.
     store.fenced = True
     store.finish(bridge)
-    return records_count, charge
+    return records_count
+
+
+def post_article(store, bridge, records_count, msgid, payload, groups, charge):
+    """Post one article through an open writable store and its bridge.
+
+    Returns (sequence, charge) for a durable commit and (None, charge) for a
+    duplicate.  Every refusal, uncertainty and fault is raised as the store
+    error that names it, so the CLI and the owner map one outcome to one code.
+    """
+    codes = group_codes(groups, store.config)
+    charge = charge if charge is not None else conservative_charge(payload)
+    validate_post_boundary(msgid, payload, codes, charge, store.config)
+    existing = bridge.existing_action(msgid, payload, codes)
+    if existing == "duplicate":
+        return None, charge
+    if existing == "conflict":
+        raise StoreError("conflicting immutable Message-ID")
+    if records_count >= store.config["max_transactions"]:
+        raise StoreError("transaction count has reached configured bound")
+    return (durable_post(store, bridge, records_count, msgid, payload, codes, charge),
+            charge)
 
 
 def post_via_owner(control, msgid, payload, groups, charge):
