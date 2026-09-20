@@ -186,6 +186,9 @@
     "books/bp-release",
     "books/bp-release-invariants",
     "tests/acl2/bp-release-tests",
+    "books/scheduler",
+    "books/scheduler-invariants",
+    "tests/acl2/scheduler-tests",
     "books/relay",
     "books/relay-invariants",
     "books/relay-crash-invariants",
@@ -206,18 +209,18 @@
     "tests/acl2/policy-tests"
   ],
   "totals": {
-    "books": 203,
-    "books_in_root_closure": 202,
-    "roots": 202,
-    "theorems": 3319,
-    "functions": 2417,
-    "assert_events": 3409,
+    "books": 206,
+    "books_in_root_closure": 205,
+    "roots": 205,
+    "theorems": 3424,
+    "functions": 2521,
+    "assert_events": 3507,
     "must_fails": 59,
     "encapsulates": 14,
     "guards": {
-      "verified": 991,
+      "verified": 993,
       "declared-off": 131,
-      "default-guarded": 859,
+      "default-guarded": 961,
       "default-unguarded": 436
     },
     "suspect_theorems": 29,
@@ -2881,6 +2884,60 @@
       "read_error": null
     },
     {
+      "book": "books/scheduler-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 51,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "assumptions",
+        "bp-workflow-invariants",
+        "scheduler"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/scheduler.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 54,
+      "functions": 104,
+      "guards": {
+        "verified": 2,
+        "declared-off": 0,
+        "default-guarded": 102,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 2,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-workflow",
+        "clock",
+        "frame"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/served.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -4999,6 +5056,31 @@
       "encapsulates": 0,
       "includes": [
         "../../books/retention-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/scheduler-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 98,
+      "must_fails": 0,
+      "defconsts": 42,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/scheduler-invariants"
       ],
       "system_includes": [],
       "suspects": [],
