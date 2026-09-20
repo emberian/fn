@@ -18,14 +18,21 @@
 (include-book "books/store-node-resolution")
 (include-book "books/store-observed-traces")
 (include-book "books/store-node")
+(include-book "books/node-config")
 (include-book "books/nntp")
+(include-book "books/served")
 (include-book "books/nntp-effects")
 (include-book "books/bp-receipt-records")
 (include-book "books/bp-workflow-records")
 
 (ld "host/store-host.lisp" :ld-error-action :error)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
+; The configuration record the core builds for a fresh store; it uses the
+; octet-list helpers store-host defines above it, as run_store.py's bridge does.
+(ld "host/config-host.lisp" :ld-error-action :error)
 (ld "host/reader-host.lisp" :ld-error-action :error)
+; The differential model side, over the same fn-served-open reader-host uses.
+(ld "host/native/reader-model-host.lisp" :ld-error-action :error)
 (ld "host/workflow-host.lisp" :ld-error-action :error)
 (ld "host/bp-receipt-journal-host.lisp" :ld-error-action :error)
 

@@ -7,7 +7,7 @@ command line with exactly the parsers tools/run_store.py and tools/run_reader.py
 use, then replaces itself with the image, so exit codes and usage errors are the
 image's or the shared parser's, never a second table.
 
-    python3 tools/fn_native.py store --store DIR init|post|recover|status|inspect ...
+    python3 tools/fn_native.py store --store DIR init|post|recover|status|config|inspect ...
     python3 tools/fn_native.py reader --port N [--once] [--store DIR]
     python3 tools/fn_native.py sha256-selftest
 
@@ -61,6 +61,11 @@ def store_protocol(args):
     if args.command == "inspect":
         # run_store encodes this one after opening the store; the image does too.
         return ["store", root, "inspect", args.message_id]
+    if args.command == "init":
+        # The groups of the store's first configuration record.  The image
+        # holds no default table: it passes these names to the core, which
+        # builds and admits generation 1 from them.
+        return ["store", root, "init", *(args.group or [])]
     return ["store", root, args.command]
 
 

@@ -120,6 +120,25 @@ policy the interpreted bridge evaluates under. A `:program` wrapper therefore
 runs raw beneath its counterpart in both hosts; the complete call-graph guard
 requirement of packet C3-05 is unchanged by the packaging.
 
+### The served reader path
+
+One socket read is one `fn-served-step` (books/served.lisp): a fold of
+`fn-wire-feed-byte` with `fn-nntp-post-step` on each framed event, with the
+reply concatenation, over a five-field connection that carries the posting
+configuration and the clock observation pinned at `fn-served-open`. The host
+hands the whole chunk over and takes back reply octets, a closing flag and
+whatever submission the step produced; it re-feeds nothing, frames nothing
+and holds no wire state, so `fn-wire-drive` has one owner and it is the book.
+A submission is completed as refused while the reader holds only a shared
+lock, and ACL2 -- never the host -- writes the 240 or the 441.
+
+The store path opens on the replayed configuration history: `config/*.cfg`,
+oldest first, to `fn-store-sn-recover` with the article records and the
+frontier. A store with no configuration record is refused, and the served
+group names, their codes and the generation come back from the core
+(`fn-store-cfg-served/-domain/-generation`); the image holds no compiled
+group table and `init` asks `fn-cfg-host-initial-octets` for generation 1.
+
 ### Trust boundary of the native host
 
 Everything below is asserted, not proved. The raw surface is exactly
@@ -135,8 +154,8 @@ one ACL2-visible symbol whose raw definition that file replaces.
 | Locks | `fnn-flock` (alien `flock(2)`), `fnn-open-lock` | `LOCK_EX`/`LOCK_SH` with `LOCK_NB`, the same refusal and fault classes |
 | Cryptography | `fnn-sha256` (A-CRYPTO) | SHA-256 in Lisp; `python3 tools/fn_native.py sha256-selftest` compares it with `hashlib` on the FIPS vectors and random lengths across the padding boundaries. Digest octets go to the constrained `fn-frame-digest` consumers exactly as Python's do |
 | Metadata JSON | `fnn-json-parse`, `fnn-json-canonical`, `fnn-with-checksum`, `fnn-frontier-with-checksum`, `fnn-load-config`, `fnn-load-frontier` | `config.json` and `allocation-frontier.json`: a bounded hand parser (never the Lisp reader) and Python's `json.dumps(sort_keys=True, separators=(",", ":"))`. This is a host decision with two host implementations; the differential run is what keeps them equal (see open items) |
-| Core calls | `fnn-call`, `fnn-core`, `fnn-core-state`, `fnn-global` | Counterparts of `fn-store-sn-reset/-recover/-io/-prepare/-existing-action/-pending-octets/-known-abort/-refuse-reservation/-finish/-article-count/-next-txid/-group-next/-pin-count/-reserved/-lookup/-lookup-foundp`, `fn-store-record-sequence/-txid`, `fn-store-frame-constants/-store-protected/-store-decode`, `fn-store-subject-id`, `fn-store-obligation-preimage/-id`, `fn-store-post-boundary`, `fn-store-charge`, `fn-store-group-table-id/-codes`, `fn-reader-use-seed/-use-store/-reset/-chunk`; the globals `fn-reader-output`, `fn-reader-closep`, `fn-reader-suffix`, `guard-checking-on`. A `raw-ev-fncall` throw or Lisp error inside a call is a refusal, as an `ACL2 Error` reply is for the pipe |
-| Sockets | `sb-bsd-sockets` `inet-socket`, `socket-bind` (127.0.0.1 only), `socket-listen 1`, `socket-accept`, `socket-name`, `socket-close`; `fnn-recv`, `fnn-send-all` (`sb-sys:wait-until-fd-usable` with the 10 s timeouts), `fnn-graceful-close` (alien `shutdown(fd, SHUT_WR)` then a one-second drain), `fnn-serve-client` | `tools/run_reader.py`'s loop: 512-octet reads, one wire event per core call, the retained suffix as transport bytes, close after a framing rejection |
+| Core calls | `fnn-call`, `fnn-core`, `fnn-core-state`, `fnn-global` | Counterparts of `fn-store-sn-reset/-recover/-io/-prepare/-existing-action/-pending-octets/-known-abort/-refuse-reservation/-finish/-article-count/-next-txid/-group-next/-pin-count/-reserved/-lookup/-lookup-foundp`, `fn-store-record-sequence/-txid`, `fn-store-frame-constants/-store-protected/-store-decode`, `fn-store-subject-id`, `fn-store-obligation-preimage/-id`, `fn-store-post-boundary`, `fn-store-charge`, `fn-store-group-codes` (names against the replayed domain), `fn-store-cfg-generation/-served/-domain`, `fn-cfg-host-initial-octets`, `fn-reader-use-seed/-use-store/-set-posting/-reset/-chunk/-outcome`, `fn-reader-model-octets`; the globals `fn-reader-output`, `fn-reader-closep`, `fn-reader-submit-octets/-msgid`, `guard-checking-on`. A `raw-ev-fncall` throw or Lisp error inside a call is a refusal, as an `ACL2 Error` reply is for the pipe |
+| Sockets | `fnn-listen` (`sb-bsd-sockets` `inet-socket`/`inet6-socket`, loopback unless an address is passed), `fnn-connect`, `fnn-accept-loop`, `fnn-socket-fd`, `fnn-socket-shut`; `fnn-recv`, `fnn-send-all` (`sb-sys:wait-until-fd-usable` with the 10 s timeouts), `fnn-graceful-close` (alien `shutdown(fd, SHUT_WR)` then a one-second drain), `fnn-serve-client` | `tools/run_reader.py`'s loop: 512-octet reads, **one `fn-served-step` per read** and no retained suffix, the reply octets from `fn-served-reply-octets`, close after a framing rejection. These eight are the whole socket surface, and the surface `host/native/tcpcl.lisp` is to build on (planning/lanes/HANDOFF-w4-tcpcl.md) |
 | Entry | `fnn-main`, `fnn-dispatch`, `fn-native-entry` | The fixed positional protocol behind `--fn`, the outcome-to-exit-code map (the reader's pre-listen failures exit 1, as an uncaught Python exception does) |
 
 Remaining Python-only: the BP hosts (`run_bp_ingress.py`, `run_bp_receive.py`,
@@ -147,6 +166,15 @@ partition tests drive through `mock.patch`, and the reader's
 that escapes a core call while serving is reported and exits 4.
 
 ### Differential evidence and measurements
+
+`python3 -m unittest tests.test_native_served_differential` feeds one chunk
+list through the image twice -- `--fn model` (one `fn-served-open` then one
+`fn-served-run`, projected with `fn-served-reply-octets`) and `--fn reader`
+(the production listener) -- and requires identical bytes, for a whole
+transcript, three cut points, a bytewise partition, a cut inside a UTF-8
+sequence, input after QUIT and a framing rejection. It is the native mirror
+of `tests/test_served_differential.py`, and it is what says the thing on the
+socket is the certified fold and nothing else.
 
 `python3 tests/native_differential.py` runs one scripted store sequence
 through both hosts and compares, after every command, the exit code, standard
