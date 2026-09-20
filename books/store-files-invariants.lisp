@@ -79,12 +79,16 @@
   :rule-classes nil
   :hints (("Goal" :induct (fn-sf-but-last xs))))
 
-; Outside the recovery window the stable prefix IS the record list, so every
-; theorem restated over fn-sf-stable-records says exactly what it said before
-; wherever the old statement was true (D14-b, the non-weakening argument).
+; -by-definition: the otherwise branch of fn-sf-stable-records, kept as a
+; name for one includer's :use rather than as a rewrite rule.  It is the
+; non-weakening argument for D14-b -- outside the recovery window the stable
+; prefix IS the record list, so a theorem restated over fn-sf-stable-records
+; says exactly what it said before wherever the old statement was true -- and
+; it is not a registry event.
 (defthm fn-sf-stable-records-outside-the-window
   (implies (not (fn-sf-record-rollback-visiblep s))
            (equal (fn-sf-stable-records s) (fn-sf-records s)))
+  :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-sf-stable-records))))
 
 (defthm fn-sf-stable-records-is-a-prefix
