@@ -873,8 +873,11 @@
         "PRF-020"
       ],
       "assumptions": [],
-      "status": "planned",
-      "evidence": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/stx-lace.lisp",
+        "tests/evidence/2026-09-20-substrate-transit.md"
+      ],
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
     },
     {
@@ -891,8 +894,11 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "planned",
-      "evidence": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/stx-lace.lisp",
+        "tests/evidence/2026-09-20-substrate-transit.md"
+      ],
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
     },
     {
@@ -926,8 +932,11 @@
         "A-CRYPTO",
         "A-POLICY"
       ],
-      "status": "planned",
-      "evidence": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/stx-policy.lisp",
+        "tests/evidence/2026-09-20-substrate-transit.md"
+      ],
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
     },
     {
