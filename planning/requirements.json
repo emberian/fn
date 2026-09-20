@@ -834,7 +834,7 @@
       "title": "Durable scheduling with resource and fairness policy",
       "specification": "specs/replication.md#scheduling-and-transport",
       "milestone": "M4",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-018"
       ],
@@ -848,7 +848,16 @@
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
       "implementation_note": "BPv7 is active M3/M4 work. Durable enqueue, submission intent/outcome, explicit retry decisions, recovered receiver acceptance and returned application receipt are implemented in the bounded laboratory profile. Finite sender traces preserve state/node; scheduling fairness, non-overlapping contact plans and conditional progress remain open.",
-      "note": "The scheduler cluster does implement durable scheduling with an aging policy, and all three roots certify -- but on this laptop only (build/acl2/certify-20260920T025038Z-16877 and -20260920T025611Z-31803), with NO farm gate covering them: they were added after the 213-root gate of dev 7a9e89a. Two of its keystones were false as stated until 79e5227. Conditional progress holds only under the constrained fn-assume-fairness-contact-index. Stays specified until a gate covers the cluster."
+      "note": "Certified on the farm gate of dev bdd59d2 (persvati, ACL2 8.7 / SBCL 2.6.8, 213 of 216 roots; the three that failed are the owner cluster, the same three as the 7a9e89a gate). A tick is select-drive-take, passed-over work reaches the promotion queue, and the aging bound holds over (nfix n). Two cautions that travel with the status: both aging keystones were FALSE as stated from a018394 until 79e5227 -- at n = 1/2 every run predicate is t and nothing is selected -- and the correction is the (nfix n) horizon, with the counterexample evaluated in tests/acl2/scheduler-tests.lisp. And fn-sched-conditional-progress-under-a-fairness is conditional: it holds under the constrained fn-assume-fairness-contact-index of books/assumptions.lisp, which is an assumption, not a fact about any peer.",
+      "keystones": [
+        "fn-sched-tick-step-is-select-drive-take",
+        "fn-sched-selected-submit-is-a-workflow-submit",
+        "fn-sched-refused-submit-is-a-no-op",
+        "fn-sched-promoted-work-is-selected-within-its-position",
+        "fn-sched-aging-bound",
+        "fn-sched-passed-over-work-reaches-the-promotion-queue",
+        "fn-sched-conditional-progress-under-a-fairness"
+      ]
     },
     {
       "id": "REP-006",
@@ -929,7 +938,7 @@
         "fn-nntp-unknown-group-preserves-session",
         "fn-nntp-listgroup-unknown-preserves-session"
       ],
-      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). Every dispatched command preserves session consistency, over single steps and finite traces, with the error arms stated separately. The w5/legacy-commands batch (XOVER, HDR/XHDR, LIST HEADERS/ACTIVE.TIMES) keeps those two keystone statements unchanged and extends their coverage to the new branches. Open: books/nntp-legacy and its test root have laptop certification only and no farm gate."
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). Every dispatched command preserves session consistency, over single steps and finite traces, with the error arms stated separately. Scope, because a board entry reads otherwise: the w5/legacy-commands batch (XOVER, HDR/XHDR, LIST HEADERS/ACTIVE.TIMES) is NOT on dev at c8886ee -- books/nntp-legacy.lisp does not exist and is not a Makefile root -- so the covered commands are the reader bundle as dispatched today, and NNT-001 records that the advertised bundle does not match it."
     },
     {
       "id": "NNT-003",

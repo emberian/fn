@@ -1,8 +1,9 @@
 # Development milestones
 
 Current stage: the proof-style realignment and the four server waves have
-landed (`0bd0b5c`..`c8886ee`); twenty requirements are `implemented` against
-named keystones certified on the farm gate of `dev` `7a9e89a`. The evidence
+landed (`0bd0b5c`..`c8886ee`); twenty-one of the fifty requirements are
+`implemented` against named keystones certified on the farm gates of `dev`
+`7a9e89a` (210 of 213 roots) and `dev` `bdd59d2` (213 of 216). The evidence
 record for that batch, with the measured numbers, the gate table, the defects
 and the open list, is
 [wave-realignment-2026-09-19](evidence/wave-realignment-2026-09-19.md). No full
@@ -11,8 +12,8 @@ implementation/proof milestone is complete.
 **Current task: make `books/owner` certify.** It is the single blocker named by
 three independent lanes — `fn-own-open` calls `fn-served-open` with three
 arguments where `books/served.lisp` declares five, and `fn-own-read-step` calls
-`fn-nntp-step` with three where it takes four. It is the whole of the gate's
-210-of-213, the four `test_owner` errors, the reason `fn run` does not start,
+`fn-nntp-step` with three where it takes four. It is the whole of both gates'
+missing roots, the four `test_owner` errors, the reason `fn run` does not start,
 and the reason the deploy gate has no concurrent-session evidence. Behind it,
 in order: the owner's three one-line `host/owner-host.lisp` edits from
 w5-config-groups, the POST read-back re-pin, the `NNT-001` capability/dispatch
@@ -192,9 +193,10 @@ complete READER, overview, provenance, and signatures remain open.
 The server waves (2026-09-20) move three of M3's five bullets without closing
 any. `books/served` takes the framing and reply projection out of `:program`-mode
 host Lisp, so the function the host calls per socket read is the one the
-chunk-independence keystones are about (`NNT-003`). The legacy reader commands
-(XOVER, HDR/XHDR, LIST HEADERS/ACTIVE.TIMES) land under the unchanged session
-keystones (`NNT-002`). Configuration, startup, recovery, shutdown and operator
+chunk-independence keystones are about (`NNT-003`). The session keystones
+(`NNT-002`) carry every dispatched command unchanged; the legacy reader
+commands (XOVER, HDR/XHDR, LIST HEADERS/ACTIVE.TIMES) have a board entry but
+are **not** on `dev` — `books/nntp-legacy.lisp` does not exist here. Configuration, startup, recovery, shutdown and operator
 fault reporting are specified and running: `bin/fn`, `docs/operator.md`,
 `packaging/`. What is not moved: **the owner does not certify**, so there is no
 concurrent server and no live POST read-back; the advertised capability bundle
@@ -238,13 +240,13 @@ staging exhaustion. The [composition assurance batch](../tests/evidence/2026-09-
 certifies joint pending/durable work binding and fixed-Store receiver replay,
 with five actual receiver process-death cuts; it leaves those wider seams open.
 
-Two clusters added after the last gate carry M4 work and have **laptop
-certification only**: the scheduler (all three roots certify; two of its
-keystones were false as stated until `79e5227`, and conditional progress holds
-only under the constrained `fn-assume-fairness-contact-index`, so `REP-005`
-stays `specified`), and TCPCLv4, whose `books/tcpcl-invariants` is open at C2
-with the test root behind it. Neither has been through a farm gate; see
-[the wave record](evidence/wave-realignment-2026-09-19.md) §1.
+Durable scheduling is `implemented` (`REP-005`): all three scheduler roots
+pass the farm gate of `dev` `bdd59d2`. Two cautions travel with that status —
+both aging keystones were false as stated until `79e5227`, and conditional
+progress holds only under the constrained `fn-assume-fairness-contact-index`.
+TCPCLv4 is the cluster with **no farm gate at all**: it arrived with `c8886ee`
+itself, `books/tcpcl-invariants` is open at C2 and the test root is behind it.
+See [the wave record](evidence/wave-realignment-2026-09-19.md) §1.
 
 ## M5: bounded long-lived operation
 
