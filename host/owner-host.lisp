@@ -226,14 +226,138 @@
     (if (or (equal after before) (null sub))
         (value :idle)
       (let* ((decision (fn-own-sub-decision sub))
+             (transitp (fn-own-transit-subp sub))
              (state (f-put-global 'fn-owner-submit-id (fn-own-sub-id sub) state))
+             (state (f-put-global 'fn-owner-submit-transitp transitp state))
+             (state (f-put-global 'fn-owner-submit-peer
+                                  (if transitp (fn-peer-submission-peer decision) nil)
+                                  state))
              (state (f-put-global 'fn-owner-submit-msgid
-                                  (fn-inj-decision-msgid decision) state))
+                                  (if transitp
+                                      (fn-peer-submission-msgid decision)
+                                    (fn-inj-decision-msgid decision))
+                                  state))
              (state (f-put-global 'fn-owner-submit-octets
-                                  (fn-inj-decision-octets decision) state))
+                                  (if transitp
+                                      (fn-peer-submission-octets decision)
+                                    (fn-inj-decision-octets decision))
+                                  state))
+             ; A transit submission's memberships are not in the submission:
+             ; they are fn-peer-scope-groups of the article's Newsgroups and
+             ; the peer record, computed by fn-owner-transit-decide below
+             ; over the live node, never here and never in Python.
              (state (f-put-global 'fn-owner-submit-groups
-                                  (fn-inj-decision-groups decision) state)))
-        (value :taken)))))
+                                  (if transitp nil (fn-inj-decision-groups decision))
+                                  state)))
+        (value (if transitp :taken-transit :taken))))))
+
+; -----------------------------------------------------------------------------
+; The transit port (specs/peering.md 2.2).
+;
+; Accept: the host resolves the connecting address to a configured peer name
+; with fn-owner-peer-for-address (the record's auth slot decides, not the
+; client) and opens the connection with fn-own-open-peer, which pins the
+; node and the live configuration into the session.  A reader opens with
+; fn-owner-open as before, on the same listener.
+
+(defun fn-owner-peer-name-for (rows address)
+  ; The first configured peer whose auth slot is this source address.
+  (declare (xargs :mode :program))
+  (if (consp rows)
+      (if (and (equal (fn-cfg-row-b (car rows)) "auth-source-address")
+               (equal (fn-cfg-row-c (car rows)) address))
+          (fn-cfg-row-a (car rows))
+        (fn-owner-peer-name-for (cdr rows) address))
+    nil))
+
+(defun fn-owner-peer-for-address (address-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((address (fn-store-octets->string address-octets)))
+    (if (equal address :bad)
+        (value nil)
+      (let ((name (fn-owner-peer-name-for
+                   (fn-cfg-peers (fn-cfg-value (f-get-global 'fn-store-cfg state)))
+                   address)))
+        (value (if name (fn-record-string-octets name) nil))))))
+
+(defun fn-owner-open-peer (peer-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((peer (fn-store-octets->string peer-octets)))
+    (if (equal peer :bad)
+        (value nil)
+      (let* ((before (f-get-global 'fn-owner state))
+             (id (fn-own-next-id before))
+             (opened (fn-own-open-peer before peer (f-get-global 'fn-store-cfg state)))
+             (state (f-put-global 'fn-owner (cdr opened) state))
+             (state (fn-owner-install-effects (car opened) state)))
+        (if (fn-own-find-conn id (fn-own-conns (f-get-global 'fn-owner state)))
+            (value id)
+          (value nil))))))
+
+; The transfer decision for the transit submission in flight, over the LIVE
+; node and the live configuration (RFC 4644 2.4.2: the offer was advisory).
+; Every check of specs/peering.md 2.2 is in fn-peer-decide-transfer; this
+; wrapper only reads its answer and the memberships fn-peer-injection-arguments
+; derives, and leaves them where the bridge can read them.  The obligation id
+; and the subject are the host's digests, as for POST (fn-frame-digest is
+; constrained and unattached).
+(defun fn-owner-transit-decide (id-octets subject-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((owner (f-get-global 'fn-owner state))
+         (sub (fn-own-inflight owner)))
+    (if (not (fn-own-transit-subp sub))
+        (value :not-transit)
+      (let* ((decision (fn-own-sub-decision sub))
+             (node (fn-sn-node (fn-own-store owner)))
+             (cfg (f-get-global 'fn-store-cfg state))
+             (peer (fn-peer-submission-peer decision))
+             (msgid (fn-peer-submission-msgid decision))
+             (octets (fn-peer-submission-octets decision))
+             (id (fn-store-octets->string id-octets))
+             (subject (fn-store-octets->string subject-octets)))
+        (if (or (equal id :bad) (equal subject :bad))
+            (value :not-transit)
+          (let* ((d (fn-peer-decide-transfer node cfg peer msgid octets
+                                             (fn-own-clock owner) id subject))
+                 (args (fn-peer-injection-arguments node cfg peer msgid octets
+                                                    0 id subject))
+                 (state (f-put-global 'fn-owner-transit-kind
+                                      (fn-peer-decision-kind d) state))
+                 (state (f-put-global 'fn-owner-transit-reason
+                                      (fn-peer-decision-reason d) state))
+                 (state (f-put-global 'fn-owner-submit-groups
+                                      (if (equal (fn-peer-decision-kind d) :want)
+                                          (nth 4 args)
+                                        nil)
+                                      state))
+                 (state (f-put-global 'fn-owner-transit-evidence
+                                      (fn-record-string-octets
+                                       (fn-peer-evidence peer cfg))
+                                      state)))
+            (value (fn-peer-decision-kind d))))))))
+
+; The transit reply.  `kind' and `reason' are the decision this image just
+; made; `word' is the store's observed outcome (:durable, :refused,
+; :uncertain), ignored unless the decision was :want.
+(defun fn-owner-transit-outcome (id kind reason word state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((result (fn-own-transit-outcome (f-get-global 'fn-owner state)
+                                         id kind reason word))
+         (state (f-put-global 'fn-owner (cdr result) state))
+         (state (fn-owner-install-effects (car result) state)))
+    (value :fed)))
+
+(defun fn-owner-transit-kind (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (f-get-global 'fn-owner-transit-kind state)))
+
+(defun fn-owner-transit-reason (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (f-get-global 'fn-owner-transit-reason state)))
+
+(defun fn-owner-transit-evidence (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (f-get-global 'fn-owner-transit-evidence state)))
 
 ; The word the host observed for the submission in flight (:durable,
 ; :refused, :uncertain or anything else) is fed back as one owner event;

@@ -603,6 +603,46 @@
                            (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o))))
     (cons nil o)))
 
+; The transit port.  A peer connection is accepted on the SAME listener as a
+; reader (specs/peering.md 1.1): the host resolves the source to a configured
+; peer record at accept and passes its name here, and the role of the
+; connection is decided by that record and by nothing the client says.  The
+; session pins the node and the configuration once (fn-served-open-peer ->
+; fn-peer-open-session), so the offer decision reads a snapshot and the
+; transfer decides again over the live node, which is what RFC 4644 2.4.2
+; makes advisory.  The body limit is the peer record's inbound-max-octets:
+; an oversize article is cut by the wire machine and never by a second
+; parser (specs/peering.md 1.3).  An unconfigured name opens a connection
+; whose every offer is refused `:not-a-peer', which is the same refusal the
+; decision function gives, not a second policy here.
+(defun fn-own-open-peer (o peer cfg)
+  (declare (xargs :guard t))
+  (if (< (len (fn-own-conns o)) (nfix (fn-own-max-conns o)))
+      (let* ((view (fn-own-view o))
+             (archive (fn-own-view-archive view))
+             (id (fn-own-next-id o))
+             (record (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg))))
+             (limit (if (and record (fn-cfg-peer-inbound record)
+                             (posp (fn-cfg-peer-inbound-max-octets record)))
+                        (fn-cfg-peer-inbound-max-octets record)
+                      *fn-own-body-limit*))
+             (opened (fn-served-open-peer archive
+                                          *fn-nntp-max-initial-line-octets*
+                                          limit (fn-own-config o) (fn-own-clock o)
+                                          peer (fn-sn-node (fn-own-store o)) cfg))
+             (sconn (fn-served-result-conn opened))
+             (conn (fn-own-conn-make id (fn-own-view-version view)
+                                     (fn-own-view-frontier view)
+                                     (fn-served-conn-wire sconn)
+                                     (fn-served-conn-session sconn)
+                                     archive (fn-own-config o) (fn-own-clock o))))
+        (cons (fn-served-result-effects opened)
+              (fn-own-make (fn-own-store o) view (cons conn (fn-own-conns o))
+                           (1+ (nfix id)) (fn-own-max-conns o) (fn-own-pending o)
+                           (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                           (fn-own-config o) (fn-own-queue o) (fn-own-inflight o))))
+    (cons nil o)))
+
 ; The served port: one socket read of one connection is one fn-served-step
 ; over the connection's wire, session and pinned archive.  The result is
 ; (effects . owner); the host writes `effects` through fn-served-reply-octets
@@ -924,6 +964,56 @@
                   next)))
       (cons nil o))))
 
+; A transit submission is the one the served path carried from a peer
+; connection (books/peer-inbound, `(:transit peer kind msgid octets)`); an
+; injected one is books/injection's.  The writer step does not look at which:
+; fn-own-take-submission installs whichever is at the head of the one queue
+; (fn-own-take-installs-the-queued-submission-whatever-it-carries,
+; owner-invariants.lisp), so transit and POST share one durable path and one
+; pending slot.
+(defun fn-own-transit-subp (sub)
+  (declare (xargs :guard t))
+  (and (consp sub) (fn-peer-submissionp (fn-own-sub-decision sub))))
+
+(defun fn-own-transit-inflightp (o)
+  (declare (xargs :guard t))
+  (fn-own-transit-subp (fn-own-inflight o)))
+
+; The transit reply, after the durable attempt.  `kind' and `reason' are
+; ACL2's own transfer decision, relayed back by the host exactly as the
+; store's word is for POST (fn-owner-transit-decide, host/owner-host.lisp);
+; the host names no code and no reason text.  A decision that is not `:want'
+; means no attempt ran, so the completion the reply is rendered with is nil
+; and fn-peer-transit-code takes the refusal or the deferral from the
+; decision.  Three outcomes stay distinct: :durable is the only 2xx,
+; :uncertain is 436 and a close, a refusal is 437/439.
+(defun fn-own-transit-outcome (o id kind reason word)
+  (declare (xargs :guard t))
+  (let ((conn (fn-own-find-conn id (fn-own-conns o)))
+        (sub (fn-own-inflight o)))
+    (if (and conn sub (equal (fn-own-sub-id sub) id) (fn-own-transit-subp sub))
+        (let* ((d (fn-peer-decision kind reason))
+               (completion (if (equal kind :want)
+                               (fn-own-outcome-completion o word)
+                             nil))
+               (next (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
+                                  (fn-own-next-id o) (fn-own-max-conns o)
+                                  (if (equal (fn-own-pending o) id) nil (fn-own-pending o))
+                                  (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                                  (fn-own-config o) (fn-own-queue o) nil)))
+          (cons (fn-served-result-effects
+                 (fn-served-transit-outcome
+                  (fn-served-make-conn (fn-own-conn-wire conn)
+                                       (fn-own-conn-session conn)
+                                       (fn-own-conn-archive conn)
+                                       (fn-own-conn-config conn)
+                                       (fn-own-conn-observation conn))
+                  (fn-own-sub-decision sub) d completion))
+                (if (equal completion :durable)
+                    (fn-own-advance next id)
+                  next)))
+      (cons nil o))))
+
 ; -----------------------------------------------------------------------------
 ; The owner event machine.  (:octets id octets) is the served port; (:read id
 ; event) is its per-event law; (:take) is the writer step; (:outcome id word)
@@ -934,6 +1024,7 @@
   (declare (xargs :guard (fn-sn-statep (fn-own-store o)) :verify-guards nil))
   (case (car event)
     (:open (cdr (fn-own-open o)))
+    (:open-peer (cdr (fn-own-open-peer o (cadr event) (caddr event))))
     (:octets (cdr (fn-own-read o (cadr event) (caddr event))))
     (:read (cdr (fn-own-read-step o (cadr event) (caddr event))))
     (:advance (fn-own-advance o (cadr event)))
@@ -947,6 +1038,9 @@
     (:configure (fn-own-configure o (cadr event)))
     (:take (fn-own-take-submission o))
     (:outcome (cdr (fn-own-outcome o (cadr event) (caddr event))))
+    (:transit-outcome (cdr (fn-own-transit-outcome o (cadr event) (caddr event)
+                                                   (cadddr event)
+                                                   (car (cddddr event)))))
     (otherwise o)))
 
 (defun fn-own-run (o events)
@@ -986,6 +1080,8 @@
     fn-own-read fn-own-read-step fn-own-advance fn-own-close fn-own-begin
     fn-own-store-step fn-own-complete fn-own-reopen fn-own-observe
     fn-own-declare-group fn-own-configure fn-own-take-submission fn-own-outcome-completion
-    fn-own-outcome fn-own-step fn-own-run fn-own-reclaim-floor))
+    fn-own-outcome fn-own-step fn-own-run fn-own-reclaim-floor
+    fn-own-open-peer fn-own-transit-subp fn-own-transit-inflightp
+    fn-own-transit-outcome))
 
 (in-theory (disable fn-own-vocabulary))
