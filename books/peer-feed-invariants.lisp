@@ -80,6 +80,16 @@
                 (member-equal msgid (fn-feed-msgids xs)))
            (consp (fn-feed-find msgid xs))))
 
+; The shape fact the composite preservation proofs were missing: `find'
+; returns either nil or an element of the list, and every element of an
+; `fn-feed-entry-listp' is a cons, so an entry whose STATE is anything at all
+; is a cons.  This is what turns `(equal (fn-feed-state-of msgid xs) :queued)'
+; -- which is what a transition arm tests -- into the `consp' hypothesis of
+; the exact in-flight count below.
+(defthm fn-feed-find-is-consp-when-the-state-is-a-state
+  (implies (and (fn-feed-entry-listp xs) (fn-feed-state-of msgid xs))
+           (consp (fn-feed-find msgid xs))))
+
 ; Distinctness is what makes `fn-feed-state-of' of the head queued
 ; Message-ID the head queued entry: without it an earlier entry with the same
 ; Message-ID would answer first.
@@ -196,6 +206,21 @@
                      (if (fn-feed-state-inflightp s) 1 0)
                      (- (if (fn-feed-state-inflightp (fn-feed-state-of msgid xs))
                             1 0))))))
+
+; The form the arms actually need: the old state is `:queued', which is not in
+; flight, so the subtraction term of the exact count vanishes.  Proved from
+; the exact count and the shape fact above, so it adds no new content.
+(defthm fn-feed-inflight-count-of-set-state-from-queued
+  (implies (and (fn-feed-entry-listp xs)
+                (equal (fn-feed-state-of msgid xs) :queued))
+           (equal (fn-feed-inflight-count (fn-feed-queue-set-state xs msgid s))
+                  (+ (fn-feed-inflight-count xs)
+                     (if (fn-feed-state-inflightp s) 1 0))))
+  :hints (("Goal"
+           :use ((:instance fn-feed-inflight-count-of-set-state-exact)
+                 (:instance fn-feed-find-is-consp-when-the-state-is-a-state))
+           :in-theory (disable fn-feed-inflight-count-of-set-state-exact
+                               fn-feed-find-is-consp-when-the-state-is-a-state))))
 
 (defthm fn-feed-attempts-belowp-monotone
   (implies (and (fn-feed-attempts-belowp xs m) (<= (nfix m) (nfix n)))
@@ -595,6 +620,8 @@
     fn-feed-state-of-of-settle-when-not-inflight
     fn-feed-find-of-append-when-absent
     fn-feed-head-queued-is-in-msgids fn-feed-find-of-a-member-is-consp
+    fn-feed-find-is-consp-when-the-state-is-a-state
+    fn-feed-inflight-count-of-set-state-from-queued
     fn-feed-head-queued-is-queued fn-feed-head-queued-is-a-member
     fn-feed-inflight-count-of-settle fn-feed-inflight-count-of-requeue-inflight
     fn-feed-entry-listp-of-set-state fn-feed-entry-listp-of-requeue
