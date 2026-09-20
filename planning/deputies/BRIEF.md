@@ -51,6 +51,12 @@ cross-cluster steps you could not take alone.
   another lane is using (a `--jobs 12` race on a busy persvati lost
   `books/nntp-effects` once and cascaded "no certificate" into six roots).
   On hbox every ACL2 run goes through `swarm-build`.
+- Registries are shared rows, not files. `planning/requirements.json`,
+  `planning/proofs.json`, `tests/scenarios/catalog.json` and `docs/prefixes.md`
+  are edited by reading, changing the named rows, and writing, immediately
+  after merging dev; never by dumping a copy you read earlier (a whole-file
+  rewrite during a wave dropped two proof targets another lane had added, on
+  2026-09-20). Counts and events come from `tools/ledger.py --write`.
 - Never `git stash`; never `git add -A`; commit named files with
   `git commit -F <msgfile>` where `<msgfile>` is named after your lane
   (e.g. `commit-<cluster>-<n>.txt` in the scratchpad: two lanes sharing
