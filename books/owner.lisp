@@ -562,28 +562,38 @@
         (fn-own-find-conn id (cdr conns)))
     nil))
 
-; The per-connection retained session is bounded by configuration.  The
-; session the served path hands the owner is a PEER session since the
-; inbound transit port (books/served.lisp: fn-served-connp asks
-; fn-peer-session-consistentp of it, and fn-served-open and
-; fn-served-open-peer both build it with fn-peer-open-session); its base is
-; the POST session, whose base in turn is the reader session, whose group is
-; one of the configured names or nil and whose cursor is nil or inside RFC
-; 3977 section 6's article-number range.  A read whose result leaves this
-; set closes the connection (fn-own-read).  This is a four-field check and
-; one member-equal over the configured names, not a whole-state recognizer.
+; The per-connection retained session is bounded by configuration: a POST
+; session is a reader session and one bit (books/nntp-post.lisp), the reader
+; session is four fields, its group is one of the configured names or nil, and its
+; cursor is nil or inside RFC 3977 section 6's article-number range.  A read
+; whose result leaves this set closes the connection (fn-own-read).  This is
+; a four-field check and one member-equal over the configured names, not a
+; whole-state recognizer.
+; The connection's session is the SERVED session, and that is now
+; fn-auth-step's: an auth session wrapping a peer session wrapping the
+; POST-composed reader session.  This predicate still read it as a bare
+; post session, so `fn-post-sessionp' was false on every connection and
+; fn-own-read REMOVED each one after its first read -- the reply went out
+; and the next command met a closed socket.  It has been that way since the
+; peer port; the reader path has not survived two commands on dev since.
+; The recognizer runs on the session only, never on the archive, which is
+; what keeps it off the whole-state-revalidation list.
 ;
-; It tested fn-post-sessionp until 2026-09-20.  A post session is two fields
-; and a peer session is six, so that test was FALSE on every connection the
-; served path produces: the branches below that guard on it were never
-; taken, the owner never enqueued a submission, and fn-own-relation -- which
-; conjoins this through fn-own-conn-okp -- was false on every state holding
-; a connection, making every theorem that hypothesised it vacuous.
+; History, because two lanes found this independently: the test was
+; fn-post-sessionp until 2026-09-20.  A post session is two fields and
+; the served session is three wrappers deep, so the test was FALSE on
+; every connection the served path produces.  The branches guarded on it
+; were never taken, the owner never enqueued a submission, fn-own-advance
+; was a silent no-op, fn-own-read removed each connection after its first
+; read, and fn-own-relation -- which conjoins this through
+; fn-own-conn-okp -- was false on every state holding a connection, so
+; every theorem hypothesising it was vacuous there.
 (defun fn-own-conn-boundedp (conn groups)
   (declare (xargs :guard t))
-  (let ((ps (fn-own-conn-session conn)))
-    (and (fn-peer-sessionp ps)
-         (let ((session (fn-post-session-base (fn-peer-session-base ps))))
+  (let ((as (fn-own-conn-session conn)))
+    (and (fn-auth-sessionp as)
+         (let ((session (fn-post-session-base
+                         (fn-peer-session-base (fn-auth-session-base as)))))
            (and (or (null (fn-nntp-session-group session))
                     (fn-ag-member (fn-nntp-session-group session) groups))
                 (or (null (fn-nntp-session-current session))
@@ -613,7 +623,16 @@
 ; pinned: fn-own-read supplies the owner's current observation with every
 ; read, so each submission is injected at its own time (RFC 5537 section
 ; 3.4).
-(defun fn-own-open (o)
+; `acfg' is the AUTHINFO/STARTTLS policy the operator configured
+; (books/nntp-auth.lisp fn-auth-configp): the credentials, whether
+; authentication is required and whether AUTHINFO needs a protected channel.
+; It is pinned into the connection at open exactly as the posting
+; configuration and the reader clock are, so no command re-reads it and a
+; reconfiguration reaches only connections opened after it.  Anything that
+; is not a configuration opens fn-auth-open-config, which requires nothing
+; and offers nothing, so every owner theorem written before authentication
+; keeps its meaning with `acfg' free.
+(defun fn-own-open (o acfg)
   (declare (xargs :guard t))
   (if (< (len (fn-own-conns o)) (nfix (fn-own-max-conns o)))
       (let* ((view (fn-own-view o))
@@ -621,7 +640,7 @@
              (id (fn-own-next-id o))
              (opened (fn-served-open archive *fn-nntp-max-initial-line-octets*
                                      *fn-own-body-limit* (fn-own-config o)
-                                     (fn-own-clock o) (fn-own-clock o)))
+                                     (fn-own-clock o) (fn-own-clock o) acfg))
              (sconn (fn-served-result-conn opened))
              (conn (fn-own-conn-make id (fn-own-view-version view)
                                      (fn-own-view-frontier view)
@@ -782,19 +801,26 @@
     (if conn
         (let* ((view (fn-own-view o))
                (archive (fn-own-view-archive view))
+               ; The served session is three deep -- auth over peer over
+               ; the POST-composed reader -- and the re-pin replaces only
+               ; the innermost one.  Rebuilding it as a bare post session
+               ; (what this did) threw away the peer half and, since this
+               ; lane, the login as well: the rebuilt connection then
+               ; failed fn-own-conn-boundedp and the advance was silently
+               ; refused, so ADVANCE has been a no-op since the peer port.
                (old (fn-own-conn-session conn))
-               ; the peer session's slots (peer, transfer, inflight, pinned
-               ; node and cfg) survive the re-pin; only its POST base is
-               ; rebuilt over the committed view's archive
-               (oldbase (fn-peer-session-base old))
-               (base (fn-post-session-base oldbase))
-               (session (fn-peer-with-base
+               (pold (fn-auth-session-base old))
+               (told (fn-peer-session-base pold))
+               (base (fn-post-session-base told))
+               (session (fn-auth-with-base
                          old
-                         (fn-post-make-session
-                          (fn-nntp-set-cursor (fn-nntp-open-session archive)
-                                              (fn-nntp-session-group base)
-                                              (fn-nntp-session-current base))
-                          (fn-post-session-awaiting oldbase))))
+                         (fn-peer-with-base
+                          pold
+                          (fn-post-make-session
+                           (fn-nntp-set-cursor (fn-nntp-open-session archive)
+                                               (fn-nntp-session-group base)
+                                               (fn-nntp-session-current base))
+                           (fn-post-session-awaiting told)))))
                (next (fn-own-conn-make (fn-own-conn-id conn)
                                        (fn-own-view-version view)
                                        (fn-own-view-frontier view)
@@ -1278,7 +1304,7 @@
 (defun fn-own-step (o event)
   (declare (xargs :guard (fn-sn-statep (fn-own-store o)) :verify-guards nil))
   (case (car event)
-    (:open (cdr (fn-own-open o)))
+    (:open (cdr (fn-own-open o (cadr event))))
     (:open-peer (cdr (fn-own-open-peer o (cadr event) (caddr event))))
     (:octets (cdr (fn-own-read o (cadr event) (caddr event))))
     (:read (cdr (fn-own-read-step o (cadr event) (caddr event))))
