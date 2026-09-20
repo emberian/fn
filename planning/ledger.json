@@ -281,7 +281,7 @@
     "books": 275,
     "books_in_root_closure": 274,
     "roots": 274,
-    "theorems": 5549,
+    "theorems": 5551,
     "functions": 3926,
     "assert_events": 5275,
     "must_fails": 59,
@@ -3496,7 +3496,7 @@
       "book": "books/provenance-codec.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 27,
+      "theorems": 29,
       "functions": 25,
       "guards": {
         "verified": 1,
@@ -7744,7 +7744,7 @@
     {
       "theorem": "fn-ocfg-refused-reconfiguration-changes-nothing",
       "book": "books/owner-config.lisp",
-      "line": 514,
+      "line": 524,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value"
       ]
@@ -7768,7 +7768,7 @@
     {
       "theorem": "fn-prov-wire-of-a-string-is-itself-by-definition",
       "book": "books/provenance-codec.lisp",
-      "line": 543,
+      "line": 577,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-prov-wire and the conclusion is that branch's value"
       ]
