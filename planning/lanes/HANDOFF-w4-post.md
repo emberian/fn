@@ -166,9 +166,10 @@ whole read, 240 from `:durable` and two distinct 441s, the From-less refusal,
 the 440 for a closed configuration). `books/injection.lisp` needed one local
 enable of `fn-clock-observationp`, which `books/clock.lisp` withdraws since
 8983f24 (the guard of `fn-inj-decide` reads the wall clock through it).
-Not recertified here and therefore open on the merged tree:
-`books/injection-invariants` and `tests/acl2/injection-tests` (their
-certificates are from ca66782; the same local enable is the likely fix).
+`books/injection-invariants` and `tests/acl2/injection-tests` recertified on
+the merged tree with no edit (the invariants book already closes the clock
+names locally): `build/acl2/certify-20260920T005234Z-75883` and
+`build/acl2/certify-20260920T005247Z-76057`.
 Python (`python3 -m unittest tests.test_post tests.test_reader
 tests.test_reader_partitions tests.test_served_differential -v`,
 `ACL2_BOOK_HASH_ALISTP=NIL`): 31 tests, 24 pass, 7 fail, 156.6 s. Passing:
