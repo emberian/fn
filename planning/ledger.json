@@ -281,7 +281,7 @@
     "books": 275,
     "books_in_root_closure": 274,
     "roots": 274,
-    "theorems": 5554,
+    "theorems": 5547,
     "functions": 3928,
     "assert_events": 5310,
     "must_fails": 59,
@@ -3526,7 +3526,7 @@
       "book": "books/provenance.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 75,
+      "theorems": 68,
       "functions": 35,
       "guards": {
         "verified": 12,
@@ -7777,7 +7777,7 @@
     {
       "theorem": "fn-prov-wire-of-a-string-is-itself-by-definition",
       "book": "books/provenance-codec.lisp",
-      "line": 543,
+      "line": 561,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-prov-wire and the conclusion is that branch's value"
       ]
