@@ -382,7 +382,7 @@
   (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
                   :verify-guards nil))
   (case (car event)
-    (:open (cdr (fn-ocfg-open oc)))
+    (:open (cdr (fn-ocfg-open oc (cadr event))))
     (:advance (fn-ocfg-advance oc (car (cdr event))))
     (:close (fn-ocfg-close oc (car (cdr event))))
     (:reconfigure (fn-ocfg-reconfigure oc (car (cdr event)) (car (cdr (cdr event)))))
@@ -419,7 +419,7 @@
 
 ; A new connection pins the latest configuration.
 (defthm fn-ocfg-open-pins-the-live-configuration
-  (let ((oc2 (cdr (fn-ocfg-open oc))))
+  (let ((oc2 (cdr (fn-ocfg-open oc acfg))))
     (implies (fn-own-find-conn (fn-own-next-id (fn-ocfg-owner oc))
                                (fn-own-conns (fn-ocfg-owner oc2)))
              (equal (fn-ocfg-conn-config oc2 (fn-own-next-id (fn-ocfg-owner oc)))
@@ -430,7 +430,7 @@
 ; Opening another connection never moves an existing pin.
 (defthm fn-ocfg-open-keeps-every-existing-pin
   (implies (fn-ocfg-pin-find id (fn-ocfg-pins oc))
-           (equal (fn-ocfg-pin-find id (fn-ocfg-pins (cdr (fn-ocfg-open oc))))
+           (equal (fn-ocfg-pin-find id (fn-ocfg-pins (cdr (fn-ocfg-open oc acfg))))
                   (fn-ocfg-pin-find id (fn-ocfg-pins oc))))
   :hints (("Goal" :in-theory (enable (:d fn-ocfg-open)))))
 
