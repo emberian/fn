@@ -207,14 +207,20 @@ class RepoRootTests(unittest.TestCase):
             (self.main / marker / "kept").write_text("# a stand-in\n")
         self.git("init", "-q", "-b", "dev", cwd=self.main)
         self.git("add", "-A", cwd=self.main)
+        # `commit.gpgsign` in the developer's global config makes this commit
+        # block on a signing agent, which a unit test must never depend on.
         self.git("-c", "user.email=t@example.invalid", "-c", "user.name=t",
+                 "-c", "commit.gpgsign=false", "-c", "gpg.format=openpgp",
                  "commit", "-qm", "tree", cwd=self.main)
         self.lane = base / "lane"
         self.git("worktree", "add", "-q", "-b", "lane", str(self.lane), "dev",
                  cwd=self.main)
 
     def git(self, *arguments, cwd):
+        # A bounded wait: git that blocks on a prompt is a hung test suite,
+        # not a slow one.
         subprocess.run(["git", "-C", str(cwd), *arguments], check=True,
+                       stdin=subprocess.DEVNULL, timeout=60,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def test_a_secondary_worktree_is_the_root_not_the_checkout_it_came_from(self):

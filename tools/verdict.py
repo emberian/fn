@@ -17,12 +17,25 @@ absence: `--skip inn` is recorded in the table and in the claim.
 
 Two gates must never overlap on one box -- a gate is a fresh directory
 certified once, and a second `make certify` against the same cache while the
-first is publishing gives the second a cache it cannot vouch for.  So every
-host this run touches is locked (an atomic `mkdir` beside that box's
-gate directories)
-before the first fiber starts and unlocked in a `finally`.  A lock older than
-`--stale-hours` is reported, not stolen; `--force-unlock` is the deliberate
-act.
+first is publishing gives the second a cache it cannot vouch for.  **There is
+exactly one lock per box and it is the `flock` file the hand-written gate
+scripts already take**: `$HOME/fn-gates/.gate.lock` on persvati,
+`/tank/fn/gates/.lock` on hbox.  This tool used to keep a second scheme of its
+own -- an atomic `mkdir` on `.verdict.lock` beside the same directories --
+and two schemes that cannot see each other are not a lock: a verdict run and
+a hand gate could certify on one box at the same time.  So the gate script
+this tool writes opens the same file and holds `flock` on it for its whole
+certification phase, exactly as the hand gates do, and before launching
+anything this tool asks the box whether that lock is free and refuses rather
+than queueing behind it.  `--wait-for-lock` queues instead.  The lock is a
+CERTIFICATION lock: it is not a reservation of the box, and the deploy,
+two-node, INN and scale fibers do not hold it.
+
+`--reuse-gate [REV]` reads a gate directory that already exists -- one this
+tool made, or one of the hand gates, which have the same shape (`certify.log`,
+`pytests.log`, `publish.log`, `build/acl2/certify-*/manifest.json`) and no
+`gate.done` -- and builds the per-fiber table from it.  It never ships and
+never launches: a gate directory that is not there is a row saying so.
 
 Nothing here establishes a proof.  A green certify row means ACL2 read the
 books named in that run's manifest and produced the certificates whose
@@ -47,7 +60,13 @@ from farm import HOSTS as FARM_HOSTS                      # noqa: E402
 
 DEFAULT_HOST = "persvati"
 DEFAULT_INN_HOST = "hbox"
-LOCK_NAME = ".verdict.lock"
+# One lock per box, and it is the file the hand-written gate scripts take.
+# Two names, because the two scripts were written apart; both are what is
+# really on the boxes, and matching them is the whole point.
+GATE_LOCKS = {"hbox": "/tank/fn/gates/.lock"}
+DEFAULT_GATE_LOCK = "$HOME/fn-gates/.gate.lock"
+# The files a finished gate directory holds, whoever wrote it.
+GATE_ARTEFACTS = ("certify.log", "pytests.log", "publish.log")
 
 # Book-name prefix -> the deputy that owns the row, from
 # `planning/deputies/CLUSTERS.md`.  Longest prefix wins, so `bp-primary` goes
@@ -83,6 +102,11 @@ def gate_root(host: str) -> str:
     thing it guards already is.
     """
     return "/tank/fn/gates" if host == "hbox" else GATE_ROOT
+
+
+def gate_lock(host: str) -> str:
+    """The one lock file this box's gates take, hand-written or generated."""
+    return GATE_LOCKS.get(host, DEFAULT_GATE_LOCK)
 
 
 def owner_of(book: str) -> str:
@@ -151,57 +175,55 @@ def ssh(host: str, script: str, timeout: int = 300) -> tuple[int, str]:
 # the lock
 
 
-class Lock:
-    """An atomic `mkdir` on each host, held for the whole run.
+class GateLock:
+    """The one lock per box, checked before anything is launched on it.
 
-    `mkdir` is the atomic primitive every POSIX shell has; a lock directory
-    holds one `owner` file naming who took it and when, so a stale lock is
-    attributable.  Hosts are locked in sorted order: two verdict runs on the
-    same pair of boxes then queue rather than deadlock.
+    The hold itself is a `flock` inside the gate script, which is what the
+    hand-written gates on both boxes do (`exec 9>LOCK; flock 9`) and what
+    keeps the exclusion structural: the lock lives as long as the process
+    that certifies and dies with it, so it cannot be left behind and cannot
+    go stale.  There is nothing here to force-unlock.
+
+    What this class does is ask, before launching, whether that lock is free,
+    so an operator gets a refusal naming the file instead of a gate that
+    silently queues for an hour.  `--wait-for-lock` says to queue: the gate
+    script blocks on `flock 9` and starts when the other gate finishes.
     """
 
-    def __init__(self, hosts: list[str], rev: str, stale_hours: float,
-                 force: bool):
+    def __init__(self, hosts: list[str], wait: bool):
         self.hosts = sorted(set(hosts))
-        self.rev = rev
-        self.stale_hours = stale_hours
-        self.force = force
-        self.held: list[str] = []
+        self.wait = wait
 
     def path(self, host: str) -> str:
-        return "{}/{}".format(gate_root(host), LOCK_NAME)
+        return gate_lock(host)
 
-    def acquire(self) -> None:
-        stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    def check(self) -> None:
         for host in self.hosts:
             script = """
 mkdir -p {root}
 lock={lock}
-if [ -n "{force}" ]; then rm -rf "$lock"; fi
-if mkdir "$lock" 2>/dev/null; then
-  printf 'verdict %s %s %s\\n' "{rev}" "{stamp}" "$(hostname)" > "$lock/owner"
-  echo TAKEN
+: >> "$lock" 2>/dev/null
+if flock -n "$lock" true 2>/dev/null; then
+  echo FREE
 else
-  age=$(( $(date +%s) - $(stat -c %Y "$lock" 2>/dev/null || echo 0) ))
-  echo "HELD age=${{age}}s $(cat "$lock/owner" 2>/dev/null)"
+  echo "HELD $(fuser -v "$lock" 2>&1 | tr '\\n' ' ')"
 fi
-""".format(root=gate_root(host), lock=self.path(host), rev=self.rev, stamp=stamp,
-           force="1" if self.force else "")
+""".format(root=gate_root(host), lock=self.path(host))
             code, output = ssh(host, script)
             last = output.strip().splitlines()[-1] if output.strip() else "?"
-            if code != 0 or not last.startswith("TAKEN"):
-                self.release()
-                raise SystemExit(
-                    "verdict: {} is locked by another gate: {}\n"
-                    "  release it with: ssh {} rm -rf {}\n"
-                    "  or re-run with --force-unlock if that lock is stale."
-                    .format(host, last, host, self.path(host)))
-            self.held.append(host)
-
-    def release(self) -> None:
-        for host in self.held:
-            ssh(host, "rm -rf {}\n".format(self.path(host)), timeout=120)
-        self.held = []
+            if code == 0 and last.startswith("FREE"):
+                continue
+            if self.wait and last.startswith("HELD"):
+                print("verdict: {} is certifying under {}; this gate will "
+                      "queue behind it ({})".format(host, self.path(host), last),
+                      flush=True)
+                continue
+            raise SystemExit(
+                "verdict: {} already has a gate certifying: {}\n"
+                "  the lock is {} and it is held by that gate's own process,\n"
+                "  so it cannot be stale and there is nothing to remove.\n"
+                "  wait for it, or re-run with --wait-for-lock to queue."
+                .format(host, last, self.path(host)))
 
 
 # --------------------------------------------------------------------------
@@ -210,6 +232,11 @@ fi
 
 GATE_SH = """#!/bin/bash
 cd {gate}
+# One gate at a time per box: the same flock file the hand-written gate
+# scripts take, held for the whole certification phase and released when this
+# script exits.  A second scheme beside this one is not a lock.
+exec 9>{lock}
+flock 9
 export FN_ACL2={acl2} FN_ACL2_TIMEOUT_SECONDS={timeout} FN_CERTIFY_JOBS={jobs} \\
        FN_CERT_CACHE={cache}
 make certify > certify.log 2>&1; echo exit=$? >> certify.log
@@ -255,22 +282,100 @@ def suite_counts(log: str) -> dict:
     return out
 
 
+SURVEY = """
+gate={gate}
+test -d "$gate" || {{ echo ABSENT; exit 0; }}
+echo PRESENT
+printf 'DONE %s\\n' "$(tail -1 "$gate/gate.done" 2>/dev/null)"
+for name in {artefacts}; do
+  if [ -f "$gate/$name" ]; then
+    printf 'HAS %s %s\\n' "$name" "$(tail -1 "$gate/$name")"
+  else
+    printf 'ABSENT %s\\n' "$name"
+  fi
+done
+printf 'MANIFESTS %s\\n' "$(ls -d "$gate"/build/acl2/certify-*/manifest.json \
+  2>/dev/null | wc -l | tr -d ' ')"
+"""
+
+
+def survey(host: str, gate: str) -> dict:
+    """What a gate directory holds, without assuming who wrote it.
+
+    A hand-written gate never writes `gate.done`, so asking for that file and
+    nothing else made every hand gate unreadable and sent `--reuse-gate`
+    down the path that ships and certifies.  This reads the shape both kinds
+    share and reports each artefact as present or absent, so an incomplete
+    gate is a row that says which part is missing rather than a refusal or a
+    silent pass.
+    """
+    _, output = ssh(host, SURVEY.format(
+        gate=gate, artefacts=" ".join(GATE_ARTEFACTS)))
+    found: dict = {"present": False, "artefacts": {}, "manifests": 0,
+                   "finished": ""}
+    for line in output.splitlines():
+        if line.strip() == "PRESENT":
+            found["present"] = True
+        elif line.startswith("DONE ") and line[5:].strip():
+            found["finished"] = line[5:].strip()
+        elif line.startswith("HAS "):
+            parts = line.split(" ", 2)
+            found["artefacts"][parts[1]] = parts[2] if len(parts) > 2 else ""
+        elif line.startswith("ABSENT ") and line[7:].strip():
+            found["artefacts"][line[7:].strip()] = None
+        elif line.startswith("MANIFESTS "):
+            try:
+                found["manifests"] = int(line[10:].strip())
+            except ValueError:
+                pass
+    return found
+
+
 def certify_gate(fiber: Fiber, repo: Path, commit: str, rev: str, tree: str,
                  jobs: int, cache: str, acl2: str, wait_seconds: int,
-                 reuse: bool) -> dict:
+                 reuse: str | None) -> dict:
     """Ship the commit, run the box's gate detached, wait for `gate.done`.
 
     Detached on purpose: a `make certify` of this tree is measured in tens of
     minutes and an ssh that drops would otherwise take the gate with it.  The
     poll reads one file; it never greps a log for progress and never touches
     another run's processes.
+
+    With `reuse` set this ships nothing and launches nothing: it reads the
+    named gate directory and harvests it.  `reuse` is the empty string for
+    this commit's own gate, or a revision naming another one -- including a
+    hand gate, which has the same shape and no `gate.done`.
     """
-    gate = "{}/{}-{}".format(gate_root(fiber.host), tree, rev)
+    gate = "{}/{}-{}".format(gate_root(fiber.host), tree, reuse or rev)
     started = time.monotonic()
     facts: dict = {"gate": gate, "reused": False}
+    if reuse is not None:
+        found = survey(fiber.host, gate)
+        facts["reused"] = True
+        facts["artefacts"] = found["artefacts"]
+        if found["finished"]:
+            facts["finished"] = found["finished"]
+        fiber.seconds = time.monotonic() - started
+        if not found["present"]:
+            fiber.rc = None
+            fiber.summary = ("no gate directory {} on {}; nothing was reused "
+                             "and nothing was started".format(gate, fiber.host))
+            return facts
+        if not found["manifests"]:
+            fiber.rc = 1
+            fiber.summary = ("gate {} holds no certification manifest, so it "
+                             "certified nothing this can read".format(gate))
+            return facts
+        missing = sorted(name for name, tail in found["artefacts"].items()
+                         if tail is None)
+        facts["missing_artefacts"] = missing
+        harvested = facts | harvest(fiber, gate)
+        if missing:
+            fiber.summary += "; absent from this gate: " + ", ".join(missing)
+        return harvested
     code, output = ssh(fiber.host, "test -f {}/gate.done && cat {}/gate.done".format(
         gate, gate))
-    if reuse and code == 0 and output.strip():
+    if code == 0 and output.strip():
         facts["reused"] = True
         facts["finished"] = output.strip().splitlines()[-1]
     else:
@@ -280,7 +385,7 @@ def certify_gate(fiber: Fiber, repo: Path, commit: str, rev: str, tree: str,
             fiber.seconds = time.monotonic() - started
             return facts
         script = GATE_SH.format(gate=gate, acl2=acl2, timeout=5400, jobs=jobs,
-                                cache=cache)
+                                cache=cache, lock=gate_lock(fiber.host))
         launch = ("cat > {g}/gate.sh <<'VERDICT_GATE_SH'\n{s}VERDICT_GATE_SH\n"
                   "chmod +x {g}/gate.sh\n"
                   "cd {g} && setsid nohup ./gate.sh > gate.out 2>&1 < /dev/null &\n"
@@ -333,8 +438,17 @@ if runs:
     out["wall"] = m.get("certify_wall_seconds")
     out["jobs"] = m.get("jobs_effective")
     codes = m.get("acl2_exit_codes") or {}
-    out["roots"] = len(codes)
-    out["bad"] = sorted(k for k, v in codes.items() if v != 0)
+    # The per-book verdict, NOT the exit code.  The certify driver ends in
+    # `(quit)`, which ACL2 reaches whether or not the inner `ld` returned on
+    # a failed `certify-book`, so a book that failed in 0.2 s still exits 0.
+    # Measured on persvati 2026-09-20 against gate dev-909e055: exit codes
+    # name 1 bad root, `book_results` names 25.  An older manifest carries no
+    # `book_results`, and then the exit codes are all there is.
+    results = m.get("book_results") or {}
+    out["roots"] = len(results or codes)
+    out["verdict_source"] = "book_results" if results else "acl2_exit_codes"
+    out["bad"] = (sorted(k for k, v in results.items() if v != "passed")
+                  if results else sorted(k for k, v in codes.items() if v != 0))
     out["failure"] = m.get("failure")
     out["failure_markers"] = m.get("failure_markers")
     out["certificates"] = len(m.get("certificate_digests_sha256") or {})
@@ -361,7 +475,9 @@ def harvest(fiber: Fiber, gate: str) -> dict:
     fiber.steps = data.get("roots", 0)
     fiber.failed = len(bad)
     fiber.failures = ["{} ({})".format(b, owner_of(b)) for b in bad]
-    fiber.rc = 0 if (not bad and data.get("status") == "certified"
+    # `certify_books.py` writes "passed" or "failed"; nothing has ever
+    # written "certified", so this row read `fail` for a perfect gate.
+    fiber.rc = 0 if (not bad and data.get("status") == "passed"
                      and suite["verdict"] == "OK") else 1
     fiber.summary = ("roots {}/{} certified, suite {} of {} ({}), "
                      "certify rc={} suite rc={} publish rc={}".format(
@@ -372,6 +488,7 @@ def harvest(fiber: Fiber, gate: str) -> dict:
     return {"certify_rc": certify_rc, "pytest_rc": pytest_rc,
             "publish_rc": publish_rc, "suite": suite,
             "manifest": data.get("manifest"), "status": data.get("status"),
+            "verdict_source": data.get("verdict_source"),
             "acl2_version": data.get("acl2_version"), "platform": data.get("platform"),
             "certify_wall": data.get("wall"), "jobs": data.get("jobs"),
             "roots": data.get("roots"), "bad": bad,
@@ -493,9 +610,17 @@ def evidence(path: Path, rev: str, commit: str, host: str, inn_host: str,
         "| started | {} |".format(started),
         "| wall time | {:.0f} s ({:.1f} h) |".format(elapsed, elapsed / 3600.0),
         "| gate directory | `{}` |".format(gate_facts.get("gate", "-")),
+        "| gate lock | `{}` (the one lock this box's gates take) |".format(
+            gate_lock(host)),
         "| gate reused | {} |".format("yes" if gate_facts.get("reused") else "no"),
+        "| gate artefacts absent | {} |".format(
+            ", ".join("`{}`".format(name)
+                      for name in gate_facts.get("missing_artefacts") or [])
+            or "none"),
         "| certify manifest | `{}` |".format(gate_facts.get("manifest", "-")),
         "| manifest status | {} |".format(gate_facts.get("status", "-")),
+        "| per-root verdict from | `{}` |".format(
+            gate_facts.get("verdict_source", "-")),
         "| acl2 | {} |".format(gate_facts.get("acl2_version", "-")),
         "| platform | {} |".format(gate_facts.get("platform", "-")),
         "| certify wall | {} s at {} jobs |".format(
@@ -561,6 +686,10 @@ def evidence(path: Path, rev: str, commit: str, host: str, inn_host: str,
         "  table so their absence is visible in the claim.",
         "- This file is generated. Its numbers come from the gate manifest and",
         "  from each harness's own stdout summary, never from typing.",
+        "- A reused gate is a reading of a directory that was already there.",
+        "  This run did not certify it, did not ship the commit that made it,",
+        "  and cannot say the tree beside those logs is the commit named above",
+        "  beyond the gate directory's own name.",
         "",
         "## The claim",
         "",
@@ -598,17 +727,22 @@ def main(argv=None) -> int:
                         help="a fiber to leave out; it is still a row saying so")
     parser.add_argument("--only", action="append", default=[],
                         choices=["gate", "deploy", "twonode", "inn", "scale"])
-    parser.add_argument("--reuse-gate", action="store_true",
-                        help="take a finished gate for this exact revision if the "
-                             "host already has one")
+    parser.add_argument("--reuse-gate", nargs="?", const="", default=None,
+                        metavar="REV",
+                        help="read a gate directory that already exists and "
+                             "build the table from it, shipping nothing and "
+                             "certifying nothing.  Bare: this commit's own "
+                             "gate.  With a revision: `<tree>-<REV>` on the "
+                             "host, which may be a hand-written gate")
     parser.add_argument("--gate-wait", type=int, default=4 * 3600,
                         help="seconds to wait for the box gate to finish")
     parser.add_argument("--harness-timeout", type=int, default=3 * 3600)
-    parser.add_argument("--stale-hours", type=float, default=6.0)
-    parser.add_argument("--force-unlock", action="store_true",
-                        help="remove an existing lock before taking it")
+    parser.add_argument("--wait-for-lock", action="store_true",
+                        help="queue behind a gate that is already certifying "
+                             "on the box instead of refusing")
     parser.add_argument("--no-lock", action="store_true",
-                        help="do not lock the hosts (for a dry read only)")
+                        help="do not check the box's gate lock (for a dry "
+                             "read only); the gate script still takes it")
     args = parser.parse_args(argv)
 
     repo = Path(args.repo).resolve() if args.repo else repo_root()
@@ -628,41 +762,41 @@ def main(argv=None) -> int:
         if fiber.name not in wanted:
             fiber.note = "skipped by --skip/--only"
 
-    hosts = sorted({f.host for f in plan if f.name in wanted})
-    lock = Lock(hosts, rev, args.stale_hours, args.force_unlock)
+    # The lock is the box's CERTIFICATION lock, so only a run that is going
+    # to certify checks it: a `--reuse-gate` read starts no ACL2 at all.
+    certifying = "gate" in wanted and args.reuse_gate is None
+    hosts = sorted({f.host for f in plan if f.name in wanted and f.name == "gate"})
+    lock = GateLock(hosts, args.wait_for_lock)
     started = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     clock = time.monotonic()
     gate_facts: dict = {}
-    if not args.no_lock and hosts:
-        lock.acquire()
-        print("verdict: locked {}".format(", ".join(lock.held)), flush=True)
-    try:
-        for fiber in plan:
-            if fiber.name not in wanted:
-                print("verdict: {} skipped".format(fiber.name), flush=True)
-                continue
-            print("verdict: {} starting on {}".format(fiber.name, fiber.host),
-                  flush=True)
-            if fiber.name == "gate":
-                gate_facts = certify_gate(fiber, repo, commit, rev, args.tree,
-                                          args.jobs, args.cache, acl2,
-                                          args.gate_wait, args.reuse_gate)
-            else:
-                command = [sys.executable, "tools/{}.py".format(
-                    {"deploy": "deploy_gate", "twonode": "twonode_gate",
-                     "inn": "inn_lab", "scale": "scale_gate"}[fiber.name]),
-                    commit, "--host", fiber.host, "--tree", args.tree]
-                if fiber.name == "scale":
-                    command += ["--reuse"]
-                if fiber.name == "inn":
-                    command += ["--jobs", str(args.jobs)]
-                harness(fiber, command, repo, args.harness_timeout)
-            print("verdict: {} {} rc={} {:.0f}s -- {}".format(
-                fiber.name, fiber.state, fiber.rc, fiber.seconds, fiber.summary),
-                flush=True)
-    finally:
-        if not args.no_lock:
-            lock.release()
+    if certifying and not args.no_lock and hosts:
+        lock.check()
+        print("verdict: {} free to certify ({})".format(
+            ", ".join(hosts), ", ".join(lock.path(h) for h in hosts)), flush=True)
+    for fiber in plan:
+        if fiber.name not in wanted:
+            print("verdict: {} skipped".format(fiber.name), flush=True)
+            continue
+        print("verdict: {} starting on {}".format(fiber.name, fiber.host),
+              flush=True)
+        if fiber.name == "gate":
+            gate_facts = certify_gate(fiber, repo, commit, rev, args.tree,
+                                      args.jobs, args.cache, acl2,
+                                      args.gate_wait, args.reuse_gate)
+        else:
+            command = [sys.executable, "tools/{}.py".format(
+                {"deploy": "deploy_gate", "twonode": "twonode_gate",
+                 "inn": "inn_lab", "scale": "scale_gate"}[fiber.name]),
+                commit, "--host", fiber.host, "--tree", args.tree]
+            if fiber.name == "scale":
+                command += ["--reuse"]
+            if fiber.name == "inn":
+                command += ["--jobs", str(args.jobs)]
+            harness(fiber, command, repo, args.harness_timeout)
+        print("verdict: {} {} rc={} {:.0f}s -- {}".format(
+            fiber.name, fiber.state, fiber.rc, fiber.seconds, fiber.summary),
+            flush=True)
 
     elapsed = time.monotonic() - clock
     sentence = claim([f for f in plan], gate_facts)
