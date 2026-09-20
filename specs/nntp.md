@@ -356,27 +356,60 @@ resistance of SHA-256 — A-CRYPTO — and under the seam's local witness it is
 false. `tests/acl2/auth-secret-tests.lisp` exhibits rejection on concrete
 octets under the real attachment; that is a witness, not a theorem.
 
-**Still open, and it is not the digest**: `books/nntp-auth.lisp` has not yet
-been switched from `equal` on the cleartext secret to `fn-authsec-checkp`.
-`books/peer-config.lisp` fails to certify on `dev`, and `nntp-auth`'s closure
-runs through it, so the swap cannot be verified today. The change is
-`fn-auth-cred-secret` holding a `fn-authsec-verifierp` instead of a printable
-token, `fn-auth-credp` recognizing it, and `fn-auth-checkp` calling
-`fn-authsec-checkp`; it is tracked in
-`planning/lanes/HANDOFF-w9-digest.md`.
+**Done 2026-09-20**: `books/nntp-auth.lisp` holds a `fn-authsec-verifierp`
+in `fn-auth-cred-secret`, `fn-auth-credp` recognizes it, and
+`fn-auth-checkp` is `fn-authsec-checkp`. By
+`fn-authsec-verifier-is-not-octets` a cleartext token is not even
+well-formed in that slot. `fn principal set-password` derives the verifier
+through `tools/auth_secret.py` — one ACL2 session over `books/auth-secret`,
+no `hashlib`, and `bin/fn` no longer imports that module. An existing
+credential file in the old format is refused by name
+(`cleartext-credential`) and the operator re-sets the password; fn does not
+read a stored password to re-derive it. The live evidence is
+`planning/evidence/auth-w10-2026-09-20.md`.
 
-**Open, and a real one**: RFC 4642 §2.2 says STARTTLS MUST NOT be pipelined,
-and the handshake begins with the first octet after the 382's CRLF. Any
+**Closed 2026-09-20**: RFC 4642 §2.2 says STARTTLS MUST NOT be pipelined,
+and the handshake begins with the first octet after the 382's CRLF, so any
 octets that arrived in the same read after the `STARTTLS` command line are
-therefore TLS handshake bytes, not NNTP. `fn-served-feed` is a byte fold with
-one stopping condition — a closed wire — so today it would frame those octets
-as NNTP before the host upgrades the socket. `tools/run_owner.py` discards the
-unread remainder of that read before handshaking, which §2.2 permits ("the
-server MAY ignore any data received after the command"), but that is a host
-decision about octets and this tree's rule is that ACL2 owns those. Closing it
-needs a second stopping condition in `fn-served-feed`, carried in the
-connection exactly as the closed wire is; the effect is already there to key
-on. Recorded rather than papered over.
+handshake bytes and not NNTP. `fn-served-feed` now has a second stopping
+condition, `fn-served-tls-handshakingp`, carried in the connection exactly
+as the closed wire is: the 382 branch leaves the session HANDSHAKING rather
+than in TLS, and a handshaking connection frames nothing
+(`fn-served-feed-of-handshaking-connection`,
+`fn-served-step-of-handshaking-connection-is-a-no-op`,
+`fn-auth-handshaking-session-serves-nothing`). Because the stop is a
+property of the CONNECTION and not of the effects just emitted,
+`fn-served-feed-of-append` and partition independence hold unchanged — a
+test on the effects would have broken them, which is why the condition is
+where it is. The host performs the upgrade on the `(:starttls)` effect and
+re-enters the plaintext stream with the `(:tls-established)` wire event,
+the only transition that sets `tlsp`
+(`fn-auth-tls-established-sets-the-layer`). ACL2 owns the decision; the
+host owns only the socket.
+
+### The posting allowance
+
+Posting is the AUTHENTICATED PRINCIPAL's, not the connection's. `fn principal
+set-password --posting/--no-posting` writes the flag; `fn-auth-postingp`
+reads it. Authenticated, the credential decides and nothing else: a
+principal enrolled without the flag passes the 480 gate and is still
+refused RFC 3977 §6.3.1.1's `440`, however permissive `[posting] enabled`
+is. Unauthenticated, a configuration that requires authentication refuses,
+and one that does not leaves the decision where it was, with
+`fn-nntp-post-step` and the pinned injection configuration. The
+CAPABILITIES `POST` label is the conjunction of the two, so the label, the
+greeting code and the 440 cannot disagree
+(`fn-auth-post-without-permission-is-not-offered` and its lift
+`fn-auth-step-post-without-permission-is-not-offered`, with
+`fn-served-dispatch-of-a-refused-post-leaves-the-wire-in-place` in
+`books/nntp-auth-invariants.lisp`: no 340 means no body means no
+submission).
+
+**Open, named**: the fold-level form of that statement — no read of a
+connection under a configuration that grants posting to no one emits a
+submission — is `OB-AUTH-FOLD`, recorded in `planning/proofs.json` and in
+the header of `books/nntp-auth-invariants.lisp` with the three lemmas it
+waits on.
 
 ## Scope
 

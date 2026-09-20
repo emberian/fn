@@ -20,6 +20,58 @@ run on. Every result below is hbox's.
 | `books/stx-authority` | `run-20260920T183034Z-b081` | same | not reached: cascade from `stx-index` |
 | `tests/acl2/stx-transit-tests` | `run-20260920T183034Z-b081` | same | not reached: cascade from `stx-epochs` and `stx-authority` |
 
+## w10/substrate-2 closed the four open roots (2026-09-20)
+
+Tool: ACL2 8.7 (`/home/ember/fn-tools/acl2-8.7/saved_acl2`, SHA-256
+`c8a7a804d9cc80e2...`) on persvati, via `python3 tools/farm.py submit persvati
+--jobs 4 --remote-root /home/ember/fn-lanes/w10-substrate-2 --affected-by
+books/stx-index.lisp --affected-by books/stx-epochs.lisp --closure`, then
+`wait`. Per-invocation environment `ACL2_CUSTOMIZATION=NONE`,
+`ACL2_BOOK_HASH_ALISTP=NIL`, `ACL2_SYSTEM_BOOKS` unset; per-book timeout
+1800 s. Input revision: branch `w10/substrate-2` at `976f0e0`, from `dev`
+`c6ebc68` merged with `dev` `f730c24`.
+
+Run `run-20260920T211342Z-aa20`, evidence
+`build/acl2/certify-20260920T211346Z-3327395`,
+**31 of 31 roots certified, exit code 0**, 128 s wall at `--jobs 4`.
+
+| Root | Result | Source SHA-256 (first 16) | Seconds |
+| --- | --- | --- | --- |
+| `books/stx-index` | **certified** | `f059904ee7f4deeb` | 0.73 |
+| `books/stx-epochs` | **certified** | `0c9becdc14fdfe52` | 0.52 |
+| `books/stx-authority` | **certified** | `a11fc976e952bcfb` | 0.65 |
+| `tests/acl2/stx-transit-tests` | **certified** | `0dfa13a083b55479` | 0.72 |
+
+The whole include closure certified in the same run: `stx-carrier`,
+`stx-verify`, `stx-lace`, `stx-policy`, `statement`, `statement-invariants`,
+`lace`, `lace-invariants`, `principal`, `principal-invariants`, `policy`,
+`policy-invariants`, `membership-epochs`, `membership-epochs-invariants`,
+`article`, `cbor`, `cbor-invariants`, `records`, `records-invariants`,
+`crypto-seam`, `defrecord`, `node`, `acceptance`, `acceptance-alloc`,
+`retention`, `provenance` and `tests/acl2/crypto-seam-tests`.
+
+Corroborated locally on the laptop (ACL2 8.7, `/opt/homebrew/bin/acl2`,
+`tools/certify_books.py`, one root at a time):
+`build/acl2/certify-20260920T205912Z-79933` (`stx-epochs`),
+`certify-20260920T210944Z-90380` (`stx-index`),
+`certify-20260920T211000Z-90581` (`stx-authority`),
+`certify-20260920T211258Z-93549` (`stx-transit-tests`).
+
+New limitations this run introduces, beyond those listed below:
+
+- **The S4-1 and S5-1 witnesses in `tests/acl2/stx-transit-tests` were
+  vacuous before this run and had never executed.** A statement whose kind
+  is not `:article` carries its payload as the article body in base64
+  (`fn-stx-payload-for`, `fn-stx-body-payload`), and both carrier articles
+  had a prose body, so `fn-stx-delta` was `nil` and every assertion about
+  the hostile batch held of an empty delta. Repaired, and the two deltas are
+  now pinned by assertions of their own. Any earlier reading of those rows
+  should be re-taken from this run.
+- **Neither keystone has a host line.** `fn-stx-index-lookup` and
+  `fn-stx-commits-of-batch` have no caller outside their books; the
+  theorem-subject rule of `AGENTS.md` is not met for PRF-023 or PRF-025 and
+  both stay `in-progress`.
+
 Limitations, and they are the point of reading this file next to the claim:
 
 - **Two roots are open and their witnesses have therefore not run.** The

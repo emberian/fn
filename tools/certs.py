@@ -12,9 +12,19 @@ was there before a merge, in which case filing it under the *current* book's
 key poisons the cache for everyone.  So ``publish`` reads the manifests written
 by ``tools/certify_books.py`` and publishes a book only when the source beside
 it still hashes to what that run certified (``source_digests_sha256`` and, when
-the run recorded it, ``source_digests_sha256_after``) and the certificate
+the run recorded it, ``source_digests_sha256_after``), the certificate
 beside it still hashes to what that run produced
-(``certificate_digests_sha256``).  There is no other publish path.
+(``certificate_digests_sha256``), and *every book in the closure the key is
+computed from* still hashes to what that run recorded.  There is no other
+publish path.
+
+That last clause is the one a run verdict used to stand in for.  While
+publishing happened only after a wholly successful run, the run-wide
+"sources unchanged" check covered it; the moment a run's individual passing
+books are published -- which is what makes a failed run useful to the next
+lane -- the check has to be per book, here, where the key is computed.  A
+dependency edited mid-run leaves the book's own source untouched, so nothing
+weaker notices.
 
 **The key is the closure, not the book.**  A certificate is valid only for the
 book *and every book it includes*: change a dependency and ACL2 refuses with a
@@ -101,6 +111,11 @@ class Certified:
     cert: str
     evidence: str
     origin: str = ""
+    # Every source digest the run recorded, which is the book's whole local
+    # include closure and everything else the run touched.  The cache key is
+    # the closure, so this is what says the key describes the source the
+    # certificate was produced from.
+    closure_sources: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -415,13 +430,29 @@ def certified_books(manifests: list[dict],
             if source is None or certificate is None or exits.get(book, 0) != 0:
                 continue
             found.setdefault(book, []).append(Certified(
-                book=book, source=source,
+                book=book, source=source, closure_sources=sources,
                 # An absent `_after` map is an older manifest; an `_after` map
                 # that exists and does not name this book recorded a closure
                 # error, so it must not verify anything.
                 after=after.get(f"{book}.lisp", None if not after else ""),
                 cert=certificate, evidence=evidence, origin=origin))
     return found
+
+
+def closure_drift(listing: list[str], recorded: dict[str, str]) -> list[str]:
+    """The books in this key's closure the manifest cannot vouch for.
+
+    `listing` is what the key hashes, one ``<path>.lisp:<sha256>`` per book.
+    A book the manifest never recorded is drift too: an unrecorded digest is
+    not a matching one, and the runner records the whole closure of every
+    requested book, so this only refuses a manifest that really is partial.
+    """
+    moved = []
+    for entry in listing:
+        path, _, found = entry.rpartition(":")
+        if recorded.get(path) != found:
+            moved.append(path)
+    return sorted(moved)
 
 
 def verified(records: list[Certified], source: str, cert: str) -> Certified | None:
@@ -480,6 +511,14 @@ def publish(root: Path, cache: Path, manifests: list[dict] | None = None,
             key, listing = closure_key(root, name)
         except UnreadableBook as error:
             report.unreadable.append(f"{name}: {error}")
+            continue
+        moved = closure_drift(listing, record.closure_sources)
+        if moved:
+            # The key would describe source this certificate was not produced
+            # from: a real pair filed under the wrong closure.
+            report.unverified.append(
+                f"{name}: closure changed since certification: "
+                + ", ".join(moved[:6]))
             continue
         where = origin or record.origin or str(root.resolve())
         directory = entry_directory(cache, key, where)
