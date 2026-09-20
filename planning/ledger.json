@@ -275,18 +275,18 @@
     "books": 269,
     "books_in_root_closure": 268,
     "roots": 268,
-    "theorems": 5333,
-    "functions": 3827,
-    "assert_events": 5077,
+    "theorems": 5340,
+    "functions": 3828,
+    "assert_events": 5079,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
       "verified": 1398,
       "declared-off": 187,
-      "default-guarded": 1748,
+      "default-guarded": 1749,
       "default-unguarded": 494
     },
-    "suspect_theorems": 41,
+    "suspect_theorems": 42,
     "export_hygiene_warnings": 72,
     "teeth_form_warnings": 0,
     "include_hygiene_warnings": 87,
@@ -4254,7 +4254,7 @@
       "book": "books/stx-index.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 50,
+      "theorems": 57,
       "functions": 26,
       "guards": {
         "verified": 8,
@@ -4273,6 +4273,7 @@
       ],
       "system_includes": [],
       "suspects": [
+        "fn-stx-index-lookup-cost-is-index-bounded",
         "fn-stx-index-query-is-store-free-by-definition"
       ],
       "read_error": null
@@ -7143,17 +7144,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 6,
+      "functions": 7,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 6,
+        "default-guarded": 7,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 58,
+      "assert_events": 60,
       "must_fails": 0,
-      "defconsts": 6,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7654,9 +7655,17 @@
       ]
     },
     {
+      "theorem": "fn-stx-index-lookup-cost-is-index-bounded",
+      "book": "books/stx-index.lisp",
+      "line": 784,
+      "reasons": [
+        "instance-corollary: the statement is fn-stx-alist-steps-is-len-bounded instantiated, discharging nothing"
+      ]
+    },
+    {
       "theorem": "fn-stx-index-query-is-store-free-by-definition",
       "book": "books/stx-index.lisp",
-      "line": 586,
+      "line": 801,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-stx-index-lookup",
         "reflexive-conclusion: a conjunct is (equal X X)"
