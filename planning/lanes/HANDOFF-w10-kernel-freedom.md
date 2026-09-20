@@ -169,9 +169,10 @@ All on persvati, `--jobs 4`, `--remote-root /home/ember/fn-lanes/w10-kernel-free
   failed identically in the first run, under a different kernel.
 
 **Consequence for the counterexample.** The owner-specific spelling of it
-(`tests/acl2/owner-tests.lisp`, using `fn-own-ledger-durablep`) is **admitted
-but not certified**, because that book cannot be certified in this tree at
-all. Its substance is certified: `tests/acl2/store-observed-traces-tests`
+(`tests/acl2/owner-tests.lisp`, using `fn-own-ledger-durablep`) is **written
+and not run** -- not admitted, not certified -- because that book cannot be
+certified in this tree at all and its dependency has no certificate to `ld`
+against either. Its substance is certified: `tests/acl2/store-observed-traces-tests`
 passed, and it asserts that the pair `(1 . 2)` of `*fn-so-second*` is in the
 two-record list, is **not** in the one-record list, and that
 `fn-sf-recovery-crash-imagep` admits that one-record image of
