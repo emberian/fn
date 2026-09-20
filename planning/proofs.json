@@ -804,6 +804,141 @@
       "status": "planned",
       "evidence": [],
       "planning_note": "Scheduled in the active disconnected path (C2-06 scheduler, C3-03 conditional progress), rather than waiting for a mission-profile milestone. This changes sequencing only; target remains planned with no theorem evidence. A-FAIRNESS and validated-transfer/handoff dependencies remain explicit."
+    },
+    {
+      "id": "PRF-019",
+      "title": "Statement field codec canonicality (S1-1)",
+      "statement": "fn-stx-field-round-trip: a well-formed statement whose base64 detached encoding fits the 8192-octet field bound decodes back to exactly its own header and signature; fn-stx-field-accepted-input-is-canonical: every accepted field value has exactly one canonical form, so a middle box cannot produce a second value that decodes to the same statement.",
+      "milestone": "M4",
+      "requirements": [
+        "SUB-001"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [],
+      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
+    },
+    {
+      "id": "PRF-020",
+      "title": "The verdict is computed from the statement's own octets (S2-1)",
+      "statement": "fn-stx-verified-implies-signature-over-own-octets: a :verified verdict is backed by a key named in this node's own keyring, a signature check over the statement's own signing preimage, and a ref recomputed from the receiver's projection of the received bytes; the companion fn-stx-transit-verdict-is-fn-stx-verdict equates the verdict recorded by fn-peer-transfer, the function the host calls on a TAKETHIS body, with that subject.",
+      "milestone": "M4",
+      "requirements": [
+        "SUB-002"
+      ],
+      "depends_on": [
+        "PRF-019"
+      ],
+      "assumptions": [
+        "A-CRYPTO"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
+    },
+    {
+      "id": "PRF-021",
+      "title": "Transit merge: ids are the union (S3-1)",
+      "statement": "fn-stx-transit-ids-are-union: after a durably completed transit acceptance the ids of the node's lace are exactly the union of the ids it held and the ids of the delta. Corollary of fn-lace-merge-ids-are-union; the proof event is the bridge lemma fn-stx-lace-of-accept-is-merge, which equates accepting a transit article with a singleton lace merge.",
+      "milestone": "M4",
+      "requirements": [
+        "SUB-004"
+      ],
+      "depends_on": [
+        "PRF-020"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [],
+      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
+    },
+    {
+      "id": "PRF-022",
+      "title": "Equivocation is detected at the merge and recorded (S3-2)",
+      "statement": "fn-stx-transit-equivocation-is-detected: two distinct statements sharing a (creator, incarnation, sequence) slot make the creator an equivocator in the merged lace and both forks remain members, so neither fork is dropped; fn-stx-reissue-detected-after-peering is its two-node form under an explicit distinct-content-id hypothesis, and fn-stx-equivocation-record-agrees-with-lace licenses the durable (:equivocation ...) record as a twin of the lace rather than a second authority.",
+      "milestone": "M4",
+      "requirements": [
+        "SUB-004"
+      ],
+      "depends_on": [
+        "PRF-021"
+      ],
+      "assumptions": [
+        "A-CRYPTO"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
+    },
+    {
+      "id": "PRF-023",
+      "title": "The statement index is a proved twin (S3-3)",
+      "statement": "fn-stx-index-agrees-with-lace: under the carried index invariant the index answers lookup and the equivocator question exactly as the linear fn-stx-lace projection; fn-stx-index-invariant-preserved-by-accept: acceptance preserves that invariant, so the projection is a proof-level object and never runs per served command (D3).",
+      "milestone": "M4",
+      "requirements": [
+        "SUB-004"
+      ],
+      "depends_on": [
+        "PRF-021"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [],
+      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
+    },
+    {
+      "id": "PRF-024",
+      "title": "Transit admission is the policy function, and a peer cannot widen it (S4-1)",
+      "statement": "fn-stx-transit-admit-is-fn-pol-admitp: the authority gate on the transit path is fn-pol-admitp over this node's lace and keyring, which is the theorem-subject equation for every policy theorem; fn-stx-peer-batch-cannot-change-policy: if a contact batch contains no statement by the group's authority verified under the local keyring, the policy in force is equal before and after the batch.",
+      "milestone": "M4",
+      "requirements": [
+        "SUB-003"
+      ],
+      "depends_on": [
+        "PRF-021"
+      ],
+      "assumptions": [
+        "A-CRYPTO",
+        "A-POLICY"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
+    },
+    {
+      "id": "PRF-025",
+      "title": "Reconnection never revises admissibility (S5-1)",
+      "statement": "fn-stx-commits-of-batch-are-verified-and-well-formed is the carrier obligation and the new work: under a well-formed keyring the commits a batch contributes are well formed and each has a verified statement behind it. On it rest fn-stx-reconnect-never-revises-admissibility, which keeps every fn-me-decide equal across the merge, and fn-stx-reconnect-exposes-the-partition, which makes two commits off a shared base a visible fork rather than a winner.",
+      "milestone": "M4",
+      "requirements": [
+        "SUB-005"
+      ],
+      "depends_on": [
+        "PRF-021"
+      ],
+      "assumptions": [
+        "A-CRYPTO"
+      ],
+      "status": "planned",
+      "evidence": [],
+      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
+    },
+    {
+      "id": "PRF-026",
+      "title": "The reader's verdict is the recorded verdict, three-valued (S6-1)",
+      "statement": "fn-stx-reader-verdict-is-the-recorded-verdict: HDR :fn-verified renders the verdict acceptance recorded for the article and does not recompute it per query; fn-stx-reader-verdict-is-typed: the rendered value is always a member of *fn-stx-verdicts*, so :unverified and :absent never collapse into one token.",
+      "milestone": "M4",
+      "requirements": [
+        "SUB-006"
+      ],
+      "depends_on": [
+        "PRF-020"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [],
+      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
     }
   ]
 }

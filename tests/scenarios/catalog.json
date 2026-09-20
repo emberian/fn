@@ -552,6 +552,42 @@
         "M1 evidence is a design exercise only; actual private-profile integration remains a later release gate."
       ],
       "evidence": []
+    },
+    {
+      "id": "SCN-019",
+      "title": "Two-node statement exchange through a peer that does not understand it",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "SUB-001",
+        "SUB-002",
+        "SUB-003",
+        "SUB-004",
+        "SUB-005",
+        "SUB-006"
+      ],
+      "steps": [
+        "Give node A and node B separate keyrings, both holding agent A's public key, and configure one relay between them that knows nothing about FN-Statement.",
+        "Agent A signs a statement over its authored source bytes and posts the article to node A with the statement in the FN-Statement header field.",
+        "Relay the article A -> relay -> B, capturing the octets at each hop.",
+        "On node B, fetch the article with ARTICLE and HEAD and verify the signature with an independent client that uses its own keyring and no fn code.",
+        "Ask node B for HDR :fn-verified over the article's range and over its Message-ID.",
+        "Repeat with the article's body altered by one octet in transit, with an article whose creator node B does not know, and with an article carrying no FN-Statement.",
+        "Offer node B a policy statement for a group the offering peer does not govern, then the genuine authority's policy statement, comparing the policy in force before and after each batch.",
+        "Have agent A reissue one (incarnation, sequence) slot with two different payloads, deliver one fork to each node, then peer the two nodes both ways.",
+        "Partition two sites, remove a different member at each, reconnect, and merge the reconnected peer's commits."
+      ],
+      "expected": [
+        "The FN-Statement field arrives at node B byte-identical; only Path and Xref differ across the hops.",
+        "The independent client verifies the signature from the served bytes alone, without asking fn for a verdict.",
+        "HDR :fn-verified reports verified with the principal id in hex and the keyring generation under which the verdict was computed.",
+        "The altered body yields unverified ref-mismatch, the unknown creator unverified signature, and the missing field absent no-field; all three articles are still accepted, stored byte-exact and served, and no two of the outcomes render as one token.",
+        "The offering peer's policy statement leaves the policy in force equal before and after; the genuine authority's changes it, and the changing statement is named.",
+        "Both nodes end holding both forks and report the creator as an equivocator, with the durable equivocation record agreeing with the lace.",
+        "After the reconnection merge every earlier admit/refuse/hold decision is unchanged and the fork is exposed with both removals present.",
+        "No run here is proof evidence: it exercises the design's acceptance criteria against books that do not exist at this revision."
+      ],
+      "evidence": []
     }
   ]
 }
