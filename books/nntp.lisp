@@ -75,6 +75,16 @@
    ((fn-nntp-keywordp keyword "DATE")
     (if (null args) (fn-nntp-date-response session env)
       (fn-nntp-single session "501 syntax error")))
+   ; The transit commands (RFC 3977 section 6.3.2 IHAVE; RFC 4644 CHECK,
+   ; TAKETHIS) are recognized here so a reader never sees 500 for them, and
+   ; are not permitted on a reader connection: RFC 3977 section 3.2.1's 502,
+   ; "command not permitted".  A peer connection is served them by
+   ; books/peer-inbound.lisp (fn-peer-command) before the line reaches this
+   ; dispatcher, from the peer record and the pinned node.
+   ((or (fn-nntp-keywordp keyword "IHAVE")
+        (fn-nntp-keywordp keyword "CHECK")
+        (fn-nntp-keywordp keyword "TAKETHIS"))
+    (fn-nntp-single session "502 transit is not permitted on this connection"))
    (t (fn-nntp-single session "500 command not recognized"))))
 
 (defun fn-nntp-archive-command (session archive env keyword args)

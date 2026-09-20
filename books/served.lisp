@@ -17,7 +17,7 @@
 ; (`fn-wire-feed-byte', which is what `fn-wire-drive' computes by
 ; `fn-wire-drive-is-feed-proper'), and the dispatcher runs on each framed
 ; event before the next byte is framed.  That order is what POST needs: the
-; 340 offer from `fn-nntp-post-step' (books/nntp-post.lisp) carries a
+; 340 offer from `fn-peer-step' (books/nntp-post.lisp) carries a
 ; `:begin-article' effect, and the byte after the offer must be framed in
 ; article mode.  `fn-served-dispatch' switches the wire with
 ; `fn-wire-begin-article' on that effect, so article mode is wire state inside
@@ -34,7 +34,7 @@
 ;                                           fn-wire-begin-article-preserves-statep
 ;                                           fn-post-step-preserves-consistent-
 ;                                             session
-;   fn-served-step-effects-are-typed        fn-post-step-effects-well-formed
+;   fn-served-step-effects-are-typed        fn-peer-step-effects-well-formed
 ;                                           fn-post-submission-is-an-injected-
 ;                                             article
 ;   fn-served-step-partition-independence   fn-served-feed-of-append (a byte
@@ -48,13 +48,14 @@
 ;   fn-served-step-nntp-steps-is-bounded    fn-wire-feed-byte-emits-at-most-
 ;                                             one-event
 ;
-; OPEN (no theorem here): the cost of one `fn-nntp-post-step' is not yet
+; OPEN (no theorem here): the cost of one `fn-peer-step' is not yet
 ; bounded by a closed form.  See the obligation recorded at the end of this
 ; book.
 
 (in-package "ACL2")
 (include-book "wire-invariants")
 (include-book "nntp-post")
+(include-book "peer-inbound")
 
 ; -----------------------------------------------------------------------------
 ; The connection record: wire framing state, POST session, pinned archive,
@@ -197,14 +198,14 @@
 ; fn-wire-drive did) and branches on nothing else.  It is the hypothesis the
 ; keystones below carry and the step preserves (proof-style section 4).  It is
 ; deliberately not guard verified: it is specification vocabulary, and
-; fn-post-session-consistentp, which walks the pinned archive, is not
+; fn-peer-session-consistentp, which walks the pinned archive, is not
 ; executable on a served read by design.
 
 (defun fn-served-connp (c)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-served-conn-shapep c)
        (fn-wire-statep (fn-served-conn-wire c))
-       (fn-post-session-consistentp (fn-served-conn-session c)
+       (fn-peer-session-consistentp (fn-served-conn-session c)
                                     (fn-served-conn-archive c))))
 
 (defthm fn-served-connp-forward-shape
@@ -217,7 +218,7 @@
 
 (defthm fn-served-connp-is-consistent-session
   (implies (fn-served-connp c)
-           (fn-post-session-consistentp (fn-served-conn-session c)
+           (fn-peer-session-consistentp (fn-served-conn-session c)
                                         (fn-served-conn-archive c))))
 
 (in-theory (disable fn-served-connp))
@@ -241,7 +242,8 @@
   (and (true-listp effect)
        (equal (len effect) 2)
        (equal (car effect) :submit)
-       (fn-inj-injectedp (car (cdr effect)))))
+       (or (fn-inj-injectedp (car (cdr effect)))
+           (fn-peer-submissionp (car (cdr effect))))))
 
 (defun fn-served-effectp (effect)
   (declare (xargs :guard t :verify-guards nil))
@@ -276,7 +278,7 @@
 ; -----------------------------------------------------------------------------
 ; One framed event
 ;
-; fn-nntp-post-step (books/nntp-post.lisp) is the dispatcher with POST
+; fn-peer-step (books/nntp-post.lisp) is the dispatcher with POST
 ; composed in: it answers the offer, reassembles the article body and decides
 ; injection.  This step does two things with its result.  The 340 offer
 ; carries the begin-article marker, and here the wire is switched with
@@ -285,7 +287,7 @@
 
 (defun fn-served-dispatch (conn event)
   (declare (xargs :guard t))
-  (let* ((r (fn-nntp-post-step (fn-served-conn-session conn)
+  (let* ((r (fn-peer-step (fn-served-conn-session conn)
                                (fn-served-conn-archive conn)
                                (fn-served-conn-config conn)
                                (fn-served-conn-observation conn)
@@ -320,7 +322,7 @@
         (equal (fn-served-conn-session
                 (fn-served-result-conn (fn-served-dispatch conn event)))
                (fn-post-result-session
-                (fn-nntp-post-step (fn-served-conn-session conn)
+                (fn-peer-step (fn-served-conn-session conn)
                                    (fn-served-conn-archive conn)
                                    (fn-served-conn-config conn)
                                    (fn-served-conn-observation conn)
@@ -334,13 +336,13 @@
         (equal (fn-served-conn-observation
                 (fn-served-result-conn (fn-served-dispatch conn event)))
                (fn-served-conn-observation conn)))
-   :hints (("Goal" :in-theory (disable fn-nntp-post-step fn-post-offeredp
+   :hints (("Goal" :in-theory (disable fn-peer-step fn-post-offeredp
                                        fn-wire-begin-article)))))
 
 (local
  (defthm fn-served-dispatch-effects-unfold
    (equal (fn-served-result-effects (fn-served-dispatch conn event))
-          (let ((r (fn-nntp-post-step (fn-served-conn-session conn)
+          (let ((r (fn-peer-step (fn-served-conn-session conn)
                                       (fn-served-conn-archive conn)
                                       (fn-served-conn-config conn)
                                       (fn-served-conn-observation conn)
@@ -350,7 +352,7 @@
                         (list (fn-served-submit-effect
                                (fn-post-result-submission r)))
                       nil))))
-   :hints (("Goal" :in-theory (disable fn-nntp-post-step fn-post-offeredp
+   :hints (("Goal" :in-theory (disable fn-peer-step fn-post-offeredp
                                        fn-wire-begin-article)))))
 
 (defthm fn-served-dispatch-preserves-wire-statep
@@ -360,7 +362,7 @@
              (fn-served-result-conn (fn-served-dispatch conn event)))))
   :hints (("Goal"
            :in-theory (disable fn-wire-statep fn-wire-begin-article
-                               fn-nntp-post-step fn-post-offeredp
+                               fn-peer-step fn-post-offeredp
                                fn-wire-begin-article-preserves-statep)
            :use ((:instance fn-wire-begin-article-preserves-statep
                             (wire-state (fn-served-conn-wire conn)))))))
@@ -372,11 +374,11 @@
   :hints (("Goal"
            :in-theory (e/d (fn-served-connp)
                            (fn-served-dispatch fn-wire-statep
-                            fn-nntp-post-step fn-post-session-consistentp
-                            fn-post-step-preserves-consistent-session
+                            fn-peer-step fn-peer-session-consistentp
+                            fn-peer-step-preserves-consistent-session
                             fn-served-dispatch-preserves-wire-statep))
            :use ((:instance fn-served-dispatch-preserves-wire-statep)
-                 (:instance fn-post-step-preserves-consistent-session
+                 (:instance fn-peer-step-preserves-consistent-session
                             (ps (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
                             (config (fn-served-conn-config conn))
@@ -389,19 +391,19 @@
             (fn-served-result-effects (fn-served-dispatch conn event))))
   :hints (("Goal"
            :in-theory (e/d ()
-                           (fn-served-dispatch fn-nntp-post-step
-                            fn-post-session-consistentp fn-served-connp
-                            fn-nntp-effectp fn-inj-injectedp
-                            fn-post-step-effects-well-formed
-                            fn-post-submission-is-an-injected-article))
+                           (fn-served-dispatch fn-peer-step
+                            fn-peer-sessionp fn-served-connp
+                            fn-nntp-effectp fn-inj-injectedp fn-peer-submissionp
+                            fn-peer-step-effects-well-formed
+                            fn-peer-step-submission-is-typed))
            :use ((:instance fn-served-connp-is-consistent-session (c conn))
-                 (:instance fn-post-step-effects-well-formed
+                 (:instance fn-peer-step-effects-well-formed
                             (ps (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
                             (wire-event event))
-                 (:instance fn-post-submission-is-an-injected-article
+                 (:instance fn-peer-step-submission-is-typed
                             (ps (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
                             (config (fn-served-conn-config conn))
@@ -517,7 +519,7 @@
               (fn-served-conn-observation conn))))
    :hints (("Goal" :in-theory (e/d (fn-served-connp)
                                    (fn-wire-feed-byte fn-wire-statep
-                                    fn-post-session-consistentp))))))
+                                    fn-peer-session-consistentp))))))
 
 (defthm fn-served-feed-preserves-connp
   (implies (fn-served-connp conn)
@@ -639,14 +641,16 @@
   (fn-served-make-result
    conn
    (fn-post-result-effects
-    (fn-nntp-post-outcome (fn-served-conn-session conn) completion))))
+    (fn-nntp-post-outcome (fn-peer-session-base (fn-served-conn-session conn))
+                         completion))))
 
 ; A definitional restatement linking the host's entry to the nntp-post
 ; theorems: :rule-classes nil, never a registry event.
 (defthm fn-served-post-outcome-effects-by-definition
   (equal (fn-served-result-effects (fn-served-post-outcome conn completion))
          (fn-post-result-effects
-          (fn-nntp-post-outcome (fn-served-conn-session conn) completion)))
+          (fn-nntp-post-outcome (fn-peer-session-base (fn-served-conn-session conn))
+                         completion)))
   :rule-classes nil)
 
 (defthm fn-served-post-outcome-effects-are-typed
@@ -654,6 +658,30 @@
    (fn-served-result-effects (fn-served-post-outcome conn completion)))
   :hints (("Goal" :in-theory (disable fn-nntp-post-outcome fn-served-effectp
                                       (:d fn-served-effectsp)))))
+
+; The owner's transit port, after fn-peer-transfer and the durable attempt:
+; the submission the :submit effect carried, the decision fn-peer-transfer
+; returned, and the completion the store reported (:durable, :refused,
+; :uncertain, or nil when no attempt ran).  The reply is the RFC table of
+; specs/peering.md section 2.2; an uncertain outcome is 400 (TAKETHIS) or
+; 436 (IHAVE) and the close effect.  The connection is unchanged.
+(defun fn-served-transit-outcome (conn submission decision completion)
+  (declare (xargs :guard t))
+  (fn-served-make-result
+   conn
+   (fn-post-result-effects
+    (fn-peer-transit-outcome (fn-served-conn-session conn) submission decision
+                             completion))))
+
+(defthm fn-served-transit-outcome-effects-are-typed
+  (implies (fn-peer-submissionp submission)
+           (fn-served-effectsp
+            (fn-served-result-effects
+             (fn-served-transit-outcome conn submission decision completion))))
+  :hints (("Goal" :in-theory (e/d (fn-peer-transit-outcome)
+                                  (fn-peer-transit-outcome-effects
+                                   fn-served-effectp fn-peer-submissionp
+                                   (:d fn-served-effectsp))))))
 
 ; Opening a connection: the one place the whole-archive projection recognizer
 ; runs (fn-nntp-open-session records its verdict in the session and no command
@@ -683,7 +711,20 @@
   (declare (xargs :guard t))
   (fn-served-make-result
    (fn-served-make-conn (fn-wire-initial-state line-limit body-limit)
-                        (fn-post-open-session archive)
+                        (fn-peer-open-session archive nil nil nil)
+                        archive config observation)
+   (list (fn-nntp-reply-effect *fn-served-greeting*))))
+
+; A peer connection (specs/peering.md section 1.1): the host resolved the
+; source to a peer name at :open and hands the node and configuration the
+; offer decision reads; both are checked once here under their recognizers
+; (fn-peer-open-session) and never per command.
+(defun fn-served-open-peer (archive line-limit body-limit config observation
+                                    peer node cfg)
+  (declare (xargs :guard t))
+  (fn-served-make-result
+   (fn-served-make-conn (fn-wire-initial-state line-limit body-limit)
+                        (fn-peer-open-session archive peer node cfg)
                         archive config observation)
    (list (fn-nntp-reply-effect (fn-served-greeting config)))))
 
@@ -694,10 +735,24 @@
              (fn-served-open archive line-limit body-limit config observation))))
   :hints (("Goal" :in-theory (e/d (fn-served-connp)
                                   (fn-wire-statep fn-wire-initial-state
-                                   fn-post-open-session
-                                   fn-post-session-consistentp))
+                                   fn-peer-open-session
+                                   fn-peer-session-consistentp))
            :use ((:instance fn-wire-initial-state-is-state)
-                 (:instance fn-post-open-session-is-consistent)))))
+                 (:instance fn-peer-open-session-is-consistent
+                            (peer nil) (node nil) (cfg nil))))))
+
+(defthm fn-served-open-peer-is-a-connection
+  (implies (and (posp line-limit) (posp body-limit))
+           (fn-served-connp
+            (fn-served-result-conn
+             (fn-served-open-peer archive line-limit body-limit config
+                                  observation peer node cfg))))
+  :hints (("Goal" :in-theory (e/d (fn-served-connp)
+                                  (fn-wire-statep fn-wire-initial-state
+                                   fn-peer-open-session
+                                   fn-peer-session-consistentp))
+           :use ((:instance fn-wire-initial-state-is-state)
+                 (:instance fn-peer-open-session-is-consistent)))))
 
 (defthm fn-served-concat-is-an-octet-list
   (implies (fn-served-chunk-listp chunks)
@@ -754,11 +809,12 @@
                (equal effect (fn-nntp-begin-article-effect))
                (equal effect (fn-nntp-close-effect))
                (and (equal (car effect) :submit)
-                    (fn-inj-injectedp (car (cdr effect))))))
+                    (or (fn-inj-injectedp (car (cdr effect)))
+                        (fn-peer-submissionp (car (cdr effect)))))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-nntp-effectp)
                                   (fn-nntp-replyp fn-inj-injectedp
-                                   fn-octet-listp)))))
+                                   fn-peer-submissionp fn-octet-listp)))))
 
 ; -----------------------------------------------------------------------------
 ; Keystone 3: partition independence
@@ -934,7 +990,7 @@
 ; dispatcher steps, and the framing work per octet is constant
 ; (fn-wire-feed-byte, bounded retained input by
 ; fn-wire-feed-byte-retained-input-is-bounded, books/wire.lisp).  The cost of
-; ONE fn-nntp-post-step is not yet a theorem: the worst commands are LISTGROUP
+; ONE fn-peer-step is not yet a theorem: the worst commands are LISTGROUP
 ; over a range and LIST ACTIVE with a wildmat, which are linear in the pinned
 ; archive's articles and groups and in the wildmat budget of
 ; books/wildmat-work.lisp, and an article body costs fn-inj-decide over the
@@ -977,7 +1033,8 @@
 (deftheory fn-served-vocabulary
   '(fn-served-closed-wirep fn-served-submit-effectp fn-served-effectp
     fn-served-dispatch fn-served-feed fn-served-step fn-served-run
-    fn-served-greeting fn-served-open fn-served-post-outcome
+    fn-served-greeting fn-served-open fn-served-open-peer fn-served-post-outcome
+    fn-served-transit-outcome
     fn-served-feed-steps fn-served-step-nntp-steps))
 
 (in-theory (disable fn-served-vocabulary))
