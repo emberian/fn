@@ -174,6 +174,12 @@
 ; configured ones, `(fn-pendingp configured nexts next-txid x)' checks the
 ; transaction against the state that holds it.  The record variable stays `x'
 ; and stays last, so field types and `:extra' are unaffected.
+;
+; `:recognizer-guard' is the recognizer's guard, `t' unless the extra formals
+; need one (`fn-node-stagep' reads a `fn-retain-statep'), and
+; `:recognizer-verify-guards nil' leaves the verification to the book, for a
+; recognizer whose guard proof needs a hint or a later definition.  Neither
+; touches the accessors: those are `:guard t' and verified on the spot.
 
 (defmacro fn-defrecord (name &key
                              constructor          ; (ctor formal ...); required
@@ -183,6 +189,8 @@
                              shape                ; default <name>-SHAPEP
                              (recognizer ':default) ; symbol, or nil to suppress
                              recognizer-formals   ; extra formals before `x'
+                             (recognizer-guard 't) ; the recognizer's guard
+                             (recognizer-verify-guards 't)
                              extra                ; more recognizer conjuncts
                              (injective 'nil)     ; nil | :rewrite
                              internals            ; default <name>-INTERNALS
@@ -238,7 +246,10 @@
      (if (null recp) nil
        (list
         `(defun ,recp (,@recognizer-formals x)
-           (declare (xargs :guard t))
+           (declare (xargs :guard ,recognizer-guard
+                           ,@(if recognizer-verify-guards
+                                 nil
+                               (list :verify-guards nil))))
            (and (,shapep x)
                 ,@(fn-defrecord-recognizer-conjuncts fields)
                 ,@extra))
