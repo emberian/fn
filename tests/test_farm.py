@@ -371,6 +371,9 @@ class WaitTests(unittest.TestCase):
                 farm.wait("hbox", identifier, root, poll=1, timeout_seconds=60)
             self.assertEqual((published["origin"], published["origin_host"]),
                              ("/tank/fn/tree", "hbox"))
+            # The same tree, the same label here as on the box: mirrored back
+            # up, the entry is usable by the next lane there too.
+            self.assertEqual(published["origin_kind"], "run")
             self.assertTrue(any("hbox:/tank/fn/tree/books/" in part
                                 for command in fake.rsyncs() for part in command))
 

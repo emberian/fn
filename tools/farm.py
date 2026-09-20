@@ -370,7 +370,8 @@ def fetch(host: str, identifier: str, root: Path,
     # The pairs were produced under the *remote* path, which is what their
     # sub-book entries name; record that as their origin.
     report = certs.publish(root, certs.cache_directory(),
-                           origin=str(remote), origin_host=host)
+                           origin=str(remote), origin_host=host,
+                           origin_kind="run")
     for line in report.lines():
         print(line)
 
