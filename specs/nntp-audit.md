@@ -2,9 +2,9 @@
 
 This is a branch-level work list for the experimental reader, not a declaration
 of RFC conformance. The source baseline is the supplied [RFC 3977](../rfc3977.txt).
-The [NNTP contract](nntp.md) describes the intended usable profile. Capability
-advertisement remains VERSION/IMPLEMENTATION until complete bundles have their
-own evidence; a command name alone does not close its row.
+The [NNTP contract](nntp.md) describes the intended usable profile. A command name alone does not close its row: a label is advertised
+only when the whole bundle behind it is implemented, and every label this
+reader emits has a row below.
 
 The latest frozen [reader/storage batch](../tests/evidence/2026-09-18-wildmat-storage.md)
 covers LISTGROUP, filtered LIST variants, command limits, socket tests, and an
@@ -17,9 +17,9 @@ probes supply different evidence from those pure transcripts.
 | §§3.1–3.1.1, §9 | CRLF, command syntax/limits, case, whitespace, multiline termination and dot transformation | Wire/command books and socket partitions exercise the core; the emitted response grammar is now re-parsed and proved (see "Effect typing" below); complete accepted grammar, boundary precedence, and protocol-wide refinement remain open |
 | §3.2 | Three-digit status, SP separation, generic 500/501/503 assignment | Proved of every emitted reply through `fn-nntp-replyp`; the mapping of each situation to its code is tested, not proved |
 | §6, §9.2 | Local article numbers, watermarks, valid numeric grammar | Node allocation and numeric regression cases exist; number values are 1 through 2,147,483,647 with at most 16 digits, including leading zeros, as §6 requires; a committed article numbered outside that range is not available to the reader |
-| §§3.3–3.5 | Pipelining, state visibility, capabilities, mode changes | Sequential owner and event-yield parsing exist; no concurrent live posting, authentication transition, or mode-switch implementation |
-| §5.1 | Initial greeting and posting permission | Fixed 201 on loopback; the greeting does not yet vary with the configured posting permission, so a client learns of POST only by issuing it (440 when refused). Deployment authorization is separate |
-| §5.2 | CAPABILITIES with no argument and optional keyword; 101 multiline result | Implemented/tested, including unknown syntactically valid keyword; proved independent of the archive; only VERSION 2 and IMPLEMENTATION emitted; complete bundle audit remains open |
+| §§3.3–3.5 | Pipelining, state visibility, capabilities, mode changes | **Pipelining proved**, in two parts. Byte boundaries: `fn-served-step-partition-independence` and `fn-served-reply-stream-is-partition-independent` say the connection and the reply octets after a run depend only on the concatenated input, so the network may cut the stream anywhere. The command boundary POST introduces: `fn-wire-article-event-resumes-command-mode` says the byte that completes an article leaves the wire in command mode in the same call, and `fn-served-pipelined-read-is-the-sequential-reply` and `fn-served-pipelined-read-submission-is-the-post-block-submission` (both `books/served.lisp`) say a read carrying POST, the body, the terminator and a following command produces exactly the two reads' replies and the POST block's own submission. Teeth: a transcript in `tests/acl2/served-tests.lisp` where the trailing GROUP earns its 211 inside the POST read and the session carries the selected group afterwards. The authentication transition is RFC 4643 below; mode switching stays unimplemented |
+| §5.1 | Initial greeting and posting permission | Implemented: `fn-served-open` (`books/served.lisp`) emits `fn-served-greeting` of the connection's pinned configuration, which is 200 when `fn-inj-config-allow` is set and 201 when it is not. The same bit decides the POST capability label (§5.2.2), MODE READER (§5.3.2) and what `fn-nntp-post-step` does with a POST command, so the four cannot disagree. Both spellings are witnessed in `tests/acl2/served-tests.lisp`. Before this lane the reader greeting was a fixed 201 even where posting was allowed; the peer greeting already varied. Deployment authorization is separate. **Open**: 400 (service temporarily unavailable) and 502 (permanently unavailable) at connection time are not emitted; the owner refuses a connection by closing it, which §5.1.1 does not describe |
+| §5.2 | CAPABILITIES with no argument and optional keyword; 101 multiline result | Implemented/tested, including an unknown but syntactically valid keyword; proved independent of the archive (`fn-nntp-archive-free-step-ignores-the-archive`). Three functions build the block and each owns one connection kind: `fn-nntp-capability-lines` the reader's own labels, `fn-peer-capability-lines` a peer's (adds IHAVE, STREAMING), `fn-auth-capability-lines` an authenticating reader's (adds STARTTLS and AUTHINFO USER, and takes the posting bit from the authenticated principal). The access-dependent labels are proved to appear only where their RFCs allow: `fn-auth-starttls-is-not-advertised-under-tls`, `fn-auth-starttls-is-not-advertised-without-a-certificate`, `fn-auth-authinfo-is-not-advertised-once-authenticated` (`books/nntp-auth.lisp`). Every state's block is pinned as a whole-transcript equality in `tests/acl2/nntp-auth-tests.lisp`: unauthenticated/plain, unauthenticated/TLS, authenticated/posting, authenticated/read-only, no-certificate, protected-only |
 | §5.3 | MODE READER and possible mode/capability transitions | Implemented for the non-mode-switching case §5.3.2 fixes: this reader never advertises MODE-READER, advertises READER, and answers `201 posting prohibited` with no state change (`fn-nntp-mode-response-preserves-session`). The 502-and-close branch is reachable only by flipping `*fn-nntp-advertise-readerp*`; mode switching itself remains unimplemented and unclaimed |
 | §5.4 | QUIT, argument errors, 205 then connection close | Pure transcript and real EOF checks exist; proved independent of the archive |
 | §6.1.1 | GROUP success, nonexistent group, empty group, counts/low/high, cursor | Implemented/tested; cursor placement on selection is now proved (`fn-nntp-group-selects-the-first-available-article`, `fn-nntp-group-on-empty-group-invalidates-the-cursor`); later group removal/expiry policy remains open |
@@ -31,7 +31,7 @@ probes supply different evidence from those pure transcripts.
 | RFC 5536 §3 mandatory fields; §3.2.6, §3.2.8, §3.1.5 | Date, From, Message-ID, Newsgroups, Path, Subject; Injection-Date; Injection-Info; Path | From, Subject and Newsgroups must be supplied; Message-ID, Date, Injection-Date, Injection-Info and Path are generated by ACL2 and by nothing else. Local policy, not an RFC requirement: a proto-article that already carries Path or Injection-Date is refused rather than rewritten, which is what makes the verbatim-suffix theorem true. Open: `fn-af-message-idp` of every generated identifier is witnessed, not proved; and that a different millisecond reading yields a different instant (the two calendar inverse lemmas and the rendering injectivity are proved in `books/injection-invariants.lisp`) |
 | §6.3.2 | IHAVE transfer negotiation and acceptance | Deferred; no capability claim |
 | §7.1, §7.5 | DATE, clock observations, exact formatting | Implemented over an explicit `fn-clock-observationp` input. With `has-wall` false the reply is `503`, stated, never a fabricated timestamp; the 111 line is always eighteen octets (`fn-nntp-date-octets-length`) and is response text for any reading (`fn-nntp-date-octets-is-response-text`). The calendar conversion is closed-form and is pinned by transcripts, not proved |
-| §7.2 | HELP multiline response, unsupported arguments | Implemented/tested; the text lists every keyword `fn-nntp-session-command` and `fn-nntp-archive-command` recognize and nothing else, and `tests/acl2/nntp-legacy-tests.lisp` pins the two lists against each other so a new command that is not listed fails the test book |
+| §7.2 | HELP multiline response, unsupported arguments | Implemented/tested; the text lists every keyword `fn-nntp-session-command` and `fn-nntp-archive-command` recognize and nothing else, and `tests/acl2/nntp-legacy-tests.lisp` pins the two lists against each other so a new command that is not listed fails the test book. The control for that pin is XPATH (RFC 2980 §2.10), a real legacy keyword this reader refuses; it was XPAT until this lane implemented XPAT. **Open**: AUTHINFO and STARTTLS are answered by `books/nntp-auth.lisp`, above the dispatcher, so the HELP text the dispatcher renders does not list them and the pin cannot see them |
 | §7.3, §7.5 | NEWGROUPS time forms, GMT/local semantics, group creation metadata | Implemented over persisted `fn-nntp-group-factp` records supplied as an input list. Both year forms with §7.3.2's century rule; a two-digit year with no wall reading is `503`, not a guess. fn's local time zone is UTC, so the optional GMT token changes nothing and is accepted only in third position. Emitted names are renderable with no environment hypothesis (`fn-nntp-facts-since-are-facts`) |
 | §7.4 | NEWNEWS filtering/time forms | Deferred; no capability claim |
 | §7.6.1 | LIST defaults, keyword variants, syntax/availability errors, no state changes | Default, ACTIVE (with and without a wildmat), ACTIVE.TIMES, NEWSGROUPS, HEADERS and OVERVIEW.FMT implemented; DISTRIB.PATS and DISTRIBUTIONS are recognized-but-unmaintained 503; malformed or unknown variants are 501. The variant keyword is dispatched by `fn-nntp-list-command`, which is what `books/nntp.lisp` calls, so that ACTIVE.TIMES can read the environment; session preservation proved (`fn-nntp-list-response-preserves-session`) |
@@ -265,11 +265,73 @@ differ from RFC 3977's.
 | §2.6 XHDR | `XHDR header [range\|<message-id>]`; 221 then `number SP value` per line, or the message-id in place of the number; 412/420/430 | implemented as `fn-nntp-xhdr-response`, one dispatcher line in `books/nntp.lisp`. It is `fn-nntp-hdr-command` with the legacy flag: the same value renderer as HDR, 221 instead of 225, 420 instead of 423 for an empty range, and the message-id itself as the label. The label passes through `fn-nov-scrub`, which is proved the identity on a printable token (`fn-nov-scrub-is-the-identity-on-a-printable-token`), so the client's own octets come back unchanged and still cannot split a line. The "(none)" variant some implementations emit is **not** produced: §2.6 offers it as an alternative, and the 221-then-empty-block form is the one RFC 3977 §8.5.2 also allows |
 | §2.7 XINDEX | The tin index file | deferred: an undocumented external format with no specification in RFC 2980 to audit against. `500 command not recognized` |
 | §2.8 XOVER | `XOVER [range]`; 224 then the seven-field overview line per article; 412/420 | implemented as `fn-nntp-xover-response`, one dispatcher line. Proved to be OVER on every input where the two RFCs assign the same response (`fn-nntp-xover-agrees-with-over-on-a-nonempty-range`, `fn-nntp-xover-with-no-argument-is-over-with-no-argument`), so the legacy spelling cannot report a different overview. RFC 2980 defines no message-id form and no 430, so `XOVER <message-id>` is `501 syntax error` rather than a code §2.8.1 does not list |
-| §2.9 XPAT | `XPAT header range\|<message-id> pat [pat...]` | deferred, with a reason: XPAT matches a wildmat against a header value, and fn's wildmat matcher (`books/wildmat.lisp`) is specified and bounded for **group names** — a bounded, printable, projection-guarded target. A header value is arbitrary retained octets, so the UTF-8 decode and the DP target bound would both have to be re-argued before the matcher could be pointed at one. `500 command not recognized` until that work is done |
+| §2.9 XPAT | `XPAT header range\|<message-id> pat [pat...]`; 221 then the matching header lines, including an empty list; 430 for an unknown message-id | implemented as `fn-nntp-xpat-response`, one dispatcher line in `books/nntp.lisp`. The bound the earlier deferral asked for is supplied by `fn-wildmat-decode` itself, which refuses a target longer than `*fn-wildmat-max-octets*` (497) before any DP work, so the match cost is set by the command and the cap and never by stored article length. Proved: every line XPAT emits is a line XHDR emits for the same field, group and numbers (`fn-nntp-xpat-lines-are-hdr-lines`, a `subsetp-equal`), and a filter that selects everything gives XHDR's block exactly (`fn-nntp-xpat-with-a-total-filter-is-the-hdr-block`) — so XPAT is not a second header projection and cannot report a header XHDR renders differently. Lines are proved clean (`fn-nntp-xpat-lines-are-clean`) and the block is response text (`fn-nntp-xpat-block-is-block-text`). §2.9's joining of trailing arguments into one space-separated pattern is `fn-nntp-xpat-join`, witnessed directly. **LOCAL POLICY, stated**: a header value longer than 497 octets matches no pattern and its article is omitted; §2.9 promises nothing for that case |
 | §2.10 XPATH | The server's filesystem path for an article | refused permanently, not deferred: fn's article storage layout is not part of its protocol surface and exposing it would leak the store's internals. `500 command not recognized` |
 | §2.11 XROVER | Bare References overview | deferred: `XHDR references <range>` is the same information and is implemented. `500 command not recognized` |
 | §2.12 XTHREAD | The threading database | deferred: fn maintains no threading database. `500 command not recognized` |
-| §3.x AUTHINFO | Authentication | deferred; no capability claim, and see RFC 4643 |
+| §3.x AUTHINFO | Authentication | superseded by RFC 4643, which fn implements; see the RFC 4643 matrix below. RFC 2980 §3.1.1's original AUTHINFO USER/PASS codes are RFC 4643 §2.3.1's, so the same implementation answers both |
+
+## The RFC 4643 clause matrix (AUTHINFO)
+
+[RFC 4643](../rfc4643.txt) is implemented in [`books/nntp-auth.lisp`](../books/nntp-auth.lisp),
+which is the outermost wrapper of the served command chain: `fn-served-dispatch`
+calls `fn-auth-step`, which answers AUTHINFO, STARTTLS and CAPABILITIES and
+delegates everything else to `fn-peer-step` unchanged. Evidence is
+[`tests/acl2/nntp-auth-tests.lisp`](../tests/acl2/nntp-auth-tests.lisp).
+
+| RFC 4643 clause | Requirement | Status |
+| --- | --- | --- |
+| §2.1 | Advertise `AUTHINFO USER` only for what the server will accept now | proved: `fn-auth-authinfo-is-not-advertised-once-authenticated`. Also withheld on an unprotected connection when the configuration is protected-only, because the server would answer 483. The SASL argument is never advertised |
+| §2.2 | 480 before authentication; the command is not performed | **keystone** `fn-auth-gated-command-is-refused-and-not-performed`: with authentication required and no authenticated subject, a restricted command's step submits nothing, never offers article mode, returns the session unchanged, and its whole effect list is the single 480 line. The restricted set is `fn-auth-restricted-keywordp`: every archive and transit command plus POST. CAPABILITIES, HELP, QUIT, MODE, DATE, AUTHINFO and STARTTLS stay available, so an unauthenticated client can still discover the server and still authenticate |
+| §2.3.1 | 281 / 381 / 481 / 482 / 502 exactly | implemented and pinned as transcripts; each code has its own line and no two are equal |
+| §2.3.2 | MUST return 381 to AUTHINFO USER | implemented unconditionally, for a configured and an unconfigured name alike, and the two replies are asserted equal so the reply cannot disclose whether the name exists |
+| §2.3.2 | MUST give 482 to AUTHINFO PASS with no cached username | implemented; also after a failed PASS, because the cached name is cleared on failure, so a password cannot be retried without a fresh USER |
+| §2.3.2 | MUST NOT return 480 to AUTHINFO USER/PASS | implemented: the gate is checked before AUTHINFO only for keywords in `fn-auth-restricted-keywordp`, and AUTHINFO is not in it (asserted). Once authenticated the answer is 502, §2.3.1's own "command unavailable" |
+| §2.3.2 | MUST NOT return 381 to AUTHINFO PASS | implemented: 381 exists on the USER branch only |
+| §2.3.2 / §2.5 | A cleartext mechanism needs a protected channel | `fn-auth-config-protected-onlyp` answers 483 on an unprotected connection and 381 under TLS; both witnessed |
+| §2.3.2 | Authentication grants privileges to this connection | the posting allowance is the authenticated principal's `fn-auth-cred-postingp`, not the connection's: two principals are witnessed, one that may post and one that may not, and the POST capability label follows each |
+| §2.4 SASL | AUTHINFO SASL with a mechanism list | **deferred**, answered `502 no SASL mechanism is offered` (§2.4.1 note [2]), and no SASL argument is advertised. PLAIN was considered and not shipped: over a protected channel it is USER/PASS with a base64 wrapper and adds no property fn can state, and the mechanisms that would add one (SCRAM, EXTERNAL over a client certificate) need either an executable digest — the same `OB-AUTH-DIGEST` below — or certificate material the book does not see |
+| §2.5 | Security considerations: the cleartext secret | **stated, not met by a digest.** See `OB-AUTH-DIGEST` below |
+
+### OB-AUTH-DIGEST (open, with its cause)
+
+The configuration holds the shared secret in the clear and `fn-auth-checkp`
+compares the supplied octets to it with `equal`. A stored password digest was
+the intended design. It is not implemented, and the reason is a fact about
+this tree rather than a preference: the only digest fn has is `fn-digest`
+(`books/crypto-seam.lisp`), an `encapsulate`d constrained function with no
+attachment, so it **cannot be evaluated**. Calling it on the served path
+would make `fn-served-step` non-executable and the reader would stop serving.
+Deriving the digest in Python instead is refused by the one-owner rule in
+`AGENTS.md`: Python may not compute a value ACL2 compares. Closing this needs
+an executable digest in ACL2 (a `defattach` for `fn-digest`, or an ACL2
+definition of a real hash), not a change in `books/nntp-auth.lisp`.
+
+The consequence is not softened: AUTHINFO USER/PASS over a plaintext
+connection reveals the secret to anyone on the path. That is a property of
+the mechanism RFC 4643 §2.3 defines, which is why §2.3.2 asks for a protected
+channel; `fn-auth-config-protected-onlyp` is how an operator requires one.
+
+## The RFC 4642 clause matrix (STARTTLS)
+
+[RFC 4642](../rfc4642.txt). **TLS itself is a trusted host facility and is not
+in the model.** `books/nntp-auth.lisp` sees plaintext octets on both sides of
+the handshake: it emits a `(:starttls)` effect and `tools/run_owner.py` wraps
+the socket with Python's `ssl` module. What the book proves is the protocol
+state machine around the upgrade, and nothing about the upgrade.
+
+| RFC 4642 clause | Requirement | Proved / tested / trusted |
+| --- | --- | --- |
+| §2.1 | Advertise the STARTTLS label; MUST NOT advertise it once a TLS layer is active | **proved**: `fn-auth-starttls-is-not-advertised-under-tls`, and `fn-auth-starttls-is-not-advertised-without-a-certificate` for the case where no certificate is configured |
+| §2.2.1 | `STARTTLS` takes no arguments | implemented: 501 with an argument, witnessed |
+| §2.2.2 | 382 then the handshake | implemented: the reply and one `(:starttls)` effect. `fn-auth-starttls-effect-only-with-382` says the effect appears only from the branch that also records the TLS layer in the session, so a handshake can never begin without the client having been told |
+| §2.2.2 | Once a TLS layer is active, STARTTLS is not a valid command | **proved**: `fn-auth-second-starttls-is-refused` — 502 and no second handshake effect |
+| §2.2.2 | 580 when the server cannot initiate | implemented for the configuration reason (no certificate or key configured). A host-side handshake failure after a 382 is not a 580: by then the 382 has been sent, and `tools/run_owner.py` closes the connection, which §2.2.2 permits |
+| §2.2.2 | MUST NOT reply 480 or 483 to STARTTLS | implemented: the STARTTLS branch has three replies (501, 502, 580) and 382, and none of the others is reachable from it. STARTTLS is not in `fn-auth-restricted-keywordp`, so the §2.2 gate never sees it |
+| §2.2.2 | Discard protocol state across the handshake | implemented: the 382 branch clears the cached username and the authenticated subject, witnessed both ways |
+| §2.3 | The security layer itself: confidentiality, integrity, certificate validation, cipher selection, Client Hello compatibility, SNI | **trusted, not modelled.** Python's `ssl` with the configured `[listener] tls cert key`. No theorem in this tree says anything about it. Recorded in the trust boundary of [the NNTP contract](nntp.md) |
+| §2.3 | A client MUST discard cached CAPABILITIES across the handshake | a client obligation; fn re-answers CAPABILITIES from the post-handshake session, which is what makes discarding correct |
+| §5 | 483 for a restricted command on an unprotected connection | **partially**: 483 is emitted for AUTHINFO under `protected-onlyp`. A general "restricted command" set gated on TLS rather than on authentication is **not** implemented; `fn-auth-restricted-keywordp` gates on authentication only. Recorded open |
 
 ### What a real legacy client sends
 
@@ -283,13 +345,18 @@ and two of them are the reason it exists. fn answered every one without a
 that transcript are correct: slrn probes `XOVER` and `XHDR` before selecting
 a group. That is one client at one version, not an RFC audit.
 
-No READER clause is open, so **READER is advertised**. The one item this table
+No READER clause is open, so **READER is advertised**. STARTTLS is advertised
+when a certificate is configured and no TLS layer is active (RFC 4642 §2.1) and
+AUTHINFO USER while the connection is unauthenticated and the server would
+accept it (RFC 4643 §2.1); both are proved, not asserted. The one item this table
 leaves open, the §6.1.1.2 count *theorem*, is an assurance gap about a value the
 transcripts pin exactly; it is not a missing command or an unimplemented branch.
 OVER is advertised as `OVER MSGID` because the message-id form is implemented;
 §8.3.2 requires the MSGID argument exactly when that form works. LIST is
 advertised with the three variants that answer with data. POST, IHAVE, NEWNEWS,
 HDR and MODE-READER stay unadvertised; this reader is not mode-switching.
+XPAT and XHDR carry no capability label at all: RFC 2980 predates §3.3 and names
+none, and a client discovers them by trying them.
 
 ## Implemented LISTGROUP contract
 

@@ -16,17 +16,21 @@ GREETING = b"200 fn-nntp experimental server ready\r\n"
 
 
 class OwnerProcess:
-    def __init__(self, store, control, max_connections=4):
+    def __init__(self, store, control, max_connections=4, tls=None):
         self.store = store
         self.control = control
         self.max_connections = max_connections
+        self.tls = tls
         self.proc = None
 
     def start(self):
+        extra = []
+        if self.tls is not None:
+            extra = ["--tls-cert", str(self.tls[0]), "--tls-key", str(self.tls[1])]
         self.proc = subprocess.Popen(
             [sys.executable, "tools/run_owner.py", "--store", str(self.store),
              "--port", "0", "--control", str(self.control),
-             "--max-connections", str(self.max_connections)],
+             "--max-connections", str(self.max_connections)] + extra,
             cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         # Recovery loads the owner books and replays the history; on a
         # co-tenant-loaded box that ACL2 startup runs minutes, not seconds.
@@ -264,3 +268,93 @@ class OwnerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def self_signed(directory):
+    """A throwaway certificate for the TLS listener test, or None."""
+    cert = Path(directory) / "fn-test.pem"
+    key = Path(directory) / "fn-test.key"
+    result = subprocess.run(
+        ["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+         "-keyout", str(key), "-out", str(cert), "-days", "1",
+         "-subj", "/CN=localhost",
+         "-addext", "subjectAltName=DNS:localhost,IP:127.0.0.1"],
+        capture_output=True)
+    if result.returncode != 0 or not cert.exists() or not key.exists():
+        return None
+    return cert, key
+
+
+class OwnerTlsTests(unittest.TestCase):
+    """RFC 4642 section 2.3's security layer is a HOST facility.
+
+    This test exercises exactly that host facility and claims nothing about
+    the model: the owner wraps the accepted socket with Python's `ssl`, and
+    the same greeting and the same reply stream come back through it.  What
+    the book proves about STARTTLS -- the capability label, 382, 502, 580,
+    and the discarded state -- is in tests/acl2/nntp-auth-tests.lisp and is
+    not what runs here.
+    """
+
+    def test_the_listener_serves_nntp_through_tls_with_a_self_signed_cert(self):
+        import ssl
+        with tempfile.TemporaryDirectory() as directory:
+            material = self_signed(directory)
+            if material is None:
+                self.skipTest("openssl is not available to make a test certificate")
+            cert, key = material
+            store = Path(directory) / "store"
+            control = Path(directory) / "control.sock"
+            subprocess.run([sys.executable, "tools/run_store.py", "init",
+                            "--store", str(store), "--group", "fn.letters"],
+                           cwd=ROOT, check=True, capture_output=True)
+            owner = OwnerProcess(store, control, tls=(cert, key)).start()
+            try:
+                context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+                context.load_verify_locations(cafile=str(cert))
+                context.check_hostname = False
+                with socket.create_connection(("127.0.0.1", owner.port), 30) as raw:
+                    with context.wrap_socket(raw) as sock:
+                        sock.settimeout(60)
+                        self.assertEqual(sock.recv(len(GREETING)), GREETING)
+                        sock.sendall(b"CAPABILITIES\r\n")
+                        block = b""
+                        while not block.endswith(b"\r\n.\r\n"):
+                            chunk = sock.recv(4096)
+                            if not chunk:
+                                break
+                            block += chunk
+                        self.assertTrue(block.startswith(b"101 "), block[:64])
+                        # RFC 4642 section 2.1: no STARTTLS label, because
+                        # this connection already carries a TLS layer.  The
+                        # owner does not yet pass that bit to the book, so
+                        # the label is absent for the other reason -- no
+                        # certificate is configured in the served session.
+                        # Recorded in specs/nntp-audit.md.
+                        self.assertNotIn(b"\r\nSTARTTLS\r\n", block)
+                        sock.sendall(b"QUIT\r\n")
+                        self.assertTrue(sock.recv(64).startswith(b"205 "))
+            finally:
+                owner.stop()
+
+    def test_a_plaintext_client_cannot_speak_to_the_tls_listener(self):
+        with tempfile.TemporaryDirectory() as directory:
+            material = self_signed(directory)
+            if material is None:
+                self.skipTest("openssl is not available to make a test certificate")
+            cert, key = material
+            store = Path(directory) / "store"
+            control = Path(directory) / "control.sock"
+            subprocess.run([sys.executable, "tools/run_store.py", "init",
+                            "--store", str(store), "--group", "fn.letters"],
+                           cwd=ROOT, check=True, capture_output=True)
+            owner = OwnerProcess(store, control, tls=(cert, key)).start()
+            try:
+                with socket.create_connection(("127.0.0.1", owner.port), 30) as sock:
+                    sock.settimeout(30)
+                    sock.sendall(b"CAPABILITIES\r\n")
+                    # The handshake fails and the owner drops the connection
+                    # before any NNTP octet: no greeting is ever sent.
+                    self.assertEqual(sock.recv(64), b"")
+            finally:
+                owner.stop()
