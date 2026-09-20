@@ -1,11 +1,13 @@
 # TCPCLv4 convergence layer
 
-Status: `books/tcpcl-records` and `books/tcpcl-octets` are certified on the
-merged tree (dev d83dea5); `books/tcpcl-session` is OPEN at
-`fn-tcl-refuse-preserves-sessionp` (section 6), and `books/tcpcl-invariants`
-and `tests/acl2/tcpcl-tests` are uncertified behind it. Until session
-certifies, nothing in sections 3 and 4 is a theorem proved by ACL2; the
-statements stand as proposed. The native host integration is proposed in
+Status: all five roots certify on the w6/tcpcl-tests tree (dev 1c5b950):
+`books/tcpcl-records`, `books/tcpcl-octets` (146 s), `books/tcpcl-session`
+(31 s), `books/tcpcl-invariants` (840 s) in
+`build/acl2/certify-20260920T173807Z-1231440` and `tests/acl2/tcpcl-tests`
+(0.6 s) in `build/acl2/certify-20260920T175604Z-1409642`, both on persvati
+with ACL2 8.7. The statements of sections 3, 4 and 6 are therefore theorems
+proved by ACL2 on that tree, each with the hypotheses its own section states.
+The native host integration is proposed in
 [the lane handoff](../planning/lanes/HANDOFF-w4-tcpcl.md) and not built.
 Design: [bp-design.md §2](bp-design.md). RFC: `rfc9174.txt` (RFC 9174,
 TCPCLv4). No interoperability, server or flight claim follows from this
@@ -242,14 +244,19 @@ transiently beyond it.
   fire, because its conclusion holds the ground term
   `(fn-tcl-make-msg-reject 3 1)` while the goal holds the constant ACL2 has
   already evaluated it to (measured, `certify-20260920T050746Z` prelude run).
-- `tests/acl2/tcpcl-tests` is still uncertified: its `certify-book` FAILED in 0.2 s
-  in the run below (the manifest records exit 0 for that root, which is
-  wrong) at `(assert-event (equal (fn-tcl-encode *t-seg-1*) ...))`, one of
-  the wave-4 golden XFER_SEGMENT vectors -- so the encoder and that vector
-  disagree, and the disagreement is older than C4 and unrelated to it. The
-  root has never certified; the failure is between `fn-tcl-encode` and the
-  vector, and whichever is wrong is the next lane's first question. The two new witnesses `*t-b-term*` and `*t-b-inter-both*`
-  are therefore written and unrun; certify that root first next lane.
+- `tests/acl2/tcpcl-tests` certifies (0.6 s,
+  `certify-20260920T175604Z-1409642`), and every witness in it has run,
+  `*t-b-term*` and `*t-b-inter-both*` included. Two defects had held it,
+  both in the test book. The wave-4 XFER_SEGMENT golden vector wrote the
+  transfer extension item header as `0 1 0 0 8`, the type before the flags;
+  figure 25 of RFC 9174 section 5.2.5 puts Item Flags first, so
+  `fn-tcl-encode` was right and the vector was wrong. The book's last form
+  evaluates `fn-tcl-drive` on `42`, outside its guard, and needed
+  `with-guard-checking :none`. The manifest that recorded exit 0 for the
+  failed root was a runner defect, fixed in `tools/certify_books.py`: the
+  driver ends in `(quit)`, which exits 0 whether or not the inner `ld`
+  returned on a failed `certify-book`, so the manifest now carries a
+  per-book verdict computed from that book's own log.
 - `fn-tcl-retained-input-is-bounded`, the last form of the book, needed the
   two decoder need bounds of `books/tcpcl-octets` restated locally against
   the opened `fn-tcl-max-message` (`fn-tcl-need-message-under-max`,

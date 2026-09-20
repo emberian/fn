@@ -939,12 +939,27 @@
                                    fn-nntp-group-range-numbers
                                    fn-nntp-parse-range fn-nntp-single)))))
 
+; The two legacy bridges of books/nntp-legacy.lisp are rewrite rules whose
+; left-hand sides are the XOVER renderers, and the range one carries
+; (consp (fn-nov-lines-for-numbers ...)) as its hypothesis.  Left enabled here
+; it is tried once on this goal and relieving that hypothesis opens the
+; overview fold, fn-nov-line, fn-nntp-append-pieces and the article parser:
+; 2,240,762 frames of a 3,000,000-step budget and nothing useful (accumulated-
+; persistence, persvati, 2026-09-20), and in the certification run it carried
+; this one form to 1,449,779,215 prover steps and 2,564.42 s of the book's
+; 2,598.79 s (farm run-20260920T061124Z-7847).  Closed, with the message-id
+; recognizer closed as the sibling fn-nntp-effects-over-response already
+; closes it, the same theorem is 4,401 steps.
 (defthm fn-nntp-effects-xover-response
   (fn-nntp-effectsp
    (fn-nntp-result-effects (fn-nntp-xover-response session archive args)))
-  :hints (("Goal" :in-theory (e/d (fn-nntp-xover-response)
-                                  (fn-nntp-over-current fn-nntp-xover-range
-                                   fn-nntp-single fn-nntp-parse-range)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nntp-xover-response)
+                           (fn-nntp-over-current fn-nntp-xover-range
+                            fn-nntp-single fn-nntp-parse-range
+                            fn-nntp-message-id-tokenp fn-nntp-range-okp
+                            fn-nntp-xover-agrees-with-over-on-a-nonempty-range
+                            fn-nntp-xover-with-no-argument-is-over-with-no-argument)))))
 
 (defthm fn-nntp-hdr-block-is-block-text
   (fn-nntp-block-textp
@@ -957,32 +972,55 @@
                                fn-nntp-hdr-clean-fields-are-clean-lines
                                fn-nntp-hdr-lines-for-numbers))))
 
-(defthm fn-nntp-hdr-numbered-line-is-block-text
-  (fn-nntp-block-textp
-   (list (fn-nntp-hdr-line (fn-nntp-decimal-field number)
-                           (fn-nntp-hdr-octets
-                            (fn-nntp-hdr-content field article)))))
-  :hints (("Goal" :use fn-nntp-hdr-numbered-line-is-clean
-           :in-theory (e/d (fn-nntp-block-textp)
-                           (fn-nntp-hdr-numbered-line-is-clean
-                            fn-nntp-hdr-line fn-nntp-hdr-content
-                            fn-nntp-hdr-octets fn-nntp-decimal-field)))))
+; The two single-line shapes need the field half of the bridge above, and
+; this book does not have it: books/nntp-legacy.lisp proves each rendered HDR
+; line to be a clean FIELD, and the only route from a clean field to a clean
+; line is fn-nov-clean-field-is-a-clean-line, which books/nntp-overview.lisp
+; withdraws at its export inside fn-nov-vocabulary -- a vocabulary this book
+; never enables.  So fn-nntp-clean-line-is-response-text could not fire, the
+; goal (fn-nntp-response-textp (fn-nntp-hdr-line ...)) reverted to induction on
+; a term that suggests no induction scheme, and the labelled lemma FAILED at
+; certification (farm run-20260920T061124Z-7847, 2026-09-20); the numbered one
+; was closed only by the tau system, which is not a route to rely on.  Both now
+; cite this bridge, with every callee of the renderer closed and no induction.
+(defthm fn-nntp-clean-field-is-response-text
+  ; :rule-classes nil deliberately: as a rewrite this would be a second rule
+  ; backchaining out of every fn-nntp-response-textp goal in the book.
+  (implies (fn-nov-clean-fieldp bytes) (fn-nntp-response-textp bytes))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-nov-clean-fieldp bytes)
+           :in-theory (enable fn-nov-clean-fieldp fn-nntp-response-textp))))
 
-(defthm fn-nntp-hdr-labelled-line-is-block-text
-  (fn-nntp-block-textp
-   (list (fn-nntp-hdr-line (fn-nov-scrub token)
-                           (fn-nntp-hdr-octets
-                            (fn-nntp-hdr-content field article)))))
-  :hints (("Goal" :use fn-nntp-hdr-labelled-line-is-clean
+(defthm fn-nntp-hdr-line-is-block-text
+  ; One rule for all three rendered labels: the decimal article number
+  ; (fn-nntp-hdr-current), the literal zero of RFC 3977 section 8.5.2 message-id
+  ; form and the scrubbed message-id of RFC 2980 section 2.6 (fn-nntp-hdr-msgid).
+  ; The label hypothesis is discharged at each site by a ground evaluation, by
+  ; fn-nov-scrub-is-clean, or by fn-nov-decimal-field-is-clean enabled in that
+  ; one hint.
+  (implies (fn-nov-clean-fieldp label)
+           (fn-nntp-block-textp
+            (list (fn-nntp-hdr-line label
+                                    (fn-nntp-hdr-octets
+                                     (fn-nntp-hdr-content field article))))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-nntp-hdr-line-is-a-clean-field
+                            (content (fn-nntp-hdr-octets
+                                      (fn-nntp-hdr-content field article))))
+                 (:instance fn-nntp-clean-field-is-response-text
+                            (bytes (fn-nntp-hdr-line
+                                    label
+                                    (fn-nntp-hdr-octets
+                                     (fn-nntp-hdr-content field article))))))
            :in-theory (e/d (fn-nntp-block-textp)
-                           (fn-nntp-hdr-labelled-line-is-clean
-                            fn-nntp-hdr-line fn-nntp-hdr-content
-                            fn-nntp-hdr-octets fn-nov-scrub)))))
+                           (fn-nntp-hdr-line fn-nntp-hdr-content
+                            fn-nntp-hdr-octets)))))
 
 (defthm fn-nntp-effects-hdr-current
   (fn-nntp-effectsp
    (fn-nntp-result-effects (fn-nntp-hdr-current session archive field legacyp)))
-  :hints (("Goal" :in-theory (e/d (fn-nntp-hdr-current)
+  :hints (("Goal" :in-theory (e/d (fn-nntp-hdr-current
+                                   fn-nov-decimal-field-is-clean)
                                   (fn-nntp-hdr-content fn-nntp-hdr-line
                                    fn-nntp-hdr-octets fn-nntp-decimal-field
                                    fn-nntp-available-article fn-nntp-single)))))
@@ -1000,7 +1038,8 @@
   (fn-nntp-effectsp
    (fn-nntp-result-effects
     (fn-nntp-hdr-msgid session archive field token legacyp)))
-  :hints (("Goal" :in-theory (e/d (fn-nntp-hdr-msgid)
+  :hints (("Goal" :in-theory (e/d (fn-nntp-hdr-msgid
+                                   fn-nov-decimal-field-is-clean)
                                   (fn-nntp-hdr-content fn-nntp-hdr-line
                                    fn-nntp-hdr-octets fn-nntp-decimal-field
                                    fn-nov-scrub fn-find-article
@@ -1110,6 +1149,69 @@
                                    fn-nntp-observed-year
                                    fn-nntp-keywordp)))))
 
+; -----------------------------------------------------------------------------
+; XPAT (RFC 2980 section 2.9).  Its block is a sublist of HDR's, but the
+; effect typing is proved directly from the cleanliness theorem the legacy
+; book states for it (fn-nntp-xpat-lines-are-clean), exactly as the HDR
+; block is: no theorem here depends on the subsetp relation.
+
+(defthm fn-nntp-xpat-block-is-block-text
+  (fn-nntp-block-textp
+   (fn-nntp-xpat-lines-for-numbers field patterns group numbers articles))
+  :hints (("Goal" :use (fn-nntp-xpat-lines-are-clean
+                        (:instance fn-nntp-hdr-clean-fields-are-clean-lines
+                                   (lines (fn-nntp-xpat-lines-for-numbers
+                                           field patterns group numbers
+                                           articles))))
+           :in-theory (disable fn-nntp-xpat-lines-are-clean
+                               fn-nntp-hdr-clean-fields-are-clean-lines
+                               fn-nntp-xpat-lines-for-numbers))))
+
+(defthm fn-nntp-effects-xpat-range
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects
+    (fn-nntp-xpat-range session archive field patterns token)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-xpat-range)
+                                  (fn-nntp-xpat-lines-for-numbers
+                                   fn-nntp-group-range-numbers
+                                   fn-nntp-parse-range fn-nntp-single)))))
+
+; The msgid form's block goes through the same clean-field-list route the
+; range form uses, NOT through fn-nntp-hdr-labelled-line-is-block-text: that
+; form is open on this tree (board, w5/owner-followups, nntp-effects FINAL)
+; and nothing new should be built on it.
+(defthm fn-nntp-xpat-msgid-block-is-block-text
+  (fn-nntp-block-textp
+   (fn-nntp-xpat-msgid-lines field patterns token article))
+  :hints (("Goal" :use (fn-nntp-xpat-msgid-lines-are-clean
+                        (:instance fn-nntp-hdr-clean-fields-are-clean-lines
+                                   (lines (fn-nntp-xpat-msgid-lines
+                                           field patterns token article))))
+           :in-theory (disable fn-nntp-xpat-msgid-lines-are-clean
+                               fn-nntp-hdr-clean-fields-are-clean-lines
+                               fn-nntp-xpat-msgid-lines))))
+
+(defthm fn-nntp-effects-xpat-msgid
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects
+    (fn-nntp-xpat-msgid session archive field patterns token)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-xpat-msgid)
+                                  (fn-nntp-xpat-msgid-lines
+                                   fn-nntp-hdr-content fn-nntp-hdr-okp
+                                   fn-nntp-hdr-initial
+                                   fn-find-article fn-nntp-token-string
+                                   fn-state-articles fn-nntp-single)))))
+
+(defthm fn-nntp-effects-xpat-response
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects (fn-nntp-xpat-response session archive args)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-xpat-response)
+                                  (fn-nntp-xpat-range fn-nntp-xpat-msgid
+                                   fn-nntp-xpat-join fn-wildmat-parse
+                                   fn-nntp-hdr-fieldp fn-nntp-parse-range
+                                   fn-nntp-message-id-tokenp
+                                   fn-nntp-single)))))
+
 (in-theory (disable fn-nntp-listgroup-command
                     fn-nntp-current-retrieval
                     fn-nntp-number-retrieval
@@ -1128,7 +1230,10 @@
                     fn-nntp-xover-response fn-nntp-hdr-current
                     fn-nntp-hdr-range fn-nntp-hdr-msgid fn-nntp-hdr-command
                     fn-nntp-hdr-response fn-nntp-xhdr-response
-                    fn-nntp-list-active-times))
+                    fn-nntp-list-active-times
+                    fn-nntp-xpat-range fn-nntp-xpat-msgid
+                    fn-nntp-xpat-msgid-lines
+                    fn-nntp-xpat-response))
 
 (defthm fn-nntp-effects-list-command
   (implies (fn-nntp-projectionp archive)
@@ -1172,6 +1277,7 @@
                  fn-nntp-list-response fn-nntp-next-or-last
                  fn-nntp-retrieval fn-nntp-single
                  fn-nntp-over-response fn-nntp-newgroups-response
+                 fn-nntp-xpat-response
                  fn-nntp-token-string)))))
 
 (defthm fn-nntp-command-effects-well-formed

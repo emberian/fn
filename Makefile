@@ -5,9 +5,12 @@ FN_CERTIFY_JOBS ?= 1
 # The wall clock an interactive `ld` gets before tools/acl2 kills it and frees
 # its slot: the brief's three-minute rule, with a minute of slack.
 FN_LD_TIMEOUT_SECONDS ?= 240
-ACL2_BOOKS ?= books/assumptions \
+ACL2_BOOKS ?= books/defrecord \
+	books/deftransition \
+	books/assumptions \
 	tests/acl2/assumptions-tests \
 	books/acceptance-alloc \
+	tests/acl2/defrecord-tests \
 	books/acceptance \
 	books/acceptance-invariants \
 	tests/acl2/acceptance-tests \
@@ -205,11 +208,16 @@ ACL2_BOOKS ?= books/assumptions \
 	books/peer-inbound \
 	books/peer-inbound-invariants \
 	tests/acl2/peer-inbound-tests \
+	books/nntp-auth \
+	tests/acl2/nntp-auth-tests \
 	books/served \
 	tests/acl2/served-tests \
 	books/owner \
 	books/owner-invariants \
 	tests/acl2/owner-tests \
+	books/config-stream \
+	tests/acl2/config-stream-tests \
+	books/owner-config \
 	books/ideal \
 	books/nntp-index \
 	tests/acl2/nntp-index-tests \
@@ -247,6 +255,10 @@ ACL2_BOOKS ?= books/assumptions \
 .PHONY: check certify acl2-ld certs-install certs-publish model-test tooling-test test
 check:
 	$(PYTHON) tools/check_scaffold.py
+# Every host file loaded alone in its own ACL2: the dynamic half of the
+# host-names lint.  Needs FN_ACL2 and installed certificates; without
+# FN_ACL2 it prints that it did not run and exits 0.
+	$(PYTHON) tools/host_check.py
 
 certify:
 	$(PYTHON) tools/certify_books.py --jobs $(FN_CERTIFY_JOBS) $(ACL2_BOOKS)

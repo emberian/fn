@@ -616,10 +616,10 @@
                     (fn-nntp-string-octets "STREAMING")))
     (fn-nntp-capability-lines)))
 
-(defun fn-peer-delegate (ps archive config observation wire-event)
+(defun fn-peer-delegate (ps archive config observation injection wire-event)
   (declare (xargs :guard t :verify-guards nil))
   (let ((r (fn-nntp-post-step (fn-peer-session-base ps) archive config
-                              observation wire-event)))
+                              observation injection wire-event)))
     (fn-post-make-result (fn-peer-with-base ps (fn-post-result-session r))
                          (fn-post-result-effects r)
                          (fn-post-result-submission r))))
@@ -689,18 +689,18 @@
        nil))
      (t nil))))
 
-(defun fn-peer-step (ps archive config observation wire-event)
+(defun fn-peer-step (ps archive config observation injection wire-event)
   (declare (xargs :guard t :verify-guards nil))
   (cond
    ((not (fn-peer-sessionp ps)) (fn-post-make-result ps nil nil))
    ; A reader connection: the POST-composed step, unchanged.
    ((null (fn-peer-session-peer ps))
-    (fn-peer-delegate ps archive config observation wire-event))
+    (fn-peer-delegate ps archive config observation injection wire-event))
    ; A closed session serves nothing further.
    ((not (equal (fn-nntp-session-openp
                  (fn-post-session-base (fn-peer-session-base ps)))
                 t))
-    (fn-peer-delegate ps archive config observation wire-event))
+    (fn-peer-delegate ps archive config observation injection wire-event))
    ; Awaiting the transit article: the body arrives as one (:article lines)
    ; event through the same wire article mode POST uses, and leaves as the
    ; submission the owner carries through fn-peer-transfer.
@@ -738,9 +738,9 @@
                (fn-nntp-keyword-tokenp (car tokens))
                (fn-nntp-command-arguments-at-mostp tokens))
           (let ((r (fn-peer-command ps (car tokens) (cdr tokens))))
-            (if r r (fn-peer-delegate ps archive config observation wire-event)))
-        (fn-peer-delegate ps archive config observation wire-event))))
-   (t (fn-peer-delegate ps archive config observation wire-event))))
+            (if r r (fn-peer-delegate ps archive config observation injection wire-event)))
+        (fn-peer-delegate ps archive config observation injection wire-event))))
+   (t (fn-peer-delegate ps archive config observation injection wire-event))))
 
 ; -----------------------------------------------------------------------------
 ; What the composed step preserves and emits: the two facts the served fold
@@ -844,7 +844,7 @@
   (implies (fn-peer-session-consistentp ps archive)
            (fn-nntp-effectsp
             (fn-post-result-effects
-             (fn-peer-step ps archive config observation wire-event))))
+             (fn-peer-step ps archive config observation injection wire-event))))
   :hints (("Goal" :in-theory (e/d (fn-peer-step fn-peer-delegate
                                    fn-peer-session-consistentp)
                                   (fn-peer-command fn-nntp-post-step
@@ -882,7 +882,7 @@
   (implies (fn-peer-session-consistentp ps archive)
            (fn-peer-session-consistentp
             (fn-post-result-session
-             (fn-peer-step ps archive config observation wire-event))
+             (fn-peer-step ps archive config observation injection wire-event))
             archive))
   :hints (("Goal" :in-theory (e/d (fn-peer-step fn-peer-delegate
                                    fn-peer-with-base fn-peer-with-transfer)
@@ -907,13 +907,13 @@
 (defthm fn-peer-step-submission-is-typed
   (implies (and (fn-peer-sessionp ps)
                 (fn-post-result-submission
-                 (fn-peer-step ps archive config observation wire-event)))
+                 (fn-peer-step ps archive config observation injection wire-event)))
            (or (fn-inj-injectedp
                 (fn-post-result-submission
-                 (fn-peer-step ps archive config observation wire-event)))
+                 (fn-peer-step ps archive config observation injection wire-event)))
                (fn-peer-submissionp
                 (fn-post-result-submission
-                 (fn-peer-step ps archive config observation wire-event)))))
+                 (fn-peer-step ps archive config observation injection wire-event)))))
   :hints (("Goal" :in-theory (e/d (fn-peer-step fn-peer-delegate fn-peer-command
                                    fn-peer-sessionp fn-peer-transferp
                                    fn-peer-msgid-argp)

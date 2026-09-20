@@ -13,6 +13,11 @@
 ; Nothing here decides anything: the reply framing is `fn-served-reply-octets'
 ; (books/served.lisp), as it is on the served path itself.
 (in-package "ACL2")
+; `fn-reader-post-config' and the reader globals this wrapper reads are
+; host/reader-host.lisp's, and `fn-served-open' / `fn-served-run' come
+; with it from books/served.  `ld' it here so the differential wrapper is
+; loadable on its own and host/native/build.lisp's order is not a decision.
+(ld "../reader-host.lisp" :ld-error-action :error)
 
 (defun fn-reader-model-octets (chunks state)
   (declare (xargs :stobjs state :mode :program))
@@ -26,7 +31,7 @@
          (clock (if (boundp-global 'fn-reader-clock state)
                     (f-get-global 'fn-reader-clock state)
                   nil))
-         (opened (fn-served-open archive 510 8192 config clock))
+         (opened (fn-served-open archive 510 8192 config clock clock))
          (ran (fn-served-run (fn-served-result-conn opened) chunks)))
     (value (fn-served-reply-octets
             (append (fn-served-result-effects opened)

@@ -12,6 +12,12 @@
 
 (in-package "ACL2")
 (include-book "../books/node-config")
+;
+; Loaded here, not left to a bridge's `ld' order: this file uses names
+; host/store-host.lisp defines, so a session that loads this file alone
+; must get them too.  A second `ld' of a file already in the session
+; re-admits identical definitions, which ACL2 accepts as redundant.
+(ld "store-host.lisp" :ld-error-action :error)
 
 (defun fn-cfg-host-creations (names)
   (declare (xargs :guard t))

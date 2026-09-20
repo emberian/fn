@@ -378,6 +378,31 @@
                                    fn-nntp-projection-vocabulary
                                    fn-nntp-responses-vocabulary)
                                   (fn-nntp-xhdr-response)))))
+; RFC 2980 section 2.9: XPAT is XHDR with a filter, so it changes no more of
+; the session than XHDR does -- which is nothing.
+(defthm fn-nntp-xpat-range-preserves-session
+  (equal (fn-nntp-result-session
+          (fn-nntp-xpat-range session archive field patterns token))
+         session)
+  :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
+                                   fn-nntp-projection-vocabulary
+                                   fn-nntp-responses-vocabulary)
+                                  (fn-nntp-xpat-range)))))
+(defthm fn-nntp-xpat-msgid-preserves-session
+  (equal (fn-nntp-result-session
+          (fn-nntp-xpat-msgid session archive field patterns token))
+         session)
+  :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
+                                   fn-nntp-projection-vocabulary
+                                   fn-nntp-responses-vocabulary)
+                                  (fn-nntp-xpat-msgid)))))
+(defthm fn-nntp-xpat-response-preserves-session
+  (equal (fn-nntp-result-session (fn-nntp-xpat-response session archive args))
+         session)
+  :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
+                                   fn-nntp-projection-vocabulary
+                                   fn-nntp-responses-vocabulary)
+                                  (fn-nntp-xpat-response)))))
 (defthm fn-nntp-list-active-times-preserves-session
   (equal (fn-nntp-result-session (fn-nntp-list-active-times session env args)) session)
   :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
@@ -393,6 +418,8 @@
                     fn-nntp-xover-response fn-nntp-hdr-current
                     fn-nntp-hdr-range fn-nntp-hdr-msgid fn-nntp-hdr-command
                     fn-nntp-hdr-response fn-nntp-xhdr-response
+                    fn-nntp-xpat-range fn-nntp-xpat-msgid
+                    fn-nntp-xpat-response
                     fn-nntp-list-active-times))
 
 (defthm fn-nntp-list-response-preserves-session

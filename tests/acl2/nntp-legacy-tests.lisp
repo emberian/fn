@@ -187,7 +187,7 @@
   '("CAPABILITIES HELP QUIT MODE DATE POST"
     "GROUP LISTGROUP LIST NEXT LAST NEWGROUPS"
     "ARTICLE HEAD BODY STAT"
-    "OVER XOVER HDR XHDR"))
+    "OVER XOVER HDR XHDR XPAT"))
 (assert-event (equal (lg-reply *lg-env* "HELP")
                      (lg-block "100 help text follows" *lg-help-lines*)))
 
@@ -197,7 +197,7 @@
 (defconst *lg-help-keywords*
   '("CAPABILITIES" "HELP" "QUIT" "MODE" "DATE" "POST" "GROUP" "LISTGROUP"
     "LIST" "NEXT" "LAST" "NEWGROUPS" "ARTICLE" "HEAD" "BODY" "STAT" "OVER"
-    "XOVER" "HDR" "XHDR"))
+    "XOVER" "HDR" "XHDR" "XPAT"))
 (defun lg-all-dispatchedp (keywords)
   (if (consp keywords)
       (and (not (equal (fn-nntp-result-effects
@@ -207,10 +207,101 @@
     t))
 (assert-event (lg-all-dispatchedp *lg-help-keywords*))
 ; The control: a keyword the dispatcher does not know does answer 500, so the
-; assertion above is not vacuous.
+; assertion above is not vacuous.  XPATH is RFC 2980 section 2.10, which this
+; reader refuses to implement (it would publish storage filenames); it is a
+; real unimplemented legacy keyword, not an invented one.
 (assert-event (equal (fn-nntp-result-effects
-                      (lg-step *lg-session* *lg-env* "XPAT"))
+                      (lg-step *lg-session* *lg-env* "XPATH"))
                      (lg-single "500 command not recognized")))
+
+; -----------------------------------------------------------------------------
+; XPAT (RFC 2980 section 2.9)
+;
+; The archive holds one article, number 1 in fn.letters, whose Subject is
+; "Test".  Section 2.9.1 assigns 221 to every successful form, including an
+; empty selection, and 430 to a message-id that names no article.
+
+; The range form, pattern matching: the XHDR line survives the filter.
+(assert-event (equal (lg-reply *lg-env* "XPAT subject 1-1 *est*")
+                     (lg-block "221 header follows" (list "1 Test"))))
+; The range form, pattern not matching: still 221, with an empty block.
+(assert-event (equal (lg-reply *lg-env* "XPAT subject 1-1 nomatch")
+                     (lg-block "221 header follows" nil)))
+; A pattern that selects everything gives XHDR's own block, initial line and
+; all: the agreement theorem, witnessed.
+(assert-event (equal (lg-reply *lg-env* "XPAT subject 1-1 *")
+                     (lg-reply *lg-env* "XHDR subject 1-1")))
+(assert-event
+ (fn-nntp-xpat-selects-everythingp
+  (fn-nntp-string-octets "subject")
+  (fn-wildmat-result-value (fn-wildmat-parse (fn-nntp-string-octets "*")))
+  "fn.letters" (list 1) (fn-state-articles *lg-archive*)))
+; ... and the hypothesis of that theorem has a tooth: a pattern that selects
+; nothing makes the two blocks differ.
+(assert-event
+ (not (fn-nntp-xpat-selects-everythingp
+       (fn-nntp-string-octets "subject")
+       (fn-wildmat-result-value
+        (fn-wildmat-parse (fn-nntp-string-octets "nomatch")))
+       "fn.letters" (list 1) (fn-state-articles *lg-archive*))))
+(assert-event (not (equal (lg-reply *lg-env* "XPAT subject 1-1 nomatch")
+                          (lg-reply *lg-env* "XHDR subject 1-1"))))
+; Every XPAT line is an XHDR line: the parity keystone, on this transcript.
+(assert-event
+ (subsetp-equal
+  (fn-nntp-xpat-lines-for-numbers
+   (fn-nntp-string-octets "subject")
+   (fn-wildmat-result-value (fn-wildmat-parse (fn-nntp-string-octets "*est*")))
+   "fn.letters" (list 1) (fn-state-articles *lg-archive*))
+  (fn-nntp-hdr-lines-for-numbers (fn-nntp-string-octets "subject")
+                                 "fn.letters" (list 1)
+                                 (fn-state-articles *lg-archive*))))
+; The message-id form: section 2.9 renders the message-id as the label, as
+; XHDR does, and 430 when no such article exists.
+(assert-event (equal (lg-reply *lg-env* "XPAT subject <Case@Id.invalid> *")
+                     (lg-block "221 header follows"
+                               (list "<Case@Id.invalid> Test"))))
+(assert-event (equal (lg-reply *lg-env* "XPAT subject <no@such.invalid> *")
+                     (lg-single "430 no article with that message-id")))
+; A metadata item is calculated by the same two functions OVER and HDR use.
+(assert-event (equal (lg-reply *lg-env* "XPAT :lines 1-1 2")
+                     (lg-block "221 header follows" (list "1 2"))))
+; No newsgroup selected: the range form is 412, as HDR's is.
+(assert-event (equal (fn-nntp-result-effects
+                      (lg-step *lg-session0* *lg-env* "XPAT subject 1-1 *"))
+                     (lg-single "412 no newsgroup selected")))
+; Syntax: at least one pattern is required, the field must be a field name,
+; and the second token must be a range or a message-id.
+(assert-event (equal (lg-reply *lg-env* "XPAT subject 1-1")
+                     (lg-single "501 syntax error")))
+(assert-event (equal (lg-reply *lg-env* "XPAT subject")
+                     (lg-single "501 syntax error")))
+(assert-event (equal (lg-reply *lg-env* "XPAT sub:ject 1-1 *")
+                     (lg-single "501 syntax error")))
+(assert-event (equal (lg-reply *lg-env* "XPAT subject notarange *")
+                     (lg-single "501 syntax error")))
+; Section 2.9 joins the trailing arguments with a single space into one
+; pattern.  The join, directly.
+(assert-event (equal (fn-nntp-xpat-join (list (fn-nntp-string-octets "a")
+                                              (fn-nntp-string-octets "b")))
+                     (fn-nntp-string-octets "a b")))
+(assert-event (equal (fn-nntp-xpat-join (list (fn-nntp-string-octets "a")))
+                     (fn-nntp-string-octets "a")))
+; ... and the joined pattern is the one matched: "T st" does not match
+; "Test", but the two tokens joined are one pattern and not two.
+(assert-event (equal (lg-reply *lg-env* "XPAT subject 1-1 *T *t*")
+                     (lg-block "221 header follows" nil)))
+; LOCAL POLICY, witnessed: the match target is bounded at
+; *fn-wildmat-max-octets*.  A content longer than that matches nothing.
+(assert-event (not (fn-nntp-xpat-matchesp
+                    (fn-wildmat-result-value
+                     (fn-wildmat-parse (fn-nntp-string-octets "*")))
+                    (make-list (+ 1 *fn-wildmat-max-octets*)
+                               :initial-element 65))))
+(assert-event (fn-nntp-xpat-matchesp
+               (fn-wildmat-result-value
+                (fn-wildmat-parse (fn-nntp-string-octets "*")))
+               (make-list *fn-wildmat-max-octets* :initial-element 65)))
 
 ; -----------------------------------------------------------------------------
 ; Teeth: one concrete violating value per hypothesis

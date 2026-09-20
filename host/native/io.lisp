@@ -1772,6 +1772,21 @@ connection `fn-reader-reset' opens and projects with
 ;;;                      TRANSFER-MRU]
 ;;;   sha256 PATH
 
+;;; Verbs a layer above this file owns.  host/native/tcpcl.lisp registers
+;;; "tcpcl" when it loads; naming its dispatcher here instead made this file
+;;; unloadable on its own and made the two files order-dependent in both
+;;; directions.  An unregistered verb is an unknown verb, which is what a
+;;; host built without that layer should say.
+
+(defvar *fnn-verbs* nil)
+
+(defun fnn-register-verb (verb handler)
+  (push (cons verb handler) *fnn-verbs*)
+  verb)
+
+(defun fnn-verb-handler (verb)
+  (cdr (assoc verb *fnn-verbs* :test #'string=)))
+
 (defun fnn-dash-nil (text) (if (string= text "-") nil text))
 
 (defun fnn-dispatch (args)
@@ -1800,12 +1815,13 @@ connection `fn-reader-reset' opens and projects with
         ((string= verb "model")
          (need 3)
          (fnn-command-model (second args) (fnn-dash-nil (third args))))
-        ;; The TCPCLv4 convergence layer (host/native/tcpcl.lisp).  Its own
-        ;; positional protocol, because its arguments are a peer and a session
-        ;; and not a store.
-        ((string= verb "tcpcl")
+        ;; A registered verb: the TCPCLv4 convergence layer
+        ;; (host/native/tcpcl.lisp) is the one today.  Its own positional
+        ;; protocol, because its arguments are a peer and a session and not
+        ;; a store, so a handler takes a command and the rest.
+        ((fnn-verb-handler verb)
          (need 2)
-         (fnn-dispatch-tcpcl (second args) (cddr args)))
+         (funcall (fnn-verb-handler verb) (second args) (cddr args)))
         ((string= verb "sha256")
          (need 2)
          (fnn-out "~a" (fnn-hex (fnn-sha256 (fnn-read-regular-bounded (second args) (ash 1 26)))))
