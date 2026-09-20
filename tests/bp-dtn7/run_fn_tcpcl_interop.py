@@ -120,8 +120,8 @@ def main(argv=None) -> int:
         payload = work / "payload.txt"
         payload.write_bytes(b"fn <-> dtn7 tcpcl interop\n")
         sent = subprocess.run(
-            [str(dtnsend), "-r", "dtn://fn-b/incoming", "-i", str(payload),
-             "-p", str(web_port)],
+            [str(dtnsend), "-r", "dtn://fn-b/incoming", "-p", str(web_port),
+             "-v", str(payload)],
             capture_output=True, text=True, timeout=60)
         report["dtnsend_rc"] = sent.returncode
         report["dtnsend_out"] = (sent.stdout + sent.stderr).strip()[:800]
