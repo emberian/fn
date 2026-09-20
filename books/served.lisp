@@ -759,10 +759,12 @@
 ; connection is unchanged; the reply is fn-nntp-post-outcome's, which is the
 ; only place 240 exists (fn-post-outcome-240-only-for-a-durable-observation).
 ;
-; The session this reaches for is TWO wrappers down, not one.  A served
-; connection's session is fn-auth-open-session's (below), an auth session over
-; a peer session over the POST-composed reader session, and
-; fn-nntp-post-outcome wants the peer session's base.  It was reached through
+; The session this reaches for is TWO wrappers down, not one, and it says so
+; with the named projection (fn-auth-post-session, books/nntp-auth.lisp)
+; rather than spelling the walk.  A served connection's session is
+; fn-auth-open-session's (below), an auth session over a peer session over
+; the POST-composed reader session, and fn-nntp-post-outcome wants the peer
+; session's base.  It was reached through
 ; fn-peer-session-base alone while the served session was still a peer
 ; session; the auth wiring left this one call site behind, and because
 ; fn-nntp-post-outcome answers a non-fn-post-sessionp argument with NO
@@ -776,7 +778,7 @@
    conn
    (fn-post-result-effects
     (fn-nntp-post-outcome
-     (fn-peer-session-base (fn-auth-session-base (fn-served-conn-session conn)))
+     (fn-auth-post-session (fn-served-conn-session conn))
      completion))))
 
 ; A definitional restatement linking the host's entry to the nntp-post
@@ -785,8 +787,7 @@
   (equal (fn-served-result-effects (fn-served-post-outcome conn completion))
          (fn-post-result-effects
           (fn-nntp-post-outcome
-           (fn-peer-session-base
-            (fn-auth-session-base (fn-served-conn-session conn)))
+           (fn-auth-post-session (fn-served-conn-session conn))
            completion)))
   :rule-classes nil)
 
@@ -802,13 +803,34 @@
 ; :uncertain, or nil when no attempt ran).  The reply is the RFC table of
 ; specs/peering.md section 2.2; an uncertain outcome is 400 (TAKETHIS) or
 ; 436 (IHAVE) and the close effect.  The connection is unchanged.
+;
+; fn-peer-transit-outcome wants the PEER session, so this reaches one level
+; in, exactly as fn-served-post-outcome above reaches two.  It passed the
+; whole auth session until this lane: unobservable at the time only because
+; the transit reply octets ignore their session argument (fn-peer-single
+; reaches fn-nntp-single, whose effects are the reply alone), which is the
+; same accident that hid the POST miss until a test read the reply.  The
+; session is not decoration: fn-peer-transit-outcome returns it as the
+; result record's session, and the moment a transit reply becomes
+; state-dependent the wrong one is the answer.
 (defun fn-served-transit-outcome (conn submission decision completion)
   (declare (xargs :guard t))
   (fn-served-make-result
    conn
    (fn-post-result-effects
-    (fn-peer-transit-outcome (fn-served-conn-session conn) submission decision
-                             completion))))
+    (fn-peer-transit-outcome (fn-auth-session-base (fn-served-conn-session conn))
+                             submission decision completion))))
+
+; The definitional restatement, beside the one fn-served-post-outcome carries:
+; :rule-classes nil, never a registry event.  It is what makes the depth of
+; this call a statement in the book and not only a line of code.
+(defthm fn-served-transit-outcome-effects-by-definition
+  (equal (fn-served-result-effects
+          (fn-served-transit-outcome conn submission decision completion))
+         (fn-post-result-effects
+          (fn-peer-transit-outcome (fn-auth-session-base (fn-served-conn-session conn))
+                                   submission decision completion)))
+  :rule-classes nil)
 
 (defthm fn-served-transit-outcome-effects-are-typed
   (implies (fn-peer-submissionp submission)
