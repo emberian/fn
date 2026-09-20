@@ -294,6 +294,16 @@ check:
 # fidelity defect; missing host cuts and syscall drift are reported and do not
 # fail (--strict fails on those too).
 	$(PYTHON) tools/transcribe_check.py
+# The teeth audit's static half: assertions that exercise ACL2 rather than fn,
+# recognisers that no test ever makes TRUE, keystones with no witness in any
+# test book, and citations of theorems the tree no longer defines.  It needs
+# no ACL2 and REPORTS, never fails: the findings on the tree at the time it
+# landed are pre-existing and are triaged in
+# planning/lanes/HANDOFF-w10-teeth-audit.md.  `--strict` fails on any finding;
+# `--report` adds the evaluated half from build/teeth/values.json, which
+# `python3 tools/teeth_check.py --evaluate` produces in about twenty minutes
+# of one ACL2.
+	$(PYTHON) tools/teeth_check.py --summary
 
 certify:
 	$(PYTHON) tools/certify_books.py --jobs $(FN_CERTIFY_JOBS) $(ACL2_BOOKS)
