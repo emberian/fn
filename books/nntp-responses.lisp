@@ -399,7 +399,7 @@
                        (fn-nntp-string-octets
                         "ARTICLE HEAD BODY STAT")
                        (fn-nntp-string-octets
-                        "OVER XOVER HDR XHDR"))))
+                        "OVER XOVER HDR XHDR XPAT"))))
 
 ; -----------------------------------------------------------------------------
 ; Reader environment: the clock observation and the persisted group-creation
@@ -1494,6 +1494,132 @@
   (fn-nntp-hdr-command session archive args t))
 
 ; -----------------------------------------------------------------------------
+; XPAT (RFC 2980 section 2.9)
+;
+;   XPAT header range|<message-id> pat [pat...]
+;
+; XPAT is XHDR with a wildmat filter on the rendered content.  It is not a
+; second header projection: every line it emits is a line
+; fn-nntp-hdr-lines-for-numbers already produced for the same field and the
+; same range, selected by the pattern and never rebuilt
+; (fn-nntp-xpat-lines-are-hdr-lines, books/nntp-legacy.lisp).  The initial
+; line is section 2.9.1's 221, which is the same octets XHDR's
+; fn-nntp-hdr-initial renders, and an empty selection is still a 221 -- the
+; section says so explicitly ("This includes an empty list").  A message-id
+; that names no article is 430.
+;
+; Section 2.9 joins the trailing arguments with a single space to form one
+; pattern.  The tokenizer has already split on space and TAB and bounded the
+; whole command line at *fn-nntp-max-command-octets*, so the joined pattern
+; is bounded by the line and fn-wildmat-parse bounds it again at
+; *fn-wildmat-max-octets*.
+;
+; LOCAL POLICY, not an RFC requirement: the match target is bounded.
+; fn-wildmat-decode refuses an input longer than *fn-wildmat-max-octets*
+; (497), so a header content longer than that does not match any pattern and
+; its article is omitted.  RFC 2980 promises nothing for that case, and the
+; alternative is a dynamic-programming match whose cost is set by stored
+; article content rather than by the command.
+
+(defun fn-nntp-xpat-join (tokens)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp tokens)
+      (if (consp (cdr tokens))
+          (fn-nntp-append-pieces
+           (list (car tokens) '(32) (fn-nntp-xpat-join (cdr tokens))))
+        (fn-nntp-append-pieces (list (car tokens))))
+    nil))
+
+(defun fn-nntp-xpat-matchesp (patterns content)
+  ; `patterns` is an internal successful fn-wildmat-parse result, never an
+  ; externally supplied representation.  `content` is the octets HDR would
+  ; render for this field and article: fn-nov-scrub has already removed NUL,
+  ; TAB, CR and LF (fn-nntp-hdr-content-is-clean), so the decode below sees
+  ; no framing octet.
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((decoded (fn-wildmat-decode content)))
+    (and (fn-wildmat-result-okp decoded)
+         (mbe :logic
+              (fn-wildmat-match-codepoints patterns
+                                           (fn-wildmat-result-value decoded))
+              :exec
+              (ec-call
+               (fn-wildmat-match-codepoints
+                patterns (fn-wildmat-result-value decoded))))
+         t)))
+
+(defun fn-nntp-xpat-lines-for-numbers (field patterns group numbers articles)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp numbers)
+      (let* ((number (car numbers))
+             (article (fn-nntp-available-article group number articles))
+             (content (if (consp article)
+                          (fn-nntp-hdr-content field article)
+                        (list :error))))
+        (if (and (fn-nntp-hdr-okp content)
+                 (fn-nntp-xpat-matchesp patterns (fn-nntp-hdr-octets content)))
+            (cons (fn-nntp-hdr-line (fn-nntp-decimal-field number)
+                                    (fn-nntp-hdr-octets content))
+                  (fn-nntp-xpat-lines-for-numbers field patterns group
+                                                  (cdr numbers) articles))
+          (fn-nntp-xpat-lines-for-numbers field patterns group (cdr numbers)
+                                          articles)))
+    nil))
+
+(defun fn-nntp-xpat-range (session archive field patterns token)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((group (fn-nntp-session-group session)))
+    (if (null group)
+        (fn-nntp-single session "412 no newsgroup selected")
+      (fn-nntp-multi
+       session (fn-nntp-hdr-initial t)
+       (fn-nntp-xpat-lines-for-numbers
+        field patterns group
+        (fn-nntp-group-range-numbers
+         group (fn-nntp-range-low (fn-nntp-parse-range token))
+         (fn-nntp-range-high (fn-nntp-parse-range token))
+         (fn-state-articles archive))
+        (fn-state-articles archive))))))
+
+(defun fn-nntp-xpat-msgid (session archive field patterns token)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((article (fn-find-article (fn-nntp-token-string token)
+                                  (fn-state-articles archive))))
+    (if (not (consp article))
+        (fn-nntp-single session "430 no article with that message-id")
+      (let ((content (fn-nntp-hdr-content field article)))
+        (if (not (fn-nntp-hdr-okp content))
+            (fn-nntp-single session "503 stored article framing unavailable")
+          (fn-nntp-multi
+           session (fn-nntp-hdr-initial t)
+           (if (fn-nntp-xpat-matchesp patterns (fn-nntp-hdr-octets content))
+               (list (fn-nntp-hdr-line (fn-nov-scrub token)
+                                       (fn-nntp-hdr-octets content)))
+             nil)))))))
+
+(defun fn-nntp-xpat-response (session archive args)
+  (declare (xargs :guard t :verify-guards nil))
+  ; (field range-or-msgid pat pat...): at least three tokens, at least one
+  ; pattern.  Section 2.9 makes the range and the message-id mutually
+  ; exclusive, which is what the two-branch test below is.
+  (if (not (and (consp args) (fn-nntp-hdr-fieldp (car args))
+                (consp (cdr args))
+                (consp (cdr (cdr args)))))
+      (fn-nntp-single session "501 syntax error")
+    (let* ((field (car args))
+           (token (car (cdr args)))
+           (joined (fn-nntp-xpat-join (cdr (cdr args))))
+           (parsed (fn-wildmat-parse joined)))
+      (if (not (fn-wildmat-result-okp parsed))
+          (fn-nntp-single session "501 syntax error")
+        (let ((patterns (fn-wildmat-result-value parsed)))
+          (if (fn-nntp-range-okp (fn-nntp-parse-range token))
+              (fn-nntp-xpat-range session archive field patterns token)
+            (if (fn-nntp-message-id-tokenp token)
+                (fn-nntp-xpat-msgid session archive field patterns token)
+              (fn-nntp-single session "501 syntax error"))))))))
+
+; -----------------------------------------------------------------------------
 ; LIST ACTIVE.TIMES (RFC 3977 section 7.6.4, RFC 2980 section 2.1.3)
 ;
 ; The list is exactly the persisted group-creation facts the host supplies,
@@ -1590,6 +1716,19 @@
 (verify-guards fn-nntp-hdr-command)
 (verify-guards fn-nntp-hdr-response)
 (verify-guards fn-nntp-xhdr-response)
+
+(verify-guards fn-nntp-xpat-join)
+
+(verify-guards fn-nntp-xpat-matchesp)
+
+(verify-guards fn-nntp-xpat-lines-for-numbers)
+
+(verify-guards fn-nntp-xpat-range)
+
+(verify-guards fn-nntp-xpat-msgid)
+
+(verify-guards fn-nntp-xpat-response)
+
 (verify-guards fn-nntp-dtn-unix-seconds)
 (verify-guards fn-nntp-active-times-line)
 (verify-guards fn-nntp-active-times-lines)
@@ -1645,7 +1784,10 @@
     fn-nntp-hdr-okp fn-nntp-hdr-octets fn-nntp-hdr-content fn-nntp-hdr-line
     fn-nntp-hdr-lines-for-numbers fn-nntp-hdr-initial fn-nntp-hdr-current
     fn-nntp-hdr-range fn-nntp-hdr-msgid fn-nntp-hdr-command
-    fn-nntp-hdr-response fn-nntp-xhdr-response fn-nntp-dtn-unix-seconds
+    fn-nntp-hdr-response fn-nntp-xhdr-response
+    fn-nntp-xpat-join fn-nntp-xpat-matchesp
+    fn-nntp-xpat-lines-for-numbers fn-nntp-xpat-range fn-nntp-xpat-msgid
+    fn-nntp-xpat-response fn-nntp-dtn-unix-seconds
     fn-nntp-active-times-line fn-nntp-active-times-lines
     fn-nntp-filter-facts-by-wildmat fn-nntp-list-active-times
     fn-nntp-list-command))

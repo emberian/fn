@@ -632,6 +632,12 @@
         (fn-served-submission (cdr effects)))
     nil))
 
+(defthm fn-served-submission-of-append
+  (equal (fn-served-submission (append left right))
+         (if (fn-served-submission left)
+             (fn-served-submission left)
+           (fn-served-submission right))))
+
 ; The host's durable observation, fed back as one more served input.  The
 ; connection is unchanged; the reply is fn-nntp-post-outcome's, which is the
 ; only place 240 exists (fn-post-outcome-240-only-for-a-durable-observation).
@@ -713,7 +719,7 @@
    (fn-served-make-conn (fn-wire-initial-state line-limit body-limit)
                         (fn-peer-open-session archive nil nil nil)
                         archive config observation)
-   (list (fn-nntp-reply-effect *fn-served-greeting*))))
+   (list (fn-nntp-reply-effect (fn-served-greeting config)))))
 
 ; A peer connection (specs/peering.md section 1.1): the host resolved the
 ; source to a peer name at :open and hands the node and configuration the
@@ -921,6 +927,121 @@
                                fn-served-run-is-the-concatenated-step)
            :use ((:instance fn-served-run-is-the-concatenated-step (chunks one))
                  (:instance fn-served-run-is-the-concatenated-step (chunks two))))))
+
+; -----------------------------------------------------------------------------
+; Keystone 3b: pipelining across the POST body (RFC 3977 section 3.5)
+;
+; Section 3.5 lets a client send a command before the previous reply arrives,
+; and requires the server neither to discard data nor to lose synchronisation.
+; Partition independence above settles the byte-boundary half of that: the
+; network may cut the stream anywhere.  It does NOT settle the framing half,
+; which is what POST introduces.  Between the 340 and the terminator the wire
+; is in article mode; an octet arriving in the same read AFTER the terminator
+; must be framed as a command and not swallowed into the body.
+;
+; The load-bearing fact is about the framer: a byte that completes an article
+; leaves the wire in command mode, in the same call, so the fold's next byte
+; is framed as a command with nothing in between.  Everything else is the
+; append law.
+;
+; The subject is fn-served-step, which is what host/owner-host.lisp
+; `fn-own-read' calls once per socket read (books/owner.lisp fn-own-read,
+; fn-own-read-is-served-step-on-pinned-prefix); tools/run_owner.py
+; `Owner.serve' performs exactly one such call per recv.
+
+(defthm fn-wire-article-event-resumes-command-mode
+  (implies (and (fn-wire-statep wire-state)
+                (consp (fn-wire-result-events (fn-wire-feed-byte wire-state byte)))
+                (equal (car (car (fn-wire-result-events
+                                  (fn-wire-feed-byte wire-state byte))))
+                       :article))
+           (equal (fn-wire-state-mode
+                   (fn-wire-result-state (fn-wire-feed-byte wire-state byte)))
+                  :command))
+  :hints (("Goal" :in-theory (enable fn-wire-feed-byte fn-wire-statep
+                                     fn-wire-state-shapep fn-wire-state-mode
+                                     fn-wire-event-article fn-wire-result-state
+                                     fn-wire-result-events))))
+
+; The reply stream of a read is the concatenation of the reply streams of its
+; effect list's halves.  A list-shape lemma, exported because the pipelining
+; statement below is read in terms of it.
+(defthm fn-served-reply-octets-of-append
+  (equal (fn-served-reply-octets (append left right))
+         (append (fn-served-reply-octets left)
+                 (fn-served-reply-octets right))))
+
+; The pipelining statement the host needs.  A read carrying a POST block (the
+; command line, the body and its terminator) immediately followed by another
+; command produces exactly the reply octets of the two delivered separately,
+; and reaches the same connection.  A corollary of
+; fn-served-step-partition-independence and the two lemmas above, named as
+; one: no octet of `later' is lost to the article body and none is
+; reattributed to the POST.
+(defthm fn-served-pipelined-read-is-the-sequential-reply
+  (implies (and (fn-served-connp conn)
+                (fn-wire-octet-listp post-block)
+                (fn-wire-octet-listp later))
+           (and (equal (fn-served-result-conn
+                        (fn-served-step conn (append post-block later)))
+                       (fn-served-result-conn
+                        (fn-served-step
+                         (fn-served-result-conn (fn-served-step conn post-block))
+                         later)))
+                (equal (fn-served-reply-octets
+                        (fn-served-result-effects
+                         (fn-served-step conn (append post-block later))))
+                       (append
+                        (fn-served-reply-octets
+                         (fn-served-result-effects
+                          (fn-served-step conn post-block)))
+                        (fn-served-reply-octets
+                         (fn-served-result-effects
+                          (fn-served-step
+                           (fn-served-result-conn
+                            (fn-served-step conn post-block))
+                           later)))))))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (disable fn-served-step fn-served-connp
+                               fn-served-reply-octets
+                               fn-served-step-partition-independence)
+           :use ((:instance fn-served-step-partition-independence
+                            (left post-block) (right later))))))
+
+; The submission a pipelined read carries is the one the POST block earned:
+; the later command cannot add or remove a submission, because a submission
+; leaves only from the (:article lines) event the terminator framed.
+(defthm fn-served-pipelined-read-submission-is-the-post-block-submission
+  (implies (and (fn-served-connp conn)
+                (fn-wire-octet-listp post-block)
+                (fn-wire-octet-listp later)
+                (not (fn-served-submission
+                      (fn-served-result-effects
+                       (fn-served-step
+                        (fn-served-result-conn (fn-served-step conn post-block))
+                        later)))))
+           (equal (fn-served-submission
+                   (fn-served-result-effects
+                    (fn-served-step conn (append post-block later))))
+                  (fn-served-submission
+                   (fn-served-result-effects
+                    (fn-served-step conn post-block)))))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (disable fn-served-step fn-served-connp
+                               fn-served-submission
+                               fn-served-step-partition-independence)
+           :use ((:instance fn-served-step-partition-independence
+                            (left post-block) (right later))
+                 (:instance fn-served-submission-of-append
+                            (left (fn-served-result-effects
+                                   (fn-served-step conn post-block)))
+                            (right (fn-served-result-effects
+                                    (fn-served-step
+                                     (fn-served-result-conn
+                                      (fn-served-step conn post-block))
+                                     later))))))))
 
 ; -----------------------------------------------------------------------------
 ; Keystone 4: work per read
