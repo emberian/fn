@@ -387,6 +387,20 @@
   (and (fn-auth-sessionp x)
        (fn-peer-session-consistentp (fn-auth-session-base x) archive)))
 
+; EXPORTED, forward-chaining only: books/served.lisp carries this
+; consistency as its connection invariant and needs the session facts of it
+; wherever a branch test mentions fn-auth-sessionp, exactly as
+; books/peer-inbound.lisp exports fn-peer-consistent-forward.
+(defthm fn-auth-consistent-forward
+  (implies (fn-auth-session-consistentp as archive)
+           (and (fn-auth-sessionp as)
+                (fn-peer-session-consistentp (fn-auth-session-base as)
+                                             archive)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d (fn-auth-session-consistentp)
+                                  (fn-auth-sessionp
+                                   fn-peer-session-consistentp)))))
+
 (defun fn-auth-open-session (archive peer node cfg acfg tlsp)
   (declare (xargs :guard t :verify-guards nil))
   (fn-auth-make-session (fn-peer-open-session archive peer node cfg)
@@ -472,9 +486,12 @@
 ;   STARTTLS        advertised only when a certificate is configured and no
 ;                   TLS layer is active.  "MUST NOT be advertised once a TLS
 ;                   layer is active" (RFC 4642 section 2.1).
-;   AUTHINFO USER   advertised only while the connection is unauthenticated.
-;                   RFC 4643 section 2.1: the arguments are the USER/PASS and
-;                   SASL variants the server will accept NOW.
+;   AUTHINFO USER   advertised only while the connection is unauthenticated
+;                   AND a credential is configured AND the channel is not
+;                   the one protected-only refuses.  RFC 4643 section 2.1:
+;                   the arguments are the USER/PASS and SASL variants the
+;                   server will accept NOW, and with no credential in the
+;                   configuration every PASS is 481.
 ;   POST            the reader's own label, which fn-nntp-capability-lines
 ;                   already gates on the posting bit.  On an authenticating
 ;                   connection that bit is the CONJUNCTION of the pinned
@@ -490,7 +507,12 @@
            (if (and (fn-auth-config-tls-availablep acfg) (not tlsp))
                (list (fn-nntp-string-octets "STARTTLS"))
              nil)
+           ; RFC 4643 section 2.1: the arguments are the mechanisms the
+           ; server will accept NOW.  With no credential configured every
+           ; PASS is 481, so the label would promise a mechanism that
+           ; cannot succeed; with one, it is the honest offer.
            (if (or subject
+                   (not (consp (fn-auth-config-creds acfg)))
                    (and (fn-auth-config-protected-onlyp acfg) (not tlsp)))
                nil
              (list (fn-nntp-string-octets "AUTHINFO USER"))))))
@@ -1068,6 +1090,7 @@
                   (fn-post-result-submission
                    (fn-peer-step (fn-auth-session-base as) archive config
                                  observation injection wire-event))))
+  :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-auth-step fn-auth-delegate
                                    fn-auth-tls-established)
                                   (fn-peer-step fn-auth-command
@@ -1099,8 +1122,9 @@
            :in-theory (e/d (fn-auth-sessionp)
                            (fn-auth-step fn-peer-step fn-peer-sessionp
                             fn-inj-injectedp fn-peer-submissionp
-                            fn-peer-step-submission-is-typed
-                            fn-auth-submission-is-the-delegated-submission))
+                            ; fn-auth-submission-is-the-delegated-submission
+                            ; is :rule-classes nil and names no rune
+                            fn-peer-step-submission-is-typed))
            :use ((:instance fn-auth-submission-is-the-delegated-submission)
                  (:instance fn-peer-step-submission-is-typed
                             (ps (fn-auth-session-base as))))))
