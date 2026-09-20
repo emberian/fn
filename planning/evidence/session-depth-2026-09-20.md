@@ -6,8 +6,11 @@ branch `w10/session-depth` from dev `99a348c`. ACL2 8.7.
 
 ## 1. The sweep as found, before any edit
 
-    git checkout 99a348c -- books tests   # or read it from dev
-    python3 tools/session_depth.py
+Reproducible from any tree with this lane's tool, because the tool takes
+paths:
+
+    mkdir /tmp/before && git archive 99a348c books tests/acl2 host | tar -x -C /tmp/before
+    python3 tools/session_depth.py /tmp/before/books /tmp/before/tests/acl2 /tmp/before/host
 
 ```
 books/nntp-auth.lisp:435: CHAIN: fn-auth-single: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
@@ -28,22 +31,22 @@ books/owner-invariants.lisp:1308: CHAIN: local: a hand-spelled walk fn-peer-sess
 books/owner-invariants.lisp:1309: CHAIN: local: a hand-spelled walk fn-auth-session-base then fn-peer-session-base: say fn-auth-post-session instead
 books/owner-invariants.lisp:1313: CHAIN: local: a hand-spelled walk fn-auth-session-base then fn-peer-session-base: say fn-auth-post-session instead
 books/owner-invariants.lisp:1328: CHAIN: local: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
-books/owner-invariants.lisp:1329: DEPTH: local: fn-peer-session-base wants a peer session, (fn-own-conn-session conn) is auth: (fn-peer-session-base (fn-own-conn-session conn))
+books/owner-invariants.lisp:1329: DEPTH: local: fn-peer-session-base wants a peer session, (fn-own-conn-session conn) is auth: (fn-peer-session-base (fn-own-conn-session conn)) [open elsewhere]
 books/owner-invariants.lisp:1332: CHAIN: local: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
-books/owner-invariants.lisp:1333: DEPTH: local: fn-peer-session-base wants a peer session, (fn-own-conn-session conn) is auth: (fn-peer-session-base (fn-own-conn-session conn))
+books/owner-invariants.lisp:1333: DEPTH: local: fn-peer-session-base wants a peer session, (fn-own-conn-session conn) is auth: (fn-peer-session-base (fn-own-conn-session conn)) [open elsewhere]
 books/owner-invariants.lisp:1341: CHAIN: local: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
-books/owner-invariants.lisp:1342: DEPTH: local: fn-peer-session-base wants a peer session, (fn-own-conn-session conn) is auth: (fn-peer-session-base (fn-own-conn-session conn))
+books/owner-invariants.lisp:1342: DEPTH: local: fn-peer-session-base wants a peer session, (fn-own-conn-session conn) is auth: (fn-peer-session-base (fn-own-conn-session conn)) [open elsewhere]
 books/owner-invariants.lisp:1345: CHAIN: local: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
-books/owner-invariants.lisp:1346: DEPTH: local: fn-peer-session-base wants a peer session, (fn-own-conn-session conn) is auth: (fn-peer-session-base (fn-own-conn-session conn))
-books/owner-invariants.lisp:1349: DEPTH: local: fn-peer-session-base wants a peer session, (fn-own-conn-session conn) is auth: (fn-peer-session-base (fn-own-conn-session conn))
-books/owner-invariants.lisp:1414: ARGUMENT: local: fn-peer-with-base argument 0 wants a peer session, (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o))) is auth
+books/owner-invariants.lisp:1346: DEPTH: local: fn-peer-session-base wants a peer session, (fn-own-conn-session conn) is auth: (fn-peer-session-base (fn-own-conn-session conn)) [open elsewhere]
+books/owner-invariants.lisp:1349: DEPTH: local: fn-peer-session-base wants a peer session, (fn-own-conn-session conn) is auth: (fn-peer-session-base (fn-own-conn-session conn)) [open elsewhere]
+books/owner-invariants.lisp:1414: ARGUMENT: local: fn-peer-with-base argument 0 wants a peer session, (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o))) is auth [open elsewhere]
 books/owner-invariants.lisp:1421: CHAIN: local: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
-books/owner-invariants.lisp:1422: DEPTH: local: fn-peer-session-base wants a peer session, (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o))) is auth: (fn-peer-session-base (fn-own-conn-session (fn-own-find-conn id (... ...))))
+books/owner-invariants.lisp:1422: DEPTH: local: fn-peer-session-base wants a peer session, (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o))) is auth: (fn-peer-session-base (fn-own-conn-session (fn-own-find-conn id (... ...)))) [open elsewhere]
 books/owner-invariants.lisp:1426: CHAIN: local: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
-books/owner-invariants.lisp:1427: DEPTH: local: fn-peer-session-base wants a peer session, (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o))) is auth: (fn-peer-session-base (fn-own-conn-session (fn-own-find-conn id (... ...))))
-books/owner-invariants.lisp:1431: DEPTH: local: fn-peer-session-base wants a peer session, (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o))) is auth: (fn-peer-session-base (fn-own-conn-session (fn-own-find-conn id (... ...))))
-books/owner-invariants.lisp:1536: DEPTH: defthm fn-own-durable-reply-names-a-durable-record: fn-peer-session-base wants a peer session, (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o))) is auth: (fn-peer-session-base (fn-own-conn-session (fn-own-find-conn id (... ...))))
-books/owner-invariants.lisp:1546: DEPTH: defthm fn-own-durable-reply-names-a-durable-record: fn-peer-session-base wants a peer session, (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o))) is auth: (fn-peer-session-base (fn-own-conn-session (fn-own-find-conn id (... ...))))
+books/owner-invariants.lisp:1427: DEPTH: local: fn-peer-session-base wants a peer session, (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o))) is auth: (fn-peer-session-base (fn-own-conn-session (fn-own-find-conn id (... ...)))) [open elsewhere]
+books/owner-invariants.lisp:1431: DEPTH: local: fn-peer-session-base wants a peer session, (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o))) is auth: (fn-peer-session-base (fn-own-conn-session (fn-own-find-conn id (... ...)))) [open elsewhere]
+books/owner-invariants.lisp:1536: DEPTH: defthm fn-own-durable-reply-names-a-durable-record: fn-peer-session-base wants a peer session, (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o))) is auth: (fn-peer-session-base (fn-own-conn-session (fn-own-find-conn id (... ...)))) [open elsewhere]
+books/owner-invariants.lisp:1546: DEPTH: defthm fn-own-durable-reply-names-a-durable-record: fn-peer-session-base wants a peer session, (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o))) is auth: (fn-peer-session-base (fn-own-conn-session (fn-own-find-conn id (... ...)))) [open elsewhere]
 books/owner.lisp:595: CHAIN: fn-own-conn-boundedp: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
 books/owner.lisp:596: CHAIN: fn-own-conn-boundedp: a hand-spelled walk fn-auth-session-base then fn-peer-session-base: say fn-auth-post-session instead
 books/peer-inbound.lisp:528: CHAIN: fn-peer-single: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
@@ -57,27 +60,31 @@ tests/acl2/served-tests.lisp:228: ARGUMENT: assert-event: fn-post-sessionp argum
 tests/acl2/served-tests.lisp:313: CHAIN: assert-event: a hand-spelled walk fn-auth-session-base then fn-peer-session-base: say fn-auth-post-session instead
 tests/acl2/served-tests.lisp:484: CHAIN: assert-event: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
 tests/acl2/served-tests.lisp:485: CHAIN: assert-event: a hand-spelled walk fn-auth-session-base then fn-peer-session-base: say fn-auth-post-session instead
-session_depth: 300 books, 113 typed formals, 17 defects, 30 hand-spelled walks, 0 conflicting formals
+session_depth: 300 books, 112 typed formals, 6 defects, 30 hand-spelled walks, 11 open elsewhere, 0 waived, 0 conflicting formals
 ```
 
-Seventeen defects, thirty hand-spelled walks, zero conflicting formals, over
-300 files. Five of the seventeen had never been named: `books/served.lisp`'s
-transit call and the four in `books/owner-config.lisp`.
+**Seventeen defects over 300 files** — the summary line splits them because
+the eleven in `books/owner-invariants.lisp` are recorded in the tool's
+`OPEN_DEFECTS` (they belong to w10/owner-relation), so it prints
+`6 defects ... 11 open elsewhere`. Thirty hand-spelled walks, zero
+conflicting formals. Five of the seventeen had never been named:
+`books/served.lisp`'s transit call and the four in
+`books/owner-config.lisp`. The sixth of the six, `served-tests.lisp:228`, is
+a deliberate wrong-level witness and now carries its waiver.
 
 ## 2. After this lane
 
     python3 tools/session_depth.py
-    # 300 books, 113 typed formals, 0 defects, 13 hand-spelled walks,
-    # 11 open elsewhere, 3 waived, 0 conflicting formals
+    # session_depth: 300 books, 112 typed formals, 0 defects,
+    #   13 hand-spelled walks, 11 open elsewhere, 3 waived, 0 conflicting formals
 
-The eleven are `books/owner-invariants.lisp`'s, recorded in the tool's
-`OPEN_DEFECTS` with their owner (w10/owner-relation) and their fix; an entry
-that stops matching fails the check. The three waived are deliberate
-wrong-level witnesses in `tests/acl2/served-tests.lisp`, each carrying its
-reason on a `; session-depth-ok:` line. The thirteen walks are in
-`books/owner-invariants.lisp` (nine, foreign) and `books/peer-inbound.lisp`,
-`books/nntp-auth.lisp` (four, inside the books that define the projections
-or in `:use` instances that name the expanded term on purpose).
+The eleven are `books/owner-invariants.lisp`'s, recorded with their owner
+and their fix; an entry that stops matching fails the check. The three
+waived are deliberate wrong-level witnesses in
+`tests/acl2/served-tests.lisp`, each carrying its reason on a
+`; session-depth-ok:` line. The thirteen walks are in
+`books/owner-invariants.lisp` (nine, foreign) and in `:use` instances and
+macro definitions that name the expanded term on purpose.
 
 ## 3. The macro conversions changed no term
 

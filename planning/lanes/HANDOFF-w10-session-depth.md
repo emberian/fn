@@ -52,7 +52,7 @@ level passed to a formal at another) — both fail — and **CHAIN** (a walk
 spelled by hand outside the named projections), counted, failed under
 `--strict`.
 
-**On dev `99a348c`: 300 files, 113 typed formals, 17 defects, 30
+**On dev `99a348c`: 300 files, 112 typed formals, 17 defects, 30
 hand-spelled walks, 0 conflicting formals.** The full hit list:
 
 | where | kind | what |
