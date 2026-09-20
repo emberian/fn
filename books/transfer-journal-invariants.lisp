@@ -115,9 +115,11 @@
                   (:instance fn-transfer-add-chunk-preserves-statep
                              (label (fn-tj-label r)) (offset (fn-tj-arg r))
                              (octets (fn-tj-octets r))))
+            ; fn-transfer-add-chunk-result-state-normal-form is
+            ; :rule-classes nil since dep/nntp (7e788c7): it names no rune,
+            ; so it must not appear in a theory expression.
             :in-theory (e/d (fn-tj-transition)
-                            (fn-transfer-add-chunk-result-state-normal-form
-                             fn-transfer-reserve-preserves-statep
+                            (fn-transfer-reserve-preserves-statep
                              fn-transfer-add-chunk-preserves-statep))))))
 
 ; The fold never leaves the kernel's own states: whatever a replay reaches
