@@ -233,6 +233,27 @@ agent's identity, the groups it accepts, and its size bound. The host computes
 none of it — not the Message-ID, not the Injection-Date, not the Path, not the
 injected octets.
 
+**Which clock reading.** The observation `fn-inj-decide` is given is the one
+the host took *for this submission*, not the one the connection pinned when it
+was accepted. RFC 5537 §3.4 makes `Injection-Date` the time of injection, and
+fn derives a generated `Message-ID` from the same reading, so one reading per
+connection would give every submission on a connection the identity of the
+first: the second POST on a connection would be refused as a duplicate
+identity whatever its body. `fn-nntp-post-step` therefore takes two readings —
+`observation`, pinned at accept, which is the reader environment (DATE,
+NEWGROUPS, `fn-nntp-env`), and `injection`, supplied with the article event,
+which is the only one `fn-inj-decide` sees. `books/owner.lisp` supplies the
+owner's current observation on every `fn-own-read`; `tools/run_owner.py` takes
+that reading before each socket chunk. Two submissions on one connection whose
+injection clocks differ in either number receive distinct identities
+(`fn-post-distinct-injection-clocks-give-distinct-identities`, over
+`fn-inj-generated-identity-separates-different-clock-readings`). Under the
+*same* reading the retry rule still holds: the same proto-article injected
+twice is the same article, and — because the generator's only inputs are the
+clock and the configured agent — two different bodies under one reading do
+share a generated Message-ID. That is why the reading must move, and it is
+witnessed both ways in `tests/acl2/nntp-post-tests.lisp`.
+
 The injecting agent generates `Path`, `Injection-Date`, `Injection-Info`, and
 `Message-ID` and `Date` when the proto-article omits them (RFC 5537 §3.4.1
 permits exactly those three omissions). `From`, `Subject` and `Newsgroups`

@@ -351,7 +351,11 @@ through `fn-own-take-submission` and serves readers and POST on one
 listener, w2 and w5; a 240 re-pins the poster's own connection to the
 version that contains its own article and no other connection's pin moves,
 which is a recorded policy choice rather than a consequence of K1 —
-`fn-own-durable-outcome-repins-the-poster`, `specs/nntp.md` §POST),
+`fn-own-durable-outcome-repins-the-poster`, `specs/nntp.md` §POST; the
+connection's pinned clock observation is the reader environment only, while
+the observation an injection is a function of is taken per submission, so a
+connection may post more than once — `specs/nntp.md` §POST, "Which clock
+reading"),
 `tools/run_reader.py` (read-only, answers POST with 440) and `tools/run_store.py` over `host/*.lisp`, over the certified books,
 over the BPA. Its observable trace is the sequence of port events and the
 effects performed: bytes written to a socket, files written and barriered,

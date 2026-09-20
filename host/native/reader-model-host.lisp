@@ -31,7 +31,7 @@
          (clock (if (boundp-global 'fn-reader-clock state)
                     (f-get-global 'fn-reader-clock state)
                   nil))
-         (opened (fn-served-open archive 510 8192 config clock))
+         (opened (fn-served-open archive 510 8192 config clock clock))
          (ran (fn-served-run (fn-served-result-conn opened) chunks)))
     (value (fn-served-reply-octets
             (append (fn-served-result-effects opened)

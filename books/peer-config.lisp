@@ -341,6 +341,30 @@
                                   (fn-cfg-labelp fn-record-string-octets
                                    fn-path-identityp fn-wildmat-parse))))))
 
+; Two facts about `fn-cfg-peerp` that the admissibility obligation below
+; needs and that no rule supplied: the name is an ASCII string, and the row
+; group a peer expands to is far below the delta bound.  Both are local
+; supports; neither theorem statement in this book changed.  (Added by
+; w5/clock-seam: `books/peer-config` failed at
+; FN-CFG-SET-PEER-DELTA-IS-ADMISSIBLE on both boxes, on content identical to
+; dev, blocking the served/owner closure behind it.)
+(local (defthm fn-cfg-peer-name-is-an-ascii-string
+  (implies (fn-cfg-peerp p)
+           (fn-record-ascii-stringp (fn-cfg-peer-name p)))
+  :hints (("Goal" :in-theory (enable fn-cfg-peerp fn-cfg-labelp)))))
+
+(local (defthm fn-cfg-peer-rows-are-few
+  (<= (len (fn-cfg-peer-rows p)) 1024)
+  :rule-classes (:rewrite :linear)
+  :hints (("Goal" :in-theory (enable fn-cfg-peer-rows)))))
+
+(local (defthm fn-cfg-peer-name-octets-are-bounded
+  (implies (fn-cfg-peerp p)
+           (<= (len (fn-record-string-octets (fn-cfg-peer-name p))) 256))
+  :rule-classes (:rewrite :linear)
+  :hints (("Goal" :in-theory (e/d (fn-cfg-peerp fn-cfg-labelp)
+                                  (fn-record-string-octets))))))
+
 (defthm fn-cfg-set-peer-delta-is-admissible
   (implies (fn-cfg-peerp p)
            (equal (fn-cfg-delta-reason v gen stamp reserved ceiling
@@ -348,7 +372,8 @@
                   nil))
   :hints (("Goal" :in-theory (e/d (fn-cfg-deltap fn-cfg-delta-reason
                                    fn-cfg-set-peer-delta fn-cfg-set-peer)
-                                  (fn-cfg-peer-rows fn-cfg-peerp)))))
+                                  (fn-cfg-peer-rows fn-cfg-peerp
+                                   fn-record-string-octets)))))
 
 ; After (:set-peer p) the peers slot holds exactly p's rows under its name:
 ; the upsert replaced the old group and nothing else carries the key.
