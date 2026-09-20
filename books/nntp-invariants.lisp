@@ -320,10 +320,80 @@
                                    fn-nntp-responses-vocabulary)
                                   (fn-nntp-over-response)))))
 
+; RFC 2980 sections 2.6, 2.8 and 2.1.3 and RFC 3977 sections 8.5 and 8.6:
+; the legacy spellings and the two LIST variants they need.  None of them
+; touches the session, and each is closed below so the dispatcher theorems
+; see one rewrite per command rather than a renderer.
+(defthm fn-nntp-list-headers-preserves-session
+  (equal (fn-nntp-result-session (fn-nntp-list-headers session)) session)
+  :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
+                                   fn-nntp-projection-vocabulary
+                                   fn-nntp-responses-vocabulary)
+                                  (fn-nntp-list-headers)))))
+(defthm fn-nntp-xover-range-preserves-session
+  (equal (fn-nntp-result-session (fn-nntp-xover-range session archive token)) session)
+  :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
+                                   fn-nntp-projection-vocabulary
+                                   fn-nntp-responses-vocabulary)
+                                  (fn-nntp-xover-range)))))
+(defthm fn-nntp-xover-response-preserves-session
+  (equal (fn-nntp-result-session (fn-nntp-xover-response session archive args)) session)
+  :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
+                                   fn-nntp-projection-vocabulary
+                                   fn-nntp-responses-vocabulary)
+                                  (fn-nntp-xover-response)))))
+(defthm fn-nntp-hdr-current-preserves-session
+  (equal (fn-nntp-result-session (fn-nntp-hdr-current session archive field legacyp)) session)
+  :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
+                                   fn-nntp-projection-vocabulary
+                                   fn-nntp-responses-vocabulary)
+                                  (fn-nntp-hdr-current)))))
+(defthm fn-nntp-hdr-range-preserves-session
+  (equal (fn-nntp-result-session (fn-nntp-hdr-range session archive field token legacyp)) session)
+  :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
+                                   fn-nntp-projection-vocabulary
+                                   fn-nntp-responses-vocabulary)
+                                  (fn-nntp-hdr-range)))))
+(defthm fn-nntp-hdr-msgid-preserves-session
+  (equal (fn-nntp-result-session (fn-nntp-hdr-msgid session archive field token legacyp)) session)
+  :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
+                                   fn-nntp-projection-vocabulary
+                                   fn-nntp-responses-vocabulary)
+                                  (fn-nntp-hdr-msgid)))))
+(defthm fn-nntp-hdr-command-preserves-session
+  (equal (fn-nntp-result-session (fn-nntp-hdr-command session archive args legacyp)) session)
+  :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
+                                   fn-nntp-projection-vocabulary
+                                   fn-nntp-responses-vocabulary)
+                                  (fn-nntp-hdr-command)))))
+(defthm fn-nntp-hdr-response-preserves-session
+  (equal (fn-nntp-result-session (fn-nntp-hdr-response session archive args)) session)
+  :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
+                                   fn-nntp-projection-vocabulary
+                                   fn-nntp-responses-vocabulary)
+                                  (fn-nntp-hdr-response)))))
+(defthm fn-nntp-xhdr-response-preserves-session
+  (equal (fn-nntp-result-session (fn-nntp-xhdr-response session archive args)) session)
+  :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
+                                   fn-nntp-projection-vocabulary
+                                   fn-nntp-responses-vocabulary)
+                                  (fn-nntp-xhdr-response)))))
+(defthm fn-nntp-list-active-times-preserves-session
+  (equal (fn-nntp-result-session (fn-nntp-list-active-times session env args)) session)
+  :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
+                                   fn-nntp-projection-vocabulary
+                                   fn-nntp-responses-vocabulary)
+                                  (fn-nntp-list-active-times)))))
+
 (in-theory (disable fn-nntp-date-response fn-nntp-mode-response
                     fn-nntp-newgroups-response fn-nntp-list-overview-fmt
                     fn-nntp-over-current fn-nntp-over-range
-                    fn-nntp-over-msgid fn-nntp-over-response))
+                    fn-nntp-over-msgid fn-nntp-over-response
+                    fn-nntp-list-headers fn-nntp-xover-range
+                    fn-nntp-xover-response fn-nntp-hdr-current
+                    fn-nntp-hdr-range fn-nntp-hdr-msgid fn-nntp-hdr-command
+                    fn-nntp-hdr-response fn-nntp-xhdr-response
+                    fn-nntp-list-active-times))
 
 (defthm fn-nntp-list-response-preserves-session
   (equal (fn-nntp-result-session (fn-nntp-list-response session archive args))
@@ -337,6 +407,16 @@
                                    fn-nntp-list-unmaintained-response
                                    fn-nntp-list-active
                                    fn-nntp-list-newsgroups)))))
+
+(defthm fn-nntp-list-command-preserves-session
+  (equal (fn-nntp-result-session (fn-nntp-list-command session archive env args))
+         session)
+  :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
+                                   fn-nntp-projection-vocabulary
+                                   fn-nntp-responses-vocabulary)
+                                  (fn-nntp-list-command)))))
+
+(in-theory (disable fn-nntp-list-command))
 
 (defthm fn-nntp-capabilities-preserves-session
   (equal (fn-nntp-result-session (fn-nntp-capabilities session)) session)

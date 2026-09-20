@@ -19,7 +19,9 @@ is the matrix. See [implementation status](../docs/implementation.md).
 | Overview | OVER, LIST OVERVIEW.FMT |
 | Compatibility behavior | MODE READER, according to the actual advertised mode |
 | Clock and creation facts | DATE and NEWGROUPS consume an explicit `fn-clock-observationp` and a persisted `fn-nntp-group-factp` list; neither is invented by the reader |
-| Later optional capabilities | IHAVE, NEWNEWS, HDR, streaming, authentication/compression extensions as selected |
+| Header access | HDR, LIST HEADERS |
+| Legacy spellings (RFC 2980) | XOVER (§2.8), XHDR (§2.6), LIST ACTIVE.TIMES (§2.1.3) |
+| Later optional capabilities | IHAVE, NEWNEWS, XPAT, streaming, authentication/compression extensions as selected |
 
 NNT-001: advertise only complete supported bundles and variants. Build a checklist
 of every applicable RFC branch, argument form, response, and state effect.
@@ -59,6 +61,37 @@ fn's reader has no timezone database. Its local time zone **is** Coordinated
 Universal Time, which RFC 3977 §7.3.2 notes the protocol cannot convey; the
 optional GMT token therefore changes nothing and is accepted only where the
 grammar allows it.
+
+## Legacy spellings (RFC 2980)
+
+Real readers -- slrn, tin, older Thunderbird -- send `XOVER` and `XHDR`
+before they will send `OVER` and `HDR`, and some never send the modern
+spelling at all. fn implements them, and implements them as spellings rather
+than as a second implementation:
+
+- `XOVER` calls the same renderer `OVER` calls. `fn-nntp-xover-range` and
+  `fn-nntp-over-range` are proved equal wherever RFC 2980 §2.8.1 and RFC 3977
+  §8.3.1 assign the same response (`fn-nntp-xover-agrees-with-over-on-a-
+  nonempty-range`, `books/nntp-legacy.lisp`); they differ only where the two
+  documents themselves differ, which is 420 against 423 for an empty range.
+  RFC 2980 defines no message-id form, so `XOVER <message-id>` is a syntax
+  error rather than a code §2.8.1 does not list.
+- `XHDR` and `HDR` are one function, `fn-nntp-hdr-command`, with a flag that
+  selects the three things the two documents disagree about: the initial line
+  (221 or 225), the empty-range code (420 or 423), and whether the message-id
+  form labels its line with `0` or with the message-id.
+- Neither carries a capability label. RFC 2980 predates RFC 3977 §3.3 and
+  names none, so a client discovers them by sending them. `HDR` does carry
+  one, and advertising it is a promise about `LIST HEADERS` too (§3.3.2),
+  which is why `LIST HEADERS` stopped answering 503 in the same change.
+
+`LIST ACTIVE.TIMES` reads the same persisted creation facts `NEWGROUPS`
+reads, so §7.6.4's "the results SHOULD be consistent" is true by construction.
+Its third field is the plain text `unattributed`: a configuration record
+records who may reconfigure the node, not a mailbox to attribute a group to,
+and fn does not fabricate one. `LIST NEWSGROUPS` renders an empty
+description for the same reason -- the group table has no description field
+until R5 adds one.
 
 ## Overview projection
 

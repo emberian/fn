@@ -42,6 +42,9 @@
       (fn-nntp-keywordp keyword "BODY")
       (fn-nntp-keywordp keyword "STAT")
       (fn-nntp-keywordp keyword "OVER")
+      (fn-nntp-keywordp keyword "XOVER")
+      (fn-nntp-keywordp keyword "HDR")
+      (fn-nntp-keywordp keyword "XHDR")
       (fn-nntp-keywordp keyword "NEWGROUPS")))
 
 (defun fn-nntp-session-command (session env keyword args)
@@ -82,7 +85,8 @@
       (fn-nntp-single session "501 syntax error")))
    ((fn-nntp-keywordp keyword "LISTGROUP")
     (fn-nntp-listgroup-command session archive args))
-   ((fn-nntp-keywordp keyword "LIST") (fn-nntp-list-response session archive args))
+   ((fn-nntp-keywordp keyword "LIST")
+    (fn-nntp-list-command session archive env args))
    ((fn-nntp-keywordp keyword "NEXT")
     (if (null args) (fn-nntp-next-or-last session archive :next)
       (fn-nntp-single session "501 syntax error")))
@@ -93,6 +97,12 @@
    ((fn-nntp-keywordp keyword "HEAD") (fn-nntp-retrieval session archive :head args))
    ((fn-nntp-keywordp keyword "BODY") (fn-nntp-retrieval session archive :body args))
    ((fn-nntp-keywordp keyword "OVER") (fn-nntp-over-response session archive args))
+   ; RFC 2980 sections 2.8 and 2.6: the legacy spellings of RFC 3977 sections
+   ; 8.3 and 8.5.  Each is one call to the same renderer; the differences are
+   ; the response codes those sections assign, and nothing else.
+   ((fn-nntp-keywordp keyword "XOVER") (fn-nntp-xover-response session archive args))
+   ((fn-nntp-keywordp keyword "HDR") (fn-nntp-hdr-response session archive args))
+   ((fn-nntp-keywordp keyword "XHDR") (fn-nntp-xhdr-response session archive args))
    ((fn-nntp-keywordp keyword "NEWGROUPS")
     (fn-nntp-newgroups-response session archive env args))
    (t (fn-nntp-retrieval session archive :stat args))))
