@@ -22,19 +22,13 @@
                           fn-nntp-vocabulary)))
 (local (in-theory (enable fn-statep fn-articlep fn-pendingp)))
 
-; The consp- and true-listp-backchaining rules books/article.lisp and
-; books/wildmat.lisp export enabled fan every (consp X) and (true-listp X)
-; out through their recursive recognizers (nntp-invariants, same list, with
-; the accumulated-persistence figures); the -is-response-text theorems here
-; ran past 40M prover steps under them on 2026-09-20.  Withdrawn by name; the
-; owning books should withdraw them at their exports (docs/proof-style.md
-; section 8).
-(local (in-theory (disable fn-article-nonempty-true-list-is-consp
-                           fn-article-field-list-true-listp
-                           fn-article-header-bytes-true-listp
-                           fn-article-octet-list-true-listp
-                           fn-wildmat-guard-items-p-true-listp
-                           fn-wildmat-guard-octet-listp-true-listp)))
+; The consp- and true-listp-backchaining rules that ran the -is-response-text
+; theorems here past 40M prover steps on 2026-09-20 are no longer enabled on
+; include: books/article.lisp withdraws them as fn-article-guard-backchaining
+; and books/wildmat.lisp as fn-wildmat-guard-backchaining, exporting each
+; recognizer's shape fact as a :forward-chaining rule instead
+; (docs/proof-style.md section 1).  The book-wide withdrawal that used to
+; stand here is therefore gone.
 
 ; -----------------------------------------------------------------------------
 ; The response grammar
