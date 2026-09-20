@@ -1,8 +1,8 @@
 # Handoff: w2/mutable-owner (C1-05, the mutable service owner)
 
 Worktree `/Users/ember/dev/fn/build/lanes/w2-mutable-owner`, branch
-`w2/mutable-owner`, merged with `dev` c1c8ab1 (b431b94). HEAD: see the last
-section.
+`w2/mutable-owner`, merged with `dev` c1c8ab1 (b431b94). HEAD: the commit
+carrying this file (the fourth of the lane after the merge).
 
 ## What the owner is
 
@@ -19,9 +19,13 @@ the live node. `specs/owner.md` is the specification.
 
 | Book | Status | Evidence |
 | --- | --- | --- |
-| `books/owner.lisp` | EVIDENCE-PENDING (see last section) | — |
-| `books/owner-invariants.lisp` | EVIDENCE-PENDING | — |
-| `tests/acl2/owner-tests.lisp` | EVIDENCE-PENDING | — |
+| `books/owner.lisp` | CERTIFIED (ACL2 8.7, this laptop, `tools/certify_books.py`) | `build/acl2/certify-20260919T235441Z-24670` |
+| `books/owner-invariants.lisp` | CERTIFIED | `build/acl2/certify-20260920T000958Z-62232` |
+| `tests/acl2/owner-tests.lisp` | CERTIFIED (95 `assert-event`s) | `build/acl2/certify-20260920T000958Z-62232` |
+
+Ledger regenerated (`python3 tools/ledger.py --write`); `make check` green
+(0 owner lints, 0 owner suspects). Nothing in the cluster is open except
+what the last section lists.
 
 Makefile roots sit after `tests/acl2/served-tests` (the owner includes
 `served`, `store-observed` and `clock`).
@@ -70,7 +74,25 @@ globals, no suffix), `fn-owner-open` returns the greeting from the book,
 outcome back through `(:outcome id outcome)`. `tools/run_owner.py`: one
 `bridge.chunk` per `recv`, `Owner.submit` is the served POST seam.
 `run_store.py post --owner` and `post_article` unchanged. Tests:
-`tests/test_owner.py` (4). Python evidence: see the last section.
+`tests/test_owner.py` (4).
+
+Python evidence (`python3 -m unittest tests.test_owner tests.test_reader
+tests.test_reader_partitions tests.test_served_differential`, this laptop,
+dev c1c8ab1 merged): 22 of 28 pass (`test_reader` seed cases 8/8,
+`test_reader_partitions` 7/7, `test_served_differential` 7/7). The six
+`--store` cases (four owner, two reader) FAIL before reaching what they
+test, in two layers, both outside the owner: (1) `run_store.py init`
+crashed on dev, `Store.config_record_path` (`tools/run_store.py:719`, from
+w4/config-records) lacked `@property` while its five call sites use it as
+one; fixed in this tree and posted on the board; (2) with that fixed, the
+store bridge's own startup does not reach a prompt: `(ld
+"host/anchor-host.lisp")` stalls past 900 s after `books/replay`,
+`host/store-host.lisp` and `host/store-node-host.lisp` load, under a 6 to
+8 load average with four foreign certifications holding every ACL2 slot,
+and `books/config{,-invariants,-records}` (loaded by `host/config-host.lisp`)
+have no certificates in this worktree (`make certs-install` lists them
+uncached). Logs: the scratchpad `pytests.log`, `pytests2.log`. Rerun the
+six on a quiet box after `make certs-install` publishes the config books.
 
 ## What the server wave still needs from this lane
 
@@ -97,3 +119,7 @@ outcome back through `(:outcome id outcome)`. `tools/run_owner.py`: one
 - Carry `fn-served-connp` per connection in `fn-own-relation` so the owner
   inherits `fn-served-step-effects-are-typed` (needs the served port to
   refuse a non-octet read).
+- Python evidence for the `--store` paths: the two host defects above
+  (`config_record_path`, fixed here; the bridge startup stall and the
+  uncertified config books, tooling) have to clear before the owner's four
+  socket tests and the two store-reader tests can run to a verdict.
