@@ -1110,6 +1110,56 @@
                                    fn-nntp-observed-year
                                    fn-nntp-keywordp)))))
 
+; -----------------------------------------------------------------------------
+; XPAT (RFC 2980 section 2.9).  Its block is a sublist of HDR's, but the
+; effect typing is proved directly from the cleanliness theorem the legacy
+; book states for it (fn-nntp-xpat-lines-are-clean), exactly as the HDR
+; block is: no theorem here depends on the subsetp relation.
+
+(defthm fn-nntp-xpat-block-is-block-text
+  (fn-nntp-block-textp
+   (fn-nntp-xpat-lines-for-numbers field patterns group numbers articles))
+  :hints (("Goal" :use (fn-nntp-xpat-lines-are-clean
+                        (:instance fn-nntp-hdr-clean-fields-are-clean-lines
+                                   (lines (fn-nntp-xpat-lines-for-numbers
+                                           field patterns group numbers
+                                           articles))))
+           :in-theory (disable fn-nntp-xpat-lines-are-clean
+                               fn-nntp-hdr-clean-fields-are-clean-lines
+                               fn-nntp-xpat-lines-for-numbers))))
+
+(defthm fn-nntp-effects-xpat-range
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects
+    (fn-nntp-xpat-range session archive field patterns token)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-xpat-range)
+                                  (fn-nntp-xpat-lines-for-numbers
+                                   fn-nntp-group-range-numbers
+                                   fn-nntp-parse-range fn-nntp-single)))))
+
+(defthm fn-nntp-effects-xpat-msgid
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects
+    (fn-nntp-xpat-msgid session archive field patterns token)))
+  :hints (("Goal" :use ((:instance fn-nntp-hdr-labelled-line-is-block-text))
+           :in-theory (e/d (fn-nntp-xpat-range)
+                           (fn-nntp-hdr-labelled-line-is-block-text
+                            fn-nntp-hdr-content fn-nntp-hdr-line
+                            fn-nntp-hdr-octets fn-nov-scrub
+                            fn-nntp-xpat-matchesp
+                            fn-find-article fn-nntp-single))
+           :expand ((fn-nntp-xpat-msgid session archive field patterns token)))))
+
+(defthm fn-nntp-effects-xpat-response
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects (fn-nntp-xpat-response session archive args)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-xpat-response)
+                                  (fn-nntp-xpat-range fn-nntp-xpat-msgid
+                                   fn-nntp-xpat-join fn-wildmat-parse
+                                   fn-nntp-hdr-fieldp fn-nntp-parse-range
+                                   fn-nntp-message-id-tokenp
+                                   fn-nntp-single)))))
+
 (in-theory (disable fn-nntp-listgroup-command
                     fn-nntp-current-retrieval
                     fn-nntp-number-retrieval
@@ -1128,7 +1178,9 @@
                     fn-nntp-xover-response fn-nntp-hdr-current
                     fn-nntp-hdr-range fn-nntp-hdr-msgid fn-nntp-hdr-command
                     fn-nntp-hdr-response fn-nntp-xhdr-response
-                    fn-nntp-list-active-times))
+                    fn-nntp-list-active-times
+                    fn-nntp-xpat-range fn-nntp-xpat-msgid
+                    fn-nntp-xpat-response))
 
 (defthm fn-nntp-effects-list-command
   (implies (fn-nntp-projectionp archive)
@@ -1172,6 +1224,7 @@
                  fn-nntp-list-response fn-nntp-next-or-last
                  fn-nntp-retrieval fn-nntp-single
                  fn-nntp-over-response fn-nntp-newgroups-response
+                 fn-nntp-xpat-response
                  fn-nntp-token-string)))))
 
 (defthm fn-nntp-command-effects-well-formed
