@@ -16,6 +16,7 @@ A served POST is a submission the book queued on the connection's read;
 uses and feeds the observed word back, and the book renders the 240 or 441.
 """
 import argparse
+import hashlib
 import os
 import selectors
 import signal
@@ -28,9 +29,10 @@ from run_store import (ACL2_RECOVER_BASE_SECONDS, ACL2_RECOVER_PER_RECORD_SECOND
                        Acl2Store, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, Store,
                        StoreError, StoreFault, StoreIndeterminate, UsageParser,
                        acl2_nat, acl2_octets, acl2_result, acl2_symbol, conservative_charge,
-                       durable_post, exit_code_for, group_codes, post_article,
-                       validate_post_boundary)
+                       durable_post, exit_code_for, group_codes, metadata,
+                       post_article, validate_post_boundary)
 from run_reader import acl2_boolean, acl2_octet_list
+from run_feed import Journal, Session, TRAILER_BYTES  # the FNFD layout and the client half
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAX_READ = 512
@@ -175,21 +177,139 @@ class Acl2Owner(Acl2Store):
         return reply, closing, submitted
 
     def take(self):
-        """The writer step: `taken' with one submission now in flight, or `idle'."""
-        return self._symbol("(fn-owner-take state)")
+        """The writer step: `taken', `taken-transit' or `idle'."""
+        return self._symbol_any("(fn-owner-take state)")
 
     def inflight(self):
         """The submission in flight: (cid, msgid, octets, groups), all ACL2's."""
         cid = self._nat("(@ fn-owner-submit-id)")
         msgid = bytes(acl2_octet_list(self.call("(@ fn-owner-submit-msgid)")))
         octets = bytes(acl2_octet_list(self.call("(@ fn-owner-submit-octets)")))
+        return cid, msgid, octets, self.submit_groups()
+
+    def submit_groups(self):
+        """The memberships ACL2 staged: the injection decision's for a POST,
+        fn-peer-scope-groups' for a transit transfer, never Python's."""
         count = self._nat("(len (@ fn-owner-submit-groups))")
         if count > 64:
             raise StoreError("ACL2 reported an implausible group count")
-        groups = [bytes(acl2_octet_list(self.call(
+        return [bytes(acl2_octet_list(self.call(
             "(fn-inj-nth {} (@ fn-owner-submit-groups))".format(index))))
             for index in range(count)]
-        return cid, msgid, octets, groups
+
+    def peer_for_address(self, address):
+        """The configured peer this address is, or None: ACL2 reads the record."""
+        name = bytes(acl2_octet_list_any(self.call(
+            "(fn-owner-peer-for-address '" + self.literal(address.encode("utf-8")) +
+            " state)")) or b"")
+        return name.decode("utf-8", "strict") if name else None
+
+    def open_peer(self, peer):
+        """Open a transit connection on the same listener (fn-own-open-peer)."""
+        cid = acl2_symbol_or_nat(self.call(
+            "(fn-owner-open-peer '" + self.literal(peer.encode("utf-8")) + " state)"))
+        if cid is None:
+            return None, b""
+        return cid, bytes(acl2_octet_list(self.call("(@ fn-owner-output)")))
+
+    def transit_decide(self, obligation, subject):
+        """ACL2's transfer decision over the live node, and its memberships.
+
+        Returns (kind, reason). Every check of specs/peering.md 2.2 --
+        scope, loop, history, date, capacity -- is fn-peer-decide-transfer's;
+        this reads its answer.
+        """
+        kind = self._symbol_any("(fn-owner-transit-decide '{} '{} state)".format(
+            self.literal(obligation.encode("utf-8")),
+            self.literal(subject.encode("utf-8"))))
+        reason = self._symbol_any("(fn-owner-transit-reason state)")
+        return kind, reason
+
+    def transit_outcome(self, cid, kind, reason, word):
+        form = "(fn-owner-transit-outcome {} :{} {} :{} state)".format(
+            cid, kind, ":{}".format(reason) if reason != "nil" else "nil", word)
+        if self._symbol_any(form) != "fed":
+            raise StoreError("owner did not accept the transit outcome")
+        return bytes(acl2_octet_list(self.call("(@ fn-owner-output)")))
+
+    # -- the outbound feed (books/owner-feed.lisp) ------------------------
+    #
+    # Every decision below is the book's: which peers an article goes to,
+    # when an offer may be sent, what the line is, what a reply code means
+    # and what each journal record is.  This class marshals and nothing else.
+
+    def feed_configure(self):
+        """Rebuild the feed table from the live configuration; the peers."""
+        return self._names("(fn-owner-feed-configure state)")
+
+    def feed_peers(self):
+        return self._names("(fn-owner-feed-peers state)")
+
+    def feed_endpoint(self, peer):
+        literal = "'" + self.literal(peer.encode("utf-8"))
+        host = bytes(acl2_octet_list_any(self.call(
+            "(fn-owner-feed-host {} state)".format(literal))) or b"")
+        port = self._nat("(fn-owner-feed-port {} state)".format(literal))
+        return (host.decode("utf-8", "strict") if host else None), port
+
+    def feed_streamingp(self, peer):
+        return acl2_boolean(self.call("(fn-owner-feed-streamingp '{} state)".format(
+            self.literal(peer.encode("utf-8")))))
+
+    def feed_queue_length(self, peer):
+        return self._nat("(fn-owner-feed-queue-length '{} state)".format(
+            self.literal(peer.encode("utf-8"))))
+
+    def feed_connect(self, peer, conn):
+        return self._symbol_any("(fn-owner-feed-connect '{} {} state)".format(
+            self.literal(peer.encode("utf-8")),
+            "nil" if conn is None else str(conn)))
+
+    def feed_tick(self, peer, monotonic):
+        return self._symbol_any("(fn-owner-feed-tick '{} {} state)".format(
+            self.literal(peer.encode("utf-8")), monotonic))
+
+    def feed_octets(self, peer, line, monotonic):
+        return self._symbol_any("(fn-owner-feed-octets '{} '{} {} state)".format(
+            self.literal(peer.encode("utf-8")), self.literal(line), monotonic))
+
+    def feed_frames(self):
+        """The FNFD frames the last feed call authorized, sealed here.
+
+        `fn-feed-encode' takes the trailer as an argument and ACL2 built each
+        frame with a zero one, so the host hashes the protected prefix and
+        appends the real digest (A-CRYPTO).  Python chooses no field and no
+        bound; it slices at a constant the book fixed.
+        """
+        count = self._nat("(len (@ fn-owner-feed-frames))")
+        frames = []
+        for index in range(count):
+            frame = bytes(acl2_octet_list(self.call(
+                "(fn-frame-item {} (@ fn-owner-feed-frames))".format(index))))
+            protected = frame[:-TRAILER_BYTES]
+            frames.append(protected + hashlib.sha256(protected).digest())
+        return frames
+
+    def feed_record_peers(self):
+        return self._names("(fn-owner-feed-record-peers state)")
+
+    def feed_command(self):
+        return bytes(acl2_octet_list_any(self.call(
+            "(fn-owner-feed-command state)")) or b"")
+
+    def feed_replay_frame(self, peer, frame):
+        digest = hashlib.sha256(frame[:-TRAILER_BYTES]).digest()
+        return self._symbol_any("(fn-owner-feed-replay-frame '{} '{} '{} state)".format(
+            self.literal(peer.encode("utf-8")), self.literal(frame),
+            self.literal(digest)))
+
+    def feed_restart(self):
+        return self._nat("(fn-owner-feed-restart state)")
+
+    def _symbol_any(self, form):
+        body = acl2_result(self.call(form))
+        text = body.decode("ascii", "replace").strip().lower()
+        return text[1:] if text.startswith(":") else text
 
     def outcome(self, cid, word):
         """Feed the observed word back; the book renders the reply octets."""
@@ -230,6 +350,16 @@ class Clock:
     def __init__(self, error_ms):
         self.error_ms = error_ms
 
+    @staticmethod
+    def milliseconds():
+        """The monotonic reading the feed stamps its records and ticks with.
+
+        The same reading fn-clock-observation takes in `observe`; the feed's
+        contact window and its backoff deadline are both in these units
+        (books/scheduler.lisp, fn-sched-contact-holdsp).
+        """
+        return time.monotonic_ns() // 1_000_000
+
     def observe(self, bridge):
         monotonic_ms = time.monotonic_ns() // 1_000_000
         wall_ms = max(0, (time.time_ns() - DTN_EPOCH_NS) // 1_000_000)
@@ -260,6 +390,33 @@ def tls_context(cert, key):
     return context
 
 
+class Feed:
+    """One configured peer's outbound client connection and its FNFD journal.
+
+    The feed machine is in ACL2 (books/peer-feed.lisp under
+    books/owner-feed.lisp); this object holds the socket, the read buffer and
+    the append-only journal file, and nothing else.  Three things here are
+    the host's and are named because of the "one owner per decision" rule:
+    opening the TCP connection, the RFC 3977 section 3.1.1 dot stuffing of an
+    article block (`Session.send_block`), and the greeting plus `MODE STREAM`
+    handshake, which is transport setup before the feed machine has a
+    connection at all -- `fn-feed-observe` never sees a 200 or a 203.
+    """
+
+    def __init__(self, peer, journal):
+        self.peer = peer
+        self.journal = journal
+        self.session = None
+        self.conn_id = None
+        self.pending_article = b""
+
+    def close(self):
+        if self.session is not None:
+            self.session.close()
+        self.session = None
+        self.conn_id = None
+
+
 class Owner:
     def __init__(self, store, bridge, records, clock, tls=None):
         self.store = store
@@ -269,6 +426,8 @@ class Owner:
         self.tls = tls
         self.selector = selectors.DefaultSelector()
         self.connections = {}
+        self.feeds = {}
+        self.feed_next_conn = 1
         self.stopping = False
 
     # -- NNTP connections -------------------------------------------------
@@ -295,7 +454,17 @@ class Owner:
         # READER environment (DATE, NEWGROUPS).  The injection clock is taken
         # per read in serve(), not here.
         self.clock.observe(self.bridge)
-        cid, greeting = self.bridge.open()
+        # The role of a connection is decided here, from the peer table, and
+        # never from anything the client says (specs/peering.md 1.1): the
+        # source address is matched against the configured records' auth
+        # slots by ACL2, and a match opens a transit connection on this same
+        # listener.  `(:principal id)` is reserved and matches nothing yet.
+        peer = None
+        try:
+            peer = self.bridge.peer_for_address(sock.getpeername()[0])
+        except (OSError, StoreError):
+            peer = None
+        cid, greeting = self.bridge.open_peer(peer) if peer else self.bridge.open()
         if cid is None:
             # The configured bound is reached; the owner installed nothing.
             sock.close()
@@ -379,10 +548,16 @@ class Owner:
         (fn-own-durable-reply-names-a-durable-record: 240 needs a consumed
         completion after the take).
         """
-        while self.bridge.take() == "taken":
+        while True:
+            taken = self.bridge.take()
+            if taken not in ("taken", "taken-transit"):
+                break
             cid, msgid, payload, groups = self.bridge.inflight()
-            word = self.attempt(msgid, payload, groups)
-            reply = self.bridge.outcome(cid, word)
+            if taken == "taken-transit":
+                reply = self.transit(cid, msgid, payload)
+            else:
+                word = self.attempt(msgid, payload, groups)
+                reply = self.bridge.outcome(cid, word)
             for conn in self.connections.values():
                 if conn.cid == cid:
                     conn.outbuf += reply
@@ -424,6 +599,28 @@ class Owner:
                 return "uncertain"
             return word
 
+    def transit(self, cid, msgid, payload):
+        """One transit transfer: ACL2 decides, the store commits, ACL2 replies.
+
+        The decision is fn-peer-decide-transfer over the LIVE node (the
+        offer was advisory, RFC 4644 2.4.2); a decision that is not :want
+        ends here with no attempt and the reply the decision names.  On
+        :want the article goes through the SAME durable path a POST takes
+        (fn-own-take-installs-the-queued-submission-whatever-it-carries),
+        and the word observed there is fed back; three outcomes stay
+        distinct on the wire as 235/239, 437/439 and 436-and-close.
+        """
+        obligation, subject, unused_evidence = metadata(msgid, payload)
+        try:
+            kind, reason = self.bridge.transit_decide(obligation, subject)
+        except StoreError as error:
+            print("owner: transit decision failed: {}".format(error), file=sys.stderr)
+            return self.bridge.transit_outcome(cid, "defer", "busy", "uncertain")
+        if kind != "want":
+            return self.bridge.transit_outcome(cid, kind, reason, "refused")
+        word = self.attempt(msgid, payload, self.bridge.submit_groups())
+        return self.bridge.transit_outcome(cid, "want", "nil", word)
+
     def rearm(self, conn):
         events = 0
         if conn.reading and not conn.closing:
@@ -436,6 +633,124 @@ class Owner:
             self.selector.modify(conn.sock, events, conn)
         except (KeyError, ValueError):
             pass
+
+    # -- the outbound feed --------------------------------------------------
+    def feed_start(self):
+        """Replay every peer's journal, fence it, then allow commands.
+
+        specs/peering.md 3.3: the journal is folded through the feed machine
+        FIRST, then one (:feed-restart peer) record is written and the feed
+        is restarted, and only then may an offer go out.  A restart returns
+        every in-flight entry to :queued with its attempt retired, so the
+        next command for it is a CHECK or an IHAVE and never a blind
+        TAKETHIS -- which is what lets the peer's own history (435/438)
+        absorb the one retransmission a lost reply can cause.
+        """
+        peers = self.bridge.feed_configure()
+        for peer in peers:
+            journal = Journal(self.store.root, peer.encode("utf-8"))
+            replayed = 0
+            for frame in journal.records():
+                if self.bridge.feed_replay_frame(peer, frame) == "ok":
+                    replayed += 1
+            self.feeds[peer] = Feed(peer, journal)
+            print("FEED {} replayed {}".format(peer, replayed), flush=True)
+        if peers:
+            self.bridge.feed_restart()
+            self.feed_flush()
+
+    def feed_flush(self):
+        """Durable before the effect: append what the last call authorized."""
+        frames = self.bridge.feed_frames()
+        if not frames:
+            return
+        peers = self.bridge.feed_record_peers()
+        for peer, frame in zip(peers, frames):
+            feed = self.feeds.get(peer)
+            if feed is not None:
+                feed.journal.append(frame)
+
+    def feed_dial(self, feed):
+        host, port = self.bridge.feed_endpoint(feed.peer)
+        if not host or not port:
+            return False
+        try:
+            session = Session(host, port, 5.0)
+        except OSError:
+            return False
+        if self.bridge.feed_streamingp(feed.peer):
+            session.send(b"MODE STREAM\r\n")
+            session.line()
+        feed.session = session
+        feed.conn_id = self.feed_next_conn
+        self.feed_next_conn += 1
+        self.bridge.feed_connect(feed.peer, feed.conn_id)
+        session.sock.setblocking(False)
+        self.selector.register(session.sock, selectors.EVENT_READ,
+                               ("feed", feed.peer))
+        return True
+
+    def feed_drop(self, feed):
+        if feed.session is not None:
+            try:
+                self.selector.unregister(feed.session.sock)
+            except (KeyError, ValueError):
+                pass
+        feed.close()
+        self.bridge.feed_connect(feed.peer, None)
+
+    def feed_write(self, feed, command):
+        """The bytes one feed decision authorized, after its records."""
+        if not command:
+            return
+        head, _, body = command.partition(b"\r\n")
+        if head.startswith(b"TAKETHIS") or head.startswith(b"CHECK") \
+                or head.startswith(b"IHAVE"):
+            feed.session.send(head + b"\r\n")
+            if body:
+                feed.session.send_block(body)
+        else:
+            feed.session.send_block(command)
+
+    def feed_poll(self):
+        now = self.clock.milliseconds()
+        for feed in list(self.feeds.values()):
+            if feed.session is None:
+                if self.bridge.feed_queue_length(feed.peer) > 0:
+                    self.feed_dial(feed)
+                continue
+            try:
+                if self.bridge.feed_tick(feed.peer, now) == "offer":
+                    self.feed_flush()
+                    self.feed_write(feed, self.bridge.feed_command())
+            except OSError:
+                self.feed_drop(feed)
+
+    def feed_read(self, peer):
+        feed = self.feeds.get(peer)
+        if feed is None or feed.session is None:
+            return
+        try:
+            chunk = feed.session.sock.recv(MAX_READ)
+        except (BlockingIOError, InterruptedError):
+            return
+        except OSError:
+            self.feed_drop(feed)
+            return
+        if not chunk:
+            self.feed_drop(feed)
+            return
+        feed.session.buffer += chunk
+        now = self.clock.milliseconds()
+        while b"\r\n" in feed.session.buffer:
+            line, feed.session.buffer = feed.session.buffer.split(b"\r\n", 1)
+            try:
+                self.bridge.feed_octets(peer, line, now)
+                self.feed_flush()
+                self.feed_write(feed, self.bridge.feed_command())
+            except OSError:
+                self.feed_drop(feed)
+                return
 
     # -- control channel --------------------------------------------------
     def accept_control(self, listener):
@@ -534,15 +849,21 @@ class Owner:
     def run(self, nntp_listener, control_listener):
         self.selector.register(nntp_listener, selectors.EVENT_READ, "nntp")
         self.selector.register(control_listener, selectors.EVENT_READ, "control")
+        self.feed_start()
         while not self.stopping:
-            for key, mask in self.selector.select(timeout=1.0):
+            for key, mask in self.selector.select(timeout=0.2):
                 if key.data == "nntp":
                     self.accept_nntp(nntp_listener)
                 elif key.data == "control":
                     self.accept_control(control_listener)
+                elif isinstance(key.data, tuple) and key.data[0] == "feed":
+                    self.feed_read(key.data[1])
                 else:
                     if key.fileobj in self.connections:
                         self.serve(key.data, mask)
+            self.feed_poll()
+        for feed in list(self.feeds.values()):
+            feed.close()
         return EXIT_OK
 
 

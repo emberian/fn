@@ -616,6 +616,45 @@ fi
             "the injected uncertain publication {} is asserted in neither direction: a "
             "postpublish fault is indeterminate by construction (D13), and a lab that "
             "asserted it either way would be asserting a coin toss.".format(uncertain))
+        self.fn_peer_record()
+
+    def fn_peer_record(self):
+        """The peer record that makes INN a peer of this fn node.
+
+        Without it the fn node answers INN's IHAVE with 502 (RFC 3977 3.2.1:
+        recognized, not permitted), because a connection is a peer connection
+        only when its source resolves to a configured record at accept
+        (specs/peering.md 1.1).  The record must be written while no owner
+        holds the store, which is why it is here and not after start_fn.
+        """
+        probe = self.sh("peer record CLI", self.cd(
+            "python3 tools/run_store.py --store /nonexistent peer --help "
+            ">/dev/null 2>&1 && echo STORE-PEER || echo NONE"), expect=None)
+        if "STORE-PEER" not in probe.output:
+            self.facts["peer record"] = "no CLI on this commit"
+            self.skip("fn peer record for INN",
+                      "run_store.py peer add (specs/peering.md 1.2, (:set-peer record))",
+                      "peer record: not available on this tree, so the fn node resolves "
+                      "no connection to a peer and every transit command below is "
+                      "answered as it would be for a reader.")
+            return
+        added = self.sh("fn peer record for INN", self.cd(self.fn(
+            "--store {} peer add innA --path-identity {} --nntp 127.0.0.1:{} "
+            "--inbound-groups '{}' --outbound-groups '{}' --streaming "
+            "--source-address 127.0.0.1".format(
+                self.store, INN_PATH_IDENTITY, self.inn_port,
+                GROUPS[0].split(".")[0] + ".*", GROUPS[0].split(".")[0] + ".*")),),
+            timeout=900, expect=None)
+        listing = self.sh("fn peer list", self.cd(self.fn(
+            "--store {} peer list".format(self.store))), timeout=900, expect=None)
+        self.facts["peer record"] = (listing.first_line or "(no peer line)")
+        if added.rc != 0 or "innA" not in listing.output:
+            self.gaps.append(
+                "the fn node has no peer record for INN (`peer add` exit {}), so its "
+                "listener resolves INN's address to no peer and answers the transit "
+                "commands as a reader: every transit result below is about an "
+                "unconfigured connection, not about peering."
+                .format(added.rc))
 
     def start_fn(self, tag="main") -> bool:
         if self.server_template:

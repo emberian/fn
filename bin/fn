@@ -441,6 +441,35 @@ def command_capacity(settings, args):
     return delegate(run_store.command_capacity, namespace,
                     "capacity {}".format(args.capacity))
 
+def command_peer(settings, args):
+    """`fn peer add|remove|list`: the peer table, as configuration records.
+
+    A peer delta is a configuration record like a group delta, so it needs
+    the writer lock and the owner must be stopped for `add` and `remove`;
+    `list` reads the replayed configuration and runs against a live owner's
+    store read-only.  Every field of the record is decided by ACL2
+    (`fn-store-cfg-set-peer`, host/store-node-host.lisp); this function
+    carries the operator's words and the exit code.
+    """
+    if args.action in ("add", "remove"):
+        if not args.name:
+            return EXIT_USAGE, "peer {} needs a peer name".format(args.action)
+        control = settings.control()
+        if owner_probe(control) is not None:
+            return EXIT_REFUSED, ("peer {} {} an owner is live on {}; a configuration record "
+                                  "needs the writer lock, so stop the service first"
+                                  .format(args.action, args.name, control))
+    namespace = SimpleNamespace(
+        store=settings.require_store(), action=args.action, name=args.name,
+        path_identity=args.path_identity, nntp=args.nntp, bp=args.bp,
+        inbound_groups=args.inbound_groups, inbound_max_octets=args.inbound_max_octets,
+        inbound_max_inflight=args.inbound_max_inflight,
+        outbound_groups=args.outbound_groups, streaming=args.streaming,
+        max_queue=args.max_queue, backoff_ms=args.backoff_ms,
+        source_address=args.source_address, principal=args.principal)
+    return delegate(run_store.command_peer, namespace,
+                    "peer {} {}".format(args.action, args.name or ""))
+
 
 def command_status(settings, args):
     """Generation, article count, last anchor, and whether an owner is live.
@@ -503,7 +532,7 @@ def toml_quote(text):
     return '"{}"'.format(text)
 
 
-def command_principal(settings, args):
+def _principal_set_password(settings, args):
     """`fn principal set-password NAME` -- an RFC 4643 AUTHINFO login.
 
     The secret is stored as the operator typed it.  It is NOT a digest, and
@@ -513,8 +542,6 @@ def command_principal(settings, args):
     ACL2 compares, which AGENTS.md forbids.  See OB-AUTH-DIGEST in
     specs/nntp-audit.md.  The file is written 0600 and the command says so.
     """
-    if args.principal_command != "set-password":
-        return EXIT_REFUSED, "unknown principal command {!r}".format(args.principal_command)
     name = args.name
     if not name or not all(33 <= ord(c) <= 126 for c in name):
         return EXIT_REFUSED, ("a login name is printable US-ASCII with no space, "
@@ -588,6 +615,44 @@ def command_anchor(settings, args):
 
 
 # -----------------------------------------------------------------------------
+# Statements and principals (specs/substrate-transport.md sections 1 and 5)
+#
+# Every value below is computed by an ACL2 session over books/stx-*: the id,
+# the field value, the verdict and its rendering.  This file marshals
+# arguments and prints what the session decided; it derives nothing.
+
+
+def command_statement(settings, args):
+    from tools import stx
+    arguments = argparse.Namespace(**vars(args))
+    if args.action == "sign":
+        return delegate(stx.sign, arguments, "statement sign")
+    if args.action == "attach":
+        return delegate(stx.attach, arguments, "statement attach")
+    if args.action == "show":
+        return delegate(stx.show, arguments, "statement show")
+    return delegate(stx.verify, arguments, "statement verify")
+
+
+def command_principal(settings, args):
+    if args.action == "set-password":
+        return _principal_set_password(settings, args)
+    from tools import stx
+    root = Path(settings.store) / "principals"
+    if args.action == "new":
+        root.mkdir(parents=True, exist_ok=True)
+        code, summary = delegate(stx.principal_new,
+                                 argparse.Namespace(seed=args.seed, token=args.token),
+                                 "principal new")
+        return code, summary
+    names = sorted(path.name for path in root.glob("*.principal")) if root.is_dir() else []
+    for name in names:
+        print("{} {}".format(name[:-len(".principal")],
+                             (root / name).read_text().strip()))
+    return EXIT_OK, "principal list count={}".format(len(names))
+
+
+# -----------------------------------------------------------------------------
 # Command line
 
 
@@ -597,14 +662,6 @@ def build_parser():
                         help="configuration file (default: ./fn.toml)")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    principal = sub.add_parser(
-        "principal", help="AUTHINFO logins (RFC 4643)")
-    principal.add_argument("principal_command", choices=("set-password",))
-    principal.add_argument("name", help="the AUTHINFO USER name")
-    principal.add_argument("--password", help="the secret; omitted, it is prompted for")
-    principal.add_argument("--principal", help="the 32-octet principal id, 64 hex digits")
-    principal.add_argument("--posting", dest="posting", action="store_true", default=True)
-    principal.add_argument("--no-posting", dest="posting", action="store_false")
     init = sub.add_parser("init", help="initialize a store and write the configuration")
     init.add_argument("--store", help="store root (overrides [store] path)")
     init.add_argument("--group", action="append", help="a group the new store serves")
@@ -636,6 +693,53 @@ def build_parser():
 
     capacity = sub.add_parser("capacity", help="set the retention capacity")
     capacity.add_argument("capacity", type=int)
+    statement = sub.add_parser(
+        "statement",
+        help="sign, show or verify an FN-Statement (exit 0 verified, "
+             "3 unverified, 4 absent, 2 no verdict)")
+    statement.add_argument("action", choices=("sign", "attach", "show", "verify"))
+    statement.add_argument("--payload", help="sign: the signed payload octets")
+    statement.add_argument("--seed", help="sign: the 32-octet seed, hex")
+    statement.add_argument("--token", default="fn", help="sign: the principal token")
+    statement.add_argument("--incarnation", type=int, default=0)
+    statement.add_argument("--sequence", type=int, default=0)
+    statement.add_argument("--kind", default="article",
+                           choices=("article", "policy", "succession", "receipt"))
+    statement.add_argument("--ed25519", action="store_true",
+                           help="sign: also print a real signature over the preimage")
+    statement.add_argument("--field", help="show: the field value or header line")
+    statement.add_argument("--article", help="verify: the received article octets")
+    statement.add_argument("--keyring", help="verify: the node keyring file")
+    statement.add_argument("--generation", type=int, default=0)
+
+    principal = sub.add_parser("principal", help="derive or list principals; AUTHINFO logins (RFC 4643)")
+    principal.add_argument("action", choices=("new", "list", "set-password"))
+    principal.add_argument("name", nargs="?", help="set-password: the AUTHINFO USER name")
+    principal.add_argument("--password", help="set-password: the secret; omitted, it is prompted for")
+    principal.add_argument("--seed", help="new: the 32-octet seed, hex")
+    principal.add_argument("--token", default="fn")
+    principal.add_argument("--store", help="store root (overrides [store] path)")
+    principal.add_argument("--principal", help="the 32-octet principal id, 64 hex digits")
+    principal.add_argument("--posting", dest="posting", action="store_true", default=True)
+    principal.add_argument("--no-posting", dest="posting", action="store_false")
+
+    peer = sub.add_parser("peer", help="add, remove or list a transit peer")
+    peer.add_argument("action", choices=("add", "remove", "list"))
+    peer.add_argument("name", nargs="?", default="")
+    peer.add_argument("--path-identity",
+                      help="the RFC 5537 path-identity this peer prepends (default: the name)")
+    peer.add_argument("--nntp", help="HOST:PORT of the peer's NNTP listener")
+    peer.add_argument("--bp", help="the peer's BP endpoint id (instead of --nntp)")
+    peer.add_argument("--inbound-groups", help="wildmat of what this peer may feed us")
+    peer.add_argument("--inbound-max-octets", type=int, default=1048576)
+    peer.add_argument("--inbound-max-inflight", type=int, default=16)
+    peer.add_argument("--outbound-groups", help="wildmat of what we feed this peer")
+    peer.add_argument("--streaming", action="store_true",
+                      help="offer with CHECK/TAKETHIS (RFC 4644) rather than IHAVE")
+    peer.add_argument("--max-queue", type=int, default=1024)
+    peer.add_argument("--backoff-ms", type=int, default=1000)
+    peer.add_argument("--source-address", help="the address this peer connects from")
+    peer.add_argument("--principal", help="reserved: a keyring principal id")
 
     status = sub.add_parser("status", help="generation, articles, anchor, owner liveness")
     status.add_argument("--control", help="control socket path")
@@ -677,8 +781,15 @@ def overrides(settings, args):
 COMMANDS = {"init": command_init, "run": command_run, "post": command_post,
             "principal": command_principal,
             "group": command_group, "capacity": command_capacity,
-            "status": command_status,
-            "recover": command_recover, "anchor": command_anchor}
+            "peer": command_peer, "status": command_status,
+            "recover": command_recover, "anchor": command_anchor,
+            "statement": command_statement}
+
+# A verdict is not a durability outcome, so `statement` does not borrow the
+# store's words: 3 is "unverified" here and "uncertain" there, and the two
+# are reported with different vocabulary rather than the same number meaning
+# two things (D13, three outcomes distinct all the way out).
+STATEMENT_WORDS = {0: "verified", 2: "no-verdict", 3: "unverified", 4: "absent"}
 
 
 def main(argv=None):
@@ -689,7 +800,8 @@ def main(argv=None):
         code, summary = COMMANDS[args.command](settings, args)
     except (StoreError, OSError, UnicodeError) as error:
         code, summary = exit_code_for(error), "{} {}".format(args.command, error)
-    print("{} {}".format(OUTCOME.get(code, "fault"), summary), file=sys.stderr, flush=True)
+    words = STATEMENT_WORDS if args.command == "statement" else OUTCOME
+    print("{} {}".format(words.get(code, "fault"), summary), file=sys.stderr, flush=True)
     return code
 
 

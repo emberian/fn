@@ -30,6 +30,7 @@
 
 (in-package "ACL2")
 (include-book "cbor")
+(include-book "defrecord")
 
 ; This book is the schema-0 codec over the CBOR primitives, so it opens their
 ; definitions locally.  CBOR results stay opaque: the record lemmas exported
@@ -144,145 +145,33 @@
 ; total accessors.  Below the withdrawal at the end of this section nothing
 ; opens it; rules are stated in accessor vocabulary.
 
-(defun fn-record-shapep (record)
-  (declare (xargs :guard t))
-  (and (true-listp record) (equal (len record) 10)))
-
-(defun fn-record-sequence (record)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car record)
-       :exec (fn-cbor-ag-car record)))
-
-(defun fn-record-txid (record)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr record))
-       :exec (fn-cbor-ag-car (fn-cbor-ag-cdr record))))
-
-(defun fn-record-generation (record)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr record)))
-       :exec (fn-cbor-ag-car (fn-cbor-ag-cdr (fn-cbor-ag-cdr record)))))
-
-(defun fn-record-msgid (record)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr record))))
-       :exec (fn-cbor-ag-car (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr record))))))
-
-(defun fn-record-payload (record)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr (cdr record)))))
-       :exec (fn-cbor-ag-car (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr record)))))))
-
-(defun fn-record-groups (record)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr record))))))
-       :exec (fn-cbor-ag-car (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr record))))))))
-
-(defun fn-record-obligation-id (record)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr record)))))))
-       :exec (fn-cbor-ag-car (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr record)))))))))
-
-(defun fn-record-content-subject (record)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr record))))))))
-       :exec (fn-cbor-ag-car (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr record))))))))))
-
-(defun fn-record-release-evidence (record)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr record)))))))))
-       :exec (fn-cbor-ag-car (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr record)))))))))))
-
-(defun fn-record-charge (record)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr record))))))))))
-       :exec (fn-cbor-ag-car (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr (fn-cbor-ag-cdr record))))))))))))
-
-(defun fn-record-make (sequence txid generation msgid payload groups
-                                 obligation-id content-subject release-evidence
-                                 charge)
-  (declare (xargs :guard t))
-  (list sequence txid generation msgid payload groups obligation-id
-        content-subject release-evidence charge))
-
-(defthm fn-record-shapep-of-fn-record-make
-  (fn-record-shapep (fn-record-make sequence txid generation msgid payload groups obligation-id content-subject release-evidence charge)))
-
-(defthm fn-record-sequence-of-fn-record-make
-  (equal (fn-record-sequence (fn-record-make sequence txid generation msgid payload groups obligation-id content-subject release-evidence charge)) sequence))
-
-(defthm fn-record-txid-of-fn-record-make
-  (equal (fn-record-txid (fn-record-make sequence txid generation msgid payload groups obligation-id content-subject release-evidence charge)) txid))
-
-(defthm fn-record-generation-of-fn-record-make
-  (equal (fn-record-generation (fn-record-make sequence txid generation msgid payload groups obligation-id content-subject release-evidence charge)) generation))
-
-(defthm fn-record-msgid-of-fn-record-make
-  (equal (fn-record-msgid (fn-record-make sequence txid generation msgid payload groups obligation-id content-subject release-evidence charge)) msgid))
-
-(defthm fn-record-payload-of-fn-record-make
-  (equal (fn-record-payload (fn-record-make sequence txid generation msgid payload groups obligation-id content-subject release-evidence charge)) payload))
-
-(defthm fn-record-groups-of-fn-record-make
-  (equal (fn-record-groups (fn-record-make sequence txid generation msgid payload groups obligation-id content-subject release-evidence charge)) groups))
-
-(defthm fn-record-obligation-id-of-fn-record-make
-  (equal (fn-record-obligation-id (fn-record-make sequence txid generation msgid payload groups obligation-id content-subject release-evidence charge)) obligation-id))
-
-(defthm fn-record-content-subject-of-fn-record-make
-  (equal (fn-record-content-subject (fn-record-make sequence txid generation msgid payload groups obligation-id content-subject release-evidence charge)) content-subject))
-
-(defthm fn-record-release-evidence-of-fn-record-make
-  (equal (fn-record-release-evidence (fn-record-make sequence txid generation msgid payload groups obligation-id content-subject release-evidence charge)) release-evidence))
-
-(defthm fn-record-charge-of-fn-record-make
-  (equal (fn-record-charge (fn-record-make sequence txid generation msgid payload groups obligation-id content-subject release-evidence charge)) charge))
-
-(in-theory (disable (:d fn-record-shapep) (:d fn-record-make)
-                    (:d fn-record-sequence)
-                    (:d fn-record-txid)
-                    (:d fn-record-generation)
-                    (:d fn-record-msgid)
-                    (:d fn-record-payload)
-                    (:d fn-record-groups)
-                    (:d fn-record-obligation-id)
-                    (:d fn-record-content-subject)
-                    (:d fn-record-release-evidence)
-                    (:d fn-record-charge)))
-
-(defun fn-record-p (record)
-  (and (fn-record-shapep record)
-       (fn-record-uint32p (fn-record-sequence record))
-       (fn-record-uint32p (fn-record-txid record))
-       (fn-record-uint32p (fn-record-generation record))
-       (fn-record-msgidp (fn-record-msgid record))
-       (fn-record-payloadp (fn-record-payload record))
-       (fn-record-groups-validp (fn-record-groups record))
-       (fn-record-metadata-bytes-p (fn-record-obligation-id record))
-       (fn-record-metadata-bytes-p (fn-record-content-subject record))
-       (fn-record-metadata-bytes-p (fn-record-release-evidence record))
-       (fn-record-uint32p (fn-record-charge record))))
-
-; What opacity takes away (docs/proof-style.md, §1): while the accessors
+; What opacity takes away (docs/proof-style.md, s1): while the accessors
 ; opened, type reasoning gave `(true-listp record)' from `(fn-record-p
 ; record)' for free, and a caller's guard -- `fn-replay-apply-record' takes
-; `(true-listp record)' -- closed on it.  Both facts are exported back here as
+; `(true-listp record)' -- closed on it.  fn-defrecord exports both facts
+; back, and the per-accessor consp family this book used to omit, as
 ; `:forward-chaining' only, so they land in the context when a record is
 ; mentioned and no rule about `consp' or `true-listp' leaves this book as a
 ; rewrite.  An includer that wrote a local bridge for either one deletes it.
 
-(defthm fn-record-shapep-forward-shape
-  (implies (fn-record-shapep record)
-           (and (consp record) (true-listp record)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-record-shapep))))
-
-(defthm fn-record-p-forward-shape
-  (implies (fn-record-p record)
-           (and (consp record) (true-listp record)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :use fn-record-shapep-forward-shape
-           :in-theory (disable fn-record-shapep-forward-shape))))
+(fn-defrecord fn-record
+  :constructor (fn-record-make sequence txid generation msgid payload groups
+                               obligation-id content-subject release-evidence
+                               charge)
+  :fields ((fn-record-sequence fn-record-uint32p)
+           (fn-record-txid fn-record-uint32p)
+           (fn-record-generation fn-record-uint32p)
+           (fn-record-msgid fn-record-msgidp)
+           (fn-record-payload fn-record-payloadp)
+           (fn-record-groups fn-record-groups-validp)
+           (fn-record-obligation-id fn-record-metadata-bytes-p)
+           (fn-record-content-subject fn-record-metadata-bytes-p)
+           (fn-record-release-evidence fn-record-metadata-bytes-p)
+           (fn-record-charge fn-record-uint32p))
+  :recognizer fn-record-p
+  :recognizer-verify-guards nil
+  :car-fn fn-cbor-ag-car
+  :cdr-fn fn-cbor-ag-cdr)
 
 ; -----------------------------------------------------------------------------
 ; Encoder
@@ -547,18 +436,6 @@
 (verify-guards fn-record-groups-validp)
 (verify-guards fn-record-metadata-bytes-p)
 (verify-guards fn-record-uint32p)
-(verify-guards fn-record-shapep)
-(verify-guards fn-record-sequence)
-(verify-guards fn-record-txid)
-(verify-guards fn-record-generation)
-(verify-guards fn-record-msgid)
-(verify-guards fn-record-payload)
-(verify-guards fn-record-groups)
-(verify-guards fn-record-obligation-id)
-(verify-guards fn-record-content-subject)
-(verify-guards fn-record-release-evidence)
-(verify-guards fn-record-charge)
-(verify-guards fn-record-make)
 (verify-guards fn-record-p)
 (verify-guards fn-record-encode-groups)
 (defthm fn-record-cbor-octet-list-true-listp

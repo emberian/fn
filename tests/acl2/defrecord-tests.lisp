@@ -65,6 +65,37 @@
   :extra ((<= (fn-drt-mark-weight x) 1000)))
 
 ; -----------------------------------------------------------------------------
+; 4. A recognizer relative to context the record does not carry, the
+; `fn-articlep'/`fn-pendingp' shape: `:recognizer-formals' prepends the
+; context, the record variable stays `x' and stays last, and the forward fact
+; carries the same formals.  `:recognizer-guard' is for a context that needs
+; one (`fn-node-stagep' reads a `fn-retain-statep') and
+; `:recognizer-verify-guards nil' leaves the verification to the book, which
+; is what `fn-node-statep' needs for its hint.  Neither touches the
+; accessors: those are still `:guard t' and verified on the spot.
+
+(fn-defrecord fn-drt-pin
+  :constructor (fn-drt-pin subject weight)
+  :fields ((fn-drt-pin-subject stringp)
+           (fn-drt-pin-weight
+            (and (posp (fn-drt-pin-weight x))
+                 (<= (fn-drt-pin-weight x) budget))))
+  :recognizer-formals (budget)
+  :recognizer-guard (posp budget)
+  :recognizer-verify-guards nil)
+
+(verify-guards fn-drt-pinp)
+
+; An instantiation, named as one, and SUSPECT is the correct reading of it
+; (proof-style section 7): it discharges nothing.  What it audits is that the
+; generated forward fact has the context formal at all -- without it the
+; `:use' below does not even parse.
+(defthm fn-drt-pinp-forward-shape-instantiated
+  (implies (fn-drt-pinp budget p) (and (consp p) (true-listp p)))
+  :rule-classes nil
+  :hints (("Goal" :use (:instance fn-drt-pinp-forward-shape (x p)))))
+
+; -----------------------------------------------------------------------------
 ; The generated names exist and say what section 1 says they say.  Each of
 ; these is `:rule-classes nil': they are an audit of the macro's output, not
 ; rules, and this book exports nothing.
@@ -159,6 +190,16 @@
 (assert-event (not (equal (fn-drt-point 3 4 "o") (fn-drt-point 5 4 "o"))))
 (assert-event (not (equal (fn-drt-point 3 4 "o") (fn-drt-point 3 5 "o"))))
 (assert-event (not (equal (fn-drt-point 3 4 "o") (fn-drt-point 3 4 "p"))))
+
+; The context formal is read, not decoration: the same record passes under one
+; budget and fails under another, and each field hypothesis has its witness.
+(defconst *fn-drt-pin* (fn-drt-pin "archive" 7))
+
+(assert-event (fn-drt-pinp 10 *fn-drt-pin*))
+(assert-event (not (fn-drt-pinp 5 *fn-drt-pin*)))
+(assert-event (not (fn-drt-pinp 10 (fn-drt-pin :archive 7))))
+(assert-event (not (fn-drt-pinp 10 (fn-drt-pin "archive" 0))))
+(assert-event (equal (fn-drt-pin-subject *fn-drt-pin*) "archive"))
 
 ; -----------------------------------------------------------------------------
 ; `fn-defrecord-export' names and withdraws exactly the recognizers it is

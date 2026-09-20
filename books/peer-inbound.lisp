@@ -42,6 +42,7 @@
 ; fn-charge-for-payload: the retention charge a transit probe offers.
 (include-book "identity")
 (include-book "peer-config")
+(include-book "provenance-codec")
 
 (local (in-theory (enable fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
                           fn-nntp-projection-vocabulary
@@ -150,9 +151,40 @@
           rest))
     nil))
 
-; The provenance, as the retention ledger's evidence string.  The structured
-; (:transit peer kind msgid octets) submission is what the served path
-; carries; this is its rendering into the one slot the article record has.
+; The provenance of a transit acceptance (specs/peering.md section 2.4).
+;
+; `fn-peer-transit-provenance' is the typed record: the peer name as the
+; configuration knows it, the command that carried the bytes, the RFC 5537
+; section 3.2.1 Path diagnostic the transfer decision computed, and the
+; configuration generation the peer record was read at.
+; `fn-peer-transit-evidence' is its wire form --- a STRING whose octets are
+; the canonical encoding, so it fits the record grammar's evidence field
+; unchanged and `fn-prov-of-wire' recovers the whole record after replay.
+;
+; `fn-peer-evidence' is UNCHANGED and is still what the decisions below and
+; `fn-peer-injection-arguments' pass: it answers exactly the string this
+; function answered before the typed record existed, and
+; `fn-peer-evidence-is-the-legacy-rendering' (books/peer-inbound-invariants)
+; is the equation.  Moving the transit path onto
+; `fn-peer-transit-evidence' needs the transit command in scope, which means
+; a `kind' formal on `fn-peer-decide-transfer', `fn-peer-transfer' and
+; `fn-peer-injection-arguments' --- an arity change inside the K1/K2/K3
+; statements, which this lane does not own.  It is the ASK on
+; planning/deputies/BOARD.md and the open item in
+; planning/lanes/HANDOFF-w10-provenance.md.
+(defun fn-peer-transit-provenance (peer cfg kind diagnostic)
+  (declare (xargs :guard t))
+  (fn-prov-make-transit
+   (if (stringp peer) peer "")
+   (if (fn-prov-transit-kindp kind) kind :ihave)
+   (if (fn-prov-diagnosticp diagnostic) diagnostic (fn-prov-diagnostic-match))
+   (nfix (fn-cfg-generation cfg))))
+
+(defun fn-peer-transit-evidence (peer cfg kind diagnostic)
+  (declare (xargs :guard t))
+  (let ((p (fn-peer-transit-provenance peer cfg kind diagnostic)))
+    (if (fn-prov-durablep p) (fn-prov-wire p) (fn-prov-render p))))
+
 (defun fn-peer-evidence (peer cfg)
   (declare (xargs :guard t) (ignorable cfg))
   (if (stringp peer)
@@ -1210,6 +1242,7 @@
 (deftheory fn-peer-vocabulary
   '((:d fn-peer-decisionp) (:d fn-peer-reason-text) (:d fn-peer-history-hasp)
     (:d fn-peer-stagedp) (:d fn-peer-wildmat-matchp) (:d fn-peer-scope-groups)
+    (:d fn-peer-transit-provenance) (:d fn-peer-transit-evidence)
     (:d fn-peer-evidence) (:d fn-peer-local-identity)
     (:d fn-peer-probe-obligation-id) (:d fn-peer-probe-subject)
     (:d fn-peer-decide-offer) (:d fn-peer-check-msgid) (:d fn-peer-check-groups)

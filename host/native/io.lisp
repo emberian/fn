@@ -777,20 +777,19 @@ name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
     (fnn-as-octets (second value))))
 
 (defun fnn-subject-id (payload)
-  "Content identity v1 (books/identity): ACL2 owns the preimage head
-`\"fn/subject/v1\" || 0x00 || uint32-be(len)', the host appends the payload and
-hashes.  Hashing the bare payload is the v0 profile and derives a different
-identity, which `fn-store-sn-prepare' then refuses."
-  (let ((prefix (fnn-as-octets (fnn-core 'fn-store-subject-prefix (length payload)))))
-    (fnn-as-octets
-     (fnn-core 'fn-store-subject-id
-               (fnn-octet-list
-                (fnn-sha256 (concatenate 'fnn-octets prefix (fnn-octets payload))))))))
+  "Content identity v1 (books/identity), derived end to end in ACL2.
+`books/crypto-attach.lisp' attaches SHA-256 to `fn-frame-digest', so the
+preimage AND the digest are ACL2's; this host no longer hashes for identity,
+because a second SHA-256 here would be a second owner of the derivation.
+Hashing the bare payload is the v0 profile and derives a different identity,
+which `fn-store-sn-prepare' then refuses."
+  (fnn-as-octets (fnn-core 'fn-store-subject-id-of-payload
+                           (fnn-octet-list payload))))
 
 (defun fnn-obligation-id (msgid subject)
-  (let ((preimage (fnn-as-octets (fnn-core 'fn-store-obligation-preimage
-                                           (fnn-octet-list msgid) (fnn-octet-list subject)))))
-    (fnn-as-octets (fnn-core 'fn-store-obligation-id (fnn-octet-list (fnn-sha256 preimage))))))
+  "Obligation identity v1, preimage and digest both ACL2's.  See FNN-SUBJECT-ID."
+  (fnn-as-octets (fnn-core 'fn-store-obligation-id-of
+                           (fnn-octet-list msgid) (fnn-octet-list subject))))
 
 (defun fnn-post-boundary (msgid payload-length group-count charge)
   (let ((value (fnn-core 'fn-store-post-boundary (fnn-octet-list msgid) payload-length

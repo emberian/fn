@@ -232,14 +232,143 @@
     (if (or (equal after before) (null sub))
         (value :idle)
       (let* ((decision (fn-own-sub-decision sub))
+             (transitp (fn-own-transit-subp sub))
              (state (f-put-global 'fn-owner-submit-id (fn-own-sub-id sub) state))
+             (state (f-put-global 'fn-owner-submit-transitp transitp state))
+             (state (f-put-global 'fn-owner-submit-peer
+                                  (if transitp (fn-peer-submission-peer decision) nil)
+                                  state))
              (state (f-put-global 'fn-owner-submit-msgid
-                                  (fn-inj-decision-msgid decision) state))
+                                  (if transitp
+                                      (fn-peer-submission-msgid decision)
+                                    (fn-inj-decision-msgid decision))
+                                  state))
              (state (f-put-global 'fn-owner-submit-octets
-                                  (fn-inj-decision-octets decision) state))
+                                  (if transitp
+                                      (fn-peer-submission-octets decision)
+                                    (fn-inj-decision-octets decision))
+                                  state))
+             ; A transit submission's memberships are not in the submission:
+             ; they are fn-peer-scope-groups of the article's Newsgroups and
+             ; the peer record, computed by fn-owner-transit-decide below
+             ; over the live node, never here and never in Python.
              (state (f-put-global 'fn-owner-submit-groups
-                                  (fn-inj-decision-groups decision) state)))
-        (value :taken)))))
+                                  (if transitp nil (fn-inj-decision-groups decision))
+                                  state)))
+        (value (if transitp :taken-transit :taken))))))
+
+; -----------------------------------------------------------------------------
+; The transit port (specs/peering.md 2.2).
+;
+; Accept: the host resolves the connecting address to a configured peer name
+; with fn-owner-peer-for-address (the record's auth slot decides, not the
+; client) and opens the connection with fn-own-open-peer, which pins the
+; node and the live configuration into the session.  A reader opens with
+; fn-owner-open as before, on the same listener.
+
+(defun fn-owner-peer-name-for (rows address)
+  ; The first configured peer whose auth slot is this source address.
+  (declare (xargs :mode :program))
+  (if (consp rows)
+      (if (and (equal (fn-cfg-row-b (car rows)) "auth-source-address")
+               (equal (fn-cfg-row-c (car rows)) address))
+          (fn-cfg-row-a (car rows))
+        (fn-owner-peer-name-for (cdr rows) address))
+    nil))
+
+(defun fn-owner-peer-for-address (address-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((address (fn-store-octets->string address-octets)))
+    (if (equal address :bad)
+        (value nil)
+      (let ((name (fn-owner-peer-name-for
+                   (fn-cfg-peers (fn-cfg-value (f-get-global 'fn-store-cfg state)))
+                   address)))
+        (value (if name (fn-record-string-octets name) nil))))))
+
+(defun fn-owner-open-peer (peer-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((peer (fn-store-octets->string peer-octets)))
+    (if (equal peer :bad)
+        (value nil)
+      (let* ((before (f-get-global 'fn-owner state))
+             (id (fn-own-next-id before))
+             (opened (fn-own-open-peer before peer (f-get-global 'fn-store-cfg state)))
+             (state (f-put-global 'fn-owner (cdr opened) state))
+             (state (fn-owner-install-effects (car opened) state)))
+        (if (fn-own-find-conn id (fn-own-conns (f-get-global 'fn-owner state)))
+            (value id)
+          (value nil))))))
+
+; The transfer decision for the transit submission in flight, over the LIVE
+; node and the live configuration (RFC 4644 2.4.2: the offer was advisory).
+; Every check of specs/peering.md 2.2 is in fn-peer-decide-transfer; this
+; wrapper only reads its answer and the memberships fn-peer-injection-arguments
+; derives, and leaves them where the bridge can read them.  The obligation id
+; and the subject are the host's digests, as for POST (fn-frame-digest is
+; constrained and unattached).
+(defun fn-owner-transit-decide (id-octets subject-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((owner (f-get-global 'fn-owner state))
+         (sub (fn-own-inflight owner)))
+    (if (not (fn-own-transit-subp sub))
+        (value :not-transit)
+      (let* ((decision (fn-own-sub-decision sub))
+             (node (fn-sn-node (fn-own-store owner)))
+             (cfg (f-get-global 'fn-store-cfg state))
+             (peer (fn-peer-submission-peer decision))
+             (msgid (fn-peer-submission-msgid decision))
+             (octets (fn-peer-submission-octets decision))
+             (id (fn-store-octets->string id-octets))
+             (subject (fn-store-octets->string subject-octets)))
+        (if (or (equal id :bad) (equal subject :bad))
+            (value :not-transit)
+          (let* ((d (fn-peer-decide-transfer node cfg peer msgid octets
+                                             (fn-own-clock owner) id subject))
+                 (args (fn-peer-injection-arguments node cfg peer msgid octets
+                                                    0 id subject))
+                 (state (f-put-global 'fn-owner-transit-kind
+                                      (fn-peer-decision-kind d) state))
+                 (state (f-put-global 'fn-owner-transit-reason
+                                      (fn-peer-decision-reason d) state))
+                 ; (nth 3 args) is fn-peer-scope-groups' answer: the list
+                 ; fn-peer-injection-arguments hands fn-node-prepare as the
+                 ; memberships (generation, msgid, octets, GROUPS, id,
+                 ; subject, evidence, charge).  The generation passed here is
+                 ; 0 because no element read from this list depends on it.
+                 (state (f-put-global 'fn-owner-submit-groups
+                                      (if (equal (fn-peer-decision-kind d) :want)
+                                          (nth 3 args)
+                                        nil)
+                                      state))
+                 (state (f-put-global 'fn-owner-transit-evidence
+                                      (fn-record-string-octets
+                                       (fn-peer-evidence peer cfg))
+                                      state)))
+            (value (fn-peer-decision-kind d))))))))
+
+; The transit reply.  `kind' and `reason' are the decision this image just
+; made; `word' is the store's observed outcome (:durable, :refused,
+; :uncertain), ignored unless the decision was :want.
+(defun fn-owner-transit-outcome (id kind reason word state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((result (fn-own-transit-outcome (f-get-global 'fn-owner state)
+                                         id kind reason word))
+         (state (f-put-global 'fn-owner (cdr result) state))
+         (state (fn-owner-install-effects (car result) state)))
+    (value :fed)))
+
+(defun fn-owner-transit-kind (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (f-get-global 'fn-owner-transit-kind state)))
+
+(defun fn-owner-transit-reason (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (f-get-global 'fn-owner-transit-reason state)))
+
+(defun fn-owner-transit-evidence (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (f-get-global 'fn-owner-transit-evidence state)))
 
 ; The word the host observed for the submission in flight (:durable,
 ; :refused, :uncertain or anything else) is fed back as one owner event;
@@ -370,3 +499,200 @@
 (defun fn-owner-group-facts (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-own-replay-facts (fn-own-facts (f-get-global 'fn-owner state)))))
+
+; -----------------------------------------------------------------------------
+; The outbound feed (books/owner-feed.lisp; specs/peering.md 3, milestone 3)
+;
+; One outbound client connection per configured peer with work.  Every
+; decision is the book's: which peers an article is offered to
+; (fn-own-feed-targets), when an offer may go out (fn-feed-selection inside
+; fn-feed-tick-step), what the offer line is (fn-feed-offer-line), what a
+; reply code means (fn-feed-observe) and what the journal record for each is
+; (fn-own-feed-*-record).  This file frames octets and moves them; it names
+; no code, no wildmat, no Message-ID and no FNFD field.
+;
+; The order is "durable before the effect": every entry point below leaves
+; the records it authorizes in `fn-owner-feed-records' and the bytes in
+; `fn-owner-feed-command'; tools/run_owner.py appends the records to
+; <journal>/feed/<peer>.fnfd and fsyncs BEFORE it writes the bytes.
+
+(defun fn-owner-feed-configure (state)
+  ; Rebuild the feed table from the live configuration: at open and after
+  ; every :set-peer / :remove-peer delta.
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (fn-owner-step (list :feeds (f-get-global 'fn-store-cfg state))
+                              state)))
+    (value (fn-store-cfg-join-names
+            (fn-own-feed-names (fn-own-feeds (f-get-global 'fn-owner state)))))))
+
+(defun fn-owner-feed-peers (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-store-cfg-join-names
+          (fn-own-feed-names (fn-own-feeds (f-get-global 'fn-owner state))))))
+
+(defun fn-owner-feed-record (peer-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((peer (fn-store-octets->string peer-octets)))
+    (if (equal peer :bad)
+        nil
+      (fn-own-feed-record-of peer (fn-own-feeds (f-get-global 'fn-owner state))))))
+
+; Where to dial: the peer record's transport row, read by ACL2.  The host
+; does not parse the configuration.
+(defun fn-owner-feed-host (peer-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((transport (fn-cfg-peer-transport (fn-owner-feed-record peer-octets state))))
+    (value (if (and (consp transport) (equal (car transport) :nntp))
+               (fn-record-string-octets (fn-cfg-ag-car (fn-cfg-ag-cdr transport)))
+             nil))))
+
+(defun fn-owner-feed-port (peer-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((transport (fn-cfg-peer-transport (fn-owner-feed-record peer-octets state))))
+    (value (if (and (consp transport) (equal (car transport) :nntp))
+               (nfix (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr transport))))
+             0))))
+
+(defun fn-owner-feed-streamingp (peer-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (if (fn-cfg-peer-streamingp (fn-owner-feed-record peer-octets state))
+             t
+           nil)))
+
+(defun fn-owner-feed-queue-length (peer-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((peer (fn-store-octets->string peer-octets)))
+    (if (equal peer :bad)
+        (value 0)
+      (value (len (fn-feed-queue
+                   (fn-own-feed-find peer (fn-own-feeds
+                                           (f-get-global 'fn-owner state)))))))))
+
+; The host's socket identifier for one peer's outbound connection; nil when
+; the socket is gone, which stops selection at once (fn-feed-selection wants
+; a natural conn) and returns the in-flight entry at the next observation.
+(defun fn-owner-feed-connect (peer-octets conn state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((peer (fn-store-octets->string peer-octets)))
+    (if (equal peer :bad)
+        (value nil)
+      (let ((state (fn-owner-step (list :feed-conn peer conn) state)))
+        (value :ok)))))
+
+; The frames the host has to make durable, and the bytes they authorize.
+; `fn-owner-feed-frames' is a list of encoded FNFD frames, each sealed with
+; the constrained trailer (A-CRYPTO); the host writes them length-prefixed.
+; `fn-feed-encode' takes the trailer as an argument, so these frames carry a
+; ZERO trailer: tools/run_owner.py hashes the protected prefix and appends the
+; real one (A-CRYPTO), exactly as tools/run_feed.py does.  The header, the
+; field encoding and every bound stay ACL2's; the host slices at a constant it
+; did not choose.
+(defconst *fn-owner-feed-zero-trailer*
+  '(0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+
+(defun fn-owner-feed-encode-records (records)
+  (declare (xargs :mode :program))
+  (if (consp records)
+      (cons (fn-feed-encode (fn-feed-journal-kind (car records))
+                            (fn-feed-journal-values (car records))
+                            *fn-owner-feed-zero-trailer*)
+            (fn-owner-feed-encode-records (cdr records)))
+    nil))
+
+(defun fn-owner-feed-install-feed (records effects state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((state (f-put-global 'fn-owner-feed-records records state))
+         (state (f-put-global 'fn-owner-feed-frames
+                              (fn-owner-feed-encode-records records) state))
+         (state (f-put-global 'fn-owner-feed-command
+                              (fn-own-feed-effect-octets effects) state))
+         (state (f-put-global 'fn-owner-feed-peer
+                              (fn-own-feed-effect-peer effects) state)))
+    state))
+
+; One tick for one peer: the records first, then the bytes.
+(defun fn-owner-feed-tick (peer-octets monotonic state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((peer (fn-store-octets->string peer-octets)))
+    (if (equal peer :bad)
+        (value nil)
+      (let* ((owner (f-get-global 'fn-owner state))
+             (obs (fn-clock-observation monotonic 0 0 nil))
+             (records (fn-own-tick-peer-records owner peer obs))
+             (result (fn-own-tick-peer owner peer obs))
+             (state (f-put-global 'fn-owner (cdr result) state))
+             (state (fn-owner-feed-install-feed records (car result) state)))
+        (value (if (car result) :offer :idle))))))
+
+; One reply line from one peer.
+(defun fn-owner-feed-octets (peer-octets line monotonic state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((peer (fn-store-octets->string peer-octets)))
+    (if (equal peer :bad)
+        (value nil)
+      (let* ((owner (f-get-global 'fn-owner state))
+             (obs (fn-clock-observation monotonic 0 0 nil))
+             (records (fn-own-feed-reply-records owner peer line))
+             (result (fn-own-feed-reply owner peer line obs))
+             (state (f-put-global 'fn-owner (cdr result) state))
+             (state (fn-owner-feed-install-feed records (car result) state)))
+        (value (if (car result) :send :quiet))))))
+
+; Which peer's journal each pending frame belongs in, in the same order as
+; the frames: the record's own field 0, read by ACL2.
+(defun fn-owner-feed-record-peer-names (records)
+  (declare (xargs :mode :program))
+  (if (consp records)
+      (cons (fn-record-octets-string
+             (fn-feed-record-peer (fn-feed-journal-values (car records))))
+            (fn-owner-feed-record-peer-names (cdr records)))
+    nil))
+
+(defun fn-owner-feed-record-peers (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-store-cfg-join-names
+          (fn-owner-feed-record-peer-names
+           (f-get-global 'fn-owner-feed-records state)))))
+
+(defun fn-owner-feed-frames (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (f-get-global 'fn-owner-feed-frames state)))
+
+(defun fn-owner-feed-command (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (f-get-global 'fn-owner-feed-command state)))
+
+; Replay: one journal frame at a time, decoded and folded through the feed
+; machine before any command is emitted.  The host supplies the digest it
+; computed over the protected prefix; `fn-feed-decode' checks it.
+(defun fn-owner-feed-entry-of-frame (frame digest)
+  (declare (xargs :mode :program))
+  (let ((decoded (fn-feed-decode frame digest)))
+    (if (fn-frame-result-okp decoded)
+        (fn-feed-journal-entry (fn-frame-result-kind decoded)
+                               (fn-frame-result-payload decoded))
+      nil)))
+
+(defun fn-owner-feed-replay-frame (peer-octets frame digest state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((peer (fn-store-octets->string peer-octets))
+        (entry (fn-owner-feed-entry-of-frame frame digest)))
+    (if (or (equal peer :bad) (null entry))
+        (value :bad)
+      (let ((state (fn-owner-step (list :feed-replay peer (list entry)) state)))
+        (value :ok)))))
+
+; The fence a process death owes every feed: one (:feed-restart peer) record
+; per peer, durable, then fn-feed-restart on each.  fn-own-reopen does the
+; restart; this is the record side and the entry point a recovering host
+; calls once, after the replay and before any command.
+(defun fn-owner-feed-restart (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((owner (f-get-global 'fn-owner state))
+         (records (fn-own-feed-restart-records (fn-own-feeds owner)))
+         (state (f-put-global 'fn-owner
+                              (fn-own-with-feeds
+                               owner (fn-own-feed-restart-all (fn-own-feeds owner)))
+                              state))
+         (state (fn-owner-feed-install-feed records nil state)))
+    (value (len records))))

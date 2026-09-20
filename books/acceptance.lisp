@@ -14,107 +14,22 @@
 
 (in-package "ACL2")
 (include-book "acceptance-alloc")
+(include-book "defrecord")
 
 ; -----------------------------------------------------------------------------
 ; Article: (message-id payload requested-groups memberships archive-pin)
 
-(defun fn-article-shapep (x)
-  (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 5)))
-
-(defun fn-article-msgid (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car x) :exec (fn-ag-car x)))
-(verify-guards fn-article-msgid)
-(defun fn-article-payload (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
-(verify-guards fn-article-payload)
-(defun fn-article-groups (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr x)))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
-(verify-guards fn-article-groups)
-(defun fn-article-memberships (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr x))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
-(verify-guards fn-article-memberships)
-(defun fn-article-pin (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr (cdr x)))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
-(verify-guards fn-article-pin)
-
-(defun fn-make-article (msgid payload groups memberships pin)
-  (declare (xargs :guard t))
-  (list msgid payload groups memberships pin))
-
-(defthm fn-article-shapep-of-fn-make-article
-  (fn-article-shapep (fn-make-article msgid payload groups memberships pin)))
-(defthm fn-article-msgid-of-fn-make-article
-  (equal (fn-article-msgid (fn-make-article msgid payload groups memberships pin))
-         msgid))
-(defthm fn-article-payload-of-fn-make-article
-  (equal (fn-article-payload (fn-make-article msgid payload groups memberships pin))
-         payload))
-(defthm fn-article-groups-of-fn-make-article
-  (equal (fn-article-groups (fn-make-article msgid payload groups memberships pin))
-         groups))
-(defthm fn-article-memberships-of-fn-make-article
-  (equal (fn-article-memberships
-          (fn-make-article msgid payload groups memberships pin))
-         memberships))
-(defthm fn-article-pin-of-fn-make-article
-  (equal (fn-article-pin (fn-make-article msgid payload groups memberships pin))
-         pin))
-
-; What opacity takes away, exported back: the shape and a well-typed field
-; each imply the record is a cons (forward-chaining, never rewrite).
-(defthm fn-article-shapep-forward-shape
-  (implies (fn-article-shapep x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-article-shapep))))
-(defthm fn-article-accessors-forward-consp
-  (and
-   (implies (fn-article-msgid x) (consp x))
-   (implies (fn-article-payload x) (consp x))
-   (implies (fn-article-groups x) (consp x))
-   (implies (fn-article-memberships x) (consp x))
-   (implies (fn-article-pin x) (consp x))
-   )
-  :rule-classes
-  ((:forward-chaining :corollary (implies (fn-article-msgid x) (consp x))
-                      :trigger-terms ((fn-article-msgid x)))
-   (:forward-chaining :corollary (implies (fn-article-payload x) (consp x))
-                      :trigger-terms ((fn-article-payload x)))
-   (:forward-chaining :corollary (implies (fn-article-groups x) (consp x))
-                      :trigger-terms ((fn-article-groups x)))
-   (:forward-chaining :corollary (implies (fn-article-memberships x) (consp x))
-                      :trigger-terms ((fn-article-memberships x)))
-   (:forward-chaining :corollary (implies (fn-article-pin x) (consp x))
-                      :trigger-terms ((fn-article-pin x)))
-   )
-  :hints (("Goal" :in-theory (enable fn-article-msgid fn-article-payload fn-article-groups fn-article-memberships fn-article-pin))))
-
-(in-theory (disable (:d fn-article-shapep) (:d fn-article-msgid) (:d fn-article-payload) (:d fn-article-groups) (:d fn-article-memberships) (:d fn-article-pin) (:d fn-make-article)))
-
-(defun fn-articlep (configured x)
-  (declare (xargs :guard t :verify-guards nil))
-  (and (fn-article-shapep x)
-       (stringp (fn-article-msgid x))
-       (fn-octet-listp (fn-article-payload x))
-       (fn-selection-validp (fn-article-groups x) configured)
-       (fn-membership-listp (fn-article-groups x)
-                            (fn-article-memberships x))
-       (equal (fn-article-pin x) t)))
-
-(defthm fn-articlep-forward-shape
-  (implies (fn-articlep configured x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-articlep))))
-
-(verify-guards fn-articlep)
+(fn-defrecord fn-article
+  :constructor (fn-make-article msgid payload groups memberships pin)
+  :fields ((fn-article-msgid stringp)
+           (fn-article-payload fn-octet-listp)
+           (fn-article-groups
+            (fn-selection-validp (fn-article-groups x) configured))
+           (fn-article-memberships
+            (fn-membership-listp (fn-article-groups x)
+                                 (fn-article-memberships x)))
+           (fn-article-pin (equal (fn-article-pin x) t)))
+  :recognizer-formals (configured))
 
 (defun fn-article-msgids (xs)
   (declare (xargs :guard t :verify-guards nil))
@@ -222,273 +137,62 @@
 ; -----------------------------------------------------------------------------
 ; Pending: (txid generation message-id payload groups memberships archive-pin)
 
-(defun fn-pending-shapep (x)
-  (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 7)))
-
-(defun fn-pending-txid (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car x) :exec (fn-ag-car x)))
-(verify-guards fn-pending-txid)
-(defun fn-pending-generation (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
-(verify-guards fn-pending-generation)
-(defun fn-pending-msgid (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr x)))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
-(verify-guards fn-pending-msgid)
-(defun fn-pending-payload (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr x))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
-(verify-guards fn-pending-payload)
-(defun fn-pending-groups (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr (cdr x)))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
-(verify-guards fn-pending-groups)
-(defun fn-pending-memberships (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr x))))))
-       :exec (fn-ag-car
-              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))))
-(verify-guards fn-pending-memberships)
-(defun fn-pending-pin (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr x)))))))
-       :exec (fn-ag-car
-              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
-                                     (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))))
-(verify-guards fn-pending-pin)
-
-(defun fn-make-pending (txid generation msgid payload groups memberships pin)
-  (declare (xargs :guard t))
-  (list txid generation msgid payload groups memberships pin))
-
-(defthm fn-pending-shapep-of-fn-make-pending
-  (fn-pending-shapep
-   (fn-make-pending txid generation msgid payload groups memberships pin)))
-(defthm fn-pending-txid-of-fn-make-pending
-  (equal (fn-pending-txid
-          (fn-make-pending txid generation msgid payload groups memberships pin))
-         txid))
-(defthm fn-pending-generation-of-fn-make-pending
-  (equal (fn-pending-generation
-          (fn-make-pending txid generation msgid payload groups memberships pin))
-         generation))
-(defthm fn-pending-msgid-of-fn-make-pending
-  (equal (fn-pending-msgid
-          (fn-make-pending txid generation msgid payload groups memberships pin))
-         msgid))
-(defthm fn-pending-payload-of-fn-make-pending
-  (equal (fn-pending-payload
-          (fn-make-pending txid generation msgid payload groups memberships pin))
-         payload))
-(defthm fn-pending-groups-of-fn-make-pending
-  (equal (fn-pending-groups
-          (fn-make-pending txid generation msgid payload groups memberships pin))
-         groups))
-(defthm fn-pending-memberships-of-fn-make-pending
-  (equal (fn-pending-memberships
-          (fn-make-pending txid generation msgid payload groups memberships pin))
-         memberships))
-(defthm fn-pending-pin-of-fn-make-pending
-  (equal (fn-pending-pin
-          (fn-make-pending txid generation msgid payload groups memberships pin))
-         pin))
-
-; What opacity takes away, exported back: the shape and a well-typed field
-; each imply the record is a cons (forward-chaining, never rewrite).
-(defthm fn-pending-shapep-forward-shape
-  (implies (fn-pending-shapep x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-pending-shapep))))
-(defthm fn-pending-accessors-forward-consp
-  (and
-   (implies (fn-pending-txid x) (consp x))
-   (implies (fn-pending-generation x) (consp x))
-   (implies (fn-pending-msgid x) (consp x))
-   (implies (fn-pending-payload x) (consp x))
-   (implies (fn-pending-groups x) (consp x))
-   (implies (fn-pending-memberships x) (consp x))
-   (implies (fn-pending-pin x) (consp x))
-   )
-  :rule-classes
-  ((:forward-chaining :corollary (implies (fn-pending-txid x) (consp x))
-                      :trigger-terms ((fn-pending-txid x)))
-   (:forward-chaining :corollary (implies (fn-pending-generation x) (consp x))
-                      :trigger-terms ((fn-pending-generation x)))
-   (:forward-chaining :corollary (implies (fn-pending-msgid x) (consp x))
-                      :trigger-terms ((fn-pending-msgid x)))
-   (:forward-chaining :corollary (implies (fn-pending-payload x) (consp x))
-                      :trigger-terms ((fn-pending-payload x)))
-   (:forward-chaining :corollary (implies (fn-pending-groups x) (consp x))
-                      :trigger-terms ((fn-pending-groups x)))
-   (:forward-chaining :corollary (implies (fn-pending-memberships x) (consp x))
-                      :trigger-terms ((fn-pending-memberships x)))
-   (:forward-chaining :corollary (implies (fn-pending-pin x) (consp x))
-                      :trigger-terms ((fn-pending-pin x)))
-   )
-  :hints (("Goal" :in-theory (enable fn-pending-txid fn-pending-generation fn-pending-msgid fn-pending-payload fn-pending-groups fn-pending-memberships fn-pending-pin))))
-
-(in-theory (disable (:d fn-pending-shapep) (:d fn-pending-txid) (:d fn-pending-generation) (:d fn-pending-msgid) (:d fn-pending-payload) (:d fn-pending-groups) (:d fn-pending-memberships) (:d fn-pending-pin) (:d fn-make-pending)))
-
-(defun fn-pendingp (configured nexts next-txid x)
-  (declare (xargs :guard t :verify-guards nil))
-  (and (fn-pending-shapep x)
-       (natp (fn-pending-txid x))
-       (mbe :logic (< (fn-pending-txid x) next-txid)
-            :exec (fn-ag-less (fn-pending-txid x) next-txid))
-       (natp (fn-pending-generation x))
-       (stringp (fn-pending-msgid x))
-       (fn-octet-listp (fn-pending-payload x))
-       (fn-selection-validp (fn-pending-groups x) configured)
-       (fn-membership-listp (fn-pending-groups x)
-                            (fn-pending-memberships x))
-       (fn-memberships-at-watermarkp
-        (fn-pending-memberships x) nexts)
-       (equal (fn-pending-pin x) t)))
-
-(defthm fn-pendingp-forward-shape
-  (implies (fn-pendingp configured nexts next-txid x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-pendingp))))
-
-(verify-guards fn-pendingp)
+(fn-defrecord fn-pending
+  :constructor (fn-make-pending txid generation msgid payload groups
+                                memberships pin)
+  :fields ((fn-pending-txid
+            (and (natp (fn-pending-txid x))
+                 (mbe :logic (< (fn-pending-txid x) next-txid)
+                      :exec (fn-ag-less (fn-pending-txid x) next-txid))))
+           (fn-pending-generation natp)
+           (fn-pending-msgid stringp)
+           (fn-pending-payload fn-octet-listp)
+           (fn-pending-groups
+            (fn-selection-validp (fn-pending-groups x) configured))
+           (fn-pending-memberships
+            (and (fn-membership-listp (fn-pending-groups x)
+                                      (fn-pending-memberships x))
+                 (fn-memberships-at-watermarkp
+                  (fn-pending-memberships x) nexts)))
+           (fn-pending-pin (equal (fn-pending-pin x) t)))
+  :recognizer-formals (configured nexts next-txid))
 
 ; -----------------------------------------------------------------------------
 ; State: (groups nexts articles next-txid pending fenced)
 
-(defun fn-state-shapep (s)
-  (declare (xargs :guard t))
-  (and (true-listp s) (equal (len s) 6)))
+; `fn-statep' is the carried invariant of docs/proof-style.md section 3, and
+; its conjuncts are kept in the order they were written in: a conjunct is
+; attached to the field whose position it held, so `natp' of the transaction
+; counter rides with the watermarks and the three article conjuncts follow.
+; The recognizer that ACL2 admits is therefore the same term as before.
 
-(defun fn-make-state (groups nexts articles next-txid pending fenced)
-  (declare (xargs :guard t))
-  (list groups nexts articles next-txid pending fenced))
-
-(defun fn-state-groups (s)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car s) :exec (fn-ag-car s)))
-(verify-guards fn-state-groups)
-(defun fn-state-nexts (s)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr s)) :exec (fn-ag-car (fn-ag-cdr s))))
-(verify-guards fn-state-nexts)
-(defun fn-state-articles (s)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr s)))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr s)))))
-(verify-guards fn-state-articles)
-(defun fn-state-next-txid (s)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr s))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s))))))
-(verify-guards fn-state-next-txid)
-(defun fn-state-pending (s)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr (cdr s)))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s)))))))
-(verify-guards fn-state-pending)
-(defun fn-state-fenced (s)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr s))))))
-       :exec (fn-ag-car
-              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s))))))))
-(verify-guards fn-state-fenced)
-
-(defthm fn-state-shapep-of-fn-make-state
-  (fn-state-shapep
-   (fn-make-state groups nexts articles next-txid pending fenced)))
-(defthm fn-state-groups-of-fn-make-state
-  (equal (fn-state-groups
-          (fn-make-state groups nexts articles next-txid pending fenced))
-         groups))
-(defthm fn-state-nexts-of-fn-make-state
-  (equal (fn-state-nexts
-          (fn-make-state groups nexts articles next-txid pending fenced))
-         nexts))
-(defthm fn-state-articles-of-fn-make-state
-  (equal (fn-state-articles
-          (fn-make-state groups nexts articles next-txid pending fenced))
-         articles))
-(defthm fn-state-next-txid-of-fn-make-state
-  (equal (fn-state-next-txid
-          (fn-make-state groups nexts articles next-txid pending fenced))
-         next-txid))
-(defthm fn-state-pending-of-fn-make-state
-  (equal (fn-state-pending
-          (fn-make-state groups nexts articles next-txid pending fenced))
-         pending))
-(defthm fn-state-fenced-of-fn-make-state
-  (equal (fn-state-fenced
-          (fn-make-state groups nexts articles next-txid pending fenced))
-         fenced))
-
-; What opacity takes away, exported back: the shape and a well-typed field
-; each imply the record is a cons (forward-chaining, never rewrite).
-(defthm fn-state-shapep-forward-shape
-  (implies (fn-state-shapep x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-state-shapep))))
-(defthm fn-state-accessors-forward-consp
-  (and
-   (implies (fn-state-groups x) (consp x))
-   (implies (fn-state-nexts x) (consp x))
-   (implies (fn-state-articles x) (consp x))
-   (implies (fn-state-next-txid x) (consp x))
-   (implies (fn-state-pending x) (consp x))
-   (implies (fn-state-fenced x) (consp x))
-   )
-  :rule-classes
-  ((:forward-chaining :corollary (implies (fn-state-groups x) (consp x))
-                      :trigger-terms ((fn-state-groups x)))
-   (:forward-chaining :corollary (implies (fn-state-nexts x) (consp x))
-                      :trigger-terms ((fn-state-nexts x)))
-   (:forward-chaining :corollary (implies (fn-state-articles x) (consp x))
-                      :trigger-terms ((fn-state-articles x)))
-   (:forward-chaining :corollary (implies (fn-state-next-txid x) (consp x))
-                      :trigger-terms ((fn-state-next-txid x)))
-   (:forward-chaining :corollary (implies (fn-state-pending x) (consp x))
-                      :trigger-terms ((fn-state-pending x)))
-   (:forward-chaining :corollary (implies (fn-state-fenced x) (consp x))
-                      :trigger-terms ((fn-state-fenced x)))
-   )
-  :hints (("Goal" :in-theory (enable fn-state-groups fn-state-nexts fn-state-articles fn-state-next-txid fn-state-pending fn-state-fenced))))
-
-(in-theory (disable (:d fn-state-shapep) (:d fn-state-groups) (:d fn-state-nexts) (:d fn-state-articles) (:d fn-state-next-txid) (:d fn-state-pending) (:d fn-state-fenced) (:d fn-make-state)))
-
-(defun fn-statep (s)
-  (declare (xargs :guard t :verify-guards nil))
-  (and (fn-state-shapep s)
-       (fn-string-listp (fn-state-groups s))
-       (fn-no-duplicatesp (fn-state-groups s))
-       (fn-nexts-for-p (fn-state-groups s) (fn-state-nexts s))
-       (natp (fn-state-next-txid s))
-       (fn-article-listp (fn-state-groups s) (fn-state-articles s))
-       (fn-articles-freshp (fn-state-articles s))
-       (fn-articles-below-nextsp (fn-state-articles s)
-                                 (fn-state-nexts s))
-       (or (null (fn-state-pending s))
-           (and (not (fn-acceptedp
-                      (fn-pending-msgid (fn-state-pending s))
-                      (fn-state-articles s)))
-                (fn-pendingp (fn-state-groups s)
-                             (fn-state-nexts s)
-                             (fn-state-next-txid s)
-                             (fn-state-pending s))))
-       (fn-fencedp (fn-state-fenced s))
-       (or (null (fn-state-fenced s))
-           (consp (fn-state-pending s)))))
-
-(defthm fn-statep-forward-shape
-  (implies (fn-statep s) (and (consp s) (true-listp s)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-statep))))
-
-(verify-guards fn-statep)
+(fn-defrecord fn-state
+  :constructor (fn-make-state groups nexts articles next-txid pending fenced)
+  :fields ((fn-state-groups
+            (and (fn-string-listp (fn-state-groups x))
+                 (fn-no-duplicatesp (fn-state-groups x))))
+           (fn-state-nexts
+            (and (fn-nexts-for-p (fn-state-groups x) (fn-state-nexts x))
+                 (natp (fn-state-next-txid x))))
+           (fn-state-articles
+            (and (fn-article-listp (fn-state-groups x) (fn-state-articles x))
+                 (fn-articles-freshp (fn-state-articles x))
+                 (fn-articles-below-nextsp (fn-state-articles x)
+                                           (fn-state-nexts x))))
+           (fn-state-next-txid t)
+           (fn-state-pending
+            (or (null (fn-state-pending x))
+                (and (not (fn-acceptedp
+                           (fn-pending-msgid (fn-state-pending x))
+                           (fn-state-articles x)))
+                     (fn-pendingp (fn-state-groups x)
+                                  (fn-state-nexts x)
+                                  (fn-state-next-txid x)
+                                  (fn-state-pending x)))))
+           (fn-state-fenced
+            (and (fn-fencedp (fn-state-fenced x))
+                 (or (null (fn-state-fenced x))
+                     (consp (fn-state-pending x)))))))
 
 (defun fn-initial-state (groups)
   (declare (xargs :guard t :verify-guards nil))

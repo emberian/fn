@@ -696,10 +696,22 @@
              (fn-cpc-tree-induct (cdr x) (- fuel 1) more))
      (list x fuel more))))
 
-; The cons branch of the decoder refuses a head that is an octet, so the
-; proof must decide FN-CBOR-OCTETP on a symbolic head; the codecs
-; realignment withdrew its definition.  Enabled for this form only.
-(local (in-theory (enable fn-cbor-octetp)))
+; The cons branch of the decoder refuses a head that is an octet whose tail
+; is an octet list, because such a pair has a bytes encoding.  Enabling
+; FN-CBOR-OCTETP for the form does not close it: the definition opens into
+; (<= X 255) on a symbolic head and the induction survives into Subgoal
+; *1/1.14' with (< 255 (car x)) as a live case.  The octet-ness of a decoded
+; head is not something the proof has to decide: under the branch hypothesis
+; (not (fn-cbor-octet-listp x)) it is REFUTED as soon as the tail is an octet
+; list, which FN-CPC-OCTET-LIST-TAGP-OF-ENCODING supplies.  Stated here as
+; its own rule, with the definition left closed everywhere else.
+(local
+ (defthm fn-cpc-car-of-non-octet-list-is-not-an-octet
+   (implies (and (consp x) (not (fn-cbor-octet-listp x))
+                 (fn-cbor-octet-listp (cdr x)))
+            (not (fn-cbor-octetp (car x))))
+   :hints (("Goal" :expand ((fn-cbor-octet-listp x))))))
+
 (defthm fn-cpc-decode-tree-of-encoding
   (implies (and (fn-cpc-treep x)
                 (fn-cbor-octet-listp more)
@@ -709,8 +721,7 @@
                   (fn-record-parse-ok x more)))
   :hints (("Goal" :induct (fn-cpc-tree-induct x fuel more)
            :in-theory (e/d (fn-cpc-decode-tree)
-                           (fn-cpc-octet-list-tagp)))))
-(local (in-theory (disable fn-cbor-octetp)))
+                           (fn-cpc-octet-list-tagp fn-cbor-octetp)))))
 
 
 (defthm fn-cpc-decode-tree-of-encoding-exact
@@ -724,6 +735,56 @@
                                fn-cpc-decode-tree fn-cpc-encode-tree))))
 
 ; -- KEYSTONE (byte direction): an accepted tree is its own encoding ------------
+
+; The symbol branch of the decoder returns a table item for a symbolic
+; index, and the byte direction has to know that such an item is none of the
+; other tags' values.  As with the octet head above, this is a fact about
+; the three-entry table, not something the waterfall should decide inside
+; the decoder's induction: it is stated here over the table's own index
+; range, with the three cases taken once.
+(local
+ (defthm fn-cpc-symbol-item-is-none-of-the-other-tags
+   (implies (and (posp i) (<= i (len *fn-cpc-symbols*)))
+            (and (not (fn-cbor-octet-listp (fn-frame-item (- i 1) *fn-cpc-symbols*)))
+                 (not (natp (fn-frame-item (- i 1) *fn-cpc-symbols*)))
+                 (not (stringp (fn-frame-item (- i 1) *fn-cpc-symbols*)))))
+   :hints (("Goal" :cases ((equal i 1) (equal i 2) (equal i 3))))))
+
+; The byte direction must also know that a decoded NAT, STRING or SYMBOL is
+; not an octet list -- the iff conjunct of the keystone says an octet list is
+; decoded exactly under an octet-list tag.  Each is a fact about the decoded
+; value's type, not about the decoder: stated over FN-CPC-READ-UINT's domain
+; lemma and the two type recognizers, with FN-CBOR-OCTET-LISTP left closed in
+; the keystone's own theory.
+(local
+ (defthm fn-cpc-read-uint-value-is-natural
+   (implies (and (fn-cbor-octet-listp octets)
+                 (fn-record-parse-okp (fn-cpc-read-uint octets)))
+            (natp (fn-record-parse-value (fn-cpc-read-uint octets))))
+   :rule-classes ((:forward-chaining
+                   :trigger-terms ((fn-record-parse-value (fn-cpc-read-uint octets)))))
+   :hints (("Goal" :use fn-cpc-read-uint-domain
+            :in-theory (disable fn-cpc-read-uint)))))
+
+(local
+ (defthm fn-cpc-read-uint-rest-is-octets-fc
+   (implies (and (fn-cbor-octet-listp octets)
+                 (fn-record-parse-okp (fn-cpc-read-uint octets)))
+            (fn-cbor-octet-listp (fn-record-parse-rest (fn-cpc-read-uint octets))))
+   :rule-classes ((:forward-chaining
+                   :trigger-terms ((fn-record-parse-rest (fn-cpc-read-uint octets)))))
+   :hints (("Goal" :use fn-cpc-read-uint-domain
+            :in-theory (disable fn-cpc-read-uint)))))
+
+(local
+ (defthm fn-cpc-natp-is-not-an-octet-list
+   (implies (natp x) (not (fn-cbor-octet-listp x)))
+   :hints (("Goal" :expand ((fn-cbor-octet-listp x))))))
+
+(local
+ (defthm fn-cpc-stringp-is-not-an-octet-list
+   (implies (stringp x) (not (fn-cbor-octet-listp x)))
+   :hints (("Goal" :expand ((fn-cbor-octet-listp x))))))
 
 (defthm fn-cpc-decode-tree-accepted
   (implies (and (fn-cbor-octet-listp octets)
@@ -1016,6 +1077,54 @@
                                     (fn-record-parse-error :invalid)
                                   (list :ok checkpoint))))))))))))))))))))
 
+; The guard of FN-CPC-DECODE reads the five header uints back with
+; FN-FRAME-ITEM and compares them, so its conjecture asks for the numeric
+; type of a list item -- twenty-three times, once per comparison.  That is a
+; fact about FN-CPC-UINT-LISTP, not about the decoder: stated once, in the
+; predicates the conjecture actually raises, so the waterfall backchains
+; through FN-CPC-READ-UINTS-DOMAIN instead of opening the reader.
+(local
+ (defthm fn-cpc-uint-list-item-is-a-bounded-natural
+   (implies (and (fn-cpc-uint-listp xs) (natp i) (< i (len xs)))
+            (and (natp (fn-frame-item i xs))
+                 (integerp (fn-frame-item i xs))
+                 (rationalp (fn-frame-item i xs))
+                 (acl2-numberp (fn-frame-item i xs))
+                 (<= 0 (fn-frame-item i xs))
+                 (<= (fn-frame-item i xs) *fn-cbor-max-uint*)))
+   :hints (("Goal" :in-theory (enable fn-cpc-uint-listp fn-frame-item)))))
+
+; The same fact at the term the conjecture actually raises, so the
+; hypotheses it must relieve are the ones the guard already carries: the
+; parse-okp of the read is literally a hypothesis there, and the octet-ness
+; of its input comes from FN-CPC-READ-BYTES-DOMAIN.
+(local
+ (defthm fn-cpc-read-uints-item-is-a-bounded-natural
+   (implies (and (fn-cbor-octet-listp octets)
+                 (fn-record-parse-okp (fn-cpc-read-uints n octets))
+                 (natp i) (< i (nfix n)))
+            (and (natp (fn-frame-item
+                        i (fn-record-parse-value (fn-cpc-read-uints n octets))))
+                 (integerp (fn-frame-item
+                            i (fn-record-parse-value (fn-cpc-read-uints n octets))))
+                 (rationalp (fn-frame-item
+                             i (fn-record-parse-value (fn-cpc-read-uints n octets))))
+                 (acl2-numberp (fn-frame-item
+                                i (fn-record-parse-value (fn-cpc-read-uints n octets))))
+                 (<= 0 (fn-frame-item
+                        i (fn-record-parse-value (fn-cpc-read-uints n octets))))
+                 (<= (fn-frame-item
+                      i (fn-record-parse-value (fn-cpc-read-uints n octets)))
+                     *fn-cbor-max-uint*)))
+   :hints (("Goal"
+            :use (fn-cpc-read-uints-domain
+                  (:instance fn-cpc-uint-list-item-is-a-bounded-natural
+                             (xs (fn-record-parse-value
+                                  (fn-cpc-read-uints n octets)))))
+            :in-theory (disable fn-cpc-read-uints fn-frame-item
+                                fn-cpc-read-uints-domain
+                                fn-cpc-uint-list-item-is-a-bounded-natural)))))
+
 (verify-guards fn-cpc-decode
   :hints (("Goal" :in-theory (disable fn-checkpointp fn-frame-item))))
 
@@ -1043,7 +1152,8 @@
                                    (fn-checkpoint-sequence x)
                                    (fn-checkpoint-node x))
                   x))
-  :hints (("Goal" :in-theory (enable fn-checkpointp fn-checkpoint-groups
+  :hints (("Goal" :in-theory (enable fn-checkpointp fn-checkpoint-shapep
+                                     fn-checkpoint-groups
                                      fn-checkpoint-capacity fn-checkpoint-frontier
                                      fn-checkpoint-sequence fn-checkpoint-node)
            :expand ((len x) (len (cdr x)) (len (cdr (cdr x)))
@@ -1135,6 +1245,70 @@
 
 ; -- KEYSTONE (byte direction): an accepted checkpoint is its own encoding ---------
 
+; The byte direction of the whole checkpoint walks header, groups and tree
+; in sequence, and every step needs its predecessor's REMAINDER to be
+; octets.  Each reader's -domain lemma says so, but as a rewrite it is only
+; reached by backchaining, and the remainders appear in hypotheses of the
+; decoder's case split rather than in terms being rewritten.  Forward
+; chaining on each reader's remainder is what carries the chain.
+(local
+ (defthm fn-cpc-read-bytes-rest-is-octets-fc
+   (implies (and (fn-cbor-octet-listp octets)
+                 (fn-record-parse-okp (fn-cpc-read-bytes octets)))
+            (fn-cbor-octet-listp (fn-record-parse-rest (fn-cpc-read-bytes octets))))
+   :rule-classes ((:forward-chaining
+                   :trigger-terms ((fn-record-parse-rest (fn-cpc-read-bytes octets)))))
+   :hints (("Goal" :use fn-cpc-read-bytes-domain
+            :in-theory (disable fn-cpc-read-bytes)))))
+(local
+ (defthm fn-cpc-read-uints-rest-is-octets-fc
+   (implies (and (fn-cbor-octet-listp octets)
+                 (fn-record-parse-okp (fn-cpc-read-uints n octets)))
+            (fn-cbor-octet-listp (fn-record-parse-rest (fn-cpc-read-uints n octets))))
+   :rule-classes ((:forward-chaining
+                   :trigger-terms ((fn-record-parse-rest (fn-cpc-read-uints n octets)))))
+   :hints (("Goal" :use fn-cpc-read-uints-domain
+            :in-theory (disable fn-cpc-read-uints)))))
+(local
+ (defthm fn-cpc-read-strings-rest-is-octets-fc
+   (implies (and (fn-cbor-octet-listp octets)
+                 (fn-record-parse-okp (fn-cpc-read-strings n octets)))
+            (fn-cbor-octet-listp (fn-record-parse-rest (fn-cpc-read-strings n octets))))
+   :rule-classes ((:forward-chaining
+                   :trigger-terms ((fn-record-parse-rest (fn-cpc-read-strings n octets)))))
+   :hints (("Goal" :use fn-cpc-read-strings-domain
+            :in-theory (disable fn-cpc-read-strings)))))
+
+; The re-encoded payload must meet the same 4 MiB bound the decoder checked
+; on its input.  Each reader consumes a prefix whose re-encoding is that
+; prefix (the -reencode lemmas above), so the three encoded segments and the
+; final remainder partition OCTETS.  Stated on LEN and cited at the two
+; concrete instances: as a rewrite `(len octets)' on the left would match
+; every length in the conjecture.
+(local
+ (defthm fn-cpc-read-uints-reencode-len
+   (implies (and (fn-cbor-octet-listp octets)
+                 (fn-record-parse-okp (fn-cpc-read-uints n octets)))
+            (equal (+ (len (fn-cpc-encode-uints
+                            (fn-record-parse-value (fn-cpc-read-uints n octets))))
+                      (len (fn-record-parse-rest (fn-cpc-read-uints n octets))))
+                   (len octets)))
+   :rule-classes nil
+   :hints (("Goal" :use fn-cpc-read-uints-reencode
+            :in-theory (disable fn-cpc-read-uints-reencode)))))
+
+(local
+ (defthm fn-cpc-read-strings-reencode-len
+   (implies (and (fn-cbor-octet-listp octets)
+                 (fn-record-parse-okp (fn-cpc-read-strings n octets)))
+            (equal (+ (len (fn-cpc-encode-strings
+                            (fn-record-parse-value (fn-cpc-read-strings n octets))))
+                      (len (fn-record-parse-rest (fn-cpc-read-strings n octets))))
+                   (len octets)))
+   :rule-classes nil
+   :hints (("Goal" :use fn-cpc-read-strings-reencode
+            :in-theory (disable fn-cpc-read-strings-reencode)))))
+
 (defthm fn-cpc-accepted-input-is-canonical
   (implies (fn-cpc-result-okp
             (fn-cpc-decode octets groups capacity max-frontier max-sequence))
@@ -1143,9 +1317,15 @@
                     (fn-cpc-decode octets groups capacity max-frontier
                                    max-sequence)))
                   octets))
+  ; FN-RECORD-PARSE-OKP is opened here, and only here, because the
+  ; decoder's case split leaves subgoals that carry BOTH
+  ; (not (fn-record-parse-okp (fn-cpc-read-bytes octets))) and
+  ; (equal (car (fn-cpc-read-bytes octets)) :ok) -- vacuous, since an atom
+  ; has a NIL car, but not visibly so while the recognizer is closed.
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-cpc-decode fn-cpc-encode fn-cpc-encode-header
                             fn-cpc-encodablep fn-cpc-result-okp
+                            fn-record-parse-okp fn-cbor-ag-car
                             fn-cpc-result-value fn-frame-item)
                            (fn-cpc-decode-tree-reencode))
            :use
@@ -1179,7 +1359,30 @@
                        (xs (fn-record-parse-value
                             (fn-cpc-read-uints
                              5 (fn-record-parse-rest
-                                (fn-cpc-read-bytes octets))))))))))
+                                (fn-cpc-read-bytes octets))))))
+            ; The remaining obligation is the FNCP schema magic rebuilt in
+            ; front of the first reader's remainder.  This is exactly
+            ; fn-cpc-read-bytes-reencode at OCTETS; under the branch
+            ; hypothesis that the read value IS *fn-cpc-magic* its left side
+            ; evaluates to (68 102 110 45 99) appended to that remainder.
+            ; Cited at the instance (row 12b), never left to match.
+            (:instance fn-cpc-read-bytes-reencode)
+            ; ... and the payload bound on the re-encoding: the magic is five
+            ; octets, and each of the two remaining readers consumes exactly
+            ; what its encoder emits, so the segments sum to (len octets).
+            (:instance fn-cpc-read-uints-reencode-len
+                       (n 5)
+                       (octets (fn-record-parse-rest (fn-cpc-read-bytes octets))))
+            (:instance fn-cpc-read-strings-reencode-len
+                       (n (fn-frame-item
+                           4 (fn-record-parse-value
+                              (fn-cpc-read-uints
+                               5 (fn-record-parse-rest
+                                  (fn-cpc-read-bytes octets))))))
+                       (octets (fn-record-parse-rest
+                                (fn-cpc-read-uints
+                                 5 (fn-record-parse-rest
+                                    (fn-cpc-read-bytes octets))))))))))
 
 ; -- hostile headers are refused before the node item is parsed --------------------
 ;
@@ -1455,6 +1658,27 @@
    :hints (("Goal" :in-theory (enable fn-cpc-encode fn-cpc-encode-header
                                       fn-cpc-encodablep)))))
 
+; The two big-endian argument constructors are fixed-length lists.  Their
+; definitions stay closed in the length lemma below (opening them there puts
+; four floor/mod terms into an arithmetic goal that does not need them), so
+; the lengths are stated once, here.
+(local
+ (defthm fn-cpc-u16-bytes-len
+   (equal (len (fn-cbor-u16-bytes n)) 2)
+   :hints (("Goal" :in-theory (enable fn-cbor-u16-bytes)))))
+(local
+ (defthm fn-cpc-u32-bytes-len
+   (equal (len (fn-cbor-u32-bytes n)) 4)
+   :hints (("Goal" :in-theory (enable fn-cbor-u32-bytes)))))
+
+; Every CBOR argument head is at most five octets (1 + u32).  The selection
+; and frame guards ask for this bound on a symbolic major and value.
+(local
+ (defthm fn-cpc-encode-argument-len
+   (<= (len (fn-cbor-encode-argument major n)) 5)
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (enable fn-cbor-encode-argument)))))
+
 (local
  (defthm fn-cpc-uint-encoding-len
    (implies (and (natp n) (<= n *fn-cbor-max-uint*))
@@ -1524,6 +1748,15 @@
                             fn-frame-encode fn-frame-protected
                             fn-frame-protected-prefix fn-frame-open-of-seal)))))
 
+; The empty payload is refused before anything else: fn-cpc-read-bytes of NIL
+; is a parse error, so the frame keystone's degenerate branch is closed by
+; evaluation once the decoder is open in this one fact.
+(local
+ (defthm fn-cpc-decode-of-nil-is-not-accepted
+   (not (equal (car (fn-cpc-decode nil groups capacity max-frontier max-sequence))
+               :ok))
+   :hints (("Goal" :in-theory (enable fn-cpc-decode)))))
+
 (defthm fn-cpc-frame-accepted-is-canonical
   (implies (and (fn-cbor-octet-listp octets)
                 (fn-cpc-result-okp
@@ -1543,7 +1776,13 @@
                             (octets (fn-frame-result-payload
                                      (fn-frame-decode octets digest
                                                       *fn-cpc-max-payload*)))))
-           :in-theory (e/d (fn-cpc-frame-decode fn-cpc-frame-encode)
+           ; FN-FRAME-RESULT-OKP is opened here for the reason row 12a
+           ; opened FN-RECORD-PARSE-OKP: the case split leaves subgoals that
+           ; carry BOTH (not (fn-frame-result-okp (fn-frame-decode ...))) and
+           ; (equal (car (fn-frame-decode ...)) :ok), which is a contradiction
+           ; the closed recognizer hides.
+           :in-theory (e/d (fn-cpc-frame-decode fn-cpc-frame-encode
+                            fn-frame-result-okp)
                            (fn-cpc-decode fn-cpc-encode fn-frame-decode
                             fn-frame-encode fn-cpc-accepted-input-is-canonical
                             fn-frame-encode-of-decode)))))

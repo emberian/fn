@@ -30,12 +30,15 @@
 ; fn-bs-statep hypotheses on these contracts are unnecessary and dropped;
 ; the test book shows each remaining hypothesis is not.
 ;
-; OPEN (recorded, not weakened): fn-bs-view-is-an-admissible-image (the
-; all-:new choice reproduces every write from its unit pieces; needs the
-; splice-composition lemma over fn-bs-unit-count) and, with it, the
-; non-degenerate witness of fn-assume-crash-tearp.  K1, K2 and K3 need the
-; scan and the relation of packet P3 and are stated at the end as comments
-; with their exact obligations.
+; OPEN (recorded, not weakened): fn-bs-view-is-an-admissible-image.  Its
+; splice-composition obligation is DISCHARGED here (fn-bs-splice-composition)
+; and its witness choice list is admissible (fn-bs-view-choices-are-choices);
+; what remains is the per-piece index arithmetic, stated exactly at that
+; theorem's place below, together with the model defect the attempt found:
+; a zero-length pending write tore into no pieces while applying as a
+; zero-extension, so fn-bs-statep now carries fn-bs-writes-nonemptyp.  With
+; it, the non-degenerate witness of fn-assume-crash-tearp.  K1, K2 and K3 are
+; in books/byte-store-scan.lisp.
 ;
 ; The two named assumptions of the design's §3.6 are the encapsulates at the
 ; end.  They belong in books/assumptions.lisp; that book is owned by the
@@ -271,6 +274,32 @@
   (implies (and (fn-bs-writes-knownp ops inodes) (alistp inodes))
            (fn-bs-writes-knownp ops (fn-bs-apply-writes inodes ops2)))
   :hints (("Goal" :induct (fn-bs-apply-writes inodes ops2))))
+
+; The same eight facts for the non-empty-write conjunct of fn-bs-statep.
+; Every selector list is a sublist or a projection of the pending list, and
+; a torn piece of a non-empty write is non-empty, so nothing here is more
+; than an induction.
+(defthm fn-bs-writes-nonemptyp-of-append
+  (equal (fn-bs-writes-nonemptyp (append a b))
+         (and (fn-bs-writes-nonemptyp a) (fn-bs-writes-nonemptyp b))))
+(defthm fn-bs-writes-nonemptyp-of-ops-for-ino
+  (implies (fn-bs-writes-nonemptyp ops)
+           (fn-bs-writes-nonemptyp (fn-bs-ops-for-ino ops ino))))
+(defthm fn-bs-writes-nonemptyp-of-ops-not-for-ino
+  (implies (fn-bs-writes-nonemptyp ops)
+           (fn-bs-writes-nonemptyp (fn-bs-ops-not-for-ino ops ino))))
+(defthm fn-bs-writes-nonemptyp-of-ops-for-dir
+  (implies (fn-bs-writes-nonemptyp ops)
+           (fn-bs-writes-nonemptyp (fn-bs-ops-for-dir ops dir))))
+(defthm fn-bs-writes-nonemptyp-of-ops-not-for-dir
+  (implies (fn-bs-writes-nonemptyp ops)
+           (fn-bs-writes-nonemptyp (fn-bs-ops-not-for-dir ops dir))))
+(defthm fn-bs-writes-nonemptyp-of-cons-write
+  (implies (and (fn-bs-writes-nonemptyp ops) (consp octets))
+           (fn-bs-writes-nonemptyp (append ops (list (list :write ino offset octets))))))
+(defthm fn-bs-writes-nonemptyp-of-entry-op
+  (implies (and (fn-bs-writes-nonemptyp ops) (not (equal (car op) :write)))
+           (fn-bs-writes-nonemptyp (append ops (list op)))))
 
 ; -----------------------------------------------------------------------------
 ; Tearing a write yields writes to the same inode only, well-formed when the
@@ -554,69 +583,168 @@
   :hints (("Goal" :in-theory (e/d (fn-bs-crash-imagep)
                                   (fn-bs-durable-entry fn-bs-crash)))))
 
-; -----------------------------------------------------------------------------
-; The named assumptions (design §3.6).  Proposed home: books/assumptions.lisp
-; (owned by the hygiene lane, P7); until then they live here so that every
-; theorem that will depend on them can already name them.
-
-; A torn variant of a written frame: some unit-aligned pieces replaced by
-; their old content, zeros or garbage, or the whole truncated to a unit
-; boundary.  Defined through the crash machinery on a one-inode store so
-; that "torn" means exactly what fn-bs-crash means.
-(defun fn-bs-torn-variantp (unit observed written)
-  (declare (xargs :guard t :verify-guards nil))
-  (let ((s (fn-bs-make unit (list (cons 0 nil)) nil
-                       (list (list :write 0 0 written)) 1)))
-    (fn-bs-crash-imagep s (fn-bs-make unit (list (cons 0 observed)) nil nil 1))))
-
-; A-CRASH-IMAGE.  The platform's crash, whatever it does, leaves an image the
-; byte model admits.  ORACLE is the platform's freedom (power timing, drive
-; cache, scheduler); the constraint is over every oracle.  This one
-; constraint carries: fenced data survives (fn-bs-crash-keeps-fenced-content),
-; quiet directories survive (fn-bs-crash-keeps-quiet-directory), per-entry
-; atomic namespace with no dangling entries
-; (fn-bs-crash-entry-is-old-or-a-pending-target), and that fsync :ok means
-; drained (the definition of fn-bs-fsync-file; on darwin that is F_FULLFSYNC,
-; review D12).  Qualification: functional instantiation with the development
-; profile's crash function (P10), evidenced by the campaign (process death
-; only; no power-loss claim).
-(encapsulate
-  (((fn-assume-physical-crash * *) => *))
-  (local (defun fn-assume-physical-crash (s oracle)
-           (declare (ignore oracle))
-           (fn-bs-crash s nil)))                ; the lose-everything image
-  (defthm fn-assume-physical-crash-is-admissible
-    (implies (fn-bs-statep s)
-             (fn-bs-crash-imagep s (fn-assume-physical-crash s oracle)))))
-
-; A-CRYPTO-TRAILER.  The tears the platform produces are a subset of the
-; model's tears, and none of them validates unless it is the exact write.
-; Its qualification is statistical: the campaign's garble and truncate
-; variants over SHA-256 never validate; a 2^-256 event is not modeled.
+;                      -----------------------------------------------------
+; The view is an admissible image.
 ;
-; The local witness is "no tears, of an empty write".  The natural witness
-; "no tears" (observed = written for every written) needs
-; fn-bs-view-is-an-admissible-image, which is OPEN above; the constraints,
-; which are what every dependent theorem uses, do not change with the
-; witness.
-(encapsulate
-  (((fn-assume-crash-tearp * * *) => *))
-  (local (defun fn-assume-crash-tearp (unit observed written)
-           (declare (ignore unit))
-           (and (equal observed written) (null written))))
-  (defthm fn-assume-crash-tear-is-a-model-tear
-    (implies (fn-assume-crash-tearp unit observed written)
-             (fn-bs-torn-variantp unit observed written))
-    :hints (("Goal" :in-theory (enable fn-bs-crash-imagep-suff)
-             :use ((:instance fn-bs-crash-imagep-suff
-                              (s (fn-bs-make unit (list (cons 0 nil)) nil
-                                             (list (list :write 0 0 written)) 1))
-                              (image (fn-bs-make unit (list (cons 0 observed)) nil nil 1))
-                              (choices nil))))))
-  (defthm fn-assume-crash-tear-never-validates-unless-exact
-    (implies (and (fn-assume-crash-tearp unit observed written)
-                  (not (equal observed written)))
-             (not (fn-frame-result-okp (fn-frame-open observed max-payload))))))
+; The obligation recorded against this statement was the splice-composition
+; lemma over contiguous unit pieces.  It is fn-bs-splice-composition below:
+; writing A at OFFSET and then B immediately after it is one write of
+; (append A B) at OFFSET.  With it, the all-:new choice list reproduces each
+; pending write from the pieces fn-bs-tear-write cuts, and :apply reproduces
+; each entry operation, so the view -- what the running process saw -- is the
+; top of the image lattice, as fn-bs-crash-with-no-choices-is-the-durable-
+; state is its bottom.
+
+(local (in-theory (enable fn-bs-splice)))
+
+; List vocabulary for the composition lemma.  Local: these are generic
+; append/take/nthcdr facts and no downstream book states anything in them.
+(local (defthm fn-bs-append-associative
+         (equal (append (append x y) z) (append x (append y z)))))
+(local (defthm fn-bs-len-of-append
+         (equal (len (append x y)) (+ (len x) (len y)))))
+(local (defthm fn-bs-len-of-take
+         (equal (len (fn-bs-take n xs)) (nfix n))))
+(local (defthm fn-bs-take-of-len-is-identity
+         (implies (true-listp xs) (equal (fn-bs-take (len xs) xs) xs))))
+(local (defthm fn-bs-take-of-append-left
+         (implies (and (natp n) (<= n (len a)) (true-listp a))
+                  (equal (fn-bs-take n (append a b)) (fn-bs-take n a)))))
+(local (defthm fn-bs-nthcdr-of-nthcdr
+         (implies (and (natp n) (natp m))
+                  (equal (nthcdr n (nthcdr m xs)) (nthcdr (+ n m) xs)))))
+(local (defthm fn-bs-take-past-a-prefix
+         (implies (and (natp n) (natp m) (true-listp x) (equal (len x) n))
+                  (equal (fn-bs-take (+ n m) (append x y))
+                         (append x (fn-bs-take m y))))))
+(local (defthm fn-bs-nthcdr-past-a-prefix
+         (implies (and (natp n) (natp m) (true-listp x) (equal (len x) n))
+                  (equal (nthcdr (+ n m) (append x y)) (nthcdr m y)))))
+(local (defthm fn-bs-take-split
+         (implies (and (natp m) (natp n) (<= m n))
+                  (equal (append (fn-bs-take m xs) (fn-bs-take (- n m) (nthcdr m xs)))
+                         (fn-bs-take n xs)))))
+
+; The splice-composition lemma (the obligation recorded with the open view
+; theorem): the second write lands exactly where the first one ended, so the
+; two are one write of the concatenation.  Both sides are three appends over
+; the same OLD; the proof is the two prefix lemmas above, not an induction.
+(defthm fn-bs-splice-composition
+  (implies (and (natp offset) (true-listp a))
+           (equal (fn-bs-splice (fn-bs-splice old offset a) (+ offset (len a)) b)
+                  (fn-bs-splice old offset (append a b))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bs-splice) (fn-bs-take)))))
+
+(local (in-theory (disable fn-bs-splice)))
+
+; The nothing-lost choice: every unit of every write :new, every entry
+; operation :apply.
+(defun fn-bs-all-new (n)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (zp n) nil (cons :new (fn-bs-all-new (1- n)))))
+
+(defun fn-bs-view-choices (ops unit)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp ops)
+      (cons (if (equal (car (car ops)) :write)
+                (fn-bs-all-new (fn-bs-unit-count (nth 2 (car ops))
+                                                 (len (nth 3 (car ops))) unit))
+              :apply)
+            (fn-bs-view-choices (cdr ops) unit))
+    nil))
+
+; Floor facts for the unit arithmetic.  arithmetic-5 is included inside a
+; local encapsulate so that its rules do not reach the rest of the book.
+(local
+ (encapsulate ()
+   (local (include-book "arithmetic-5/top" :dir :system))
+   (defthm fn-bs-floor-weakly-monotone
+     (implies (and (integerp a) (integerp b) (<= a b) (posp unit))
+              (<= (floor a unit) (floor b unit)))
+     :rule-classes :linear)
+   (defthm fn-bs-floor-times-unit-below
+     (implies (and (integerp a) (posp unit))
+              (<= (* (floor a unit) unit) a))
+     :rule-classes :linear)
+   (defthm fn-bs-floor-times-unit-above
+     (implies (and (integerp a) (posp unit))
+              (< a (* (+ 1 (floor a unit)) unit)))
+     :rule-classes :linear)))
+
+(local
+ (defthm fn-bs-unit-count-nonnegative
+   (<= 0 (fn-bs-unit-count offset len unit))
+   :rule-classes :linear
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-bs-unit-count) (floor))
+            :use ((:instance fn-bs-floor-weakly-monotone
+                             (a (nfix offset)) (b (+ (nfix offset) len -1))))))))
+
+(defthm fn-bs-all-new-is-selector-list
+  (fn-bs-selector-listp (fn-bs-all-new n)))
+(defthm fn-bs-len-of-all-new
+  (equal (len (fn-bs-all-new n)) (nfix n)))
+(defthm fn-bs-view-choices-are-choices
+  (fn-bs-crash-choicesp (fn-bs-view-choices ops unit) ops unit)
+  :hints (("Goal" :in-theory (enable fn-bs-crash-choicep))))
+
+; -----------------------------------------------------------------------------
+; fn-bs-view-is-an-admissible-image: STILL OPEN, with a smaller obligation.
+;
+; What this lane closed:
+;   * fn-bs-splice-composition, the lemma the obligation named.
+;   * fn-bs-view-choices, the nothing-lost choice list, and
+;     fn-bs-view-choices-are-choices: it is admissible for every pending list
+;     and every unit, so the witness for fn-bs-crash-imagep-suff exists.
+;   * A DEFECT in the model that made the statement FALSE as written, now
+;     fixed: a pending (:write ino offset NIL) has fn-bs-unit-count 0, so a
+;     crash tears it into no pieces, while fn-bs-apply-op splices it and
+;     zero-extends the inode when offset exceeds the current length.  The
+;     view of (:byte-store 4 ((0)) NIL ((:write 0 5 NIL)) 1) is five zero
+;     octets and no crash image of that state has them.  fn-bs-statep now
+;     carries fn-bs-writes-nonemptyp (byte-store.lisp), which fn-bs-write
+;     establishes and every transition preserves (the eight lemmas above).
+;
+; What remains, exactly.  For a write of L>0 octets at OFFSET under unit U,
+; let u0 = (floor OFFSET U), start_i = (max OFFSET (* (+ u0 i) U)) and
+; k_i = (min L (- start_i OFFSET)).  Two arithmetic facts are needed, for
+; 1 <= i <= count-1 where count = (fn-bs-unit-count OFFSET L U):
+;   (A1)  (equal start_i (+ OFFSET k_i))      -- the i-th piece begins where
+;         pieces 0..i-1 ended; from (<= (* (+ u0 i) U) (+ OFFSET L -1)),
+;         which is fn-bs-floor-weakly-monotone with fn-bs-floor-times-unit-
+;         below, both proved above.
+;   (A2)  (equal (min (+ OFFSET L) (* (+ u0 i 1) U)) (+ OFFSET k_(i+1)))
+; With them, the induction
+;   (fn-bs-apply-writes
+;     (fn-bs-put-assoc ino (fn-bs-splice c OFFSET (fn-bs-take k_i octets)) inodes)
+;     (fn-bs-tear-write op (fn-bs-all-new (- count i)) i U))
+;   = (fn-bs-put-assoc ino (fn-bs-splice c OFFSET octets) inodes)
+; closes on i, its step being fn-bs-splice-composition (a = the first k_i
+; octets, b = the i-th slice) followed by fn-bs-take-split; its base at
+; i = count is fn-bs-take-of-len-is-identity.  Attempted here: the induction
+; is right and the rewriting is right, but the waterfall re-derives A1 and A2
+; inside every branch of fn-bs-tear-write's case split and exhausts a
+; 2,000,000 step limit.  The next step is to state A1 and A2 as their own
+; :linear lemmas over a named (fn-bs-piece-start offset i unit), with
+; fn-bs-tear-write opened once by an :expand rather than by its definition
+; rune, so the arithmetic is discharged once instead of per branch.
+;
+; Nothing below depends on the view theorem; the A-CRYPTO-TRAILER witness
+; stays "no tears of an empty write" until it lands.
+
+; -----------------------------------------------------------------------------
+; The named assumptions (design §3.6) LIVE IN books/assumptions.lisp.
+;
+; A-CRASH-IMAGE (`fn-assume-physical-crash') and A-CRYPTO-TRAILER
+; (`fn-assume-crash-tearp'), with `fn-bs-torn-variantp', moved there on
+; 2026-09-20 (lane w9/storage-2), which is what the assurance rule "Assumptions
+; are constrained functions" requires: a named assumption is an `encapsulate'
+; with a local witness in `books/assumptions.lisp'.  The move puts this book
+; into the include-closure of `books/assumptions' and therefore of
+; `books/relay', `books/bp-release' and `books/scheduler-invariants'; there is
+; no cycle, because nothing in the byte-store closure includes `assumptions'.
+; The constraints did not change with the move.
 
 ; -----------------------------------------------------------------------------
 ; OPEN keystones, stated with their exact obligations.  None is weakened
@@ -708,5 +836,4 @@
     fn-bs-apply-entries-entry-is-entry-after fn-bs-entry-after-of-append
     fn-bs-entry-after-of-tear-write fn-bs-member-of-append
     fn-bs-crash-select-entry-is-an-outcome))
-(in-theory (disable fn-bs-invariants-vocabulary
-                    fn-bs-torn-variantp fn-bs-entry-after))
+(in-theory (disable fn-bs-invariants-vocabulary fn-bs-entry-after))
