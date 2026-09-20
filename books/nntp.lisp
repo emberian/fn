@@ -55,6 +55,9 @@
    ((fn-nntp-keywordp keyword "HELP")
     (if (null args) (fn-nntp-help session)
       (fn-nntp-single session "501 syntax error")))
+   ((fn-nntp-keywordp keyword "POST")
+    (if (null args) (fn-nntp-post-offer session)
+      (fn-nntp-single session "501 syntax error")))
    ((fn-nntp-keywordp keyword "QUIT")
     (if (null args)
         (fn-nntp-make-result (fn-nntp-make-session nil

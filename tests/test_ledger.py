@@ -443,6 +443,56 @@ class TeethFormLintTests(unittest.TestCase):
 '''), [])
 
 
+class IncludeHygieneLintTests(unittest.TestCase):
+    """A non-local include of a book that withdraws nothing re-exports it all.
+
+    The measured case: `books/bp-ingress.lisp` took a non-local include of
+    `article-properties` for one guard hint, which enabled every rule of that
+    book in the ingress proof and turned six minutes into an 1800 s timeout.
+    """
+
+    OPEN = '(in-package "ACL2")\n(defthm fn-open-shape (equal (fn-ag-car x) (car x)))\n'
+    CLOSED = ('(in-package "ACL2")\n'
+              '(defthm fn-closed-shape (equal (fn-cl-car x) (car x)))\n'
+              '(in-theory (disable fn-closed-shape))\n')
+
+    def findings(self, includer: str) -> list[dict]:
+        return ledger.include_hygiene(tree_from({
+            "books/open.lisp": self.OPEN,
+            "books/closed.lisp": self.CLOSED,
+            "books/includer.lisp": includer,
+        }))
+
+    def test_a_non_local_include_of_a_book_with_no_export_theory_is_flagged(self):
+        found = self.findings('(in-package "ACL2")\n(include-book "open")\n')
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0]["book"], "books/includer.lisp")
+        self.assertEqual(found[0]["included"], "books/open.lisp")
+        self.assertEqual(found[0]["line"], 2)
+        self.assertIn("re-export", found[0]["reason"])
+
+    def test_the_same_include_made_local_is_clean(self):
+        self.assertEqual(
+            self.findings('(in-package "ACL2")\n(local (include-book "open"))\n'), [])
+
+    def test_including_a_book_that_withdraws_on_exit_is_clean(self):
+        self.assertEqual(
+            self.findings('(in-package "ACL2")\n(include-book "closed")\n'), [])
+
+    def test_a_system_book_and_an_unresolvable_path_are_not_judged(self):
+        self.assertEqual(self.findings('(in-package "ACL2")\n'
+                                       '(include-book "std/lists/top" :dir :system)\n'
+                                       '(include-book "no-such-book")\n'), [])
+
+    def test_a_relative_include_resolves_to_the_book_it_names(self):
+        found = ledger.include_hygiene(tree_from({
+            "books/open.lisp": self.OPEN,
+            "tests/acl2/t.lisp": '(in-package "ACL2")\n'
+                                 '(include-book "../../books/open")\n',
+        }))
+        self.assertEqual([entry["included"] for entry in found], ["books/open.lisp"])
+
+
 class LintReportingTests(unittest.TestCase):
     def test_warnings_carry_the_book_line_and_name(self):
         tree = tree_from({
@@ -461,5 +511,20 @@ class LintReportingTests(unittest.TestCase):
         self.assertEqual(ledger_data["totals"]["teeth_form_warnings"], 0)
         self.assertEqual(ledger_data["lints"]["export_hygiene"][0]["theorem"],
                          "fn-ag-car-is-car")
+        self.assertEqual(ledger_data["totals"]["include_hygiene_warnings"], 0)
         self.assertIn("Export-hygiene warnings | 1",
+                      ledger.ledger_markdown(ledger_data))
+
+    def test_an_include_warning_carries_the_includer_line_and_target(self):
+        tree = tree_from({
+            "books/open.lisp": IncludeHygieneLintTests.OPEN,
+            "books/includer.lisp": '(in-package "ACL2")\n(include-book "open")\n',
+        })
+        warnings = ledger.lint_warnings(tree)
+        self.assertEqual(len(warnings), 1)
+        self.assertTrue(warnings[0].startswith(
+            "include hygiene: books/includer.lisp:2: books/open.lisp:"), warnings[0])
+        ledger_data = ledger.build_ledger(tree)
+        self.assertEqual(ledger_data["totals"]["include_hygiene_warnings"], 1)
+        self.assertIn("Include-hygiene warnings | 1",
                       ledger.ledger_markdown(ledger_data))

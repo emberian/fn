@@ -716,6 +716,8 @@ class Store:
                 pass
             raise
         fsync_dir(self.root)
+
+    @property
     def config_record_path(self): return self.root / "config-record"
 
     @staticmethod
@@ -1303,58 +1305,113 @@ CLI_FAULTS = {
 }
 
 
+def durable_post(store, bridge, records_count, msgid, payload, codes, charge):
+    """The durable acceptance path, shared by the CLI and the served POST.
+
+    ACL2 decides: `bridge.prepare` is fn-node-prepare and `store.finish` is the
+    exact fn-sn durable completion.  This function performs I/O around those
+    decisions and reports the sequence it committed.  It never invents a
+    durable status.
+    """
+    current_txid = bridge.next_txid()
+    next_frontier = store.advance_frontier(bridge, current_txid)
+    obligation, subject, evidence = metadata(msgid, payload)
+    action = bridge.prepare(msgid, payload, codes, obligation,
+                            subject, evidence, charge)
+    if action != "prepared":
+        # The allocator reservation is durable even for a synchronous
+        # semantic refusal.  The file kernel consumes it; Python only
+        # reports the already-observed allocator sequence.
+        store.fenced = True
+        if bridge.refuse_reservation() != "refused":
+            raise StoreIndeterminate("ACL2 could not consume refused reservation")
+        raise StoreError("ACL2 refused post: {}".format(action))
+    record = bridge.pending_record()
+    try:
+        store.publish(bridge, records_count, record)
+    except StoreIndeterminate:
+        raise
+    except StoreError:
+        # A pre-publication staging failure has no final-name event.  Its
+        # exact candidate is resolved through fn-sf/fn-node; a bridge
+        # inconsistency stays fenced for observed replay.
+        if not store.fenced:
+            store.fenced = True
+            if bridge.known_abort() != "aborted":
+                raise StoreIndeterminate("ACL2 rejected known pre-publication abort")
+        raise
+    # Final-name publication and its directory barrier have put the file
+    # kernel in :completing.  Only fn-sn-finish performs the exact actual
+    # node durable completion; there is no host durable-status string.
+    store.fenced = True
+    store.finish(bridge)
+    return records_count
+
+
+def post_article(store, bridge, records_count, msgid, payload, groups, charge):
+    """Post one article through an open writable store and its bridge.
+
+    Returns (sequence, charge) for a durable commit and (None, charge) for a
+    duplicate.  Every refusal, uncertainty and fault is raised as the store
+    error that names it, so the CLI and the owner map one outcome to one code.
+    """
+    codes = group_codes(groups, store.config)
+    charge = charge if charge is not None else conservative_charge(payload)
+    validate_post_boundary(msgid, payload, codes, charge, store.config)
+    existing = bridge.existing_action(msgid, payload, codes)
+    if existing == "duplicate":
+        return None, charge
+    if existing == "conflict":
+        raise StoreError("conflicting immutable Message-ID")
+    if records_count >= store.config["max_transactions"]:
+        raise StoreError("transaction count has reached configured bound")
+    return (durable_post(store, bridge, records_count, msgid, payload, codes, charge),
+            charge)
+
+
+def post_via_owner(control, msgid, payload, groups, charge):
+    """Thin client of tools/run_owner.py: one request line, one reply line."""
+    import socket
+    line = "POST {} {} {} {}\n".format(msgid.decode("ascii"), ",".join(groups),
+                                       "-" if charge is None else charge, len(payload))
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+        sock.settimeout(ACL2_RECOVER_BASE_SECONDS + 60)
+        sock.connect(control)
+        sock.sendall(line.encode("ascii") + payload)
+        reply = b""
+        while not reply.endswith(b"\n"):
+            chunk = sock.recv(4096)
+            if not chunk:
+                break
+            reply += chunk
+    reply = reply.strip().decode("utf-8", "replace")
+    if reply.startswith("committed ") or reply == "duplicate":
+        print(reply)
+        return EXIT_OK
+    print("store: {}".format(reply), file=sys.stderr)
+    if reply.startswith("refused"):
+        return EXIT_REFUSED
+    if reply.startswith("uncertain"):
+        return EXIT_UNCERTAIN
+    return EXIT_FAULT
+
+
 def command_post(args, faults=NO_FAULTS):
     """Post one article.  `faults` is the test-only injector; the CLI hook wins."""
     msgid = args.message_id.encode("ascii")
     payload = read_regular_bounded(args.payload, DEFAULT_CONFIG["max_payload_bytes"])
+    if args.owner is not None:
+        return post_via_owner(args.owner, msgid, payload, args.group, args.charge)
     if args.inject_fault is not None:
         faults = CLI_FAULTS[args.inject_fault]()
     store, bridge, records = open_live_store(args.store, writable=True, faults=faults)
     try:
-        codes = group_codes(args.group, store.config)
-        charge = args.charge if args.charge is not None else conservative_charge(payload)
-        validate_post_boundary(msgid, payload, codes, charge, store.config)
-        existing = bridge.existing_action(msgid, payload, codes)
-        if existing == "duplicate":
+        sequence, charge = post_article(store, bridge, len(records), msgid, payload,
+                                        args.group, args.charge)
+        if sequence is None:
             print("duplicate")
             return 0
-        if existing == "conflict":
-            raise StoreError("conflicting immutable Message-ID")
-        if len(records) >= store.config["max_transactions"]:
-            raise StoreError("transaction count has reached configured bound")
-        current_txid = bridge.next_txid()
-        next_frontier = store.advance_frontier(bridge, current_txid)
-        obligation, subject, evidence = metadata(msgid, payload)
-        action = bridge.prepare(msgid, payload, codes, obligation,
-                                subject, evidence, charge)
-        if action != "prepared":
-            # The allocator reservation is durable even for a synchronous
-            # semantic refusal.  The file kernel consumes it; Python only
-            # reports the already-observed allocator sequence.
-            store.fenced = True
-            if bridge.refuse_reservation() != "refused":
-                raise StoreIndeterminate("ACL2 could not consume refused reservation")
-            raise StoreError("ACL2 refused post: {}".format(action))
-        record = bridge.pending_record()
-        try:
-            store.publish(bridge, len(records), record)
-        except StoreIndeterminate:
-            raise
-        except StoreError:
-            # A pre-publication staging failure has no final-name event.  Its
-            # exact candidate is resolved through fn-sf/fn-node; a bridge
-            # inconsistency stays fenced for observed replay.
-            if not store.fenced:
-                store.fenced = True
-                if bridge.known_abort() != "aborted":
-                    raise StoreIndeterminate("ACL2 rejected known pre-publication abort")
-            raise
-        # Final-name publication and its directory barrier have put the file
-        # kernel in :completing.  Only fn-sn-finish performs the exact actual
-        # node durable completion; there is no host durable-status string.
-        store.fenced = True
-        store.finish(bridge)
-        print("committed sequence={} charge={}".format(len(records), charge))
+        print("committed sequence={} charge={}".format(sequence, charge))
         return EXIT_OK
     finally:
         bridge.close()
@@ -1539,6 +1596,7 @@ def main(argv=None):
     post.add_argument("--charge", type=int)
     post.add_argument("--inject-fault", choices=tuple(CLI_FAULTS),
                       help="test-only: select one scripted publication fault point")
+    post.add_argument("--owner", help="post through the running owner's control socket")
     recover = sub.add_parser("recover")
     anchor = sub.add_parser("anchor")
     for parser_with_anchor in (recover, anchor):

@@ -52,7 +52,10 @@ class ServedDifferentialTests(unittest.TestCase):
         touches none of the bridge's globals, so it may be evaluated in the
         same session that serves the socket.
         """
-        open_form = "(fn-served-open *fn-reader-archive* 510 8192)"
+        # The posting configuration and the clock observation are pinned at
+        # open; a read-only transcript never consults them.
+        open_form = ("(fn-served-open *fn-reader-archive* 510 8192"
+                     " (fn-reader-post-config *fn-reader-archive* nil) nil)")
         chunk_list = "(list " + " ".join(octet_literal(c) for c in chunks) + ")"
         form = (
             "(fn-served-reply-octets"

@@ -1,4 +1,4 @@
-; The served path of the NNTP reader, in logic mode.
+; The served path of the NNTP reader, in logic mode, with POST plugged in.
 ;
 ; Before this book the served path was split in two untrusted halves: the
 ; `while pending:' loop of tools/run_reader.py fed one chunk at a time into
@@ -9,75 +9,67 @@
 ; P1 of specs/node-functionality.md section 6.
 ;
 ; This book writes that loop once, in logic mode, with guard `t' verified:
-; `fn-served-step' is one socket read.  The host now performs exactly one call
-; of it per read and keeps no protocol state of its own, so the subject of
-; every theorem below is the function host/reader-host.lisp:104 calls.
+; `fn-served-step' is one socket read.  The host performs exactly one call of
+; it per read and keeps no protocol state of its own, so the subject of every
+; theorem below is the function host/reader-host.lisp `fn-reader-chunk' calls.
+;
+; The loop is a fold over the read's octets, one byte at a time
+; (`fn-wire-feed-byte', which is what `fn-wire-drive' computes by
+; `fn-wire-drive-is-feed-proper'), and the dispatcher runs on each framed
+; event before the next byte is framed.  That order is what POST needs: the
+; 340 offer from `fn-nntp-post-step' (books/nntp-post.lisp) carries a
+; `:begin-article' effect, and the byte after the offer must be framed in
+; article mode.  `fn-served-dispatch' switches the wire with
+; `fn-wire-begin-article' on that effect, so article mode is wire state inside
+; the connection, the terminated body comes back as one `(:article lines)'
+; event, and the fold hands it to the injection path.  An injected article is
+; not a reply: it leaves the step as a `(:submit decision)' effect the host
+; carries through its durable path, and the host answers by calling
+; `fn-served-post-outcome' with what it observed.  Every reply octet is still
+; produced here.
 ;
 ; What is proved here, each lifted from a named keystone rather than reproved:
 ;
-;   fn-served-step-preserves-connp          fn-wire-drive-preserves-statep
-;                                           fn-nntp-finite-trace-preserves-
-;                                             consistent-session
-;   fn-served-step-effects-are-typed        fn-nntp-step-effects-well-formed
-;   fn-served-step-partition-independence   fn-wire-drive-partition-independence
+;   fn-served-step-preserves-connp          fn-wire-feed-byte-preserves-statep
+;                                           fn-wire-begin-article-preserves-statep
+;                                           fn-post-step-preserves-consistent-
+;                                             session
+;   fn-served-step-effects-are-typed        fn-post-step-effects-well-formed
+;                                           fn-post-submission-is-an-injected-
+;                                             article
+;   fn-served-step-partition-independence   fn-served-feed-of-append (a byte
+;                                           fold splits over append by its
+;                                           shape; no wire lemma is needed)
 ;   fn-served-run-is-the-concatenated-step  the two above, by induction
 ;   fn-served-reply-stream-is-partition-independent   the corollary the host
 ;                                           needs: the reply octets depend only
 ;                                           on the concatenated input, not on
 ;                                           how the network cut it
-;   fn-served-step-nntp-steps-is-bounded    fn-wire-next-strictly-consumes
+;   fn-served-step-nntp-steps-is-bounded    fn-wire-feed-byte-emits-at-most-
+;                                             one-event
 ;
-; OPEN (no theorem here): the cost of one `fn-nntp-step' is not yet bounded by
-; a closed form.  See the obligation recorded at the end of this book.
+; OPEN (no theorem here): the cost of one `fn-nntp-post-step' is not yet
+; bounded by a closed form.  See the obligation recorded at the end of this
+; book.
 
 (in-package "ACL2")
 (include-book "wire-invariants")
-(include-book "nntp-effects")
+(include-book "nntp-post")
 
 ; -----------------------------------------------------------------------------
-; Local record lemmas for the nntp result record
-;
-; books/nntp-session.lisp builds the result with `fn-nntp-make-result' and
-; withdraws the constructor and the accessors at the nntp-effects export event
-; without leaving accessor-of-constructor lemmas behind.  These three are that
-; missing pair, kept local: no `-of-' equality about another cluster's record
-; leaves this book.
-
-(local
- (defthm fn-served-nntp-session-of-make-result
-   (equal (fn-nntp-result-session (fn-nntp-make-result session effects))
-          session)
-   :hints (("Goal" :in-theory (enable fn-nntp-result-session
-                                      fn-nntp-make-result)))))
-
-(local
- (defthm fn-served-nntp-effects-of-make-result
-   (equal (fn-nntp-result-effects (fn-nntp-make-result session effects))
-          effects)
-   :hints (("Goal" :in-theory (enable fn-nntp-result-effects
-                                      fn-nntp-make-result)))))
-
-(local
- (defthm fn-served-nntp-result-eta
-   (implies (consp result)
-            (equal (fn-nntp-make-result (fn-nntp-result-session result)
-                                        (fn-nntp-result-effects result))
-                   result))
-   :hints (("Goal" :in-theory (enable fn-nntp-result-session
-                                      fn-nntp-result-effects
-                                      fn-nntp-make-result)))))
-
-; -----------------------------------------------------------------------------
-; The connection record: wire framing state, NNTP session, pinned archive
+; The connection record: wire framing state, POST session, pinned archive,
+; posting configuration, clock observation
 ;
 ; The archive is the immutable snapshot the connection was opened against.  It
 ; is a field of the connection, not a global, because a served step must not be
 ; able to observe a later commit: that is the pinned-prefix discipline of
 ; specs/node-functionality.md section 1.1 with the version pin still to come.
+; The configuration and the observation are likewise pinned at open: the
+; served step reads them and never a global.
 
 (defun fn-served-conn-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 3)))
+  (and (true-listp x) (equal (len x) 5)))
 
 (defun fn-served-conn-wire (x)
   (declare (xargs :guard t))
@@ -91,24 +83,48 @@
   (declare (xargs :guard t))
   (mbe :logic (car (cdr (cdr x))) :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
 
-(defun fn-served-make-conn (wire session archive)
+(defun fn-served-conn-config (x)
   (declare (xargs :guard t))
-  (list wire session archive))
+  (mbe :logic (car (cdr (cdr (cdr x))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
+
+(defun fn-served-conn-observation (x)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr (cdr (cdr x)))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
+
+(defun fn-served-make-conn (wire session archive config observation)
+  (declare (xargs :guard t))
+  (list wire session archive config observation))
 
 (defthm fn-served-conn-shapep-of-fn-served-make-conn
-  (fn-served-conn-shapep (fn-served-make-conn wire session archive)))
+  (fn-served-conn-shapep
+   (fn-served-make-conn wire session archive config observation)))
 
 (defthm fn-served-conn-wire-of-fn-served-make-conn
-  (equal (fn-served-conn-wire (fn-served-make-conn wire session archive))
+  (equal (fn-served-conn-wire
+          (fn-served-make-conn wire session archive config observation))
          wire))
 
 (defthm fn-served-conn-session-of-fn-served-make-conn
-  (equal (fn-served-conn-session (fn-served-make-conn wire session archive))
+  (equal (fn-served-conn-session
+          (fn-served-make-conn wire session archive config observation))
          session))
 
 (defthm fn-served-conn-archive-of-fn-served-make-conn
-  (equal (fn-served-conn-archive (fn-served-make-conn wire session archive))
+  (equal (fn-served-conn-archive
+          (fn-served-make-conn wire session archive config observation))
          archive))
+
+(defthm fn-served-conn-config-of-fn-served-make-conn
+  (equal (fn-served-conn-config
+          (fn-served-make-conn wire session archive config observation))
+         config))
+
+(defthm fn-served-conn-observation-of-fn-served-make-conn
+  (equal (fn-served-conn-observation
+          (fn-served-make-conn wire session archive config observation))
+         observation))
 
 (defthm fn-served-conn-shapep-forward-shape
   (implies (fn-served-conn-shapep x) (and (consp x) (true-listp x)))
@@ -116,6 +132,7 @@
 
 (in-theory (disable (:d fn-served-conn-shapep) (:d fn-served-conn-wire)
                     (:d fn-served-conn-session) (:d fn-served-conn-archive)
+                    (:d fn-served-conn-config) (:d fn-served-conn-observation)
                     (:d fn-served-make-conn)))
 
 ; The result record: the connection after the read, and the effects the host
@@ -160,8 +177,10 @@
 
 (local
  (defthm fn-served-make-conn-equal
-   (equal (equal (fn-served-make-conn w1 s1 a1) (fn-served-make-conn w2 s2 a2))
-          (and (equal w1 w2) (equal s1 s2) (equal a1 a2)))
+   (equal (equal (fn-served-make-conn w1 s1 a1 c1 o1)
+                 (fn-served-make-conn w2 s2 a2 c2 o2))
+          (and (equal w1 w2) (equal s1 s2) (equal a1 a2)
+               (equal c1 c2) (equal o1 o2)))
    :hints (("Goal" :in-theory (enable fn-served-make-conn)))))
 
 (local
@@ -174,17 +193,18 @@
 ; The carried invariant
 ;
 ; fn-served-connp is a whole-connection recognizer and therefore never runs on
-; the served path: fn-served-step branches on nothing.  It is the hypothesis
-; the keystones below carry and the step preserves (proof-style section 4).  It
-; is deliberately not guard verified: it is specification vocabulary, and
-; fn-nntp-session-consistentp, which walks the pinned archive, is not
+; the served path: fn-served-step tests the wire recognizer once per read (as
+; fn-wire-drive did) and branches on nothing else.  It is the hypothesis the
+; keystones below carry and the step preserves (proof-style section 4).  It is
+; deliberately not guard verified: it is specification vocabulary, and
+; fn-post-session-consistentp, which walks the pinned archive, is not
 ; executable on a served read by design.
 
 (defun fn-served-connp (c)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-served-conn-shapep c)
        (fn-wire-statep (fn-served-conn-wire c))
-       (fn-nntp-session-consistentp (fn-served-conn-session c)
+       (fn-post-session-consistentp (fn-served-conn-session c)
                                     (fn-served-conn-archive c))))
 
 (defthm fn-served-connp-forward-shape
@@ -197,130 +217,348 @@
 
 (defthm fn-served-connp-is-consistent-session
   (implies (fn-served-connp c)
-           (fn-nntp-session-consistentp (fn-served-conn-session c)
+           (fn-post-session-consistentp (fn-served-conn-session c)
                                         (fn-served-conn-archive c))))
 
 (in-theory (disable fn-served-connp))
 
 ; -----------------------------------------------------------------------------
-; One wire event at a time, over the events one read produced
+; The typed effects of a served read
 ;
-; fn-nntp-run-session (books/nntp-invariants.lisp) already folds the sessions.
-; This fold also accumulates the effects, in order; the bridge theorem below
-; says its session component is exactly fn-nntp-run-session, so the session
-; keystones are cited rather than reproved.
+; fn-nntp-effectsp (books/nntp-effects.lisp) enumerates what the dispatcher
+; may emit: a reply, the close effect, the begin-article marker.  A served
+; read emits one thing more, the submission of an injected article, which is
+; the host's obligation and not a reply.  fn-served-effectsp is that closed
+; enumeration.  Both recognizers are specification vocabulary and never run on
+; the served path, so neither is guard verified.
 
-(defun fn-served-nntp-run (session archive env events)
+(defun fn-served-submit-effect (decision)
   (declare (xargs :guard t))
-  (if (consp events)
-      (let* ((here (fn-nntp-step session archive env (car events)))
-             (tail (fn-served-nntp-run (fn-nntp-result-session here)
-                                       archive env (cdr events))))
-        (fn-nntp-make-result
-         (fn-nntp-result-session tail)
-         (mbe :logic (append (fn-nntp-result-effects here)
-                             (fn-nntp-result-effects tail))
-              :exec (fn-ag-append (fn-nntp-result-effects here)
-                                  (fn-nntp-result-effects tail)))))
-    (fn-nntp-make-result session nil)))
+  (list :submit decision))
 
-; A read that framed no event runs no dispatcher step.  Local: a definitional
-; branch restatement, kept as a rewrite for the proofs below and never
-; exported.
-(local
- (defthm fn-served-nntp-run-of-no-events
-   (implies (not (consp events))
-            (equal (fn-served-nntp-run session archive env events)
-                   (fn-nntp-make-result session nil)))))
+(defun fn-served-submit-effectp (effect)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (true-listp effect)
+       (equal (len effect) 2)
+       (equal (car effect) :submit)
+       (fn-inj-injectedp (car (cdr effect)))))
 
-(local
- (defthm fn-served-nntp-run-is-consp
-   (consp (fn-served-nntp-run session archive env events))
-   :rule-classes :type-prescription
-   :hints (("Goal" :in-theory (e/d (fn-nntp-make-result)
-                                   (fn-nntp-step))))))
+(defun fn-served-effectp (effect)
+  (declare (xargs :guard t :verify-guards nil))
+  (or (fn-nntp-effectp effect)
+      (fn-served-submit-effectp effect)))
 
-(defthm fn-served-nntp-run-session-is-nntp-run-session
-  (equal (fn-nntp-result-session (fn-served-nntp-run session archive env events))
-         (fn-nntp-run-session session archive env events))
-  :hints (("Goal" :induct (fn-served-nntp-run session archive env events)
-           :in-theory (disable fn-nntp-step fn-nntp-session-consistentp
-                               fn-nntp-projectionp))))
+(defun fn-served-effectsp (effects)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp effects)
+      (and (fn-served-effectp (car effects))
+           (fn-served-effectsp (cdr effects)))
+    (null effects)))
 
-(defthm fn-served-nntp-run-preserves-consistent-session
-  (implies (fn-nntp-session-consistentp session archive)
-           (fn-nntp-session-consistentp
-            (fn-nntp-result-session (fn-served-nntp-run session archive env events))
-            archive))
-  :hints (("Goal"
-           :use ((:instance fn-nntp-finite-trace-preserves-consistent-session))
-           :in-theory (disable fn-nntp-run-session fn-served-nntp-run
-                               fn-nntp-session-consistentp fn-nntp-projectionp
-                               fn-nntp-finite-trace-preserves-consistent-session))))
+(defthm fn-served-effectsp-of-append
+  (implies (and (fn-served-effectsp left) (fn-served-effectsp right))
+           (fn-served-effectsp (append left right)))
+  :hints (("Goal" :induct (fn-served-effectsp left)
+           :in-theory (disable fn-served-effectp))))
 
-; Effect typing over the fold.  fn-nntp-effectsp is list-recursive vocabulary,
-; so the append closure is an induction over it; the per-event fact is
-; fn-nntp-step-effects-well-formed, cited, not reproved.
-
-(defthm fn-served-nntp-effectsp-of-append
-  (implies (and (fn-nntp-effectsp left) (fn-nntp-effectsp right))
-           (fn-nntp-effectsp (append left right)))
-  :hints (("Goal" :induct (fn-nntp-effectsp left)
-           :in-theory (disable fn-nntp-effectp))))
+(defthm fn-served-nntp-effects-are-served-effects
+  (implies (fn-nntp-effectsp effects)
+           (fn-served-effectsp effects))
+  :hints (("Goal" :induct (fn-served-effectsp effects)
+           :in-theory (e/d (fn-nntp-effectsp fn-served-effectp)
+                           (fn-nntp-effectp fn-served-submit-effectp)))))
 
 (local
  (defthm fn-served-close-effect-is-typed
-   (fn-nntp-effectsp (list (fn-nntp-close-effect)))
-   :hints (("Goal" :in-theory (enable fn-nntp-effectsp fn-nntp-effectp
-                                      fn-nntp-close-effect)))))
+   (fn-served-effectsp (list (fn-nntp-close-effect)))
+   :hints (("Goal" :in-theory (enable fn-nntp-effectp fn-nntp-close-effect)))))
 
-(defthm fn-served-nntp-run-effects-are-typed
-  (implies (fn-nntp-session-consistentp session archive)
-           (fn-nntp-effectsp
-            (fn-nntp-result-effects (fn-served-nntp-run session archive env events))))
-  :hints (("Goal" :induct (fn-served-nntp-run session archive env events)
-           :in-theory (disable fn-nntp-step fn-nntp-effectp
-                               fn-nntp-session-consistentp
-                               fn-nntp-projectionp))))
+; -----------------------------------------------------------------------------
+; One framed event
+;
+; fn-nntp-post-step (books/nntp-post.lisp) is the dispatcher with POST
+; composed in: it answers the offer, reassembles the article body and decides
+; injection.  This step does two things with its result.  The 340 offer
+; carries the begin-article marker, and here the wire is switched with
+; fn-wire-begin-article, so the next byte is framed in article mode; and a
+; submission leaves as a :submit effect rather than a reply.
+
+(defun fn-served-dispatch (conn event)
+  (declare (xargs :guard t))
+  (let* ((r (fn-nntp-post-step (fn-served-conn-session conn)
+                               (fn-served-conn-archive conn)
+                               (fn-served-conn-config conn)
+                               (fn-served-conn-observation conn)
+                               event))
+         (effects (fn-post-result-effects r))
+         (submission (fn-post-result-submission r))
+         (wire (fn-served-conn-wire conn))
+         (wire2 (if (fn-post-offeredp effects)
+                    (fn-wire-result-state (fn-wire-begin-article wire))
+                  wire)))
+    (fn-served-make-result
+     (fn-served-make-conn wire2 (fn-post-result-session r)
+                          (fn-served-conn-archive conn)
+                          (fn-served-conn-config conn)
+                          (fn-served-conn-observation conn))
+     (mbe :logic (append effects
+                         (if submission
+                             (list (fn-served-submit-effect submission))
+                           nil))
+          :exec (fn-ag-append effects
+                              (if submission
+                                  (list (fn-served-submit-effect submission))
+                                nil))))))
+
+; Local projections of one dispatch, in accessor vocabulary, so that nothing
+; below opens fn-served-dispatch.
+
+(local
+ (defthm fn-served-dispatch-conn-projections
+   (and (fn-served-conn-shapep
+         (fn-served-result-conn (fn-served-dispatch conn event)))
+        (equal (fn-served-conn-session
+                (fn-served-result-conn (fn-served-dispatch conn event)))
+               (fn-post-result-session
+                (fn-nntp-post-step (fn-served-conn-session conn)
+                                   (fn-served-conn-archive conn)
+                                   (fn-served-conn-config conn)
+                                   (fn-served-conn-observation conn)
+                                   event)))
+        (equal (fn-served-conn-archive
+                (fn-served-result-conn (fn-served-dispatch conn event)))
+               (fn-served-conn-archive conn))
+        (equal (fn-served-conn-config
+                (fn-served-result-conn (fn-served-dispatch conn event)))
+               (fn-served-conn-config conn))
+        (equal (fn-served-conn-observation
+                (fn-served-result-conn (fn-served-dispatch conn event)))
+               (fn-served-conn-observation conn)))
+   :hints (("Goal" :in-theory (disable fn-nntp-post-step fn-post-offeredp
+                                       fn-wire-begin-article)))))
+
+(local
+ (defthm fn-served-dispatch-effects-unfold
+   (equal (fn-served-result-effects (fn-served-dispatch conn event))
+          (let ((r (fn-nntp-post-step (fn-served-conn-session conn)
+                                      (fn-served-conn-archive conn)
+                                      (fn-served-conn-config conn)
+                                      (fn-served-conn-observation conn)
+                                      event)))
+            (append (fn-post-result-effects r)
+                    (if (fn-post-result-submission r)
+                        (list (fn-served-submit-effect
+                               (fn-post-result-submission r)))
+                      nil))))
+   :hints (("Goal" :in-theory (disable fn-nntp-post-step fn-post-offeredp
+                                       fn-wire-begin-article)))))
+
+(defthm fn-served-dispatch-preserves-wire-statep
+  (implies (fn-wire-statep (fn-served-conn-wire conn))
+           (fn-wire-statep
+            (fn-served-conn-wire
+             (fn-served-result-conn (fn-served-dispatch conn event)))))
+  :hints (("Goal"
+           :in-theory (disable fn-wire-statep fn-wire-begin-article
+                               fn-nntp-post-step fn-post-offeredp
+                               fn-wire-begin-article-preserves-statep)
+           :use ((:instance fn-wire-begin-article-preserves-statep
+                            (wire-state (fn-served-conn-wire conn)))))))
+
+(defthm fn-served-dispatch-preserves-connp
+  (implies (fn-served-connp conn)
+           (fn-served-connp
+            (fn-served-result-conn (fn-served-dispatch conn event))))
+  :hints (("Goal"
+           :in-theory (e/d (fn-served-connp)
+                           (fn-served-dispatch fn-wire-statep
+                            fn-nntp-post-step fn-post-session-consistentp
+                            fn-post-step-preserves-consistent-session
+                            fn-served-dispatch-preserves-wire-statep))
+           :use ((:instance fn-served-dispatch-preserves-wire-statep)
+                 (:instance fn-post-step-preserves-consistent-session
+                            (ps (fn-served-conn-session conn))
+                            (archive (fn-served-conn-archive conn))
+                            (config (fn-served-conn-config conn))
+                            (observation (fn-served-conn-observation conn))
+                            (wire-event event))))))
+
+(defthm fn-served-dispatch-effects-are-typed
+  (implies (fn-served-connp conn)
+           (fn-served-effectsp
+            (fn-served-result-effects (fn-served-dispatch conn event))))
+  :hints (("Goal"
+           :in-theory (e/d ()
+                           (fn-served-dispatch fn-nntp-post-step
+                            fn-post-session-consistentp fn-served-connp
+                            fn-nntp-effectp fn-inj-injectedp
+                            fn-post-step-effects-well-formed
+                            fn-post-submission-is-an-injected-article))
+           :use ((:instance fn-served-connp-is-consistent-session (c conn))
+                 (:instance fn-post-step-effects-well-formed
+                            (ps (fn-served-conn-session conn))
+                            (archive (fn-served-conn-archive conn))
+                            (config (fn-served-conn-config conn))
+                            (observation (fn-served-conn-observation conn))
+                            (wire-event event))
+                 (:instance fn-post-submission-is-an-injected-article
+                            (ps (fn-served-conn-session conn))
+                            (archive (fn-served-conn-archive conn))
+                            (config (fn-served-conn-config conn))
+                            (observation (fn-served-conn-observation conn))
+                            (wire-event event))))))
+
+; The three theorems above are the only readers of the two local projections;
+; below them fn-served-dispatch is closed and only its keystones are used.
+(local (in-theory (disable fn-served-dispatch-conn-projections
+                           fn-served-dispatch-effects-unfold)))
+
+; The events one byte framed, in order (fn-wire-feed-byte emits at most one;
+; the fold is written over the list so that it is total without that fact).
+
+(defun fn-served-dispatch-events (conn events)
+  (declare (xargs :guard t))
+  (if (consp events)
+      (let* ((here (fn-served-dispatch conn (car events)))
+             (tail (fn-served-dispatch-events (fn-served-result-conn here)
+                                              (cdr events))))
+        (fn-served-make-result
+         (fn-served-result-conn tail)
+         (mbe :logic (append (fn-served-result-effects here)
+                             (fn-served-result-effects tail))
+              :exec (fn-ag-append (fn-served-result-effects here)
+                                  (fn-served-result-effects tail)))))
+    (fn-served-make-result conn nil)))
+
+(defthm fn-served-dispatch-events-preserves-wire-statep
+  (implies (fn-wire-statep (fn-served-conn-wire conn))
+           (fn-wire-statep
+            (fn-served-conn-wire
+             (fn-served-result-conn (fn-served-dispatch-events conn events)))))
+  :hints (("Goal" :induct (fn-served-dispatch-events conn events)
+           :in-theory (disable fn-served-dispatch fn-wire-statep))))
+
+(defthm fn-served-dispatch-events-preserves-connp
+  (implies (fn-served-connp conn)
+           (fn-served-connp
+            (fn-served-result-conn (fn-served-dispatch-events conn events))))
+  :hints (("Goal" :induct (fn-served-dispatch-events conn events)
+           :in-theory (disable fn-served-dispatch fn-served-connp))))
+
+(defthm fn-served-dispatch-events-effects-are-typed
+  (implies (fn-served-connp conn)
+           (fn-served-effectsp
+            (fn-served-result-effects (fn-served-dispatch-events conn events))))
+  :hints (("Goal" :induct (fn-served-dispatch-events conn events)
+           :in-theory (disable fn-served-dispatch fn-served-connp
+                               fn-served-effectp (:d fn-served-effectsp)))))
 
 ; -----------------------------------------------------------------------------
 ; One socket read
 ;
-; `env' is the reader environment of this read (fn-nntp-env, books/
-; nntp-responses.lisp): one clock observation and the group-creation facts,
-; supplied by the host per read and shared by every event the read framed.
-; It is carried, never inspected, here; fn-nntp-step is its only consumer.
-;
-; fn-wire-drive is the adapter's chunk loop (books/wire-invariants.lisp:353);
-; the fold above is the dispatcher run over the events it produced.  The close
-; effect is appended on the transition edge only: a read that finds the wire
-; already closed is a no-op, which is what makes the partition law below
-; unconditional and what the host does (it stops reading after a close).
+; The fold over the read's octets.  Each byte goes to fn-wire-feed-byte, the
+; events it framed go to the dispatcher before the next byte, and the reply
+; and submission effects accumulate in order.  Once the wire is closed the
+; rest of the read is not walked, which is what makes the append law below
+; hold without a hypothesis and what the host does (it stops reading after a
+; close).  The guard carries fn-wire-statep: fn-served-step tests it once at
+; entry and the preservation lemmas above discharge it through the recursion.
 
 (defun fn-served-closed-wirep (wire)
   (declare (xargs :guard t))
   (equal (fn-wire-state-mode wire) :closed))
 
-(defun fn-served-step (conn env octets)
+(defun fn-served-feed (conn octets)
+  (declare (xargs :guard (fn-wire-statep (fn-served-conn-wire conn))
+                  :verify-guards nil
+                  :measure (len octets)))
+  (if (or (not (consp octets))
+          (fn-served-closed-wirep (fn-served-conn-wire conn)))
+      (fn-served-make-result conn nil)
+    (let* ((fed (fn-wire-feed-byte (fn-served-conn-wire conn) (car octets)))
+           (here (fn-served-dispatch-events
+                  (fn-served-make-conn (fn-wire-result-state fed)
+                                       (fn-served-conn-session conn)
+                                       (fn-served-conn-archive conn)
+                                       (fn-served-conn-config conn)
+                                       (fn-served-conn-observation conn))
+                  (fn-wire-result-events fed)))
+           (tail (fn-served-feed (fn-served-result-conn here) (cdr octets))))
+      (fn-served-make-result
+       (fn-served-result-conn tail)
+       (mbe :logic (append (fn-served-result-effects here)
+                           (fn-served-result-effects tail))
+            :exec (fn-ag-append (fn-served-result-effects here)
+                                (fn-served-result-effects tail)))))))
+
+(defthm fn-served-feed-preserves-wire-statep
+  (implies (fn-wire-statep (fn-served-conn-wire conn))
+           (fn-wire-statep
+            (fn-served-conn-wire
+             (fn-served-result-conn (fn-served-feed conn octets)))))
+  :hints (("Goal" :induct (fn-served-feed conn octets)
+           :in-theory (disable fn-served-dispatch-events fn-wire-feed-byte
+                               fn-wire-statep))))
+
+(verify-guards fn-served-feed
+  :hints (("Goal" :in-theory (disable fn-served-dispatch-events
+                                      fn-wire-feed-byte fn-wire-statep))))
+
+(local
+ (defthm fn-served-fed-conn-is-a-connection
+   (implies (fn-served-connp conn)
+            (fn-served-connp
+             (fn-served-make-conn
+              (fn-wire-result-state
+               (fn-wire-feed-byte (fn-served-conn-wire conn) byte))
+              (fn-served-conn-session conn)
+              (fn-served-conn-archive conn)
+              (fn-served-conn-config conn)
+              (fn-served-conn-observation conn))))
+   :hints (("Goal" :in-theory (e/d (fn-served-connp)
+                                   (fn-wire-feed-byte fn-wire-statep
+                                    fn-post-session-consistentp))))))
+
+(defthm fn-served-feed-preserves-connp
+  (implies (fn-served-connp conn)
+           (fn-served-connp
+            (fn-served-result-conn (fn-served-feed conn octets))))
+  :hints (("Goal" :induct (fn-served-feed conn octets)
+           :in-theory (disable fn-served-dispatch-events fn-wire-feed-byte
+                               fn-wire-statep fn-served-connp))))
+
+(defthm fn-served-feed-effects-are-typed
+  (implies (fn-served-connp conn)
+           (fn-served-effectsp
+            (fn-served-result-effects (fn-served-feed conn octets))))
+  :hints (("Goal" :induct (fn-served-feed conn octets)
+           :in-theory (disable fn-served-dispatch-events fn-wire-feed-byte
+                               fn-wire-statep fn-served-connp
+                               fn-served-effectp (:d fn-served-effectsp)))))
+
+; One read.  The close effect is appended on the transition edge only: a read
+; that finds the wire already closed is a no-op, which is what makes the
+; partition law below unconditional in the close effect.
+
+(defun fn-served-step (conn octets)
   (declare (xargs :guard t))
-  (let* ((wire (fn-served-conn-wire conn))
-         (archive (fn-served-conn-archive conn))
-         (drive (fn-wire-drive wire octets))
-         (wire2 (fn-wire-result-state drive))
-         (run (fn-served-nntp-run (fn-served-conn-session conn) archive env
-                                  (fn-wire-result-events drive))))
-    (fn-served-make-result
-     (fn-served-make-conn wire2 (fn-nntp-result-session run) archive)
-     (mbe :logic (append (fn-nntp-result-effects run)
-                         (if (and (not (fn-served-closed-wirep wire))
-                                  (fn-served-closed-wirep wire2))
-                             (list (fn-nntp-close-effect))
-                           nil))
-          :exec (fn-ag-append (fn-nntp-result-effects run)
-                              (if (and (not (fn-served-closed-wirep wire))
-                                       (fn-served-closed-wirep wire2))
-                                  (list (fn-nntp-close-effect))
-                                nil))))))
+  (let ((wire (fn-served-conn-wire conn)))
+    (if (not (fn-wire-statep wire))
+        (fn-served-make-result conn nil)
+      (let* ((fed (fn-served-feed conn octets))
+             (wire2 (fn-served-conn-wire (fn-served-result-conn fed))))
+        (fn-served-make-result
+         (fn-served-result-conn fed)
+         (mbe :logic (append (fn-served-result-effects fed)
+                             (if (and (not (fn-served-closed-wirep wire))
+                                      (fn-served-closed-wirep wire2))
+                                 (list (fn-nntp-close-effect))
+                               nil))
+              :exec (fn-ag-append (fn-served-result-effects fed)
+                                  (if (and (not (fn-served-closed-wirep wire))
+                                           (fn-served-closed-wirep wire2))
+                                      (list (fn-nntp-close-effect))
+                                    nil))))))))
 
 ; A list of reads, in arrival order.
 
@@ -338,11 +576,11 @@
            :exec (fn-ag-append (car chunks) (fn-served-concat (cdr chunks))))
     nil))
 
-(defun fn-served-run (conn env chunks)
+(defun fn-served-run (conn chunks)
   (declare (xargs :guard t))
   (if (consp chunks)
-      (let* ((here (fn-served-step conn env (car chunks)))
-             (tail (fn-served-run (fn-served-result-conn here) env (cdr chunks))))
+      (let* ((here (fn-served-step conn (car chunks)))
+             (tail (fn-served-run (fn-served-result-conn here) (cdr chunks))))
         (fn-served-make-result
          (fn-served-result-conn tail)
          (mbe :logic (append (fn-served-result-effects here)
@@ -351,11 +589,12 @@
                                   (fn-served-result-effects tail)))))
     ;; An empty run is an empty read: the same base case the concatenation
     ;; theorem below reduces to, with no record eta law needed to see it.
-    (fn-served-step conn env nil)))
+    (fn-served-step conn nil)))
 
-; The two projections the host is allowed to take of an effect list.  They were
-; fn-reader-effect-octets and fn-reader-close-effectsp in :program-mode host
-; Lisp; concatenating a reply stream is a decision, and ACL2 owns it.
+; The three projections the host is allowed to take of an effect list.  The
+; first two were fn-reader-effect-octets and fn-reader-close-effectsp in
+; :program-mode host Lisp; concatenating a reply stream is a decision, and
+; ACL2 owns it.  The third is the submission the host owes a durable attempt.
 
 (defun fn-served-reply-octets (effects)
   (declare (xargs :guard t))
@@ -381,34 +620,70 @@
           (fn-served-closingp (cdr effects)))
     nil))
 
+(defun fn-served-submission (effects)
+  (declare (xargs :guard t))
+  (if (consp effects)
+      (if (and (consp (car effects))
+               (equal (car (car effects)) :submit)
+               (consp (cdr (car effects))))
+          (car (cdr (car effects)))
+        (fn-served-submission (cdr effects)))
+    nil))
+
+; The host's durable observation, fed back as one more served input.  The
+; connection is unchanged; the reply is fn-nntp-post-outcome's, which is the
+; only place 240 exists (fn-post-outcome-240-only-for-a-durable-observation).
+
+(defun fn-served-post-outcome (conn completion)
+  (declare (xargs :guard t))
+  (fn-served-make-result
+   conn
+   (fn-post-result-effects
+    (fn-nntp-post-outcome (fn-served-conn-session conn) completion))))
+
+; A definitional restatement linking the host's entry to the nntp-post
+; theorems: :rule-classes nil, never a registry event.
+(defthm fn-served-post-outcome-effects-by-definition
+  (equal (fn-served-result-effects (fn-served-post-outcome conn completion))
+         (fn-post-result-effects
+          (fn-nntp-post-outcome (fn-served-conn-session conn) completion)))
+  :rule-classes nil)
+
+(defthm fn-served-post-outcome-effects-are-typed
+  (fn-served-effectsp
+   (fn-served-result-effects (fn-served-post-outcome conn completion)))
+  :hints (("Goal" :in-theory (disable fn-nntp-post-outcome fn-served-effectp
+                                      (:d fn-served-effectsp)))))
+
 ; Opening a connection: the one place the whole-archive projection recognizer
 ; runs (fn-nntp-open-session records its verdict in the session and no command
-; recomputes it).  The greeting is RFC 3977 section 5.1.1's 201 response for a
-; server that does not permit posting.
+; recomputes it).  The greeting is RFC 3977 section 5.1.1's 201 response; it
+; does not yet vary with the posting configuration (open item in
+; planning/lanes/HANDOFF-w4-post.md).
 
 (defconst *fn-served-greeting*
   '(50 48 49 32 102 110 45 110 110 116 112 32 101 120 112 101 114 105 109
     101 110 116 97 108 32 114 101 97 100 101 114 32 114 101 97 100 121 13 10))
 
-(defun fn-served-open (archive line-limit body-limit)
+(defun fn-served-open (archive line-limit body-limit config observation)
   (declare (xargs :guard t))
   (fn-served-make-result
    (fn-served-make-conn (fn-wire-initial-state line-limit body-limit)
-                        (fn-nntp-open-session archive)
-                        archive)
+                        (fn-post-open-session archive)
+                        archive config observation)
    (list (fn-nntp-reply-effect *fn-served-greeting*))))
 
 (defthm fn-served-open-is-a-connection
   (implies (and (posp line-limit) (posp body-limit))
            (fn-served-connp
-            (fn-served-result-conn (fn-served-open archive line-limit body-limit))))
+            (fn-served-result-conn
+             (fn-served-open archive line-limit body-limit config observation))))
   :hints (("Goal" :in-theory (e/d (fn-served-connp)
                                   (fn-wire-statep fn-wire-initial-state
-                                   fn-nntp-open-session
-                                   fn-nntp-session-consistentp
-                                   fn-nntp-projectionp))
+                                   fn-post-open-session
+                                   fn-post-session-consistentp))
            :use ((:instance fn-wire-initial-state-is-state)
-                 (:instance fn-nntp-open-session-is-consistent)))))
+                 (:instance fn-post-open-session-is-consistent)))))
 
 (defthm fn-served-concat-is-an-octet-list
   (implies (fn-served-chunk-listp chunks)
@@ -421,172 +696,130 @@
 (defthm fn-served-step-preserves-connp
   (implies (and (fn-served-connp conn)
                 (fn-wire-octet-listp octets))
-           (fn-served-connp (fn-served-result-conn (fn-served-step conn env octets))))
-  :hints (("Goal"
-           :in-theory (e/d (fn-served-connp)
-                           (fn-wire-statep fn-wire-drive
-                            fn-served-nntp-run
-                            fn-nntp-session-consistentp fn-nntp-projectionp
-                            fn-wire-drive-preserves-statep
-                            fn-served-nntp-run-preserves-consistent-session))
-           :use ((:instance fn-wire-drive-preserves-statep
-                            (wire-state (fn-served-conn-wire conn)))
-                 (:instance fn-served-nntp-run-preserves-consistent-session
-                            (session (fn-served-conn-session conn))
-                            (archive (fn-served-conn-archive conn))
-                            (events (fn-wire-result-events
-                                     (fn-wire-drive (fn-served-conn-wire conn)
-                                                    octets))))
-                 (:instance fn-served-connp-is-wire-state (c conn))
-                 (:instance fn-served-connp-is-consistent-session (c conn))))))
+           (fn-served-connp (fn-served-result-conn (fn-served-step conn octets))))
+  :hints (("Goal" :in-theory (disable fn-served-feed fn-wire-statep
+                                      fn-served-connp))))
 
 (defthm fn-served-run-preserves-connp
   (implies (and (fn-served-connp conn)
                 (fn-served-chunk-listp chunks))
-           (fn-served-connp (fn-served-result-conn (fn-served-run conn env chunks))))
-  :hints (("Goal" :induct (fn-served-run conn env chunks)
+           (fn-served-connp (fn-served-result-conn (fn-served-run conn chunks))))
+  :hints (("Goal" :induct (fn-served-run conn chunks)
            :in-theory (disable fn-served-step fn-served-connp))))
 
 ; -----------------------------------------------------------------------------
 ; Keystone 2: the refusal enumeration
 ;
-; fn-nntp-effectsp is the closed enumeration: every effect of a served read is
-; either (:reply octets) with fn-nntp-replyp octets, or the close effect.  A
-; read produces nothing else -- no exception, no untyped value, no third
-; outcome.
+; fn-served-effectsp is the closed enumeration: every effect of a served read
+; is a reply with fn-nntp-replyp octets, the begin-article marker, the close
+; effect, or the submission of an injected article.  A read produces nothing
+; else -- no exception, no untyped value, no fifth outcome.
 
 (defthm fn-served-step-effects-are-typed
   (implies (fn-served-connp conn)
-           (fn-nntp-effectsp (fn-served-result-effects (fn-served-step conn env octets))))
-  :hints (("Goal"
-           :in-theory (disable fn-served-nntp-run fn-wire-drive
-                               fn-nntp-effectp fn-nntp-session-consistentp
-                               fn-nntp-projectionp fn-wire-statep
-                               fn-served-nntp-run-effects-are-typed)
-           :use ((:instance fn-served-connp-is-consistent-session (c conn))
-                 (:instance fn-served-nntp-run-effects-are-typed
-                            (session (fn-served-conn-session conn))
-                            (archive (fn-served-conn-archive conn))
-                            (events (fn-wire-result-events
-                                     (fn-wire-drive (fn-served-conn-wire conn)
-                                                    octets))))))))
+           (fn-served-effectsp (fn-served-result-effects (fn-served-step conn octets))))
+  :hints (("Goal" :in-theory (disable fn-served-feed fn-wire-statep
+                                      fn-served-connp fn-served-effectp
+                                      (:d fn-served-effectsp)))))
 
 (defthm fn-served-run-effects-are-typed
   (implies (and (fn-served-connp conn)
                 (fn-served-chunk-listp chunks))
-           (fn-nntp-effectsp (fn-served-result-effects (fn-served-run conn env chunks))))
-  :hints (("Goal" :induct (fn-served-run conn env chunks)
+           (fn-served-effectsp (fn-served-result-effects (fn-served-run conn chunks))))
+  :hints (("Goal" :induct (fn-served-run conn chunks)
            :in-theory (disable fn-served-step fn-served-connp
-                               fn-nntp-effectp))))
+                               fn-served-effectp (:d fn-served-effectsp)))))
 
-; The enumeration read off fn-nntp-effectp itself.  A definitional restatement:
-; :rule-classes nil, never a registry event.
-(defthm fn-served-typed-effect-is-reply-or-close-by-definition
-  (implies (fn-nntp-effectp effect)
+; The enumeration read off fn-served-effectp itself.  A definitional
+; restatement: :rule-classes nil, never a registry event.
+(defthm fn-served-typed-effect-enumeration-by-definition
+  (implies (fn-served-effectp effect)
            (or (and (equal (car effect) :reply)
                     (fn-octet-listp (car (cdr effect)))
                     (fn-nntp-replyp (car (cdr effect))))
-               (equal effect (fn-nntp-close-effect))))
+               (equal effect (fn-nntp-begin-article-effect))
+               (equal effect (fn-nntp-close-effect))
+               (and (equal (car effect) :submit)
+                    (fn-inj-injectedp (car (cdr effect))))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-nntp-effectp) (fn-nntp-replyp)))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-effectp)
+                                  (fn-nntp-replyp fn-inj-injectedp
+                                   fn-octet-listp)))))
 
 ; -----------------------------------------------------------------------------
 ; Keystone 3: partition independence
 ;
-; fn-wire-drive-partition-independence (books/wire-invariants.lisp:580) says
-; the framing is blind to how the network cut the stream.  Lifting it through
-; the dispatcher fold needs the fold to split over an append of events, and
-; needs the close effect to sit on the transition edge so that a read of a
-; closed wire contributes nothing.
+; A fold over bytes splits over an append of its input by its shape alone:
+; feeding left then right is feeding their concatenation, whatever the bytes
+; and whatever the dispatcher did between them.  Nothing about the wire is
+; needed, because the wire never sees more than one byte at a time.  The close
+; effect sits on the transition edge, so a read of a closed wire contributes
+; nothing and the law lifts to fn-served-step.
 
 (local
  (defthm fn-served-append-is-associative
    (equal (append (append a b) c) (append a (append b c)))))
 
-; The session fold splits over an append of events; the fn-nntp-run-session
-; sibling of the theorem below.  Local: books/nntp-invariants.lisp owns
-; fn-nntp-run-session and should carry this law when it needs it.
+; A fed result is its own reconstruction: both branches of fn-served-feed
+; return a constructed result.  Local: the append law below needs it in its
+; base case, and no includer needs an eta law.
 (local
- (defthm fn-served-nntp-run-session-of-append
-  (equal (fn-nntp-run-session session archive env (append left right))
-         (fn-nntp-run-session (fn-nntp-run-session session archive left)
-                              archive env right))
-  :hints (("Goal" :induct (fn-nntp-run-session session archive env left)
-           :in-theory (disable fn-nntp-step fn-nntp-session-consistentp
-                               fn-nntp-projectionp)))))
+ (defthm fn-served-feed-reconstructs
+   (equal (fn-served-make-result
+           (fn-served-result-conn (fn-served-feed conn octets))
+           (fn-served-result-effects (fn-served-feed conn octets)))
+          (fn-served-feed conn octets))
+   :hints (("Goal" :expand ((fn-served-feed conn octets))
+            :in-theory (disable fn-served-dispatch-events fn-wire-feed-byte
+                                fn-wire-statep)))))
 
-(defthm fn-served-nntp-run-of-append
-  (equal (fn-served-nntp-run session archive env (append left right))
-         (fn-nntp-make-result
-          (fn-nntp-result-session
-           (fn-served-nntp-run
-            (fn-nntp-result-session (fn-served-nntp-run session archive env left))
-            archive env right))
+(defthm fn-served-feed-of-append
+  (equal (fn-served-feed conn (append left right))
+         (fn-served-make-result
+          (fn-served-result-conn
+           (fn-served-feed (fn-served-result-conn (fn-served-feed conn left))
+                           right))
           (append
-           (fn-nntp-result-effects (fn-served-nntp-run session archive env left))
-           (fn-nntp-result-effects
-            (fn-served-nntp-run
-             (fn-nntp-result-session (fn-served-nntp-run session archive env left))
-             archive env right)))))
-  :hints (("Goal" :induct (fn-served-nntp-run session archive env left)
-           :in-theory (disable fn-nntp-step fn-nntp-session-consistentp
-                               fn-nntp-projectionp
-                               fn-served-nntp-run-session-is-nntp-run-session
-                               fn-served-nntp-run-session-of-append))))
+           (fn-served-result-effects (fn-served-feed conn left))
+           (fn-served-result-effects
+            (fn-served-feed (fn-served-result-conn (fn-served-feed conn left))
+                            right)))))
+  :hints (("Goal" :induct (fn-served-feed conn left)
+           :in-theory (disable fn-served-dispatch-events fn-wire-feed-byte
+                               fn-wire-statep))))
 
 (local
- (defthm fn-served-drive-of-closed-mode
-   (implies (fn-served-closed-wirep wire-state)
-            (equal (fn-wire-drive wire-state octets)
-                   (fn-wire-make-result wire-state nil)))
-   :hints (("Goal" :use ((:instance fn-wire-drive-closed-is-noop))
-            :in-theory (disable fn-wire-drive-closed-is-noop fn-wire-drive)))))
+ (defthm fn-served-feed-of-closed-wire
+   (implies (fn-served-closed-wirep (fn-served-conn-wire conn))
+            (equal (fn-served-feed conn octets)
+                   (fn-served-make-result conn nil)))
+   :hints (("Goal" :expand ((fn-served-feed conn octets))))))
 
 (defthm fn-served-step-partition-independence
   (implies (and (fn-served-connp conn)
                 (fn-wire-octet-listp left)
                 (fn-wire-octet-listp right))
-           (equal (fn-served-step conn env (append left right))
+           (equal (fn-served-step conn (append left right))
                   (fn-served-make-result
                    (fn-served-result-conn
                     (fn-served-step
-                     (fn-served-result-conn (fn-served-step conn env left)) env right))
+                     (fn-served-result-conn (fn-served-step conn left)) right))
                    (append
-                    (fn-served-result-effects (fn-served-step conn env left))
+                    (fn-served-result-effects (fn-served-step conn left))
                     (fn-served-result-effects
                      (fn-served-step
-                      (fn-served-result-conn (fn-served-step conn env left)) env
+                      (fn-served-result-conn (fn-served-step conn left))
                       right))))))
   :hints (("Goal"
            :do-not-induct t
-           :cases ((equal (fn-wire-state-mode
-                           (fn-wire-result-state
-                            (fn-wire-drive (fn-served-conn-wire conn) left)))
-                          :closed))
-           :in-theory (disable fn-wire-drive fn-served-nntp-run fn-wire-statep
-                               fn-wire-feed-proper fn-wire-drive-is-feed-proper
-                               fn-nntp-session-consistentp fn-nntp-projectionp
-                               fn-wire-drive-partition-independence
-                               fn-wire-drive-preserves-statep
-                               fn-served-nntp-run-of-append
-                               fn-served-nntp-run-session-is-nntp-run-session
-                               fn-served-connp
-                               fn-nntp-effectp fn-nntp-effectsp)
-           :use ((:instance fn-wire-drive-partition-independence
-                            (wire-state (fn-served-conn-wire conn)))
-                 (:instance fn-wire-drive-preserves-statep
-                            (wire-state (fn-served-conn-wire conn))
+           :cases ((fn-served-closed-wirep
+                    (fn-served-conn-wire
+                     (fn-served-result-conn (fn-served-feed conn left)))))
+           :in-theory (disable fn-served-feed fn-wire-statep fn-served-connp
+                               fn-served-feed-preserves-wire-statep
+                               fn-served-feed-preserves-connp)
+           :use ((:instance fn-served-feed-preserves-wire-statep
                             (octets left))
-                 (:instance fn-served-nntp-run-of-append
-                            (session (fn-served-conn-session conn))
-                            (archive (fn-served-conn-archive conn))
-                            (left (fn-wire-result-events
-                                   (fn-wire-drive (fn-served-conn-wire conn) left)))
-                            (right (fn-wire-result-events
-                                    (fn-wire-drive
-                                     (fn-wire-result-state
-                                      (fn-wire-drive (fn-served-conn-wire conn) left))
-                                     right))))
                  (:instance fn-served-connp-is-wire-state (c conn))))))
 
 ; The law the host needs: however the network cut the stream, the connection
@@ -596,12 +829,11 @@
 (defthm fn-served-run-is-the-concatenated-step
   (implies (and (fn-served-connp conn)
                 (fn-served-chunk-listp chunks))
-           (equal (fn-served-run conn env chunks)
-                  (fn-served-step conn env (fn-served-concat chunks))))
-  :hints (("Goal" :induct (fn-served-run conn env chunks)
+           (equal (fn-served-run conn chunks)
+                  (fn-served-step conn (fn-served-concat chunks))))
+  :hints (("Goal" :induct (fn-served-run conn chunks)
            :in-theory (disable fn-served-step fn-served-connp
-                               fn-wire-drive fn-wire-statep
-                               fn-served-nntp-run)
+                               fn-served-feed fn-wire-statep)
            :expand ((fn-served-concat chunks)))))
 
 (defthm fn-served-reply-stream-is-partition-independent
@@ -610,9 +842,9 @@
                 (fn-served-chunk-listp two)
                 (equal (fn-served-concat one) (fn-served-concat two)))
            (equal (fn-served-reply-octets
-                   (fn-served-result-effects (fn-served-run conn env one)))
+                   (fn-served-result-effects (fn-served-run conn one)))
                   (fn-served-reply-octets
-                   (fn-served-result-effects (fn-served-run conn env two)))))
+                   (fn-served-result-effects (fn-served-run conn two)))))
   :hints (("Goal"
            :in-theory (disable fn-served-run fn-served-step fn-served-connp
                                fn-served-concat fn-served-reply-octets
@@ -624,53 +856,62 @@
 ; Keystone 4: work per read
 ;
 ; The number of dispatcher steps one read performs is at most the length of the
-; read.  fn-wire-next-strictly-consumes (books/wire-invariants.lisp:311) is the
-; progress fact and fn-wire-next-preserves-statep (:154) carries the invariant
-; through the loop; each turn of fn-wire-drive emits at most one event.
+; read: each byte frames at most one event (fn-wire-feed-byte-emits-at-most-
+; one-event, books/wire-invariants.lisp:78) and the fold dispatches each event
+; once.
 
-; fn-wire-next-strictly-consumes is a rewrite rule; the bound below is
-; arithmetic, so it needs the same fact as a linear rule.  Local: the wire
-; cluster owns the progress fact and should carry this rule class if another
-; book ever needs it.
 (local
- (defthm fn-served-next-strictly-consumes-linear
-   (implies (and (fn-wire-statep wire-state)
-                 (not (equal (fn-wire-state-mode wire-state) :closed))
-                 (consp octets))
-            (< (len (fn-wire-next-unconsumed (fn-wire-next wire-state octets)))
-               (len octets)))
+ (defthm fn-served-feed-byte-events-at-most-one-linear
+   (<= (len (fn-wire-result-events (fn-wire-feed-byte wire-state byte))) 1)
    :rule-classes :linear
-   :hints (("Goal" :use ((:instance fn-wire-next-strictly-consumes))
-            :in-theory (disable fn-wire-next fn-wire-statep
-                                fn-wire-state-mode fn-wire-next-unconsumed
-                                fn-wire-next-strictly-consumes)))))
+   :hints (("Goal"
+            :use ((:instance fn-wire-feed-byte-emits-at-most-one-event))
+            :expand ((len (fn-wire-result-events
+                           (fn-wire-feed-byte wire-state byte))))
+            :in-theory (disable fn-wire-feed-byte
+                                fn-wire-feed-byte-emits-at-most-one-event)))))
 
-(defthm fn-served-drive-events-bounded-by-chunk-length
-  (implies (fn-wire-statep wire-state)
-           (<= (len (fn-wire-result-events (fn-wire-drive wire-state octets)))
-               (len octets)))
+(defun fn-served-feed-steps (conn octets)
+  (declare (xargs :guard (fn-wire-statep (fn-served-conn-wire conn))
+                  :verify-guards nil
+                  :measure (len octets)))
+  (if (or (not (consp octets))
+          (fn-served-closed-wirep (fn-served-conn-wire conn)))
+      0
+    (let* ((fed (fn-wire-feed-byte (fn-served-conn-wire conn) (car octets)))
+           (here (fn-served-dispatch-events
+                  (fn-served-make-conn (fn-wire-result-state fed)
+                                       (fn-served-conn-session conn)
+                                       (fn-served-conn-archive conn)
+                                       (fn-served-conn-config conn)
+                                       (fn-served-conn-observation conn))
+                  (fn-wire-result-events fed))))
+      (+ (len (fn-wire-result-events fed))
+         (fn-served-feed-steps (fn-served-result-conn here) (cdr octets))))))
+
+(verify-guards fn-served-feed-steps
+  :hints (("Goal" :in-theory (disable fn-served-dispatch-events
+                                      fn-wire-feed-byte fn-wire-statep))))
+
+(defthm fn-served-feed-steps-bounded-by-chunk-length
+  (<= (fn-served-feed-steps conn octets) (len octets))
   :rule-classes :linear
-  :hints (("Goal"
-           :induct (fn-wire-drive wire-state octets)
-           :expand ((fn-wire-drive wire-state octets))
-           :in-theory (e/d () (fn-wire-next fn-wire-statep fn-wire-state-mode
-                               fn-wire-drive)
-                           ((:induction fn-wire-drive))))))
+  :hints (("Goal" :induct (fn-served-feed-steps conn octets)
+           :in-theory (disable fn-served-dispatch-events fn-wire-feed-byte
+                               fn-wire-statep))))
 
 (defun fn-served-step-nntp-steps (conn octets)
   (declare (xargs :guard t))
-  (len (fn-wire-result-events (fn-wire-drive (fn-served-conn-wire conn) octets))))
+  (if (not (fn-wire-statep (fn-served-conn-wire conn)))
+      0
+    (fn-served-feed-steps conn octets)))
 
 (defthm fn-served-step-nntp-steps-is-bounded
   (implies (fn-served-connp conn)
            (<= (fn-served-step-nntp-steps conn octets) (len octets)))
   :rule-classes :linear
-  :hints (("Goal"
-           :in-theory (disable fn-wire-drive fn-wire-statep
-                               fn-served-drive-events-bounded-by-chunk-length)
-           :use ((:instance fn-served-drive-events-bounded-by-chunk-length
-                            (wire-state (fn-served-conn-wire conn)))
-                 (:instance fn-served-connp-is-wire-state (c conn))))))
+  :hints (("Goal" :in-theory (disable fn-served-feed-steps fn-wire-statep
+                                      fn-served-connp))))
 
 ; OPEN, recorded rather than weakened.  A served read costs
 ;
@@ -678,12 +919,13 @@
 ;
 ; dispatcher steps, and the framing work per octet is constant
 ; (fn-wire-feed-byte, bounded retained input by
-; fn-wire-feed-byte-retained-input-is-bounded, books/wire.lisp:441).  The cost
-; of ONE fn-nntp-step is not yet a theorem: the worst commands are LISTGROUP
+; fn-wire-feed-byte-retained-input-is-bounded, books/wire.lisp).  The cost of
+; ONE fn-nntp-post-step is not yet a theorem: the worst commands are LISTGROUP
 ; over a range and LIST ACTIVE with a wildmat, which are linear in the pinned
 ; archive's articles and groups and in the wildmat budget of
-; books/wildmat-work.lisp.  Closing this needs the instrumented twin of packet
-; P3 / M6 (specs/node-functionality.md sections 3.2 and 5.2): a
+; books/wildmat-work.lisp, and an article body costs fn-inj-decide over the
+; body, bounded by the configured size.  Closing this needs the instrumented
+; twin of packet P3 / M6 (specs/node-functionality.md sections 3.2 and 5.2): a
 ; fn-served-step-cost that returns the step and a natural, and
 ;
 ;   (defthm fn-served-step-cost-is-bounded
@@ -692,24 +934,36 @@
 ;                  (* *fn-served-cost-k*
 ;                     (+ 1 (len octets)
 ;                        (fn-wire-state-line-limit (fn-served-conn-wire conn))
+;                        (fn-inj-config-max-octets (fn-served-conn-config conn))
 ;                        (len (fn-state-groups (fn-served-conn-archive conn)))
 ;                        (len (fn-state-articles (fn-served-conn-archive conn))))))))
 ;
 ; No book claims that bound today.
+;
+; ALSO OPEN: the byte fold makes the fn-wire-octet-listp hypotheses of
+; fn-served-step-preserves-connp and fn-served-step-partition-independence,
+; and the fn-served-connp hypothesis of fn-served-step-nntp-steps-is-bounded,
+; unnecessary (their proofs above do not use them).  The statements are kept
+; as the served-path lane stated them; the next lane that touches this book
+; should delete those hypotheses and the two probes recorded for them in
+; tests/acl2/served-tests.lisp.
 
 ; -----------------------------------------------------------------------------
 ; Export theory
 ;
-; What leaves enabled: the four keystones, the record lemmas, the two forward
-; shape rules, the list-recursive vocabulary the proofs above induct on
-; (fn-served-chunk-listp, fn-served-concat, fn-served-reply-octets,
-; fn-served-closingp, fn-served-nntp-run) and the bridge to
-; fn-nntp-run-session.  Withdrawn: the connection recognizer (already
-; withdrawn above), the transitions and the fold projections, so a book above
-; computes with them and never inherits their unfolding.
+; What leaves enabled: the keystones, the record lemmas, the forward shape
+; rules, the list-recursive vocabulary the proofs above induct on
+; (fn-served-effectsp, fn-served-chunk-listp, fn-served-concat,
+; fn-served-reply-octets, fn-served-closingp, fn-served-submission,
+; fn-served-dispatch-events) and the fold laws.  Withdrawn: the connection
+; recognizer (already withdrawn above), the effect recognizers, the
+; transitions and the fold projections, so a book above computes with them
+; and never inherits their unfolding.
 
 (deftheory fn-served-vocabulary
-  '(fn-served-closed-wirep fn-served-step fn-served-run
-    fn-served-open fn-served-step-nntp-steps))
+  '(fn-served-closed-wirep fn-served-submit-effectp fn-served-effectp
+    fn-served-dispatch fn-served-feed fn-served-step fn-served-run
+    fn-served-open fn-served-post-outcome
+    fn-served-feed-steps fn-served-step-nntp-steps))
 
 (in-theory (disable fn-served-vocabulary))
