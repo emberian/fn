@@ -49,6 +49,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from farm import HOSTS as FARM_HOSTS      # noqa: E402  one table of farm boxes
 
+# What tells an fn worktree from any other directory a `git rev-parse` finds.
+FN_TREE_MARKERS = ("tools", "planning", "books")
+
 DEFAULT_HOST = "persvati"
 GATE_ROOT = "$HOME/fn-gates"
 DEPLOY_ROOT = "$HOME/fn-deploy"
@@ -945,6 +948,58 @@ head -5 $typescript 2>/dev/null || echo "(the client left no typescript)"
         return path
 
 
+def is_fn_tree(path: Path) -> bool:
+    """Whether `path` is an fn worktree rather than some other repository."""
+    return all((path / marker).is_dir() for marker in FN_TREE_MARKERS)
+
+
+def repo_root(start: Path | None = None) -> Path:
+    """The fn worktree this command was INVOKED from, not the one the file is in.
+
+    `Path(__file__).resolve().parents[1]` answers "where does this script
+    live", which is a different question and the wrong one: a lane that runs
+    the main checkout's copy of a harness -- by absolute path, or through a
+    `tools/` that is on its `sys.path` from somewhere else -- gets the main
+    checkout's `planning/evidence/`.  Measured on 2026-09-20: a lane working
+    in `build/lanes/w6-peering-inbound-2` had `planning/evidence/twonode-*.md`
+    written into `/Users/ember/dev/fn`, where it sat untracked and blocked a
+    merge.
+
+    `git rev-parse --show-toplevel` from inside a worktree answers that
+    worktree, which is the tree whose `planning/` the operator is about to
+    commit from.  A cwd in no repository, or in a repository that is not this
+    one, falls back to this file's own tree, which is the only other tree
+    that can be meant.
+    """
+    here = Path(start).resolve() if start else Path.cwd()
+    try:
+        found = subprocess.run(
+            ["git", "-C", str(here), "rev-parse", "--show-toplevel"],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=30,
+            check=False)
+    except (OSError, subprocess.SubprocessError):
+        return ROOT
+    if found.returncode != 0:
+        return ROOT
+    candidate = Path(found.stdout.decode("utf-8", "replace").strip() or ".")
+    return candidate.resolve() if is_fn_tree(candidate) else ROOT
+
+
+def evidence_path(given: str | None, repo: Path, default_name: str) -> Path:
+    """Where a harness writes its record, always under the tree it was run from.
+
+    A relative `--evidence` used to resolve against the process's working
+    directory and the default against the tree the script file lives in.
+    Either can be a worktree other than the one the operator will commit, so
+    both are anchored on `repo` here; an absolute path is still taken as
+    given, which is how a run writes outside the tree on purpose.
+    """
+    if given:
+        path = Path(given).expanduser()
+        return path if path.is_absolute() else (repo / path)
+    return repo / "planning" / "evidence" / default_name
+
+
 def resolve(repo: Path, commit: str) -> tuple[str, str]:
     """The full and short revision for `commit`.
 
@@ -969,7 +1024,10 @@ def main(argv=None) -> int:
     parser.add_argument("commit", help="the commit-ish to deploy")
     parser.add_argument("--host", default=DEFAULT_HOST)
     parser.add_argument("--tree", default="dev", help="gate directory prefix on the host")
-    parser.add_argument("--repo", default=str(ROOT))
+    parser.add_argument("--repo", default=None,
+                        help="the fn worktree to read the commit from and "
+                             "write evidence into (default: the one this "
+                             "command was invoked from)")
     parser.add_argument("--jobs", type=int, default=16)
     parser.add_argument("--evidence", default=None)
     parser.add_argument("--keep", action="store_true",
@@ -986,7 +1044,7 @@ def main(argv=None) -> int:
                         help="a directory copied over the deployed tree before it runs")
     args = parser.parse_args(argv)
 
-    repo = Path(args.repo).resolve()
+    repo = Path(args.repo).resolve() if args.repo else repo_root()
     commit, rev = resolve(repo, args.commit)
     if args.dry_run:
         if args.home is None:
@@ -1009,8 +1067,8 @@ def main(argv=None) -> int:
         gate.gaps.append("the gate stopped early: {}".format(error))
     elapsed = time.monotonic() - clock
     date = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
-    target = Path(args.evidence) if args.evidence else (
-        repo / "planning/evidence/deploy-{}-{}.md".format(rev, date))
+    target = evidence_path(args.evidence, repo,
+                           "deploy-{}-{}.md".format(rev, date))
     gate.evidence(target, started, elapsed)
     print("evidence: {}".format(target))
     bad = [s for s in gate.steps if s.failed]

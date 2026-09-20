@@ -61,6 +61,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import deploy_gate                                            # noqa: E402
 import farm                                                   # noqa: E402
 from deploy_gate import (EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN,  # noqa: E402
+                         evidence_path, repo_root,
                          GROUPS, GateError, Host, LocalHost, SshHost, Step,
                          resolve)
 
@@ -551,7 +552,11 @@ fi
                       .format(self.gate_root, self.tree))
             self.facts["certificates"] = "none installed (--farm not given)"
             return self.steps[-1]
-        command = ["python3", str(ROOT / "tools/farm.py"), "submit", self.host.label,
+        # The invoking tree's farm.py, not this file's: `farm.py` mirrors the
+        # worktree it lives in, so the main checkout's copy would certify the
+        # main checkout while the lane waits for its own books.
+        command = ["python3", str(self.repo / "tools/farm.py"), "submit",
+                   self.host.label,
                    "--jobs", str(self.jobs), "--closure",
                    "--remote-root", "/tank/fn/lanes/inn-lab",
                    "--affected-by", "books/node.lisp"]
@@ -1098,7 +1103,10 @@ def main(argv=None) -> int:
                         help="the commit-ish to deploy as the fn node")
     parser.add_argument("--host", default=DEFAULT_HOST)
     parser.add_argument("--tree", default="dev", help="gate directory prefix on the host")
-    parser.add_argument("--repo", default=str(ROOT))
+    parser.add_argument("--repo", default=None,
+                        help="the fn worktree to read the commit from and "
+                             "write evidence into (default: the one this "
+                             "command was invoked from)")
     parser.add_argument("--jobs", type=int, default=12)
     parser.add_argument("--evidence", default=None)
     parser.add_argument("--keep", action="store_true",
@@ -1126,7 +1134,7 @@ def main(argv=None) -> int:
                         help="the fn entry point, with {store}, {run} and {port}")
     args = parser.parse_args(argv)
 
-    repo = Path(args.repo).resolve()
+    repo = Path(args.repo).resolve() if args.repo else repo_root()
     commit, rev = resolve(repo, args.commit)
     if args.dry_run:
         if args.home is None:
@@ -1164,8 +1172,8 @@ def main(argv=None) -> int:
                 type(error).__name__, error))
     elapsed = time.monotonic() - clock
     date = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
-    target = Path(args.evidence) if args.evidence else (
-        repo / "planning/evidence/inn-lab-{}-{}.md".format(rev, date))
+    target = evidence_path(args.evidence, repo,
+                           "inn-lab-{}-{}.md".format(rev, date))
     lab.evidence(target, started, elapsed)
     print("evidence: {}".format(target))
     bad = [s for s in lab.steps if s.failed]
