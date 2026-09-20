@@ -159,7 +159,7 @@ and local number. Python adds no semantics on either side.
 `tests/bp-dtn7/run_four_node_lab.py` runs `home -> relay-a -> relay-b ->
 destination` with non-overlapping contact windows and one carried-media hop
 (relay-a to relay-b), over `tests/bp-dtn7/mock_bpa.py` when `DTN7_REPO` is
-unset. Its record is [the four-node lab](../tests/evidence/2026-09-19-four-node-lab.md).
+unset. Its record is [the four-node lab](../tests/evidence/2026-09-20-four-node-lab.md).
 A relay there is receiver-then-sender through two separate host paths: the
 receiver accepts and archives, and an onward sender work is then enqueued for
 the same committed article. That is the manually reenqueued archival relay of
