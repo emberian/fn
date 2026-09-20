@@ -47,18 +47,28 @@
 (defun fn-ocfg-shapep (x)
   (declare (xargs :guard t))
   (and (true-listp x) (equal (len x) 4)))
+; The four accessors are total, as every other record's are
+; (books/acceptance-alloc.lisp `fn-ag-car'/`fn-ag-cdr', books/owner.lisp:93
+; for the same pattern): with `:guard t' a bare `(car x)' owes
+; `(implies (not (consp x)) (equal x nil))', which is false at `x = 3', so
+; this book has never been admitted -- none of its guard conjectures, none
+; of the record lemmas that translate through them, and none of the eight
+; theorems above the definitions.  The `:logic' bodies are unchanged, so
+; every statement in the book keeps its meaning.
 (defun fn-ocfg-owner (x)
   (declare (xargs :guard t))
-  (car x))
+  (mbe :logic (car x) :exec (fn-ag-car x)))
 (defun fn-ocfg-config (x)
   (declare (xargs :guard t))
-  (car (cdr x)))
+  (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
 (defun fn-ocfg-pins (x)
   (declare (xargs :guard t))
-  (car (cdr (cdr x))))
+  (mbe :logic (car (cdr (cdr x)))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
 (defun fn-ocfg-staged (x)
   (declare (xargs :guard t))
-  (car (cdr (cdr (cdr x)))))
+  (mbe :logic (car (cdr (cdr (cdr x))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
 (defun fn-ocfg-make (owner config pins staged)
   (declare (xargs :guard t))
   (list owner config pins staged))
