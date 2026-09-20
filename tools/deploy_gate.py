@@ -440,6 +440,29 @@ if __name__ == "__main__":
 
 
 class DeployGate:
+    """The single-node gate.  Its phases, its step accounting and its evidence
+    renderer are the machinery a sibling gate reuses by subclassing; the four
+    class attributes below are the only things such a subclass must restate."""
+
+    TITLE = "Deploy gate"
+    TOOL = "tools/deploy_gate.py"
+    PREAMBLE = (
+        "One commit, unpacked on a farm box, served to real clients, SIGKILLed",
+        "mid-session and reopened through the real recovery path. This records what",
+        "ran; it establishes nothing about the books beyond the fact that the",
+        "certificates named below were the ones ACL2 read.")
+    FACT_KEYS = ("os", "kernel", "python3", "acl2version", "certificates", "server",
+                 "three outcomes")
+    STANDING_GAPS = (
+        "A SIGKILL of the server process is not a power loss: unflushed page cache\n"
+        "  is not modeled here, and nothing in this run qualifies storage hardware.",
+        "One kill point (inside an open POST) is exercised. The enumerated cut table\n"
+        "  is `tests/campaign/cuts.py`; this gate does not replace it.",
+        "No RFC 3977 conformance audit: the transcript exercises the verbs listed\n"
+        "  above and no others, and the assertions are the driver's, not a spec's.",
+        "No concurrent load, no multi-host peering, no BP/DTN transport.",
+        "The certificates were not re-established here; see the certificate row.")
+
     def __init__(self, host: Host, repo: Path, commit: str, rev: str, tree: str,
                  overlay: Path | None = None, jobs: int = 16, keep: bool = False,
                  nntplib_python: str = "auto", acl2: str = "acl2"):
@@ -636,8 +659,13 @@ fi
         self.sh("recover after the uncertain publication",
                 self.cd(self.fn("--store {} recover".format(self.store))), timeout=900)
 
-    def server_command(self) -> tuple[str, str]:
-        """bin/fn when it can be pointed at this store, else the owner, else the reader."""
+    def server_command(self, store=None, run=None) -> tuple[str, str]:
+        """bin/fn when it can be pointed at this store, else the owner, else the reader.
+
+        `store` and `run` default to this gate's single store and run directory;
+        a gate that runs more than one node passes one pair per node."""
+        store = store or self.store
+        run = run or self.run
         probe = self.sh("server selection", self.cd("""
 if [ -x bin/fn ]; then
   if ./bin/fn run --help 2>&1 | grep -q -- '--store'; then echo fn
@@ -648,7 +676,7 @@ else echo reader; fi
         kind = probe.output.strip().splitlines()[-1] if probe.output.strip() else "reader"
         if kind == "fn":
             return kind, "./bin/fn run --store {} --port 0 --control {}/control.sock".format(
-                self.store, self.run)
+                store, run)
         if kind == "fn-config":
             self.gaps.append(
                 "bin/fn is in this tree but its `run` is configuration-file driven and "
@@ -658,11 +686,12 @@ else echo reader; fi
             kind = "owner"
         if kind == "owner":
             return kind, "python3 tools/run_owner.py --store {} --port 0 --control {}/control.sock".format(
-                self.store, self.run)
-        return kind, "python3 tools/run_reader.py --store {} --port 0 --post".format(self.store)
+                store, run)
+        return kind, "python3 tools/run_reader.py --store {} --port 0 --post".format(store)
 
-    def start_server(self, kind: str, command: str, tag: str) -> bool:
-        log = "{}/server-{}.log".format(self.run, tag)
+    def start_server(self, kind: str, command: str, tag: str, run=None) -> bool:
+        run = run or self.run
+        log = "{}/server-{}.log".format(run, tag)
         step = self.sh("start server ({}, {})".format(kind, tag), self.cd("""
 rm -f {log}
 nohup {command} > {log} 2>&1 < /dev/null &
@@ -673,7 +702,7 @@ for i in $(seq 1 {wait}); do
   sleep 1
 done
 echo SERVER-TIMEOUT; tail -25 {log}; exit 1
-""".format(command=command, log=log, run=self.run, wait=SERVER_READY_SECONDS)),
+""".format(command=command, log=log, run=run, wait=SERVER_READY_SECONDS)),
             timeout=SERVER_READY_SECONDS + 120, expect=None)
         match = re.search(r"^LISTENING (\d+)", step.output, re.M)
         if step.rc != 0 or match is None:
@@ -684,7 +713,8 @@ echo SERVER-TIMEOUT; tail -25 {log}; exit 1
         self.facts["server"] = "{} on port {} ({})".format(kind, self.port, tag)
         return True
 
-    def stop_server(self, tag=""):
+    def stop_server(self, tag="", run=None):
+        run = run or self.run
         self.sh("stop server {}".format(tag).strip(), """
 if [ -f {run}/server.pid ]; then
   pid=$(cat {run}/server.pid)
@@ -694,7 +724,7 @@ if [ -f {run}/server.pid ]; then
   rm -f {run}/server.pid
 fi
 echo stopped
-""".format(run=self.run))
+""".format(run=run))
 
     def drive(self, phase: str, extra: str, name=None, timeout=300) -> Step:
         return self.sh(name or "drive {}".format(phase), self.cd(
@@ -847,12 +877,9 @@ head -5 $typescript 2>/dev/null || echo "(the client left no typescript)"
     # -- evidence ---------------------------------------------------------
     def evidence(self, path: Path, started: str, elapsed: float) -> Path:
         lines = [
-            "# Deploy gate: {} on {}".format(self.rev, self.host.label),
+            "# {}: {} on {}".format(self.TITLE, self.rev, self.host.label),
             "",
-            "One commit, unpacked on a farm box, served to real clients, SIGKILLed",
-            "mid-session and reopened through the real recovery path. This records what",
-            "ran; it establishes nothing about the books beyond the fact that the",
-            "certificates named below were the ones ACL2 read.",
+        ] + list(self.PREAMBLE) + [
             "",
             "## What ran",
             "",
@@ -863,10 +890,9 @@ head -5 $typescript 2>/dev/null || echo "(the client left no typescript)"
             "| host | `{}` |".format(self.host.label),
             "| started | {} |".format(started),
             "| wall time | {:.1f} s |".format(elapsed),
-            "| gate tool | `tools/deploy_gate.py` |",
+            "| gate tool | `{}` |".format(self.TOOL),
         ]
-        for key in ("os", "kernel", "python3", "acl2version", "certificates", "server",
-                    "three outcomes"):
+        for key in self.FACT_KEYS:
             if key in self.facts:
                 lines.append("| {} | {} |".format(key, self.facts[key].replace("|", "\\|")))
         clients = ", ".join("{}={}".format(k, v) for k, v in sorted(
@@ -902,14 +928,7 @@ head -5 $typescript 2>/dev/null || echo "(the client left no typescript)"
             "",
             "Standing gaps of the gate itself, independent of this run:",
             "",
-            "- A SIGKILL of the server process is not a power loss: unflushed page cache",
-            "  is not modeled here, and nothing in this run qualifies storage hardware.",
-            "- One kill point (inside an open POST) is exercised. The enumerated cut table",
-            "  is `tests/campaign/cuts.py`; this gate does not replace it.",
-            "- No RFC 3977 conformance audit: the transcript exercises the verbs listed",
-            "  above and no others, and the assertions are the driver's, not a spec's.",
-            "- No concurrent load, no multi-host peering, no BP/DTN transport.",
-            "- The certificates were not re-established here; see the certificate row.",
+        ] + ["- {}".format(gap) for gap in self.STANDING_GAPS] + [
             "",
             "## Raw step output",
             "",
