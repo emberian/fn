@@ -294,6 +294,7 @@
     },
     "suspect_theorems": 45,
     "export_hygiene_warnings": 72,
+    "enabled_projection_warnings": 26,
     "teeth_form_warnings": 0,
     "include_hygiene_warnings": 87,
     "host_names_warnings": 33,
@@ -8310,6 +8311,264 @@
         "book": "books/wildmat-work.lisp",
         "line": 369,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      }
+    ],
+    "enabled_projection": [
+      {
+        "function": "fn-aw-v",
+        "book": "books/article-work-primitives.lisp",
+        "line": 10,
+        "stated_in": [
+          "books/article-public-work.lisp",
+          "books/article-work-scanners.lisp",
+          "books/article-work.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 3 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-aw-c",
+        "book": "books/article-work-primitives.lisp",
+        "line": 11,
+        "stated_in": [
+          "books/article-public-bound.lisp",
+          "books/article-public-work.lisp",
+          "books/article-work-scanners.lisp",
+          "books/article-work.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 4 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-header",
+        "book": "books/article.lisp",
+        "line": 91,
+        "stated_in": [
+          "books/article-invariants.lisp",
+          "books/article-properties.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-body",
+        "book": "books/article.lisp",
+        "line": 94,
+        "stated_in": [
+          "books/article-properties.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-fields",
+        "book": "books/article.lisp",
+        "line": 97,
+        "stated_in": [
+          "books/article-invariants.lisp",
+          "books/article-properties.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-field-raw-lines",
+        "book": "books/article.lisp",
+        "line": 112,
+        "stated_in": [
+          "books/article-work.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-field-name",
+        "book": "books/article.lisp",
+        "line": 115,
+        "stated_in": [
+          "books/stx-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-field-unfolded-value",
+        "book": "books/article.lisp",
+        "line": 118,
+        "stated_in": [
+          "books/article-work.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-result-article",
+        "book": "books/article.lisp",
+        "line": 153,
+        "stated_in": [
+          "books/article-invariants.lisp",
+          "books/article-properties.lisp",
+          "books/injection-invariants.lisp",
+          "books/nntp-legacy.lisp",
+          "books/nntp-post.lisp",
+          "books/peer-inbound-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 6 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-line-value",
+        "book": "books/article.lisp",
+        "line": 193,
+        "stated_in": [
+          "books/article-invariants.lisp",
+          "books/article-properties.lisp",
+          "books/article-public-bound.lisp",
+          "books/article-public-work.lisp",
+          "books/article-work-scanners.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 5 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-line-rest",
+        "book": "books/article.lisp",
+        "line": 196,
+        "stated_in": [
+          "books/article-invariants.lisp",
+          "books/article-properties.lisp",
+          "books/article-public-bound.lisp",
+          "books/article-work-scanners.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 4 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpf-bytes",
+        "book": "books/bp-fragment.lisp",
+        "line": 66,
+        "stated_in": [
+          "books/bp-fragment-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpf-result-tag",
+        "book": "books/bp-fragment.lisp",
+        "line": 298,
+        "stated_in": [
+          "books/bp-fragment-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpf-result-bytes",
+        "book": "books/bp-fragment.lisp",
+        "line": 302,
+        "stated_in": [
+          "books/bp-fragment-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpp-flags",
+        "book": "books/bp-primary.lisp",
+        "line": 394,
+        "stated_in": [
+          "books/bp-fragment-invariants.lisp",
+          "books/bp-primary-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpp-crc-type",
+        "book": "books/bp-primary.lisp",
+        "line": 395,
+        "stated_in": [
+          "books/bp-primary-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpp-source",
+        "book": "books/bp-primary.lisp",
+        "line": 397,
+        "stated_in": [
+          "books/bp-primary-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpp-creation-time",
+        "book": "books/bp-primary.lisp",
+        "line": 399,
+        "stated_in": [
+          "books/bp-primary-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpp-sequence",
+        "book": "books/bp-primary.lisp",
+        "line": 400,
+        "stated_in": [
+          "books/bp-primary-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpp-result-block",
+        "book": "books/bp-primary.lisp",
+        "line": 599,
+        "stated_in": [
+          "books/bp-primary-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-transfer-work-value",
+        "book": "books/transfer-work.lisp",
+        "line": 13,
+        "stated_in": [
+          "books/transfer-public-work.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-transfer-work-cost",
+        "book": "books/transfer-work.lisp",
+        "line": 14,
+        "stated_in": [
+          "books/transfer-public-bound.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-wildmat-result-value",
+        "book": "books/wildmat.lisp",
+        "line": 52,
+        "stated_in": [
+          "books/wildmat-parser-invariants.lisp",
+          "books/wildmat-utf8-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-wildmat-utf8-rest",
+        "book": "books/wildmat.lisp",
+        "line": 59,
+        "stated_in": [
+          "books/wildmat-utf8-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-wildmat-pattern-items",
+        "book": "books/wildmat.lisp",
+        "line": 206,
+        "stated_in": [
+          "books/wildmat-work.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-wildmat-scan-items",
+        "book": "books/wildmat.lisp",
+        "line": 251,
+        "stated_in": [
+          "books/wildmat-parser-invariants.lisp",
+          "books/wildmat-utf8-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
       }
     ],
     "teeth_form": [],

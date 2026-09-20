@@ -46,6 +46,9 @@ import subprocess
 import sys
 import time
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from deploy_gate import repo_root                              # noqa: E402
+
 LISTENING = re.compile(rb"(?:TCPCL|BP) LISTENING (\d+)")
 BP_ACCEPTED = re.compile(r"^BP accepted xfer=(\d+) adu=(\d+) path=(.*)$")
 BP_AUTHORED = re.compile(r"^BP authored creation=(\d+) sequence=(\d+) "
@@ -560,17 +563,27 @@ class Lab:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--image", default="build/fn-host")
+    parser.add_argument("--image", default=None,
+                        help="the fn native image (default: `build/fn-host` "
+                             "under the worktree this was invoked from)")
     parser.add_argument("--work", default="/tmp/tcpcl-lab")
     parser.add_argument("--scenario", default="all",
                         choices=["all", "exchange", "refused", "keepalive",
                                  "crash", "profile", "adu", "replay"])
     args = parser.parse_args(argv)
-    if not Path(args.image).exists():
+    # An image path is read from the tree this command was invoked from, not
+    # from the process's working directory and not from the tree this file
+    # happens to live in: a lane running the main checkout's copy of the lab
+    # must measure the lane's image.
+    image = Path(args.image).expanduser() if args.image else (
+        repo_root() / "build" / "fn-host")
+    if not image.is_absolute():
+        image = repo_root() / image
+    if not image.exists():
         print(json.dumps({"scenario": "summary", "ok": False,
-                          "reason": "no image at {}".format(args.image)}))
+                          "reason": "no image at {}".format(image)}))
         return 2
-    return Lab(args.image, args.work).run(args.scenario)
+    return Lab(str(image), args.work).run(args.scenario)
 
 
 if __name__ == "__main__":
