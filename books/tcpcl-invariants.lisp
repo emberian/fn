@@ -451,10 +451,13 @@
                                    (fn-tcl-result-events (fn-tcl-step s m now))))
                 (equal (fn-tcl-session-phase (fn-tcl-result-session (fn-tcl-step s m now)))
                        :ending)))
-  ; the same closed-recognizer theory C2 uses: the conclusion is structural,
-  ; and opening fn-tcl-sessionp splits the clause before the segment cases
+  ; OPEN (w6/tcpcl-c2): fails both with the recognizer open (the wave-4 hint
+  ; below, evidence certify-20260920T042704Z-2481961 on persvati) and with C2's
+  ; closed-recognizer theory `(e/d (fn-tcl-step fn-tcl-settle)
+  ; (fn-tcl-c2-closed))` (certify-20260920T044438Z-2651297), so the recognizer
+  ; is not the whole story here; see specs/tcpcl.md section 6.
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-tcl-step fn-tcl-settle) (fn-tcl-c2-closed)))))
+           :in-theory (e/d (fn-tcl-messagep) (fn-tcl-ext-decision)))))
 
 (defthm fn-tcl-ending-refuses-new-transfers
   (implies (and (fn-tcl-sessionp s)
