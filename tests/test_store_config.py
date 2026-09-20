@@ -1,4 +1,4 @@
-"""Configuration records through the CLI: create, retire, revive, refuse."""
+"""Configuration records through the CLI: create, retire, revive, capacity, refuse."""
 import sys
 from pathlib import Path
 import subprocess
@@ -118,6 +118,36 @@ class StoreConfigTests(unittest.TestCase):
         self.invoke("recover")
         self.assertEqual(self.config()[0], 4)
         self.assertEqual(len(self.config()[1]), 5)
+
+    def test_capacity_is_a_configuration_record_with_three_outcomes(self):
+        """R6.  `capacity <n>` raises, refuses below the reservation total, and
+        refuses a decrease the store could not replay -- three outcomes, and
+        the accepted one survives recovery."""
+        before = self.config()[0]
+        self.invoke("capacity", 2097152)
+        self.assertEqual(self.config()[0], before + 1)
+
+        # One article reserves; a capacity below the reservation total is the
+        # core's refusal (:capacity-below-reserved), not Python's.
+        self.post("<cap@example.invalid>", "fn.letters")
+        refused = self.invoke("capacity", 0, expected=run_store.EXIT_REFUSED)
+        self.assertIn(b"refused capacity", refused.stderr)
+        # and the refusal wrote nothing: the generation did not move.
+        self.assertEqual(self.config()[0], before + 1)
+
+        # A decrease that the store could still replay is accepted, and the
+        # value survives a reopen -- a configuration record, not a flag.
+        self.invoke("capacity", 1048576)
+        self.assertEqual(self.config()[0], before + 2)
+        store = Store(self.path, writable=False)
+        store.acquire()
+        bridge = Acl2Store()
+        try:
+            store.recover(bridge)
+            self.assertEqual(store.config_generation, before + 2)
+        finally:
+            bridge.close()
+            store.close()
 
     def test_reader_pins_the_generation_it_opened_at(self):
         with ReaderProcess(store=str(self.path)) as reader:
