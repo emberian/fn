@@ -1156,7 +1156,7 @@ def slot_accessors(form: list) -> set[str]:
         prefix, slots = f"{name}-", form[2:]
         if isinstance(form[1], list):
             for option in form[1][1:]:
-                if head(option) == "conc-name":
+                if str(head(option)).lstrip(":") == "conc-name":
                     prefix = "" if len(option) < 2 else str(option[1])
         names.add(f"make-{name}")
         names.add(f"{name}-p")
@@ -1244,7 +1244,7 @@ def host_record(host: HostFile, form: object, line: int) -> None:
     """One top-level form: its definitions, its dependencies, its references."""
     name = head(form)
     if name in ("local", "progn", "progn!", "with-output", "encapsulate",
-                "eval-when", "value-triple"):
+                "eval-when", "value-triple", "when", "unless"):
         if name == "encapsulate" and len(form) >= 2:
             host.defines |= encapsulated_names(form[1])
         for item in form[2 if name == "encapsulate" else 1:]:
@@ -1254,7 +1254,11 @@ def host_record(host: HostFile, form: object, line: int) -> None:
         if ":dir" not in keyword_plist(form[2:]):
             host.includes.append(form[1])
         return
-    if name == "ld" and len(form) >= 2 and isinstance(form[1], str):
+    if name in ("ld", "load") and len(form) >= 2 and isinstance(form[1], str):
+        # `ld` is the interpreted host files' load edge and `load` is the
+        # raw-Lisp ones' (host/native/io.lisp, host/native/tcpcl.lisp, both
+        # loaded under `(progn! (set-raw-mode t) ...)`).  Both name a file
+        # whose definitions the loading file may then use.
         host.lds.append(form[1])
         return
     if isinstance(name, str) and name.endswith("define-alien-routine"):
@@ -1373,7 +1377,7 @@ def collect_references(host: HostFile, macros: set[str]) -> None:
     """The second pass: every name used, once the macro names are known."""
     host.references = []
     for form, line in host.forms:
-        if head(form) in ("include-book", "ld"):
+        if head(form) in ("include-book", "ld", "load"):
             continue
         host_references(host, form, line, macros)
 
@@ -1400,7 +1404,7 @@ def host_paths() -> list[tuple[Path, str]]:
     return [(path, relative) for relative, path in sorted(found.items())]
 
 
-LD_REFERENCE = re.compile(r'\(ld\s+"([^"]+\.lisp)"')
+LD_REFERENCE = re.compile(r'\((?:ld|load)\s+"([^"]+\.lisp)"')
 
 
 def load_hosts() -> dict[str, HostFile]:

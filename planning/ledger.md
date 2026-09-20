@@ -26,7 +26,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 67 |
 | Teeth-form warnings | 0 |
 | Include-hygiene warnings | 86 |
-| Host-names warnings | 81 |
+| Host-names warnings | 0 |
 
 ## Lints
 

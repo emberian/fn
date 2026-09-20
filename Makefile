@@ -247,6 +247,10 @@ ACL2_BOOKS ?= books/assumptions \
 .PHONY: check certify acl2-ld certs-install certs-publish model-test tooling-test test
 check:
 	$(PYTHON) tools/check_scaffold.py
+# Every host file loaded alone in its own ACL2: the dynamic half of the
+# host-names lint.  Needs FN_ACL2 and installed certificates; without
+# FN_ACL2 it prints that it did not run and exits 0.
+	$(PYTHON) tools/host_check.py
 
 certify:
 	$(PYTHON) tools/certify_books.py --jobs $(FN_CERTIFY_JOBS) $(ACL2_BOOKS)

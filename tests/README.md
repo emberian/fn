@@ -157,4 +157,15 @@ Update the registries after evidence exists, not when a test file is merely adde
 `make check` uses the standard library to check local Markdown links/anchors,
 registry identities/references, milestone references, scenario coverage, and
 evidence references for advanced statuses. It performs no network requests and
-does not install dependencies, start a service, or run ACL2.
+does not install dependencies or start a service.
+
+It then runs `tools/host_check.py`, which is the one part of `make check` that
+runs ACL2, and only when `FN_ACL2` names one: a host file is never certified,
+so nothing else reads it until a bridge `ld`s it at start-up. Each host file
+gets a fresh ACL2 that loads that file and nothing else, and must reach the
+`ACL2 !>` prompt with no error reported while it loaded — the dynamic half of
+the `host_names` lint in `tools/ledger.py`, which reports the same dependency
+statically. With `FN_ACL2` unset the tool prints that it did not run and exits
+0; a skipped run is not evidence. It needs installed certificates
+(`python3 tools/certs.py install`), because an `include-book` inside a host
+file reads a certificate `ld` will not produce.

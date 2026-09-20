@@ -1,6 +1,9 @@
 ; Program-mode bridge: decoded bounded local records enter the executable model.
 (in-package "ACL2")
 (include-book "../books/bp-workflow-records")
+; `fn-sn-node' is books/store-node's; include it rather than depend on a
+; store session having been opened in this ACL2 first.
+(include-book "../books/store-node")
 
 (defun fn-workflow-install-replay (records state)
  (declare (xargs :stobjs state :mode :program))
