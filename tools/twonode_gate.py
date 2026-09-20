@@ -542,9 +542,9 @@ else echo NONE; fi
                     "what it accepted. Every later claim that an article reached a node "
                     "rests on this, so treat the feed result below as unfounded."
                     .format(node.upper))
-        alive = self.sh("both servers are still up", "; ".join(
-            "kill -0 {pid} 2>/dev/null && echo {name}=ALIVE || echo {name}=DEAD".format(
-                pid=node.pid or 0, name=node.upper) for node in self.nodes))
+        alive = self.sh("both servers are still up", 'echo "{}"'.format(" ".join(
+            "{name}=$(kill -0 {pid} 2>/dev/null && echo ALIVE || echo DEAD)".format(
+                pid=node.pid or 0, name=node.upper) for node in self.nodes)))
         if "DEAD" in alive.output:
             self.gaps.append("a server was not running at the end of the independent "
                              "scenario: {}".format(alive.output.strip()))
@@ -652,10 +652,29 @@ else echo NONE; fi
             self.b.port, ",".join(GROUPS), ",".join(self.b.accepted),
             ",".join(self.b.rejected)),
             name="reread node B after recovery")
+        # A must still hold exactly what it accepted, and must still not hold
+        # what only B ever accepted: a feed in one direction is not a merge.
+        only_b = [m for m in self.b.accepted if m not in self.a.accepted]
         self.feed("presence", "--port {} --groups {} --present '{}' --absent '{}'".format(
             self.a.port, ",".join(GROUPS), ",".join(self.a.accepted),
-            ",".join(self.a.rejected)),
+            ",".join(only_b + self.a.rejected)),
             name="node A is unchanged by node B's death")
+
+    # -- evidence ---------------------------------------------------------
+    def evidence(self, path, started, elapsed):
+        """The deploy gate's evidence, with the tree-wide gaps said once.
+
+        A gap that belongs to the tree rather than to a node (the shape of
+        `bin/fn run`, say) is raised once per node by the phase that meets it.
+        Saying it twice does not make it twice as true, and a per-node gap
+        still names its node, so no gap is merged with a different one."""
+        seen, unique = set(), []
+        for gap in self.gaps:
+            if gap not in seen:
+                seen.add(gap)
+                unique.append(gap)
+        self.gaps = unique
+        return super().evidence(path, started, elapsed)
 
     # -- the whole gate ---------------------------------------------------
     def execute(self):
