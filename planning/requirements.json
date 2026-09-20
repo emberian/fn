@@ -148,13 +148,20 @@
       "milestone": "M3",
       "status": "specified",
       "proof_targets": [
-        "PRF-013"
+        "PRF-013",
+        "PRF-029"
       ],
       "verification": [
         "proof",
         "scenario"
       ],
-      "evidence": [],
+      "evidence": [
+        "books/nntp-auth.lisp",
+        "books/nntp-auth-invariants.lisp",
+        "tests/acl2/nntp-auth-tests.lisp",
+        "tests/test_auth.py",
+        "planning/evidence/auth-w10-2026-09-20.md"
+      ],
       "implementation_note": "D02 requires native author signatures plus explicit legacy gateway provenance. D01 now fixes exact authored source bytes as the signed source and keeps mutable trace/injection projections separate. D09 suites, principal/key lifecycle and real verification/authority remain open.",
       "note": "PRF-013 has no events. books/crypto-seam and books/statement certify, but they are an abstract seam: nothing there is a real signature, and AGENTS.md forbids reading an abstract model as a signature claim."
     },
@@ -894,7 +901,8 @@
       "milestone": "M3",
       "status": "specified",
       "proof_targets": [
-        "PRF-015"
+        "PRF-015",
+        "PRF-029"
       ],
       "verification": [
         "proof",
@@ -904,7 +912,12 @@
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "planning/evidence/deploy-cce4b11-2026-09-20.md",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "books/nntp-auth.lisp",
+        "books/nntp-auth-invariants.lisp",
+        "tests/acl2/nntp-auth-tests.lisp",
+        "tests/test_auth.py",
+        "planning/evidence/auth-w10-2026-09-20.md"
       ],
       "implementation_note": "Laboratory reader advertises VERSION/IMPLEMENTATION only; complete planned bundle audit pending.",
       "note": "Refuted by a live counterexample rather than merely unproved: the deploy gate found the server answering POST with 340 while its CAPABILITIES block omits POST, which RFC 3977 section 5.2.2 requires exactly when posting is permitted. Until the advertised bundle and the dispatched bundle are the same list, this requirement is not implemented."
@@ -978,7 +991,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-013",
-        "PRF-015"
+        "PRF-015",
+        "PRF-029"
       ],
       "verification": [
         "proof",
@@ -990,7 +1004,12 @@
         "specs/article-fields.md",
         "tests/evidence/2026-09-18-fields-transfer.md",
         "tests/evidence/2026-09-18-fields-transfer.json",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "books/nntp-auth.lisp",
+        "books/nntp-auth-invariants.lisp",
+        "tests/acl2/nntp-auth-tests.lisp",
+        "tests/test_auth.py",
+        "planning/evidence/auth-w10-2026-09-20.md"
       ],
       "implementation_note": "A narrow proto-article subset checks Message-ID/Newsgroups multiplicity/grammar and absence of Injection-Info/Xref while preserving source field views. Full injection, gateway provenance, dates, native signatures and authority policy remain open. D01 selects exact authored source plus separate mutable trace/injection projections; full injection must honor that boundary without rewriting signed bytes.",
       "note": "books/injection and books/injection-invariants certify, but provenance is the open half: no native signature, no gateway injection record and no authority check, and PRF-013 has no events."

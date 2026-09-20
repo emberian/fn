@@ -1002,6 +1002,26 @@
       "status": "in-progress",
       "evidence": [],
       "progress_note": "books/config-stream certifies (ACL2 8.7, persvati, 2026-09-20); teeth in tests/acl2/config-stream-tests over a two-group value, with the served TABLE compared at two generations, not only the predicate. The owner-side consumer (books/owner-config, the per-connection pin and LIST ACTIVE at the pin) is written and claims no event: books/owner has no certificate on any box."
+    },
+    {
+      "id": "PRF-029",
+      "title": "AUTHINFO on the served path, and what posting follows (W10)",
+      "statement": "fn-auth-gated-command-is-refused-and-not-performed: with authentication required and no authenticated subject, a restricted command's step submits nothing, never offers article mode, leaves the session unchanged and its whole effect list is the single 480 line (RFC 4643 section 2.2). fn-auth-post-without-permission-is-not-offered and its lift fn-auth-step-post-without-permission-is-not-offered: a connection whose posting allowance is false is answered by this book and never offered 340, so no body can follow and no submission can leave; fn-auth-postingp is the authenticated principal's credential flag, so a principal enrolled without it is refused 440 however permissive the pinned injection configuration is (RFC 3977 6.3.1.1). fn-served-dispatch-of-a-refused-post-leaves-the-wire-in-place carries that to the served dispatcher: the wire is not switched into article mode and the read carries no submission. fn-auth-pass-before-user-is-482, fn-auth-failed-pass-leaves-the-session-unauthenticated and fn-auth-protected-only-refuses-authinfo-before-tls are the three RFC 4643 section 2.3.2 codes, each with the session unchanged or cleared. fn-auth-pass-accepts-only-a-checking-secret says the accepting branch ran fn-authsec-checkp against the stored verifier; it does NOT say a wrong secret fails, which is A-CRYPTO. Covered scope: one served connection over a pinned archive and a pinned AUTHINFO configuration. The subject of the lifts is fn-auth-step, which books/served.lisp fn-served-dispatch calls and which host/owner-host.lisp fn-owner-chunk reaches through fn-own-read and fn-served-step.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-001",
+        "NNT-004",
+        "OBJ-007"
+      ],
+      "depends_on": [
+        "PRF-013"
+      ],
+      "assumptions": [
+        "A-CRYPTO"
+      ],
+      "status": "in-progress",
+      "evidence": [],
+      "progress_note": "books/nntp-auth, books/served, books/owner and books/nntp-auth-invariants ADMIT with zero errors under tools/acl2 over the book source (ACL2 8.7, laptop, 2026-09-20); tests/acl2/nntp-auth-tests passes 120 assertions. None of the four is CERTIFIED: the installed certificate cache mixes two origin roots and books/config's certificate names sub-books by absolute path from a root that is not the one loaded, so certify-book refuses below peer-inbound. A farm run over the closure is the certification of record and has not been made. OPEN, OB-AUTH-FOLD: the fold-level statement -- no read of a connection under a configuration that grants posting to no one emits a submission -- is not proved. It needs three lemmas that do not exist: fn-auth-step-preserves-the-config (books/nntp-auth), a wire lemma that command mode emits only (:command ...) events (books/wire-invariants), and a reader lemma that fn-nntp-post-step emits a submission only from an (:article ...) event (books/nntp-post). Named in the header of books/nntp-auth-invariants.lisp. Live evidence: planning/evidence/auth-w10-2026-09-20.md, 8 passed 1 skipped; the skip is nntplib, removed from the standard library in Python 3.13, so the independent-client half is NOT supplied."
     }
   ]
 }
