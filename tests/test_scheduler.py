@@ -12,6 +12,8 @@ import hashlib
 import json
 import tempfile
 import unittest
+import shutil
+import os
 from pathlib import Path
 
 from tools import scheduler
@@ -249,3 +251,27 @@ class EventForms(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(shutil.which(os.environ.get("FN_ACL2", "acl2")), "needs ACL2")
+class Acl2HostRecord(unittest.TestCase):
+    """The host's own decision record is accepted by the codec.  The ids cross
+    this seam as string literals; `fn-sched-host-decision-octets' converts
+    them, and the contact peer only ACL2 holds, to the codec's octet lists
+    once (host/scheduler-host.lisp).  ACL2 answering `:bad' here is the
+    defect this test pins: `acl2_octets' raises on a keyword and an empty
+    record is a refusal."""
+
+    def test_the_host_record_is_accepted(self):
+        from tools.run_store import Acl2Store
+        acl2 = Acl2Store()
+        try:
+            host = scheduler.Acl2SchedulerHost(acl2)
+            acl2.call("(fn-sched-host-install (fn-sched-config 4 2 16) 1000 state)")
+            host.observe('(fn-sched-admit-event "work-small" :article 4)')
+            host.observe('(fn-sched-open-event "dtn://peer/fn" 0 100000)')
+            acl2.call("(assign fn-workflow-state nil)")
+            octets = host.decision_octets("work-small", "attempt:0")
+        finally:
+            acl2.close()
+        self.assertTrue(octets, "ACL2 answered :bad to the host's own decision record")

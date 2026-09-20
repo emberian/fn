@@ -289,6 +289,9 @@ class Acl2SchedulerHost(SchedulerHost):
         return None if body.upper() == b":NONE" else work_id_of(body)
 
     def decision_octets(self, work_id: str, attempt_id: str) -> bytes:
+        # The ids cross as string literals, as everywhere on this seam; the
+        # wrapper converts them to the codec's octet lists once, next to the
+        # contact peer that only ACL2 holds (host/scheduler-host.lisp).
         octets = acl2_octets(
             self._call(f"(fn-sched-host-decision-octets {_lit(work_id)} "
                        f"{_lit(attempt_id)} state)"))
