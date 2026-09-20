@@ -1762,6 +1762,11 @@ def main(argv=None):
     inspect.add_argument("--message-id", required=True)
     args = parser.parse_args(argv)
     try:
+        if os.environ.get("FN_HOST") == "native":
+            # The native host image performs the same command in-process; the
+            # parse above and the exit-code table below are shared with it.
+            from tools import fn_native
+            return fn_native.exec_store(args)
         return {"init": command_init, "post": command_post, "recover": command_recover,
                 "status": command_status, "inspect": command_inspect,
                 "anchor": command_anchor, "group": command_group,

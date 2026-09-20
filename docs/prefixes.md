@@ -57,6 +57,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-bprl-` | `bp-release`, `bp-release-invariants` | Sender-side forwarding-obligation release: typed release evidence and term, the `:forward` pin undertaking, the release decision over the node image, and the journal wrapper for the proposed `:undertake`/`:release` records |
 | `fn-relay-` | `relay`, `relay-invariants`, `relay-crash-invariants` | Relay undertaking: receiver-then-sender composition over the receiver and sender public entry points, terms table, undertakings ledger, typed `:archived`/`:forwarding` receipts, crash-then-replay over both journals |
 | `fn-bprv-` | `bp-receiver-*-invariants` | Receiver relation invariants over a Store, contexts, decisions and replay |
+| `fnn-` | `host/native/io.lisp` (raw Lisp, not a book) | The native host adapter: POSIX barriers and files, SHA-256 (A-CRYPTO), the host-owned metadata JSON, the loopback socket loop, and `fnn-call`, the raw-Lisp `ec-call` into the `:program` host wrappers |
 | `fn-bpc-` | `bp-primary-cbor` | Deterministic CBOR vocabulary RFC 9171 §4.3.1 needs over `fn-cbor-`: definite arrays and text strings, unsigned integers to 2^64-1 |
 | `fn-bpp-` | `bp-primary`, `bp-primary-invariants` | BPv7 primary bundle block: flags, CRC-16/CRC32C, `dtn` and `ipn` endpoint IDs, creation timestamp, lifetime, fragment fields, bundle identity, §4.4 extension block data |
 | `fn-bpf-` | `bp-fragment`, `bp-fragment-invariants` | BPv7 fragmentation and ADU reassembly over identical-overlap covers; fragment primary blocks |
