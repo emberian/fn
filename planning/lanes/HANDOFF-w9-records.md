@@ -119,10 +119,36 @@ The migration is three forms and is reproduced here so the lane that closes
 `books/checkpoint.lisp` is a separate matter: it does not fit the macro at
 all (see below).
 
-## What no theorem lost
+## What no theorem lost (the mechanical diff, per book)
 
-Checked per book by diffing the reader's view of the names (`tools/ledger.py`
-expands `fn-defrecord`, so a migrated book reads as its events):
+Checked by diffing the reader's view of `dev:<book>` against this branch's
+(`tools/ledger.py` expands `fn-defrecord`, so a migrated book reads as its
+events), for function names, theorem names and theorem statements:
+
+| book | fn lost | thm lost | thm added | statements changed |
+| --- | --- | --- | --- | --- |
+| `books/acceptance.lisp` | 0 | 0 | 3 `<ctor>-injective` | 21 `<accessor>-of-<ctor>`, 1 forward-shape |
+| `books/node.lisp` | 0 | 0 | 3 `<ctor>-injective` | 17, 1 |
+| `books/retention.lisp` | 0 | 0 | 3 `<ctor>-injective` | 16, 1 |
+| `books/exchange.lisp` | 0 | 0 | 3 `<ctor>-injective` | 15, 2 |
+| `books/records.lisp` | 0 | 0 | `fn-record-make-injective`, `fn-record-accessors-forward-consp` | 11, 2 |
+| `books/anchor.lisp` | 0 | 0 | 4 `<ctor>-injective` | 21, 0 |
+| total | **0** | **0** | 18 | 101 + 7 |
+
+Every one of the 108 changed statements is an alpha-variant, checked by a
+consistent-renaming test, not by eye: the 101 `<accessor>-of-<ctor>` lemmas
+now carry the constructor's formals where the hand-written ones carried
+short names, and the 7 `-forward-shape` lemmas carry `x` where the
+hand-written recognizers carried `s`, `p` or `record`
+(`fn-statep-forward-shape`, `fn-node-statep-forward-shape`,
+`fn-retain-statep-forward-shape`, `fn-exchange-policyp-forward-shape`,
+`fn-exchange-statep-forward-shape`, `fn-record-shapep-forward-shape`,
+`fn-record-p-forward-shape`). **No other statement in any of the six books
+changed**, so no keystone moved. Nothing in the tree `:use`s a record lemma
+by `:instance` with a variable binding (grepped over `books/`, `tests/acl2/`
+and `host/`), which is what an alpha-rename could have broken.
+
+The list form of the same facts:
 
 - No function and no theorem is lost.
 - Added, per record: `<ctor>-injective` (`:rule-classes nil`, a name for one
