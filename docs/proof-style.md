@@ -336,3 +336,17 @@ domain lemma stated in accessor vocabulary stopped matching the induction
 goals. Widening a book-wide enable buys one form and costs the next; the
 cure is always to narrow it to the form. `fn-codecs-includer-vocabulary` is
 the one name to reach for when a single name suffices.
+
+### Never open a recognizer to prove a property of a transition
+
+A theorem about a transition of a record (`fn-x-step`, `fn-x-recv-*`) is
+proved with the recognizer and every sub-recognizer CLOSED: a local
+`fn-x-closed` theory, one lemma per branch dismissing the transitions that
+cannot affect the property, the content proved at the owning transition, and
+the theorem lifted by `:use`. The forward-chaining field facts exported with
+the record supply what type reasoning used to. Measured on 2026-09-20: a
+`(local (in-theory (enable fn-tcl-sessionp)))` above C2 put its eleven
+sub-recognizers into the clause and produced 1082 subgoals; closed, the same
+theorem took 0.30 s. The step function is not recursive, so no induction is
+wanted there; a fold over a chunk (`fn-tcl-drive`) inducts on the event
+list, named with `:induct`.
