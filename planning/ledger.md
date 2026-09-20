@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 214 |
 | Certification roots in the Makefile | 213 |
 | Books inside the root closure | 213 |
-| `defthm` and `defthmd` events | 3581 |
-| `defun` events | 2689 |
+| `defthm` and `defthmd` events | 3606 |
+| `defun` events | 2706 |
 | Functions with verified guards | 1152 |
 | Functions declared `:verify-guards nil` and never verified | 138 |
-| Functions left at the default with an explicit guard | 951 |
+| Functions left at the default with an explicit guard | 968 |
 | Functions left at the default with no guard | 448 |
-| `assert-event` checks | 3736 |
+| `assert-event` checks | 3792 |
 | `must-fail` checks | 59 |
 | `encapsulate` events | 14 |
 | Theorems flagged SUSPECT by shape | 30 |
@@ -147,8 +147,8 @@ that `make certify` requests.
 | `books/node-invariants.lisp` | root | 20 | 0 | 0/0/0/0 | 0 | 0 | 3 |
 | `books/node-traces.lisp` | root | 12 | 23 | 0/0/23/0 | 0 | 0 | 0 |
 | `books/node.lisp` | root | 31 | 33 | 27/0/6/0 | 0 | 0 | 2 |
-| `books/owner-invariants.lisp` | root | 74 | 7 | 0/0/0/7 | 0 | 0 | 0 |
-| `books/owner.lisp` | root | 33 | 56 | 0/3/53/0 | 0 | 0 | 0 |
+| `books/owner-invariants.lisp` | root | 87 | 7 | 0/0/0/7 | 0 | 0 | 0 |
+| `books/owner.lisp` | root | 45 | 73 | 0/3/70/0 | 0 | 0 | 0 |
 | `books/policy-invariants.lisp` | root | 32 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/policy.lisp` | root | 13 | 29 | 1/0/28/0 | 0 | 0 | 0 |
 | `books/principal-invariants.lisp` | root | 19 | 0 | 0/0/0/0 | 0 | 0 | 1 |
@@ -241,7 +241,7 @@ that `make certify` requests.
 | `tests/acl2/nntp-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 2 | 0 |
 | `tests/acl2/nntp-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 159 | 0 | 0 |
 | `tests/acl2/node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 92 | 0 | 0 |
-| `tests/acl2/owner-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 95 | 0 | 0 |
+| `tests/acl2/owner-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 151 | 0 | 0 |
 | `tests/acl2/policy-tests.lisp` | root | 0 | 27 | 0/0/0/27 | 66 | 0 | 0 |
 | `tests/acl2/principal-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 43 | 0 | 0 |
 | `tests/acl2/records-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 3 | 0 |

@@ -27,23 +27,46 @@ class OwnerProcess:
              "--port", "0", "--control", str(self.control),
              "--max-connections", str(self.max_connections)],
             cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        deadline = time.monotonic() + 120
+        # Recovery loads the owner books and replays the history; on a
+        # co-tenant-loaded box that ACL2 startup runs minutes, not seconds.
+        deadline = time.monotonic() + 300
         seen = 0
+        # Read the raw descriptor: a BufferedReader.readline() after select
+        # slurps both banner lines into its buffer on one read, the next
+        # select then never fires, and the second line is never seen.
+        fd = self.proc.stdout.fileno()
+        pending = b""
         while time.monotonic() < deadline:
-            ready, _, _ = select.select([self.proc.stdout], [], [], 0.2)
+            ready, _, _ = select.select([fd], [], [], 0.2)
             if ready:
-                line = self.proc.stdout.readline()
-                if line.startswith(b"LISTENING "):
-                    self.port = int(line.split()[1])
-                    seen += 1
-                elif line.startswith(b"CONTROL "):
-                    seen += 1
-                if seen == 2:
-                    return self
+                chunk = os.read(fd, 4096)
+                if not chunk:
+                    break
+                pending += chunk
+                while b"\n" in pending:
+                    line, pending = pending.split(b"\n", 1)
+                    if line.startswith(b"LISTENING "):
+                        self.port = int(line.split()[1])
+                        seen += 1
+                    elif line.startswith(b"CONTROL "):
+                        seen += 1
+                    if seen == 2:
+                        return self
             if self.proc.poll() is not None:
                 break
-        error = self.stderr()
-        self.stop()
+        # Stop before reading stderr: reading a live process blocks.
+        proc = self.proc
+        self.proc = None
+        if proc.poll() is None:
+            proc.terminate()
+        try:
+            proc.wait(timeout=15)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=5)
+        error = proc.stderr.read().decode("utf-8", "replace")
+        proc.stdout.close()
+        proc.stderr.close()
         raise RuntimeError("owner did not start: " + error)
 
     def stderr(self):
