@@ -15,7 +15,7 @@
 (in-package "ACL2")
 (include-book "crypto-seam-tests")
 (include-book "../../books/stx-epochs")
-(include-book "../../books/stx-index")
+(include-book "../../books/stx-authority")
 
 ; -----------------------------------------------------------------------------
 ; Two principals, one keyring, and a store made of article records

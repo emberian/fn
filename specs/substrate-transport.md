@@ -947,3 +947,47 @@ dependency-incomplete lace is bounded pending state per REP-002, not a refusal);
 pruning of the commits set or the lace (D13); a wire form for withdrawal
 statements; and any claim that a `verified` verdict means more than "this
 principal signed these bytes under the key this node holds for it".
+
+## 10. Status (packets S2 to S5, lane `w9/substrate`)
+
+Certification state per root, with its evidence directory, is in
+[`planning/lanes/HANDOFF-w9-substrate.md`](../planning/lanes/HANDOFF-w9-substrate.md)
+and `tests/evidence/2026-09-20-substrate-transit.md`. Counts are generated;
+this table carries obligations, not numbers. Everything below is recorded
+open rather than weakened: no §6 statement was edited to make it provable.
+
+| Keystone | State | The exact obligation, if open |
+| --- | --- | --- |
+| S2-1 grounding theorem | closed by S1 (`books/stx-invariants`) | — |
+| S2-1 companion `fn-stx-transit-verdict-is-fn-stx-verdict` | **open** | `fn-peer-transfer` on this tree is `(node cfg peer msgid octets clock generation id subject)` and records provenance as the *string* `fn-peer-evidence` produces, not as a structured `(:peer-transit ...)` value. The equation needs a structured evidence value — either a slot in the article record (a shared-struct change, red umbrella) or an evidence value carried beside the node as the index is. Owner: this lane with the peering cluster. |
+| S3-1 `fn-stx-transit-ids-are-union` | closed, as a labelled corollary of `fn-lace-merge-ids-are-union` and the bridge | — |
+| S3-2 `fn-stx-transit-equivocation-is-detected` | closed, with both membership conjuncts | — |
+| S3-2 `fn-stx-reissue-detected-after-peering` | **open, not attempted** | The statement names `fn-sys-run`, `fn-sys-node` and `fn-stx-complete-exchangep`; no two-node system model exists on this tree. Either the peering cluster lands one or the row is withdrawn in favour of the single-node fork witness in `tests/acl2/stx-transit-tests.lisp`, which exhibits both forks at one node but says nothing about two. |
+| S3-2 `fn-stx-equivocation-record-agrees-with-lace` | closed as `fn-stx-recorded-equivocation-agrees-with-lace` | renamed only; the statement is the one in §6. |
+| S3-3 `fn-stx-index-agrees-with-lace` | closed, with `fn-stx-index-invariant-preserved-by-accept` | The cost shadow is `fn-stx-index-lookup-cost-is-index-bounded` and `fn-stx-index-grows-by-at-most-one-binding`; `fn-stx-index-query-is-store-free-by-definition` is named for what it is. |
+| S4-1 `fn-stx-transit-admit-is-fn-pol-admitp` | **renamed** `fn-stx-transit-admit-is-fn-pol-admitp-by-definition` | It is the unfolding of the gate's definition, and the assurance rule "cite keystones, never corollaries" forbids offering it as the proof event. The theorem-subject obligation it stands in for is the same host-line equation the S2-1 companion needs, and is open with it. |
+| S4-1 `fn-stx-peer-batch-cannot-change-policy` | closed, over `fn-stx-accept-batch` and `fn-stx-batch-delta`, with the named-offender theorem | — |
+| S5-1 carrier obligation | closed | — |
+| S5-1 the two corollaries | closed, plus `fn-stx-reconnect-does-not-extend-the-chain` | — |
+| S6-1 `fn-stx-reader-verdict-is-the-recorded-verdict` | **open, and the wiring is not half-done** | There is no slot in which acceptance records a verdict: `fn-node-statep` is `(acceptance retention stage bindings)` and the article record is `(msgid payload groups memberships pin)`, so `fn-nntp-hdr-content (field article)` at `books/nntp-responses.lisp:1375` cannot reach one. Closing it means (a) a verdict log carried beside the node in the `fn-stx-index` pattern, (b) threading it through `fn-nntp-hdr-content` and its four callers, and (c) `(fn-nntp-keywordp token ":FN-VERIFIED")` at `books/nntp-responses.lisp:1322`. That is a red-umbrella change to a chain that is independently red at `books/nntp-effects.lisp:971`. Recomputing the verdict per HDR query was rejected: it needs a keyring on the reader path and contradicts "the reader reports what acceptance recorded". |
+
+Three departures from the design text above, each recorded rather than
+silently taken.
+
+1. **The two typed reasons do not join `*fn-peer-reasons*`** (§2.3). Every
+   member of that enumeration is a reason a transit *decision* refuses bytes,
+   and an equivocating article must be accepted. `*fn-stx-authority-outcomes*`
+   in `books/stx-policy.lisp` carries `:admitted`, `:refused`,
+   `:equivocation` and `:authority-equivocation` on the authority axis, where
+   a transit decision cannot spell them.
+2. **The bridge lemma carries a freshness hypothesis.** Two articles with
+   different Message-IDs can carry the same statement, and then the store
+   grows while the lace's ids do not, so `fn-stx-lace` of the grown store is
+   `(append lace delta)` and `fn-lace-merge` drops the duplicate. The
+   hypothesis is exercised in both directions by the `:have` witness in the
+   test book.
+3. **`fn-inj-prefix` is not edited.** A node holds no principal's signing
+   key, so a node that attached `FN-Statement` on a poster's behalf would be
+   forging. The poster's client attaches it (`fn statement sign` then
+   `fn statement attach`), and the ACL2 fact that licenses attaching it
+   anywhere is S1's `fn-stx-payload-ignores-the-carrier-field`.
