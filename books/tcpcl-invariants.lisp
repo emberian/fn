@@ -42,6 +42,13 @@
 (local (defthm fn-tcl-member-equal-append
          (iff (member-equal x (append a b))
               (or (member-equal x a) (member-equal x b)))))
+(local (defthm fn-tcl-car-append
+         (implies (consp a) (equal (car (append a b)) (car a)))))
+(local (defthm fn-tcl-consp-append
+         (implies (consp a) (consp (append a b)))))
+; C1's decode-error case appends the closing events to the no-op's nil.
+(local (defthm fn-tcl-input-error-events-true-listp
+         (true-listp (fn-tcl-result-events (fn-tcl-input-error s header reason now)))))
 
 ; -----------------------------------------------------------------------------
 ; The drive loop's shape facts.
@@ -113,11 +120,18 @@
                                           right)
                                   now)))))
   :hints (("Goal" :induct (fn-tcl-drive s left now)
+           ; fn-tcl-segment-mru stays closed so that
+           ; fn-tcl-decode-for-yields-message meets fn-tcl-step-preserves-sessionp
            :in-theory (e/d (fn-tcl-drive)
                            (fn-tcl-step fn-tcl-decode-for fn-tcl-input-error
-                            fn-tcl-drive-is-a-result)))
+                            fn-tcl-drive-is-a-result fn-tcl-segment-mru)))
+          ; the need case: the split's right side is the whole drive rebuilt
+          ("Subgoal *1/3" :in-theory (enable fn-tcl-drive-is-a-result))
           ("Subgoal *1/2" :expand ((fn-tcl-drive s (append left right) now)))
-          ("Subgoal *1/1" :expand ((fn-tcl-drive s (append left right) now)))))
+          ; the base case: an empty or closed left leaves the whole drive,
+          ; rebuilt, on the right
+          ("Subgoal *1/1" :expand ((fn-tcl-drive s (append left right) now))
+                          :in-theory (enable fn-tcl-drive-is-a-result))))
 
 ; -----------------------------------------------------------------------------
 ; C2.  A final acknowledgement means every segment.
@@ -155,6 +169,8 @@
                 (implies (and (fn-tcl-session-inbound s)
                               (fn-tcl-inbound-total (fn-tcl-session-inbound s)))
                          (equal (fn-tcl-inbound-total (fn-tcl-session-inbound s)) (len data)))))
+  ; an equality with the variable id on its left is not a rewrite rule
+  :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-tcl-messagep)
                            (fn-tcl-ext-decision fn-tcl-recv-contact fn-tcl-recv-init

@@ -34,20 +34,20 @@ Spec: [specs/tcpcl.md](../../specs/tcpcl.md). Design: bp-design.md §2.
 - Makefile roots after `tests/acl2/clock-tests`; `docs/prefixes.md` row
   `fn-tcl-`; `specs/tcpcl.md` with the clause matrix.
 
-## Certification status (finisher lane, HEAD 520a57d on w4/tcpcl, dev d83dea5 merged)
+## Certification status (session lane, w4/tcpcl at the commit carrying these rows, dev b7f106b merged)
 
 | Root | Result | Evidence | Wall |
 | --- | --- | --- | --- |
 | `books/tcpcl-records` | certified | `build/acl2/certify-20260919T233610Z-89468` | 0.26 s |
 | `books/tcpcl-octets` | certified | `build/acl2/certify-20260920T013843Z-86679` | 125.0 s |
-| `books/tcpcl-session` | OPEN at `fn-tcl-refuse-preserves-sessionp` (specs/tcpcl.md section 6) | `build/acl2/certify-20260920T014417Z-93813` | 22.9 s to the failing form |
-| `books/tcpcl-invariants` | uncertified, behind session | | |
-| `tests/acl2/tcpcl-tests` | uncertified, behind session | | |
+| `books/tcpcl-session` | certified | `build/acl2/certify-20260920T021558Z-83845` | 26.8 s |
+| `books/tcpcl-invariants` | OPEN at `defthm fn-tcl-final-ack-means-every-segment` (specs/tcpcl.md section 6) | `build/acl2/certify-20260920T022251Z-39001` | 14.03 s to the failing form |
+| `tests/acl2/tcpcl-tests` | uncertified, behind invariants | | |
 
-The RFC clause matrix of specs/tcpcl.md section 5 therefore has no row
-supported by a certified theorem beyond the codec rows of section 2
-(octets): every "implemented" entry that names a session function or a
-C1 to C4 keystone is a proposed theorem until session certifies.
+The RFC clause matrix of specs/tcpcl.md section 5: every "implemented" entry
+that names a session function is now backed by that function's certified
+preservation lemma and guard (`books/tcpcl-session`); every entry that names a
+C1 to C4 keystone is a proposed theorem until invariants certifies.
 
 What closed octets, each with its measured reason at the edit (commit
 77e0284): the `fn-tcl-uint-bound` `:use` instance rewritten away by its own
@@ -61,11 +61,16 @@ the message-level round trips cite the sub-decoder keystone with `mru`
 bound and the recognizer closed (the keystone's `mru` is free in its
 hypothesis).
 
-Suggested next step for session: state the phase-consistency hypotheses of
-`fn-tcl-next-preserves-sessionp` in the form `fn-tcl-sessionp-facts` exports
-(or keep the glue predicates closed while relieving them), or open
-`fn-tcl-sessionp` in each transition lemma as `fn-tcl-recv-contact-
-preserves-sessionp` now does (that lemma passes with the recognizer open).
+What closed session (commit 7daafcf): the rebuild rule's five phase-consistency
+hypotheses are `case-split`; absent fields are stated with `not`; the
+sub-recognizers' field facts and the session's conditional fields forward-chain;
+next-xfer-id and both MRUs carry :type-prescription, the MRU bounds :linear;
+ack and segment cite the rebuild/stage lemma by `:use` on the record each
+builds; step, drive and their guards keep `fn-tcl-segment-mru` closed.
+C2 `fn-tcl-final-ack-means-every-segment` is `:rule-classes nil` (statement
+unchanged): its equality has the variable `id` on its left, which ACL2 refuses
+as a rewrite rule; it is cited by `:use`.
+Invariants is open at `defthm fn-tcl-final-ack-means-every-segment`; the checkpoint is in the evidence log.
 
 ## Proposed host surface: `host/native/tcpcl.lisp`
 
