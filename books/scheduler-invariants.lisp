@@ -134,14 +134,18 @@
                                   (fn-sched-admit fn-sched-open fn-sched-close
                                    fn-sched-restart fn-sched-observe-expiry
                                    fn-sched-tick-step fn-sched-with-tick
-                                   fn-sched-contact-holdsp fn-bp-nth)))))
+                                   fn-sched-contact-holdsp fn-bp-nth
+                                   fn-sched-statep fn-sched-string-listp
+                                   fn-sched-item-listp)))))
 
 ; KEYSTONE.  State preservation over an arbitrary finite observation trace.
 (defthm fn-sched-trace-preserves-state
   (implies (fn-sched-statep ss)
            (fn-sched-statep (fn-sched-result-ss (fn-sched-trace ss wf events))))
   :hints (("Goal" :induct (fn-sched-trace ss wf events)
-           :in-theory (e/d (fn-sched-trace) (fn-sched-step)))))
+           :in-theory (e/d (fn-sched-trace)
+                           (fn-sched-step fn-sched-statep
+                            fn-sched-string-listp fn-sched-item-listp)))))
 
 ; -----------------------------------------------------------------------------
 ; Queue preservation.  A queued work-id is never dropped, by any observation.
@@ -150,6 +154,24 @@
   (implies (fn-sched-queuedp id q)
            (fn-sched-queuedp id (fn-sched-bump-queue q wf sel limit)))
   :hints (("Goal" :in-theory (disable fn-sched-eligiblep))))
+
+; With the item record opaque, `fn-sched-find' can no longer see through a
+; marked item: this is the footprint of `fn-sched-mark-expired' in accessor
+; vocabulary.  Proof vocabulary, withdrawn at export.
+(defthm fn-sched-mark-expired-keeps-the-fields
+  (and (equal (fn-sched-item-work-id (fn-sched-mark-expired item))
+              (fn-sched-item-work-id item))
+       (equal (fn-sched-item-class (fn-sched-mark-expired item))
+              (fn-sched-item-class item))
+       (equal (fn-sched-item-size (fn-sched-mark-expired item))
+              (fn-sched-item-size item))
+       (equal (fn-sched-item-seq (fn-sched-mark-expired item))
+              (fn-sched-item-seq item))
+       (equal (fn-sched-item-passes (fn-sched-mark-expired item))
+              (fn-sched-item-passes item))
+       (equal (fn-sched-item-agedp (fn-sched-mark-expired item))
+              (fn-sched-item-agedp item))
+       (equal (fn-sched-item-expiredp (fn-sched-mark-expired item)) t)))
 
 (defthm fn-sched-expire-queue-preserves-queued
   (implies (fn-sched-queuedp id q)
@@ -478,6 +500,20 @@
            (member-equal w (fn-sched-aged-advance aged queue wf)))
   :hints (("Goal" :in-theory (disable fn-sched-eligiblep fn-sched-find))))
 
+(defthm fn-sched-member-of-append-left
+  (implies (member-equal w a) (member-equal w (append a b))))
+
+; The consp consequence, as its own rule: in the deep case split of
+; `fn-sched-promotion-position-decreases' the `:use' hypothesis has already been
+; rewritten away, and the branch closes only if this fires there.
+(defthm fn-sched-aged-advance-consp-when-an-eligible-member-exists
+  (implies (and (member-equal w aged)
+                (fn-sched-eligiblep (fn-sched-find w queue) wf))
+           (consp (fn-sched-aged-advance aged queue wf)))
+  :hints (("Goal" :use fn-sched-aged-advance-keeps-eligible-member
+           :in-theory (disable fn-sched-eligiblep fn-sched-find
+                               fn-sched-aged-advance))))
+
 (defthm fn-sched-aged-advance-head-is-eligible
   (implies (consp (fn-sched-aged-advance aged queue wf))
            (fn-sched-eligiblep
@@ -511,7 +547,35 @@
                             (q (fn-sched-queue ss)))
                  (:instance fn-sched-aged-advance-head-is-eligible
                             (aged (fn-sched-aged ss))
-                            (queue (fn-sched-queue ss)))))))
+                            (queue (fn-sched-queue ss)))
+                 ; the opaque item no longer yields `consp' by type reasoning
+                 (:instance fn-sched-eligible-is-consp
+                            (item (fn-sched-find
+                                   (car (fn-sched-aged-advance
+                                         (fn-sched-aged ss)
+                                         (fn-sched-queue ss) wf))
+                                   (fn-sched-queue ss))))))))
+
+; And it is a queue item, not nil: with the item record opaque this no longer
+; follows from the work-id equality above.
+(defthm fn-sched-selection-is-consp-when-the-promotion-queue-is-not-empty
+  (implies (and (fn-sched-admissiblep ss)
+                (consp (fn-sched-aged-advance (fn-sched-aged ss)
+                                              (fn-sched-queue ss) wf)))
+           (consp (fn-sched-selection ss wf)))
+  :hints (("Goal" :in-theory (e/d (fn-sched-selection)
+                                  (fn-sched-aged-advance fn-sched-admissiblep
+                                   fn-sched-eligiblep fn-sched-priority-pick
+                                   fn-sched-find))
+           :use ((:instance fn-sched-aged-advance-head-is-eligible
+                            (aged (fn-sched-aged ss))
+                            (queue (fn-sched-queue ss)))
+                 (:instance fn-sched-eligible-is-consp
+                            (item (fn-sched-find
+                                   (car (fn-sched-aged-advance
+                                         (fn-sched-aged ss)
+                                         (fn-sched-queue ss) wf))
+                                   (fn-sched-queue ss))))))))
 
 ; KEYSTONE.  One admissible tick either selects a promoted work or moves it
 ; strictly closer to the head of the promotion queue.
@@ -540,6 +604,8 @@
                  fn-sched-selection fn-bp-result-effects fn-bp-result-state))
            :cases ((equal w (fn-sched-item-work-id (fn-sched-selection ss wf))))
            :use ((:instance fn-sched-selection-is-the-promotion-head)
+                 (:instance
+                  fn-sched-selection-is-consp-when-the-promotion-queue-is-not-empty)
                  (:instance fn-sched-aged-advance-keeps-eligible-member
                             (aged (fn-sched-aged ss))
                             (queue (fn-sched-queue ss)))
@@ -664,6 +730,7 @@
   '(fn-sched-find-returns-its-id fn-sched-find-is-a-member
     fn-sched-itemp-of-bump fn-sched-item-listp-of-bump-queue
     fn-sched-itemp-of-mark-expired fn-sched-item-listp-of-expire-queue
+    fn-sched-mark-expired-keeps-the-fields
     fn-sched-item-listp-of-append
     fn-sched-statep-of-admit fn-sched-statep-of-open fn-sched-statep-of-close
     fn-sched-statep-of-restart fn-sched-statep-of-observe-expiry
@@ -672,10 +739,13 @@
     fn-sched-true-listp-of-record-decision fn-sched-statep-of-tick-step
     fn-sched-bump-queue-preserves-queued fn-sched-expire-queue-preserves-queued
     fn-sched-append-preserves-queued fn-sched-admit-preserves-queued
+    fn-sched-member-of-append-left
     fn-sched-aged-advance-keeps-eligible-member
+    fn-sched-aged-advance-consp-when-an-eligible-member-exists
     fn-sched-aged-advance-head-is-eligible fn-sched-pos-of-aged-advance
     fn-sched-pos-of-cons-other fn-sched-pos-of-append-when-member
     fn-sched-selection-is-the-promotion-head
+    fn-sched-selection-is-consp-when-the-promotion-queue-is-not-empty
     fn-sched-promotion-position-decreases
     fn-sched-promoted-work-is-selected-within-its-position))
 
