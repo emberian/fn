@@ -1054,9 +1054,17 @@
              ((equal kind :feed-enqueue)
               (fn-feed-enqueue f msgid (fn-feed-record-nat 2 values)))
              ((equal kind :feed-offer)
+              ; The one-in-flight rule again, and for the same reason as in
+              ; `fn-feed-offer': a journal that offered twice at once is not
+              ; one this machine wrote, and replaying it must not build a
+              ; feed the recognizer rejects.  `fn-feed-drivenp' carries the
+              ; matching conjunct, so the two stay aligned.
               (let ((attempt (fn-feed-record-nat 2 values)))
-                (if (not (equal (fn-feed-state-of msgid (fn-feed-queue f))
-                                :queued))
+                (if (not (and (equal (fn-feed-state-of msgid (fn-feed-queue f))
+                                     :queued)
+                              (equal (fn-feed-inflight-count
+                                      (fn-feed-queue f))
+                                     0)))
                     f
                     (fn-feed-make
                      (fn-feed-peer f) (fn-feed-limits-of f)
@@ -1120,6 +1128,7 @@
                    (fn-feed-max-queue (fn-feed-limits-of f)))))
           ((equal kind :feed-offer)
            (and (equal (fn-feed-state-of msgid (fn-feed-queue f)) :queued)
+                (equal (fn-feed-inflight-count (fn-feed-queue f)) 0)
                 (<= (fn-feed-next-attempt f) (fn-feed-record-nat 2 values))))
           ((equal kind :feed-sent)
            (and (fn-feed-offeredp (fn-feed-state-of msgid (fn-feed-queue f)))

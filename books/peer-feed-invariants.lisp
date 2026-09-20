@@ -275,12 +275,70 @@
 (defthm fn-feed-enqueue-preserves-feedp
   (implies (fn-feedp f) (fn-feedp (fn-feed-enqueue f msgid tick))))
 
+; The one `fn-feedp' conjunct an offer moves is the attempt bound, and the
+; checkpoint showed why the rewrite above cannot reach it: `fn-feed-offered'
+; is a two-element list the simplifier opens to `(list :offered n)' before any
+; rule keyed on the constructor could fire.  So the conjunct is stated on its
+; own, over the queue field with the feed record closed around it, and cited
+; by `:use' -- the match then does not depend on how the offer state is
+; spelled.  Content: the offer writes the CURRENT next-attempt into the entry
+; and bumps next-attempt past it, so every in-flight entry is below the new
+; bound -- the new entry by one, the others because they were below the old.
+(local
+ (defthm fn-feed-attempts-belowp-after-an-offer
+   (implies (and (fn-feed-attempts-belowp xs n) (natp n))
+            (fn-feed-attempts-belowp
+             (fn-feed-queue-set-state xs msgid (list :offered n))
+             (+ 1 n)))
+   :rule-classes nil))
+
+; The same for the transfer: `fn-feed-send' reuses the attempt the offer
+; allocated -- it opens no new one -- so the bound is unchanged, and the
+; attempt it reuses is below it because the entry was in flight.
+(local
+ (defthm fn-feed-inflight-attempt-is-below-the-bound
+   (implies (and (fn-feed-attempts-belowp xs n)
+                 (fn-feed-state-inflightp (fn-feed-state-of msgid xs)))
+            (< (fn-feed-state-attempt (fn-feed-state-of msgid xs)) (nfix n)))
+   :rule-classes nil))
+
+(local
+ (defthm fn-feed-attempts-belowp-after-a-transfer
+   (implies (and (fn-feed-attempts-belowp xs n) (natp a) (< a (nfix n)))
+            (fn-feed-attempts-belowp
+             (fn-feed-queue-set-state xs msgid (list :sent a)) n))
+   :rule-classes nil))
+
+; The general form, for the replay fold: an offer state written with attempt
+; `a' keeps the bound at any `m' above both `a' and the old bound.
+(local
+ (defthm fn-feed-attempts-belowp-of-an-offered-state
+   (implies (and (fn-feed-attempts-belowp xs n) (natp a) (natp m)
+                 (< a m) (<= (nfix n) m))
+            (fn-feed-attempts-belowp
+             (fn-feed-queue-set-state xs msgid (list :offered a)) m))
+   :rule-classes nil))
+
 (defthm fn-feed-offer-preserves-feedp
-  (implies (fn-feedp f) (fn-feedp (mv-nth 0 (fn-feed-offer f msgid)))))
+  (implies (fn-feedp f) (fn-feedp (mv-nth 0 (fn-feed-offer f msgid))))
+  :hints (("Goal"
+           :use ((:instance fn-feed-attempts-belowp-after-an-offer
+                            (xs (fn-feed-queue f))
+                            (n (fn-feed-next-attempt f)))))))
 
 (defthm fn-feed-send-preserves-feedp
   (implies (fn-feedp f)
-           (fn-feedp (mv-nth 0 (fn-feed-send f msgid article)))))
+           (fn-feedp (mv-nth 0 (fn-feed-send f msgid article))))
+  :hints (("Goal"
+           :use ((:instance fn-feed-inflight-attempt-is-below-the-bound
+                            (xs (fn-feed-queue f))
+                            (n (fn-feed-next-attempt f)))
+                 (:instance fn-feed-attempts-belowp-after-a-transfer
+                            (xs (fn-feed-queue f))
+                            (n (fn-feed-next-attempt f))
+                            (a (fn-feed-state-attempt
+                                (fn-feed-state-of
+                                 msgid (fn-feed-queue f)))))))))
 
 (defthm fn-feed-done-preserves-feedp
   (implies (fn-feedp f) (fn-feedp (fn-feed-done f msgid))))
@@ -297,15 +355,58 @@
 (defthm fn-feed-restart-preserves-feedp
   (implies (fn-feedp f) (fn-feedp (fn-feed-restart f))))
 
+; The dispatcher stays open and every arm stays CLOSED: each arm is one of
+; the transitions above and its preservation lemma is the rewrite that closes
+; it.  Opening the arms instead put the proof into a 137-way split
+; (`fn-feed-give-up' and `fn-feed-retry-exhaustedp' under every code).
 (defthm fn-feed-observe-preserves-feedp
   (implies (fn-feedp f)
-           (fn-feedp (mv-nth 0 (fn-feed-observe f response article obs)))))
+           (fn-feedp (mv-nth 0 (fn-feed-observe f response article obs))))
+  :hints (("Goal" :in-theory (disable (:d fn-feed-offer) (:d fn-feed-send) (:d fn-feed-done)
+                            (:d fn-feed-back-off) (:d fn-feed-lost)
+                            (:d fn-feed-give-up) (:d fn-feed-enqueue)
+                            (:d fn-feed-restart)
+                            (:d fn-feed-retry-exhaustedp) (:d fn-feedp)
+                            ; `mv-nth' too: opened, it turns the arm into
+                            ; `(car (fn-feed-send ...))' and the arm's
+                            ; preservation rewrite no longer matches.
+                            mv-nth))))
 
 (defthm fn-feed-tick-step-preserves-feedp
-  (implies (fn-feedp f) (fn-feedp (mv-nth 0 (fn-feed-tick-step f obs)))))
+  (implies (fn-feedp f) (fn-feedp (mv-nth 0 (fn-feed-tick-step f obs))))
+  :hints (("Goal" :in-theory (disable (:d fn-feed-offer) (:d fn-feed-send) (:d fn-feed-done)
+                            (:d fn-feed-back-off) (:d fn-feed-lost)
+                            (:d fn-feed-give-up) (:d fn-feed-enqueue)
+                            (:d fn-feed-restart)
+                            (:d fn-feed-retry-exhaustedp) (:d fn-feedp)
+                            ; `mv-nth' too: opened, it turns the arm into
+                            ; `(car (fn-feed-send ...))' and the arm's
+                            ; preservation rewrite no longer matches.
+                            mv-nth))))
 
+; `fn-feedp' stays OPEN here, unlike the three above: the `:feed-offer' and
+; `:feed-outcome' arms rebuild the record with `fn-feed-make' instead of
+; calling a transition, so the recognizer has to open on both sides -- closed,
+; the prover could not even see that `(fn-feedp f)' contradicts
+; `(not (fn-feed-attempts-belowp (fn-feed-queue f) (fn-feed-next-attempt f)))'.
 (defthm fn-feed-apply-record-preserves-feedp
-  (implies (fn-feedp f) (fn-feedp (fn-feed-apply-record f kind values))))
+  (implies (fn-feedp f) (fn-feedp (fn-feed-apply-record f kind values)))
+  :hints (("Goal"
+           :in-theory (disable (:d fn-feed-offer) (:d fn-feed-send) (:d fn-feed-done)
+                            (:d fn-feed-back-off) (:d fn-feed-lost)
+                            (:d fn-feed-give-up) (:d fn-feed-enqueue)
+                            (:d fn-feed-restart)
+                            (:d fn-feed-retry-exhaustedp)
+                            mv-nth)
+           :use ((:instance fn-feed-attempts-belowp-of-an-offered-state
+                            (xs (fn-feed-queue f))
+                            (n (fn-feed-next-attempt f))
+                            (msgid (fn-feed-record-msgid values))
+                            (a (fn-feed-record-nat 2 values))
+                            (m (if (< (fn-feed-record-nat 2 values)
+                                      (fn-feed-next-attempt f))
+                                   (fn-feed-next-attempt f)
+                                   (+ 1 (fn-feed-record-nat 2 values)))))))))
 
 (defthm fn-feed-replay-preserves-feedp
   (implies (fn-feedp f) (fn-feedp (fn-feed-replay f es))))
@@ -313,7 +414,16 @@
 (defthm fn-feed-apply-record-preserves-peer
   (implies (fn-feedp f)
            (equal (fn-feed-peer (fn-feed-apply-record f kind values))
-                  (fn-feed-peer f))))
+                  (fn-feed-peer f)))
+  :hints (("Goal" :in-theory (disable (:d fn-feed-offer) (:d fn-feed-send) (:d fn-feed-done)
+                            (:d fn-feed-back-off) (:d fn-feed-lost)
+                            (:d fn-feed-give-up) (:d fn-feed-enqueue)
+                            (:d fn-feed-restart)
+                            (:d fn-feed-retry-exhaustedp) (:d fn-feedp)
+                            ; `mv-nth' too: opened, it turns the arm into
+                            ; `(car (fn-feed-send ...))' and the arm's
+                            ; preservation rewrite no longer matches.
+                            mv-nth))))
 
 (defthm fn-feed-replay-preserves-peer
   (implies (fn-feedp f)
