@@ -10,22 +10,22 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 222 |
-| Certification roots in the Makefile | 221 |
-| Books inside the root closure | 221 |
-| `defthm` and `defthmd` events | 4092 |
-| `defun` events | 2986 |
-| Functions with verified guards | 1239 |
+| Books read | 226 |
+| Certification roots in the Makefile | 229 |
+| Books inside the root closure | 225 |
+| `defthm` and `defthmd` events | 4198 |
+| `defun` events | 3111 |
+| Functions with verified guards | 1242 |
 | Functions declared `:verify-guards nil` and never verified | 141 |
-| Functions left at the default with an explicit guard | 1158 |
+| Functions left at the default with an explicit guard | 1280 |
 | Functions left at the default with no guard | 448 |
-| `assert-event` checks | 3936 |
+| `assert-event` checks | 4032 |
 | `must-fail` checks | 59 |
 | `encapsulate` events | 15 |
 | Theorems flagged SUSPECT by shape | 31 |
 | Export-hygiene warnings | 62 |
 | Teeth-form warnings | 0 |
-| Include-hygiene warnings | 87 |
+| Include-hygiene warnings | 88 |
 
 ## Lints
 
@@ -109,9 +109,9 @@ that `make certify` requests.
 | `books/checkpoint.lisp` | root | 18 | 14 | 12/0/2/0 | 0 | 0 | 0 |
 | `books/clock-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/clock.lisp` | root | 9 | 18 | 18/0/0/0 | 0 | 0 | 0 |
-| `books/config-invariants.lisp` | root | 32 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/config-invariants.lisp` | root | 34 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/config-records.lisp` | root | 12 | 15 | 2/0/13/0 | 0 | 0 | 0 |
-| `books/config.lisp` | root | 42 | 128 | 1/0/127/0 | 0 | 0 | 0 |
+| `books/config.lisp` | root | 42 | 133 | 1/0/132/0 | 0 | 0 | 0 |
 | `books/container-invariants.lisp` | root | 25 | 2 | 0/0/1/1 | 0 | 0 | 0 |
 | `books/container.lisp` | root | 2 | 43 | 0/1/42/0 | 0 | 0 | 0 |
 | `books/crypto-seam.lisp` | root | 19 | 14 | 0/0/10/4 | 0 | 0 | 0 |
@@ -149,6 +149,9 @@ that `make certify` requests.
 | `books/node.lisp` | root | 31 | 33 | 27/0/6/0 | 0 | 0 | 2 |
 | `books/owner-invariants.lisp` | root | 74 | 7 | 0/0/0/7 | 0 | 0 | 0 |
 | `books/owner.lisp` | root | 33 | 56 | 0/3/53/0 | 0 | 0 | 0 |
+| `books/path.lisp` | root | 0 | 21 | 0/0/21/0 | 0 | 0 | 0 |
+| `books/peer-feed-invariants.lisp` | root | 69 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/peer-feed.lisp` | root | 35 | 99 | 3/0/96/0 | 0 | 0 | 0 |
 | `books/policy-invariants.lisp` | root | 32 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/policy.lisp` | root | 13 | 29 | 1/0/28/0 | 0 | 0 | 0 |
 | `books/principal-invariants.lisp` | root | 19 | 0 | 0/0/0/0 | 0 | 0 | 1 |
@@ -248,6 +251,7 @@ that `make certify` requests.
 | `tests/acl2/nntp-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 159 | 0 | 0 |
 | `tests/acl2/node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 92 | 0 | 0 |
 | `tests/acl2/owner-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 95 | 0 | 0 |
+| `tests/acl2/peer-feed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 96 | 0 | 0 |
 | `tests/acl2/policy-tests.lisp` | root | 0 | 27 | 0/0/0/27 | 66 | 0 | 0 |
 | `tests/acl2/principal-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 43 | 0 | 0 |
 | `tests/acl2/records-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 3 | 0 |
