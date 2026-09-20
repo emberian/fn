@@ -165,8 +165,15 @@ PLAN = (
       ("HST-003",), ("SCN-020",), ACCEPTED, "node"),
     S("V0-NODE-CONFIG", "F-NODE", "fn.toml carries [store] path and [acl2] path",
       ("HST-004",), ("SCN-020",), ACCEPTED, "node"),
-    S("V0-NODE-REINIT", "F-NODE", "fn init over an existing store is refused",
-      ("HST-003",), ("SCN-020",), REFUSED, "node"),
+    S("V0-NODE-REINIT", "F-NODE",
+      "what a second fn init over a store that already holds articles does",
+      ("HST-003",), ("SCN-020",), None, "node",
+      "nothing in docs/operator.md says whether a second `init` adopts the store "
+      "or refuses, so this row records the outcome rather than asserting one; the "
+      "property that matters is the next row"),
+    S("V0-NODE-REINIT-SAFE", "F-NODE",
+      "the articles the store already held are still there after the second init",
+      ("STO-003", "OBJ-005"), ("SCN-020",), ACCEPTED, "node"),
     S("V0-NODE-STATUS", "F-NODE", "fn status reports generation and article count",
       ("HST-002",), ("SCN-020",), ACCEPTED, "node"),
     S("V0-NODE-START", "F-NODE", "the service starts and reaches LISTENING",
@@ -1115,6 +1122,34 @@ command -v slrn >/dev/null && echo slrn=yes || echo slrn=no
     def uncertified(self, *books) -> list:
         return [b for b in books if self.support.get("cert-" + b) == "no"]
 
+    # -- ports --------------------------------------------------------------
+    def allocate_ports(self):
+        """One listener port per node, chosen before anything is configured.
+
+        A peer record names the other node's transport, and the record has to
+        exist before the servers start -- `peer add` takes the writer lock,
+        which the service holds.  With `--port 0` the record would name port
+        0, which `fn-store-cfg-peer-record` reads as a BP endpoint rather
+        than an NNTP one, so the pair would be peered over a transport
+        neither of them speaks.  The ports are therefore chosen here, by the
+        kernel, and written into both the configuration and the record.
+        """
+        one_liner = ("import socket; s=[socket.socket() for _ in range(2)]; "
+                     "[x.bind((\"127.0.0.1\", 0)) for x in s]; "
+                     "print(\" \".join(str(x.getsockname()[1]) for x in s)); "
+                     "[x.close() for x in s]")
+        step = self.sh("free ports", "python3 -c '{}'".format(one_liner), expect=None)
+        words = [w for w in step.output.split() if w.isdigit()]
+        for index, node in enumerate(self.nodes):
+            node.assigned_port = int(words[index]) if len(words) > index else 0
+        self.facts["assigned ports"] = "a={} b={}".format(
+            self.a.assigned_port, self.b.assigned_port)
+        if not (self.a.assigned_port and self.b.assigned_port):
+            self.gaps.append(
+                "the host did not give two free ports ({}), so the nodes fall back to "
+                "`--port 0` and their peer records name port 0, which the record "
+                "builder reads as a BP endpoint.".format(step.first_line))
+
     # -- F-NODE: init, configuration, start, stop -------------------------
     def init_node(self, node: NodeSpec):
         """`fn init` is the operator path; the store CLI is the fallback."""
@@ -1123,8 +1158,10 @@ command -v slrn >/dev/null && echo slrn=yes || echo slrn=no
                 "mkdir -p {} {}".format(node.dir, node.peers))
         step = self.sh("node {} fn init".format(node.upper), self.cd(
             "python3 bin/fn --config {dir}/fn.toml init --store {store} {groups} "
-            "--listen 127.0.0.1:0 --control {dir}/control.sock --log {dir}/fn.log "
-            "--acl2 \"$FN_ACL2\"".format(dir=node.dir, store=node.store, groups=groups)),
+            "--listen 127.0.0.1:{port} --control {dir}/control.sock "
+            "--log {dir}/fn.log --acl2 \"$FN_ACL2\"".format(
+                dir=node.dir, store=node.store, groups=groups,
+                port=getattr(node, "assigned_port", 0))),
             timeout=1800, expect=None)
         self.from_step("V0-NODE-INIT", step, node=node.name,
                        limit="one store on one box; the configuration is this gate's, "
@@ -1153,18 +1190,53 @@ command -v slrn >/dev/null && echo slrn=yes || echo slrn=no
                   node=node.name, exit_code=config.rc,
                   limit="the file's sections are read as text; nothing here loads it "
                         "the way a tool would")
-        again = self.sh("node {} fn init again".format(node.upper), self.cd(
-            "python3 bin/fn --config {dir}/fn2.toml init --store {store} {groups}".format(
-                dir=node.dir, store=node.store, groups=groups)),
-            timeout=900, expect=None)
-        self.from_step("V0-NODE-REINIT", again, node=node.name,
-                       limit="one existing store; no concurrent initializer")
         status = self.sh("node {} fn status".format(node.upper),
                          self.cd(self.cli(node, "status")), timeout=900, expect=None)
         self.from_step("V0-NODE-STATUS", status, node=node.name,
                        limit="the store is not held by a service at this point")
         self.sh("node {} store config".format(node.upper),
                 self.cd(self.fn("--store {} config".format(node.store))), timeout=900)
+
+    def reinit(self, node: NodeSpec):
+        """A second `fn init` over a store that already holds articles.
+
+        Run here, after the seeds, and not beside the first init: the
+        question a v0 operator has is not what a second init returns but
+        whether it destroys what the store held, and that cannot be asked of
+        an empty store."""
+        groups = " ".join("--group {}".format(g) for g in GROUPS)
+        held = list(node.accepted)
+        again = self.sh("node {} fn init again".format(node.upper), self.cd(
+            "python3 bin/fn --config {dir}/fn2.toml init --store {store} {groups}".format(
+                dir=node.dir, store=node.store, groups=groups)),
+            timeout=1800, expect=None)
+        self.from_step("V0-NODE-REINIT", again, node=node.name,
+                       limit="one existing store holding {} article(s); no concurrent "
+                             "initializer".format(len(held)))
+        if not held:
+            self.emit("V0-NODE-REINIT-SAFE", NOT_EXERCISED, again.command,
+                      "(the store held nothing)", node=node.name,
+                      blocker="the store held no accepted article when the second init "
+                              "ran, so there was nothing for it to destroy")
+            return
+        worst = None
+        for msgid in held:
+            one = self.sh("node {} still holds {} after the second init".format(
+                node.upper, msgid), self.cd(self.fn(
+                    "--store {} inspect --message-id '{}'".format(node.store, msgid))),
+                timeout=900, expect=EXIT_OK)
+            if one.rc != EXIT_OK and worst is None:
+                worst = one
+        self.emit("V0-NODE-REINIT-SAFE",
+                  ACCEPTED if worst is None else exit_verdict(worst.rc),
+                  "run_store.py --store <{}> inspect --message-id <each of {}>".format(
+                      node.name, len(held)),
+                  "every one of the {} articles the store held before the second init "
+                  "was still there".format(len(held)) if worst is None
+                  else "{} exited {} after the second init".format(worst.name, worst.rc),
+                  node=node.name, exit_code=0 if worst is None else worst.rc,
+                  limit="exact Message-ID lookups over what this run posted, not a "
+                        "comparison of the store's octets")
 
     def loopback_refusal(self):
         root = "{}/loopback".format(self.deploy)
@@ -1279,6 +1351,8 @@ command -v slrn >/dev/null && echo slrn=yes || echo slrn=no
         self.from_step("V0-CAP-SET", cap, node=node.name,
                        limit="a scratch store beside the served one, so a refusal here "
                              "cannot change what the node serves")
+        tight = self.sh("node {} capacity 1".format(node.upper), self.cd(self.fn(
+            "--store {} capacity 1".format(scratch))), timeout=900, expect=None)
         payload = "{}/capacity.article".format(node.dir)
         self.push_file(article("<capacity-{}@example.invalid>".format(node.name),
                                GROUPS[0], "over the capacity", "x" * 4096), payload)
@@ -1289,12 +1363,11 @@ command -v slrn >/dev/null && echo slrn=yes || echo slrn=no
                                scratch, node.name, payload, GROUPS[0]))),
                        timeout=900, expect=None)
         self.from_step("V0-CAP-REFUSE", over, node=node.name,
-                       limit="one article over one capacity on a scratch store")
+                       limit="the capacity was set to 1 (rc={}) and the article's own "
+                             "charge is what has to exceed it; the charge is ACL2's, "
+                             "and a 4 KiB article charged 3 on this tree".format(tight.rc))
 
     def group_served(self, node: NodeSpec):
-        step = self.matrix("control", "--socket /dev/null --line VERSION",
-                           name="node {} unused".format(node.upper), expect=None)
-        del step
         probe = self.feed("presence", "--port {} --groups {}".format(
             node.port, MATRIX_GROUP),
             name="node {} serves {}".format(node.upper, MATRIX_GROUP), expect=None)
@@ -1303,36 +1376,70 @@ command -v slrn >/dev/null && echo slrn=yes || echo slrn=no
         self.from_reply("V0-GROUP-SERVED", status, probe.command, node=node.name,
                         limit="the group was created before the service started")
 
-    def peer_rows(self):
-        """TwoNodeGate.peer_records() ran; these are the rows over its steps."""
-        kind = self.facts.get("peer records", "none")
+    # `fn-cfg-peer-inboundp` (books/peer-config.lisp:144) requires the inbound
+    # ceiling to be at most `*fn-record-max-payload*` (books/records.lisp:43),
+    # which is 32768.  Both CLIs default `--inbound-max-octets` to 1048576, so
+    # the default is outside the record's admissible range and `peer add`
+    # refuses `:peer-record` every time.  Measured on persvati 2026-09-20: the
+    # same command with 32768 is accepted.  The matrix passes the admissible
+    # value and records the default as a defect.
+    PEER_INBOUND_MAX_OCTETS = 32768
+
+    def peer_records(self):
+        """A peer record on each node naming the other (specs/peering.md 1.2)."""
+        probe = self.sh("peer record CLI", self.cd("""
+if python3 tools/run_store.py --store /nonexistent peer --help >/dev/null 2>&1; then
+  echo STORE-PEER
+elif [ -x bin/fn ] && python3 bin/fn peer --help >/dev/null 2>&1; then echo FN-PEER
+else echo NONE; fi
+"""), expect=None)
+        kind = probe.output.strip().splitlines()[-1] if probe.output.strip() else "NONE"
+        self.facts["peer records"] = kind.lower()
+        if kind == "NONE":
+            blocker = ("no CLI on this commit writes an `fn-cfg-peerp` record "
+                       "(specs/peering.md 1.2)")
+            self.blocked(("V0-PEER-ADD", "V0-PEER-LIST"), blocker, verdict=NOT_BUILT,
+                         owner="w6/peering-inbound", invocation=probe.command)
+            return
         for node, other in ((self.a, self.b), (self.b, self.a)):
-            add = self.step_named("node {} peer record for {}".format(
-                node.upper, other.upper))
-            listing = self.step_named("node {} lists its peers".format(node.upper))
-            if kind == "none" or add is None:
-                blocker = ("no CLI on this commit writes an `fn-cfg-peerp` record; "
-                           "tools/twonode_gate.py wrote an inert stub instead "
-                           "(specs/peering.md 1.2)")
-                self.emit("V0-PEER-ADD", NOT_BUILT, "bin/fn peer add", "(not run)",
-                          node=node.name, blocker=blocker, owner="w6/peering-inbound")
-                self.emit("V0-PEER-LIST", NOT_BUILT, "bin/fn peer list", "(not run)",
-                          node=node.name, blocker=blocker, owner="w6/peering-inbound")
-                continue
+            add = self.sh("node {} peer record for {}".format(node.upper, other.upper),
+                          self.cd(self.fn(
+                              "--store {} peer add {} --path-identity {} "
+                              "--nntp 127.0.0.1:{} --inbound-groups 'fn.*' "
+                              "--inbound-max-octets {} --outbound-groups 'fn.*' "
+                              "--streaming --source-address 127.0.0.1".format(
+                                  node.store, other.name, other.path_identity,
+                                  getattr(other, "assigned_port", 0),
+                                  self.PEER_INBOUND_MAX_OCTETS))),
+                          timeout=1800, expect=None)
             self.from_step("V0-PEER-ADD", add, node=node.name,
                            limit="a peer record is configuration, not authorization: "
-                                 "nothing on this tree authenticates the peer it names")
-            if listing is None:
-                self.emit("V0-PEER-LIST", NOT_EXERCISED, "bin/fn peer list", "(not run)",
-                          node=node.name,
-                          blocker="the peer add step did not run, so nothing was listed")
-            else:
-                shows = other.name in listing.output
-                self.emit("V0-PEER-LIST", ACCEPTED if (listing.rc == 0 and shows)
-                          else exit_verdict(listing.rc),
-                          listing.command,
-                          "rc={} lists {}: {}".format(listing.rc, other.name, shows),
-                          node=node.name, exit_code=listing.rc)
+                                 "nothing on this tree authenticates the peer it names. "
+                                 "`--inbound-max-octets {}` is passed explicitly because "
+                                 "the CLI default of 1048576 is refused"
+                                 .format(self.PEER_INBOUND_MAX_OCTETS))
+            if add.rc != EXIT_OK:
+                self.gaps.append(
+                    "node {} could not write a peer record for {} (rc={}, {}); the "
+                    "transit rows below are running without the peer table they name, "
+                    "and an fn node answers every transit command 502 to a connection "
+                    "it does not resolve as a peer.".format(
+                        node.upper, other.upper, add.rc, add.first_line))
+            listing = self.sh("node {} lists its peers".format(node.upper),
+                              self.cd(self.fn("--store {} peer list".format(node.store))),
+                              timeout=1800, expect=None)
+            shows = other.name in listing.output
+            self.emit("V0-PEER-LIST",
+                      ACCEPTED if (listing.rc == EXIT_OK and shows)
+                      else exit_verdict(listing.rc), listing.command,
+                      "rc={} lists {}: {}".format(listing.rc, other.name, shows),
+                      node=node.name, exit_code=listing.rc,
+                      limit="the name is read out of the listing's text")
+            if listing.rc == EXIT_OK and not shows and add.rc == EXIT_OK:
+                self.gaps.append(
+                    "node {} accepted `peer add {}` but `peer list` does not show it: "
+                    "the record did not survive the replay.".format(
+                        node.upper, other.name))
 
     def peer_remove(self):
         absent = self.sh("peer remove a peer that is not there", self.cd(self.fn(
@@ -1686,6 +1793,7 @@ command -v slrn >/dev/null && echo slrn=yes || echo slrn=no
                 way.upper(), msgid, source.upper, target.upper), expect=None)
         result = self.payload(probe)
         offer = result.get("offer", "")
+        target.transit = offer
         if way == "ab":
             self.facts["transit"] = "IHAVE -> '{}'; CAPABILITIES lists IHAVE: {}".format(
                 offer or "no answer", result.get("ihave_advertised"))
@@ -1788,10 +1896,9 @@ command -v slrn >/dev/null && echo slrn=yes || echo slrn=no
         self.from_step("V0-FEED-QUEUE", queued,
                        limit="the queue is read from the journal below, not asserted "
                              "from the post's exit code alone")
-        offered = self.sh("feed: the owner offers it", self.cd(
-            "ls -l {journal}/feed 2>/dev/null; python3 {run}/matrix.py control "
-            "--socket {dir}/control.sock --line VERSION".format(
-                journal=journal, run=self.run, dir=self.a.dir)), timeout=600, expect=None)
+        self.sh("feed: what the owner queued", self.cd(
+            "ls -l {journal}/feed 2>/dev/null || echo NO-JOURNAL".format(
+                journal=journal)), timeout=600, expect=None)
         presence = self.feed("presence", "--port {} --groups {} --present '{}'".format(
             self.b.port, GROUPS[0], msgid),
             name="feed: node B holds the fed article", expect=None)
@@ -2047,16 +2154,13 @@ command -v slrn >/dev/null && echo slrn=yes || echo slrn=no
             timeout=900, expect=None)
         self.from_step("V0-STX-ATTACH", attach,
                        limit="one field line prepended to one article")
-        crossed = self.feed("presence", "--port {} --groups {} --present '{}'".format(
-            self.b.port, GROUPS[0], STX["a"]),
-            name="statement: node B serves the statement-bearing article", expect=None)
-        result = self.payload(crossed)
-        status = result.get("present", {}).get(STX["a"], "(no reply)")
-        self.from_reply("V0-STX-CROSS", status, crossed.command,
-                        limit="the seeded article carries no FN-Statement line on this "
-                              "run: the store CLI posted it before the field existed, so "
-                              "this row shows the article crossing, not the field "
-                              "surviving the crossing")
+        if "V0-STX-CROSS" in self.emitted:
+            pass
+        elif not self.b.port:
+            self.emit("V0-STX-CROSS", NOT_EXERCISED, "feed.py presence", "(no listener)",
+                      blocker=self.node_blocker(self.b))
+        else:
+            self.statement_crossed()
         keyring = "{}/keyring".format(self.deploy)
         self.sh("statement keyring", "printf '' > {}".format(keyring))
         verify = self.sh("statement verify on node B's copy", self.cd(
@@ -2096,6 +2200,18 @@ command -v slrn >/dev/null && echo slrn=yes || echo slrn=no
                           "books/nntp-responses.lisp carries the seam and the board "
                           "records it as deliberately not half-wired (SUB-006)",
                   owner="w10/provenance")
+
+    def statement_crossed(self):
+        crossed = self.feed("presence", "--port {} --groups {} --present '{}'".format(
+            self.b.port, GROUPS[0], STX["a"]),
+            name="statement: node B serves the statement-bearing article", expect=None)
+        result = self.payload(crossed)
+        status = result.get("present", {}).get(STX["a"], "(no reply)")
+        self.from_reply("V0-STX-CROSS", status, crossed.command,
+                        limit="the seeded article carries no FN-Statement line on this "
+                              "run: the store CLI posted it before the field existed, so "
+                              "this row shows the article crossing, not the field "
+                              "surviving the crossing")
 
     # -- F-MEDIA -----------------------------------------------------------
     def media(self):
@@ -2200,9 +2316,12 @@ command -v slrn >/dev/null && echo slrn=yes || echo slrn=no
         if self.has("fn-run") and node.name in getattr(self, "configured", ()):
             out.append(("fn", "python3 bin/fn --config {dir}/fn.toml run "
                               "--control {dir}/control.sock".format(dir=node.dir)))
-        out.append(("owner", "python3 tools/run_owner.py --store {} --port 0 "
-                             "--control {}/control.sock".format(node.store, node.dir)))
-        reader = "python3 tools/run_reader.py --store {} --port 0".format(node.store)
+        port = getattr(node, "assigned_port", 0)
+        out.append(("owner", "python3 tools/run_owner.py --store {} --port {} "
+                             "--control {}/control.sock".format(
+                                 node.store, port, node.dir)))
+        reader = "python3 tools/run_reader.py --store {} --port {}".format(
+            node.store, port)
         if self.has("reader-post"):
             reader += " --post"
         out.append(("reader", reader))
@@ -2284,11 +2403,13 @@ command -v slrn >/dev/null && echo slrn=yes || echo slrn=no
     def execute(self):
         self.configured = set()
         self.preflight()
+        self.a.assigned_port = self.b.assigned_port = 0
         self.ship()
         self.push_file(twonode_gate.FEED_DRIVER, "{}/feed.py".format(self.run), mode="755")
         self.push_file(MATRIX_DRIVER, "{}/matrix.py".format(self.run), mode="755")
         self.certificates()
         self.probe_tree()
+        self.phase("port allocation", self.allocate_ports)
         for node in self.nodes:
             self.phase("init {}".format(node.name), self.init_node, node)
             probe = self.sh("node {} has a configuration".format(node.upper),
@@ -2303,10 +2424,10 @@ command -v slrn >/dev/null && echo slrn=yes || echo slrn=no
                    "beta, written on B")
         for node in self.nodes:
             self.phase("seed {}".format(node.name), self.seed_node, node)
+            self.phase("second init {}".format(node.name), self.reinit, node)
             self.phase("groups {}".format(node.name), self.groups_and_capacity, node)
         self.phase("principals", self.principals)
-        self.peer_records()
-        self.phase("peer rows", self.peer_rows)
+        self.phase("peer records", self.peer_records)
 
         for node in self.nodes:
             self.start_node(node)
