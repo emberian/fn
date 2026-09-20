@@ -245,7 +245,7 @@
     "books": 239,
     "books_in_root_closure": 238,
     "roots": 238,
-    "theorems": 4554,
+    "theorems": 4557,
     "functions": 3300,
     "assert_events": 4430,
     "must_fails": 59,
@@ -1608,7 +1608,7 @@
       "book": "books/checkpoint-codec.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 96,
+      "theorems": 99,
       "functions": 32,
       "guards": {
         "verified": 13,
