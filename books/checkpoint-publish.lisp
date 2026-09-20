@@ -884,6 +884,22 @@
                        (fn-cpp-authority s))))
   :hints (("Goal" :in-theory (disable fn-cpp-statep))))
 
+; fn-cpp-find-of-append needs the appended element to BE an entry: its name
+; must be non-NIL, or a NIL element of GENS that matches NAME is a hit the
+; recursion reports as a miss.  Every transition that appends appends the
+; state's own candidate, and fn-cpp-candidate-okp already says its name is a
+; natural in every phase but :idle -- where nothing is appended.  Stated as a
+; type-prescription as well, so the hypothesis is relieved by type reasoning
+; and fn-cpp-statep stays closed at the keystone below.
+(defthm fn-cpp-statep-candidate-name-is-a-natp
+  (implies (and (fn-cpp-statep s)
+                (not (equal (fn-cpp-phase s) :idle)))
+           (natp (fn-cpp-entry-name (fn-cpp-candidate s))))
+  :rule-classes (:rewrite :type-prescription)
+  :hints (("Goal" :in-theory (enable fn-cpp-statep fn-cpp-candidate-okp
+                                     fn-cpp-entryp fn-cpp-published-phasep
+                                     fn-cpp-unpublished-phasep))))
+
 (defthm fn-cpp-published-generations-retained
   (implies (fn-cpp-find name (fn-cpp-generations s))
            (and (equal (fn-cpp-find name (fn-cpp-generations
