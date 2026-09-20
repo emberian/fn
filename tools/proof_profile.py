@@ -95,6 +95,10 @@ HEADER = re.compile(r"^Accumulated Persistence\b")
 SECTION_ORDER = ("frames-a", "useless", "tries-a")
 SUMMARY_TIME = re.compile(r"^Time:\s+(.*)$", re.M)
 STEPS = re.compile(r"^Prover steps counted:\s+(\d+)", re.M)
+# ACL2 aborts a form that exceeds `(set-prover-step-limit n)` with this
+# error and prints no key checkpoint; without it a cut run reads as a
+# closed one (measured 2026-09-20, w10/dtn-3).
+STEP_LIMIT = re.compile(r"ACL2 Error \[Step-limit\]", re.M)
 
 
 @dataclass(frozen=True)
@@ -237,9 +241,17 @@ def report(text: str, top: int = 10) -> str:
     if stop:
         lines.append("CHECKPOINT")
         lines.append(stop)
+    elif STEP_LIMIT.search(before_listings(text)):
+        # Measured 2026-09-20 (w10/dtn-3): a form needing ~10M steps runs
+        # under the 4M default, ACL2 aborts it with the step-limit error and
+        # prints NO key checkpoint, and this used to read as "the form
+        # closed".  A run cut here is not a result; say so and name the flag.
+        lines.append("CUT BY THE STEP LIMIT: the form did not close and ACL2 "
+                     "printed no checkpoint because it was aborted, not "
+                     "refuted. Re-run with a larger --steps.")
     else:
         lines.append("CHECKPOINT  none printed: the form closed, or it was cut "
-                     "by the step limit or the timeout.")
+                     "by the timeout.")
     return "\n".join(lines)
 
 
