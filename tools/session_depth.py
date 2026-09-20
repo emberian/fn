@@ -140,7 +140,7 @@ ARGUMENTS = {
     ("fn-peer-with-base", 0): "peer",
     ("fn-peer-with-base", 1): "post",
     ("fn-post-make-session", 0): "reader",
-    ("fn-nntp-make-session-not-a-function", 0): "reader",
+    # fn-nntp-make-session's arguments are fields, not a session.
     ("fn-nntp-set-cursor", 0): "reader",
     ("fn-nntp-make-result", 0): "reader",
 }
@@ -152,8 +152,10 @@ ARGUMENTS[("fn-peer-reader-session", 0)] = "peer"
 # `fn-post-make-result` / `fn-post-result-session` is the SHARED result record:
 # nntp-post builds it over a post session, peer-inbound over a peer session,
 # nntp-auth over an auth session.  It therefore carries no level and a session
-# that round-trips through it is invisible to this check.  Named here so the
-# blind spot is in the source and not only in the report.
+# that round-trips through it is invisible to this check.  Naming it here is
+# not decoration: inference REFUSES to give these a level, so a future seed
+# or a chance body cannot make the checker confident about a value the tree
+# genuinely does not type.
 UNTYPED = ("fn-post-make-result", "fn-post-result-session")
 
 # The naming rule that seeds the rest: `fn-<tag>-session-<field>` is an
@@ -266,6 +268,8 @@ class Levels:
         self.conflicts: list[tuple[str, int, str, str]] = []
 
     def note_argument(self, name: str, index: int, level: str) -> bool:
+        if name in UNTYPED:
+            return False
         key = (name, index)
         known = self.argument.get(key)
         if known == level:
@@ -280,6 +284,8 @@ class Levels:
         return False
 
     def note_return(self, name: str, level: str) -> bool:
+        if name in UNTYPED:
+            return False
         known = self.returns.get(name)
         if known == level:
             return False
