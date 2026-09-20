@@ -177,13 +177,29 @@ three parts have three different owners of the *reply*, all of them ACL2.
    `441` carrying that reason's own line. An acceptance emits **no reply**: it
    emits a *submission*, which is the injected article's exact octets, its
    Message-ID and its groups.
-3. The host carries that submission through the same durable acceptance path
-   the command-line `post` uses — `fn-node-prepare`, publication, then
-   `fn-node-complete` — and calls `fn-nntp-post-outcome` with what it
-   observed. `:durable` is `240 article received OK`. `:refused` and
+3. The owner (`books/owner.lisp`, served by `tools/run_owner.py`) records
+   the submission against the connection and its pinned version
+   (`fn-own-read`), moves it into the durable path one at a time
+   (`fn-own-take-submission`: only when nothing is in flight, no transaction
+   is pending and the store is `:ready`), the host carries it through the
+   same durable acceptance path the command-line `post` uses —
+   `fn-node-prepare`, publication, then `fn-sn-finish` — and feeds the word
+   it observed to `fn-own-outcome`, which renders the reply through
+   `fn-served-post-outcome` for that connection alone. `:durable` is `240
+   article received OK`, and the owner renders it only when a completion
+   was consumed into its ledger after the take
+   (`fn-own-durable-reply-names-a-durable-record`): a host that claims
+   `:durable` without one gets the uncertain line. `:refused` and
    `:uncertain` are two distinct `441` lines, and stay distinct out to the
    wire: an uncertain outcome never becomes a 240 and never becomes the
-   refusal line, because a client must not repost on it.
+   refusal line, because a client must not repost on it. A duplicate or
+   conflicting Message-ID, an uncarried group and a reached bound are
+   refusals; an indeterminate commit and a host fault are uncertain.
+
+The posting connection keeps the version it pinned at open: its own post is
+visible to connections opened after the completion and to itself only once
+the control channel advances it (`fn-own-pinned-prefix-survives-any-trace`).
+The read-only reader (`tools/run_reader.py`) answers POST with 440.
 
 A submission is not an acknowledgement. No 240 is reachable from
 `fn-nntp-post-step`; it exists only in `fn-nntp-post-outcome` under
@@ -234,9 +250,10 @@ assumes otherwise.
 The greeting is still a fixed 201 and does not vary with the configured
 posting permission. POST is not advertised in CAPABILITIES. There is no
 freshness window on a supplied `Date` (§3.5 item 3), no trusted-source check
-(item 1) and no moderated-group handling (item 7). The reader process that
-serves POST today holds the writer path itself; the mutable-owner lane
-replaces that.
+(item 1) and no moderated-group handling (item 7). RFC 3977 section 3.5
+forbids pipelining after POST's article until its response; a client that
+does so anyway gets the pipelined replies before the 240/441, because the
+read is consumed whole and the outcome is a later input.
 
 ## Scope
 
