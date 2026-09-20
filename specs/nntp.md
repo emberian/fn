@@ -1,11 +1,20 @@
 # NNTP projection and article acceptance
 
-Status: the selected reader profile is implemented and advertised; POST is not.
-`books/nntp.lisp` now advertises `VERSION 2`, `READER`, `OVER MSGID` and
-`LIST ACTIVE NEWSGROUPS OVERVIEW.FMT`. Every clause RFC 3977 appendix B assigns
-to those labels is marked proved or tested in
+Status: the selected reader profile is implemented and advertised, and POST is
+advertised exactly on the connections that may use it. `books/nntp.lisp` always
+advertises `VERSION 2`, `READER`, `OVER MSGID`, `HDR` and
+`LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT`. Every clause RFC 3977
+appendix B assigns to those labels is marked proved or tested in
 [the clause matrix](nntp-audit.md#the-reader-clause-matrix); none is open.
-POST, IHAVE, NEWNEWS, HDR and MODE-READER remain unadvertised. D05's checklist
+`POST` (RFC 3977 §5.2.2) is advertised when, and only when, this connection's
+pinned configuration allows posting (`fn-inj-config-allow`, threaded to the
+dispatcher as the third field of `fn-nntp-env`) — the same bit
+`fn-nntp-post-step` reads before it answers a `POST` command with 340 rather
+than 440, so the label is a promise this server keeps. The greeting carries the
+same bit as §5.1.1's code (`200` when posting is allowed, `201` when it is not,
+`fn-served-greeting`) and so does `MODE READER` (§5.3.2). The read-only reader
+profile pins a configuration that disallows posting, so it greets with 201 and
+advertises no POST. IHAVE, NEWNEWS and MODE-READER remain unadvertised. D05's checklist
 is the matrix. See [implementation status](../docs/implementation.md).
 
 ## Planned surface
@@ -196,9 +205,19 @@ three parts have three different owners of the *reply*, all of them ACL2.
    conflicting Message-ID, an uncarried group and a reached bound are
    refusals; an indeterminate commit and a host fault are uncertain.
 
-The posting connection keeps the version it pinned at open: its own post is
-visible to connections opened after the completion and to itself only once
-the control channel advances it (`fn-own-pinned-prefix-survives-any-trace`).
+Read-back. A 240 is a promise the poster can act on, so the 240 moves the
+poster's own pin: `fn-own-outcome`'s `:durable` branch is one `fn-own-advance`
+on that connection and on no other, so the poster's next `GROUP` or `ARTICLE`
+reads the prefix that contains its own article
+(`fn-own-durable-outcome-repins-the-poster`; the served step is still one
+`fn-served-step` over the connection's pinned archive, K1). Every other
+connection keeps the version it pinned at open, including a reader opened
+before the post, and moves only when the control channel advances it
+(`fn-own-outcome-touches-only-its-connection`,
+`fn-own-pinned-prefix-survives-any-trace`). A `:refused` or `:uncertain`
+outcome moves no pin. K1 covers either choice — it constrains what a
+connection reads at its pin, not which pin it holds — so this is a recorded
+policy choice, not a consequence of the keystones.
 The read-only reader (`tools/run_reader.py`) answers POST with 440.
 
 A submission is not an acknowledgement. No 240 is reachable from
@@ -247,8 +266,7 @@ assumes otherwise.
 
 ### Not yet true of POST
 
-The greeting is still a fixed 201 and does not vary with the configured
-posting permission. POST is not advertised in CAPABILITIES. There is no
+There is no
 freshness window on a supplied `Date` (§3.5 item 3), no trusted-source check
 (item 1) and no moderated-group handling (item 7). RFC 3977 section 3.5
 forbids pipelining after POST's article until its response; a client that

@@ -632,6 +632,18 @@ class Acl2Store:
     def config_domain(self):
         return self._names("(fn-store-cfg-domain state)")
 
+    def sweep_staging(self, observed, held=()):
+        """Which observed staging names may be unlinked (books/store-sweep.lisp).
+
+        Python enumerates the directory and names what this process holds;
+        the removal decision -- the staging namespace, the held set and the
+        kernel gate -- is the book's.
+        """
+        form = "(fn-store-sn-sweep-staging '({}) '({}) state)".format(
+            " ".join(self.literal(name) for name in observed),
+            " ".join(self.literal(name) for name in held))
+        return self._names(form)
+
     def reconfigure(self, kind, name, monotonic, wall):
         """One create/retire request.  Returns ("ok", octets) or ("refused", reason)."""
         form = "(fn-store-cfg-reconfigure {} '{} {} {} state)".format(
@@ -976,11 +988,14 @@ class Store:
                 raise StoreFault("transaction sequence gap")
         return files
 
-    def staging_orphans(self):
+    def staging_orphans(self, raw=False):
         """Enumerate staged names an interrupted publication left behind.
 
-        Staging is outside recovery authority.  These names are reported so an
-        operator can see them; recovery neither adopts nor deletes them.
+        Recovery never adopts one of these as history.  Which of them may be
+        unlinked is decided by books/store-sweep.lisp, not here
+        (Store.sweep_staging).  `raw' asks for the unabridged list the sweep
+        needs; the default is the bounded operator report, whose truncation
+        marker is not a name.
         """
         names = []
         try:
@@ -989,11 +1004,39 @@ class Store:
             raise StoreFault("cannot enumerate staging") from error
         with entries:
             for entry in entries:
-                if len(names) >= MAX_STAGING_REPORT:
+                if not raw and len(names) >= MAX_STAGING_REPORT:
                     names.append("...")
                     break
                 names.append(entry.name)
         return tuple(sorted(names))
+
+    def sweep_staging(self, acl2, held=()):
+        """Unlink the staging names the book says no publication holds.
+
+        The deploy gate of 2026-09-20 (finding 5) left one `.stage-' file
+        behind across two recoveries because recovery reported orphans and
+        collected none.  It collects them now, and `self.orphans' is what is
+        left after the sweep, so a name the book refuses to remove is still
+        reported rather than hidden.
+        """
+        observed = self.staging_orphans(raw=True)
+        removals = ()
+        if observed:
+            removals = acl2.sweep_staging(
+                [name.encode("utf-8", "surrogateescape") for name in observed],
+                [name.encode("utf-8", "surrogateescape") for name in held])
+            for name in removals:
+                try:
+                    (self.staging / name).unlink()
+                except FileNotFoundError:
+                    pass
+                except OSError as error:
+                    # An unlink that neither succeeded nor left the name
+                    # absent is an uncertain observation, not a clean sweep.
+                    raise StoreIndeterminate(
+                        "cannot collect staging orphan {}: {}".format(name, error)) from error
+        self.orphans = self.staging_orphans()
+        return tuple(removals)
 
     def durable_records(self, acl2):
         records = []
@@ -1102,6 +1145,11 @@ class Store:
             self.fenced = True
             raise StoreIndeterminate("cannot establish recovered namespace frontier") from error
         self.fenced = False
+        # The barriers are done, so the file kernel is :ready and holds no
+        # record candidate: books/store-sweep.lisp's gate is open and the
+        # recovered process holds no staging name of its own.  What survives
+        # the sweep is what `self.orphans' reports.
+        self.sweep_staging(acl2)
         self.checkpoint_outcome = self._checkpoint_hook(acl2, records)
         return records
 

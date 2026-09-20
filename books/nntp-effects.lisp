@@ -845,7 +845,7 @@
 
 (defthm fn-nntp-effects-capabilities
   (fn-nntp-effectsp
-   (fn-nntp-result-effects (fn-nntp-capabilities session)))
+   (fn-nntp-result-effects (fn-nntp-capabilities session postingp)))
   :hints (("Goal" :in-theory (enable fn-nntp-capabilities
                                      fn-nntp-capability-lines
                                      fn-nntp-unadvertised-capability-lines
@@ -1078,7 +1078,7 @@
 
 (defthm fn-nntp-effects-mode-response
   (fn-nntp-effectsp
-   (fn-nntp-result-effects (fn-nntp-mode-response session args)))
+   (fn-nntp-result-effects (fn-nntp-mode-response session env args)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-mode-response fn-nntp-effectsp
                                    fn-nntp-effectp fn-nntp-reply-effect
                                    fn-nntp-close-effect)

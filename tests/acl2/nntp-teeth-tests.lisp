@@ -26,8 +26,8 @@
 (defconst *fn-nntp-facts0*
   (list (fn-nntp-group-fact "fn.letters" 0 *fn-nntp-blind-obs*)
         (fn-nntp-group-fact "fn.empty" 811728000000 *fn-nntp-blind-obs*)))
-(defconst *fn-nntp-env0* (fn-nntp-env *fn-nntp-obs0* *fn-nntp-facts0*))
-(defconst *fn-nntp-blind-env* (fn-nntp-env *fn-nntp-blind-obs* nil))
+(defconst *fn-nntp-env0* (fn-nntp-env *fn-nntp-obs0* *fn-nntp-facts0* nil))
+(defconst *fn-nntp-blind-env* (fn-nntp-env *fn-nntp-blind-obs* nil nil))
 (assert-event (fn-nntp-envp *fn-nntp-env0*))
 (assert-event (fn-nntp-envp *fn-nntp-blind-env*))
 

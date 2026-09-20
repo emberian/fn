@@ -16,7 +16,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-replay-` | `replay`, `replay-invariants` | Contiguous record replay into a node; typed ok/fault results |
 | `fn-sf-` | `store-files`, `store-files-invariants`, `store-files-traces` | Immutable-file publication kernel: allocator frontier, staged record, barriers, crash constructor, recovery gate |
 | `fn-bs-` | `byte-store`, `byte-store-invariants`, `byte-store-programs` | Byte-level storage model under the file kernel (crash model v2): inodes, directories, pending writes and entry operations, per-object fences, unit-granular torn crash images, syscalls with EIO/ENOSPC outcomes, and the host's syscall sequences as programs over it |
-| `fn-sn-` | `store-node`, `store-node-invariants`, `store-node-resolution` | Live file/node composition: pending record binding, actual completion, refusal and known-abort resolution, observed opening |
+| `fn-sn-` | `store-node`, `store-node-invariants`, `store-node-resolution`, `store-sweep` | Live file/node composition: pending record binding, actual completion, refusal and known-abort resolution, observed opening |
 | `fn-snt-` | `store-node-traces` | Trace relation and preservation for the composed store/node machine |
 | `fn-snrt-` | `store-node-resolution` (folded from `store-node-resolution-traces`, 2026-09-19) | Trace preservation including refusal and abort resolution |
 | `fn-checkpoint-` | `checkpoint` | Logical checkpoint capture, restore and checkpoint-plus-suffix replay |
