@@ -975,6 +975,11 @@
   :hints (("Goal" :in-theory (disable fn-tcl-inboundp fn-tcl-outboundp fn-tcl-paramsp
                                       fn-tcl-negotiatedp fn-tcl-peer-initp))))
 
+; fn-tcl-recv-contact and fn-tcl-recv-init build their session with
+; fn-tcl-make-session directly (they set tls, peer and negotiated, which
+; fn-tcl-next carries), so their lemmas conclude the recognizer of a
+; constructor and open it in their hints; every other transition goes
+; through fn-tcl-next and its lemma is fn-tcl-next-preserves-sessionp.
 (local (in-theory (disable fn-tcl-sessionp fn-tcl-next fn-tcl-with-outbound)))
 
 (defthm fn-tcl-settle-preserves-sessionp
@@ -988,7 +993,8 @@
 (defthm fn-tcl-recv-contact-preserves-sessionp
   (implies (and (fn-tcl-sessionp s) (fn-clock-timep now)
                 (fn-tcl-pre-establishedp (fn-tcl-session-phase s)))
-           (fn-tcl-sessionp (fn-tcl-result-session (fn-tcl-recv-contact s m now)))))
+           (fn-tcl-sessionp (fn-tcl-result-session (fn-tcl-recv-contact s m now))))
+  :hints (("Goal" :in-theory (enable fn-tcl-sessionp))))
 
 (defthm fn-tcl-negotiate-is-negotiated
   (implies (and (fn-tcl-paramsp local) (fn-tcl-peer-initp m)
@@ -1000,7 +1006,7 @@
                 (fn-tcl-peer-initp m)
                 (equal (fn-tcl-session-phase s) :messaging))
            (fn-tcl-sessionp (fn-tcl-result-session (fn-tcl-recv-init s m now))))
-  :hints (("Goal" :in-theory (disable fn-tcl-negotiate fn-tcl-init-acceptablep))))
+  :hints (("Goal" :in-theory (e/d (fn-tcl-sessionp) (fn-tcl-negotiate fn-tcl-init-acceptablep)))))
 
 (defthm fn-tcl-refuse-preserves-sessionp
   (implies (and (fn-tcl-sessionp s) (fn-clock-timep now))
