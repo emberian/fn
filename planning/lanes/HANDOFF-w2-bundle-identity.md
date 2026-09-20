@@ -134,7 +134,29 @@ damage:
   unchanged.** `books/bp-primary-invariants` went 805 s failing to 758 s
   certifying.
 
-Python: PYTHON-PLACEHOLDER
+`python3 -m unittest tests.test_bp_receive tests.test_bp_receive_faults
+tests.test_workflow_journal tests.test_bpa_dtn7` ran 57 tests in 425 s against
+the certified books, **55 pass, two fail, and both failures are the same
+defect in the lane's own new tests, not in the model**:
+
+- `tests.test_workflow_journal.WorkflowJournalTests.test_a_frame_staged_under_a_different_identity_fences`
+  expects `JournalFault: inbound name` and gets `JournalFault: workflow
+  journal is already owned` (an `flock` `BlockingIOError` underneath). The
+  fixture opens the journal to stage the mismatched frame and the test then
+  reopens it to provoke the fence, so the lock the lane's identity-keyed
+  staging now takes is still held by the first handle. The assertion the test
+  means to make -- that a frame whose file name does not match its identity
+  fences recovery -- is therefore **unverified**: the test never reaches it.
+  Fix is in the fixture (close the staging handle before reopening), not in
+  `tools/workflow_journal.py`.
+- `tests.test_bp_receive.ReceiveTests.test_store_commit_before_context_reopen_binds_existing_exact_record`
+  errors from the same owned-journal condition.
+
+Both are on the identity-keyed staging path this lane introduced and both are
+open. Everything else in these four suites passes, including
+`Dtn7IdentityDifferentialTests` -- against the mock BPA, which is the scope
+caveat in the open list below.
+
 
 
 ## Open, for the next lane
