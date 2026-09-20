@@ -297,3 +297,86 @@ acknowledged can be lost there. Widening the kernel predicate instead was not
 taken: it is a change to the interface `books/store-observed.lisp` and the
 store-node closure take as a premise, and it is not this lane's to make
 silently.
+
+### 2026-09-20: D14-b — the recovery freedom is a second recognizer, not a wider gate
+
+The companion to D14-a, taking the cross-cluster proposal `w9/storage-3` left on
+the board, and deciding it against the shape that proposal named.
+
+**The question.** D14-a established that in the recovery window
+(`:replaying`, `:recovering`, `:fenced-recovery`) a process's record list is its
+own scan of the VIEW, so its last record may be the entry operation a dead
+process left pending, and a crash before the five recovery fences drops it.
+`fn-sf-crash-imagep` (`books/store-files.lisp:593`) had no freedom for that, so
+`K2` took `(not (fn-bs-replay-visiblep ks))` and the window became the open row
+`K2r`. The proposal was to widen `fn-sf-crash-imagep` itself.
+
+**Selected:** add `fn-sf-recovery-crash-imagep`, a second recognizer with the
+third arm, and leave `fn-sf-crash-imagep` byte-for-byte unchanged.
+`fn-sf-crash-imagep` is the RELIANCE predicate — the gate of `fn-own-reopen`
+(`books/owner.lisp:911`) and the premise of every reopen theorem — and
+`fn-sf-recovery-crash-imagep` is what the PLATFORM may leave. `K2`'s conclusion
+names the second; nothing takes it as a hypothesis.
+
+**Why not the proposal: a counterexample, mechanized.** `*own-reopened*`
+(`tests/acl2/owner-tests.lisp`) is an ordinary reachable owner. Its store is a
+recovery-window state; its own success history is empty, because
+`fn-sn-open-observed` keeps no ghost
+(`fn-sn-open-observed-success-exact-history`); and its LEDGER still names both
+of its records, the second of which an earlier process completed and
+acknowledged and which is therefore fenced. The emptiness gate the proposal
+relied on — "such a state carries no success" — is a fact about *this state's*
+success list, not about what earlier processes promised, and it does not
+protect that record. A widened `fn-sf-crash-imagep` therefore lets
+`fn-own-reopen` take the rolled-back image, after which
+`fn-own-ledger-durablep` is false and `fn-own-reopen-preserves-relation` is
+FALSE. `fn-bprv-crash-image-extends-history` and
+`fn-bprv-observed-reopen-facts` fail the same way. Both halves of the
+counterexample are `assert-event`s: the kernel half in
+`tests/acl2/store-observed-traces-tests.lisp`, the owner half in
+`tests/acl2/owner-tests.lisp`.
+
+**And no narrower kernel gate exists.** Which of a state's records are fenced
+is a fact about the byte store's pending list
+(`fn-bs-store-relation`, `books/byte-store-scan.lisp`), not about the kernel
+state: a `:replaying` state reached by `fn-sn-open-observed` and one reached by
+`fn-sf-crash ... :absent` are the same tuple, and only the first may lose its
+tail. A marker field would not help, because the reopening process is the one
+that cannot know. So the freedom cannot be a gate on what a consumer may rely
+on, and must be a separate conclusion.
+
+**For the same reason `fn-sf-crash-choicep` gains no third choice.** Giving the
+trace language's crash event a rollback choice would let a trace drop a record
+an earlier process acknowledged and would falsify
+`fn-snrt-acknowledged-record-retained-across-observed-reopen`. The second
+constructor is `fn-sf-crash-rollback`, and `fn-sf-image-crash` selects between
+the two.
+
+**What this closes.** `K2` loses its hypothesis: its conclusion is
+`fn-sf-recovery-crash-imagep`, whose recovery arm carries the empty success
+history as a conjunct. `K2r` stops being an open row and becomes
+`fn-sf-recovery-admissible-image-facts`, a proved kernel theorem: an
+acknowledged pair of the pre-crash state names a record of *every* image the
+platform may leave, the rolled-back one included, because that arm and a
+non-empty success history cannot both hold. `K3` extends to all three arms
+(`fn-sf-recovery-crash-realizes-every-admissible-image`) and its old form
+stands unchanged beside it. `fn-sf-stable-records` is the prefix no image can
+lose and `fn-sf-recovery-crash-image-extends-stable-records` is the exact
+retention guarantee.
+
+**What it does not close.** `K2` itself is still open: it rests on `K1`, whose
+namespace clause D14-a's lane closed and whose other three clauses are not
+proved. And a second, distinct freedom was found while checking `K2` and is NOT
+taken here: in the recovery window the pending operation may be the FRONTIER
+rename rather than a transaction link, so a crash can also roll the frontier
+back to the durable one — a value the kernel does not hold, since
+`fn-sf-frontier-candidate` is `nil` in that window. `K2` as
+`specs/crash-model-v2.md` §3.3 states it is therefore still false when the
+recovery window is entered with a pending `:root` entry operation (die at
+`frontier-replaced`, `tools/run_store.py:1305` at `b79b29c`; reopen; the rename
+is drained only by `fsync_dir(self.root)` at `:1216`, the fourth of the five
+recovery barriers, while the cuts are `recover-replayed` at `:1207` and
+`recover-barrier` at `:1228`). Closing it needs a clause in
+`fn-bs-replay-matches-scan` saying the durable frontier is the scanned one
+minus one, and a matching frontier arm here; that is the next packet, not this
+one.
