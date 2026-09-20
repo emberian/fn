@@ -267,15 +267,15 @@
     "books": 263,
     "books_in_root_closure": 260,
     "roots": 260,
-    "theorems": 5144,
-    "functions": 3703,
-    "assert_events": 4949,
+    "theorems": 5151,
+    "functions": 3710,
+    "assert_events": 4959,
     "must_fails": 59,
     "encapsulates": 16,
     "guards": {
       "verified": 1392,
       "declared-off": 166,
-      "default-guarded": 1656,
+      "default-guarded": 1663,
       "default-unguarded": 489
     },
     "suspect_theorems": 40,
@@ -3098,7 +3098,7 @@
       "book": "books/peer-inbound-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 9,
+      "theorems": 13,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -3124,11 +3124,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 37,
-      "functions": 54,
+      "functions": 56,
       "guards": {
         "verified": 0,
         "declared-off": 10,
-        "default-guarded": 44,
+        "default-guarded": 46,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -3141,7 +3141,8 @@
         "identity",
         "nntp-post",
         "node-config",
-        "peer-config"
+        "peer-config",
+        "provenance-codec"
       ],
       "system_includes": [],
       "suspects": [],
@@ -3258,21 +3259,22 @@
       "book": "books/provenance-codec.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 24,
-      "functions": 21,
+      "theorems": 27,
+      "functions": 25,
       "guards": {
         "verified": 1,
         "declared-off": 0,
-        "default-guarded": 20,
+        "default-guarded": 24,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 1,
+      "defconsts": 2,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "identity-invariants",
         "provenance",
         "records-canonicality"
       ],
@@ -3565,7 +3567,8 @@
       "encapsulates": 0,
       "includes": [
         "acceptance-alloc",
-        "defrecord"
+        "defrecord",
+        "provenance"
       ],
       "system_includes": [],
       "suspects": [
@@ -6337,17 +6340,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 0,
+      "functions": 1,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 0,
+        "default-guarded": 1,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 90,
+      "assert_events": 100,
       "must_fails": 0,
-      "defconsts": 9,
+      "defconsts": 10,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7402,7 +7405,7 @@
     {
       "theorem": "fn-prov-wire-of-a-string-is-itself",
       "book": "books/provenance-codec.lisp",
-      "line": 470,
+      "line": 538,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-prov-wire and the conclusion is that branch's value"
       ]
@@ -7418,7 +7421,7 @@
     {
       "theorem": "fn-retain-admission-refusal-is-no-op",
       "book": "books/retention.lisp",
-      "line": 286,
+      "line": 287,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-retain-admit and the conclusion is that branch's value"
       ]
@@ -7426,7 +7429,7 @@
     {
       "theorem": "fn-retain-wrong-evidence-does-not-release",
       "book": "books/retention.lisp",
-      "line": 326,
+      "line": 327,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value"
       ]
@@ -8688,7 +8691,7 @@
       },
       {
         "book": "books/peer-inbound.lisp",
-        "line": 62,
+        "line": 63,
         "shape": "fn-peer-decision-shapep",
         "shapes": 3,
         "accessors": 10,

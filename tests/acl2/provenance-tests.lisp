@@ -154,7 +154,8 @@
  (equal (fn-prov-render *prov-transit*)
         (fn-prov-render (fn-prov-make-transit "innA" :ihave
                                               (fn-prov-diagnostic-match) 12))))
-(assert-event (equal (car (fn-prov-octets *prov-transit*)) 0))
+(assert-event (equal (car (fn-prov-octets *prov-transit*)) 0))   ; the octet sentinel
+(assert-event (not (fn-prov-plain-stringp (fn-prov-wire *prov-transit*))))
 (assert-event (not (equal (fn-prov-of-wire (fn-prov-wire *prov-transit*))
                           (fn-prov-of-wire (fn-prov-wire *prov-transit-mismatch*)))))
 
@@ -187,13 +188,38 @@
 (assert-event (equal (fn-prov-of-wire *prov-forged-legacy*) *prov-local*))
 (assert-event (not (fn-prov-encodablep *prov-forged-legacy*)))
 
-; A string that merely starts with a NUL but is not a well-formed encoding is
-; still refused by `fn-prov-plain-stringp' and still reads back as itself:
-; the excluded set is exactly the strings the encoder can produce, and the
-; recognizer is conservative about the rest.
+; A string that merely starts with the prefix but is not a well-formed wire
+; form is refused by `fn-prov-plain-stringp' and still reads back as itself:
+; the recognizer excludes the whole prefixed set, and the decoder is
+; conservative about the part of it the encoder cannot produce.
+(defconst *prov-forged-prefix* "fnprov1:zz")
+(assert-event (not (fn-prov-plain-stringp *prov-forged-prefix*)))
+(assert-event (equal (fn-prov-of-wire *prov-forged-prefix*) *prov-forged-prefix*))
+(assert-event (not (fn-prov-encodablep *prov-forged-prefix*)))
+
+; A NUL-bearing string is a plain string under this codec: the wire form is
+; printable, so nothing about octet 0 is special any more.
 (defconst *prov-nul-string* (coerce (list (code-char 0)) 'string))
-(assert-event (not (fn-prov-plain-stringp *prov-nul-string*)))
+(assert-event (fn-prov-plain-stringp *prov-nul-string*))
 (assert-event (equal (fn-prov-of-wire *prov-nul-string*) *prov-nul-string*))
+
+; The wire form is printable ASCII, which is what the host boundary guard
+; `fn-store-text-octetsp' (host/store-host.lisp, octets 33 to 126) admits and
+; what `fn-record-metadata-bytes-p' bounds at 256.  The four witnesses below
+; are the check that the two bounds are compatible with *fn-prov-max-field*.
+(defun prov-test-printablep (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (and (natp (car xs)) (<= 33 (car xs)) (<= (car xs) 126)
+           (prov-test-printablep (cdr xs)))
+    (null xs)))
+(assert-event (prov-test-printablep (fn-record-string-octets (fn-prov-wire *prov-post*))))
+(assert-event (prov-test-printablep (fn-record-string-octets (fn-prov-wire *prov-transit*))))
+(assert-event (prov-test-printablep
+               (fn-record-string-octets (fn-prov-wire *prov-transit-mismatch*))))
+(assert-event (prov-test-printablep (fn-record-string-octets (fn-prov-wire *prov-bp*))))
+(assert-event (prov-test-printablep (fn-record-string-octets (fn-prov-wire *prov-local*))))
+(assert-event (<= (len (fn-record-string-octets (fn-prov-wire *prov-bp*))) 256))
 
 ; `fn-record-metadata-bytes-p' in `fn-prov-durablep'.  A provenance whose
 ; fields are each inside `*fn-prov-max-field*' is durable; one whose reason

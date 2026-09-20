@@ -705,6 +705,26 @@ class Acl2Store:
         names = acl2_octets(self.call("(fn-store-cfg-peer-names state)"))
         return [line for line in names.decode("utf-8", "strict").split("\n") if line]
 
+    def prov_post(self):
+        """The provenance of a locally posted article, DECIDED IN ACL2.
+
+        `fn-store-prov-post' reads the live configuration for the injecting
+        principal and generation, builds `fn-prov-make-post', and answers
+        the form the record grammar accepts.  Python neither names a
+        provenance nor chooses between the wire and the legacy rendering.
+        """
+        return acl2_octets(self.call("(fn-store-prov-post state)"))
+
+    def prov_describe(self, evidence):
+        """The lossless provenance line for one stored evidence value."""
+        return acl2_octets(self.call("(fn-store-prov-describe '{} state)".format(
+            self.literal(evidence))))
+
+    def prov_for_msgid(self, msgid):
+        """The provenance the live node recorded for this Message-ID, or b''."""
+        return acl2_octets(self.call("(fn-store-prov-for-msgid '{} state)".format(
+            self.literal(msgid))))
+
     def peer_slot_text(self, name, slot):
         return acl2_octets(self.call("(fn-store-cfg-peer-slot-text '{} '{} state)".format(
             self.literal(name.encode("utf-8")), self.literal(slot.encode("ascii")))))
@@ -1425,8 +1445,15 @@ def metadata(msgid, payload, bridge=None):
     order of each preimage and the rendering.  The obligation binds the
     CANONICAL subject identity octets; what comes back here is each identity's
     text, because a store record metadata field, a journal record and an NNTP
-    header are all strings.  The evidence label stays a host constant: it
-    names a provenance the model only compares.
+    header are all strings.
+
+    The third element is the LEGACY provenance label and nothing asks for
+    it any more on the POST path: `durable_post' takes its evidence from
+    `fn-store-prov-post' (books/provenance), so ACL2 owns the decision.  It
+    is still returned because the two BP drivers (tools/run_bp_ingress.py,
+    tools/run_bp_receive.py) read it, and moving them onto
+    `fn-prov-make-bp' is an open item of the w10/provenance lane, recorded
+    in planning/lanes/HANDOFF-w10-provenance.md.
     """
     session = frame_bridge.session(bridge)
     try:
@@ -1701,7 +1728,8 @@ def durable_post(store, bridge, records_count, msgid, payload, codes, charge):
     """
     current_txid = bridge.next_txid()
     next_frontier = store.advance_frontier(bridge, current_txid)
-    obligation, subject, evidence = metadata(msgid, payload)
+    obligation, subject, unused_legacy_evidence = metadata(msgid, payload)
+    evidence = bridge.prov_post()
     action = bridge.prepare(msgid, payload, codes, obligation,
                             subject, evidence, charge)
     if action != "prepared":
@@ -1972,6 +2000,15 @@ def command_inspect(args):
         if not bridge.lookup_found(msgid):
             # A known absence is a clean refusal, not a fault.
             return EXIT_REFUSED
+        if args.provenance:
+            # ACL2 renders the whole line (fn-prov-describe); this prints it.
+            # An article accepted before the typed record existed prints as
+            # the legacy kind, with the string the writer of the day wrote.
+            line = bridge.prov_for_msgid(msgid)
+            if not line:
+                return EXIT_REFUSED
+            sys.stdout.buffer.write(line + b"\n")
+            return EXIT_OK
         payload = bridge.lookup(msgid)
         sys.stdout.buffer.write(payload)
         return EXIT_OK
@@ -2030,6 +2067,9 @@ def main(argv=None):
     sub.add_parser("status")
     inspect = sub.add_parser("inspect")
     inspect.add_argument("--message-id", required=True)
+    inspect.add_argument("--provenance", action="store_true",
+                         help="print the article's provenance (ACL2 renders the line) "
+                              "instead of its octets")
     args = parser.parse_args(argv)
     try:
         if os.environ.get("FN_HOST") == "native":
