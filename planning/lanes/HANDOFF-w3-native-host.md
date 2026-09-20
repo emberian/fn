@@ -70,24 +70,35 @@ sha256 PATH
 octets, repeated) so a chunk may hold any octet, including LF and half of a
 UTF-8 sequence; it is parsed digit by digit and never reaches the Lisp reader.
 
+## Evidence (persvati, 2026-09-20)
+
+The image is built and the differential runs, on the farm box, because the
+laptop's four ACL2 slots were held all night (a queued build waited 1604 s and
+still produced nothing).
+
+| What | Command | Result |
+| --- | --- | --- |
+| Image | `rsync -a --exclude build/ <worktree>/ persvati:/home/ember/fn-lanes/w3-native-host/`, certificates from `~/fn-gates/dev-bdd59d2/books/` (local rsync of `*.cert`/`*.port`, 139 books; only the four `tcpcl` books differ between that gate and this base and none is in the closure), then `FN_ACL2=$HOME/fn-tools/acl2-8.7/saved_acl2 nice -n 10 sh tools/build_native_host.sh` | `built build/fn-host (250M core)`, 8.5 s wall, 7.8 s user, 1.5 GiB peak RSS |
+| Served differential | `python3 -m unittest tests.test_native_served_differential -v` | 7 tests, **OK**, 0.38 s — whole transcript, three cut points, the bytewise partition of a 3-command transcript, a cut inside a UTF-8 sequence, input after QUIT, a framing rejection |
+| SHA-256 | `./build/fn-host --fn sha256 /etc/hostname` | equals `sha256sum` |
+| Store path | `init`, `post`, `recover`, `inspect`, `config` on a fresh store | `committed sequence=0 charge=2`; `recovered transactions=1 articles=1`; `inspect` returns the payload; `generation=1 served=fn.letters,fn.test domain=fn.letters,fn.test` |
+
+Two defects the image found, both fixed here and neither visible to any
+static check:
+
+- **The SBCL banner was on stdout.** `save-exec`'s `:toplevel-args` are Lisp
+  options and `--noinform` is a runtime option; it now goes in
+  `:host-lisp-args`. The `model` verb writes reply octets to stdout, so a
+  banner made all seven differential tests fail.
+- **The record metadata fields take identity TEXT, not canonical identity
+  octets** (`fn-store-identity-text`), and the subject preimage is the v1
+  head from `fn-store-subject-prefix` followed by the payload, not the bare
+  payload. The native host was passing v0 canonical octets, which are not
+  `fn-store-text-octetsp`, so every `post` was `:invalid` while the Python
+  host committed on the same store.
+
 ## Open
 
-- **The image was not built in this lane's window.** The laptop's four ACL2
-  slots were held by other lanes throughout: `tools/build_native_host.sh`
-  queued for 1604 s before it got slot 0 at 00:09 on 2026-09-20 and was still
-  inside ACL2 when the lane's budget ran out, so nothing here is evidence of
-  a working image. `tests/test_native_served_differential.py` skipped, loudly
-  — it skips when `build/fn-host` is absent and never passes vacuously. Next
-  session: if `build/fn-host` exists, check `build/native-host-build.log` for
-  `ACL2 Error`, `Uncertified` and the `FN_NATIVE_BUILD_LOADED` marker by hand
-  (the shell that would have checked them did not outlive the lane), or just
-  rebuild; then run that test, `python3 tests/native_differential.py`, and
-  `FN_HOST=native` over `tests/test_store.py`,
-  `tests/test_store_corruption.py`, `tests/test_reader.py` and
-  `tests/test_reader_partitions.py`, and fill the `FN_*` placeholders in
-  `specs/host.md` with the measured numbers. The build now needs
-  `books/served` and `books/node-config` certified (their certificates were
-  copied into this worktree from the main checkout; they are content-hashed).
 - **No owner in the reader.** A served POST is refused because this process
   holds a shared lock. The mutable-owner lane (`host/owner-host.lisp`,
   `fn-own-*`) is where a native writer belongs; when it lands, replace the

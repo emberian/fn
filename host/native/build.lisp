@@ -44,7 +44,9 @@
   (prog2$ (cw "fn-native: raw entry not installed~%") (value :missing)))
 (progn! (set-raw-mode t)
         (load "host/native/io.lisp")
-        ; The saved image is a host, not a session: no ACL2 banner on stdout.
+        ; The saved image is a host, not a session: no ACL2 banner on stdout,
+        ; and `--noinform' below keeps SBCL's own banner off it too.  The
+        ; `model' verb writes reply octets to stdout and nothing else may.
         (setq *print-startup-banner* nil))
 (defttag nil)
 (value-triple (prog2$ (cw "FN_NATIVE_BUILD_LOADED~%") :loaded))
@@ -53,4 +55,5 @@
 (save-exec "build/fn-host" "fn native host"
            :return-from-lp '(fn-native-entry state)
            :inert-args t
+           :host-lisp-args "--noinform"
            :toplevel-args "--disable-debugger")

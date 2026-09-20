@@ -777,7 +777,15 @@ name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
     (fnn-as-octets (second value))))
 
 (defun fnn-subject-id (payload)
-  (fnn-as-octets (fnn-core 'fn-store-subject-id (fnn-octet-list (fnn-sha256 payload)))))
+  "Content identity v1 (books/identity): ACL2 owns the preimage head
+`\"fn/subject/v1\" || 0x00 || uint32-be(len)', the host appends the payload and
+hashes.  Hashing the bare payload is the v0 profile and derives a different
+identity, which `fn-store-sn-prepare' then refuses."
+  (let ((prefix (fnn-as-octets (fnn-core 'fn-store-subject-prefix (length payload)))))
+    (fnn-as-octets
+     (fnn-core 'fn-store-subject-id
+               (fnn-octet-list
+                (fnn-sha256 (concatenate 'fnn-octets prefix (fnn-octets payload))))))))
 
 (defun fnn-obligation-id (msgid subject)
   (let ((preimage (fnn-as-octets (fnn-core 'fn-store-obligation-preimage
@@ -1254,13 +1262,24 @@ The core decides whether the records replay."
     (fnn-at store :finish-durable)
     completion))
 
+(defun fnn-identity-text (identity)
+  "The one rendering of a canonical identity where a string is forced: a
+store record metadata field, a journal record and an NNTP header all carry
+text, and ACL2 decides what that text is.  A record field holds this, never
+the canonical octets, which are not `fn-store-text-octetsp'."
+  (fnn-as-octets (fnn-core 'fn-store-identity-text (fnn-octet-list identity))))
+
 (defun fnn-metadata (msgid payload)
-  "Content identity, derived in ACL2 by books/identity over host digests."
+  "Content identity, derived in ACL2 by books/identity over host digests.
+The obligation binds the CANONICAL subject identity octets; what comes back
+is each identity's text.  The evidence label is a host constant naming a
+provenance the model only compares."
   (let* ((subject (handler-case (fnn-subject-id payload)
                     (fnn-store-error () (fnn-refuse "ACL2 refused to derive content identity"))))
          (obligation (handler-case (fnn-obligation-id msgid subject)
                        (fnn-store-error () (fnn-refuse "ACL2 refused to derive content identity")))))
-    (values obligation subject (fnn-string-octets "unsigned-legacy-v0"))))
+    (values (fnn-identity-text obligation) (fnn-identity-text subject)
+            (fnn-string-octets "unsigned-legacy-v0"))))
 
 (defun fnn-group-codes-for (store groups)
   (unless (equal +fnn-store-format+ (fnn-json-get (fnn-store-config store) "format"))

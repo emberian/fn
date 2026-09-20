@@ -174,7 +174,15 @@ list through the image twice -- `--fn model` (one `fn-served-open` then one
 transcript, three cut points, a bytewise partition, a cut inside a UTF-8
 sequence, input after QUIT and a framing rejection. It is the native mirror
 of `tests/test_served_differential.py`, and it is what says the thing on the
-socket is the certified fold and nothing else.
+socket is the certified fold and nothing else. Recorded run (persvati,
+2026-09-20, image built by `FN_ACL2=$HOME/fn-tools/acl2-8.7/saved_acl2 sh
+tools/build_native_host.sh` against the `dev-bdd59d2` gate certificates:
+`built build/fn-host (250M core)`, 8.5 s wall): 7 tests, OK, 0.38 s. The
+image is what found the two defects that no static check could: the SBCL
+banner on stdout (`--noinform` belongs in `save-exec`'s `:host-lisp-args`,
+not its `:toplevel-args`) and a record metadata field taking identity text
+(`fn-store-identity-text`) over v1 subject preimages, not v0 canonical
+octets.
 
 `python3 tests/native_differential.py` runs one scripted store sequence
 through both hosts and compares, after every command, the exit code, standard
