@@ -935,7 +935,11 @@
 ; The two directions of the consistency predicate, so no proof below opens
 ; it: forward-chaining puts its two conjuncts in the context when it is a
 ; hypothesis, and the rewrite discharges it on a session just built.
-(local (defthm fn-peer-session-consistentp-forward
+; Exported, not local: books/served.lisp needs (fn-peer-sessionp x) from a
+; consistent connection session to dismiss fn-peer-step's non-session
+; branch.  Forward-chaining, so no rewrite rule about the recognizer
+; leaves the book.
+(defthm fn-peer-session-consistentp-forward
   (implies (fn-peer-session-consistentp x archive)
            (and (fn-peer-sessionp x)
                 (fn-post-session-consistentp (fn-peer-session-base x) archive)
@@ -953,7 +957,7 @@
                                    (:d fn-peer-sessionp))
                                   ((:d fn-post-session-consistentp)
                                    (:d fn-post-sessionp) (:d fn-peer-transferp)
-                                   (:d fn-node-statep) (:d fn-cfgp)))))))
+                                   (:d fn-node-statep) (:d fn-cfgp))))))
 
 (local (defthm fn-peer-session-consistentp-of-make-session
   (equal (fn-peer-session-consistentp
