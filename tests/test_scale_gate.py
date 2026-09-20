@@ -245,6 +245,13 @@ class ReuseAndAdoptTests(DryRun, unittest.TestCase):
         self.assertNotIn("| series 1024 octets |", self.text)
         self.assertIn("| adopt series 1024 octets |", self.text)
 
+    def test_the_overlays_are_pushed_even_though_there_is_no_ship(self):
+        """An overlay under --reuse must still reach the tree, or the gate
+        measures the file the earlier run left there."""
+        pushed = [line for line in self.text.splitlines()
+                  if line.startswith("| ") and "| overlay tests/bench/" in line]
+        self.assertTrue(pushed, "no overlay step in the reuse run")
+
     def test_the_adoption_is_recorded_as_a_gap(self):
         self.assertIn("was measured by an earlier invocation of this gate",
                       self.section("What was NOT exercised"))

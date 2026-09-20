@@ -489,6 +489,11 @@ class ScaleGate(deploy_gate.DeployGate):
             self.push_file(deploy_gate.DRIVER, "{}/drive.py".format(self.run), mode="755")
             self.push_file(deploy_gate.CERTPICK, "{}/certpick.py".format(self.run),
                            mode="755")
+            if self.overlay is not None:
+                # `ship` is what normally pushes the first overlay; under --reuse
+                # there is no ship, and an overlay the operator passed has to
+                # reach the tree anyway or it silently measures the old file.
+                self.push_tree(self.overlay)
         else:
             self.ship()
         for overlay in self.extra_overlays:
@@ -573,7 +578,11 @@ class ScaleGate(deploy_gate.DeployGate):
                     cell(worst.get("seconds")), cell(worst.get("budget_seconds"), "{:.1f}"),
                     cell(rss / 1024.0 if rss else None, "{:.0f}")))
             lines += ["",
-                      "Stopped by: {}".format(data.get("stopped_by") or "nothing"),
+                      "Stopped by: {}".format(
+                          data.get("stopped_by")
+                          or "nothing: the series reached the operator's --max-articles "
+                             "cap of {}, which is not a ceiling of fn's".format(
+                                 data.get("max_articles"))),
                       "",
                       "Largest passing store: {} articles; {} committed in {:.0f} s.".format(
                           data.get("largest_passing"), data.get("committed"),
