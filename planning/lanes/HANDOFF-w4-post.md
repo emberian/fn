@@ -169,4 +169,19 @@ enable of `fn-clock-observationp`, which `books/clock.lisp` withdraws since
 Not recertified here and therefore open on the merged tree:
 `books/injection-invariants` and `tests/acl2/injection-tests` (their
 certificates are from ca66782; the same local enable is the likely fix).
-Python: PYTHON-PENDING
+Python (`python3 -m unittest tests.test_post tests.test_reader
+tests.test_reader_partitions tests.test_served_differential -v`,
+`ACL2_BOOK_HASH_ALISTP=NIL`): 31 tests, 24 pass, 7 fail, 156.6 s. Passing:
+every seed-backed `test_reader` case, all of `test_reader_partitions` (the
+every-two-piece-cut matrices, unchanged files), and the seven
+`test_served_differential` partitions (socket bytes equal `fn-served-run`
+inside ACL2 over the same octets). Failing, all in `setUp`: the five
+store-backed `test_post` cases and the two store-backed `test_reader` cases
+die before any octet is served: `store init` → `Acl2Store()` →
+`(ld "host/anchor-host.lisp")` hits the store bridge's prompt timeout on this
+merged tree, although every certificate in the anchor/store host closure (24
+books) is local to this worktree. Not diagnosed within budget; open.
+(Before that, the same seven failed one step earlier: the merge left
+`Store.config_record_path` in `tools/run_store.py` without `@property`, so
+`check_regular` received a bound method; fixed in 6304db6. `dev` d83dea5
+carries the same defect at `tools/run_store.py:719`.)
