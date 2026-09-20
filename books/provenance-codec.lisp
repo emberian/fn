@@ -533,11 +533,17 @@
    (fn-cbor-octet-listp (fn-prov-wire-octets p))
    :hints (("Goal" :in-theory (enable fn-prov-wire-octets)))))
 
-; K-PROV-1.  A legacy evidence value occupies exactly the bytes it occupied
-; before this lane: the wire form of a string IS the string.
-(defthm fn-prov-wire-of-a-string-is-itself
+; A legacy evidence value occupies exactly the bytes it occupied before this
+; lane: the wire form of a string IS the string.  -by-definition: the
+; hypothesis is the branch test of `fn-prov-wire' and the conclusion is that
+; branch's value, so this is `:rule-classes nil' and is NOT a registry event
+; (docs/proof-style.md section 7; `tools/ledger.py's SUSPECT lint says the
+; same thing).  The claim with content is K-PROV-3 below, which says the
+; string comes BACK; the witnesses are in the test book.
+(defthm fn-prov-wire-of-a-string-is-itself-by-definition
   (implies (stringp text)
-           (equal (fn-prov-wire text) text)))
+           (equal (fn-prov-wire text) text))
+  :rule-classes nil)
 
 ; K-PROV-2.  A legacy evidence value read back is itself, as the `:legacy'
 ; kind.  This is the theorem that says no store or journal written before

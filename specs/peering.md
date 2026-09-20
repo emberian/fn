@@ -422,22 +422,26 @@ inbound side stores the diagnostic it would have prepended:
 (defun fn-peer-render-outbound (source provenance identity) ...)
 ```
 
-Provenance is a record, not a header: `(:peer-transit peer diag generation)`
-is the `evidence` argument of `fn-node-prepare` (so it is inside the stored
-transaction record, replayed, and `fn-node-stage-evidence` carries it while
-staged). An article accepted through POST has `(:injected ...)` evidence
-(w4/post); the outbound renderer treats both the same way. `Injection-Date`
+Provenance is a record, not a header. As built (w10/provenance) it is
+`(fn-prov-make-transit peer kind diagnostic generation)`, and its WIRE form
+--- a printable string `fn-prov-of-wire` inverts --- is the `evidence`
+argument of `fn-node-prepare`, so it is inside the stored transaction record,
+replayed, and `fn-node-stage-evidence` carries it while staged with no change
+to the record grammar. An article accepted through POST has
+`(fn-prov-make-post principal generation)`; the outbound renderer treats both
+the same way, reading them with `fn-prov-of-wire` and `fn-prov-kind`. `Injection-Date`
 is never touched by transit; `Xref` is never stored.
 
 ### 2.4 The record
 
 No new journal record kind for inbound transit. The article record of
 `books/records.lisp` already carries `evidence`; a transit article is an
-article record whose evidence is `(:peer-transit ...)`. Replay reproduces
-the provenance for free, and `fn-replay-reproduces-acceptance-binding`
-(reconfiguration §3.3) covers it unchanged. What is new is one *value* in the
-evidence slot, whose grammar packet K1 adds to `fn-record-p`'s evidence
-recognizer (today `fn-record-metadata-bytes-p`, bounded text).
+article record whose evidence is a `:peer-transit` provenance. Replay
+reproduces the provenance for free, and `fn-replay-reproduces-acceptance-
+binding` (reconfiguration §3.3) covers it unchanged. What is new is one
+*value* in the evidence slot, and NO change to `fn-record-p`'s evidence
+recognizer was needed: the wire form of a provenance is bounded printable
+text, which is exactly what `fn-record-metadata-bytes-p` already admits.
 
 ### 2.5 Duplicate suppression: the history is the store plus its tombstones
 
@@ -1091,12 +1095,27 @@ What differs from the design above, and why:
   the test book, and `fn-cfg-peer-rows-after-set-peer` (the peers slot holds
   exactly the record's rows after `:set-peer`) is the certified form of the
   find-after-set statement.
-- **The evidence slot is a string.** `fn-retain-admissiblep` requires
-  `stringp evidence`; the provenance is rendered as `"peer-transit:<peer>"`
-  (`fn-peer-evidence`) and the structured `(:transit peer kind msgid octets)`
-  submission is what the served path carries. The diagnostic and generation
-  of `(:peer-transit peer diag generation)` are not yet in the string: open
-  for the feed lane's renderer.
+- **The evidence slot is a provenance** (w10/provenance, 2026-09-20).
+  `fn-retain-admissiblep` takes `fn-provp` (`books/provenance.lisp`), which
+  accepts every string as the `:legacy` kind, so the widening changed no
+  stored value. `fn-peer-transit-provenance` builds the typed record --- peer
+  name, `:ihave`/`:takethis`, the RFC 5537 §3.2.1 Path diagnostic,
+  configuration generation --- and `fn-peer-transit-evidence` is its wire
+  form: `"fnprov1:"` and the canonical CBOR in lowercase hexadecimal, which
+  is printable (the host boundary guard `fn-store-text-octetsp` admits octets
+  33 to 126 only) and inside `fn-record-metadata-bytes-p`'s 256, so it rides
+  in the record's existing `release-evidence` field with no change to the
+  record grammar. `fn-peer-evidence-is-the-legacy-rendering`
+  (`books/peer-inbound-invariants`) is the equation between the record and
+  the string the transit path writes.
+  **Still open, and the only thing between here and a durable transit
+  provenance**: the transit command is not in scope at
+  `fn-peer-decide-transfer`, so `fn-peer-injection-arguments` still passes
+  `fn-peer-evidence`'s rendering. Threading it means a `kind` formal on
+  `fn-peer-decide-transfer`, `fn-peer-transfer` and
+  `fn-peer-injection-arguments`, which appear inside the K1/K2/K3 statements
+  --- the inbound lane owns that. Obligation and the exact call sites:
+  `planning/lanes/HANDOFF-w10-provenance.md`.
 
 Keystones, as certified (statements in `books/peer-inbound-invariants.lisp`):
 

@@ -732,6 +732,26 @@
       "note": "PRF-009 is planned with no events. D13's history rule is unresolved."
     },
     {
+      "id": "RET-007",
+      "title": "Provenance is a typed value, not a rendered string",
+      "specification": "specs/retention.md#reclamation-roots",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-029"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "tests/acl2/provenance-tests.lisp",
+        "tests/test_provenance.py"
+      ],
+      "implementation_note": "fn-retain-admissiblep, the two retention record fields and fn-node-stagep take fn-provp, which accepts every string as the :legacy kind, so no existing store, journal or checkpoint changes meaning. The POST writer's provenance is decided in ACL2 (fn-store-prov-post) and stored as the canonical wire form; the transit writer's typed record exists (fn-peer-transit-provenance) and is proved to render to the string the transit path writes, but the transit path still stores the rendering.",
+      "note": "OPEN, with its obligation in planning/lanes/HANDOFF-w10-provenance.md: the transit path needs a kind formal on fn-peer-decide-transfer, fn-peer-transfer and fn-peer-injection-arguments before it can store the record's wire form, and the two BP drivers still read a host constant for their evidence label."
+    },
+    {
       "id": "REP-001",
       "title": "Exchange portable facts rather than local database identity",
       "specification": "specs/replication.md#portable-input",

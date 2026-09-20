@@ -3368,7 +3368,7 @@
       ],
       "system_includes": [],
       "suspects": [
-        "fn-prov-wire-of-a-string-is-itself"
+        "fn-prov-wire-of-a-string-is-itself-by-definition"
       ],
       "read_error": null
     },
@@ -7516,9 +7516,9 @@
       ]
     },
     {
-      "theorem": "fn-prov-wire-of-a-string-is-itself",
+      "theorem": "fn-prov-wire-of-a-string-is-itself-by-definition",
       "book": "books/provenance-codec.lisp",
-      "line": 538,
+      "line": 543,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-prov-wire and the conclusion is that branch's value"
       ]
