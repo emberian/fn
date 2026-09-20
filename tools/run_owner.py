@@ -26,7 +26,7 @@ import time
 from run_store import (ACL2_RECOVER_BASE_SECONDS, ACL2_RECOVER_PER_RECORD_SECONDS,
                        Acl2Store, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, Store,
                        StoreError, StoreFault, StoreIndeterminate, UsageParser,
-                       acl2_nat, acl2_octets, acl2_symbol, conservative_charge,
+                       acl2_nat, acl2_octets, acl2_result, acl2_symbol, conservative_charge,
                        durable_post, exit_code_for, group_codes, post_article,
                        validate_post_boundary)
 from run_reader import acl2_boolean, acl2_octet_list
@@ -36,6 +36,20 @@ MAX_READ = 512
 MAX_OUTPUT_BACKLOG = 64 * 1024
 MAX_CONTROL_LINE = 4096
 DTN_EPOCH_NS = 946684800 * 1_000_000_000  # 2000-01-01T00:00:00Z
+
+
+# The owner's typed words beyond the store's: each is the result of one
+# fn-owner-* entry in host/owner-host.lisp.  acl2_symbol's set is the store's
+# closed vocabulary and stays closed; this is the owner's.
+OWNER_WORDS = {b":OBSERVED", b":REJECTED", b":DECLARED", b":BEGUN", b":CLOSED",
+               b":OK", b":UNKNOWN", b":FED", b":TAKEN", b":IDLE"}
+
+
+def acl2_owner_symbol(output):
+    body = acl2_result(output).upper()
+    if body in OWNER_WORDS:
+        return body.decode("ascii").lower()[1:]
+    return acl2_symbol(output)
 
 
 def acl2_symbol_or_nat(output):
@@ -79,7 +93,7 @@ class Acl2Owner(Acl2Store):
         self.call('(ld "host/owner-host.lisp" :ld-error-action :return :ld-error-triples t)')
 
     def _symbol(self, form, timeout=None):
-        return acl2_symbol(self.call(form, timeout=timeout))
+        return acl2_owner_symbol(self.call(form, timeout=timeout))
 
     def _nat(self, form):
         return acl2_nat(self.call(form))
