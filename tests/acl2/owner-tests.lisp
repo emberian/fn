@@ -370,8 +370,28 @@
 (assert-event (null (fn-own-inflight (cdr *own-240*))))
 (assert-event (null (fn-own-pending (cdr *own-240*))))
 (assert-event (fn-own-relation (cdr *own-240*)))
-; The reply reached connection 4 alone.
-(assert-event (equal (fn-own-conns (cdr *own-240*)) (fn-own-conns *own-p-done*)))
+; TEETH for the 2026-09-20 repair of fn-own-conn-boundedp.  It tested
+; fn-post-sessionp on a session that has been a PEER session since the
+; inbound transit port, so it was false on every connection the served path
+; opens; the re-pin branch of fn-own-advance was never taken and this line
+; asserted that fn-own-conns was UNCHANGED by a durable outcome -- it was
+; pinning the defect.  First the non-vacuity witness: the predicate holds on
+; a connection fn-own-open actually built.
+(assert-event (fn-own-conn-boundedp
+               (fn-own-find-conn 4 (fn-own-conns *own-p-done*))
+               (fn-sn-groups (fn-own-store *own-p-done*))))
+; Then K1 read-back: the poster's connection moves to the committed view.
+(assert-event (not (equal (fn-own-conns (cdr *own-240*))
+                          (fn-own-conns *own-p-done*))))
+(assert-event (equal (fn-own-conn-version
+                      (fn-own-find-conn 4 (fn-own-conns (cdr *own-240*))))
+                     (fn-own-view-version (fn-own-view *own-p-done*))))
+(assert-event (equal (fn-own-conn-archive
+                      (fn-own-find-conn 4 (fn-own-conns (cdr *own-240*))))
+                     (fn-own-view-archive (fn-own-view *own-p-done*))))
+; and the reply reached connection 4 alone: connection 0 is found as it was.
+(assert-event (equal (fn-own-find-conn 0 (fn-own-conns (cdr *own-240*)))
+                     (fn-own-find-conn 0 (fn-own-conns *own-p-done*))))
 (assert-event (null (car (fn-own-outcome *own-p-done* 3 :durable))))
 ; The three words render three distinct lines; the two 441s differ.
 (assert-event (equal (fn-served-reply-octets (car (fn-own-outcome *own-p-done* 4 :refused)))
@@ -454,7 +474,7 @@
         (sconn (fn-served-result-conn
                 (fn-served-open (fn-own-view-archive (fn-own-view o))
                                 *fn-nntp-max-initial-line-octets* *fn-own-body-limit*
-                                nil nil))))
+                                nil nil nil))))
    (not (equal (car (fn-own-read o 99 *own-group-octets*))
                (fn-served-result-effects
                 (fn-served-step
@@ -464,7 +484,7 @@
                    (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
                                       (fn-own-take 2 (fn-sf-records (fn-sn-files s)))
                                       (fn-sf-frontier (fn-sn-files s))))
-                  nil nil)
+                  nil nil nil)
                  *own-group-octets*))))))
 
 ; K1 (per event) without (fn-own-relation o).

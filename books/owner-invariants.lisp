@@ -401,12 +401,22 @@
                                        observation injection)))
                      archive config observation)
    groups)
-  :hints (("Goal" :in-theory (enable fn-served-open fn-post-open-session
+  ; The session is a peer session now (fn-served-open builds it with
+  ; fn-peer-open-session), so fn-peer-sessionp comes from the exported
+  ; consistency of an opened session and the group and cursor are read
+  ; through fn-peer-session-base.
+  :hints (("Goal" :in-theory (enable fn-served-open fn-peer-open-session
+                                     fn-post-open-session
                                      fn-post-sessionp fn-nntp-open-session
                                      fn-nntp-make-session fn-nntp-sessionp
                                      fn-nntp-session-openp fn-nntp-session-group
                                      fn-nntp-session-current
-                                     fn-nntp-session-projected))))
+                                     fn-nntp-session-projected)
+           :use ((:instance fn-peer-open-session-is-consistent
+                            (archive archive) (peer nil) (node nil) (cfg nil))
+                 (:instance fn-peer-session-consistentp-forward
+                            (x (fn-peer-open-session archive nil nil nil))
+                            (archive archive))))))
 
 (defthm fn-own-open-preserves-relation
   (implies (fn-own-relation o)
@@ -1085,9 +1095,9 @@
 (defthm fn-own-outcome-completion-is-one-of-three
   (member-equal (fn-own-outcome-completion o word) '(:durable :refused :uncertain)))
 
-(defthm fn-own-conn-boundedp-is-post-session
+(defthm fn-own-conn-boundedp-is-peer-session
   (implies (fn-own-conn-boundedp conn groups)
-           (fn-post-sessionp (fn-own-conn-session conn)))
+           (fn-peer-sessionp (fn-own-conn-session conn)))
   :hints (("Goal" :in-theory (enable fn-own-conn-boundedp))))
 
 ; -----------------------------------------------------------------------------
@@ -1102,26 +1112,75 @@
 (local
  (defthm fn-own-advanced-session-is-bounded
    (implies (and (fn-own-conn-boundedp conn groups)
-                 (fn-post-sessionp (fn-own-conn-session conn)))
+                 (fn-peer-sessionp (fn-own-conn-session conn)))
             (fn-own-conn-boundedp
              (fn-own-conn-make cid version frontier wire
-                               (fn-post-make-session
-                                (fn-nntp-set-cursor
-                                 (fn-nntp-open-session archive)
-                                 (fn-nntp-session-group
-                                  (fn-post-session-base (fn-own-conn-session conn)))
-                                 (fn-nntp-session-current
-                                  (fn-post-session-base (fn-own-conn-session conn))))
-                                (fn-post-session-awaiting (fn-own-conn-session conn)))
+                               (fn-peer-with-base
+                                (fn-own-conn-session conn)
+                                (fn-post-make-session
+                                 (fn-nntp-set-cursor
+                                  (fn-nntp-open-session archive)
+                                  (fn-nntp-session-group
+                                   (fn-post-session-base
+                                    (fn-peer-session-base (fn-own-conn-session conn))))
+                                  (fn-nntp-session-current
+                                   (fn-post-session-base
+                                    (fn-peer-session-base (fn-own-conn-session conn)))))
+                                 (fn-post-session-awaiting
+                                  (fn-peer-session-base (fn-own-conn-session conn)))))
                                archive config observation)
              groups))
    :hints (("Goal"
             :use ((:instance fn-nntp-consistent-session-is-session
                              (session (fn-nntp-open-session archive))
                              (archive archive))
-                  (:instance fn-nntp-open-session-is-consistent (archive archive)))
-            :in-theory (e/d (fn-own-conn-boundedp fn-post-sessionp fn-nntp-set-cursor)
-                            (fn-nntp-open-session fn-nntp-sessionp
+                  (:instance fn-nntp-open-session-is-consistent (archive archive))
+                  (:instance fn-peer-sessionp-forward-fields
+                             (x (fn-own-conn-session conn)))
+                  (:instance fn-nntp-set-cursor-sessionp
+                             (session (fn-nntp-open-session archive))
+                             (group (fn-nntp-session-group
+                                     (fn-post-session-base
+                                      (fn-peer-session-base
+                                       (fn-own-conn-session conn)))))
+                             (current (fn-nntp-session-current
+                                       (fn-post-session-base
+                                        (fn-peer-session-base
+                                         (fn-own-conn-session conn))))))
+                  (:instance fn-peer-sessionp-of-fn-peer-with-base
+                             (ps (fn-own-conn-session conn))
+                             (base (fn-post-make-session
+                                    (fn-nntp-set-cursor
+                                     (fn-nntp-open-session archive)
+                                     (fn-nntp-session-group
+                                      (fn-post-session-base
+                                       (fn-peer-session-base
+                                        (fn-own-conn-session conn))))
+                                     (fn-nntp-session-current
+                                      (fn-post-session-base
+                                       (fn-peer-session-base
+                                        (fn-own-conn-session conn)))))
+                                    (fn-post-session-awaiting
+                                     (fn-peer-session-base
+                                      (fn-own-conn-session conn)))))))
+            ; fn-peer-sessionp stays CLOSED: the rebuilt session is a peer
+            ; session by fn-peer-sessionp-of-fn-peer-with-base
+            ; (books/peer-inbound.lisp), which cannot match if the
+            ; recognizer opens into its eight conjuncts.
+            ; Everything stays closed but fn-own-conn-boundedp and the
+            ; two-field POST record: fn-peer-sessionp-of-fn-peer-with-base,
+            ; fn-peer-sessionp-forward-fields (books/peer-inbound.lisp) and
+            ; fn-nntp-set-cursor-sessionp (books/nntp-invariants.lisp) each
+            ; stop matching if their subject opens.
+            ; fn-nntp-set-cursor may open now: the session fact about it
+            ; is supplied by :use above, so the two stay in step, and
+            ; opening is what shows the re-pinned cursor is the old one.
+            :in-theory (e/d (fn-own-conn-boundedp fn-post-sessionp
+                             fn-nntp-set-cursor fn-nntp-make-session
+                             fn-nntp-sessionp
+                             fn-nntp-session-group fn-nntp-session-current)
+                            ((:d fn-peer-sessionp) (:d fn-peer-with-base)
+                             fn-nntp-open-session
                              fn-nntp-consistent-session-is-session
                              fn-nntp-open-session-is-consistent))))))
 
@@ -1152,9 +1211,45 @@
                              (config (fn-own-conn-config (fn-own-find-conn id (fn-own-conns o))))
                              (observation (fn-own-conn-observation
                                            (fn-own-find-conn id (fn-own-conns o)))))
-                  (:instance fn-own-conn-boundedp-is-post-session
+                  (:instance fn-own-conn-boundedp-is-peer-session
                              (conn (fn-own-find-conn id (fn-own-conns o)))
-                             (groups (fn-sn-groups (fn-own-store o)))))
+                             (groups (fn-sn-groups (fn-own-store o))))
+                  ; the re-pinned connection is what the table then holds:
+                  ; supplied by :use because the rule's left-hand side is
+                  ; keyed on (fn-own-conn-id conn) and the goal has already
+                  ; normalised that to id
+                  (:instance fn-own-find-conn-of-replace-conn-same
+                             (conns (fn-own-conns o))
+                             (conn
+                              (fn-own-conn-make
+                               (fn-own-conn-id (fn-own-find-conn id (fn-own-conns o)))
+                               (fn-own-view-version (fn-own-view o))
+                               (fn-own-view-frontier (fn-own-view o))
+                               (fn-own-conn-wire (fn-own-find-conn id (fn-own-conns o)))
+                               (fn-peer-with-base
+                                (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o)))
+                                (fn-post-make-session
+                                 (fn-nntp-set-cursor
+                                  (fn-nntp-open-session
+                                   (fn-own-view-archive (fn-own-view o)))
+                                  (fn-nntp-session-group
+                                   (fn-post-session-base
+                                    (fn-peer-session-base
+                                     (fn-own-conn-session
+                                      (fn-own-find-conn id (fn-own-conns o))))))
+                                  (fn-nntp-session-current
+                                   (fn-post-session-base
+                                    (fn-peer-session-base
+                                     (fn-own-conn-session
+                                      (fn-own-find-conn id (fn-own-conns o)))))))
+                                 (fn-post-session-awaiting
+                                  (fn-peer-session-base
+                                   (fn-own-conn-session
+                                    (fn-own-find-conn id (fn-own-conns o)))))))
+                               (fn-own-view-archive (fn-own-view o))
+                               (fn-own-conn-config (fn-own-find-conn id (fn-own-conns o)))
+                               (fn-own-conn-observation
+                                (fn-own-find-conn id (fn-own-conns o)))))))
             :in-theory (e/d (fn-own-relation fn-own-advance fn-own-set-conns)
                             (fn-own-conn-boundedp fn-own-find-conn-okp
                              fn-post-sessionp fn-nntp-open-session
@@ -1240,11 +1335,16 @@
                             (groups (fn-sn-groups (fn-own-store o)))
                             (capacity (fn-sn-capacity (fn-own-store o)))
                             (records (fn-sf-records (fn-sn-files (fn-own-store o)))))
-                 (:instance fn-own-conn-boundedp-is-post-session
+                 (:instance fn-own-conn-boundedp-is-peer-session
                             (conn (fn-own-find-conn id (fn-own-conns o)))
                             (groups (fn-sn-groups (fn-own-store o))))
+                 ; the POST session is the peer session's base now
+                 (:instance fn-peer-sessionp-forward-fields
+                            (x (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o)))))
                  (:instance fn-post-outcome-240-only-for-a-durable-observation
-                            (ps (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o))))
+                            (ps (fn-peer-session-base
+                                 (fn-own-conn-session
+                                  (fn-own-find-conn id (fn-own-conns o)))))
                             (completion (fn-own-outcome-completion o word)))
                  (:instance fn-own-ledger-durablep-member
                             (ledger (fn-own-ledger o))
@@ -1252,11 +1352,13 @@
                             (pair (car (last (fn-own-ledger o)))))
                  (:instance fn-own-last-member (l (fn-own-ledger o)))
                  (:instance fn-own-post-outcome-answers
-                            (ps (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o))))
+                            (ps (fn-peer-session-base
+                                 (fn-own-conn-session
+                                  (fn-own-find-conn id (fn-own-conns o)))))
                             (completion :durable)))
            :in-theory (e/d (fn-own-relation fn-served-post-outcome)
                            (fn-own-conn-boundedp fn-own-find-conn-okp
-                            fn-own-conn-boundedp-is-post-session
+                            fn-own-conn-boundedp-is-peer-session
                             fn-own-ledger-durablep-member fn-own-last-member
                             fn-nntp-post-outcome fn-post-sessionp
                             fn-own-post-outcome-answers
@@ -1329,7 +1431,7 @@
     fn-own-declare-group-preserves-relation fn-own-configure-preserves-relation
     fn-own-take-submission-preserves-relation fn-own-outcome-preserves-relation
     fn-own-find-conn-of-replace-conn-other fn-own-find-conn-of-remove-conn-other
-    fn-own-conn-boundedp-is-post-session
+    fn-own-conn-boundedp-is-peer-session
     fn-own-step-preserves-relation
     fn-own-start-relation fn-own-complete-ledger-is-exact-pair
     fn-own-connection-events-keep-store-bound-and-ledger

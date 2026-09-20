@@ -1004,7 +1004,10 @@
                                   ((:d fn-post-sessionp)
                                    (:d fn-nntp-session-consistentp)))))))
 
-(local (defthm fn-peer-sessionp-forward-fields
+; Exported with the two constructor rules below: books/owner.lisp reads a
+; connection session's POST base and its slots without opening the
+; recognizer.
+(defthm fn-peer-sessionp-forward-fields
   (implies (fn-peer-sessionp x)
            (and (fn-post-sessionp (fn-peer-session-base x))
                 (fn-peer-transferp (fn-peer-session-transfer x))
@@ -1016,7 +1019,7 @@
   :rule-classes :forward-chaining
   :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp))
                                   ((:d fn-post-sessionp) (:d fn-peer-transferp)
-                                   (:d fn-node-statep) (:d fn-cfgp)))))))
+                                   (:d fn-node-statep) (:d fn-cfgp))))))
 
 (local (defthm fn-peer-sessionp-of-make-session-reader
   (implies (and (fn-post-sessionp base)
@@ -1126,6 +1129,21 @@
            :use ((:instance fn-post-open-session-is-consistent)
                  (:instance fn-post-session-consistentp-forward
                             (x (fn-post-open-session archive)))))))
+
+; Exported for books/owner.lisp (fn-own-advance): re-pinning a connection
+; replaces only the POST base of its peer session and keeps the peer, the
+; transfer, the inflight count and the pinned node and configuration, so
+; the result is still a peer session.
+(defthm fn-peer-session-base-of-fn-peer-with-base
+  (equal (fn-peer-session-base (fn-peer-with-base ps base)) base)
+  :hints (("Goal" :in-theory (enable (:d fn-peer-with-base)))))
+
+(defthm fn-peer-sessionp-of-fn-peer-with-base
+  (implies (and (fn-peer-sessionp ps) (fn-post-sessionp base))
+           (fn-peer-sessionp (fn-peer-with-base ps base)))
+  :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp) (:d fn-peer-with-base))
+                                  ((:d fn-post-sessionp) (:d fn-peer-transferp)
+                                   (:d fn-node-statep) (:d fn-cfgp))))))
 
 ; -----------------------------------------------------------------------------
 ; Guard verification of the served chain
