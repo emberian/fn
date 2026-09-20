@@ -581,7 +581,11 @@
 ; connection installed.  A refused open (bound reached) is (nil . o).  The
 ; posting configuration and the owner's latest clock observation are pinned
 ; into the connection here: one observation per connection, read by the
-; served step from the connection and never from the owner.
+; served step from the connection and never from the owner.  That pin is the
+; READER environment (DATE, NEWGROUPS) only.  The injection clock is not
+; pinned: fn-own-read supplies the owner's current observation with every
+; read, so each submission is injected at its own time (RFC 5537 section
+; 3.4).
 (defun fn-own-open (o)
   (declare (xargs :guard t))
   (if (< (len (fn-own-conns o)) (nfix (fn-own-max-conns o)))
@@ -590,7 +594,7 @@
              (id (fn-own-next-id o))
              (opened (fn-served-open archive *fn-nntp-max-initial-line-octets*
                                      *fn-own-body-limit* (fn-own-config o)
-                                     (fn-own-clock o)))
+                                     (fn-own-clock o) (fn-own-clock o)))
              (sconn (fn-served-result-conn opened))
              (conn (fn-own-conn-make id (fn-own-view-version view)
                                      (fn-own-view-frontier view)
@@ -611,6 +615,15 @@
 ; effects carry a submission (fn-served-submission: the :submit effect of an
 ; injected article) records it in the queue against this connection and its
 ; pinned version; the effects returned are still exactly the served step's.
+;
+; The served connection is rebuilt here from the owner's connection record
+; and the owner's CURRENT clock observation, which is the injection clock of
+; any submission this read produces; the connection's own pinned observation
+; is passed unchanged as the reader environment.  One observation per
+; connection would give every submission on a connection the same generated
+; Message-ID, so the second post on a connection would be a duplicate of the
+; first whatever its body.  The injection clock is therefore per read and
+; the reader pin is per connection.
 (defun fn-own-enqueue (o sub)
   (declare (xargs :guard t))
   (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
@@ -626,7 +639,8 @@
                                                             (fn-own-conn-session conn)
                                                             (fn-own-conn-archive conn)
                                                             (fn-own-conn-config conn)
-                                                            (fn-own-conn-observation conn))
+                                                            (fn-own-conn-observation conn)
+                                                            (fn-own-clock o))
                                        octets))
                (effects (fn-served-result-effects result))
                (sconn (fn-served-result-conn result))
@@ -665,7 +679,8 @@
                                              (fn-own-conn-session conn)
                                              (fn-own-conn-archive conn)
                                              (fn-own-conn-config conn)
-                                             (fn-own-conn-observation conn))
+                                             (fn-own-conn-observation conn)
+                                             (fn-own-clock o))
                         event))
                (sconn (fn-served-result-conn result))
                (next (fn-own-conn-make (fn-own-conn-id conn)
@@ -917,7 +932,8 @@
                                        (fn-own-conn-session conn)
                                        (fn-own-conn-archive conn)
                                        (fn-own-conn-config conn)
-                                       (fn-own-conn-observation conn))
+                                       (fn-own-conn-observation conn)
+                                       (fn-own-clock o))
                   completion))
                 (if (equal completion :durable)
                     (fn-own-advance next id)
