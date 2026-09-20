@@ -121,3 +121,35 @@ Test: `tests/test_store_lifecycle.py`
    still reported and not collected; each needs its own held-set argument
    from the host before it can be swept safely.
 3. Owner-post open items 2, 3, 5 and 6 stand unchanged.
+
+## Evidence
+
+- ACL2, farm `run-20260920T050203Z-0904` on persvati (`--closure`,
+  `--remote-root /home/ember/fn-lanes/w5-owner-followups`), evidence
+  `build/acl2/certify-20260920T050207Z-2820274`, status **passed**, 17 books
+  including `books/store-sweep` and `tests/acl2/store-sweep-tests` with their
+  whole closure. Certificates installed in this worktree.
+- ACL2, farm `run-20260920T050532Z-db74`, the nntp/served/owner closure
+  (`--affected-by books/nntp-responses.lisp --affected-by books/owner.lisp
+  --closure`): **submitted, still running when this lane's budget ran out**.
+  Harvest it with `python3 tools/farm.py wait persvati --remote-root
+  /home/ember/fn-lanes/w5-owner-followups run-20260920T050532Z-db74`. Local
+  `ld` of the edited `books/nntp-responses.lisp` admitted every form and is
+  where the two capability pins were quoted from; `books/store-sweep.lisp`
+  and `tests/acl2/store-sweep-tests.lisp` were `ld`-clean before the submit.
+  Nothing else in the chain has a local verdict — do not read this handoff
+  as one.
+- Python: `tests.test_store_lifecycle.StagingSweepTests` passes (15 s), which
+  is finding 5 closed end to end. `tests/test_post.py` and
+  `tests/test_owner.py` were edited for the read-back and the 200 greeting
+  and were NOT run here (each owner start is minutes on this box); they are
+  the next thing to run.
+- `make check`: scaffold OK, ledger OK (149 pre-existing lint warnings,
+  unchanged in kind).
+
+Two host defects the lifecycle test found, both fixed in `4a0c412`: the
+sweep ran while the file kernel was still `:recovering`, so its own gate
+refused it (it now runs after the recovery barriers, where the phase is
+`:ready`); and it joined the removal names with `fn-store-cfg-join-names`,
+which encodes *strings* — a staging name is an octet list, so
+`fn-store-sn-join-octet-names` is its joiner.
