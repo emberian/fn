@@ -94,7 +94,7 @@ position`. HEAD `b422d42` then swapped the keystone's `:use` of
    nothing was fenced. It now prepares the retryable "work-big" at the
    scheduler's next txid, and the `fn-sched-drive-okp` teeth are real.
 | `host/scheduler-host.lisp` | `:program` mode, outside the proof boundary | — |
-| `tools/scheduler.py`, `tests/test_scheduler.py` | PASS | 22 tests |
+| `tools/scheduler.py`, `tests/test_scheduler.py` | PASS | 23 tests, `Acl2HostRecord` against a real ACL2 |
 
 ### What the rewrite changed
 
@@ -137,18 +137,17 @@ position`. HEAD `b422d42` then swapped the keystone's `:use` of
   promotion queue longer than the configured bound — which no transition builds,
   which is exactly the invariant `specs/scheduler.md` leaves to C3-03.
 
-### The host passes Lisp strings to the decision codec (owner: host/scheduler-host.lisp)
+### The host's decision record (fixed 2026-09-20)
 
-`fn-frame-textp` (books/frame-fields.lisp) recognises `:text` as an octet list,
-and the test book now supplies octets. The host does not:
-`fn-sched-host-decision-octets` (`host/scheduler-host.lisp:82-85`) hands
-`fn-sched-decision` the contact peer, a `stringp` by `fn-sched-contactp`, and the
-`work-id`/`attempt-id` that `tools/scheduler.py` marshals as string literals
-(`_lit`), so `fn-sched-decision-protected` answers `:bad` and `run_plan` raises
-"ACL2 refused the decision record". The codec is the authority and is unchanged;
-the owner of that file converts the three ids to octets at the site (the
-bridge's `_octets`, or `fn-record-string-octets` in books/records.lisp) or the
-contact record's peer becomes octets.
+`fn-frame-textp` (books/frame-fields.lisp) recognises `:text` as an octet list.
+`fn-sched-host-decision-octets` (`host/scheduler-host.lisp`) now converts the
+contact peer, `work-id` and `attempt-id` with `fn-record-string-octets`
+(books/records.lisp, included there) at that one site; the state keeps them as
+strings and `tools/scheduler.py` still marshals the ids as string literals
+(`_lit`), which `fn-sched-find` needs. The codec is unchanged.
+`tests/test_scheduler.py::Acl2HostRecord` drives the wrappers through
+`Acl2Store` and asserts the host's own record comes back as the protected
+octets, not `:bad` (it skips without ACL2).
 
 ### Always-on TCP peers (specs/peering.md §3)
 
@@ -399,7 +398,7 @@ fairness index rather than the index plus the configured bound.
 
 ```
 $ python3 -m unittest tests.test_scheduler
-Ran 22 tests — OK
+Ran 23 tests — OK (`Acl2HostRecord` runs against a real ACL2; skipped only when none is on PATH)
 ```
 
 `tests.test_workflow_journal` and `tests.test_workflow_faults` were **not
