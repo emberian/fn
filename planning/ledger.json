@@ -41,6 +41,8 @@
     "books/article-fields",
     "tests/acl2/article-fields-tests",
     "books/store-config",
+    "books/sha256",
+    "tests/acl2/sha256-tests",
     "books/frame-octets",
     "books/frame-fields",
     "books/frame-journal",
@@ -235,6 +237,9 @@
     "tests/acl2/relay-tests",
     "books/crypto-seam",
     "tests/acl2/crypto-seam-tests",
+    "books/crypto-attach",
+    "books/auth-secret",
+    "tests/acl2/auth-secret-tests",
     "books/statement",
     "books/statement-invariants",
     "tests/acl2/statement-tests",
@@ -261,22 +266,22 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 260,
-    "books_in_root_closure": 257,
-    "roots": 257,
-    "theorems": 5049,
-    "functions": 3647,
-    "assert_events": 4859,
+    "books": 263,
+    "books_in_root_closure": 262,
+    "roots": 262,
+    "theorems": 5073,
+    "functions": 3657,
+    "assert_events": 4877,
     "must_fails": 59,
     "encapsulates": 16,
     "guards": {
       "verified": 1379,
       "declared-off": 166,
-      "default-guarded": 1613,
+      "default-guarded": 1623,
       "default-unguarded": 489
     },
     "suspect_theorems": 38,
-    "export_hygiene_warnings": 75,
+    "export_hygiene_warnings": 72,
     "teeth_form_warnings": 0,
     "include_hygiene_warnings": 88,
     "host_names_warnings": 0,
@@ -732,6 +737,31 @@
       "defmacros": 0,
       "encapsulates": 7,
       "includes": [],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/auth-secret.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 16,
+      "functions": 10,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 10,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "crypto-attach"
+      ],
       "system_includes": [],
       "suspects": [],
       "read_error": null
@@ -1915,6 +1945,33 @@
       "system_includes": [
         "arithmetic/top"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/crypto-attach.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 6,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "crypto-seam",
+        "frame-octets",
+        "sha256"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -3621,9 +3678,9 @@
     },
     {
       "book": "books/sha256.lisp",
-      "in_root_closure": false,
-      "is_root": false,
-      "theorems": 24,
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 26,
       "functions": 30,
       "guards": {
         "verified": 0,
@@ -4948,6 +5005,31 @@
       "system_includes": [
         "std/testing/must-fail"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/auth-secret-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 18,
+      "must_fails": 0,
+      "defconsts": 5,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/auth-secret"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -6476,8 +6558,8 @@
     },
     {
       "book": "tests/acl2/sha256-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 2,
       "guards": {
@@ -7629,24 +7711,6 @@
         "book": "books/nntp-syntax.lisp",
         "line": 49,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
-      },
-      {
-        "theorem": "fn-sha256-len-of-firstn-8",
-        "book": "books/sha256.lisp",
-        "line": 422,
-        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
-      },
-      {
-        "theorem": "fn-sha256-len-of-compress",
-        "book": "books/sha256.lisp",
-        "line": 441,
-        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
-      },
-      {
-        "theorem": "fn-sha256-len-of-blocks",
-        "book": "books/sha256.lisp",
-        "line": 445,
-        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
         "theorem": "fn-stmt-header-round-trip",

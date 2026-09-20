@@ -10,20 +10,20 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 260 |
-| Certification roots in the Makefile | 257 |
-| Books inside the root closure | 257 |
-| `defthm` and `defthmd` events | 5049 |
-| `defun` events | 3647 |
+| Books read | 263 |
+| Certification roots in the Makefile | 262 |
+| Books inside the root closure | 262 |
+| `defthm` and `defthmd` events | 5073 |
+| `defun` events | 3657 |
 | Functions with verified guards | 1379 |
 | Functions declared `:verify-guards nil` and never verified | 166 |
-| Functions left at the default with an explicit guard | 1613 |
+| Functions left at the default with an explicit guard | 1623 |
 | Functions left at the default with no guard | 489 |
-| `assert-event` checks | 4859 |
+| `assert-event` checks | 4877 |
 | `must-fail` checks | 59 |
 | `encapsulate` events | 16 |
 | Theorems flagged SUSPECT by shape | 38 |
-| Export-hygiene warnings | 75 |
+| Export-hygiene warnings | 72 |
 | Teeth-form warnings | 0 |
 | Include-hygiene warnings | 88 |
 | Host-names warnings | 0 |
@@ -86,6 +86,7 @@ that `make certify` requests.
 | `books/article-work.lisp` | root | 23 | 6 | 0/0/0/6 | 0 | 0 | 0 |
 | `books/article.lisp` | root | 24 | 45 | 45/0/0/0 | 0 | 0 | 0 |
 | `books/assumptions.lisp` | root | 12 | 8 | 0/0/0/8 | 0 | 0 | 0 |
+| `books/auth-secret.lisp` | root | 16 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/bp-adu.lisp` | root | 18 | 41 | 7/0/34/0 | 0 | 0 | 0 |
 | `books/bp-fragment-invariants.lisp` | root | 40 | 3 | 0/0/0/3 | 0 | 0 | 2 |
 | `books/bp-fragment.lisp` | root | 6 | 30 | 30/0/0/0 | 0 | 0 | 0 |
@@ -131,6 +132,7 @@ that `make certify` requests.
 | `books/config.lisp` | root | 42 | 133 | 1/0/132/0 | 0 | 0 | 0 |
 | `books/container-invariants.lisp` | root | 25 | 2 | 0/0/1/1 | 0 | 0 | 0 |
 | `books/container.lisp` | root | 2 | 43 | 0/1/42/0 | 0 | 0 | 0 |
+| `books/crypto-attach.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/crypto-seam.lisp` | root | 19 | 14 | 0/0/10/4 | 0 | 0 | 0 |
 | `books/defrecord.lisp` | root | 0 | 14 | 0/0/0/14 | 0 | 0 | 0 |
 | `books/deftransition.lisp` | root | 0 | 2 | 0/0/0/2 | 0 | 0 | 0 |
@@ -195,7 +197,7 @@ that `make certify` requests.
 | `books/scheduler-peers.lisp` | root | 18 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/scheduler.lisp` | root | 59 | 104 | 27/0/77/0 | 0 | 0 | 0 |
 | `books/served.lisp` | root | 58 | 35 | 2/4/29/0 | 0 | 0 | 0 |
-| `books/sha256.lisp` | - | 24 | 30 | 0/0/30/0 | 0 | 0 | 0 |
+| `books/sha256.lisp` | root | 26 | 30 | 0/0/30/0 | 0 | 0 | 0 |
 | `books/statement-invariants.lisp` | root | 59 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/statement.lisp` | root | 30 | 65 | 0/0/65/0 | 0 | 0 | 0 |
 | `books/store-config.lisp` | root | 7 | 4 | 0/0/4/0 | 0 | 0 | 0 |
@@ -246,6 +248,7 @@ that `make certify` requests.
 | `tests/acl2/article-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 38 | 0 | 0 |
 | `tests/acl2/article-work-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 22 | 0 | 0 |
 | `tests/acl2/assumptions-tests.lisp` | root | 0 | 10 | 0/0/0/10 | 7 | 11 | 0 |
+| `tests/acl2/auth-secret-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/bp-adu-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 24 | 0 | 0 |
 | `tests/acl2/bp-fragment-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 63 | 2 | 0 |
 | `tests/acl2/bp-ingress-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 108 | 0 | 0 |
@@ -305,7 +308,7 @@ that `make certify` requests.
 | `tests/acl2/scheduler-peers-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/scheduler-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 103 | 0 | 0 |
 | `tests/acl2/served-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 79 | 0 | 0 |
-| `tests/acl2/sha256-tests.lisp` | - | 0 | 2 | 0/0/2/0 | 21 | 0 | 0 |
+| `tests/acl2/sha256-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 21 | 0 | 0 |
 | `tests/acl2/statement-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 40 | 0 | 0 |
 | `tests/acl2/store-files-exploration-tests.lisp` | root | 0 | 29 | 0/0/0/29 | 58 | 0 | 0 |
 | `tests/acl2/store-files-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 63 | 0 | 0 |

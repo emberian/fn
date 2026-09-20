@@ -44,6 +44,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/article-fields \
 	tests/acl2/article-fields-tests \
 	books/store-config \
+	books/sha256 \
+	tests/acl2/sha256-tests \
 	books/frame-octets \
 	books/frame-fields \
 	books/frame-journal \
@@ -238,6 +240,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/relay-tests \
 	books/crypto-seam \
 	tests/acl2/crypto-seam-tests \
+	books/crypto-attach \
+	books/auth-secret \
+	tests/acl2/auth-secret-tests \
 	books/statement \
 	books/statement-invariants \
 	tests/acl2/statement-tests \
