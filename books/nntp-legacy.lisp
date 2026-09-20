@@ -214,6 +214,18 @@
                                fn-nntp-hdr-octets fn-nntp-xpat-matchesp
                                fn-nntp-available-article))))
 
+(defthm fn-nntp-xpat-msgid-lines-are-clean
+  (fn-nntp-hdr-clean-field-listp
+   (fn-nntp-xpat-msgid-lines field patterns token article))
+  :hints (("Goal"
+           :use fn-nntp-hdr-labelled-line-is-clean
+           :in-theory (e/d (fn-nntp-hdr-clean-field-listp
+                            fn-nntp-xpat-msgid-lines)
+                           (fn-nntp-hdr-labelled-line-is-clean
+                            fn-nntp-hdr-line fn-nntp-hdr-content
+                            fn-nntp-hdr-octets fn-nov-scrub
+                            fn-nntp-xpat-matchesp)))))
+
 (defthm fn-nntp-xpat-lines-are-clean
   (fn-nntp-hdr-clean-field-listp
    (fn-nntp-xpat-lines-for-numbers field patterns group numbers articles))

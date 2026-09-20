@@ -1581,21 +1581,29 @@
          (fn-state-articles archive))
         (fn-state-articles archive))))))
 
+; The zero-or-one line the message-id form renders, as its own function so
+; that its cleanliness is one induction-free lemma in books/nntp-legacy.lisp
+; and books/nntp-effects.lisp reads the block back through the same
+; clean-field-list route the range form uses.
+(defun fn-nntp-xpat-msgid-lines (field patterns token article)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((content (fn-nntp-hdr-content field article)))
+    (if (fn-nntp-xpat-matchesp patterns (fn-nntp-hdr-octets content))
+        (list (fn-nntp-hdr-line (fn-nov-scrub token)
+                                (fn-nntp-hdr-octets content)))
+      nil)))
+
 (defun fn-nntp-xpat-msgid (session archive field patterns token)
   (declare (xargs :guard t :verify-guards nil))
   (let ((article (fn-find-article (fn-nntp-token-string token)
                                   (fn-state-articles archive))))
     (if (not (consp article))
         (fn-nntp-single session "430 no article with that message-id")
-      (let ((content (fn-nntp-hdr-content field article)))
-        (if (not (fn-nntp-hdr-okp content))
-            (fn-nntp-single session "503 stored article framing unavailable")
-          (fn-nntp-multi
-           session (fn-nntp-hdr-initial t)
-           (if (fn-nntp-xpat-matchesp patterns (fn-nntp-hdr-octets content))
-               (list (fn-nntp-hdr-line (fn-nov-scrub token)
-                                       (fn-nntp-hdr-octets content)))
-             nil)))))))
+      (if (not (fn-nntp-hdr-okp (fn-nntp-hdr-content field article)))
+          (fn-nntp-single session "503 stored article framing unavailable")
+        (fn-nntp-multi session (fn-nntp-hdr-initial t)
+                       (fn-nntp-xpat-msgid-lines field patterns token
+                                                 article))))))
 
 (defun fn-nntp-xpat-response (session archive args)
   (declare (xargs :guard t :verify-guards nil))
@@ -1725,6 +1733,8 @@
 
 (verify-guards fn-nntp-xpat-range)
 
+(verify-guards fn-nntp-xpat-msgid-lines)
+
 (verify-guards fn-nntp-xpat-msgid)
 
 (verify-guards fn-nntp-xpat-response)
@@ -1786,7 +1796,8 @@
     fn-nntp-hdr-range fn-nntp-hdr-msgid fn-nntp-hdr-command
     fn-nntp-hdr-response fn-nntp-xhdr-response
     fn-nntp-xpat-join fn-nntp-xpat-matchesp
-    fn-nntp-xpat-lines-for-numbers fn-nntp-xpat-range fn-nntp-xpat-msgid
+    fn-nntp-xpat-lines-for-numbers fn-nntp-xpat-range
+    fn-nntp-xpat-msgid-lines fn-nntp-xpat-msgid
     fn-nntp-xpat-response fn-nntp-dtn-unix-seconds
     fn-nntp-active-times-line fn-nntp-active-times-lines
     fn-nntp-filter-facts-by-wildmat fn-nntp-list-active-times

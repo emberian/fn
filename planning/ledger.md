@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 239 |
-| Certification roots in the Makefile | 238 |
-| Books inside the root closure | 238 |
-| `defthm` and `defthmd` events | 4522 |
-| `defun` events | 3291 |
-| Functions with verified guards | 1294 |
-| Functions declared `:verify-guards nil` and never verified | 151 |
-| Functions left at the default with an explicit guard | 1381 |
-| Functions left at the default with no guard | 465 |
-| `assert-event` checks | 4416 |
+| Books read | 241 |
+| Certification roots in the Makefile | 240 |
+| Books inside the root closure | 240 |
+| `defthm` and `defthmd` events | 4578 |
+| `defun` events | 3347 |
+| Functions with verified guards | 1329 |
+| Functions declared `:verify-guards nil` and never verified | 152 |
+| Functions left at the default with an explicit guard | 1394 |
+| Functions left at the default with no guard | 472 |
+| `assert-event` checks | 4559 |
 | `must-fail` checks | 59 |
 | `encapsulate` events | 15 |
 | Theorems flagged SUSPECT by shape | 32 |
@@ -141,14 +141,15 @@ that `make certify` requests.
 | `books/lace.lisp` | root | 5 | 20 | 0/0/20/0 | 0 | 0 | 0 |
 | `books/membership-epochs-invariants.lisp` | root | 33 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/membership-epochs.lisp` | root | 36 | 51 | 0/0/51/0 | 0 | 0 | 0 |
-| `books/nntp-effects.lisp` | root | 134 | 12 | 0/0/0/12 | 0 | 0 | 1 |
+| `books/nntp-auth.lisp` | root | 39 | 41 | 27/1/13/0 | 0 | 0 | 0 |
+| `books/nntp-effects.lisp` | root | 139 | 12 | 0/0/0/12 | 0 | 0 | 1 |
 | `books/nntp-index.lisp` | root | 33 | 25 | 25/0/0/0 | 0 | 0 | 0 |
-| `books/nntp-invariants.lisp` | root | 88 | 4 | 0/0/0/4 | 0 | 0 | 0 |
-| `books/nntp-legacy.lisp` | root | 19 | 1 | 1/0/0/0 | 0 | 0 | 0 |
+| `books/nntp-invariants.lisp` | root | 91 | 4 | 0/0/0/4 | 0 | 0 | 0 |
+| `books/nntp-legacy.lisp` | root | 23 | 2 | 2/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-overview.lisp` | root | 18 | 6 | 6/0/0/0 | 0 | 0 | 1 |
 | `books/nntp-post.lisp` | root | 15 | 18 | 12/1/5/0 | 0 | 0 | 0 |
 | `books/nntp-projection.lisp` | root | 23 | 22 | 22/0/0/0 | 0 | 0 | 0 |
-| `books/nntp-responses.lisp` | root | 5 | 120 | 120/0/0/0 | 0 | 0 | 0 |
+| `books/nntp-responses.lisp` | root | 5 | 127 | 127/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-session.lisp` | root | 1 | 34 | 34/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-syntax.lisp` | root | 6 | 45 | 39/0/6/0 | 0 | 0 | 0 |
 | `books/nntp.lisp` | root | 0 | 5 | 5/0/0/0 | 0 | 0 | 0 |
@@ -178,7 +179,7 @@ that `make certify` requests.
 | `books/retention.lisp` | root | 36 | 38 | 38/0/0/0 | 0 | 0 | 2 |
 | `books/scheduler-invariants.lisp` | root | 59 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/scheduler.lisp` | root | 54 | 104 | 2/0/102/0 | 0 | 0 | 0 |
-| `books/served.lisp` | root | 52 | 34 | 2/4/28/0 | 0 | 0 | 0 |
+| `books/served.lisp` | root | 57 | 34 | 2/4/28/0 | 0 | 0 | 0 |
 | `books/statement-invariants.lisp` | root | 59 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/statement.lisp` | root | 30 | 65 | 0/0/65/0 | 0 | 0 | 0 |
 | `books/store-config.lisp` | root | 7 | 4 | 0/0/4/0 | 0 | 0 | 0 |
@@ -260,8 +261,9 @@ that `make certify` requests.
 | `tests/acl2/journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 52 | 0 | 0 |
 | `tests/acl2/membership-epochs-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 100 | 0 | 0 |
+| `tests/acl2/nntp-auth-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 102 | 0 | 0 |
 | `tests/acl2/nntp-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 50 | 0 | 0 |
-| `tests/acl2/nntp-legacy-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 53 | 0 | 0 |
+| `tests/acl2/nntp-legacy-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 73 | 0 | 0 |
 | `tests/acl2/nntp-post-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 28 | 0 | 0 |
 | `tests/acl2/nntp-reader-profile-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 95 | 0 | 0 |
 | `tests/acl2/nntp-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 2 | 0 |
@@ -277,7 +279,7 @@ that `make certify` requests.
 | `tests/acl2/replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 65 | 0 | 0 |
 | `tests/acl2/retention-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 49 | 0 | 0 |
 | `tests/acl2/scheduler-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 103 | 0 | 0 |
-| `tests/acl2/served-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 58 | 0 | 0 |
+| `tests/acl2/served-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 79 | 0 | 0 |
 | `tests/acl2/statement-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 40 | 0 | 0 |
 | `tests/acl2/store-files-exploration-tests.lisp` | root | 0 | 29 | 0/0/0/29 | 58 | 0 | 0 |
 | `tests/acl2/store-files-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 63 | 0 | 0 |
