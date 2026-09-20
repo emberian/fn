@@ -1074,6 +1074,63 @@
                                   (fn-served-post-outcome fn-own-outcome-completion
                                    fn-own-conn-boundedp)))))
 
+; -----------------------------------------------------------------------------
+; The transit port (w9/peering-e2e; specs/peering.md 2.2 and the owner port
+; proposal on the deputy board).
+;
+; KEYSTONE.  Transit and POST share one durable path.  The writer step reads
+; the head of the one queue and installs it in the one pending slot with the
+; ledger mark of the moment: it does not test what the submission carries, so
+; a `(:transit peer kind msgid octets)` submission and an injected one take
+; the same way and cannot both be in flight.  This is the owner-level half of
+; `fn-peer-transfer-is-the-post-path' (books/peer-inbound-invariants): that
+; one says the node transition is the post path, this one says the serialised
+; durable path around it is the same path.
+(defthm fn-own-take-installs-the-queued-submission-whatever-it-carries
+  (implies (and (null (fn-own-inflight o))
+                (consp (fn-own-queue o))
+                (null (fn-own-pending o))
+                (equal (fn-sf-phase (fn-sn-files (fn-own-store o))) :ready))
+           (and (equal (fn-own-inflight (fn-own-take-submission o))
+                       (fn-own-sub-make (fn-own-sub-id (car (fn-own-queue o)))
+                                        (fn-own-sub-version (car (fn-own-queue o)))
+                                        (len (fn-own-ledger o))
+                                        (fn-own-sub-decision (car (fn-own-queue o)))))
+                (equal (fn-own-queue (fn-own-take-submission o))
+                       (cdr (fn-own-queue o)))
+                (equal (fn-own-pending (fn-own-take-submission o))
+                       (fn-own-sub-id (car (fn-own-queue o))))
+                (equal (fn-own-store (fn-own-take-submission o)) (fn-own-store o))
+                (equal (fn-own-conns (fn-own-take-submission o)) (fn-own-conns o))))
+  :hints (("Goal" :in-theory (enable fn-own-take-submission))))
+
+; KEYSTONE.  A transit outcome reaches only its connection: no other
+; connection's pin, session or wire is touched, and an outcome for a
+; connection that is not the one in flight renders no octet at all.
+(defthm fn-own-transit-outcome-touches-only-its-connection
+  (and (implies (not (equal id other))
+                (equal (fn-own-find-conn
+                        other (fn-own-conns
+                               (cdr (fn-own-transit-outcome o id kind reason word))))
+                       (fn-own-find-conn other (fn-own-conns o))))
+       (implies (not (equal (fn-own-sub-id (fn-own-inflight o)) id))
+                (equal (car (fn-own-transit-outcome o id kind reason word)) nil)))
+  :hints (("Goal" :in-theory (e/d (fn-own-advance fn-own-set-conns)
+                                  (fn-served-transit-outcome
+                                   fn-own-outcome-completion
+                                   fn-peer-submissionp
+                                   fn-own-conn-boundedp)))))
+
+; A transit outcome renders a reply only for a transit submission: an
+; injected submission in flight is answered by fn-own-outcome and by nothing
+; here, so the two reply tables can never be crossed.
+(defthm fn-own-transit-outcome-needs-a-transit-submission
+  (implies (not (fn-own-transit-subp (fn-own-inflight o)))
+           (equal (fn-own-transit-outcome o id kind reason word) (cons nil o)))
+  :hints (("Goal" :in-theory (disable fn-served-transit-outcome
+                                      fn-own-outcome-completion
+                                      fn-peer-submissionp))))
+
 ; The completion the reply renders is one of the three words, whatever the
 ; host said.
 (defthm fn-own-outcome-completion-is-one-of-three
@@ -1330,6 +1387,9 @@
     fn-own-min-pinned-below-floor fn-own-min-pinned-below-found
     fn-own-conns-okp-are-bounded fn-own-step-keeps-max-conns
     fn-own-run-keeps-max-conns fn-own-step-ledger-grows fn-own-run-ledger-grows
-    fn-own-facts-okp-member fn-own-replay-facts-append))
+    fn-own-facts-okp-member fn-own-replay-facts-append
+    fn-own-take-installs-the-queued-submission-whatever-it-carries
+    fn-own-transit-outcome-touches-only-its-connection
+    fn-own-transit-outcome-needs-a-transit-submission))
 
 (in-theory (disable fn-own-invariants-vocabulary))

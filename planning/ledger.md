@@ -13,11 +13,11 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 241 |
 | Certification roots in the Makefile | 240 |
 | Books inside the root closure | 240 |
-| `defthm` and `defthmd` events | 4538 |
-| `defun` events | 3300 |
+| `defthm` and `defthmd` events | 4543 |
+| `defun` events | 3304 |
 | Functions with verified guards | 1294 |
 | Functions declared `:verify-guards nil` and never verified | 151 |
-| Functions left at the default with an explicit guard | 1390 |
+| Functions left at the default with an explicit guard | 1394 |
 | Functions left at the default with no guard | 465 |
 | `assert-event` checks | 4447 |
 | `must-fail` checks | 59 |
@@ -156,8 +156,8 @@ that `make certify` requests.
 | `books/node-invariants.lisp` | root | 20 | 0 | 0/0/0/0 | 0 | 0 | 3 |
 | `books/node-traces.lisp` | root | 12 | 23 | 0/0/23/0 | 0 | 0 | 0 |
 | `books/node.lisp` | root | 31 | 33 | 27/0/6/0 | 0 | 0 | 2 |
-| `books/owner-invariants.lisp` | root | 92 | 7 | 0/0/0/7 | 0 | 0 | 0 |
-| `books/owner.lisp` | root | 45 | 73 | 0/3/70/0 | 0 | 0 | 0 |
+| `books/owner-invariants.lisp` | root | 95 | 7 | 0/0/0/7 | 0 | 0 | 0 |
+| `books/owner.lisp` | root | 45 | 77 | 0/3/74/0 | 0 | 0 | 0 |
 | `books/path.lisp` | root | 0 | 21 | 0/0/21/0 | 0 | 0 | 0 |
 | `books/peer-config.lisp` | root | 21 | 27 | 0/0/27/0 | 0 | 0 | 0 |
 | `books/peer-inbound-invariants.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -177,7 +177,7 @@ that `make certify` requests.
 | `books/retention-invariants.lisp` | root | 16 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/retention.lisp` | root | 36 | 38 | 38/0/0/0 | 0 | 0 | 2 |
 | `books/scheduler-invariants.lisp` | root | 59 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/scheduler-peers.lisp` | root | 16 | 9 | 0/0/9/0 | 0 | 0 | 0 |
+| `books/scheduler-peers.lisp` | root | 18 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/scheduler.lisp` | root | 54 | 104 | 2/0/102/0 | 0 | 0 | 0 |
 | `books/served.lisp` | root | 52 | 34 | 2/4/28/0 | 0 | 0 | 0 |
 | `books/statement-invariants.lisp` | root | 59 | 1 | 0/0/0/1 | 0 | 0 | 0 |
