@@ -34,6 +34,13 @@
 (include-book "records-canonicality")
 (include-book "frame-invariants")
 (local (include-book "arithmetic/top" :dir :system))
+; The codecs cluster withdrew its vocabulary at export (2026-09-19).  These
+; proofs open the CBOR primitives (the u16/u32 byte facts), the parse-result
+; and record accessors, so the book re-enables locally exactly the names the
+; board gives for an includer in this position.
+(local (in-theory (enable fn-codecs-includer-vocabulary
+                          fn-record-record-vocabulary
+                          fn-record-codec-vocabulary)))
 
 (defconst *fn-cpc-magic* '(102 110 45 99))          ; "fn-c"
 (defconst *fn-cpc-schema-version* 0)

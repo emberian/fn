@@ -89,7 +89,10 @@ as ghost fields, the prefix, frontier and host digest that made them.
 Crash images follow `fn-sf-crash`: marker `:old`/`:new` is live from
 `:marker-data-durable`, generation `:absent`/`:present` from
 `:candidate-data-durable`; a present generation is the exact data-durable
-candidate (the store's A-WRITE-ISOLATION premise).
+candidate (the store's A-WRITE-ISOLATION premise). That choice pair is the
+K12 shape of [the byte-level crash model](crash-model-v2.md) §3.3; K12 stays
+open there until its P8 programs are re-transcribed from the committed
+`tools/checkpoint.py`, which is a successor lane's step, not this book's.
 
 - `fn-cpp-crash-selects-old-authority-or-complete-candidate`: from any
   reachable state (`fn-cpp-statep`) and any choice, the image's marker is the
