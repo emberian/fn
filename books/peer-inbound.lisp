@@ -482,7 +482,11 @@
                                   (fn-post-sessionp
                                    fn-nntp-session-consistentp))))))
 
-(local (defthm fn-peer-consistent-forward
+; EXPORTED, and forward-chaining only: books/nntp-auth.lisp wraps this
+; session and needs the same two facts of it, exactly as
+; docs/proof-style.md exports a record's three shape facts.  A rewrite rule
+; here would fire on every consistency hypothesis in every includer.
+(defthm fn-peer-consistent-forward
   (implies (fn-peer-session-consistentp ps archive)
            (and (fn-peer-sessionp ps)
                 (fn-post-session-consistentp (fn-peer-session-base ps)
@@ -490,7 +494,7 @@
   :rule-classes :forward-chaining
   :hints (("Goal" :in-theory (e/d (fn-peer-session-consistentp)
                                   (fn-peer-sessionp
-                                   fn-post-session-consistentp))))))
+                                   fn-post-session-consistentp)))))
 
 (local (defthm fn-peer-sessionp-transfer-is-a-transfer
   (implies (fn-peer-sessionp x)
