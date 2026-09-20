@@ -293,7 +293,7 @@
       "default-unguarded": 494
     },
     "suspect_theorems": 46,
-    "export_hygiene_warnings": 73,
+    "export_hygiene_warnings": 72,
     "enabled_projection_warnings": 26,
     "teeth_form_warnings": 0,
     "include_hygiene_warnings": 87,
@@ -7605,7 +7605,7 @@
     {
       "theorem": "fn-bs-names-outcomes-of-no-ops",
       "book": "books/byte-store-scan.lisp",
-      "line": 295,
+      "line": 298,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-bs-names-outcomes and the conclusion is that branch's value"
       ]
@@ -7809,7 +7809,7 @@
     {
       "theorem": "fn-sf-stable-records-outside-the-window",
       "book": "books/store-files-invariants.lisp",
-      "line": 85,
+      "line": 88,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sf-stable-records and the conclusion is that branch's value"
       ]
@@ -8143,15 +8143,9 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
-        "theorem": "fn-sf-stable-records-outside-the-window",
-        "book": "books/store-files-invariants.lisp",
-        "line": 85,
-        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
-      },
-      {
         "theorem": "fn-sf-completed-frontier-barrier-removes-old-choice",
         "book": "books/store-files-invariants.lisp",
-        "line": 309,
+        "line": 313,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
