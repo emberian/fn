@@ -224,7 +224,7 @@ with a *second* family of rules over it, into a book
 | — | A again under `ld` | **3,000,000 steps** | **measures nothing** — aborted a theorem the certify had already passed. Recorded because I reported a finding from it and had to retract it. |
 | B | bridge as `(:rewrite :forward-chaining)` | 3,000,000 steps | **measures nothing**, same abort. Retracted; and the profile later showed it pointed the wrong way, since it *adds* to the family that was the cost. |
 | A′ | A + the preservation chain alone put aside | none, 2700 s cap | C1 still open: `Time: 2688.15 seconds (prove: 0.02, print: 0.00, other: 2688.13)`. The preservation lemmas were the wrong half. |
-| C | the **whole** cheap rule set — facts, forward-chaining fields, preservation — under `fn-tcl-cheap-rules`, closed in `tcpcl-invariants`; bridge stays a plain rewrite | none, 3600 s cap | the last attempt of this lane; its verdict is in §7 |
+| C | the **whole** cheap rule set — facts, forward-chaining fields, preservation — under `fn-tcl-cheap-rules`, closed in `tcpcl-invariants`; bridge stays a plain rewrite | none, 3600 s cap | **did not close.** C1 times out again, 3600.173 s (`certify-20260920T220703Z-1235733`); `books/tcpcl-session` 64.7 s green, `tests/acl2/tcpcl-tests` unattempted behind it |
 
 The profile that chose C: `python3 tools/proof_profile.py books/tcpcl-invariants
 fn-tcl-drive-partition-independence --host hbox --steps 40000000 --timeout 2400`
@@ -263,3 +263,42 @@ Three honest ways out, in the order I would try them:
    did not close, this is what I would recommend, and it is root's call.
 
 What must not happen is weakening C1.
+
+## 7. What this lane did about it: reverted, and why the two must land together
+
+C did not close, so option 3 was taken. **This lane's `books/tcpcl-session`
+and `books/tcpcl-invariants` changes are reverted on dev** to their state at
+`698ab55` — which keeps the `deftransition` refactor that landed between this
+lane's base and its merge, since only this lane's commits touched those two
+files after it. Dev is green again and no other lane pays for this.
+
+**The guard fix and the C1 theory work are one packet, not two.** That is the
+real lesson, and it is why re-landing the guard change alone would repeat
+this exactly. `fn-tcl-drive`'s totality test is reachable from every keystone
+in `books/tcpcl-invariants`, and that book enables `fn-tcl-session-vocabulary`
+wholesale; so any change that puts a *new* recognizer into that test changes
+the theory every C1-to-C4 proof runs in. Closing the new family (C) was
+necessary and not sufficient, because the profile's next four runes are
+`FN-TCL-STEP` (481,747 frames / 81 tries), `FN-TCL-RECV-SEGMENT` (213,787 /
+19), `FN-TCL-RECV-INIT` (182,438 / 19) and `FN-TCL-BROKEN-STREAM` (130,858 /
+57) — all transitions left open by that wholesale enable, all pre-existing,
+and all of which the cheap test now drags into goals that never saw them.
+The packet is: close those transitions in `tcpcl-invariants` (C1's hint
+already closes `fn-tcl-step` and four others by name, so the pattern is
+established), *then* make the guard cheap, and certify the two books
+together before merging either.
+
+**What survives the revert, and what does not.** The measurements in §3 and
+§4 were taken against an image built from the cheap-guard book, which is no
+longer on dev — they are evidence about a configuration this record
+preserves, not about dev's current tree. Everything else stands unchanged and
+is independent of the guard: the image builds, the lab is 6/6, the replay
+differential finding, and the dtn7 interop. The O(n^2/chunk) served-path cost
+w8 found is therefore **still open on dev**, with its cause understood, its
+cure measured, and the reason it could not land alone written down here.
+
+The reverted books are measured green, not assumed: `books/tcpcl-session`
+25.259 s, `books/tcpcl-invariants` 609.687 s, `tests/acl2/tcpcl-tests`
+0.312 s, all exit 0 on hbox with no step limit
+(`certify-20260920T230902Z-1283742`). The 609.687 s also dates the "about
+672 s" baseline this lane kept quoting from another box.
