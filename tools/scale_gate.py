@@ -274,8 +274,8 @@ class ScaleGate(deploy_gate.DeployGate):
                  max_articles=4096, start=16, post_ceiling=20.0,
                  recover_ceiling=60.0, budget_seconds=3600.0, connections=100,
                  previous_points=PREVIOUS_METHOD_POINTS, skip_previous=False,
-                 niceness=10, rss_ceiling_kib=16 * 1024 * 1024,
-                 extra_overlays=(), **kwargs):
+                 niceness=10, rss_ceiling_kib=16 * 1024 * 1024, reuse=False,
+                 adopted=None, extra_overlays=(), **kwargs):
         super().__init__(host, repo, commit, rev, tree, **kwargs)
         self.payloads = list(payloads)
         self.max_articles = max_articles
@@ -288,6 +288,8 @@ class ScaleGate(deploy_gate.DeployGate):
         self.skip_previous = skip_previous
         self.niceness = niceness
         self.rss_ceiling_kib = rss_ceiling_kib
+        self.reuse = reuse
+        self.adopted = dict(adopted or {})
         self.extra_overlays = [Path(one) for one in extra_overlays]
         self.series: dict[int, dict] = {}
         self.reader: dict = {}
@@ -333,6 +335,39 @@ class ScaleGate(deploy_gate.DeployGate):
                 "the {} octet series exited {}: {}. The points it did measure are "
                 "below; the curve past them is not measured, not absent."
                 .format(payload, step.rc, data.get("error", "no error recorded")))
+        return data
+
+    def adopt_series(self, payload: int, path: str):
+        """Take a series JSON an earlier invocation left on the host.
+
+        A series at the profile bound is hours of posting; a gate that could
+        only ever measure it from an empty store would re-post four thousand
+        articles to render a table. The adopted run is recorded as a gap
+        naming its file, because the steps that produced it are in that run's
+        record and not in this one's.
+        """
+        step = self.sh("adopt series {} octets".format(payload),
+                       "cat {}".format(path), timeout=300, expect=None)
+        data = None
+        if step.rc == 0 and step.output.strip():
+            try:
+                data = json.loads(step.output.strip().splitlines()[-1])
+            except ValueError:
+                data = None
+        if data is None:
+            self.skip("series {} octets".format(payload), "cat " + path,
+                      "the adopted series JSON at {} could not be read or parsed"
+                      .format(path))
+            return None
+        self.series[payload] = data
+        self.gaps.append(
+            "the {} octet series was measured by an earlier invocation of this gate "
+            "against the same host, tree and store, and its JSON was adopted here "
+            "from {}. Its per-step record is that run's, not this one's; the numbers "
+            "in the tables are the ones that file holds.".format(payload, path))
+        if data.get("stopped_by"):
+            self.facts.setdefault("ceiling", "{} octets: {} articles, stopped by {}".format(
+                payload, data.get("largest_passing"), data["stopped_by"]))
         return data
 
     def profile_slowest(self, payload: int):
@@ -442,12 +477,29 @@ class ScaleGate(deploy_gate.DeployGate):
     # -- the whole gate ---------------------------------------------------
     def execute(self):
         self.preflight()
-        self.ship()
+        if self.reuse:
+            # The stores under this tree are the measurement; re-shipping would
+            # `rm -rf` them.  The drivers are still refreshed from this source.
+            probe = self.sh("reuse the deployed tree",
+                            "test -d {d}/tests/bench && echo REUSING {d} || "
+                            "{{ echo NO-TREE {d}; exit 1; }}".format(d=self.deploy))
+            if probe.rc != 0:
+                raise GateError("--reuse but there is no tree at " + self.deploy)
+            self.sh("make run dir", "mkdir -p {}".format(self.run))
+            self.push_file(deploy_gate.DRIVER, "{}/drive.py".format(self.run), mode="755")
+            self.push_file(deploy_gate.CERTPICK, "{}/certpick.py".format(self.run),
+                           mode="755")
+        else:
+            self.ship()
         for overlay in self.extra_overlays:
             self.push_tree(overlay)
         self.push_file(READER_DRIVER, "{}/scale_reader.py".format(self.run), mode="755")
         self.certificates()
+        for payload, path in sorted(self.adopted.items()):
+            self.adopt_series(payload, path)
         for payload in self.payloads:
+            if payload in self.adopted:
+                continue            # adopted above; measuring it twice is not a check
             self.run_series(payload)
         largest = self.largest_store()
         if largest is None:
@@ -727,6 +779,13 @@ def main(argv=None) -> int:
     parser.add_argument("--connections", type=int, default=100)
     parser.add_argument("--server-ready", type=int, default=1800,
                         help="seconds to wait for LISTENING over a large store")
+    parser.add_argument("--reuse", action="store_true",
+                        help="do not re-ship: measure against the tree and stores "
+                             "already at $HOME/fn-deploy/<rev> on the host")
+    parser.add_argument("--adopt-series", action="append", default=[],
+                        metavar="PAYLOAD=PATH",
+                        help="take this payload size's series from a JSON an earlier "
+                             "invocation wrote on the host, instead of running it")
     parser.add_argument("--rss-ceiling-gib", type=float, default=16.0,
                         help="stop a series when the bridge process reaches this RSS")
     parser.add_argument("--nice", type=int, default=10,
@@ -747,6 +806,12 @@ def main(argv=None) -> int:
     # prints LISTENING needs longer than the deploy gate's demo store did.
     deploy_gate.SERVER_READY_SECONDS = max(deploy_gate.SERVER_READY_SECONDS,
                                            args.server_ready)
+    adopted = {}
+    for one in args.adopt_series:
+        if "=" not in one:
+            parser.error("--adopt-series takes PAYLOAD=PATH, not " + one)
+        size, _, where = one.partition("=")
+        adopted[int(size)] = where
     overlays = [Path(one).resolve() for one in args.overlay]
     gate = ScaleGate(host, repo, commit, rev, args.tree,
                      overlay=overlays[0] if overlays else None,
@@ -761,6 +826,7 @@ def main(argv=None) -> int:
                      budget_seconds=args.budget_seconds,
                      connections=args.connections, niceness=args.nice,
                      rss_ceiling_kib=int(args.rss_ceiling_gib * 1024 * 1024),
+                     reuse=args.reuse, adopted=adopted,
                      skip_previous=args.skip_previous)
     started = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     clock = time.monotonic()
