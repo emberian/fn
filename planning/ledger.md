@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 247 |
 | Certification roots in the Makefile | 246 |
 | Books inside the root closure | 246 |
-| `defthm` and `defthmd` events | 4689 |
+| `defthm` and `defthmd` events | 4691 |
 | `defun` events | 3428 |
 | Functions with verified guards | 1366 |
 | Functions declared `:verify-guards nil` and never verified | 150 |
 | Functions left at the default with an explicit guard | 1423 |
 | Functions left at the default with no guard | 489 |
-| `assert-event` checks | 4636 |
+| `assert-event` checks | 4640 |
 | `must-fail` checks | 59 |
 | `encapsulate` events | 15 |
 | Theorems flagged SUSPECT by shape | 35 |
@@ -174,7 +174,7 @@ that `make certify` requests.
 | `books/path.lisp` | root | 0 | 21 | 0/0/21/0 | 0 | 0 | 0 |
 | `books/peer-config.lisp` | root | 26 | 27 | 0/0/27/0 | 0 | 0 | 0 |
 | `books/peer-inbound-invariants.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/peer-inbound.lisp` | root | 48 | 54 | 6/4/44/0 | 0 | 0 | 0 |
+| `books/peer-inbound.lisp` | root | 50 | 54 | 6/4/44/0 | 0 | 0 | 0 |
 | `books/policy-invariants.lisp` | root | 32 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/policy.lisp` | root | 13 | 29 | 1/0/28/0 | 0 | 0 | 0 |
 | `books/principal-invariants.lisp` | root | 19 | 0 | 0/0/0/0 | 0 | 0 | 1 |
@@ -283,7 +283,7 @@ that `make certify` requests.
 | `tests/acl2/nntp-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 2 | 0 |
 | `tests/acl2/nntp-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 165 | 0 | 0 |
 | `tests/acl2/node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 92 | 0 | 0 |
-| `tests/acl2/owner-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 151 | 0 | 0 |
+| `tests/acl2/owner-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 155 | 0 | 0 |
 | `tests/acl2/peer-inbound-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 147 | 0 | 0 |
 | `tests/acl2/policy-tests.lisp` | root | 0 | 27 | 0/0/0/27 | 66 | 0 | 0 |
 | `tests/acl2/principal-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 43 | 0 | 0 |

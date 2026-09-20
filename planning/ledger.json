@@ -253,9 +253,9 @@
     "books": 247,
     "books_in_root_closure": 246,
     "roots": 246,
-    "theorems": 4689,
+    "theorems": 4691,
     "functions": 3428,
-    "assert_events": 4636,
+    "assert_events": 4640,
     "must_fails": 59,
     "encapsulates": 15,
     "guards": {
@@ -3048,7 +3048,7 @@
       "book": "books/peer-inbound.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 48,
+      "theorems": 50,
       "functions": 54,
       "guards": {
         "verified": 6,
@@ -5896,7 +5896,7 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 151,
+      "assert_events": 155,
       "must_fails": 0,
       "defconsts": 56,
       "defmacros": 0,
