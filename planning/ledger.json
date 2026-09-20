@@ -253,21 +253,21 @@
     "books": 247,
     "books_in_root_closure": 246,
     "roots": 246,
-    "theorems": 4676,
+    "theorems": 4689,
     "functions": 3428,
-    "assert_events": 4634,
+    "assert_events": 4636,
     "must_fails": 59,
     "encapsulates": 15,
     "guards": {
-      "verified": 1360,
-      "declared-off": 156,
+      "verified": 1366,
+      "declared-off": 150,
       "default-guarded": 1423,
       "default-unguarded": 489
     },
     "suspect_theorems": 35,
     "export_hygiene_warnings": 67,
     "teeth_form_warnings": 0,
-    "include_hygiene_warnings": 87,
+    "include_hygiene_warnings": 88,
     "host_names_warnings": 0,
     "hand_written_record_warnings": 26
   },
@@ -2996,7 +2996,7 @@
       "book": "books/peer-config.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 24,
+      "theorems": 26,
       "functions": 27,
       "guards": {
         "verified": 0,
@@ -3048,15 +3048,15 @@
       "book": "books/peer-inbound.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 37,
+      "theorems": 48,
       "functions": 54,
       "guards": {
-        "verified": 0,
-        "declared-off": 10,
+        "verified": 6,
+        "declared-off": 4,
         "default-guarded": 44,
         "default-unguarded": 0
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 6,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 2,
@@ -5921,7 +5921,7 @@
         "default-unguarded": 5
       },
       "verify_guards_events": 0,
-      "assert_events": 145,
+      "assert_events": 147,
       "must_fails": 0,
       "defconsts": 47,
       "defmacros": 0,
@@ -7965,6 +7965,13 @@
         "line": 5,
         "include": "crypto-seam-tests",
         "included": "tests/acl2/crypto-seam-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/peer-inbound-tests.lisp",
+        "line": 8,
+        "include": "../../books/peer-inbound-invariants",
+        "included": "books/peer-inbound-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
