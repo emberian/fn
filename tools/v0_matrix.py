@@ -81,7 +81,27 @@ import twonode_gate                                            # noqa: E402
 from deploy_gate import (DEFAULT_HOST, EXIT_OK, EXIT_REFUSED,   # noqa: E402
                          EXIT_UNCERTAIN, GROUPS, GateError, Host, LocalHost,
                          SshHost, Step, resolve)
-from twonode_gate import NodeSpec, article                      # noqa: E402
+from twonode_gate import NodeSpec                               # noqa: E402
+
+
+def article(msgid: str, group: str, subject: str, body: str, path: str = "") -> bytes:
+    """An article as octets, CRLF, with a Date.
+
+    `tools/twonode_gate.py`'s builder omits `Date`, and the local store CLI
+    accepts an article without one -- but an fn node refuses it in transit
+    with `437 transfer rejected; no Injection-Date or Date` (RFC 5536
+    section 3.1.1 makes Date mandatory), which is correct and which made
+    every transfer row of the sixth run read as a refusal. Every article the
+    matrix offers therefore carries one.
+    """
+    stamp = dt.datetime.now(dt.timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
+    headers = ["Path: {}!not-for-mail".format(path)] if path else []
+    headers += ["From: gate@example.invalid",
+                "Subject: {}".format(subject),
+                "Newsgroups: {}".format(group),
+                "Date: {}".format(stamp),
+                "Message-ID: {}".format(msgid)]
+    return ("\r\n".join(headers) + "\r\n\r\n" + body + "\r\n").encode()
 
 MATRIX_JSON = "planning/v0-matrix.json"
 SCHEMA_VERSION = 1
@@ -669,8 +689,15 @@ def labels(caps):
 # audited in the reverse direction: XOVER, XHDR, XPAT and LISTGROUP are not
 # capability labels of their own (LISTGROUP is READER's), so dispatching them
 # without a label of their own is not a defect.
+# AUTHINFO and STARTTLS are deliberately NOT here: both are advertised
+# exactly while they are still usable (RFC 4643 section 2.3, RFC 4642
+# section 2.2.2), so a connection that has authenticated sees the command
+# work and the label gone, which is the rule and not a defect --
+# V0-AUTH-ADVERTISED and V0-AUTH-WITHDRAWN are the rows for it.  MODE-READER
+# is advertised by a MODE-SWITCHING server (RFC 3977 section 5.3), and a
+# server that is always in reader mode answering MODE READER is not one.
 RFC_LABELS = ("READER", "POST", "IHAVE", "STREAMING", "OVER", "HDR", "LIST",
-              "NEWNEWS", "AUTHINFO", "STARTTLS", "MODE-READER")
+              "NEWNEWS")
 # The verb is absent, or present and closed to this caller.  Either way the
 # command is not available and the capability must not be advertised.
 UNAVAILABLE = ("500", "501", "502", "440", "480", "483")
@@ -759,7 +786,7 @@ PROBES = (
     ("LIST", "LIST ACTIVE", False),
     ("NEWNEWS", "NEWNEWS * 20200101 000000 GMT", False),
     ("AUTHINFO", "AUTHINFO USER pin-probe", False),
-    ("STARTTLS", "STARTTLS", False),
+    ("STARTTLS", "STARTTLS", "handshake"),
     ("MODE-READER", "MODE READER", False),
     ("XOVER", "XOVER 1", False),
     ("XHDR", "XHDR Subject 1", False),
@@ -798,7 +825,15 @@ def pins(args):
             # A command that opened a transfer is closed with an empty block
             # so the server is left in a clean state and the process is not
             # holding a half-open transfer when the next probe connects.
-            if opens and reply[:1] in "34":
+            if opens == "handshake" and reply[:1] == "3":
+                # 382 leaves the session waiting for a TLS handshake.  A
+                # plaintext QUIT after it is never read, the probe blocks
+                # until its timeout and the SERVER stays wedged on that
+                # connection -- which is what made every later phase of the
+                # sixth run time out.  Drop the socket instead.
+                probe.sock.close()
+                continue
+            if opens is True and reply[:1] in "34":
                 probe.sock.sendall(b".\r\n")
                 try:
                     answered[label + " CLOSE"] = probe.line()
@@ -1361,6 +1396,32 @@ command -v swarm-build >/dev/null && echo swarm-build=yes || echo swarm-build=no
 
     def uncertified(self, *books) -> list:
         return [b for b in books if self.support.get("cert-" + b) == "no"]
+
+    # -- the shared driver, with one adaptation -----------------------------
+    @staticmethod
+    def feed_driver() -> str:
+        """`tools/twonode_gate.py`'s driver, with a Date on the loop article.
+
+        The loop article the `relay` phase builds by hand carries no `Date`,
+        and an fn node refuses a transfer without one (`437 transfer
+        rejected; no Injection-Date or Date`, RFC 5536 section 3.1.1). The
+        loop row would then read `refused` for the wrong reason -- the
+        missing header rather than RFC 5537 section 3.5's Path check -- and
+        a row that is right by accident is worse than one that fails.
+        """
+        source = twonode_gate.FEED_DRIVER
+        old = ('    loop = ["Path: {}!not-for-mail".format(args.loop_identity),\n'
+               '            "From: gate@example.invalid", "Subject: loop", '
+               '"Newsgroups: " + args.group,\n')
+        new = ('    import email.utils\n'
+               '    loop = ["Path: {}!not-for-mail".format(args.loop_identity),\n'
+               '            "From: gate@example.invalid", "Subject: loop", '
+               '"Newsgroups: " + args.group,\n'
+               '            "Date: " + email.utils.formatdate(usegmt=True),\n')
+        if old not in source:
+            raise GateError("tools/twonode_gate.py's loop article moved; the v0 "
+                            "matrix's Date adaptation no longer applies")
+        return source.replace(old, new)
 
     # -- ports --------------------------------------------------------------
     def allocate_ports(self):
@@ -2221,21 +2282,24 @@ else echo NONE; fi
                              or "it skipped every direction"),
                          invocation="twonode_gate.scenario_owner_feed")
             return
-        if any("440" in x.output for x in posts):
+        replies = [self.payload(x).get("result", "") or x.first_line for x in posts]
+        if any(str(r)[:3] in ("440", "480", "483", "502") for r in replies):
             self.blocked(self.FEED_KEYS,
                          "the POST that would give the feed something to offer drew "
                          "440: `tools/twonode_gate.py`'s `post` driver phase does not "
                          "authenticate, and posting on this tree is the authenticated "
                          "principal's allowance (fn-auth-postingp, RFC 3977 section "
-                         "6.3.1.1). The feed itself was never reached",
+                         "6.3.1.1). The feed itself was never reached. The replies "
+                         "were: {}".format(" ; ".join(str(r)[:80] for r in replies)),
                          invocation=posts[0].command)
             return
         worst = next((x for x in posts if x.rc != 0), None)
         self.emit("V0-FEED-QUEUE", ACCEPTED if worst is None else exit_verdict(worst.rc),
                   posts[0].command,
-                  "{} of {} POSTs through the running server were accepted, so the "
-                  "feed had something durable to offer".format(
-                      sum(1 for x in posts if x.rc == 0), len(posts)),
+                  "{} of {} POSTs through the running server were accepted ({}), so "
+                  "the feed had something durable to offer".format(
+                      sum(1 for x in posts if x.rc == 0), len(posts),
+                      " ; ".join(str(r)[:60] for r in replies)),
                   exit_code=0 if worst is None else worst.rc, limit=limit)
         if not waits:
             self.blocked(("V0-FEED-OFFER", "V0-FEED-ONCE"),
@@ -2930,7 +2994,7 @@ else echo NONE; fi
         self.preflight()
         self.a.assigned_port = self.b.assigned_port = 0
         self.ship()
-        self.push_file(twonode_gate.FEED_DRIVER, "{}/feed.py".format(self.run), mode="755")
+        self.push_file(self.feed_driver(), "{}/feed.py".format(self.run), mode="755")
         self.push_file(MATRIX_DRIVER, "{}/matrix.py".format(self.run), mode="755")
         self.certificates()
         self.probe_tree()
