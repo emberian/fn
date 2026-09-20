@@ -998,7 +998,22 @@
       "assumptions": [],
       "status": "in-progress",
       "evidence": [],
-      "progress_note": "books/owner-feed.lisp admits with no open form and tests/acl2/owner-feed-tests.lisp runs 98 assertions green (laptop ACL2 8.7, ld over books/peer-feed-invariants then the book, 2026-09-20, lane w10/owner-feed). NOT CERTIFIED: books/owner-feed includes books/peer-feed-invariants, which fails at fn-feed-apply-record-preserves-feedp (residue: the attempt bound in the :feed-sent arm), so no certificate exists for this closure. The owner-side statement over fn-own-step is open because books/served has no certificate on dev.",
+      "progress_note": "books/owner-feed.lisp admits with no open form and tests/acl2/owner-feed-tests.lisp runs 98 assertions green (laptop ACL2 8.7, ld over books/peer-feed-invariants then the book, 2026-09-20, lane w10/owner-feed). NOT CERTIFIED: books/owner-feed includes books/peer-feed-invariants, which fails at fn-feed-apply-record-preserves-feedp (residue: the attempt bound in the :feed-sent arm), so no certificate exists for this closure. The owner-side statement over fn-own-step is open because books/served has no certificate on dev."
+    },
+    {
+      "id": "PRF-030",
+      "title": "Provenance is typed, and its wire form is lossless and legacy-compatible",
+      "statement": "Every string is an admissible provenance (the :legacy kind), so widening the retention evidence slot from stringp to fn-provp changes no stored value; the rendered form of each typed kind is exactly the string that kind's writer produced before the widening; and a provenance the codec can write is the provenance it reads back from its wire form.",
+      "milestone": "M4",
+      "requirements": [
+        "RET-007"
+      ],
+      "depends_on": [
+        "PRF-004"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "note": "The transit path's DURABLE provenance is not covered: fn-peer-injection-arguments still passes fn-peer-evidence's rendering, and fn-peer-evidence-is-the-legacy-rendering is the equation between the typed record and that string, not evidence that the record reaches the store. books/peer-inbound and books/peer-inbound-invariants have no certificate on dev (blocked on fn-peer-echo-reply-effects-well-formed), so those two events are admitted, not certified, and are not listed here.",
       "events": [
         "fn-provp-of-string",
         "fn-prov-render-of-post",
