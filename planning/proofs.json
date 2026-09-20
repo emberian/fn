@@ -817,7 +817,8 @@
       "assumptions": [],
       "status": "planned",
       "evidence": [],
-      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
+      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
+      "note": "Events are generated and their book `books/stx-carrier` is certified, but the statement of the target is wider than what has certified: `fn-stx-field-round-trip` and `fn-stx-field-accepted-input-is-canonical` are in `books/stx-invariants`, which errors on `dev` `52eb0db` because `books/stx-verify` is open at `fn-stx-decimal-octets-are-printable`. Stays `in-progress`. Note also that section 6 of the design states `fn-stx-field-accepted-input-is-canonical` over a free `payload` and is FALSE as written; the book states the payload-free form over `fn-stx-header-value-parts`, which is what the field actually carries."
     },
     {
       "id": "PRF-020",
@@ -835,7 +836,8 @@
       ],
       "status": "planned",
       "evidence": [],
-      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
+      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
+      "note": "Two things keep this `in-progress`, and only one is certification. (1) `books/stx-verify` is open at one form. (2) The subject rule is unmet even when it closes: the statement covers the verdict on the transit path, and `fn-stx-transit-verdict-is-fn-stx-verdict` names `fn-peer-transfer`, so it needs the peering K1 path before any certified theorem is about the function a host calls."
     },
     {
       "id": "PRF-021",
