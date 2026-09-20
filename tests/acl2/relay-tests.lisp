@@ -200,6 +200,7 @@
 (assert-event (equal (fn-relay-undertake *ry-unknown-terms* "up-work-1" "receipt-u" t)
                      (list nil *ry-unknown-terms*)))
 (assert-event (not (fn-relay-kindp :destination)))
+(assert-event (fn-relay-terms-tablep *ry-terms*))
 (assert-event (not (fn-relay-terms-tablep '(("terms-x" . :destination)))))
 ; A-POLICY nil is refused by the receiver's entry point, and so here.
 (assert-event (equal (fn-relay-undertake *ry-undertaking* "up-work-1" "receipt-1" nil)

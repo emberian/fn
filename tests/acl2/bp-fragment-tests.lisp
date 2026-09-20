@@ -236,7 +236,9 @@
                                   (len '(10 20 30 . 7)))
                (list :ok '(10 20 30 . 7)))))))
 
-; fn-bpf-reassemble-ok-agrees-with-every-fragment
+; fn-bpf-reassemble-ok-agrees-with-every-fragment is OPEN: it is commented
+; out at books/bp-fragment-invariants.lisp:245 (the event at :248) with
+; its reason, so what follows is a witness for a theorem NOT proved.
 ;   without `member-equal`: a fragment that was not consumed says nothing.
 ;   Stated generally over free `fs` and `total`, the negated goal drives the
 ;   rewriter past its call-depth limit inside `fn-bpf-reassemble`, so the tooth

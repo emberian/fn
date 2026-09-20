@@ -283,7 +283,7 @@
     "roots": 274,
     "theorems": 5548,
     "functions": 3926,
-    "assert_events": 5263,
+    "assert_events": 5275,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
@@ -6377,7 +6377,7 @@
         "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 81,
+      "assert_events": 82,
       "must_fails": 0,
       "defconsts": 15,
       "defmacros": 1,
@@ -6483,7 +6483,7 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 165,
+      "assert_events": 167,
       "must_fails": 0,
       "defconsts": 65,
       "defmacros": 0,
@@ -6585,7 +6585,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 107,
+      "assert_events": 108,
       "must_fails": 0,
       "defconsts": 38,
       "defmacros": 0,
@@ -6661,7 +6661,7 @@
         "default-unguarded": 12
       },
       "verify_guards_events": 0,
-      "assert_events": 43,
+      "assert_events": 44,
       "must_fails": 0,
       "defconsts": 5,
       "defmacros": 0,
@@ -6687,7 +6687,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 100,
+      "assert_events": 103,
       "must_fails": 0,
       "defconsts": 10,
       "defmacros": 0,
@@ -6764,7 +6764,7 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 61,
+      "assert_events": 62,
       "must_fails": 4,
       "defconsts": 35,
       "defmacros": 0,
@@ -7319,7 +7319,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 60,
+      "assert_events": 62,
       "must_fails": 0,
       "defconsts": 7,
       "defmacros": 0,
@@ -7371,7 +7371,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 58,
+      "assert_events": 59,
       "must_fails": 0,
       "defconsts": 29,
       "defmacros": 0,

@@ -49,6 +49,9 @@
  (with-guard-checking :none
   (equal (fn-prin-preimage '(300) '(1))
          (fn-prin-preimage '(301) '(1)))))
+; The separating pair: the seed shape IS a public key and `(300)` is not,
+; so the line below refutes the shape and not the recogniser.
+(assert-event (fn-sig-public-key-p *fn-t-seed-alice*))
 (assert-event (not (fn-sig-public-key-p '(300))))
 
 ; A-CRYPTO made visible: under a colliding digest two keys share an id.
