@@ -403,6 +403,66 @@ class WaitTests(unittest.TestCase):
                 farm.wait("hbox", "run-z", root, poll=30, timeout_seconds=600)
             self.assertEqual(slept, [30])  # one poll interval, not a busy loop
 
+    def test_the_timeout_path_fetches_and_publishes_before_giving_up(self):
+        """Returning 3 with nothing fetched loses the run's finished pairs.
+
+        The run keeps going on the box; the lane that gave up waiting has
+        left every pair it paid for behind, and the next lane there certifies
+        them again.  The timeout brings home what exists at that moment and
+        says what it left running.
+        """
+        fake = Fake(["running"] * 3, log=self.LOG)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            (root / "books").mkdir()
+            errors = io.StringIO()
+            with mock.patch.object(farm, "RUN", fake), \
+                    mock.patch.object(farm, "SLEEP", lambda seconds: None), \
+                    mock.patch.dict(os.environ,
+                                    {"FN_CERT_CACHE": str(root / "cache")}), \
+                    contextlib.redirect_stdout(io.StringIO()), \
+                    contextlib.redirect_stderr(errors):
+                self.assertEqual(farm.wait("hbox", "run-t", root, poll=30,
+                                           timeout_seconds=0), 3)
+            self.assertTrue((root / "build/farm/run-t.log").is_file())
+            self.assertTrue(any("--include=*.cert" in command
+                                for command in fake.rsyncs()))
+            self.assertTrue(any("tools/certs.py" in script and "publish" in script
+                                for script in fake.scripts()))
+            said = errors.getvalue()
+            self.assertIn("left running", said)
+            self.assertIn("7 books were certified", said)
+            self.assertIn("farm.py wait hbox run-t", said)
+
+    def test_the_host_cache_override_reaches_install_publish_and_the_runner(self):
+        fake = Fake(["0"], log=self.LOG,
+                    certs="install: 2 books, cache /scratch/cache\n"
+                          "  installed 1, kept identical local 0, "
+                          "no cached pair 1, foreign-local 0\n")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            (root / "books").mkdir()
+            with driving(fake, root / "cache"):
+                identifier = farm.submit("hbox", root, ["books/alpha"], jobs=2,
+                                         timeout_seconds=60, affected_by=[],
+                                         cache="/scratch/cache")
+            installs = [s for s in fake.scripts()
+                        if "tools/certs.py" in s and s.endswith("install")]
+            self.assertEqual(len(installs), 1)
+            self.assertIn("--cache /scratch/cache", installs[0])
+            self.assertIn("FN_CERT_CACHE=/scratch/cache", fake.runner_script())
+            record = json.loads(
+                (root / "build/farm" / f"{identifier}.json").read_text())
+            self.assertEqual(record["cache"], "/scratch/cache")
+            # `wait` reuses what `submit` recorded, so the sweep publishes
+            # into the same cache the install read.
+            with driving(fake, root / "cache"):
+                farm.wait("hbox", identifier, root, poll=1, timeout_seconds=60)
+            sweeps = [s for s in fake.scripts()
+                      if "tools/certs.py" in s and "publish" in s]
+            self.assertTrue(sweeps)
+            self.assertIn("--cache /scratch/cache", sweeps[-1])
+
     def test_progress_parsing_ignores_unrelated_output(self):
         fields = farm.parse_progress(
             "Warning: something\nSTATUS running\nMARKERS 12\nTAIL a b c\n")

@@ -1003,8 +1003,8 @@ def if_branches(form: object, found: list | None = None) -> list:
 # export and teeth lints
 # --------------------------------------------------------------------------
 #
-# Five WARN lints, all counted in the generated ledger.  None is a claim
-# that a theorem is wrong: the first three name the ways this tree has
+# Six WARN lints, all counted in the generated ledger.  None is a claim
+# that a theorem is wrong: the first four name the ways this tree has
 # repeatedly made later proofs expensive, the fourth (below, over the host
 # files) names the way it has repeatedly made bridges fail to start, and the
 # fifth counts the records still written out by hand.
@@ -1014,6 +1014,10 @@ def if_branches(form: object, found: list | None = None) -> list:
 #   book that needs them: `:rule-classes nil`, `local`, `defthmd`, or a
 #   closing `in-theory (disable ...)`.  One such rule left enabled rewrites
 #   every downstream goal out of accessor vocabulary.
+# * Enabled projection.  The same hazard seen from the other side: an
+#   accessor whose own definition rune ships enabled, while other books state
+#   theorems over it.  One `enable` downstream and those theorems stop
+#   matching, with no error and no failing book.
 # * Teeth form.  A `must-fail` whose body is a bare `thm` over free variables
 #   shows only that ACL2 did not prove a general claim, which a typo also
 #   achieves.  Teeth are concrete: a specific violating value.
@@ -1172,6 +1176,98 @@ def export_hygiene(tree: "Tree") -> list[dict]:
             if reason:
                 findings.append({"theorem": theorem.name, "book": book.path,
                                  "line": theorem.line, "reason": reason})
+    return findings
+
+
+# `logic_body` reaches through `mbe`; these are what is left when an
+# accessor is nothing but a walk into a structure.  A body built from only
+# these and the function's single formal computes nothing: its whole content
+# is WHERE the value is, which is exactly what a caller's lemma is stated
+# about and exactly what an unfold destroys.
+SELECTORS = {
+    "car", "cdr", "caar", "cadr", "cdar", "cddr", "caaar", "caadr", "cadar",
+    "caddr", "cdaar", "cdadr", "cddar", "cdddr", "cadddr", "cddddr",
+    "nth", "first", "second", "third", "fourth", "fifth", "sixth", "seventh",
+    "eighth", "ninth", "tenth", "rest", "assoc", "assoc-equal", "assoc-eq",
+    "mbe", "the",
+}
+
+
+def selector_chain(form: object, variable: str) -> bool:
+    """Is `form` a walk into `variable` through selectors and nothing else?"""
+    if isinstance(form, Sym):
+        return str(form) == variable
+    if isinstance(form, (int, float, str)):
+        return True
+    if isinstance(form, list):
+        if head(form) == "quote":
+            return True
+        if head(form) in SELECTORS:
+            return all(selector_chain(item, variable) for item in form[1:])
+    return False
+
+
+def projection_shaped(function: Function) -> bool:
+    """One formal, and a body that only selects out of it."""
+    if (function.local or function.program
+            or not isinstance(function.formals, list)
+            or len(function.formals) != 1
+            or not isinstance(function.formals[0], Sym)):
+        return False
+    return selector_chain(logic_body(function), str(function.formals[0]))
+
+
+def enabled_projection(tree: "Tree") -> list[dict]:
+    """Accessors a book exports ENABLED that other books state theorems over.
+
+    The hazard is silent and one `enable` away.  A projection whose
+    `(:definition)` rune is enabled can be unfolded, and the moment anything
+    downstream unfolds it every lemma stated over the accessor stops
+    matching: the goal is in selector vocabulary and the rules are in
+    accessor vocabulary.  Nothing errors and no book fails; the proofs that
+    used to close start splitting, and the cost lands on whoever is next.
+    This tree has paid that bill three times in one day through the
+    equivalent hazard for whole-state recognizers.
+
+    The criterion is deliberately narrow, so that a finding is a defect and
+    not a style note.  All three must hold: the function is a PROJECTION --
+    one formal, a body that is only a walk into it, so unfolding replaces a
+    name with a `cadr` chain and buys nothing; its own book leaves the name
+    out of its closing withdrawal, so the definition rune ships enabled; and
+    a theorem in ANOTHER book is stated over it, so there is something for
+    the unfold to break.  A projection nothing else mentions costs nobody
+    anything, and one its book withdraws is already safe.
+
+    The repair is one name in the book's existing `deftheory`; this lint
+    does not make it, and a book is not wrong to export an accessor it means
+    to be unfolded -- it is wrong to do so while other books reason over it.
+    """
+    stated_in: dict[str, set[str]] = {}
+    for book in tree.books.values():
+        for theorem in book.theorems:
+            for name in calls(theorem.statement):
+                stated_in.setdefault(name, set()).add(book.path)
+    findings: list[dict] = []
+    for book in sorted(tree.books.values(), key=lambda b: b.path):
+        for function in book.functions:
+            if not projection_shaped(function):
+                continue
+            if function.name in book.disabled_rules:
+                continue
+            elsewhere = sorted(stated_in.get(function.name, set()) - {book.path})
+            if not elsewhere:
+                continue
+            findings.append({
+                "function": function.name, "book": book.path,
+                "line": function.line, "stated_in": elsewhere,
+                "reason": ("enabled-projection: the definition rune ships "
+                           "enabled and {} state{} theorems over it, so one "
+                           "downstream unfold stops those theorems matching"
+                           .format(
+                               "{} books".format(len(elsewhere))
+                               if len(elsewhere) != 1 else "1 book",
+                               "" if len(elsewhere) != 1 else "s")),
+            })
     return findings
 
 
@@ -1796,6 +1892,7 @@ def hand_written_record(tree: "Tree") -> list[dict]:
 
 def lint_findings(tree: "Tree") -> dict[str, list[dict]]:
     return {"export_hygiene": export_hygiene(tree),
+            "enabled_projection": enabled_projection(tree),
             "teeth_form": teeth_form(tree),
             "include_hygiene": include_hygiene(tree),
             "host_names": host_names(tree),
@@ -1809,6 +1906,10 @@ def lint_warnings(tree: "Tree | None" = None) -> list[str]:
     for entry in findings["export_hygiene"]:
         lines.append(f"export hygiene: {entry['book']}:{entry['line']}: "
                      f"{entry['theorem']}: {entry['reason']}")
+    for entry in findings["enabled_projection"]:
+        lines.append(f"enabled projection: {entry['book']}:{entry['line']}: "
+                     f"{entry['function']}: {entry['reason']} "
+                     f"({', '.join(entry['stated_in'][:4])})")
     for entry in findings["teeth_form"]:
         lines.append(f"teeth form: {entry['book']}:{entry['line']}: "
                      f"{entry['check']}: {entry['reason']}")
@@ -1935,6 +2036,7 @@ def build_ledger(tree: Tree) -> dict:
     }
     lints = lint_findings(tree)
     totals["export_hygiene_warnings"] = len(lints["export_hygiene"])
+    totals["enabled_projection_warnings"] = len(lints["enabled_projection"])
     totals["teeth_form_warnings"] = len(lints["teeth_form"])
     totals["include_hygiene_warnings"] = len(lints["include_hygiene"])
     totals["host_names_warnings"] = len(lints["host_names"])
@@ -1987,6 +2089,8 @@ def ledger_markdown(ledger: dict) -> str:
         f"| `encapsulate` events | {totals['encapsulates']} |",
         f"| Theorems flagged SUSPECT by shape | {totals['suspect_theorems']} |",
         f"| Export-hygiene warnings | {totals['export_hygiene_warnings']} |",
+        f"| Enabled-projection warnings | "
+        f"{totals['enabled_projection_warnings']} |",
         f"| Teeth-form warnings | {totals['teeth_form_warnings']} |",
         f"| Include-hygiene warnings | {totals['include_hygiene_warnings']} |",
         f"| Host-names warnings | {totals['host_names_warnings']} |",
@@ -1995,14 +2099,25 @@ def ledger_markdown(ledger: dict) -> str:
         "",
         "## Lints",
         "",
-        "Five WARN lints, counted above and listed in full under `lints` in",
+        "Six WARN lints, counted above and listed in full under `lints` in",
         "[`ledger.json`](ledger.json). *Export hygiene* counts theorems a book",
         "leaves enabled whose shape rewrites downstream goals out of accessor",
         "vocabulary: an equality between two one-argument applications, or a",
         "`consp`/`len` conclusion backchained to a `len` hypothesis. A theorem",
         "that is `local`, `defthmd`, `:rule-classes nil`, or disabled by a",
         "closing `in-theory` -- directly, or through a `deftheory` name the",
-        "book defines and then withdraws -- is not counted. *Teeth form*",
+        "book defines and then withdraws -- is not counted.",
+        "*Enabled projection* counts accessors a book ships with the",
+        "definition rune ENABLED while a theorem in another book is stated",
+        "over them: one formal, a body that is only a walk into it, absent",
+        "from the book's closing withdrawal, and mentioned in another book's",
+        "theorem statement. Nothing is wrong until something downstream",
+        "unfolds one, and then every lemma over that accessor silently stops",
+        "matching -- the same shape as a whole-state recognizer left enabled",
+        "in a vocabulary, which cost this tree an 8844-subgoal split, a run",
+        "killed at the timeout and a two-million-step induction in one day",
+        "(2026-09-20). The repair is one name in the book's existing",
+        "`deftheory`; the lint does not make it. *Teeth form*",
         "counts `must-fail`",
         "checks whose body is a bare `thm`/`defthm` mentioning no constant, so",
         "nothing in particular is refuted. *Include hygiene* counts non-local",

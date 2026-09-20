@@ -24,6 +24,7 @@ stale. Counts describe artifacts, not coverage; see
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 44 |
 | Export-hygiene warnings | 72 |
+| Enabled-projection warnings | 26 |
 | Teeth-form warnings | 0 |
 | Include-hygiene warnings | 87 |
 | Host-names warnings | 33 |
@@ -31,14 +32,25 @@ stale. Counts describe artifacts, not coverage; see
 
 ## Lints
 
-Five WARN lints, counted above and listed in full under `lints` in
+Six WARN lints, counted above and listed in full under `lints` in
 [`ledger.json`](ledger.json). *Export hygiene* counts theorems a book
 leaves enabled whose shape rewrites downstream goals out of accessor
 vocabulary: an equality between two one-argument applications, or a
 `consp`/`len` conclusion backchained to a `len` hypothesis. A theorem
 that is `local`, `defthmd`, `:rule-classes nil`, or disabled by a
 closing `in-theory` -- directly, or through a `deftheory` name the
-book defines and then withdraws -- is not counted. *Teeth form*
+book defines and then withdraws -- is not counted.
+*Enabled projection* counts accessors a book ships with the
+definition rune ENABLED while a theorem in another book is stated
+over them: one formal, a body that is only a walk into it, absent
+from the book's closing withdrawal, and mentioned in another book's
+theorem statement. Nothing is wrong until something downstream
+unfolds one, and then every lemma over that accessor silently stops
+matching -- the same shape as a whole-state recognizer left enabled
+in a vocabulary, which cost this tree an 8844-subgoal split, a run
+killed at the timeout and a two-million-step induction in one day
+(2026-09-20). The repair is one name in the book's existing
+`deftheory`; the lint does not make it. *Teeth form*
 counts `must-fail`
 checks whose body is a bare `thm`/`defthm` mentioning no constant, so
 nothing in particular is refuted. *Include hygiene* counts non-local

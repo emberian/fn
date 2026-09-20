@@ -10,6 +10,8 @@ ssh through bash on this machine with HOME pointed at DIR, and `--overlay`
 puts the fake entry points in `tests/deploy_gate_fake/` over the deployed
 tree.  A green run here says the harness works; it says nothing about fn.
 """
+import contextlib
+import io
 import json
 import os
 from pathlib import Path
@@ -174,6 +176,121 @@ class DryRunTests(unittest.TestCase):
         self.assertIn("ACL2 Version 8.7 fake", self.text)
         self.assertIn("| python3 |", self.text)
         self.assertIn("### Commands in full", self.text)
+
+
+class RepoRootTests(unittest.TestCase):
+    """Evidence goes to the tree the command was invoked from.
+
+    The defect: a lane working in `build/lanes/w6-peering-inbound-2` ran
+    `tools/twonode_gate.py` and `planning/evidence/twonode-<rev>-<date>.md`
+    was written into the MAIN checkout `/Users/ember/dev/fn`, where it sat
+    untracked and blocked a merge.  The cause is that every harness anchored
+    its evidence on `Path(__file__).resolve().parents[1]` -- the tree the
+    SCRIPT lives in -- so running the main checkout's copy of a harness from
+    a lane writes into the main checkout.  A relative `--evidence` was worse
+    still: it followed the process's working directory.
+
+    This builds a real repository with a real secondary `git worktree` and
+    resolves from inside it, because that is the shape that broke: a
+    `git rev-parse --show-toplevel` from a worktree answers the worktree, and
+    nothing about the two trees' contents distinguishes them.
+    """
+
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        base = Path(self.directory.name).resolve()
+        self.main = base / "main"
+        for marker in deploy_gate.FN_TREE_MARKERS:
+            (self.main / marker).mkdir(parents=True)
+            # git tracks files, not directories, so a marker directory that
+            # holds nothing does not reach the secondary worktree at all.
+            (self.main / marker / "kept").write_text("# a stand-in\n")
+        self.git("init", "-q", "-b", "dev", cwd=self.main)
+        self.git("add", "-A", cwd=self.main)
+        # `commit.gpgsign` in the developer's global config makes this commit
+        # block on a signing agent, which a unit test must never depend on.
+        self.git("-c", "user.email=t@example.invalid", "-c", "user.name=t",
+                 "-c", "commit.gpgsign=false", "-c", "gpg.format=openpgp",
+                 "commit", "-qm", "tree", cwd=self.main)
+        self.lane = base / "lane"
+        self.git("worktree", "add", "-q", "-b", "lane", str(self.lane), "dev",
+                 cwd=self.main)
+
+    def git(self, *arguments, cwd):
+        # A bounded wait: git that blocks on a prompt is a hung test suite,
+        # not a slow one.
+        subprocess.run(["git", "-C", str(cwd), *arguments], check=True,
+                       stdin=subprocess.DEVNULL, timeout=60,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    def test_a_secondary_worktree_is_the_root_not_the_checkout_it_came_from(self):
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(deploy_gate.repo_root(self.lane), self.lane)
+            self.assertEqual(deploy_gate.repo_root(self.main), self.main)
+        # The same answer with no argument, which is how the harnesses call
+        # it: the process's working directory decides, not this file's path.
+        with contextlib.chdir(self.lane / "books"), \
+                contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(deploy_gate.repo_root(), self.lane)
+
+    def test_two_fn_trees_in_play_are_announced_on_every_run(self):
+        """Three blocked merges came from an ambiguity nothing printed.
+
+        The lane's tree and the harness file's tree hold the same file
+        names, so a record written to the wrong one looks right until git
+        refuses the merge. Saying which was chosen makes the next occurrence
+        readable in the log.
+        """
+        printed, out = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stderr(printed), contextlib.redirect_stdout(out):
+            chosen = deploy_gate.repo_root(self.lane)
+        self.assertEqual(chosen, self.lane)
+        # stdout belongs to the harness's own report, which a caller parses.
+        self.assertEqual(out.getvalue(), "")
+        said = printed.getvalue()
+        self.assertIn(str(self.lane), said)
+        self.assertIn(str(deploy_gate.ROOT), said)
+        self.assertIn("INVOKED from", said)
+        # Nothing to announce when the two are the same tree.
+        quiet = io.StringIO()
+        with contextlib.redirect_stderr(quiet):
+            deploy_gate.repo_root(deploy_gate.ROOT)
+        self.assertEqual(quiet.getvalue(), "")
+
+    def test_a_directory_outside_any_fn_tree_falls_back_to_this_file_s_tree(self):
+        outside = Path(self.directory.name).resolve() / "elsewhere"
+        outside.mkdir()
+        self.assertEqual(deploy_gate.repo_root(outside), deploy_gate.ROOT)
+        # A real repository that is not an fn tree is a fallback too: only a
+        # tree with this project's directories in it can be meant.
+        stranger = Path(self.directory.name).resolve() / "stranger"
+        stranger.mkdir()
+        self.git("init", "-q", cwd=stranger)
+        self.assertEqual(deploy_gate.repo_root(stranger), deploy_gate.ROOT)
+
+    def test_the_default_and_a_relative_evidence_path_both_land_in_that_tree(self):
+        self.assertEqual(
+            deploy_gate.evidence_path(None, self.lane, "twonode-abc-2026-09-20.md"),
+            self.lane / "planning" / "evidence" / "twonode-abc-2026-09-20.md")
+        self.assertEqual(
+            deploy_gate.evidence_path("planning/evidence/x.md", self.lane, "d.md"),
+            self.lane / "planning" / "evidence" / "x.md")
+        # An absolute path is still taken as given: writing outside the tree
+        # on purpose stays possible.
+        self.assertEqual(
+            deploy_gate.evidence_path("/tmp/elsewhere.md", self.lane, "d.md"),
+            Path("/tmp/elsewhere.md"))
+
+    def test_every_harness_anchors_its_evidence_on_the_invoking_tree(self):
+        """No harness may reintroduce `--repo default=str(ROOT)`."""
+        tools = Path(__file__).resolve().parent.parent / "tools"
+        for name in ("deploy_gate", "twonode_gate", "inn_lab", "scale_gate",
+                     "verdict"):
+            text = (tools / f"{name}.py").read_text()
+            self.assertNotIn('"--repo", default=str(ROOT)', text, name)
+            self.assertIn("if args.repo else repo_root()", text, name)
+            self.assertIn("evidence_path(args.evidence, repo", text, name)
 
 
 if __name__ == "__main__":
