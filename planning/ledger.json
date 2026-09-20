@@ -281,9 +281,9 @@
     "books": 275,
     "books_in_root_closure": 274,
     "roots": 274,
-    "theorems": 5533,
+    "theorems": 5535,
     "functions": 3919,
-    "assert_events": 5214,
+    "assert_events": 5244,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
@@ -2696,7 +2696,7 @@
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 1,
-      "defmacros": 0,
+      "defmacros": 2,
       "encapsulates": 0,
       "includes": [
         "auth-secret",
@@ -2846,7 +2846,7 @@
       "book": "books/nntp-post.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 17,
+      "theorems": 18,
       "functions": 18,
       "guards": {
         "verified": 12,
@@ -2857,7 +2857,7 @@
       "verify_guards_events": 12,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 0,
+      "defconsts": 1,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -3372,7 +3372,7 @@
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 2,
-      "defmacros": 0,
+      "defmacros": 1,
       "encapsulates": 0,
       "includes": [
         "identity",
@@ -3898,7 +3898,7 @@
       "book": "books/served.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 61,
+      "theorems": 62,
       "functions": 37,
       "guards": {
         "verified": 2,
@@ -6402,9 +6402,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 33,
+      "assert_events": 47,
       "must_fails": 0,
-      "defconsts": 22,
+      "defconsts": 25,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -6889,9 +6889,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 79,
+      "assert_events": 95,
       "must_fails": 0,
-      "defconsts": 40,
+      "defconsts": 44,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7538,7 +7538,7 @@
     {
       "theorem": "fn-auth-consistent-forward",
       "book": "books/nntp-auth.lisp",
-      "line": 394,
+      "line": 409,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-session-consistentp"
       ]
@@ -7546,7 +7546,7 @@
     {
       "theorem": "fn-auth-token-argp-forward",
       "book": "books/nntp-auth.lisp",
-      "line": 609,
+      "line": 622,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-token-argp"
       ]
@@ -7742,7 +7742,7 @@
     {
       "theorem": "fn-ocfg-refused-reconfiguration-changes-nothing",
       "book": "books/owner-config.lisp",
-      "line": 514,
+      "line": 522,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value"
       ]
