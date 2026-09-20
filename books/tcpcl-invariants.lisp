@@ -135,8 +135,108 @@
 
 ; -----------------------------------------------------------------------------
 ; C2.  A final acknowledgement means every segment.
+;
+; The recognizer stays CLOSED through this section.  Opening it here (the
+; wave-4 lane's `(in-theory (enable fn-tcl-sessionp))` plus `:do-not-induct t`)
+; put the eleven conjuncts of fn-tcl-sessionp, each itself a sub-recognizer
+; over a record, into the clause and split it into 1082 subgoals before the
+; segment cases were reached.  The two facts C2 actually needs about the live
+; transfer -- that received-len is the measured length of the staged segments,
+; and that a declared Transfer Length is not below it -- arrive through the
+; forward-chaining field facts of books/tcpcl-session.lisp
+; (fn-tcl-sessionp-forward-inbound, fn-tcl-inboundp-forward-fields,
+; fn-tcl-inboundp-forward-total), which is what they were written for.
 
-(local (in-theory (enable fn-tcl-sessionp)))
+; fn-tcl-concat-rev accumulates `(append data nil)`, and the length of the
+; delivered data is measured through it; fn-tcl-append-nil above needs
+; true-listp, which the closed recognizer does not hand over.
+(local (defthm fn-tcl-len-append
+         (equal (len (append a b)) (+ (len a) (len b)))))
+
+; The theory C2 reasons in: the segment path and the result builders are
+; open, every other branch of fn-tcl-step and every recognizer is shut.
+(local (deftheory fn-tcl-c2-closed
+  '(fn-tcl-sessionp fn-tcl-paramsp fn-tcl-peer-initp fn-tcl-negotiatedp
+    fn-tcl-inboundp fn-tcl-outboundp fn-tcl-messagep
+    fn-tcl-ext-decision fn-tcl-recv-contact fn-tcl-recv-init fn-tcl-recv-ack
+    fn-tcl-recv-refuse fn-tcl-recv-term fn-tcl-unexpected fn-tcl-pump
+    fn-tcl-touch-rx)))
+
+; Only fn-tcl-complete emits :bundle-received.  Each of the other branches of
+; fn-tcl-step is dismissed by opening that one branch with everything else
+; closed, so that C2 itself never opens them.
+(local (defthm fn-tcl-recv-contact-emits-no-bundle-received
+         (not (member-equal (list :bundle-received id data)
+                            (fn-tcl-result-events (fn-tcl-recv-contact s m now))))
+         :hints (("Goal" :in-theory (disable fn-tcl-c2-closed)
+                  :expand ((fn-tcl-recv-contact s m now))))))
+
+(local (defthm fn-tcl-recv-init-emits-no-bundle-received
+         (not (member-equal (list :bundle-received id data)
+                            (fn-tcl-result-events (fn-tcl-recv-init s m now))))
+         :hints (("Goal" :in-theory (disable fn-tcl-c2-closed)
+                  :expand ((fn-tcl-recv-init s m now))))))
+
+(local (defthm fn-tcl-unexpected-emits-no-bundle-received
+         (not (member-equal (list :bundle-received id data)
+                            (fn-tcl-result-events (fn-tcl-unexpected s header now))))
+         :hints (("Goal" :in-theory (disable fn-tcl-c2-closed)
+                  :expand ((fn-tcl-unexpected s header now))))))
+
+(local (defthm fn-tcl-recv-ack-emits-no-bundle-received
+         (not (member-equal (list :bundle-received id data)
+                            (fn-tcl-result-events (fn-tcl-recv-ack s m now))))
+         :hints (("Goal" :in-theory (disable fn-tcl-c2-closed)
+                  :expand ((fn-tcl-recv-ack s m now))))))
+
+(local (defthm fn-tcl-recv-refuse-emits-no-bundle-received
+         (not (member-equal (list :bundle-received id data)
+                            (fn-tcl-result-events (fn-tcl-recv-refuse s m now))))
+         :hints (("Goal" :in-theory (disable fn-tcl-c2-closed)
+                  :expand ((fn-tcl-recv-refuse s m now))))))
+
+(local (defthm fn-tcl-recv-term-emits-no-bundle-received
+         (not (member-equal (list :bundle-received id data)
+                            (fn-tcl-result-events (fn-tcl-recv-term s m now))))
+         :hints (("Goal" :in-theory (disable fn-tcl-c2-closed)
+                  :expand ((fn-tcl-recv-term s m now))))))
+
+; The content of C2, at the transition that owns it.  fn-tcl-recv-segment
+; reaches fn-tcl-complete on exactly two paths: a START+END segment of a
+; transfer with nothing live, and an END segment of the live transfer.  On
+; the first the delivered data is the segment's own; on the second it is the
+; staged segments in arrival order followed by this one, whose length is
+; received-len + this segment, and received-len is the measured length of
+; the staged list because fn-tcl-inboundp carries that equation.
+(local
+ (defthm fn-tcl-recv-segment-final-ack-means-every-segment
+   (implies (and (fn-tcl-sessionp s)
+                 (member-equal (list :bundle-received id data)
+                               (fn-tcl-result-events (fn-tcl-recv-segment s m now))))
+            (and (equal id (fn-tcl-xfer-segment-xfer-id m))
+                 (fn-tcl-flag-end (fn-tcl-xfer-segment-flags m))
+                 (if (fn-tcl-session-inbound s)
+                     (and (not (fn-tcl-flag-start (fn-tcl-xfer-segment-flags m)))
+                          (equal id (fn-tcl-inbound-xfer-id (fn-tcl-session-inbound s))))
+                   (fn-tcl-flag-start (fn-tcl-xfer-segment-flags m)))
+                 (null (fn-tcl-session-inbound
+                        (fn-tcl-result-session (fn-tcl-recv-segment s m now))))
+                 (equal (len data)
+                        (+ (if (fn-tcl-session-inbound s)
+                               (fn-tcl-inbound-received-len (fn-tcl-session-inbound s))
+                             0)
+                           (len (fn-tcl-xfer-segment-data m))))
+                 (member-equal (list :send (fn-tcl-make-xfer-ack
+                                            (fn-tcl-xfer-segment-flags m) id (len data)))
+                               (fn-tcl-result-events (fn-tcl-recv-segment s m now)))
+                 (implies (and (fn-tcl-session-inbound s)
+                               (fn-tcl-inbound-total (fn-tcl-session-inbound s)))
+                          (equal (fn-tcl-inbound-total (fn-tcl-session-inbound s))
+                                 (len data)))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :in-theory (disable fn-tcl-c2-closed)
+            :expand ((fn-tcl-recv-segment s m now))))))
 
 (defthm fn-tcl-final-ack-means-every-segment
   (implies (and (fn-tcl-sessionp s)
@@ -172,9 +272,56 @@
   ; an equality with the variable id on its left is not a rewrite rule
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-tcl-messagep)
-                           (fn-tcl-ext-decision fn-tcl-recv-contact fn-tcl-recv-init
-                            fn-tcl-recv-ack fn-tcl-recv-refuse fn-tcl-recv-term)))))
+           :use ((:instance fn-tcl-recv-segment-final-ack-means-every-segment
+                            (s (fn-tcl-touch-rx s now))))
+           :in-theory (e/d (fn-tcl-step fn-tcl-settle)
+                           (fn-tcl-c2-closed fn-tcl-recv-segment
+                            fn-tcl-complete fn-tcl-stage fn-tcl-refuse
+                            fn-tcl-broken-stream)))))
+
+; Which branches of fn-tcl-step can leave an inbound record behind.  Only
+; fn-tcl-stage builds one; the contact exchange clears it, and every other
+; branch carries the record it was given.  Proved one branch at a time so
+; that the theorem below keeps the recognizer closed.
+(local (defthm fn-tcl-recv-contact-creates-no-inbound
+         (not (fn-tcl-session-inbound
+               (fn-tcl-result-session (fn-tcl-recv-contact s m now))))
+         :hints (("Goal" :in-theory (disable fn-tcl-c2-closed)
+                  :expand ((fn-tcl-recv-contact s m now))))))
+
+(local (defthm fn-tcl-recv-init-creates-no-inbound
+         (not (fn-tcl-session-inbound
+               (fn-tcl-result-session (fn-tcl-recv-init s m now))))
+         :hints (("Goal" :in-theory (disable fn-tcl-c2-closed)
+                  :expand ((fn-tcl-recv-init s m now))))))
+
+(local (defthm fn-tcl-unexpected-keeps-inbound
+         (equal (fn-tcl-session-inbound
+                 (fn-tcl-result-session (fn-tcl-unexpected s header now)))
+                (fn-tcl-session-inbound s))
+         :hints (("Goal" :in-theory (disable fn-tcl-c2-closed)
+                  :expand ((fn-tcl-unexpected s header now))))))
+
+(local (defthm fn-tcl-recv-ack-keeps-inbound
+         (equal (fn-tcl-session-inbound
+                 (fn-tcl-result-session (fn-tcl-recv-ack s m now)))
+                (fn-tcl-session-inbound s))
+         :hints (("Goal" :in-theory (disable fn-tcl-c2-closed)
+                  :expand ((fn-tcl-recv-ack s m now))))))
+
+(local (defthm fn-tcl-recv-refuse-keeps-inbound
+         (equal (fn-tcl-session-inbound
+                 (fn-tcl-result-session (fn-tcl-recv-refuse s m now)))
+                (fn-tcl-session-inbound s))
+         :hints (("Goal" :in-theory (disable fn-tcl-c2-closed)
+                  :expand ((fn-tcl-recv-refuse s m now))))))
+
+(local (defthm fn-tcl-recv-term-keeps-inbound
+         (equal (fn-tcl-session-inbound
+                 (fn-tcl-result-session (fn-tcl-recv-term s m now)))
+                (fn-tcl-session-inbound s))
+         :hints (("Goal" :in-theory (disable fn-tcl-c2-closed)
+                  :expand ((fn-tcl-recv-term s m now))))))
 
 ; The carried sum is the measurement of the staged segments: the theorem
 ; above speaks of received-len, and this says what it is.
@@ -182,7 +329,8 @@
   (implies (and (fn-tcl-sessionp s) (fn-tcl-session-inbound s))
            (equal (fn-tcl-inbound-received-len (fn-tcl-session-inbound s))
                   (fn-tcl-lists-len (fn-tcl-inbound-staged (fn-tcl-session-inbound s)))))
-  :rule-classes nil)
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-tcl-c2-closed))))
 
 ; A transfer is started only by a START segment: the inbound record after a
 ; step is nil, the record before, or a record created by this segment's START.
@@ -203,9 +351,10 @@
                          (equal (fn-tcl-inbound-xfer-id (fn-tcl-session-inbound s))
                                 (fn-tcl-xfer-segment-xfer-id m)))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-tcl-messagep)
-                           (fn-tcl-ext-decision fn-tcl-recv-contact fn-tcl-recv-init
-                            fn-tcl-recv-ack fn-tcl-recv-refuse fn-tcl-recv-term)))))
+           :in-theory (e/d (fn-tcl-step fn-tcl-settle) (fn-tcl-c2-closed)))))
+
+; The recognizer is open again from here: C3 and C4 were written against it.
+(local (in-theory (enable fn-tcl-sessionp)))
 
 ; -----------------------------------------------------------------------------
 ; C3.  Exactly one outcome.
@@ -302,8 +451,10 @@
                                    (fn-tcl-result-events (fn-tcl-step s m now))))
                 (equal (fn-tcl-session-phase (fn-tcl-result-session (fn-tcl-step s m now)))
                        :ending)))
+  ; the same closed-recognizer theory C2 uses: the conclusion is structural,
+  ; and opening fn-tcl-sessionp splits the clause before the segment cases
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-tcl-messagep) (fn-tcl-ext-decision)))))
+           :in-theory (e/d (fn-tcl-step fn-tcl-settle) (fn-tcl-c2-closed)))))
 
 (defthm fn-tcl-ending-refuses-new-transfers
   (implies (and (fn-tcl-sessionp s)
