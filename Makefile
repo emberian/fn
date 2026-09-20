@@ -294,6 +294,14 @@ check:
 # fidelity defect; missing host cuts and syscall drift are reported and do not
 # fail (--strict fails on those too).
 	$(PYTHON) tools/transcribe_check.py
+# The served command chain is four session records deep and every base
+# accessor is `car', so a call that stops one level short is answered with a
+# plausible value rather than an error: four such misses shipped on
+# 2026-09-20, one of them leaving POST with no reply at all.  This infers
+# every formal's session level from the books and fails on a wrong depth.  A
+# walk spelled by hand instead of through a named projection is drift and is
+# counted, not failed (--strict fails on those too).  Mechanical, no ACL2.
+	$(PYTHON) tools/session_depth.py
 # The teeth audit's static half: assertions that exercise ACL2 rather than fn,
 # recognisers that no test ever makes TRUE, keystones with no witness in any
 # test book, and citations of theorems the tree no longer defines.  It needs

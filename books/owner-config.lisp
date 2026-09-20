@@ -252,14 +252,22 @@
   ; retire or re-create a group a reader is standing in.  A reader pin is not
   ; durable state, so this condition never enters the record and replay never
   ; re-checks it.
+  ;
+  ; The selected group is THREE records in, not one.  A connection's session
+  ; is an auth session over a peer session over the POST-composed reader
+  ; session, and `fn-post-session-base' of the whole thing is the peer
+  ; session, whose field 1 is the PEER NAME: this read the peer name where it
+  ; meant the reader's group, so the condition was false of every reader and
+  ; a reconfiguration could retire the group a reader was standing in.  The
+  ; reach is now the named projection (books/nntp-auth.lisp).
   (declare (xargs :guard t))
   (if (consp conns)
       (or (and (fn-nntp-session-group
-                (fn-post-session-base (fn-own-conn-session (car conns))))
+                (fn-auth-reader-session (fn-own-conn-session (car conns))))
                (fn-ocfg-deltas-touch-groupp
                 deltas
                 (fn-nntp-session-group
-                 (fn-post-session-base (fn-own-conn-session (car conns))))))
+                 (fn-auth-reader-session (fn-own-conn-session (car conns))))))
           (fn-ocfg-group-pinned-by-readerp deltas (cdr conns)))
     nil))
 
@@ -419,7 +427,7 @@
   (let ((conn (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
     (if conn
         (fn-nntp-result-effects
-         (fn-nntp-list-active (fn-post-session-base (fn-own-conn-session conn))
+         (fn-nntp-list-active (fn-auth-reader-session (fn-own-conn-session conn))
                               (fn-own-conn-archive conn)
                               (fn-ocfg-served oc id)))
       nil)))
@@ -509,7 +517,7 @@
            (equal (fn-ocfg-list-active oc id)
                   (fn-nntp-result-effects
                    (fn-nntp-list-active
-                    (fn-post-session-base
+                    (fn-auth-reader-session
                      (fn-own-conn-session
                       (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
                     (fn-own-conn-archive
