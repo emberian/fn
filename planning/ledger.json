@@ -228,21 +228,21 @@
     "books": 222,
     "books_in_root_closure": 221,
     "roots": 221,
-    "theorems": 4092,
-    "functions": 2986,
-    "assert_events": 3936,
+    "theorems": 4099,
+    "functions": 2990,
+    "assert_events": 3958,
     "must_fails": 59,
     "encapsulates": 15,
     "guards": {
-      "verified": 1239,
+      "verified": 1241,
       "declared-off": 141,
       "default-guarded": 1158,
-      "default-unguarded": 448
+      "default-unguarded": 450
     },
     "suspect_theorems": 31,
     "export_hygiene_warnings": 62,
     "teeth_form_warnings": 0,
-    "include_hygiene_warnings": 87
+    "include_hygiene_warnings": 84
   },
   "books": [
     {
@@ -865,7 +865,7 @@
       "book": "books/bp-primary-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 38,
+      "theorems": 44,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -893,14 +893,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 9,
-      "functions": 73,
+      "functions": 75,
       "guards": {
-        "verified": 73,
+        "verified": 75,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 73,
+      "verify_guards_events": 75,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 15,
@@ -1905,7 +1905,7 @@
       "book": "books/frame-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 79,
+      "theorems": 80,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -2000,7 +2000,7 @@
       "verify_guards_events": 5,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 2,
+      "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -4399,17 +4399,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 1,
-      "functions": 0,
+      "functions": 2,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 0
+        "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 103,
+      "assert_events": 124,
       "must_fails": 0,
-      "defconsts": 13,
+      "defconsts": 17,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -4954,7 +4954,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 47,
+      "assert_events": 48,
       "must_fails": 0,
       "defconsts": 2,
       "defmacros": 0,
@@ -6426,13 +6426,13 @@
       {
         "theorem": "fn-bpp-decode-of-encode",
         "book": "books/bp-primary-invariants.lisp",
-        "line": 221,
+        "line": 225,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-bpp-accepted-block-has-valid-crc",
         "book": "books/bp-primary-invariants.lisp",
-        "line": 274,
+        "line": 278,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -6730,13 +6730,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/bp-fragment.lisp",
-        "line": 32,
-        "include": "bp-primary",
-        "included": "books/bp-primary.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "books/bp-ingress.lisp",
         "line": 9,
         "include": "article-fields",
@@ -6748,13 +6741,6 @@
         "line": 7,
         "include": "bp-workflow-records",
         "included": "books/bp-workflow-records.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/bp-primary-invariants.lisp",
-        "line": 17,
-        "include": "bp-primary",
-        "included": "books/bp-primary.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -7112,13 +7098,6 @@
         "line": 4,
         "include": "../../books/bp-outbound",
         "included": "books/bp-outbound.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/bp-primary-tests.lisp",
-        "line": 31,
-        "include": "../../books/bp-primary-invariants",
-        "included": "books/bp-primary-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

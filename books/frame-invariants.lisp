@@ -883,6 +883,18 @@
             (equal (len (fn-frame-field-octets :text bid)) (+ 2 (len bid))))
    :hints (("Goal" :in-theory (enable fn-frame-field-octets)))))
 
+; The blob field's length prefix is four octets where the text field's is two,
+; so the inbound head is `2 + (len bid) + 4 + (len ident)` and the theorem
+; below needs both lengths in closed form before `fn-frame-header-octets` can
+; discharge the declared length.  Without this the identity field's length
+; stays as an opaque `(len (fn-frame-field-octets :blob ident))` term and
+; Subgoal 8' asks whether the header is an octet list of an unknown length.
+(local
+ (defthm fn-frame-blob-field-octets-len
+   (implies (fn-frame-blobp ident)
+            (equal (len (fn-frame-field-octets :blob ident)) (+ 4 (len ident))))
+   :hints (("Goal" :in-theory (enable fn-frame-field-octets)))))
+
 (defthm fn-frame-inbound-open-of-prefix
   (implies (and (fn-frame-textp bid)
                 (fn-frame-blobp ident)
