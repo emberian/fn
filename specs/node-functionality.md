@@ -348,8 +348,11 @@ event kind once, every port once, mirroring the w2 owner witness and the
 R is the running system: `tools/run_owner.py` (the one process that holds a
 store: it pins a committed version per connection, serializes durable posts
 through `fn-own-take-submission` and serves readers and POST on one
-listener, w2 and w5), `tools/run_reader.py` (read-only, answers POST with
-440) and `tools/run_store.py` over `host/*.lisp`, over the certified books,
+listener, w2 and w5; a 240 re-pins the poster's own connection to the
+version that contains its own article and no other connection's pin moves,
+which is a recorded policy choice rather than a consequence of K1 —
+`fn-own-durable-outcome-repins-the-poster`, `specs/nntp.md` §POST),
+`tools/run_reader.py` (read-only, answers POST with 440) and `tools/run_store.py` over `host/*.lisp`, over the certified books,
 over the BPA. Its observable trace is the sequence of port events and the
 effects performed: bytes written to a socket, files written and barriered,
 bundles submitted or deleted, receipt bytes returned. The environment sees

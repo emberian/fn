@@ -105,11 +105,17 @@ class StorePostTests(unittest.TestCase):
         sock = owner.connect()
         self.addCleanup(sock.close)
         self.post(sock, GOOD, b"240 article received OK\r\n")
-        # The poster's own connection stays pinned at the version it opened
-        # with (fn-own-pinned-prefix-survives-any-trace): it still sees one.
+        # Read-back: the 240 re-pinned the poster's own connection to the
+        # version that contains its own article (fn-own-outcome's :durable
+        # branch is one fn-own-advance on that connection;
+        # fn-own-durable-outcome-repins-the-poster), so its next GROUP sees
+        # two and its next ARTICLE serves the article it just posted.
         sock.sendall(b"GROUP fn.letters\r\n")
-        assert_bytes(sock, b"211 1 1 1 fn.letters\r\n")
-        # A second connection opens at the advanced version and reads back
+        assert_bytes(sock, b"211 2 1 2 fn.letters\r\n")
+        sock.sendall(b"STAT 2\r\n")
+        assert_bytes(sock, b"223 2 ")
+        sock.recv(4096)
+        # A second connection opens at the same version and reads back
         # the article with the fields ACL2 generated.
         second = owner.connect()
         self.addCleanup(second.close)
@@ -176,6 +182,9 @@ class StorePostTests(unittest.TestCase):
         self.addCleanup(poster.close)
         self.post(poster, GOOD, b"240 article received OK\r\n")
         self.assertEqual(owner.control_line(b"VERSION"), b"version 2")
+        # The poster's own pin moved with its 240; nobody else's did.
+        poster.sendall(b"GROUP fn.letters\r\n")
+        assert_bytes(poster, b"211 2 1 2 fn.letters\r\n")
         early.sendall(b"GROUP fn.letters\r\nSTAT 2\r\n")
         assert_bytes(early, b"211 1 1 1 fn.letters\r\n")
         assert_bytes(early, b"423 ")
@@ -187,6 +196,8 @@ class StorePostTests(unittest.TestCase):
         # A second post through the poster while both readers stay put.
         self.post(poster, GOOD.replace(b"hello", b"again"),
                   b"240 article received OK\r\n")
+        poster.sendall(b"GROUP fn.letters\r\n")
+        assert_bytes(poster, b"211 3 1 3 fn.letters\r\n")
         late.sendall(b"GROUP fn.letters\r\n")
         assert_bytes(late, b"211 2 1 2 fn.letters\r\n")
         self.assertTrue(owner.control_line(b"ADVANCE ALL").startswith(b"advanced "))

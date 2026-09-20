@@ -20,8 +20,11 @@
 (defconst *fn-nntp-facts0*
   (list (fn-nntp-group-fact "fn.letters" 0 *fn-nntp-blind-obs*)
         (fn-nntp-group-fact "fn.empty" 811728000000 *fn-nntp-blind-obs*)))
-(defconst *fn-nntp-env0* (fn-nntp-env *fn-nntp-obs0* *fn-nntp-facts0*))
-(defconst *fn-nntp-blind-env* (fn-nntp-env *fn-nntp-blind-obs* nil))
+(defconst *fn-nntp-env0* (fn-nntp-env *fn-nntp-obs0* *fn-nntp-facts0* nil))
+; The same environment with posting allowed: RFC 3977 section 5.2.2's POST
+; label is advertised from this bit and from nothing else.
+(defconst *fn-nntp-env0-posting* (fn-nntp-env *fn-nntp-obs0* *fn-nntp-facts0* t))
+(defconst *fn-nntp-blind-env* (fn-nntp-env *fn-nntp-blind-obs* nil nil))
 (assert-event (fn-nntp-envp *fn-nntp-env0*))
 (assert-event (fn-nntp-envp *fn-nntp-blind-env*))
 
@@ -158,15 +161,52 @@
  (equal (fn-nntp-result-effects
          (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (67 65 80 65 66 73 76 73 84 73 69 83 32 70 79 79))))
         (fn-nntp-result-effects *fn-nntp-caps*)))
+; Pinned from an `ld' of the book, never typed.  RFC 3977 section 5.2.2:
+; POST appears exactly when this connection's configuration allows posting,
+; which is what *fn-nntp-env0* (no posting) and *fn-nntp-env0-posting* say.
 (assert-event
  (equal (fn-nntp-result-effects *fn-nntp-caps*)
-        '((:reply (49 48 49 32 99 97 112 97 98 105 108 105 116 121 32 108 105 115 116 32
-                   102 111 108 108 111 119 115 13 10 86 69 82 83 73 79 78 32 50 13 10
-                   82 69 65 68 69 82 13 10 79 86 69 82 32 77 83 71 73 68 13 10
-                   76 73 83 84 32 65 67 84 73 86 69 32 78 69 87 83 71 82 79 85
-                   80 83 32 79 86 69 82 86 73 69 87 46 70 77 84 13 10 73 77 80
-                   76 69 77 69 78 84 65 84 73 79 78 32 102 110 45 110 110 116 112 45
+        '((:reply (49 48 49 32 99 97 112 97 98 105 108 105 116 121 32 108 105
+                   115 116 32 102 111 108 108 111 119 115 13 10 86 69 82 83 73
+                   79 78 32 50 13 10 82 69 65 68 69 82 13 10 79 86 69 82 32 77
+                   83 71 73 68 13 10 72 68 82 13 10 76 73 83 84 32 65 67 84 73
+                   86 69 32 65 67 84 73 86 69 46 84 73 77 69 83 32 72 69 65 68
+                   69 82 83 32 78 69 87 83 71 82 79 85 80 83 32 79 86 69 82 86
+                   73 69 87 46 70 77 84 13 10 73 77 80 76 69 77 69 78 84 65 84
+                   73 79 78 32 102 110 45 110 110 116 112 45 108 97 98 13 10
+                   46 13 10)))))
+(defconst *fn-nntp-caps-posting*
+  (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0-posting*
+                '(:command (67 65 80 65 66 73 76 73 84 73 69 83))))
+(assert-event
+ (equal (fn-nntp-result-effects *fn-nntp-caps-posting*)
+        '((:reply (49 48 49 32 99 97 112 97 98 105 108 105 116 121 32 108 105
+                   115 116 32 102 111 108 108 111 119 115 13 10 86 69 82 83 73
+                   79 78 32 50 13 10 82 69 65 68 69 82 13 10 80 79 83 84 13 10
+                   79 86 69 82 32 77 83 71 73 68 13 10 72 68 82 13 10 76 73 83
+                   84 32 65 67 84 73 86 69 32 65 67 84 73 86 69 46 84 73 77 69
+                   83 32 72 69 65 68 69 82 83 32 78 69 87 83 71 82 79 85 80 83
+                   32 79 86 69 82 86 73 69 87 46 70 77 84 13 10 73 77 80 76 69
+                   77 69 78 84 65 84 73 79 78 32 102 110 45 110 110 116 112 45
                    108 97 98 13 10 46 13 10)))))
+; The POST label is the only difference between the two blocks.
+(assert-event
+ (not (equal (fn-nntp-result-effects *fn-nntp-caps-posting*)
+             (fn-nntp-result-effects *fn-nntp-caps*))))
+; MODE READER carries the greeting's meaning (section 5.3.2), from the same
+; bit.
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
+                       '(:command (77 79 68 69 32 82 69 65 68 69 82))))
+        '((:reply (50 48 49 32 112 111 115 116 105 110 103 32 112 114 111
+                   104 105 98 105 116 101 100 13 10)))))
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0-posting*
+                       '(:command (77 79 68 69 32 82 69 65 68 69 82))))
+        '((:reply (50 48 48 32 112 111 115 116 105 110 103 32 97 108 108 111
+                   119 101 100 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
          (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*

@@ -338,34 +338,42 @@
 
 (defconst *fn-nntp-advertise-readerp* t)
 
-(defun fn-nntp-capability-lines ()
+(defun fn-nntp-capability-lines (postingp)
   ; RFC 3977 section 3.3.2 makes a capability label a promise about a whole
   ; bundle, so each label below is advertised only because every command it
   ; indicates in appendix B is implemented with its argument forms:
   ; READER covers ARTICLE, BODY, DATE, GROUP, LAST, LISTGROUP, NEWGROUPS and
   ; NEXT; OVER MSGID covers OVER in all three forms and LIST OVERVIEW.FMT;
   ; HDR covers HDR in all three forms and LIST HEADERS (section 8.6); LIST
-  ; names exactly the variants that answer with data.  No POST, IHAVE,
-  ; NEWNEWS, MODE-READER, TLS, authentication or compression capability is
-  ; advertised, and this reader is not mode-switching (section 3.4.2).  XOVER
-  ; and XHDR carry no capability label: RFC 2980 predates section 3.3 and
-  ; names no label for them, and a client discovers them by trying them.
-  (list (fn-nntp-string-octets "VERSION 2")
-        (fn-nntp-string-octets "READER")
-        (fn-nntp-string-octets "OVER MSGID")
-        (fn-nntp-string-octets "HDR")
-        (fn-nntp-string-octets
-         "LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT")
-        (fn-nntp-string-octets "IMPLEMENTATION fn-nntp-lab")))
+  ; names exactly the variants that answer with data.  POST (section 5.2.2)
+  ; is advertised exactly when this connection's pinned configuration allows
+  ; posting, which is the same bit fn-nntp-post-step reads before it answers
+  ; a POST command with 340 rather than 440, so the label is a promise this
+  ; server keeps.  No IHAVE, NEWNEWS, MODE-READER, TLS, authentication or
+  ; compression capability is advertised, and this reader is not
+  ; mode-switching (section 3.4.2).  XOVER and XHDR carry no capability
+  ; label: RFC 2980 predates section 3.3 and names no label for them, and a
+  ; client discovers them by trying them.
+  (declare (xargs :guard t))
+  (append
+   (list (fn-nntp-string-octets "VERSION 2")
+         (fn-nntp-string-octets "READER"))
+   (append
+    (if postingp (list (fn-nntp-string-octets "POST")) nil)
+    (list (fn-nntp-string-octets "OVER MSGID")
+          (fn-nntp-string-octets "HDR")
+          (fn-nntp-string-octets
+           "LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT")
+          (fn-nntp-string-octets "IMPLEMENTATION fn-nntp-lab")))))
 
 (defun fn-nntp-unadvertised-capability-lines ()
   (list (fn-nntp-string-octets "VERSION 2")
         (fn-nntp-string-octets "IMPLEMENTATION fn-nntp-lab")))
 
-(defun fn-nntp-capabilities (session)
+(defun fn-nntp-capabilities (session postingp)
   (fn-nntp-multi session "101 capability list follows"
                  (if *fn-nntp-advertise-readerp*
-                     (fn-nntp-capability-lines)
+                     (fn-nntp-capability-lines postingp)
                    (fn-nntp-unadvertised-capability-lines))))
 
 (defun fn-nntp-help (session)
@@ -428,28 +436,40 @@
            (fn-nntp-group-fact-listp (cdr xs)))
     (null xs)))
 
-(defun fn-nntp-env (observation facts)
+; The third field is the posting permission of the connection the command
+; arrived on: RFC 3977 section 5.2.2 makes the POST capability label a
+; promise that POST will be accepted, and section 5.1.1 makes the greeting
+; code say the same thing, so one bit decides both and the CAPABILITIES
+; block can never disagree with what fn-nntp-post-step will do with a POST
+; command.  The bit is the connection's own pinned configuration
+; (fn-inj-config-allow), supplied by fn-nntp-post-step; nothing here reads a
+; global.
+(defun fn-nntp-env (observation facts posting)
   (declare (xargs :guard t :verify-guards nil))
-  (list :fn-nntp-env observation facts))
+  (list :fn-nntp-env observation facts posting))
 
 (defun fn-nntp-env-observation (x)
   (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
 (defun fn-nntp-env-facts (x)
   (mbe :logic (car (cdr (cdr x))) :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
+(defun fn-nntp-env-posting (x)
+  (mbe :logic (car (cdr (cdr (cdr x))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
 
 (defun fn-nntp-envp (x)
   (and (true-listp x)
-       (equal (len x) 3)
+       (equal (len x) 4)
        (equal (car x) :fn-nntp-env)
        (fn-clock-observationp (fn-nntp-env-observation x))
-       (fn-nntp-group-fact-listp (fn-nntp-env-facts x))))
+       (fn-nntp-group-fact-listp (fn-nntp-env-facts x))
+       (booleanp (fn-nntp-env-posting x))))
 
 ; The environment a host supplies when it holds no clock reading and no
 ; persisted creation facts.  DATE and NEWGROUPS refuse against it; they never
 ; fall back to a fabricated timestamp.
 (defun fn-nntp-blind-env ()
   (declare (xargs :guard t :verify-guards nil))
-  (fn-nntp-env (fn-clock-observation 0 0 0 nil) nil))
+  (fn-nntp-env (fn-clock-observation 0 0 0 nil) nil nil))
 
 (defthm fn-nntp-blind-env-is-an-env
   (fn-nntp-envp (fn-nntp-blind-env)))
@@ -1002,13 +1022,16 @@
            (fn-nntp-single session "501 syntax error")))))
 
 
-(defun fn-nntp-mode-response (session args)
+(defun fn-nntp-mode-response (session env args)
   (if (and (consp args) (null (cdr args))
            (fn-nntp-keywordp (car args) "READER"))
       (if *fn-nntp-advertise-readerp*
-          ; Posting is prohibited on this profile, so the greeting's code is
-          ; 201 and section 5.3.2 requires the same meaning here.
-          (fn-nntp-single session "201 posting prohibited")
+          ; Section 5.3.2: the response carries the greeting's meaning, so it
+          ; reads the same posting bit the greeting and the POST capability
+          ; label read (RFC 3977 sections 5.1.1 and 5.2.2).
+          (if (fn-nntp-env-posting env)
+              (fn-nntp-single session "200 posting allowed")
+            (fn-nntp-single session "201 posting prohibited"))
         (fn-nntp-make-result
          session
          (list (fn-nntp-reply-effect
@@ -1101,6 +1124,8 @@
 (verify-guards fn-nntp-env-observation)
 
 (verify-guards fn-nntp-env-facts)
+
+(verify-guards fn-nntp-env-posting)
 
 (verify-guards fn-nntp-envp)
 
@@ -1585,7 +1610,8 @@
     fn-nov-fmt-octet-lines fn-nntp-list-overview-fmt fn-nntp-group-fact
     fn-nntp-fact-name fn-nntp-fact-created fn-nntp-fact-observation
     fn-nntp-group-factp fn-nntp-group-fact-listp fn-nntp-env
-    fn-nntp-env-observation fn-nntp-env-facts fn-nntp-envp fn-nntp-blind-env
+    fn-nntp-env-observation fn-nntp-env-facts fn-nntp-env-posting
+    fn-nntp-envp fn-nntp-blind-env
     fn-nntp-unix-dtn-ms fn-nntp-host-observation fn-nntp-div fn-nntp-mod
     fn-nntp-civil-from-days fn-nntp-days-from-civil fn-nntp-dtn-civil
     fn-nntp-civil-year fn-nntp-civil-month fn-nntp-civil-day

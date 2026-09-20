@@ -1,6 +1,7 @@
 ; Experimental store bridge: physical observations drive the proved fn-sn core.
 (in-package "ACL2")
 (include-book "../books/store-observed")
+(include-book "../books/store-sweep")
 (include-book "../books/store-node-resolution")
 (include-book "../books/node-config")
 
@@ -310,3 +311,13 @@
                  (fn-node-acceptance
                   (fn-sn-node (f-get-global 'fn-store-sn state)))))
                t nil))))
+
+; The staging sweep (books/store-sweep.lisp).  Python enumerates the staging
+; directory and names what the live process still holds; which of those names
+; may be unlinked is the book's decision, never Python's.  The answer is the
+; removal names joined by LF, as fn-store-cfg-join-names joins group names.
+(defun fn-store-sn-sweep-staging (observed held state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-store-cfg-join-names
+          (car (fn-sn-sweep-staging (f-get-global 'fn-store-sn state)
+                                    observed held)))))
