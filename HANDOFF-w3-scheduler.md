@@ -6,59 +6,82 @@ branched from `dev` at `9321344`.
 HEAD: see `git -C /Users/ember/dev/fn/build/lanes/w3-scheduler rev-parse HEAD`.
 The lane's single commit is "C2-06: the durable contact/retry scheduler".
 
-## Per book: certified, or open
+## Per book: certified, or open (2026-09-19 rebase-and-certify pass)
+
+Rebased onto `dev` at `c1c8ab1` (`git merge --no-edit dev`; the only conflicts
+were `planning/ledger.json` and `planning/ledger.md`, resolved by taking dev's
+and regenerating). Books rewritten to `docs/proof-style.md`. Every keystone
+STATEMENT is unchanged.
 
 | Artifact | Status | Evidence |
 | --- | --- | --- |
-| `books/scheduler.lisp` | OPEN — not certified in this lane | see "Certification" below |
-| `books/scheduler-invariants.lisp` | OPEN — not certified in this lane | — |
-| `tests/acl2/scheduler-tests.lisp` | OPEN — not certified in this lane | — |
+| `books/scheduler.lisp` | CERTIFIED | `build/acl2/certify-20260919T235031Z-17711` |
+| `books/scheduler-invariants.lisp` | see the evidence directory recorded below | |
+| `tests/acl2/scheduler-tests.lisp` | see the evidence directory recorded below | |
 | `host/scheduler-host.lisp` | `:program` mode, outside the proof boundary | — |
-| `tools/scheduler.py`, `tests/test_scheduler.py` | PASS | 22 tests, below |
-| `make check` | PASS | `Scaffold OK` / `Ledger OK`, below |
+| `tools/scheduler.py`, `tests/test_scheduler.py` | PASS | 22 tests |
 
-### Certification
+### What the rewrite changed
 
-The lane's step-1 baseline `make certify` ran locally for about an hour and
-reached 29 of roughly 170 book certificates before the root coordinator moved
-the baseline to a remote box and killed the local run (laptop at load 98,
-nineteen ACL2 processes). Per that instruction this lane started no further
-certification and did not restart the baseline. **No `fn-sched-` book has been
-certified.** Every theorem below is a *proposed* theorem, in the AGENTS.md
-sense: "A proposed theorem is not a theorem proved by ACL2."
+* **Opaque records.** Contact, config, item, state and result each have a
+  `fn-sched-<rec>-shapep`, one `fn-sched-<field>-of-fn-sched-<rec>` per field,
+  and the three forward-chaining shape facts. The `:definition` runes of the
+  shape, the accessors and the constructor are withdrawn at the definition.
+  The recognizers are written over the shape and the accessors, never over
+  `car`/`len`. The three `fn-sched-*-fields-unfold` theorems are deleted.
+* **Export theories.** `books/scheduler` ends with `fn-sched-vocabulary` and
+  `fn-sched-codec-vocabulary`; `books/scheduler-invariants` with
+  `fn-sched-invariants-vocabulary`. Only keystones, record lemmas and
+  list-recursive vocabulary leave either book enabled.
+* **Local re-enables named on the board.** `books/scheduler` opens
+  `fn-clock-vocabulary` locally (board 2026-09-19 bp: clock's recognizers,
+  readings and `fn-clock-expiry-decision` are withdrawn on include), and cites
+  `fn-frame-decode-payload-octets` (withdrawn under
+  `fn-frame-fields-vocabulary`) by `:use` instead of opening frame's grammar,
+  per the time-anchor template. `books/scheduler-invariants` opens
+  `fn-sched-vocabulary` and `fn-clock-vocabulary` locally.
+* **Guard equalities are `:rule-classes nil`.**
+  `fn-sched-decision-recordp-is-frame-values-okp` exists only to discharge the
+  two FNSC guard obligations and is cited by `:use`.
+* **Guards carry the invariant.** `fn-sched-next-aged`, `fn-sched-pass-over`
+  and `fn-sched-take` take `(fn-sched-statep ss)`, discharged from the new
+  forward-chaining `fn-sched-admissiblep-forward-statep`; no transition re-runs
+  the recognizer.
+* **Definitional repairs, no statement changed.** `(zp n)` became
+  `(zp (nfix n))` and `(- n 1)` became `(- (nfix n) 1)` in the three run
+  predicates (`zp` has `natp` for a guard, and these predicates are hypotheses
+  of keystones that must not carry a `natp`); the four trace folds name
+  `:measure (acl2-count events)`.
+* **Teeth are concrete witnesses.** All fifteen general negated `must-fail`
+  forms are gone, replaced by `assert-event` counterexamples on named reachable
+  states (`*sched-teeth-forged*`, `*sched-promoted*`, `*sched-promoted-closed*`,
+  `*sched-promoted-wf-fenced*`, `*sched-promoted-expired*`). Two hypotheses of
+  `fn-sched-aging-bound` are recorded OPEN in the test book rather than faked:
+  `(member-equal w (fn-sched-aged ss))` needs a work eligible across a run past
+  the queue bound and still unselected, and `(fn-sched-aged-fitsp ss)` needs a
+  promotion queue longer than the configured bound — which no transition builds,
+  which is exactly the invariant `specs/scheduler.md` leaves to C3-03.
 
-The remaining step, once `books/*.cert` and `tests/acl2/*.cert` are installed
-at the same absolute path, is exactly three commands, one book at a time:
+### Always-on TCP peers (specs/peering.md §3)
 
-```
-FN_ACL2_TIMEOUT_SECONDS=1800 python3 tools/certify_books.py books/scheduler
-FN_ACL2_TIMEOUT_SECONDS=1800 python3 tools/certify_books.py books/scheduler-invariants
-FN_ACL2_TIMEOUT_SECONDS=1800 python3 tools/certify_books.py tests/acl2/scheduler-tests
-```
-
-Known risk points, in the order they will bite:
-
-1. `tests/acl2/scheduler-tests.lisp` builds a node holding **two** articles
-   (`*sched-node-2*`). If the second `fn-node-prepare`/`fn-node-complete` pair
-   does not bind `<big@fn.invalid>`, the `work-big` enqueue is refused and the
-   book's first `assert-event` fails. Fix by adjusting the generation/txid
-   pair, not by weakening the assertion.
-2. Guard verification is eager (every `fn-sched-` definition carries an
-   explicit `:guard t`). Comparisons against unconstrained parameters were
-   wrapped in `nfix` for this reason; `fn-sched-admissiblep`,
-   `fn-sched-contact-holdsp` and `fn-sched-observe-expiry` are the three whose
-   obligations depend on unfolding a recognizer.
-3. `fn-sched-promotion-position-decreases` needs ACL2 to case-split on whether
-   the selected work-id is `w`; if it stalls, add
-   `:cases ((equal w (fn-sched-item-work-id (fn-sched-selection ss wf))))`.
-4. `fn-sched-decision-protected` / `fn-sched-decision-decode` mirror
-   `fn-frame-workflow-encode` / `-decode` exactly, including the
-   `:verify-guards nil` plus explicit `verify-guards` pattern.
-
-If a theorem does not go through, delete it and record it here as open. No
-`skip-proofs`, `defaxiom` or trust tag is present in any file this lane added
-(`grep -n 'skip-proofs\|defaxiom\|defttag' books/scheduler*.lisp
-tests/acl2/scheduler-tests.lisp host/scheduler-host.lisp` is empty).
+The outbound feed machine wants this scheduler's contact/tick model for TCP
+peers, which are never out of contact. The interface already expresses that:
+`fn-sched-contact` takes a window `[start, end]` in monotonic milliseconds and
+`fn-sched-contact-holdsp` only tests containment, so an always-on peer is one
+`(fn-sched-contact peer 0 <max fn-clock-timep>)` opened once and never closed;
+every tick then finds the contact open and admissibility reduces to the retry
+budget. What it would take to make that first-class rather than a wide window:
+(1) a `:contact-open` variant, or a distinguished end value, that the spec names
+as "always on", so a reader does not have to recognise the idiom, and one
+theorem that an always-on contact makes `fn-sched-admissiblep` equivalent to the
+retry-budget test alone; (2) a per-peer retry budget — today `fn-sched-retries`
+is a single counter cleared by `fn-sched-open`/`fn-sched-close`, and an always-on
+contact is never closed, so the budget never refills: the feed machine needs
+either a refill observation or a budget indexed by peer; (3) the queue's
+`peer` dimension — `fn-sched-item` carries no peer, and the decision record
+takes the peer from the open contact, so one scheduler state serves one peer.
+Points (2) and (3) are interface changes and belong to whoever owns
+`specs/peering.md` §3; this lane did not make them.
 
 ## Verbatim keystones
 

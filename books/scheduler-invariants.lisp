@@ -93,13 +93,17 @@
   (implies (fn-sched-statep ss)
            (fn-sched-statep (fn-sched-pass-over ss wf)))
   :hints (("Goal" :in-theory (e/d (fn-sched-pass-over)
-                                  (fn-sched-bump-queue fn-sched-next-aged)))))
+                                  (fn-sched-bump-queue fn-sched-next-aged
+                                   fn-sched-string-listp
+                                   fn-sched-item-listp)))))
 
 (defthm fn-sched-statep-of-take
   (implies (fn-sched-statep ss)
            (fn-sched-statep (fn-sched-take ss wf selected)))
   :hints (("Goal" :in-theory (e/d (fn-sched-take)
-                                  (fn-sched-bump-queue fn-sched-next-aged)))))
+                                  (fn-sched-bump-queue fn-sched-next-aged
+                                   fn-sched-string-listp
+                                   fn-sched-item-listp)))))
 
 (defthm fn-sched-statep-of-with-decisions
   (implies (and (fn-sched-statep ss) (true-listp d))
@@ -118,7 +122,9 @@
                                    fn-sched-with-tick fn-sched-with-decisions
                                    fn-sched-record-decision fn-sched-selection
                                    fn-sched-drive-attempt
-                                   fn-sched-submit-for-idp)))))
+                                   fn-sched-submit-for-idp
+                                   fn-sched-statep fn-sched-string-listp
+                                   fn-sched-item-listp)))))
 
 ; KEYSTONE.  State preservation over one arbitrary observation.
 (defthm fn-sched-step-preserves-state
