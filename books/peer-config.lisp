@@ -414,6 +414,38 @@
                   (equal (fn-cfg-limits next) (fn-cfg-limits v)))))
   :hints (("Goal" :in-theory (enable fn-cfg-apply-delta))))
 
+; What a caller of fn-cfg-peer-find may assume of what it finds, as
+; forward-chaining facts so nothing downstream opens the record or the
+; decoder.  fn-cfg-peer-of-rows returns the record only when it is
+; well-formed, so a non-nil find is a peer; and a peer with an inbound half
+; has the two positive, bounded numbers the served path compares against
+; (books/peer-inbound.lisp, fn-peer-decide-offer and fn-peer-decide-transfer).
+
+(defthm fn-cfg-peer-find-is-a-peer
+  (implies (fn-cfg-peer-find name peers)
+           (fn-cfg-peerp (fn-cfg-peer-find name peers)))
+  :rule-classes ((:forward-chaining
+                  :trigger-terms ((fn-cfg-peer-find name peers))))
+  :hints (("Goal" :in-theory (e/d ((:d fn-cfg-peer-find)
+                                   (:d fn-cfg-peer-of-rows))
+                                  ((:d fn-cfg-peerp))))))
+
+(defthm fn-cfg-peerp-inbound-fields
+  (implies (and (fn-cfg-peerp p) (fn-cfg-peer-inbound p))
+           (and (posp (fn-cfg-peer-inbound-max-octets p))
+                (<= (fn-cfg-peer-inbound-max-octets p) *fn-record-max-payload*)
+                (posp (fn-cfg-peer-inbound-max-inflight p))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d ((:d fn-cfg-peerp) (:d fn-cfg-peer-inboundp)
+                                   (:d fn-cfg-peer-inbound-max-octets)
+                                   (:d fn-cfg-peer-inbound-max-inflight)
+                                   (:d fn-cfg-ag-car) (:d fn-cfg-ag-cdr))
+                                  ((:d fn-cfg-labelp) (:d fn-cfg-wildmatp)
+                                   (:d fn-path-identityp)
+                                   (:d fn-cfg-peer-transportp)
+                                   (:d fn-cfg-peer-outboundp)
+                                   (:d fn-cfg-peer-authp))))))
+
 ; -----------------------------------------------------------------------------
 ; Export theory
 
