@@ -898,6 +898,13 @@ head -5 $typescript 2>/dev/null || echo "(the client left no typescript)"
         for key in self.FACT_KEYS:
             if key in self.facts:
                 lines.append("| {} | {} |".format(key, self.facts[key].replace("|", "\\|")))
+        # A fact recorded under a name the class did not enumerate is still a
+        # measurement. Dropping it silently is how a number that was measured
+        # disappears from the record; the enumeration is an ORDER, not a
+        # filter.
+        for key in sorted(self.facts):
+            if key not in self.FACT_KEYS:
+                lines.append("| {} | {} |".format(key, self.facts[key].replace("|", "\\|")))
         clients = ", ".join("{}={}".format(k, v) for k, v in sorted(
             getattr(self, "clients", {}).items()))
         if clients:

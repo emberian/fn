@@ -48,7 +48,9 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import re
 from pathlib import Path
+import subprocess
 import sys
 import time
 
@@ -97,6 +99,11 @@ class NodeSpec:
         self.path_identity = "{}.gate.example.invalid".format(name)
         self.accepted = []           # every msgid this node has acknowledged
         self.rejected = []           # every msgid this node must NOT hold
+        # The recording port a PEER dials instead of this node's own, and the
+        # file the tap writes. 0 means no tap: peers dial the node directly
+        # and the gate cannot say which offer command carried an article.
+        self.tap_port = 0
+        self.tap_log = "{}/tap.log".format(self.dir)
 
     @property
     def upper(self) -> str:
@@ -368,6 +375,90 @@ if __name__ == "__main__":
 
 
 # --------------------------------------------------------------------------
+# the wire tap: what a feed actually put on the socket
+
+TAP_DRIVER = r'''#!/usr/bin/env python3
+"""A line-recording TCP tap in front of one node.
+
+Neither end of a feed logs the commands it sends, so without this there is no
+way to say WHETHER an article crossed by IHAVE or by CHECK/TAKETHIS -- only
+that it arrived. The tap forwards bytes between a client and one fixed
+server and appends every complete CRLF line to a file with its direction.
+It parses nothing, decides nothing and answers nothing: it is a recorder,
+and the gate reads its file afterwards.
+"""
+import argparse, socket, threading, time
+
+
+def pump(name, source, target, log, lock):
+    pending = b""
+    try:
+        while True:
+            chunk = source.recv(65536)
+            if not chunk:
+                break
+            target.sendall(chunk)
+            pending += chunk
+            while b"\r\n" in pending:
+                line, pending = pending.split(b"\r\n", 1)
+                with lock:
+                    log.write("{} {}\n".format(
+                        name, line.decode("ascii", "replace")[:300]))
+                    log.flush()
+    except OSError:
+        pass
+    finally:
+        for one in (source, target):
+            try:
+                one.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+
+
+def serve(client, port, log, lock):
+    try:
+        server = socket.create_connection(("127.0.0.1", port), 5)
+    except OSError as error:
+        with lock:
+            log.write("! no server on {}: {}\n".format(port, error))
+            log.flush()
+        client.close()
+        return
+    with lock:
+        log.write("= session opened at {:.3f}\n".format(time.time()))
+        log.flush()
+    for name, source, target in (("C>", client, server), ("S<", server, client)):
+        threading.Thread(target=pump, args=(name, source, target, log, lock),
+                         daemon=True).start()
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--listen", type=int, default=0)
+    parser.add_argument("--to", type=int, required=True)
+    parser.add_argument("--log", required=True)
+    args = parser.parse_args()
+    lock = threading.Lock()
+    log = open(args.log, "a", buffering=1)
+    listener = socket.socket()
+    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    listener.bind(("127.0.0.1", args.listen))
+    listener.listen(8)
+    print("TAPPING {}".format(listener.getsockname()[1]), flush=True)
+    while True:
+        try:
+            client, _ = listener.accept()
+        except OSError:
+            continue
+        serve(client, args.to, log, lock)
+
+
+if __name__ == "__main__":
+    main()
+'''
+
+
+# --------------------------------------------------------------------------
 # the gate
 
 
@@ -503,7 +594,15 @@ class TwoNodeGate(deploy_gate.DeployGate):
                               else "the article is not there" if probe.rc == EXIT_REFUSED
                               else "neither"))
 
-    def start_node(self, node: NodeSpec, tag="main") -> bool:
+    def start_node(self, node: NodeSpec, tag="main", port=None) -> bool:
+        """Start (or restart) one node, on a PINNED port once it has one.
+
+        A peer record names the other node's listener by number, and the
+        owner reads the peer table once, at startup. A restart on a fresh
+        ephemeral port would therefore leave both records pointing at a
+        closed port and silently end the feed, so every restart after the
+        first reuses the port the node already had (the listener sets
+        SO_REUSEADDR; tools/run_owner.py, the bind)."""
         if node.name not in self.commands:
             if self.server_template:
                 self.commands[node.name] = ("custom", self.server_template.format(
@@ -511,6 +610,9 @@ class TwoNodeGate(deploy_gate.DeployGate):
             else:
                 self.commands[node.name] = self.server_command(node.store, node.dir)
         self.selected, command = self.commands[node.name]
+        pinned = port or node.port
+        if pinned:
+            command = command.replace("--port 0", "--port {}".format(pinned))
         started = self.start_server("node {} ({})".format(node.upper, self.selected),
                                     command, "{}-{}".format(node.name, tag), run=node.dir)
         if not started and self.selected != "reader" and not self.server_template:
@@ -525,7 +627,9 @@ class TwoNodeGate(deploy_gate.DeployGate):
                 .format(node.upper, self.selected, self.selected))
             self.commands[node.name] = ("reader", fallback)
             self.selected, command = "reader", fallback
-            started = self.start_server("node {} (reader)".format(node.upper), fallback,
+            if pinned:
+                command = command.replace("--port 0", "--port {}".format(pinned))
+            started = self.start_server("node {} (reader)".format(node.upper), command,
                                         "{}-{}".format(node.name, tag), run=node.dir)
         if not started:
             return False
@@ -541,8 +645,96 @@ class TwoNodeGate(deploy_gate.DeployGate):
     def stop_node(self, node: NodeSpec, tag="main"):
         self.stop_server("node {} ({})".format(node.upper, tag), run=node.dir)
 
-    def peer_records(self):
-        """A peer record on each node naming the other (specs/peering.md 1.2)."""
+    def start_tap(self, node: NodeSpec) -> bool:
+        """A recorder in front of one node, on the port its peer will dial."""
+        out = "{}/tap-{}.out".format(node.dir, node.name)
+        pid = "{}/tap.pid".format(node.dir)
+        step = self.sh("wire tap in front of node {}".format(node.upper), self.cd("""
+rm -f {out}
+nohup python3 {run}/tap.py --to {port} --log {log} > {out} 2>&1 < /dev/null &
+echo $! > {pid}
+for i in $(seq 1 20); do
+  if grep -m1 '^TAPPING' {out}; then exit 0; fi
+  if ! kill -0 $(cat {pid}) 2>/dev/null; then echo TAP-DIED; cat {out}; exit 1; fi
+  sleep 1
+done
+echo TAP-TIMEOUT; cat {out}; exit 1
+""".format(run=self.run, port=node.port, log=node.tap_log, out=out, pid=pid)),
+            timeout=120, expect=None)
+        match = re.search(r"^TAPPING (\d+)", step.output, re.M)
+        if step.rc != 0 or match is None:
+            self.gaps.append(
+                "no wire tap could be started in front of node {}: its peer dials it "
+                "directly and no row below says which offer command (IHAVE, or RFC "
+                "4644 CHECK/TAKETHIS) carried an article -- only that it arrived."
+                .format(node.upper))
+            return False
+        node.tap_port = int(match.group(1))
+        return True
+
+    def tap_mark(self, node: NodeSpec) -> int:
+        """Where the tap log stands now, so the next read is this step alone.
+
+        Off the step list: a bookmark is not a result."""
+        try:
+            done = self.host.sh("wc -l < {} 2>/dev/null || echo 0".format(node.tap_log),
+                                60)
+            return int(done.stdout.decode("utf-8", "replace").strip().split()[-1])
+        except (subprocess.SubprocessError, ValueError, IndexError, OSError):
+            return 0
+
+    def read_tap(self, node: NodeSpec, name: str, since=0, expect=0) -> Step:
+        """The command and status lines the tap in front of `node` recorded.
+
+        This is the only place the gate can see WHICH command carried an
+        article. It greps; it does not decide."""
+        return self.sh(
+            name,
+            "tail -n +{} {} 2>/dev/null | grep -E "
+            "'^C> (IHAVE|CHECK|TAKETHIS|MODE STREAM)|^S< [0-9][0-9][0-9] ' "
+            "| tail -60".format(since + 1, node.tap_log),
+            timeout=120, expect=expect)
+
+    def configure_peering(self, streaming=False, tag="peered"):
+        """The peer records, and the restart that makes them live.
+
+        Three facts force this shape and all three are the tree's, not this
+        harness's. A record names the OTHER node's listener by port, so both
+        ports must be known before either record can be written. `peer add`
+        is a configuration transaction on a store an owner must not be
+        holding. And the owner reads the peer table exactly once, at
+        startup -- for the accept decision (`fn-owner-peer-for-address`,
+        specs/peering.md 1.1) and for the feed table
+        (`fn-owner-feed-configure`, books/owner-feed.lisp). So the nodes are
+        started once to learn their ports, stopped, given their records, and
+        started again on the SAME ports.
+
+        There is no live-reconfiguration command on this tree: tools/run_owner.py
+        accepts POST, VERSION, CONNECTIONS, ADVANCE, OBSERVE, DECLARE-GROUP and
+        QUIT and nothing that re-reads the peer table. When one exists, this
+        whole method becomes one control line and the restart goes away.
+        """
+        for node in self.nodes:
+            self.stop_node(node, tag="pre-peer")
+        self.peer_records(streaming=streaming)
+        for node in self.nodes:
+            if not self.start_node(node, tag=tag, port=node.port):
+                raise GateError(
+                    "node {} did not come back on port {} after its peer record was "
+                    "written".format(node.upper, node.port))
+
+    def peer_records(self, streaming=False):
+        """A peer record on each node naming the other (specs/peering.md 1.2).
+
+        `streaming` is the OUTBOUND half of RFC 4644: with it the peer's feed
+        offers with CHECK/TAKETHIS, without it with IHAVE. The inbound bound
+        is left unsaid, because the ceiling belongs to ACL2
+        (`fn-store-cfg-peer-record` supplies *fn-record-max-payload*) and a
+        number typed here would be a second owner of it -- which is exactly
+        how the CLI default of 1048576 came to refuse every `peer add` made
+        with the defaults, `:peer-record`, silently, for as long as the CLI
+        has existed.
+        """
         probe = self.sh("peer record CLI", self.cd("""
 if python3 tools/run_store.py --store /nonexistent peer --help >/dev/null 2>&1; then
   echo STORE-PEER
@@ -559,14 +751,27 @@ else echo NONE; fi
                 # The auth slot is the loopback address the other node dials
                 # from, which is what decides the role at accept
                 # (specs/peering.md 1.1, fn-owner-peer-for-address).
-                self.sh("node {} peer record for {}".format(node.upper, other.upper),
-                        self.cd(self.fn(
-                            "--store {} peer add {} --path-identity {} "
-                            "--nntp 127.0.0.1:{} --inbound-groups 'fn.*' "
-                            "--outbound-groups 'fn.*' --streaming "
-                            "--source-address 127.0.0.1".format(
-                                node.store, other.name, other.path_identity, other.port))),
-                        timeout=900)
+                added = self.sh(
+                    "node {} peer record for {} ({})".format(
+                        node.upper, other.upper,
+                        "streaming" if streaming else "IHAVE"),
+                    self.cd(self.fn(
+                        "--store {} peer add {} --path-identity {} "
+                        "--nntp 127.0.0.1:{} --inbound-groups 'fn.*' "
+                        "--outbound-groups 'fn.*' {}"
+                        "--source-address 127.0.0.1".format(
+                            node.store, other.name, other.path_identity,
+                            other.tap_port or other.port,
+                            "--streaming " if streaming else ""))),
+                    timeout=900, expect=None)
+                if added.rc != 0:
+                    self.gaps.append(
+                        "node {} refused the peer record for {} ({}), so this node "
+                        "resolves no peer at accept and configures no feed: every "
+                        "transit row below is about a reader connection."
+                        .format(node.upper, other.upper,
+                                added.output.strip().splitlines()[-1]
+                                if added.output.strip() else "no output"))
                 listing = self.sh(
                     "node {} lists its peers".format(node.upper),
                     self.cd(self.fn("--store {} peer list".format(node.store))),
@@ -706,16 +911,89 @@ else echo NONE; fi
                 .format(result.get("loop_result")))
         self.b.rejected.append(LOOP_ID)
 
+    def deliver_by_feed(self, source: NodeSpec, target: NodeSpec, msgid: str,
+                        label: str, expect_command: str, seconds=60) -> bool:
+        """One article, posted on `source`, carried to `target` by fn's own feed.
+
+        This is the v0 question. The offering side is the feed TABLE of
+        books/owner-feed.lisp, stepped by the owner and driven by
+        tools/run_owner.py -- not this harness. Nothing is posted through the
+        CLI: the running owner holds the store lock, and an article written
+        behind it would never reach `fn-own-outcome` and so would never be
+        enqueued. What is asserted is that `target` serves the article and
+        serves the SAME octets `source` serves, and that the command the tap
+        recorded is the one this peer record asks for.
+        """
+        mark = self.tap_mark(target)
+        posted = self.feed("post", "--port {} --msgid '{}' --group {}".format(
+            source.port, msgid, GROUPS[0]),
+            name="{}: {} posts {}".format(label, source.upper, msgid), expect=None)
+        if not self.payload(posted).get("ok"):
+            self.gaps.append(
+                "{}: POST of {} on node {} answered '{}', not 240, so the feed had "
+                "nothing durable to offer and this direction was not exercised."
+                .format(label, msgid, source.upper,
+                        self.payload(posted).get("result", "nothing")))
+            self.skip("{}: {} receives {} from {}'s feed".format(
+                label, target.upper, msgid, source.upper),
+                "run_owner.py Feed (books/owner-feed.lisp)",
+                "the article never became durable on node {}".format(source.upper))
+            return False
+        source.accepted.append(msgid)
+        arrival = self.feed(
+            "wait", "--port {} --from-port {} --msgid '{}' --seconds {}".format(
+                target.port, source.port, msgid, seconds),
+            name="{}: {} receives {} from {}'s feed".format(
+                label, target.upper, msgid, source.upper),
+            expect=None)
+        result = self.payload(arrival)
+        self.facts["{} {}".format(label, msgid)] = (
+            "status={} attempts={} octets identical to the source={}".format(
+                result.get("status", "none"), result.get("attempts"),
+                result.get("identical")))
+        if not result.get("ok"):
+            self.gaps.append(
+                "{}: node {} never served {} within {} s of node {} accepting it, so "
+                "the outbound feed did not transfer it. Nothing below about this "
+                "direction is about an article that crossed."
+                .format(label, target.upper, msgid, seconds, source.upper))
+            self.read_tap(target, "{}: what {}'s feed put on the wire".format(
+                label, source.upper), since=mark, expect=None)
+            return False
+        target.accepted.append(msgid)
+        self.derive("{}: {} serves {} byte for byte as {} does".format(
+            label, target.upper, msgid, source.upper), arrival,
+            "the ARTICLE block node {} returns is compared line for line with the "
+            "one node {} returns; identical={}".format(
+                target.upper, source.upper, result.get("identical")))
+        if result.get("identical") is not True:
+            self.gaps.append(
+                "{}: node {} serves {} but NOT byte for byte as node {} serves it "
+                "(identical={}): a relaying agent must alter nothing but Path and "
+                "Xref (RFC 5537 3.6).".format(label, target.upper, msgid,
+                                              source.upper, result.get("identical")))
+        wire = self.read_tap(target, "{}: {}'s feed offered {} with {}".format(
+            label, source.upper, msgid, expect_command), since=mark, expect=None)
+        offered = [line for line in wire.output.splitlines()
+                   if line.startswith("C> " + expect_command)]
+        self.facts["{} wire".format(label)] = (
+            "; ".join(line[3:] for line in wire.output.splitlines()
+                      if line.startswith("C> "))[:400] or "nothing recorded")
+        if not offered:
+            self.gaps.append(
+                "{}: the tap in front of node {} recorded no `{}` from node {}'s "
+                "feed, so this run does not establish which offer command carried "
+                "{}. What it recorded was: {}".format(
+                    label, target.upper, expect_command, source.upper, msgid,
+                    "; ".join(wire.output.splitlines()[:8]) or "nothing"))
+        return True
+
     def scenario_owner_feed(self):
-        """A posts, A's OWN feed offers it to B, and then the other way.
+        """A posts, A's OWN feed offers it to B by IHAVE, and then the other way.
 
         This is the outbound half the wave-9 handoff recorded as not
-        delivered.  The offering side here is fn's feed -- the feed table in
-        books/owner-feed.lisp, stepped by the owner and driven by
-        tools/run_owner.py -- and not this harness's socket client, which is
-        what scenario_feed uses.  Nothing is posted through the CLI: the
-        running owner holds the store lock, and an article written behind it
-        would never reach fn-own-outcome and so would never be enqueued.
+        delivered, and the v0 milestone: an article crossing between two fn
+        nodes with fn on both ends of the decision.
         """
         if not (self.a.post_enabled and self.b.post_enabled):
             for direction in ("A to B", "B to A"):
@@ -727,44 +1005,10 @@ else echo NONE; fi
         delivered = {}
         for source, target, tag in ((self.a, self.b, "ab"), (self.b, self.a, "ba")):
             msgid = "<fed-{}@example.invalid>".format(tag)
-            posted = self.feed("post", "--port {} --msgid '{}' --group {}".format(
-                source.port, msgid, GROUPS[0]),
-                name="owner feed: {} posts {}".format(source.upper, msgid),
-                expect=None)
-            if not self.payload(posted).get("ok"):
-                self.gaps.append(
-                    "owner feed: POST of {} on node {} answered '{}', not 240, so the "
-                    "feed had nothing durable to offer and the {} direction was not "
-                    "exercised.".format(msgid, source.upper,
-                                        self.payload(posted).get("result", "nothing"),
-                                        tag.upper()))
+            delivered[tag] = self.deliver_by_feed(
+                source, target, msgid, "owner feed", "IHAVE")
+            if not delivered[tag]:
                 continue
-            source.accepted.append(msgid)
-            arrival = self.feed(
-                "wait", "--port {} --from-port {} --msgid '{}' --seconds 60".format(
-                    target.port, source.port, msgid),
-                name="owner feed: {} receives {} from {}'s feed".format(
-                    target.upper, msgid, source.upper),
-                expect=None)
-            result = self.payload(arrival)
-            delivered[tag] = bool(result.get("ok"))
-            self.facts["owner feed {}".format(tag)] = (
-                "status={} attempts={} identical={}".format(
-                    result.get("status", "none"), result.get("attempts"),
-                    result.get("identical")))
-            if not result.get("ok"):
-                self.gaps.append(
-                    "owner feed: node {} never served {} within 60 s of node {} "
-                    "accepting it, so the outbound feed did not transfer it. Every "
-                    "row below about the {} direction is about an article that did "
-                    "not cross.".format(target.upper, msgid, source.upper, tag.upper()))
-                continue
-            target.accepted.append(msgid)
-            if result.get("identical") is False:
-                self.gaps.append(
-                    "owner feed: node {} serves {} but not byte for byte as node {} "
-                    "serves it: a relaying agent must alter nothing but Path and Xref "
-                    "(RFC 5537 3.6).".format(target.upper, msgid, source.upper))
             # The duplicate path on a SECOND offer of the same article, by
             # hand: the peer's own history is what makes a re-offer safe
             # after a restart (RFC 3977 6.3.2, RFC 4644 2.4).
@@ -792,6 +1036,27 @@ else echo NONE; fi
                     .format(msgid, target.upper, second.get("check_duplicate")))
         self.facts["owner feed"] = "A->B {} ; B->A {}".format(
             delivered.get("ab"), delivered.get("ba"))
+
+    def scenario_owner_feed_streaming(self):
+        """The same crossing, with RFC 4644 CHECK/TAKETHIS carrying it.
+
+        Streaming is the peer record's OUTBOUND flag and the owner reads the
+        peer table once, at startup, so the only way to exercise both offer
+        commands in one deploy is to rewrite both records and restart both
+        nodes. `peer add` over a name that already exists replaces the
+        record (`fn-cfg-set-peer-delta`), so this is one more `peer add`
+        each and the ports do not move.
+        """
+        if not (self.a.post_enabled and self.b.post_enabled):
+            self.skip("owner feed: streaming (RFC 4644)",
+                      "peer add --streaming, then run_owner.py Feed",
+                      "owner feed: neither node serves POST on this commit")
+            return
+        self.configure_peering(streaming=True, tag="streaming")
+        delivered = self.deliver_by_feed(
+            self.a, self.b, "<fed-streaming@example.invalid>",
+            "owner feed streaming", "CHECK")
+        self.facts["owner feed streaming"] = str(delivered)
 
     def scenario_feed_restart(self):
         """K5: kill -9 A with an offer outstanding; the re-offer delivers once.
@@ -997,6 +1262,7 @@ else echo NONE; fi
         self.preflight()
         self.ship()
         self.push_file(FEED_DRIVER, "{}/feed.py".format(self.run), mode="755")
+        self.push_file(TAP_DRIVER, "{}/tap.py".format(self.run), mode="755")
         self.certificates()
         for node in self.nodes:
             self.init_node(node)
@@ -1007,10 +1273,13 @@ else echo NONE; fi
                 raise GateError("node {} did not reach LISTENING".format(node.upper))
         if self.a.port == self.b.port:
             raise GateError("both nodes reported the same port; they are one server")
-        self.peer_records()
+        for node in self.nodes:
+            self.start_tap(node)
+        self.configure_peering(streaming=False)
         self.scenario_independent()
         self.scenario_feed()
         self.scenario_owner_feed()
+        self.scenario_owner_feed_streaming()
         self.scenario_feed_restart()
         self.scenario_kill()
         self.scenario_tcpcl()
@@ -1022,6 +1291,16 @@ else echo NONE; fi
         """No stray process and no tree left on the box, whatever went wrong."""
         for node in self.nodes:
             self.stop_node(node)
+            self.sh("stop the tap in front of node {}".format(node.upper), """
+if [ -f {dir}/tap.pid ]; then
+  pid=$(cat {dir}/tap.pid)
+  kill $pid 2>/dev/null || true
+  for i in $(seq 1 10); do kill -0 $pid 2>/dev/null || break; sleep 1; done
+  kill -9 $pid 2>/dev/null || true
+  rm -f {dir}/tap.pid
+fi
+echo stopped
+""".format(dir=node.dir), expect=None)
         self.sh("stray fn processes", "pgrep -f 'fn-deploy/{}' >/dev/null 2>&1 "
                 "&& echo STRAY || echo CLEAN".format(self.rev), expect=None)
         if not self.keep:
