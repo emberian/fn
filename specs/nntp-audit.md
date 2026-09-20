@@ -380,6 +380,47 @@ obtained from a global Message-ID order or another site's numbers. Tests include
 gaps, groups whose allocated watermarks exceed retained membership, and articles
 excluded because their stored identifier cannot be rendered.
 
+## Certification status of this matrix (w9/server-polish, 2026-09-20)
+
+Recorded exactly, because a row above claims a theorem and a theorem is only
+a theorem once ACL2 has checked it.
+
+**Certified** on hbox, run `run-20260920T181811Z-484a`, evidence
+`/tank/fn/lanes/w9-server-polish/build/acl2/certify-20260920T181816Z-1031915`:
+`books/nntp-responses`, `books/nntp`, `books/nntp-overview`,
+`books/nntp-legacy` and `books/nntp-invariants`, which carry every XPAT
+definition and the XPAT keystones (`fn-nntp-xpat-lines-are-hdr-lines`,
+`fn-nntp-xpat-with-a-total-filter-is-the-hdr-block`,
+`fn-nntp-xpat-lines-are-clean`) and the three
+`fn-nntp-xpat-*-preserves-session` rules
+`fn-nntp-archive-command-keeps-projection` needs.
+
+**No verdict**, for a cause outside this lane: `books/peer-config` fails at
+`( DEFTHM FN-CFG-SET-PEER-DELTA-IS-ADMISSIBLE ...)` on this tree, from
+`74503ed` "w6/peering-inbound: ... (peer books uncertified)". It sits under
+`peer-inbound` and therefore under `served`, so **`books/served`,
+`tests/acl2/served-tests`, `books/nntp-auth`, `tests/acl2/nntp-auth-tests`,
+`books/owner`, `books/owner-invariants` and `tests/acl2/owner-tests` cascade
+off it**. Every §3.5 pipelining row and every RFC 4643 and RFC 4642 row above
+therefore names a theorem that is written and committed and has NOT been
+checked by ACL2 on this tree. None was weakened to manufacture a green and
+none was removed. The one form standing between dev and a certified served
+path is the peer-config one.
+
+`books/nntp-effects` carries the XPAT effect typing. Its message-id lemma was
+rerouted off `fn-nntp-hdr-labelled-line-is-block-text`, which
+w5/owner-followups recorded open on dev after 2598 s and 1.47e9 prover steps;
+`fn-nntp-xpat-msgid-block-is-block-text` goes through
+`fn-nntp-hdr-clean-fields-are-clean-lines` instead, the route the range form
+uses. The rerouted version is committed and was not reached before this lane's
+budget ended.
+
+The Python suites (`tests.test_reader`, `tests.test_post`, `tests.test_owner`)
+and the slrn and nntplib probes did not run: they drive a live owner, which
+needs the certificates the cascade above withholds. The XPAT socket transcript
+in `tests/test_reader.py` and the TLS transcripts in `tests/test_owner.py` are
+written and unrun, and are named here so nobody reads them as evidence.
+
 ## Evidence needed before expanding advertisement
 
 For each branch, retain the supporting RFC clause, an independently specified
