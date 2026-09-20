@@ -30,7 +30,7 @@
            (fn-node-stage-generation natp)
            (fn-node-stage-id stringp)
            (fn-node-stage-subject stringp)
-           (fn-node-stage-evidence stringp)
+           (fn-node-stage-evidence fn-provp)
            (fn-node-stage-charge
             (and (posp (fn-node-stage-charge x))
                  (consp (fn-state-pending acceptance))
