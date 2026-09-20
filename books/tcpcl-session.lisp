@@ -913,8 +913,23 @@
   (implies (and (fn-tcl-sessionp s) (fn-clock-timep now))
            (fn-tcl-sessionp (fn-tcl-touch-rx s now))))
 
+; fn-tcl-step dispatches on the touched session; what touch-rx carries.
+(defthm fn-tcl-touch-rx-fields
+  (and (equal (fn-tcl-session-role (fn-tcl-touch-rx s now)) (fn-tcl-session-role s))
+       (equal (fn-tcl-session-phase (fn-tcl-touch-rx s now)) (fn-tcl-session-phase s))
+       (equal (fn-tcl-session-local (fn-tcl-touch-rx s now)) (fn-tcl-session-local s))
+       (equal (fn-tcl-session-negotiated (fn-tcl-touch-rx s now)) (fn-tcl-session-negotiated s))
+       (equal (fn-tcl-session-inbound (fn-tcl-touch-rx s now)) (fn-tcl-session-inbound s))
+       (equal (fn-tcl-session-outbound (fn-tcl-touch-rx s now)) (fn-tcl-session-outbound s))
+       (equal (fn-tcl-session-term (fn-tcl-touch-rx s now)) (fn-tcl-session-term s))
+       (equal (fn-tcl-segment-mru (fn-tcl-touch-rx s now)) (fn-tcl-segment-mru s))))
+
 ; What a session says about its fields, exported so an includer never
 ; opens fn-tcl-sessionp, and the one rebuild lemma every transition uses.
+; The absent-field facts are stated with `not`, never `null`: ACL2 stores a
+; `(not x)` conclusion as the rule x -> nil under iff, which fires on the
+; bare literal `(fn-tcl-session-outbound s)` in a split case, while a
+; `(null x)` conclusion is a rule on the term `(null x)` and never matches it.
 (defthm fn-tcl-sessionp-facts
   (implies (fn-tcl-sessionp s)
            (and (fn-tcl-session-shapep s)
@@ -935,33 +950,207 @@
                 (implies (fn-tcl-session-outbound s)
                          (fn-tcl-outboundp (fn-tcl-session-outbound s)))
                 (implies (fn-tcl-pre-establishedp (fn-tcl-session-phase s))
-                         (and (null (fn-tcl-session-negotiated s))
-                              (null (fn-tcl-session-term s))))
+                         (and (not (fn-tcl-session-negotiated s))
+                              (not (fn-tcl-session-term s))))
                 (implies (equal (fn-tcl-session-phase s) :established)
                          (and (fn-tcl-session-negotiated s)
-                              (null (fn-tcl-session-term s))))
+                              (not (fn-tcl-session-term s))))
                 (implies (equal (fn-tcl-session-phase s) :ending)
                          (fn-tcl-session-term s))
                 (implies (not (fn-tcl-transferringp (fn-tcl-session-phase s)))
-                         (and (null (fn-tcl-session-inbound s))
-                              (null (fn-tcl-session-outbound s))))
-                (implies (null (fn-tcl-session-negotiated s))
-                         (and (null (fn-tcl-session-inbound s))
-                              (null (fn-tcl-session-outbound s)))))))
+                         (and (not (fn-tcl-session-inbound s))
+                              (not (fn-tcl-session-outbound s))))
+                (implies (not (fn-tcl-session-negotiated s))
+                         (and (not (fn-tcl-session-inbound s))
+                              (not (fn-tcl-session-outbound s)))))))
 
+; The field facts of the sub-recognizers and the conditional fields of a
+; session, as forward-chaining rules only (docs/proof-style.md section 1):
+; `(fn-tcl-sessionp s)` in a hypothesis puts into the context every fact a
+; transition lemma relieves about the fields it carries, in the opened form
+; the clause states them (`integerp` and bounds, never `natp`), so that no
+; proof opens the recognizer to reach a field of a field.
+(defthm fn-tcl-paramsp-forward-fields
+  (implies (fn-tcl-paramsp p)
+           (and (fn-tcl-params-shapep p)
+                (integerp (fn-tcl-params-keepalive p))
+                (<= 0 (fn-tcl-params-keepalive p))
+                (<= (fn-tcl-params-keepalive p) *fn-tcl-max-u16*)
+                (integerp (fn-tcl-params-segment-mru p))
+                (<= 0 (fn-tcl-params-segment-mru p))
+                (<= (fn-tcl-params-segment-mru p) *fn-tcl-max-u64*)
+                (integerp (fn-tcl-params-transfer-mru p))
+                (<= 0 (fn-tcl-params-transfer-mru p))
+                (<= (fn-tcl-params-transfer-mru p) *fn-tcl-max-u64*)
+                (fn-cbor-octet-listp (fn-tcl-params-node-id p))
+                (<= (len (fn-tcl-params-node-id p)) *fn-tcl-node-id-cap*)
+                (booleanp (fn-tcl-params-can-tls p))))
+  :rule-classes :forward-chaining)
+
+(defthm fn-tcl-negotiatedp-forward-fields
+  (implies (fn-tcl-negotiatedp n)
+           (and (fn-tcl-negotiated-shapep n)
+                (integerp (fn-tcl-negotiated-keepalive n))
+                (<= 0 (fn-tcl-negotiated-keepalive n))
+                (<= (fn-tcl-negotiated-keepalive n) *fn-tcl-max-u16*)
+                (integerp (fn-tcl-negotiated-segment-mtu n))
+                (< 0 (fn-tcl-negotiated-segment-mtu n))
+                (<= (fn-tcl-negotiated-segment-mtu n) *fn-tcl-max-u64*)
+                (integerp (fn-tcl-negotiated-transfer-mtu n))
+                (< 0 (fn-tcl-negotiated-transfer-mtu n))
+                (<= (fn-tcl-negotiated-transfer-mtu n) *fn-tcl-max-u64*)
+                (booleanp (fn-tcl-negotiated-tls n))
+                (fn-cbor-octet-listp (fn-tcl-negotiated-peer-node-id n))))
+  :rule-classes :forward-chaining)
+
+(defthm fn-tcl-inboundp-forward-fields
+  (implies (fn-tcl-inboundp i limit)
+           (and (fn-tcl-inbound-shapep i)
+                (integerp (fn-tcl-inbound-xfer-id i))
+                (<= 0 (fn-tcl-inbound-xfer-id i))
+                (<= (fn-tcl-inbound-xfer-id i) *fn-tcl-max-u64*)
+                (fn-tcl-octet-listsp (fn-tcl-inbound-staged i))
+                (integerp (fn-tcl-inbound-received-len i))
+                (<= 0 (fn-tcl-inbound-received-len i))
+                (equal (fn-tcl-inbound-received-len i)
+                       (fn-tcl-lists-len (fn-tcl-inbound-staged i)))
+                (<= (fn-tcl-inbound-received-len i) limit)))
+  :rule-classes :forward-chaining)
+
+(defthm fn-tcl-inboundp-forward-total
+  (implies (and (fn-tcl-inboundp i limit) (fn-tcl-inbound-total i))
+           (and (integerp (fn-tcl-inbound-total i))
+                (<= 0 (fn-tcl-inbound-total i))
+                (<= (fn-tcl-inbound-total i) *fn-tcl-max-u64*)
+                (<= (fn-tcl-inbound-received-len i) (fn-tcl-inbound-total i))))
+  :rule-classes ((:forward-chaining :trigger-terms ((fn-tcl-inbound-total i)))))
+
+(defthm fn-tcl-outboundp-forward-fields
+  (implies (fn-tcl-outboundp o)
+           (and (fn-tcl-outbound-shapep o)
+                (integerp (fn-tcl-outbound-xfer-id o))
+                (<= 0 (fn-tcl-outbound-xfer-id o))
+                (<= (fn-tcl-outbound-xfer-id o) *fn-tcl-max-u64*)
+                (fn-cbor-octet-listp (fn-tcl-outbound-remaining o))
+                (integerp (fn-tcl-outbound-total o))
+                (<= 0 (fn-tcl-outbound-total o))
+                (<= (fn-tcl-outbound-total o) *fn-tcl-max-u64*)
+                (integerp (fn-tcl-outbound-sent-len o))
+                (<= 0 (fn-tcl-outbound-sent-len o))
+                (equal (+ (fn-tcl-outbound-sent-len o) (len (fn-tcl-outbound-remaining o)))
+                       (fn-tcl-outbound-total o))
+                (integerp (fn-tcl-outbound-acked-len o))
+                (<= 0 (fn-tcl-outbound-acked-len o))
+                (<= (fn-tcl-outbound-acked-len o) (fn-tcl-outbound-sent-len o))))
+  :rule-classes :forward-chaining)
+
+(defthm fn-tcl-sessionp-forward-fields
+  (implies (fn-tcl-sessionp s)
+           (and (fn-tcl-session-shapep s)
+                (fn-tcl-paramsp (fn-tcl-session-local s))
+                (booleanp (fn-tcl-session-tls s))
+                (integerp (fn-tcl-session-next-xfer-id s))
+                (<= 0 (fn-tcl-session-next-xfer-id s))
+                (fn-clock-timep (fn-tcl-session-last-rx s))
+                (fn-clock-timep (fn-tcl-session-last-tx s))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (disable fn-tcl-sessionp) :use fn-tcl-sessionp-facts)))
+
+(defthm fn-tcl-sessionp-forward-peer
+  (implies (and (fn-tcl-sessionp s) (fn-tcl-session-peer s))
+           (fn-tcl-peer-initp (fn-tcl-session-peer s)))
+  :rule-classes ((:forward-chaining :trigger-terms ((fn-tcl-session-peer s))))
+  :hints (("Goal" :in-theory (disable fn-tcl-sessionp) :use fn-tcl-sessionp-facts)))
+
+(defthm fn-tcl-sessionp-forward-negotiated
+  (implies (and (fn-tcl-sessionp s) (fn-tcl-session-negotiated s))
+           (fn-tcl-negotiatedp (fn-tcl-session-negotiated s)))
+  :rule-classes ((:forward-chaining :trigger-terms ((fn-tcl-session-negotiated s))))
+  :hints (("Goal" :in-theory (disable fn-tcl-sessionp) :use fn-tcl-sessionp-facts)))
+
+(defthm fn-tcl-sessionp-forward-inbound
+  (implies (and (fn-tcl-sessionp s) (fn-tcl-session-inbound s))
+           (and (fn-tcl-inboundp (fn-tcl-session-inbound s)
+                                 (fn-tcl-params-transfer-mru (fn-tcl-session-local s)))
+                (fn-tcl-session-negotiated s)))
+  :rule-classes ((:forward-chaining :trigger-terms ((fn-tcl-session-inbound s))))
+  :hints (("Goal" :in-theory (disable fn-tcl-sessionp) :use fn-tcl-sessionp-facts)))
+
+(defthm fn-tcl-sessionp-forward-established
+  (implies (and (fn-tcl-sessionp s) (equal (fn-tcl-session-phase s) :established))
+           (fn-tcl-session-negotiated s))
+  :rule-classes ((:forward-chaining :trigger-terms ((fn-tcl-session-phase s))))
+  :hints (("Goal" :in-theory (disable fn-tcl-sessionp) :use fn-tcl-sessionp-facts)))
+
+(defthm fn-tcl-sessionp-forward-outbound
+  (implies (and (fn-tcl-sessionp s) (fn-tcl-session-outbound s))
+           (and (fn-tcl-outboundp (fn-tcl-session-outbound s))
+                (fn-tcl-session-negotiated s)))
+  :rule-classes ((:forward-chaining :trigger-terms ((fn-tcl-session-outbound s))))
+  :hints (("Goal" :in-theory (disable fn-tcl-sessionp) :use fn-tcl-sessionp-facts)))
+
+; The numeric fields, in the rule classes type-set and linear arithmetic read:
+; `(+ 1 (fn-tcl-session-next-xfer-id s))` is an integer only if type-set
+; knows the field is (a :type-prescription rule), and a Transfer Length is
+; within the u64 only through the MRU (a :linear rule).
+(defthm fn-tcl-sessionp-next-xfer-id-natp
+  (implies (fn-tcl-sessionp s) (natp (fn-tcl-session-next-xfer-id s)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (disable fn-tcl-sessionp) :use fn-tcl-sessionp-facts)))
+
+(defthm fn-tcl-sessionp-mru-natp
+  (implies (fn-tcl-sessionp s)
+           (and (natp (fn-tcl-params-segment-mru (fn-tcl-session-local s)))
+                (natp (fn-tcl-params-transfer-mru (fn-tcl-session-local s)))))
+  :rule-classes ((:type-prescription
+                  :corollary (implies (fn-tcl-sessionp s)
+                                      (natp (fn-tcl-params-segment-mru (fn-tcl-session-local s)))))
+                 (:type-prescription
+                  :corollary (implies (fn-tcl-sessionp s)
+                                      (natp (fn-tcl-params-transfer-mru (fn-tcl-session-local s))))))
+  :hints (("Goal" :in-theory (disable fn-tcl-sessionp) :use fn-tcl-sessionp-facts)))
+
+; The two MRU glue functions are closed in the step and drive proofs (so
+; that fn-tcl-decode-for-yields-message matches); their type stays known.
+(defthm fn-tcl-segment-mru-natp
+  (implies (fn-tcl-sessionp s) (natp (fn-tcl-segment-mru s)))
+  :rule-classes :type-prescription)
+
+(defthm fn-tcl-transfer-mru-natp
+  (implies (fn-tcl-sessionp s) (natp (fn-tcl-transfer-mru s)))
+  :rule-classes :type-prescription)
+
+(defthm fn-tcl-sessionp-mru-bounds
+  (implies (fn-tcl-sessionp s)
+           (and (<= (fn-tcl-params-segment-mru (fn-tcl-session-local s)) *fn-tcl-max-u64*)
+                (<= (fn-tcl-params-transfer-mru (fn-tcl-session-local s)) *fn-tcl-max-u64*)))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (disable fn-tcl-sessionp) :use fn-tcl-sessionp-facts)))
+
+; The five phase-consistency hypotheses are conditionals whose antecedent is
+; a glue predicate over the new phase.  When a transition carries the phase
+; (`(fn-tcl-session-phase s)`), the antecedent opens to an undecided
+; disjunction that the rewriter cannot assume while relieving a hypothesis,
+; although fn-tcl-sessionp-facts decides each case at the clause level; so
+; those five are `case-split`: the rule fires, and a case the rewriter could
+; not relieve is split off and closed from the facts.  Logically identity.
 (defthm fn-tcl-next-preserves-sessionp
   (implies (and (fn-tcl-sessionp s)
                 (fn-tcl-phasep phase) (fn-tcl-termp term) (fn-clock-timep last-tx)
-                (or (null inbound)
+                (or (not inbound)
                     (fn-tcl-inboundp inbound (fn-tcl-params-transfer-mru (fn-tcl-session-local s))))
-                (or (null outbound) (fn-tcl-outboundp outbound))
-                (implies (fn-tcl-pre-establishedp phase)
-                         (and (null (fn-tcl-session-negotiated s)) (null term)))
-                (implies (equal phase :established)
-                         (and (fn-tcl-session-negotiated s) (null term)))
-                (implies (equal phase :ending) term)
-                (implies (not (fn-tcl-transferringp phase)) (and (null inbound) (null outbound)))
-                (implies (null (fn-tcl-session-negotiated s)) (and (null inbound) (null outbound))))
+                (or (not outbound) (fn-tcl-outboundp outbound))
+                (case-split
+                 (implies (fn-tcl-pre-establishedp phase)
+                          (and (not (fn-tcl-session-negotiated s)) (not term))))
+                (case-split
+                 (implies (equal phase :established)
+                          (and (fn-tcl-session-negotiated s) (not term))))
+                (case-split (implies (equal phase :ending) term))
+                (case-split
+                 (implies (not (fn-tcl-transferringp phase)) (and (not inbound) (not outbound))))
+                (case-split
+                 (implies (not (fn-tcl-session-negotiated s)) (and (not inbound) (not outbound)))))
            (fn-tcl-sessionp (fn-tcl-next s phase inbound outbound term last-tx)))
   :hints (("Goal" :in-theory (disable fn-tcl-inboundp fn-tcl-outboundp fn-tcl-paramsp
                                       fn-tcl-negotiatedp fn-tcl-peer-initp))))
@@ -1030,6 +1219,37 @@
                 (fn-tcl-transferringp (fn-tcl-session-phase s)))
            (fn-tcl-sessionp (fn-tcl-result-session (fn-tcl-broken-stream s live-id now)))))
 
+; At START, an accepted decision's total is a Transfer Length within the MRU.
+; `rationalp` is concluded beside `integerp` because the guard obligation of
+; the `<` on the total is `rationalp`, and the total's type is not a
+; :type-prescription (the typed term would occur in its own hypotheses).
+(defthm fn-tcl-ext-decision-ok-total
+  (implies (and (fn-tcl-item-listp items)
+                (not (equal (car (fn-tcl-ext-decision items mru)) :refuse))
+                (cadr (fn-tcl-ext-decision items mru)))
+           (and (integerp (cadr (fn-tcl-ext-decision items mru)))
+                (rationalp (cadr (fn-tcl-ext-decision items mru)))
+                (<= 0 (cadr (fn-tcl-ext-decision items mru)))
+                (<= (cadr (fn-tcl-ext-decision items mru)) mru)))
+  :rule-classes ((:rewrite)
+                 (:linear :corollary
+                  (implies (and (fn-tcl-item-listp items)
+                                (not (equal (car (fn-tcl-ext-decision items mru)) :refuse))
+                                (cadr (fn-tcl-ext-decision items mru)))
+                           (<= (cadr (fn-tcl-ext-decision items mru)) mru)))))
+
+(defthm fn-tcl-ext-decision-ok-total-u64
+  (implies (and (fn-tcl-item-listp items)
+                (<= mru *fn-tcl-max-u64*)
+                (not (equal (car (fn-tcl-ext-decision items mru)) :refuse))
+                (cadr (fn-tcl-ext-decision items mru)))
+           (<= (cadr (fn-tcl-ext-decision items mru)) *fn-tcl-max-u64*)))
+
+(defthm fn-tcl-drop-octet-listp
+  (implies (fn-cbor-octet-listp x)
+           (fn-cbor-octet-listp (fn-tcl-drop n x)))
+  :hints (("Goal" :in-theory (enable fn-tcl-drop))))
+
 (defthm fn-tcl-recv-segment-preserves-sessionp
   (implies (and (fn-tcl-sessionp s) (fn-clock-timep now)
                 (fn-tcl-messagep m (fn-tcl-segment-mru s))
@@ -1040,7 +1260,32 @@
   :hints (("Goal" :in-theory (e/d (fn-tcl-recv-segment)
                                   (fn-tcl-refuse fn-tcl-complete fn-tcl-stage
                                    fn-tcl-broken-stream fn-tcl-ext-decision
-                                   fn-tcl-sessionp)))))
+                                   fn-tcl-sessionp))
+           ; the stage lemma cited for the two inbound records recv-segment
+           ; builds (START, continuation); as a rewrite rule it is not
+           ; relieved on either instance
+           :use ((:instance fn-tcl-stage-preserves-sessionp
+                            (inbound (fn-tcl-make-inbound
+                                      (fn-tcl-xfer-segment-xfer-id m)
+                                      (list (fn-tcl-xfer-segment-data m))
+                                      (len (fn-tcl-xfer-segment-data m))
+                                      (cadr (fn-tcl-ext-decision (fn-tcl-xfer-segment-ext m)
+                                                                 (fn-tcl-transfer-mru s)))))
+                            (flags (fn-tcl-xfer-segment-flags m))
+                            (xfer-id (fn-tcl-xfer-segment-xfer-id m))
+                            (len (len (fn-tcl-xfer-segment-data m))))
+                 (:instance fn-tcl-stage-preserves-sessionp
+                            (inbound (fn-tcl-make-inbound
+                                      (fn-tcl-xfer-segment-xfer-id m)
+                                      (cons (fn-tcl-xfer-segment-data m)
+                                            (fn-tcl-inbound-staged (fn-tcl-session-inbound s)))
+                                      (+ (fn-tcl-inbound-received-len (fn-tcl-session-inbound s))
+                                         (len (fn-tcl-xfer-segment-data m)))
+                                      (fn-tcl-inbound-total (fn-tcl-session-inbound s))))
+                            (flags (fn-tcl-xfer-segment-flags m))
+                            (xfer-id (fn-tcl-xfer-segment-xfer-id m))
+                            (len (+ (fn-tcl-inbound-received-len (fn-tcl-session-inbound s))
+                                    (len (fn-tcl-xfer-segment-data m)))))))))
 
 (defthm fn-tcl-unexpected-preserves-sessionp
   (implies (and (fn-tcl-sessionp s) (fn-clock-timep now))
@@ -1053,7 +1298,19 @@
                 (fn-tcl-transferringp (fn-tcl-session-phase s))
                 (fn-tcl-session-negotiated s))
            (fn-tcl-sessionp (fn-tcl-result-session (fn-tcl-recv-ack s m now))))
-  :hints (("Goal" :in-theory (disable fn-tcl-unexpected))))
+  :hints (("Goal" :in-theory (disable fn-tcl-unexpected)
+           ; the rebuild lemma cited for the acknowledged outbound; as a
+           ; rewrite rule it is not relieved on this instance
+           :use ((:instance fn-tcl-next-preserves-sessionp
+                            (phase (fn-tcl-session-phase s)) (inbound (fn-tcl-session-inbound s))
+                            (outbound (fn-tcl-make-outbound
+                                       (fn-tcl-xfer-ack-xfer-id m)
+                                       (fn-tcl-outbound-ref (fn-tcl-session-outbound s))
+                                       (fn-tcl-outbound-remaining (fn-tcl-session-outbound s))
+                                       (fn-tcl-outbound-total (fn-tcl-session-outbound s))
+                                       (fn-tcl-outbound-sent-len (fn-tcl-session-outbound s))
+                                       (fn-tcl-xfer-ack-acked-len m)))
+                            (term (fn-tcl-session-term s)) (last-tx (fn-tcl-session-last-tx s)))))))
 
 (defthm fn-tcl-recv-refuse-preserves-sessionp
   (implies (fn-tcl-sessionp s)
@@ -1094,7 +1351,7 @@
                 (fn-tcl-messagep m (fn-tcl-segment-mru s)))
            (fn-tcl-sessionp (fn-tcl-result-session (fn-tcl-step s m now))))
   :hints (("Goal" :in-theory (e/d (fn-tcl-step)
-                                  (fn-tcl-messagep fn-tcl-touch-rx
+                                  (fn-tcl-messagep fn-tcl-touch-rx fn-tcl-segment-mru
                                    fn-tcl-settle fn-tcl-recv-contact fn-tcl-recv-init
                                    fn-tcl-recv-segment fn-tcl-recv-ack fn-tcl-recv-refuse
                                    fn-tcl-recv-term fn-tcl-unexpected))
@@ -1118,7 +1375,7 @@
   :hints (("Goal" :induct (fn-tcl-drive s buf now)
            :in-theory (e/d (fn-tcl-drive)
                            (fn-tcl-sessionp fn-tcl-messagep fn-tcl-step fn-tcl-decode-for
-                            fn-tcl-input-error)))))
+                            fn-tcl-input-error fn-tcl-segment-mru)))))
 
 ; -----------------------------------------------------------------------------
 ; Executable guard closure.
@@ -1135,17 +1392,19 @@
   :hints (("Goal" :in-theory (enable fn-tcl-messagep))))
 (verify-guards fn-tcl-pump)
 (verify-guards fn-tcl-send
-  :hints (("Goal" :in-theory (disable fn-tcl-pump))))
+  :hints (("Goal" :in-theory (disable fn-tcl-pump) :use fn-tcl-sessionp-facts)))
 (verify-guards fn-tcl-tick)
 (verify-guards fn-tcl-step
   :hints (("Goal" :in-theory (e/d (fn-tcl-messagep)
                                   (fn-tcl-recv-contact fn-tcl-recv-init fn-tcl-recv-segment
                                    fn-tcl-recv-ack fn-tcl-recv-refuse fn-tcl-recv-term
-                                   fn-tcl-unexpected fn-tcl-settle)))))
+                                   fn-tcl-unexpected fn-tcl-settle
+                                   fn-tcl-touch-rx fn-tcl-segment-mru))
+           :use ((:instance fn-tcl-touch-rx-preserves-sessionp)))))
 (verify-guards fn-tcl-decode-for)
 (verify-guards fn-tcl-drive
   :hints (("Goal" :in-theory (disable fn-tcl-step fn-tcl-decode-for fn-tcl-input-error
-                                      fn-tcl-messagep))))
+                                      fn-tcl-messagep fn-tcl-segment-mru))))
 
 ; -----------------------------------------------------------------------------
 ; Export theory.  Keystones and the list vocabulary stay enabled; every
@@ -1164,6 +1423,8 @@
     fn-tcl-unexpected fn-tcl-recv-ack fn-tcl-recv-refuse fn-tcl-recv-term
     fn-tcl-terminate fn-tcl-tcp-closed fn-tcl-input-error fn-tcl-with-outbound
     fn-tcl-pump fn-tcl-send
-    fn-tcl-tick fn-tcl-step fn-tcl-decode-for fn-tcl-drive))
+    fn-tcl-tick fn-tcl-step fn-tcl-decode-for fn-tcl-drive
+    fn-tcl-touch-rx-fields fn-tcl-ext-decision-ok-total fn-tcl-ext-decision-ok-total-u64
+    fn-tcl-drop-octet-listp))
 
 (in-theory (disable fn-tcl-session-vocabulary))
