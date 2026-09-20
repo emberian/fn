@@ -93,6 +93,10 @@
     "tests/acl2/store-node-teeth-tests",
     "books/checkpoint",
     "tests/acl2/checkpoint-tests",
+    "books/checkpoint-codec",
+    "tests/acl2/checkpoint-codec-tests",
+    "books/checkpoint-publish",
+    "tests/acl2/checkpoint-publish-tests",
     "books/index",
     "tests/acl2/index-tests",
     "books/bp-ingress",
@@ -225,22 +229,22 @@
     "tests/acl2/policy-tests"
   ],
   "totals": {
-    "books": 222,
-    "books_in_root_closure": 221,
-    "roots": 221,
-    "theorems": 4092,
-    "functions": 2986,
-    "assert_events": 3936,
+    "books": 226,
+    "books_in_root_closure": 225,
+    "roots": 225,
+    "theorems": 4233,
+    "functions": 3069,
+    "assert_events": 4059,
     "must_fails": 59,
     "encapsulates": 15,
     "guards": {
-      "verified": 1239,
+      "verified": 1265,
       "declared-off": 141,
-      "default-guarded": 1158,
-      "default-unguarded": 448
+      "default-guarded": 1212,
+      "default-unguarded": 451
     },
-    "suspect_theorems": 31,
-    "export_hygiene_warnings": 62,
+    "suspect_theorems": 32,
+    "export_hygiene_warnings": 63,
     "teeth_form_warnings": 0,
     "include_hygiene_warnings": 87
   },
@@ -1581,6 +1585,62 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/checkpoint-codec.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 88,
+      "functions": 32,
+      "guards": {
+        "verified": 13,
+        "declared-off": 0,
+        "default-guarded": 18,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 13,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 16,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "checkpoint",
+        "frame-invariants",
+        "records-canonicality"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-cpc-uint32p-bridge"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/checkpoint-publish.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 53,
+      "functions": 49,
+      "guards": {
+        "verified": 13,
+        "declared-off": 0,
+        "default-guarded": 36,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 13,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "checkpoint-codec"
+      ],
       "system_includes": [],
       "suspects": [],
       "read_error": null
@@ -4789,6 +4849,56 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/checkpoint-codec-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 68,
+      "must_fails": 0,
+      "defconsts": 14,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/checkpoint-codec"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/checkpoint-publish-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 55,
+      "must_fails": 0,
+      "defconsts": 32,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/checkpoint-publish"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/checkpoint-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -6120,6 +6230,14 @@
       ]
     },
     {
+      "theorem": "fn-cpc-uint32p-bridge",
+      "book": "books/checkpoint-codec.lisp",
+      "line": 1026,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-record-uint32p"
+      ]
+    },
+    {
       "theorem": "fn-exchange-ingest-refusal-is-no-op",
       "book": "books/exchange.lisp",
       "line": 529,
@@ -6457,6 +6575,12 @@
         "theorem": "fn-bp-actionable-trace-effects-of-record-events",
         "book": "books/bp-workflow-records-invariants.lisp",
         "line": 525,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-cpp-crash-marker-is-authority-before-selection-attempted",
+        "book": "books/checkpoint-publish.lisp",
+        "line": 698,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
