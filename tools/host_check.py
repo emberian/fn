@@ -42,8 +42,18 @@ BUILD_SCRIPT = "host/native/build.lisp"
 # The image build script names its own raw files; reading them from it keeps
 # this tool from carrying a second copy of that decision.
 RAW_LOAD = re.compile(r'\(load\s+"([^"]+\.lisp)"')
+# Two markers, because one is not enough.  A failed `ld` does not end a
+# session reading from a pipe: ACL2 reports the error, abandons that form and
+# reads the next one, so a marker on its own line prints for a file that did
+# not load.  Measured: host/config-host.lisp with its `ld` edge deleted
+# reported `ACL2 Error [Translate]` for an undefined function and the marker
+# still appeared.  LD_OK is printed from inside an `er-progn` with the load,
+# which short-circuits, and MARKER by the next top-level form, whose prompt
+# is the one the loaded file left behind.
+LD_OK = "FN_HOST_CHECK_LD_OK"
 MARKER = "FN_HOST_CHECK_LOADED"
 PROMPT = "ACL2 !>"
+ERRORS = ("ACL2 Error", "HARD ACL2 ERROR")
 DEFAULT_TIMEOUT_SECONDS = 600
 
 
@@ -81,30 +91,38 @@ def driver_for(relative: str, raw: bool) -> str:
     file that switches mode restores it (host/anchor-host.lisp is the one
     that switches).
     """
-    if raw:
-        body = (f'(defttag :fn-host-check)\n'
-                f'(progn! (set-raw-mode t) (load "{relative}"))\n'
-                f'(defttag nil)\n')
-    else:
-        body = f'(ld "{relative}" :ld-error-action :error)\n'
-    return body + f'(cw "{MARKER} ~s0~%" "{relative}")\n(good-bye)\n'
+    load = (f'(progn! (set-raw-mode t) (load "{relative}"))' if raw
+            else f'(ld "{relative}" :ld-error-action :error)')
+    return ("(defttag :fn-host-check)\n" if raw else "") \
+        + f'(er-progn {load}\n' \
+        + f'          (value-triple (cw "{LD_OK} ~s0~%" "{relative}")))\n' \
+        + ("(defttag nil)\n" if raw else "") \
+        + f'(cw "{MARKER} ~s0~%" "{relative}")\n(good-bye)\n'
 
 
-def loaded_at_logic_prompt(output: str, relative: str) -> tuple[bool, str]:
-    """Did the marker print, and did the prompt before it say `ACL2 !>`?
+def loaded_at_logic_prompt(output: str) -> tuple[bool, str]:
+    """Did the load succeed, and did the prompt after it say `ACL2 !>`?
 
     ACL2 prints its prompt before reading each form and does not echo a form
-    that came from a pipe, so the marker's own output follows the prompt on
-    one line.
+    that came from a pipe, so a marker's own output follows the prompt on one
+    line.  An error reported while the file was loading fails the check even
+    if the session recovered from it.
     """
-    for line in output.splitlines():
+    lines = output.splitlines()
+    end = next((i for i, line in enumerate(lines) if LD_OK in line), len(lines))
+    for line in lines[:end]:
+        if any(marker in line for marker in ERRORS):
+            return False, f"error while loading: {line.strip()}"
+    if end == len(lines):
+        return False, "the load did not complete"
+    for line in lines[end:]:
         if MARKER not in line:
             continue
         before = line.split(MARKER, 1)[0].strip()
         if before.endswith(PROMPT):
             return True, ""
         return False, f"loaded, but the prompt after it was {before!r}, not {PROMPT!r}"
-    return False, "no marker: the file did not load"
+    return False, "loaded, but the session did not reach a prompt after it"
 
 
 def check(acl2: Path, relative: str, raw: bool, timeout: int) -> tuple[bool, str, str]:
@@ -122,7 +140,7 @@ def check(acl2: Path, relative: str, raw: bool, timeout: int) -> tuple[bool, str
         partial = (error.output or b"").decode("utf-8", "replace")
         return False, f"timed out after {timeout}s", partial
     output = result.stdout.decode("utf-8", "replace")
-    ok, reason = loaded_at_logic_prompt(output, relative)
+    ok, reason = loaded_at_logic_prompt(output)
     return ok, reason, output
 
 
@@ -144,16 +162,19 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     raw = raw_files()
-    targets = args.files or [name for name in host_files() if name != BUILD_SCRIPT]
+    targets = args.files or host_files()
     log_dir = Path(args.log_dir).resolve() if args.log_dir else None
     if log_dir is not None:
         log_dir.mkdir(parents=True, exist_ok=True)
 
     failures: list[tuple[str, str]] = []
+    checked = 0
     for relative in targets:
         if relative == BUILD_SCRIPT:
-            print(f"skip  {relative} (image build script: tools/build_native_host.sh)")
+            print(f"skip     {relative} -- image build script, ends in `:q` and "
+                  "`save-exec`; tools/build_native_host.sh is its check")
             continue
+        checked += 1
         ok, reason, output = check(acl2, relative, relative in raw, args.timeout_seconds)
         if log_dir is not None:
             (log_dir / (relative.replace("/", "_") + ".log")).write_text(output)
@@ -163,8 +184,8 @@ def main(argv: list[str] | None = None) -> int:
             failures.append((relative, reason))
             tail = "\n".join(output.splitlines()[-25:])
             print(tail, file=sys.stderr)
-    print(f"host_check: {len(targets) - len(failures)}/{len(targets)} host files "
-          f"load alone with {acl2}")
+    print(f"host_check: {checked - len(failures)}/{checked} host files load "
+          f"alone with {acl2}")
     return 1 if failures else 0
 
 
