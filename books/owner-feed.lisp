@@ -1061,6 +1061,38 @@
                    other (car (fn-own-feed-tick-peer peer tbl obs)))
                   (fn-own-feed-entry-of other tbl))))
 
+; The two projections the host takes of a tagged feed effect list, in the
+; shape `fn-served-reply-octets' and `fn-served-closingp' have for the served
+; path: which peer's connection to write to, and what to write.  The host
+; reads these and decides nothing.
+(defun fn-own-feed-effect-peer (tagged)
+  (declare (xargs :guard t))
+  (fn-frame-item 0 (fn-frame-item 0 tagged)))
+
+(defun fn-own-feed-effect-octets (tagged)
+  (declare (xargs :guard t))
+  (let* ((entry (fn-frame-item 0 tagged))
+         (effects (if (consp entry) (cdr entry) nil))
+         (command (fn-frame-item 0 effects)))
+    (if (equal (fn-frame-item 0 command) :command)
+        (fn-frame-item 2 command)
+      nil)))
+
+; The tick's effect list names the peer whose feed emitted it, and carries
+; the command line that peer's offer rendered.
+(defthm fn-own-feed-tick-peer-effect-names-its-peer
+  (implies (cdr (fn-own-feed-tick-peer peer tbl obs))
+           (and (equal (fn-own-feed-effect-peer
+                        (cdr (fn-own-feed-tick-peer peer tbl obs)))
+                       peer)
+                (equal (fn-own-feed-effect-octets
+                        (cdr (fn-own-feed-tick-peer peer tbl obs)))
+                       (fn-frame-item
+                        2 (car (mv-nth 1 (fn-feed-tick-step
+                                          (fn-own-feed-find peer tbl) obs)))))))
+  :hints (("Goal" :in-theory (e/d (fn-own-feed-tick-peer fn-own-feed-find)
+                                  (fn-feed-tick-step mv-nth)))))
+
 ; -----------------------------------------------------------------------------
 ; The FNFD records each transition authorizes
 ;
@@ -1250,6 +1282,7 @@
     fn-own-feed-article-of fn-own-feed-groups-of fn-own-feed-path-of
     fn-own-feed-group-matchp fn-own-feed-offerablep
     fn-own-feed-accept fn-own-feed-tick-peer fn-own-feed-tick
+    fn-own-feed-effect-peer fn-own-feed-effect-octets
     fn-own-feed-accept-records fn-own-feed-response-code
     fn-own-feed-parse-response fn-own-feed-reply-records-of
     fn-own-feed-tick-peer-records fn-own-feed-tick-records))

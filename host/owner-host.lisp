@@ -638,6 +638,22 @@
              (state (fn-owner-feed-install-feed records (car result) state)))
         (value (if (car result) :send :quiet))))))
 
+; Which peer's journal each pending frame belongs in, in the same order as
+; the frames: the record's own field 0, read by ACL2.
+(defun fn-owner-feed-record-peer-names (records)
+  (declare (xargs :mode :program))
+  (if (consp records)
+      (cons (fn-record-octets-string
+             (fn-feed-record-peer (fn-feed-journal-values (car records))))
+            (fn-owner-feed-record-peer-names (cdr records)))
+    nil))
+
+(defun fn-owner-feed-record-peers (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-store-cfg-join-names
+          (fn-owner-feed-record-peer-names
+           (f-get-global 'fn-owner-feed-records state)))))
+
 (defun fn-owner-feed-frames (state)
   (declare (xargs :stobjs state :mode :program))
   (value (f-get-global 'fn-owner-feed-frames state)))

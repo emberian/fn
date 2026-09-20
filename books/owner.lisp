@@ -1148,6 +1148,17 @@
                              (fn-own-feeds o) obs)))
     (cons (cdr r) (fn-own-with-feeds o (car r)))))
 
+; The host drives one peer at a time: it holds one socket per peer and writes
+; the records of one tick before that tick's bytes.
+(defun fn-own-tick-peer (o peer obs)
+  (declare (xargs :guard t))
+  (let ((r (fn-own-feed-tick-peer peer (fn-own-feeds o) obs)))
+    (cons (cdr r) (fn-own-with-feeds o (car r)))))
+
+(defun fn-own-tick-peer-records (o peer obs)
+  (declare (xargs :guard t))
+  (fn-own-feed-tick-peer-records peer (fn-own-feeds o) obs))
+
 (defun fn-own-tick-records (o obs)
   (declare (xargs :guard t))
   (fn-own-feed-tick-records (fn-own-feed-names (fn-own-feeds o))
@@ -1260,6 +1271,7 @@
     (:feed-conn (fn-own-feed-connect o (cadr event) (caddr event)))
     (:feed-replay (fn-own-feed-recover o (cadr event) (caddr event)))
     (:tick (cdr (fn-own-tick o (cadr event))))
+    (:tick-peer (cdr (fn-own-tick-peer o (cadr event) (caddr event))))
     (:feed-octets (cdr (fn-own-feed-reply o (cadr event) (caddr event)
                                           (cadddr event))))
     (otherwise o)))
@@ -1307,6 +1319,7 @@
     fn-own-with-feeds fn-own-sub-origin fn-own-sub-msgid fn-own-sub-octets
     fn-own-feed-stamp fn-own-feed-durable fn-own-feed-durable-records
     fn-own-feeds-reconfigure fn-own-tick fn-own-tick-records
+    fn-own-tick-peer fn-own-tick-peer-records
     fn-own-feed-article fn-own-feed-reply fn-own-feed-reply-records
     fn-own-feed-connect fn-own-feed-recover))
 

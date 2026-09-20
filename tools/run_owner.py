@@ -350,6 +350,16 @@ class Clock:
     def __init__(self, error_ms):
         self.error_ms = error_ms
 
+    @staticmethod
+    def milliseconds():
+        """The monotonic reading the feed stamps its records and ticks with.
+
+        The same reading fn-clock-observation takes in `observe`; the feed's
+        contact window and its backoff deadline are both in these units
+        (books/scheduler.lisp, fn-sched-contact-holdsp).
+        """
+        return time.monotonic_ns() // 1_000_000
+
     def observe(self, bridge):
         monotonic_ms = time.monotonic_ns() // 1_000_000
         wall_ms = max(0, (time.time_ns() - DTN_EPOCH_NS) // 1_000_000)
