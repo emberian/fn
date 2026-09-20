@@ -10,6 +10,9 @@ cross-cluster steps you could not take alone.
   hashed: `ACL2_BOOK_HASH_ALISTP=NIL` is set by every tool). Never run a full
   `make certify`. Certify only books in your cluster's closure, one root at a
   time, with `FN_ACL2_TIMEOUT_SECONDS=1800 python3 tools/certify_books.py <book>`.
+- Any form slower than a minute: run `python3 tools/proof_profile.py <book>
+  <form> --host hbox` FIRST and cure the fan it names (zero-useful rules,
+  opened recognizers); never add hints before profiling.
 - Iterate with `ld` on a scratch driver that starts with
   `(set-prover-step-limit 2000000)` and includes only your dependencies; the
   runner is for the end, not for search. Start it as
@@ -51,10 +54,13 @@ cross-cluster steps you could not take alone.
 
 ## Micro discipline (apply everywhere in your cluster)
 
-1. **Opaque records.** Prove each record's shape and accessor-of-constructor
-   lemmas once; then `(in-theory (disable <accessors> <constructor>))`.
-   Nothing downstream opens a record. Rules are stated in accessor vocabulary
-   and goals stay in it.
+1. **Opaque records, generated.** Every new record is one `fn-defrecord` form
+   (books/defrecord.lisp) plus `fn-defrecord-export` at book end; it generates
+   the shape predicate, constructor, `mbe` accessors, accessor-of-constructor,
+   injectivity, the three forward-chaining shape facts and the withdrawal.
+   Never hand-write that pattern again (the fifth lint counts it). A property
+   of a transition is proved with `fn-deftransition` (recognizer closed).
+   Nothing downstream opens a record.
 2. **Export policy.** A book ends with an explicit theory event. It exports
    keystones and record lemmas. Every accessor or unfold equality used only
    for guard proofs is `:rule-classes nil` (used via `:use`) or `local`.
