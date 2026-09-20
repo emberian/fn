@@ -177,7 +177,6 @@ class Lab:
               and facts["acks_from_b"] == 2 and facts["acks_from_a"] == 2
               and facts["b_holds_a_bundle"] and facts["a_holds_b_bundle"])
         self.record("exchange", ok, **facts)
-        return root, trace
 
     def scenario_refused(self):
         """A transfer the peer's MRU cannot hold: refused, and no segment sent."""
@@ -397,10 +396,48 @@ class Lab:
               and ratio is not None and ratio < 8.0)
         self.record("profile", ok, **facts)
 
-    def scenario_replay(self, root: Path, trace: Path):
-        """The listener's octets, folded back through `fn-tcl-drive' alone."""
+    def scenario_replay(self):
+        """The listener's octets, folded back through `fn-tcl-drive' alone.
+
+        Receive-only, and that is the point.  `tcpcl replay` folds
+        `fn-tcl-drive` over the trace and calls nothing else, so it models a
+        session that consumes octets and never originates a transfer.  A node
+        that also *sends* reaches `fn-tcl-send` and `fn-tcl-pump` from the
+        host, not from the wire, so the replay's state has no outbound
+        transfer when the peer's XFER_ACK arrives and the machine is right to
+        answer MSG_REJECT Unexpected where the loop said `:outbound-sent`.
+
+        The lab's first run, 2026-09-20, replayed `exchange`'s trace, and
+        `exchange`'s listener carries a reply bundle: the differential failed
+        at exactly that divergence.  The trace was wrong for the differential,
+        not the machine, so this scenario now drives its own listener with no
+        reply.  Extending the differential to a sending node means putting the
+        host's aux calls in the trace; that is not done, and `specs/tcpcl.md`
+        records the limit.
+        """
+        root = self.fresh("replay")
+        spool = root / "passive-spool"
+        trace = root / "passive.trace"
+        payload = root / "to-b.bundle"
+        payload.write_bytes(bundle(1500, 8))
+        listener = self.spawn(
+            ["tcpcl", "listen", 0, 1, spool, "dtn://fn-b/", "-", 4, 1024, 1048576,
+             "-", trace], root / "listen.log")
+        try:
+            port = self.port_of(listener)
+            sender = subprocess.run(
+                [self.image, "--fn", "tcpcl", "send", "127.0.0.1", str(port),
+                 str(payload), str(root / "active-spool"), "dtn://fn-a/", "-",
+                 "4", "1024", "1048576", "0", "-"],
+                capture_output=True, timeout=120)
+            (root / "send.log").write_bytes(sender.stdout + sender.stderr)
+            listener.wait(timeout=60)
+        finally:
+            if listener.poll() is None:
+                listener.kill()
+            listener.handle.close()
         if not trace.exists():
-            return self.record("replay", False, reason="no trace from `exchange'")
+            return self.record("replay", False, reason="the listener wrote no trace")
         replayed = subprocess.run(
             [self.image, "--fn", "tcpcl", "replay", str(trace), "passive",
              "dtn://fn-b/", "-", "4", "1024", "1048576"],
@@ -411,20 +448,22 @@ class Lab:
                  out.read_text(errors="replace").splitlines()
                  if line.startswith("TCPCL replay event ")]
         loop = self.events(root / "listen.log", "passive")
-        facts = dict(rc=replayed.returncode, loop_events=len(loop),
-                     model_events=len(model), equal=(loop == model))
+        facts = dict(rc=replayed.returncode, sender_rc=sender.returncode,
+                     loop_events=len(loop), model_events=len(model),
+                     received=sorted(p.name for p in spool.glob("*.bundle")),
+                     equal=(loop == model))
         if loop != model:
             facts["first_difference"] = next(
                 ("{!r} != {!r}".format(a, b) for a, b in zip(loop, model) if a != b),
                 "lengths differ")
-        self.record("replay", facts["rc"] == EXIT_OK and facts["equal"], **facts)
+        self.record("replay", facts["rc"] == EXIT_OK and facts["equal"]
+                    and facts["loop_events"] > 0, **facts)
 
     # -- the whole lab ----------------------------------------------------
     def run(self, which: str) -> int:
         self.work.mkdir(parents=True, exist_ok=True)
-        root, trace = (None, None)
-        if which in ("all", "exchange", "replay"):
-            root, trace = self.scenario_exchange()
+        if which in ("all", "exchange"):
+            self.scenario_exchange()
         if which in ("all", "refused"):
             self.scenario_refused()
         if which in ("all", "keepalive"):
@@ -434,7 +473,7 @@ class Lab:
         if which in ("all", "profile"):
             self.scenario_profile()
         if which in ("all", "replay"):
-            self.scenario_replay(root, trace)
+            self.scenario_replay()
         summary = dict(scenario="summary",
                        passed=[r["scenario"] for r in self.results if r["ok"]],
                        failed=[r["scenario"] for r in self.results if not r["ok"]])

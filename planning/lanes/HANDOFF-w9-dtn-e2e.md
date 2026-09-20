@@ -89,9 +89,41 @@ image; (c) the scheduler's contact window as the gate on `fn-tcl-host-send`.
 Doing (c) alone — a contact check around the existing `tcpcl send` — would
 have been a verb that looks like a BP node and is not one.
 
-## 3. Evidence
+## 3. Evidence: the image builds and the layer runs
 
-See `planning/evidence/`. Headline: recorded in that file, not here.
+[`planning/evidence/tcpcl-dtn-w9-2026-09-20.md`](../evidence/tcpcl-dtn-w9-2026-09-20.md).
+w8's record had to say "the image did not build, so none of the five
+scenarios ran". On hbox, under `swarm-build`:
+
+- `books/tcpcl-session` certifies with this change in **156.17 s**.
+- **`build/fn-host-dtn` builds** — `host/native/build-dtn.lisp`, the DTN-only
+  variant of the build list (no `books/served`, no `books/nntp-effects`, no
+  reader or model verb), with `tools/build_native_host.sh` now taking
+  `FN_NATIVE_BUILD` / `FN_NATIVE_IMAGE` / `FN_NATIVE_LOG`. Not the deployment
+  image, and every claim below is bounded by that. The first attempt failed
+  correctly on `Uncertified` markers for the anchor books, which no submit
+  list had covered.
+- **`tools/tcpcl_lab.py` is 6/6**: a bundle each way with contact, SESS_INIT,
+  two segments and two acks in each direction and a clean SESS_TERM; an MRU
+  refusal with nothing staged and exit 1; keepalives; `kill -9` of the
+  receiver mid-transfer with the interrupted transfer absent, no partial
+  name left, the acknowledged transfer durable and a reconnect landing a new
+  one; the model differential; and `profile`.
+- **`profile` is the measurement of §1**: 64 KiB in 0.115 s, 256 KiB in
+  0.212 s, ratio **1.84 for a 4x transfer**. A quadratic guard gives about
+  16x. The residue below 4x is process startup, paid once by each.
+- **A receipt round trip is not among these.** `exchange`'s reverse leg is a
+  second bundle, not a receipt. Section 2 says what a receipt needs.
+
+**A finding the first run produced.** `replay` failed at
+`'(:OUTBOUND-SENT 0 "passive")' != '(:SEND :MSG-REJECT 3)'`. `tcpcl replay`
+folds `fn-tcl-drive` and calls nothing else, so it models a node that never
+originates a transfer; a node that also sends reaches `fn-tcl-send` from the
+host, not the wire, and the replay has no outbound when the ack arrives. The
+machine was right; `exchange`'s trace — from a listener carrying a reply
+bundle — was never a valid subject. `scenario_replay` now drives its own
+receive-only listener and the differential holds exactly. Extending it to a
+sending node means putting the host's aux calls in the trace: open.
 
 ## 4. dtn7 interop
 
@@ -104,4 +136,16 @@ exchange with fn is meaningful even though fn cannot yet author a BPv7
 bundle. The shape of an honest one-each-way test, given that: let **dtn7**
 author the bundle, have fn receive and acknowledge it, then have fn send the
 same octets back — fn as a convergence-layer peer carrying a bundle it did
-not write. What actually ran is in the evidence record.
+not write.
+
+**That ran, and it works.** `tests/bp-dtn7/run_fn_tcpcl_interop.py`, one
+bundle each way, `ok: true`. dtn7 dialled fn; fn negotiated a 64,000-octet
+segment and transfer MTU with TLS false, acknowledged the transfer and staged
+126 octets. fn then dialled dtn7 with the same octets; dtn7 accepted the
+XFER_SEGMENT, decoded them as BPv7, recognised the bundle as its own and
+dispatched it. fn's `:INBOUND-REFUSED 1 6` on the last line is correct:
+dtn7's epidemic router tried to forward the bundle straight back and fn had
+already sent SESS_TERM, so the machine refused with Table 6 reason 6. Every
+reply on both sides is in the evidence record. What it does not show is fn
+*originating* a bundle — see the paragraph above; that boundary is the whole
+reason the harness is shaped this way.
