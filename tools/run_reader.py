@@ -293,7 +293,7 @@ class PostOwner:
         """
         try:
             codes = group_codes([g.decode("ascii") for g in groups],
-                                self.store.config, self.bridge)
+                                self.store, self.bridge)
             charge = conservative_charge(payload, self.bridge)
             validate_post_boundary(msgid, payload, codes, charge,
                                    self.store.config, self.bridge)
@@ -414,7 +414,11 @@ def main():
             listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             listener.bind(("127.0.0.1", args.port))
             listener.listen(1)
-            print("LISTENING {}".format(listener.getsockname()[1]), flush=True)
+            # The generation this reader pinned at open: its projection is a
+            # snapshot, and a later reconfiguration is not seen until reopen.
+            print("LISTENING {} generation={}".format(
+                listener.getsockname()[1],
+                store.config_generation if store is not None else 0), flush=True)
             while True:
                 client, _ = listener.accept()
                 try:
