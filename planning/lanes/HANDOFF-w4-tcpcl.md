@@ -34,9 +34,38 @@ Spec: [specs/tcpcl.md](../../specs/tcpcl.md). Design: bp-design.md §2.
 - Makefile roots after `tests/acl2/clock-tests`; `docs/prefixes.md` row
   `fn-tcl-`; `specs/tcpcl.md` with the clause matrix.
 
-## Certification status
+## Certification status (finisher lane, HEAD 520a57d on w4/tcpcl, dev d83dea5 merged)
 
-See the report at the end of the lane (filled in after the certify passes).
+| Root | Result | Evidence | Wall |
+| --- | --- | --- | --- |
+| `books/tcpcl-records` | certified | `build/acl2/certify-20260919T233610Z-89468` | 0.26 s |
+| `books/tcpcl-octets` | certified | `build/acl2/certify-20260920T013843Z-86679` | 125.0 s |
+| `books/tcpcl-session` | OPEN at `fn-tcl-refuse-preserves-sessionp` (specs/tcpcl.md section 6) | `build/acl2/certify-20260920T014417Z-93813` | 22.9 s to the failing form |
+| `books/tcpcl-invariants` | uncertified, behind session | | |
+| `tests/acl2/tcpcl-tests` | uncertified, behind session | | |
+
+The RFC clause matrix of specs/tcpcl.md section 5 therefore has no row
+supported by a certified theorem beyond the codec rows of section 2
+(octets): every "implemented" entry that names a session function or a
+C1 to C4 keystone is a proposed theorem until session certifies.
+
+What closed octets, each with its measured reason at the edit (commit
+77e0284): the `fn-tcl-uint-bound` `:use` instance rewritten away by its own
+rewrite form; the segment need bound cited by `:use` over the drop of the
+body; `len` kept closed across the four fixed-layout decoder blocks
+(`fn-tcl-decode-term-yields-message` 406 s and 2.6e8 steps to under a
+second); the three decoder need bounds withdrawn as `:linear` rules while
+their decoder is open (`fn-tcl-decode-term-append-ok` and
+`fn-tcl-decoded-segment-fits-mru` did not return in 1600 s / 2e7 steps);
+the message-level round trips cite the sub-decoder keystone with `mru`
+bound and the recognizer closed (the keystone's `mru` is free in its
+hypothesis).
+
+Suggested next step for session: state the phase-consistency hypotheses of
+`fn-tcl-next-preserves-sessionp` in the form `fn-tcl-sessionp-facts` exports
+(or keep the glue predicates closed while relieving them), or open
+`fn-tcl-sessionp` in each transition lemma as `fn-tcl-recv-contact-
+preserves-sessionp` now does (that lemma passes with the recognizer open).
 
 ## Proposed host surface: `host/native/tcpcl.lisp`
 
