@@ -134,7 +134,8 @@
          ; RFC 3977's 512 includes CRLF; wire state holds only content before
          ; that delimiter.
          (state (fn-reader-install-result
-                 (fn-served-open archive 510 8192 config clock clock) state)))
+                 (fn-served-open archive 510 8192 config clock clock
+                                  (fn-auth-open-config)) state)))
     (value :ready)))
 
 ; One socket read.  The whole chunk is consumed: fn-served-step is a fold of
