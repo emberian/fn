@@ -6,7 +6,7 @@
 ;
 ; The owner record is
 ;   (store view conns next-id max-conns pending ledger clock facts
-;    config queue inflight)
+;    config queue inflight feeds)
 ; where
 ;   store     the actual fn-sn composition (books/store-node.lisp), stepped
 ;             only through fn-snrt-step and fn-sn-finish;
@@ -32,6 +32,12 @@
 ;             pinned into every connection at open; nil refuses POST with 440;
 ;   queue     the submissions served reads produced and the writer has not
 ;             taken, each (id version mark decision), in arrival order;
+;   feeds     the outbound feed table (books/owner-feed.lisp): one
+;             (name record feed) per configured peer with an outbound half.
+;             Built from the configuration by the (:feeds cfg) arm, enqueued
+;             on by the DURABLE branch of fn-own-outcome and
+;             fn-own-transit-outcome, stepped by (:tick obs) and
+;             (:feed-octets peer octets obs), and fenced by fn-own-reopen;
 ;   inflight  nil or the one submission in the durable path: taken from the
 ;             queue by fn-own-take-submission when nothing is in flight, the store is
 ;             :ready and no transaction is pending; answered by
@@ -976,7 +982,10 @@
                                  (fn-own-next-id o) (fn-own-max-conns o)
                                  (if (equal (fn-own-pending o) id) nil (fn-own-pending o))
                                  (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
-                                 (fn-own-config o) (fn-own-queue o) nil (fn-own-feeds o))))
+                                 (fn-own-config o) (fn-own-queue o) nil
+                                 (if (equal completion :durable)
+                                     (fn-own-feed-durable o sub)
+                                   (fn-own-feeds o)))))
           (cons (fn-served-result-effects
                  (fn-served-post-outcome
                   (fn-served-make-conn (fn-own-conn-wire conn)
@@ -1027,7 +1036,10 @@
                                   (fn-own-next-id o) (fn-own-max-conns o)
                                   (if (equal (fn-own-pending o) id) nil (fn-own-pending o))
                                   (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
-                                  (fn-own-config o) (fn-own-queue o) nil (fn-own-feeds o))))
+                                  (fn-own-config o) (fn-own-queue o) nil
+                                  (if (equal completion :durable)
+                                      (fn-own-feed-durable o sub)
+                                    (fn-own-feeds o)))))
           (cons (fn-served-result-effects
                  (fn-served-transit-outcome
                   (fn-served-make-conn (fn-own-conn-wire conn)
@@ -1244,6 +1256,12 @@
     (:transit-outcome (cdr (fn-own-transit-outcome o (cadr event) (caddr event)
                                                    (cadddr event)
                                                    (car (cddddr event)))))
+    (:feeds (fn-own-feeds-reconfigure o (cadr event)))
+    (:feed-conn (fn-own-feed-connect o (cadr event) (caddr event)))
+    (:feed-replay (fn-own-feed-recover o (cadr event) (caddr event)))
+    (:tick (cdr (fn-own-tick o (cadr event))))
+    (:feed-octets (cdr (fn-own-feed-reply o (cadr event) (caddr event)
+                                          (cadddr event))))
     (otherwise o)))
 
 (defun fn-own-run (o events)
@@ -1285,6 +1303,11 @@
     fn-own-declare-group fn-own-configure fn-own-take-submission fn-own-outcome-completion
     fn-own-outcome fn-own-step fn-own-run fn-own-reclaim-floor
     fn-own-open-peer fn-own-transit-subp fn-own-transit-inflightp
-    fn-own-transit-outcome))
+    fn-own-transit-outcome
+    fn-own-with-feeds fn-own-sub-origin fn-own-sub-msgid fn-own-sub-octets
+    fn-own-feed-stamp fn-own-feed-durable fn-own-feed-durable-records
+    fn-own-feeds-reconfigure fn-own-tick fn-own-tick-records
+    fn-own-feed-article fn-own-feed-reply fn-own-feed-reply-records
+    fn-own-feed-connect fn-own-feed-recover))
 
 (in-theory (disable fn-own-vocabulary))

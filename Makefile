@@ -212,9 +212,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-auth-tests \
 	books/served \
 	tests/acl2/served-tests \
-	books/owner \
-	books/owner-invariants \
-	tests/acl2/owner-tests \
 	books/config-stream \
 	tests/acl2/config-stream-tests \
 	books/owner-config \
@@ -232,6 +229,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-feed \
 	books/peer-feed-invariants \
 	tests/acl2/peer-feed-tests \
+	books/owner-feed \
+	tests/acl2/owner-feed-tests \
+	books/owner \
+	books/owner-invariants \
+	tests/acl2/owner-tests \
 	books/relay \
 	books/relay-invariants \
 	books/relay-crash-invariants \

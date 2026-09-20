@@ -32,6 +32,12 @@
 ; What is NOT here: the owner record (books/owner.lisp holds the table as a
 ; field and calls these from its arms) and the journal I/O.
 ;
+; The dependency on books/peer-feed-invariants is the feed cluster's
+; preservation keystones: fn-feed-enqueue-preserves-feedp,
+; fn-feed-restart-preserves-feedp and fn-feed-tick-step-preserves-feedp are
+; what make fn-own-feed-tablep a CARRIED invariant rather than a check.  They
+; are cited, never restated here.
+;
 ; A note on the twin.  `fn-own-feed-group-matchp' is the same wildmat call as
 ; `fn-peer-wildmat-matchp' (books/peer-inbound.lisp).  It is repeated here
 ; rather than imported because books/peer-inbound sits above nntp-post and
@@ -40,7 +46,7 @@
 ; (`fn-own-feed-group-matchp-is-the-inbound-matcher').
 
 (in-package "ACL2")
-(include-book "peer-feed")
+(include-book "peer-feed-invariants")
 (include-book "peer-config")
 (include-book "article-fields")
 
@@ -192,6 +198,12 @@
            (equal (fn-own-feed-entry-of other (fn-own-feed-put peer record f tbl))
                   (fn-own-feed-entry-of other tbl))))
 
+; A put never unbinds another peer.
+(defthm fn-own-feed-entry-of-of-put-keeps-bindings
+  (implies (fn-own-feed-entry-of other tbl)
+           (fn-own-feed-entry-of other (fn-own-feed-put peer record f tbl)))
+  :hints (("Goal" :cases ((equal other peer)))))
+
 (defthm fn-own-feed-find-of-put-same
   (equal (fn-own-feed-find peer (fn-own-feed-put peer record f tbl)) f))
 
@@ -255,6 +267,13 @@
                            (fn-own-feed-find-is-a-feed
                             fn-own-feed-entry-of fn-own-feed-tablep
                             fn-own-feed-find fn-own-feed-record-of)))))
+
+; From here down the two projections stay CLOSED: every rule about the table
+; is stated in `fn-own-feed-find' / `fn-own-feed-record-of' vocabulary and the
+; goals stay in it (docs/proof-style.md sec. 4).  Opening them turns every
+; such rule into one about `fn-own-feed-entry-feed' of an `fn-own-feed-entry-of'
+; and the folds below stop matching.
+(local (in-theory (disable fn-own-feed-find fn-own-feed-record-of)))
 
 (defthm fn-own-feed-tablep-of-put
   (implies (and (fn-own-feed-tablep tbl)
@@ -479,14 +498,13 @@
            (fn-own-feed-tablep (fn-own-feed-install-one name peers tbl)))
   :hints (("Goal" :in-theory (disable fn-own-feed-entry-okp
                                       fn-own-feed-open-one
-                                      fn-own-feed-outboundp
-                                      fn-own-feed-find
-                                      fn-own-feed-record-of))))
+                                      fn-own-feed-outboundp))))
 
 (defthm fn-own-feed-tablep-of-install
   (implies (fn-own-feed-tablep tbl)
            (fn-own-feed-tablep (fn-own-feed-install names peers tbl)))
-  :hints (("Goal" :in-theory (disable fn-own-feed-install-one))))
+  :hints (("Goal" :induct (fn-own-feed-install names peers tbl)
+           :in-theory (disable fn-own-feed-install-one))))
 
 (defthm fn-own-feed-tablep-of-retire-one
   (implies (fn-own-feed-tablep tbl)
@@ -495,7 +513,8 @@
 (defthm fn-own-feed-tablep-of-retire
   (implies (fn-own-feed-tablep tbl)
            (fn-own-feed-tablep (fn-own-feed-retire keys peers tbl)))
-  :hints (("Goal" :in-theory (disable fn-own-feed-retire-one))))
+  :hints (("Goal" :induct (fn-own-feed-retire keys peers tbl)
+           :in-theory (disable fn-own-feed-retire-one))))
 
 (defthm fn-own-feed-tablep-of-reconfigure
   (implies (fn-own-feed-tablep tbl)
@@ -507,20 +526,36 @@
   (implies (not (fn-own-feed-idlep (fn-own-feed-find peer tbl)))
            (equal (fn-own-feed-entry-of peer
                                         (fn-own-feed-retire-one key peers tbl))
-                  (fn-own-feed-entry-of peer tbl)))))
+                  (fn-own-feed-entry-of peer tbl)))
+  :hints (("Goal" :do-not-induct t :cases ((equal peer key))
+           :in-theory (e/d (fn-own-feed-retire-one)
+                           (fn-own-feed-idlep fn-own-feed-find
+                            fn-own-feed-entry-of fn-own-feed-forget))))))
+
+(local (defthm fn-own-feed-retire-one-keeps-a-busy-find
+  (implies (not (fn-own-feed-idlep (fn-own-feed-find peer tbl)))
+           (equal (fn-own-feed-find peer (fn-own-feed-retire-one key peers tbl))
+                  (fn-own-feed-find peer tbl)))
+  :hints (("Goal" :use fn-own-feed-retire-one-keeps-a-busy-feed
+           :in-theory (e/d (fn-own-feed-find)
+                           (fn-own-feed-retire-one-keeps-a-busy-feed
+                            fn-own-feed-retire-one fn-own-feed-entry-of
+                            fn-own-feed-idlep))))))
 
 (defthm fn-own-feed-retire-keeps-a-busy-feed
   (implies (not (fn-own-feed-idlep (fn-own-feed-find peer tbl)))
            (equal (fn-own-feed-entry-of peer
                                         (fn-own-feed-retire keys peers tbl))
                   (fn-own-feed-entry-of peer tbl)))
-  :hints (("Goal" :in-theory (disable fn-own-feed-retire-one))))
+  :hints (("Goal" :induct (fn-own-feed-retire keys peers tbl)
+           :in-theory (disable fn-own-feed-retire-one))))
 
 (local (defthm fn-own-feed-install-one-keeps-the-queue
   (implies (fn-own-feed-entry-of peer tbl)
            (equal (fn-own-feed-find peer
                                     (fn-own-feed-install-one name peers tbl))
-                  (fn-own-feed-find peer tbl)))))
+                  (fn-own-feed-find peer tbl)))
+  :hints (("Goal" :in-theory (enable fn-own-feed-find)))))
 
 (local (defthm fn-own-feed-install-one-keeps-the-binding
   (implies (fn-own-feed-entry-of peer tbl)
@@ -530,7 +565,8 @@
   (implies (fn-own-feed-entry-of peer tbl)
            (equal (fn-own-feed-find peer (fn-own-feed-install names peers tbl))
                   (fn-own-feed-find peer tbl)))
-  :hints (("Goal" :in-theory (disable fn-own-feed-install-one))))
+  :hints (("Goal" :induct (fn-own-feed-install names peers tbl)
+           :in-theory (disable fn-own-feed-install-one))))
 
 ; -----------------------------------------------------------------------------
 ; Restart: the owner's reopen fences every feed
@@ -549,11 +585,27 @@
             (fn-own-feed-restart-all (cdr tbl)))
     nil))
 
+; Each of the three is `fn-feedp' from the feed cluster's own preservation
+; keystone (books/peer-feed-invariants.lisp), CITED and never restated, plus
+; the two name equalities, which hold because every transition rebuilds the
+; record through `fn-feed-make' with this feed's peer and contact.
+(local (defthm fn-feed-restart-keeps-peer-and-contact
+  (and (equal (fn-feed-peer (fn-feed-restart f)) (fn-feed-peer f))
+       (equal (fn-feed-contact (fn-feed-restart f)) (fn-feed-contact f)))
+  :hints (("Goal" :in-theory (e/d (fn-feed-restart fn-feed-with-conn
+                                   fn-feed-with-queue)
+                                  (fn-feedp))))))
+
 (local (defthm fn-own-feed-restart-keeps-the-feed-half
   (implies (fn-own-feed-feed-okp name f)
            (fn-own-feed-feed-okp name (fn-feed-restart f)))
-  :hints (("Goal" :in-theory (enable fn-own-feed-feed-okp fn-feed-restart
-                                     fn-feed-with-conn fn-feed-with-queue)))))
+  :hints (("Goal" :use (fn-feed-restart-preserves-feedp
+                        fn-feed-restart-keeps-peer-and-contact)
+           :in-theory (e/d (fn-own-feed-feed-okp)
+                           (fn-feedp fn-feed-restart
+                            fn-feed-restart-preserves-feedp
+                            fn-feed-restart-keeps-peer-and-contact
+                            fn-record-string-octets))))))
 
 (local (defthm fn-own-feed-restart-keeps-the-entry
   (implies (fn-own-feed-entry-okp e)
@@ -562,7 +614,10 @@
                                (fn-own-feed-entry-record e)
                                (fn-feed-restart (fn-own-feed-entry-feed e)))))
   :hints (("Goal" :in-theory (e/d (fn-own-feed-entry-okp)
-                                  (fn-own-feed-feed-okp
+                                  (fn-own-feed-feed-okp fn-feedp
+                                   fn-record-string-octets
+                                   fn-feed-restart fn-feed-enqueue
+                                   fn-feed-tick-step fn-feed-offer mv-nth
                                    fn-own-feed-record-okp))))))
 
 (local (defthm fn-own-feed-boundp-of-restart-all
@@ -571,12 +626,17 @@
 
 (defthm fn-own-feed-tablep-of-restart-all
   (implies (fn-own-feed-tablep tbl)
-           (fn-own-feed-tablep (fn-own-feed-restart-all tbl))))
+           (fn-own-feed-tablep (fn-own-feed-restart-all tbl)))
+  :hints (("Goal" :in-theory (disable fn-own-feed-entry-okp fn-feed-restart
+                                      fn-feedp fn-record-string-octets))))
 
 (defthm fn-own-feed-restart-all-restarts-each-feed
   (implies (fn-own-feed-entry-of peer tbl)
            (equal (fn-own-feed-find peer (fn-own-feed-restart-all tbl))
-                  (fn-feed-restart (fn-own-feed-find peer tbl)))))
+                  (fn-feed-restart (fn-own-feed-find peer tbl))))
+  :hints (("Goal" :in-theory (e/d (fn-own-feed-find)
+                                  (fn-feed-restart fn-feedp
+                                   fn-own-feed-entry-okp)))))
 
 ; -----------------------------------------------------------------------------
 ; Scope: what an article's own octets say
@@ -613,6 +673,13 @@
   (declare (xargs :guard t :verify-guards nil))
   (let ((a (fn-own-feed-article-of octets)))
     (if (null a) nil (fn-af-path-field-value a))))
+
+; The parser stays SHUT below this line.  Opened, one goal about the feed
+; table pays for `fn-article-parse', `fn-af-proto-article-check' and the
+; whole newsgroups grammar: the accept keystone went over two million steps
+; before this (docs/proof-style.md sec. 9).
+(local (in-theory (disable fn-own-feed-article-of fn-own-feed-groups-of
+                           fn-own-feed-path-of)))
 
 ; -----------------------------------------------------------------------------
 ; The offer decision, RFC 5537 sec. 3.6
@@ -666,7 +733,34 @@
 
 (defthm fn-own-feed-target-is-bound
   (implies (member-equal name (fn-own-feed-targets tbl origin groups path))
-           (fn-own-feed-boundp name tbl)))
+           (fn-own-feed-boundp name tbl))
+  :hints (("Goal" :induct (fn-own-feed-targets tbl origin groups path)
+           :in-theory (disable fn-own-feed-offerablep fn-own-feed-entry-okp
+                               fn-feedp fn-record-string-octets))))
+
+; A key bound in a TABLE finds a real entry.  Without the recognizer this is
+; false and the degenerate value says why: the table (nil), whose only entry
+; is the atom nil, binds the key nil and finds nil.  A table's keys are
+; strings, so the case cannot arise.
+(defthm fn-own-feed-boundp-is-an-entry
+  (implies (and (fn-own-feed-tablep tbl) (fn-own-feed-boundp peer tbl))
+           (fn-own-feed-entry-of peer tbl))
+  :hints (("Goal" :in-theory (e/d (fn-own-feed-entry-okp
+                                   fn-own-feed-record-okp)
+                                  (fn-own-feed-feed-okp fn-feedp
+                                   fn-own-feed-outboundp
+                                   fn-record-string-octets)))))
+
+(defthm fn-own-feed-target-has-an-entry
+  (implies (and (fn-own-feed-tablep tbl)
+                (member-equal name (fn-own-feed-targets tbl origin groups path)))
+           (fn-own-feed-entry-of name tbl))
+  :hints (("Goal" :use (fn-own-feed-target-is-bound
+                        (:instance fn-own-feed-boundp-is-an-entry (peer name)))
+           :in-theory (disable fn-own-feed-target-is-bound
+                               fn-own-feed-boundp-is-an-entry
+                               fn-own-feed-targets fn-own-feed-tablep
+                               fn-own-feed-entry-of fn-own-feed-boundp))))
 
 ; KEYSTONE (first half).  Every peer the owner offers to is a peer of the
 ; table whose own record passes the scope decision.
@@ -674,7 +768,9 @@
   (implies (and (fn-own-feed-tablep tbl)
                 (member-equal name (fn-own-feed-targets tbl origin groups path)))
            (fn-own-feed-offerablep (fn-own-feed-record-of name tbl)
-                                   origin groups path)))
+                                   origin groups path))
+  :hints (("Goal" :in-theory (e/d (fn-own-feed-record-of)
+                                  (fn-own-feed-offerablep)))))
 
 ; KEYSTONE (second half).  No peer of the table that passes is left out: the
 ; two halves together are "exactly the matching peers".
@@ -683,7 +779,9 @@
                 (fn-own-feed-entry-of name tbl)
                 (fn-own-feed-offerablep (fn-own-feed-record-of name tbl)
                                         origin groups path))
-           (member-equal name (fn-own-feed-targets tbl origin groups path))))
+           (member-equal name (fn-own-feed-targets tbl origin groups path)))
+  :hints (("Goal" :in-theory (e/d (fn-own-feed-record-of)
+                                  (fn-own-feed-offerablep)))))
 
 ; KEYSTONE.  K2's outbound half: the feed never offers a loop.  Neither the
 ; peer the article came from nor a peer whose path-identity the Path already
@@ -697,10 +795,16 @@
                             (fn-cfg-peer-path-identity
                              (fn-own-feed-record-of name tbl)))))))
   :hints (("Goal" :use (fn-own-feed-target-is-offerable
+                        fn-own-feed-target-has-an-entry
                         (:instance fn-own-feed-find-is-typed (peer name)))
-           :in-theory (disable fn-own-feed-target-is-offerable
-                               fn-own-feed-find-is-typed
-                               fn-own-feed-targets fn-own-feed-tablep))))
+           :in-theory (e/d (fn-own-feed-offerablep)
+                           (fn-own-feed-target-is-offerable
+                            fn-own-feed-target-has-an-entry
+                            fn-own-feed-find-is-typed fn-own-feed-outboundp
+                            fn-own-feed-any-matchp fn-own-feed-record-of
+                            fn-own-feed-entry-of
+                            fn-record-string-octets
+                            fn-own-feed-targets fn-own-feed-tablep)))))
 
 ; KEYSTONE.  Scope: a target's outbound wildmat matches one of the article's
 ; own Newsgroups names.
@@ -711,8 +815,12 @@
             (fn-cfg-peer-outbound-groups (fn-own-feed-record-of name tbl))
             groups))
   :hints (("Goal" :use fn-own-feed-target-is-offerable
-           :in-theory (disable fn-own-feed-target-is-offerable
-                               fn-own-feed-targets fn-own-feed-tablep))))
+           :in-theory (e/d (fn-own-feed-offerablep)
+                           (fn-own-feed-target-is-offerable
+                            fn-own-feed-outboundp fn-own-feed-any-matchp
+                            fn-own-feed-record-of fn-own-feed-entry-of
+                            fn-record-string-octets
+                            fn-own-feed-targets fn-own-feed-tablep)))))
 
 ; -----------------------------------------------------------------------------
 ; The enqueue, on exactly the targets
@@ -742,11 +850,23 @@
                         (fn-own-feed-path-of octets))
    tbl msgid tick))
 
+(local (defthm fn-feed-enqueue-keeps-peer-and-contact
+  (and (equal (fn-feed-peer (fn-feed-enqueue f msgid tick)) (fn-feed-peer f))
+       (equal (fn-feed-contact (fn-feed-enqueue f msgid tick))
+              (fn-feed-contact f)))
+  :hints (("Goal" :in-theory (e/d (fn-feed-enqueue fn-feed-with-queue)
+                                  (fn-feedp))))))
+
 (local (defthm fn-own-feed-enqueue-keeps-the-feed-half
   (implies (fn-own-feed-feed-okp name f)
            (fn-own-feed-feed-okp name (fn-feed-enqueue f msgid tick)))
-  :hints (("Goal" :in-theory (enable fn-own-feed-feed-okp fn-feed-enqueue
-                                     fn-feed-with-queue)))))
+  :hints (("Goal" :use (fn-feed-enqueue-preserves-feedp
+                        fn-feed-enqueue-keeps-peer-and-contact)
+           :in-theory (e/d (fn-own-feed-feed-okp)
+                           (fn-feedp fn-feed-enqueue
+                            fn-feed-enqueue-preserves-feedp
+                            fn-feed-enqueue-keeps-peer-and-contact
+                            fn-record-string-octets))))))
 
 (local (defthm fn-own-feed-enqueue-keeps-the-entry
   (implies (fn-own-feed-entry-okp e)
@@ -756,8 +876,28 @@
                                (fn-feed-enqueue (fn-own-feed-entry-feed e)
                                                 msgid tick))))
   :hints (("Goal" :in-theory (e/d (fn-own-feed-entry-okp)
-                                  (fn-own-feed-feed-okp
+                                  (fn-own-feed-feed-okp fn-feedp
+                                   fn-record-string-octets
+                                   fn-feed-restart fn-feed-enqueue
+                                   fn-feed-tick-step fn-feed-offer mv-nth
                                    fn-own-feed-record-okp))))))
+
+(local (defthm fn-own-feed-entry-okp-of-enqueue-at
+  (implies (and (fn-own-feed-tablep tbl) (fn-own-feed-entry-of peer tbl))
+           (fn-own-feed-entry-okp
+            (fn-own-feed-entry
+             peer
+             (fn-own-feed-entry-record (fn-own-feed-entry-of peer tbl))
+             (fn-feed-enqueue
+              (fn-own-feed-entry-feed (fn-own-feed-entry-of peer tbl))
+              msgid tick))))
+  :hints (("Goal" :use ((:instance fn-own-feed-enqueue-keeps-the-entry
+                                   (e (fn-own-feed-entry-of peer tbl)))
+                        fn-own-feed-entry-of-is-okp)
+           :in-theory (disable fn-own-feed-enqueue-keeps-the-entry
+                               fn-own-feed-entry-of-is-okp
+                               fn-own-feed-entry-okp fn-own-feed-entry-of
+                               fn-own-feed-tablep fn-feed-enqueue)))))
 
 (defthm fn-own-feed-tablep-of-enqueue-all
   (implies (fn-own-feed-tablep tbl)
@@ -835,12 +975,24 @@
         (cons (car rest) (append (cdr one) (cdr rest))))
     (cons tbl nil)))
 
+(local (defthm fn-feed-tick-step-keeps-peer-and-contact
+  (and (equal (fn-feed-peer (mv-nth 0 (fn-feed-tick-step f obs)))
+              (fn-feed-peer f))
+       (equal (fn-feed-contact (mv-nth 0 (fn-feed-tick-step f obs)))
+              (fn-feed-contact f)))
+  :hints (("Goal" :in-theory (e/d (fn-feed-tick-step fn-feed-offer)
+                                  (fn-feedp fn-feed-selection))))))
+
 (local (defthm fn-own-feed-tick-step-keeps-the-feed-half
   (implies (fn-own-feed-feed-okp name f)
            (fn-own-feed-feed-okp name (mv-nth 0 (fn-feed-tick-step f obs))))
-  :hints (("Goal" :in-theory (enable fn-own-feed-feed-okp fn-feed-tick-step
-                                     fn-feed-offer fn-feed-make fn-feed-peer
-                                     fn-feed-contact)))))
+  :hints (("Goal" :use (fn-feed-tick-step-preserves-feedp
+                        fn-feed-tick-step-keeps-peer-and-contact)
+           :in-theory (e/d (fn-own-feed-feed-okp)
+                           (fn-feedp fn-feed-tick-step
+                            fn-feed-tick-step-preserves-feedp
+                            fn-feed-tick-step-keeps-peer-and-contact
+                            fn-record-string-octets))))))
 
 (local (defthm fn-own-feed-tick-step-keeps-the-entry
   (implies (fn-own-feed-entry-okp e)
@@ -849,16 +1001,40 @@
              (fn-own-feed-entry-name e) (fn-own-feed-entry-record e)
              (mv-nth 0 (fn-feed-tick-step (fn-own-feed-entry-feed e) obs)))))
   :hints (("Goal" :in-theory (e/d (fn-own-feed-entry-okp)
-                                  (fn-own-feed-feed-okp
+                                  (fn-own-feed-feed-okp fn-feedp
+                                   fn-record-string-octets
+                                   fn-feed-restart fn-feed-enqueue
+                                   fn-feed-tick-step fn-feed-offer mv-nth
                                    fn-own-feed-record-okp))))))
+
+(local (defthm fn-own-feed-entry-okp-of-tick-at
+  (implies (and (fn-own-feed-tablep tbl) (fn-own-feed-entry-of peer tbl))
+           (fn-own-feed-entry-okp
+            (fn-own-feed-entry
+             peer
+             (fn-own-feed-entry-record (fn-own-feed-entry-of peer tbl))
+             (mv-nth 0 (fn-feed-tick-step
+                        (fn-own-feed-entry-feed (fn-own-feed-entry-of peer tbl))
+                        obs)))))
+  :hints (("Goal" :use ((:instance fn-own-feed-tick-step-keeps-the-entry
+                                   (e (fn-own-feed-entry-of peer tbl)))
+                        fn-own-feed-entry-of-is-okp)
+           :in-theory (disable fn-own-feed-tick-step-keeps-the-entry
+                               fn-own-feed-entry-of-is-okp
+                               fn-own-feed-entry-okp fn-own-feed-entry-of
+                               fn-own-feed-tablep fn-feed-tick-step mv-nth)))))
 
 (defthm fn-own-feed-tablep-of-tick-peer
   (implies (fn-own-feed-tablep tbl)
-           (fn-own-feed-tablep (car (fn-own-feed-tick-peer peer tbl obs)))))
+           (fn-own-feed-tablep (car (fn-own-feed-tick-peer peer tbl obs))))
+  :hints (("Goal" :in-theory (disable mv-nth fn-feed-tick-step
+                                      fn-own-feed-entry-okp fn-feedp
+                                      fn-record-string-octets))))
 
 (defthm fn-own-feed-tablep-of-tick
   (implies (fn-own-feed-tablep tbl)
-           (fn-own-feed-tablep (car (fn-own-feed-tick names tbl obs)))))
+           (fn-own-feed-tablep (car (fn-own-feed-tick names tbl obs))))
+  :hints (("Goal" :in-theory (disable fn-own-feed-tick-peer))))
 
 ; KEYSTONE.  One peer's tick is that peer's own `fn-feed-tick-step' and
 ; touches no other peer: the subject rule for the fold, the shape
@@ -876,7 +1052,8 @@
                          (list (cons peer
                                      (mv-nth 1 (fn-feed-tick-step
                                                 (fn-own-feed-find peer tbl)
-                                                obs)))))))))
+                                                obs))))))))
+  :hints (("Goal" :in-theory (enable fn-own-feed-find))))
 
 (defthm fn-own-feed-tick-peer-touches-only-its-peer
   (implies (not (equal other peer))
@@ -953,12 +1130,15 @@
   (declare (xargs :guard t))
   (and (natp b) (<= 48 b) (<= b 57)))
 
+; RFC 3977 sec. 3.2: the first digit of a reply code is 1 to 5, so a line
+; that starts "0.." or "9.." is not a reply and reads as no code at all.
 (defun fn-own-feed-response-code (octets)
   (declare (xargs :guard t))
   (let ((a (fn-frame-item 0 octets))
         (b (fn-frame-item 1 octets))
         (c (fn-frame-item 2 octets)))
-    (if (and (fn-own-feed-digitp a) (fn-own-feed-digitp b) (fn-own-feed-digitp c)
+    (if (and (fn-own-feed-digitp a) (<= 49 a) (<= a 53)
+             (fn-own-feed-digitp b) (fn-own-feed-digitp c)
              (or (not (consp (cdr (cdr (cdr octets)))))
                  (equal (fn-frame-item 3 octets) 32)
                  (equal (fn-frame-item 3 octets) 13)))
@@ -969,7 +1149,7 @@
   (implies (fn-own-feed-response-code octets)
            (and (natp (fn-own-feed-response-code octets))
                 (<= 100 (fn-own-feed-response-code octets))
-                (<= (fn-own-feed-response-code octets) 999)))
+                (<= (fn-own-feed-response-code octets) 599)))
   :rule-classes nil)
 
 (defun fn-own-feed-inflight-msgid (xs)
@@ -1050,6 +1230,7 @@
                                      fn-own-feed-offer-record
                                      fn-feed-journal-entry
                                      fn-feed-journal-values
+                                     fn-own-feed-find
                                      fn-feed-record-msgid fn-feed-offer))))
 
 ; -----------------------------------------------------------------------------

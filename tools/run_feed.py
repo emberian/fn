@@ -16,11 +16,18 @@ decision" rule (AGENTS.md) is what keeps this file honest:
     the host asks ACL2 for the frame with a zero trailer, hashes the protected
     prefix and appends the real one.  The header, the field encoding and every
     bound are still ACL2's; Python slices at a constant it did not choose.
-  * The status line.  RFC 3977 section 3.2 framing -- three digits, then the
-    echoed Message-ID -- is read here so that `fn-feed-observe` can be handed
-    a typed `(code msgid)`.  What the code MEANS is entirely ACL2's; this file
-    has no table of response codes.  An ACL2-side `fn-feed-parse-response`
-    would close the gap and is recorded open in specs/peering.md.
+  * The status line is NO LONGER read here.  RFC 3977 section 3.2 framing --
+    the three-digit code -- moved into ACL2 as `fn-own-feed-response-code`
+    (books/owner-feed.lisp) in w10/owner-feed, which is why this file now
+    includes books/owner-feed rather than books/peer-feed.  The Message-ID a
+    CHECK or TAKETHIS reply echoes is not read back at all: at most one entry
+    is in flight per peer (`fn-feedp`), so the in-flight Message-ID is the
+    unambiguous subject.
+
+This file is now a THIN DRIVER kept for `tests/test_feed.py` and for feeding
+one peer without an owner process.  The live feed is driven by the owner
+(tools/run_owner.py, the `Feed` class), which is the one process that holds
+the store lock.
 
 The journal is `<journal>/feed/<peer>.fnfd`: a length-prefixed sequence of
 FNFD frames.  The 4-octet big-endian length is file layout, not a frame field;
@@ -77,7 +84,7 @@ class Acl2Feed:
                  retry_bound: int, streaming: bool, horizon: int):
         self.bridge = Acl2Store()
         self.peer = peer
-        self.bridge.call('(include-book "books/peer-feed")')
+        self.bridge.call('(include-book "books/owner-feed")')
         self.limits = "(fn-feed-limits {} {} {} {})".format(
             max_queue, backoff_ms, retry_bound, "t" if streaming else "nil")
         self.contact = '(fn-sched-contact "{}" 0 {})'.format(
@@ -180,6 +187,17 @@ class Acl2Feed:
             " (fn-frame-result-kind {0}) (fn-frame-result-payload {0})))"
             .format(decoded))
 
+    def response_code(self, line: bytes):
+        """The reply code, read by ACL2 (fn-own-feed-response-code).
+
+        RFC 3977 section 3.2 says a reply begins with three digits whose
+        first is 1 to 5; that test, and the refusal of anything else, is the
+        book's.  This method marshals one line and reads back one number.
+        """
+        value = self._value("(fn-own-feed-response-code {})".format(
+            literal_octets(line)))
+        return None if value == b"NIL" else int(value)
+
     def close(self):
         self.bridge.close()
 
@@ -256,12 +274,6 @@ class Session:
             pass
 
 
-def status(line: bytes):
-    """RFC 3977 section 3.2 framing only: the code and the echoed msgid."""
-    words = line.split()
-    if not words or not words[0].isdigit():
-        return None, b""
-    return int(words[0]), (words[1] if len(words) > 1 else b"")
 
 
 def run(args) -> int:
@@ -331,10 +343,12 @@ def run(args) -> int:
             if args.fault == "after-offer":
                 raise SystemExit(EXIT_FAULT)
             session.send(command)
-            code, echoed = status(session.line())
+            code = feed.response_code(session.line())
             if code is None:
                 break
-            target = echoed if echoed.startswith(b"<") else selected
+            # One entry in flight per peer, so the selected Message-ID IS the
+            # subject of this reply; nothing is read back from the echo.
+            target = selected
             body = articles.get(target, b"")
             if code in (335, 238):
                 journal.append(feed.record(
@@ -352,7 +366,7 @@ def run(args) -> int:
                     head = transfer.split(b"\r\n", 1)[0] + b"\r\n"
                     session.send(head)
                 session.send_block(body)
-                code, echoed = status(session.line())
+                code = feed.response_code(session.line())
                 if code is None:
                     break
             journal.append(feed.record(
