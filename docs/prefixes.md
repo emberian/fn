@@ -84,6 +84,9 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-cfg-peer-` | `peer-config` | The peer record (name, path identity, transport, inbound accept-groups and limits, outbound feed-groups/streaming/backoff, auth) as an opaque record, its row codec into the configuration value's peers slot, `fn-cfg-peer-find`, and the `:set-peer`/`:remove-peer` delta constructors over config's two kinds |
 | `fn-peer-` | `peer-inbound`, `peer-inbound-invariants`, `tests/acl2/peer-inbound-tests` | The inbound transit machine (specs/peering.md §2): the closed decision/reason enumerations, history = articles ∪ bindings, the offer and transfer decisions in RFC 5537 §3.6/§3.7 order, `fn-peer-transfer` into `fn-node-prepare`, the transit submission and session records, the IHAVE/CHECK/TAKETHIS/MODE STREAM step composed over the POST step, the RFC response tables, and keystones K1/K2/K3 |
 | `fn-feed-` | (reserved) | The outbound feed machine of specs/peering.md §3 (packet K2, feed lane); registered here so no other cluster takes the prefix |
+| `fn-defrecord-` | `defrecord` | `:program`-mode term and symbol plumbing behind the `fn-defrecord` and `fn-defrecord-export` macros; no definitional axiom, so no rule and nothing exported |
+| `fn-deftransition-` | `deftransition` | The same, behind `fn-deftransition-closed` and `fn-deftransition` |
+| `fn-drt-` | `tests/acl2/defrecord-tests` | The three throwaway records and the one transition that audit what the two macros generate; nothing outside that test book uses them |
 
 Host-only wrappers in `host/*.lisp` use `fn-store-`, `fn-bpreq-`, `fn-bpwf-`,
 `fn-bprj-` and similar; they are `:program` mode and outside the proof boundary.
