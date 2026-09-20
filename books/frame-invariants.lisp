@@ -19,6 +19,21 @@
 
 (in-package "ACL2")
 (include-book "frame")
+
+; This is the frame cluster's proof book: every theorem here is about the
+; definitions in `frame-octets', `frame-fields', `frame-journal' and `frame',
+; so it opens them locally, together with the CBOR list vocabulary.  The
+; splitter shape rules are re-disabled by hand below, where 3.1b of
+; planning/lanes/LANEDUMP-twins-into-acl2.md says they must be.
+(local (in-theory (enable fn-cbor-invariants-vocabulary
+                          fn-cbor-codec-vocabulary
+                          fn-frame-octet-vocabulary
+                          fn-frame-fields-vocabulary
+                          fn-frame-journal-vocabulary
+                          fn-frame-record-vocabulary
+                          fn-frame-codec-vocabulary
+                          (:d fn-frame-split)
+                          (:d fn-frame-u64-bytes))))
 (local (include-book "arithmetic/top" :dir :system))
 
 ; The splitter is reasoned about through its lemmas, never by unrolling it on
@@ -891,3 +906,71 @@
                             fn-frame-field-octets fn-frame-field-parse
                             fn-frame-parse-counted fn-cbor-u32-from
                             fn-cbor-u16-from floor mod)))))
+
+; -----------------------------------------------------------------------------
+; Export theory.
+;
+; The keystones leave this book enabled: the two round trips, the two bound
+; theorems, the trailer theorem, the seal/open bridge and the four journal
+; round trips.  Everything else is arithmetic, enum and field vocabulary,
+; including the shape lemmas whose hypotheses unroll `fn-cbor-at-mostp' -- the
+; rules that made one `append' goal cost 108 s and `fn-id-hex-octets-are-
+; octets' 619 s before they were disabled by hand (3.1b of
+; planning/lanes/LANEDUMP-twins-into-acl2.md).  They no longer reach an
+; includer at all.
+
+(deftheory fn-frame-invariants-vocabulary
+  '(    fn-frame-u16-bytes-true-listp fn-frame-u32-bytes-true-listp
+    fn-frame-u16-bytes-of-u16-from fn-frame-u32-bytes-of-u32-from
+    fn-frame-u16-from-bounded fn-frame-u32-from-is-integerp
+    fn-frame-u32-from-is-natural fn-frame-u32-from-bounded
+    fn-frame-u16-from-is-natural fn-frame-u16-from-nonnegative
+    fn-frame-u32-from-nonnegative fn-frame-u64-from-of-u64-bytes
+    fn-frame-u64-from-is-natural fn-frame-u64-bytes-of-u64-from
+    fn-frame-u64-from-bounded fn-frame-u64-from-nonnegative
+    fn-frame-item-of-enum-index fn-frame-enum-index-zero-when-not-member
+    fn-frame-item-is-member fn-frame-enum-index-of-item
+    fn-frame-textp-is-octets fn-frame-textp-is-consp
+    fn-frame-textp-len-bound fn-frame-blobp-is-octets
+    fn-frame-blobp-is-consp fn-frame-blobp-len-bound
+    fn-frame-parse-okp-of-parse-ok fn-frame-parse-okp-of-parse-error
+    fn-frame-parse-value-of-parse-ok fn-frame-parse-rest-of-parse-ok
+    fn-frame-parse-counted-of-append fn-frame-field-parse-of-octets-text
+    fn-frame-field-parse-of-octets-blob fn-frame-field-parse-of-octets-nat
+    fn-frame-field-parse-of-octets-enum fn-frame-field-parse-of-octets
+    fn-frame-field-octets-of-parse fn-frame-field-parse-value-okp
+    fn-frame-fields-parse-aux-of-octets fn-frame-fields-parse-of-octets
+    fn-frame-fields-parse-aux-round-trip fn-frame-fields-octets-of-parse
+    fn-frame-header-octets fn-frame-head-fields-of-header
+    fn-frame-protected-true-listp))
+
+(in-theory (disable fn-frame-u16-bytes-true-listp fn-frame-u32-bytes-true-listp
+             fn-frame-u16-bytes-of-u16-from fn-frame-u32-bytes-of-u32-from
+             fn-frame-u16-from-bounded fn-frame-u32-from-is-integerp
+             fn-frame-u32-from-is-natural fn-frame-u32-from-bounded
+             fn-frame-u16-from-is-natural fn-frame-u16-from-nonnegative
+             fn-frame-u32-from-nonnegative fn-frame-u64-from-of-u64-bytes
+             fn-frame-u64-from-is-natural fn-frame-u64-bytes-of-u64-from
+             fn-frame-u64-from-bounded fn-frame-u64-from-nonnegative
+             fn-frame-item-of-enum-index
+             fn-frame-enum-index-zero-when-not-member
+             fn-frame-item-is-member fn-frame-enum-index-of-item
+             fn-frame-textp-is-octets fn-frame-textp-is-consp
+             fn-frame-textp-len-bound fn-frame-blobp-is-octets
+             fn-frame-blobp-is-consp fn-frame-blobp-len-bound
+             fn-frame-parse-okp-of-parse-ok
+             fn-frame-parse-okp-of-parse-error
+             fn-frame-parse-value-of-parse-ok
+             fn-frame-parse-rest-of-parse-ok
+             fn-frame-parse-counted-of-append
+             fn-frame-field-parse-of-octets-text
+             fn-frame-field-parse-of-octets-blob
+             fn-frame-field-parse-of-octets-nat
+             fn-frame-field-parse-of-octets-enum
+             fn-frame-field-parse-of-octets fn-frame-field-octets-of-parse
+             fn-frame-field-parse-value-okp
+             fn-frame-fields-parse-aux-of-octets
+             fn-frame-fields-parse-of-octets
+             fn-frame-fields-parse-aux-round-trip
+             fn-frame-fields-octets-of-parse fn-frame-header-octets
+             fn-frame-head-fields-of-header fn-frame-protected-true-listp))

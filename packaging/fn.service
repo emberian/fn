@@ -1,0 +1,60 @@
+# fn as a system service.  See docs/operator.md.
+#
+# Install layout this unit assumes:
+#   /usr/local/lib/fn   the repository (bin/fn, tools/, books/, host/)
+#   /etc/fn/fn.toml     the configuration `fn init --config` wrote
+#   /var/lib/fn/store   the store named by [store] path
+#   /var/log/fn/fn.log  the file named by [log] path (omit it to log to the journal)
+#
+# `fn run` is the service: it holds the store's exclusive writer lock for its
+# whole lifetime, so exactly one instance of this unit may run per store.
+# SIGTERM is a clean shutdown: the owner's own teardown releases the writer
+# lock and removes the control socket before the process exits.
+
+[Unit]
+Description=fn news node (ACL2 core, NNTP reader and posting owner)
+Documentation=file:/usr/local/lib/fn/docs/operator.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=fn
+Group=fn
+WorkingDirectory=/usr/local/lib/fn
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/local/lib/fn/bin/fn run --config /etc/fn/fn.toml
+
+# The owner exits non-zero only on a fault; a clean SIGTERM stop exits 0 and
+# is not restarted.  An ACL2 start that cannot reach a prompt is a fault, and
+# restarting it is the right answer.
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGTERM
+# Recovery replays the journal through ACL2 on the next start; give the
+# in-flight shutdown room rather than SIGKILL in the middle of a barrier.
+TimeoutStopSec=120
+
+# Hardening.  Every line here has been chosen to leave the ACL2 host runtime
+# working: a Lisp image maps writable-executable pages, so MemoryDenyWriteExecute
+# is deliberately NOT set, and no syscall filter is applied.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectControlGroups=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectClock=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+# ProtectSystem=strict makes everything read-only; name exactly what the store
+# and the log need.  Add any path you moved [store] path or [log] path to.
+ReadWritePaths=/var/lib/fn /var/log/fn
+# The listener is loopback (see docs/architecture.md); no other family is needed.
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target

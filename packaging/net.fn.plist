@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd equivalent of packaging/fn.service.  See docs/operator.md.
+  Install as /Library/LaunchDaemons/net.fn.plist (system) and load with
+  `sudo launchctl bootstrap system /Library/LaunchDaemons/net.fn.plist`.
+
+  KeepAlive/SuccessfulExit=false is launchd's Restart=on-failure: a clean
+  SIGTERM stop exits 0 and is not restarted; a fault is.  launchd sends
+  SIGTERM on `bootout`, which is the owner's clean shutdown path.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>net.fn</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/lib/fn/bin/fn</string>
+    <string>run</string>
+    <string>--config</string>
+    <string>/usr/local/etc/fn/fn.toml</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/usr/local/lib/fn</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PYTHONUNBUFFERED</key>
+    <string>1</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+  <key>ThrottleInterval</key>
+  <integer>5</integer>
+  <key>ExitTimeOut</key>
+  <integer>120</integer>
+  <key>UserName</key>
+  <string>_fn</string>
+  <key>GroupName</key>
+  <string>_fn</string>
+  <!-- launchd has no ProtectSystem; the equivalent containment is the
+       unprivileged _fn account owning only the store and the log. -->
+  <key>StandardOutPath</key>
+  <string>/usr/local/var/log/fn/stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>/usr/local/var/log/fn/stderr.log</string>
+</dict>
+</plist>

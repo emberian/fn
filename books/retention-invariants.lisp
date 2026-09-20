@@ -1,7 +1,15 @@
 ; General invariants for authorized logical retention release.  Evidence is
 ; already authenticated/committed input; no disk or cryptographic claim follows.
+;
+; The retention recognizers and transitions are opened locally; nothing here
+; opens a record.  The export theory keeps the three keystones.
 (in-package "ACL2")
 (include-book "retention")
+
+(local (in-theory (enable fn-retain-obligationp fn-retain-releasep
+                          fn-retain-statep fn-retain-initial-state
+                          fn-retain-admissiblep fn-retain-admit
+                          fn-retain-release)))
 
 (defthm fn-retain-release-find-is-obligation
   (implies (and (fn-retain-obligation-listp pins)
@@ -78,8 +86,7 @@
                  (:instance fn-retain-release-find-is-obligation
                   (pins (fn-retain-pins s)))
                  (:instance fn-retain-release-sum-is-natural
-                  (pins (fn-retain-remove-id id (fn-retain-pins s)))))
-           :in-theory (enable fn-retain-release fn-retain-statep))))
+                  (pins (fn-retain-remove-id id (fn-retain-pins s))))))))
 
 ; Releasing one obligation cannot discharge a distinct archive/forward pin,
 ; even when both pins protect the same immutable content subject.
@@ -115,3 +122,24 @@
             (fn-retain-releases (fn-retain-release s id subject kind evidence))))
   :hints (("Goal" :in-theory (disable fn-retain-statep fn-retain-find-id
                                       fn-retain-remove-id))))
+
+; -----------------------------------------------------------------------------
+; Export.  Keystones stay enabled: `fn-retain-release-preserves-statep',
+; `fn-retain-release-preserves-independent-pin' and
+; `fn-retain-release-preserves-known-identity'.  The remove/find/sum lemmas
+; are proof vocabulary and are withdrawn.
+(deftheory fn-retention-invariants-vocabulary
+  '(fn-retain-release-find-is-obligation
+    fn-retain-release-find-id-is-member
+    fn-retain-release-remove-preserves-obligations
+    fn-retain-release-sum-is-natural
+    fn-retain-release-remove-sum
+    fn-retain-release-remove-id-members
+    fn-retain-release-remove-preserves-unique-ids
+    fn-retain-release-disjoint-member
+    fn-retain-release-remove-preserves-disjointness
+    fn-retain-release-sum-nonnegative
+    fn-retain-release-charge-bounded-by-sum
+    fn-retain-release-remove-keeps-other-pin
+    fn-retain-release-remove-keeps-other-members))
+(in-theory (disable fn-retention-invariants-vocabulary))

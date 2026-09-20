@@ -38,6 +38,12 @@
 
 (include-book "cbor-invariants")
 
+; This is the 64-bit CBOR profile over the same primitives, so it opens the
+; bounded profile locally.  Results stay opaque.
+(local (in-theory (enable fn-cbor-codec-vocabulary
+                          fn-cbor-invariants-vocabulary
+                          fn-cbor-record-vocabulary)))
+
 (local (include-book "arithmetic/top" :dir :system))
 
 ; `append` associativity is not available as a named rule in this image, and
@@ -1213,3 +1219,87 @@
            :in-theory (e/d (fn-bpc-valuep)
                            (fn-bpc-decode-exact
                             fn-bpc-decode-exact-yields-value)))))
+
+; -----------------------------------------------------------------------------
+; Export theory.
+;
+; The keystones leave this book enabled: `fn-bpc-decode-of-encode',
+; `fn-bpc-value-round-trip', `fn-bpc-accepted-input-is-canonical', the two
+; decoded-bound theorems, the no-budget theorem and the overlong refusal,
+; together with the result record lemmas `fn-bpc-fields-of-ok',
+; `fn-bpc-fields-of-error' and `fn-bpc-results-are-true-lists'.  Everything
+; else is list, arithmetic and head vocabulary, including every rule that
+; backchains into `len', `consp' or `true-listp'.
+
+(deftheory fn-bpc-vocabulary
+  '(    fn-bpc-append-associativity fn-bpc-car-of-append fn-bpc-cdr-of-append
+    fn-bpc-consp-of-append fn-bpc-append-nil fn-bpc-len-of-append
+    fn-bpc-take-of-append fn-bpc-nthcdr-of-append
+    fn-bpc-u32-octets-are-octets fn-bpc-u32-octets-fields
+    fn-bpc-u32-octets-prefix-fields
+    fn-bpc-u32-octets-agree-with-fn-cbor-u32-bytes
+    fn-bpc-u32-octets-invert fn-bpc-u32-bytes-prefix-fields
+    fn-bpc-u16-bytes-have-length-two fn-bpc-u32-bytes-have-length-four
+    fn-bpc-u16-from-is-a-number fn-bpc-u32-from-is-a-number
+    fn-bpc-u64-bytes-fields fn-bpc-u64-bytes-have-eight-octets
+    fn-bpc-u64-bytes-are-octets fn-bpc-u64-from-of-two-arguments
+    fn-bpc-u64-from-u64-bytes fn-bpc-u64-from-of-u64-bytes
+    fn-bpc-octet-listp-cdr fn-bpc-cons-car-cdr fn-bpc-u64-bytes-reassemble
+    fn-bpc-u64-octet-round-trip fn-bpc-car-of-octet-list-is-natural
+    fn-bpc-car-of-octet-list-is-bounded fn-bpc-octet-listp-nthcdr
+    fn-bpc-octet-listp-take fn-bpc-u64-from-is-natural
+    fn-bpc-u64-from-is-bounded fn-bpc-argument-are-octets
+    fn-bpc-argument-is-true-list fn-bpc-cost-is-positive
+    fn-bpc-enc-is-true-list fn-bpc-enc-are-octets
+    fn-bpc-decode-argument-rest-are-octets
+    fn-bpc-decode-argument-value-is-natural
+    fn-bpc-decode-head-rest-are-octets fn-bpc-decode-head-value-is-natural
+    fn-bpc-decode-head-value-is-bounded fn-bpc-dec-is-true-list
+    fn-bpc-dec-rest-are-octets fn-bpc-decode-is-true-list
+    fn-bpc-decode-exact-is-true-list fn-bpc-argument-is-consp
+    fn-bpc-argument-head-is-natural fn-bpc-uint-head-range
+    fn-bpc-bytes-head-range fn-bpc-text-head-range fn-bpc-array-head-range
+    fn-bpc-uint-head-decodes fn-bpc-bytes-head-decodes
+    fn-bpc-text-head-decodes fn-bpc-array-head-decodes
+    fn-bpc-dec-list-has-declared-length fn-bpc-dec-list-is-true-list
+    fn-bpc-dec-yields-shape fn-bpc-argument-of-decode-head
+    fn-bpc-dec-reencodes-consumed-prefix fn-bpc-argument-length-bound
+    fn-bpc-enc-length-bound))
+
+(in-theory (disable fn-bpc-append-associativity fn-bpc-car-of-append
+             fn-bpc-cdr-of-append fn-bpc-consp-of-append fn-bpc-append-nil
+             fn-bpc-len-of-append fn-bpc-take-of-append
+             fn-bpc-nthcdr-of-append fn-bpc-u32-octets-are-octets
+             fn-bpc-u32-octets-fields fn-bpc-u32-octets-prefix-fields
+             fn-bpc-u32-octets-agree-with-fn-cbor-u32-bytes
+             fn-bpc-u32-octets-invert fn-bpc-u32-bytes-prefix-fields
+             fn-bpc-u16-bytes-have-length-two
+             fn-bpc-u32-bytes-have-length-four fn-bpc-u16-from-is-a-number
+             fn-bpc-u32-from-is-a-number fn-bpc-u64-bytes-fields
+             fn-bpc-u64-bytes-have-eight-octets
+             fn-bpc-u64-bytes-are-octets fn-bpc-u64-from-of-two-arguments
+             fn-bpc-u64-from-u64-bytes fn-bpc-u64-from-of-u64-bytes
+             fn-bpc-octet-listp-cdr fn-bpc-cons-car-cdr
+             fn-bpc-u64-bytes-reassemble fn-bpc-u64-octet-round-trip
+             fn-bpc-car-of-octet-list-is-natural
+             fn-bpc-car-of-octet-list-is-bounded fn-bpc-octet-listp-nthcdr
+             fn-bpc-octet-listp-take fn-bpc-u64-from-is-natural
+             fn-bpc-u64-from-is-bounded fn-bpc-argument-are-octets
+             fn-bpc-argument-is-true-list fn-bpc-cost-is-positive
+             fn-bpc-enc-is-true-list fn-bpc-enc-are-octets
+             fn-bpc-decode-argument-rest-are-octets
+             fn-bpc-decode-argument-value-is-natural
+             fn-bpc-decode-head-rest-are-octets
+             fn-bpc-decode-head-value-is-natural
+             fn-bpc-decode-head-value-is-bounded fn-bpc-dec-is-true-list
+             fn-bpc-dec-rest-are-octets fn-bpc-decode-is-true-list
+             fn-bpc-decode-exact-is-true-list fn-bpc-argument-is-consp
+             fn-bpc-argument-head-is-natural fn-bpc-uint-head-range
+             fn-bpc-bytes-head-range fn-bpc-text-head-range
+             fn-bpc-array-head-range fn-bpc-uint-head-decodes
+             fn-bpc-bytes-head-decodes fn-bpc-text-head-decodes
+             fn-bpc-array-head-decodes fn-bpc-dec-list-has-declared-length
+             fn-bpc-dec-list-is-true-list fn-bpc-dec-yields-shape
+             fn-bpc-argument-of-decode-head
+             fn-bpc-dec-reencodes-consumed-prefix
+             fn-bpc-argument-length-bound fn-bpc-enc-length-bound))

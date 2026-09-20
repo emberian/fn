@@ -8,24 +8,34 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | Tag | Books | Meaning |
 | --- | --- | --- |
 | `fn-state-`, `fn-pending-`, `fn-accept-`, `fn-install-`, `fn-allocate-`, `fn-initial-`, `fn-articles-`, `fn-membership(s)-`, `fn-next-`, `fn-bump-`, `fn-clear-`, `fn-find-`, `fn-all-`, `fn-advance-`, `fn-make-`, `fn-pair-`, `fn-string-`, `fn-octet-`, `fn-no-`, `fn-selection-` | `acceptance`, `acceptance-invariants` | Logical acceptance machine: staged allocation, durable completion, fences, primitive domains |
-| `fn-ag-` | `acceptance` | Guard-verified executable helpers (`car`, `cdr`, `member`, `append`) used in `mbe :exec` branches of the acceptance graph |
+| `fn-ag-` | `acceptance-alloc` | Total executable helpers (`car`, `cdr`, `member`, `append`, `less`) that are their logical primitives by `mbe`; used in `:exec` branches across the tree |
 | `fn-retain-` | `retention`, `retention-invariants` | Abstract retention accounting: pins, charges, evidence-gated release |
 | `fn-node-` | `node`, `node-invariants`, `node-traces` | One-transaction composition of acceptance and retention; article-to-pin bindings; event dispatcher |
 | `fn-record-` | `records`, `records-invariants`, `records-canonicality` | Schema-0 transaction record grammar over CBOR primitives |
 | `fn-cbor-` | `cbor`, `cbor-invariants` | Deterministic CBOR primitives: uint32 and definite byte strings |
 | `fn-replay-` | `replay`, `replay-invariants` | Contiguous record replay into a node; typed ok/fault results |
 | `fn-sf-` | `store-files`, `store-files-invariants`, `store-files-traces` | Immutable-file publication kernel: allocator frontier, staged record, barriers, crash constructor, recovery gate |
+| `fn-bs-` | `byte-store`, `byte-store-invariants`, `byte-store-programs` | Byte-level storage model under the file kernel (crash model v2): inodes, directories, pending writes and entry operations, per-object fences, unit-granular torn crash images, syscalls with EIO/ENOSPC outcomes, and the host's syscall sequences as programs over it |
 | `fn-sn-` | `store-node`, `store-node-invariants`, `store-node-resolution` | Live file/node composition: pending record binding, actual completion, refusal and known-abort resolution, observed opening |
 | `fn-snt-` | `store-node-traces` | Trace relation and preservation for the composed store/node machine |
-| `fn-snrt-` | `store-node-resolution-traces` | Trace preservation including refusal and abort resolution |
+| `fn-snrt-` | `store-node-resolution` (folded from `store-node-resolution-traces`, 2026-09-19) | Trace preservation including refusal and abort resolution |
 | `fn-checkpoint-` | `checkpoint` | Logical checkpoint capture, restore and checkpoint-plus-suffix replay |
 | `fn-index-` | `index` | Derived group/number index and range queries |
 | `fn-journal-` | `journal` | Historical isolated-slot journal experiment; not the adapter model |
 | `fn-exchange-` | `exchange`, `exchange-invariants` | Bounded atomic fact-set admission and merge |
 | `fn-transfer-` | `transfer`, `transfer-invariants`, `transfer-assembly-invariants`, `transfer-work`, `transfer-public-work`, `transfer-public-bound` | Fragment reservation, assembly, missing ranges, costed shadows and bounds |
+| `fn-tj-` | `transfer-journal`, `transfer-journal-invariants` | Durable fragment journal around `fn-transfer-reserve`/`fn-transfer-add-chunk`: records with the kernel's outcome, replay as the fold of the transitions, the FNTJ frame family, typed faults, the `:unverified` candidate export |
+| `fn-ct-` | `container`, `container-invariants` | Portable object container: articles with exact octets, content id and dependency ids, opaque unknowns; identity/dependency/size validation before allocation; publication through `fn-node-prepare`/`fn-node-complete`; OBJ-004 conflict evidence |
 | `fn-wire-` | `wire`, `wire-invariants` | NNTP line framing, dot stuffing, bounded retained input |
-| `fn-nntp-` | `nntp`, `nntp-invariants`, `nntp-effects` | Reader command dispatcher, session cursor, projection, effects |
+| `fn-nntp-` | `nntp`, `nntp-overview`, `nntp-invariants`, `nntp-effects` | Reader command dispatcher, session cursor, projection, effects; the reader environment (clock observation and group-creation facts), the closed-form civil calendar, and the DATE/NEWGROUPS/MODE READER/OVER branches |
+| `fn-nov-` | `nntp`, `nntp-overview` | RFC 3977 §8.3.2 overview projection over the proved article `fields` view: field escaping, `:bytes`/`:lines` metadata, the eight-field line, and the cleanliness theorems |
 | `fn-ng-` | `nntp` | Guard-verified executable helpers for the NNTP graph |
+| `fn-nntp-index-` | `nntp-index` | Index-backed twins of the NNTP number enumerations and the generation-bound index cache |
+| `fn-served-` | `served` | The served NNTP path as one logic-mode, guard-`t`-verified function: one socket read is `fn-wire-drive` then `fn-nntp-step` per framed event, with the reply concatenation, the partition law and the typed effect enumeration; the connection record (wire, session, pinned archive) and the two projections the host may take of an effect list |
+| `fn-ideal-` | `ideal` | F_node, the ideal node functionality of [`specs/node-functionality.md`](../specs/node-functionality.md) section 1: the state record and the port dispatcher. SKELETON: only the reader port is real (it is `fn-served-step`); every other port is a stub returning the state with a `:todo` effect, and the robustness theorems of section 3 are written there as commented statements marked OPEN |
+| `fn-dtn-` | (planned, `dtn-channel`) | The unauthenticated, adversarially scheduled bundle channel of [`specs/node-functionality.md`](../specs/node-functionality.md) section 5.4: the in-flight multiset and the adversary's delay, reorder, duplication, loss and injection. No book yet; the tag is registered so the skeleton above can name it |
+| `fn-sys-` | (planned, `system`) | The composed system F_node × F_dtn: a finite map from endpoint id to node states plus one channel, and the end-to-end release theorem of section 5.4. No book yet |
+| `fn-index-host-` | `host/index-host.lisp` | Trusted adapter that opens the index cache at a recovered generation and asks it; holds no enumeration logic |
 | `fn-wildmat-` | `wildmat`, `wildmat-utf8-invariants`, `wildmat-parser-invariants`, `wildmat-matcher-invariants` | UTF-8 decoding, wildmat grammar parsing, dynamic-programming matcher |
 | `fn-wm-` | `wildmat-matcher-invariants`, `wildmat-work` | Reference matcher and costed matcher shadow |
 | `fn-article-` | `article`, `article-invariants`, `article-properties` | Bounded header/body article parser with exact source preservation |
@@ -49,10 +59,27 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-bpc-` | `bp-primary-cbor` | Deterministic CBOR vocabulary RFC 9171 §4.3.1 needs over `fn-cbor-`: definite arrays and text strings, unsigned integers to 2^64-1 |
 | `fn-bpp-` | `bp-primary`, `bp-primary-invariants` | BPv7 primary bundle block: flags, CRC-16/CRC32C, `dtn` and `ipn` endpoint IDs, creation timestamp, lifetime, fragment fields, bundle identity, §4.4 extension block data |
 | `fn-bpf-` | `bp-fragment`, `bp-fragment-invariants` | BPv7 fragmentation and ADU reassembly over identical-overlap covers; fragment primary blocks |
+| `fn-sched-` | `scheduler`, `scheduler-invariants` | Durable contact/retry scheduler: contact-plan observations, bounded work queue, deterministic priority with a FIFO aging rule, selection composed with `fn-bp-step`, the stated unfair policy used for the starvation counterexample, and the proposed FNWF `:schedule` decision record |
 | `fn-clock-` | `clock`, `clock-invariants` | Host clock observations, Bundle Age anchors and the three-way bundle expiry decision |
+| `fn-own-` | `owner`, `owner-invariants` | The mutable service owner over the live `fn-sn` composition: committed view, per-connection version pins and NNTP sessions, one pending transaction, the proof-only completion ledger, clock observations and clock-stamped group-configuration facts |
+| `fn-anchor-` | `anchor`, `anchor-record`, `anchor-invariants` | The external freshness anchor: the Roughtime statement and the octets its two signatures cover, the strictly-newer interval order, the monotone rule for acceptance, restore and incarnation advance, fork evidence, and the FNAN durable record family |
+| `fn-digest-`, `fn-sig-` | `crypto-seam` | Constrained digest and signature seam with shape-only constraints; tagged preimages; hex rendering |
+| `fn-prin-` | `principal`, `principal-invariants` | Principal ids from (public key, token), key succession chains, keyrings |
+| `fn-stmt-` | `statement`, `statement-invariants` | Block-shaped statement header, item-sequence codec, content id, signing, receipt payloads |
+| `fn-lace-` | `lace`, `lace-invariants` | Statement sets keyed by content id: merge, canonicity, cross-canonicity, equivocation, causal closure |
+| `fn-pol-` | `policy`, `policy-invariants` | Group policy statements, the policy in force, authorization, policy term and receipts |
+| `fn-toy-`, `fn-t-` | `tests/acl2/*-tests` | Test-only executable realisers attached with `defattach`, and test witnesses; never in `books/`.  `fn-t-anchor-{leaf-digest,sig-verify}` (`tests/acl2/anchor-teeth-tests`) realise the two A-CRYPTO seams of `books/anchor` so the keystones' own subjects evaluate |
+| `fn-me-` | `membership-epochs`, `membership-epochs-invariants` | Group membership as epochs: commits over a base epoch, adopted chain and evidence set, the lace-shaped merge with explicit fork evidence, rosters, revocation knowledge, and the four-way admissibility decision for a late message. A policy model: no keys, no ciphertext, no digest |
+| `fn-cfg-`, `fn-config-`, `fn-jrec-` | `config`, `config-invariants`, `config-records` | Durable configuration: the typed value (group-table history with created/retired generations and stamps, capacity, quota/policy/listener/peer/limit rows), the typed deltas and their admissibility, the configuration record and its canonical CBOR encoding, the replay fold into `(generation value)`, and the two-kind journal record over which `fn-config-aware-replay` agrees with `fn-replay` on transaction-only histories |
+| `fn-cnode-` | `node-config` | The configured node: a `fn-node` state paired with its `(generation value)` configuration, carrying as recognizer conjuncts that the acceptance group list is the allocation domain (every name ever created) and the retention capacity is the configured one; the lifted article transitions with the served-table admission check, the configuration transition, and the two-kind replay loop the host replays configuration history through |
+
+| `fn-inj-` | `injection`, `injection-invariants` | RFC 5537 §3.5 injection: the injecting-agent configuration record, the Gregorian calendar of the 2000-2399 cycle and the RFC 5322 date-time rendering, the generated Message-ID, and the opaque decision record carrying either a refusal reason or the exact injected octets |
+| `fn-post-`, `fn-nntp-post-` | `nntp-post`, `tests/acl2/nntp-post-tests` | POST (RFC 3977 §6.3.1) composed over the reader dispatcher: the posting session (the reader session plus the awaiting bit), the result record carrying effects and a submission, and the two host entry points `fn-nntp-post-step` and `fn-nntp-post-outcome` |
+| `fn-nntp-` | `nntp`, `nntp-invariants`, `nntp-effects` | Reader command dispatcher, session cursor, projection, effects |
+| `fn-tcl-` | `tcpcl-records`, `tcpcl-octets`, `tcpcl-session`, `tcpcl-invariants` | TCPCLv4 convergence layer (RFC 9174): opaque message and session records, the exact octet grammar with bounds before allocation, the section 3.3 session machine (contact, SESS_INIT negotiation, one inbound and one outbound transfer, refusal, keepalive and idle timeout, SESS_TERM, MSG_REJECT), the served drive loop and its keystones C1 to C4 |
 
 Host-only wrappers in `host/*.lisp` use `fn-store-`, `fn-bpreq-`, `fn-bpwf-`,
 `fn-bprj-` and similar; they are `:program` mode and outside the proof boundary.
-The `fn-store-` tag is shared: `books/store-config` owns the group table under
+`host/config-host.lisp` marshals under `fn-cfg-host-`. The `fn-store-` tag is shared: `books/store-config` owns the group table under
 it and `host/store-host.lisp` marshals under it. A host wrapper never decides
 anything a book does not already decide.
