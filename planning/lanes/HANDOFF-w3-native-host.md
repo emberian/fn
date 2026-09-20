@@ -97,6 +97,20 @@ static check:
   `fn-store-text-octetsp`, so every `post` was `:invalid` while the Python
   host committed on the same store.
 
+| Native against Python | `python3 tests/native_differential.py` (persvati) | 40 steps, 4 findings, all from two causes below; the 4 reader transcripts and every disk comparison match |
+
+The differential's four findings:
+
+- **`recover` and `status` omit `anchor=none`.** The Python host prints an
+  anchor field the native host has no code for: `host/anchor-host.lisp` is
+  `ld`ed by `tools/run_store.py` and not by `host/native/build.lisp`. This is
+  a real gap in the native host, not a test artifact — fix it by loading the
+  anchor wrapper and reporting the same field.
+- **Staging orphan names differ.** They carry a pid and random octets by
+  construction. `tree()` normalizes them for the disk comparison and the
+  stdout comparison does not, so three of the four findings are the same
+  artifact; normalize the orphan list in the stdout comparison.
+
 ## Open
 
 - **No owner in the reader.** A served POST is refused because this process
