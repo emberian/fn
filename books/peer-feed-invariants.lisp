@@ -199,6 +199,62 @@
 (defthm fn-feed-state-okp-of-dropped
   (fn-feed-state-okp (fn-feed-dropped r)))
 
+; Predicate-and-accessor-of-constructor facts for the offer states, and the
+; consp shape facts forward reasoning needs once the state predicates are
+; closed (docs/proof-style.md sec. 1).  A proof that closes the state
+; vocabulary keeps its goals in it and reaches the queue lemmas through
+; these.
+(defthm fn-feed-state-inflightp-of-offered
+  (fn-feed-state-inflightp (fn-feed-offered a)))
+(defthm fn-feed-state-inflightp-of-sent
+  (fn-feed-state-inflightp (fn-feed-sent a)))
+(defthm fn-feed-state-inflightp-of-dropped
+  (not (fn-feed-state-inflightp (fn-feed-dropped r))))
+(defthm fn-feed-state-attempt-of-offered
+  (equal (fn-feed-state-attempt (fn-feed-offered a)) (nfix a)))
+(defthm fn-feed-state-attempt-of-sent
+  (equal (fn-feed-state-attempt (fn-feed-sent a)) (nfix a)))
+; The attempt of an in-flight state is a natural.  `fn-feed-offeredp' carries
+; it as a conjunct, and a proof that closes that predicate loses it: the
+; `:feed-sent' arm's residue was a subgoal whose hypothesis said the attempt
+; was NEGATIVE, which `fn-feed-offeredp' already forbids.  Stated over
+; `fn-bp-nth' because that is what `fn-feed-state-attempt' opens to.
+(defthm fn-feed-offer-states-forward-natp
+  (and (implies (fn-feed-offeredp s) (natp (fn-bp-nth 1 s)))
+       (implies (fn-feed-sentp s) (natp (fn-bp-nth 1 s))))
+  :rule-classes ((:forward-chaining
+                  :corollary (implies (fn-feed-offeredp s)
+                                      (natp (fn-bp-nth 1 s)))
+                  :trigger-terms ((fn-feed-offeredp s)))
+                 (:forward-chaining
+                  :corollary (implies (fn-feed-sentp s) (natp (fn-bp-nth 1 s)))
+                  :trigger-terms ((fn-feed-sentp s)))))
+
+; The attempt-bound case over the OPEN spelling of an in-flight state: a
+; ground constructor call such as `(fn-feed-sent 0)' evaluates to
+; `'(:sent 0)' however the definition rune is set, so the constructor-form
+; rule above cannot reach it.
+(defthm fn-feed-attempts-belowp-of-set-state-open-inflight
+  (implies (and (fn-feed-attempts-belowp xs n) (natp a) (< a (nfix n)))
+           (and (fn-feed-attempts-belowp
+                 (fn-feed-queue-set-state xs msgid (list :offered a)) n)
+                (fn-feed-attempts-belowp
+                 (fn-feed-queue-set-state xs msgid (list :sent a)) n))))
+
+(defthm fn-feed-offer-states-forward-consp
+  (and (implies (fn-feed-offeredp s) (consp s))
+       (implies (fn-feed-sentp s) (consp s))
+       (implies (fn-feed-state-inflightp s) (consp s)))
+  :rule-classes ((:forward-chaining
+                  :corollary (implies (fn-feed-offeredp s) (consp s))
+                  :trigger-terms ((fn-feed-offeredp s)))
+                 (:forward-chaining
+                  :corollary (implies (fn-feed-sentp s) (consp s))
+                  :trigger-terms ((fn-feed-sentp s)))
+                 (:forward-chaining
+                  :corollary (implies (fn-feed-state-inflightp s) (consp s))
+                  :trigger-terms ((fn-feed-state-inflightp s)))))
+
 (defthm fn-feed-inflight-count-of-set-state-exact
   (implies (consp (fn-feed-find msgid xs))
            (equal (fn-feed-inflight-count (fn-feed-queue-set-state xs msgid s))
@@ -325,7 +381,7 @@
    (implies (and (fn-feed-attempts-belowp xs n)
                  (fn-feed-state-inflightp (fn-feed-state-of msgid xs)))
             (< (fn-feed-state-attempt (fn-feed-state-of msgid xs)) (nfix n)))
-   :rule-classes nil))
+   :rule-classes :linear))
 
 (local
  (defthm fn-feed-attempts-belowp-after-a-transfer
@@ -342,6 +398,16 @@
                  (< a m) (<= (nfix n) m))
             (fn-feed-attempts-belowp
              (fn-feed-queue-set-state xs msgid (list :offered a)) m))
+   :rule-classes nil))
+
+; The same over the CONSTRUCTOR, for a proof that keeps `fn-feed-offered'
+; closed: the replay fold's offer arm is such a proof.
+(local
+ (defthm fn-feed-attempts-belowp-of-an-offered-state-closed
+   (implies (and (fn-feed-attempts-belowp xs n) (natp m)
+                 (< (nfix a) m) (<= (nfix n) m))
+            (fn-feed-attempts-belowp
+             (fn-feed-queue-set-state xs msgid (fn-feed-offered a)) m))
    :rule-classes nil))
 
 (defthm fn-feed-offer-preserves-feedp
@@ -417,13 +483,26 @@
 (defthm fn-feed-apply-record-preserves-feedp
   (implies (fn-feedp f) (fn-feedp (fn-feed-apply-record f kind values)))
   :hints (("Goal"
+           ; The state vocabulary is closed too: with `fn-feed-state-of',
+           ; the three offer-state predicates and their constructors open,
+           ; the `:feed-sent' arm's hypotheses become
+           ; `consp'/`car'/`true-listp'/`len' of the found entry's state and
+           ; neither `fn-feed-inflight-count-of-set-state-exact' nor
+           ; `fn-feed-find-is-consp-when-the-state-is-a-state' can match.
+           ; Closing them is docs/proof-style.md sec. 1, not an opening of
+           ; `fn-feedp' -- which stays open, for the reason above.
            :in-theory (disable (:d fn-feed-offer) (:d fn-feed-send) (:d fn-feed-done)
                             (:d fn-feed-back-off) (:d fn-feed-lost)
                             (:d fn-feed-give-up) (:d fn-feed-enqueue)
                             (:d fn-feed-restart)
                             (:d fn-feed-retry-exhaustedp)
+                            (:d fn-feed-state-of) (:d fn-feed-offeredp)
+                            (:d fn-feed-sentp) (:d fn-feed-droppedp)
+                            (:d fn-feed-state-inflightp)
+                            (:d fn-feed-offered) (:d fn-feed-sent)
+                            (:d fn-feed-dropped)
                             mv-nth)
-           :use ((:instance fn-feed-attempts-belowp-of-an-offered-state
+           :use ((:instance fn-feed-attempts-belowp-of-an-offered-state-closed
                             (xs (fn-feed-queue f))
                             (n (fn-feed-next-attempt f))
                             (msgid (fn-feed-record-msgid values))
@@ -630,6 +709,11 @@
     fn-feed-msgids-of-requeue-inflight fn-feed-msgids-of-settle
     fn-feed-state-okp-of-offered fn-feed-state-okp-of-sent
     fn-feed-state-okp-of-dropped fn-feed-inflight-count-of-set-state-exact
+    fn-feed-state-inflightp-of-offered fn-feed-state-inflightp-of-sent
+    fn-feed-state-inflightp-of-dropped
+    fn-feed-state-attempt-of-offered fn-feed-state-attempt-of-sent
+    fn-feed-offer-states-forward-consp fn-feed-offer-states-forward-natp
+    fn-feed-attempts-belowp-of-set-state-open-inflight
     fn-feed-attempts-belowp-monotone
     fn-feed-attempts-belowp-of-set-state-inflight
     fn-feed-msgids-of-append fn-feed-member-of-append
