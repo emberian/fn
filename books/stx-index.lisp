@@ -488,38 +488,242 @@
                            (fn-stx-delta (:d fn-lace-slot-conflictp)
                             (:d fn-lace-equivocatorp) (:d fn-lace-same-slotp))))))
 
-; The fork half.  A record is written exactly when the slot already holds a
-; DIFFERENT statement; when it holds the same one and the lace has forked
-; anyway, the record is already there by the induction hypothesis.
+; The fan tools/proof_profile.py named on fn-stx-index-equivocators-agree
+; (persvati, ACL2 8.7, 2026-09-20): fifteen runes with ZERO useful
+; applications, headed by fn-stx-index-stmt-is-consp at 18,651 frames, then
+; (:type-prescription fn-stmt-p) at 8,540, (:definition fn-lace-p) at 6,996
+; and (:definition fn-stx-alist-get) at 5,880.  Each backchains on every
+; list-shaped subterm the induction produces.  The two forms below reason in
+; index and lace vocabulary and need none of them, so they withdraw the lot.
+(local
+ (deftheory fn-stx-index-equivocator-fan
+   '(fn-stx-index-stmt-is-consp
+     fn-lace-member-is-stmt
+     fn-stx-lace-slot-first-of-member
+     fn-stx-lace-car-is-consp
+     fn-prin-acceptablep-implies-shapes
+     (:type-prescription fn-stmt-p)
+     (:definition fn-lace-p)
+     (:d fn-stx-alist-get))))
+
+; (append x nil) is x for a true list.  :rule-classes nil and cited once:
+; a general append-nil rewrite backchains on true-listp everywhere.
+(local (defthm fn-stx-append-nil
+         (implies (true-listp x) (equal (append x nil) x))
+         :rule-classes nil))
+
+; An index with no records reports no equivocator.  Stated over the record
+; list rather than over (fn-stx-index-empty), because the base case of the
+; induction has already evaluated the empty index to its constant.  This is
+; what lets the induction run with fn-stx-index-equivocatorp and
+; fn-stx-records-scan both closed.
+(local (defthm fn-stx-index-equivocatorp-of-no-records
+         (implies (not (fn-stx-index-records index))
+                  (not (fn-stx-index-equivocatorp index p i)))
+         :hints (("Goal" :in-theory (enable (:d fn-stx-index-equivocatorp)
+                                            (:d fn-stx-records-scan))))))
+
+; Two one-literal bridges between the index's slot query and the lace's
+; equivocator predicate.  Both are stated with every hypothesis explicit and
+; cited by :use, because the lemmas underneath them cannot fire as rewrites
+; here: fn-lace-distinct-same-slot-is-equivocation takes the principal and
+; the incarnation from a statement the goal does not name, and
+; fn-lace-slot-conflictp-intro has a free s2.  Citing those two directly
+; inside a larger proof scatters their hypotheses across the clausifier's
+; cross product -- measured: one surviving checkpoint whose only defect was
+; a branch in which fn-stx-slot-partner-elim's same-slot conjunct sat in a
+; different clause from the one that needed it.  Neither statement below
+; mentions the partner, so that cross product does not arise.
+
+; The slot already holds THIS statement and the lace forks it anyway: the
+; lace was an equivocator before the step, so the index already carries the
+; record and no new one is needed.
+(local (defthm fn-stx-slot-fork-is-equivocation
+         (implies (and (fn-lace-p lace)
+                       (fn-stx-lace-slot-first lace (fn-stx-slot-key s))
+                       (equal (fn-stx-lace-slot-first lace (fn-stx-slot-key s))
+                              s)
+                       (fn-lace-slot-conflictp s lace))
+                  (fn-lace-equivocatorp lace (fn-stmt-creator s)
+                                        (fn-stmt-incarnation s)))
+         :rule-classes nil
+         :hints (("Goal"
+                  :do-not-induct t
+                  :use ((:instance fn-stx-lace-slot-first-is-member
+                                   (k (fn-stx-slot-key s)))
+                        (:instance fn-stx-slot-partner-elim)
+                        (:instance fn-lace-distinct-same-slot-is-equivocation
+                                   (s1 s) (s2 (fn-stx-slot-partner lace s))))
+                  :in-theory (e/d ((:d fn-lace-same-slotp))
+                                  (fn-stx-index-equivocator-fan
+                                   (:d fn-lace-slot-conflictp)
+                                   (:d fn-lace-equivocatorp)
+                                   (:d fn-stx-lace-slot-first)
+                                   (:d fn-stx-slot-partner)
+                                   fn-stx-lace-slot-first-is-member
+                                   fn-stx-slot-partner-elim
+                                   fn-stx-slot-partner-is-member
+                                   fn-stx-slot-partner-differs
+                                   fn-stx-slot-partner-same-slot
+                                   fn-lace-distinct-same-slot-is-equivocation))))))
+
+; The slot already holds a DIFFERENT statement: that is a fork of s.
+(local (defthm fn-stx-slot-first-differs-is-conflict
+         (implies (and (fn-stx-lace-slot-first lace (fn-stx-slot-key s))
+                       (not (equal (fn-stx-lace-slot-first lace
+                                                           (fn-stx-slot-key s))
+                                   s)))
+                  (fn-lace-slot-conflictp s lace))
+         :rule-classes nil
+         :hints (("Goal"
+                  :do-not-induct t
+                  :use ((:instance fn-stx-lace-slot-first-is-member
+                                   (k (fn-stx-slot-key s)))
+                        (:instance fn-stx-lace-slot-first-key
+                                   (k (fn-stx-slot-key s)))
+                        (:instance fn-lace-slot-conflictp-intro
+                                   (s1 s)
+                                   (s2 (fn-stx-lace-slot-first
+                                        lace (fn-stx-slot-key s)))))
+                  :in-theory (e/d ((:d fn-lace-same-slotp))
+                                  (fn-stx-index-equivocator-fan
+                                   (:d fn-lace-slot-conflictp)
+                                   (:d fn-stx-lace-slot-first)
+                                   fn-stx-lace-slot-first-is-member
+                                   fn-stx-lace-slot-first-key
+                                   fn-lace-slot-conflictp-intro))))))
+
+; The fork half, as ONE step over one more statement.
+;
+; A record is written exactly when the slot ALREADY holds a DIFFERENT
+; statement.  The lace's equivocator predicate is wider by one case, and the
+; two bridges above are that case and its converse.
+;
+; The first three hypotheses are exactly what fn-stx-lace-of-store-is-lace
+; and fn-stx-index-slots-agree supply at the induction step; the last is the
+; induction hypothesis.  Stating it over an arbitrary index and lace is what
+; keeps the induction looking at a single step.
+(local
+ (defthm fn-stx-index-equivocatorp-of-add1
+   (implies
+    (and (fn-lace-p lace)
+         (equal (fn-stx-index-slot-first index (fn-stx-slot-key s))
+                (fn-stx-lace-slot-first lace (fn-stx-slot-key s)))
+         (iff (fn-stx-alist-get (fn-stx-slot-key s)
+                                (fn-stx-index-slots index))
+              (fn-stx-lace-slot-first lace (fn-stx-slot-key s)))
+         (iff (fn-stx-index-equivocatorp index p i)
+              (fn-lace-equivocatorp lace p i)))
+    (iff (fn-stx-index-equivocatorp (fn-stx-index-add1 index s) p i)
+         (fn-lace-equivocatorp (append lace (list s)) p i)))
+   :rule-classes nil
+   :hints (("Goal"
+            :do-not-induct t
+            :use ((:instance fn-stx-equivocatorp-of-one-more)
+                  (:instance fn-stx-slot-conflictp-implies-slot-first)
+                  (:instance fn-stx-slot-fork-is-equivocation)
+                  (:instance fn-stx-slot-first-differs-is-conflict))
+            :in-theory (e/d ((:d fn-stx-index-equivocatorp)
+                             (:d fn-stx-records-scan)
+                             (:d fn-stx-index-slot-first))
+                            (fn-stx-index-equivocator-fan
+                             (:d fn-lace-slot-conflictp)
+                             (:d fn-lace-equivocatorp)
+                             (:d fn-lace-same-slotp)
+                             (:d fn-stx-lace-slot-first)
+                             (:d fn-stx-slot-partner)
+                             fn-stx-equivocatorp-of-one-more
+                             fn-stx-slot-conflictp-implies-slot-first
+                             fn-stx-lace-slot-first-is-member
+                             fn-stx-lace-slot-first-key
+                             fn-stx-lace-slot-first-of-member
+                             fn-lace-slot-conflictp-intro
+                             fn-lace-equivocator-scan-intro
+                             fn-lace-distinct-same-slot-is-equivocation
+                             fn-stx-slot-partner-elim
+                             fn-stx-slot-partner-is-member
+                             fn-stx-slot-partner-differs
+                             fn-stx-slot-partner-same-slot
+                             fn-stx-slot-conflictp-of-append
+                             fn-stx-scan-of-append-rest
+                             fn-stx-slot-conflictp-of-singleton))))))
+
+; The same step over a delta that is nil or a singleton, which is the shape
+; fn-stx-index-of-store and fn-stx-lace-of-store actually hand the induction.
+; Doing the nil/singleton split here rather than in the induction is what
+; keeps the main hint to one :use.
+(local
+ (defthm fn-stx-index-equivocatorp-of-add
+   (implies
+    (and (fn-lace-p lace)
+         (true-listp lace)
+         (fn-lace-p delta)
+         (not (consp (cdr delta)))
+         (equal (fn-stx-index-slot-first index (fn-stx-slot-key (car delta)))
+                (fn-stx-lace-slot-first lace (fn-stx-slot-key (car delta))))
+         (iff (fn-stx-alist-get (fn-stx-slot-key (car delta))
+                                (fn-stx-index-slots index))
+              (fn-stx-lace-slot-first lace (fn-stx-slot-key (car delta))))
+         (iff (fn-stx-index-equivocatorp index p i)
+              (fn-lace-equivocatorp lace p i)))
+    (iff (fn-stx-index-equivocatorp (fn-stx-index-add index delta) p i)
+         (fn-lace-equivocatorp (append lace delta) p i)))
+   :rule-classes nil
+   :hints (("Goal"
+            :do-not-induct t
+            :cases ((consp delta))
+            :use ((:instance fn-stx-index-equivocatorp-of-add1 (s (car delta)))
+                  (:instance fn-stx-append-nil (x lace)))
+            ; (:d fn-lace-p) is re-enabled AFTER the fan withdraws it: the
+            ; nil/singleton split is the one place this book needs it open.
+            :in-theory (e/d ((:d fn-stx-index-add))
+                            (fn-stx-index-equivocator-fan
+                             (:d fn-stx-index-equivocatorp)
+                             (:d fn-stx-records-scan)
+                             (:d fn-lace-slot-conflictp)
+                             (:d fn-lace-equivocatorp)
+                             (:d fn-lace-same-slotp)
+                             (:d fn-stx-lace-slot-first)
+                             (:d fn-stx-index-add1)
+                             fn-stx-slot-conflictp-of-append
+                             fn-stx-scan-of-append-rest
+                             fn-stx-slot-conflictp-of-singleton)
+                            ((:d fn-lace-p)))))))
+
+; S3-3's equivocator half.  The induction supplies the step lemma's
+; hypotheses and does nothing else: the slot agreement is
+; fn-stx-index-slots-agree above, the lace shape and its true-listp are
+; fn-stx-lace-of-store-is-lace and -is-true-list, the delta shape is
+; fn-stx-delta-is-lace and -is-nil-or-singleton, and the last hypothesis is
+; the induction hypothesis itself.  Nothing here opens the equivocator
+; predicate on either side.
 (defthm fn-stx-index-equivocators-agree
   (iff (fn-stx-index-equivocatorp (fn-stx-index-of-store articles keyring) p i)
        (fn-lace-equivocatorp (fn-stx-lace-of-store articles keyring) p i))
   :hints (("Goal" :induct (fn-stx-index-of-store articles keyring)
-           :in-theory (e/d ((:d fn-stx-index-of-store) (:d fn-stx-lace-of-store)
+           :in-theory (e/d ((:d fn-stx-index-of-store)
+                            (:d fn-stx-lace-of-store))
+                           (fn-stx-index-equivocator-fan
+                            fn-stx-delta
                             (:d fn-stx-index-add)
+                            (:d fn-stx-index-add1)
                             (:d fn-stx-index-equivocatorp)
-                            (:d fn-stx-records-scan) (:d fn-stx-alist-get)
-                            fn-lace-slot-conflictp-intro
-                            fn-lace-distinct-same-slot-is-equivocation)
-                           (fn-stx-delta (:d fn-lace-slot-conflictp)
-                            (:d fn-lace-equivocatorp) (:d fn-lace-same-slotp)
+                            (:d fn-stx-records-scan)
+                            (:d fn-lace-slot-conflictp)
+                            (:d fn-lace-equivocatorp)
+                            (:d fn-lace-same-slotp)
+                            (:d fn-stx-lace-slot-first)
                             fn-stx-slot-conflictp-of-append
+                            fn-stx-scan-of-append-rest
                             fn-stx-slot-conflictp-of-singleton)))
           ("Subgoal *1/1"
-           :use ((:instance fn-stx-equivocatorp-of-one-more
+           :use ((:instance fn-stx-index-equivocatorp-of-add
+                            (index (fn-stx-index-of-store (cdr articles)
+                                                          keyring))
                             (lace (fn-stx-lace-of-store (cdr articles) keyring))
-                            (s (car (fn-stx-delta
-                                     (fn-article-payload (car articles))
-                                     keyring))))
-                 (:instance fn-stx-slot-conflictp-implies-slot-first
-                            (lace (fn-stx-lace-of-store (cdr articles) keyring))
-                            (s (car (fn-stx-delta
-                                     (fn-article-payload (car articles))
-                                     keyring))))
-                 (:instance fn-stx-delta-is-lace
-                            (octets (fn-article-payload (car articles))))
-                 (:instance fn-stx-delta-is-nil-or-singleton
-                            (octets (fn-article-payload (car articles))))))))
+                            (delta (fn-stx-delta
+                                    (fn-article-payload (car articles))
+                                    keyring)))))))
 
 ; S3-3, in the vocabulary of the served path.
 (defthm fn-stx-index-agrees-with-lace
@@ -569,10 +773,21 @@
         (+ 1 (fn-stx-alist-steps key (cdr al))))
     0))
 
+; The bound is proved of the walk, where the induction variable is the list;
+; the cost shadow is that fact at the index's binding list.  Stated this way
+; round because (fn-stx-index-bindings index) is not a variable, so the
+; shadow on its own suggests no induction scheme.
+(local (defthm fn-stx-alist-steps-is-len-bounded
+         (<= (fn-stx-alist-steps key al) (len al))
+         :rule-classes :linear))
+
 (defthm fn-stx-index-lookup-cost-is-index-bounded
   (<= (fn-stx-alist-steps id (fn-stx-index-bindings index))
       (len (fn-stx-index-bindings index)))
-  :rule-classes :linear)
+  :rule-classes :linear
+  :hints (("Goal" :use ((:instance fn-stx-alist-steps-is-len-bounded
+                                   (key id)
+                                   (al (fn-stx-index-bindings index)))))))
 
 (defthm fn-stx-index-grows-by-at-most-one-binding
   (<= (len (fn-stx-index-bindings (fn-stx-index-add index delta)))

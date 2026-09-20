@@ -119,6 +119,11 @@
     "books/bp-primary",
     "books/bp-primary-invariants",
     "tests/acl2/bp-primary-tests",
+    "books/bp-bundle",
+    "books/bp-bundle-invariants",
+    "tests/acl2/bp-bundle-tests",
+    "books/bp-node",
+    "tests/acl2/bp-node-tests",
     "books/bp-fragment",
     "books/bp-fragment-invariants",
     "tests/acl2/bp-fragment-tests",
@@ -214,6 +219,7 @@
     "books/nntp-auth",
     "tests/acl2/nntp-auth-tests",
     "books/served",
+    "books/nntp-auth-invariants",
     "tests/acl2/served-tests",
     "books/config-stream",
     "tests/acl2/config-stream-tests",
@@ -272,25 +278,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 269,
-    "books_in_root_closure": 268,
-    "roots": 268,
-    "theorems": 5343,
-    "functions": 3833,
-    "assert_events": 5126,
+    "books": 275,
+    "books_in_root_closure": 274,
+    "roots": 274,
+    "theorems": 5488,
+    "functions": 3924,
+    "assert_events": 5239,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
-      "verified": 1403,
-      "declared-off": 188,
-      "default-guarded": 1748,
+      "verified": 1458,
+      "declared-off": 190,
+      "default-guarded": 1782,
       "default-unguarded": 494
     },
-    "suspect_theorems": 42,
+    "suspect_theorems": 46,
     "export_hygiene_warnings": 73,
+    "enabled_projection_warnings": 26,
     "teeth_form_warnings": 0,
     "include_hygiene_warnings": 87,
-    "host_names_warnings": 0,
+    "host_names_warnings": 33,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -753,12 +760,12 @@
       "book": "books/auth-secret.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 16,
-      "functions": 10,
+      "theorems": 18,
+      "functions": 11,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 10,
+        "default-guarded": 11,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -794,6 +801,59 @@
       "encapsulates": 0,
       "includes": [
         "records-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-bundle-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 28,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-bundle"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-bpb-decode-refuses-overlong-input"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-bundle.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 39,
+      "functions": 48,
+      "guards": {
+        "verified": 31,
+        "declared-off": 0,
+        "default-guarded": 17,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 31,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 13,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-primary-invariants",
+        "defrecord"
       ],
       "system_includes": [],
       "suspects": [],
@@ -879,6 +939,33 @@
         "article-properties",
         "store-node",
         "store-node-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-node.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 17,
+      "functions": 30,
+      "guards": {
+        "verified": 22,
+        "declared-off": 0,
+        "default-guarded": 8,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 22,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-bundle-invariants",
+        "clock",
+        "defrecord"
       ],
       "system_includes": [],
       "suspects": [],
@@ -2569,29 +2656,58 @@
       "read_error": null
     },
     {
-      "book": "books/nntp-auth.lisp",
+      "book": "books/nntp-auth-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 39,
-      "functions": 41,
+      "theorems": 4,
+      "functions": 3,
       "guards": {
-        "verified": 27,
-        "declared-off": 1,
-        "default-guarded": 13,
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
         "default-unguarded": 0
       },
-      "verify_guards_events": 27,
+      "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 2,
+      "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "served"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/nntp-auth.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 65,
+      "functions": 46,
+      "guards": {
+        "verified": 29,
+        "declared-off": 3,
+        "default-guarded": 14,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 29,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "auth-secret",
         "peer-inbound",
         "principal"
       ],
       "system_includes": [],
-      "suspects": [],
+      "suspects": [
+        "fn-auth-consistent-forward",
+        "fn-auth-token-argp-forward"
+      ],
       "read_error": null
     },
     {
@@ -3056,7 +3172,7 @@
       "book": "books/owner-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 95,
+      "theorems": 101,
       "functions": 7,
       "guards": {
         "verified": 0,
@@ -3163,7 +3279,7 @@
       "book": "books/peer-feed-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 100,
+      "theorems": 106,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -3244,7 +3360,7 @@
       "book": "books/peer-inbound.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 48,
+      "theorems": 50,
       "functions": 56,
       "guards": {
         "verified": 6,
@@ -3782,12 +3898,12 @@
       "book": "books/served.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 58,
-      "functions": 35,
+      "theorems": 61,
+      "functions": 37,
       "guards": {
         "verified": 2,
         "declared-off": 4,
-        "default-guarded": 29,
+        "default-guarded": 31,
         "default-unguarded": 0
       },
       "verify_guards_events": 2,
@@ -3797,8 +3913,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "nntp-auth",
         "nntp-post",
-        "peer-inbound",
         "wire-invariants"
       ],
       "system_includes": [],
@@ -4230,12 +4346,12 @@
       "book": "books/stx-epochs.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 12,
-      "functions": 12,
+      "theorems": 17,
+      "functions": 13,
       "guards": {
         "verified": 0,
         "declared-off": 1,
-        "default-guarded": 11,
+        "default-guarded": 12,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -4256,7 +4372,7 @@
       "book": "books/stx-index.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 50,
+      "theorems": 57,
       "functions": 26,
       "guards": {
         "verified": 8,
@@ -4275,6 +4391,7 @@
       ],
       "system_includes": [],
       "suspects": [
+        "fn-stx-index-lookup-cost-is-index-bounded",
         "fn-stx-index-query-is-store-free-by-definition"
       ],
       "read_error": null
@@ -5190,6 +5307,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/bp-bundle-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 45,
+      "must_fails": 0,
+      "defconsts": 12,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-bundle-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/bp-fragment-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -5261,6 +5403,31 @@
       "encapsulates": 0,
       "includes": [
         "../../books/bp-ingress"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/bp-node-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 44,
+      "must_fails": 0,
+      "defconsts": 16,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/bp-node"
       ],
       "system_includes": [],
       "suspects": [],
@@ -6159,10 +6326,10 @@
         "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 102,
+      "assert_events": 120,
       "must_fails": 0,
-      "defconsts": 28,
-      "defmacros": 0,
+      "defconsts": 31,
+      "defmacros": 3,
       "encapsulates": 0,
       "includes": [
         "../../books/nntp-auth"
@@ -6394,7 +6561,7 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 162,
+      "assert_events": 166,
       "must_fails": 0,
       "defconsts": 57,
       "defmacros": 0,
@@ -7145,17 +7312,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 6,
+      "functions": 7,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 6,
+        "default-guarded": 7,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 58,
+      "assert_events": 60,
       "must_fails": 0,
-      "defconsts": 6,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7372,11 +7539,35 @@
       ]
     },
     {
+      "theorem": "fn-auth-consistent-forward",
+      "book": "books/nntp-auth.lisp",
+      "line": 394,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-session-consistentp"
+      ]
+    },
+    {
+      "theorem": "fn-auth-token-argp-forward",
+      "book": "books/nntp-auth.lisp",
+      "line": 609,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-token-argp"
+      ]
+    },
+    {
       "theorem": "fn-bp-effect-for-pending-attempt-unfolds",
       "book": "books/bp-workflow-invariants.lisp",
       "line": 884,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-bp-effect-for-pending and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-bpb-decode-refuses-overlong-input",
+      "book": "books/bp-bundle-invariants.lisp",
+      "line": 339,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-bpb-decode and the conclusion is that branch's value"
       ]
     },
     {
@@ -7664,9 +7855,17 @@
       ]
     },
     {
+      "theorem": "fn-stx-index-lookup-cost-is-index-bounded",
+      "book": "books/stx-index.lisp",
+      "line": 784,
+      "reasons": [
+        "instance-corollary: the statement is fn-stx-alist-steps-is-len-bounded instantiated, discharging nothing"
+      ]
+    },
+    {
       "theorem": "fn-stx-index-query-is-store-free-by-definition",
       "book": "books/stx-index.lisp",
-      "line": 586,
+      "line": 801,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-stx-index-lookup",
         "reflexive-conclusion: a conjunct is (equal X X)"
@@ -8128,6 +8327,264 @@
         "book": "books/wildmat-work.lisp",
         "line": 369,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      }
+    ],
+    "enabled_projection": [
+      {
+        "function": "fn-aw-v",
+        "book": "books/article-work-primitives.lisp",
+        "line": 10,
+        "stated_in": [
+          "books/article-public-work.lisp",
+          "books/article-work-scanners.lisp",
+          "books/article-work.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 3 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-aw-c",
+        "book": "books/article-work-primitives.lisp",
+        "line": 11,
+        "stated_in": [
+          "books/article-public-bound.lisp",
+          "books/article-public-work.lisp",
+          "books/article-work-scanners.lisp",
+          "books/article-work.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 4 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-header",
+        "book": "books/article.lisp",
+        "line": 91,
+        "stated_in": [
+          "books/article-invariants.lisp",
+          "books/article-properties.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-body",
+        "book": "books/article.lisp",
+        "line": 94,
+        "stated_in": [
+          "books/article-properties.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-fields",
+        "book": "books/article.lisp",
+        "line": 97,
+        "stated_in": [
+          "books/article-invariants.lisp",
+          "books/article-properties.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-field-raw-lines",
+        "book": "books/article.lisp",
+        "line": 112,
+        "stated_in": [
+          "books/article-work.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-field-name",
+        "book": "books/article.lisp",
+        "line": 115,
+        "stated_in": [
+          "books/stx-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-field-unfolded-value",
+        "book": "books/article.lisp",
+        "line": 118,
+        "stated_in": [
+          "books/article-work.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-result-article",
+        "book": "books/article.lisp",
+        "line": 153,
+        "stated_in": [
+          "books/article-invariants.lisp",
+          "books/article-properties.lisp",
+          "books/injection-invariants.lisp",
+          "books/nntp-legacy.lisp",
+          "books/nntp-post.lisp",
+          "books/peer-inbound-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 6 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-line-value",
+        "book": "books/article.lisp",
+        "line": 193,
+        "stated_in": [
+          "books/article-invariants.lisp",
+          "books/article-properties.lisp",
+          "books/article-public-bound.lisp",
+          "books/article-public-work.lisp",
+          "books/article-work-scanners.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 5 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-article-line-rest",
+        "book": "books/article.lisp",
+        "line": 196,
+        "stated_in": [
+          "books/article-invariants.lisp",
+          "books/article-properties.lisp",
+          "books/article-public-bound.lisp",
+          "books/article-work-scanners.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 4 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpf-bytes",
+        "book": "books/bp-fragment.lisp",
+        "line": 66,
+        "stated_in": [
+          "books/bp-fragment-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpf-result-tag",
+        "book": "books/bp-fragment.lisp",
+        "line": 298,
+        "stated_in": [
+          "books/bp-fragment-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpf-result-bytes",
+        "book": "books/bp-fragment.lisp",
+        "line": 302,
+        "stated_in": [
+          "books/bp-fragment-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpp-flags",
+        "book": "books/bp-primary.lisp",
+        "line": 394,
+        "stated_in": [
+          "books/bp-fragment-invariants.lisp",
+          "books/bp-primary-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpp-crc-type",
+        "book": "books/bp-primary.lisp",
+        "line": 395,
+        "stated_in": [
+          "books/bp-primary-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpp-source",
+        "book": "books/bp-primary.lisp",
+        "line": 397,
+        "stated_in": [
+          "books/bp-primary-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpp-creation-time",
+        "book": "books/bp-primary.lisp",
+        "line": 399,
+        "stated_in": [
+          "books/bp-primary-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpp-sequence",
+        "book": "books/bp-primary.lisp",
+        "line": 400,
+        "stated_in": [
+          "books/bp-primary-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-bpp-result-block",
+        "book": "books/bp-primary.lisp",
+        "line": 599,
+        "stated_in": [
+          "books/bp-primary-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-transfer-work-value",
+        "book": "books/transfer-work.lisp",
+        "line": 13,
+        "stated_in": [
+          "books/transfer-public-work.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-transfer-work-cost",
+        "book": "books/transfer-work.lisp",
+        "line": 14,
+        "stated_in": [
+          "books/transfer-public-bound.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-wildmat-result-value",
+        "book": "books/wildmat.lisp",
+        "line": 52,
+        "stated_in": [
+          "books/wildmat-parser-invariants.lisp",
+          "books/wildmat-utf8-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-wildmat-utf8-rest",
+        "book": "books/wildmat.lisp",
+        "line": 59,
+        "stated_in": [
+          "books/wildmat-utf8-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-wildmat-pattern-items",
+        "book": "books/wildmat.lisp",
+        "line": 206,
+        "stated_in": [
+          "books/wildmat-work.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
+      {
+        "function": "fn-wildmat-scan-items",
+        "book": "books/wildmat.lisp",
+        "line": 251,
+        "stated_in": [
+          "books/wildmat-parser-invariants.lisp",
+          "books/wildmat-utf8-invariants.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
       }
     ],
     "teeth_form": [],
@@ -8742,7 +9199,239 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       }
     ],
-    "host_names": [],
+    "host_names": [
+      {
+        "host": "host/native/bp.lisp",
+        "line": 36,
+        "name": "fnn-core",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 36,
+        "name": "fnn-octet-list",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 36,
+        "name": "fnn-string-octets",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 36,
+        "name": "fnn-refuse",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 52,
+        "name": "fnn-tcl-now",
+        "source": "host/native/tcpcl.lisp",
+        "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 80,
+        "name": "fnn-mkdir",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 80,
+        "name": "fnn-os-errno",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 85,
+        "name": "fnn-join",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 85,
+        "name": "fnn-random-hex",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 85,
+        "name": "fnn-write-staged",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 85,
+        "name": "fnn-octets",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 85,
+        "name": "fnn-replace",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 85,
+        "name": "fnn-fsync-dir",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 85,
+        "name": "fnn-unlink",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 85,
+        "name": "fnn-indeterminate",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 100,
+        "name": "fnn-tclc-tag",
+        "source": "host/native/tcpcl.lisp",
+        "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 100,
+        "name": "ecase",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 136,
+        "name": "plusp",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 136,
+        "name": "fnn-tclc-outcome",
+        "source": "host/native/tcpcl.lisp",
+        "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 145,
+        "name": "fnn-out",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 153,
+        "name": "fnn-read-regular-bounded",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 153,
+        "name": "fnn-tcl-connect",
+        "source": "host/native/tcpcl.lisp",
+        "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 153,
+        "name": "fnn-tcl-session",
+        "source": "host/native/tcpcl.lisp",
+        "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 153,
+        "name": "fnn-socket-fd",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 153,
+        "name": "fnn-tcl-params",
+        "source": "host/native/tcpcl.lisp",
+        "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 153,
+        "name": "fnn-tcl-summary",
+        "source": "host/native/tcpcl.lisp",
+        "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 153,
+        "name": "fnn-socket-shut",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 196,
+        "name": "fnn-tcl-listen",
+        "source": "host/native/tcpcl.lisp",
+        "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 196,
+        "name": "fnn-accept-loop",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 196,
+        "name": "fnn-err",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 286,
+        "name": "fnn-tcl-number",
+        "source": "host/native/tcpcl.lisp",
+        "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 286,
+        "name": "fnn-tcl-arg",
+        "source": "host/native/tcpcl.lisp",
+        "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/bp.lisp",
+        "line": 343,
+        "name": "fnn-register-verb",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      }
+    ],
     "hand_written_record": [
       {
         "book": "books/bp-ingress.lisp",
@@ -8800,12 +9489,12 @@
       },
       {
         "book": "books/nntp-auth.lisp",
-        "line": 70,
+        "line": 96,
         "shape": "fn-auth-config-shapep",
         "shapes": 3,
-        "accessors": 13,
+        "accessors": 14,
         "variable": "x",
-        "reason": "hand-written record: 3 shape predicate(s) (fn-auth-config-shapep, fn-auth-cred-shapep, fn-auth-session-shapep) and 13 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
+        "reason": "hand-written record: 3 shape predicate(s) (fn-auth-config-shapep, fn-auth-cred-shapep, fn-auth-session-shapep) and 14 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
       },
       {
         "book": "books/nntp-post.lisp",
@@ -8872,7 +9561,7 @@
       },
       {
         "book": "books/served.lisp",
-        "line": 71,
+        "line": 72,
         "shape": "fn-served-conn-shapep",
         "shapes": 2,
         "accessors": 8,

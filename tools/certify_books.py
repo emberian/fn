@@ -178,6 +178,60 @@ def book_result(book: str, output: str, exit_code: int | str, nonce: str,
     return ("passed" if not reasons else "failed"), reasons
 
 
+def publish_pair(book: str, verdict: str, run_dir: Path, nonce: str,
+                 recorded_sources: dict[str, str], output: str,
+                 exit_code: int | str) -> dict[str, Any]:
+    """Cache this book's pair the moment it certifies, not at the end of the run.
+
+    Why here and not once at the end: a wide run on this tree exits non-zero
+    while any root carries an open theorem, and until 2026-09-20 the
+    end-of-run publish was inside `if success:`, so **a failed run cached
+    nothing at all** -- measured: `run-20260920T203028Z-d411` on persvati
+    certified 21 of 22 books and left 0 entries in the box cache, and the next
+    submit into the same root reported `installed 0, kept 0, uncached 267`.  A
+    run that is killed, that times out, or whose `farm.py wait` gives up loses
+    the same way.  Publishing per book makes the cache reflect what has
+    actually been certified at every moment of the run, for whoever certifies
+    next on this box.
+
+    The unit of trust is one book: its own fresh nonce-tagged marker, its own
+    clean log, its own certificate, and its own closure unchanged since this
+    run read it.  This passes `certs.publish` the whole source map the run
+    recorded, and `certs.publish` re-checks the book's source, its
+    certificate and every book in the closure it keys on; the decision about
+    what a cache entry may be built from stays in one place.
+    """
+    event: dict[str, Any] = {"book": book, "verdict": verdict}
+    if verdict != "passed":
+        return event | {"published": False, "why": "this book did not pass"}
+    certificate = ROOT / f"{book}.cert"
+    if not certificate.is_file():
+        return event | {"published": False, "why": "no certificate on disk"}
+    partial = {
+        "requested_books": [book],
+        "expected_success_markers": [success_token(book, nonce)],
+        "observed_success_markers": success_markers(output, nonce),
+        "book_results": {book: verdict},
+        "acl2_exit_codes": {book: exit_code},
+        "source_digests_sha256": recorded_sources,
+        "source_digests_sha256_after": {
+            f"{book}.lisp": digest(book_source(book))},
+        "certificate_digests_sha256": {book: digest(certificate)},
+        "evidence": str(run_dir),
+    }
+    try:
+        report = certs.publish(ROOT, certs.cache_directory(), [partial], [book],
+                               origin=str(ROOT.resolve()))
+    except OSError as error:
+        return event | {"published": False, "why": f"cache write failed: {error}"}
+    event["published"] = bool(report.published)
+    event["already_cached"] = bool(report.already)
+    if not report.published and not report.already:
+        event["why"] = "; ".join(report.unverified + report.uncached
+                                 + report.unreadable) or "no pair offered"
+    return event
+
+
 def digest(path: Path) -> str:
     hasher = hashlib.sha256()
     with path.open("rb") as source:
@@ -683,6 +737,10 @@ def main() -> int:
     book_wall_seconds: dict[str, float] = {}
     start_order: list[str] = []
     record_lock = threading.Lock()
+    # One publisher at a time: `certs.publish` reads and renames files in the
+    # cache, and two books finishing together must not interleave there.
+    publish_lock = threading.Lock()
+    cache_events: list[dict[str, Any]] = []
 
     def certify(book: str) -> None:
         with acl2_slots.slot(f"certify {book}") as held:
@@ -705,6 +763,13 @@ def main() -> int:
             outputs[book] = output
             exit_codes[book] = code
             book_wall_seconds[book] = round(elapsed, 3)
+        if args.no_publish:
+            return
+        verdict, _ = book_result(book, output, code, nonce,
+                                 (ROOT / f"{book}.cert").is_file())
+        with publish_lock:
+            cache_events.append(publish_pair(book, verdict, run_dir, nonce,
+                                             source_digests, output, code))
 
     certify_started = time.monotonic()
     run_schedule(args.books, schedule, effective_jobs, certify)
@@ -772,32 +837,39 @@ def main() -> int:
         and runner_unchanged
         and not found_failures
     )
+    if not args.no_publish:
+        # The sweep after the per-book publishes, and it runs whatever THIS
+        # RUN's verdict was.  A book's pair is trustworthy on that book's own
+        # evidence -- its fresh marker, its clean log, its certificate, its
+        # unchanged source -- and `certs.publish` re-checks every one of those
+        # against this manifest.  The run verdict is a statement about the
+        # whole requested batch, and gating the cache on it is what made a
+        # failed wide run cache nothing and the next lane re-certify what this
+        # one had already proved.  What the sweep still adds over the per-book
+        # publishes: a book whose closure was being written when it finished,
+        # and a run whose books were certified by an older runner.
+        try:
+            published = certs.publish(
+                ROOT, certs.cache_directory(),
+                [{**manifest, "evidence": str(run_dir)}], args.books,
+                # These certificates name their sub-books by absolute path
+                # inside *this* worktree, so that is where they may be
+                # installed; another live worktree must not take them.
+                origin=str(ROOT.resolve()))
+            manifest["cert_cache"] = {
+                "directory": published.cache,
+                "published": published.published,
+                "already_cached": published.already,
+                "not_published": sorted(published.uncached + published.unverified
+                                        + published.unreadable),
+                "per_book": cache_events,
+                "per_book_published": sum(1 for event in cache_events
+                                          if event.get("published")),
+            }
+        except OSError as error:
+            manifest["cert_cache"] = {"error": str(error), "per_book": cache_events}
     if success:
         manifest["status"] = "passed"
-        if not args.no_publish:
-            # Publish against *this* run's manifest, which is the only thing
-            # that ties a certificate to the source it was produced from.  The
-            # cache keys on the whole include closure, so a pair is offered
-            # back only to a worktree where every dependency also matches.  A
-            # cache failure is recorded, never fatal: the certification itself
-            # already succeeded.
-            try:
-                published = certs.publish(
-                    ROOT, certs.cache_directory(),
-                    [{**manifest, "evidence": str(run_dir)}], args.books,
-                    # These certificates name their sub-books by absolute path
-                    # inside *this* worktree, so that is where they may be
-                    # installed; another live worktree must not take them.
-                    origin=str(ROOT.resolve()))
-                manifest["cert_cache"] = {
-                    "directory": published.cache,
-                    "published": published.published,
-                    "already_cached": published.already,
-                    "not_published": sorted(published.uncached + published.unverified
-                                            + published.unreadable),
-                }
-            except OSError as error:
-                manifest["cert_cache"] = {"error": str(error)}
     else:
         failed = [book for book, verdict in book_results.items() if verdict == "failed"]
         manifest["failure"] = (

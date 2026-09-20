@@ -49,6 +49,19 @@
                                           (fn-record-string-octets
                                            (if (stringp body) body ""))))))))
 
+; The same authored article with an OCTET body.  A statement whose kind is
+; not :article carries its payload as the article body in base64
+; (fn-stx-payload-for / fn-stx-body-payload), so a policy statement's
+; carrier article cannot have a prose body.
+(defun fn-stxt-authored-octets (subject body)
+  (declare (xargs :guard t))
+  (append (fn-stxt-line "From: someone@example.invalid")
+          (append (fn-stxt-line "Newsgroups: fn.test")
+                  (append (fn-stxt-line (if (stringp subject) subject "Subject: s"))
+                          (append (fn-stxt-line "Message-ID: <x@example.invalid>")
+                                  (append '(13 10)
+                                          (if (true-listp body) body nil)))))))
+
 (defun fn-stxt-received (field authored)
   (declare (xargs :guard t))
   (append (fn-record-string-octets "FN-Statement: ")
@@ -239,7 +252,16 @@
   (declare (xargs :guard t))
   (fn-stxt-record msgid (fn-stxt-received (fn-stx-header-value statement) source)))
 
-(make-event (list 'defconst '*stxt-src-p* (list 'quote (fn-stxt-authored "Subject: policy" "p"))))
+; The body is the base64 of the signed policy octets, which is what
+; fn-stx-payload-for projects for a :policy statement.  With a prose body
+; the reconstructed statement carries the wrong payload, its signature does
+; not verify, fn-stx-delta is nil, and every assertion below about the
+; hostile batch passes VACUOUSLY -- which is what the non-degeneracy tooth
+; on *stxt-real-batch* caught.
+(make-event (list 'defconst '*stxt-src-p*
+                  (list 'quote (fn-stxt-authored-octets
+                                "Subject: policy"
+                                (fn-stx-b64-encode *stxt-policy-a*)))))
 (make-event (list 'defconst '*stxt-rp-a*
                   (list 'quote (fn-stxt-policy-record "<pa>" *stxt-pol-stmt-a* *stxt-src-p*))))
 (make-event (list 'defconst '*stxt-rp-b*
@@ -252,6 +274,12 @@
 
 ; The hostile batch: B's signed policy for A's group.
 (make-event (list 'defconst '*stxt-hostile-batch* (list 'quote (list *stxt-rp-b*))))
+; Non-vacuity FIRST: B's statement really is in the delta.  It is stored and
+; it verifies; what it does not have is authority.  Without this line the
+; three assertions below hold of an EMPTY delta and say nothing, which is
+; how this book stood before w10/substrate-2.
+(assert-event (equal (fn-stx-batch-delta *stxt-hostile-batch* *stxt-keyring*)
+                     (list *stxt-pol-stmt-b*)))
 (assert-event (fn-pol-delta-without-authority-p
                (fn-stx-batch-delta *stxt-hostile-batch* *stxt-keyring*)
                *stxt-keyring* *stxt-a*))
@@ -269,6 +297,8 @@
 
 ; The genuine authority's batch DOES change it, so the theorem is not vacuous.
 (make-event (list 'defconst '*stxt-real-batch* (list 'quote (list *stxt-rp-a*))))
+(assert-event (equal (fn-stx-batch-delta *stxt-real-batch* *stxt-keyring*)
+                     (list *stxt-pol-stmt-a*)))
 (assert-event (not (fn-pol-delta-without-authority-p
                     (fn-stx-batch-delta *stxt-real-batch* *stxt-keyring*)
                     *stxt-keyring* *stxt-a*)))
@@ -326,12 +356,18 @@
 (make-event (list 'defconst '*stxt-commit-stmt-x*
                   (list 'quote (fn-stmt-sign *stxt-sk-b* *stxt-b* 3 1 nil :policy
                                              (fn-stx-commit-encode *stxt-commit*)))))
+; The carrier article's body is the base64 of THIS statement's payload --
+; the commit encoding, not the policy encoding of the section above.
+(defconst *stxt-src-c*
+  (fn-stxt-authored-octets "Subject: commit"
+                           (fn-stx-b64-encode
+                            (fn-stx-commit-encode *stxt-commit*))))
 (make-event (list 'defconst '*stxt-rc-ok*
                   (list 'quote (fn-stxt-policy-record "<c1>" *stxt-commit-stmt-a*
-                                                      *stxt-src-p*))))
+                                                      *stxt-src-c*))))
 (make-event (list 'defconst '*stxt-rc-bad*
                   (list 'quote (fn-stxt-policy-record "<c2>" *stxt-commit-stmt-x*
-                                                      *stxt-src-p*))))
+                                                      *stxt-src-c*))))
 
 ; One verified and one unverified commit-bearing article: under a keyring
 ; that knows only A, the delta is the singleton.

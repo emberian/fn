@@ -17,7 +17,8 @@
 ; (`fn-wire-feed-byte', which is what `fn-wire-drive' computes by
 ; `fn-wire-drive-is-feed-proper'), and the dispatcher runs on each framed
 ; event before the next byte is framed.  That order is what POST needs: the
-; 340 offer from `fn-peer-step' (books/nntp-post.lisp) carries a
+; 340 offer from `fn-auth-step' (books/nntp-auth.lisp, over
+; books/peer-inbound.lisp and books/nntp-post.lisp) carries a
 ; `:begin-article' effect, and the byte after the offer must be framed in
 ; article mode.  `fn-served-dispatch' switches the wire with
 ; `fn-wire-begin-article' on that effect, so article mode is wire state inside
@@ -34,7 +35,7 @@
 ;                                           fn-wire-begin-article-preserves-statep
 ;                                           fn-post-step-preserves-consistent-
 ;                                             session
-;   fn-served-step-effects-are-typed        fn-peer-step-effects-well-formed
+;   fn-served-step-effects-are-typed        fn-auth-step-effects-well-formed
 ;                                           fn-post-submission-is-an-injected-
 ;                                             article
 ;   fn-served-step-partition-independence   fn-served-feed-of-append (a byte
@@ -48,14 +49,14 @@
 ;   fn-served-step-nntp-steps-is-bounded    fn-wire-feed-byte-emits-at-most-
 ;                                             one-event
 ;
-; OPEN (no theorem here): the cost of one `fn-peer-step' is not yet
+; OPEN (no theorem here): the cost of one `fn-auth-step' is not yet
 ; bounded by a closed form.  See the obligation recorded at the end of this
 ; book.
 
 (in-package "ACL2")
 (include-book "wire-invariants")
 (include-book "nntp-post")
-(include-book "peer-inbound")
+(include-book "nntp-auth")
 
 ; -----------------------------------------------------------------------------
 ; The connection record: wire framing state, POST session, pinned archive,
@@ -224,14 +225,14 @@
 ; fn-wire-drive did) and branches on nothing else.  It is the hypothesis the
 ; keystones below carry and the step preserves (proof-style section 4).  It is
 ; deliberately not guard verified: it is specification vocabulary, and
-; fn-peer-session-consistentp, which walks the pinned archive, is not
+; fn-auth-session-consistentp, which walks the pinned archive, is not
 ; executable on a served read by design.
 
 (defun fn-served-connp (c)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-served-conn-shapep c)
        (fn-wire-statep (fn-served-conn-wire c))
-       (fn-peer-session-consistentp (fn-served-conn-session c)
+       (fn-auth-session-consistentp (fn-served-conn-session c)
                                     (fn-served-conn-archive c))))
 
 (defthm fn-served-connp-forward-shape
@@ -244,7 +245,7 @@
 
 (defthm fn-served-connp-is-consistent-session
   (implies (fn-served-connp c)
-           (fn-peer-session-consistentp (fn-served-conn-session c)
+           (fn-auth-session-consistentp (fn-served-conn-session c)
                                         (fn-served-conn-archive c))))
 
 (in-theory (disable fn-served-connp))
@@ -274,7 +275,12 @@
 (defun fn-served-effectp (effect)
   (declare (xargs :guard t :verify-guards nil))
   (or (fn-nntp-effectp effect)
-      (fn-served-submit-effectp effect)))
+      (fn-served-submit-effectp effect)
+      ; RFC 4642 section 2.2.2's handshake instruction.  It is neither a
+      ; reply nor a submission: like :submit it is an obligation the host
+      ; owes, and like :submit the host may not invent one
+      ; (fn-auth-starttls-effect-only-with-382, books/nntp-auth.lisp).
+      (equal effect (fn-auth-starttls-effect))))
 
 (defun fn-served-effectsp (effects)
   (declare (xargs :guard t :verify-guards nil))
@@ -296,6 +302,14 @@
            :in-theory (e/d (fn-nntp-effectsp fn-served-effectp)
                            (fn-nntp-effectp fn-served-submit-effectp)))))
 
+(defthm fn-served-auth-effects-are-served-effects
+  (implies (fn-auth-effectsp effects)
+           (fn-served-effectsp effects))
+  :hints (("Goal" :induct (fn-served-effectsp effects)
+           :in-theory (e/d (fn-auth-effectsp fn-served-effectp fn-auth-effectp)
+                           (fn-nntp-effectp fn-served-submit-effectp
+                            fn-auth-starttls-effect)))))
+
 (local
  (defthm fn-served-close-effect-is-typed
    (fn-served-effectsp (list (fn-nntp-close-effect)))
@@ -304,7 +318,8 @@
 ; -----------------------------------------------------------------------------
 ; One framed event
 ;
-; fn-peer-step (books/nntp-post.lisp) is the dispatcher with POST
+; fn-auth-step (books/nntp-auth.lisp) is the dispatcher with AUTHINFO,
+; STARTTLS and POST
 ; composed in: it answers the offer, reassembles the article body and decides
 ; injection.  This step does two things with its result.  The 340 offer
 ; carries the begin-article marker, and here the wire is switched with
@@ -313,7 +328,7 @@
 
 (defun fn-served-dispatch (conn event)
   (declare (xargs :guard t))
-  (let* ((r (fn-peer-step (fn-served-conn-session conn)
+  (let* ((r (fn-auth-step (fn-served-conn-session conn)
                                (fn-served-conn-archive conn)
                                (fn-served-conn-config conn)
                                (fn-served-conn-observation conn)
@@ -350,7 +365,7 @@
         (equal (fn-served-conn-session
                 (fn-served-result-conn (fn-served-dispatch conn event)))
                (fn-post-result-session
-                (fn-peer-step (fn-served-conn-session conn)
+                (fn-auth-step (fn-served-conn-session conn)
                                    (fn-served-conn-archive conn)
                                    (fn-served-conn-config conn)
                                    (fn-served-conn-observation conn)
@@ -368,13 +383,13 @@
         (equal (fn-served-conn-injection
                 (fn-served-result-conn (fn-served-dispatch conn event)))
                (fn-served-conn-injection conn)))
-   :hints (("Goal" :in-theory (disable fn-peer-step fn-post-offeredp
+   :hints (("Goal" :in-theory (disable fn-auth-step fn-post-offeredp
                                        fn-wire-begin-article)))))
 
 (local
  (defthm fn-served-dispatch-effects-unfold
    (equal (fn-served-result-effects (fn-served-dispatch conn event))
-          (let ((r (fn-peer-step (fn-served-conn-session conn)
+          (let ((r (fn-auth-step (fn-served-conn-session conn)
                                       (fn-served-conn-archive conn)
                                       (fn-served-conn-config conn)
                                       (fn-served-conn-observation conn)
@@ -385,7 +400,7 @@
                         (list (fn-served-submit-effect
                                (fn-post-result-submission r)))
                       nil))))
-   :hints (("Goal" :in-theory (disable fn-peer-step fn-post-offeredp
+   :hints (("Goal" :in-theory (disable fn-auth-step fn-post-offeredp
                                        fn-wire-begin-article)))))
 
 (defthm fn-served-dispatch-preserves-wire-statep
@@ -395,7 +410,7 @@
              (fn-served-result-conn (fn-served-dispatch conn event)))))
   :hints (("Goal"
            :in-theory (disable fn-wire-statep fn-wire-begin-article
-                               fn-peer-step fn-post-offeredp
+                               fn-auth-step fn-post-offeredp
                                fn-wire-begin-article-preserves-statep)
            :use ((:instance fn-wire-begin-article-preserves-statep
                             (wire-state (fn-served-conn-wire conn)))))))
@@ -407,12 +422,12 @@
   :hints (("Goal"
            :in-theory (e/d (fn-served-connp)
                            (fn-served-dispatch fn-wire-statep
-                            fn-peer-step fn-peer-session-consistentp
-                            fn-peer-step-preserves-consistent-session
+                            fn-auth-step fn-auth-session-consistentp
+                            fn-auth-step-preserves-consistent-session
                             fn-served-dispatch-preserves-wire-statep))
            :use ((:instance fn-served-dispatch-preserves-wire-statep)
-                 (:instance fn-peer-step-preserves-consistent-session
-                            (ps (fn-served-conn-session conn))
+                 (:instance fn-auth-step-preserves-consistent-session
+                            (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
@@ -425,26 +440,30 @@
             (fn-served-result-effects (fn-served-dispatch conn event))))
   :hints (("Goal"
            :in-theory (e/d ()
-                           (fn-served-dispatch fn-peer-step
-                            fn-peer-sessionp fn-served-connp
+                           (fn-served-dispatch fn-auth-step
+                            fn-auth-sessionp fn-served-connp
                             fn-nntp-effectp fn-inj-injectedp fn-peer-submissionp
-                            fn-peer-step-effects-well-formed
-                            fn-peer-step-submission-is-typed))
-           ; a connection's session IS a peer session: that dismisses
-           ; fn-peer-step's non-session branch, which emits nothing
+                            ; else the :use hypothesis is rewritten to T
+                            ; by this very rule and the forward-chaining
+                            ; bridge never sees the consistency it was
+                            ; added for
+                            fn-served-connp-is-consistent-session
+                            fn-auth-step-effects-well-formed))
+           ; a connection's session IS an auth session: that dismisses
+           ; fn-auth-step's non-session branch, which emits nothing
            :use ((:instance fn-served-connp-is-consistent-session (c conn))
-                 (:instance fn-peer-session-consistentp-forward
-                            (x (fn-served-conn-session conn))
+                 (:instance fn-auth-consistent-forward
+                            (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn)))
-                 (:instance fn-peer-step-effects-well-formed
-                            (ps (fn-served-conn-session conn))
+                 (:instance fn-auth-step-effects-well-formed
+                            (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
                             (injection (fn-served-conn-injection conn))
                             (wire-event event))
-                 (:instance fn-peer-step-submission-is-typed
-                            (ps (fn-served-conn-session conn))
+                 (:instance fn-auth-step-submission-is-typed
+                            (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
@@ -511,12 +530,28 @@
   (declare (xargs :guard t))
   (equal (fn-wire-state-mode wire) :closed))
 
+; The second stopping condition, and the reason it is a property of the
+; CONNECTION rather than of the effects just emitted.  RFC 4642 section 2.2
+; puts the TLS handshake's first octet immediately after the 382's CRLF and
+; forbids pipelining STARTTLS, so once books/nntp-auth.lisp has answered 382
+; the rest of this read is handshake and not NNTP.  Written as a test on the
+; effects it would break the append law: a read cut before the STARTTLS line
+; and one cut after it would frame different octets.  Carried in the session
+; (fn-auth-session-handshakingp) it behaves exactly as a closed wire does --
+; feeding a handshaking connection is a no-op whatever the octets -- so
+; fn-served-feed-of-append and every law above it hold unchanged.  This is
+; the "Open, and a real one" paragraph of specs/nntp.md, closed.
+(defun fn-served-tls-handshakingp (conn)
+  (declare (xargs :guard t))
+  (and (fn-auth-session-handshakingp (fn-served-conn-session conn)) t))
+
 (defun fn-served-feed (conn octets)
   (declare (xargs :guard (fn-wire-statep (fn-served-conn-wire conn))
                   :verify-guards nil
                   :measure (len octets)))
   (if (or (not (consp octets))
-          (fn-served-closed-wirep (fn-served-conn-wire conn)))
+          (fn-served-closed-wirep (fn-served-conn-wire conn))
+          (fn-served-tls-handshakingp conn))
       (fn-served-make-result conn nil)
     (let* ((fed (fn-wire-feed-byte (fn-served-conn-wire conn) (car octets)))
            (here (fn-served-dispatch-events
@@ -562,7 +597,7 @@
               (fn-served-conn-injection conn))))
    :hints (("Goal" :in-theory (e/d (fn-served-connp)
                                    (fn-wire-feed-byte fn-wire-statep
-                                    fn-peer-session-consistentp))))))
+                                    fn-auth-session-consistentp))))))
 
 (defthm fn-served-feed-preserves-connp
   (implies (fn-served-connp conn)
@@ -665,12 +700,35 @@
           (fn-served-closingp (cdr effects)))
     nil))
 
+; RFC 4642 section 2.2.2: the host owes a TLS handshake once this effect is
+; in the read's effect list.  It is the third projection the host takes of a
+; served read, beside the reply octets and the close, and it is a QUESTION
+; about the effects ACL2 emitted, never a decision the host makes: the book
+; has already refused a second STARTTLS, refused one with no certificate and
+; put the connection into the handshake
+; (fn-auth-starttls-effect-only-with-382, books/nntp-auth.lisp).
+(defun fn-served-starttlsp (effects)
+  (declare (xargs :guard t))
+  (if (consp effects)
+      (or (equal (car effects) (fn-auth-starttls-effect))
+          (fn-served-starttlsp (cdr effects)))
+    nil))
+
+; The FIRST submission in the list, and a `(:submit nil)' is not one.  The
+; last conjunct matters: fn-served-dispatch appends the effect only when the
+; dispatcher produced a submission, so no read ever carries `(:submit nil)',
+; but without the conjunct fn-served-submission-of-append below is FALSE on
+; a list that does -- it would return nil for the left half and then the
+; right half's submission for the append.  The host reads this projection to
+; decide what it owes a durable attempt, so the two must agree on every
+; list, not only on the reachable ones.
 (defun fn-served-submission (effects)
   (declare (xargs :guard t))
   (if (consp effects)
       (if (and (consp (car effects))
                (equal (car (car effects)) :submit)
-               (consp (cdr (car effects))))
+               (consp (cdr (car effects)))
+               (car (cdr (car effects))))
           (car (cdr (car effects)))
         (fn-served-submission (cdr effects)))
     nil))
@@ -772,25 +830,34 @@
       *fn-served-greeting-posting*
     *fn-served-greeting*))
 
+; `acfg' is the connection's AUTHINFO/STARTTLS policy
+; (books/nntp-auth.lisp fn-auth-configp): what the operator configured, read
+; once here and pinned, never per command.  Anything that is not a
+; configuration opens the profile that requires nothing and offers nothing
+; (fn-auth-open-config), which is what every served theorem and transcript
+; written before this book carried authentication means.  `tlsp' is nil: a
+; connection that is already inside TLS is the implicit-TLS listener and the
+; host says so with the (:tls-established) event, never this entry.
 (defun fn-served-open (archive line-limit body-limit config observation
-                               injection)
+                               injection acfg)
   (declare (xargs :guard t))
   (fn-served-make-result
    (fn-served-make-conn (fn-wire-initial-state line-limit body-limit)
-                        (fn-peer-open-session archive nil nil nil)
+                        (fn-auth-open-session archive nil nil nil acfg nil)
                         archive config observation injection)
    (list (fn-nntp-reply-effect (fn-served-greeting config)))))
 
 ; A peer connection (specs/peering.md section 1.1): the host resolved the
 ; source to a peer name at :open and hands the node and configuration the
 ; offer decision reads; both are checked once here under their recognizers
-; (fn-peer-open-session) and never per command.
+; (fn-auth-open-session) and never per command.
 (defun fn-served-open-peer (archive line-limit body-limit config observation
                                     injection peer node cfg)
   (declare (xargs :guard t))
   (fn-served-make-result
    (fn-served-make-conn (fn-wire-initial-state line-limit body-limit)
-                        (fn-peer-open-session archive peer node cfg)
+                        (fn-auth-open-session archive peer node cfg
+                                              (fn-auth-open-config) nil)
                         archive config observation injection)
    (list (fn-nntp-reply-effect (fn-served-greeting config)))))
 
@@ -799,14 +866,14 @@
            (fn-served-connp
             (fn-served-result-conn
              (fn-served-open archive line-limit body-limit config observation
-                             injection))))
+                             injection acfg))))
   :hints (("Goal" :in-theory (e/d (fn-served-connp)
                                   (fn-wire-statep fn-wire-initial-state
-                                   fn-peer-open-session
-                                   fn-peer-session-consistentp))
+                                   fn-auth-open-session
+                                   fn-auth-session-consistentp))
            :use ((:instance fn-wire-initial-state-is-state)
-                 (:instance fn-peer-open-session-is-consistent
-                            (peer nil) (node nil) (cfg nil))))))
+                 (:instance fn-auth-open-session-is-consistent
+                            (peer nil) (node nil) (cfg nil) (tlsp nil))))))
 
 (defthm fn-served-open-peer-is-a-connection
   (implies (and (posp line-limit) (posp body-limit))
@@ -816,10 +883,11 @@
                                   observation injection peer node cfg))))
   :hints (("Goal" :in-theory (e/d (fn-served-connp)
                                   (fn-wire-statep fn-wire-initial-state
-                                   fn-peer-open-session
-                                   fn-peer-session-consistentp))
+                                   fn-auth-open-session
+                                   fn-auth-session-consistentp))
            :use ((:instance fn-wire-initial-state-is-state)
-                 (:instance fn-peer-open-session-is-consistent)))))
+                 (:instance fn-auth-open-session-is-consistent
+                            (acfg (fn-auth-open-config)) (tlsp nil))))))
 
 (defthm fn-served-concat-is-an-octet-list
   (implies (fn-served-chunk-listp chunks)
@@ -877,7 +945,8 @@
                (equal effect (fn-nntp-close-effect))
                (and (equal (car effect) :submit)
                     (or (fn-inj-injectedp (car (cdr effect)))
-                        (fn-peer-submissionp (car (cdr effect)))))))
+                        (fn-peer-submissionp (car (cdr effect)))))
+               (equal effect (fn-auth-starttls-effect))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-nntp-effectp)
                                   (fn-nntp-replyp fn-inj-injectedp
@@ -931,6 +1000,33 @@
             (equal (fn-served-feed conn octets)
                    (fn-served-make-result conn nil)))
    :hints (("Goal" :expand ((fn-served-feed conn octets))))))
+
+; The handshake's counterpart of the law above, and the proof that the
+; second stopping condition costs the append law nothing.
+(defthm fn-served-feed-of-handshaking-connection
+  (implies (fn-served-tls-handshakingp conn)
+           (equal (fn-served-feed conn octets)
+                  (fn-served-make-result conn nil)))
+  :hints (("Goal" :expand ((fn-served-feed conn octets)))))
+
+; The whole of the RFC 4642 section 2.2 claim at the served layer: once the
+; 382 is out, nothing else in this read is answered and nothing else in it
+; is submitted.  The subject is fn-served-step, which is what
+; books/owner.lisp fn-own-read calls once per socket read and what
+; tools/run_owner.py Owner.serve calls once per recv.
+(defthm fn-served-step-of-handshaking-connection-is-a-no-op
+  (implies (fn-served-tls-handshakingp conn)
+           (and (equal (fn-served-result-effects
+                        (fn-served-step conn octets))
+                       nil)
+                (equal (fn-served-result-conn (fn-served-step conn octets))
+                       conn)))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (disable fn-served-feed fn-wire-statep
+                               fn-served-tls-handshakingp
+                               fn-served-feed-of-handshaking-connection)
+           :use ((:instance fn-served-feed-of-handshaking-connection)))))
 
 (defthm fn-served-step-partition-independence
   (implies (and (fn-served-connp conn)
@@ -1185,7 +1281,7 @@
 ; dispatcher steps, and the framing work per octet is constant
 ; (fn-wire-feed-byte, bounded retained input by
 ; fn-wire-feed-byte-retained-input-is-bounded, books/wire.lisp).  The cost of
-; ONE fn-peer-step is not yet a theorem: the worst commands are LISTGROUP
+; ONE fn-auth-step is not yet a theorem: the worst commands are LISTGROUP
 ; over a range and LIST ACTIVE with a wildmat, which are linear in the pinned
 ; archive's articles and groups and in the wildmat budget of
 ; books/wildmat-work.lisp, and an article body costs fn-inj-decide over the
@@ -1226,7 +1322,8 @@
 ; and never inherits their unfolding.
 
 (deftheory fn-served-vocabulary
-  '(fn-served-closed-wirep fn-served-submit-effectp fn-served-effectp
+  '(fn-served-closed-wirep fn-served-tls-handshakingp fn-served-starttlsp
+    fn-served-submit-effectp fn-served-effectp
     fn-served-dispatch fn-served-feed fn-served-step fn-served-run
     fn-served-greeting fn-served-open fn-served-open-peer fn-served-post-outcome
     fn-served-transit-outcome

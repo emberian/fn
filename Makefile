@@ -122,6 +122,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-primary \
 	books/bp-primary-invariants \
 	tests/acl2/bp-primary-tests \
+	books/bp-bundle \
+	books/bp-bundle-invariants \
+	tests/acl2/bp-bundle-tests \
+	books/bp-node \
+	tests/acl2/bp-node-tests \
 	books/bp-fragment \
 	books/bp-fragment-invariants \
 	tests/acl2/bp-fragment-tests \
@@ -217,6 +222,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-auth \
 	tests/acl2/nntp-auth-tests \
 	books/served \
+	books/nntp-auth-invariants \
 	tests/acl2/served-tests \
 	books/config-stream \
 	tests/acl2/config-stream-tests \
