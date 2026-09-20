@@ -213,3 +213,75 @@
           (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*)
                              *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs2*
                              *fn-tp-obs2* (list :article *fn-tp-good2-lines*))))))
+
+; -----------------------------------------------------------------------------
+; Teeth for the fourth outcome: a malformed session
+;
+; The served command chain is four records deep (auth over peer over post
+; over the reader session) and all three base accessors are `car', so a call
+; site that reaches one level short hands this function a well-shaped value
+; at the wrong level.  It used to answer that with NO EFFECTS, and on
+; 2026-09-20 that is exactly what happened: books/served.lisp reached one
+; wrapper short, so a posting client got the 340 offer, sent its article and
+; was told nothing at all.  Silence is not accepted, refused or uncertain.
+;
+; The witnesses are the two ways to miss by one: the READER session, which is
+; what a site that walks one level too FAR produces, and a posting session
+; wrapped once more, which is the shape a site one level too SHORT hands in
+; (the served path handed in an auth session, whose base is a peer session,
+; for exactly this reason; peer-inbound is above this book, so the witness
+; here is the same miss built from the records this book has).  Both are
+; well-shaped records; neither is a posting session; each now earns a 403.
+
+(defconst *fn-tp-too-deep* (fn-nntp-open-session *fn-tp-archive*))
+(defconst *fn-tp-too-shallow* (fn-post-make-session *fn-tp-s0* nil))
+(defconst *fn-tp-403*
+  (list (fn-nntp-reply-effect
+         (fn-nntp-crlf
+          (fn-nntp-string-octets
+           "403 internal fault; the posting session is malformed")))))
+
+; The two witnesses are real records at the wrong level, not junk: this is a
+; separating witness by more than the weakest clause of fn-post-sessionp.
+(assert-event (fn-nntp-sessionp *fn-tp-too-deep*))
+(assert-event (not (fn-post-sessionp *fn-tp-too-deep*)))
+(assert-event (fn-post-session-shapep *fn-tp-too-shallow*))
+(assert-event (equal (fn-post-session-base *fn-tp-too-shallow*) *fn-tp-s0*))
+(assert-event (fn-post-sessionp *fn-tp-s0*))
+(assert-event (not (fn-post-sessionp *fn-tp-too-shallow*)))
+
+; Neither is answered with silence any more, and both are answered the same
+; way whatever the store reported: the completion is not the defect.
+(assert-event
+ (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :durable))
+        *fn-tp-403*))
+(assert-event
+ (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-shallow* :refused))
+        *fn-tp-403*))
+(assert-event
+ (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :uncertain))
+        (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-shallow* :durable))))
+(assert-event (fn-nntp-effectsp *fn-tp-403*))
+
+; The separation fn-post-outcome-separates-a-malformed-session states, on
+; these witnesses: the fourth outcome is not any of the three.
+(assert-event
+ (not (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :durable))
+             (fn-post-result-effects
+              (fn-nntp-post-outcome (fn-post-result-session *fn-tp-r2*) :durable)))))
+(assert-event
+ (not (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :refused))
+             (fn-post-result-effects
+              (fn-nntp-post-outcome (fn-post-result-session *fn-tp-r2*) :refused)))))
+(assert-event
+ (not (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :uncertain))
+             (fn-post-result-effects
+              (fn-nntp-post-outcome (fn-post-result-session *fn-tp-r2*) :uncertain)))))
+
+; The hypothesis of fn-post-outcome-240-only-for-a-durable-observation is
+; necessary, and this is the violating value: without fn-post-sessionp the
+; three completions are NOT told apart, because the fourth outcome ignores
+; the completion.
+(assert-event
+ (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :refused))
+        (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :durable))))

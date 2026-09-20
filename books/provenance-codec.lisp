@@ -471,40 +471,20 @@
                              fn-prov-kind-code))))))
 
 ; Step 3: the rebuild of a record's own fields is that record.  This is where
-; `books/provenance.lisp's four `-of-its-accessors' facts and the octet/string
-; round trip of `books/records-invariants.lisp' are spent.
-; A diagnostic that is not a `:mismatch' IS the match, by
-; `fn-prov-diagnosticp' (books/provenance.lisp:68).  That book states the
-; disjunction (`fn-prov-diagnosticp-is-match-or-mismatch') and the mismatch
-; direction (`fn-prov-mismatch-diagnostic-shape'), both forward-chaining; a
-; DISJUNCTIVE forward-chained conclusion lands in the context as one `or'
-; term the prover does not split on, so the match direction has to be
-; instantiated by hand.  Without it the rebuild below writes the literal
-; `(:match)' back into a transit record and nothing says that is the
-; diagnostic the record had: key checkpoint `Subgoal 107.6'' at `:IHAVE'.
-(local
- (defthm fn-prov-a-non-mismatch-diagnostic-is-the-match
-   (implies (and (fn-prov-diagnosticp d)
-                 (not (equal (car d) :mismatch)))
-            (equal d (list :match)))
-   :rule-classes nil
-   :hints (("Goal" :in-theory (enable fn-prov-diagnosticp)))))
-
-; The rebuild writes the kind and the diagnostic back as the LITERALS the
-; case split is on (`:ihave' and `(:match)', ...), where
-; `fn-prov-transit-of-its-accessors' (books/provenance.lisp:334) writes
-; `(fn-prov-transit-kind x)' and `(fn-prov-transit-diagnostic x)'.  Stated
-; with both as variables, this is that fact in the shape the goal has.
-(local
- (defthm fn-prov-transit-rebuilds-at-its-kind
-   (implies (and (fn-prov-transitp x)
-                 (equal (fn-prov-transit-kind x) k)
-                 (equal (fn-prov-transit-diagnostic x) d))
-            (equal (fn-prov-make-transit (fn-prov-transit-peer x) k d
-                                         (fn-prov-transit-generation x))
-                   x))
-   :hints (("Goal" :use ((:instance fn-prov-transit-of-its-accessors))))))
-
+; the four generated `<ctor>-of-accessors' facts (`fn-defrecord',
+; books/defrecord.lisp) and the octet/string round trip of
+; `books/records-invariants.lisp' are spent.
+;
+; Two things about the citation, both measured on 2026-09-20 (w10/dtn-3),
+; when the generated family replaced `books/provenance.lisp's four
+; hand-written `-of-its-accessors' lemmas.  The generated rule is stated
+; under the SHAPE predicate, so the instance's hypothesis is
+; `(fn-prov-post-shapep p)`, which the generated
+; `fn-prov-postp-forward-shape' puts in the context of the branch where
+; `(fn-prov-postp p)' holds.  And the generated rule is an ENABLED rewrite,
+; so all four are DISABLED in the `e/d' below: without that the rewriter
+; collapses each `:use' hypothesis to `(equal p p)' and the citation is gone
+; before the goal can spend it.
 (local
  (defthm fn-prov-rebuild-of-its-own-fields
    (implies (and (fn-prov-encodablep p) (not (stringp p)))
@@ -517,12 +497,10 @@
                                     (fn-prov-field-o p))
                    p))
    :hints (("Goal"
-            :use ((:instance fn-prov-post-of-its-accessors (x p))
-                  (:instance fn-prov-transit-of-its-accessors (x p))
-                  (:instance fn-prov-bp-of-its-accessors (x p))
-                  (:instance fn-prov-local-of-its-accessors (x p))
-                  (:instance fn-prov-a-non-mismatch-diagnostic-is-the-match
-                             (d (fn-prov-transit-diagnostic p))))
+            :use ((:instance fn-prov-make-post-of-accessors (x p))
+                  (:instance fn-prov-make-transit-of-accessors (x p))
+                  (:instance fn-prov-make-bp-of-accessors (x p))
+                  (:instance fn-prov-make-local-of-accessors (x p)))
             :in-theory (e/d (fn-prov-rebuild fn-prov-kind-code
                              fn-prov-field-a fn-prov-field-b fn-prov-field-c
                              fn-prov-field-m fn-prov-field-n fn-prov-field-o
@@ -534,7 +512,13 @@
                              fn-prov-diagnostic-mismatch
                              fn-record-uint32p fn-record-string-round-trip)
                             (fn-record-string-octets
-                             fn-record-octets-string))))))
+                             fn-record-octets-string
+                             ;; Cited above by `:use'; enabled, each would
+                             ;; rewrite its own citation away.
+                             fn-prov-make-post-of-accessors
+                             fn-prov-make-transit-of-accessors
+                             fn-prov-make-bp-of-accessors
+                             fn-prov-make-local-of-accessors))))))
 
 ; -----------------------------------------------------------------------------
 ; Keystones

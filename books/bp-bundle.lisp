@@ -645,8 +645,21 @@
       (let ((p (fn-bpb-scan-primary (cdr octets))))
         (if (not (fn-cbor-result-okp p))
             p
+          ;; The budget counts EVERY block in the array after the primary,
+          ;; and the payload block is one of them (section 4.1 requires it
+          ;; last), so a bundle carrying the full `*fn-bpb-max-blocks*`
+          ;; canonical blocks is an array of that many plus one.  Found by
+          ;; `fn-bpb-decode-of-encode` on 2026-09-20 (w10/dtn-3): with the
+          ;; budget at `*fn-bpb-max-blocks*` the round trip is FALSE at
+          ;; `(len (fn-bpb-bundle-blocks bundle)) = 32` --- the encoder
+          ;; admits the bundle and the decoder refuses its own output with
+          ;; `:too-many-blocks`.  The bound on canonical blocks is not
+          ;; loosened: an array carrying one canonical block more than
+          ;; `*fn-bpb-max-blocks*` is `*fn-bpb-max-blocks*` + 2 blocks long
+          ;; and the budget still refuses it, and `fn-bpb-assemble` re-applies
+          ;; `fn-bpb-splitp` to whatever the budget let through.
           (let ((bs (fn-bpb-decode-blocks (fn-cbor-result-rest p)
-                                          *fn-bpb-max-blocks*)))
+                                          (+ 1 *fn-bpb-max-blocks*))))
             (if (not (fn-cbor-result-okp bs))
                 bs
               (if (not (null (fn-cbor-result-rest bs)))
