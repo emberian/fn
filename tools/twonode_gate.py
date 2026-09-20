@@ -313,7 +313,7 @@ class TwoNodeGate(deploy_gate.DeployGate):
         "a weaker one under the same name.")
     FACT_KEYS = ("os", "kernel", "python3", "acl2version", "certificates",
                  "node a", "node b", "peer records", "three outcomes a",
-                 "three outcomes b", "transit", "feed", "kill")
+                 "three outcomes b", "transit", "feed", "kill", "tcpcl")
     STANDING_GAPS = (
         "Both nodes are on ONE host, over loopback. Nothing here exercises a real\n"
         "  network, a partition, latency, or two machines' clocks disagreeing.",
@@ -325,8 +325,10 @@ class TwoNodeGate(deploy_gate.DeployGate):
         "  authenticates a peer, so a node accepts transit from whoever connects.",
         "No convergence claim. Two articles crossing once is not the merge property\n"
         "  of specs/peering.md section 4 (K4); that needs the certified statement.",
-        "No BP/DTN transport, no third node, no concurrent load, no RFC conformance\n"
-        "  audit: the assertions are this driver's, not a spec's.",
+        "No third node, no concurrent load, no RFC conformance audit: the\n"
+        "  assertions are this driver's, not a spec's.",
+        "The `tcpcl` scenario carries opaque octets, not BPv7 bundles: TCPCLv4 does\n"
+        "  not parse what it transfers, and no BP node is wired to the layer yet.",
         "The certificates were not re-established here; see the certificate row.")
 
     def __init__(self, *args, server_template=None, extra_overlays=(), **kwargs):
@@ -660,6 +662,66 @@ else echo NONE; fi
             ",".join(only_b + self.a.rejected)),
             name="node A is unchanged by node B's death")
 
+    def scenario_tcpcl(self):
+        """Two native images exchanging bundles over TCPCLv4 on loopback.
+
+        The convergence layer lives in the ACL2 image, not in `bin/fn`, so
+        this scenario needs `build/fn-host` on the box.  When the image does
+        not build on this commit the scenario is skipped with the build's own
+        last lines: a missing convergence layer is a finding, not a pass.
+
+        Every assertion is over the event digests the images printed, and the
+        images computed those with `fn-tcl-host-event-digests`; the lab does
+        not know what a segment or an MRU is.  `tools/tcpcl_lab.py` holds the
+        scenarios, so the same five run by hand on any box with an image.
+        """
+        build = self.sh("native image for the tcpcl layer",
+                        self.cd("FN_ACL2=${FN_ACL2:-$HOME/fn-tools/acl2-8.7/saved_acl2} "
+                                "nice -n 10 sh tools/build_native_host.sh"),
+                        timeout=1800, expect=None)
+        if build.rc != 0 or "built build/fn-host" not in build.output:
+            self.facts["tcpcl"] = "no image: the layer could not be exercised"
+            self.gaps.append(
+                "The native image did not build on this commit, so the TCPCLv4\n"
+                "  convergence layer was not exercised at all. Its last lines were:\n"
+                "  " + " | ".join(build.output.strip().splitlines()[-3:]))
+            self.skip("tcpcl exchange", "tools/tcpcl_lab.py",
+                      "build/fn-host was not produced on this commit")
+            return
+        lab = self.sh("tcpcl lab (exchange, refused, keepalive, crash, replay)",
+                      self.cd("python3 tools/tcpcl_lab.py --image build/fn-host "
+                              "--work {}/tcpcl-lab".format(self.deploy)),
+                      timeout=900, expect=None)
+        rows = {}
+        for line in lab.output.splitlines():
+            line = line.strip()
+            if line.startswith("{"):
+                try:
+                    row = json.loads(line)
+                except ValueError:
+                    continue
+                rows[row.get("scenario", "?")] = row
+        summary = rows.get("summary", {})
+        self.facts["tcpcl"] = "passed={} failed={}".format(
+            ",".join(summary.get("passed", [])) or "none",
+            ",".join(summary.get("failed", [])) or "none")
+        for name in ("exchange", "refused", "keepalive", "crash", "replay"):
+            row = rows.get(name)
+            if row is None:
+                self.skip("tcpcl {}".format(name), "tools/tcpcl_lab.py",
+                          "the lab produced no result for this scenario")
+                continue
+            note = ", ".join("{}={}".format(k, v) for k, v in sorted(row.items())
+                             if k not in ("scenario", "ok"))
+            # The lab's own exit code covers every scenario at once; each row
+            # carries its own verdict, so each step gets that one.
+            self.steps.append(Step("tcpcl {}".format(name), lab.command,
+                                   0 if row.get("ok") else 1, lab.output, 0.0,
+                                   note[:600], 0))
+            if not row.get("ok"):
+                self.gaps.append(
+                    "The tcpcl `{}` scenario did not hold: {}".format(name, note[:300]))
+
     # -- evidence ---------------------------------------------------------
     def evidence(self, path, started, elapsed):
         """The deploy gate's evidence, with the tree-wide gaps said once.
@@ -695,6 +757,7 @@ else echo NONE; fi
         self.scenario_independent()
         self.scenario_feed()
         self.scenario_kill()
+        self.scenario_tcpcl()
         for node in self.nodes:
             self.sh("node {} log tail".format(node.upper),
                     "tail -12 {}/server-{}-main.log".format(node.dir, node.name))
