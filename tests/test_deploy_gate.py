@@ -50,14 +50,23 @@ class CertificateChoiceTests(unittest.TestCase):
         return deploy_gate.DeployGate(host, ROOT, "a" * 40, "abc1234", tree)
 
     def test_a_host_gate_supplies_the_certificates(self):
-        host = Recorder({"if [ -d": (0, "GATE /home/x/fn-gates/dev-abc1234\n171\n")})
+        host = Recorder({"if [ -d": (0, "GATE /home/x/fn-gates/dev-abc1234\n"),
+                         "certpick.py": (0, "matched=171 mismatched=0 absent=3\n")})
         gate = self.gate(host)
         gate.certificates()
-        self.assertIn("cp /home/x", "".join(host.scripts).replace(
-            "cp $HOME", "cp /home/x"))
-        self.assertIn("copied from", gate.facts["certificates"])
+        self.assertIn("certpick.py /home/x/fn-gates/dev-abc1234", host.scripts[-1])
+        self.assertIn("matched=171", gate.facts["certificates"])
         self.assertTrue(any("foreign-local" in gap for gap in gate.gaps),
                         "the origin-root hazard of a copied pair must be recorded")
+
+    def test_a_neighbouring_gate_is_used_only_for_the_books_that_match(self):
+        host = Recorder({"if [ -d": (0, "NEIGHBOUR /home/x/fn-gates/dev-9999999\n"),
+                         "certpick.py": (0, "matched=160 mismatched=4 absent=1\n")})
+        gate = self.gate(host)
+        gate.certificates()
+        self.assertIn("neighbour", gate.facts["certificates"])
+        self.assertTrue(any("did not hash to this revision" in gap for gap in gate.gaps),
+                        "a book whose pair was left behind must be named as a gap")
 
     def test_no_host_gate_certifies_on_the_host(self):
         host = Recorder({"if [ -d": (0, "NOGATE\n")})
@@ -148,7 +157,11 @@ class DryRunTests(unittest.TestCase):
     def test_the_gaps_are_written_out(self):
         self.assertIn("## What was NOT exercised", self.text)
         self.assertIn("nntplib", self.text)
-        self.assertIn("no news client is installed on the host", self.text)
+        # slrn or tin may be installed on the machine running the dry run; either
+        # the session ran or its absence is written out, never silence.
+        self.assertTrue("no news client is installed on the host" in self.text
+                        or self.named("scripted slrn session")
+                        or self.named("scripted tin session"), self.text[-2000:])
         self.assertIn("not a power loss", self.text)
 
     def test_the_evidence_records_versions_and_commands(self):
