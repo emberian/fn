@@ -616,3 +616,181 @@ class LintReportingTests(unittest.TestCase):
         self.assertEqual(ledger_data["totals"]["include_hygiene_warnings"], 1)
         self.assertIn("Include-hygiene warnings | 1",
                       ledger.ledger_markdown(ledger_data))
+
+
+class DefrecordExpansionTests(unittest.TestCase):
+    """`fn-defrecord` is a macro, so the reader must expand it to see the book.
+
+    Without this the ledger reads a migrated book as forty names shorter than
+    it is: `host_names` then calls every accessor the host bridges use
+    undefined, `include_hygiene` warns about every includer because the
+    recognizers never reach `disabled_rules`, and the guard and theorem counts
+    fall.  These pin the Python side of the mirror; the Lisp side is proved by
+    `tests/acl2/defrecord-tests.lisp`.
+    """
+
+    UNTAGGED = ('(in-package "ACL2")\n'
+                '(fn-defrecord fn-x-point\n'
+                '  :constructor (fn-x-point a b c)\n'
+                '  :fields ((fn-x-point-a natp)\n'
+                '           (fn-x-point-b natp)\n'
+                '           (fn-x-point-c stringp)))\n')
+    TAGGED = ('(in-package "ACL2")\n'
+              '(fn-defrecord fn-x-mark\n'
+              '  :tag :fn-x-mark\n'
+              '  :constructor (fn-x-mark origin weight)\n'
+              '  :fields ((fn-x-mark-origin fn-x-pointp)\n'
+              '           (fn-x-mark-weight posp))\n'
+              '  :extra ((<= (fn-x-mark-weight x) 1000)))\n')
+    NO_RECOGNIZER = ('(in-package "ACL2")\n'
+                     '(fn-defrecord fn-x-result\n'
+                     '  :constructor (fn-x-result ok value)\n'
+                     '  :recognizer nil\n'
+                     '  :fields ((fn-x-result-ok t) (fn-x-result-value t)))\n')
+
+    def book(self, source: str) -> ledger.Book:
+        return tree_from({"books/x.lisp": source}).books["books/x.lisp"]
+
+    def test_every_generated_name_is_defined(self):
+        book = self.book(self.UNTAGGED)
+        for name in ("fn-x-point-shapep", "fn-x-point", "fn-x-point-a",
+                     "fn-x-point-b", "fn-x-point-c", "fn-x-pointp",
+                     "fn-x-point-shapep-of-fn-x-point",
+                     "fn-x-point-a-of-fn-x-point", "fn-x-point-injective",
+                     "fn-x-point-shapep-forward-shape",
+                     "fn-x-point-accessors-forward-consp",
+                     "fn-x-pointp-forward-shape"):
+            self.assertIn(name, book.definitions, name)
+
+    def test_generated_functions_are_marked_generated(self):
+        book = self.book(self.UNTAGGED)
+        self.assertTrue(book.functions)
+        self.assertTrue(all(function.generated for function in book.functions))
+
+    def test_accessor_guards_are_verified_by_event(self):
+        statuses = {function.name: function.guard_status
+                    for function in self.book(self.UNTAGGED).functions}
+        self.assertEqual(statuses["fn-x-point-a"], "verified")
+        self.assertEqual(statuses["fn-x-point-shapep"], "default-guarded")
+
+    def test_internals_are_withdrawn(self):
+        book = self.book(self.UNTAGGED)
+        self.assertEqual(
+            book.disabled_rules,
+            {"fn-x-point-shapep", "fn-x-point", "fn-x-point-a",
+             "fn-x-point-b", "fn-x-point-c"})
+
+    def test_tag_shifts_the_fields_by_one(self):
+        book = self.book(self.TAGGED)
+        bodies = {function.name: function.body for function in book.functions}
+        # origin at index 1, weight at index 2: (car (cdr x)), (car (cdr (cdr x))).
+        self.assertEqual(ledger.head(bodies["fn-x-mark-origin"]), "mbe")
+        logic = ledger.keyword_plist(bodies["fn-x-mark-origin"][1:])[":logic"]
+        self.assertEqual(logic, [ledger.Sym("car"),
+                                 [ledger.Sym("cdr"), ledger.Sym("x")]])
+        self.assertEqual(bodies["fn-x-mark"],
+                         [ledger.Sym("list"), ledger.Sym(":fn-x-mark"),
+                          ledger.Sym("origin"), ledger.Sym("weight")])
+
+    def test_recognizer_carries_field_types_and_extra(self):
+        body = {f.name: f.body for f in self.book(self.TAGGED).functions}["fn-x-markp"]
+        self.assertIn([ledger.Sym("fn-x-pointp"),
+                       [ledger.Sym("fn-x-mark-origin"), ledger.Sym("x")]], body)
+        self.assertIn([ledger.Sym("<="),
+                       [ledger.Sym("fn-x-mark-weight"), ledger.Sym("x")], 1000], body)
+
+    def test_recognizer_nil_suppresses_it(self):
+        book = self.book(self.NO_RECOGNIZER)
+        self.assertNotIn("fn-x-resultp", book.definitions)
+        self.assertNotIn("fn-x-resultp-forward-shape", book.definitions)
+        self.assertIn("fn-x-result-ok", book.definitions)
+
+    def test_injectivity_is_not_reflexive(self):
+        # A synthesis that used the same call on both sides would make the
+        # suspect detector report every record as a reflexive conclusion.
+        theorem = next(t for t in self.book(self.UNTAGGED).theorems
+                       if t.name == "fn-x-point-injective")
+        self.assertNotEqual(theorem.statement[1], theorem.statement[2])
+        self.assertEqual(ledger.keyword_plist(theorem.rest)[":rule-classes"],
+                         ledger.Sym("nil"))
+
+    def test_export_names_recognizers_and_withdraws_them(self):
+        book = self.book(
+            '(in-package "ACL2")\n'
+            '(fn-defrecord-export fn-x-vocabulary\n'
+            '  :records (fn-x-point fn-x-mark)\n'
+            '  :also (fn-x-step))\n')
+        self.assertEqual(book.disabled_rules,
+                         {"fn-x-pointp", "fn-x-markp", "fn-x-step"})
+
+
+class HandWrittenRecordLintTests(unittest.TestCase):
+    """The fifth lint: a record written out event by event, not generated."""
+
+    HAND = ('(in-package "ACL2")\n'
+            '(defun fn-h-shapep (x) (declare (xargs :guard t))\n'
+            '  (and (true-listp x) (equal (len x) 3)))\n'
+            '(defun fn-h-a (x) (declare (xargs :guard t))\n'
+            '  (mbe :logic (car x) :exec (fn-ag-car x)))\n'
+            '(defun fn-h-b (x) (declare (xargs :guard t))\n'
+            '  (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))\n'
+            '(defun fn-h-c (x) (declare (xargs :guard t))\n'
+            '  (mbe :logic (car (cdr (cdr x))) :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))\n')
+    NTH_STYLE = ('(in-package "ACL2")\n'
+                 '(defun fn-n-shapep (x) (declare (xargs :guard t))\n'
+                 '  (and (true-listp x) (equal (len x) 3)))\n'
+                 '(defun fn-n-a (x) (declare (xargs :guard t)) (fn-bp-nth 0 x))\n'
+                 '(defun fn-n-b (x) (declare (xargs :guard t)) (fn-bp-nth 1 x))\n'
+                 '(defun fn-n-c (x) (declare (xargs :guard t)) (fn-bp-nth 2 x))\n')
+
+    def findings(self, source: str) -> list[dict]:
+        return ledger.hand_written_record(tree_from({"books/h.lisp": source}))
+
+    def test_mbe_accessors_are_a_finding(self):
+        found = self.findings(self.HAND)
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0]["accessors"], 3)
+        self.assertIn("fn-defrecord", found[0]["reason"])
+
+    def test_nth_style_accessors_are_a_finding_too(self):
+        # Two flavours are in the tree: the `mbe` chain and `(fn-bp-nth 1 x)`.
+        self.assertEqual(len(self.findings(self.NTH_STYLE)), 1)
+
+    def test_two_accessors_are_not_a_finding(self):
+        source = "\n".join(self.HAND.splitlines()[:-2]) + "\n"
+        self.assertEqual(self.findings(source), [])
+
+    def test_a_shape_predicate_alone_is_not_a_finding(self):
+        self.assertEqual(self.findings(
+            '(in-package "ACL2")\n'
+            '(defun fn-h-shapep (x) (declare (xargs :guard t)) (true-listp x))\n'), [])
+
+    def test_accessors_over_a_different_variable_do_not_count(self):
+        source = self.HAND.replace("(x)", "(y)").replace(
+            "(defun fn-h-shapep (y)", "(defun fn-h-shapep (x)").replace(
+            "(and (true-listp y) (equal (len y) 3))",
+            "(and (true-listp x) (equal (len x) 3))")
+        self.assertEqual(self.findings(source), [])
+
+    def test_a_generated_record_is_not_a_finding(self):
+        self.assertEqual(self.findings(
+            '(in-package "ACL2")\n'
+            '(fn-defrecord fn-g\n'
+            '  :constructor (fn-g a b c)\n'
+            '  :fields ((fn-g-a natp) (fn-g-b natp) (fn-g-c natp)))\n'), [])
+
+    def test_a_macro_only_book_exports_no_rule(self):
+        book = tree_from({"books/m.lisp":
+                          '(in-package "ACL2")\n'
+                          '(defun fn-m-plumbing (x)\n'
+                          '  (declare (xargs :mode :program)) x)\n'
+                          '(defmacro fn-m (x) (fn-m-plumbing x))\n'}).books["books/m.lisp"]
+        self.assertTrue(ledger.exports_no_rule(book))
+
+    def test_an_include_shim_does_not_count_as_rule_free(self):
+        book = tree_from({"books/s.lisp":
+                          '(in-package "ACL2")\n'
+                          '(include-book "m")\n'
+                          '(defun fn-s (x) (declare (xargs :mode :program)) x)\n'
+                          }).books["books/s.lisp"]
+        self.assertFalse(ledger.exports_no_rule(book))
