@@ -499,6 +499,21 @@ substrate keystone over the transit path, the keystone is cited by name and the
 restatement is a corollary of it and the bridge lemma; a corollary is labelled
 as one and is not offered as the proof event.
 
+**Certification status of the rows below, 2026-09-20.** S1-1 and the S2-1
+grounding theorem are certified in `books/stx-invariants.lisp` (persvati,
+ACL2 8.7, `run-20260920T174338Z-6891`,
+`build/acl2/certify-20260920T174341Z-1287238`), with their witnesses and
+teeth in `tests/acl2/stx-tests.lisp` (`run-20260920T174716Z-9575`,
+`build/acl2/certify-20260920T174721Z-1322621`). S2-1's companion
+`fn-stx-transit-verdict-is-fn-stx-verdict` is **not proved**: it names
+`fn-peer-transfer`, which needs K1's transit path, so PRF-020 is
+`in-progress` and not closed. S3-1 onwards are unimplemented. Two shape
+theorems this design implied, `fn-stx-authored-source-is-octet-list` and
+`fn-stx-payload-for-is-octet-list`, were **removed and recorded open** by
+packet S1: they do not follow from `fn-article-syntax-p`, because the
+projection walks `fn-article-field-raw-lines` and `books/article.lisp`
+constrains those to `true-listp` only.
+
 ### S1-1. The field codec is canonical
 
 ```lisp

@@ -815,9 +815,21 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "planned",
-      "evidence": [],
-      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
+      "status": "in-progress",
+      "evidence": [
+        "books/stx-carrier.lisp",
+        "books/stx-verify.lisp",
+        "books/stx-invariants.lisp",
+        "tests/acl2/stx-tests.lisp",
+        "tests/evidence/2026-09-20-substrate-s1.md"
+      ],
+      "progress_note": "S1-1 is certified in books/stx-invariants: the detached codec both ways and the field codec above it, so every accepted FN-Statement value has exactly one canonical form (the whitespace-stripped one, RFC 5536 section 2.2 folding being legal). Open: the INN interoperability run of the packet's acceptance criteria, and the named equality of fn-stx-authored-source with w4/post's injector-side projection, which does not exist yet.",
+      "events": [
+        "fn-stx-detached-round-trip",
+        "fn-stx-detached-accepted-input-is-canonical",
+        "fn-stx-field-round-trip",
+        "fn-stx-field-accepted-input-is-canonical"
+      ]
     },
     {
       "id": "PRF-020",
@@ -833,9 +845,21 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "planned",
-      "evidence": [],
-      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
+      "status": "in-progress",
+      "evidence": [
+        "books/stx-carrier.lisp",
+        "books/stx-verify.lisp",
+        "books/stx-invariants.lisp",
+        "tests/acl2/stx-tests.lisp",
+        "tests/evidence/2026-09-20-substrate-s1.md"
+      ],
+      "progress_note": "The grounding theorem is certified in books/stx-invariants: a :verified verdict is backed by a key named in this node's own keyring, a signature check over the statement's own signing preimage, and a ref recomputed from the receiver's projection of the received octets; the peer is not an argument to fn-stx-verdict. Open, and the reason this target is not closed: the companion fn-stx-transit-verdict-is-fn-stx-verdict names fn-peer-transfer and needs K1's transit path, so the assurance rule 'the theorem subject is the function the host calls' is not yet met.",
+      "events": [
+        "fn-stx-verified-implies-signature-over-own-octets",
+        "fn-stx-verified-is-the-statement-the-article-carries",
+        "fn-stx-verdict-is-typed",
+        "fn-stx-verdict-records-its-keyring-generation"
+      ]
     },
     {
       "id": "PRF-021",
