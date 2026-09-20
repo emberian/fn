@@ -1513,8 +1513,10 @@ def command_post(args, faults=NO_FAULTS):
     """Post one article.  `faults` is the test-only injector; the CLI hook wins."""
     msgid = args.message_id.encode("ascii")
     payload = read_regular_bounded(args.payload, DEFAULT_CONFIG["max_payload_bytes"])
-    if args.owner is not None:
-        return post_via_owner(args.owner, msgid, payload, args.group, args.charge)
+    # Optional: harnesses build argument objects without every CLI flag.
+    owner = getattr(args, "owner", None)
+    if owner is not None:
+        return post_via_owner(owner, msgid, payload, args.group, args.charge)
     if args.inject_fault is not None:
         faults = CLI_FAULTS[args.inject_fault]()
     store, bridge, records = open_live_store(args.store, writable=True, faults=faults)
