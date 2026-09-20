@@ -156,6 +156,14 @@
 (defthm fn-stx-b64-sextet-is-not-pad
   (not (equal (fn-stx-b64-sextet n) *fn-stx-b64-pad*)))
 
+; Nor is it WSP, so RFC 5536 folding is the only whitespace a field value can
+; carry and stripping it is information preserving.
+(defthm fn-stx-b64-sextet-is-not-wsp
+  (and (not (equal (fn-stx-b64-sextet n) 32))
+       (not (equal (fn-stx-b64-sextet n) 9)))
+  :hints (("Goal" :use fn-stx-b64-sextet-is-vchar
+           :in-theory (disable fn-stx-b64-sextet-is-vchar))))
+
 (in-theory (disable (:d fn-stx-b64-sextet) (:d fn-stx-b64-value)))
 
 ; Splitting an octet into (floor . mod) is the only arithmetic the codec needs.
@@ -460,7 +468,7 @@
   (equal (fn-stx-strip-wsp (fn-stx-b64-encode octets))
          (fn-stx-b64-encode octets))
   :hints (("Goal" :induct (fn-stx-b64-encode octets)
-           :in-theory (enable (:d fn-stx-b64-sextet)))))
+           :in-theory (e/d ((:d fn-stx-strip-wsp)) (floor mod)))))
 
 (defthm fn-stx-strip-wsp-length
   (<= (len (fn-stx-strip-wsp octets)) (len octets))
@@ -503,7 +511,8 @@
 (defun fn-stx-authored-header (fields)
   (declare (xargs :guard t))
   (if (consp fields)
-      (if (fn-stx-injected-namep (fn-article-field-name (car fields)))
+      (if (or (not (true-listp (car fields)))
+              (fn-stx-injected-namep (fn-article-field-name (car fields))))
           (fn-stx-authored-header (cdr fields))
         (append (fn-stx-field-octets (fn-article-field-raw-lines (car fields)))
                 (fn-stx-authored-header (cdr fields))))
