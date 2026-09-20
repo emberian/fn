@@ -19,7 +19,7 @@ stale. Counts describe artifacts, not coverage; see
 | Functions declared `:verify-guards nil` and never verified | 187 |
 | Functions left at the default with an explicit guard | 1747 |
 | Functions left at the default with no guard | 494 |
-| `assert-event` checks | 5086 |
+| `assert-event` checks | 5092 |
 | `must-fail` checks | 59 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 41 |
@@ -301,7 +301,7 @@ that `make certify` requests.
 | `tests/acl2/node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 92 | 0 | 0 |
 | `tests/acl2/owner-feed-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 98 | 0 | 0 |
 | `tests/acl2/owner-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 155 | 0 | 0 |
-| `tests/acl2/peer-feed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 101 | 0 | 0 |
+| `tests/acl2/peer-feed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 107 | 0 | 0 |
 | `tests/acl2/peer-inbound-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 147 | 0 | 0 |
 | `tests/acl2/policy-tests.lisp` | root | 0 | 27 | 0/0/0/27 | 66 | 0 | 0 |
 | `tests/acl2/principal-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 43 | 0 | 0 |
