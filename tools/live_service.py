@@ -125,11 +125,27 @@ python3 tools/certs.py install --root {tree} --cache {cache} 2>&1 | tail -4
         count = self.sh("certificates on disk",
                         "ls {}/books/*.cert 2>/dev/null | wc -l".format(self.tree))
         self.facts["certificates on disk"] = count.first_line
+        served = self.sh("the server's own certificates", """
+for b in books/served books/owner books/nntp-post books/ideal; do
+  if [ -f {tree}/$b.cert ]; then echo "$b OK"; else echo "$b ABSENT"; fi
+done
+""".format(tree=self.tree))
+        absent = [line.split()[0] for line in served.output.split()
+                  if False] or [line.split()[0] for line in
+                                served.output.splitlines() if line.endswith("ABSENT")]
+        self.facts["server books"] = served.output.replace("\n", " ").strip()
+        if absent:
+            self.notes.append(
+                "the box's cache has no certificate for {} at this revision, so "
+                "NEITHER `fn run` nor `tools/run_reader.py` can start: ACL2 "
+                "refuses the `include-book` and the process exits. Run "
+                "`python3 tools/verdict.py <commit> --host {}` first -- its gate "
+                "publishes the pairs into the cache this step reads."
+                .format(", ".join("`{}`".format(b) for b in absent), self.host))
         if count.first_line.strip() in ("", "0"):
             self.notes.append(
                 "no certificate landed in {}: the box's cache holds no pair for "
-                "this revision's books, so `fn run` would certify inside the "
-                "service. Run a gate for this commit first.".format(self.tree))
+                "this revision's books at all.".format(self.tree))
         return step
 
     def configure(self) -> Step:
@@ -208,8 +224,11 @@ cd {tree} || exit 9
 
     # -- the unit ---------------------------------------------------------
     OWNER_EXEC = "{tree}/bin/fn --config {config} run"
+    # `tools/run_reader.py` takes --store, --port and --once, and nothing
+    # else: the `--post` in tools/deploy_gate.py's reader command string is
+    # stale on this tree and makes the process exit 2 at once.
     READER_EXEC = ("/usr/bin/env python3 {tree}/tools/run_reader.py "
-                   "--store {store} --port {port} --post")
+                   "--store {store} --port {port}")
 
     def exec_start(self, kind: str, home: str) -> str:
         """The command the supervisor runs: the owner, or the reader.
