@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 264 |
 | Certification roots in the Makefile | 263 |
 | Books inside the root closure | 263 |
-| `defthm` and `defthmd` events | 5121 |
+| `defthm` and `defthmd` events | 5126 |
 | `defun` events | 3689 |
 | Functions with verified guards | 1379 |
 | Functions declared `:verify-guards nil` and never verified | 193 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Teeth-form warnings | 0 |
 | Include-hygiene warnings | 84 |
 | Host-names warnings | 0 |
-| Hand-written-record warnings | 19 |
+| Hand-written-record warnings | 18 |
 
 ## Lints
 
@@ -118,12 +118,12 @@ that `make certify` requests.
 | `books/bp-workflow.lisp` | root | 0 | 111 | 0/0/111/0 | 0 | 0 | 0 |
 | `books/byte-store-invariants.lisp` | root | 127 | 8 | 0/7/0/1 | 0 | 0 | 0 |
 | `books/byte-store-programs.lisp` | root | 1 | 29 | 0/29/0/0 | 32 | 0 | 0 |
-| `books/byte-store-scan.lisp` | root | 42 | 32 | 0/27/0/5 | 0 | 0 | 0 |
+| `books/byte-store-scan.lisp` | root | 43 | 32 | 0/27/0/5 | 0 | 0 | 0 |
 | `books/byte-store.lisp` | root | 10 | 58 | 5/40/13/0 | 0 | 0 | 0 |
 | `books/cbor-invariants.lisp` | root | 36 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/cbor.lisp` | root | 12 | 24 | 24/0/0/0 | 0 | 0 | 0 |
 | `books/checkpoint-codec.lisp` | root | 105 | 32 | 13/0/18/1 | 0 | 0 | 1 |
-| `books/checkpoint-publish.lisp` | root | 53 | 49 | 13/0/36/0 | 0 | 0 | 0 |
+| `books/checkpoint-publish.lisp` | root | 57 | 49 | 13/0/36/0 | 0 | 0 | 0 |
 | `books/checkpoint.lisp` | root | 18 | 14 | 12/0/2/0 | 0 | 0 | 0 |
 | `books/clock-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/clock.lisp` | root | 9 | 18 | 18/0/0/0 | 0 | 0 | 0 |
