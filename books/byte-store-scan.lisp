@@ -288,6 +288,19 @@
               (fn-bs-names-outcomes (cdr ops) (fn-bs-name-step (car ops) old)))
     (list old)))
 
+; The two enumerations the relation's shape clause actually produces: a quiet
+; directory, and a directory with exactly one pending entry operation.  The
+; shape clause bounds the list by (len ops), not by its spine, so
+; fn-bs-names-outcomes never opens on it without these.
+(defthm fn-bs-names-outcomes-of-no-ops
+  (implies (not (consp ops))
+           (equal (fn-bs-names-outcomes ops old) (list old))))
+
+(defthm fn-bs-names-outcomes-of-one-op
+  (implies (and (consp ops) (not (consp (cdr ops))))
+           (equal (fn-bs-names-outcomes ops old)
+                  (list old (fn-bs-name-step (car ops) old)))))
+
 (local
  (defun fn-bs-names-induct (ops choices old dir)
    (if (consp ops)
@@ -412,13 +425,16 @@
   (let ((root-ops (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
         (txn-ops (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
     (and (or (null root-ops)
-             (and (equal (len root-ops) 1)
+             ; "exactly one" by SPINE, not by (len ops): the enumeration
+             ; fn-bs-names-outcomes walks the spine, and a bound on the
+             ; length leaves it closed.
+             (and (consp root-ops) (not (consp (cdr root-ops)))
                   (equal (car (car root-ops)) :set-entry)
                   (equal (nth 2 (car root-ops)) *fn-bs-scan-frontier-name*)
                   (fn-bs-inop (nth 3 (car root-ops)))
                   (fn-bs-fencedp bs (nth 3 (car root-ops)))))
          (or (null txn-ops)
-             (and (equal (len txn-ops) 1)
+             (and (consp txn-ops) (not (consp (cdr txn-ops)))
                   (equal (car (car txn-ops)) :set-entry)
                   (equal (nth 2 (car txn-ops))
                          (fn-bs-txn-name
@@ -696,6 +712,40 @@
                  (:instance fn-bs-crash-names-is-names-after
                             (choices (fn-bs-crash-imagep-witness s image)))))))
 ;
+; The K1 namespace clause: a crash image of a related state holds exactly the
+; durable transaction namespace, or that namespace with the one pending link's
+; name appended -- never anything else, and never a gap.
+(defthm fn-bs-crash-image-transaction-names
+  (implies (and (fn-bs-store-relation bs ks) (fn-bs-crash-imagep bs image))
+           (let ((m (len (fn-bs-durable-names bs :transactions))))
+             (or (equal (fn-bs-names image :transactions) (fn-bs-txn-names m))
+                 (equal (fn-bs-names image :transactions)
+                        (fn-bs-txn-names (1+ m))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-bs-crash-image-names-are-an-outcome
+                            (s bs) (dir :transactions))
+                 (:instance fn-bs-txn-name-not-in-txn-names
+                            (i (len (fn-bs-durable-names bs :transactions)))
+                            (n (len (fn-bs-durable-names bs :transactions))))
+                 (:instance fn-bs-txn-names-of-1+
+                            (n (len (fn-bs-durable-names bs :transactions))))
+                 (:instance fn-bs-crash-image-is-quiet (s bs))
+                 (:instance fn-bs-quiet-names-are-durable-names
+                            (s image) (dir :transactions)))
+           ; fn-bs-names and fn-bs-durable-names both stay CLOSED: the only
+           ; thing that connects them is the image's quietness, and with
+           ; either one open they are two unrelated alist reads.
+           :in-theory (e/d (fn-bs-store-relation fn-bs-pending-shape-okp
+                            fn-bs-replay-matches-scan fn-bs-pending-matches-phase
+                            fn-bs-contiguous-namesp)
+                           (fn-bs-crash-image-names-are-an-outcome
+                            fn-bs-txn-name-not-in-txn-names
+                            fn-bs-txn-names-of-1+
+                            fn-bs-txn-names fn-bs-names fn-bs-durable-names
+                            fn-bs-read-records fn-bs-record-of
+                            fn-bs-scan-store fn-sf-crash-imagep)))))
+
 ; K1, K2 and K3 themselves stay OPEN.  K1 is the four scan clauses: the config
 ; and frontier entries (fn-bs-crash-keeps-untouched-entry, since the phase
 ; clause leaves no pending operation at either name) with their contents
