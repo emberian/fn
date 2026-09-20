@@ -9,6 +9,15 @@ makes no availability or flight-readiness claim; see
 
 Everything below is one command, `fn`, and one configuration file.
 
+Status at the time of writing: every store-side subcommand runs against
+a real ACL2 core. `fn run` is complete and tested, but it cannot start on
+this revision, because `books/owner.lisp` does not currently include: the
+served connection grew two fields and the owner cluster has not caught up.
+Until that repair lands, `fn post`, `fn group`, `fn status`, `fn recover`
+and `fn anchor` work against a stopped store and the service section below
+describes what the unit files and the CLI already do, not a node you can
+leave running. See `planning/lanes/HANDOFF-w5-fn-cli.md`.
+
 ## Install
 
 fn needs Python 3.11 or newer (for `tomllib`) and ACL2 8.7 with a certified

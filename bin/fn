@@ -312,9 +312,15 @@ def command_run(settings, args):
                                                " ".join(str(error).split())))
         log.close()
         return exit_code_for(error), "run {}".format(error)
-    log.line("{} shutdown reason=control-quit".format(OUTCOME.get(code, "fault")))
+    if code == EXIT_OK:
+        log.line("accepted shutdown reason=control-quit store-released=yes")
+        log.close()
+        return EXIT_OK, "run stopped on a control QUIT; store released"
+    # The owner reported its own outcome and already released the store; its
+    # code is passed through unchanged.
+    log.line("{} service detail=owner-exit-{}".format(OUTCOME.get(code, "fault"), code))
     log.close()
-    return code, "run stopped"
+    return code, "run the owner did not serve (see the log or the journal)"
 
 
 # -----------------------------------------------------------------------------
