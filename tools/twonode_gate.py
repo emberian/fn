@@ -140,6 +140,59 @@ def split(text):
     return [one for one in text.split(",") if one]
 
 
+def post(args):
+    """POST one article on the live server (RFC 3977 section 6.3.1).
+
+    The owner's feed is driven by what becomes DURABLE, so the gate posts
+    through the server rather than through the CLI: the CLI needs the store
+    lock the running owner holds, and an article written behind the owner's
+    back would never reach fn-own-outcome and so would never be enqueued.
+    """
+    body = article(args.msgid, args.group, "owner-feed", "Posted through the server.")
+    conn = Conn(args.port)
+    out = {"greeting": conn.greeting}
+    first, _ = conn.cmd("POST")
+    out["post"] = first
+    if not first.startswith("340"):
+        conn.close()
+        out["ok"] = False
+        return out
+    send_block(conn, body.decode("ascii", "replace").split("\r\n"))
+    out["result"] = conn.read_line()
+    conn.close()
+    out["ok"] = out["result"].startswith("240")
+    return out
+
+
+def wait(args):
+    """Poll one node until it serves a Message-ID, or the deadline passes.
+
+    This is the only place the gate waits: the feed is asynchronous by
+    construction (the owner offers on its own tick), so "B has it" is a
+    question with a deadline, not an instant.
+    """
+    deadline = time.time() + args.seconds
+    out = {"msgid": args.msgid, "seconds": args.seconds}
+    attempts = 0
+    while time.time() < deadline:
+        attempts += 1
+        try:
+            status, lines = fetch(args.port, args.msgid)
+        except OSError:
+            status, lines = "", []
+        if status.startswith("220"):
+            out.update(ok=True, status=status, attempts=attempts,
+                       lines=len(lines))
+            if args.from_port:
+                source, source_lines = fetch(args.from_port, args.msgid)
+                out["source"] = source
+                out["identical"] = (lines == source_lines)
+            return out
+        time.sleep(0.5)
+    out.update(ok=False, status=status if "status" in dir() else "", attempts=attempts)
+    return out
+
+
 def presence(args):
     """Every msgid in --present must be served; every one in --absent must not."""
     conn = Conn(args.port)
@@ -281,7 +334,7 @@ def cut(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="phase", required=True)
-    for name in ("presence", "relay", "cut"):
+    for name in ("presence", "relay", "cut", "post", "wait"):
         one = sub.add_parser(name)
         one.add_argument("--port", type=int, default=0)
         one.add_argument("--from-port", type=int, default=0)
@@ -295,8 +348,10 @@ def main():
         one.add_argument("--loop-identity", default="peer.example.invalid")
         one.add_argument("--mode", default="post")
         one.add_argument("--pid", type=int, default=0)
+        one.add_argument("--seconds", type=float, default=30.0)
     args = parser.parse_args()
-    handler = {"presence": presence, "relay": relay, "cut": cut}[args.phase]
+    handler = {"presence": presence, "relay": relay, "cut": cut,
+               "post": post, "wait": wait}[args.phase]
     try:
         result = handler(args)
     except Exception as error:
@@ -651,6 +706,162 @@ else echo NONE; fi
                 .format(result.get("loop_result")))
         self.b.rejected.append(LOOP_ID)
 
+    def scenario_owner_feed(self):
+        """A posts, A's OWN feed offers it to B, and then the other way.
+
+        This is the outbound half the wave-9 handoff recorded as not
+        delivered.  The offering side here is fn's feed -- the feed table in
+        books/owner-feed.lisp, stepped by the owner and driven by
+        tools/run_owner.py -- and not this harness's socket client, which is
+        what scenario_feed uses.  Nothing is posted through the CLI: the
+        running owner holds the store lock, and an article written behind it
+        would never reach fn-own-outcome and so would never be enqueued.
+        """
+        if not (self.a.post_enabled and self.b.post_enabled):
+            for direction in ("A to B", "B to A"):
+                self.skip("owner feed: {}".format(direction),
+                          "run_owner.py Feed (books/owner-feed.lisp)",
+                          "owner feed: neither node serves POST on this commit, so "
+                          "nothing can become durable for a feed to offer.")
+            return
+        delivered = {}
+        for source, target, tag in ((self.a, self.b, "ab"), (self.b, self.a, "ba")):
+            msgid = "<fed-{}@example.invalid>".format(tag)
+            posted = self.feed("post", "--port {} --msgid '{}' --group {}".format(
+                source.port, msgid, GROUPS[0]),
+                name="owner feed: {} posts {}".format(source.upper, msgid),
+                expect=None)
+            if not self.payload(posted).get("ok"):
+                self.gaps.append(
+                    "owner feed: POST of {} on node {} answered '{}', not 240, so the "
+                    "feed had nothing durable to offer and the {} direction was not "
+                    "exercised.".format(msgid, source.upper,
+                                        self.payload(posted).get("result", "nothing"),
+                                        tag.upper()))
+                continue
+            source.accepted.append(msgid)
+            arrival = self.feed(
+                "wait", "--port {} --from-port {} --msgid '{}' --seconds 60".format(
+                    target.port, source.port, msgid),
+                name="owner feed: {} receives {} from {}'s feed".format(
+                    target.upper, msgid, source.upper),
+                expect=None)
+            result = self.payload(arrival)
+            delivered[tag] = bool(result.get("ok"))
+            self.facts["owner feed {}".format(tag)] = (
+                "status={} attempts={} identical={}".format(
+                    result.get("status", "none"), result.get("attempts"),
+                    result.get("identical")))
+            if not result.get("ok"):
+                self.gaps.append(
+                    "owner feed: node {} never served {} within 60 s of node {} "
+                    "accepting it, so the outbound feed did not transfer it. Every "
+                    "row below about the {} direction is about an article that did "
+                    "not cross.".format(target.upper, msgid, source.upper, tag.upper()))
+                continue
+            target.accepted.append(msgid)
+            if result.get("identical") is False:
+                self.gaps.append(
+                    "owner feed: node {} serves {} but not byte for byte as node {} "
+                    "serves it: a relaying agent must alter nothing but Path and Xref "
+                    "(RFC 5537 3.6).".format(target.upper, msgid, source.upper))
+            # The duplicate path on a SECOND offer of the same article, by
+            # hand: the peer's own history is what makes a re-offer safe
+            # after a restart (RFC 3977 6.3.2, RFC 4644 2.4).
+            again = self.feed(
+                "relay",
+                "--from-port {} --to-port {} --msgid '{}' --group {} "
+                "--loop-msgid '{}' --loop-identity {}".format(
+                    source.port, target.port, msgid, GROUPS[0], LOOP_ID,
+                    target.path_identity),
+                name="owner feed: a second offer of {} draws 435/438".format(msgid),
+                expect=None)
+            second = self.payload(again)
+            self.facts["owner feed {} duplicate".format(tag)] = (
+                "ihave={} check={} takethis={}".format(
+                    second.get("offer"), second.get("check_duplicate"),
+                    second.get("takethis_duplicate")))
+            if not str(second.get("offer", "")).startswith("435"):
+                self.gaps.append(
+                    "owner feed: re-offering {} to node {} drew '{}', not 435: the "
+                    "history answer that makes a restart-by-offer safe is not there."
+                    .format(msgid, target.upper, second.get("offer")))
+            if not str(second.get("check_duplicate", "")).startswith("438"):
+                self.gaps.append(
+                    "owner feed: CHECK of {} on node {} drew '{}', not 438."
+                    .format(msgid, target.upper, second.get("check_duplicate")))
+        self.facts["owner feed"] = "A->B {} ; B->A {}".format(
+            delivered.get("ab"), delivered.get("ba"))
+
+    def scenario_feed_restart(self):
+        """K5: kill -9 A with an offer outstanding; the re-offer delivers once.
+
+        Node B is stopped first, so A's feed has an entry it cannot deliver
+        and the (:feed-enqueue ...) record is on disk with no outcome.  A is
+        then killed with SIGKILL -- no shutdown path runs -- and both nodes
+        are restarted.  fn-own-reopen restarts every feed, which fences the
+        in-flight entry back to :queued with its attempt retired, so the next
+        command for it is a CHECK or an IHAVE and never a blind TAKETHIS; B's
+        own history absorbs the one retransmission a lost reply can cause.
+        What this asserts is that B ends with exactly ONE copy.
+        """
+        if not self.a.post_enabled:
+            self.skip("owner feed: restart by offer (K5)",
+                      "kill -9 with an offer outstanding",
+                      "owner feed: node A does not serve POST on this commit")
+            return
+        msgid = "<fed-restart@example.invalid>"
+        self.stop_node(self.b)
+        posted = self.feed("post", "--port {} --msgid '{}' --group {}".format(
+            self.a.port, msgid, GROUPS[0]),
+            name="owner feed: A posts {} while B is down".format(msgid), expect=None)
+        if not self.payload(posted).get("ok"):
+            self.gaps.append(
+                "owner feed: POST of {} on node A answered '{}' while B was down, so "
+                "the restart scenario had no queued offer to resolve."
+                .format(msgid, self.payload(posted).get("result", "nothing")))
+            self.start_node(self.b, tag="restart")
+            return
+        journal = self.sh(
+            "owner feed: A's FNFD journal for B",
+            "ls -l {}/feed/ 2>/dev/null | tail -5 || echo NO-FEED-JOURNAL".format(
+                self.a.store), expect=None)
+        self.facts["feed journal"] = journal.output.strip().splitlines()[-1] \
+            if journal.output.strip() else "none"
+        if "NO-FEED-JOURNAL" in journal.output:
+            self.gaps.append(
+                "owner feed: node A wrote no <store>/feed/*.fnfd file while an offer "
+                "was outstanding, so nothing on disk records the decision to offer "
+                "and the restart below resolves from memory that did not survive.")
+        self.sh("owner feed: kill -9 node A", "kill -9 {} || true".format(self.a.pid),
+                expect=None)
+        self.start_node(self.b, tag="restart")
+        if not self.start_node(self.a, tag="restart"):
+            self.gaps.append("owner feed: node A did not restart after the kill")
+            return
+        arrival = self.feed(
+            "wait", "--port {} --from-port {} --msgid '{}' --seconds 90".format(
+                self.b.port, self.a.port, msgid),
+            name="owner feed: B receives {} after A's restart (K5)".format(msgid),
+            expect=None)
+        result = self.payload(arrival)
+        self.facts["owner feed restart"] = "status={} attempts={} identical={}".format(
+            result.get("status", "none"), result.get("attempts"),
+            result.get("identical"))
+        if not result.get("ok"):
+            self.gaps.append(
+                "owner feed: after `kill -9` of node A and a restart of both nodes, "
+                "node B never served {} within 90 s. K5's restart-by-offer is NOT "
+                "evidenced by this run.".format(msgid))
+            return
+        self.b.accepted.append(msgid)
+        counted = self.feed(
+            "presence", "--port {} --groups {} --present '{}'".format(
+                self.b.port, GROUPS[0], msgid),
+            name="owner feed: B holds {} once after the restart".format(msgid),
+            expect=None)
+        self.facts["owner feed restart copies"] = str(self.payload(counted))
+
     def scenario_kill(self):
         """Kill B inside a transfer it agreed to take; recover it; reread both."""
         mode = ("transit" if self.b.transit and self.b.transit.startswith("335")
@@ -799,6 +1010,8 @@ else echo NONE; fi
         self.peer_records()
         self.scenario_independent()
         self.scenario_feed()
+        self.scenario_owner_feed()
+        self.scenario_feed_restart()
         self.scenario_kill()
         self.scenario_tcpcl()
         for node in self.nodes:

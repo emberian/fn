@@ -215,9 +215,6 @@
     "tests/acl2/nntp-auth-tests",
     "books/served",
     "tests/acl2/served-tests",
-    "books/owner",
-    "books/owner-invariants",
-    "tests/acl2/owner-tests",
     "books/config-stream",
     "tests/acl2/config-stream-tests",
     "books/owner-config",
@@ -235,6 +232,11 @@
     "books/peer-feed",
     "books/peer-feed-invariants",
     "tests/acl2/peer-feed-tests",
+    "books/owner-feed",
+    "tests/acl2/owner-feed-tests",
+    "books/owner",
+    "books/owner-invariants",
+    "tests/acl2/owner-tests",
     "books/relay",
     "books/relay-invariants",
     "books/relay-crash-invariants",
@@ -270,26 +272,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 267,
-    "books_in_root_closure": 266,
-    "roots": 266,
-    "theorems": 5241,
-    "functions": 3748,
-    "assert_events": 4979,
+    "books": 269,
+    "books_in_root_closure": 268,
+    "roots": 268,
+    "theorems": 5336,
+    "functions": 3826,
+    "assert_events": 5081,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
       "verified": 1398,
-      "declared-off": 183,
-      "default-guarded": 1673,
+      "declared-off": 187,
+      "default-guarded": 1747,
       "default-unguarded": 494
     },
-    "suspect_theorems": 40,
+    "suspect_theorems": 41,
     "export_hygiene_warnings": 72,
     "teeth_form_warnings": 0,
-    "include_hygiene_warnings": 86,
+    "include_hygiene_warnings": 87,
     "host_names_warnings": 0,
-    "hand_written_record_warnings": 19
+    "hand_written_record_warnings": 18
   },
   "books": [
     {
@@ -1587,11 +1589,11 @@
       "book": "books/byte-store-scan.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 38,
-      "functions": 28,
+      "theorems": 45,
+      "functions": 32,
       "guards": {
         "verified": 0,
-        "declared-off": 23,
+        "declared-off": 27,
         "default-guarded": 0,
         "default-unguarded": 5
       },
@@ -1608,7 +1610,9 @@
       "system_includes": [
         "arithmetic/top"
       ],
-      "suspects": [],
+      "suspects": [
+        "fn-bs-names-outcomes-of-no-ops"
+      ],
       "read_error": null
     },
     {
@@ -1725,7 +1729,7 @@
       "book": "books/checkpoint-publish.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 53,
+      "theorems": 57,
       "functions": 49,
       "guards": {
         "verified": 13,
@@ -1740,7 +1744,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "checkpoint-codec"
+        "checkpoint-codec",
+        "defrecord"
       ],
       "system_includes": [],
       "suspects": [],
@@ -3021,6 +3026,33 @@
       "read_error": null
     },
     {
+      "book": "books/owner-feed.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 74,
+      "functions": 54,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 54,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "article-fields",
+        "peer-config",
+        "peer-feed-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/owner-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -3051,12 +3083,12 @@
       "book": "books/owner.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 45,
-      "functions": 77,
+      "theorems": 46,
+      "functions": 95,
       "guards": {
         "verified": 0,
         "declared-off": 3,
-        "default-guarded": 74,
+        "default-guarded": 92,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -3067,6 +3099,7 @@
       "encapsulates": 0,
       "includes": [
         "clock",
+        "owner-feed",
         "served",
         "store-observed"
       ],
@@ -3130,7 +3163,7 @@
       "book": "books/peer-feed-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 99,
+      "theorems": 106,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -3211,7 +3244,7 @@
       "book": "books/peer-inbound.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 48,
+      "theorems": 50,
       "functions": 56,
       "guards": {
         "verified": 6,
@@ -6322,6 +6355,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/owner-feed-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 98,
+      "must_fails": 0,
+      "defconsts": 23,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-feed"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/owner-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -6334,7 +6392,7 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 151,
+      "assert_events": 155,
       "must_fails": 0,
       "defconsts": 56,
       "defmacros": 0,
@@ -7352,6 +7410,14 @@
       ]
     },
     {
+      "theorem": "fn-bs-names-outcomes-of-no-ops",
+      "book": "books/byte-store-scan.lisp",
+      "line": 295,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-bs-names-outcomes and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-clock-drop-permission-is-exactly-expired-by-definition",
       "book": "books/clock-invariants.lisp",
       "line": 164,
@@ -7786,7 +7852,7 @@
       {
         "theorem": "fn-cpp-crash-marker-is-authority-before-selection-attempted",
         "book": "books/checkpoint-publish.lisp",
-        "line": 704,
+        "line": 529,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -8289,6 +8355,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/owner-feed.lisp",
+        "line": 51,
+        "include": "article-fields",
+        "included": "books/article-fields.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/path.lisp",
         "line": 21,
         "include": "article-fields",
@@ -8683,15 +8756,6 @@
         "reason": "hand-written record: 1 shape predicate(s) (fn-cbor-result-shapep) and 4 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
       },
       {
-        "book": "books/checkpoint-publish.lisp",
-        "line": 42,
-        "shape": "fn-cpp-entry-shapep",
-        "shapes": 3,
-        "accessors": 13,
-        "variable": "x",
-        "reason": "hand-written record: 3 shape predicate(s) (fn-cpp-entry-shapep, fn-cpp-image-shapep, fn-cpp-shapep) and 13 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
-      },
-      {
         "book": "books/checkpoint.lisp",
         "line": 18,
         "shape": "fn-checkpoint-shapep",
@@ -8747,7 +8811,7 @@
       },
       {
         "book": "books/owner.lisp",
-        "line": 83,
+        "line": 90,
         "shape": "fn-own-conn-shapep",
         "shapes": 5,
         "accessors": 6,

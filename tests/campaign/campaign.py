@@ -139,10 +139,12 @@ class Report:
 
 class Campaign:
     def __init__(self, workdir: Path, quick: bool = False,
+                 only: tuple[str, ...] | None = None,
                  scenarios: tuple[str, ...] | None = None,
                  log=lambda message: None, model_images: bool = False):
         self.workdir = Path(workdir)
         self.quick = quick
+        self.only = only
         self.scenarios = scenarios
         self.log = log
         self.templates: dict[str, Path] = {}
@@ -705,6 +707,8 @@ class Campaign:
                              for cut in cuts_module.model_gaps()]
         started = time.monotonic()
         for scenario, cut in cuts_module.pairs(self.quick):
+            if self.only and cut.cut_id not in self.only:
+                continue
             if self.scenarios and scenario not in self.scenarios:
                 continue
             case_started = time.monotonic()
@@ -726,6 +730,10 @@ def main(argv=None) -> int:
     parser.add_argument("--quick", action="store_true",
                         help="run the marked subset of cuts only")
     parser.add_argument("--scenario", action="append", dest="scenarios")
+    parser.add_argument("--cut", action="append", dest="only",
+                        help="run only these cut ids (component:point); "
+                             "repeatable. For checking a newly added cut "
+                             "without paying for the whole table.")
     parser.add_argument("--json", default=None,
                         help="write the report here; a relative path is "
                              "under the worktree this was invoked from")
@@ -741,7 +749,8 @@ def main(argv=None) -> int:
         campaign = Campaign(workdir, quick=args.quick,
                             scenarios=tuple(args.scenarios) if args.scenarios else None,
                             log=lambda message: print(message, flush=True),
-                            model_images=args.model_images)
+                            model_images=args.model_images,
+                            only=tuple(args.only) if args.only else None)
         report = campaign.run()
     finally:
         if not args.keep:

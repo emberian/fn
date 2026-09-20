@@ -410,6 +410,34 @@
              (fn-feed-queue-set-state xs msgid (fn-feed-offered a)) m))
    :rule-classes nil))
 
+; The `:feed-sent' arm of the replay fold is the one place where the journal
+; can name an attempt the live machine would never have written, and the
+; arm's hypotheses are then CONTRADICTORY: `fn-feed-attempts-belowp' puts an
+; in-flight entry's attempt strictly below the bound, and an `fn-feed-offeredp'
+; entry is in flight, so a `(:feed-sent ... a)' record with `a' at or above
+; `fn-feed-next-attempt' cannot be reached.  This is
+; `fn-feed-inflight-attempt-is-below-the-bound' restated over `fn-bp-nth',
+; which is what `fn-feed-state-attempt' opens to and what the arm's goal
+; carries, and over `fn-feed-offeredp' rather than `fn-feed-state-inflightp',
+; which the arm closes.
+;
+; `:rule-classes nil' and cited by `:use' at exactly that instance, DELIBERATELY:
+; the same join supplied as a forward-chaining rule into the closed
+; `fn-feed-state-inflightp' plus a `:linear' rule triggered on
+; `fn-feed-state-of' fires under every arm of the dispatcher's case split and
+; turned a 150 s certification into a runaway killed at the timeout with no
+; checkpoint (run `run-20260920T191056Z-aa48`, recorded in
+; planning/lanes/HANDOFF-w6-peering-feed.md and on the board).  Do not promote
+; this to a rule.
+(local
+ (defthm fn-feed-sent-record-above-the-bound-is-unreachable
+   (implies (and (fn-feed-attempts-belowp xs n)
+                 (fn-feed-offeredp (fn-feed-state-of msgid xs)))
+            (< (fn-bp-nth 1 (fn-feed-state-of msgid xs)) (nfix n)))
+   :rule-classes nil
+   :hints (("Goal"
+            :use ((:instance fn-feed-inflight-attempt-is-below-the-bound))))))
+
 (defthm fn-feed-offer-preserves-feedp
   (implies (fn-feedp f) (fn-feedp (mv-nth 0 (fn-feed-offer f msgid))))
   :hints (("Goal"
@@ -442,6 +470,36 @@
 
 (defthm fn-feed-give-up-preserves-feedp
   (implies (fn-feedp f) (fn-feedp (fn-feed-give-up f msgid reason))))
+
+; The -preserves-peer members of the same family.  Without them
+; fn-feed-apply-record-preserves-peer has one key checkpoint per arm,
+; because that proof keeps every arm closed and so needs each arm's own
+; rewrite -- exactly as -preserves-feedp does.  These three are the arms
+; fn-feed-apply-record calls as single-valued functions; the rest it
+; builds inline with (fn-feed-peer f) in the peer slot.
+(defthm fn-feed-give-up-preserves-peer
+  (equal (fn-feed-peer (fn-feed-give-up f msgid reason)) (fn-feed-peer f))
+  :hints (("Goal" :in-theory (e/d ((:d fn-feed-give-up)) ((:d fn-feedp))))))
+
+(defthm fn-feed-restart-preserves-peer
+  (equal (fn-feed-peer (fn-feed-restart f)) (fn-feed-peer f))
+  :hints (("Goal" :in-theory (e/d ((:d fn-feed-restart)) ((:d fn-feedp))))))
+
+(defthm fn-feed-enqueue-preserves-peer
+  (equal (fn-feed-peer (fn-feed-enqueue f msgid tick)) (fn-feed-peer f))
+  :hints (("Goal" :in-theory (e/d ((:d fn-feed-enqueue)) ((:d fn-feedp))))))
+
+(defthm fn-feed-done-preserves-peer
+  (equal (fn-feed-peer (fn-feed-done f msgid)) (fn-feed-peer f))
+  :hints (("Goal" :in-theory (e/d ((:d fn-feed-done)) ((:d fn-feedp))))))
+
+(defthm fn-feed-back-off-preserves-peer
+  (equal (fn-feed-peer (fn-feed-back-off f msgid obs)) (fn-feed-peer f))
+  :hints (("Goal" :in-theory (e/d ((:d fn-feed-back-off)) ((:d fn-feedp))))))
+
+(defthm fn-feed-lost-preserves-peer
+  (equal (fn-feed-peer (fn-feed-lost f obs)) (fn-feed-peer f))
+  :hints (("Goal" :in-theory (e/d ((:d fn-feed-lost)) ((:d fn-feedp))))))
 
 (defthm fn-feed-restart-preserves-feedp
   (implies (fn-feedp f) (fn-feedp (fn-feed-restart f))))
@@ -510,10 +568,23 @@
                             (m (if (< (fn-feed-record-nat 2 values)
                                       (fn-feed-next-attempt f))
                                    (fn-feed-next-attempt f)
-                                   (+ 1 (fn-feed-record-nat 2 values)))))))))
+                                   (+ 1 (fn-feed-record-nat 2 values)))))
+                 (:instance fn-feed-sent-record-above-the-bound-is-unreachable
+                            (xs (fn-feed-queue f))
+                            (n (fn-feed-next-attempt f))
+                            (msgid (fn-frame-item 1 values)))))))
 
+; The fold over the journal, and the same discipline as the three composite
+; theorems above: the fold stays OPEN (it is the induction) and the record
+; step stays CLOSED, so `fn-feed-apply-record-preserves-feedp' is the rewrite
+; that carries the recognizer across one record.  Measured on 2026-09-20: with
+; `fn-feed-apply-record' open the induction step re-splits the dispatcher
+; under every arm and the form did not finish in 1800 s (run
+; `run-20260920T200246Z-fa0b'); closed, it is seconds.  `fn-feedp' is closed
+; with it, or the keystone's conclusion cannot match.
 (defthm fn-feed-replay-preserves-feedp
-  (implies (fn-feedp f) (fn-feedp (fn-feed-replay f es))))
+  (implies (fn-feedp f) (fn-feedp (fn-feed-replay f es)))
+  :hints (("Goal" :in-theory (disable (:d fn-feed-apply-record) (:d fn-feedp)))))
 
 (defthm fn-feed-apply-record-preserves-peer
   (implies (fn-feedp f)
@@ -529,9 +600,13 @@
                             ; preservation rewrite no longer matches.
                             mv-nth))))
 
+; The same closure, for the same reason: the two record-step keystones
+; (`-preserves-peer' for the value and `-preserves-feedp' for the induction
+; hypothesis) are the rewrites, and they only match with the step closed.
 (defthm fn-feed-replay-preserves-peer
   (implies (fn-feedp f)
-           (equal (fn-feed-peer (fn-feed-replay f es)) (fn-feed-peer f))))
+           (equal (fn-feed-peer (fn-feed-replay f es)) (fn-feed-peer f)))
+  :hints (("Goal" :in-theory (disable (:d fn-feed-apply-record) (:d fn-feedp)))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE: replay is a fold, so it is deterministic and order is all that
