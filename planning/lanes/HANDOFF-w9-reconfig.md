@@ -62,11 +62,23 @@ it is the milestone's own current task — so nothing that includes it can
 certify. A closure run for `books/owner` and `books/owner-invariants` was
 submitted to persvati at the start of this lane
 (`run-20260920T175315Z-343c`, remote root `/home/ember/fn-lanes/w9-reconfig`,
-`installed 163, uncached 58`) and was still inside `books/served` after 1h45m
-with the box co-tenant to two other lanes' runs. Whoever picks this up:
-`tools/farm.py status persvati --remote-root /home/ember/fn-lanes/w9-reconfig`,
-then certify `books/owner-config` there. Parens balance; nothing else about
-it has been checked by a prover.
+`installed 163, uncached 58`). **It failed, and not for a proof reason.**
+`books/served` died in 0.02 s at `(INCLUDE-BOOK "nntp-post")` with "that book
+is not certified": with `--jobs 8` the runner started `served` before
+`books/nntp-post` had finished, and `books/owner` was blocked behind it. So
+the evidence does NOT say `books/served` or `books/owner` fails to certify --
+only that this parallel run mis-ordered them. Whoever picks this up: retry
+serially, `python3 tools/farm.py submit persvati --jobs 1 --remote-root
+/home/ember/fn-lanes/w9-reconfig --closure books/owner books/owner-invariants
+books/owner-config`, then `wait` with the same `--remote-root` (omitting it
+silently polls the laptop's own path and reports "no runs"). Parens in
+`books/owner-config.lisp` balance and every symbol it names resolves to a
+`defun` under `books/`; nothing else about it has been checked by a prover.
+
+**The worktree `build/lanes/w9-reconfig` was removed under this lane** by the
+cycle's worktree sweep while it was still working; every commit is on branch
+`w9/reconfig` (`dd8ac86`) and nothing was lost, but the stray directory left
+behind holds this lane's certification evidence under `build/acl2/`.
 
 **R6, capacity.** `fn store capacity <n>` and `run_store.py capacity <n>`.
 `fn-store-cfg-reconfigure (kind name-octets n monotonic wall state)` accepts
