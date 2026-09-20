@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 260 |
-| Certification roots in the Makefile | 257 |
-| Books inside the root closure | 257 |
-| `defthm` and `defthmd` events | 5021 |
-| `defun` events | 3642 |
-| Functions with verified guards | 1371 |
-| Functions declared `:verify-guards nil` and never verified | 166 |
-| Functions left at the default with an explicit guard | 1616 |
+| Books read | 262 |
+| Certification roots in the Makefile | 259 |
+| Books inside the root closure | 259 |
+| `defthm` and `defthmd` events | 5110 |
+| `defun` events | 3712 |
+| Functions with verified guards | 1380 |
+| Functions declared `:verify-guards nil` and never verified | 163 |
+| Functions left at the default with an explicit guard | 1680 |
 | Functions left at the default with no guard | 489 |
-| `assert-event` checks | 4854 |
+| `assert-event` checks | 4952 |
 | `must-fail` checks | 59 |
 | `encapsulate` events | 16 |
-| Theorems flagged SUSPECT by shape | 37 |
+| Theorems flagged SUSPECT by shape | 38 |
 | Export-hygiene warnings | 75 |
 | Teeth-form warnings | 0 |
-| Include-hygiene warnings | 88 |
-| Host-names warnings | 0 |
+| Include-hygiene warnings | 89 |
+| Host-names warnings | 4 |
 | Hand-written-record warnings | 28 |
 
 ## Lints
@@ -169,14 +169,15 @@ that `make certify` requests.
 | `books/node-traces.lisp` | root | 12 | 23 | 0/0/23/0 | 0 | 0 | 0 |
 | `books/node.lisp` | root | 31 | 33 | 27/0/6/0 | 0 | 0 | 2 |
 | `books/owner-config.lisp` | root | 19 | 34 | 0/4/30/0 | 0 | 0 | 1 |
+| `books/owner-feed.lisp` | root | 74 | 52 | 0/4/48/0 | 0 | 0 | 0 |
 | `books/owner-invariants.lisp` | root | 95 | 7 | 0/0/0/7 | 0 | 0 | 0 |
-| `books/owner.lisp` | root | 45 | 77 | 0/3/74/0 | 0 | 0 | 0 |
+| `books/owner.lisp` | root | 46 | 93 | 0/5/88/0 | 0 | 0 | 0 |
 | `books/path.lisp` | root | 0 | 21 | 0/0/21/0 | 0 | 0 | 0 |
 | `books/peer-config.lisp` | root | 24 | 27 | 0/0/27/0 | 0 | 0 | 0 |
 | `books/peer-feed-invariants.lisp` | root | 88 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/peer-feed.lisp` | root | 35 | 100 | 3/0/97/0 | 0 | 0 | 0 |
 | `books/peer-inbound-invariants.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/peer-inbound.lisp` | root | 37 | 54 | 0/10/44/0 | 0 | 0 | 0 |
+| `books/peer-inbound.lisp` | root | 51 | 54 | 9/1/44/0 | 0 | 0 | 1 |
 | `books/policy-invariants.lisp` | root | 32 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/policy.lisp` | root | 13 | 29 | 1/0/28/0 | 0 | 0 | 0 |
 | `books/principal-invariants.lisp` | root | 19 | 0 | 0/0/0/0 | 0 | 0 | 1 |
@@ -292,6 +293,7 @@ that `make certify` requests.
 | `tests/acl2/nntp-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 2 | 0 |
 | `tests/acl2/nntp-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 165 | 0 | 0 |
 | `tests/acl2/node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 92 | 0 | 0 |
+| `tests/acl2/owner-feed-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 98 | 0 | 0 |
 | `tests/acl2/owner-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 151 | 0 | 0 |
 | `tests/acl2/peer-feed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 96 | 0 | 0 |
 | `tests/acl2/peer-inbound-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 145 | 0 | 0 |
@@ -364,6 +366,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-node-stale-completion-is-no-op` | `books/node.lisp` | 561 | branch-of-definition: the hypothesis is a branch test of fn-node-complete and the conclusion is that branch's value |
 | `fn-nov-missing-header-is-empty` | `books/nntp-overview.lisp` | 99 | branch-of-definition: the hypothesis negates a branch test of fn-nov-header-content and the conclusion is that branch's value |
 | `fn-ocfg-refused-reconfiguration-changes-nothing` | `books/owner-config.lisp` | 514 | branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value |
+| `fn-peer-consistent-forward` | `books/peer-inbound.lisp` | 485 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-peer-session-consistentp |
 | `fn-prin-apply-succession-when-not-acceptable` | `books/principal-invariants.lisp` | 205 | branch-of-definition: the hypothesis negates a branch test of fn-prin-apply-succession and the conclusion is that branch's value |
 | `fn-record-result-okp-is-parse-okp` | `books/records-canonicality.lisp` | 600 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-retain-admission-refusal-is-no-op` | `books/retention.lisp` | 508 | branch-of-definition: the hypothesis negates a branch test of fn-retain-admit and the conclusion is that branch's value |

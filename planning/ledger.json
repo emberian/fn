@@ -209,9 +209,6 @@
     "tests/acl2/nntp-auth-tests",
     "books/served",
     "tests/acl2/served-tests",
-    "books/owner",
-    "books/owner-invariants",
-    "tests/acl2/owner-tests",
     "books/config-stream",
     "tests/acl2/config-stream-tests",
     "books/owner-config",
@@ -229,6 +226,11 @@
     "books/peer-feed",
     "books/peer-feed-invariants",
     "tests/acl2/peer-feed-tests",
+    "books/owner-feed",
+    "tests/acl2/owner-feed-tests",
+    "books/owner",
+    "books/owner-invariants",
+    "tests/acl2/owner-tests",
     "books/relay",
     "books/relay-invariants",
     "books/relay-crash-invariants",
@@ -261,25 +263,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 260,
-    "books_in_root_closure": 257,
-    "roots": 257,
-    "theorems": 5021,
-    "functions": 3642,
-    "assert_events": 4854,
+    "books": 262,
+    "books_in_root_closure": 259,
+    "roots": 259,
+    "theorems": 5110,
+    "functions": 3712,
+    "assert_events": 4952,
     "must_fails": 59,
     "encapsulates": 16,
     "guards": {
-      "verified": 1371,
-      "declared-off": 166,
-      "default-guarded": 1616,
+      "verified": 1380,
+      "declared-off": 163,
+      "default-guarded": 1680,
       "default-unguarded": 489
     },
-    "suspect_theorems": 37,
+    "suspect_theorems": 38,
     "export_hygiene_warnings": 75,
     "teeth_form_warnings": 0,
-    "include_hygiene_warnings": 88,
-    "host_names_warnings": 0,
+    "include_hygiene_warnings": 89,
+    "host_names_warnings": 4,
     "hand_written_record_warnings": 28
   },
   "books": [
@@ -2926,6 +2928,33 @@
       "read_error": null
     },
     {
+      "book": "books/owner-feed.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 74,
+      "functions": 52,
+      "guards": {
+        "verified": 0,
+        "declared-off": 4,
+        "default-guarded": 48,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "article-fields",
+        "peer-config",
+        "peer-feed-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/owner-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -2956,12 +2985,12 @@
       "book": "books/owner.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 45,
-      "functions": 77,
+      "theorems": 46,
+      "functions": 93,
       "guards": {
         "verified": 0,
-        "declared-off": 3,
-        "default-guarded": 74,
+        "declared-off": 5,
+        "default-guarded": 88,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -2972,6 +3001,7 @@
       "encapsulates": 0,
       "includes": [
         "clock",
+        "owner-feed",
         "served",
         "store-observed"
       ],
@@ -3116,15 +3146,15 @@
       "book": "books/peer-inbound.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 37,
+      "theorems": 51,
       "functions": 54,
       "guards": {
-        "verified": 0,
-        "declared-off": 10,
+        "verified": 9,
+        "declared-off": 1,
         "default-guarded": 44,
         "default-unguarded": 0
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 9,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 2,
@@ -3137,7 +3167,9 @@
         "peer-config"
       ],
       "system_includes": [],
-      "suspects": [],
+      "suspects": [
+        "fn-peer-consistent-forward"
+      ],
       "read_error": null
     },
     {
@@ -6137,6 +6169,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/owner-feed-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 98,
+      "must_fails": 0,
+      "defconsts": 23,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-feed"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/owner-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -7282,6 +7339,14 @@
       ]
     },
     {
+      "theorem": "fn-peer-consistent-forward",
+      "book": "books/peer-inbound.lisp",
+      "line": 485,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-peer-session-consistentp"
+      ]
+    },
+    {
       "theorem": "fn-prin-apply-succession-when-not-acceptable",
       "book": "books/principal-invariants.lisp",
       "line": 205,
@@ -8080,6 +8145,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/owner-feed.lisp",
+        "line": 51,
+        "include": "article-fields",
+        "included": "books/article-fields.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/path.lisp",
         "line": 21,
         "include": "article-fields",
@@ -8451,7 +8523,36 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       }
     ],
-    "host_names": [],
+    "host_names": [
+      {
+        "host": "host/owner-host.lisp",
+        "line": 602,
+        "name": "fn-own-feed-effect-octets",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 602,
+        "name": "fn-own-feed-effect-peer",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 614,
+        "name": "fn-own-tick-peer-records",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 614,
+        "name": "fn-own-tick-peer",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
+      }
+    ],
     "hand_written_record": [
       {
         "book": "books/acceptance.lisp",
@@ -8599,7 +8700,7 @@
       },
       {
         "book": "books/owner.lisp",
-        "line": 83,
+        "line": 90,
         "shape": "fn-own-conn-shapep",
         "shapes": 5,
         "accessors": 6,

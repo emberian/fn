@@ -1231,3 +1231,53 @@ Open at the end of this lane, with the obligation each one needs:
 | K5's crash-replay evidence (milestone 4) | **not delivered** | depends on the feed |
 | `tools/twonode_gate.py` feed scenario | the inbound half is real (IHAVE, 435 duplicate, loop, CHECK 438, TAKETHIS 439, reread byte-identical); the offering side is the harness's socket client, not fn's feed | the feed lane's outbound half |
 | `tools/inn_lab.py` | the fn node now writes a peer record for INN before it starts, so innfeed's connection resolves to a peer; the lab was not run on hbox in this lane | one lab run on hbox with INN 2.7.4 |
+
+## Status (wave 10, `w10/owner-feed`, the owner drives the feed)
+
+Milestone 3 of the wave-9 handoff, and the parts of milestones 4 and 5 that
+depend on it. What is built, what differs from the design above, and what is
+open.
+
+| Design text | Built as | Difference |
+| --- | --- | --- |
+| §3.1 "One feed state per configured outbound peer, all inside F_node's state as a new field `feeds`" | the OWNER's state, not F_node's: `books/owner.lisp`'s record gains a thirteenth field `feeds` holding `books/owner-feed.lisp`'s table | F_node (`books/ideal.lisp`) is still the reader-only skeleton, so the feed lives where the host actually steps it. K6's restatement over `fn-ideal-*` is still open. |
+| §3.1 "an alist by peer name" | a list of `(name record feed)`, `fn-own-feed-tablep` | The entry carries the peer's `fn-cfg-peerp` beside its `fn-feedp`, so the scope decision on the durable path needs no configuration argument: `fn-cfg-peers` is read once, at `fn-own-feed-reconfigure`. The recognizer binds the three names of one peer — the key (the string the configuration and the scheduler use), `fn-feed-peer` (the same name as FNFD `:text` octets) and `fn-sched-contact-peer` of the feed's contact — which is the obligation the w6 handoff recorded as the owner's and unproved. |
+| §3.2 `fn-feed-offerablep` | `fn-own-feed-offerablep record origin groups path` (`books/owner-feed.lisp`) | Same three refusals in the same order: the peer's outbound wildmat over the article's own Newsgroups names, `fn-path-names-p` against the peer's path-identity, and the origin peer. It takes the article's *octets*' readings rather than a parsed article, because the owner has octets. |
+| §3.1 "`:tick` is the scheduler's tick for that peer" | `fn-own-feed-tick-peer`, one `fn-feed-tick-step` per peer under that peer's own `fn-sched-contactp` | **Difference, recorded.** The owner's feed tick does NOT route through `fn-sched-table-tick`. `fn-sched-tick-step` selects an `fn-sched-item` work and drives a BP attempt; its effects are `fn-bp-result-effects` and its queue is not the feed queue, so routing the feed through it would add a table that decides nothing about the feed and would make `fn-sched-table-tick-is-the-peer-tick` a decoration. What the feed does take from the scheduler is the contact model: `fn-feed-selection` gates on `fn-sched-contact-holdsp` of the feed's own contact, whose peer the table binds to the key. |
+| §3.3 "(:feed-restart peer) on open, before any offer" | `fn-own-reopen` restarts every feed; `fn-owner-feed-restart` writes one record per peer | The restart is in the owner's crash-recovery transition itself, so it cannot be forgotten by the host. |
+| "an ACL2-side `fn-feed-parse-response`" (w6 status, open) | `fn-own-feed-response-code` and `fn-own-feed-parse-response` | **Closed.** RFC 3977 §3.2's three-digit split is ACL2's; `tools/run_feed.py`'s `status()` is deleted and `Acl2Feed.response_code` calls the book. The Message-ID a CHECK or TAKETHIS reply echoes is not read back at all: at most one entry is in flight per peer (`fn-feedp`), so the owner's own in-flight Message-ID is the unambiguous subject. |
+| "the peer enumeration" (host `:program` twin) | `fn-own-feed-peer-names` | **Closed.** `host/store-node-host.lisp`'s `fn-store-cfg-peer-name-list` was a `:program`-mode copy; the fold is in the book now. |
+
+The keystones, each stated over the function the owner calls:
+
+- `fn-own-feed-target-is-offerable` and `fn-own-feed-targets-omit-no-offerable-peer`: the targets of one article are EXACTLY the peers of the table whose own record passes the scope decision, both directions.
+- `fn-own-feed-never-offers-a-loop`: K2's outbound half. No target is the origin peer, and no target's path-identity is already in the article's Path.
+- `fn-own-feed-target-is-in-scope`: a target's outbound wildmat matches one of the article's own Newsgroups names.
+- `fn-own-feed-accept-touches-only-its-targets` and `fn-own-feed-accept-never-enqueues-on-the-origin`: the same, transported to the table the owner holds.
+- `fn-own-feed-tick-peer-is-the-feed-tick`: the subject rule. One peer's tick IS `fn-feed-tick-step` on that peer's own feed, with the same effects.
+- `fn-own-feed-tick-peer-records-the-command-it-emits`: durable before the effect. A record is built exactly when a command goes out, and it names the Message-ID that command offers.
+- `fn-own-feed-retire-keeps-a-busy-feed`: a reconfiguration is a change of decisions; a feed with queued or in-flight work is never dropped.
+- `fn-own-feed-tablep` preserved by `fn-own-feed-reconfigure`, `-restart-all`, `-enqueue-all`, `-accept`, `-tick-peer` and `-tick`. `fn-feedp` preservation is CITED from `books/peer-feed-invariants` (`fn-feed-enqueue-preserves-feedp`, `fn-feed-restart-preserves-feedp`, `fn-feed-tick-step-preserves-feedp`) and never restated.
+
+`tests/acl2/owner-feed-tests.lisp` is 98 assertions: the table built from a
+real replayed configuration with three peers (streaming outbound, outbound
+with a non-matching wildmat, inbound-only), a real parsed article, the four
+teeth of `fn-own-feed-offerablep` (no outbound half, wildmat mismatch, Path
+names the peer, the peer is the origin), the six teeth of
+`fn-own-feed-tablep` (duplicate key, key that is not the record's name, no
+outbound half, another peer's feed octets, a non-feed, a non-true-list), the
+enqueue and its FNFD record replayed back to the same feed, the tick with
+and without a connection, the reply reader and its refusals, the restart
+fence and the retire-only-when-idle rule.
+
+Open at the end of this lane, with the obligation each needs:
+
+| Item | State | What closes it |
+| --- | --- | --- |
+| `books/owner-feed` and its test book | **admitted with no open form, not certified** | `books/peer-feed-invariants` has no certificate: it fails at `fn-feed-apply-record-preserves-feedp`, whose residue is now the attempt bound in the `:feed-sent` arm (`fn-feed-attempts-belowp` of `fn-feed-queue-set-state ... (:sent n)`), not the `find`/`consp` bridge the w6 handoff named. The feed lane owns it. |
+| `books/owner`, `books/owner-invariants` with the feed field and the arms | **not admitted at all** | `books/served` has no certificate on dev; `books/peer-inbound`'s `fn-peer-echo-reply-effects-well-formed` is closed on `w10/auth-served` and that file is taken into this lane's worktree, so the chain may certify on the next farm run. Until it does, `include-book "served"` fails and the owner books cannot even be `ld`ed. |
+| The owner's feed keystones stated over `fn-own-step` | open | `books/owner-invariants.lisp` needs `fn-own-feed-durable-is-the-target-enqueue` (the subject rule for the `(:outcome id :durable)` arm) and the preservation of `fn-own-relation` by the five new arms. Not written: a theorem that cannot be admitted is not a theorem. |
+| `fn-own-feed-group-matchp` vs `fn-peer-wildmat-matchp` | a named twin | One `:rule-classes nil` equality in `books/owner-invariants.lisp`, where both are visible. `books/owner-feed` cannot include `books/peer-inbound` without inheriting the served chain's blocker. |
+| fn does not prepend its own path-identity to a transit article's Path (RFC 5537 §3.2.1) | open, inbound lane's | `fn-peer-injection-arguments` stages the peer's octets verbatim. The outbound loop check still refuses a target already in Path and refuses the origin outright, but on the return leg loop suppression rests on the peer's history answer (435/438) rather than on Path. |
+| RFC 3977 §3.1.1 dot stuffing of an outgoing article block | host | `tools/run_feed.py`'s `Session.send_block`, reused by `tools/run_owner.py`. `books/wire.lisp` has the stuffer; wiring the owner's feed through it is one packet. |
+| The two-node outbound evidence | **harness written, not run** | `tools/twonode_gate.py` gains `scenario_owner_feed` (A posts, A's own feed offers it to B, then B to A, with the byte-identity check and the 435/438 second offer) and `scenario_feed_restart` (B down, A posts, `kill -9` A, both restart, B ends with exactly one copy: K5). `tests/test_twonode_gate.py` is green (19 tests) against the fake; no run on persvati in this lane. |
