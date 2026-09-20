@@ -33,7 +33,20 @@
 ; clock withdraws fn-clock-observationp under fn-clock-vocabulary; the tick
 ; keystone reads fn-clock-monotonic under it, so it is opened here as well.
 (local (in-theory (enable fn-clock-observationp)))
-(local (in-theory (disable fn-tcl-sessionp fn-tcl-messagep)))
+; The four transitions the profile named (w9/dtn-e2e, 2026-09-20:
+; FN-TCL-STEP 481,747 frames / 81 tries, FN-TCL-RECV-SEGMENT 213,787/19,
+; FN-TCL-RECV-INIT 182,438/19, FN-TCL-BROKEN-STREAM 130,858/57) are closed
+; for the whole book and opened at the forms that need them.  The enable
+; above is wholesale, so they were open everywhere -- including under the
+; subgoal `:in-theory' hints below, because a subgoal's `:in-theory' is
+; evaluated against the book's CURRENT theory and not against its parent
+; goal's: C1's ("Subgoal *1/3" :in-theory (enable fn-tcl-drive-is-a-result))
+; undid C1's own Goal `(e/d ... (fn-tcl-step ...))' and reopened the step
+; function under every subgoal of the fold.  Measured: with nothing else
+; changed, C1 went from 0.42 s to 0.05 s when this line closed them.
+(local (in-theory (disable fn-tcl-sessionp fn-tcl-messagep
+                           fn-tcl-step fn-tcl-recv-segment fn-tcl-recv-init
+                           fn-tcl-broken-stream)))
 
 (local (defthm fn-tcl-append-assoc
          (equal (append (append a b) c) (append a (append b c)))))
@@ -235,7 +248,7 @@
                                  (len data)))))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t
-            :in-theory (disable fn-tcl-c2-closed)
+            :in-theory (e/d (fn-tcl-broken-stream) (fn-tcl-c2-closed))
             :expand ((fn-tcl-recv-segment s m now))))))
 
 (defthm fn-tcl-final-ack-means-every-segment
@@ -351,10 +364,15 @@
                          (equal (fn-tcl-inbound-xfer-id (fn-tcl-session-inbound s))
                                 (fn-tcl-xfer-segment-xfer-id m)))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-tcl-step fn-tcl-settle) (fn-tcl-c2-closed)))))
+           :in-theory (e/d (fn-tcl-step fn-tcl-settle fn-tcl-recv-segment
+                            fn-tcl-broken-stream)
+                           (fn-tcl-c2-closed)))))
 
-; The recognizer is open again from here: C3 and C4 were written against it.
-(local (in-theory (enable fn-tcl-sessionp)))
+; The recognizer stays CLOSED from here too.  C3 and C4 were written against
+; an open one, and that cost 596.12 s of this book's 609.53 s (hbox,
+; certify-20260920T230902Z-1283742): six forms whose clauses carried the
+; eleven sub-recognizers of fn-tcl-sessionp.  What they actually need about
+; a field arrives by forward chaining, as it does in C2 above.
 
 ; -----------------------------------------------------------------------------
 ; C3.  Exactly one outcome.
@@ -402,7 +420,9 @@
            (<= (fn-tcl-inbound-outcome-count (fn-tcl-result-events (fn-tcl-step s m now)) id)
                1))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-tcl-messagep) (fn-tcl-ext-decision)))))
+           :in-theory (e/d (fn-tcl-messagep fn-tcl-step fn-tcl-recv-segment
+                            fn-tcl-recv-init fn-tcl-broken-stream)
+                           (fn-tcl-ext-decision)))))
 
 (defthm fn-tcl-live-inbound-ends-in-exactly-one-outcome
   (implies (and (fn-tcl-sessionp s)
@@ -419,7 +439,9 @@
                    (fn-tcl-result-events (fn-tcl-step s m now)) id)
                   1))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-tcl-messagep) (fn-tcl-ext-decision)))))
+           :in-theory (e/d (fn-tcl-messagep fn-tcl-step fn-tcl-recv-segment
+                            fn-tcl-recv-init fn-tcl-broken-stream)
+                           (fn-tcl-ext-decision)))))
 
 (defthm fn-tcl-tick-fails-a-live-inbound-only-when-closing
   (implies (and (fn-tcl-sessionp s) (fn-clock-observationp obs))
@@ -483,7 +505,8 @@
                                  (fn-tcl-result-events
                                   (fn-tcl-settle (fn-tcl-broken-stream s live-id now))))))
          :rule-classes nil
-         :hints (("Goal" :in-theory (disable fn-tcl-c2-closed)))))
+         :hints (("Goal" :in-theory (e/d (fn-tcl-broken-stream)
+                                         (fn-tcl-c2-closed))))))
 
 ; C4, first theorem: one transfer at a time per direction (RFC 9174
 ; section 5.2).  A segment for another Transfer ID while one is live never
@@ -538,7 +561,8 @@
                                            6 (fn-tcl-xfer-segment-xfer-id m)))
                               (fn-tcl-result-events (fn-tcl-step s m now)))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-tcl-messagep) (fn-tcl-ext-decision)))))
+           :in-theory (e/d (fn-tcl-messagep fn-tcl-step fn-tcl-recv-segment)
+                           (fn-tcl-ext-decision)))))
 
 (defthm fn-tcl-ending-refuses-new-sends
   (implies (and (fn-tcl-sessionp s)
@@ -559,9 +583,10 @@
                         (fn-tcl-pump (fn-tcl-result-session (fn-tcl-step s m now)) later))
                        nil)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-tcl-messagep) (fn-tcl-ext-decision fn-tcl-recv-segment
-                                              fn-tcl-recv-contact fn-tcl-recv-init
-                                              fn-tcl-recv-ack fn-tcl-recv-term)))))
+           :in-theory (e/d (fn-tcl-messagep fn-tcl-step)
+                           (fn-tcl-ext-decision fn-tcl-recv-segment
+                            fn-tcl-recv-contact fn-tcl-recv-init
+                            fn-tcl-recv-ack fn-tcl-recv-term)))))
 
 (defthm fn-tcl-keepalive-zero-disables-both
   (implies (and (fn-tcl-sessionp s)
@@ -600,7 +625,9 @@
   (equal (fn-tcl-session-local (fn-tcl-result-session (fn-tcl-step s m now)))
          (fn-tcl-session-local s))
   :hints (("Goal" :do-not-induct t
-           :in-theory (disable fn-tcl-sessionp fn-tcl-ext-decision))))
+           :in-theory (e/d (fn-tcl-step fn-tcl-recv-segment fn-tcl-recv-init
+                            fn-tcl-broken-stream)
+                           (fn-tcl-sessionp fn-tcl-ext-decision)))))
 
 ; The two "need more input" cases of the fold below: the decoder keeps the
 ; whole buffer, so the carry is bounded by the decoder's own need bound.
