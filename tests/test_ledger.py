@@ -418,6 +418,84 @@ class ExportHygieneLintTests(unittest.TestCase):
         self.assertTrue(all("len-backchaining" in entry["reason"] for entry in found))
 
 
+class EnabledProjectionLintTests(unittest.TestCase):
+    """An accessor shipped enabled while other books reason over it."""
+
+    # The shape the tree actually uses: `mbe` around a walk into one formal.
+    OWNER = '''(in-package "ACL2")
+(defun fn-ep-result-effects (x)
+  (mbe :logic (cadr x) :exec (cadr x)))
+'''
+    USER = '''(in-package "ACL2")
+(include-book "owner")
+(defthm fn-ep-effects-well-formed
+  (implies (fn-ep-resultp r) (fn-ep-effectsp (fn-ep-result-effects r))))
+'''
+
+    def findings(self, owner: str, **rest: str) -> list[dict]:
+        books = {"books/owner.lisp": owner}
+        books.update({name: text for name, text in rest.items()})
+        return ledger.enabled_projection(tree_from(books))
+
+    def test_an_enabled_projection_another_book_reasons_over_is_flagged(self):
+        found = self.findings(self.OWNER, **{"books/user.lisp": self.USER})
+        self.assertEqual([entry["function"] for entry in found],
+                         ["fn-ep-result-effects"])
+        self.assertEqual(found[0]["stated_in"], ["books/user.lisp"])
+        self.assertIn("enabled-projection", found[0]["reason"])
+        self.assertIn("1 book states", found[0]["reason"])
+
+    def test_a_projection_its_own_book_withdraws_is_not_flagged(self):
+        withdrawn = self.OWNER + """(deftheory fn-ep-vocabulary
+  '(fn-ep-result-effects))
+(in-theory (disable fn-ep-vocabulary))
+"""
+        self.assertEqual(
+            self.findings(withdrawn, **{"books/user.lisp": self.USER}), [])
+        # And by name, without the theory.
+        self.assertEqual(
+            self.findings(self.OWNER + "(in-theory (disable fn-ep-result-effects))",
+                          **{"books/user.lisp": self.USER}), [])
+
+    def test_a_projection_nothing_else_states_a_theorem_over_is_not_flagged(self):
+        """An accessor no other book reasons over costs nobody anything."""
+        self.assertEqual(self.findings(self.OWNER), [])
+        # Its own book's theorems do not count: the book chooses its own
+        # vocabulary and pays its own bill.
+        self.assertEqual(self.findings(
+            self.OWNER + "(defthm fn-ep-here (equal (fn-ep-result-effects x) (cadr x)))"),
+            [])
+
+    def test_a_function_that_computes_is_not_a_projection(self):
+        """The lint is about names whose whole content is WHERE a value is."""
+        for body in ("(+ 1 (car x))", "(fn-ep-helper (car x))",
+                     "(if (consp x) (car x) nil)", "(append (car x) (cdr x))"):
+            owner = '(in-package "ACL2")\n(defun fn-ep-result-effects (x) {})\n'.format(body)
+            self.assertEqual(
+                self.findings(owner, **{"books/user.lisp": self.USER}), [], body)
+
+    def test_a_projection_of_more_than_one_argument_is_not_flagged(self):
+        owner = ('(in-package "ACL2")\n'
+                 '(defun fn-ep-result-effects (x y) (cadr (cons x y)))\n')
+        self.assertEqual(
+            self.findings(owner, **{"books/user.lisp": self.USER}), [])
+
+    def test_the_warning_and_the_ledger_carry_the_finding(self):
+        tree = tree_from({"books/owner.lisp": self.OWNER,
+                          "books/user.lisp": self.USER})
+        warnings = [line for line in ledger.lint_warnings(tree)
+                    if line.startswith("enabled projection:")]
+        self.assertEqual(len(warnings), 1)
+        self.assertTrue(warnings[0].startswith(
+            "enabled projection: books/owner.lisp:2: fn-ep-result-effects:"),
+            warnings[0])
+        self.assertIn("books/user.lisp", warnings[0])
+        data = ledger.build_ledger(tree)
+        self.assertEqual(data["totals"]["enabled_projection_warnings"], 1)
+        self.assertIn("Enabled-projection warnings | 1",
+                      ledger.ledger_markdown(data))
+
+
 class TeethFormLintTests(unittest.TestCase):
     """A must-fail earns its name by naming a value."""
 
@@ -657,6 +735,7 @@ class DefrecordExpansionTests(unittest.TestCase):
                      "fn-x-point-b", "fn-x-point-c", "fn-x-pointp",
                      "fn-x-point-shapep-of-fn-x-point",
                      "fn-x-point-a-of-fn-x-point", "fn-x-point-injective",
+                     "fn-x-point-of-accessors",
                      "fn-x-point-shapep-forward-shape",
                      "fn-x-point-accessors-forward-consp",
                      "fn-x-pointp-forward-shape"):
@@ -733,6 +812,33 @@ class DefrecordExpansionTests(unittest.TestCase):
         self.assertNotIn("fn-x-resultp", book.definitions)
         self.assertNotIn("fn-x-resultp-forward-shape", book.definitions)
         self.assertIn("fn-x-result-ok", book.definitions)
+
+    def test_constructor_of_accessors_is_under_the_shape(self):
+        # The dual of the accessor-of-constructor family, what every
+        # decode-of-encode needs.  Under the shape predicate, so that a
+        # record with `:recognizer nil` has it too and no recognizer formal
+        # becomes a free variable in the hypothesis.
+        theorem = next(t for t in self.book(self.UNTAGGED).theorems
+                       if t.name == "fn-x-point-of-accessors")
+        self.assertEqual(
+            theorem.statement,
+            [ledger.Sym("implies"),
+             [ledger.Sym("fn-x-point-shapep"), ledger.Sym("x")],
+             [ledger.Sym("equal"),
+              [ledger.Sym("fn-x-point"),
+               [ledger.Sym("fn-x-point-a"), ledger.Sym("x")],
+               [ledger.Sym("fn-x-point-b"), ledger.Sym("x")],
+               [ledger.Sym("fn-x-point-c"), ledger.Sym("x")]],
+              ledger.Sym("x")]])
+        names = [t.name for t in self.book(self.NO_RECOGNIZER).theorems]
+        self.assertIn("fn-x-result-of-accessors", names)
+
+    def test_recognizer_forward_chains_the_shape_predicate(self):
+        # What makes the rule above fire with the recognizer CLOSED.
+        theorem = next(t for t in self.book(self.TAGGED).theorems
+                       if t.name == "fn-x-markp-forward-shape")
+        self.assertEqual(theorem.statement[2][1],
+                         [ledger.Sym("fn-x-mark-shapep"), ledger.Sym("x")])
 
     def test_injectivity_is_not_reflexive(self):
         # A synthesis that used the same call on both sides would make the
