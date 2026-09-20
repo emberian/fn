@@ -47,6 +47,33 @@ def build_request(article, *, incarnation=b"origin-media-1", work_id=b"work-medi
         bridge.close()
 
 
+def build_bundle(bridge, *, sequence, lifetime=10 ** 15):
+    """One BPv7 bundle whose primary block ACL2 encodes, as the lab does.
+
+    Nothing here spells a BPv7 field: `fn-bpi-host-bundle-prefix` returns the
+    indefinite-array head and the certified primary-block encoding, and the
+    break stop code stands in for the blocks the boundary never interprets.
+    A media item carries these octets so that the importing node derives the
+    carried identity from the bundle rather than from the volume.
+    """
+    def eid(ssp):
+        return "(cons :dtn '" + bridge.literal(ssp) + ")"
+
+    form = ("(fn-bpi-host-bundle-prefix (fn-bpp-make-block 0 0 {} {} {} 1000 {} {} nil nil))"
+            .format(eid(b"//fn.lab/inbox"), eid(b"//media.lab/"),
+                    eid(b"//fn.lab/report"), sequence, lifetime))
+    return run_store.acl2_octets(bridge.call(form)) + b"\xff"
+
+
+def build_bundles(sequences):
+    """Build every carried bundle in one ACL2 session rather than one each."""
+    bridge = run_bp_ingress.Acl2BpIngress()
+    try:
+        return [build_bundle(bridge, sequence=sequence) for sequence in sequences]
+    finally:
+        bridge.close()
+
+
 def run_bp_receive_destination():
     from tools import run_bp_receive
     return run_bp_receive.DESTINATION.encode("ascii")
@@ -65,8 +92,9 @@ class MediaManifestTests(unittest.TestCase):
         self.root = Path(self.tmp.name)
         self.exported = media.export_media(
             media_root=self.root / "volume", media_id="volume-1",
-            items=[("media:volume-1:one", b"first bundle"),
-                   ("media:volume-1:two", b"second bundle bytes")])
+            items=[("media:volume-1:one", b"first bundle", b"first bundle octets"),
+                   ("media:volume-1:two", b"second bundle bytes",
+                    b"second bundle octets!")])
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -129,7 +157,8 @@ class MediaManifestTests(unittest.TestCase):
     def test_export_refuses_a_repeated_bundle_identity(self):
         with self.assertRaises(media.MediaError):
             media.export_media(media_root=self.root / "repeat", media_id="v",
-                               items=[("media:v:one", b"a"), ("media:v:one", b"b")])
+                               items=[("media:v:one", b"a", b"A"),
+                                      ("media:v:one", b"b", b"B")])
 
 
 class MediaImportTests(unittest.TestCase):
@@ -139,6 +168,7 @@ class MediaImportTests(unittest.TestCase):
     def setUpClass(cls):
         cls.request_one = build_request(ARTICLE_ONE, work_id=b"work-media-one")
         cls.request_two = build_request(ARTICLE_TWO, work_id=b"work-media-two")
+        cls.bundle_one, cls.bundle_two = build_bundles([1, 2])
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix="fn-media-import-")
@@ -150,8 +180,8 @@ class MediaImportTests(unittest.TestCase):
         run_store.Store(self.node / "store", True).initialize()
         self.volume = media.export_media(
             media_root=self.root / "volume", media_id="volume-1",
-            items=[("media:volume-1:one", self.request_one),
-                   ("media:volume-1:two", self.request_two)])
+            items=[("media:volume-1:one", self.request_one, self.bundle_one),
+                   ("media:volume-1:two", self.request_two, self.bundle_two)])
         self.before = media.media_digest(self.root / "volume")
 
     def tearDown(self):
@@ -290,6 +320,8 @@ class MediaCommandLineTests(unittest.TestCase):
         self.root = Path(self.tmp.name)
         self.adu = self.root / "one.bp"
         self.adu.write_bytes(b"carried-adu-one")
+        self.bundle = self.root / "one.bundle"
+        self.bundle.write_bytes(b"carried-bundle-one")
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -297,7 +329,9 @@ class MediaCommandLineTests(unittest.TestCase):
     def export(self, *extra):
         return media.main(["export", "--media", str(self.root / "vol"),
                            "--media-id", "cli-1",
-                           "--bundle", "media:cli-1:one={}".format(self.adu), *extra])
+                           "--bundle", "media:cli-1:one={}".format(self.adu),
+                           "--bp-bundle", "media:cli-1:one={}".format(self.bundle),
+                           *extra])
 
     def test_export_then_verify_reports_accepted(self):
         self.assertEqual(self.export(), run_store.EXIT_OK)
@@ -310,7 +344,8 @@ class MediaCommandLineTests(unittest.TestCase):
 
     def test_a_damaged_copy_is_refused_by_verify_with_no_store_touched(self):
         self.assertEqual(self.export(), run_store.EXIT_OK)
-        item = next((self.root / "vol" / media.ITEM_DIRECTORY).iterdir())
+        item = (self.root / "vol" / media.ITEM_DIRECTORY
+                / media.item_file_name("media:cli-1:one"))
         os.chmod(item, 0o600)
         item.write_bytes(b"carried-adu-TWO")
         self.assertEqual(media.main(["verify", "--media", str(self.root / "vol")]),
@@ -323,6 +358,15 @@ class MediaCommandLineTests(unittest.TestCase):
     def test_a_bundle_without_an_identity_is_a_usage_error(self):
         self.assertEqual(media.main(["export", "--media", str(self.root / "vol2"),
                                      "--media-id", "cli-2", "--bundle", str(self.adu)]),
+                         run_store.EXIT_USAGE)
+
+    def test_an_adu_without_its_bundle_octets_is_a_usage_error(self):
+        # Every carried identity needs both files: the importing node reads
+        # the identity and expiry out of the bundle, and a volume that carried
+        # only the ADU would have the node decide identity locally.
+        self.assertEqual(media.main(["export", "--media", str(self.root / "vol3"),
+                                     "--media-id", "cli-3", "--bundle",
+                                     "media:cli-3:one={}".format(self.adu)]),
                          run_store.EXIT_USAGE)
 
     def test_uncertain_dominates_refused_in_a_volume_exit_code(self):

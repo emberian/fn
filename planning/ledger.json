@@ -4,8 +4,6 @@
   "roots": [
     "books/defrecord",
     "books/deftransition",
-    "books/assumptions",
-    "tests/acl2/assumptions-tests",
     "books/acceptance-alloc",
     "tests/acl2/defrecord-tests",
     "books/acceptance",
@@ -41,6 +39,8 @@
     "books/article-fields",
     "tests/acl2/article-fields-tests",
     "books/store-config",
+    "books/sha256",
+    "tests/acl2/sha256-tests",
     "books/frame-octets",
     "books/frame-fields",
     "books/frame-journal",
@@ -92,8 +92,11 @@
     "tests/acl2/store-observed-traces-tests",
     "books/byte-store",
     "books/byte-store-invariants",
+    "books/byte-store-scan",
     "books/byte-store-programs",
     "tests/acl2/byte-store-tests",
+    "books/assumptions",
+    "tests/acl2/assumptions-tests",
     "tests/acl2/store-node-guards-tests",
     "tests/acl2/store-node-teeth-tests",
     "books/checkpoint",
@@ -237,6 +240,9 @@
     "tests/acl2/relay-tests",
     "books/crypto-seam",
     "tests/acl2/crypto-seam-tests",
+    "books/crypto-attach",
+    "books/auth-secret",
+    "tests/acl2/auth-secret-tests",
     "books/statement",
     "books/statement-invariants",
     "tests/acl2/statement-tests",
@@ -263,26 +269,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 262,
-    "books_in_root_closure": 259,
-    "roots": 259,
-    "theorems": 5110,
-    "functions": 3712,
-    "assert_events": 4952,
+    "books": 266,
+    "books_in_root_closure": 265,
+    "roots": 265,
+    "theorems": 5215,
+    "functions": 3759,
+    "assert_events": 4977,
     "must_fails": 59,
-    "encapsulates": 16,
+    "encapsulates": 19,
     "guards": {
-      "verified": 1380,
-      "declared-off": 163,
-      "default-guarded": 1680,
-      "default-unguarded": 489
+      "verified": 1385,
+      "declared-off": 189,
+      "default-guarded": 1691,
+      "default-unguarded": 494
     },
     "suspect_theorems": 38,
-    "export_hygiene_warnings": 75,
+    "export_hygiene_warnings": 72,
     "teeth_form_warnings": 0,
-    "include_hygiene_warnings": 89,
-    "host_names_warnings": 4,
-    "hand_written_record_warnings": 28
+    "include_hygiene_warnings": 86,
+    "host_names_warnings": 0,
+    "hand_written_record_warnings": 19
   },
   "books": [
     {
@@ -339,22 +345,23 @@
       "book": "books/acceptance.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 44,
+      "theorems": 47,
       "functions": 45,
       "guards": {
-        "verified": 39,
+        "verified": 36,
         "declared-off": 0,
-        "default-guarded": 6,
+        "default-guarded": 9,
         "default-unguarded": 0
       },
-      "verify_guards_events": 39,
+      "verify_guards_events": 36,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "acceptance-alloc"
+        "acceptance-alloc",
+        "defrecord"
       ],
       "system_includes": [],
       "suspects": [],
@@ -420,15 +427,15 @@
       "book": "books/anchor.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 50,
+      "theorems": 54,
       "functions": 59,
       "guards": {
-        "verified": 27,
+        "verified": 40,
         "declared-off": 1,
-        "default-guarded": 30,
+        "default-guarded": 17,
         "default-unguarded": 1
       },
-      "verify_guards_events": 27,
+      "verify_guards_events": 40,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 13,
@@ -436,7 +443,8 @@
       "encapsulates": 2,
       "includes": [
         "cbor-invariants",
-        "clock"
+        "clock",
+        "defrecord"
       ],
       "system_includes": [
         "arithmetic/top",
@@ -717,21 +725,48 @@
       "book": "books/assumptions.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 12,
-      "functions": 8,
+      "theorems": 15,
+      "functions": 11,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 1,
         "default-guarded": 0,
-        "default-unguarded": 8
+        "default-unguarded": 10
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
       "defmacros": 0,
-      "encapsulates": 7,
-      "includes": [],
+      "encapsulates": 9,
+      "includes": [
+        "byte-store-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/auth-secret.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 16,
+      "functions": 10,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 10,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "crypto-attach"
+      ],
       "system_includes": [],
       "suspects": [],
       "read_error": null
@@ -1496,20 +1531,20 @@
       "book": "books/byte-store-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 130,
-      "functions": 11,
+      "theorems": 127,
+      "functions": 8,
       "guards": {
         "verified": 0,
-        "declared-off": 8,
+        "declared-off": 7,
         "default-guarded": 0,
-        "default-unguarded": 3
+        "default-unguarded": 1
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
       "defmacros": 0,
-      "encapsulates": 3,
+      "encapsulates": 1,
       "includes": [
         "byte-store",
         "frame"
@@ -1544,6 +1579,34 @@
         "store-files-traces"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/byte-store-scan.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 38,
+      "functions": 28,
+      "guards": {
+        "verified": 0,
+        "declared-off": 23,
+        "default-guarded": 0,
+        "default-unguarded": 5
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 3,
+      "includes": [
+        "byte-store-invariants",
+        "store-files-invariants"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -1630,7 +1693,7 @@
       "book": "books/checkpoint-codec.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 99,
+      "theorems": 105,
       "functions": 32,
       "guards": {
         "verified": 13,
@@ -1919,6 +1982,33 @@
       "read_error": null
     },
     {
+      "book": "books/crypto-attach.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 6,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "crypto-seam",
+        "frame-octets",
+        "sha256"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/crypto-seam.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -2018,22 +2108,23 @@
       "book": "books/exchange.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 34,
+      "theorems": 37,
       "functions": 43,
       "guards": {
-        "verified": 37,
+        "verified": 34,
         "declared-off": 0,
-        "default-guarded": 6,
+        "default-guarded": 9,
         "default-unguarded": 0
       },
-      "verify_guards_events": 37,
+      "verify_guards_events": 34,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "acceptance-alloc"
+        "acceptance-alloc",
+        "defrecord"
       ],
       "system_includes": [],
       "suspects": [
@@ -2874,7 +2965,7 @@
       "book": "books/node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 31,
+      "theorems": 34,
       "functions": 33,
       "guards": {
         "verified": 27,
@@ -2890,6 +2981,7 @@
       "encapsulates": 0,
       "includes": [
         "acceptance",
+        "defrecord",
         "retention"
       ],
       "system_includes": [],
@@ -2931,12 +3023,12 @@
       "book": "books/owner-feed.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 74,
-      "functions": 52,
+      "theorems": 75,
+      "functions": 54,
       "guards": {
         "verified": 0,
         "declared-off": 4,
-        "default-guarded": 48,
+        "default-guarded": 50,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -2986,11 +3078,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 46,
-      "functions": 93,
+      "functions": 95,
       "guards": {
         "verified": 0,
         "declared-off": 5,
-        "default-guarded": 88,
+        "default-guarded": 90,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -3038,7 +3130,7 @@
       "book": "books/peer-config.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 24,
+      "theorems": 26,
       "functions": 27,
       "guards": {
         "verified": 0,
@@ -3065,7 +3157,7 @@
       "book": "books/peer-feed-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 88,
+      "theorems": 99,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -3146,15 +3238,15 @@
       "book": "books/peer-inbound.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 51,
+      "theorems": 48,
       "functions": 54,
       "guards": {
-        "verified": 9,
-        "declared-off": 1,
+        "verified": 6,
+        "declared-off": 4,
         "default-guarded": 44,
         "default-unguarded": 0
       },
-      "verify_guards_events": 9,
+      "verify_guards_events": 6,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 2,
@@ -3167,9 +3259,7 @@
         "peer-config"
       ],
       "system_includes": [],
-      "suspects": [
-        "fn-peer-consistent-forward"
-      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -3336,22 +3426,23 @@
       "book": "books/records.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 41,
+      "theorems": 43,
       "functions": 48,
       "guards": {
-        "verified": 48,
+        "verified": 46,
         "declared-off": 0,
-        "default-guarded": 0,
+        "default-guarded": 2,
         "default-unguarded": 0
       },
-      "verify_guards_events": 48,
+      "verify_guards_events": 46,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 8,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "cbor"
+        "cbor",
+        "defrecord"
       ],
       "system_includes": [],
       "suspects": [],
@@ -3514,7 +3605,7 @@
       "book": "books/retention.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 36,
+      "theorems": 39,
       "functions": 38,
       "guards": {
         "verified": 38,
@@ -3522,14 +3613,15 @@
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 38,
+      "verify_guards_events": 51,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "acceptance-alloc"
+        "acceptance-alloc",
+        "defrecord"
       ],
       "system_includes": [],
       "suspects": [
@@ -3647,9 +3739,9 @@
     },
     {
       "book": "books/sha256.lisp",
-      "in_root_closure": false,
-      "is_root": false,
-      "theorems": 24,
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 26,
       "functions": 30,
       "guards": {
         "verified": 0,
@@ -4978,6 +5070,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/auth-secret-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 18,
+      "must_fails": 0,
+      "defconsts": 5,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/auth-secret"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/bp-adu-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -5731,18 +5848,18 @@
       "book": "tests/acl2/defrecord-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 23,
-      "functions": 14,
+      "theorems": 31,
+      "functions": 19,
       "guards": {
-        "verified": 6,
+        "verified": 9,
         "declared-off": 0,
-        "default-guarded": 8,
+        "default-guarded": 10,
         "default-unguarded": 0
       },
-      "verify_guards_events": 6,
-      "assert_events": 27,
+      "verify_guards_events": 9,
+      "assert_events": 32,
       "must_fails": 0,
-      "defconsts": 2,
+      "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -5753,6 +5870,7 @@
       "system_includes": [],
       "suspects": [
         "fn-drt-mark-unfolds-to-a-tagged-list",
+        "fn-drt-pinp-forward-shape-instantiated",
         "fn-drt-point-unfolds-to-a-list"
       ],
       "read_error": null
@@ -6256,7 +6374,7 @@
         "default-unguarded": 5
       },
       "verify_guards_events": 0,
-      "assert_events": 145,
+      "assert_events": 147,
       "must_fails": 0,
       "defconsts": 47,
       "defmacros": 0,
@@ -6526,8 +6644,8 @@
     },
     {
       "book": "tests/acl2/sha256-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 2,
       "guards": {
@@ -7153,7 +7271,7 @@
     {
       "theorem": "fn-anchor-octets-of-lengthp-forward",
       "book": "books/anchor.lisp",
-      "line": 106,
+      "line": 107,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-anchor-octets-of-lengthp"
       ]
@@ -7226,16 +7344,24 @@
     {
       "theorem": "fn-drt-mark-unfolds-to-a-tagged-list",
       "book": "tests/acl2/defrecord-tests.lisp",
-      "line": 88,
+      "line": 119,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-drt-mark",
         "reflexive-conclusion: a conjunct is (equal X X)"
       ]
     },
     {
-      "theorem": "fn-drt-point-unfolds-to-a-list",
+      "theorem": "fn-drt-pinp-forward-shape-instantiated",
       "book": "tests/acl2/defrecord-tests.lisp",
       "line": 93,
+      "reasons": [
+        "instance-corollary: the statement is fn-drt-pinp-forward-shape instantiated, discharging nothing"
+      ]
+    },
+    {
+      "theorem": "fn-drt-point-unfolds-to-a-list",
+      "book": "tests/acl2/defrecord-tests.lisp",
+      "line": 124,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-drt-point",
         "reflexive-conclusion: a conjunct is (equal X X)"
@@ -7244,7 +7370,7 @@
     {
       "theorem": "fn-exchange-ingest-refusal-is-no-op",
       "book": "books/exchange.lisp",
-      "line": 529,
+      "line": 282,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-exchange-ingest and the conclusion is that branch's value"
       ]
@@ -7285,7 +7411,7 @@
     {
       "theorem": "fn-node-capacity-refusal-is-no-op",
       "book": "books/node.lisp",
-      "line": 537,
+      "line": 296,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-node-prepare and the conclusion is that branch's value"
       ]
@@ -7317,7 +7443,7 @@
     {
       "theorem": "fn-node-stale-completion-is-no-op",
       "book": "books/node.lisp",
-      "line": 561,
+      "line": 320,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-node-complete and the conclusion is that branch's value"
       ]
@@ -7339,14 +7465,6 @@
       ]
     },
     {
-      "theorem": "fn-peer-consistent-forward",
-      "book": "books/peer-inbound.lisp",
-      "line": 485,
-      "reasons": [
-        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-peer-session-consistentp"
-      ]
-    },
-    {
       "theorem": "fn-prin-apply-succession-when-not-acceptable",
       "book": "books/principal-invariants.lisp",
       "line": 205,
@@ -7365,7 +7483,7 @@
     {
       "theorem": "fn-retain-admission-refusal-is-no-op",
       "book": "books/retention.lisp",
-      "line": 508,
+      "line": 286,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-retain-admit and the conclusion is that branch's value"
       ]
@@ -7373,7 +7491,7 @@
     {
       "theorem": "fn-retain-wrong-evidence-does-not-release",
       "book": "books/retention.lisp",
-      "line": 548,
+      "line": 326,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value"
       ]
@@ -7617,7 +7735,7 @@
       {
         "theorem": "fn-cpp-crash-marker-is-authority-before-selection-attempted",
         "book": "books/checkpoint-publish.lisp",
-        "line": 698,
+        "line": 704,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -7679,24 +7797,6 @@
         "book": "books/nntp-syntax.lisp",
         "line": 49,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
-      },
-      {
-        "theorem": "fn-sha256-len-of-firstn-8",
-        "book": "books/sha256.lisp",
-        "line": 422,
-        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
-      },
-      {
-        "theorem": "fn-sha256-len-of-compress",
-        "book": "books/sha256.lisp",
-        "line": 441,
-        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
-      },
-      {
-        "theorem": "fn-sha256-len-of-blocks",
-        "book": "books/sha256.lisp",
-        "line": 445,
-        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
         "theorem": "fn-stmt-header-round-trip",
@@ -8061,13 +8161,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/bp-release.lisp",
-        "line": 30,
-        "include": "assumptions",
-        "included": "books/assumptions.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "books/bp-workflow-binding-core.lisp",
         "line": 4,
         "include": "bp-workflow-invariants",
@@ -8173,24 +8266,10 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/relay.lisp",
-        "line": 30,
-        "include": "assumptions",
-        "included": "books/assumptions.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "books/retention.lisp",
         "line": 16,
         "include": "acceptance-alloc",
         "included": "books/acceptance-alloc.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/scheduler-invariants.lisp",
-        "line": 14,
-        "include": "assumptions",
-        "included": "books/assumptions.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -8317,13 +8396,6 @@
         "line": 3,
         "include": "../../books/article-public-bound",
         "included": "books/article-public-bound.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/assumptions-tests.lisp",
-        "line": 22,
-        "include": "../../books/assumptions",
-        "included": "books/assumptions.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -8460,6 +8532,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/peer-inbound-tests.lisp",
+        "line": 8,
+        "include": "../../books/peer-inbound-invariants",
+        "included": "books/peer-inbound-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/policy-tests.lisp",
         "line": 5,
         "include": "crypto-seam-tests",
@@ -8523,64 +8602,8 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       }
     ],
-    "host_names": [
-      {
-        "host": "host/owner-host.lisp",
-        "line": 602,
-        "name": "fn-own-feed-effect-octets",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/owner-host.lisp",
-        "line": 602,
-        "name": "fn-own-feed-effect-peer",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/owner-host.lisp",
-        "line": 614,
-        "name": "fn-own-tick-peer-records",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/owner-host.lisp",
-        "line": 614,
-        "name": "fn-own-tick-peer",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      }
-    ],
+    "host_names": [],
     "hand_written_record": [
-      {
-        "book": "books/acceptance.lisp",
-        "line": 364,
-        "shape": "fn-state-shapep",
-        "shapes": 1,
-        "accessors": 6,
-        "variable": "s",
-        "reason": "hand-written record: 1 shape predicate(s) (fn-state-shapep) and 6 one-argument selector accessors over `s` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
-      },
-      {
-        "book": "books/acceptance.lisp",
-        "line": 21,
-        "shape": "fn-article-shapep",
-        "shapes": 2,
-        "accessors": 12,
-        "variable": "x",
-        "reason": "hand-written record: 2 shape predicate(s) (fn-article-shapep, fn-pending-shapep) and 12 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
-      },
-      {
-        "book": "books/anchor.lisp",
-        "line": 223,
-        "shape": "fn-anchor-image-shapep",
-        "shapes": 4,
-        "accessors": 10,
-        "variable": "x",
-        "reason": "hand-written record: 4 shape predicate(s) (fn-anchor-image-shapep, fn-anchor-node-shapep, fn-anchor-outcome-shapep, fn-anchor-shapep) and 10 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
-      },
       {
         "book": "books/bp-ingress.lisp",
         "line": 87,
@@ -8627,15 +8650,6 @@
         "reason": "hand-written record: 1 shape predicate(s) (fn-checkpoint-shapep) and 5 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
       },
       {
-        "book": "books/exchange.lisp",
-        "line": 23,
-        "shape": "fn-exchange-fact-shapep",
-        "shapes": 1,
-        "accessors": 8,
-        "variable": "x",
-        "reason": "hand-written record: 1 shape predicate(s) (fn-exchange-fact-shapep) and 8 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
-      },
-      {
         "book": "books/ideal.lisp",
         "line": 32,
         "shape": "fn-ideal-state-shapep",
@@ -8670,24 +8684,6 @@
         "accessors": 5,
         "variable": "x",
         "reason": "hand-written record: 2 shape predicate(s) (fn-post-result-shapep, fn-post-session-shapep) and 5 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
-      },
-      {
-        "book": "books/node.lisp",
-        "line": 288,
-        "shape": "fn-node-state-shapep",
-        "shapes": 1,
-        "accessors": 4,
-        "variable": "s",
-        "reason": "hand-written record: 1 shape predicate(s) (fn-node-state-shapep) and 4 one-argument selector accessors over `s` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
-      },
-      {
-        "book": "books/node.lisp",
-        "line": 25,
-        "shape": "fn-node-binding-shapep",
-        "shapes": 2,
-        "accessors": 10,
-        "variable": "x",
-        "reason": "hand-written record: 2 shape predicate(s) (fn-node-binding-shapep, fn-node-stage-shapep) and 10 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
       },
       {
         "book": "books/owner-config.lisp",
@@ -8727,16 +8723,7 @@
       },
       {
         "book": "books/records.lisp",
-        "line": 147,
-        "shape": "fn-record-shapep",
-        "shapes": 1,
-        "accessors": 10,
-        "variable": "record",
-        "reason": "hand-written record: 1 shape predicate(s) (fn-record-shapep) and 10 one-argument selector accessors over `record` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
-      },
-      {
-        "book": "books/records.lisp",
-        "line": 329,
+        "line": 218,
         "shape": "fn-record-parse-shapep",
         "shapes": 1,
         "accessors": 3,
@@ -8751,24 +8738,6 @@
         "accessors": 4,
         "variable": "x",
         "reason": "hand-written record: 2 shape predicate(s) (fn-replay-fault-shapep, fn-replay-ok-shapep) and 4 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
-      },
-      {
-        "book": "books/retention.lisp",
-        "line": 283,
-        "shape": "fn-retain-state-shapep",
-        "shapes": 1,
-        "accessors": 4,
-        "variable": "s",
-        "reason": "hand-written record: 1 shape predicate(s) (fn-retain-state-shapep) and 4 one-argument selector accessors over `s` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
-      },
-      {
-        "book": "books/retention.lisp",
-        "line": 43,
-        "shape": "fn-retain-obligation-shapep",
-        "shapes": 2,
-        "accessors": 9,
-        "variable": "x",
-        "reason": "hand-written record: 2 shape predicate(s) (fn-retain-obligation-shapep, fn-retain-release-shapep) and 9 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
       },
       {
         "book": "books/served.lisp",

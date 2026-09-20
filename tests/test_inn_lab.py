@@ -105,8 +105,19 @@ class DryRun:
         (base / "inn/src").mkdir(parents=True, exist_ok=True)
         (base / "inn/src/inn-2.7.4.tar.gz.sha256").write_text(
             "0000fake0000  inn-2.7.4.tar.gz\n")
-        commit = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"],
-                                stdout=subprocess.PIPE, check=True).stdout.decode().strip()
+        # A farm gate runs from a `git archive` tree with no repository.
+        # Unlike test_deploy_gate, which needs only a revision string, this
+        # harness exports the tree with `git archive <rev>`: without a
+        # repository there is nothing to export, so the case is skipped rather
+        # than reported as a gate failure.
+        try:
+            commit = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"],
+                                    stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                    check=True).stdout.decode().strip()
+        except (subprocess.CalledProcessError, FileNotFoundError) as error:
+            raise unittest.SkipTest(
+                "gate harness exports the tree with `git archive`; "
+                "this checkout is not a git repository") from error
         cls.rev = commit[:7]
         books = cls.home / "fn-gates/dev-{}/books".format(cls.rev)
         books.mkdir(parents=True)
