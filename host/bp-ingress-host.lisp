@@ -5,6 +5,12 @@
 (include-book "../books/bp-ingress")
 (include-book "../books/bp-primary")
 (include-book "../books/clock")
+;
+; Loaded here, not left to a bridge's `ld' order: this file uses names
+; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
+; must get them too.  A second `ld' of a file already in the session
+; re-admits identical definitions, which ACL2 accepts as redundant.
+(ld "store-node-host.lisp" :ld-error-action :error)
 
 (defconst *fn-bpi-host-destination* "dtn://fn.lab/inbox")
 (defconst *fn-bpi-host-group-map*
