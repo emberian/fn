@@ -265,3 +265,19 @@
     (if (not (fn-bp-statep s)) (list nil nil nil)
       (fn-bp-replay-records s (fn-ag-cdr records) nil))))))
 (verify-guards fn-bp-replay-journal)
+
+; The host's read model for one work id, owned here rather than in the host.
+; Three answers, and they are distinct: :absent is "this state holds no such
+; work", and a work the history enqueued and has not yet attempted answers
+; :outstanding, not :absent.  Reading the attempt status alone conflated the
+; two, so a reopened journal looked empty to its caller.  A work whose receipt
+; has been committed is no longer outstanding and answers :receipted whether
+; or not it carries an attempt.
+(defun fn-bp-work-status (work-id works)
+ (declare (xargs :guard t))
+ (let* ((work (fn-bp-find-work work-id works))
+        (attempt (fn-bp-work-attempt work)))
+  (cond ((not (consp work)) :absent)
+        ((not (fn-bp-work-outstandingp work)) :receipted)
+        ((consp attempt) (fn-bp-attempt-status attempt))
+        (t :outstanding))))
