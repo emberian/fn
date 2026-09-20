@@ -17,9 +17,11 @@
   <key>ProgramArguments</key>
   <array>
     <string>/usr/local/lib/fn/bin/fn</string>
-    <string>run</string>
+    <!-- `--config` is a top-level option and precedes the verb; after it,
+         argparse rejects it and the job fails at every start. -->
     <string>--config</string>
     <string>/usr/local/etc/fn/fn.toml</string>
+    <string>run</string>
   </array>
   <key>WorkingDirectory</key>
   <string>/usr/local/lib/fn</string>

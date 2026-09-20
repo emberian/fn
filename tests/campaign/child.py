@@ -107,6 +107,21 @@ class PauseAt(run_store.FaultPoints):
         return None
 
 
+def bundle_path(root: Path, bid: str) -> Path:
+    """Where a case keeps the BPv7 bundle octets the BPA holds for `bid`.
+
+    The receiver settles identity and expiry from the bundle's own primary
+    block, so a case must carry the bundle beside the request ADU: the parent
+    builds both once per template, and the killed child reads the same file.
+    """
+    return root / ("bundle-" + hashlib.sha256(
+        bid.encode("ascii")).hexdigest()[:16] + ".bp")
+
+
+def bundle_for(root: Path, bid: str) -> bytes:
+    return bundle_path(root, bid).read_bytes()
+
+
 def _injectors(component: str, pause: PauseAt) -> dict[str, run_store.FaultPoints]:
     table = {name: run_store.NO_FAULTS
              for name in ("store", "workflow", "receipt", "receive")}
@@ -125,6 +140,7 @@ def _receive(root: Path, injectors, bid: str, inventory: dict[str, bytes],
         receipt_root=root / "receipts", bid=bid,
         inventory=lambda: list(inventory),
         download=lambda found: inventory[found], delete=delete,
+        bundle=lambda found: bundle_for(root, found),
         source_eid=SOURCE_EID,
         faults=injectors["receive"], store_faults=injectors["store"],
         inbox_faults=injectors["workflow"], receipt_faults=injectors["receipt"],

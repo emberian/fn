@@ -12,6 +12,10 @@
 # lock and removes the control socket before the process exits.
 
 [Unit]
+# A service that cannot parse its own command line must stop, not spin:
+# five starts in a minute and systemd gives up and says so.
+StartLimitIntervalSec=60
+StartLimitBurst=5
 Description=fn news node (ACL2 core, NNTP reader and posting owner)
 Documentation=file:/usr/local/lib/fn/docs/operator.md
 After=network-online.target
@@ -23,7 +27,11 @@ User=fn
 Group=fn
 WorkingDirectory=/usr/local/lib/fn
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/usr/local/lib/fn/bin/fn run --config /etc/fn/fn.toml
+# `--config` is a top-level option and must precede the verb: `fn run
+# --config X` exits 2 with `unrecognized arguments`, which under
+# Restart=on-failure is a restart loop. Found by running this unit
+# (157 restarts on persvati, 2026-09-20).
+ExecStart=/usr/local/lib/fn/bin/fn --config /etc/fn/fn.toml run
 
 # The owner exits non-zero only on a fault; a clean SIGTERM stop exits 0 and
 # is not restarted.  An ACL2 start that cannot reach a prompt is a fault, and
