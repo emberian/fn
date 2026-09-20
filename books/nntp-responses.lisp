@@ -323,6 +323,31 @@
 
 (verify-guards fn-nntp-help)
 
+; -----------------------------------------------------------------------------
+; POST, RFC 3977 section 6.3.1: the offer
+;
+; POST reads no committed article, so it is an archive-free command and lives
+; with CAPABILITIES, HELP and QUIT.  The offer is the whole of what the
+; dispatcher decides: 340, plus the one effect that tells the host to put the
+; wire into article mode (books/wire.lisp fn-wire-begin-article).  Whether
+; this server accepts postings at all, what the supplied octets become, and
+; whether the result is 240 or 441 are decided in books/nntp-post.lisp, which
+; is the function the serving host calls; see specs/nntp.md.
+
+(defun fn-nntp-begin-article-effect ()
+  (list :begin-article))
+
+(defun fn-nntp-post-offer (session)
+  (fn-nntp-make-result
+   session
+   (list (fn-nntp-reply-effect
+          (fn-nntp-crlf (fn-nntp-string-octets "340 send article to be posted")))
+         (fn-nntp-begin-article-effect))))
+
+(verify-guards fn-nntp-begin-article-effect)
+
+(verify-guards fn-nntp-post-offer)
+
 ; ---------------------------------------------------------------------------
 ; Export theory
 ;
@@ -341,6 +366,7 @@
     fn-nntp-list-active fn-nntp-list-newsgroups 
     fn-nntp-list-filtered-response fn-nntp-list-active-or-newsgroups 
     fn-nntp-list-wildmat-argumentp fn-nntp-list-unmaintained-response 
-    fn-nntp-list-response fn-nntp-capabilities fn-nntp-help))
+    fn-nntp-list-response fn-nntp-capabilities fn-nntp-help 
+    fn-nntp-begin-article-effect fn-nntp-post-offer))
 
 (in-theory (disable fn-nntp-responses-vocabulary))
