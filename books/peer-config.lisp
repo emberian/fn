@@ -341,14 +341,36 @@
                                   (fn-cfg-labelp fn-record-string-octets
                                    fn-path-identityp fn-wildmat-parse))))))
 
+; The rest of what fn-cfg-deltap asks of the row group: the peer name is a
+; label, the group is non-empty, and it is far under the delta row ceiling
+; (a record encodes at most eight rows).  Proved once with fn-cfg-peer-rows
+; open and every recognizer closed, and used by :use below, so the
+; admissibility proof never opens fn-cfg-peerp or the row encoder.
+(local (defthm fn-cfg-peer-rows-shape
+  (implies (fn-cfg-peerp p)
+           (and (fn-cfg-labelp (fn-cfg-peer-name p))
+                (consp (fn-cfg-peer-rows p))
+                (<= (len (fn-cfg-peer-rows p)) *fn-cfg-max-rows*)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-cfg-peerp)
+                                  ((:d fn-cfg-labelp)
+                                   (:d fn-path-identityp)
+                                   (:d fn-cfg-wildmatp)
+                                   (:d fn-cfg-peer-transportp)
+                                   (:d fn-cfg-peer-inboundp)
+                                   (:d fn-cfg-peer-outboundp)
+                                   (:d fn-cfg-peer-authp)))))))
+
 (defthm fn-cfg-set-peer-delta-is-admissible
   (implies (fn-cfg-peerp p)
            (equal (fn-cfg-delta-reason v gen stamp reserved ceiling
                                        (fn-cfg-set-peer-delta p))
                   nil))
-  :hints (("Goal" :in-theory (e/d (fn-cfg-deltap fn-cfg-delta-reason
-                                   fn-cfg-set-peer-delta fn-cfg-set-peer)
-                                  (fn-cfg-peer-rows fn-cfg-peerp)))))
+  :hints (("Goal" :use fn-cfg-peer-rows-shape
+           :in-theory (e/d (fn-cfg-deltap fn-cfg-delta-reason
+                            fn-cfg-set-peer-delta fn-cfg-set-peer)
+                           ((:d fn-cfg-peer-rows) (:d fn-cfg-peerp)
+                            (:d fn-cfg-labelp))))))
 
 ; After (:set-peer p) the peers slot holds exactly p's rows under its name:
 ; the upsert replaced the old group and nothing else carries the key.
