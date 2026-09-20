@@ -281,7 +281,7 @@ delegates everything else to `fn-peer-step` unchanged. Evidence is
 
 | RFC 4643 clause | Requirement | Status |
 | --- | --- | --- |
-| §2.1 | Advertise `AUTHINFO USER` only for what the server will accept now | proved: `fn-auth-authinfo-is-not-advertised-once-authenticated`. Also withheld on an unprotected connection when the configuration is protected-only, because the server would answer 483. The SASL argument is never advertised |
+| §2.1 | Advertise `AUTHINFO USER` only for what the server will accept now | proved: `fn-auth-authinfo-is-not-advertised-once-authenticated`. Also withheld on an unprotected connection when the configuration is protected-only, because the server would answer 483, and withheld when the configuration holds NO credential, because every PASS would then be 481. The SASL argument is never advertised |
 | §2.2 | 480 before authentication; the command is not performed | **keystone** `fn-auth-gated-command-is-refused-and-not-performed`: with authentication required and no authenticated subject, a restricted command's step submits nothing, never offers article mode, returns the session unchanged, and its whole effect list is the single 480 line. The restricted set is `fn-auth-restricted-keywordp`: every archive and transit command plus POST. CAPABILITIES, HELP, QUIT, MODE, DATE, AUTHINFO and STARTTLS stay available, so an unauthenticated client can still discover the server and still authenticate |
 | §2.3.1 | 281 / 381 / 481 / 482 / 502 exactly | implemented and pinned as transcripts; each code has its own line and no two are equal |
 | §2.3.2 | MUST return 381 to AUTHINFO USER | implemented unconditionally, for a configured and an unconfigured name alike, and the two replies are asserted equal so the reply cannot disclose whether the name exists |
@@ -291,26 +291,49 @@ delegates everything else to `fn-peer-step` unchanged. Evidence is
 | §2.3.2 / §2.5 | A cleartext mechanism needs a protected channel | `fn-auth-config-protected-onlyp` answers 483 on an unprotected connection and 381 under TLS; both witnessed |
 | §2.3.2 | Authentication grants privileges to this connection | the posting allowance is the authenticated principal's `fn-auth-cred-postingp`, not the connection's: two principals are witnessed, one that may post and one that may not, and the POST capability label follows each |
 | §2.4 SASL | AUTHINFO SASL with a mechanism list | **deferred**, answered `502 no SASL mechanism is offered` (§2.4.1 note [2]), and no SASL argument is advertised. PLAIN was considered and not shipped: over a protected channel it is USER/PASS with a base64 wrapper and adds no property fn can state, and the mechanisms that would add one (SCRAM, EXTERNAL over a client certificate) need either an executable digest — the same `OB-AUTH-DIGEST` below — or certificate material the book does not see |
-| §2.5 | Security considerations: the cleartext secret | **stated, not met by a digest.** See `OB-AUTH-DIGEST` below |
+| §2.5 | Security considerations: the cleartext secret | the STORED secret is now a salted digest (`books/auth-secret.lisp`); the WIRE secret is still cleartext, which is what the mechanism is. See `OB-AUTH-DIGEST` below |
 
-### OB-AUTH-DIGEST (open, with its cause)
+### OB-AUTH-DIGEST (CLOSED 2026-09-20; the record of why it was open stays)
 
-The configuration holds the shared secret in the clear and `fn-auth-checkp`
-compares the supplied octets to it with `equal`. A stored password digest was
-the intended design. It is not implemented, and the reason is a fact about
-this tree rather than a preference: the only digest fn has is `fn-digest`
+**It was open** because the only digest fn had was `fn-digest`
 (`books/crypto-seam.lisp`), an `encapsulate`d constrained function with no
-attachment, so it **cannot be evaluated**. Calling it on the served path
-would make `fn-served-step` non-executable and the reader would stop serving.
-Deriving the digest in Python instead is refused by the one-owner rule in
-`AGENTS.md`: Python may not compute a value ACL2 compares. Closing this needs
-an executable digest in ACL2 (a `defattach` for `fn-digest`, or an ACL2
-definition of a real hash), not a change in `books/nntp-auth.lisp`.
+attachment, so it could not be evaluated: calling it on the served path
+would have made `fn-served-step` non-executable and the reader would have
+stopped serving. Deriving the digest in Python instead is refused by the
+one-owner rule in `AGENTS.md`. So the configuration held the shared secret
+in the clear and `fn-auth-checkp` compared the supplied octets to it with
+`equal`.
 
-The consequence is not softened: AUTHINFO USER/PASS over a plaintext
-connection reveals the secret to anyone on the path. That is a property of
-the mechanism RFC 4643 §2.3 defines, which is why §2.3.2 asks for a protected
-channel; `fn-auth-config-protected-onlyp` is how an operator requires one.
+**It is closed** because `books/sha256.lisp` defines an executable,
+guard-verified SHA-256 and `books/crypto-attach.lisp` attaches it to
+`fn-digest`. `books/auth-secret.lisp` is the scheme over it — a 16-octet
+salt per credential, the tagged digest of `salt || secret`, the stored
+verifier `(:fn-authsec-v1 salt digest)` — and `fn-auth-checkp` is
+`fn-authsec-checkp` on that verifier. `fn-auth-credp` recognizes a
+`fn-authsec-verifierp` where it recognized a printable token, so by
+`fn-authsec-verifier-is-not-octets` a cleartext secret is not even
+well-formed in the slot any more. `fn principal set-password` derives the
+verifier through `tools/auth_secret.py`, which is one ACL2 session and no
+`hashlib`; `bin/fn` no longer imports that module at all.
+
+**What did NOT change.** The wire. AUTHINFO USER/PASS over a plaintext
+connection still reveals the secret to anyone on the path: that is a
+property of the mechanism RFC 4643 §2.3 defines, which is why §2.3.2 asks
+for a protected channel and why `fn-auth-config-protected-onlyp` exists.
+What changed is what a stolen *configuration file* contains. And that a
+WRONG secret is rejected is still not a theorem — it is second-preimage
+resistance of the attached SHA-256, A-CRYPTO — though it is now a witness
+on concrete octets under the real attachment in
+`tests/acl2/nntp-auth-tests.lisp` and on the wire in
+`planning/evidence/auth-w10-2026-09-20.md`.
+
+**Migration, a local policy choice.** An existing credential file in the
+old format (a `secret` key in the clear) is REFUSED by name —
+`cleartext-credential` — by both `fn principal set-password` and
+`tools/run_owner.py`, and the operator re-sets the password. fn does not
+migrate it: the cleartext cannot be turned into a verifier without reading
+it, and reading an operator's stored password to re-derive it is the thing
+the scheme exists to stop.
 
 ## The RFC 4642 clause matrix (STARTTLS)
 
@@ -324,7 +347,8 @@ state machine around the upgrade, and nothing about the upgrade.
 | --- | --- | --- |
 | §2.1 | Advertise the STARTTLS label; MUST NOT advertise it once a TLS layer is active | **proved**: `fn-auth-starttls-is-not-advertised-under-tls`, and `fn-auth-starttls-is-not-advertised-without-a-certificate` for the case where no certificate is configured |
 | §2.2.1 | `STARTTLS` takes no arguments | implemented: 501 with an argument, witnessed |
-| §2.2.2 | 382 then the handshake | implemented: the reply and one `(:starttls)` effect. `fn-auth-starttls-effect-only-with-382` says the effect appears only from the branch that also records the TLS layer in the session, so a handshake can never begin without the client having been told |
+| §2.2.2 | 382 then the handshake | implemented: the reply and one `(:starttls)` effect. `fn-auth-starttls-effect-only-with-382` says the effect appears only from the branch that also puts the session into the HANDSHAKE, so a handshake can never begin without the client having been told, and `tlsp` is NOT set there: `fn-auth-tls-established-sets-the-layer` is the only transition that sets it and only the host's `(:tls-established)` wire event reaches it |
+| §2.2 | STARTTLS MUST NOT be pipelined; the handshake begins with the first octet after the 382's CRLF | **proved, and it used to be open.** `fn-served-feed` (`books/served.lisp`) stops on a handshaking connection exactly as it stops on a closed wire (`fn-served-feed-of-handshaking-connection`, `fn-served-step-of-handshaking-connection-is-a-no-op`), so octets behind the command line in the same read are never framed as NNTP. The stop is a property of the CONNECTION, not of the effects just emitted, which is what lets `fn-served-feed-of-append` and partition independence survive it. Before 2026-09-20 the host discarded those octets by itself and the spec recorded that as a defect |
 | §2.2.2 | Once a TLS layer is active, STARTTLS is not a valid command | **proved**: `fn-auth-second-starttls-is-refused` — 502 and no second handshake effect |
 | §2.2.2 | 580 when the server cannot initiate | implemented for the configuration reason (no certificate or key configured). A host-side handshake failure after a 382 is not a 580: by then the 382 has been sent, and `tools/run_owner.py` closes the connection, which §2.2.2 permits |
 | §2.2.2 | MUST NOT reply 480 or 483 to STARTTLS | implemented: the STARTTLS branch has three replies (501, 502, 580) and 382, and none of the others is reachable from it. STARTTLS is not in `fn-auth-restricted-keywordp`, so the §2.2 gate never sees it |

@@ -217,6 +217,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-auth \
 	tests/acl2/nntp-auth-tests \
 	books/served \
+	books/nntp-auth-invariants \
 	tests/acl2/served-tests \
 	books/config-stream \
 	tests/acl2/config-stream-tests \

@@ -26,7 +26,13 @@ class OwnerProcess:
     def start(self):
         extra = []
         if self.tls is not None:
-            extra = ["--tls-cert", str(self.tls[0]), "--tls-key", str(self.tls[1])]
+            # `--implicit-tls` is what these two tests mean by "the TLS
+            # listener": NNTPS, the handshake before the greeting.  A
+            # configured certificate WITHOUT it is now offered through RFC
+            # 4642 STARTTLS instead (tests/test_auth.py covers that), so
+            # the flag has to be explicit here.
+            extra = ["--tls-cert", str(self.tls[0]), "--tls-key", str(self.tls[1]),
+                     "--implicit-tls"]
         self.proc = subprocess.Popen(
             [sys.executable, "tools/run_owner.py", "--store", str(self.store),
              "--port", "0", "--control", str(self.control),
@@ -305,8 +311,11 @@ class OwnerTlsTests(unittest.TestCase):
             cert, key = material
             store = Path(directory) / "store"
             control = Path(directory) / "control.sock"
-            subprocess.run([sys.executable, "tools/run_store.py", "init",
-                            "--store", str(store), "--group", "fn.letters"],
+            # `--store` is a GLOBAL argument and must precede the
+            # subcommand; with it after, run_store exits 5 on a usage error
+            # and both TLS tests errored in setUp rather than running.
+            subprocess.run([sys.executable, "tools/run_store.py", "--store",
+                            str(store), "init", "--group", "fn.letters"],
                            cwd=ROOT, check=True, capture_output=True)
             owner = OwnerProcess(store, control, tls=(cert, key)).start()
             try:
@@ -345,16 +354,28 @@ class OwnerTlsTests(unittest.TestCase):
             cert, key = material
             store = Path(directory) / "store"
             control = Path(directory) / "control.sock"
-            subprocess.run([sys.executable, "tools/run_store.py", "init",
-                            "--store", str(store), "--group", "fn.letters"],
+            # `--store` is a GLOBAL argument and must precede the
+            # subcommand; with it after, run_store exits 5 on a usage error
+            # and both TLS tests errored in setUp rather than running.
+            subprocess.run([sys.executable, "tools/run_store.py", "--store",
+                            str(store), "init", "--group", "fn.letters"],
                            cwd=ROOT, check=True, capture_output=True)
             owner = OwnerProcess(store, control, tls=(cert, key)).start()
             try:
                 with socket.create_connection(("127.0.0.1", owner.port), 30) as sock:
                     sock.settimeout(30)
                     sock.sendall(b"CAPABILITIES\r\n")
-                    # The handshake fails and the owner drops the connection
-                    # before any NNTP octet: no greeting is ever sent.
-                    self.assertEqual(sock.recv(64), b"")
+                    # The handshake fails and the owner drops the
+                    # connection before any NNTP octet: no greeting is ever
+                    # sent.  The drop reaches the client as an orderly
+                    # close or as a reset depending on whether the kernel
+                    # still had unread data queued; both mean the same
+                    # thing here and the assertion is about what was
+                    # SERVED, which is nothing.
+                    try:
+                        served = sock.recv(64)
+                    except ConnectionResetError:
+                        served = b""
+                    self.assertEqual(served, b"")
             finally:
                 owner.stop()

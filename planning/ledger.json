@@ -214,6 +214,7 @@
     "books/nntp-auth",
     "tests/acl2/nntp-auth-tests",
     "books/served",
+    "books/nntp-auth-invariants",
     "tests/acl2/served-tests",
     "books/config-stream",
     "tests/acl2/config-stream-tests",
@@ -272,21 +273,21 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 269,
-    "books_in_root_closure": 268,
-    "roots": 268,
-    "theorems": 5336,
-    "functions": 3826,
-    "assert_events": 5081,
+    "books": 270,
+    "books_in_root_closure": 269,
+    "roots": 269,
+    "theorems": 5377,
+    "functions": 3837,
+    "assert_events": 5099,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
-      "verified": 1398,
-      "declared-off": 187,
-      "default-guarded": 1747,
+      "verified": 1400,
+      "declared-off": 189,
+      "default-guarded": 1754,
       "default-unguarded": 494
     },
-    "suspect_theorems": 41,
+    "suspect_theorems": 43,
     "export_hygiene_warnings": 72,
     "teeth_form_warnings": 0,
     "include_hygiene_warnings": 87,
@@ -753,12 +754,12 @@
       "book": "books/auth-secret.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 16,
-      "functions": 10,
+      "theorems": 18,
+      "functions": 11,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 10,
+        "default-guarded": 11,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -2569,29 +2570,58 @@
       "read_error": null
     },
     {
-      "book": "books/nntp-auth.lisp",
+      "book": "books/nntp-auth-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 39,
-      "functions": 41,
+      "theorems": 4,
+      "functions": 3,
       "guards": {
-        "verified": 27,
-        "declared-off": 1,
-        "default-guarded": 13,
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
         "default-unguarded": 0
       },
-      "verify_guards_events": 27,
+      "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 2,
+      "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "served"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/nntp-auth.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 65,
+      "functions": 46,
+      "guards": {
+        "verified": 29,
+        "declared-off": 3,
+        "default-guarded": 14,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 29,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "auth-secret",
         "peer-inbound",
         "principal"
       ],
       "system_includes": [],
-      "suspects": [],
+      "suspects": [
+        "fn-auth-consistent-forward",
+        "fn-auth-token-argp-forward"
+      ],
       "read_error": null
     },
     {
@@ -3056,7 +3086,7 @@
       "book": "books/owner-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 95,
+      "theorems": 101,
       "functions": 7,
       "guards": {
         "verified": 0,
@@ -3782,12 +3812,12 @@
       "book": "books/served.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 58,
-      "functions": 35,
+      "theorems": 61,
+      "functions": 37,
       "guards": {
         "verified": 2,
         "declared-off": 4,
-        "default-guarded": 29,
+        "default-guarded": 31,
         "default-unguarded": 0
       },
       "verify_guards_events": 2,
@@ -3797,8 +3827,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "nntp-auth",
         "nntp-post",
-        "peer-inbound",
         "wire-invariants"
       ],
       "system_includes": [],
@@ -6157,10 +6187,10 @@
         "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 102,
+      "assert_events": 120,
       "must_fails": 0,
-      "defconsts": 28,
-      "defmacros": 0,
+      "defconsts": 31,
+      "defmacros": 3,
       "encapsulates": 0,
       "includes": [
         "../../books/nntp-auth"
@@ -7367,6 +7397,22 @@
       "line": 107,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-anchor-octets-of-lengthp"
+      ]
+    },
+    {
+      "theorem": "fn-auth-consistent-forward",
+      "book": "books/nntp-auth.lisp",
+      "line": 394,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-session-consistentp"
+      ]
+    },
+    {
+      "theorem": "fn-auth-token-argp-forward",
+      "book": "books/nntp-auth.lisp",
+      "line": 609,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-token-argp"
       ]
     },
     {
@@ -8784,12 +8830,12 @@
       },
       {
         "book": "books/nntp-auth.lisp",
-        "line": 70,
+        "line": 96,
         "shape": "fn-auth-config-shapep",
         "shapes": 3,
-        "accessors": 13,
+        "accessors": 14,
         "variable": "x",
-        "reason": "hand-written record: 3 shape predicate(s) (fn-auth-config-shapep, fn-auth-cred-shapep, fn-auth-session-shapep) and 13 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
+        "reason": "hand-written record: 3 shape predicate(s) (fn-auth-config-shapep, fn-auth-cred-shapep, fn-auth-session-shapep) and 14 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
       },
       {
         "book": "books/nntp-post.lisp",
@@ -8856,7 +8902,7 @@
       },
       {
         "book": "books/served.lisp",
-        "line": 71,
+        "line": 72,
         "shape": "fn-served-conn-shapep",
         "shapes": 2,
         "accessors": 8,
