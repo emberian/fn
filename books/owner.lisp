@@ -633,6 +633,7 @@
              (opened (fn-served-open-peer archive
                                           *fn-nntp-max-initial-line-octets*
                                           limit (fn-own-config o) (fn-own-clock o)
+                                          (fn-own-clock o)
                                           peer (fn-sn-node (fn-own-store o)) cfg))
              (sconn (fn-served-result-conn opened))
              (conn (fn-own-conn-make id (fn-own-view-version view)
@@ -1023,7 +1024,8 @@
                                        (fn-own-conn-session conn)
                                        (fn-own-conn-archive conn)
                                        (fn-own-conn-config conn)
-                                       (fn-own-conn-observation conn))
+                                       (fn-own-conn-observation conn)
+                                       (fn-own-clock o))
                   (fn-own-sub-decision sub) d completion))
                 (if (equal completion :durable)
                     (fn-own-advance next id)
