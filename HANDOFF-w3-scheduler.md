@@ -4,9 +4,10 @@ Worktree `/Users/ember/dev/fn/build/lanes/w3-scheduler`, branch `w3/scheduler`,
 branched from `dev` at `9321344`.
 
 HEAD: see `git -C /Users/ember/dev/fn/build/lanes/w3-scheduler rev-parse HEAD`.
-The lane's single commit is "C2-06: the durable contact/retry scheduler".
+Commits: `a018394` (C2-06), the proof-style rewrite (`dad2f3c`..`b422d42`), and the
+2026-09-20 proof lane (`79e5227` and after), which is what the table below reports.
 
-## Per book: certified, or open (2026-09-19 rebase-and-certify pass)
+## Per book: certified, or open (2026-09-20 proof lane)
 
 Rebased onto `dev` at `c1c8ab1` (`git merge --no-edit dev`; the only conflicts
 were `planning/ledger.json` and `planning/ledger.md`, resolved by taking dev's
@@ -16,13 +17,12 @@ STATEMENT is unchanged.
 | Artifact | Status | Evidence |
 | --- | --- | --- |
 | `books/scheduler.lisp` | CERTIFIED | `build/acl2/certify-20260919T235031Z-17711` |
-| `books/scheduler-invariants.lisp` | **OPEN — not certified** | failing runs: `certify-20260919T235132Z-19523`, `-20260920T000608Z-58607`, `-20260920T001250Z-64345`, `-20260920T002505Z-68951`, `-20260920T003732Z-71605`, `-20260920T005003Z-74779` |
-| `tests/acl2/scheduler-tests.lisp` | **OPEN — blocked on the invariants certificate** | `certify-20260920T000519Z-58058` |
+| `books/scheduler-invariants.lisp` | CERTIFIED (`certify-book` form 3.76 s wall; no form over 1.1 s) | `build/acl2/certify-20260920T025038Z-16877` |
+| `tests/acl2/scheduler-tests.lisp` | **OPEN — fails at `(assert-event (fn-sched-decision-recordp *sched-decision*))`**, `tests/acl2/scheduler-tests.lisp:312`: the FNSC decision record built by `fn-sched-decision` is rejected by `fn-frame-values-okp` over `*fn-sched-decision-spec*`. A codec assertion, not an aging fact; every form before it passes | `build/acl2/certify-20260920T025038Z-16877` (log `tests--acl2--scheduler-tests.certify.log`) |
 
-`books/scheduler` is the only certified book of this cluster. Commit `3886f5a`
-is titled "Certify the rewritten scheduler cluster"; that title is wrong and
-this table is the correction. Nothing below is a certified claim except the
-`books/scheduler` row.
+`books/scheduler` and `books/scheduler-invariants` are certified; the test root
+is open at the form above. Commit `3886f5a` is titled "Certify the rewritten
+scheduler cluster"; that title is wrong and this table is the correction.
 
 ### The invariants book, failure by failure
 
@@ -46,7 +46,46 @@ and an opaque record does not. In order, with the fix that closed it:
    `fn-sched-aged-advance-consp-when-an-eligible-member-exists` and
    `fn-sched-selection-is-consp-when-the-promotion-queue-is-not-empty`.
 
-The last run of this sequence was still open when the lane's budget ran out.
+### The proof lane (2026-09-20): what actually hung, and what was false
+
+The runs `-94761` and `-7729` had already proved
+`fn-sched-promotion-position-decreases` (0.10 s). The form that ran to the
+1800 s limit was the next one, `fn-sched-promoted-work-is-selected-within-its-
+position`. HEAD `b422d42` then swapped the keystone's `:use` of
+`fn-sched-member-of-cdr-when-not-the-car` for a new lemma; that version fails in
+0.02 s and was never run. Findings, in book order:
+
+1. `fn-sched-step-preserves-state` / `-queued` took 359.9 s and 366.7 s: the
+   `:transport` branch opens `fn-bp-step` (books/bp-workflow has no export
+   theory) although the scheduler state there is `ss` itself. Closed by name:
+   under 0.3 s each.
+2. The keystone's `:use` list is the one that certified; the isolation lemma
+   is deleted.
+3. The hang: the induction needs `(< pos' (- n 1))` from `(< pos' pos)` and
+   `(< pos n)`, and the keystone's `<` conjunct is a rewrite rule whose
+   trigger never occurs in that goal; ACL2 pushed thirteen nested inductions.
+   Accumulated persistence at 2M steps is the descent itself
+   (`fn-sched-pos-is-natural` 905k frames, the run predicates' type
+   prescriptions ~226k each, `nonnegative-integer-quotient` 142k), with
+   `fn-sched-refused-submit-is-a-no-op`, `fn-wildmat-guard-items-p-true-listp`
+   and an opened `fn-sched-selection` as the zero-useful fan. Cure:
+   `fn-sched-promotion-position-decreases-linear` (`:linear`, proof
+   vocabulary) and `:expand` of the three run predicates at N with their
+   definitions closed.
+4. **Statement change.** With the hang gone the base case is a counterexample:
+   at `n = 1/2` every run predicate is `t` (`(zp (nfix 1/2))`), `(< 0 1/2)`
+   holds and nothing is selected, so `fn-sched-promoted-work-is-selected-
+   within-its-position` and `fn-sched-aging-bound` were false as stated, from
+   `a018394` on. Both now bound the position by `(nfix n)`, the horizon the run
+   predicates count. The witness is evaluated in the test book. This is a
+   correction, not a weakening for a proof.
+5. `fn-sched-passed-over-work-reaches-the-promotion-queue` needed
+   `fn-sched-find-reaches-the-promotions` (cited at its instance) and
+   `fn-sched-member-of-append-right`.
+6. `fn-sched-conditional-progress-under-a-fairness`'s hint named the
+   constrained `fn-assume-fairness-contact-index` in a theory (a hard error)
+   and left `fn-assume-fairness-contact-index-is-finite` enabled, which
+   rewrote the `:use`d `natp` fact to `t`.
 | `host/scheduler-host.lisp` | `:program` mode, outside the proof boundary | — |
 | `tools/scheduler.py`, `tests/test_scheduler.py` | PASS | 22 tests |
 
@@ -264,7 +303,7 @@ A refused submit charges no retry and records no decision, which is what keeps
                 (member-equal w (fn-sched-aged ss))
                 (fn-sched-contact-runp ss wf n attempt-id)
                 (fn-sched-eligible-runp ss wf n attempt-id w)
-                (< (nfix (fn-sched-queue-bound (fn-sched-conf ss))) n))
+                (< (nfix (fn-sched-queue-bound (fn-sched-conf ss))) (nfix n)))
            (fn-sched-selected-withinp ss wf n attempt-id w)))
 ```
 
