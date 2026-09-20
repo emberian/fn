@@ -113,12 +113,20 @@
          (fn-nntp-step (fn-nntp-result-session *fn-nntp-empty-group*) *fn-nntp-archive* *fn-nntp-env0* '(:command (83 84 65 84))))
         '((:reply (52 50 48 32 110 111 32 99 117 114 114 101 110 116 32 97 114 116 105 99 108 101 13 10)))))
 
-; Error and capability transcript: no READER/POST/TLS/auth claim; bad syntax is
-; 501 and recognized but unsupported POST is 500.
+; Error and capability transcript: no TLS/auth claim; bad syntax is 501 and an
+; unimplemented command (IHAVE) is 500.  POST at this level is the 340 offer
+; with the begin-article marker; whether the offer is made is decided above
+; this dispatcher by fn-nntp-post-step (books/nntp-post.lisp), and the wire
+; switches into article mode on the marker (books/served.lisp).
+(assert-event
+ (equal (fn-nntp-result-effects
+         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (73 72 65 86 69))))
+        '((:reply (53 48 48 32 99 111 109 109 97 110 100 32 110 111 116 32 114 101 99 111 103 110 105 122 101 100 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
          (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (80 79 83 84))))
-        '((:reply (53 48 48 32 99 111 109 109 97 110 100 32 110 111 116 32 114 101 99 111 103 110 105 122 101 100 13 10)))))
+        '((:reply (51 52 48 32 115 101 110 100 32 97 114 116 105 99 108 101 32 116 111 32 98 101 32 112 111 115 116 101 100 13 10))
+          (:begin-article))))
 (assert-event
  (equal (fn-nntp-result-effects
          (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (71 82 79 85 80 32))))
@@ -152,8 +160,13 @@
         (fn-nntp-result-effects *fn-nntp-caps*)))
 (assert-event
  (equal (fn-nntp-result-effects *fn-nntp-caps*)
-        '((:reply (49 48 49 32 99 97 112 97 98 105 108 105 116 121 32 108 105 115 116 32 102 111 108 108 111 119 115 13 10
-                   86 69 82 83 73 79 78 32 50 13 10 73 77 80 76 69 77 69 78 84 65 84 73 79 78 32 102 110 45 110 110 116 112 45 108 97 98 13 10 46 13 10)))))
+        '((:reply (49 48 49 32 99 97 112 97 98 105 108 105 116 121 32 108 105 115 116 32
+                   102 111 108 108 111 119 115 13 10 86 69 82 83 73 79 78 32 50 13 10
+                   82 69 65 68 69 82 13 10 79 86 69 82 32 77 83 71 73 68 13 10
+                   76 73 83 84 32 65 67 84 73 86 69 32 78 69 87 83 71 82 79 85
+                   80 83 32 79 86 69 82 86 73 69 87 46 70 77 84 13 10 73 77 80
+                   76 69 77 69 78 84 65 84 73 79 78 32 102 110 45 110 110 116 112 45
+                   108 97 98 13 10 46 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
          (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*

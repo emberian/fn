@@ -174,17 +174,23 @@
     "books/nntp-projection",
     "books/nntp-responses",
     "books/nntp",
-    "books/nntp-overview",
     "books/nntp-invariants",
     "books/nntp-effects",
     "tests/acl2/nntp-tests",
     "tests/acl2/nntp-teeth-tests",
+    "books/injection",
+    "books/injection-invariants",
+    "tests/acl2/injection-tests",
+    "books/nntp-post",
+    "tests/acl2/nntp-post-tests",
     "books/served",
     "tests/acl2/served-tests",
+    "books/owner",
+    "books/owner-invariants",
+    "tests/acl2/owner-tests",
     "books/ideal",
     "books/nntp-index",
     "tests/acl2/nntp-index-tests",
-    "tests/acl2/nntp-reader-profile-tests",
     "books/bp-release",
     "books/bp-release-invariants",
     "tests/acl2/bp-release-tests",
@@ -208,23 +214,24 @@
     "tests/acl2/policy-tests"
   ],
   "totals": {
-    "books": 205,
-    "books_in_root_closure": 204,
-    "roots": 204,
-    "theorems": 3373,
-    "functions": 2496,
-    "assert_events": 3507,
+    "books": 211,
+    "books_in_root_closure": 210,
+    "roots": 210,
+    "theorems": 3480,
+    "functions": 2587,
+    "assert_events": 3595,
     "must_fails": 59,
     "encapsulates": 14,
     "guards": {
-      "verified": 1069,
-      "declared-off": 131,
-      "default-guarded": 859,
-      "default-unguarded": 437
+      "verified": 1064,
+      "declared-off": 138,
+      "default-guarded": 940,
+      "default-unguarded": 445
     },
-    "suspect_theorems": 30,
-    "export_hygiene_warnings": 63,
-    "teeth_form_warnings": 0
+    "suspect_theorems": 28,
+    "export_hygiene_warnings": 62,
+    "teeth_form_warnings": 0,
+    "include_hygiene_warnings": 94
   },
   "books": [
     {
@@ -2102,6 +2109,63 @@
       "read_error": null
     },
     {
+      "book": "books/injection-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 19,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "injection"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-inj-instantp-opens"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/injection.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 11,
+      "functions": 72,
+      "guards": {
+        "verified": 57,
+        "declared-off": 0,
+        "default-guarded": 15,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 57,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 16,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "article-fields",
+        "clock"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/journal.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -2231,7 +2295,7 @@
       "book": "books/nntp-effects.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 119,
+      "theorems": 97,
       "functions": 12,
       "guards": {
         "verified": 0,
@@ -2246,8 +2310,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "nntp-invariants",
-        "nntp-overview"
+        "nntp-invariants"
       ],
       "system_includes": [],
       "suspects": [
@@ -2285,7 +2348,7 @@
       "book": "books/nntp-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 77,
+      "theorems": 67,
       "functions": 4,
       "guards": {
         "verified": 0,
@@ -2300,37 +2363,36 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "nntp-overview"
+        "nntp"
       ],
       "system_includes": [],
       "suspects": [],
       "read_error": null
     },
     {
-      "book": "books/nntp-overview.lisp",
+      "book": "books/nntp-post.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 18,
-      "functions": 6,
+      "theorems": 15,
+      "functions": 18,
       "guards": {
-        "verified": 6,
-        "declared-off": 0,
-        "default-guarded": 0,
+        "verified": 12,
+        "declared-off": 1,
+        "default-guarded": 5,
         "default-unguarded": 0
       },
-      "verify_guards_events": 6,
+      "verify_guards_events": 12,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "nntp"
+        "injection",
+        "nntp-effects"
       ],
       "system_includes": [],
-      "suspects": [
-        "fn-nov-missing-header-is-empty"
-      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -2362,23 +2424,21 @@
       "book": "books/nntp-responses.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 5,
-      "functions": 93,
+      "theorems": 1,
+      "functions": 23,
       "guards": {
-        "verified": 93,
+        "verified": 23,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 93,
+      "verify_guards_events": 23,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 10,
+      "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "article-fields",
-        "clock",
         "nntp-projection"
       ],
       "system_includes": [],
@@ -2544,6 +2604,60 @@
         "fn-node-capacity-refusal-is-no-op",
         "fn-node-stale-completion-is-no-op"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/owner-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 74,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 7
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "owner"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/owner.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 33,
+      "functions": 56,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 53,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "clock",
+        "served",
+        "store-observed"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -2916,29 +3030,26 @@
       "book": "books/served.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 41,
-      "functions": 20,
+      "theorems": 50,
+      "functions": 31,
       "guards": {
-        "verified": 0,
-        "declared-off": 1,
-        "default-guarded": 19,
+        "verified": 2,
+        "declared-off": 4,
+        "default-guarded": 25,
         "default-unguarded": 0
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 2,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 1,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "nntp-effects",
+        "nntp-post",
         "wire-invariants"
       ],
       "system_includes": [],
-      "suspects": [
-        "fn-served-next-strictly-consumes-linear",
-        "fn-served-nntp-run-of-no-events"
-      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -4674,6 +4785,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/injection-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 35,
+      "must_fails": 0,
+      "defconsts": 12,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/injection-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/journal-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -4777,29 +4913,27 @@
       "read_error": null
     },
     {
-      "book": "tests/acl2/nntp-reader-profile-tests.lisp",
+      "book": "tests/acl2/nntp-post-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 1,
+      "functions": 0,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 1
+        "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 94,
+      "assert_events": 28,
       "must_fails": 0,
-      "defconsts": 18,
+      "defconsts": 19,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/nntp-effects"
+        "../../books/nntp-post"
       ],
-      "system_includes": [
-        "std/testing/must-fail"
-      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -4816,9 +4950,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 17,
+      "assert_events": 15,
       "must_fails": 2,
-      "defconsts": 13,
+      "defconsts": 8,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -4843,9 +4977,9 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 158,
+      "assert_events": 156,
       "must_fails": 0,
-      "defconsts": 63,
+      "defconsts": 58,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -4877,6 +5011,31 @@
       "encapsulates": 0,
       "includes": [
         "../../books/node-traces"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/owner-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 95,
+      "must_fails": 0,
+      "defconsts": 35,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-invariants"
       ],
       "system_includes": [],
       "suspects": [],
@@ -5076,9 +5235,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 30,
+      "assert_events": 58,
       "must_fails": 0,
-      "defconsts": 16,
+      "defconsts": 33,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -5660,6 +5819,14 @@
       ]
     },
     {
+      "theorem": "fn-inj-instantp-opens",
+      "book": "books/injection-invariants.lisp",
+      "line": 207,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-inj-instantp"
+      ]
+    },
+    {
       "theorem": "fn-lace-cross-canonical-self",
       "book": "books/lace-invariants.lisp",
       "line": 289,
@@ -5671,7 +5838,7 @@
     {
       "theorem": "fn-nntp-block-scan-start-without-a-dot",
       "book": "books/nntp-effects.lisp",
-      "line": 448,
+      "line": 410,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-nntp-block-scan and the conclusion is that branch's value"
       ]
@@ -5717,14 +5884,6 @@
       ]
     },
     {
-      "theorem": "fn-nov-missing-header-is-empty",
-      "book": "books/nntp-overview.lisp",
-      "line": 99,
-      "reasons": [
-        "branch-of-definition: the hypothesis negates a branch test of fn-nov-header-content and the conclusion is that branch's value"
-      ]
-    },
-    {
       "theorem": "fn-prin-apply-succession-when-not-acceptable",
       "book": "books/principal-invariants.lisp",
       "line": 205,
@@ -5754,22 +5913,6 @@
       "line": 548,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value"
-      ]
-    },
-    {
-      "theorem": "fn-served-next-strictly-consumes-linear",
-      "book": "books/served.lisp",
-      "line": 635,
-      "reasons": [
-        "instance-corollary: the statement is fn-wire-next-strictly-consumes instantiated, discharging nothing"
-      ]
-    },
-    {
-      "theorem": "fn-served-nntp-run-of-no-events",
-      "book": "books/served.lisp",
-      "line": 230,
-      "reasons": [
-        "branch-of-definition: the hypothesis negates a branch test of fn-served-nntp-run and the conclusion is that branch's value"
       ]
     },
     {
@@ -6020,12 +6163,6 @@
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
-        "theorem": "fn-nov-lines-counts-the-retained-body-lines",
-        "book": "books/nntp-overview.lisp",
-        "line": 147,
-        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
-      },
-      {
         "theorem": "fn-ng-reverse-is-reverse",
         "book": "books/nntp-syntax.lisp",
         "line": 31,
@@ -6194,6 +6331,666 @@
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       }
     ],
-    "teeth_form": []
+    "teeth_form": [],
+    "include_hygiene": [
+      {
+        "book": "books/acceptance.lisp",
+        "line": 16,
+        "include": "acceptance-alloc",
+        "included": "books/acceptance-alloc.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/article-fields.lisp",
+        "line": 12,
+        "include": "article",
+        "included": "books/article.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/article-invariants.lisp",
+        "line": 4,
+        "include": "article",
+        "included": "books/article.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/article-properties.lisp",
+        "line": 9,
+        "include": "article",
+        "included": "books/article.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/article-properties.lisp",
+        "line": 10,
+        "include": "article-invariants",
+        "included": "books/article-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/article-public-bound.lisp",
+        "line": 3,
+        "include": "article-public-work",
+        "included": "books/article-public-work.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/article-public-work.lisp",
+        "line": 3,
+        "include": "article-work",
+        "included": "books/article-work.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/article-public-work.lisp",
+        "line": 4,
+        "include": "article-work-budget",
+        "included": "books/article-work-budget.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/article-work-primitives.lisp",
+        "line": 3,
+        "include": "article-properties",
+        "included": "books/article-properties.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/article-work-scanners.lisp",
+        "line": 3,
+        "include": "article-work-primitives",
+        "included": "books/article-work-primitives.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/article-work.lisp",
+        "line": 3,
+        "include": "article-work-scanners",
+        "included": "books/article-work-scanners.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-fragment-invariants.lisp",
+        "line": 15,
+        "include": "bp-fragment",
+        "included": "books/bp-fragment.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-fragment.lisp",
+        "line": 32,
+        "include": "bp-primary",
+        "included": "books/bp-primary.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-ingress.lisp",
+        "line": 9,
+        "include": "article-fields",
+        "included": "books/article-fields.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-outbound.lisp",
+        "line": 7,
+        "include": "bp-workflow-records",
+        "included": "books/bp-workflow-records.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-primary-invariants.lisp",
+        "line": 17,
+        "include": "bp-primary",
+        "included": "books/bp-primary.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-receiver-context-invariants.lisp",
+        "line": 2,
+        "include": "bp-receiver-store-invariants",
+        "included": "books/bp-receiver-store-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-receiver-evolving-history-invariants.lisp",
+        "line": 7,
+        "include": "bp-receiver-trace-invariants",
+        "included": "books/bp-receiver-trace-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-receiver-evolving-node-invariants.lisp",
+        "line": 7,
+        "include": "bp-receiver-evolving-history-invariants",
+        "included": "books/bp-receiver-evolving-history-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-receiver-evolving-store-invariants.lisp",
+        "line": 6,
+        "include": "bp-receiver-evolving-node-invariants",
+        "included": "books/bp-receiver-evolving-node-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-receiver-invariants.lisp",
+        "line": 2,
+        "include": "bp-receiver-journal-invariants",
+        "included": "books/bp-receiver-journal-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-receiver-journal-invariants.lisp",
+        "line": 2,
+        "include": "bp-receiver-context-invariants",
+        "included": "books/bp-receiver-context-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-receiver-retention-invariants.lisp",
+        "line": 2,
+        "include": "bp-receiver-invariants",
+        "included": "books/bp-receiver-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-receiver-trace-invariants.lisp",
+        "line": 2,
+        "include": "bp-receiver-retention-invariants",
+        "included": "books/bp-receiver-retention-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-receiver-trace-invariants.lisp",
+        "line": 3,
+        "include": "bp-receiver-state-invariants",
+        "included": "books/bp-receiver-state-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-release-invariants.lisp",
+        "line": 21,
+        "include": "bp-release",
+        "included": "books/bp-release.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-release-invariants.lisp",
+        "line": 22,
+        "include": "bp-workflow-binding-core",
+        "included": "books/bp-workflow-binding-core.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-release.lisp",
+        "line": 29,
+        "include": "bp-workflow-records",
+        "included": "books/bp-workflow-records.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-release.lisp",
+        "line": 30,
+        "include": "assumptions",
+        "included": "books/assumptions.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-workflow-binding-core.lisp",
+        "line": 4,
+        "include": "bp-workflow-invariants",
+        "included": "books/bp-workflow-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-workflow-binding-invariants.lisp",
+        "line": 4,
+        "include": "bp-workflow-binding-core",
+        "included": "books/bp-workflow-binding-core.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-workflow-invariants.lisp",
+        "line": 3,
+        "include": "bp-workflow",
+        "included": "books/bp-workflow.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-workflow-records-invariants.lisp",
+        "line": 14,
+        "include": "bp-workflow-records",
+        "included": "books/bp-workflow-records.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-workflow-records-invariants.lisp",
+        "line": 15,
+        "include": "bp-workflow-binding-invariants",
+        "included": "books/bp-workflow-binding-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-workflow-records.lisp",
+        "line": 5,
+        "include": "bp-workflow",
+        "included": "books/bp-workflow.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/bp-workflow-transport-invariants.lisp",
+        "line": 2,
+        "include": "bp-workflow-invariants",
+        "included": "books/bp-workflow-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/byte-store.lisp",
+        "line": 34,
+        "include": "acceptance-alloc",
+        "included": "books/acceptance-alloc.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/exchange.lisp",
+        "line": 14,
+        "include": "acceptance-alloc",
+        "included": "books/acceptance-alloc.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/frame-fields.lisp",
+        "line": 9,
+        "include": "wildmat",
+        "included": "books/wildmat.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/injection.lisp",
+        "line": 43,
+        "include": "article-fields",
+        "included": "books/article-fields.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/nntp-effects.lisp",
+        "line": 12,
+        "include": "nntp-invariants",
+        "included": "books/nntp-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/nntp-syntax.lisp",
+        "line": 11,
+        "include": "wildmat",
+        "included": "books/wildmat.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/relay-invariants.lisp",
+        "line": 18,
+        "include": "relay",
+        "included": "books/relay.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/relay.lisp",
+        "line": 29,
+        "include": "bp-workflow-binding-invariants",
+        "included": "books/bp-workflow-binding-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/relay.lisp",
+        "line": 30,
+        "include": "assumptions",
+        "included": "books/assumptions.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/retention.lisp",
+        "line": 16,
+        "include": "acceptance-alloc",
+        "included": "books/acceptance-alloc.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/transfer-assembly-invariants.lisp",
+        "line": 9,
+        "include": "transfer",
+        "included": "books/transfer.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/transfer-invariants.lisp",
+        "line": 10,
+        "include": "transfer-union",
+        "included": "books/transfer-union.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/transfer-journal-invariants.lisp",
+        "line": 17,
+        "include": "transfer-invariants",
+        "included": "books/transfer-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/transfer-journal.lisp",
+        "line": 38,
+        "include": "transfer",
+        "included": "books/transfer.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/transfer-public-bound.lisp",
+        "line": 9,
+        "include": "transfer-public-work",
+        "included": "books/transfer-public-work.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/transfer-public-bound.lisp",
+        "line": 10,
+        "include": "transfer-invariants",
+        "included": "books/transfer-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/transfer-public-work.lisp",
+        "line": 9,
+        "include": "transfer-work",
+        "included": "books/transfer-work.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/transfer-reservation.lisp",
+        "line": 7,
+        "include": "transfer",
+        "included": "books/transfer.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/transfer-union.lisp",
+        "line": 8,
+        "include": "transfer-reservation",
+        "included": "books/transfer-reservation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/transfer-work.lisp",
+        "line": 8,
+        "include": "transfer",
+        "included": "books/transfer.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/wildmat-matcher-invariants.lisp",
+        "line": 3,
+        "include": "wildmat",
+        "included": "books/wildmat.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/wildmat-parser-invariants.lisp",
+        "line": 10,
+        "include": "wildmat-utf8-invariants",
+        "included": "books/wildmat-utf8-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/wildmat-utf8-invariants.lisp",
+        "line": 13,
+        "include": "wildmat",
+        "included": "books/wildmat.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/wildmat-work.lisp",
+        "line": 11,
+        "include": "wildmat",
+        "included": "books/wildmat.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/anchor-teeth-tests.lisp",
+        "line": 22,
+        "include": "anchor-tests",
+        "included": "tests/acl2/anchor-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/article-fields-tests.lisp",
+        "line": 3,
+        "include": "../../books/article-fields",
+        "included": "books/article-fields.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/article-teeth-tests.lisp",
+        "line": 10,
+        "include": "../../books/article-invariants",
+        "included": "books/article-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/article-tests.lisp",
+        "line": 4,
+        "include": "../../books/article-invariants",
+        "included": "books/article-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/article-work-tests.lisp",
+        "line": 3,
+        "include": "../../books/article-public-bound",
+        "included": "books/article-public-bound.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/assumptions-tests.lisp",
+        "line": 22,
+        "include": "../../books/assumptions",
+        "included": "books/assumptions.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-fragment-tests.lisp",
+        "line": 10,
+        "include": "../../books/bp-fragment-invariants",
+        "included": "books/bp-fragment-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-outbound-guards-tests.lisp",
+        "line": 3,
+        "include": "../../books/bp-outbound",
+        "included": "books/bp-outbound.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-outbound-tests.lisp",
+        "line": 4,
+        "include": "../../books/bp-outbound",
+        "included": "books/bp-outbound.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-primary-tests.lisp",
+        "line": 31,
+        "include": "../../books/bp-primary-invariants",
+        "included": "books/bp-primary-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-receipt-records-tests.lisp",
+        "line": 3,
+        "include": "bp-receipt-tests",
+        "included": "tests/acl2/bp-receipt-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-receiver-evolving-tests.lisp",
+        "line": 12,
+        "include": "../../books/bp-receiver-evolving-store-invariants",
+        "included": "books/bp-receiver-evolving-store-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-receiver-evolving-tests.lisp",
+        "line": 13,
+        "include": "bp-receipt-records-tests",
+        "included": "tests/acl2/bp-receipt-records-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-receiver-invariants-tests.lisp",
+        "line": 2,
+        "include": "../../books/bp-receiver-trace-invariants",
+        "included": "books/bp-receiver-trace-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-receiver-invariants-tests.lisp",
+        "line": 3,
+        "include": "bp-receipt-records-tests",
+        "included": "tests/acl2/bp-receipt-records-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-receiver-teeth-tests.lisp",
+        "line": 11,
+        "include": "../../books/bp-receiver-retention-invariants",
+        "included": "books/bp-receiver-retention-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-receiver-teeth-tests.lisp",
+        "line": 12,
+        "include": "bp-receipt-records-tests",
+        "included": "tests/acl2/bp-receipt-records-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-workflow-binding-invariants-tests.lisp",
+        "line": 3,
+        "include": "../../books/bp-workflow-binding-invariants",
+        "included": "books/bp-workflow-binding-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-workflow-records-guards-tests.lisp",
+        "line": 3,
+        "include": "../../books/bp-workflow-records",
+        "included": "books/bp-workflow-records.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-workflow-records-tests.lisp",
+        "line": 2,
+        "include": "../../books/bp-workflow-records-invariants",
+        "included": "books/bp-workflow-records-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-workflow-teeth-tests.lisp",
+        "line": 11,
+        "include": "../../books/bp-workflow-invariants",
+        "included": "books/bp-workflow-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-workflow-tests.lisp",
+        "line": 3,
+        "include": "../../books/bp-workflow-transport-invariants",
+        "included": "books/bp-workflow-transport-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/clock-tests.lisp",
+        "line": 9,
+        "include": "../../books/clock-invariants",
+        "included": "books/clock-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/injection-tests.lisp",
+        "line": 11,
+        "include": "../../books/injection-invariants",
+        "included": "books/injection-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/lace-tests.lisp",
+        "line": 5,
+        "include": "crypto-seam-tests",
+        "included": "tests/acl2/crypto-seam-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-teeth-tests.lisp",
+        "line": 12,
+        "include": "../../books/nntp-invariants",
+        "included": "books/nntp-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/policy-tests.lisp",
+        "line": 5,
+        "include": "crypto-seam-tests",
+        "included": "tests/acl2/crypto-seam-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/principal-tests.lisp",
+        "line": 3,
+        "include": "crypto-seam-tests",
+        "included": "tests/acl2/crypto-seam-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/relay-tests.lisp",
+        "line": 11,
+        "include": "../../books/relay-crash-invariants",
+        "included": "books/relay-crash-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/statement-tests.lisp",
+        "line": 3,
+        "include": "crypto-seam-tests",
+        "included": "tests/acl2/crypto-seam-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/transfer-tests.lisp",
+        "line": 4,
+        "include": "../../books/transfer-public-bound",
+        "included": "books/transfer-public-bound.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/wildmat-parser-invariants-tests.lisp",
+        "line": 3,
+        "include": "../../books/wildmat-parser-invariants",
+        "included": "books/wildmat-parser-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/wildmat-teeth-tests.lisp",
+        "line": 12,
+        "include": "../../books/wildmat-matcher-invariants",
+        "included": "books/wildmat-matcher-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/wildmat-tests.lisp",
+        "line": 3,
+        "include": "../../books/wildmat",
+        "included": "books/wildmat.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      }
+    ]
   }
 }
