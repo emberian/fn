@@ -99,7 +99,7 @@ the served path (`fn-tcl-drive`'s `mbe` check is `:exec nil`).
 
 ## 4. Keystones C1 to C4 (`books/tcpcl-invariants`)
 
-Status (2026-09-20, w6/tcpcl-c2): C1, C2 with its two companions, and all of C3 are proved by ACL2 over `books/tcpcl-session` as certified; `books/tcpcl-invariants` is open at `defthm fn-tcl-no-interleaving`, the first theorem of C4 (section 6), so C4 and `tests/acl2/tcpcl-tests` are behind it. A theorem admitted before the failing form is proved, not certified. C2 is proved with `fn-tcl-sessionp` and every sub-recognizer closed: six local `-emits-no-bundle-received` lemmas dismiss the non-segment branches of `fn-tcl-step`, the local `fn-tcl-recv-segment-final-ack-means-every-segment` carries the content at the transition that owns it (115 subgoals, 0.3 s), and C2 lifts it to the step by `:use` at `(fn-tcl-touch-rx s now)`; the carried sum reaches the proof through the forward-chaining field facts `fn-tcl-sessionp-forward-inbound`, `fn-tcl-inboundp-forward-fields` and `fn-tcl-inboundp-forward-total`.
+Status (2026-09-20, w6/tcpcl-c4): C1 to C4 are proved by ACL2 and `books/tcpcl-invariants` certifies over `books/tcpcl-session` (evidence `build/acl2/certify-20260920T052819Z-3093104` on persvati; invariants 671.8 s, closure 840.9 s, ACL2 8.7). Two C4 defects were found by the proof and fixed in the statements, not the hints: `fn-tcl-no-interleaving` asserted the phase after the step is `:ending` where the session can close in that step (section 6), and it did not state the Retransmit refusal of the live transfer that section 5.2.2 requires. C2 is proved with `fn-tcl-sessionp` and every sub-recognizer closed: six local `-emits-no-bundle-received` lemmas dismiss the non-segment branches of `fn-tcl-step`, the local `fn-tcl-recv-segment-final-ack-means-every-segment` carries the content at the transition that owns it (115 subgoals, 0.3 s), and C2 lifts it to the step by `:use` at `(fn-tcl-touch-rx s now)`; the carried sum reaches the proof through the forward-chaining field facts `fn-tcl-sessionp-forward-inbound`, `fn-tcl-inboundp-forward-fields` and `fn-tcl-inboundp-forward-total`.
 
 **C1** `fn-tcl-drive-partition-independence`. Hypotheses: `fn-tcl-sessionp`,
 two octet lists, `fn-clock-timep`. Driving `(append left right)` is driving
@@ -138,9 +138,18 @@ not live after a step produced exactly one), and
 transfer's outcome is exactly one of complete, refused, failed. Covered
 scope: every transition, one step at a time.
 
-**C4** `fn-tcl-no-interleaving` (a segment for another ID while a transfer
-is live: the live transfer is refused Retransmit, MSG_REJECT Message
-Unexpected is sent, the session goes to Ending, nothing completes),
+**C4** `fn-tcl-no-interleaving` (a segment whose Transfer ID is not the
+live inbound transfer's: the live transfer is refused Retransmit, MSG_REJECT
+Message Unexpected is sent, no `:bundle-received` is emitted, no inbound
+record survives -- so a second transfer never opens -- and the phase
+afterwards is exactly `:closed` when the session's `term` is already `:both`
+and nothing is outbound, `:ending` otherwise. The second case is the SESS_TERM
+handshake's "Transfers Done" (RFC 9174 §6.1): clearing the live transfer is
+the last condition `fn-tcl-settle` waits for, so the step that refuses the
+interleaving segment also closes the session. The wave-4 statement, which
+asserted `:ending` outright, was therefore not a theorem; the witness is
+`*t-b-inter-both*` in `tests/acl2/tcpcl-tests.lisp` and the two cases are
+separated there by `*t-b-inter*` (`:ending`) against it (`:closed`)),
 `fn-tcl-ending-refuses-new-transfers` (a START in Ending is refused Session
 Terminating and creates no inbound), `fn-tcl-ending-refuses-new-sends` (a
 send outside Established is refused locally, state unchanged),
@@ -209,22 +218,44 @@ transiently beyond it.
   C2 keeps its statement and stays `:rule-classes nil` (its equality has
   the variable `id` on its left). `fn-tcl-inbound-is-created-only-by-start`
   needed the same treatment plus six `-keeps-inbound` branch lemmas.
-- `books/tcpcl-invariants` is OPEN at `defthm fn-tcl-no-interleaving`, the
-  first theorem of C4 (evidence `build/acl2/certify-20260920T042704Z-2481961 (persvati)`, 804.2 s to the failing form). C1,
-  C2, `fn-tcl-received-len-is-staged-length-by-definition`,
-  `fn-tcl-inbound-is-created-only-by-start` and every C3 theorem are
-  admitted before it. The checkpoint has the same shape as C2's: the
-  recognizer is open again from C3 onward and `fn-tcl-no-interleaving`
-  dispatches over `fn-tcl-step`. C2's closed-recognizer theory alone does
-  NOT close it: `(e/d (fn-tcl-step fn-tcl-settle) (fn-tcl-c2-closed))` was
-  measured on it and failed too (evidence
-  `build/acl2/certify-20260920T044438Z-2651297` on persvati, 682.0 s), so
-  the next lane reads that checkpoint rather than reapplying the recipe;
-  the likely missing pieces are branch lemmas for what `fn-tcl-step` does
-  to the phase and the outbound record, the analogues of the
-  `-emits-no-bundle-received` and `-keeps-inbound` families. C3 also costs
-  about 780 s with the recognizer open and is worth the same treatment.
-- `tests/acl2/tcpcl-tests` is uncertified, behind invariants.
+- The wave-4 checkpoint at `fn-tcl-no-interleaving` is closed, and it was
+  not a hint problem: the theorem was false. Its fourth conjunct asserted
+  the phase after the step is `:ending`, and a session in Ending whose
+  SESS_TERM handshake is complete (`term` `:both`) with a live inbound and
+  nothing outbound closes in that step instead -- `fn-tcl-broken-stream`
+  clears the inbound, which is the last condition of `fn-tcl-settle`'s
+  "Transfers Done". That state is reachable (`fn-tcl-recv-term` keeps the
+  live inbound), and `*t-b-inter-both*` in `tests/acl2/tcpcl-tests.lisp`
+  reaches it in four drives from the golden session. The conjunct is now the
+  exact case split on `term`/`outbound` rather than a disjunction, and a
+  conjunct the wave-4 statement lacked -- the `:inbound-refused` Retransmit
+  of the live transfer, which is what §5.2.2 requires and what makes the
+  theorem about interleaving rather than about the reject -- was added. Two
+  local lemmas carry it, both with the recognizer closed:
+  `fn-tcl-recv-segment-interleave-is-broken-stream` (the branch test reads no
+  conjunct of `fn-tcl-sessionp`; a rewrite rule, 853 steps) and
+  `fn-tcl-settle-of-broken-stream` (`:rule-classes nil`, 9944 steps), lifted
+  at `(fn-tcl-touch-rx s now)` by `:use` with `fn-tcl-settle`,
+  `fn-tcl-recv-segment` and `fn-tcl-broken-stream` disabled so the two
+  lemmas meet the term the step builds (7265 steps, 0.02 s for C4 itself).
+  The `:use` is not decoration: as a rewrite rule the settle lemma does not
+  fire, because its conclusion holds the ground term
+  `(fn-tcl-make-msg-reject 3 1)` while the goal holds the constant ACL2 has
+  already evaluated it to (measured, `certify-20260920T050746Z` prelude run).
+- `tests/acl2/tcpcl-tests` is still uncertified: its `certify-book` FAILED in 0.2 s
+  in the run below (the manifest records exit 0 for that root, which is
+  wrong), before any form of the book: it was started while the
+  `books/tcpcl-invariants` certificate it includes was still being written
+  by the same run. The two new witnesses `*t-b-term*` and `*t-b-inter-both*`
+  are therefore written and unrun; certify that root first next lane.
+- `fn-tcl-retained-input-is-bounded`, the last form of the book, needed the
+  two decoder need bounds of `books/tcpcl-octets` restated locally against
+  the opened `fn-tcl-max-message` (`fn-tcl-need-message-under-max`,
+  `fn-tcl-need-contact-under-max`): as exported, one is triggered on
+  `(len buf)` with `mru` free and the other is a rewrite rule only, so
+  neither reaches the linear arithmetic of the fold's two "need more
+  input" subgoals. Cited with their own rules disabled, or the citation is
+  rewritten to T before it can be used.
 - The host integration (`host/native/tcpcl.lisp`) and lab I1 are proposed
   in the handoff, not built; the final XFER_ACK after the FNBS record is
   barriered (bp-design §2.4) is a host ordering the model states as

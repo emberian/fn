@@ -41,8 +41,8 @@ Spec: [specs/tcpcl.md](../../specs/tcpcl.md). Design: bp-design.md §2.
 | `books/tcpcl-records` | certified | `build/acl2/certify-20260919T233610Z-89468` | 0.26 s |
 | `books/tcpcl-octets` | certified | `build/acl2/certify-20260920T013843Z-86679` | 125.0 s |
 | `books/tcpcl-session` | certified | `build/acl2/certify-20260920T021558Z-83845` | 26.8 s |
-| `books/tcpcl-invariants` | OPEN at `defthm fn-tcl-no-interleaving` (C4; C1, C2 and C3 admitted before it) | `build/acl2/certify-20260920T042704Z-2481961 (persvati)` | 804.2 s to the failing form |
-| `tests/acl2/tcpcl-tests` | uncertified, behind invariants | | |
+| `books/tcpcl-invariants` | certified | `build/acl2/certify-20260920T052819Z-3093104` (persvati) | 671.8 s |
+| `tests/acl2/tcpcl-tests` | OPEN: certify-book FAILED in 0.2 s (the manifest records exit 0 for it, which is wrong). It aborted before any form, so the two new witnesses are written and unrun | `build/acl2/certify-20260920T052819Z-3093104` (persvati) | 0.2 s (no certificate) |
 
 The RFC clause matrix of specs/tcpcl.md section 5: every "implemented" entry
 that names a session function is now backed by that function's certified
@@ -81,6 +81,24 @@ was needed because `fn-tcl-concat-rev` accumulates `(append data nil)` and
 `fn-tcl-append-nil` wants `true-listp`, which the closed recognizer does not
 supply. Invariants is now open at `fn-tcl-no-interleaving` (C4) with the same
 shape of checkpoint; `fn-tcl-c2-closed` is the theory to reach for.
+
+What closed C4's first theorem (w6/tcpcl-c4): the statement, not the hints.
+`fn-tcl-no-interleaving` asserted the phase after the step is `:ending`; a
+session already in Ending with `term` `:both`, a live inbound and nothing
+outbound closes in that step instead, because `fn-tcl-broken-stream` clears
+the inbound and that is the last condition of `fn-tcl-settle`'s "Transfers
+Done" (RFC 9174 section 6.1).  The state is reachable -- `fn-tcl-recv-term`
+keeps the live inbound -- and `*t-b-inter-both*` in the test book reaches it.
+The phase conjunct is now the exact case split on `term`/`outbound`, and the
+`:inbound-refused` Retransmit of the live transfer, which section 5.2.2
+requires and the wave-4 statement omitted, was added.  Two local lemmas with
+the recognizer closed carry it (`fn-tcl-recv-segment-interleave-is-broken-stream`
+as a rewrite, `fn-tcl-settle-of-broken-stream` `:rule-classes nil`), lifted at
+`(fn-tcl-touch-rx s now)` by `:use` with `fn-tcl-settle`, `fn-tcl-recv-segment`
+and `fn-tcl-broken-stream` disabled: 7265 prover steps, 0.02 s.  The settle
+lemma must be cited, not rewritten with: its conclusion holds the ground term
+`(fn-tcl-make-msg-reject 3 1)` and the goal holds the constant ACL2 evaluated
+it to, so as a rewrite rule it never matches (measured).
 
 ## Proposed host surface: `host/native/tcpcl.lisp`
 

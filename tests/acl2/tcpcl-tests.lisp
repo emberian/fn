@@ -234,6 +234,28 @@
                            '(:inbound-refused 0 3)
                            (list :send (fn-tcl-make-sess-term 0 4)))))
 (assert-event (equal (fn-tcl-session-phase (fn-tcl-result-session *t-b-inter*)) :ending))
+; the same interleaving after the peer has terminated.  The SESS_TERM
+; handshake is complete (term :both) and nothing is outbound, so clearing
+; the live transfer is the last thing "Transfers Done" (section 6.1) was
+; waiting for and the session closes in that very step: this is the witness
+; that separates the two cases of fn-tcl-no-interleaving's phase, and the
+; value that refutes the wave-4 statement of it (which asserted :ending).
+(defconst *t-b-term* (fn-tcl-drive (fn-tcl-result-session *t-b-mid*)
+                                   (fn-tcl-encode (fn-tcl-make-sess-term 0 0)) 0))
+(assert-event (equal (fn-tcl-session-phase (fn-tcl-result-session *t-b-term*)) :ending))
+(assert-event (equal (fn-tcl-session-term (fn-tcl-result-session *t-b-term*)) :both))
+(assert-event (fn-tcl-session-inbound (fn-tcl-result-session *t-b-term*)))
+(assert-event (null (fn-tcl-session-outbound (fn-tcl-result-session *t-b-term*))))
+(defconst *t-b-inter-both*
+  (fn-tcl-drive (fn-tcl-result-session *t-b-term*)
+                (fn-tcl-encode (fn-tcl-make-xfer-segment 2 9 nil '(1))) 0))
+(assert-event (equal (fn-tcl-result-events *t-b-inter-both*)
+                     (list (list :send (fn-tcl-make-msg-reject 3 1))
+                           (list :send (fn-tcl-make-xfer-refuse 3 0))
+                           '(:inbound-refused 0 3)
+                           '(:close))))
+(assert-event (equal (fn-tcl-session-phase (fn-tcl-result-session *t-b-inter-both*)) :closed))
+(assert-event (null (fn-tcl-session-inbound (fn-tcl-result-session *t-b-inter-both*))))
 ; TCP close in the middle of a transfer fails it and completes nothing
 (defconst *t-b-cut* (fn-tcl-tcp-closed (fn-tcl-result-session *t-b-mid*)))
 (assert-event (equal (fn-tcl-result-events *t-b-cut*) '((:inbound-failed 0) (:session-down))))
