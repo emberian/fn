@@ -36,7 +36,11 @@ class ReaderProcess:
             if ready:
                 line = self.proc.stdout.readline()
                 if line.startswith(b"LISTENING "):
-                    self.port = int(line.split()[1])
+                    fields = line.split()
+                    self.port = int(fields[1])
+                    # The configuration generation the reader pinned at open.
+                    self.generation = (int(fields[2].split(b"=")[1])
+                                       if len(fields) > 2 else None)
                     return self
             if self.proc.poll() is not None:
                 break

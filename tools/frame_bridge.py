@@ -330,10 +330,6 @@ class FrameSession:
         return self.call(
             "(fn-store-msgid-validp " + _octets(msgid) + ")") is True
 
-    def group_names(self) -> tuple[str, ...]:
-        return tuple(_as_bytes(name).decode("utf-8")
-                     for name in self.call("(fn-store-group-names)"))
-
     def identity_text(self, identity: bytes) -> bytes:
         """The one rendering of a canonical identity where a string is forced.
 
@@ -343,35 +339,26 @@ class FrameSession:
         return _as_bytes(self.call(
             "(fn-store-identity-text " + _octets(identity) + ")"))
 
-    def group_table_id(self) -> str:
-        return _as_bytes(self.call("(fn-store-group-table-id)")).decode("utf-8")
-
-    def config_record_default(self) -> bytes:
-        """The one default configuration record, encoded by `books/config`."""
-        return _as_bytes(self.call("(fn-cfg-host-default-octets)"))
-
-    def config_record_replay(self, octets: bytes):
-        """Replay one durable configuration record; ACL2 owns every value."""
-        value = self.call(
-            "(fn-cfg-host-replay-octets " + _octets(octets) + ")")
+    def config_record_initial(self, names) -> bytes:
+        """The initial configuration record for these group names, encoded
+        and admitted by `books/config`/`books/node-config`."""
+        forms = " ".join(_octets(name.encode("utf-8", "strict")) for name in names)
+        value = self.call("(fn-cfg-host-initial-octets (list {}))".format(forms))
         if isinstance(value, Keyword):
-            raise BridgeError("ACL2 refused the durable configuration record")
-        if not isinstance(value, list) or len(value) != 3:
-            raise BridgeError("ACL2 returned an unexpected configuration")
-        generation, names, capacity = value
-        if not isinstance(generation, int) or not isinstance(capacity, int):
-            raise BridgeError("ACL2 returned an unexpected configuration")
-        return (generation,
-                tuple(_as_bytes(name).decode("utf-8") for name in names),
-                capacity)
+            raise BridgeError("ACL2 refused the initial group table")
+        return _as_bytes(value)
 
     def format_id(self) -> str:
         return _as_bytes(self.call("(fn-store-format-id)")).decode("utf-8")
 
-    def group_codes(self, names) -> list[int]:
+    def group_codes(self, names, domain) -> list[int]:
+        """Codes of `names` in `domain`, the allocation domain ACL2 handed the
+        store at open; Python carries the domain back, never indexes it."""
         forms = " ".join(_octets(name.encode("utf-8", "strict"))
                          for name in names)
-        value = self.call("(fn-store-group-codes (list {}))".format(forms))
+        table = " ".join(_octets(name.encode("utf-8", "strict"))
+                         for name in domain)
+        value = self.call("(fn-store-group-codes (list {}) (list {}))".format(forms, table))
         if isinstance(value, Keyword):
             raise BridgeError("unknown or duplicate configured group")
         if not isinstance(value, list) or len(value) != len(list(names)):
