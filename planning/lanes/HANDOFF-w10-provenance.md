@@ -50,15 +50,15 @@ Farm, `persvati`, `--jobs 6`, remote root `/home/ember/fn-lanes/w10-provenance`.
 | --- | --- | --- |
 | `run-20260920T193005Z-bdfb` (`--affected-by books/retention.lisp --closure`, installed 82 / uncached 181) | 353 | **331 certified**, 22 failed, all of them the two pre-existing open theorems and their cascade |
 | `run-20260920T195626Z-f6a4` (`--affected-by books/provenance-codec.lisp --affected-by books/peer-inbound.lisp --closure`, installed 80 / uncached 187) | 71 | **59 certified**, 12 failed, all the `fn-peer-echo-reply-effects-well-formed` cascade |
-| `run-20260920T203807Z-6d4e` (final, after the dev merge and the SUSPECT rename) | see the report | — |
+| `run-20260920T200514Z-39c0` **final**, after the `dev` merge and the SUSPECT rename (`--affected-by books/retention.lisp --affected-by books/provenance-codec.lisp --closure`; evidence `build/acl2/certify-20260920T200622Z-2661769` on persvati) | 179 attempted (the rest came from the box cache) | **157 certified**, 22 failed |
 
 Per root, for the roots this lane touched or created:
 
 | root | state | evidence |
 | --- | --- | --- |
-| `books/provenance` | **certified** | `bdfb` and `f6a4`, `build/acl2/certify-20260920T193159Z-2332387` / `-20260920T195742Z-2575843` on persvati |
-| `books/provenance-codec` | **certified** (pre-rename source; re-run in the final run) | `f6a4` |
-| `tests/acl2/provenance-tests` | **certified** (pre-rename source; re-run in the final run) | `f6a4` |
+| `books/provenance` | **certified** | `bdfb`, `f6a4`, `39c0` — `build/acl2/certify-20260920T193159Z-2332387`, `-20260920T195742Z-2575843`, `-20260920T200622Z-2661769` on persvati |
+| `books/provenance-codec` | **certified** | `39c0` (final source) and `f6a4` |
+| `tests/acl2/provenance-tests` | **certified** | `39c0` (final source) and `f6a4` |
 | `books/retention` | **certified** | `bdfb` |
 | `books/retention-invariants` | **certified** | `bdfb` |
 | `tests/acl2/retention-tests` | **certified** | `bdfb` |
@@ -71,7 +71,15 @@ Per root, for the roots this lane touched or created:
 | `books/peer-inbound-invariants` | **admitted, not certified** | four new theorems proved by `tools/acl2 --timeout 560` against an included `books/peer-inbound`; the root has no certificate because its includee has none |
 | `host/store-node-host.lisp` | **loaded and exercised**, not certified (host files are `:program` mode) | `python3 -m unittest tests.test_provenance tests.test_store_node_host` — 12 tests, OK, 118 s, this laptop |
 
-The 22 failures of `bdfb`, named, so nobody re-discovers them:
+The final run's 22 failures, named, so nobody re-discovers them. **None
+mentions a provenance symbol except as a definition it admitted**; grepping
+the failing logs for `FN-PROV` finds only `books/peer-inbound`, and there
+only the type-prescription lines of the two definitions this lane added,
+before it reached its own open theorem. `books/checkpoint-codec` now
+CERTIFIES (w9/storage's fix arrived on `dev`); `books/byte-store-scan`
+(`fn-bs-crash-select-names-are-an-outcome`), `books/checkpoint-publish`
+(`fn-cpp-published-generations-retained`) and the two checkpoint test books
+fail on `dev`'s own new work, not on anything here. The rest is:
 `fn-peer-echo-reply-effects-well-formed` (books/peer-inbound) cascades into
 `peer-inbound-invariants`, `nntp-auth`, `served`, `owner`, `owner-config`,
 `owner-invariants`, `ideal`, `peer-feed-invariants`, `stx-authority`,
