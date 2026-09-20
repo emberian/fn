@@ -26,6 +26,7 @@
 
 (in-package "ACL2")
 (include-book "checkpoint-codec")
+(include-book "defrecord")
 ; The codec withdraws its reader and encoder vocabulary at export
 ; (docs/proof-style.md s2); the proofs here induct with it.
 (local (in-theory (enable fn-checkpoint-codec-vocabulary)))
@@ -39,164 +40,23 @@
 ; An opaque record below its lemmas (docs/proof-style.md s1): nothing under
 ; this point opens it, and every rule about the machine is stated in
 ; accessor vocabulary.
-(defun fn-cpp-shapep (x)
-  (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 7) (equal (car x) :fn-cpp)))
-
-(defun fn-cpp-groups (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
-(verify-guards fn-cpp-groups)
-
-(defun fn-cpp-capacity (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr x))) :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
-(verify-guards fn-cpp-capacity)
-
-(defun fn-cpp-phase (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr x)))) :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
-(verify-guards fn-cpp-phase)
-
-(defun fn-cpp-authority (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr (cdr x))))) :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
-(verify-guards fn-cpp-authority)
-
-(defun fn-cpp-candidate (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr x)))))) :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))))
-(verify-guards fn-cpp-candidate)
-
-(defun fn-cpp-generations (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr x))))))) :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))))
-(verify-guards fn-cpp-generations)
-
-(defun fn-cpp-make (groups capacity phase authority candidate generations)
-  (declare (xargs :guard t))
-  (list :fn-cpp groups capacity phase authority candidate generations))
-
-(defthm fn-cpp-shapep-of-fn-cpp-make
-  (fn-cpp-shapep (fn-cpp-make groups capacity phase authority candidate generations)))
-(defthm fn-cpp-groups-of-fn-cpp-make
-  (equal (fn-cpp-groups (fn-cpp-make groups capacity phase authority candidate generations)) groups))
-(defthm fn-cpp-capacity-of-fn-cpp-make
-  (equal (fn-cpp-capacity (fn-cpp-make groups capacity phase authority candidate generations)) capacity))
-(defthm fn-cpp-phase-of-fn-cpp-make
-  (equal (fn-cpp-phase (fn-cpp-make groups capacity phase authority candidate generations)) phase))
-(defthm fn-cpp-authority-of-fn-cpp-make
-  (equal (fn-cpp-authority (fn-cpp-make groups capacity phase authority candidate generations)) authority))
-(defthm fn-cpp-candidate-of-fn-cpp-make
-  (equal (fn-cpp-candidate (fn-cpp-make groups capacity phase authority candidate generations)) candidate))
-(defthm fn-cpp-generations-of-fn-cpp-make
-  (equal (fn-cpp-generations (fn-cpp-make groups capacity phase authority candidate generations)) generations))
-(in-theory (disable (:d fn-cpp-shapep) (:d fn-cpp-groups) (:d fn-cpp-capacity) (:d fn-cpp-phase) (:d fn-cpp-authority) (:d fn-cpp-candidate) (:d fn-cpp-generations)
-                    (:d fn-cpp-make)))
-
-; The shape facts type reasoning supplied while the record opened
-; (docs/proof-style.md s1), exported as forward-chaining rules only.
-(defthm fn-cpp-shapep-forward-shape
-  (implies (fn-cpp-shapep x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-cpp-shapep))))
-(defthm fn-cpp-accessors-forward-consp
-  (and (implies (fn-cpp-groups x) (consp x))
-       (implies (fn-cpp-capacity x) (consp x))
-       (implies (fn-cpp-phase x) (consp x))
-       (implies (fn-cpp-authority x) (consp x))
-       (implies (fn-cpp-candidate x) (consp x))
-       (implies (fn-cpp-generations x) (consp x)))
-  :rule-classes ((:forward-chaining :corollary (implies (fn-cpp-groups x) (consp x))
-                                    :trigger-terms ((fn-cpp-groups x)))
-                 (:forward-chaining :corollary (implies (fn-cpp-capacity x) (consp x))
-                                    :trigger-terms ((fn-cpp-capacity x)))
-                 (:forward-chaining :corollary (implies (fn-cpp-phase x) (consp x))
-                                    :trigger-terms ((fn-cpp-phase x)))
-                 (:forward-chaining :corollary (implies (fn-cpp-authority x) (consp x))
-                                    :trigger-terms ((fn-cpp-authority x)))
-                 (:forward-chaining :corollary (implies (fn-cpp-candidate x) (consp x))
-                                    :trigger-terms ((fn-cpp-candidate x)))
-                 (:forward-chaining :corollary (implies (fn-cpp-generations x) (consp x))
-                                    :trigger-terms ((fn-cpp-generations x))))
-  :hints (("Goal" :in-theory (enable fn-cpp-groups fn-cpp-capacity fn-cpp-phase
-                                     fn-cpp-authority fn-cpp-candidate
-                                     fn-cpp-generations))))
+(fn-defrecord fn-cpp
+  :tag :fn-cpp
+  :constructor (fn-cpp-make groups capacity phase authority candidate
+                            generations)
+  :fields ((fn-cpp-groups t) (fn-cpp-capacity t) (fn-cpp-phase t)
+           (fn-cpp-authority t) (fn-cpp-candidate t) (fn-cpp-generations t))
+  :recognizer nil)
 
 ; A generation entry: (name octets prefix frontier digest).  NAME is its
 ; position in the generation list; OCTETS are the framed bytes on disk;
 ; PREFIX, FRONTIER and DIGEST are the ghost record of how they were made.
-(defun fn-cpp-entry-shapep (x)
-  (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 5)))
-
-(defun fn-cpp-entry-name (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car x) :exec (fn-ag-car x)))
-(verify-guards fn-cpp-entry-name)
-
-(defun fn-cpp-entry-octets (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
-(verify-guards fn-cpp-entry-octets)
-
-(defun fn-cpp-entry-prefix (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr x))) :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
-(verify-guards fn-cpp-entry-prefix)
-
-(defun fn-cpp-entry-frontier (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr x)))) :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
-(verify-guards fn-cpp-entry-frontier)
-
-(defun fn-cpp-entry-digest (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr (cdr x))))) :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
-(verify-guards fn-cpp-entry-digest)
-
-(defun fn-cpp-entry-make (name octets prefix frontier digest)
-  (declare (xargs :guard t))
-  (list name octets prefix frontier digest))
-
-(defthm fn-cpp-entry-shapep-of-fn-cpp-entry-make
-  (fn-cpp-entry-shapep (fn-cpp-entry-make name octets prefix frontier digest)))
-(defthm fn-cpp-entry-name-of-fn-cpp-entry-make
-  (equal (fn-cpp-entry-name (fn-cpp-entry-make name octets prefix frontier digest)) name))
-(defthm fn-cpp-entry-octets-of-fn-cpp-entry-make
-  (equal (fn-cpp-entry-octets (fn-cpp-entry-make name octets prefix frontier digest)) octets))
-(defthm fn-cpp-entry-prefix-of-fn-cpp-entry-make
-  (equal (fn-cpp-entry-prefix (fn-cpp-entry-make name octets prefix frontier digest)) prefix))
-(defthm fn-cpp-entry-frontier-of-fn-cpp-entry-make
-  (equal (fn-cpp-entry-frontier (fn-cpp-entry-make name octets prefix frontier digest)) frontier))
-(defthm fn-cpp-entry-digest-of-fn-cpp-entry-make
-  (equal (fn-cpp-entry-digest (fn-cpp-entry-make name octets prefix frontier digest)) digest))
-(in-theory (disable (:d fn-cpp-entry-shapep) (:d fn-cpp-entry-name) (:d fn-cpp-entry-octets) (:d fn-cpp-entry-prefix) (:d fn-cpp-entry-frontier) (:d fn-cpp-entry-digest)
-                    (:d fn-cpp-entry-make)))
-
-(defthm fn-cpp-entry-shapep-forward-shape
-  (implies (fn-cpp-entry-shapep x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-cpp-entry-shapep))))
-(defthm fn-cpp-entry-accessors-forward-consp
-  (and (implies (fn-cpp-entry-name x) (consp x))
-       (implies (fn-cpp-entry-octets x) (consp x))
-       (implies (fn-cpp-entry-prefix x) (consp x))
-       (implies (fn-cpp-entry-frontier x) (consp x))
-       (implies (fn-cpp-entry-digest x) (consp x)))
-  :rule-classes ((:forward-chaining :corollary (implies (fn-cpp-entry-name x) (consp x))
-                                    :trigger-terms ((fn-cpp-entry-name x)))
-                 (:forward-chaining :corollary (implies (fn-cpp-entry-octets x) (consp x))
-                                    :trigger-terms ((fn-cpp-entry-octets x)))
-                 (:forward-chaining :corollary (implies (fn-cpp-entry-prefix x) (consp x))
-                                    :trigger-terms ((fn-cpp-entry-prefix x)))
-                 (:forward-chaining :corollary (implies (fn-cpp-entry-frontier x) (consp x))
-                                    :trigger-terms ((fn-cpp-entry-frontier x)))
-                 (:forward-chaining :corollary (implies (fn-cpp-entry-digest x) (consp x))
-                                    :trigger-terms ((fn-cpp-entry-digest x))))
-  :hints (("Goal" :in-theory (enable fn-cpp-entry-name fn-cpp-entry-octets
-                                     fn-cpp-entry-prefix fn-cpp-entry-frontier
-                                     fn-cpp-entry-digest))))
+(fn-defrecord fn-cpp-entry
+  :constructor (fn-cpp-entry-make name octets prefix frontier digest)
+  :fields ((fn-cpp-entry-name t) (fn-cpp-entry-octets t)
+           (fn-cpp-entry-prefix t) (fn-cpp-entry-frontier t)
+           (fn-cpp-entry-digest t))
+  :recognizer nil)
 
 (defun fn-cpp-entry-checkpoint (e groups capacity)
   (declare (xargs :guard t))
@@ -434,46 +294,11 @@
                     '(:marker-data-durable :marker-attempted :fenced-marker))
       t nil))
 
-(defun fn-cpp-image-shapep (x)
-  (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 3) (equal (car x) :fn-cpp-image)))
-
-(defun fn-cpp-image-marker (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
-(verify-guards fn-cpp-image-marker)
-
-(defun fn-cpp-image-generations (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr x))) :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
-(verify-guards fn-cpp-image-generations)
-
-(defun fn-cpp-image-make (marker gens)
-  (declare (xargs :guard t))
-  (list :fn-cpp-image marker gens))
-
-(defthm fn-cpp-image-shapep-of-fn-cpp-image-make
-  (fn-cpp-image-shapep (fn-cpp-image-make marker gens)))
-(defthm fn-cpp-image-marker-of-fn-cpp-image-make
-  (equal (fn-cpp-image-marker (fn-cpp-image-make marker gens)) marker))
-(defthm fn-cpp-image-generations-of-fn-cpp-image-make
-  (equal (fn-cpp-image-generations (fn-cpp-image-make marker gens)) gens))
-(in-theory (disable (:d fn-cpp-image-shapep) (:d fn-cpp-image-marker)
-                    (:d fn-cpp-image-generations) (:d fn-cpp-image-make)))
-
-(defthm fn-cpp-image-shapep-forward-shape
-  (implies (fn-cpp-image-shapep x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-cpp-image-shapep))))
-(defthm fn-cpp-image-accessors-forward-consp
-  (and (implies (fn-cpp-image-marker x) (consp x))
-       (implies (fn-cpp-image-generations x) (consp x)))
-  :rule-classes ((:forward-chaining :corollary (implies (fn-cpp-image-marker x) (consp x))
-                                    :trigger-terms ((fn-cpp-image-marker x)))
-                 (:forward-chaining
-                  :corollary (implies (fn-cpp-image-generations x) (consp x))
-                  :trigger-terms ((fn-cpp-image-generations x))))
-  :hints (("Goal" :in-theory (enable fn-cpp-image-marker fn-cpp-image-generations))))
+(fn-defrecord fn-cpp-image
+  :tag :fn-cpp-image
+  :constructor (fn-cpp-image-make marker gens)
+  :fields ((fn-cpp-image-marker t) (fn-cpp-image-generations t))
+  :recognizer nil)
 
 (defun fn-cpp-crash (s marker-choice generation-choice)
   (declare (xargs :guard t))
