@@ -419,17 +419,18 @@
 ; exactly 32 octets, whatever it is handed.  That is what the two seams'
 ; constraints ask for, and all they ask for.
 
-(defthm fn-sha256-len-of-firstn-8
-  (implies (equal (len xs) 8)
-           (equal (len (fn-sha256-firstn 8 xs)) 8))
-  :hints (("Goal" :expand ((fn-sha256-firstn 8 xs)
-                           (fn-sha256-firstn 7 (cdr xs))
-                           (fn-sha256-firstn 6 (cddr xs))
-                           (fn-sha256-firstn 5 (cdddr xs))
-                           (fn-sha256-firstn 4 (cddddr xs))
-                           (fn-sha256-firstn 3 (cdr (cddddr xs)))
-                           (fn-sha256-firstn 2 (cddr (cddddr xs)))
-                           (fn-sha256-firstn 1 (cdddr (cddddr xs)))))))
+(local
+ (defthm fn-sha256-len-of-firstn-8
+   (implies (equal (len xs) 8)
+            (equal (len (fn-sha256-firstn 8 xs)) 8))
+   :hints (("Goal" :expand ((fn-sha256-firstn 8 xs)
+                            (fn-sha256-firstn 7 (cdr xs))
+                            (fn-sha256-firstn 6 (cddr xs))
+                            (fn-sha256-firstn 5 (cdddr xs))
+                            (fn-sha256-firstn 4 (cddddr xs))
+                            (fn-sha256-firstn 3 (cdr (cddddr xs)))
+                            (fn-sha256-firstn 2 (cddr (cddddr xs)))
+                            (fn-sha256-firstn 1 (cdddr (cddddr xs))))))))
 
 (defthm fn-sha256-len-of-add8
   (equal (len (fn-sha256-add8 xs ys))
@@ -438,13 +439,15 @@
 (defthm fn-sha256-len-of-rounds
   (equal (len (fn-sha256-rounds ws ks a b c d e f g h)) 8))
 
-(defthm fn-sha256-len-of-compress
-  (implies (equal (len hs) 8)
-           (equal (len (fn-sha256-compress block hs)) 8)))
+(local
+ (defthm fn-sha256-len-of-compress
+   (implies (equal (len hs) 8)
+            (equal (len (fn-sha256-compress block hs)) 8))))
 
-(defthm fn-sha256-len-of-blocks
-  (implies (equal (len hs) 8)
-           (equal (len (fn-sha256-blocks padded hs)) 8)))
+(local
+ (defthm fn-sha256-len-of-blocks
+   (implies (equal (len hs) 8)
+            (equal (len (fn-sha256-blocks padded hs)) 8))))
 
 (defthm fn-sha256-of-octets-shape
   (and (fn-sha256-octet-listp (fn-sha256-of-octets msg))
@@ -466,9 +469,13 @@
   :hints (("Goal" :induct (fn-sha256-fix-octets m)
            :in-theory (enable fn-sha256-fix-octets fn-sha256-byte))))
 
+; `:rule-classes nil': an enabled equality between two applications would
+; rewrite every `fn-sha256' term in the tree into `fn-sha256-of-octets'.
+; Cited with `:use' where it is needed (books/crypto-attach.lisp).
 (defthm fn-sha256-is-of-octets-on-octets
   (implies (fn-sha256-octet-listp m)
            (equal (fn-sha256 m) (fn-sha256-of-octets m)))
+  :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-sha256))))
 
 (defthm fn-sha256-octet-listp-implies-true-listp

@@ -14,25 +14,30 @@
   '(18 34 51 68 85 102 119 136 153 170 187 204 221 238 255 0))
 (defconst *fn-authsec-t-secret* (fn-record-string-octets "correct-horse"))
 (defconst *fn-authsec-t-other* (fn-record-string-octets "correct-horsf"))
-(defconst *fn-authsec-t-ver*
-  (fn-authsec-enrol *fn-authsec-t-salt* *fn-authsec-t-secret*))
+; A macro, not a `defconst': ACL2 refuses to call an ATTACHMENT while
+; computing a constant (see :DOC ignored-attachment), so the enrolment has to
+; happen inside each `assert-event', where top-level evaluation applies.
+; That restriction is itself the point -- a `defconst' over `fn-digest' would
+; bake an attachment-dependent value into the logical world.
+(defmacro fn-authsec-t-ver ()
+  '(fn-authsec-enrol *fn-authsec-t-salt* *fn-authsec-t-secret*))
 
 ; -----------------------------------------------------------------------------
 ; The keystone is reachable and non-degenerate.
 
-(assert-event (fn-authsec-verifierp *fn-authsec-t-ver*))
-(assert-event (fn-authsec-checkp *fn-authsec-t-ver* *fn-authsec-t-secret*))
+(assert-event (fn-authsec-verifierp (fn-authsec-t-ver)))
+(assert-event (fn-authsec-checkp (fn-authsec-t-ver) *fn-authsec-t-secret*))
 
 ; The check is not the constant T: a one-octet change to the secret fails.
 ; (A witness.  "Every other secret fails" is second-preimage resistance,
 ; A-CRYPTO, and is not claimed.)
-(assert-event (not (fn-authsec-checkp *fn-authsec-t-ver* *fn-authsec-t-other*)))
-(assert-event (not (fn-authsec-checkp *fn-authsec-t-ver* nil)))
+(assert-event (not (fn-authsec-checkp (fn-authsec-t-ver) *fn-authsec-t-other*)))
+(assert-event (not (fn-authsec-checkp (fn-authsec-t-ver) nil)))
 
 ; The salt separates: the same secret under a different salt is a different
 ; verifier and does not check against this one's digest.
 (assert-event
- (not (equal (fn-authsec-ver-digest *fn-authsec-t-ver*)
+ (not (equal (fn-authsec-ver-digest (fn-authsec-t-ver))
              (fn-authsec-ver-digest
               (fn-authsec-enrol *fn-authsec-t-salt2* *fn-authsec-t-secret*)))))
 
@@ -63,11 +68,11 @@
 
 ; The stored verifier is not an octet list, so the slot cannot hold a
 ; cleartext secret: K2, on a concrete value.
-(assert-event (not (fn-cbor-octet-listp *fn-authsec-t-ver*)))
+(assert-event (not (fn-cbor-octet-listp (fn-authsec-t-ver))))
 
 ; The stored digest is not the secret, and is 32 octets whatever the secret's
 ; length: K3, on a long secret and a short one.
-(assert-event (not (equal (fn-authsec-ver-digest *fn-authsec-t-ver*)
+(assert-event (not (equal (fn-authsec-ver-digest (fn-authsec-t-ver))
                           *fn-authsec-t-secret*)))
 (assert-event
  (equal (len (fn-authsec-ver-digest

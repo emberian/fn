@@ -103,14 +103,21 @@
 (defthm fn-sha256-is-sha256-of-the-octets
   (implies (fn-cbor-octet-listp m)
            (equal (fn-sha256 m) (fn-sha256-of-octets m)))
-  :rule-classes nil)
+  :rule-classes nil
+  :hints (("Goal" :use fn-sha256-is-of-octets-on-octets)))
 
 ; -----------------------------------------------------------------------------
 ; Export theory (docs/proof-style.md section 2).
 ;
-; What leaves this book is the three constraint discharges -- the shape facts
-; every caller of a digest already had from the seam -- and the two identity
-; facts that say the coercion is invisible on octet lists.
+; What leaves this book enabled is the three constraint discharges -- the
+; shape facts every caller of a digest already had from the seam.  The
+; coercion identity is withdrawn: it is a rewrite on a term no book outside
+; sha256 writes, and cited with `:use' where it is wanted.
 
-; The bridge equality is `local': exported, it would rewrite every
+; The bridge equality above is `local': exported, it would rewrite every
 ; fn-cbor-octet-listp goal in the tree into sha256's vocabulary.
+
+(deftheory fn-crypto-attach-internals
+  '(fn-sha256-fix-octets-is-identity))
+
+(in-theory (disable fn-crypto-attach-internals))

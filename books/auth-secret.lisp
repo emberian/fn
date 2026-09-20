@@ -157,19 +157,24 @@
 
 (defun fn-authsec-ver-salt (x)
   (declare (xargs :guard t))
-  (if (consp x) (car (cdr x)) nil))
+  (if (and (consp x) (consp (cdr x))) (car (cdr x)) nil))
 
 (defun fn-authsec-ver-digest (x)
   (declare (xargs :guard t))
-  (if (consp x) (car (cdr (cdr x))) nil))
+  (if (and (consp x) (consp (cdr x)) (consp (cdr (cdr x))))
+      (car (cdr (cdr x)))
+    nil))
 
 (defthm fn-authsec-verifierp-of-enrol
   (implies (fn-authsec-saltp salt)
            (fn-authsec-verifierp (fn-authsec-enrol salt secret))))
 
-(defthm fn-authsec-ver-salt-of-enrol
-  (equal (fn-authsec-ver-salt (fn-authsec-enrol salt secret))
-         (fn-authsec-octets salt)))
+; `local': an enabled equality between two one-argument applications is
+; proof vocabulary, not an export (docs/proof-style.md section 2).
+(local
+ (defthm fn-authsec-ver-salt-of-enrol
+   (equal (fn-authsec-ver-salt (fn-authsec-enrol salt secret))
+          (fn-authsec-octets salt))))
 
 (defthm fn-authsec-ver-digest-of-enrol
   (equal (fn-authsec-ver-digest (fn-authsec-enrol salt secret))
