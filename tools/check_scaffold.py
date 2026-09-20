@@ -204,7 +204,7 @@ def main() -> int:
           f"{len(proofs)} proof targets, {len(scenarios)} scenario specifications.")
     print("Ledger OK: cited events exist, are not SUSPECT, and planning/ledger.md is current.")
     print(f"Ledger lints: {len(warnings)} warnings (export hygiene, teeth form, "
-          f"include hygiene); see planning/ledger.json.")
+          f"include hygiene, host names); see planning/ledger.json.")
     print("Structural checks only; no ACL2 certification or scenario execution performed.")
     return 0
 
