@@ -31,7 +31,7 @@ def receive_request(bpa, run, bid):
         store_root=run / 'b-store', inbox_root=run / 'b-inbox',
         receipt_root=run / 'b-receipts', bid=bid, source_eid='dtn://bp-a',
         inventory=bpa.client.inventory, download=bpa.download, delete=bpa.client.delete,
-        local_policy_authorized=True)
+        bundle=bpa.client.download_bundle, local_policy_authorized=True)
 
 
 def source_snapshot():
@@ -125,9 +125,13 @@ def main():
         inbox = workflow_journal.WorkflowJournal(run / 'a-inbox', inbox_only)
         inbox.open()
         try:
+            report = run_bp_ingress.identify_bundle(receipt_bid,
+                                                    a.client.download_bundle)
             staged = run_bp_ingress._staged_item(
-                inbox, workflow_journal, receipt_bid, a.client.inventory, a.download)
-            staged_bid, receipt = workflow_journal.decode_inbound(staged.read_bytes())
+                inbox, workflow_journal, receipt_bid, report.identity,
+                a.client.inventory, a.download)
+            staged_bid, _staged_identity, receipt = workflow_journal.decode_inbound(
+                staged.read_bytes())
             assert staged_bid == receipt_bid and receipt == lost_receipt
             with Sender(run / 'a-store', run / 'a-workflow') as sender:
                 assert sender.outstanding()

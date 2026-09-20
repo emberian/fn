@@ -4,10 +4,16 @@
 
 ```python
 receive_bpa_request(
-    *, store_root, inbox_root, receipt_root, bid, inventory, download, delete, source_eid,
-    local_policy_authorized=True, pending_outcome=None,
-) -> ReceiveResult(outcome: str, receipt_adu: bytes, staged_path: Path)
+    *, store_root, inbox_root, receipt_root, bid, inventory, download, delete,
+    bundle, source_eid, local_policy_authorized=True,
+    wall_error_ms=2000, pending_outcome=None,
+) -> ReceiveResult(outcome: str, receipt_adu: bytes, staged_path: Path | None)
 ```
+
+`bundle` returns the raw BP bundle octets the agent holds for `bid`; `download`
+returns the ADU that agent's own extractor produced.  Both are required,
+because they answer different questions: the ADU is what fn accepts, and the
+bundle is what fn identifies.
 
 The function accepts a single bounded canonical `fn-bpa` **request** ADU.
 `local_policy_authorized` is an explicit trusted local laboratory A_POLICY
@@ -18,6 +24,43 @@ operation.
 `source_eid` records the adapter's observed transport source; it is required
 explicitly rather than fabricated by the receiver. It is provenance, not an
 authentication result. The Store must already be initialized.
+
+## Identity and expiry precede staging
+
+Before anything is written, the host hands the raw bundle octets to
+`fn-bpi-host-bundle-report` (`host/bp-ingress-host.lisp`).  ACL2 checks the
+RFC 9171 §4.1 indefinite-array head, decodes exactly one CBOR item with the
+certified profile decoder, runs `fn-bpp-decode` over those octets -- which
+re-encodes them and refuses any non-canonical spelling -- and answers with
+`fn-bpp-primary-identity` and `fn-clock-expiry-decision`.  Python performs no
+part of this: not the frame check, not the field extraction, not the DTN epoch
+or millisecond conversion, and not the expiry comparison.  The host supplies
+`time.monotonic_ns()`, `time.time_ns()` and one configured error bound, and
+ACL2 builds the `fn-clock-observationp` from them.
+
+Four outcomes leave the BPA bundle exactly where it was -- staged nowhere,
+deleted nowhere -- and stay distinct from each other and from a refusal to
+accept something already staged:
+
+| Outcome | Meaning | CLI exit |
+| --- | --- | --- |
+| `refused-identity:<reason>` | `:not-a-bundle`, a codec reason (`:malformed`, `:crc-mismatch`, `:noncanonical`, ...) or `:anonymous` (a `dtn:none` source, RFC 9171 §4.2.3) | refused |
+| `refused-expired` | every admissible true time puts the bundle past its lifetime | refused |
+| `uncertain-expiry` | the admissible interval straddles the lifetime, the host claims no wall reading, or the creation timestamp is zero (§4.2.6 "unknown") | uncertain |
+| accepted path | `:live`; staging proceeds | ok |
+
+`:uncertain` is an operator fence, never a deletion and never an acceptance.
+
+## What the BID is now, and what it is not
+
+The inbox file name and the duplicate check are the SHA-256 of the canonical
+identity encoding.  The BID is retained as the transport handle and nothing
+else: it is what `/download?` and `/delete?` are called with, and it is stored
+in the FNBI frame beside the identity so that a pending delete can be finished
+after a restart.  A redelivery of one bundle under a fresh BID therefore lands
+on the same staged frame and reconciles; the stored frame keeps whichever BID
+first carried it, and a differing BID is not a conflict.  Two bundles with
+identical payloads and different identities are two staged requests.
 
 ## Ordering
 

@@ -665,6 +665,44 @@
 (verify-guards fn-bpp-bundle-id)
 (verify-guards fn-bpp-identifiablep)
 
+; The primary-block identity, as canonical octets.
+;
+; This is the whole of the bundle identity that the primary block determines:
+; the source node ID, the creation timestamp's time and sequence number and,
+; when the fragment flag is set, the fragment offset and the total ADU length.
+; It is deliberately NOT `fn-bpp-bundle-id`.  RFC 9171 section 4.3.1 identifies
+; a fragment by THIS bundle's payload length, which lives in the payload block;
+; two fragments of one ADU at the same offset with different payload lengths
+; share this projection and are nevertheless different bundles.  So this is the
+; coarsest key a receiver can compute from the primary block alone, and a
+; reassembling receiver must still compare payload lengths.  A whole bundle and
+; a fragment never collide here, because the encoded array has three elements
+; in the first case and five in the second.
+;
+; The octets are this profile's CBOR encoding of that array, so canonicality
+; comes from `fn-bpc-accepted-input-is-canonical` and invertibility from
+; `fn-bpc-decode-of-encode`; there is no second spelling to keep in step.
+
+(defun fn-bpp-primary-identity-value (b)
+  (declare (xargs :guard (fn-bpp-blockp b)))
+  (cons :array
+        (if (fn-bpp-fragmentp (fn-bpp-flags b))
+            (list (fn-bpp-eid-value (fn-bpp-source b))
+                  (cons :uint (fn-bpp-creation-time b))
+                  (cons :uint (fn-bpp-sequence b))
+                  (cons :uint (fn-bpp-fragment-offset b))
+                  (cons :uint (fn-bpp-total-adu-length b)))
+          (list (fn-bpp-eid-value (fn-bpp-source b))
+                (cons :uint (fn-bpp-creation-time b))
+                (cons :uint (fn-bpp-sequence b))))))
+
+(defun fn-bpp-primary-identity (b)
+  (declare (xargs :guard (fn-bpp-blockp b)))
+  (fn-bpc-encode (fn-bpp-primary-identity-value b)))
+
+(verify-guards fn-bpp-primary-identity-value)
+(verify-guards fn-bpp-primary-identity)
+
 ; Routing and reporting fields that identity must ignore.  These constructors
 ; exist so that the "identity ignores X" theorems have a subject.
 (defun fn-bpp-with-destination (b d)
@@ -792,3 +830,24 @@
 (verify-guards fn-bpp-hop-limit-exceededp)
 (verify-guards fn-bpp-hop-count-data)
 (verify-guards fn-bpp-data-hop-count)
+
+; -----------------------------------------------------------------------------
+; Export theory: the primary-block identity.
+;
+; The identity projection and its encoding are proof vocabulary, not keystones:
+; a book above reasons about them through the theorems in
+; `books/bp-primary-invariants.lisp` (shape, octets, the routing/lifetime/CRC
+; projection fact and `fn-bpp-primary-identity-determines-adu-key`), and the
+; host evaluates them.  Nothing above needs their definitions opened, so they
+; are withdrawn here under a name a book that does can enable in one line.
+;
+; The rest of this book -- the block record, the endpoint and time codecs, the
+; extension-block data -- still exports its definitions enabled.  Making those
+; opaque is item 4 of the bp deputy's proposal
+; (planning/deputies/bp.md, "opaque records for bp-workflow, relay, bp-primary,
+; bp-fragment") and is not this lane's to take.
+
+(deftheory fn-bpp-identity-vocabulary
+  '((:d fn-bpp-primary-identity-value) (:d fn-bpp-primary-identity)))
+
+(in-theory (disable fn-bpp-identity-vocabulary))

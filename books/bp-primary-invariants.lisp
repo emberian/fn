@@ -20,6 +20,10 @@
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
 ; this book reasons under them, so open them here, locally.
 (local (in-theory (enable fn-cbor-record-vocabulary fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary)))
+; The identity projection is withdrawn at the end of `books/bp-primary.lisp`
+; (CHANGE bundle-identity on the board); this book proves the theorems about
+; it, so it opens it here and nowhere else.
+(local (in-theory (enable fn-bpp-identity-vocabulary)))
 
 ; -----------------------------------------------------------------------------
 ; Endpoint IDs
@@ -418,3 +422,122 @@
 (defthm fn-bpp-hop-count-limit-is-bounded
   (implies (fn-bpp-hop-countp x)
            (and (<= 1 (nth 1 x)) (<= (nth 1 x) 255))))
+
+; -----------------------------------------------------------------------------
+; The primary-block identity
+;
+; The first is the keystone the staging path depends on: the identity is an
+; octet list, so it can be hashed and framed at the host boundary at all.  The
+; second and third say what the identity projects: exactly the fields
+; `fn-bpp-adu-key` reads plus, for a fragment, the two fragment fields, and
+; nothing about routing, lifetime or CRC type.  Separation of two distinct
+; identities is bitten by witness in `tests/acl2/bp-primary-tests`.
+
+(defthm fn-bpp-primary-identity-value-is-shape
+  (implies (fn-bpp-blockp b)
+           (fn-bpc-shapep :item (fn-bpp-primary-identity-value b)))
+  :hints (("Goal" :in-theory (disable fn-bpp-eid-value))))
+
+; No violating value exists for a `(fn-bpp-blockp b)` hypothesis here: every
+; branch of `fn-bpc-enc` returns octets or nil, so `fn-bpc-enc-are-octets`
+; holds of every input and the hypothesis this theorem carried was
+; unnecessary.  It is deleted rather than bitten (docs/proof-style.md section
+; 5).  The content of this theorem is that one lemma at the identity value;
+; the keystone to cite for the encoder is `fn-bpc-enc-are-octets`, and this
+; states it of the term the host calls (host/bp-ingress-host.lisp:183).
+(defthm fn-bpp-primary-identity-is-octets
+  (fn-cbor-octet-listp (fn-bpp-primary-identity b))
+  :hints (("Goal"
+           :use ((:instance fn-bpc-enc-are-octets
+                            (flg :item) (x (fn-bpp-primary-identity-value b))))
+           :in-theory (disable fn-bpc-enc-are-octets fn-bpc-enc
+                               fn-bpp-primary-identity-value))))
+
+(defthm fn-bpp-primary-identity-ignores-destination-lifetime-and-crc-type-by-definition
+  (implies (and (fn-bpp-blockp b) (fn-bpp-eidp d) (fn-bpp-timep l)
+                (fn-bpp-crc-typep type))
+           (and (equal (fn-bpp-primary-identity (fn-bpp-with-destination b d))
+                       (fn-bpp-primary-identity b))
+                (equal (fn-bpp-primary-identity (fn-bpp-with-lifetime b l))
+                       (fn-bpp-primary-identity b))
+                (equal (fn-bpp-primary-identity (fn-bpp-with-crc-type b type))
+                       (fn-bpp-primary-identity b))))
+  ; A projection restated over three constructors that do not touch the
+  ; projected fields: it unfolds, it is not a proof event, and it is not a
+  ; rewrite rule (docs/proof-style.md section 7).  Cited by `:use`.
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-bpp-blockp fn-bpp-eidp fn-bpp-timep
+                                      fn-bpp-crc-typep fn-bpc-enc
+                                      fn-bpp-eid-value))))
+
+; Two local steps, so that the theorem below never opens `fn-bpp-blockp`.
+; Opening it splits on `fn-bpp-eidp`, `fn-bpp-timep`, `fn-bpp-crc-typep`,
+; `nth` and `floor` for both blocks at once: on persvati that ran 805 s and
+; 212M prover steps and still reverted to induction with the two `:use`
+; instances unmatched, because by then the goal was in `nth` vocabulary and
+; they were in accessor vocabulary (evidence
+; build/acl2/certify-20260920T041644Z-2380284).
+
+(local
+ (defthm fn-bpp-blockp-source-is-eid
+   (implies (fn-bpp-blockp b) (fn-bpp-eidp (fn-bpp-source b)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-bpp-blockp) (fn-bpp-eidp))))))
+
+; The first three elements of the encoded array are the endpoint value, the
+; creation time and the sequence number whether or not the fragment flag is
+; set; if it is set on one block and not the other, the two arrays have
+; different lengths and the hypothesis is false.
+(local
+ (defthm fn-bpp-identity-value-heads
+   (implies (equal (fn-bpp-primary-identity-value a)
+                   (fn-bpp-primary-identity-value b))
+            (and (equal (fn-bpp-eid-value (fn-bpp-source a))
+                        (fn-bpp-eid-value (fn-bpp-source b)))
+                 (equal (fn-bpp-creation-time a) (fn-bpp-creation-time b))
+                 (equal (fn-bpp-sequence a) (fn-bpp-sequence b))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-bpp-primary-identity-value)
+                                   (fn-bpp-eid-value fn-bpp-fragmentp
+                                    fn-bpp-flags fn-bpp-source
+                                    fn-bpp-creation-time fn-bpp-sequence
+                                    fn-bpp-fragment-offset
+                                    fn-bpp-total-adu-length))))))
+
+(defthm fn-bpp-primary-identity-determines-adu-key
+  (implies (and (fn-bpp-blockp a) (fn-bpp-blockp b)
+                (equal (fn-bpp-primary-identity-value a)
+                       (fn-bpp-primary-identity-value b)))
+           (equal (fn-bpp-adu-key a) (fn-bpp-adu-key b)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-bpp-value-eid-of-eid-value
+                            (e (fn-bpp-source a)))
+                 (:instance fn-bpp-value-eid-of-eid-value
+                            (e (fn-bpp-source b)))
+                 (:instance fn-bpp-blockp-source-is-eid (b a))
+                 (:instance fn-bpp-blockp-source-is-eid (b b))
+                 fn-bpp-identity-value-heads)
+           :in-theory (e/d (fn-bpp-adu-key)
+                           (fn-bpp-blockp fn-bpp-eidp fn-bpp-eid-value
+                            fn-bpp-value-eid fn-bpp-primary-identity-value
+                            fn-bpp-source fn-bpp-creation-time
+                            fn-bpp-sequence)))))
+
+; -----------------------------------------------------------------------------
+; Export theory.
+;
+; Enabled on include from this book's identity section: the two keystones
+; `fn-bpp-primary-identity-value-is-shape` and
+; `fn-bpp-primary-identity-is-octets`, which are what the staging path needs
+; to hash and frame an identity at all.  The projection fact and
+; `fn-bpp-primary-identity-determines-adu-key` are `:rule-classes nil` and are
+; cited by `:use`.  The definitions they are about stay withdrawn, under
+; `fn-bpp-identity-vocabulary` from `books/bp-primary.lisp`.
+;
+; This book's earlier sections (the flag, CRC, endpoint, time and extension
+; theorems) still export their rules enabled, as they did before this lane;
+; withdrawing them belongs with the opaque-record work the bp deputy owns
+; (planning/deputies/bp.md, proposal item 4).
+
+(in-theory (disable fn-bpp-identity-vocabulary))

@@ -109,7 +109,8 @@ class FrameSession:
     def _constants(self) -> dict[str, int]:
         values = self.call("(fn-store-frame-constants)")
         names = ("header", "trailer", "overhead", "max_store", "max_workflow",
-                 "max_receipt", "max_inbound", "max_text", "max_blob")
+                 "max_receipt", "max_inbound", "max_text", "max_blob",
+                 "max_identity")
         if not isinstance(values, list) or len(values) != len(names):
             raise BridgeError("ACL2 returned an unexpected constant vector")
         return dict(zip(names, values))
@@ -133,6 +134,8 @@ class FrameSession:
              self.constants["max_blob"]),
             ("inbound bundle cap", workflow_journal.MAX_INBOUND_BUNDLE,
              self.constants["max_inbound"]),
+            ("inbound identity cap", workflow_journal.MAX_IDENTITY,
+             self.constants["max_identity"]),
         )
         for name, host, model in checks:
             if host != model:
@@ -262,24 +265,39 @@ class FrameSession:
 
     # -- inbound bundles ----------------------------------------------------
 
-    def inbound_frame(self, bid: str, payload: bytes) -> bytes:
+    def _inbound_head(self) -> int:
+        return (self.constants["header"] + 2 + self.constants["max_text"]
+                + 4 + self.constants["max_identity"])
+
+    def inbound_frame(self, bid: str, identity: bytes, payload: bytes) -> bytes:
+        """Frame one staged bundle under its BID *and* its ACL2 identity.
+
+        The identity is the octet string ACL2 derived from the bundle's own
+        primary block.  It is not optional: a frame carrying only the agent's
+        BID cannot be opened, so nothing downstream can fall back to keying on
+        transport metadata.
+        """
+        if not isinstance(identity, (bytes, bytearray)) or not identity:
+            raise BridgeError("inbound identity is not present")
         prefix = self._prefix(
-            "(fn-store-frame-inbound-prefix {} {})".format(
-                _octets(bid.encode("utf-8", "strict")), len(payload)))
+            "(fn-store-frame-inbound-prefix {} {} {})".format(
+                _octets(bid.encode("utf-8", "strict")), _octets(bytes(identity)),
+                len(payload)))
         return self.seal(prefix + payload)
 
-    def inbound_unframe(self, framed: bytes) -> tuple[str, bytes]:
-        head = self.constants["header"] + 2 + self.constants["max_text"]
+    def inbound_unframe(self, framed: bytes) -> tuple[str, bytes, bytes]:
+        head = self._inbound_head()
         trailer = self.constants["trailer"]
         if len(framed) < trailer:
             raise BridgeError("frame refused: truncated")
-        bid, length = self._decoded(
+        bid, identity, length = self._decoded(
             "(fn-store-frame-inbound-open {} {} {} {})".format(
                 _octets(framed[:head]), len(framed),
                 _octets(framed[-trailer:]), _octets(self.digest_of(framed))))
         bid = _as_bytes(bid).decode("utf-8", "strict")
+        identity = _as_bytes(identity)
         start = len(framed) - trailer - length
-        return bid, framed[start:len(framed) - trailer]
+        return bid, identity, framed[start:len(framed) - trailer]
 
     # -- identity, charge, groups, Message-ID -------------------------------
 

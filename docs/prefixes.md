@@ -43,7 +43,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-article-` | `article`, `article-invariants`, `article-properties` | Bounded header/body article parser with exact source preservation |
 | `fn-aw-` | `article-work-primitives`, `article-work-scanners`, `article-work`, `article-work-budget`, `article-public-work`, `article-public-bound` | Instrumented article parser shadow, value correspondence and work bounds |
 | `fn-af-` | `article-fields` | Message-ID and Newsgroups field semantics over parsed views |
-| `fn-frame-` | `frame`, `frame-invariants` | The one durable frame grammar (magic, version, kind, bounded length, payload, 32-octet trailer), its journal field grammar, and the constrained trailer function A-CRYPTO |
+| `fn-frame-` | `frame-octets`, `frame-fields`, `frame-journal`, `frame`, `frame-invariants` | The one durable frame grammar (magic, version, kind, bounded length, payload, 32-octet trailer), its journal field grammar, and the constrained trailer function A-CRYPTO |
 | `fn-id-`, `fn-charge-` | `identity`, `identity-invariants` | Content-identity derivation (subject and archive obligation), the hexadecimal projection, and the per-payload charge policy |
 | `fn-store-` | `store-config` | The configured group table and the name/code mapping shared by every adapter |
 | `fn-bp-` | `bp-workflow`, `bp-workflow-invariants`, `bp-workflow-transport-invariants`, `bp-workflow-binding-core`, `bp-workflow-binding-invariants`, `bp-workflow-records` | Sender workflow: work, attempts, intents, transport observations, journal replay |

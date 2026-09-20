@@ -224,7 +224,7 @@ class ReceiverProcessCrashTests(unittest.TestCase):
 
                 staged = list((root / "inbox" / "inbound").glob("*.bp"))
                 self.assertEqual(len(staged), 1)
-                staged_bid, staged_request = workflow_journal.decode_inbound(
+                staged_bid, _staged_identity, staged_request = workflow_journal.decode_inbound(
                     staged[0].read_bytes())
                 self.assertEqual((staged_bid, staged_request), (bid, request))
                 self.assertEqual(self._counts(root / "store", point, point != "fnbi"),
