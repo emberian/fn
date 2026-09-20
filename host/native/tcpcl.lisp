@@ -67,7 +67,7 @@
 
 ;;; `source' is "event" for the events of a `fn-tcl-drive' over received
 ;;; octets and "aux" for those of an open, a tick, a send, a pump, a peer
-;;; close or a terminate.  tests/tcpcl_differential.py replays the trace
+;;; close or a terminate.  tools/tcpcl_lab.py replays the trace
 ;;; through `fn-tcl-drive' alone, so only the "event" lines are its subject.
 (defun fnn-tcl-log-events (conn source digests)
   (dolist (digest digests)
@@ -358,7 +358,7 @@ failure rather than a refusal."
 ;;; The differential.  `replay' folds `fn-tcl-drive' over the trace the loop
 ;;; wrote -- the same octets, the same clock readings, the same carry -- in one
 ;;; ACL2 call with no socket in it, and prints the digests in the loop's
-;;; spelling.  tests/tcpcl_differential.py compares the two streams.
+;;; spelling.  tools/tcpcl_lab.py compares the two streams.
 
 (defun fnn-tcl-trace-steps (path)
   "The (now octets) steps of a trace file: a decimal now, a space, a decimal
@@ -434,7 +434,9 @@ never reach the Lisp reader."
        (fnn-command-tcpcl-send
         (first args)
         (parse-integer (second args))
-        (third args)
+        ;; `-' is a node with nothing to send: it opens the session, waits for
+        ;; what the peer offers, and terminates when EXPECT transfers arrived.
+        (fnn-tcl-arg args 2)
         (fnn-tcl-arg args 3 "tcpcl-spool")
         (fnn-tcl-arg args 4 "dtn://fn-active/")
         (fnn-tcl-arg args 5)
