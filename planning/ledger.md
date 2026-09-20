@@ -13,16 +13,16 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 270 |
 | Certification roots in the Makefile | 269 |
 | Books inside the root closure | 269 |
-| `defthm` and `defthmd` events | 5377 |
-| `defun` events | 3837 |
+| `defthm` and `defthmd` events | 5389 |
+| `defun` events | 3839 |
 | Functions with verified guards | 1400 |
 | Functions declared `:verify-guards nil` and never verified | 189 |
-| Functions left at the default with an explicit guard | 1754 |
+| Functions left at the default with an explicit guard | 1756 |
 | Functions left at the default with no guard | 494 |
-| `assert-event` checks | 5099 |
+| `assert-event` checks | 5101 |
 | `must-fail` checks | 59 |
 | `encapsulate` events | 19 |
-| Theorems flagged SUSPECT by shape | 43 |
+| Theorems flagged SUSPECT by shape | 44 |
 | Export-hygiene warnings | 72 |
 | Teeth-form warnings | 0 |
 | Include-hygiene warnings | 87 |
@@ -218,8 +218,8 @@ that `make certify` requests.
 | `books/store-sweep.lisp` | root | 7 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/stx-authority.lisp` | root | 3 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/stx-carrier.lisp` | root | 49 | 26 | 1/0/25/0 | 0 | 0 | 0 |
-| `books/stx-epochs.lisp` | root | 12 | 12 | 0/1/11/0 | 0 | 0 | 0 |
-| `books/stx-index.lisp` | root | 50 | 26 | 8/0/18/0 | 0 | 0 | 1 |
+| `books/stx-epochs.lisp` | root | 17 | 13 | 0/1/12/0 | 0 | 0 | 0 |
+| `books/stx-index.lisp` | root | 57 | 26 | 8/0/18/0 | 0 | 0 | 2 |
 | `books/stx-invariants.lisp` | root | 24 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/stx-lace.lisp` | root | 19 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/stx-policy.lisp` | root | 16 | 3 | 0/0/3/0 | 0 | 0 | 1 |
@@ -331,7 +331,7 @@ that `make certify` requests.
 | `tests/acl2/store-observed-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 63 | 0 | 0 |
 | `tests/acl2/store-sweep-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |
 | `tests/acl2/stx-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 42 | 0 | 0 |
-| `tests/acl2/stx-transit-tests.lisp` | root | 0 | 6 | 0/0/6/0 | 58 | 0 | 0 |
+| `tests/acl2/stx-transit-tests.lisp` | root | 0 | 7 | 0/0/7/0 | 60 | 0 | 0 |
 | `tests/acl2/tcpcl-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 104 | 0 | 0 |
 | `tests/acl2/transfer-journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 58 | 0 | 0 |
 | `tests/acl2/transfer-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 60 | 0 | 0 |
@@ -389,6 +389,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-sn-open-observed-invalid-history-refuses` | `books/store-observed.lisp` | 408 | branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value |
 | `fn-sn-refuse-reservation-disabled-is-no-op` | `books/store-node-resolution.lisp` | 126 | branch-of-definition: the hypothesis negates a branch test of fn-sn-refuse-reservation and the conclusion is that branch's value |
 | `fn-stx-admission-is-peer-independent-by-definition` | `books/stx-policy.lisp` | 49 | definition-restated: the conclusion is the body of fn-stx-transit-authority-ok |
-| `fn-stx-index-query-is-store-free-by-definition` | `books/stx-index.lisp` | 586 | definition-restated: the conclusion is the body of fn-stx-index-lookup; reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-stx-index-lookup-cost-is-index-bounded` | `books/stx-index.lisp` | 784 | instance-corollary: the statement is fn-stx-alist-steps-is-len-bounded instantiated, discharging nothing |
+| `fn-stx-index-query-is-store-free-by-definition` | `books/stx-index.lisp` | 801 | definition-restated: the conclusion is the body of fn-stx-index-lookup; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-tcl-segment-never-exceeds-mru` | `books/tcpcl-octets.lisp` | 1044 | branch-of-definition: the hypothesis is a branch test of fn-tcl-decode-segment-data and the conclusion is that branch's value |
 | `fn-wire-feed-closed-noop` | `books/wire.lisp` | 778 | branch-of-definition: the hypothesis is a branch test of fn-wire-feed and the conclusion is that branch's value |

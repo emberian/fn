@@ -276,18 +276,18 @@
     "books": 270,
     "books_in_root_closure": 269,
     "roots": 269,
-    "theorems": 5377,
-    "functions": 3837,
-    "assert_events": 5099,
+    "theorems": 5389,
+    "functions": 3839,
+    "assert_events": 5101,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
       "verified": 1400,
       "declared-off": 189,
-      "default-guarded": 1754,
+      "default-guarded": 1756,
       "default-unguarded": 494
     },
-    "suspect_theorems": 43,
+    "suspect_theorems": 44,
     "export_hygiene_warnings": 72,
     "teeth_form_warnings": 0,
     "include_hygiene_warnings": 87,
@@ -4258,12 +4258,12 @@
       "book": "books/stx-epochs.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 12,
-      "functions": 12,
+      "theorems": 17,
+      "functions": 13,
       "guards": {
         "verified": 0,
         "declared-off": 1,
-        "default-guarded": 11,
+        "default-guarded": 12,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -4284,7 +4284,7 @@
       "book": "books/stx-index.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 50,
+      "theorems": 57,
       "functions": 26,
       "guards": {
         "verified": 8,
@@ -4303,6 +4303,7 @@
       ],
       "system_includes": [],
       "suspects": [
+        "fn-stx-index-lookup-cost-is-index-bounded",
         "fn-stx-index-query-is-store-free-by-definition"
       ],
       "read_error": null
@@ -7173,17 +7174,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 6,
+      "functions": 7,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 6,
+        "default-guarded": 7,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 58,
+      "assert_events": 60,
       "must_fails": 0,
-      "defconsts": 6,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7700,9 +7701,17 @@
       ]
     },
     {
+      "theorem": "fn-stx-index-lookup-cost-is-index-bounded",
+      "book": "books/stx-index.lisp",
+      "line": 784,
+      "reasons": [
+        "instance-corollary: the statement is fn-stx-alist-steps-is-len-bounded instantiated, discharging nothing"
+      ]
+    },
+    {
       "theorem": "fn-stx-index-query-is-store-free-by-definition",
       "book": "books/stx-index.lisp",
-      "line": 586,
+      "line": 801,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-stx-index-lookup",
         "reflexive-conclusion: a conjunct is (equal X X)"

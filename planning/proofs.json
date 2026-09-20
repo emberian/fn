@@ -865,7 +865,8 @@
       "assumptions": [],
       "status": "planned",
       "evidence": [],
-      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
+      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
+      "note": "`tests/acl2/stx-transit-tests` CERTIFIES since w10/substrate-2, so the S3-1 witnesses have now RUN; before that they were written and unexecuted."
     },
     {
       "id": "PRF-022",
@@ -883,7 +884,8 @@
       ],
       "status": "planned",
       "evidence": [],
-      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
+      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
+      "note": "`tests/acl2/stx-transit-tests` CERTIFIES since w10/substrate-2, so the S3-2 fork witnesses have now RUN."
     },
     {
       "id": "PRF-023",
@@ -897,9 +899,16 @@
         "PRF-021"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "in-progress",
       "evidence": [],
-      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
+      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
+      "note": "`books/stx-index` CERTIFIES (w10/substrate-2). The three agreements `fn-stx-index-bindings-agree`, `fn-stx-index-slots-agree` and `fn-stx-index-equivocators-agree` are the keystones; `fn-stx-index-agrees-with-lace` is their `:rule-classes nil` corollary and is cited as such, and `fn-stx-recorded-equivocation-agrees-with-lace` is a corollary of that. Not closed: no host line calls `fn-stx-index-lookup` or `fn-stx-index-equivocatorp` -- `fn-node-statep` has no index slot -- so the theorem-subject rule is not met and the D3 claim is about a query the served path does not yet carry.",
+      "events": [
+        "fn-stx-index-bindings-agree",
+        "fn-stx-index-slots-agree",
+        "fn-stx-index-equivocators-agree",
+        "fn-stx-index-invariant-preserved-by-accept"
+      ]
     },
     {
       "id": "PRF-024",
@@ -918,7 +927,8 @@
       ],
       "status": "planned",
       "evidence": [],
-      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
+      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
+      "note": "`tests/acl2/stx-transit-tests` CERTIFIES since w10/substrate-2, and the S4-1 witnesses were VACUOUS until it did: the hostile batch's delta was empty because the policy statement's carrier article had a prose body where `fn-stx-payload-for` projects base64. Both carriers are repaired and the deltas are now pinned by their own assertions."
     },
     {
       "id": "PRF-025",
@@ -934,9 +944,14 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "planned",
+      "status": "in-progress",
       "evidence": [],
-      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
+      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
+      "note": "`books/stx-epochs` CERTIFIES (w10/substrate-2), so the carrier obligation `fn-stx-commits-of-batch-are-verified-and-well-formed` is proved and the three reconnection rows follow it as labelled corollaries of the `books/membership-epochs-invariants` keystones. Its local witness lemma needed a repair, not a weakening: `fn-stx-commits-of-lace-have-witnesses` asked only `fn-lace-p` of the delta and was false; it now asks that every statement of the delta verifies, which `fn-stx-batch-delta` satisfies by construction. Not closed: nothing on the host's reconnection path calls `fn-stx-commits-of-batch`, and A-CRYPTO stands behind every verification here.",
+      "events": [
+        "fn-stx-commit-decode-is-a-commit",
+        "fn-stx-commits-of-batch-are-verified-and-well-formed"
+      ]
     },
     {
       "id": "PRF-026",
