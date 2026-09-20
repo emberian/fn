@@ -118,6 +118,15 @@ Injectivity is generated `:rule-classes nil`, a name for one includer's
 (section 3). `:injective :rewrite` asks for the rule, and is a decision to
 defend in the book that asks.
 
+Editing `fn-defrecord` means editing two files. `tools/ledger.py` mirrors the
+expansion (`defrecord_expansion`), because a static reader cannot see through
+a macro: without the mirror a migrated book loses forty names from the
+ledger's `definitions` and the host-names lint calls every accessor the
+bridges use undefined. `tests/acl2/defrecord-tests.lisp` pins the Lisp side
+and `tests/test_ledger.py` the Python side. Note that a change to
+`books/defrecord.lisp` --- a comment included --- invalidates its certificate
+and every certificate above it, so batch such changes.
+
 ### What opacity takes away and what you must export back
 
 While `fn-article-msgid` opened to `(car x)`, type reasoning gave
