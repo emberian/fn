@@ -57,6 +57,11 @@ cat > "$book.cert" <<CERT
 NIL
 CERT
 printf '(in-package "ACL2")\n' > "$book.port"
+# `<certified book>:<book to edit>`: a source that changes while the run is
+# still going, which is what the cache must never file a pair against.
+case "${FAKE_EDIT_AFTER:-}" in
+  "$book:"*) printf '; edited mid-run\n' >> "${FAKE_EDIT_AFTER#*:}.lisp" ;;
+esac
 printf 'end %s\n' "$book" >> "$FAKE_EVENTS"
 echo "ACL2 !>$marker"
 exit 0
@@ -81,7 +86,7 @@ class FakeRepository:
 
     def certify(self, books: list[str], jobs: int, fail: str = "",
                 slots: int = 16, extra: list[str] | None = None,
-                quiet_fail: str = "") -> tuple[int, dict]:
+                quiet_fail: str = "", edit_after: str = "") -> tuple[int, dict]:
         extra = extra or []
         self.runs += 1
         self.events.write_text("")
@@ -91,6 +96,7 @@ class FakeRepository:
             "FAKE_EVENTS": str(self.events),
             "FAKE_FAIL": fail,
             "FAKE_QUIET_FAIL": quiet_fail,
+            "FAKE_EDIT_AFTER": edit_after,
             "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
             # A private slot pool and a private certificate cache: a unit test
             # must not contend with this machine's real ACL2 runs or publish
@@ -411,15 +417,20 @@ class SlotTests(unittest.TestCase):
 
 
 class CachePublishTests(unittest.TestCase):
-    """A successful root publishes its pair; a failed one publishes nothing."""
+    """The cache follows each BOOK's verdict, never the whole run's."""
 
     def test_a_passing_run_publishes_every_certificate_to_the_cache(self):
         with tempfile.TemporaryDirectory() as directory:
             repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
             _, manifest = repository.certify(ParallelScheduleTests.ORDER, jobs=2)
-            self.assertEqual(manifest["cert_cache"]["published"],
+            cache = manifest["cert_cache"]
+            # Each book is published as it finishes, so by the time the
+            # end-of-run sweep looks, every pair is already filed.
+            self.assertEqual(cache["per_book_published"],
                              len(ParallelScheduleTests.ORDER))
-            self.assertEqual(manifest["cert_cache"]["not_published"], [])
+            self.assertEqual(cache["published"] + cache["already_cached"],
+                             len(ParallelScheduleTests.ORDER))
+            self.assertEqual(cache["not_published"], [])
             self.assertEqual(repository.cached_books(),
                              sorted(ParallelScheduleTests.ORDER))
 
@@ -432,13 +443,47 @@ class CachePublishTests(unittest.TestCase):
             self.assertNotIn("cert_cache", manifest)
             self.assertEqual(repository.cached_books(), [])
 
-    def test_a_failing_run_publishes_nothing(self):
+    def test_a_failing_run_publishes_the_books_that_passed(self):
+        """The defect this replaces: a failed run cached nothing at all.
+
+        Measured on persvati 2026-09-20, `run-20260920T203028Z-d411`
+        certified 21 of 22 books, exited 1, and left 0 entries in the box
+        cache; the next submit into the same root reported
+        `installed 0, kept 0, uncached 267`.  A wide run on this tree exits
+        non-zero whenever any root carries an open theorem, so under the old
+        rule no lane ever seeded the box.
+        """
         with tempfile.TemporaryDirectory() as directory:
             repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
             _, manifest = repository.certify(ParallelScheduleTests.ORDER, jobs=2,
                                              fail="books/leaf-b")
             self.assertEqual(manifest["status"], "failed")
-            self.assertEqual(repository.cached_books(), [])
+            passed = sorted(book for book, verdict
+                            in manifest["book_results"].items()
+                            if verdict == "passed")
+            self.assertIn("books/base", passed)
+            self.assertNotIn("books/leaf-b", passed)
+            self.assertEqual(repository.cached_books(), passed)
+            events = {event["book"]: event
+                      for event in manifest["cert_cache"]["per_book"]}
+            self.assertTrue(events["books/base"]["published"])
+            self.assertFalse(events["books/leaf-b"]["published"])
+            self.assertEqual(events["books/leaf-b"]["why"],
+                             "this book did not pass")
+
+    def test_a_book_whose_closure_changed_mid_run_is_not_published(self):
+        """A pair is filed under its closure; an edited closure is a poison key."""
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
+            _, manifest = repository.certify(
+                ["books/base", "books/mid"], jobs=1,
+                edit_after="books/base:books/base")
+            events = {event["book"]: event
+                      for event in manifest["cert_cache"]["per_book"]}
+            self.assertFalse(events["books/mid"]["published"])
+            self.assertIn("closure changed since certification",
+                          events["books/mid"]["why"])
+            self.assertNotIn("books/mid", repository.cached_books())
 
 
 class CertificationEvidenceTests(unittest.TestCase):

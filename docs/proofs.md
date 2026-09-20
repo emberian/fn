@@ -282,13 +282,67 @@ one line a gate script runs after `make certify`
 `--origin-kind gate` into `$FN_CERT_CACHE`, `~/fn-certcache` on persvati and
 `/tank/fn/certcache` on hbox. `farm.py submit` then installs that cache into
 the mirrored tree before it starts the runner, and records what it found with
-the run (`cache_install`: installed, kept, uncached, foreign-local), so a
-`--closure` run certifies only what the box lacks; the runner publishes back
-into the same cache as it goes (`FN_CERT_ORIGIN_KIND=run`) and `wait`
-publishes the run's pairs there once more after it, so the next lane on the
-box starts from them. Measured on persvati, 2026-09-20: seeding the cache from
-one finished gate directory published 209 pairs in 1.4 s, and the next
-`submit --closure books/wire` installed 172 of them before the runner started.
+the run (`cache_install`: installed, kept, uncached, foreign-local); the
+runner publishes back into the same cache as it goes
+(`FN_CERT_ORIGIN_KIND=run`) and `wait` publishes the run's pairs there once
+more after it, so the next lane on the box starts from them. Measured on
+persvati, 2026-09-20: seeding the cache from one finished gate directory
+published 209 pairs in 1.4 s, and the next `submit --closure books/wire`
+installed 172 of them before the runner started.
+
+**The seeding follows each book, not the run's verdict.** The runner used to
+publish only inside `if success:`, and `success` is a statement about the
+whole requested batch, so a wide run -- which exits non-zero while any root
+on this tree carries an open theorem -- cached nothing at all. Measured on
+persvati 2026-09-20 against an isolated cache, closure over
+`books/byte-store-scan` at `--jobs 2`: the run certified 21 of 22 books, exited
+1, and left 0 entries, and the next submit into the same remote root reported
+`installed 0, kept 0, uncached 267`; with the per-book publish the same two
+runs report 21 entries and `installed 21, kept 0, uncached 246`
+([the record](../planning/evidence/farm-cache-failed-run-2026-09-20.md)). A
+pair is published on its own book's evidence -- that book's fresh marker, its
+clean log, its certificate -- so a run that is killed, that times out, or that
+no one waits on still leaves what it proved. `wait` fetches and publishes on
+its timeout path too, and says what it left running. What that removed had to
+be replaced: publishing only after a wholly successful run made the run-wide
+`sources_unchanged` check stand in for a per-pair one, so `certs.publish` now
+refuses a book whose whole include closure no longer hashes to what the
+manifest recorded. A dependency edited mid-run leaves the book's own source
+untouched, and the entry would otherwise be a real certificate filed under a
+key describing source it was never produced from.
+
+**One lock per box, and it is a `flock` file.** A gate is a fresh directory
+certified once, and a second `make certify` against the same cache while the
+first is publishing gives the second a cache it cannot vouch for. The hand
+gate scripts on the boxes take `flock` on `$HOME/fn-gates/.gate.lock`
+(persvati) and `/tank/fn/gates/.lock` (hbox) -- `exec 9>LOCK; flock 9` at the
+top of `gate.sh`, held until the script exits. `tools/verdict.py` kept a
+second scheme of its own beside them, an atomic `mkdir` on `.verdict.lock`,
+and two schemes that cannot see each other are not a lock: a verdict run and
+a hand gate could certify on one box at the same time. The gate script
+`verdict.py` writes now opens the same file, and before it launches anything
+`verdict.py` asks the box whether that lock is free (`flock -n LOCK true`) and
+refuses with the holding process named rather than queueing silently;
+`--wait-for-lock` queues. A `flock` dies with the process that holds it, so
+there is nothing to force-unlock and nothing that can go stale. It is a
+CERTIFICATION lock: `tools/farm.py` runs do not take it (they are `--closure`
+runs into their own remote root), and neither do the deploy, two-node, INN and
+scale fibers.
+
+`tools/verdict.py --reuse-gate [REV]` reads a gate directory that already
+exists and builds its per-fiber table from it, shipping nothing and starting
+no ACL2. It reads the shape both kinds of gate share (`certify.log`,
+`pytests.log`, `publish.log`, `build/acl2/certify-*/manifest.json`) rather
+than the `gate.done` only its own gates write, and names any of those four
+that is absent in the table. Two tables produced that way, from finished hand
+gates on 2026-09-20, are
+[persvati `dev-909e055`](../planning/evidence/verdict-reuse-persvati-dev-909e055-2026-09-20.md)
+and [hbox `dev-d50c392`](../planning/evidence/verdict-reuse-hbox-dev-d50c392-2026-09-20.md).
+The per-root row comes from the manifest's `book_results`, not from
+`acl2_exit_codes`: the certify driver ends in `(quit)`, which ACL2 reaches
+whether or not the inner `ld` returned on a failed `certify-book`, so a book
+that failed still exits 0. On `dev-909e055` the exit codes name one failing
+root and `book_results` names twenty-five.
 
 Two further controls on ACL2 processes. `--affected-by BOOK` keeps only the
 roots that are, or transitively include, a named book, in Makefile order, so a
@@ -326,7 +380,10 @@ when the wrapper itself dies.
 `submit` mirrors the worktree and starts the runner detached with its own log
 and status file, `wait` blocks with a bounded sleep-and-report loop and then
 rsyncs back the evidence directory and the new pairs and publishes them
-locally, and `status` lists the runs on a host. On hbox the runner is wrapped
+locally and on the box, and `status` lists the runs on a host. `--cache` names
+the cache to use ON THE HOST; `submit` records it and `wait` reuses what was
+recorded, which is how a measurement of the cache isolates itself from the
+shared one. On hbox the runner is wrapped
 in `swarm-build`, which is where that box's memory cap is enforced. The
 invocation for a lane is
 
@@ -334,7 +391,7 @@ invocation for a lane is
         --remote-root /home/ember/fn-lanes/<lane> \
         --affected-by books/article.lisp --closure
 
-and three things in it were each paid for by a run that produced nothing.
+and four things in it were each paid for by a run that produced nothing.
 `--remote-root` takes an **absolute** path: a leading `~` is resolved against
 the host's own `$HOME` in one `ssh host 'echo $HOME'` before anything uses it,
 because the recorded path is also the origin the returning pairs are published
@@ -345,7 +402,23 @@ nowhere. rsync creates the last component of its destination and no more, so
 which meant ssh exited 0 whatever happened; each step of the submit script now
 exits on its own (9 no directory, 10 no runner in the tree, 11 no writable
 `build/farm`, 12 the runner did not start), `submit` raises on any of them and
-`main` returns 2, so a run id is printed only for a run that exists.
+`main` returns 2, so a run id is printed only for a run that exists. Fourth,
+`wait` returning 3 at its deadline without fetching abandoned every pair the
+run had already made, while the run itself kept going on the box; the timeout
+path now fetches and publishes first and prints what it left behind.
+
+Every harness that writes a record -- [`tools/deploy_gate.py`](../tools/deploy_gate.py),
+`twonode_gate.py`, `inn_lab.py`, `scale_gate.py`, `verdict.py`,
+`tcpcl_lab.py` and `tests/campaign/campaign.py` -- resolves the tree it
+writes into with `deploy_gate.repo_root()`, which is `git rev-parse
+--show-toplevel` from the working directory, checked to be an fn tree and
+falling back to the harness file's own tree. `Path(__file__).parents[1]`
+answers where the SCRIPT lives, which is a different question: a lane running
+the main checkout's copy of a harness had `planning/evidence/twonode-*.md`
+written into `/Users/ember/dev/fn`, untracked, blocking a merge.
+`deploy_gate.evidence_path()` anchors the default name and a relative
+`--evidence` on that root; an absolute `--evidence` is still taken as given,
+and `--repo` still overrides.
 
 ### Qualifying a platform against A-DURABILITY
 

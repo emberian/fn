@@ -92,6 +92,23 @@
             (fn-defrecord-of-constructor-events (cdr fields) (cdr formals)
                                                 shape constructor call)))))
 
+; `((len x) (len (cdr x)) ... (len (cdr^k x)))', the `:expand' hint the
+; constructor-of-accessors proof needs: `len' must be unwound as many times as
+; the record is wide before `(equal (len x) w)' destructures `x'.
+(defun fn-defrecord-len-expansions (k)
+  (declare (xargs :mode :program))
+  (if (zp k)
+      (list '(len x))
+    (append (fn-defrecord-len-expansions (1- k))
+            (list (list 'len (fn-defrecord-nest k 'cdr 'x))))))
+
+; `((acc1 x) ... (accn x))', the constructor's arguments in the round trip.
+(defun fn-defrecord-accessor-terms (accessors)
+  (declare (xargs :mode :program))
+  (if (endp accessors) nil
+    (cons (list (car accessors) 'x)
+          (fn-defrecord-accessor-terms (cdr accessors)))))
+
 (defun fn-defrecord-consp-conjuncts (accessors)
   (declare (xargs :mode :program))
   (if (endp accessors) nil
@@ -150,12 +167,26 @@
 ;
 ; generates, in this order: the shape predicate; the constructor; one total
 ; `mbe' accessor per field with its `verify-guards'; `<shape>-of-<ctor>'; one
-; `<accessor>-of-<ctor>' per field; `<ctor>-injective'; the three
-; forward-chaining shape facts `<shape>-forward-shape',
+; `<accessor>-of-<ctor>' per field; `<ctor>-of-accessors'; `<ctor>-injective';
+; the three forward-chaining shape facts `<shape>-forward-shape',
 ; `<name>-accessors-forward-consp' and `<recognizer>-forward-shape'; the
 ; recognizer, written over the shape predicate and the accessors; and
 ; `<name>-internals' --- the `:d' runes of the shape, the constructor and
 ; every accessor --- withdrawn on the spot.
+;
+; `<ctor>-of-accessors' is the dual of the accessor-of-constructor family and
+; the one every decode-of-encode round trip in this tree needs: a decoder
+; rebuilds the record from decoded fields, each field rewrites to the
+; corresponding accessor of the original, and the goal is then
+; `(equal (<ctor> (acc1 r) ... (accn r)) r)'.  It is stated under the SHAPE
+; predicate rather than the recognizer for two reasons: a record declared
+; `:recognizer nil' has no recognizer, and a recognizer with
+; `:recognizer-formals' would put a free variable in the rule's hypothesis.
+; It still fires when the recognizer is closed --- which is the only way a
+; transition proof may use it --- because `<recognizer>-forward-shape' now
+; forward-chains `(<shape> x)' as well as `consp' and `true-listp'.  The
+; shape predicate stays disabled: the forward fact is an opaque literal that
+; relieves the hypothesis without opening anything.
 ;
 ; Accessor names are given in full because the tree does not derive them from
 ; the record name (`fn-sched-config' has `fn-sched-queue-bound', `fn-sched-state'
@@ -231,6 +262,13 @@
          (,shapep ,call)))
      (fn-defrecord-of-constructor-events fields formals shapep ctor call)
      (list
+      `(defthm ,(fn-defrecord-name (list ctor "-OF-ACCESSORS") name)
+         (implies (,shapep x)
+                  (equal (,ctor ,@(fn-defrecord-accessor-terms accessors)) x))
+         :hints (("Goal"
+                  :in-theory (enable len ,shapep ,ctor ,@accessors)
+                  :expand ,(fn-defrecord-len-expansions width)
+                  :do-not-induct t)))
       `(defthm ,(fn-defrecord-name (list ctor "-INJECTIVE") name)
          (equal (equal ,call ,(cons ctor primed))
                 (and ,@(fn-defrecord-equal-conjuncts formals primed)))
@@ -254,7 +292,8 @@
                 ,@(fn-defrecord-recognizer-conjuncts fields)
                 ,@extra))
         `(defthm ,(fn-defrecord-name (list recp "-FORWARD-SHAPE") name)
-           (implies (,recp ,@recognizer-formals x) (and (consp x) (true-listp x)))
+           (implies (,recp ,@recognizer-formals x)
+                    (and (,shapep x) (consp x) (true-listp x)))
            :rule-classes :forward-chaining
            :hints (("Goal" :in-theory (enable ,shapep)))))))))))
 

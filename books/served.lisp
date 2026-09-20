@@ -758,22 +758,36 @@
 ; The host's durable observation, fed back as one more served input.  The
 ; connection is unchanged; the reply is fn-nntp-post-outcome's, which is the
 ; only place 240 exists (fn-post-outcome-240-only-for-a-durable-observation).
-
+;
+; The session this reaches for is TWO wrappers down, not one.  A served
+; connection's session is fn-auth-open-session's (below), an auth session over
+; a peer session over the POST-composed reader session, and
+; fn-nntp-post-outcome wants the peer session's base.  It was reached through
+; fn-peer-session-base alone while the served session was still a peer
+; session; the auth wiring left this one call site behind, and because
+; fn-nntp-post-outcome answers a non-fn-post-sessionp argument with NO
+; effects rather than an error, the served path then emitted no 240 and no
+; 441 at all -- a posting client got the 340 offer, sent its article, and was
+; never told whether it was stored.  tests/acl2/served-tests caught it at
+; (take 4 *fn-t-served-240*).
 (defun fn-served-post-outcome (conn completion)
   (declare (xargs :guard t))
   (fn-served-make-result
    conn
    (fn-post-result-effects
-    (fn-nntp-post-outcome (fn-peer-session-base (fn-served-conn-session conn))
-                         completion))))
+    (fn-nntp-post-outcome
+     (fn-peer-session-base (fn-auth-session-base (fn-served-conn-session conn)))
+     completion))))
 
 ; A definitional restatement linking the host's entry to the nntp-post
 ; theorems: :rule-classes nil, never a registry event.
 (defthm fn-served-post-outcome-effects-by-definition
   (equal (fn-served-result-effects (fn-served-post-outcome conn completion))
          (fn-post-result-effects
-          (fn-nntp-post-outcome (fn-peer-session-base (fn-served-conn-session conn))
-                         completion)))
+          (fn-nntp-post-outcome
+           (fn-peer-session-base
+            (fn-auth-session-base (fn-served-conn-session conn)))
+           completion)))
   :rule-classes nil)
 
 (defthm fn-served-post-outcome-effects-are-typed

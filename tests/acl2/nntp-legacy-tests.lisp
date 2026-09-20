@@ -287,10 +287,41 @@
                      (fn-nntp-string-octets "a b")))
 (assert-event (equal (fn-nntp-xpat-join (list (fn-nntp-string-octets "a")))
                      (fn-nntp-string-octets "a")))
-; ... and the joined pattern is the one matched: "T st" does not match
-; "Test", but the two tokens joined are one pattern and not two.
+; ... and the joined pattern is the one matched, but fn refuses it.  RFC 2980
+; predates RFC 3977 section 4.1, whose <wildmat-exact> excludes SP, so a
+; pattern joined from two or more tokens always carries an SP that
+; fn-wildmat-parse rejects and fn answers 501 where RFC 2980's response list
+; and INN answer 221 with an empty list.  DIVERGENCE, not a pin: recorded as
+; OB-XPAT-SPACE in planning/lanes/HANDOFF-w10-nntp-tests.md with the INN 2.7.4
+; measurement in planning/evidence/inn-xpat-2026-09-20.md.  The 501 is a
+; sharper witness of the join than the empty block was, because the two
+; controls below show each token ALONE parses and the second one alone
+; matches: only a single pattern carrying the joining SP produces this reply.
 (assert-event (equal (lg-reply *lg-env* "XPAT subject 1-1 *T *t*")
+                     (lg-single "501 syntax error")))
+; Control: the second token alone is a valid pattern and matches "Test", so
+; two-pattern semantics would have rendered a line here rather than a 501.
+(assert-event (equal (lg-reply *lg-env* "XPAT subject 1-1 *t*")
+                     (lg-block "221 header follows" (list "1 Test"))))
+; Control: the first token alone is a valid pattern that does not match, and
+; a pattern that matches nothing gives the empty block.  So the 501 above is
+; the parser refusing SP, not XPAT refusing to match.
+(assert-event (equal (lg-reply *lg-env* "XPAT subject 1-1 *T")
                      (lg-block "221 header follows" nil)))
+(assert-event (equal (lg-reply *lg-env* "XPAT subject 1-1 *Q*")
+                     (lg-block "221 header follows" nil)))
+; The cause, directly: SP is not a <wildmat-item> while "*" is, and the
+; joined pattern therefore does not parse while each token does.
+(assert-event (not (fn-wildmat-itemp 32)))
+(assert-event (fn-wildmat-itemp 42))
+(assert-event (not (fn-wildmat-result-okp
+                    (fn-wildmat-parse
+                     (fn-nntp-xpat-join (list (fn-nntp-string-octets "*T")
+                                              (fn-nntp-string-octets "*t*")))))))
+(assert-event (fn-wildmat-result-okp
+               (fn-wildmat-parse (fn-nntp-string-octets "*T"))))
+(assert-event (fn-wildmat-result-okp
+               (fn-wildmat-parse (fn-nntp-string-octets "*t*"))))
 ; LOCAL POLICY, witnessed: the match target is bounded at
 ; *fn-wildmat-max-octets*.  A content longer than that matches nothing.
 (assert-event (not (fn-nntp-xpat-matchesp

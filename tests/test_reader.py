@@ -285,12 +285,21 @@ class ReaderSocketTests(unittest.TestCase):
         self.reader.assert_bytes(
             sock, b"430 no article with that message-id\r\n")
         # Section 2.9 requires at least one pattern, and joins the trailing
-        # arguments with a single space into one pattern.
+        # arguments with a single space into one pattern.  The third command
+        # is DIVERGENCE OB-XPAT-SPACE: the joined pattern carries an SP, RFC
+        # 3977 section 4.1's <wildmat-exact> excludes SP, and fn's parser
+        # refuses it, so fn answers 501 where INN answers 221 with an empty
+        # list (planning/evidence/inn-xpat-2026-09-20.md).  The fourth
+        # command is the control: one token, no SP, and it matches.
         sock.sendall(b"XPAT message-id 1-1\r\nXPAT\r\n"
-                     b"XPAT message-id 1-1 *reader* *invalid*\r\n")
+                     b"XPAT message-id 1-1 *reader* *invalid*\r\n"
+                     b"XPAT message-id 1-1 *reader*\r\n")
         self.reader.assert_bytes(sock, b"501 syntax error\r\n")
         self.reader.assert_bytes(sock, b"501 syntax error\r\n")
-        self.reader.assert_bytes(sock, b"221 header follows\r\n.\r\n")
+        self.reader.assert_bytes(sock, b"501 syntax error\r\n")
+        self.reader.assert_bytes(
+            sock,
+            b"221 header follows\r\n1 <reader@example.invalid>\r\n.\r\n")
 
     def test_list_variants_transcript_over_a_real_socket(self):
         """LIST HEADERS, LIST NEWSGROUPS, LIST ACTIVE wildmat, ACTIVE.TIMES.
