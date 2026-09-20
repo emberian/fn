@@ -73,18 +73,30 @@ UTF-8 sequence; it is parsed digit by digit and never reaches the Lisp reader.
 ## Open
 
 - **The image was not built in this lane's window.** The laptop's four ACL2
-  slots were held by other lanes for the whole session, so
-  `tools/build_native_host.sh` never got one and
-  `tests/test_native_served_differential.py` skipped (it skips, loudly, when
-  `build/fn-host` is absent — it never passes vacuously). Nothing here is
-  evidence of a working image yet: build it, run that test and
-  `python3 tests/native_differential.py`, and fill the `FN_*` placeholders in
+  slots were held by other lanes throughout: `tools/build_native_host.sh`
+  queued for 1604 s before it got slot 0 at 00:09 on 2026-09-20 and was still
+  inside ACL2 when the lane's budget ran out, so nothing here is evidence of
+  a working image. `tests/test_native_served_differential.py` skipped, loudly
+  — it skips when `build/fn-host` is absent and never passes vacuously. Next
+  session: if `build/fn-host` exists, check `build/native-host-build.log` for
+  `ACL2 Error`, `Uncertified` and the `FN_NATIVE_BUILD_LOADED` marker by hand
+  (the shell that would have checked them did not outlive the lane), or just
+  rebuild; then run that test, `python3 tests/native_differential.py`, and
+  `FN_HOST=native` over `tests/test_store.py`,
+  `tests/test_store_corruption.py`, `tests/test_reader.py` and
+  `tests/test_reader_partitions.py`, and fill the `FN_*` placeholders in
   `specs/host.md` with the measured numbers. The build now needs
-  `books/served` and `books/node-config` certified.
+  `books/served` and `books/node-config` certified (their certificates were
+  copied into this worktree from the main checkout; they are content-hashed).
 - **No owner in the reader.** A served POST is refused because this process
   holds a shared lock. The mutable-owner lane (`host/owner-host.lisp`,
   `fn-own-*`) is where a native writer belongs; when it lands, replace the
   `:refused` constant in `fnn-serve-client` with its completion.
+- **One profile only.** `fnn-load-config` accepts exactly the default
+  configuration bytes; `tools/run_store.py` also accepts the named scale
+  profile (`SUPPORTED_PROFILES`). A scale store therefore opens under the
+  Python host and is refused by the image. Pre-existing, and the differential
+  will not show it because it initializes default stores.
 - **Two JSON implementations.** `config.json` and `allocation-frontier.json`
   are a host decision with a Python implementation and a Lisp one. The
   differential run is what keeps them equal; a core-owned metadata record
