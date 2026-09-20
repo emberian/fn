@@ -99,7 +99,7 @@ the served path (`fn-tcl-drive`'s `mbe` check is `:exec nil`).
 
 ## 4. Keystones C1 to C4 (`books/tcpcl-invariants`)
 
-Status (2026-09-20): `books/tcpcl-session` certifies; `books/tcpcl-invariants` does not (open at `defthm fn-tcl-final-ack-means-every-segment`, section 6), so C1 to C4 are proposed theorems.
+Status (2026-09-20, w6/tcpcl-c2): C1, C2 with its two companions, and all of C3 are proved by ACL2 over `books/tcpcl-session` as certified; `books/tcpcl-invariants` is open at `defthm fn-tcl-no-interleaving`, the first theorem of C4 (section 6), so C4 and `tests/acl2/tcpcl-tests` are behind it. A theorem admitted before the failing form is proved, not certified. C2 is proved with `fn-tcl-sessionp` and every sub-recognizer closed: six local `-emits-no-bundle-received` lemmas dismiss the non-segment branches of `fn-tcl-step`, the local `fn-tcl-recv-segment-final-ack-means-every-segment` carries the content at the transition that owns it (115 subgoals, 0.3 s), and C2 lifts it to the step by `:use` at `(fn-tcl-touch-rx s now)`; the carried sum reaches the proof through the forward-chaining field facts `fn-tcl-sessionp-forward-inbound`, `fn-tcl-inboundp-forward-fields` and `fn-tcl-inboundp-forward-total`.
 
 **C1** `fn-tcl-drive-partition-independence`. Hypotheses: `fn-tcl-sessionp`,
 two octet lists, `fn-clock-timep`. Driving `(append left right)` is driving
@@ -199,8 +199,32 @@ transiently beyond it.
 
 ## 6. Open
 
-- `books/tcpcl-session` certifies (evidence `build/acl2/certify-20260920T021558Z-83845`, 26.8 s): `fn-tcl-refuse-preserves-sessionp`, every transition lemma, the guard closure and `fn-tcl-drive-preserves-sessionp` are closed with the record and the recognizer kept closed (forward-chaining field facts; the rebuild rule's phase glue as `case-split`; every keystone statement unchanged).
-- `books/tcpcl-invariants.lisp` is OPEN at `defthm fn-tcl-final-ack-means-every-segment` (evidence `build/acl2/certify-20260920T022251Z-39001`, 14.03 s to the failing form). Exact obligation, the key checkpoint: `*** Key checkpoint at the top level before a :DO-NOT-INDUCT hint stopped the proof attempt: *** Subgoal 1082.10' (IMPLIES (AND (FN-TCL-SESSION-SHAPEP S) (EQUAL (FN-TCL-SESSION-ROLE S) :ACTIVE) (FN-TCL-PARAMS-SHAPEP (FN-TCL-SESSION-LOCAL S)) (INTEGERP (FN-TCL-PARAMS-KEEPALIVE (FN-TCL-SESSION-LOCAL S))) (<= 0 (FN-TCL-PARAMS-KEEPALIVE (FN-TCL-SESSION-LOCAL S))) (<= (FN-TCL-PARAMS-KEEPALIVE (FN-TCL-SESSION-LOCAL S)) 65535) (INTEGERP (FN-TCL-PARAMS-SEGMENT-MRU (FN-TCL-SESSION-LOCAL S))) (<= 0 (FN-TCL-PARAMS-SEGMENT-MRU (FN-TCL-SESSION-LOCAL S))) (<= (FN-TCL-PARAMS-SEGMENT-MRU (FN-TCL-SESSION-LOCAL S)) 18446744073709551615) (INTEGERP (FN-TCL-PARAMS-TRANSFER-MRU (FN-TCL-SESSION-LOCAL S))) (<= 0 (FN-TCL-PARAMS-TRANSFER-MRU (FN-TCL-SESSION-LOCAL S))) (<= (FN-TCL-PARAMS-TRANSFER-MRU (FN-TCL-SESSION-LOCAL S)) 18446744073709551615) (FN-CBOR-OCTET-LISTP (FN-TCL-PARAMS-NODE-ID (FN-TCL-SESSION-LOCAL S))) (<= (LEN (FN-TCL-PARAMS-NODE-ID (FN-TCL-SESSION-LOCAL S))) 1024) (BOOLEANP (FN-TCL-PARAMS-CAN-TLS (FN-TCL-SESSION-LOCAL S))) (NOT (FN-TCL-PARAMS-EXPECTED-PEER (FN-TCL-SESSION-LOCAL S))) (BOOLEANP (FN-TCL-SESSION-TLS S)) (FN-TCL-SESS-INIT-SHAPEP (FN-TCL-SESSION-PEER S)) (INTEGERP (FN-TCL-SESS-INIT-KEEPALIVE (FN-TCL-SESSION-PEER S))) (<= 0 (FN-TCL-SESS-INIT-KEEPALIVE (FN-TCL-SESSION-PEER S))) (<= (FN-TCL-SESS-INIT-KEEPALIVE (FN-TCL-SESSION-PEER S)) 65535) (INTEGERP (FN-TCL-SESS-INIT-SEGMENT-MRU (FN-TCL-SESSION-PEER S))) (<= 0 (FN-TCL-SESS-INIT-SEGMENT-MRU (FN-TCL-SESSION-PEER S))) (<= (FN-TCL-SESS-INIT-SEGMENT-MRU (FN-TCL-SESSION-PEER S)) 18446744073709551615) (INTEGERP (FN-TCL-SESS-INIT-TR`. C2 `fn-tcl-final-ack-means-every-segment` is `:rule-classes nil` (statement unchanged; its equality has the variable `id` on its left). Keystones admitted before the failing form in that run are proved, not certified; `tests/acl2/tcpcl-tests` is behind it.
+- The wave-4 checkpoint at `Subgoal 1082.10'` is closed. Its cause was not
+  the `:do-not-induct` hint -- `fn-tcl-step` is not recursive, so induction
+  was never wanted -- but the `(in-theory (enable fn-tcl-sessionp))` above
+  the theorem: opening the recognizer put its eleven conjuncts, each itself
+  a sub-recognizer over a record, into the clause and split it into 1082
+  subgoals before the segment cases were reached. With the recognizer and
+  every sub-recognizer closed the segment lemma is 115 subgoals in 0.3 s.
+  C2 keeps its statement and stays `:rule-classes nil` (its equality has
+  the variable `id` on its left). `fn-tcl-inbound-is-created-only-by-start`
+  needed the same treatment plus six `-keeps-inbound` branch lemmas.
+- `books/tcpcl-invariants` is OPEN at `defthm fn-tcl-no-interleaving`, the
+  first theorem of C4 (evidence `build/acl2/certify-20260920T042704Z-2481961 (persvati)`, 804.2 s to the failing form). C1,
+  C2, `fn-tcl-received-len-is-staged-length-by-definition`,
+  `fn-tcl-inbound-is-created-only-by-start` and every C3 theorem are
+  admitted before it. The checkpoint has the same shape as C2's: the
+  recognizer is open again from C3 onward and `fn-tcl-no-interleaving`
+  dispatches over `fn-tcl-step`. C2's closed-recognizer theory alone does
+  NOT close it: `(e/d (fn-tcl-step fn-tcl-settle) (fn-tcl-c2-closed))` was
+  measured on it and failed too (evidence
+  `build/acl2/certify-20260920T044438Z-2651297` on persvati, 682.0 s), so
+  the next lane reads that checkpoint rather than reapplying the recipe;
+  the likely missing pieces are branch lemmas for what `fn-tcl-step` does
+  to the phase and the outbound record, the analogues of the
+  `-emits-no-bundle-received` and `-keeps-inbound` families. C3 also costs
+  about 780 s with the recognizer open and is worth the same treatment.
+- `tests/acl2/tcpcl-tests` is uncertified, behind invariants.
 - The host integration (`host/native/tcpcl.lisp`) and lab I1 are proposed
   in the handoff, not built; the final XFER_ACK after the FNBS record is
   barriered (bp-design §2.4) is a host ordering the model states as

@@ -41,7 +41,7 @@ Spec: [specs/tcpcl.md](../../specs/tcpcl.md). Design: bp-design.md §2.
 | `books/tcpcl-records` | certified | `build/acl2/certify-20260919T233610Z-89468` | 0.26 s |
 | `books/tcpcl-octets` | certified | `build/acl2/certify-20260920T013843Z-86679` | 125.0 s |
 | `books/tcpcl-session` | certified | `build/acl2/certify-20260920T021558Z-83845` | 26.8 s |
-| `books/tcpcl-invariants` | OPEN at `defthm fn-tcl-final-ack-means-every-segment` (specs/tcpcl.md section 6) | `build/acl2/certify-20260920T022251Z-39001` | 14.03 s to the failing form |
+| `books/tcpcl-invariants` | OPEN at `defthm fn-tcl-no-interleaving` (C4; C1, C2 and C3 admitted before it) | `build/acl2/certify-20260920T042704Z-2481961 (persvati)` | 804.2 s to the failing form |
 | `tests/acl2/tcpcl-tests` | uncertified, behind invariants | | |
 
 The RFC clause matrix of specs/tcpcl.md section 5: every "implemented" entry
@@ -70,7 +70,17 @@ builds; step, drive and their guards keep `fn-tcl-segment-mru` closed.
 C2 `fn-tcl-final-ack-means-every-segment` is `:rule-classes nil` (statement
 unchanged): its equality has the variable `id` on its left, which ACL2 refuses
 as a rewrite rule; it is cited by `:use`.
-Invariants is open at `defthm fn-tcl-final-ack-means-every-segment`; the checkpoint is in the evidence log.
+What closed C2 and C3 (w6/tcpcl-c2): the session recognizer kept CLOSED. The
+wave-4 `(in-theory (enable fn-tcl-sessionp))` above C2, not the
+`:do-not-induct` hint, was the cause of the 1082-subgoal checkpoint. Six local
+`-emits-no-bundle-received` lemmas dismiss the non-segment branches of
+`fn-tcl-step`, a local segment lemma carries the content, and C2 lifts it by
+`:use` at `(fn-tcl-touch-rx s now)`; six `-keeps-inbound` lemmas do the same
+for `fn-tcl-inbound-is-created-only-by-start`. A local `len`-of-`append` rule
+was needed because `fn-tcl-concat-rev` accumulates `(append data nil)` and
+`fn-tcl-append-nil` wants `true-listp`, which the closed recognizer does not
+supply. Invariants is now open at `fn-tcl-no-interleaving` (C4) with the same
+shape of checkpoint; `fn-tcl-c2-closed` is the theory to reach for.
 
 ## Proposed host surface: `host/native/tcpcl.lisp`
 
