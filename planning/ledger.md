@@ -10,19 +10,19 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 211 |
-| Certification roots in the Makefile | 210 |
-| Books inside the root closure | 210 |
-| `defthm` and `defthmd` events | 3480 |
-| `defun` events | 2587 |
-| Functions with verified guards | 1064 |
-| Functions declared `:verify-guards nil` and never verified | 138 |
-| Functions left at the default with an explicit guard | 940 |
+| Books read | 216 |
+| Certification roots in the Makefile | 215 |
+| Books inside the root closure | 215 |
+| `defthm` and `defthmd` events | 3873 |
+| `defun` events | 2780 |
+| Functions with verified guards | 1149 |
+| Functions declared `:verify-guards nil` and never verified | 141 |
+| Functions left at the default with an explicit guard | 1045 |
 | Functions left at the default with no guard | 445 |
-| `assert-event` checks | 3595 |
+| `assert-event` checks | 3692 |
 | `must-fail` checks | 59 |
-| `encapsulate` events | 14 |
-| Theorems flagged SUSPECT by shape | 28 |
+| `encapsulate` events | 15 |
+| Theorems flagged SUSPECT by shape | 29 |
 | Export-hygiene warnings | 62 |
 | Teeth-form warnings | 0 |
 | Include-hygiene warnings | 94 |
@@ -174,6 +174,10 @@ that `make certify` requests.
 | `books/store-node.lisp` | root | 9 | 23 | 21/0/2/0 | 0 | 0 | 0 |
 | `books/store-observed-traces.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/store-observed.lisp` | root | 36 | 13 | 12/0/1/0 | 0 | 0 | 1 |
+| `books/tcpcl-invariants.lisp` | root | 33 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/tcpcl-octets.lisp` | root | 172 | 36 | 14/0/22/0 | 0 | 0 | 1 |
+| `books/tcpcl-records.lisp` | root | 133 | 99 | 62/0/37/0 | 0 | 0 | 0 |
+| `books/tcpcl-session.lisp` | root | 55 | 54 | 9/0/45/0 | 0 | 0 | 0 |
 | `books/transfer-assembly-invariants.lisp` | root | 25 | 5 | 0/0/0/5 | 0 | 0 | 0 |
 | `books/transfer-invariants.lisp` | root | 14 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/transfer-journal-invariants.lisp` | root | 32 | 1 | 0/0/0/1 | 0 | 0 | 0 |
@@ -260,6 +264,7 @@ that `make certify` requests.
 | `tests/acl2/store-node-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
 | `tests/acl2/store-observed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
 | `tests/acl2/store-observed-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 63 | 0 | 0 |
+| `tests/acl2/tcpcl-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 97 | 0 | 0 |
 | `tests/acl2/transfer-journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 58 | 0 | 0 |
 | `tests/acl2/transfer-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 60 | 0 | 0 |
 | `tests/acl2/wildmat-parser-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
@@ -303,4 +308,5 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-sn-known-abort-disabled-is-no-op` | `books/store-node-resolution.lisp` | 132 | branch-of-definition: the hypothesis negates a branch test of fn-sn-known-abort and the conclusion is that branch's value |
 | `fn-sn-open-observed-invalid-history-refuses` | `books/store-observed.lisp` | 408 | branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value |
 | `fn-sn-refuse-reservation-disabled-is-no-op` | `books/store-node-resolution.lisp` | 126 | branch-of-definition: the hypothesis negates a branch test of fn-sn-refuse-reservation and the conclusion is that branch's value |
+| `fn-tcl-segment-never-exceeds-mru` | `books/tcpcl-octets.lisp` | 1044 | branch-of-definition: the hypothesis is a branch test of fn-tcl-decode-segment-data and the conclusion is that branch's value |
 | `fn-wire-feed-closed-noop` | `books/wire.lisp` | 778 | branch-of-definition: the hypothesis is a branch test of fn-wire-feed and the conclusion is that branch's value |

@@ -99,6 +99,8 @@ the served path (`fn-tcl-drive`'s `mbe` check is `:exec nil`).
 
 ## 4. Keystones C1 to C4 (`books/tcpcl-invariants`)
 
+Status (2026-09-20): `books/tcpcl-session` certifies; `books/tcpcl-invariants` does not (open at `defthm fn-tcl-final-ack-means-every-segment`, section 6), so C1 to C4 are proposed theorems.
+
 **C1** `fn-tcl-drive-partition-independence`. Hypotheses: `fn-tcl-sessionp`,
 two octet lists, `fn-clock-timep`. Driving `(append left right)` is driving
 `left`, then driving `(append unconsumed right)` from the session that
@@ -197,20 +199,8 @@ transiently beyond it.
 
 ## 6. Open
 
-- `books/tcpcl-session.lisp` `fn-tcl-refuse-preserves-sessionp`, exact
-  obligation (evidence `build/acl2/certify-20260920T014417Z-93813`,
-  checkpoint Goal''): under `(fn-tcl-sessionp s)` and `(fn-clock-timep now)`,
-  `(fn-tcl-sessionp (fn-tcl-next s (fn-tcl-session-phase s) nil
-  (fn-tcl-session-outbound s) (fn-tcl-session-term s) now))`.
-  `fn-tcl-next-preserves-sessionp` is not relieved from
-  `fn-tcl-sessionp-facts`: its phase-consistency hypotheses are `implies`
-  over the enabled glue predicates `fn-tcl-pre-establishedp` and
-  `fn-tcl-transferringp`, which the facts rule exports in opened form. The
-  two lemmas whose transition builds the session directly
-  (`fn-tcl-recv-contact`, `fn-tcl-recv-init`) open the recognizer in their
-  hints and pass; the remaining transition lemmas (`fn-tcl-refuse` onward),
-  the guard closure, `tcpcl-invariants` and `tcpcl-tests` are unattempted
-  behind this form.
+- `books/tcpcl-session` certifies (evidence `build/acl2/certify-20260920T021558Z-83845`, 26.8 s): `fn-tcl-refuse-preserves-sessionp`, every transition lemma, the guard closure and `fn-tcl-drive-preserves-sessionp` are closed with the record and the recognizer kept closed (forward-chaining field facts; the rebuild rule's phase glue as `case-split`; every keystone statement unchanged).
+- `books/tcpcl-invariants.lisp` is OPEN at `defthm fn-tcl-final-ack-means-every-segment` (evidence `build/acl2/certify-20260920T022251Z-39001`, 14.03 s to the failing form). Exact obligation, the key checkpoint: `*** Key checkpoint at the top level before a :DO-NOT-INDUCT hint stopped the proof attempt: *** Subgoal 1082.10' (IMPLIES (AND (FN-TCL-SESSION-SHAPEP S) (EQUAL (FN-TCL-SESSION-ROLE S) :ACTIVE) (FN-TCL-PARAMS-SHAPEP (FN-TCL-SESSION-LOCAL S)) (INTEGERP (FN-TCL-PARAMS-KEEPALIVE (FN-TCL-SESSION-LOCAL S))) (<= 0 (FN-TCL-PARAMS-KEEPALIVE (FN-TCL-SESSION-LOCAL S))) (<= (FN-TCL-PARAMS-KEEPALIVE (FN-TCL-SESSION-LOCAL S)) 65535) (INTEGERP (FN-TCL-PARAMS-SEGMENT-MRU (FN-TCL-SESSION-LOCAL S))) (<= 0 (FN-TCL-PARAMS-SEGMENT-MRU (FN-TCL-SESSION-LOCAL S))) (<= (FN-TCL-PARAMS-SEGMENT-MRU (FN-TCL-SESSION-LOCAL S)) 18446744073709551615) (INTEGERP (FN-TCL-PARAMS-TRANSFER-MRU (FN-TCL-SESSION-LOCAL S))) (<= 0 (FN-TCL-PARAMS-TRANSFER-MRU (FN-TCL-SESSION-LOCAL S))) (<= (FN-TCL-PARAMS-TRANSFER-MRU (FN-TCL-SESSION-LOCAL S)) 18446744073709551615) (FN-CBOR-OCTET-LISTP (FN-TCL-PARAMS-NODE-ID (FN-TCL-SESSION-LOCAL S))) (<= (LEN (FN-TCL-PARAMS-NODE-ID (FN-TCL-SESSION-LOCAL S))) 1024) (BOOLEANP (FN-TCL-PARAMS-CAN-TLS (FN-TCL-SESSION-LOCAL S))) (NOT (FN-TCL-PARAMS-EXPECTED-PEER (FN-TCL-SESSION-LOCAL S))) (BOOLEANP (FN-TCL-SESSION-TLS S)) (FN-TCL-SESS-INIT-SHAPEP (FN-TCL-SESSION-PEER S)) (INTEGERP (FN-TCL-SESS-INIT-KEEPALIVE (FN-TCL-SESSION-PEER S))) (<= 0 (FN-TCL-SESS-INIT-KEEPALIVE (FN-TCL-SESSION-PEER S))) (<= (FN-TCL-SESS-INIT-KEEPALIVE (FN-TCL-SESSION-PEER S)) 65535) (INTEGERP (FN-TCL-SESS-INIT-SEGMENT-MRU (FN-TCL-SESSION-PEER S))) (<= 0 (FN-TCL-SESS-INIT-SEGMENT-MRU (FN-TCL-SESSION-PEER S))) (<= (FN-TCL-SESS-INIT-SEGMENT-MRU (FN-TCL-SESSION-PEER S)) 18446744073709551615) (INTEGERP (FN-TCL-SESS-INIT-TR`. C2 `fn-tcl-final-ack-means-every-segment` is `:rule-classes nil` (statement unchanged; its equality has the variable `id` on its left). Keystones admitted before the failing form in that run are proved, not certified; `tests/acl2/tcpcl-tests` is behind it.
 - The host integration (`host/native/tcpcl.lisp`) and lab I1 are proposed
   in the handoff, not built; the final XFER_ACK after the FNBS record is
   barriered (bp-design §2.4) is a host ordering the model states as
