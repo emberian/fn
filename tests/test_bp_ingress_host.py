@@ -1,6 +1,7 @@
 """Live BP ADU ingress checks through workflow staging, ACL2, and Store files."""
 import tempfile
 import unittest
+import zlib
 from pathlib import Path
 
 import sys
@@ -12,6 +13,33 @@ import run_store  # noqa: E402
 
 WORKFLOW_JOURNAL = ROOT / "tools" / "workflow_journal.py"
 
+# The ingress boundary takes the bundle octets the agent holds and lets ACL2
+# derive the identity and the expiry decision from the primary block; nothing
+# below spells a BPv7 field.  `fn-bpi-host-bundle-prefix` returns the
+# indefinite-array head and the certified primary-block encoding, and the
+# break stop code stands in for the blocks the boundary never interprets.
+# The same fixture is in tests/test_bp_receive.py, which covers the receiver.
+LIVE_LIFETIME = 10 ** 15
+
+
+def lab_bundles(sequences):
+    """Build one bundle per sequence number in a single ACL2 session."""
+    bridge = run_bp_ingress.Acl2BpIngress()
+    try:
+        def eid(ssp):
+            return "(cons :dtn '" + bridge.literal(ssp) + ")"
+
+        built = []
+        for sequence in sequences:
+            form = ("(fn-bpi-host-bundle-prefix (fn-bpp-make-block 0 0 {} {} {} "
+                    "1000 {} {} nil nil))".format(
+                        eid(b"//fn.lab/inbox"), eid(b"//peer.lab/"),
+                        eid(b"//fn.lab/report"), sequence, LIVE_LIFETIME))
+            built.append(run_store.acl2_octets(bridge.call(form)) + b"\xff")
+        return built
+    finally:
+        bridge.close()
+
 
 class BpIngressHostTests(unittest.TestCase):
     def setUp(self):
@@ -22,6 +50,7 @@ class BpIngressHostTests(unittest.TestCase):
         self.journal_root = Path(self.temporary.name) / "workflow"
         run_store.Store(self.store_root, writable=True).initialize()
         self.inventory = {}
+        self.bundles = {}
         self.deleted = []
 
     def tearDown(self):
@@ -33,7 +62,13 @@ class BpIngressHostTests(unittest.TestCase):
                 b"Newsgroups: " + group + b"\r\n\r\nBody " + label.encode("ascii") + b"\r\n")
 
     def stage(self, bid, payload):
+        """Register one BPA bundle: its ADU to download, its octets to identify.
+
+        Each BID gets its own creation sequence, so these are distinct
+        bundles that one agent happens to carry.
+        """
         self.inventory[bid] = payload
+        self.bundles[bid] = lab_bundles([zlib.crc32(bid.encode("ascii")) + 1])[0]
 
     def invoke(self, bid, delete=None):
         def inventory():
@@ -50,6 +85,7 @@ class BpIngressHostTests(unittest.TestCase):
             store_root=self.store_root, journal_root=self.journal_root,
             journal_module_path=WORKFLOW_JOURNAL, bid=bid, inventory=inventory,
             download=download, delete=default_delete if delete is None else delete,
+            bundle=lambda found_bid: self.bundles[found_bid],
             source_eid="dtn://peer.lab", lifetime=3600)
 
     def live(self):

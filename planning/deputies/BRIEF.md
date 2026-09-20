@@ -41,6 +41,32 @@ cross-cluster steps you could not take alone.
   for the next lane. If your `installed` count is near zero, say so in your
   report: it means the box's cache has nothing for your books, not that the
   run was wasted.
+- Box facts, measured 2026-09-20. persvati's ACL2 is
+  `$HOME/fn-tools/acl2-8.7/saved_acl2`; hbox's is
+  `/tank/fn/acl2-8.7/saved_acl2`, and `tools/certify_books.py` on hbox needs
+  `FN_ACL2` set to it or it reports "ACL2 executable is unavailable".
+  `farm.py submit` mirrors tracked files only: `scp` a scratch driver
+  separately. Choose the box by measurement, not by habit: `ssh <box> uptime`
+  and `free -g` first, take the lower load, and stay at `--jobs 6` on a box
+  another lane is using (a `--jobs 12` race on a busy persvati lost
+  `books/nntp-effects` once and cascaded "no certificate" into six roots).
+  On hbox every ACL2 run goes through `swarm-build`.
+- `certify-book` STOPS AT THE FIRST FAILURE, so "the book is open at X and
+  everything else certifies" is a claim only about the events BEFORE X. The
+  events after it have never run. Say "certified up to X; the N events after
+  it are unattempted" instead, and expect a tail when X closes: one book's
+  keystone closed on 2026-09-20 and ten of the eleven events behind it were
+  then open, including four of the five keystones the book exists for.
+- A new registry id is allocated by merging dev FIRST and taking the next free
+  number, and it is claimed in one board line the moment you take it. Two
+  lanes assigned PRF-029 on the same afternoon and one target had to be
+  renumbered after the fact (2026-09-20).
+- Registries are shared rows, not files. `planning/requirements.json`,
+  `planning/proofs.json`, `tests/scenarios/catalog.json` and `docs/prefixes.md`
+  are edited by reading, changing the named rows, and writing, immediately
+  after merging dev; never by dumping a copy you read earlier (a whole-file
+  rewrite during a wave dropped two proof targets another lane had added, on
+  2026-09-20). Counts and events come from `tools/ledger.py --write`.
 - Never `git stash`; never `git add -A`; commit named files with
   `git commit -F <msgfile>` where `<msgfile>` is named after your lane
   (e.g. `commit-<cluster>-<n>.txt` in the scratchpad: two lanes sharing

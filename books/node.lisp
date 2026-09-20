@@ -14,6 +14,7 @@
 (in-package "ACL2")
 (include-book "acceptance")
 (include-book "retention")
+(include-book "defrecord")
 
 ; -----------------------------------------------------------------------------
 ; Node state and a staged archive obligation
@@ -22,215 +23,47 @@
 ;         release-evidence charge prospective-retention-state).  The explicit
 ; content subject is not a Message-ID and this model makes no claim that it
 ; is a verified hash.
-(defun fn-node-stage-shapep (x)
-  (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 7)))
-(defun fn-node-stage-msgid (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car x) :exec (fn-ag-car x)))
-(defun fn-node-stage-generation (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
-(defun fn-node-stage-id (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr x)))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
-(defun fn-node-stage-subject (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr x))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
-(defun fn-node-stage-evidence (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr (cdr x)))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
-(defun fn-node-stage-charge (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr x))))))
-       :exec (fn-ag-car
-              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
-                                      (fn-ag-cdr (fn-ag-cdr x))))))))
-(defun fn-node-stage-retention (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr x)))))))
-       :exec (fn-ag-car
-              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
-                         (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))))
-
-(defun fn-node-make-stage (msgid generation id subject evidence charge retention)
-  (declare (xargs :guard t))
-  (list msgid generation id subject evidence charge retention))
-
-(defthm fn-node-stage-shapep-of-fn-node-make-stage
-  (fn-node-stage-shapep
-   (fn-node-make-stage msgid generation id subject evidence charge retention)))
-(defthm fn-node-stage-msgid-of-fn-node-make-stage
-  (equal (fn-node-stage-msgid
-          (fn-node-make-stage msgid generation id subject evidence charge retention))
-         msgid))
-(defthm fn-node-stage-generation-of-fn-node-make-stage
-  (equal (fn-node-stage-generation
-          (fn-node-make-stage msgid generation id subject evidence charge retention))
-         generation))
-(defthm fn-node-stage-id-of-fn-node-make-stage
-  (equal (fn-node-stage-id
-          (fn-node-make-stage msgid generation id subject evidence charge retention))
-         id))
-(defthm fn-node-stage-subject-of-fn-node-make-stage
-  (equal (fn-node-stage-subject
-          (fn-node-make-stage msgid generation id subject evidence charge retention))
-         subject))
-(defthm fn-node-stage-evidence-of-fn-node-make-stage
-  (equal (fn-node-stage-evidence
-          (fn-node-make-stage msgid generation id subject evidence charge retention))
-         evidence))
-(defthm fn-node-stage-charge-of-fn-node-make-stage
-  (equal (fn-node-stage-charge
-          (fn-node-make-stage msgid generation id subject evidence charge retention))
-         charge))
-(defthm fn-node-stage-retention-of-fn-node-make-stage
-  (equal (fn-node-stage-retention
-          (fn-node-make-stage msgid generation id subject evidence charge retention))
-         retention))
-
-; What opacity takes away, exported back: the shape and a well-typed field
-; each imply the record is a cons (forward-chaining, never rewrite).
-(defthm fn-node-stage-shapep-forward-shape
-  (implies (fn-node-stage-shapep x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-node-stage-shapep))))
-(defthm fn-node-stage-accessors-forward-consp
-  (and
-   (implies (fn-node-stage-msgid x) (consp x))
-   (implies (fn-node-stage-generation x) (consp x))
-   (implies (fn-node-stage-id x) (consp x))
-   (implies (fn-node-stage-subject x) (consp x))
-   (implies (fn-node-stage-evidence x) (consp x))
-   (implies (fn-node-stage-charge x) (consp x))
-   (implies (fn-node-stage-retention x) (consp x))
-   )
-  :rule-classes
-  ((:forward-chaining :corollary (implies (fn-node-stage-msgid x) (consp x))
-                      :trigger-terms ((fn-node-stage-msgid x)))
-   (:forward-chaining :corollary (implies (fn-node-stage-generation x) (consp x))
-                      :trigger-terms ((fn-node-stage-generation x)))
-   (:forward-chaining :corollary (implies (fn-node-stage-id x) (consp x))
-                      :trigger-terms ((fn-node-stage-id x)))
-   (:forward-chaining :corollary (implies (fn-node-stage-subject x) (consp x))
-                      :trigger-terms ((fn-node-stage-subject x)))
-   (:forward-chaining :corollary (implies (fn-node-stage-evidence x) (consp x))
-                      :trigger-terms ((fn-node-stage-evidence x)))
-   (:forward-chaining :corollary (implies (fn-node-stage-charge x) (consp x))
-                      :trigger-terms ((fn-node-stage-charge x)))
-   (:forward-chaining :corollary (implies (fn-node-stage-retention x) (consp x))
-                      :trigger-terms ((fn-node-stage-retention x)))
-   )
-  :hints (("Goal" :in-theory (enable fn-node-stage-msgid fn-node-stage-generation fn-node-stage-id fn-node-stage-subject fn-node-stage-evidence fn-node-stage-charge fn-node-stage-retention))))
-
-(in-theory (disable (:d fn-node-stage-shapep) (:d fn-node-stage-msgid)
-                    (:d fn-node-stage-generation) (:d fn-node-stage-id)
-                    (:d fn-node-stage-subject) (:d fn-node-stage-evidence)
-                    (:d fn-node-stage-charge) (:d fn-node-stage-retention)
-                    (:d fn-node-make-stage)))
-
-(defun fn-node-stagep (acceptance committed x)
-  (declare (xargs :guard (fn-retain-statep committed) :verify-guards nil))
-  (and (fn-node-stage-shapep x)
-       (stringp (fn-node-stage-msgid x))
-       (natp (fn-node-stage-generation x))
-       (stringp (fn-node-stage-id x))
-       (stringp (fn-node-stage-subject x))
-       (stringp (fn-node-stage-evidence x))
-       (posp (fn-node-stage-charge x))
-       (consp (fn-state-pending acceptance))
-       (equal (fn-node-stage-msgid x)
-              (fn-pending-msgid (fn-state-pending acceptance)))
-       (equal (fn-node-stage-generation x)
-              (fn-pending-generation (fn-state-pending acceptance)))
-       (fn-retain-admissiblep committed
-                               (fn-node-stage-id x)
-                               (fn-node-stage-subject x)
-                               :archive
-                               (fn-node-stage-evidence x)
-                               (fn-node-stage-charge x))
-       (equal (fn-node-stage-retention x)
-              (fn-retain-admit committed
-                               (fn-node-stage-id x)
-                               (fn-node-stage-subject x)
-                               :archive
-                               (fn-node-stage-evidence x)
-                               (fn-node-stage-charge x)))))
-
-(defthm fn-node-stagep-forward-shape
-  (implies (fn-node-stagep acceptance committed x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-node-stagep))))
+(fn-defrecord fn-node-stage
+  :constructor (fn-node-make-stage msgid generation id subject evidence
+                                   charge retention)
+  :fields ((fn-node-stage-msgid stringp)
+           (fn-node-stage-generation natp)
+           (fn-node-stage-id stringp)
+           (fn-node-stage-subject stringp)
+           (fn-node-stage-evidence fn-provp)
+           (fn-node-stage-charge
+            (and (posp (fn-node-stage-charge x))
+                 (consp (fn-state-pending acceptance))
+                 (equal (fn-node-stage-msgid x)
+                        (fn-pending-msgid (fn-state-pending acceptance)))
+                 (equal (fn-node-stage-generation x)
+                        (fn-pending-generation (fn-state-pending acceptance)))
+                 (fn-retain-admissiblep committed
+                                        (fn-node-stage-id x)
+                                        (fn-node-stage-subject x)
+                                        :archive
+                                        (fn-node-stage-evidence x)
+                                        (fn-node-stage-charge x))))
+           (fn-node-stage-retention
+            (equal (fn-node-stage-retention x)
+                   (fn-retain-admit committed
+                                    (fn-node-stage-id x)
+                                    (fn-node-stage-subject x)
+                                    :archive
+                                    (fn-node-stage-evidence x)
+                                    (fn-node-stage-charge x)))))
+  :recognizer-formals (acceptance committed)
+  :recognizer-guard (fn-retain-statep committed)
+  :recognizer-verify-guards nil)
 
 ; Binding: (message-id immutable-content-subject archive-obligation-id).  This
 ; persists the article-to-archive relationship after the pending stage clears.
-(defun fn-node-binding-shapep (x)
-  (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 3)))
-(defun fn-node-binding-msgid (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car x) :exec (fn-ag-car x)))
-(defun fn-node-binding-subject (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
-(defun fn-node-binding-id (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr x)))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
-(defun fn-node-make-binding (msgid subject id)
-  (declare (xargs :guard t))
-  (list msgid subject id))
-
-(defthm fn-node-binding-shapep-of-fn-node-make-binding
-  (fn-node-binding-shapep (fn-node-make-binding msgid subject id)))
-(defthm fn-node-binding-msgid-of-fn-node-make-binding
-  (equal (fn-node-binding-msgid (fn-node-make-binding msgid subject id)) msgid))
-(defthm fn-node-binding-subject-of-fn-node-make-binding
-  (equal (fn-node-binding-subject (fn-node-make-binding msgid subject id))
-         subject))
-(defthm fn-node-binding-id-of-fn-node-make-binding
-  (equal (fn-node-binding-id (fn-node-make-binding msgid subject id)) id))
-
-; What opacity takes away, exported back: the shape and a well-typed field
-; each imply the record is a cons (forward-chaining, never rewrite).
-(defthm fn-node-binding-shapep-forward-shape
-  (implies (fn-node-binding-shapep x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-node-binding-shapep))))
-(defthm fn-node-binding-accessors-forward-consp
-  (and
-   (implies (fn-node-binding-msgid x) (consp x))
-   (implies (fn-node-binding-subject x) (consp x))
-   (implies (fn-node-binding-id x) (consp x))
-   )
-  :rule-classes
-  ((:forward-chaining :corollary (implies (fn-node-binding-msgid x) (consp x))
-                      :trigger-terms ((fn-node-binding-msgid x)))
-   (:forward-chaining :corollary (implies (fn-node-binding-subject x) (consp x))
-                      :trigger-terms ((fn-node-binding-subject x)))
-   (:forward-chaining :corollary (implies (fn-node-binding-id x) (consp x))
-                      :trigger-terms ((fn-node-binding-id x)))
-   )
-  :hints (("Goal" :in-theory (enable fn-node-binding-msgid fn-node-binding-subject fn-node-binding-id))))
-
-(in-theory (disable (:d fn-node-binding-shapep) (:d fn-node-binding-msgid)
-                    (:d fn-node-binding-subject) (:d fn-node-binding-id)
-                    (:d fn-node-make-binding)))
-
-(defun fn-node-bindingp (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (and (fn-node-binding-shapep x)
-       (stringp (fn-node-binding-msgid x))
-       (stringp (fn-node-binding-subject x))
-       (stringp (fn-node-binding-id x))))
-
-(defthm fn-node-bindingp-forward-shape
-  (implies (fn-node-bindingp x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-node-bindingp))))
+(fn-defrecord fn-node-binding
+  :constructor (fn-node-make-binding msgid subject id)
+  :fields ((fn-node-binding-msgid stringp)
+           (fn-node-binding-subject stringp)
+           (fn-node-binding-id stringp))
+  :recognizer-verify-guards nil)
 
 (defun fn-node-binding-msgids (xs)
   (declare (xargs :guard t :verify-guards nil))
@@ -285,101 +118,41 @@
 
 ; State: (committed-acceptance committed-retention pending-retention-stage
 ;         committed-article-to-archive-bindings).
-(defun fn-node-state-shapep (s)
-  (declare (xargs :guard t))
-  (and (true-listp s) (equal (len s) 4)))
-(defun fn-node-acceptance (s)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car s) :exec (fn-ag-car s)))
-(defun fn-node-retention (s)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr s)) :exec (fn-ag-car (fn-ag-cdr s))))
-(defun fn-node-stage (s)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr s)))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr s)))))
-(defun fn-node-bindings (s)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr s))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s))))))
+; The conjuncts of `fn-node-statep' keep the order they were written in:
+; each cross-field conjunct rides with the last field it reads, so the
+; carried invariant ACL2 admits is the same term as before.
 
-(defun fn-node-make-state (acceptance retention stage bindings)
-  (declare (xargs :guard t))
-  (list acceptance retention stage bindings))
-
-(defthm fn-node-state-shapep-of-fn-node-make-state
-  (fn-node-state-shapep (fn-node-make-state acceptance retention stage bindings)))
-(defthm fn-node-acceptance-of-fn-node-make-state
-  (equal (fn-node-acceptance (fn-node-make-state acceptance retention stage bindings))
-         acceptance))
-(defthm fn-node-retention-of-fn-node-make-state
-  (equal (fn-node-retention (fn-node-make-state acceptance retention stage bindings))
-         retention))
-(defthm fn-node-stage-of-fn-node-make-state
-  (equal (fn-node-stage (fn-node-make-state acceptance retention stage bindings))
-         stage))
-(defthm fn-node-bindings-of-fn-node-make-state
-  (equal (fn-node-bindings (fn-node-make-state acceptance retention stage bindings))
-         bindings))
-
-; What opacity takes away, exported back: the shape and a well-typed field
-; each imply the record is a cons (forward-chaining, never rewrite).
-(defthm fn-node-state-shapep-forward-shape
-  (implies (fn-node-state-shapep x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-node-state-shapep))))
-(defthm fn-node-state-accessors-forward-consp
-  (and
-   (implies (fn-node-acceptance x) (consp x))
-   (implies (fn-node-retention x) (consp x))
-   (implies (fn-node-stage x) (consp x))
-   (implies (fn-node-bindings x) (consp x))
-   )
-  :rule-classes
-  ((:forward-chaining :corollary (implies (fn-node-acceptance x) (consp x))
-                      :trigger-terms ((fn-node-acceptance x)))
-   (:forward-chaining :corollary (implies (fn-node-retention x) (consp x))
-                      :trigger-terms ((fn-node-retention x)))
-   (:forward-chaining :corollary (implies (fn-node-stage x) (consp x))
-                      :trigger-terms ((fn-node-stage x)))
-   (:forward-chaining :corollary (implies (fn-node-bindings x) (consp x))
-                      :trigger-terms ((fn-node-bindings x)))
-   )
-  :hints (("Goal" :in-theory (enable fn-node-acceptance fn-node-retention fn-node-stage fn-node-bindings))))
-
-(in-theory (disable (:d fn-node-state-shapep) (:d fn-node-acceptance)
-                    (:d fn-node-retention) (:d fn-node-stage)
-                    (:d fn-node-bindings) (:d fn-node-make-state)))
-
-(defun fn-node-statep (s)
-  (declare (xargs :guard t :verify-guards nil))
-  (and (fn-node-state-shapep s)
-       (fn-statep (fn-node-acceptance s))
-       (fn-retain-statep (fn-node-retention s))
-       (fn-node-binding-listp (fn-node-bindings s))
-       ; No orphan binding can preempt a later article or obligation identity.
-       (fn-subsetp (fn-node-binding-msgids (fn-node-bindings s))
-                   (fn-article-msgids (fn-state-articles (fn-node-acceptance s))))
-       (fn-subsetp (fn-node-binding-ids (fn-node-bindings s))
-                   (fn-retain-obligation-ids (fn-retain-pins (fn-node-retention s))))
-       (equal (null (fn-node-stage s))
-              (null (fn-state-pending (fn-node-acceptance s))))
-       (fn-node-articles-have-archive-bindingsp
-        (fn-state-articles (fn-node-acceptance s))
-        (fn-node-bindings s)
-        (fn-retain-pins (fn-node-retention s)))
-       (or (null (fn-node-stage s))
-           (and (fn-node-stagep (fn-node-acceptance s)
-                                (fn-node-retention s) (fn-node-stage s))
-                (consp (fn-state-pending (fn-node-acceptance s)))))
-       ; An indeterminate storage result retains both proposals until recovery.
-       (or (not (equal (fn-state-fenced (fn-node-acceptance s)) t))
-           (consp (fn-node-stage s)))))
-
-(defthm fn-node-statep-forward-shape
-  (implies (fn-node-statep s) (and (consp s) (true-listp s)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-node-statep))))
+(fn-defrecord fn-node-state
+  :constructor (fn-node-make-state acceptance retention stage bindings)
+  :fields ((fn-node-acceptance (fn-statep (fn-node-acceptance x)))
+           (fn-node-retention (fn-retain-statep (fn-node-retention x)))
+           (fn-node-stage t)
+           (fn-node-bindings
+            (and (fn-node-binding-listp (fn-node-bindings x))
+                 ; No orphan binding can preempt a later article or obligation
+                 ; identity.
+                 (fn-subsetp (fn-node-binding-msgids (fn-node-bindings x))
+                             (fn-article-msgids
+                              (fn-state-articles (fn-node-acceptance x))))
+                 (fn-subsetp (fn-node-binding-ids (fn-node-bindings x))
+                             (fn-retain-obligation-ids
+                              (fn-retain-pins (fn-node-retention x))))
+                 (equal (null (fn-node-stage x))
+                        (null (fn-state-pending (fn-node-acceptance x))))
+                 (fn-node-articles-have-archive-bindingsp
+                  (fn-state-articles (fn-node-acceptance x))
+                  (fn-node-bindings x)
+                  (fn-retain-pins (fn-node-retention x)))
+                 (or (null (fn-node-stage x))
+                     (and (fn-node-stagep (fn-node-acceptance x)
+                                          (fn-node-retention x)
+                                          (fn-node-stage x))
+                          (consp (fn-state-pending (fn-node-acceptance x)))))
+                 ; An indeterminate storage result retains both proposals
+                 ; until recovery.
+                 (or (not (equal (fn-state-fenced (fn-node-acceptance x)) t))
+                     (consp (fn-node-stage x))))))
+  :recognizer-verify-guards nil)
 
 (defun fn-node-initial-state (groups capacity)
   (declare (xargs :guard t :verify-guards nil))
@@ -488,27 +261,13 @@
 ; Verify every executable node definition.  The three transitions and the
 ; matching test carry `fn-node-statep'; their callees' guards are discharged
 ; by opening it.
-(verify-guards fn-node-stage-msgid)
-(verify-guards fn-node-stage-generation)
-(verify-guards fn-node-stage-id)
-(verify-guards fn-node-stage-subject)
-(verify-guards fn-node-stage-evidence)
-(verify-guards fn-node-stage-charge)
-(verify-guards fn-node-stage-retention)
 (verify-guards fn-node-stagep)
-(verify-guards fn-node-binding-msgid)
-(verify-guards fn-node-binding-subject)
-(verify-guards fn-node-binding-id)
 (verify-guards fn-node-bindingp)
 (verify-guards fn-node-binding-msgids)
 (verify-guards fn-node-binding-ids)
 (verify-guards fn-node-binding-listp)
 (verify-guards fn-node-find-binding)
 (verify-guards fn-node-articles-have-archive-bindingsp)
-(verify-guards fn-node-acceptance)
-(verify-guards fn-node-retention)
-(verify-guards fn-node-stage)
-(verify-guards fn-node-bindings)
 (verify-guards fn-node-statep
   :hints (("Goal" :in-theory (enable fn-retain-statep))))
 (verify-guards fn-node-initial-state)

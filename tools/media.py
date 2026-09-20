@@ -3,8 +3,9 @@
 
 A media directory is a transport, not an authority.  Export writes one file per
 bundle of a node's outbound work -- each bundle being the request ADU ACL2
-projected for that work's own durable attempt -- plus a manifest naming each
-bundle's transport identity, octet count and copy digest.  Import replays that directory through the *same* bounded staging and
+projected for that work's own durable attempt -- and, beside it, the BPv7
+bundle octets carrying that ADU, plus a manifest naming each file's transport
+identity, octet count and copy digest.  Import replays that directory through the *same* bounded staging and
 acceptance path the network uses -- `WorkflowJournal.stage_inbound` followed by
 `run_bp_receive.receive_bpa_request` -- so no acceptance, receipt, charge,
 retention obligation or local number is decided in this module.
@@ -44,6 +45,7 @@ SCHEMA = 1
 MANIFEST_NAME = "manifest.json"
 ITEM_DIRECTORY = "bundles"
 ITEM_SUFFIX = ".bp"
+BUNDLE_SUFFIX = ".bundle"
 CONSUMED_SUFFIX = ".consumed"
 
 # Bounds are the media's own; the staging and acceptance bounds that matter are
@@ -77,10 +79,22 @@ class MediaCorrupt(MediaError):
 
 @dataclass(frozen=True)
 class MediaItem:
+    """One carried item: the projected request ADU and the bundle carrying it.
+
+    Both files are described, because the receiver needs both and for
+    different reasons: the ADU is what is staged, and the bundle octets are
+    what ACL2 reads the carried identity and expiry out of.  A volume that
+    named only the ADU could not tell the importing node which bundle it is
+    accepting, and media import would be deciding identity locally.
+    """
+
     bid: str
     file: str
     octets: int
     sha256: str
+    bundle_file: str
+    bundle_octets: int
+    bundle_sha256: str
 
 
 @dataclass(frozen=True)
@@ -106,6 +120,11 @@ class ImportOutcome:
 def item_file_name(bid: str) -> str:
     """One media file per bundle, named by its transport identity."""
     return hashlib.sha256(bid.encode("utf-8", "strict")).hexdigest() + ITEM_SUFFIX
+
+
+def bundle_file_name(bid: str) -> str:
+    """The BPv7 bundle octets carried beside the item, same naming rule."""
+    return hashlib.sha256(bid.encode("utf-8", "strict")).hexdigest() + BUNDLE_SUFFIX
 
 
 def _bounded_media_text(value: str, label: str) -> str:
@@ -184,8 +203,8 @@ def export_media(*, media_root: Path, media_id: str,
                  items: Iterable[tuple[str, bytes]]) -> ExportResult:
     """Write one file per bundle and a manifest, durably, into an empty root.
 
-    `items` are `(transport identity, ADU bytes)` pairs, one per bundle of the
-    node's outbound work.  Each ADU is the projection ACL2 produced for that
+    `items` are `(transport identity, ADU bytes, bundle bytes)` triples, one
+    per bundle of the node's outbound work.  Each ADU is the projection ACL2 produced for that
     work's own durable attempt (`fn-bpo-host-request-adu`, reached through the
     sender's `persist_attempt_then_call`), so a carried hop records its
     submission intent before any byte leaves, exactly as a BPA hop does.  The
@@ -193,7 +212,10 @@ def export_media(*, media_root: Path, media_id: str,
 
     A carried transport identity is a transport concern -- a BPA invents one
     too -- and is never the article's identity, which only ACL2 derives from
-    the carried ADU after staging.
+    the carried ADU after staging.  The bundle octets are carried unparsed for
+    the same reason the network receiver keeps them: `fn-bpi-host-bundle-report`
+    reads the carried identity and the expiry decision out of them, and this
+    module must not compute either.
     """
     media_id = _bounded_media_text(media_id, "media id")
     root = Path(media_root)
@@ -203,27 +225,37 @@ def export_media(*, media_root: Path, media_id: str,
     described: list[MediaItem] = []
     aggregate = 0
     seen: set[str] = set()
-    for bid, adu in items:
+    for entry in items:
+        try:
+            bid, adu, bundle = entry
+        except (TypeError, ValueError) as error:
+            raise MediaError("media item is not (identity, ADU, bundle)") from error
         bid = _bounded_media_text(bid, "media bundle identity")
         if bid in seen:
             raise MediaError("media carries one file per bundle identity")
         seen.add(bid)
-        if not isinstance(adu, bytes) or not adu:
-            raise MediaError("media bundle payload is not bytes")
-        if len(adu) > MAX_ITEM_OCTETS:
-            raise MediaError("media bundle exceeds the carried item bound")
-        aggregate += len(adu)
+        for payload, label in ((adu, "payload"), (bundle, "bundle octets")):
+            if not isinstance(payload, bytes) or not payload:
+                raise MediaError(f"media bundle {label} is not bytes")
+            if len(payload) > MAX_ITEM_OCTETS:
+                raise MediaError("media bundle exceeds the carried item bound")
+        aggregate += len(adu) + len(bundle)
         if len(described) >= MAX_MEDIA_ITEMS or aggregate > MAX_MEDIA_OCTETS:
             raise MediaError("media exceeds its carried bound")
-        name = item_file_name(bid)
+        name, bundle_name = item_file_name(bid), bundle_file_name(bid)
         _durable_file(bundles / name, adu, 0o400)
+        _durable_file(bundles / bundle_name, bundle, 0o400)
         described.append(MediaItem(bid, name, len(adu),
-                                   hashlib.sha256(adu).hexdigest()))
+                                   hashlib.sha256(adu).hexdigest(),
+                                   bundle_name, len(bundle),
+                                   hashlib.sha256(bundle).hexdigest()))
     workflow_journal.fsync_dir(bundles)
     manifest = json.dumps({
         "schema": SCHEMA, "media-id": media_id,
         "items": [{"bid": i.bid, "file": i.file, "octets": i.octets,
-                   "sha256": i.sha256} for i in described],
+                   "sha256": i.sha256, "bundle-file": i.bundle_file,
+                   "bundle-octets": i.bundle_octets,
+                   "bundle-sha256": i.bundle_sha256} for i in described],
     }, indent=1, sort_keys=True).encode("ascii") + b"\n"
     # The manifest lands last and is fsynced last: a copy interrupted before it
     # has no manifest and is not a media at all, rather than a media that
@@ -257,20 +289,25 @@ def read_manifest(media_root: Path) -> tuple[MediaItem, ...]:
             raise MediaError("media manifest entry is not an object")
         bid = _bounded_media_text(entry.get("bid", ""), "media bundle identity")
         name, octets, digest = entry.get("file"), entry.get("octets"), entry.get("sha256")
+        bundle_name = entry.get("bundle-file")
+        bundle_octets, bundle_digest = entry.get("bundle-octets"), entry.get("bundle-sha256")
         if bid in seen:
             raise MediaError("media manifest repeats a bundle identity")
         seen.add(bid)
-        if name != item_file_name(bid):
+        if name != item_file_name(bid) or bundle_name != bundle_file_name(bid):
             raise MediaError("media manifest file does not name its bundle identity")
-        if not isinstance(octets, int) or isinstance(octets, bool) or not 0 < octets <= MAX_ITEM_OCTETS:
-            raise MediaError("media manifest octet count is outside its bound")
-        if not isinstance(digest, str) or len(digest) != 64 or any(
-                c not in "0123456789abcdef" for c in digest):
-            raise MediaError("media manifest digest is not a sha256 hex digest")
-        aggregate += octets
+        for count in (octets, bundle_octets):
+            if not isinstance(count, int) or isinstance(count, bool) or not 0 < count <= MAX_ITEM_OCTETS:
+                raise MediaError("media manifest octet count is outside its bound")
+        for value in (digest, bundle_digest):
+            if not isinstance(value, str) or len(value) != 64 or any(
+                    c not in "0123456789abcdef" for c in value):
+                raise MediaError("media manifest digest is not a sha256 hex digest")
+        aggregate += octets + bundle_octets
         if aggregate > MAX_MEDIA_OCTETS:
             raise MediaError("media manifest exceeds the carried bound")
-        items.append(MediaItem(bid, name, octets, digest))
+        items.append(MediaItem(bid, name, octets, digest,
+                               bundle_name, bundle_octets, bundle_digest))
     return tuple(items)
 
 
@@ -291,12 +328,15 @@ class MediaVolume:
         item = self.by_bid.get(bid)
         if item is None:
             return False
-        path = self.root / ITEM_DIRECTORY / item.file
-        try:
-            info = os.stat(path, follow_symlinks=False)
-        except OSError:
-            return False
-        return stat.S_ISREG(info.st_mode) and info.st_size == item.octets
+        for name, octets in ((item.file, item.octets),
+                             (item.bundle_file, item.bundle_octets)):
+            try:
+                info = os.stat(self.root / ITEM_DIRECTORY / name, follow_symlinks=False)
+            except OSError:
+                return False
+            if not stat.S_ISREG(info.st_mode) or info.st_size != octets:
+                return False
+        return True
 
     def inventory(self) -> list[str]:
         """The identities this copy of the media actually carries whole."""
@@ -312,6 +352,26 @@ class MediaVolume:
             raise MediaIncomplete(f"media item is a partial copy: {item.file}")
         if hashlib.sha256(data).hexdigest() != item.sha256:
             raise MediaCorrupt(f"media item disagrees with its copy digest: {item.file}")
+        return data
+
+    def bundle(self, bid: str) -> bytes:
+        """The carried BPv7 bundle octets, copy-checked and never parsed here.
+
+        This is the `bundle` callback `run_bp_receive.receive_bpa_request`
+        takes; ACL2 derives the identity and the expiry decision from what it
+        returns.  A damaged or partial copy is refused before the receiver
+        sees it, exactly as for the ADU.
+        """
+        item = self.by_bid.get(bid)
+        if item is None:
+            raise MediaIncomplete(f"media does not carry {bid}")
+        data = _read_regular_readonly(self.root / ITEM_DIRECTORY / item.bundle_file,
+                                      MAX_ITEM_OCTETS)
+        if len(data) != item.bundle_octets:
+            raise MediaIncomplete(f"media bundle is a partial copy: {item.bundle_file}")
+        if hashlib.sha256(data).hexdigest() != item.bundle_sha256:
+            raise MediaCorrupt(
+                f"media bundle disagrees with its copy digest: {item.bundle_file}")
         return data
 
 
@@ -361,6 +421,7 @@ def import_item(*, volume: MediaVolume, bid: str, store_root: Path,
             store_root=Path(store_root), inbox_root=Path(inbox_root),
             receipt_root=Path(receipt_root), bid=bid,
             inventory=volume.inventory, download=volume.download,
+            bundle=volume.bundle,
             delete=lambda found: record_consumed(consumed_root, found),
             source_eid=source_eid, pending_outcome=pending_outcome,
             faults=faults, store_faults=store_faults,
@@ -477,24 +538,41 @@ def command_export(args) -> int:
     """Write a volume from bundle files the sender already projected.
 
     Each `--bundle <transport-id>=<path>` is an ADU ACL2 produced for that
-    work's own durable attempt.  This command copies octets; it derives no
-    identity, parses no ADU and invents no manifest field beyond the copy
+    work's own durable attempt, and each `--bp-bundle <transport-id>=<path>`
+    the BPv7 bundle octets carrying it.  Both are required for every carried
+    identity: the importing node reads the carried identity and expiry out of
+    the bundle octets, so a volume without them would make media import decide
+    identity locally.  This command copies octets; it derives no identity,
+    parses no ADU or bundle and invents no manifest field beyond the copy
     digest.
     """
-    items = []
-    for pair in args.bundle:
-        bid, separator, path = pair.partition("=")
-        if not separator or not bid:
-            print("media: usage --bundle wants <transport-id>=<path>", file=sys.stderr)
-            return run_store.EXIT_USAGE
-        try:
-            items.append((bid, _read_regular_readonly(Path(path), MAX_ITEM_OCTETS)))
-        except MediaError as error:
-            print("media: refused {}".format(error), file=sys.stderr)
-            return run_store.EXIT_REFUSED
-        except OSError as error:
-            print("media: fault {}".format(error), file=sys.stderr)
-            return run_store.EXIT_FAULT
+    def read_pairs(pairs, option):
+        found = {}
+        for pair in pairs:
+            bid, separator, path = pair.partition("=")
+            if not separator or not bid:
+                raise ValueError(
+                    "media: usage {} wants <transport-id>=<path>".format(option))
+            found[bid] = _read_regular_readonly(Path(path), MAX_ITEM_OCTETS)
+        return found
+
+    try:
+        adus = read_pairs(args.bundle, "--bundle")
+        bundles = read_pairs(args.bp_bundle, "--bp-bundle")
+    except ValueError as error:
+        print(error, file=sys.stderr)
+        return run_store.EXIT_USAGE
+    except MediaError as error:
+        print("media: refused {}".format(error), file=sys.stderr)
+        return run_store.EXIT_REFUSED
+    except OSError as error:
+        print("media: fault {}".format(error), file=sys.stderr)
+        return run_store.EXIT_FAULT
+    if set(adus) != set(bundles):
+        print("media: usage every --bundle needs one --bp-bundle for the same "
+              "transport identity", file=sys.stderr)
+        return run_store.EXIT_USAGE
+    items = [(bid, adus[bid], bundles[bid]) for bid in adus]
     try:
         result = export_media(media_root=Path(args.media), media_id=args.media_id,
                               items=items)
@@ -541,6 +619,10 @@ def build_parser():
     export.add_argument("--media-id", required=True)
     export.add_argument("--bundle", action="append", default=[],
                         metavar="ID=PATH", help="one projected request ADU")
+    export.add_argument("--bp-bundle", action="append", default=[],
+                        metavar="ID=PATH",
+                        help="the BPv7 bundle octets carrying that ADU; ACL2 "
+                             "reads the carried identity and expiry from them")
     export.set_defaults(handler=command_export)
 
     verify = subs.add_parser("verify", help="copy check only; no store, no ACL2")

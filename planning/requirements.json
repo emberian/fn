@@ -732,13 +732,34 @@
       "note": "PRF-009 is planned with no events. D13's history rule is unresolved."
     },
     {
+      "id": "RET-007",
+      "title": "Provenance is a typed value, not a rendered string",
+      "specification": "specs/retention.md#reclamation-roots",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-030"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "tests/acl2/provenance-tests.lisp",
+        "tests/test_provenance.py"
+      ],
+      "implementation_note": "fn-retain-admissiblep, the two retention record fields and fn-node-stagep take fn-provp, which accepts every string as the :legacy kind, so no existing store, journal or checkpoint changes meaning. The POST writer's provenance is decided in ACL2 (fn-store-prov-post) and stored as the canonical wire form; the transit writer's typed record exists (fn-peer-transit-provenance) and is proved to render to the string the transit path writes, but the transit path still stores the rendering.",
+      "note": "OPEN, with its obligation in planning/lanes/HANDOFF-w10-provenance.md: the transit path needs a kind formal on fn-peer-decide-transfer, fn-peer-transfer and fn-peer-injection-arguments before it can store the record's wire form, and the two BP drivers still read a host constant for their evidence label."
+    },
+    {
       "id": "REP-001",
       "title": "Exchange portable facts rather than local database identity",
       "specification": "specs/replication.md#portable-input",
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-011"
+        "PRF-011",
+        "PRF-029"
       ],
       "verification": [
         "proof",
@@ -764,7 +785,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-011"
+        "PRF-011",
+        "PRF-029"
       ],
       "verification": [
         "proof",
@@ -837,7 +859,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-018"
+        "PRF-018",
+        "PRF-029"
       ],
       "verification": [
         "proof",
@@ -1234,7 +1257,7 @@
         "scenario"
       ],
       "evidence": [],
-      "note": "The carrier and its encoding: the field is the base64 of the detached fn-stmt- octets and every accepted value has exactly one canonical form. No book exists at this revision; packet S1 of the design owns fn-stx-detached-encode, the base64 layer and fn-stx-field-decode. Registered by packet S0 of the v0.4 substrate-transport wave; specified only, with no ACL2 event behind it."
+      "note": "The books now exist: packet S1 landed `books/stx-carrier.lisp`, `books/stx-verify.lisp`, `books/stx-invariants.lisp` and `tests/acl2/stx-tests.lisp` on `dev`. `books/stx-carrier` IS certified (persvati `run-20260920T052853Z-b82b`, zero failures). The carrier and its encoding are `fn-stx-detached-encode`, the base64 layer and `fn-stx-field-decode`, all in the certified `books/stx-carrier`; what is NOT certified is the canonicality statement that makes the requirement, which lives in `books/stx-invariants`. Status does not move: `books/stx-verify` is open at `fn-stx-decimal-octets-are-printable` and `books/stx-invariants` and `tests/acl2/stx-tests` cascade off it, so no keystone of this requirement has certified. The `dev` `52eb0db` gate confirms all three still error. Two theorems were removed and recorded open rather than weakened: `fn-stx-authored-source-is-octet-list` and `fn-stx-payload-for-is-octet-list` do not follow from `fn-article-syntax-p`, because the projection walks `fn-article-field-raw-lines` and `books/article.lisp` constrains those to `true-listp` only."
     },
     {
       "id": "SUB-002",
@@ -1250,7 +1273,7 @@
         "scenario"
       ],
       "evidence": [],
-      "note": "The verdict is a function of the received bytes and this node's keyring only, and reports :verified, :unverified or :absent. No book exists at this revision; packet S2 owns fn-stx-verdict and the (:statement ...) evidence value. Registered by packet S0 of the v0.4 substrate-transport wave; specified only, with no ACL2 event behind it."
+      "note": "The books now exist: packet S1 landed `books/stx-carrier.lisp`, `books/stx-verify.lisp`, `books/stx-invariants.lisp` and `tests/acl2/stx-tests.lisp` on `dev`. `books/stx-carrier` IS certified (persvati `run-20260920T052853Z-b82b`, zero failures). `fn-stx-verdict` and `fn-stx-verified-item` are in `books/stx-verify`, which is the open book. Status does not move: `books/stx-verify` is open at `fn-stx-decimal-octets-are-printable` and `books/stx-invariants` and `tests/acl2/stx-tests` cascade off it, so no keystone of this requirement has certified. The `dev` `52eb0db` gate confirms all three still error. Independently of certification, PRF-020 would not meet the subject rule: `fn-stx-transit-verdict-is-fn-stx-verdict` names `fn-peer-transfer` and needs the peering K1 transit path, so the verdict the host would compute is not yet equated to the one the theorem is about."
     },
     {
       "id": "SUB-003",
@@ -1266,7 +1289,7 @@
         "scenario"
       ],
       "evidence": [],
-      "note": "The transit authority gate is the policy function over this node's own lace and keyring. No book exists at this revision; packet S4 owns fn-stx-transit-authority-ok and the batch restatement. Registered by packet S0 of the v0.4 substrate-transport wave; specified only, with no ACL2 event behind it."
+      "note": "The transit authority gate is the policy function over this node's own lace and keyring. No book exists at this revision (packets S1 and S2 landed `books/stx-carrier` and `books/stx-verify`; this packet did not); packet S4 owns fn-stx-transit-authority-ok and the batch restatement. Registered by packet S0 of the v0.4 substrate-transport wave; specified only, with no ACL2 event behind it."
     },
     {
       "id": "SUB-004",
@@ -1284,7 +1307,7 @@
         "scenario"
       ],
       "evidence": [],
-      "note": "Both forks of a reissued slot stay in the lace, the durable record is a proved twin of it, and the carried index keeps the linear projection off the served path. No book exists at this revision; packet S3 owns the bridge lemma, fn-stx-lace and fn-stx-index. Registered by packet S0 of the v0.4 substrate-transport wave; specified only, with no ACL2 event behind it."
+      "note": "Both forks of a reissued slot stay in the lace, the durable record is a proved twin of it, and the carried index keeps the linear projection off the served path. No book exists at this revision (packets S1 and S2 landed `books/stx-carrier` and `books/stx-verify`; this packet did not); packet S3 owns the bridge lemma, fn-stx-lace and fn-stx-index. Registered by packet S0 of the v0.4 substrate-transport wave; specified only, with no ACL2 event behind it."
     },
     {
       "id": "SUB-005",
@@ -1300,7 +1323,7 @@
         "scenario"
       ],
       "evidence": [],
-      "note": "Reconnection carries commits and fork evidence, never a roster, and no earlier decision changes. No book exists at this revision; packet S5 owns fn-stx-commits-of-batch and its verified-and-well-formed theorem. Registered by packet S0 of the v0.4 substrate-transport wave; specified only, with no ACL2 event behind it."
+      "note": "Reconnection carries commits and fork evidence, never a roster, and no earlier decision changes. No book exists at this revision (packets S1 and S2 landed `books/stx-carrier` and `books/stx-verify`; this packet did not); packet S5 owns fn-stx-commits-of-batch and its verified-and-well-formed theorem. Registered by packet S0 of the v0.4 substrate-transport wave; specified only, with no ACL2 event behind it."
     },
     {
       "id": "SUB-006",
@@ -1316,7 +1339,7 @@
         "scenario"
       ],
       "evidence": [],
-      "note": "ARTICLE and HEAD return FN-Statement byte-identical and HDR :fn-verified renders the verdict acceptance recorded, with its keyring generation. No book exists at this revision; packet S6 owns fn-stx-render-verdict and the HDR metadata item, and decides the OVER extension. Registered by packet S0 of the v0.4 substrate-transport wave; specified only, with no ACL2 event behind it."
+      "note": "ARTICLE and HEAD return FN-Statement byte-identical and HDR :fn-verified renders the verdict acceptance recorded, with its keyring generation. No book exists at this revision (packets S1 and S2 landed `books/stx-carrier` and `books/stx-verify`; this packet did not); packet S6 owns fn-stx-render-verdict and the HDR metadata item, and decides the OVER extension. Registered by packet S0 of the v0.4 substrate-transport wave; specified only, with no ACL2 event behind it."
     }
   ]
 }

@@ -7,11 +7,17 @@
 set -eu
 cd "$(dirname "$0")/.."
 ACL2="${FN_ACL2:-acl2}"
-LOG=build/native-host-build.log
+# FN_NATIVE_BUILD selects the session script and FN_NATIVE_IMAGE the image it
+# saves; the two must agree, because the `save-exec` path lives in the script.
+# The default pair is the deployment image. host/native/build-dtn.lisp is the
+# DTN-only variant and says in its own header what it leaves out.
+BUILD="${FN_NATIVE_BUILD:-host/native/build.lisp}"
+IMAGE="${FN_NATIVE_IMAGE:-build/fn-host}"
+LOG="${FN_NATIVE_LOG:-build/native-host-build.log}"
 mkdir -p build
-rm -f build/fn-host build/fn-host.core
+rm -f "$IMAGE" "$IMAGE.core"
 if ! ACL2_CUSTOMIZATION=NONE ACL2_SYSTEM_BOOKS= env -u ACL2_SYSTEM_BOOKS \
-     "$ACL2" < host/native/build.lisp > "$LOG" 2>&1; then
+     "$ACL2" < "$BUILD" > "$LOG" 2>&1; then
     echo "build_native_host: acl2 exited with status $?; see $LOG" >&2
     exit 1
 fi
@@ -24,8 +30,8 @@ if ! grep -q 'FN_NATIVE_BUILD_LOADED' "$LOG"; then
     echo "build_native_host: ready marker missing from $LOG" >&2
     exit 1
 fi
-if [ ! -x build/fn-host ] || [ ! -s build/fn-host.core ]; then
+if [ ! -x "$IMAGE" ] || [ ! -s "$IMAGE.core" ]; then
     echo "build_native_host: save-exec produced no image; see $LOG" >&2
     exit 1
 fi
-echo "built build/fn-host ($(du -h build/fn-host.core | cut -f1) core)"
+echo "built $IMAGE ($(du -h "$IMAGE.core" | cut -f1) core)"

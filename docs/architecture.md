@@ -82,6 +82,29 @@ its host Lisp/runtime, cryptographic primitive implementations, the I/O adapter,
 and stated platform assumptions. Claims grow only as refinement and integration
 evidence appear. See [failures](../specs/failures.md) and [proofs](proofs.md).
 
+**The digest left that boundary on 2026-09-20.** `books/sha256.lisp` defines
+FIPS 180-4 SHA-256 over octet lists as a total, guard-verified ACL2 function,
+and `books/crypto-attach.lisp` attaches it to both digest seams — `fn-digest`
+(`books/crypto-seam.lisp`) and `fn-frame-digest` (`books/frame-octets.lisp`) —
+after discharging every constraint each `encapsulate` states. So the digest is
+now **computed in logic by a proved-executable definition**: no host SHA-256
+stands behind a content identity, an AUTHINFO verifier or a frame the core
+reasons about, and the identity derivation has one owner. Agreement with the
+standard is by evaluation against the published vectors
+(`tests/acl2/sha256-tests.lisp`), which is evidence, not a proof that the
+definition and the document agree on every input.
+
+What remains assumed is unchanged and is stated as before: **collision
+resistance and preimage resistance are A-CRYPTO** (`specs/failures.md`,
+`books/assumptions.lisp`). `defattach` adds no axiom; it discharges the
+constraints and makes ground terms evaluate, so every theorem that held of the
+seam holds now, with the same hypotheses and no more. The seam's own local
+witness is still the constant zero digest, and
+`tests/acl2/crypto-seam-tests.lisp` still attaches a colliding toy realiser to
+keep that visible. Signature verification did not move: `fn-sig-verify` and
+`fn-anchor-sig-verify` stay constrained, Ed25519 stays a host facility in
+`tools/crypto_host.py`, and nothing here is evidence about a signature.
+
 Stored evidence is not automatically authority. An untrusted article cannot
 change configuration, authorize a new peer, erase another article, or create a
 retention obligation simply by naming it. The policy version and authorization

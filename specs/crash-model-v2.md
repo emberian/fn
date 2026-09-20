@@ -1647,7 +1647,19 @@ so. Certification evidence directories are named in
 
 ### The model (`books/byte-store.lisp`, §1.2-1.6)
 
-Admitted as written, with three changes the well-formedness proofs forced:
+Admitted as written, with four changes the well-formedness proofs forced.
+The fourth is lane `w9/storage`, 2026-09-20, and it is a defect the view
+theorem's attempt found rather than a proof convenience: a pending
+`(:write ino offset NIL)` has `fn-bs-unit-count` 0, so a crash tears it into
+no pieces, while `fn-bs-apply-op` splices it and zero-extends the inode when
+the offset is past the end.  The view of
+`(:byte-store 4 ((0)) NIL ((:write 0 5 NIL)) 1)` is five zero octets and no
+crash image of that state has them, so
+`fn-bs-view-is-an-admissible-image` was FALSE as stated.  `write(2)` of zero
+octets changes nothing on POSIX and `fn-bs-write` issues no operation for it,
+so `fn-bs-statep` now carries `fn-bs-writes-nonemptyp`, a domain invariant of
+the model's own syscalls in the same sense as `fn-bs-writes-knownp`.  The
+three earlier changes:
 `fn-bs-statep` carries two more conjuncts (every inode id in the table is
 below `next-ino`; every pending `:write` names a table inode), without
 which `fn-bs-create` and `fn-bs-crash` do not preserve the inode table;
@@ -1667,9 +1679,10 @@ prescribes); guard verification is open.
 | `fn-bs-crash-entry-is-old-or-a-pending-target` (A-WRITE-ISOLATION namespace half) | `byte-store-invariants` | **proved** with `(fn-bs-dir-idp dir) (fn-bs-namep name)` in place of `fn-bs-statep` |
 | `fn-bs-refence-after-error-fences-nothing` (fsyncgate) | `byte-store-invariants` | **proved** with no hypothesis: after `:ok` the set was drained, after an error discarded; either way a second fence finds nothing |
 | `fn-bs-lose-everything-is-an-admissible-image`, `fn-bs-crash-with-no-choices-is-the-durable-state` | `byte-store-invariants` | **proved** (the bottom of the image lattice; the top is the view, below) |
-| `fn-bs-view-is-an-admissible-image` | — | **open**. Obligation: the all-`:new` choice reproduces each write from its unit pieces; needs `(fn-bs-splice (fn-bs-splice old o a) (+ o (len a)) b) = (fn-bs-splice old o (append a b))` over contiguous pieces of `fn-bs-unit-count`. |
+| `fn-bs-splice-composition`, `fn-bs-view-choices`, `fn-bs-view-choices-are-choices` | `byte-store-invariants` | **proved** (w9/storage): the composition lemma the view theorem's obligation named, and the nothing-lost choice list with its admissibility for every pending list and every unit |
+| `fn-bs-view-is-an-admissible-image` | — | **open**, with a smaller obligation stated at its place in the book. The composition lemma is discharged and the witness choice list exists; what remains is two index facts for `1 <= i <= count-1`, `(equal start_i (+ offset k_i))` and `(equal (min (+ offset L) (* (+ u0 i 1) unit)) (+ offset k_(i+1)))`, where `start_i = (max offset (* (+ (floor offset unit) i) unit))` and `k_i = (min L (- start_i offset))`. With them the induction on `i` closes, its step being `fn-bs-splice-composition` then `fn-bs-take-split` and its base `fn-bs-take-of-len-is-identity`. The attempt exhausts a 2,000,000 step limit re-deriving the two facts inside every branch of `fn-bs-tear-write`; state them as `:linear` rules over a named `fn-bs-piece-start` and open the tear once by `:expand`. |
 | `fn-bs-image-admissiblep` and `-iff-crash-imagep` (§1.5 decision procedure) | — | **open** (P1 residual; P6 needs it) |
-| A-CRASH-IMAGE `fn-assume-physical-crash`, A-CRYPTO-TRAILER `fn-assume-crash-tearp` (§3.6) | `byte-store-invariants` | **admitted** as encapsulates with the stated constraints; proposed home `books/assumptions.lisp` (P7). The tearp witness is "no tears, of an empty write" until the view theorem lands. |
+| A-CRASH-IMAGE `fn-assume-physical-crash`, A-CRYPTO-TRAILER `fn-assume-crash-tearp` (§3.6) | `assumptions` | **admitted** as encapsulates with the stated constraints, **moved to `books/assumptions.lisp`** (P7) by lane `w9/storage-2` on 2026-09-20, with `fn-bs-torn-variantp`: that book now includes `byte-store-invariants`, and `books/relay`, `books/bp-release` and `books/scheduler-invariants` carry the byte-store closure. No cycle; the constraints did not change. The tearp witness is "no tears, of an empty write" until the view theorem lands. |
 
 ### The programs (`books/byte-store-programs.lisp`, §2)
 
@@ -1683,16 +1696,26 @@ events `:frontier-dir` / `:record-dir`, not §2.2's `:frontier-directory` /
 violating program each; D4 is `fn-bs-run-stops-at-first-error-by-definition`
 (`:rule-classes nil`); D5 is asserted on the ground runs at every step
 (`fn-bs-run-pending-disjointp`), not yet the theorem
-`fn-bs-program-pending-disjoint`. P-JOURNAL, P-INBOX, P-CHECKPOINT: not
-transcribed (P5, P8).
+`fn-bs-program-pending-disjoint`. P-JOURNAL (both halves), P-INBOX with its
+reconciliation branch and both P-CHECKPOINT programs are transcribed by lane
+`w9/storage` (2026-09-20) with the host's own cut names, and carry the same
+ground assertions. `tools/transcribe_check.py` is §2.3's check, in both
+directions, and reports `fidelity-defects=0`: every cut the campaign kills
+at is a `:cut` of the program that transcribes its host function, or is one
+of four paths named with its reason (the composite receiver and three
+transport-delete boundaries). It also reports `missing-host-cuts=15`, which
+is exactly P2's host half, and an advisory syscall-sequence comparison whose
+five lines are each answered in the book. `fn-bs-checkpoint-select-program`
+lost a step to it: the host's `os.unlink` after the replace is the `except`
+arm, and a model program that took it stops at `:enoent`.
 
 ### The keystones of §3
 
 | Keystone | Status |
 | --- | --- |
 | K0 `fn-bs-program-step-preserves-relation` | **open** (P3): needs `fn-bs-store-relation`. Ground form: `fn-bs-run-statep` holds on every ground run (`byte-store-programs`) and the composed runs reach `:reserved`, `:completing`, `:ready` and recover to `:ready` (`tests/acl2/byte-store-tests.lisp`). |
-| K1 `fn-bs-store-crash-image-scans` | **open** (P3): needs `fn-bs-scan-store` and the relation; its byte-level inputs are proved (`fn-bs-crash-keeps-fenced-content` for every authority inode, `fn-bs-crash-keeps-quiet-directory`, `fn-bs-crash-entry-is-old-or-a-pending-target` for the one pending entry the phase allows). |
-| K2 `fn-bs-store-crash-image-is-kernel-admissible` | **open** (P3, store deputy's seam): stated as a comment in `byte-store-invariants` with the exact obligation against `fn-sf-crash-imagep` (`store-files.lisp:499`). |
+| K1 `fn-bs-store-crash-image-scans` | **open** (P3), in `books/byte-store-scan.lisp`, which lane `w9/storage-2` created on 2026-09-20 by the PER-NAME route the previous lane recorded. What is in it and proved: §3.1's scan and §3.2's relation as executable definitions; three seams as `encapsulate`s with local witnesses (the frontier codec, `fn-bs-txn-name` with `fn-bs-namep` and injectivity, `fn-bs-config-okp`); `fn-bs-names-after`, which is to `strip-cars` what `fn-bs-entry-after` is to one entry's value -- a projection onto ONE directory that ignores every other directory's operations by construction, so the commutation lemma the per-directory route needed never arises; `fn-bs-names-outcomes` and `fn-bs-crash-select-names-are-an-outcome`, the name-list mirror of `fn-bs-crash-select-entry-is-an-outcome`; `fn-bs-crash-image-is-quiet` and the three quiet-reader facts; `fn-bs-ops-for-name-through-ops-for-dir` (`:rule-classes nil`, it loops as a rewrite) and `fn-bs-crash-keeps-untouched-entry`; `fn-bs-read-records-under-agreement`, `-len`, `-of-one-more` and `fn-bs-txn-name-not-in-txn-names`. What is left is ONE lemma and then the assembly. The lemma: `fn-bs-apply-entries-names-is-names-after`, the bridge from `fn-bs-apply-entries` to `fn-bs-names-after`, whose induction scheme is right and which exhausts a 2,000,000 and then a 40,000,000 prover-step limit in the `:set-entry` branch (checkpoint `Subgoal *1/1.4'`: the induction hypothesis is over the nested `fn-bs-put-assoc` and the conclusion's accumulator has to be rewritten into that shape). Three things were tried and are recorded in the book so they are not retried: narrowing the book-wide `fn-bs-invariants-vocabulary` enable to the eight alist rules the section inducts through (not the cause), stating the projection as one IF-producing rewrite with `fn-bs-assoc-of-put-assoc-{same,other}` disabled at the form, and `:do-not '(generalize fertilize)`. The next step is `tools/proof_profile.py` on that form. The assembly, once it lands, is the four scan clauses: the config and frontier entries by `fn-bs-crash-keeps-untouched-entry` (the phase clause leaves no pending operation at either name) with their contents by `fn-bs-crash-keeps-fenced-content` through the relation's authority clause; contiguity by the bridge with `fn-bs-txn-names-of-1+`; and no `:fault` by `fn-bs-read-records-under-agreement` against `(fn-bs-durable bs)`. |
+| K2 `fn-bs-store-crash-image-is-kernel-admissible` | **open** (P3, store deputy's seam), and it has a MODEL question in front of it that lane `w9/storage-2` found while writing the relation. §3.2 above writes the pending transaction entry's name as `(fn-bs-txn-name (len (fn-sf-records ks)))`; `books/byte-store-scan.lisp` writes `(fn-bs-txn-name (len (fn-bs-durable-names bs :transactions)))`, because the namespace clause has to be decidable from the byte store alone. The two are NOT interchangeable: with the book's form, a state whose durable records are already `(append (fn-sf-records ks) (list rc))` and which also carries a pending link admits an image holding `rc` twice, which `fn-sf-crash-imagep` (`store-files.lisp:593`) does not admit. Either `fn-bs-store-relation` carries `(equal (len (fn-bs-durable-records bs)) (len (fn-sf-records ks)))` whenever the transaction directory is not quiet, or §3.2's form is restored and the namespace theorem takes the kernel's record count as an input. This is not a proof convenience; decide it before proving K2. |
 | K3 `fn-bs-store-recovery-is-a-kernel-crash` | **open** (P3): from K2 and `fn-sf-crash-realizes-every-admissible-image`. |
 | K4-K8 | **open** (P3) |
 | K9, K9b, K9c, K10 | **open** (P5) |

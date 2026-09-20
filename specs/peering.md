@@ -422,22 +422,26 @@ inbound side stores the diagnostic it would have prepended:
 (defun fn-peer-render-outbound (source provenance identity) ...)
 ```
 
-Provenance is a record, not a header: `(:peer-transit peer diag generation)`
-is the `evidence` argument of `fn-node-prepare` (so it is inside the stored
-transaction record, replayed, and `fn-node-stage-evidence` carries it while
-staged). An article accepted through POST has `(:injected ...)` evidence
-(w4/post); the outbound renderer treats both the same way. `Injection-Date`
+Provenance is a record, not a header. As built (w10/provenance) it is
+`(fn-prov-make-transit peer kind diagnostic generation)`, and its WIRE form
+--- a printable string `fn-prov-of-wire` inverts --- is the `evidence`
+argument of `fn-node-prepare`, so it is inside the stored transaction record,
+replayed, and `fn-node-stage-evidence` carries it while staged with no change
+to the record grammar. An article accepted through POST has
+`(fn-prov-make-post principal generation)`; the outbound renderer treats both
+the same way, reading them with `fn-prov-of-wire` and `fn-prov-kind`. `Injection-Date`
 is never touched by transit; `Xref` is never stored.
 
 ### 2.4 The record
 
 No new journal record kind for inbound transit. The article record of
 `books/records.lisp` already carries `evidence`; a transit article is an
-article record whose evidence is `(:peer-transit ...)`. Replay reproduces
-the provenance for free, and `fn-replay-reproduces-acceptance-binding`
-(reconfiguration §3.3) covers it unchanged. What is new is one *value* in the
-evidence slot, whose grammar packet K1 adds to `fn-record-p`'s evidence
-recognizer (today `fn-record-metadata-bytes-p`, bounded text).
+article record whose evidence is a `:peer-transit` provenance. Replay
+reproduces the provenance for free, and `fn-replay-reproduces-acceptance-
+binding` (reconfiguration §3.3) covers it unchanged. What is new is one
+*value* in the evidence slot, and NO change to `fn-record-p`'s evidence
+recognizer was needed: the wire form of a provenance is bounded printable
+text, which is exactly what `fn-record-metadata-bytes-p` already admits.
 
 ### 2.5 Duplicate suppression: the history is the store plus its tombstones
 
@@ -1091,12 +1095,27 @@ What differs from the design above, and why:
   the test book, and `fn-cfg-peer-rows-after-set-peer` (the peers slot holds
   exactly the record's rows after `:set-peer`) is the certified form of the
   find-after-set statement.
-- **The evidence slot is a string.** `fn-retain-admissiblep` requires
-  `stringp evidence`; the provenance is rendered as `"peer-transit:<peer>"`
-  (`fn-peer-evidence`) and the structured `(:transit peer kind msgid octets)`
-  submission is what the served path carries. The diagnostic and generation
-  of `(:peer-transit peer diag generation)` are not yet in the string: open
-  for the feed lane's renderer.
+- **The evidence slot is a provenance** (w10/provenance, 2026-09-20).
+  `fn-retain-admissiblep` takes `fn-provp` (`books/provenance.lisp`), which
+  accepts every string as the `:legacy` kind, so the widening changed no
+  stored value. `fn-peer-transit-provenance` builds the typed record --- peer
+  name, `:ihave`/`:takethis`, the RFC 5537 §3.2.1 Path diagnostic,
+  configuration generation --- and `fn-peer-transit-evidence` is its wire
+  form: `"fnprov1:"` and the canonical CBOR in lowercase hexadecimal, which
+  is printable (the host boundary guard `fn-store-text-octetsp` admits octets
+  33 to 126 only) and inside `fn-record-metadata-bytes-p`'s 256, so it rides
+  in the record's existing `release-evidence` field with no change to the
+  record grammar. `fn-peer-evidence-is-the-legacy-rendering`
+  (`books/peer-inbound-invariants`) is the equation between the record and
+  the string the transit path writes.
+  **Still open, and the only thing between here and a durable transit
+  provenance**: the transit command is not in scope at
+  `fn-peer-decide-transfer`, so `fn-peer-injection-arguments` still passes
+  `fn-peer-evidence`'s rendering. Threading it means a `kind` formal on
+  `fn-peer-decide-transfer`, `fn-peer-transfer` and
+  `fn-peer-injection-arguments`, which appear inside the K1/K2/K3 statements
+  --- the inbound lane owns that. Obligation and the exact call sites:
+  `planning/lanes/HANDOFF-w10-provenance.md`.
 
 Keystones, as certified (statements in `books/peer-inbound-invariants.lisp`):
 
@@ -1123,3 +1142,161 @@ functions and the step is deferred (`:verify-guards nil`): they are
 the `verify-guards` events are the next packet's first task (the callees
 are verified; the obligations are the node-statep-to-retain-statep bridge).
 
+
+## Status: the outbound feed (packet K2, lane `w6/peering-feed`)
+
+What is built, where it differs from the design above, and what is open. The
+inbound half's rows are the sibling lane's and are not repeated here.
+
+| Design text | Built as | Difference |
+| --- | --- | --- |
+| §3.1 `fn-feed-make (peer queue contact backoff-until conn next-attempt)` | `books/peer-feed.lisp` `fn-feed-make (peer limits queue contact backoff-until conn next-attempt)` | The feed carries a `limits` record (max-queue, backoff base, retry bound, streaming) copied from the peer record's outbound half at open. The book therefore does not include `peer-config`, `fn-feedp` is self-contained, and the owner stays the one place that reads a `fn-cfg-peerp`. |
+| §3.1 "Message-IDs" | `fn-frame-textp` octets | Peer names and Message-IDs are bounded non-empty UTF-8 octet lists — the transit vocabulary of `books/peer-inbound.lisp` and exactly the `:text` field type of the FNFD records — so no string conversion happens between the state and the journal. The scheduler's `fn-sched-contact-peer` is a string; binding it to `fn-feed-peer` is the owner's obligation and is not proved. |
+| §3.1 "at most one entry in flight … up to inflight-window for streaming" | `(<= (fn-feed-inflight-count (fn-feed-queue f)) 1)` | fn does not take RFC 4644's streaming window yet. One in flight per peer is a conjunct of `fn-feedp`, which is what makes exactly-once an argument about one entry. Widening it is a later packet and would change the keystones' proofs, not their statements. |
+| §3.2 `fn-feed-observe` | the same code map | `335`/`238` send, `235`/`239`/`435`/`438`/`437`/`439` done, `431`/`436` exponential backoff with a one-hour ceiling then the retry bound, `400` and any other code loss. |
+| §3.3 FNFD, "one file per peer under `<journal>/feed/<peer>/`" | `<journal>/feed/<peer>.fnfd`, a 4-octet big-endian length before each frame | The length prefix is file layout, not a frame field: it is what lets the host hand ACL2 one whole record at a time, and a torn tail ends the record stream. |
+| §4 K5 `fn-feed-at-most-one-accepted-outcome` | `books/peer-feed-invariants.lisp`, same name | The hypothesis is `fn-feed-drivenp`, a check over the fold that each record was admissible in the state the fold had reached — never the conclusion. |
+| §4 K5 `fn-feed-done-is-never-reoffered` | `fn-feed-done-is-never-selected` + `fn-feed-tick-step-offers-the-selection` | Stated over `fn-feed-tick-step`, the function the host calls, rather than over `fn-ideal-run`, which does not yet carry the feed. |
+| §4 K5 `fn-feed-replay-is-the-live-feed-modulo-inflight` | `fn-feed-replay-is-the-fold` and the ground witness of `tests/acl2/peer-feed-tests.lisp` | **Open.** The general equation needs a second machine (a live run that emits its own journal) that this lane did not build. What is proved is that replay is a fold, plus the scenario on ground values. |
+| §4 K5 `fn-feed-restart-resolves-by-offer` | `fn-feed-restart-emits-no-transfer` + `fn-feed-restart-then-tick-offers` | Stated over `fn-feed-send` (the only producer of a TAKETHIS or an article block) and `fn-feed-tick-step`, not over `fn-ideal-restart`. |
+
+Open, recorded rather than weakened:
+
+- The scheduler's per-peer interface (a peer dimension on `fn-sched-item` and
+  per-peer `fn-sched-retries`) is designed and not built; the exact edit is in
+  [the lane handoff](../planning/lanes/HANDOFF-w6-peering-feed.md) and on the
+  board. Until it lands, a feed's contact is a `fn-sched-contactp` the owner
+  supplies and the scheduler does not know the feed exists.
+- `fn-feed-parse-response`: the RFC 3977 §3.2 status framing of a peer's reply
+  is read in `tools/run_feed.py`, not in ACL2. The decision the code carries is
+  ACL2's (`fn-feed-observe`); the three-digit split is not. An ACL2-side reader
+  closes it.
+- The feed is not yet a field of F_node's state, so K6's cost term
+  (`fn-cfg-max-queue-total`) and the `:feed-octets`/`:tick` event kinds are
+  untouched by this lane.
+- No INN and no second fn node has been fed by `tools/run_feed.py`; the only
+  peer it has driven is the two-node harness's fake
+  (`tests/twonode_gate_fake/tools/run_peer.py`), whose replies are that file's
+  and not ACL2's.
+
+## Status (wave 9, `w9/peering-e2e`, the CLI, the scheduler and the owner's port)
+
+Delivered here: `fn peer add|remove|list` (bin/fn, tools/run_store.py,
+`fn-store-cfg-set-peer` / `-remove-peer` / `-peer-names` / `-peer-slot-text` /
+`-peer-slot-nat` in host/store-node-host.lisp); `books/scheduler-peers.lisp`
+and `tests/acl2/scheduler-peers-tests.lisp`; the owner's transit port
+(`fn-own-open-peer`, `fn-own-transit-subp`, `fn-own-transit-outcome`, the
+`(:open-peer peer cfg)` and `(:transit-outcome id kind reason word)` arms,
+with `fn-owner-peer-for-address`, `fn-owner-open-peer`,
+`fn-owner-transit-decide`, `fn-owner-transit-outcome` in
+host/owner-host.lisp and the accept/drain wiring in tools/run_owner.py);
+the two evidence harnesses' peer records and the streaming half of the
+two-node feed scenario.
+
+- **The per-peer scheduler is a table of schedulers, not a peer field on
+  `fn-sched-item`.** §3.1's shape (peer at item index 7, `fn-sched-selection`
+  over the peer-filtered queue) **falsifies two keystones of
+  `books/scheduler-invariants` as they are stated**:
+  `fn-sched-promotion-position-decreases` has
+  `(fn-sched-eligiblep (fn-sched-find w (fn-sched-queue ss)) wf)` as a
+  hypothesis and `fn-sched-aging-bound` reaches the same test through
+  `fn-sched-eligible-runp`; both are peer-blind, so a promoted work for peer
+  B while the open contact is peer A is neither selected nor moved closer to
+  the head of the promotion queue, and the conclusion fails on a reachable
+  state. Making the test peer-aware adds an argument to a function that
+  appears in a keystone's statement. `books/scheduler-peers.lisp` keys one
+  `fn-sched-statep` per peer name instead: every existing keystone stands
+  verbatim and reaches each peer's tick through
+  `fn-sched-table-tick-is-the-peer-tick` (the subject rule: what the host
+  calls is `fn-sched-tick-step` on that peer's own state), with
+  `fn-sched-table-tick-touches-only-its-peer` and `fn-sched-tablep-of-table-tick`
+  beside it and the per-peer retry bound transported, not restated. Certified
+  on persvati `run-20260920T180716Z-da35` with its teeth.
+- **The role of a connection is decided at accept, from the peer table.**
+  `fn-owner-peer-for-address` matches the source address against the
+  configured records' `auth-source-address` rows and `fn-own-open-peer` opens
+  the connection with `fn-served-open-peer`, pinning the node and the live
+  configuration into the session; the body limit is the record's
+  `inbound-max-octets`. `(:principal id)` is a reserved slot and matches
+  nothing yet, so A-PEER still stands: the identity is the configured
+  address.
+- **Transit and POST share one durable path, and the theorem says so at the
+  owner.** `fn-own-take-installs-the-queued-submission-whatever-it-carries`
+  (books/owner-invariants.lisp) states that the writer step installs the head
+  of the one queue in the one pending slot with the ledger mark of the
+  moment, and tests nothing about what the submission carries;
+  `fn-peer-transfer-is-the-post-path` is the node half. The reply side is
+  `fn-own-transit-outcome-touches-only-its-connection` and
+  `fn-own-transit-outcome-needs-a-transit-submission` (the two reply tables
+  cannot be crossed).
+- **The transfer decision is re-taken over the live node, in ACL2.**
+  `fn-owner-transit-decide` calls `fn-peer-decide-transfer` and
+  `fn-peer-injection-arguments` over the owner's node and the live
+  configuration; the memberships the durable path stages are
+  `fn-peer-scope-groups`', and Python computes no scope, no code and no
+  reason text. A decision that is not `:want` ends with no attempt and the
+  completion the reply renders with is `nil`, which is what
+  `fn-peer-transit-code` expects.
+
+Open at the end of this lane, with the obligation each one needs:
+
+| Item | State | What closes it |
+| --- | --- | --- |
+| `books/owner`, `books/owner-invariants` with the transit port | **uncertified and unreached**: persvati `run-20260920T180927Z-a8a4` published 29 books and failed six. The two root causes are `books/peer-config`'s `fn-cfg-set-peer-delta-is-admissible` (closed on `w6/peering-inbound-2`, not yet on dev) and `books/nntp-effects` having no certificate on dev; `peer-inbound`, `nntp-post`, `served` and `owner` are cascades of those | merge those two fixes, then resubmit the two roots with `--closure` |
+| K6 (`fn-ideal-*` restated over the peer event kinds) | open, not attempted | `books/ideal.lisp` gains `(:open id peer)`, `:feed-octets` and `:tick`; the served-path robustness for peer connections is `fn-peer-step-effects-well-formed` today, which is the per-connection half, not the F_node half |
+| K7 (`fn-cfg-peer-delta-preserves-the-node-and-changes-only-decisions`) | open | `fn-cfg-peer-deltas-change-only-peers` is the value-level half and is certified; the node-level statement needs `fn-node-apply-config` |
+| K8 / `(:principal id)` | reserved, unimplemented | a keyring lookup at accept beside the address match |
+| The feed driven by the owner (milestone 3) | **not delivered** | `books/peer-feed.lisp` is w6/peering-feed's and had not landed on dev at this lane's HEAD; the owner's tick would be `fn-sched-table-tick` per configured peer plus `fn-feed-tick-step`, and the FNFD journal write before the offer |
+| K5's crash-replay evidence (milestone 4) | **not delivered** | depends on the feed |
+| `tools/twonode_gate.py` feed scenario | the inbound half is real (IHAVE, 435 duplicate, loop, CHECK 438, TAKETHIS 439, reread byte-identical); the offering side is the harness's socket client, not fn's feed | the feed lane's outbound half |
+| `tools/inn_lab.py` | the fn node now writes a peer record for INN before it starts, so innfeed's connection resolves to a peer; the lab was not run on hbox in this lane | one lab run on hbox with INN 2.7.4 |
+
+## Status (wave 10, `w10/owner-feed`, the owner drives the feed)
+
+Milestone 3 of the wave-9 handoff, and the parts of milestones 4 and 5 that
+depend on it. What is built, what differs from the design above, and what is
+open.
+
+| Design text | Built as | Difference |
+| --- | --- | --- |
+| §3.1 "One feed state per configured outbound peer, all inside F_node's state as a new field `feeds`" | the OWNER's state, not F_node's: `books/owner.lisp`'s record gains a thirteenth field `feeds` holding `books/owner-feed.lisp`'s table | F_node (`books/ideal.lisp`) is still the reader-only skeleton, so the feed lives where the host actually steps it. K6's restatement over `fn-ideal-*` is still open. |
+| §3.1 "an alist by peer name" | a list of `(name record feed)`, `fn-own-feed-tablep` | The entry carries the peer's `fn-cfg-peerp` beside its `fn-feedp`, so the scope decision on the durable path needs no configuration argument: `fn-cfg-peers` is read once, at `fn-own-feed-reconfigure`. The recognizer binds the three names of one peer — the key (the string the configuration and the scheduler use), `fn-feed-peer` (the same name as FNFD `:text` octets) and `fn-sched-contact-peer` of the feed's contact — which is the obligation the w6 handoff recorded as the owner's and unproved. |
+| §3.2 `fn-feed-offerablep` | `fn-own-feed-offerablep record origin groups path` (`books/owner-feed.lisp`) | Same three refusals in the same order: the peer's outbound wildmat over the article's own Newsgroups names, `fn-path-names-p` against the peer's path-identity, and the origin peer. It takes the article's *octets*' readings rather than a parsed article, because the owner has octets. |
+| §3.1 "`:tick` is the scheduler's tick for that peer" | `fn-own-feed-tick-peer`, one `fn-feed-tick-step` per peer under that peer's own `fn-sched-contactp` | **Difference, recorded.** The owner's feed tick does NOT route through `fn-sched-table-tick`. `fn-sched-tick-step` selects an `fn-sched-item` work and drives a BP attempt; its effects are `fn-bp-result-effects` and its queue is not the feed queue, so routing the feed through it would add a table that decides nothing about the feed and would make `fn-sched-table-tick-is-the-peer-tick` a decoration. What the feed does take from the scheduler is the contact model: `fn-feed-selection` gates on `fn-sched-contact-holdsp` of the feed's own contact, whose peer the table binds to the key. |
+| §3.3 "(:feed-restart peer) on open, before any offer" | `fn-own-reopen` restarts every feed; `fn-owner-feed-restart` writes one record per peer | The restart is in the owner's crash-recovery transition itself, so it cannot be forgotten by the host. |
+| "an ACL2-side `fn-feed-parse-response`" (w6 status, open) | `fn-own-feed-response-code` and `fn-own-feed-parse-response` | **Closed.** RFC 3977 §3.2's three-digit split is ACL2's; `tools/run_feed.py`'s `status()` is deleted and `Acl2Feed.response_code` calls the book. The Message-ID a CHECK or TAKETHIS reply echoes is not read back at all: at most one entry is in flight per peer (`fn-feedp`), so the owner's own in-flight Message-ID is the unambiguous subject. |
+| "the peer enumeration" (host `:program` twin) | `fn-own-feed-peer-names` | **Closed.** `host/store-node-host.lisp`'s `fn-store-cfg-peer-name-list` was a `:program`-mode copy; the fold is in the book now. |
+
+The keystones, each stated over the function the owner calls:
+
+- `fn-own-feed-target-is-offerable` and `fn-own-feed-targets-omit-no-offerable-peer`: the targets of one article are EXACTLY the peers of the table whose own record passes the scope decision, both directions.
+- `fn-own-feed-never-offers-a-loop`: K2's outbound half. No target is the origin peer, and no target's path-identity is already in the article's Path.
+- `fn-own-feed-target-is-in-scope`: a target's outbound wildmat matches one of the article's own Newsgroups names.
+- `fn-own-feed-accept-touches-only-its-targets` and `fn-own-feed-accept-never-enqueues-on-the-origin`: the same, transported to the table the owner holds.
+- `fn-own-feed-tick-peer-is-the-feed-tick`: the subject rule. One peer's tick IS `fn-feed-tick-step` on that peer's own feed, with the same effects.
+- `fn-own-feed-tick-peer-records-the-command-it-emits`: durable before the effect — a record is built exactly when a command goes out, and it names the Message-ID that command offers. **OPEN, removed rather than weakened.** The residue is `fn-feed-offer`'s own precondition that the selected entry is `:queued`; the lemma for it, `fn-feed-selection-is-queued`, is in `books/peer-feed-invariants` and is a cascade of that book's one open form. The ground case is in the test book.
+- `fn-own-feed-retire-keeps-a-busy-feed`: a reconfiguration is a change of decisions; a feed with queued or in-flight work is never dropped.
+- `fn-own-feed-tablep` preserved by `fn-own-feed-reconfigure`, `-restart-all`, `-enqueue-all`, `-accept`, `-tick-peer` and `-tick`. `fn-feedp` preservation is CITED from `books/peer-feed-invariants` (`fn-feed-enqueue-preserves-feedp`, `fn-feed-restart-preserves-feedp`, `fn-feed-tick-step-preserves-feedp`) and never restated.
+
+`tests/acl2/owner-feed-tests.lisp` is 98 assertions: the table built from a
+real replayed configuration with three peers (streaming outbound, outbound
+with a non-matching wildmat, inbound-only), a real parsed article, the four
+teeth of `fn-own-feed-offerablep` (no outbound half, wildmat mismatch, Path
+names the peer, the peer is the origin), the six teeth of
+`fn-own-feed-tablep` (duplicate key, key that is not the record's name, no
+outbound half, another peer's feed octets, a non-feed, a non-true-list), the
+enqueue and its FNFD record replayed back to the same feed, the tick with
+and without a connection, the reply reader and its refusals, the restart
+fence and the retire-only-when-idle rule.
+
+Open at the end of this lane, with the obligation each needs:
+
+| Item | State | What closes it |
+| --- | --- | --- |
+| `books/owner-feed` and its test book | **admitted with no open form, not certified** | `books/peer-feed-invariants` has no certificate: it fails at `fn-feed-apply-record-preserves-feedp`, whose residue is now the attempt bound in the `:feed-sent` arm (`fn-feed-attempts-belowp` of `fn-feed-queue-set-state ... (:sent n)`), not the `find`/`consp` bridge the w6 handoff named. The feed lane owns it. |
+| `books/owner`, `books/owner-invariants` with the feed field and the arms | **not admitted at all** | `books/served` has no certificate on dev; `books/peer-inbound`'s `fn-peer-echo-reply-effects-well-formed` is closed on `w10/auth-served` and that file is taken into this lane's worktree, so the chain may certify on the next farm run. Until it does, `include-book "served"` fails and the owner books cannot even be `ld`ed. |
+| The owner's feed keystones stated over `fn-own-step` | open | `books/owner-invariants.lisp` needs `fn-own-feed-durable-is-the-target-enqueue` (the subject rule for the `(:outcome id :durable)` arm) and the preservation of `fn-own-relation` by the five new arms. Not written: a theorem that cannot be admitted is not a theorem. |
+| `fn-own-feed-group-matchp` vs `fn-peer-wildmat-matchp` | a named twin | One `:rule-classes nil` equality in `books/owner-invariants.lisp`, where both are visible. `books/owner-feed` cannot include `books/peer-inbound` without inheriting the served chain's blocker. |
+| fn does not prepend its own path-identity to a transit article's Path (RFC 5537 §3.2.1) | open, inbound lane's | `fn-peer-injection-arguments` stages the peer's octets verbatim. The outbound loop check still refuses a target already in Path and refuses the origin outright, but on the return leg loop suppression rests on the peer's history answer (435/438) rather than on Path. |
+| RFC 3977 §3.1.1 dot stuffing of an outgoing article block | host | `tools/run_feed.py`'s `Session.send_block`, reused by `tools/run_owner.py`. `books/wire.lisp` has the stuffer; wiring the owner's feed through it is one packet. |
+| The two-node outbound evidence | **harness written, not run** | `tools/twonode_gate.py` gains `scenario_owner_feed` (A posts, A's own feed offers it to B, then B to A, with the byte-identity check and the 435/438 second offer) and `scenario_feed_restart` (B down, A posts, `kill -9` A, both restart, B ends with exactly one copy: K5). `tests/test_twonode_gate.py` is green (19 tests) against the fake; no run on persvati in this lane. |
