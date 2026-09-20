@@ -4,10 +4,10 @@ Status: PRF-008 logical core (`books/checkpoint.lisp`) is a certified book.
 The canonical byte encoding (`books/checkpoint-codec.lisp`, C1-10) and the
 generation publication/selection machine (`books/checkpoint-publish.lisp`,
 C2-09) are **not certified** as of 2026-09-20. The codecs realignment
-withdrew the vocabulary these proofs were written against; five defects
-follow from it, four now closed and one open at
-`fn-cpc-decode-tree-rest-octets` (evidence
-`build/acl2/certify-20260920T042326Z-2445522`, log line 3426).
+withdrew the vocabulary these proofs were written against; eight defects
+follow from it, seven now closed and one open at
+`fn-cpc-decode-tree-of-encoding` (evidence
+`build/acl2/certify-20260920T044112Z-2618104`, log line 4535).
 `checkpoint-publish` and both test books have only ever failed on the
 cascade from the failed include; no theorem of theirs has been refuted, and
 no keystone has been weakened. Nothing below is a proof claim until the

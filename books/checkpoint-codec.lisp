@@ -35,12 +35,19 @@
 (include-book "frame-invariants")
 (local (include-book "arithmetic/top" :dir :system))
 ; The codecs cluster withdrew its vocabulary at export (2026-09-19).  These
-; proofs open the CBOR primitives (the u16/u32 byte facts), the parse-result
-; and record accessors, so the book re-enables locally exactly the names the
-; board gives for an includer in this position.
+; proofs induct with the CBOR u16/u32 byte facts, so the book re-enables
+; that one bundle.  It does NOT re-enable fn-record-record-vocabulary or
+; fn-record-codec-vocabulary: those open the parse result to CAR/CADR/CADDR,
+; and then every -domain lemma stated in FN-RECORD-PARSE-REST vocabulary --
+; this book's own FN-CPC-READ-UINT-DOMAIN among them -- stops matching.
+; A form that must open a record says so in its own hints, as
+; books/records.lisp does.  FN-RECORD-CANONICALITY-VOCABULARY is in the
+; bundle for the same reason as the includer bundle and not for the reason
+; the two record vocabularies were rejected: it holds no (:D ...) rune, so
+; it opens nothing -- it is the round-trip and success lemmas these proofs
+; induct with.
 (local (in-theory (enable fn-codecs-includer-vocabulary
-                          fn-record-record-vocabulary
-                          fn-record-codec-vocabulary)))
+                          fn-record-canonicality-vocabulary)))
 
 (defconst *fn-cpc-magic* '(102 110 45 99))          ; "fn-c"
 (defconst *fn-cpc-schema-version* 0)
@@ -601,7 +608,14 @@
            (and (stringp (fn-record-octets-string octets))
                 (equal (fn-record-string-octets (fn-record-octets-string octets))
                        octets)))
-  :hints (("Goal" :in-theory (enable fn-record-octets-string))))
+  ; The second conjunct is the canonicality book's own round trip
+  ; (fn-record-string-octets-of-octets-string, books/records-canonicality.lisp).
+  ; It is cited by :use, not enabled: enabling it would leave it to match a
+  ; goal in which FN-RECORD-OCTETS-STRING has already opened to COERCE.
+  :hints (("Goal"
+           :use fn-record-string-octets-of-octets-string
+           :in-theory (e/d (fn-record-octets-string)
+                           (fn-record-string-octets-of-octets-string)))))
 
 (defthm fn-cpc-symbol-index-in-range
   (implies (member-equal x *fn-cpc-symbols*)
@@ -616,7 +630,11 @@
                               *fn-cpc-symbols*)
                 (symbolp (fn-frame-item (- i 1) *fn-cpc-symbols*))
                 (fn-frame-item (- i 1) *fn-cpc-symbols*)))
-  :hints (("Goal" :in-theory (enable fn-frame-item))))
+  ; The table has three entries and I is symbolic, so FN-FRAME-ITEM cannot
+  ; unwind; the three cases make each application a constant.  Without them
+  ; the proof reverts to an induction it cannot finish.
+  :hints (("Goal" :in-theory (enable fn-frame-item)
+           :cases ((equal i 1) (equal i 2) (equal i 3)))))
 
 (defthm fn-cpc-enum-index-of-symbol-item
   (implies (and (posp i) (<= i (len *fn-cpc-symbols*)))
@@ -624,7 +642,8 @@
                    (fn-frame-item (- i 1) *fn-cpc-symbols*) *fn-cpc-symbols*)
                   i))
   :hints (("Goal" :use ((:instance fn-frame-enum-index-of-item
-                                   (keys *fn-cpc-symbols*) (n (- i 1)))))))
+                                   (keys *fn-cpc-symbols*) (n (- i 1))))
+           :cases ((equal i 1) (equal i 2) (equal i 3)))))
 
 ; -- shape of encodings ----------------------------------------------------------
 
@@ -677,6 +696,10 @@
              (fn-cpc-tree-induct (cdr x) (- fuel 1) more))
      (list x fuel more))))
 
+; The cons branch of the decoder refuses a head that is an octet, so the
+; proof must decide FN-CBOR-OCTETP on a symbolic head; the codecs
+; realignment withdrew its definition.  Enabled for this form only.
+(local (in-theory (enable fn-cbor-octetp)))
 (defthm fn-cpc-decode-tree-of-encoding
   (implies (and (fn-cpc-treep x)
                 (fn-cbor-octet-listp more)
@@ -687,6 +710,8 @@
   :hints (("Goal" :induct (fn-cpc-tree-induct x fuel more)
            :in-theory (e/d (fn-cpc-decode-tree)
                            (fn-cpc-octet-list-tagp)))))
+(local (in-theory (disable fn-cbor-octetp)))
+
 
 (defthm fn-cpc-decode-tree-of-encoding-exact
   (implies (fn-cpc-treep x)
