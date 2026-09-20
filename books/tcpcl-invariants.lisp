@@ -435,6 +435,64 @@
 ; -----------------------------------------------------------------------------
 ; C4.  Discipline and bounds.
 
+; The interleaving branch of the transition that owns it: a segment whose
+; Transfer ID is not the live transfer's (or a second START) is the broken
+; stream of section 5.2.2, whatever the rest of the session holds.  Proved
+; with the recognizer closed, as C2 measured: the branch test does not read
+; a single conjunct of fn-tcl-sessionp.
+(local (defthm fn-tcl-recv-segment-interleave-is-broken-stream
+         (implies (and (fn-tcl-session-inbound s)
+                       (not (equal (fn-tcl-xfer-segment-xfer-id m)
+                                   (fn-tcl-inbound-xfer-id (fn-tcl-session-inbound s)))))
+                  (equal (fn-tcl-recv-segment s m now)
+                         (fn-tcl-broken-stream
+                          s (fn-tcl-inbound-xfer-id (fn-tcl-session-inbound s)) now)))
+         :hints (("Goal" :in-theory (disable fn-tcl-c2-closed)
+                  :expand ((fn-tcl-recv-segment s m now))))))
+
+; What a broken stream leaves behind, after fn-tcl-settle has had its say.
+; The session it hands back is in Ending -- unless the SESS_TERM handshake
+; was already complete and nothing is outbound, in which case clearing the
+; inbound transfer is the last thing "Transfers Done" was waiting for and
+; the session closes in the same step (section 6.1).  That case is why the
+; wave-4 statement of C4 below, which asserted :ending outright, is not a
+; theorem: see specs/tcpcl.md section 6 and the witness *t-b-inter-both* in
+; tests/acl2/tcpcl-tests.lisp.  Cited by :use so that the constructor in
+; the event survives evaluation on both sides (a rewrite rule whose
+; conclusion holds the ground term (fn-tcl-make-msg-reject 3 1) does not
+; match the goal, where it has already been evaluated to a constant).
+(local (defthm fn-tcl-settle-of-broken-stream
+         (and (not (fn-tcl-session-inbound
+                    (fn-tcl-result-session
+                     (fn-tcl-settle (fn-tcl-broken-stream s live-id now)))))
+              (equal (fn-tcl-session-phase
+                      (fn-tcl-result-session
+                       (fn-tcl-settle (fn-tcl-broken-stream s live-id now))))
+                     (if (and (equal (fn-tcl-session-term s) :both)
+                              (not (fn-tcl-session-outbound s)))
+                         :closed
+                       :ending))
+              (member-equal (list :send (fn-tcl-make-msg-reject 3 1))
+                            (fn-tcl-result-events
+                             (fn-tcl-settle (fn-tcl-broken-stream s live-id now))))
+              (implies live-id
+                       (member-equal (list :inbound-refused live-id 3)
+                                     (fn-tcl-result-events
+                                      (fn-tcl-settle (fn-tcl-broken-stream s live-id now)))))
+              (not (member-equal (list :bundle-received id data)
+                                 (fn-tcl-result-events
+                                  (fn-tcl-settle (fn-tcl-broken-stream s live-id now))))))
+         :rule-classes nil
+         :hints (("Goal" :in-theory (disable fn-tcl-c2-closed)))))
+
+; C4, first theorem: one transfer at a time per direction (RFC 9174
+; section 5.2).  A segment for another Transfer ID while one is live never
+; opens a second transfer: the live one is refused Retransmit, MSG_REJECT
+; Message Unexpected is sent, nothing is delivered, and the session stops
+; accepting transfers -- Ending, or Closed when this was the last thing the
+; SESS_TERM handshake was waiting for.  The phase is stated exactly, not as
+; a disjunction: the two cases are separated by the session's own term
+; field.
 (defthm fn-tcl-no-interleaving
   (implies (and (fn-tcl-sessionp s)
                 (fn-tcl-messagep m (fn-tcl-segment-mru s))
@@ -447,17 +505,24 @@
            (and (null (fn-tcl-session-inbound (fn-tcl-result-session (fn-tcl-step s m now))))
                 (member-equal (list :send (fn-tcl-make-msg-reject 3 1))
                               (fn-tcl-result-events (fn-tcl-step s m now)))
+                ; the live transfer is refused Retransmit, not completed
+                (member-equal (list :inbound-refused
+                                    (fn-tcl-inbound-xfer-id (fn-tcl-session-inbound s)) 3)
+                              (fn-tcl-result-events (fn-tcl-step s m now)))
                 (not (member-equal (list :bundle-received id data)
                                    (fn-tcl-result-events (fn-tcl-step s m now))))
                 (equal (fn-tcl-session-phase (fn-tcl-result-session (fn-tcl-step s m now)))
-                       :ending)))
-  ; OPEN (w6/tcpcl-c2): fails both with the recognizer open (the wave-4 hint
-  ; below, evidence certify-20260920T042704Z-2481961 on persvati) and with C2's
-  ; closed-recognizer theory `(e/d (fn-tcl-step fn-tcl-settle)
-  ; (fn-tcl-c2-closed))` (certify-20260920T044438Z-2651297), so the recognizer
-  ; is not the whole story here; see specs/tcpcl.md section 6.
+                       (if (and (equal (fn-tcl-session-term s) :both)
+                                (not (fn-tcl-session-outbound s)))
+                           :closed
+                         :ending))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-tcl-messagep) (fn-tcl-ext-decision)))))
+           :use ((:instance fn-tcl-settle-of-broken-stream
+                            (s (fn-tcl-touch-rx s now))
+                            (live-id (fn-tcl-inbound-xfer-id (fn-tcl-session-inbound s)))))
+           :in-theory (e/d (fn-tcl-step)
+                           (fn-tcl-c2-closed fn-tcl-settle fn-tcl-recv-segment
+                            fn-tcl-broken-stream)))))
 
 (defthm fn-tcl-ending-refuses-new-transfers
   (implies (and (fn-tcl-sessionp s)
@@ -536,6 +601,30 @@
          (fn-tcl-session-local s))
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-tcl-sessionp fn-tcl-ext-decision))))
+
+; The two "need more input" cases of the fold below: the decoder keeps the
+; whole buffer, so the carry is bounded by the decoder's own need bound.
+; Both bounds are keystones of books/tcpcl-octets; they are restated here
+; against the opened `fn-tcl-max-message` (the fold's hint opens it), which
+; is what makes them visible to linear arithmetic at the induction step:
+; fn-tcl-need-means-short-buffer is triggered on (len buf) with `mru` free,
+; and fn-tcl-need-means-short-buffer-contact is a rewrite rule only, so
+; neither fires on the goal (fn-tcl-max-message mru) leaves behind.  The
+; contact bound is cited with its own rule disabled: enabled, it rewrites
+; the cited instance to T before linear arithmetic can use it.
+(local (defthm fn-tcl-need-message-under-max
+         (implies (and (fn-cbor-octet-listp buf) (natp mru)
+                       (fn-tcl-parse-needp (fn-tcl-decode-message buf mru)))
+                  (< (len buf) (+ 5145 mru)))
+         :hints (("Goal" :in-theory (e/d (fn-tcl-max-message)
+                                         (fn-tcl-need-means-short-buffer))
+                  :use fn-tcl-need-means-short-buffer))))
+
+(local (defthm fn-tcl-need-contact-under-max
+         (implies (and (natp mru) (fn-tcl-parse-needp (fn-tcl-decode-contact buf)))
+                  (< (len buf) (+ 5145 mru)))
+         :hints (("Goal" :use fn-tcl-need-means-short-buffer-contact
+                  :in-theory (disable fn-tcl-need-means-short-buffer-contact)))))
 
 (defthm fn-tcl-retained-input-is-bounded
   (implies (and (fn-tcl-sessionp s)
