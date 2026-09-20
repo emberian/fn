@@ -320,13 +320,50 @@ layer, a second STARTTLS is 502, and the cached username and the
 authenticated subject are discarded across the handshake. The clause-by-clause
 split is the RFC 4642 matrix in [the audit](nntp-audit.md).
 
-AUTHINFO USER/PASS is likewise a **cleartext** mechanism: the configuration
-holds the shared secret, not a digest, because fn's only digest is the
-constrained `fn-digest` of `books/crypto-seam.lisp`, which has no attachment
-and cannot be evaluated. `OB-AUTH-DIGEST` in the audit records that with its
-cause. An operator who needs the secret protected on the wire sets
-`[listener] auth protected-only`, which makes AUTHINFO answer 483 until a TLS
-layer is active.
+AUTHINFO USER/PASS is likewise a **cleartext mechanism on the wire**, and no
+change below makes it otherwise: the secret still crosses the connection in
+the open, which is why RFC 4643 §2.3.2 asks for a protected channel and why an
+operator who needs the secret protected sets `[listener] auth protected-only`,
+which makes AUTHINFO answer 483 until a TLS layer is active. What changed on
+2026-09-20 is what the *configuration file* holds.
+
+### The stored AUTHINFO credential
+
+`books/auth-secret.lisp` defines the scheme, exactly:
+
+| element | value |
+| --- | --- |
+| salt | exactly 16 octets, one per credential, chosen at enrolment |
+| preimage | `salt \|\| secret` (the salt's length is fixed, so the boundary is unambiguous) |
+| tag | `"fn-authinfo-v1"`, the crypto seam's domain separation |
+| stored | `(:fn-authsec-v1 salt (fn-digest-tagged tag preimage))` |
+| check | the supplied octets pass iff re-deriving the digest under the stored salt yields the stored digest |
+
+The digest is the seam's, and the seam is now executable:
+`books/crypto-attach.lisp` attaches the guard-verified SHA-256 of
+`books/sha256.lisp` to `fn-digest`. That is what `OB-AUTH-DIGEST` was waiting
+for; the audit's entry is updated rather than deleted, because the reason the
+credential was cleartext is part of the record.
+
+Proved (`books/auth-secret.lisp`): the enrolled secret always checks; a stored
+verifier is never an octet list, so the slot that used to carry a cleartext
+secret cannot carry one; the stored digest is 32 octets whatever the secret is,
+so a stolen configuration reveals neither the secret nor its length; and the
+preimage recovers `(salt, secret)`, so one credential's digest cannot
+authenticate another's secret through a moved boundary. **Not proved, and not
+provable here**: that a wrong secret is rejected. That is second-preimage
+resistance of SHA-256 — A-CRYPTO — and under the seam's local witness it is
+false. `tests/acl2/auth-secret-tests.lisp` exhibits rejection on concrete
+octets under the real attachment; that is a witness, not a theorem.
+
+**Still open, and it is not the digest**: `books/nntp-auth.lisp` has not yet
+been switched from `equal` on the cleartext secret to `fn-authsec-checkp`.
+`books/peer-config.lisp` fails to certify on `dev`, and `nntp-auth`'s closure
+runs through it, so the swap cannot be verified today. The change is
+`fn-auth-cred-secret` holding a `fn-authsec-verifierp` instead of a printable
+token, `fn-auth-credp` recognizing it, and `fn-auth-checkp` calling
+`fn-authsec-checkp`; it is tracked in
+`planning/lanes/HANDOFF-w9-digest.md`.
 
 **Open, and a real one**: RFC 4642 §2.2 says STARTTLS MUST NOT be pipelined,
 and the handshake begins with the first octet after the 382's CRLF. Any

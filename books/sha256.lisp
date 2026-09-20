@@ -456,6 +456,21 @@
        (true-listp (fn-sha256 m))
        (equal (len (fn-sha256 m)) 32)))
 
+; The coercion does nothing to an octet list.  Without this, "fn-sha256 is
+; SHA-256" would be a claim about a coerced argument rather than about the
+; octets the caller passed; with it, on every preimage fn digests, the two
+; are the same term.
+(defthm fn-sha256-fix-octets-is-identity-on-octets
+  (implies (fn-sha256-octet-listp m)
+           (equal (fn-sha256-fix-octets m) m))
+  :hints (("Goal" :induct (fn-sha256-fix-octets m)
+           :in-theory (enable fn-sha256-fix-octets fn-sha256-byte))))
+
+(defthm fn-sha256-is-of-octets-on-octets
+  (implies (fn-sha256-octet-listp m)
+           (equal (fn-sha256 m) (fn-sha256-of-octets m)))
+  :hints (("Goal" :in-theory (enable fn-sha256))))
+
 (defthm fn-sha256-octet-listp-implies-true-listp
   (implies (fn-sha256-octet-listp xs)
            (true-listp xs))
