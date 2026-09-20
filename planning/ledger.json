@@ -218,6 +218,8 @@
     "books/scheduler",
     "books/scheduler-invariants",
     "tests/acl2/scheduler-tests",
+    "books/scheduler-peers",
+    "tests/acl2/scheduler-peers-tests",
     "books/relay",
     "books/relay-invariants",
     "books/relay-crash-invariants",
@@ -242,18 +244,18 @@
     "tests/acl2/stx-tests"
   ],
   "totals": {
-    "books": 239,
-    "books_in_root_closure": 238,
-    "roots": 238,
-    "theorems": 4522,
-    "functions": 3291,
-    "assert_events": 4416,
+    "books": 241,
+    "books_in_root_closure": 240,
+    "roots": 240,
+    "theorems": 4538,
+    "functions": 3300,
+    "assert_events": 4447,
     "must_fails": 59,
     "encapsulates": 15,
     "guards": {
       "verified": 1294,
       "declared-off": 151,
-      "default-guarded": 1381,
+      "default-guarded": 1390,
       "default-unguarded": 465
     },
     "suspect_theorems": 32,
@@ -3329,6 +3331,31 @@
       "read_error": null
     },
     {
+      "book": "books/scheduler-peers.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 16,
+      "functions": 9,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 9,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "scheduler-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/scheduler.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -5895,6 +5922,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/scheduler-peers-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 31,
+      "must_fails": 0,
+      "defconsts": 20,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/scheduler-peers"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/scheduler-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -8271,63 +8323,63 @@
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 10,
+        "line": 11,
         "name": "*fn-store-capacity*",
         "source": "host/store-host.lisp",
         "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 42,
+        "line": 43,
         "name": "fn-store-decode-records",
         "source": "host/store-host.lisp",
         "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 103,
+        "line": 104,
         "name": "fn-store-octets->string",
         "source": "host/store-host.lisp",
         "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 159,
+        "line": 308,
         "name": "fn-store-groups-from-codes",
         "source": "books/store-config.lisp",
         "reason": "defined in books/store-config.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 159,
+        "line": 308,
         "name": "fn-store-msgid-octetsp",
         "source": "host/store-host.lisp",
         "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 159,
+        "line": 308,
         "name": "*fn-store-max-payload*",
         "source": "host/store-host.lisp",
         "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 159,
+        "line": 308,
         "name": "fn-store-text-octetsp",
         "source": "host/store-host.lisp",
         "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 159,
+        "line": 308,
         "name": "fn-store-article-match",
         "source": "host/store-host.lisp",
         "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 271,
+        "line": 420,
         "name": "fn-store-group-name",
         "source": "books/store-config.lisp",
         "reason": "defined in books/store-config.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
