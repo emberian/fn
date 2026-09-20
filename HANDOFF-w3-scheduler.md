@@ -18,10 +18,9 @@ STATEMENT is unchanged.
 | --- | --- | --- |
 | `books/scheduler.lisp` | CERTIFIED | `build/acl2/certify-20260919T235031Z-17711` |
 | `books/scheduler-invariants.lisp` | CERTIFIED (`certify-book` form 3.76 s wall; no form over 1.1 s) | `build/acl2/certify-20260920T025038Z-16877` |
-| `tests/acl2/scheduler-tests.lisp` | **OPEN — fails at `(assert-event (fn-sched-decision-recordp *sched-decision*))`**, `tests/acl2/scheduler-tests.lisp:312`: the FNSC decision record built by `fn-sched-decision` is rejected by `fn-frame-values-okp` over `*fn-sched-decision-spec*`. A codec assertion, not an aging fact; every form before it passes | `build/acl2/certify-20260920T025038Z-16877` (log `tests--acl2--scheduler-tests.certify.log`) |
+| `tests/acl2/scheduler-tests.lisp` | CERTIFIED (103 `assert-event`s pass; `certify-book` form 1.12 s wall) | `build/acl2/certify-20260920T025611Z-31803` |
 
-`books/scheduler` and `books/scheduler-invariants` are certified; the test root
-is open at the form above. Commit `3886f5a` is titled "Certify the rewritten
+All three roots are certified. Commit `3886f5a` is titled "Certify the rewritten
 scheduler cluster"; that title is wrong and this table is the correction.
 
 ### The invariants book, failure by failure
@@ -86,6 +85,14 @@ position`. HEAD `b422d42` then swapped the keystone's `:use` of
    constrained `fn-assume-fairness-contact-index` in a theory (a hard error)
    and left `fn-assume-fairness-contact-index-is-finite` enabled, which
    rewrote the `:use`d `natp` fact to `t`.
+7. The test book, once reachable: `*sched-decision*` and the two negative
+   decision records carry their `:text` ids as octet lists (`fn-frame-textp`,
+   books/frame-fields.lisp), so the two `not`-assertions now fail for the one
+   named reason and not for the strings; and `*sched-promoted-wf-fenced*`
+   prepared "work-small", which has an attempt in flight after the second tick,
+   so `fn-bp-prepare-attempt` refused, the completion matched nothing and
+   nothing was fenced. It now prepares the retryable "work-big" at the
+   scheduler's next txid, and the `fn-sched-drive-okp` teeth are real.
 | `host/scheduler-host.lisp` | `:program` mode, outside the proof boundary | — |
 | `tools/scheduler.py`, `tests/test_scheduler.py` | PASS | 22 tests |
 
@@ -129,6 +136,19 @@ position`. HEAD `b422d42` then swapped the keystone's `:use` of
   the queue bound and still unselected, and `(fn-sched-aged-fitsp ss)` needs a
   promotion queue longer than the configured bound — which no transition builds,
   which is exactly the invariant `specs/scheduler.md` leaves to C3-03.
+
+### The host passes Lisp strings to the decision codec (owner: host/scheduler-host.lisp)
+
+`fn-frame-textp` (books/frame-fields.lisp) recognises `:text` as an octet list,
+and the test book now supplies octets. The host does not:
+`fn-sched-host-decision-octets` (`host/scheduler-host.lisp:82-85`) hands
+`fn-sched-decision` the contact peer, a `stringp` by `fn-sched-contactp`, and the
+`work-id`/`attempt-id` that `tools/scheduler.py` marshals as string literals
+(`_lit`), so `fn-sched-decision-protected` answers `:bad` and `run_plan` raises
+"ACL2 refused the decision record". The codec is the authority and is unchanged;
+the owner of that file converts the three ids to octets at the site (the
+bridge's `_octets`, or `fn-record-string-octets` in books/records.lisp) or the
+contact record's peer becomes octets.
 
 ### Always-on TCP peers (specs/peering.md §3)
 
