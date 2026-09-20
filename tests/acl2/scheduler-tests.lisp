@@ -307,19 +307,29 @@
 ; -----------------------------------------------------------------------------
 ; The durable decision record
 
+; `:text' fields are octet lists, not Lisp strings: `fn-frame-textp'
+; (books/frame-fields.lisp) recognises octets and `fn-frame-field-octets'
+; length-prefixes them.  The three ids below are "dtn://peer/fn", "work-small"
+; and "attempt:0" as octets.
+(defconst *sched-peer-octets* '(100 116 110 58 47 47 112 101 101 114 47 102 110))
+(defconst *sched-work-small-octets* '(119 111 114 107 45 115 109 97 108 108))
+(defconst *sched-attempt-0-octets* '(97 116 116 101 109 112 116 58 48))
 (defconst *sched-decision*
-  (fn-sched-decision 0 0 "dtn://peer/fn" "work-small" "attempt:0" 0 :priority 0))
+  (fn-sched-decision 0 0 *sched-peer-octets* *sched-work-small-octets*
+                     *sched-attempt-0-octets* 0 :priority 0))
 (assert-event (fn-sched-decision-recordp *sched-decision*))
 (assert-event (fn-cbor-octet-listp (fn-sched-decision-protected *sched-decision*)))
 ; A reason the specification does not name is not a decision record.
 (assert-event
  (not (fn-sched-decision-recordp
-       (fn-sched-decision 0 0 "dtn://peer/fn" "work-small" "attempt:0" 0
+       (fn-sched-decision 0 0 *sched-peer-octets* *sched-work-small-octets*
+                          *sched-attempt-0-octets* 0
                           :because-i-said-so 0))))
 ; Neither is one with a text field where a natural belongs.
 (assert-event
  (not (fn-sched-decision-recordp
-       (fn-sched-decision "zero" 0 "dtn://peer/fn" "work-small" "attempt:0" 0
+       (fn-sched-decision "zero" 0 *sched-peer-octets* *sched-work-small-octets*
+                          *sched-attempt-0-octets* 0
                           :priority 0))))
 
 ; -----------------------------------------------------------------------------
@@ -408,11 +418,16 @@
 
 ; the same theorem, hypothesis (fn-sched-drive-okp ...): a fenced workflow
 ; refuses, the tick is a no-op, and the position does not fall.
+; "work-big" is retryable here (it is eligible, asserted above); "work-small"
+; has an attempt in flight after the second tick, `fn-bp-prepare-attempt'
+; refuses it, and a refused intent leaves nothing for the completion to fence.
+; The txid is the scheduler's own next one, so it is fresh in the workflow.
 (defconst *sched-promoted-wf-fenced*
   (fn-bp-result-state
    (fn-bp-complete
-    (fn-bp-prepare-attempt *sched-promoted-wf* 12 0 "work-small" "attempt:x")
-    12 0 :indeterminate)))
+    (fn-bp-prepare-attempt *sched-promoted-wf* (fn-sched-next-tx *sched-promoted*)
+                           0 "work-big" "attempt:x")
+    (fn-sched-next-tx *sched-promoted*) 0 :indeterminate)))
 (assert-event (fn-bp-state-fenced *sched-promoted-wf-fenced*))
 (assert-event
  (not (fn-sched-drive-okp *sched-promoted* *sched-promoted-wf-fenced*
