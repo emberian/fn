@@ -1,34 +1,76 @@
 # w3-media-lab handoff (C2-08)
 
-HEAD: branch `w3/media-lab`, one commit on top of `9321344`.
+HEAD: branch `w3/media-lab`, merged with `dev` at `72279c8`.
 
 Carried-media export/import through the same bounded staging and acceptance
 path as network receipt, and a four-node non-overlapping-contact lab with one
 carried-media hop.
 
-## Status of the run
+## Status of the run (rewritten 2026-09-20, after the merge with dev)
 
-**No certified run is recorded.** The lane's baseline `make certify` was moved
-off this laptop by root partway through (31 of ~170 roots had certified
-locally), with an instruction not to restart it, and the replacement
-certificates had not been installed in this worktree before the lane's tool
-budget ran out. `tests/evidence/2026-09-19-four-node-lab.md` and `.json` are
-therefore placeholders that record no result and say so.
+HEAD is `w3/media-lab` merged with `dev` at `72279c8`. The merge was clean; the
+lane owns no ACL2 book, so nothing here needed the proof-style rewrite and
+nothing was sent to the farm.
 
-What *did* run: `make check` (green), and the six `MediaManifestTests` cases,
-which are the manifest, read-only-volume and copy-digest checks that need no
-ACL2. Everything below that depends on ACL2 is a designed and asserted
-behaviour that has not yet been observed.
+**There is now a real run, and it is an incomplete one.**
+`tests/evidence/2026-09-20-four-node-lab.{json,md}` replace the two
+placeholders. Ten of the twenty-one named assertions were checked and every
+one held, including the whole carried-media group; the run then failed at
+`tests/bp-dtn7/run_four_node_lab.py:541`. The eleven unreached assertions are
+evidence for nothing.
 
-To finish: install the baseline certificates at this absolute path, then
+### The one thing that blocks a complete run
+
+`fn-workflow-preflight-history` refuses an `attempt` record --
+`JournalError('ACL2 rejected workflow durable history before publication')` --
+at two distinct points: for work relay-b enqueued in the same session, and for
+work whose enqueue reached ACL2 only through recovery replay (relay-a, after
+the mid-forward kill). The sharper reading from the same tree: **after a
+journal reopen, `fn-workflow-work-status` answers `absent` for every work id
+in the replayed history, although `fn-workflow-install-replay` answered
+`ready`.** If that is the model rather than the bridge, no fn node can submit
+outbound work across a restart, which is a v0.3 DTN blocker and not this
+lane's to close. Owner: the workflow cluster.
+
+`tests/test_four_node_lab.py` names that refusal text in
+`WORKFLOW_HISTORY_REFUSAL` and skips the six cases that need a completed run
+**only** for that exact text; any other failure still fails. Nothing in this
+lane asserts the blocked behaviour in either direction.
+
+### Removed rather than weakened
+
+`relay_a_onward_obligation_recoverable_after_kill` is **gone**, not softened.
+It read `work_status("a1") not in ("", "absent", "unknown")`, and
+`fn-workflow-work-status` answers `absent` both for work recovered from the
+cut and for work enqueued ordinarily after a reopen, so the status the lab can
+read does not distinguish the two. The two values are still recorded in the
+cut record; nothing is asserted of them.
+
+### What the merge fixed
+
+- `tools/media.py` gained the command line it never had: `export`, `verify`,
+  `import`, on `run_store`'s exit codes, with the three outcomes distinct out
+  to them and **uncertain dominating refused** in a multi-item volume. Six new
+  cases in `tests/test_media.py`.
+- `run_store.Store._safe_directory` creates the store leaf and no parent it did
+  not check; `tests/test_media.py` now owns the node directory. That was seven
+  errors. `tests.test_media` is 19 of 19 green against real ACL2.
+- The lab allocated transaction ids from an in-memory counter on `Node`, so a
+  process-death cut reissued a txid the journal already held and the history
+  preflight refused it. `Outbound.next_txid` allocates above the durable
+  history.
+
+### Still to do
+
+Close the workflow refusal above, then re-run
 
 ```sh
 python3 tests/bp-dtn7/run_four_node_lab.py
 python3 -m unittest tests.test_media tests.test_four_node_lab tests.test_bp_receive -v
 ```
 
-and replace the two evidence files with the run's `evidence.json` plus a prose
-record, and add a row to `planning/evidence-index.md`.
+replace the evidence pair with the complete run, and add a row to
+`planning/evidence-index.md`.
 
 ## What was added
 
