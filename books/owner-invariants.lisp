@@ -479,8 +479,14 @@
                                             (fn-own-next-id o) (fn-own-max-conns o)
                                             (fn-own-pending o) (fn-own-ledger o)
                                             (fn-own-clock o) (fn-own-facts o)
+                                            ; `feeds' is `fn-own-make's THIRTEENTH
+                                            ; field (w10/owner-feed).  Six `:use'
+                                            ; instances in this book were left at
+                                            ; twelve, and `certify-book' stops at
+                                            ; the first, so only one was ever seen.
                                             (fn-own-config o) (fn-own-queue o)
-                                            (fn-own-inflight o))))
+                                            (fn-own-inflight o)
+                                            (fn-own-feeds o))))
                  (:instance fn-own-snrt-step-records-prefix (s (fn-own-store o))))
            :in-theory (e/d (fn-own-relation)
                            (fn-own-refresh-preserves-relation fn-own-refresh
@@ -500,7 +506,8 @@
                                                            (fn-sn-files (fn-own-store o)))))
                                             (fn-own-clock o) (fn-own-facts o)
                                             (fn-own-config o) (fn-own-queue o)
-                                            (fn-own-inflight o))))
+                                            (fn-own-inflight o)
+                                            (fn-own-feeds o))))
                  (:instance fn-snt-finish-preserves-relation (s (fn-own-store o)))
                  (:instance fn-snt-finish-image (s (fn-own-store o)))
                  (:instance fn-snt-finish-keeps-records (s (fn-own-store o)))
@@ -525,7 +532,8 @@
                                                       frontier records))
                                 (fn-own-view o) nil (fn-own-next-id o)
                                 (fn-own-max-conns o) nil (fn-own-ledger o) nil
-                                (fn-own-facts o) (fn-own-config o) nil nil)))
+                                (fn-own-facts o) (fn-own-config o) nil nil
+                                (fn-own-feed-restart-all (fn-own-feeds o)))))
                  (:instance fn-sn-open-observed-success-has-live-history-relation
                             (groups (fn-sn-groups (fn-own-store o)))
                             (capacity (fn-sn-capacity (fn-own-store o))))
@@ -584,7 +592,7 @@
              (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                           (fn-own-next-id o) (fn-own-max-conns o) p
                           (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
-                          (fn-own-config o) (fn-own-queue o) nil)))
+                          (fn-own-config o) (fn-own-queue o) nil fds)))
    :hints (("Goal" :in-theory (enable fn-own-relation)))))
 
 (defthm fn-own-outcome-preserves-relation
@@ -593,7 +601,11 @@
   :hints (("Goal"
            :use ((:instance fn-own-outcome-body-preserves-relation
                             (p (if (equal (fn-own-pending o) id)
-                                   nil (fn-own-pending o)))))
+                                   nil (fn-own-pending o)))
+                            (fds (if (equal (fn-own-outcome-completion o word)
+                                            :durable)
+                                     (fn-own-feed-durable o (fn-own-inflight o))
+                                     (fn-own-feeds o)))))
            :in-theory (e/d (fn-own-outcome)
                            (fn-own-relation fn-own-outcome-completion
                             fn-served-post-outcome fn-own-advance
@@ -602,6 +614,23 @@
 ; -----------------------------------------------------------------------------
 ; K6: every step, and every finite trace, preserves the relation; the store
 ; inside keeps fn-snt-relation.
+
+; The five feed arms of `fn-own-step' (`:feeds', `:feed-conn',
+; `:feed-replay', `:tick-peer', `:feed-octets') rebuild the owner through
+; `fn-own-with-feeds', changing the THIRTEENTH slot and nothing else, and
+; `fn-own-relation' above does not read that slot.  One lemma over an
+; arbitrary `fds' closes every one of them; without it each arm is its own
+; key checkpoint (`Subgoal 47' and its siblings, measured 2026-09-20).
+(local
+ (defthm fn-own-relation-of-any-feeds
+   (implies (fn-own-relation o)
+            (fn-own-relation
+             (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
+                          (fn-own-next-id o) (fn-own-max-conns o)
+                          (fn-own-pending o) (fn-own-ledger o) (fn-own-clock o)
+                          (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
+                          (fn-own-inflight o) fds)))
+   :hints (("Goal" :in-theory (enable fn-own-relation)))))
 
 (defthm fn-own-step-preserves-relation
   (implies (fn-own-relation o)
@@ -643,7 +672,7 @@
                                                   (fn-sf-records (fn-sn-files store))
                                                   0 0))
                                             nil 0 max-conns nil nil nil nil
-                                            nil nil nil))))
+                                            nil nil nil nil))))
            :in-theory (e/d (fn-own-relation)
                            (fn-own-refresh-preserves-relation fn-own-refresh
                             fn-own-prefix-archive)))))
@@ -1338,7 +1367,13 @@
                                                 nil (fn-own-pending o))
                                             (fn-own-ledger o) (fn-own-clock o)
                                             (fn-own-facts o) (fn-own-config o)
-                                            (fn-own-queue o) nil))))
+                                            (fn-own-queue o) nil
+                                            (if (equal (fn-own-outcome-completion
+                                                        o word)
+                                                       :durable)
+                                                (fn-own-feed-durable
+                                                 o (fn-own-inflight o))
+                                                (fn-own-feeds o))))))
            :in-theory (e/d (fn-own-relation fn-own-outcome)
                            (fn-own-advance fn-own-conn-boundedp
                             fn-served-post-outcome fn-own-outcome-completion

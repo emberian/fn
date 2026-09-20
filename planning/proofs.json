@@ -998,7 +998,7 @@
       "assumptions": [],
       "status": "in-progress",
       "evidence": [],
-      "progress_note": "books/owner-feed.lisp admits with no open form and tests/acl2/owner-feed-tests.lisp runs 98 assertions green (laptop ACL2 8.7, ld over books/peer-feed-invariants then the book, 2026-09-20, lane w10/owner-feed). NOT CERTIFIED: books/owner-feed includes books/peer-feed-invariants, which fails at fn-feed-apply-record-preserves-feedp (residue: the attempt bound in the :feed-sent arm), so no certificate exists for this closure. The owner-side statement over fn-own-step is open because books/served has no certificate on dev."
+      "progress_note": "books/owner-feed and tests/acl2/owner-feed-tests are CERTIFIED as of 2026-09-20, lane w6/peering-feed-4 (laptop ACL2 8.7, evidence build/lanes/w6-peering-feed-4/build/acl2/certify-20260920T212559Z-13370; the persvati closure run-20260920T211802Z-ba78 reached them for the first time). What unblocked them was books/peer-feed-invariants, which now certifies with no open form. books/owner certifies too. The owner-side statement over fn-own-step is still open, and the reason has moved: books/owner-invariants is open at the :open-peer arm of fn-own-step-preserves-relation, not at the feed."
     },
     {
       "id": "PRF-030",
