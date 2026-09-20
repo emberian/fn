@@ -53,6 +53,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import deploy_gate                                             # noqa: E402
 from deploy_gate import (DEFAULT_HOST, GROUPS, GateError, Host,  # noqa: E402
+                         evidence_path, repo_root,
                          LocalHost, SshHost, resolve)
 
 # The pre-realignment measurement, quoted from its own handoff so the
@@ -764,7 +765,10 @@ def main(argv=None) -> int:
     parser.add_argument("commit", help="the commit-ish to measure")
     parser.add_argument("--host", default=DEFAULT_HOST)
     parser.add_argument("--tree", default="dev", help="gate directory prefix on the host")
-    parser.add_argument("--repo", default=str(ROOT))
+    parser.add_argument("--repo", default=None,
+                        help="the fn worktree to read the commit from and "
+                             "write evidence into (default: the one this "
+                             "command was invoked from)")
     parser.add_argument("--jobs", type=int, default=16)
     parser.add_argument("--evidence", default=None)
     parser.add_argument("--keep", action="store_true",
@@ -803,7 +807,7 @@ def main(argv=None) -> int:
                         help="do not run the like-for-like phase")
     args = parser.parse_args(argv)
 
-    repo = Path(args.repo).resolve()
+    repo = Path(args.repo).resolve() if args.repo else repo_root()
     commit, rev = resolve(repo, args.commit)
     if args.dry_run:
         if args.home is None:
@@ -853,8 +857,8 @@ def main(argv=None) -> int:
                 type(error).__name__, error))
     elapsed = time.monotonic() - clock
     date = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
-    target = Path(args.evidence) if args.evidence else (
-        repo / "planning/evidence/scale-{}-{}.md".format(rev, date))
+    target = evidence_path(args.evidence, repo,
+                           "scale-{}-{}.md".format(rev, date))
     gate.evidence(target, started, elapsed)
     print("evidence: {}".format(target))
     bad = [s for s in gate.steps if s.failed]

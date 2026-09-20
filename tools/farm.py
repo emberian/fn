@@ -18,10 +18,24 @@ mirrored tree, starts the runner detached with its own log and status file,
 and returns a run id.  The install is the difference between certifying what
 changed and certifying a whole dependency closure: on 2026-09-20 a lane's
 ``--closure`` run on an empty remote root spent 30 minutes re-certifying the
-substrate for four new books.  ``wait`` publishes the run's pairs back into
-that same cache, so the next lane on the box starts from them.  ``wait`` blocks on that id, printing progress every poll and never
-spinning; it returns the runner's own exit code.  hbox is co-tenant, so its
-runner is wrapped in ``swarm-build``, which enforces the memory cap there.
+substrate for four new books.  ``wait`` blocks on that id, printing progress
+every poll and never spinning; it returns the runner's own exit code.  hbox
+is co-tenant, so its runner is wrapped in ``swarm-build``, which enforces the
+memory cap there.
+
+**The box cache is seeded by the runner, one book at a time.**  The runner
+publishes each pair as that book certifies, so what the box holds tracks what
+has actually been certified at every moment -- including for a run that then
+fails, is killed, or is never waited on.  A wide run on this tree exits
+non-zero while any root carries an open theorem, and publishing on the run's
+verdict meant no lane seeded the box at all: measured on persvati 2026-09-20,
+a run that certified 21 of 22 books left 0 entries and the next submit into
+the same root reported ``installed 0, kept 0, uncached 267``; with the
+per-book publish it reports ``installed 21``
+(``planning/evidence/farm-cache-failed-run-2026-09-20.md``).  ``wait`` sweeps
+the box once more when it returns, on every exit code and on its timeout
+path, and a sweep that printed nothing says so rather than passing for a
+sweep that found nothing.
 """
 
 from __future__ import annotations
@@ -75,8 +89,19 @@ class FarmError(Exception):
     """A farm run that did not start, reported instead of returned as a run id."""
 
 
-def host_settings(host: str) -> dict:
-    return HOSTS.get(host, {"acl2": "acl2", "cache": "~/fn-certcache", "wrap": ""})
+def host_settings(host: str, cache: str | None = None) -> dict:
+    """What this host needs, with `cache` overriding the box's default cache.
+
+    An override is how a measurement isolates itself from the shared cache:
+    the pairs a probe run publishes must not be mixed into what the next
+    lane installs, and a lane reading counts out of the shared cache cannot
+    tell its own run's effect from another lane's.
+    """
+    settings = dict(HOSTS.get(host, {"acl2": "acl2", "cache": "~/fn-certcache",
+                                     "wrap": ""}))
+    if cache:
+        settings["cache"] = cache
+    return settings
 
 
 def run(command: list[str], check: bool = True) -> subprocess.CompletedProcess:
@@ -123,7 +148,8 @@ def expand_remote(host: str, path: Path | str) -> Path:
 
 
 def certs_script(host: str, root: Path, action: str,
-                 origin_kind: str | None = None) -> str:
+                 origin_kind: str | None = None,
+                 cache: str | None = None) -> str:
     """Drive the box's own certificate cache inside the mirrored tree.
 
     The cache lives on the box (``HOSTS[host]["cache"]``), not here, and a
@@ -133,10 +159,10 @@ def certs_script(host: str, root: Path, action: str,
     pairs this run made and `install` accepts them: a finished run root is a
     snapshot, not a live worktree.
     """
-    cache = host_settings(host)["cache"]
+    where = host_settings(host, cache)["cache"]
     kind = f"--origin-kind {origin_kind} " if origin_kind else ""
     return (f"cd {remote_quote(root)} || exit 9; "
-            f"python3 tools/certs.py --cache {remote_quote(cache)} "
+            f"python3 tools/certs.py --cache {remote_quote(where)} "
             f"{kind}{action}")
 
 
@@ -149,13 +175,14 @@ def parse_installed(output: str) -> dict[str, int]:
                     (int(number) for number in found.groups())))
 
 
-def install_from_cache(host: str, remote: Path) -> dict:
+def install_from_cache(host: str, remote: Path, cache: str | None = None) -> dict:
     """Install the box's cached pairs into the mirrored tree, and say how many.
 
     A cache miss is not a reason to refuse the run: the runner certifies what
     it must.  So a failure here is recorded with the run, never raised.
     """
-    answer = ssh(host, certs_script(host, remote, "install"), check=False)
+    answer = ssh(host, certs_script(host, remote, "install", cache=cache),
+                 check=False)
     counts = parse_installed(answer.stdout)
     if counts and answer.returncode == 0:
         return counts
@@ -172,6 +199,15 @@ def record_path(root: Path, identifier: str) -> Path:
     return root / "build" / "farm" / f"{identifier}.json"
 
 
+def run_record(root: Path, identifier: str) -> dict:
+    """What `submit` recorded for this run, or an empty mapping."""
+    try:
+        record = json.loads(record_path(root, identifier).read_text())
+    except (OSError, ValueError):
+        return {}
+    return record if isinstance(record, dict) else {}
+
+
 def remote_root(root: Path, identifier: str, override: str | None = None) -> Path:
     """Where the run lives on the box: the recorded path, or this one.
 
@@ -181,11 +217,7 @@ def remote_root(root: Path, identifier: str, override: str | None = None) -> Pat
     """
     if override:
         return Path(override)
-    try:
-        record = json.loads(record_path(root, identifier).read_text())
-    except (OSError, ValueError):
-        return root
-    return Path(record.get("remote_path", str(root)))
+    return Path(run_record(root, identifier).get("remote_path", str(root)))
 
 
 def push(host: str, root: Path, remote: Path) -> None:
@@ -211,7 +243,7 @@ def push(host: str, root: Path, remote: Path) -> None:
 
 def remote_script(host: str, root: Path, identifier: str, books: list[str],
                   jobs: int, timeout_seconds: int, affected_by: list[str],
-                  closure: bool = False) -> str:
+                  closure: bool = False, cache: str | None = None) -> str:
     """The submit script: every step that can fail exits with its own code.
 
     `cd X && ... &` backgrounds the whole list, so ssh returned 0 whatever
@@ -219,7 +251,7 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
     that died on its first line -- and `submit` printed a run id for a run
     that did not exist.  Each guard here is a distinct non-zero exit.
     """
-    settings = host_settings(host)
+    settings = host_settings(host, cache)
     runner = ["python3", "tools/certify_books.py", "--jobs", str(jobs)]
     for path in affected_by:
         runner.extend(["--affected-by", path])
@@ -260,16 +292,18 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
 
 def submit(host: str, root: Path, books: list[str], jobs: int,
            timeout_seconds: int, affected_by: list[str],
-           remote: Path | None = None, closure: bool = False) -> str:
+           remote: Path | None = None, closure: bool = False,
+           cache: str | None = None) -> str:
     identifier = run_id()
     remote = expand_remote(host, remote) if remote else root
     push(host, root, remote)
-    cached = install_from_cache(host, remote)
+    cached = install_from_cache(host, remote, cache)
     print(f"{identifier}: from {host}'s cache, "
           + ", ".join(f"{name} {value}" for name, value in cached.items()),
           file=sys.stderr)
     started = ssh(host, remote_script(host, remote, identifier, books, jobs,
-                                      timeout_seconds, affected_by, closure),
+                                      timeout_seconds, affected_by, closure,
+                                      cache),
                   check=False)
     if started.returncode != 0:
         raise FarmError(f"{host}: {identifier} did not start under {remote}: "
@@ -285,6 +319,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
         "closure": closure,
         # What the box's cache already held: the run certifies the rest.
         "cache_install": cached,
+        "cache": host_settings(host, cache)["cache"],
         "jobs": jobs,
         "timeout_seconds": timeout_seconds,
         "submitted_at": dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -318,10 +353,19 @@ def parse_progress(output: str) -> dict[str, str]:
 
 
 def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
-         timeout_seconds: int = DEFAULT_WAIT_SECONDS) -> int:
-    """Block until the remote run writes its status file, then fetch evidence."""
+         timeout_seconds: int = DEFAULT_WAIT_SECONDS,
+         cache: str | None = None) -> int:
+    """Block until the remote run writes its status file, then fetch evidence.
+
+    The timeout path fetches too.  Returning 3 without fetching loses every
+    pair the run had already produced: the run keeps going on the box, and
+    the next lane there re-certifies what this one had finished.  So the
+    timeout brings home what exists at that moment and says what it left
+    running, and the run id stays usable for a second `wait`.
+    """
     started = time.monotonic()
     remote = remote_root(root, identifier)
+    cache = cache or run_record(root, identifier).get("cache")
     while True:
         progress = parse_progress(ssh(host, progress_script(remote, identifier),
                                       check=False).stdout)
@@ -334,21 +378,28 @@ def wait(host: str, identifier: str, root: Path, poll: int = POLL_SECONDS,
         if time.monotonic() - started >= timeout_seconds:
             print(f"{identifier} on {host}: still running after "
                   f"{timeout_seconds}s; not waiting further", file=sys.stderr)
+            fetch(host, identifier, root, remote, cache)
+            print(f"{identifier} on {host}: left running under {remote}; "
+                  f"{progress.get('MARKERS', '0')} books were certified when "
+                  f"this wait gave up, and their pairs are fetched and "
+                  f"published.  Run `farm.py wait {host} {identifier}` again "
+                  f"for the rest.", file=sys.stderr)
             return 3
         SLEEP(poll)
     try:
         code = int(state)
     except ValueError:
         code = 1
-    fetch(host, identifier, root, remote)
+    fetch(host, identifier, root, remote, cache)
     print(f"{identifier} on {host}: finished with exit code {code}")
     return code
 
 
 def fetch(host: str, identifier: str, root: Path,
-          remote: Path | None = None) -> None:
+          remote: Path | None = None, cache: str | None = None) -> None:
     """Bring back the evidence directory, the new pairs, and cache the pairs."""
     remote = remote or remote_root(root, identifier)
+    cache = cache or run_record(root, identifier).get("cache")
     log = ssh(host, f"cat {remote_quote(remote)}/build/farm/{identifier}.log",
               check=False).stdout
     (root / "build" / "farm").mkdir(parents=True, exist_ok=True)
@@ -364,12 +415,24 @@ def fetch(host: str, identifier: str, root: Path,
     # The box keeps its own copy: the next lane there installs these instead
     # of certifying them again.  The runner publishes after each root, so this
     # is the sweep for a run whose last root, or whose own publish, failed.
-    shared = ssh(host, certs_script(host, remote, "publish", "run"), check=False)
+    shared = ssh(host, certs_script(host, remote, "publish", "run", cache),
+                 check=False)
     for line in shared.stdout.strip().splitlines():
         print(f"{host}: {line}")
+    if shared.returncode != 0 or not shared.stdout.strip():
+        # A `cd` that misses (exit 9) or an ssh that dies prints nothing, and
+        # a silent sweep reads exactly like a sweep that found nothing to do.
+        print(f"{host}: the cache sweep under {remote} exited "
+              f"{shared.returncode} with no report; the run's pairs are NOT "
+              f"in this box's cache", file=sys.stderr)
     # The pairs were produced under the *remote* path, which is what their
     # sub-book entries name; record that as their origin.
-    report = certs.publish(root, certs.cache_directory(),
+    manifests = certs.load_manifests(root)
+    if not manifests:
+        print(f"{identifier}: no certification manifest came back under "
+              f"{root}/build/acl2; nothing to publish into the local cache",
+              file=sys.stderr)
+    report = certs.publish(root, certs.cache_directory(), manifests,
                            origin=str(remote), origin_host=host,
                            origin_kind="run")
     for line in report.lines():
@@ -412,6 +475,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--wait-seconds", type=int, default=DEFAULT_WAIT_SECONDS,
                         help="how long `wait` blocks before giving up")
     parser.add_argument("--poll-seconds", type=int, default=POLL_SECONDS)
+    parser.add_argument("--cache", default=None,
+                        help="the certificate cache to use ON THE HOST "
+                             "(default: the box's own; `submit` records it "
+                             "and `wait` reuses what was recorded)")
     parser.add_argument("--root", default=str(ROOT))
     parser.add_argument("--remote-root", default=None,
                         help="the path to use on the host (default: --root); a "
@@ -426,14 +493,15 @@ def main(argv: list[str] | None = None) -> int:
                                 list(arguments.affected_by),
                                 Path(arguments.remote_root) if arguments.remote_root
                                 else None,
-                                arguments.closure)
+                                arguments.closure, arguments.cache)
             print(identifier)
             return 0
         if arguments.action == "wait":
             if len(arguments.rest) != 1:
                 parser.error("wait takes exactly one run id")
             return wait(arguments.host, arguments.rest[0], root,
-                        arguments.poll_seconds, arguments.wait_seconds)
+                        arguments.poll_seconds, arguments.wait_seconds,
+                        arguments.cache)
         remote = (expand_remote(arguments.host, arguments.remote_root)
                   if arguments.remote_root else root)
         return status(arguments.host, remote)
