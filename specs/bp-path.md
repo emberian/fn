@@ -35,6 +35,17 @@ forwarding and convergence-layer operation. LTP is a relevant convergence-layer
 path to exercise after the first BP application seam; TCP-based laboratory
 interoperability does not establish LTP or space-link qualification.
 
+That LTP seam has now been exercised once. A pinned ION-DTN build carried an
+actual fn request ADU over LTP/UDP and fn's receiver accepted it; interruption
+and expiry behaved as this spec requires. The
+[feasibility evidence](../tests/evidence/2026-09-19-ltp-feasibility.md) and
+[packet](../planning/ltp-feasibility.md) record two blockers before an LTP
+profile is possible: ION has no non-destructive receive, so an app-level durable
+staging copy is mandatory and its delete is fn's own; and ION returns no bundle
+identifier to the sending application, so a durable attempt has no transport
+handle to bind and the receipt return leg was not attempted. This is
+feasibility, not interoperability qualification and not a mission profile.
+
 Keep the BP implementation behind a narrow adapter because it is a separate
 trust and interoperability boundary. Exercise that boundary early. BP-backed
 exchange must not wait for complete NNTP, disk indexes, compaction or a web UI.

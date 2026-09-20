@@ -63,10 +63,11 @@
         "tests/evidence/2026-09-18-assurance.md",
         "tests/evidence/2026-09-18-assurance.json",
         "books/node-traces.lisp",
-        "books/store-node-resolution-traces.lisp",
+        "books/store-node-resolution.lisp",
         "tests/evidence/2026-09-18-composed-store.md",
         "tests/evidence/2026-09-18-bp-composition-assurance.md",
-        "tests/evidence/2026-09-18-bp-composition-assurance.json"
+        "tests/evidence/2026-09-18-bp-composition-assurance.json",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
       "progress_note": "Actual finite node traces preserve state and prior bindings; mixed live file/node traces including refusal, known abort and recovery preserve the phase/history relation. Provenance, complete runtime guards and physical refinement remain open. BP joint durable/pending sender binding and fixed-Store receiver state/context/decision invariants now hold through actual transitions and arbitrary finite replay; changing-Store composition remains open."
     },
@@ -209,7 +210,8 @@
         "tests/evidence/2026-09-18-assurance.md",
         "tests/evidence/2026-09-18-assurance.json",
         "books/bp-adu.lisp",
-        "tests/evidence/2026-09-18-bp-workflow.md"
+        "tests/evidence/2026-09-18-bp-workflow.md",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
       "progress_note": "Primitive and full schema-0 value round trips and accepted-input canonicality are certified. Exact article source preservation remains checked. An independent cbor2 6.1.4 run passed 38 cases. Native/batch/signature schemas and domain-separated preimages remain open. Experimental BP request/receipt ADU roundtrip and exact accepted-input canonicality are also certified, without selecting D01/D09. D01 was subsequently selected by the user for exact authored source bytes and separate projections; native encoding/preimage proofs and D09 remain open."
     },
@@ -234,7 +236,11 @@
         "fn-wire-next-preserves-statep",
         "fn-wire-next-consumed-prefix-reconstructs-input",
         "fn-wildmat-pattern-matchp-is-anchored-reference",
-        "fn-wildmat-rightmost-match-is-last-reference-match"
+        "fn-wildmat-rightmost-match-is-last-reference-match",
+        "fn-served-step-partition-independence",
+        "fn-served-reply-stream-is-partition-independent",
+        "fn-served-feed-of-append",
+        "fn-served-run-is-the-concatenated-step"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -243,9 +249,10 @@
         "books/wire-invariants.lisp",
         "books/wildmat-matcher-invariants.lisp",
         "tests/evidence/2026-09-18-assurance.md",
-        "tests/evidence/2026-09-18-assurance.json"
+        "tests/evidence/2026-09-18-assurance.json",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "progress_note": "Fixed-mode framing composition, production event-yield preservation and exact consumed-prefix/suffix accounting are certified. Wildmat DP matches independent anchored semantics. Session-sensitive mode changes and complete protocol/effect refinement remain open."
+      "progress_note": "Fixed-mode framing composition, production event-yield preservation and exact consumed-prefix/suffix accounting are certified. Wildmat DP matches independent anchored semantics. Session-sensitive mode changes and complete protocol/effect refinement remain open. The served path is now the subject: books/served states partition independence of fn-served-step and of the whole reply stream, which is the function tools/run_reader.py calls once per socket read, so the wire pending_subject note is closed for framing. The concurrent server (books/owner) still does not certify."
     },
     {
       "id": "PRF-007",
@@ -332,16 +339,18 @@
         "tests/test_store_process_crash.py",
         "tests/evidence/2026-09-18-assurance.md",
         "tests/evidence/2026-09-18-assurance.json",
-        "books/store-node-resolution-traces.lisp",
+        "books/store-node-resolution.lisp",
         "books/store-observed.lisp",
         "tests/acl2/store-observed-tests.lisp",
         "tests/evidence/2026-09-18-composed-store.md",
         "tests/evidence/2026-09-18-bp-composition-assurance.md",
         "tests/evidence/2026-09-18-bp-composition-assurance.json",
         "tests/test_bp_receive_process_crash.py",
-        "books/bp-receiver-trace-invariants.lisp"
+        "books/bp-receiver-trace-invariants.lisp",
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "planning/evidence/deploy-cce4b11-2026-09-20.md"
       ],
-      "progress_note": "Arbitrary mixed live/file traces including refusal/abort preserve exact ready-state replay and prior acknowledged records, conditional on the kernel crash model. Observed-image opening uses actual recovery with no fabricated acknowledgements or barriers; zero through four barriers remain gated, the fifth opens ready. Host adoption passed the integrated suite; physical byte correspondence, freshness and platform qualification remain separate from these targeted proofs. Receiver logical replay now preserves exact contexts and committed receipt ADUs against a fixed Store. Five actual receiver process-death cuts passed in the 133-test suite; process death is separate from power loss and general FNWF/FNRJ byte/live/replay refinement."
+      "progress_note": "Arbitrary mixed live/file traces including refusal/abort preserve exact ready-state replay and prior acknowledged records, conditional on the kernel crash model. Observed-image opening uses actual recovery with no fabricated acknowledgements or barriers; zero through four barriers remain gated, the fifth opens ready. Host adoption passed the integrated suite; physical byte correspondence, freshness and platform qualification remain separate from these targeted proofs. Receiver logical replay now preserves exact contexts and committed receipt ADUs against a fixed Store. Five actual receiver process-death cuts passed in the 133-test suite; process death is separate from power loss and general FNWF/FNRJ byte/live/replay refinement. Fencing, barrier and retention keystones are unchanged in statement and now run with the whole-state recognizers off the executable path (24 calls to 0 in the store cluster, 10 to 0 in core), carried under mbe instead. Real process evidence: the deploy gate SIGKILLed the server inside an open POST and the acknowledged article reread byte-for-byte after recovery. Byte-level torn writes remain the DESIGN-crash-model-v2 design, which is review finding D4."
     },
     {
       "id": "PRF-008",
@@ -417,7 +426,8 @@
         "books/index.lisp",
         "tests/acl2/index-tests.lisp",
         "specs/index.md",
-        "tests/evidence/2026-09-18-reader-checkpoint-index.md"
+        "tests/evidence/2026-09-18-reader-checkpoint-index.md",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
       "progress_note": "A derived group/local-number/message-id list is sound and complete against source memberships; its independent query agrees with authoritative source range enumeration for rebuilt indexes. The malformed public query refuses. Host adoption, persistent representation and indexing performance remain open."
     },
@@ -468,9 +478,10 @@
         "tests/evidence/2026-09-18-assurance.md",
         "tests/evidence/2026-09-18-assurance.json",
         "books/exchange-invariants.lisp",
-        "tests/acl2/exchange-invariants-tests.lisp"
+        "tests/acl2/exchange-tests.lisp",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "progress_note": "Admissible ingest and arbitrary policy-changing traces preserve state and conflicting facts. Capacity-limited admission is intentionally not order-independent. Transfer staging correctness/work is proved separately; persistent progress, dependency authority, portable batches and receipts remain open."
+      "progress_note": "Admissible ingest and arbitrary policy-changing traces preserve state and conflicting facts. Capacity-limited admission is intentionally not order-independent. Transfer staging correctness/work is proved separately; persistent progress, dependency authority, portable batches and receipts remain open. The merge and staging keystones are unchanged. Two-peer convergence is the K3 seam of DESIGN-peering-summary and is stated in no book."
     },
     {
       "id": "PRF-012",
@@ -531,7 +542,8 @@
         "tests/evidence/2026-09-18-bp-composition-assurance.json",
         "books/bp-workflow-binding-invariants.lisp",
         "books/bp-receiver-trace-invariants.lisp",
-        "specs/bp-receiver-proofs.md"
+        "specs/bp-receiver-proofs.md",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
       "progress_note": "Certified sender finite traces preserve state, exact node and joint durable/pending work binding; transport traces preserve recorded receipts. Receiver actual record/replay transitions preserve typed context/Store/receipt relations against a fixed Store, require matching committed journal decisions for receipt emission, and retain byte-identical existing receipt ADUs. Real BP return and five receiver process-death cuts have separate test evidence under trusted local policy. General journal byte/live/replay and host refinement, receiver composition with Store evolution, authenticated cooperative-peer handoff and physical durability remain open; no complete handoff theorem is claimed."
     },
@@ -594,8 +606,8 @@
         "books/retention.lisp",
         "books/node.lisp",
         "books/replay.lisp",
-        "tests/acl2/acceptance-guards-tests.lisp",
-        "tests/acl2/replay-guards-tests.lisp",
+        "tests/acl2/acceptance-tests.lisp",
+        "tests/acl2/replay-tests.lisp",
         "books/store-files.lisp",
         "books/store-node.lisp",
         "books/store-node-resolution.lisp",
@@ -603,13 +615,15 @@
         "tests/acl2/store-node-guards-tests.lisp",
         "books/transfer.lisp",
         "books/exchange.lisp",
-        "tests/acl2/exchange-guards-tests.lisp",
+        "tests/acl2/exchange-tests.lisp",
         "tests/evidence/2026-09-18-composed-store.md",
         "tests/evidence/2026-09-18-reader-checkpoint-index.md",
         "tests/evidence/2026-09-18-bp-guards.md",
-        "tests/evidence/2026-09-18-bp-guards.json"
+        "tests/evidence/2026-09-18-bp-guards.json",
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "planning/evidence/deploy-cce4b11-2026-09-20.md"
       ],
-      "progress_note": "Composed storage host adoption passed the 75-root/67-test batch. Seventeen existing base graphs now have 678 guarded functions, adding NNTP115 and semantic fields30 with unchanged existing logic; the derived index separately has 20 guarded functions. NNTP retains one explicit EC-CALL for total wildcard behavior. The host uses interpreted ACL2; full physical byte/effect correspondence and platform qualification remain open. The complete 41-function BP ADU codec now has verified guards after closing five streaming decoder functions without logical changes. An actual seven-book BP inventory records 97 functions still awaiting guard verification outside that codec; those remain a separate execution gap."
+      "progress_note": "Composed storage host adoption passed the 75-root/67-test batch. Seventeen existing base graphs now have 678 guarded functions, adding NNTP115 and semantic fields30 with unchanged existing logic; the derived index separately has 20 guarded functions. NNTP retains one explicit EC-CALL for total wildcard behavior. The host uses interpreted ACL2; full physical byte/effect correspondence and platform qualification remain open. The complete 41-function BP ADU codec now has verified guards after closing five streaming decoder functions without logical changes. An actual seven-book BP inventory records 97 functions still awaiting guard verification outside that codec; those remain a separate execution gap. The host's :program-mode chunk loop and its duplicate reply framing are gone: books/served owns both, in logic mode with guards verified. host/scheduler-host.lisp is still :program mode, and books/owner -- the host of the real service -- does not certify, so no run executes the proved core through the service entry point."
     },
     {
       "id": "PRF-015",
@@ -645,7 +659,11 @@
         "fn-nntp-step-preserves-carried-projection",
         "fn-nntp-command-effects-well-formed",
         "fn-nntp-step-effects-well-formed",
-        "fn-nntp-closed-step-has-no-effects"
+        "fn-nntp-closed-step-has-no-effects",
+        "fn-served-step-preserves-connp",
+        "fn-served-run-preserves-connp",
+        "fn-served-step-effects-are-typed",
+        "fn-served-run-effects-are-typed"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -659,9 +677,10 @@
         "books/nntp-invariants.lisp",
         "books/nntp-effects.lisp",
         "tests/test_reader_partitions.py",
-        "tests/evidence/2026-09-18-reader-checkpoint-index.md"
+        "tests/evidence/2026-09-18-reader-checkpoint-index.md",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "progress_note": "Actual implemented command/step and arbitrary finite raw event traces preserve session/cursor consistency under a valid archive projection. All dispatcher branches produce typed reply octets/close effects; closed sessions emit none. Exact bridge partitions and reconnect cases pass targeted tests. Full RFC responses/READER bundle, injection/POST and effects-to-I/O refinement remain open."
+      "progress_note": "Actual implemented command/step and arbitrary finite raw event traces preserve session/cursor consistency under a valid archive projection. All dispatcher branches produce typed reply octets/close effects; closed sessions emit none. Exact bridge partitions and reconnect cases pass targeted tests. Full RFC responses/READER bundle, injection/POST and effects-to-I/O refinement remain open. fn-served-step and fn-served-run preserve the connection and type their effects, over the same fn-nntp-step the session keystones are about; the w5/legacy-commands branches (XOVER, HDR/XHDR, LIST HEADERS/ACTIVE.TIMES) are covered by the unchanged statements of fn-nntp-step-effects-well-formed and fn-nntp-step-preserves-consistent-session. Open: NNT-001's capability/dispatch mismatch, and the owner."
     },
     {
       "id": "PRF-016",
@@ -700,7 +719,9 @@
         "fn-transfer-missing-ranges-work-public-bound",
         "fn-article-parse-work-value",
         "fn-article-parse-work-input-bound",
-        "fn-article-parse-work-profile-bound"
+        "fn-article-parse-work-profile-bound",
+        "fn-served-feed-steps-bounded-by-chunk-length",
+        "fn-served-step-nntp-steps-is-bounded"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -737,9 +758,10 @@
         "books/article-public-work.lisp",
         "books/article-public-bound.lisp",
         "specs/article-work.md",
-        "tests/evidence/2026-09-18-article-work.md"
+        "tests/evidence/2026-09-18-article-work.md",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "progress_note": "Article/UTF-8/wildmat output recognizers and DP correspondence are certified. Whole matcher work has a value-corresponding polynomial bound; public transfer missing-range work has a hypothesis-free bound covering malformed validation, structural label equality, lookup and traversal. These declared operation costs exclude numeric bit complexity/runtime allocation. Other parser work, peak allocation and physical capacity remain open. Complete public article parsing now has unconditional exact value correspondence and structural-work input/profile bounds, including malformed inputs and repeated folds. This closes the article parser traversal-cost gap, not peak allocation or runtime costs."
+      "progress_note": "Article/UTF-8/wildmat output recognizers and DP correspondence are certified. Whole matcher work has a value-corresponding polynomial bound; public transfer missing-range work has a hypothesis-free bound covering malformed validation, structural label equality, lookup and traversal. These declared operation costs exclude numeric bit complexity/runtime allocation. Other parser work, peak allocation and physical capacity remain open. Complete public article parsing now has unconditional exact value correspondence and structural-work input/profile bounds, including malformed inputs and repeated folds. This closes the article parser traversal-cost gap, not peak allocation or runtime costs. The served fold's step count is bounded by the chunk length, so a socket read of n octets cannot drive an unbounded number of NNTP steps. The pessimistic number, with its scope: the closed-form work ceiling of the public article parser is roughly 16,000x the measured traversal cost of that same parser (tests/evidence/2026-09-18-article-work.md); it is an instrumented shadow, not a host measurement."
     },
     {
       "id": "PRF-017",

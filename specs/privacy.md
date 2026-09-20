@@ -6,6 +6,19 @@ privacy boundaries designed now. D09 and the later group protocol remain open.
 No encrypted-group protocol
 or library has been selected, implemented, or audited for fn.
 
+The [private-profile packet](../planning/private-profile-packet.md) (C3-08)
+carries the threat and metadata-leakage matrix, one section per row of the
+decision agenda below, the archive/key-separation design, the equality-leakage
+policy for content ids, and the library evaluation with its citations. The
+admissibility policy a site applies to a late letter is executable:
+[`books/membership-epochs.lisp`](../books/membership-epochs.lisp) with its
+keystones in
+[`books/membership-epochs-invariants.lisp`](../books/membership-epochs-invariants.lisp)
+and its witnesses and teeth in
+[`tests/acl2/membership-epochs-tests.lisp`](../tests/acl2/membership-epochs-tests.lisp).
+That model is a policy model: no keys, no ciphertext, no digest, and no
+cryptographic claim follows from certifying it.
+
 ## Recommendation and candidates
 
 Build shared community groups first while specifying privacy boundaries now.
@@ -63,6 +76,23 @@ state rollback with the chosen implementation. Define when revocation is effecti
 for each sender. A disconnected sender cannot act on a change it has not received.
 Do not invent a new ratchet/fork-merging construction to hide that tradeoff.
 
+Each design case now names where it is exercised. A theorem covers the policy
+question only; none of them is evidence about an implementation, and the
+integration rows stay open until a library is selected and driven.
+
+| Design case | Exercised by |
+| --- | --- |
+| Offline membership changes (two sites commit different removals while partitioned) | `fn-me-merge-exposes-the-partition`, `fn-me-site-merge-never-revises-admissibility`, `fn-me-site-merge-preserves-chain`; packet §3.2 |
+| Delayed messages (a letter from an unreached epoch; a letter from an expired one) | `fn-me-ahead-message-is-held`, `fn-me-hold-count-bounded`, `fn-me-hold-resolves-on-reaching-epoch`; packet §3.4 |
+| Revocation effectiveness per sender | `fn-me-revoked-sender-is-not-admitted`, `fn-me-revoked-refusal-is-monotone`, `fn-me-revoked-scan-stable-under-prefix`, `fn-me-roster-fold-omits-removed`; packet §3.2 |
+| Device loss and rejoin | Packet §3.3 and §3.5 (RFC 9750 §6.6 rejoin; archive key as the recovery authority). Open: no model |
+| Compromise (a removed member retaining old state) | Packet §6.1 and §6.2 (post-compromise security is the MLS/HPKE trade), and the "what this model does not claim" note in `books/membership-epochs.lisp`. Open: no model |
+| Replay | Packet §3.6 and §6.1 (RFC 9750 §8.6: MLS does not prevent intra-epoch replay; fn adds a unique message identifier). Open: no model |
+| Backups and state rollback | Packet §3.5 and §4 (crypto-state adapter contract). Open: integration validation, not a theorem |
+| Monotonicity of the decision in local knowledge | `fn-me-revoked-refusal-is-monotone`, `fn-me-adopt-extends-chain`, `fn-me-adopt-advances-epoch` |
+| Metadata leakage of fn's actual artifacts | Packet §2 |
+| Equality leakage of content ids | Packet §5 |
+
 ## Private-profile decision agenda
 
 | Question | Example to resolve |
@@ -75,6 +105,11 @@ Do not invent a new ratchet/fork-merging construction to hide that tradeoff.
 | Authorship | Are private statements publicly attributable, group-attributable, or intended to be deniable? |
 | Metadata | What can a relay infer from identifiers, sizes, inventories, and receipts? |
 | Crypto lifetime | Which quantum/longevity assumptions and upgrades fit the archive horizon? |
+
+The packet's §3 answers each agenda row above with a concrete recommendation
+and the alternative that was not taken; §6 evaluates MLS (openmls, mls-rs) and
+HPKE-based sender keys against fn's disconnection facts; §7 lists what would
+have to be true for private groups to ship. No protocol is selected there.
 
 Evaluate published security analysis and current implementation/audit status
 when selecting a library. ACL2 can prove fn's modeled integration behavior under

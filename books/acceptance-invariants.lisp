@@ -1,6 +1,15 @@
 ; General logical acceptance preservation, with no disk or crypto claims.
+;
+; This book opens the acceptance recognizers and transitions locally; nothing
+; here opens a record.  Its export theory keeps the keystones and withdraws
+; the allocator lemmas that are proof vocabulary.
 (in-package "ACL2")
 (include-book "acceptance")
+
+(local (in-theory (enable fn-articlep fn-pendingp fn-statep fn-initial-state
+                          fn-install-pending fn-clear-pending
+                          fn-accept-prepare fn-accept-complete
+                          fn-accept-recover)))
 
 (defthm fn-bump-preserves-nexts
   (implies (fn-nexts-for-p configured nexts)
@@ -73,8 +82,7 @@
 (defthm fn-prepare-preserves-state
   (implies (fn-statep s)
            (fn-statep
-            (fn-accept-prepare s generation msgid payload groups)))
-  :hints (("Goal" :in-theory (enable fn-accept-prepare fn-statep))))
+            (fn-accept-prepare s generation msgid payload groups))))
 
 (defthm fn-advance-preserves-nexts
   (implies (fn-nexts-for-p configured nexts)
@@ -188,18 +196,15 @@
 (defthm fn-install-preserves-state
   (implies (and (fn-statep s)
                 (consp (fn-state-pending s)))
-           (fn-statep (fn-install-pending s)))
-  :hints (("Goal" :in-theory (enable fn-install-pending fn-statep))))
+           (fn-statep (fn-install-pending s))))
 
 (defthm fn-complete-preserves-state
   (implies (fn-statep s)
-           (fn-statep (fn-accept-complete s txid generation completion-status)))
-  :hints (("Goal" :in-theory (enable fn-accept-complete))))
+           (fn-statep (fn-accept-complete s txid generation completion-status))))
 
 (defthm fn-recover-preserves-state
   (implies (fn-statep s)
-           (fn-statep (fn-accept-recover s txid generation recovery-result)))
-  :hints (("Goal" :in-theory (enable fn-accept-recover))))
+           (fn-statep (fn-accept-recover s txid generation recovery-result))))
 
 ; Existing bindings retain the entire article record: payload, memberships,
 ; and archive pin, including when a different pending article is published.
@@ -210,7 +215,8 @@
                    (fn-state-articles
                     (fn-accept-prepare s generation msgid payload groups)))
                   (fn-find-article existing-msgid (fn-state-articles s))))
-  :hints (("Goal" :in-theory (disable fn-statep fn-state-articles fn-accept-prepare fn-find-article))))
+  :hints (("Goal" :in-theory (disable fn-statep fn-accept-prepare
+                                      fn-find-article))))
 
 (defthm fn-install-preserves-existing-message-id-binding
   (implies (and (fn-statep s)
@@ -218,8 +224,7 @@
                 (fn-acceptedp msgid (fn-state-articles s)))
            (equal (fn-find-article msgid
                                   (fn-state-articles (fn-install-pending s)))
-                  (fn-find-article msgid (fn-state-articles s))))
-  :hints (("Goal" :in-theory (enable fn-statep fn-install-pending))))
+                  (fn-find-article msgid (fn-state-articles s)))))
 
 (defthm fn-complete-preserves-existing-message-id-binding
   (implies (and (fn-statep s)
@@ -227,8 +232,7 @@
            (equal (fn-find-article
                    msgid (fn-state-articles
                           (fn-accept-complete s txid generation completion-status)))
-                  (fn-find-article msgid (fn-state-articles s))))
-  :hints (("Goal" :in-theory (enable fn-accept-complete))))
+                  (fn-find-article msgid (fn-state-articles s)))))
 
 (defthm fn-recover-preserves-existing-message-id-binding
   (implies (and (fn-statep s)
@@ -236,19 +240,21 @@
            (equal (fn-find-article
                    msgid (fn-state-articles
                           (fn-accept-recover s txid generation recovery-result)))
-                  (fn-find-article msgid (fn-state-articles s))))
-  :hints (("Goal" :in-theory (enable fn-accept-recover))))
+                  (fn-find-article msgid (fn-state-articles s)))))
 
 ; No two distinct committed article records acquire the same (group . number).
 (defthm fn-state-has-fresh-local-numbers
   (implies (fn-statep s)
            (fn-articles-freshp (fn-state-articles s))))
 
+; The three facts below are corollaries: the invariant projected through the
+; preservation keystones.  They are not registry events and not rewrite rules.
 (defthm fn-prepare-preserves-local-number-uniqueness
   (implies (fn-statep s)
            (fn-articles-freshp
             (fn-state-articles
              (fn-accept-prepare s generation msgid payload groups))))
+  :rule-classes nil
   :hints (("Goal" :use ((:instance fn-state-has-fresh-local-numbers
                         (s (fn-accept-prepare s generation msgid payload groups))))
            :in-theory (disable fn-statep fn-articles-freshp fn-accept-prepare))))
@@ -258,6 +264,7 @@
            (fn-articles-freshp
             (fn-state-articles
              (fn-accept-complete s txid generation completion-status))))
+  :rule-classes nil
   :hints (("Goal" :use ((:instance fn-state-has-fresh-local-numbers
                         (s (fn-accept-complete s txid generation completion-status))))
            :in-theory (disable fn-statep fn-articles-freshp fn-accept-complete))))
@@ -267,6 +274,36 @@
            (fn-articles-freshp
             (fn-state-articles
              (fn-accept-recover s txid generation recovery-result))))
+  :rule-classes nil
   :hints (("Goal" :use ((:instance fn-state-has-fresh-local-numbers
                         (s (fn-accept-recover s txid generation recovery-result))))
            :in-theory (disable fn-statep fn-articles-freshp fn-accept-recover))))
+
+; -----------------------------------------------------------------------------
+; Export.  Keystones stay enabled: the four preservation theorems, the four
+; message-id binding theorems, `fn-watermark-does-not-conflict',
+; `fn-allocate-at-watermark', `fn-state-has-fresh-local-numbers',
+; `fn-pending-to-article-valid' and `fn-accepted-iff-id-member'.  The allocator
+; and watermark lemmas are proof vocabulary and are withdrawn.
+(deftheory fn-acceptance-invariants-vocabulary
+  '(fn-bump-preserves-nexts
+    fn-next-positive
+    fn-next-bump-other
+    fn-next-bump-same
+    fn-allocate-valid-memberships
+    fn-watermark-bump-other
+    fn-allocated-watermark-bump-other
+    fn-advance-preserves-nexts
+    fn-next-bump-monotone
+    fn-next-advance-monotone
+    fn-next-advance-after-bump-greater
+    fn-next-advance-greater
+    fn-below-preserved-by-advance
+    fn-articles-below-preserved-by-advance
+    fn-watermark-memberships-below-advance
+    fn-subset-cons-right
+    fn-subset-self
+    fn-below-append
+    fn-flatten-articles-below
+    fn-watermark-pair-not-below-member))
+(in-theory (disable fn-acceptance-invariants-vocabulary))
