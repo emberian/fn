@@ -180,6 +180,36 @@ pairwise distinct block numbers, payload is number 1, §4.1),
 includes its own zero-filled CRC field, as for the primary block, and reuses
 `fn-bpp-crc16`/`fn-bpp-crc32c`.
 
+### 1.4.1 Status, 2026-09-20 (lane w9/dtn-2)
+
+`books/bp-bundle.lisp` exists and the names above are its names, with three
+differences the design did not anticipate and this section records rather
+than hides:
+
+- The decoder's per-block bound is a book constant (`*fn-bpb-max-data*`), not
+  the caller's `limit`. Two bounds, both applied before allocation: the whole
+  input against the caller's limit first, then each declared byte-string
+  length against the per-block bound before any `take`. Discharging the
+  round trip against the caller's limit would have required a length
+  arithmetic the block recognizer already carries.
+- The payload block is a field of `fn-bpb-bundle`, not the last element of
+  its block list, because RFC 9171 section 4.1 requires it last and unique
+  and "last" is not a property to re-derive at every use.
+- `fn-bpb-block-numbers-unique` is not a separate theorem: pairwise-distinct
+  numbers, no block numbered 0 or 1 among the canonical blocks, and the
+  payload block numbered 1 are conjuncts of `fn-bpb-bundlep`, which
+  `fn-bpb-decode-yields-bundle` establishes for every accepted input. A
+  separate theorem restating a conjunct of the recognizer would be a
+  corollary (AGENTS.md, "cite keystones, never corollaries").
+
+Still open at 1.4, and not claimed: the CRC over a canonical block is
+computed in the logic and checked, but no vector from another implementation
+pins it. The `bp7` crate's published samples are primary blocks, which
+`tests/acl2/bp-primary-tests.lisp` already uses; a canonical-block vector
+wants a capture from the dtn7 interop, and until one is recorded in
+`tests/bp-dtn7/` the canonical-block CRC is exercised only against fn's own
+encoder.
+
 ### 1.5 The processing machine: `books/bp-node.lisp`
 
 State:
@@ -385,6 +415,36 @@ where `fn-bp-observe-transport` cannot close a work
 (`fn-bp-observe-transport-never-moves-status-backward` and the receipt
 requirement in bp-workflow.md). That is the whole force of REP-006 and
 RET-003 at the bundle layer.
+
+#### 1.5.1 Status, 2026-09-20 (lane w9/dtn-2)
+
+`books/bp-node.lisp` exists and is **two ends of this machine, not the
+machine**. What it has: `fn-bpn-send`, `fn-bpn-receive` with the three
+outcomes, `fn-bpn-expiry` over `fn-clock-expiry-decision`,
+`fn-bpn-hop-exceededp` and `fn-bpn-next-hop-count`, and
+`fn-bpn-forward-decision` restricted to those two questions.
+
+Open, and each one is a named absence rather than a weakened claim:
+
+- `fn-bpn-make-state`, `fn-bpn-statep`, the bundle list, the retention
+  constraints, `fn-bpn-step` and `fn-bpn-trace`: none exists. The theorems
+  of section 1.6 are stated against `fn-bpn-step` and therefore have no
+  subject yet; T1 to T6 are **not** proved and nothing in this tree claims
+  them.
+- The FNBS record family and the `(:bpn-sequence n)` durable frontier of
+  section 1.3: absent. `host/native/bp.lisp` takes the sequence number as an
+  argument and says in its own header that a restarted operator must not
+  reuse one. This is the gap that keeps the node from being restart-safe.
+- Reassembly: `fn-bpn-receive` refuses a fragment (`:fragment-not-reassembled`)
+  rather than reassembling it. `books/bp-fragment` has the reassembly and is
+  not wired in.
+- Status reports (section 6.1.1) and `fn-bpn-make-report`: absent. A received
+  administrative record is decoded as a bundle like any other and its payload
+  is handed out as an ADU; nothing turns it into a transport observation.
+- Dispatch: `fn-bpn-receive` does not decide local delivery against
+  forwarding, because there is no routing table here. The host journals the
+  accepted ADU; `books/scheduler` owns the contact and `books/bp-receipt`
+  owns the receiver path, and joining them is the next packet.
 
 ### 1.6 Theorems the node must carry
 

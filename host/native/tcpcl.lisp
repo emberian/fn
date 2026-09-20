@@ -88,6 +88,19 @@
 ;;; name are both durable before its acknowledgement is released.  An ambiguous
 ;;; failure is not a refusal: it is uncertain, and the caller never acks.
 
+(defvar *fnn-tcl-deliver* nil
+  "When non-nil, a function (conn xfer-id octets) that takes custody of one
+completed inbound transfer in place of the plain spool file.  It runs inside
+the same barrier: the XFER_ACK for that transfer is already held and is
+released only after this returns, so nothing is acknowledged before the
+record under it is durable, and an `fnn-store-indeterminate' from it drops
+the ack exactly as a failed staging does.
+
+host/native/bp.lisp installs `fn-bpn-receive' here, which is what makes the
+`bp' verb a BPv7 node rather than a spool: the octets become a decoded
+bundle, its lifetime and hop count are decided, and its ADU is what lands in
+the journal.  Nothing else binds this.")
+
 (defun fnn-tcl-spool-dir (root)
   (handler-case (fnn-mkdir root #o700)
     (fnn-os-error (e) (unless (eql (fnn-os-errno e) sb-posix:eexist) (error e))))
@@ -145,7 +158,10 @@
         (:bundle-received
          ;; The ack for this transfer is already in `held'.  Stage first; only
          ;; a completed barrier releases it.
-         (let ((path (handler-case (fnn-tcl-stage conn (second event) (third event))
+         (let ((path (handler-case (if *fnn-tcl-deliver*
+                                       (funcall *fnn-tcl-deliver*
+                                                conn (second event) (third event))
+                                     (fnn-tcl-stage conn (second event) (third event)))
                        (fnn-store-indeterminate (e)
                          (fnn-tcl-drop conn)
                          (incf (fnn-tclc-uncertain conn))

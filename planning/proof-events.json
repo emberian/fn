@@ -883,7 +883,43 @@
       ]
     },
     {
-      "id": "PRF-029",
+      "id": "PRF-023",
+      "events": [
+        {
+          "name": "fn-stx-index-bindings-agree",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-stx-index-slots-agree",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-stx-index-equivocators-agree",
+          "kind": "theorem",
+          "pending_subject": "No host line calls fn-stx-index-lookup or fn-stx-index-equivocatorp yet: the node record has no index slot. The agreement is proved of the served-path query, and the served path does not carry it. Review section 4, index row."
+        },
+        {
+          "name": "fn-stx-index-invariant-preserved-by-accept",
+          "kind": "theorem"
+        }
+      ]
+    },
+    {
+      "id": "PRF-025",
+      "events": [
+        {
+          "name": "fn-stx-commit-decode-is-a-commit",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-stx-commits-of-batch-are-verified-and-well-formed",
+          "kind": "theorem",
+          "pending_subject": "fn-stx-commits-of-batch has no caller outside books/stx-epochs: nothing on the host's reconnection path calls it yet. Review section 4."
+        }
+      ]
+    },
+    {
+      "id": "PRF-030",
       "events": [
         {
           "name": "fn-provp-of-string",

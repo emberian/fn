@@ -16,11 +16,13 @@ A served POST is a submission the book queued on the connection's read;
 uses and feeds the observed word back, and the book renders the 240 or 441.
 """
 import argparse
+import hashlib
 import os
 import selectors
 import signal
 import socket
 import ssl
+import tomllib
 import sys
 import time
 
@@ -31,6 +33,7 @@ from run_store import (ACL2_RECOVER_BASE_SECONDS, ACL2_RECOVER_PER_RECORD_SECOND
                        durable_post, exit_code_for, group_codes, metadata,
                        post_article, validate_post_boundary)
 from run_reader import acl2_boolean, acl2_octet_list
+from run_feed import Journal, Session, TRAILER_BYTES  # the FNFD layout and the client half
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAX_READ = 512
@@ -174,6 +177,52 @@ class Acl2Owner(Acl2Store):
         submitted = acl2_boolean(self.call("(@ fn-owner-submittedp)"))
         return reply, closing, submitted
 
+    def starttlsp(self):
+        """Whether the last read asked the host for a TLS handshake.
+
+        The decision is ACL2's: `fn-auth-starttls` (books/nntp-auth.lisp)
+        emits `(:starttls)` only from the branch that also answered 382 and
+        put the connection into the handshake, and it has already refused a
+        second STARTTLS and one with no certificate.  This reads the answer
+        off the same global the close is read from.
+        """
+        return acl2_boolean(self.call("(@ fn-owner-starttlsp)"))
+
+    def set_auth(self, required, protected_only, tls_available, rows):
+        """Hand ACL2 the operator's AUTHINFO policy, once, at start-up.
+
+        `rows` are (name, principal, salt, digest, posting) with the four
+        octet strings as bytes.  The host transports them; ACL2 builds the
+        credential, the verifier and the configuration and owns every
+        comparison made against them.
+        """
+        def octets(value):
+            return "(" + " ".join(str(byte) for byte in value) + ")"
+        literal = "(" + " ".join(
+            "({} {} {} {} {})".format(octets(name), octets(principal),
+                                      octets(salt), octets(digest),
+                                      "t" if posting else "nil")
+            for name, principal, salt, digest, posting in rows) + ")"
+        outcome = self._symbol("(fn-owner-set-auth {} {} {} '{} state)".format(
+            "t" if required else "nil",
+            "t" if protected_only else "nil",
+            "t" if tls_available else "nil", literal))
+        if outcome != "ok":
+            raise StoreError("the owner refused the AUTHINFO configuration; "
+                             "a credential in the file is malformed")
+        return outcome
+
+    def tls_established(self, cid):
+        """Re-enter the plaintext stream after the handshake (RFC 4642 2.2.2).
+
+        A wire event, not octets: no client input can produce it, and
+        `fn-auth-step` is the only reader.  It is what sets `tlsp`.
+        """
+        outcome = self._symbol("(fn-owner-tls-established {} state)".format(cid))
+        if outcome != "ok":
+            raise StoreError("owner does not know connection {}".format(cid))
+        return bytes(acl2_octet_list(self.call("(@ fn-owner-output)")))
+
     def take(self):
         """The writer step: `taken', `taken-transit' or `idle'."""
         return self._symbol_any("(fn-owner-take state)")
@@ -230,6 +279,80 @@ class Acl2Owner(Acl2Store):
             raise StoreError("owner did not accept the transit outcome")
         return bytes(acl2_octet_list(self.call("(@ fn-owner-output)")))
 
+    # -- the outbound feed (books/owner-feed.lisp) ------------------------
+    #
+    # Every decision below is the book's: which peers an article goes to,
+    # when an offer may be sent, what the line is, what a reply code means
+    # and what each journal record is.  This class marshals and nothing else.
+
+    def feed_configure(self):
+        """Rebuild the feed table from the live configuration; the peers."""
+        return self._names("(fn-owner-feed-configure state)")
+
+    def feed_peers(self):
+        return self._names("(fn-owner-feed-peers state)")
+
+    def feed_endpoint(self, peer):
+        literal = "'" + self.literal(peer.encode("utf-8"))
+        host = bytes(acl2_octet_list_any(self.call(
+            "(fn-owner-feed-host {} state)".format(literal))) or b"")
+        port = self._nat("(fn-owner-feed-port {} state)".format(literal))
+        return (host.decode("utf-8", "strict") if host else None), port
+
+    def feed_streamingp(self, peer):
+        return acl2_boolean(self.call("(fn-owner-feed-streamingp '{} state)".format(
+            self.literal(peer.encode("utf-8")))))
+
+    def feed_queue_length(self, peer):
+        return self._nat("(fn-owner-feed-queue-length '{} state)".format(
+            self.literal(peer.encode("utf-8"))))
+
+    def feed_connect(self, peer, conn):
+        return self._symbol_any("(fn-owner-feed-connect '{} {} state)".format(
+            self.literal(peer.encode("utf-8")),
+            "nil" if conn is None else str(conn)))
+
+    def feed_tick(self, peer, monotonic):
+        return self._symbol_any("(fn-owner-feed-tick '{} {} state)".format(
+            self.literal(peer.encode("utf-8")), monotonic))
+
+    def feed_octets(self, peer, line, monotonic):
+        return self._symbol_any("(fn-owner-feed-octets '{} '{} {} state)".format(
+            self.literal(peer.encode("utf-8")), self.literal(line), monotonic))
+
+    def feed_frames(self):
+        """The FNFD frames the last feed call authorized, sealed here.
+
+        `fn-feed-encode' takes the trailer as an argument and ACL2 built each
+        frame with a zero one, so the host hashes the protected prefix and
+        appends the real digest (A-CRYPTO).  Python chooses no field and no
+        bound; it slices at a constant the book fixed.
+        """
+        count = self._nat("(len (@ fn-owner-feed-frames))")
+        frames = []
+        for index in range(count):
+            frame = bytes(acl2_octet_list(self.call(
+                "(fn-frame-item {} (@ fn-owner-feed-frames))".format(index))))
+            protected = frame[:-TRAILER_BYTES]
+            frames.append(protected + hashlib.sha256(protected).digest())
+        return frames
+
+    def feed_record_peers(self):
+        return self._names("(fn-owner-feed-record-peers state)")
+
+    def feed_command(self):
+        return bytes(acl2_octet_list_any(self.call(
+            "(fn-owner-feed-command state)")) or b"")
+
+    def feed_replay_frame(self, peer, frame):
+        digest = hashlib.sha256(frame[:-TRAILER_BYTES]).digest()
+        return self._symbol_any("(fn-owner-feed-replay-frame '{} '{} '{} state)".format(
+            self.literal(peer.encode("utf-8")), self.literal(frame),
+            self.literal(digest)))
+
+    def feed_restart(self):
+        return self._nat("(fn-owner-feed-restart state)")
+
     def _symbol_any(self, form):
         body = acl2_result(self.call(form))
         text = body.decode("ascii", "replace").strip().lower()
@@ -274,10 +397,60 @@ class Clock:
     def __init__(self, error_ms):
         self.error_ms = error_ms
 
+    @staticmethod
+    def milliseconds():
+        """The monotonic reading the feed stamps its records and ticks with.
+
+        The same reading fn-clock-observation takes in `observe`; the feed's
+        contact window and its backoff deadline are both in these units
+        (books/scheduler.lisp, fn-sched-contact-holdsp).
+        """
+        return time.monotonic_ns() // 1_000_000
+
     def observe(self, bridge):
         monotonic_ms = time.monotonic_ns() // 1_000_000
         wall_ms = max(0, (time.time_ns() - DTN_EPOCH_NS) // 1_000_000)
         return bridge.observe(monotonic_ms, wall_ms, self.error_ms, True)
+
+
+def load_credentials(path):
+    """The operator's credential file, as rows of octets for ACL2.
+
+    Format v2 (`fn principal set-password`): each `[login.NAME]` carries a
+    principal id, a 16-octet salt and a 32-octet digest, all hex.  A v1
+    entry -- one with `secret` in the clear -- is REFUSED by name; nothing
+    here reads a password and nothing here hashes one.
+    """
+    if not path:
+        return []
+    with open(path, "rb") as handle:
+        data = tomllib.load(handle)
+    logins = data.get("login", {})
+    if not isinstance(logins, dict):
+        raise StoreError("{}: [login] is not a table".format(path))
+    rows = []
+    for name in sorted(logins):
+        entry = logins[name]
+        if not isinstance(entry, dict):
+            raise StoreError("{}: [login.{}] is not a table".format(path, name))
+        if "secret" in entry:
+            raise StoreError(
+                "cleartext-credential: {} [login.{}] stores `secret` in the "
+                "clear (the format fn wrote before 2026-09-20); re-set it "
+                "with `fn principal set-password {}`".format(path, name, name))
+        try:
+            principal = bytes.fromhex(str(entry["principal"]))
+            salt = bytes.fromhex(str(entry["salt"]))
+            digest = bytes.fromhex(str(entry["digest"]))
+        except (KeyError, ValueError) as error:
+            raise StoreError("{}: [login.{}] is malformed: {}"
+                             .format(path, name, error)) from error
+        if len(salt) != 16 or len(digest) != 32 or len(principal) != 32:
+            raise StoreError("{}: [login.{}] has a field of the wrong length"
+                             .format(path, name))
+        rows.append((name.encode("ascii"), principal, salt, digest,
+                     bool(entry.get("posting"))))
+    return rows
 
 
 class Connection:
@@ -287,6 +460,9 @@ class Connection:
         self.outbuf = b""
         self.closing = False
         self.reading = True
+        # RFC 4642 section 2.2.2: set when ACL2 emitted (:starttls); the
+        # handshake runs once the 382 has left the socket.
+        self.handshaking = False
 
 
 def tls_context(cert, key):
@@ -304,6 +480,33 @@ def tls_context(cert, key):
     return context
 
 
+class Feed:
+    """One configured peer's outbound client connection and its FNFD journal.
+
+    The feed machine is in ACL2 (books/peer-feed.lisp under
+    books/owner-feed.lisp); this object holds the socket, the read buffer and
+    the append-only journal file, and nothing else.  Three things here are
+    the host's and are named because of the "one owner per decision" rule:
+    opening the TCP connection, the RFC 3977 section 3.1.1 dot stuffing of an
+    article block (`Session.send_block`), and the greeting plus `MODE STREAM`
+    handshake, which is transport setup before the feed machine has a
+    connection at all -- `fn-feed-observe` never sees a 200 or a 203.
+    """
+
+    def __init__(self, peer, journal):
+        self.peer = peer
+        self.journal = journal
+        self.session = None
+        self.conn_id = None
+        self.pending_article = b""
+
+    def close(self):
+        if self.session is not None:
+            self.session.close()
+        self.session = None
+        self.conn_id = None
+
+
 class Owner:
     def __init__(self, store, bridge, records, clock, tls=None):
         self.store = store
@@ -311,8 +514,13 @@ class Owner:
         self.records = len(records)
         self.clock = clock
         self.tls = tls
+        # NNTPS: wrap before the greeting.  Off by default, so a configured
+        # certificate is offered through RFC 4642 STARTTLS instead.
+        self.implicit_tls = False
         self.selector = selectors.DefaultSelector()
         self.connections = {}
+        self.feeds = {}
+        self.feed_next_conn = 1
         self.stopping = False
 
     # -- NNTP connections -------------------------------------------------
@@ -321,19 +529,17 @@ class Owner:
             sock, _ = listener.accept()
         except OSError:
             return
-        if self.tls is not None:
-            # Implicit TLS: the handshake runs before any NNTP octet, so the
-            # book still sees a plaintext stream and its STARTTLS branch is
-            # never reached on this listener.  RFC 4642 section 2.2's
-            # in-band upgrade needs one more word from the owner bridge and
-            # is recorded open in specs/nntp.md.
+        if self.tls is not None and self.implicit_tls:
+            # Implicit TLS (NNTPS): the handshake runs before any NNTP octet,
+            # so the book sees a plaintext stream from the first byte and its
+            # STARTTLS branch is never reached on this listener -- which is
+            # why the owner is told the certificate is NOT available for
+            # STARTTLS in that mode, and 580 is the honest answer there.
             try:
                 sock = self.tls.wrap_socket(sock, server_side=True)
             except (ssl.SSLError, OSError):
-                try:
-                    sock.close()
-                finally:
-                    return
+                sock.close()
+                return
         sock.setblocking(False)
         # One clock observation per connection, pinned into it at open: the
         # READER environment (DATE, NEWGROUPS).  The injection clock is taken
@@ -399,6 +605,13 @@ class Owner:
                 conn.outbuf += reply
                 if closing:
                     conn.closing = True
+                # RFC 4642 section 2.2.2.  The book stopped framing at the
+                # 382 (fn-served-tls-handshakingp, books/served.lisp), so
+                # whatever else arrived in this read is handshake and the
+                # host does not have to discard anything by itself.
+                if self.bridge.starttlsp():
+                    conn.handshaking = True
+                    conn.reading = False
                 if submitted:
                     self.drain()
         if mask & selectors.EVENT_WRITE and conn.outbuf:
@@ -410,15 +623,59 @@ class Owner:
                 self.drop(conn)
                 return
             conn.outbuf = conn.outbuf[sent:]
-        if conn.closing and not conn.outbuf:
-            self.drop(conn)
-            return
+        if conn.handshaking and not conn.outbuf and not conn.closing:
+            if not self.upgrade(conn):
+                return
         # A peer that does not consume its output is stalled: stop taking its
         # input once the backlog reaches the bound.  It costs the owner one
         # bounded buffer and nothing else; every other connection and the
         # post path keep running.
         conn.reading = len(conn.outbuf) < MAX_OUTPUT_BACKLOG
         self.rearm(conn)
+
+    def upgrade(self, conn):
+        """The TLS handshake, and the whole of it (RFC 4642 section 2.2).
+
+        This is the trust boundary: Python's `ssl` performs the handshake and
+        no theorem in this tree says anything about it
+        (docs/trust-boundary.md, specs/nntp.md).  What ACL2 decided is
+        already decided -- that a handshake is owed, that the 382 was the
+        right answer, that the connection served nothing behind it -- and
+        what ACL2 is told afterwards is one wire event.  The socket goes
+        blocking for the handshake and non-blocking again after it, because
+        the framing below is a one-call-per-read loop and a partial
+        handshake has no place to live in it.
+        """
+        conn.handshaking = False
+        if self.tls is None:
+            # The book advertises STARTTLS only when the host said a
+            # certificate is configured, so this is unreachable unless the
+            # two disagree; the connection is closed rather than served in
+            # the clear after a 382.
+            self.drop(conn)
+            return False
+        try:
+            self.selector.unregister(conn.sock)
+        except (KeyError, ValueError):
+            pass
+        try:
+            conn.sock.setblocking(True)
+            conn.sock = self.tls.wrap_socket(conn.sock, server_side=True)
+            conn.sock.setblocking(False)
+        except (ssl.SSLError, OSError):
+            self.connections.pop(conn.sock, None)
+            try:
+                conn.sock.close()
+            finally:
+                self.bridge.close_connection(conn.cid)
+            return False
+        self.connections.pop(conn.sock, None)
+        self.connections[conn.sock] = conn
+        conn.reading = True
+        self.bridge.tls_established(conn.cid)
+        self.selector.register(conn.sock,
+                               selectors.EVENT_READ | selectors.EVENT_WRITE, conn)
+        return True
 
     def drain(self):
         """The served POST path: one submission at a time through the durable path.
@@ -519,6 +776,124 @@ class Owner:
         except (KeyError, ValueError):
             pass
 
+    # -- the outbound feed --------------------------------------------------
+    def feed_start(self):
+        """Replay every peer's journal, fence it, then allow commands.
+
+        specs/peering.md 3.3: the journal is folded through the feed machine
+        FIRST, then one (:feed-restart peer) record is written and the feed
+        is restarted, and only then may an offer go out.  A restart returns
+        every in-flight entry to :queued with its attempt retired, so the
+        next command for it is a CHECK or an IHAVE and never a blind
+        TAKETHIS -- which is what lets the peer's own history (435/438)
+        absorb the one retransmission a lost reply can cause.
+        """
+        peers = self.bridge.feed_configure()
+        for peer in peers:
+            journal = Journal(self.store.root, peer.encode("utf-8"))
+            replayed = 0
+            for frame in journal.records():
+                if self.bridge.feed_replay_frame(peer, frame) == "ok":
+                    replayed += 1
+            self.feeds[peer] = Feed(peer, journal)
+            print("FEED {} replayed {}".format(peer, replayed), flush=True)
+        if peers:
+            self.bridge.feed_restart()
+            self.feed_flush()
+
+    def feed_flush(self):
+        """Durable before the effect: append what the last call authorized."""
+        frames = self.bridge.feed_frames()
+        if not frames:
+            return
+        peers = self.bridge.feed_record_peers()
+        for peer, frame in zip(peers, frames):
+            feed = self.feeds.get(peer)
+            if feed is not None:
+                feed.journal.append(frame)
+
+    def feed_dial(self, feed):
+        host, port = self.bridge.feed_endpoint(feed.peer)
+        if not host or not port:
+            return False
+        try:
+            session = Session(host, port, 5.0)
+        except OSError:
+            return False
+        if self.bridge.feed_streamingp(feed.peer):
+            session.send(b"MODE STREAM\r\n")
+            session.line()
+        feed.session = session
+        feed.conn_id = self.feed_next_conn
+        self.feed_next_conn += 1
+        self.bridge.feed_connect(feed.peer, feed.conn_id)
+        session.sock.setblocking(False)
+        self.selector.register(session.sock, selectors.EVENT_READ,
+                               ("feed", feed.peer))
+        return True
+
+    def feed_drop(self, feed):
+        if feed.session is not None:
+            try:
+                self.selector.unregister(feed.session.sock)
+            except (KeyError, ValueError):
+                pass
+        feed.close()
+        self.bridge.feed_connect(feed.peer, None)
+
+    def feed_write(self, feed, command):
+        """The bytes one feed decision authorized, after its records."""
+        if not command:
+            return
+        head, _, body = command.partition(b"\r\n")
+        if head.startswith(b"TAKETHIS") or head.startswith(b"CHECK") \
+                or head.startswith(b"IHAVE"):
+            feed.session.send(head + b"\r\n")
+            if body:
+                feed.session.send_block(body)
+        else:
+            feed.session.send_block(command)
+
+    def feed_poll(self):
+        now = self.clock.milliseconds()
+        for feed in list(self.feeds.values()):
+            if feed.session is None:
+                if self.bridge.feed_queue_length(feed.peer) > 0:
+                    self.feed_dial(feed)
+                continue
+            try:
+                if self.bridge.feed_tick(feed.peer, now) == "offer":
+                    self.feed_flush()
+                    self.feed_write(feed, self.bridge.feed_command())
+            except OSError:
+                self.feed_drop(feed)
+
+    def feed_read(self, peer):
+        feed = self.feeds.get(peer)
+        if feed is None or feed.session is None:
+            return
+        try:
+            chunk = feed.session.sock.recv(MAX_READ)
+        except (BlockingIOError, InterruptedError):
+            return
+        except OSError:
+            self.feed_drop(feed)
+            return
+        if not chunk:
+            self.feed_drop(feed)
+            return
+        feed.session.buffer += chunk
+        now = self.clock.milliseconds()
+        while b"\r\n" in feed.session.buffer:
+            line, feed.session.buffer = feed.session.buffer.split(b"\r\n", 1)
+            try:
+                self.bridge.feed_octets(peer, line, now)
+                self.feed_flush()
+                self.feed_write(feed, self.bridge.feed_command())
+            except OSError:
+                self.feed_drop(feed)
+                return
+
     # -- control channel --------------------------------------------------
     def accept_control(self, listener):
         try:
@@ -616,15 +991,21 @@ class Owner:
     def run(self, nntp_listener, control_listener):
         self.selector.register(nntp_listener, selectors.EVENT_READ, "nntp")
         self.selector.register(control_listener, selectors.EVENT_READ, "control")
+        self.feed_start()
         while not self.stopping:
-            for key, mask in self.selector.select(timeout=1.0):
+            for key, mask in self.selector.select(timeout=0.2):
                 if key.data == "nntp":
                     self.accept_nntp(nntp_listener)
                 elif key.data == "control":
                     self.accept_control(control_listener)
+                elif isinstance(key.data, tuple) and key.data[0] == "feed":
+                    self.feed_read(key.data[1])
                 else:
                     if key.fileobj in self.connections:
                         self.serve(key.data, mask)
+            self.feed_poll()
+        for feed in list(self.feeds.values()):
+            feed.close()
         return EXIT_OK
 
 
@@ -638,8 +1019,21 @@ def main(argv=None):
     parser.add_argument("--store", required=True)
     parser.add_argument("--port", type=int, default=0)
     parser.add_argument("--control", required=True, help="Unix socket path for the control channel")
-    parser.add_argument("--tls-cert", help="PEM certificate; with --tls-key, the listener is TLS")
+    parser.add_argument("--tls-cert", help="PEM certificate; with --tls-key, STARTTLS is offered")
     parser.add_argument("--tls-key", help="PEM private key")
+    parser.add_argument("--implicit-tls", action="store_true",
+                        help="wrap every accepted socket before the greeting "
+                             "(NNTPS); without it the certificate is offered "
+                             "through RFC 4642 STARTTLS")
+    parser.add_argument("--auth-file",
+                        help="the credential file `fn principal set-password` "
+                             "wrote (TOML); without it no login is configured")
+    parser.add_argument("--auth-required", action="store_true",
+                        help="RFC 4643: refuse state-changing commands with 480 "
+                             "until the connection has authenticated")
+    parser.add_argument("--auth-protected-only", action="store_true",
+                        help="RFC 4643 section 2.3.2: answer AUTHINFO 483 until "
+                             "a TLS layer is active")
     parser.add_argument("--max-connections", type=int, default=8)
     parser.add_argument("--clock-error-ms", type=int, default=1000)
     args = parser.parse_args(argv)
@@ -681,7 +1075,14 @@ def main(argv=None):
                 raise StoreError("--tls-cert and --tls-key are both or neither")
             if args.tls_cert:
                 tls = tls_context(args.tls_cert, args.tls_key)
-            return Owner(store, bridge, records, clock, tls).run(listener, control)
+            # The AUTHINFO policy reaches ACL2 once, here, and is pinned into
+            # every connection at open (books/owner.lisp fn-own-open).
+            bridge.set_auth(args.auth_required, args.auth_protected_only,
+                            bool(args.tls_cert) and not args.implicit_tls,
+                            load_credentials(args.auth_file))
+            owner = Owner(store, bridge, records, clock, tls)
+            owner.implicit_tls = bool(args.implicit_tls)
+            return owner.run(listener, control)
     except (StoreError, OSError) as error:
         print("owner: {}".format(error), file=sys.stderr)
         return exit_code_for(error)

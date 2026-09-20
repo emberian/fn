@@ -122,6 +122,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-primary \
 	books/bp-primary-invariants \
 	tests/acl2/bp-primary-tests \
+	books/bp-bundle \
+	books/bp-bundle-invariants \
+	tests/acl2/bp-bundle-tests \
+	books/bp-node \
+	tests/acl2/bp-node-tests \
 	books/bp-fragment \
 	books/bp-fragment-invariants \
 	tests/acl2/bp-fragment-tests \
@@ -217,10 +222,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-auth \
 	tests/acl2/nntp-auth-tests \
 	books/served \
+	books/nntp-auth-invariants \
 	tests/acl2/served-tests \
-	books/owner \
-	books/owner-invariants \
-	tests/acl2/owner-tests \
 	books/config-stream \
 	tests/acl2/config-stream-tests \
 	books/owner-config \
@@ -238,6 +241,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-feed \
 	books/peer-feed-invariants \
 	tests/acl2/peer-feed-tests \
+	books/owner-feed \
+	tests/acl2/owner-feed-tests \
+	books/owner \
+	books/owner-invariants \
+	tests/acl2/owner-tests \
 	books/relay \
 	books/relay-invariants \
 	books/relay-crash-invariants \

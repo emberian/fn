@@ -865,7 +865,8 @@
       "assumptions": [],
       "status": "planned",
       "evidence": [],
-      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
+      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
+      "note": "`tests/acl2/stx-transit-tests` CERTIFIES since w10/substrate-2, so the S3-1 witnesses have now RUN; before that they were written and unexecuted."
     },
     {
       "id": "PRF-022",
@@ -883,7 +884,8 @@
       ],
       "status": "planned",
       "evidence": [],
-      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
+      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
+      "note": "`tests/acl2/stx-transit-tests` CERTIFIES since w10/substrate-2, so the S3-2 fork witnesses have now RUN."
     },
     {
       "id": "PRF-023",
@@ -897,9 +899,16 @@
         "PRF-021"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "in-progress",
       "evidence": [],
-      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
+      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
+      "note": "`books/stx-index` CERTIFIES (w10/substrate-2). The three agreements `fn-stx-index-bindings-agree`, `fn-stx-index-slots-agree` and `fn-stx-index-equivocators-agree` are the keystones; `fn-stx-index-agrees-with-lace` is their `:rule-classes nil` corollary and is cited as such, and `fn-stx-recorded-equivocation-agrees-with-lace` is a corollary of that. Not closed: no host line calls `fn-stx-index-lookup` or `fn-stx-index-equivocatorp` -- `fn-node-statep` has no index slot -- so the theorem-subject rule is not met and the D3 claim is about a query the served path does not yet carry.",
+      "events": [
+        "fn-stx-index-bindings-agree",
+        "fn-stx-index-slots-agree",
+        "fn-stx-index-equivocators-agree",
+        "fn-stx-index-invariant-preserved-by-accept"
+      ]
     },
     {
       "id": "PRF-024",
@@ -918,7 +927,8 @@
       ],
       "status": "planned",
       "evidence": [],
-      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
+      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
+      "note": "`tests/acl2/stx-transit-tests` CERTIFIES since w10/substrate-2, and the S4-1 witnesses were VACUOUS until it did: the hostile batch's delta was empty because the policy statement's carrier article had a prose body where `fn-stx-payload-for` projects base64. Both carriers are repaired and the deltas are now pinned by their own assertions."
     },
     {
       "id": "PRF-025",
@@ -934,9 +944,14 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "planned",
+      "status": "in-progress",
       "evidence": [],
-      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem."
+      "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
+      "note": "`books/stx-epochs` CERTIFIES (w10/substrate-2), so the carrier obligation `fn-stx-commits-of-batch-are-verified-and-well-formed` is proved and the three reconnection rows follow it as labelled corollaries of the `books/membership-epochs-invariants` keystones. Its local witness lemma needed a repair, not a weakening: `fn-stx-commits-of-lace-have-witnesses` asked only `fn-lace-p` of the delta and was false; it now asks that every statement of the delta verifies, which `fn-stx-batch-delta` satisfies by construction. Not closed: nothing on the host's reconnection path calls `fn-stx-commits-of-batch`, and A-CRYPTO stands behind every verification here.",
+      "events": [
+        "fn-stx-commit-decode-is-a-commit",
+        "fn-stx-commits-of-batch-are-verified-and-well-formed"
+      ]
     },
     {
       "id": "PRF-026",
@@ -986,6 +1001,22 @@
     },
     {
       "id": "PRF-029",
+      "title": "The outbound feed offers exactly the peers in scope, and never a loop (K2, outbound half)",
+      "statement": "fn-own-feed-target-is-offerable with fn-own-feed-targets-omit-no-offerable-peer: for a feed table the owner carries, the peers one durably accepted article is offered to are exactly the peers of that table whose own configured record has an outbound half, whose outbound wildmat matches one of the article's own Newsgroups names, whose path-identity the article's Path does not already name, and which is not the peer the article arrived from. fn-own-feed-never-offers-a-loop is the loop-freedom half (RFC 5537 section 3.6) and fn-own-feed-target-is-in-scope the scope half; fn-own-feed-accept-touches-only-its-targets and fn-own-feed-accept-never-enqueues-on-the-origin transport both to the table the owner holds, and fn-own-feed-tick-peer-is-the-feed-tick is the subject rule tying one peer's tick to fn-feed-tick-step on that peer's own feed. Covered scope: one article's octets against one table; the hypothesis is the carried recognizer fn-own-feed-tablep. NOT covered: the statement over fn-own-step (books/owner does not admit on this tree) and fn-feedp preservation, which is cited from books/peer-feed-invariants and not restated.",
+      "milestone": "M2",
+      "requirements": [
+        "REP-001",
+        "REP-002",
+        "REP-005"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [],
+      "progress_note": "books/owner-feed.lisp admits with no open form and tests/acl2/owner-feed-tests.lisp runs 98 assertions green (laptop ACL2 8.7, ld over books/peer-feed-invariants then the book, 2026-09-20, lane w10/owner-feed). NOT CERTIFIED: books/owner-feed includes books/peer-feed-invariants, which fails at fn-feed-apply-record-preserves-feedp (residue: the attempt bound in the :feed-sent arm), so no certificate exists for this closure. The owner-side statement over fn-own-step is open because books/served has no certificate on dev."
+    },
+    {
+      "id": "PRF-030",
       "title": "Provenance is typed, and its wire form is lossless and legacy-compatible",
       "statement": "Every string is an admissible provenance (the :legacy kind), so widening the retention evidence slot from stringp to fn-provp changes no stored value; the rendered form of each typed kind is exactly the string that kind's writer produced before the widening; and a provenance the codec can write is the provenance it reads back from its wire form.",
       "milestone": "M4",
@@ -997,6 +1028,7 @@
       ],
       "assumptions": [],
       "status": "in-progress",
+      "note": "The transit path's DURABLE provenance is not covered: fn-peer-injection-arguments still passes fn-peer-evidence's rendering, and fn-peer-evidence-is-the-legacy-rendering is the equation between the typed record and that string, not evidence that the record reaches the store. books/peer-inbound and books/peer-inbound-invariants have no certificate on dev (blocked on fn-peer-echo-reply-effects-well-formed), so those two events are admitted, not certified, and are not listed here.",
       "events": [
         "fn-provp-of-string",
         "fn-prov-render-of-post",
@@ -1007,8 +1039,27 @@
         "fn-prov-of-wire-of-a-plain-string",
         "fn-prov-of-wire-of-wire",
         "fn-prov-of-wire-of-a-durable-wire"
+      ]
+    },
+    {
+      "id": "PRF-031",
+      "title": "AUTHINFO on the served path, and what posting follows (W10)",
+      "statement": "fn-auth-gated-command-is-refused-and-not-performed: with authentication required and no authenticated subject, a restricted command's step submits nothing, never offers article mode, leaves the session unchanged and its whole effect list is the single 480 line (RFC 4643 section 2.2). fn-auth-post-without-permission-is-not-offered and its lift fn-auth-step-post-without-permission-is-not-offered: a connection whose posting allowance is false is answered by this book and never offered 340, so no body can follow and no submission can leave; fn-auth-postingp is the authenticated principal's credential flag, so a principal enrolled without it is refused 440 however permissive the pinned injection configuration is (RFC 3977 6.3.1.1). fn-served-dispatch-of-a-refused-post-leaves-the-wire-in-place carries that to the served dispatcher: the wire is not switched into article mode and the read carries no submission. fn-auth-pass-before-user-is-482, fn-auth-failed-pass-leaves-the-session-unauthenticated and fn-auth-protected-only-refuses-authinfo-before-tls are the three RFC 4643 section 2.3.2 codes, each with the session unchanged or cleared. fn-auth-pass-accepts-only-a-checking-secret says the accepting branch ran fn-authsec-checkp against the stored verifier; it does NOT say a wrong secret fails, which is A-CRYPTO. Covered scope: one served connection over a pinned archive and a pinned AUTHINFO configuration. The subject of the lifts is fn-auth-step, which books/served.lisp fn-served-dispatch calls and which host/owner-host.lisp fn-owner-chunk reaches through fn-own-read and fn-served-step.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-001",
+        "NNT-004",
+        "OBJ-007"
       ],
-      "note": "The transit path's DURABLE provenance is not covered: fn-peer-injection-arguments still passes fn-peer-evidence's rendering, and fn-peer-evidence-is-the-legacy-rendering is the equation between the typed record and that string, not evidence that the record reaches the store. books/peer-inbound and books/peer-inbound-invariants have no certificate on dev (blocked on fn-peer-echo-reply-effects-well-formed), so those two events are admitted, not certified, and are not listed here."
+      "depends_on": [
+        "PRF-013"
+      ],
+      "assumptions": [
+        "A-CRYPTO"
+      ],
+      "status": "in-progress",
+      "evidence": [],
+      "progress_note": "books/nntp-auth, books/served, books/owner and books/nntp-auth-invariants ADMIT with zero errors under tools/acl2 over the book source (ACL2 8.7, laptop, 2026-09-20); tests/acl2/nntp-auth-tests passes 120 assertions. None of the four is CERTIFIED: the installed certificate cache mixes two origin roots and books/config's certificate names sub-books by absolute path from a root that is not the one loaded, so certify-book refuses below peer-inbound. A farm run over the closure is the certification of record and has not been made. OPEN, OB-AUTH-FOLD: the fold-level statement -- no read of a connection under a configuration that grants posting to no one emits a submission -- is not proved. It needs three lemmas that do not exist: fn-auth-step-preserves-the-config (books/nntp-auth), a wire lemma that command mode emits only (:command ...) events (books/wire-invariants), and a reader lemma that fn-nntp-post-step emits a submission only from an (:article ...) event (books/nntp-post). Named in the header of books/nntp-auth-invariants.lisp. Live evidence: planning/evidence/auth-w10-2026-09-20.md, 8 passed 1 skipped; the skip is nntplib, removed from the standard library in Python 3.13, so the independent-client half is NOT supplied."
     }
   ]
 }

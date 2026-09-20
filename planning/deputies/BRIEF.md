@@ -51,6 +51,16 @@ cross-cluster steps you could not take alone.
   another lane is using (a `--jobs 12` race on a busy persvati lost
   `books/nntp-effects` once and cascaded "no certificate" into six roots).
   On hbox every ACL2 run goes through `swarm-build`.
+- `certify-book` STOPS AT THE FIRST FAILURE, so "the book is open at X and
+  everything else certifies" is a claim only about the events BEFORE X. The
+  events after it have never run. Say "certified up to X; the N events after
+  it are unattempted" instead, and expect a tail when X closes: one book's
+  keystone closed on 2026-09-20 and ten of the eleven events behind it were
+  then open, including four of the five keystones the book exists for.
+- A new registry id is allocated by merging dev FIRST and taking the next free
+  number, and it is claimed in one board line the moment you take it. Two
+  lanes assigned PRF-029 on the same afternoon and one target had to be
+  renumbered after the fact (2026-09-20).
 - Registries are shared rows, not files. `planning/requirements.json`,
   `planning/proofs.json`, `tests/scenarios/catalog.json` and `docs/prefixes.md`
   are edited by reading, changing the named rows, and writing, immediately

@@ -950,10 +950,13 @@ class Store:
         # One durable configuration record at generation 1, built and admitted
         # by the core from the operator's group names.
         self._safe_directory(self.root, create=True)
+        self.faults.at("init-root-created")
         lock_fd = self._open_lock(exclusive=True, create=True)
         try:
             self._safe_directory(self.transactions, create=True)
+            self.faults.at("init-transactions-created")
             self._safe_directory(self.staging, create=True)
+            self.faults.at("init-staging-created")
             self._safe_directory(self.config_dir, create=True)
             config = config_with_checksum(self.profile)
             if self._publish_initial_file(self.config_path, canonical_json(config) + b"\n"):
@@ -977,12 +980,17 @@ class Store:
             else:
                 self._load_frontier()
             fsync_regular(self.config_path)
+            self.faults.at("init-barrier")
             for path in self.config_record_files():
                 fsync_regular(path)
             fsync_regular(self.frontier_path)
+            self.faults.at("init-barrier")
             fsync_dir(self.transactions)
+            self.faults.at("init-barrier")
             fsync_dir(self.root)
+            self.faults.at("init-barrier")
             fsync_dir(self.root.parent)
+            self.faults.at("init-barrier")
         finally:
             fcntl.flock(lock_fd, fcntl.LOCK_UN)
             os.close(lock_fd)
@@ -1273,7 +1281,9 @@ class Store:
                 raise StoreFault("ACL2 rejected allocator start")
             fd = os.open(stage, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
             try:
+                self.faults.at("frontier-created")
                 write_all(fd, contents)
+                self.faults.at("frontier-written")
                 fsync_file(fd)
             finally:
                 os.close(fd)
@@ -1336,7 +1346,9 @@ class Store:
         try:
             fd = os.open(stage, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
             try:
+                self.faults.at("record-created")
                 write_all(fd, data)
+                self.faults.at("record-written")
                 fsync_file(fd)
             finally:
                 os.close(fd)
@@ -1381,6 +1393,7 @@ class Store:
             # occurs only after the final namespace barrier succeeded.
             try:
                 os.unlink(stage)
+                self.faults.at("record-stage-unlinked")
                 fsync_dir(self.staging)
             except OSError:
                 pass
