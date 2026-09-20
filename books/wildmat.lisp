@@ -574,3 +574,36 @@
            :use ((:instance fn-wildmat-guard-decode-success-true-listp
                             (octets target-octets))))))
 (verify-guards fn-wildmat-match)
+
+; -----------------------------------------------------------------------------
+; Export theory.
+;
+; `fn-wildmat-guard-items-p-true-listp` and
+; `fn-wildmat-guard-octet-listp-true-listp` are two limbs of the
+; `true-listp`-backchaining fan-out measured in `books/nntp-invariants.lisp`
+; and `books/nntp-effects.lisp` (each `(true-listp X)` they meet opens a
+; recursive recognizer on a bare variable); `fn-wildmat-guard-pattern-row-
+; length` is the `len`-backchaining rule `tools/ledger.py --check` reports at
+; `books/wildmat.lisp:462`.  All three exist to discharge guards in this book
+; and are withdrawn here under one name.  The type-reasoning role of the first
+; two is exported back as `:forward-chaining` shape facts
+; (`docs/proof-style.md` section 1).
+
+(defthm fn-wildmat-items-p-forward-shape
+  (implies (fn-wildmat-items-p items)
+           (true-listp items))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :by fn-wildmat-guard-items-p-true-listp)))
+
+(defthm fn-wildmat-octet-listp-forward-shape
+  (implies (fn-wildmat-octet-listp octets)
+           (true-listp octets))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :by fn-wildmat-guard-octet-listp-true-listp)))
+
+(deftheory fn-wildmat-guard-backchaining
+  '(fn-wildmat-guard-items-p-true-listp
+    fn-wildmat-guard-octet-listp-true-listp
+    fn-wildmat-guard-pattern-row-length))
+
+(in-theory (disable fn-wildmat-guard-backchaining))
