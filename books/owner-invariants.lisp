@@ -64,6 +64,7 @@
 (defthm fn-own-prefixp-len
   (implies (fn-sf-prefixp xs ys)
            (<= (len xs) (len ys)))
+  :rule-classes (:rewrite :linear)
   :hints (("Goal" :induct (fn-sf-prefixp xs ys)
            :in-theory (enable fn-sf-prefixp))))
 
@@ -94,6 +95,11 @@
 
 (defthm fn-own-member-of-append-last
   (member-equal x (append l (list x))))
+
+(defthm fn-own-member-of-append-left
+  (implies (member-equal x l)
+           (member-equal x (append l m)))
+  :hints (("Goal" :induct (member-equal x l))))
 
 ; -----------------------------------------------------------------------------
 ; The owner relation (proof vocabulary; never executed)
@@ -218,6 +224,7 @@
 
 (defthm fn-own-remove-conn-len
   (<= (len (fn-own-remove-conn id conns)) (len conns))
+  :rule-classes (:rewrite :linear)
   :hints (("Goal" :induct (fn-own-remove-conn id conns))))
 
 ; -----------------------------------------------------------------------------
@@ -245,6 +252,12 @@
                         fn-snt-typed-store-components
                         (:instance fn-snt-typed-frontier-natural
                                    (files (fn-sn-files s)))))))
+
+(defthm fn-own-relation-records-true-list
+  (implies (fn-own-relation o)
+           (true-listp (fn-sf-records (fn-sn-files (fn-own-store o)))))
+  :hints (("Goal" :in-theory (e/d (fn-own-relation) (fn-own-conn-boundedp))
+           :use ((:instance fn-own-related-records-true-list (s (fn-own-store o)))))))
 
 ; Every store transition keeps the fixed configuration.
 (defthm fn-own-snrt-step-keeps-configuration
@@ -747,14 +760,19 @@
                             fn-own-related-records-true-list fn-sf-prefixp-reflexive
                             fn-own-crash-image-extends-records
                             fn-sn-open-observed-success-exact-history
-                            fn-own-refresh fn-own-conn-boundedp)))))
+                            fn-own-refresh fn-own-conn-boundedp
+                            ;; the reflexive prefix in the hypotheses would
+                            ;; make each of these rewrite a term to itself
+                            fn-own-take-of-prefix fn-own-prefix-archive-of-prefix
+                            fn-own-conns-okp-of-prefix fn-own-view-okp-of-prefix
+                            fn-own-ledger-durablep-of-prefix)))))
 
 (defthm fn-own-run-records-prefix
   (implies (fn-own-relation o)
            (fn-sf-prefixp (fn-sf-records (fn-sn-files (fn-own-store o)))
                           (fn-sf-records (fn-sn-files (fn-own-store (fn-own-run o events))))))
   :hints (("Goal" :induct (fn-own-run o events)
-           :in-theory (disable fn-own-step fn-own-relation))
+           :in-theory (e/d (fn-sf-prefixp-reflexive) (fn-own-step fn-own-relation)))
           ("Subgoal *1/1"
            :use (fn-own-step-preserves-relation
                  (:instance fn-own-step-records-prefix (event (car events)))
@@ -788,6 +806,7 @@
 
 (defthm fn-own-min-pinned-below-floor
   (<= (fn-own-min-pinned conns floor) (nfix floor))
+  :rule-classes (:rewrite :linear)
   :hints (("Goal" :induct (fn-own-min-pinned conns floor))))
 
 (defthm fn-own-min-pinned-below-found
@@ -919,7 +938,7 @@
 (deftheory fn-own-invariants-vocabulary
   '(fn-own-take-of-len fn-own-prefixp-len fn-own-take-of-prefix
     fn-own-prefix-archive-of-prefix fn-own-has-pairp-of-prefix
-    fn-own-member-of-append-last
+    fn-own-member-of-append-last fn-own-member-of-append-left
     fn-own-conn-okp fn-own-view-okp fn-own-relation
     fn-own-conns-okp-of-prefix fn-own-view-okp-of-prefix
     fn-own-ledger-durablep-of-prefix fn-own-ledger-durablep-append
@@ -927,6 +946,7 @@
     fn-own-find-conn-okp fn-own-find-conn-id fn-own-replace-conn-okp
     fn-own-replace-conn-len fn-own-remove-conn-okp fn-own-remove-conn-len
     fn-own-idle-node-is-replay fn-own-related-records-true-list
+    fn-own-relation-records-true-list
     fn-own-related-frontier-natural fn-own-snrt-step-keeps-configuration
     fn-own-snrt-step-preserves-relation fn-own-snrt-step-records-prefix
     fn-own-completion-pair-has-record fn-own-completion-needs-completing-phase

@@ -35,11 +35,19 @@
 
 (defconst *own-groups* '("fn.letters" "fn.test"))
 
+; Obligation id, content subject and release evidence are derived from the
+; Message-ID as tools/run_store.py's metadata does: retention refuses a known
+; obligation id (fn-retain-known-obligation-id-is-not-reused), so two posts
+; cannot share one.
 (defun own-record (sequence txid msgid)
   (fn-record-make sequence txid txid msgid
                   (list 77 101 115 115 97 103 101 45 73 68 58 32 60 120 62 13 10 13 10
                         72 105 13 10)
-                  '("fn.letters") "own-pin" "own-content" "own-release" 2))
+                  '("fn.letters")
+                  (concatenate 'string "own-pin:" msgid)
+                  (concatenate 'string "own-content:" msgid)
+                  (concatenate 'string "own-release:" msgid)
+                  2))
 
 (defun own-post-events (record)
   (list '(:store (:io :start-frontier nil))
@@ -93,7 +101,7 @@
 (defconst *own-read-c* (fn-own-read *own-c* 2 *own-group-octets*))
 (assert-event (not (equal (car *own-read-a*) (car *own-read-c*))))
 (assert-event (equal (fn-served-reply-octets (car *own-read-c*))
-                     (fn-nntp-string-octets "211 1 1 1 fn.letters\r\n")))
+                     (append (fn-nntp-string-octets "211 1 1 1 fn.letters") (list 13 10))))
 (assert-event (equal (fn-own-take 5 (fn-served-reply-octets (car *own-read-a*)))
                      (fn-nntp-string-octets "211 0")))
 (assert-event (not (fn-served-closingp (car *own-read-a*))))
@@ -112,7 +120,7 @@
 (assert-event (not (equal *own-reply-a* *own-reply-c*)))
 (assert-event (equal *own-reply-c*
                      (list (fn-nntp-reply-effect
-                            (fn-nntp-string-octets "211 1 1 1 fn.letters\r\n")))))
+                            (append (fn-nntp-string-octets "211 1 1 1 fn.letters") (list 13 10))))))
 (assert-event (equal (car *own-read-c*) *own-reply-c*))
 
 ; K1 (served) and K1 (per event) hold on the witness in their stated forms.
@@ -177,7 +185,7 @@
 (defconst *own-after* (fn-own-step *own-reopened* '(:open)))
 (assert-event (equal (fn-own-conn-version (fn-own-find-conn 3 (fn-own-conns *own-after*))) 2))
 (assert-event (equal (fn-served-reply-octets (car (fn-own-read *own-after* 3 *own-group-octets*)))
-                     (fn-nntp-string-octets "211 2 1 2 fn.letters\r\n")))
+                     (append (fn-nntp-string-octets "211 2 1 2 fn.letters") (list 13 10))))
 
 ; The whole witness is one finite owner-event trace from the initial owner.
 (defconst *own-trace*
@@ -214,11 +222,14 @@
 (assert-event (equal (fn-own-complete *own-a*) *own-a*))
 
 ; -----------------------------------------------------------------------------
-; K3 and the reclaim floor on the witness: with pins at 1 (reader C) and the
-; view at 2, the floor is 1, and the pinned prefix of every connection is
-; unchanged by the whole trace.
+; K3 and the reclaim floor on the witness: connection 1 opened at version 0
+; and never advanced, so the floor is 0 while it is open; closing it raises
+; the floor to the next lowest pin (A and C at 1); after the reopen the only
+; pin is D's at 2.  The pinned prefix of every connection is unchanged by the
+; whole trace.
 
-(assert-event (equal (fn-own-reclaim-floor *own-posted-2*) 1))
+(assert-event (equal (fn-own-reclaim-floor *own-posted-2*) 0))
+(assert-event (equal (fn-own-reclaim-floor *own-closed*) 1))
 (assert-event (equal (fn-own-reclaim-floor *own-after*) 2))
 (assert-event (equal (fn-own-take 1 (fn-sf-records (fn-sn-files (fn-own-store *own-posted-2*))))
                      (fn-own-take 1 (fn-sf-records (fn-sn-files (fn-own-store *own-c*))))))
