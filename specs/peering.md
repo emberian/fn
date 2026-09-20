@@ -1159,3 +1159,75 @@ Open, recorded rather than weakened:
   peer it has driven is the two-node harness's fake
   (`tests/twonode_gate_fake/tools/run_peer.py`), whose replies are that file's
   and not ACL2's.
+
+## Status (wave 9, `w9/peering-e2e`, the CLI, the scheduler and the owner's port)
+
+Delivered here: `fn peer add|remove|list` (bin/fn, tools/run_store.py,
+`fn-store-cfg-set-peer` / `-remove-peer` / `-peer-names` / `-peer-slot-text` /
+`-peer-slot-nat` in host/store-node-host.lisp); `books/scheduler-peers.lisp`
+and `tests/acl2/scheduler-peers-tests.lisp`; the owner's transit port
+(`fn-own-open-peer`, `fn-own-transit-subp`, `fn-own-transit-outcome`, the
+`(:open-peer peer cfg)` and `(:transit-outcome id kind reason word)` arms,
+with `fn-owner-peer-for-address`, `fn-owner-open-peer`,
+`fn-owner-transit-decide`, `fn-owner-transit-outcome` in
+host/owner-host.lisp and the accept/drain wiring in tools/run_owner.py);
+the two evidence harnesses' peer records and the streaming half of the
+two-node feed scenario.
+
+- **The per-peer scheduler is a table of schedulers, not a peer field on
+  `fn-sched-item`.** §3.1's shape (peer at item index 7, `fn-sched-selection`
+  over the peer-filtered queue) **falsifies two keystones of
+  `books/scheduler-invariants` as they are stated**:
+  `fn-sched-promotion-position-decreases` has
+  `(fn-sched-eligiblep (fn-sched-find w (fn-sched-queue ss)) wf)` as a
+  hypothesis and `fn-sched-aging-bound` reaches the same test through
+  `fn-sched-eligible-runp`; both are peer-blind, so a promoted work for peer
+  B while the open contact is peer A is neither selected nor moved closer to
+  the head of the promotion queue, and the conclusion fails on a reachable
+  state. Making the test peer-aware adds an argument to a function that
+  appears in a keystone's statement. `books/scheduler-peers.lisp` keys one
+  `fn-sched-statep` per peer name instead: every existing keystone stands
+  verbatim and reaches each peer's tick through
+  `fn-sched-table-tick-is-the-peer-tick` (the subject rule: what the host
+  calls is `fn-sched-tick-step` on that peer's own state), with
+  `fn-sched-table-tick-touches-only-its-peer` and `fn-sched-tablep-of-table-tick`
+  beside it and the per-peer retry bound transported, not restated. Certified
+  on persvati `run-20260920T180716Z-da35` with its teeth.
+- **The role of a connection is decided at accept, from the peer table.**
+  `fn-owner-peer-for-address` matches the source address against the
+  configured records' `auth-source-address` rows and `fn-own-open-peer` opens
+  the connection with `fn-served-open-peer`, pinning the node and the live
+  configuration into the session; the body limit is the record's
+  `inbound-max-octets`. `(:principal id)` is a reserved slot and matches
+  nothing yet, so A-PEER still stands: the identity is the configured
+  address.
+- **Transit and POST share one durable path, and the theorem says so at the
+  owner.** `fn-own-take-installs-the-queued-submission-whatever-it-carries`
+  (books/owner-invariants.lisp) states that the writer step installs the head
+  of the one queue in the one pending slot with the ledger mark of the
+  moment, and tests nothing about what the submission carries;
+  `fn-peer-transfer-is-the-post-path` is the node half. The reply side is
+  `fn-own-transit-outcome-touches-only-its-connection` and
+  `fn-own-transit-outcome-needs-a-transit-submission` (the two reply tables
+  cannot be crossed).
+- **The transfer decision is re-taken over the live node, in ACL2.**
+  `fn-owner-transit-decide` calls `fn-peer-decide-transfer` and
+  `fn-peer-injection-arguments` over the owner's node and the live
+  configuration; the memberships the durable path stages are
+  `fn-peer-scope-groups`', and Python computes no scope, no code and no
+  reason text. A decision that is not `:want` ends with no attempt and the
+  completion the reply renders with is `nil`, which is what
+  `fn-peer-transit-code` expects.
+
+Open at the end of this lane, with the obligation each one needs:
+
+| Item | State | What closes it |
+| --- | --- | --- |
+| `books/owner`, `books/owner-invariants` with the transit port | **uncertified and unreached**: persvati `run-20260920T180927Z-a8a4` published 29 books and failed six. The two root causes are `books/peer-config`'s `fn-cfg-set-peer-delta-is-admissible` (closed on `w6/peering-inbound-2`, not yet on dev) and `books/nntp-effects` having no certificate on dev; `peer-inbound`, `nntp-post`, `served` and `owner` are cascades of those | merge those two fixes, then resubmit the two roots with `--closure` |
+| K6 (`fn-ideal-*` restated over the peer event kinds) | open, not attempted | `books/ideal.lisp` gains `(:open id peer)`, `:feed-octets` and `:tick`; the served-path robustness for peer connections is `fn-peer-step-effects-well-formed` today, which is the per-connection half, not the F_node half |
+| K7 (`fn-cfg-peer-delta-preserves-the-node-and-changes-only-decisions`) | open | `fn-cfg-peer-deltas-change-only-peers` is the value-level half and is certified; the node-level statement needs `fn-node-apply-config` |
+| K8 / `(:principal id)` | reserved, unimplemented | a keyring lookup at accept beside the address match |
+| The feed driven by the owner (milestone 3) | **not delivered** | `books/peer-feed.lisp` is w6/peering-feed's and had not landed on dev at this lane's HEAD; the owner's tick would be `fn-sched-table-tick` per configured peer plus `fn-feed-tick-step`, and the FNFD journal write before the offer |
+| K5's crash-replay evidence (milestone 4) | **not delivered** | depends on the feed |
+| `tools/twonode_gate.py` feed scenario | the inbound half is real (IHAVE, 435 duplicate, loop, CHECK 438, TAKETHIS 439, reread byte-identical); the offering side is the harness's socket client, not fn's feed | the feed lane's outbound half |
+| `tools/inn_lab.py` | the fn node now writes a peer record for INN before it starts, so innfeed's connection resolves to a peer; the lab was not run on hbox in this lane | one lab run on hbox with INN 2.7.4 |

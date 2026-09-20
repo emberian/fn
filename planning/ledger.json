@@ -256,21 +256,23 @@
     "books/stx-epochs",
     "books/stx-authority",
     "tests/acl2/stx-tests",
-    "tests/acl2/stx-transit-tests"
+    "tests/acl2/stx-transit-tests",
+    "books/scheduler-peers",
+    "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 258,
-    "books_in_root_closure": 255,
-    "roots": 255,
-    "theorems": 5000,
-    "functions": 3629,
-    "assert_events": 4823,
+    "books": 260,
+    "books_in_root_closure": 257,
+    "roots": 257,
+    "theorems": 5021,
+    "functions": 3642,
+    "assert_events": 4854,
     "must_fails": 59,
     "encapsulates": 16,
     "guards": {
       "verified": 1371,
       "declared-off": 166,
-      "default-guarded": 1603,
+      "default-guarded": 1616,
       "default-unguarded": 489
     },
     "suspect_theorems": 37,
@@ -2927,7 +2929,7 @@
       "book": "books/owner-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 92,
+      "theorems": 95,
       "functions": 7,
       "guards": {
         "verified": 0,
@@ -2955,11 +2957,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 45,
-      "functions": 73,
+      "functions": 77,
       "guards": {
         "verified": 0,
         "declared-off": 3,
-        "default-guarded": 70,
+        "default-guarded": 74,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -3526,6 +3528,31 @@
         "assumptions",
         "bp-workflow-invariants",
         "scheduler"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/scheduler-peers.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 18,
+      "functions": 9,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 9,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "scheduler-invariants"
       ],
       "system_includes": [],
       "suspects": [],
@@ -6360,6 +6387,31 @@
       "encapsulates": 0,
       "includes": [
         "../../books/retention-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/scheduler-peers-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 31,
+      "must_fails": 0,
+      "defconsts": 20,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/scheduler-peers"
       ],
       "system_includes": [],
       "suspects": [],

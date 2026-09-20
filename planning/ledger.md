@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 258 |
-| Certification roots in the Makefile | 255 |
-| Books inside the root closure | 255 |
-| `defthm` and `defthmd` events | 5000 |
-| `defun` events | 3629 |
+| Books read | 260 |
+| Certification roots in the Makefile | 257 |
+| Books inside the root closure | 257 |
+| `defthm` and `defthmd` events | 5021 |
+| `defun` events | 3642 |
 | Functions with verified guards | 1371 |
 | Functions declared `:verify-guards nil` and never verified | 166 |
-| Functions left at the default with an explicit guard | 1603 |
+| Functions left at the default with an explicit guard | 1616 |
 | Functions left at the default with no guard | 489 |
-| `assert-event` checks | 4823 |
+| `assert-event` checks | 4854 |
 | `must-fail` checks | 59 |
 | `encapsulate` events | 16 |
 | Theorems flagged SUSPECT by shape | 37 |
@@ -169,8 +169,8 @@ that `make certify` requests.
 | `books/node-traces.lisp` | root | 12 | 23 | 0/0/23/0 | 0 | 0 | 0 |
 | `books/node.lisp` | root | 31 | 33 | 27/0/6/0 | 0 | 0 | 2 |
 | `books/owner-config.lisp` | root | 19 | 34 | 0/4/30/0 | 0 | 0 | 1 |
-| `books/owner-invariants.lisp` | root | 92 | 7 | 0/0/0/7 | 0 | 0 | 0 |
-| `books/owner.lisp` | root | 45 | 73 | 0/3/70/0 | 0 | 0 | 0 |
+| `books/owner-invariants.lisp` | root | 95 | 7 | 0/0/0/7 | 0 | 0 | 0 |
+| `books/owner.lisp` | root | 45 | 77 | 0/3/74/0 | 0 | 0 | 0 |
 | `books/path.lisp` | root | 0 | 21 | 0/0/21/0 | 0 | 0 | 0 |
 | `books/peer-config.lisp` | root | 24 | 27 | 0/0/27/0 | 0 | 0 | 0 |
 | `books/peer-feed-invariants.lisp` | root | 88 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -192,6 +192,7 @@ that `make certify` requests.
 | `books/retention-invariants.lisp` | root | 16 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/retention.lisp` | root | 36 | 38 | 38/0/0/0 | 0 | 0 | 2 |
 | `books/scheduler-invariants.lisp` | root | 59 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/scheduler-peers.lisp` | root | 18 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/scheduler.lisp` | root | 59 | 104 | 27/0/77/0 | 0 | 0 | 0 |
 | `books/served.lisp` | root | 58 | 35 | 2/4/29/0 | 0 | 0 | 0 |
 | `books/sha256.lisp` | - | 24 | 30 | 0/0/30/0 | 0 | 0 | 0 |
@@ -301,6 +302,7 @@ that `make certify` requests.
 | `tests/acl2/relay-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 61 | 4 | 0 |
 | `tests/acl2/replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 65 | 0 | 0 |
 | `tests/acl2/retention-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 49 | 0 | 0 |
+| `tests/acl2/scheduler-peers-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/scheduler-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 103 | 0 | 0 |
 | `tests/acl2/served-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 79 | 0 | 0 |
 | `tests/acl2/sha256-tests.lisp` | - | 0 | 2 | 0/0/2/0 | 21 | 0 | 0 |

@@ -259,7 +259,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/stx-epochs \
 	books/stx-authority \
 	tests/acl2/stx-tests \
-	tests/acl2/stx-transit-tests
+	tests/acl2/stx-transit-tests \
+	books/scheduler-peers \
+	tests/acl2/scheduler-peers-tests
 
 .PHONY: check certify acl2-ld certs-install certs-publish model-test tooling-test test
 check:

@@ -28,8 +28,8 @@ from run_store import (ACL2_RECOVER_BASE_SECONDS, ACL2_RECOVER_PER_RECORD_SECOND
                        Acl2Store, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, Store,
                        StoreError, StoreFault, StoreIndeterminate, UsageParser,
                        acl2_nat, acl2_octets, acl2_result, acl2_symbol, conservative_charge,
-                       durable_post, exit_code_for, group_codes, post_article,
-                       validate_post_boundary)
+                       durable_post, exit_code_for, group_codes, metadata,
+                       post_article, validate_post_boundary)
 from run_reader import acl2_boolean, acl2_octet_list
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -175,21 +175,65 @@ class Acl2Owner(Acl2Store):
         return reply, closing, submitted
 
     def take(self):
-        """The writer step: `taken' with one submission now in flight, or `idle'."""
-        return self._symbol("(fn-owner-take state)")
+        """The writer step: `taken', `taken-transit' or `idle'."""
+        return self._symbol_any("(fn-owner-take state)")
 
     def inflight(self):
         """The submission in flight: (cid, msgid, octets, groups), all ACL2's."""
         cid = self._nat("(@ fn-owner-submit-id)")
         msgid = bytes(acl2_octet_list(self.call("(@ fn-owner-submit-msgid)")))
         octets = bytes(acl2_octet_list(self.call("(@ fn-owner-submit-octets)")))
+        return cid, msgid, octets, self.submit_groups()
+
+    def submit_groups(self):
+        """The memberships ACL2 staged: the injection decision's for a POST,
+        fn-peer-scope-groups' for a transit transfer, never Python's."""
         count = self._nat("(len (@ fn-owner-submit-groups))")
         if count > 64:
             raise StoreError("ACL2 reported an implausible group count")
-        groups = [bytes(acl2_octet_list(self.call(
+        return [bytes(acl2_octet_list(self.call(
             "(fn-inj-nth {} (@ fn-owner-submit-groups))".format(index))))
             for index in range(count)]
-        return cid, msgid, octets, groups
+
+    def peer_for_address(self, address):
+        """The configured peer this address is, or None: ACL2 reads the record."""
+        name = bytes(acl2_octet_list_any(self.call(
+            "(fn-owner-peer-for-address '" + self.literal(address.encode("utf-8")) +
+            " state)")) or b"")
+        return name.decode("utf-8", "strict") if name else None
+
+    def open_peer(self, peer):
+        """Open a transit connection on the same listener (fn-own-open-peer)."""
+        cid = acl2_symbol_or_nat(self.call(
+            "(fn-owner-open-peer '" + self.literal(peer.encode("utf-8")) + " state)"))
+        if cid is None:
+            return None, b""
+        return cid, bytes(acl2_octet_list(self.call("(@ fn-owner-output)")))
+
+    def transit_decide(self, obligation, subject):
+        """ACL2's transfer decision over the live node, and its memberships.
+
+        Returns (kind, reason). Every check of specs/peering.md 2.2 --
+        scope, loop, history, date, capacity -- is fn-peer-decide-transfer's;
+        this reads its answer.
+        """
+        kind = self._symbol_any("(fn-owner-transit-decide '{} '{} state)".format(
+            self.literal(obligation.encode("utf-8")),
+            self.literal(subject.encode("utf-8"))))
+        reason = self._symbol_any("(fn-owner-transit-reason state)")
+        return kind, reason
+
+    def transit_outcome(self, cid, kind, reason, word):
+        form = "(fn-owner-transit-outcome {} :{} {} :{} state)".format(
+            cid, kind, ":{}".format(reason) if reason != "nil" else "nil", word)
+        if self._symbol_any(form) != "fed":
+            raise StoreError("owner did not accept the transit outcome")
+        return bytes(acl2_octet_list(self.call("(@ fn-owner-output)")))
+
+    def _symbol_any(self, form):
+        body = acl2_result(self.call(form))
+        text = body.decode("ascii", "replace").strip().lower()
+        return text[1:] if text.startswith(":") else text
 
     def outcome(self, cid, word):
         """Feed the observed word back; the book renders the reply octets."""
@@ -295,7 +339,17 @@ class Owner:
         # READER environment (DATE, NEWGROUPS).  The injection clock is taken
         # per read in serve(), not here.
         self.clock.observe(self.bridge)
-        cid, greeting = self.bridge.open()
+        # The role of a connection is decided here, from the peer table, and
+        # never from anything the client says (specs/peering.md 1.1): the
+        # source address is matched against the configured records' auth
+        # slots by ACL2, and a match opens a transit connection on this same
+        # listener.  `(:principal id)` is reserved and matches nothing yet.
+        peer = None
+        try:
+            peer = self.bridge.peer_for_address(sock.getpeername()[0])
+        except (OSError, StoreError):
+            peer = None
+        cid, greeting = self.bridge.open_peer(peer) if peer else self.bridge.open()
         if cid is None:
             # The configured bound is reached; the owner installed nothing.
             sock.close()
@@ -379,10 +433,16 @@ class Owner:
         (fn-own-durable-reply-names-a-durable-record: 240 needs a consumed
         completion after the take).
         """
-        while self.bridge.take() == "taken":
+        while True:
+            taken = self.bridge.take()
+            if taken not in ("taken", "taken-transit"):
+                break
             cid, msgid, payload, groups = self.bridge.inflight()
-            word = self.attempt(msgid, payload, groups)
-            reply = self.bridge.outcome(cid, word)
+            if taken == "taken-transit":
+                reply = self.transit(cid, msgid, payload)
+            else:
+                word = self.attempt(msgid, payload, groups)
+                reply = self.bridge.outcome(cid, word)
             for conn in self.connections.values():
                 if conn.cid == cid:
                     conn.outbuf += reply
@@ -423,6 +483,28 @@ class Owner:
                 print("owner: post fault: {}".format(error), file=sys.stderr)
                 return "uncertain"
             return word
+
+    def transit(self, cid, msgid, payload):
+        """One transit transfer: ACL2 decides, the store commits, ACL2 replies.
+
+        The decision is fn-peer-decide-transfer over the LIVE node (the
+        offer was advisory, RFC 4644 2.4.2); a decision that is not :want
+        ends here with no attempt and the reply the decision names.  On
+        :want the article goes through the SAME durable path a POST takes
+        (fn-own-take-installs-the-queued-submission-whatever-it-carries),
+        and the word observed there is fed back; three outcomes stay
+        distinct on the wire as 235/239, 437/439 and 436-and-close.
+        """
+        obligation, subject, unused_evidence = metadata(msgid, payload)
+        try:
+            kind, reason = self.bridge.transit_decide(obligation, subject)
+        except StoreError as error:
+            print("owner: transit decision failed: {}".format(error), file=sys.stderr)
+            return self.bridge.transit_outcome(cid, "defer", "busy", "uncertain")
+        if kind != "want":
+            return self.bridge.transit_outcome(cid, kind, reason, "refused")
+        word = self.attempt(msgid, payload, self.bridge.submit_groups())
+        return self.bridge.transit_outcome(cid, "want", "nil", word)
 
     def rearm(self, conn):
         events = 0

@@ -209,17 +209,32 @@ def relay(args):
         out["loop_result"] = conn.line()
     else:
         out["loop_result"] = out["loop_offer"]
+    # RFC 4644 streaming, on the same connection and the same article.  The
+    # target already holds it, so CHECK is the advisory duplicate (438) and a
+    # client that ignores the advice and sends TAKETHIS anyway must draw 439
+    # -- never a 2xx, and never a retry code (specs/peering.md 2.2, S4).
+    out["check_duplicate"] = conn.cmd("CHECK " + args.msgid)[0]
+    conn.sock.sendall(("TAKETHIS " + args.msgid + "\r\n").encode())
+    send_block(conn, lines)
+    out["takethis_duplicate"] = conn.line()
+    # And a Message-ID the target has never seen: CHECK must want it (238) or
+    # say why it does not, in the 431/438 classes and nowhere else.
+    out["check_fresh"] = conn.cmd("CHECK <fresh.check@gate.example.invalid>")[0]
     conn.close()
 
     status, got = fetch(args.to_port, args.msgid)
     out["reread"] = status
     out["identical"] = (got == lines)
     out["loop_absent"] = fetch(args.to_port, args.loop_msgid)[0]
+    out["streaming_ok"] = (out["check_duplicate"].startswith("438")
+                           and out["takethis_duplicate"].startswith("439")
+                           and out["check_fresh"][:3] in ("238", "431", "438"))
     out["ok"] = (out["transfer"].startswith("235")
                  and out["duplicate"].startswith("435")
                  and not out["loop_result"].startswith("2")
                  and out["reread"].startswith("220")
                  and out["identical"]
+                 and out["streaming_ok"]
                  and out["loop_absent"].startswith("43"))
     return out
 
@@ -482,19 +497,30 @@ else echo NONE; fi
         self.facts["peer records"] = kind.lower()
         for node, other in ((self.a, self.b), (self.b, self.a)):
             target = "{}/{}.peer".format(node.peers, other.name)
-            if kind == "STORE-PEER":
+            if kind in ("STORE-PEER", "FN-PEER"):
+                # `peer add' is a configuration record: the store must not be
+                # held by an owner, so this runs before the servers start.
+                # The auth slot is the loopback address the other node dials
+                # from, which is what decides the role at accept
+                # (specs/peering.md 1.1, fn-owner-peer-for-address).
                 self.sh("node {} peer record for {}".format(node.upper, other.upper),
                         self.cd(self.fn(
-                            "--store {} peer set --name {} --path-identity {} "
+                            "--store {} peer add {} --path-identity {} "
                             "--nntp 127.0.0.1:{} --inbound-groups 'fn.*' "
-                            "--outbound-groups 'fn.*'".format(
+                            "--outbound-groups 'fn.*' --streaming "
+                            "--source-address 127.0.0.1".format(
                                 node.store, other.name, other.path_identity, other.port))),
                         timeout=900)
-                continue
-            if kind == "FN-PEER":
-                self.sh("node {} peer record for {}".format(node.upper, other.upper),
-                        self.cd("./bin/fn peer set {} 127.0.0.1:{} {}".format(
-                            other.name, other.port, other.path_identity)), timeout=900)
+                listing = self.sh(
+                    "node {} lists its peers".format(node.upper),
+                    self.cd(self.fn("--store {} peer list".format(node.store))),
+                    timeout=900)
+                if other.name not in listing.output:
+                    self.gaps.append(
+                        "node {} accepted `peer add {}` but `peer list` does not show "
+                        "it: the record did not survive the replay, so the transit "
+                        "scenario below is running without the peer table it names."
+                        .format(node.upper, other.name))
                 continue
             self.push_file(self.peer_stub(node, other), target)
             self.skip("node {} peer record for {}".format(node.upper, other.upper),
@@ -586,7 +612,10 @@ else echo NONE; fi
                       "peering: not available on this tree")
             return
         self.facts["feed"] = ("offer={offer} transfer={transfer} duplicate={duplicate} "
+                              "check={check} takethis={takethis} "
                               "loop={loop} reread={reread} identical={identical}".format(
+                                  check=result.get("check_duplicate"),
+                                  takethis=result.get("takethis_duplicate"),
                                   offer=result.get("offer"),
                                   transfer=result.get("transfer"),
                                   duplicate=result.get("duplicate"),
@@ -603,6 +632,17 @@ else echo NONE; fi
                 "the second IHAVE of {} drew '{}', not 435: the Message-ID history did "
                 "not refuse an article the node already holds (RFC 3977 6.3.2)."
                 .format(ARTICLE_A, result.get("duplicate")))
+        if not str(result.get("check_duplicate", "")).startswith("438"):
+            self.gaps.append(
+                "CHECK of an article B already holds drew '{}', not 438: RFC 4644 "
+                "2.4's duplicate answer is not what the streaming peer sees."
+                .format(result.get("check_duplicate")))
+        if not str(result.get("takethis_duplicate", "")).startswith("439"):
+            self.gaps.append(
+                "TAKETHIS of an article B already holds drew '{}', not 439: a client "
+                "that ignores the advisory CHECK must be refused after the bytes "
+                "(RFC 4644 2.5), and a 2xx there would be a second copy."
+                .format(result.get("takethis_duplicate")))
         if str(result.get("loop_result", "")).startswith("2"):
             self.gaps.append(
                 "an article whose Path already names B was ACCEPTED by B ('{}'): the "
