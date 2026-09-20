@@ -61,7 +61,6 @@ LIFETIME = 300
 # The lowest transaction identity a lab node allocates; every later one
 # comes from the durable journal (`Outbound.next_txid`), not a counter.
 TXID_BASE = 100
-SHORT_LIFETIME = 30
 
 ARTICLES = {
     "a1": (b"<four-node-1@fn.example>",
@@ -467,21 +466,15 @@ def run_lab(run: Path, *, dtn7_repo=None) -> dict:
             lab.check("relay_a_journal_is_usable_after_recovery",
                       not outbound.bridge.fenced())
             outbound.enqueue("a2")
-            # OPEN, not asserted.  `fn-workflow-work-status` answers `absent`
-            # for `work:a1:relay-a` AFTER the recovery outcome and for
-            # `work:a2:relay-a` after an ordinary durable enqueue alike, so
-            # the status this lab can read does not distinguish an onward
-            # obligation that survived the cut from one that was never
-            # enqueued.  The two values are RECORDED and nothing is asserted
-            # of them: asserting the recovered obligation from a status that
-            # reads the same either way would assert a coin toss.  What the
-            # cut does establish is next to this line -- the journal is usable
-            # again and the history holds a resolved intent or none.
+            # The onward obligation is readable again: whichever resolution
+            # the cut took, `work:a1:relay-a` is a work the reopened image
+            # holds, not an absent one.  It reads `outstanding` because no
+            # attempt has been made for it yet -- fn-bp-work-status answers
+            # :absent only for a work id the image does not hold at all.
             cut["work_status_a1"] = outbound.status("a1")
             cut["work_status_a2"] = outbound.status("a2")
-            cut["work_status_is_open"] = (
-                "fn-workflow-work-status does not report enqueued work; see "
-                "planning/lanes/HANDOFF-w3-media-lab.md")
+            lab.check("relay_a_onward_obligation_recoverable_after_kill",
+                      cut["work_status_a1"] not in ("", "absent", "unknown"))
             cut["records_after_recovery"] = journal_records(relay_a.workflow)
             # The carried hop is a submission like any other: the attempt is
             # durable before a byte is written to the volume.
@@ -538,9 +531,13 @@ def run_lab(run: Path, *, dtn7_repo=None) -> dict:
             outbound.initialize()
             outbound.enqueue("a1")
             outbound.enqueue("a2")
-            expiring_bid, _ = outbound.submit("a1", generation=0, label="relay-b-a1-expiring",
-                                              lifetime=SHORT_LIFETIME)
-        dropped = relay_b.bpa.advance(SHORT_LIFETIME + 1)
+            # The attempt carries the CONFIGURED lifetime: fn-bp-record-contextp
+            # requires the attempt record's bp-lifetime to equal the config's,
+            # so a submission cannot quietly shorten its own expiry.  The
+            # window is closed for longer than that lifetime instead.
+            expiring_bid, _ = outbound.submit("a1", generation=0,
+                                              label="relay-b-a1-expiring")
+        dropped = relay_b.bpa.advance(LIFETIME + 1)
         lab.check("attempt_expires_while_no_contact_is_open", dropped == [expiring_bid])
         with Outbound(relay_b) as outbound:
             lab.check("expired_attempt_leaves_the_work_outstanding",

@@ -32,6 +32,7 @@ REQUIRED_ASSERTIONS = (
     "relay_a_accepts_both_letters",
     "relay_a_archival_receipts_survive_kill",
     "relay_a_journal_is_usable_after_recovery",
+    "relay_a_onward_obligation_recoverable_after_kill",
     "relay_a_archival_receipts_unchanged_by_recovery",
     "media_hop_accepts_both_letters",
     "carried_media_is_not_modified_by_import",
