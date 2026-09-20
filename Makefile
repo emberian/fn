@@ -183,6 +183,9 @@ ACL2_BOOKS ?= books/assumptions \
 	tests/acl2/nntp-teeth-tests \
 	books/served \
 	tests/acl2/served-tests \
+	books/owner \
+	books/owner-invariants \
+	tests/acl2/owner-tests \
 	books/ideal \
 	books/nntp-index \
 	tests/acl2/nntp-index-tests \

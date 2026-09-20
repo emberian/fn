@@ -58,6 +58,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-bpp-` | `bp-primary`, `bp-primary-invariants` | BPv7 primary bundle block: flags, CRC-16/CRC32C, `dtn` and `ipn` endpoint IDs, creation timestamp, lifetime, fragment fields, bundle identity, §4.4 extension block data |
 | `fn-bpf-` | `bp-fragment`, `bp-fragment-invariants` | BPv7 fragmentation and ADU reassembly over identical-overlap covers; fragment primary blocks |
 | `fn-clock-` | `clock`, `clock-invariants` | Host clock observations, Bundle Age anchors and the three-way bundle expiry decision |
+| `fn-own-` | `owner`, `owner-invariants` | The mutable service owner over the live `fn-sn` composition: committed view, per-connection version pins and NNTP sessions, one pending transaction, the proof-only completion ledger, clock observations and clock-stamped group-configuration facts |
 | `fn-anchor-` | `anchor`, `anchor-record`, `anchor-invariants` | The external freshness anchor: the Roughtime statement and the octets its two signatures cover, the strictly-newer interval order, the monotone rule for acceptance, restore and incarnation advance, fork evidence, and the FNAN durable record family |
 | `fn-digest-`, `fn-sig-` | `crypto-seam` | Constrained digest and signature seam with shape-only constraints; tagged preimages; hex rendering |
 | `fn-prin-` | `principal`, `principal-invariants` | Principal ids from (public key, token), key succession chains, keyrings |
