@@ -10,19 +10,19 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 211 |
-| Certification roots in the Makefile | 210 |
-| Books inside the root closure | 210 |
-| `defthm` and `defthmd` events | 3480 |
-| `defun` events | 2587 |
-| Functions with verified guards | 1064 |
+| Books read | 212 |
+| Certification roots in the Makefile | 211 |
+| Books inside the root closure | 211 |
+| `defthm` and `defthmd` events | 3527 |
+| `defun` events | 2611 |
+| Functions with verified guards | 1074 |
 | Functions declared `:verify-guards nil` and never verified | 138 |
-| Functions left at the default with an explicit guard | 940 |
-| Functions left at the default with no guard | 445 |
-| `assert-event` checks | 3595 |
+| Functions left at the default with an explicit guard | 951 |
+| Functions left at the default with no guard | 448 |
+| `assert-event` checks | 3636 |
 | `must-fail` checks | 59 |
 | `encapsulate` events | 14 |
-| Theorems flagged SUSPECT by shape | 28 |
+| Theorems flagged SUSPECT by shape | 29 |
 | Export-hygiene warnings | 62 |
 | Teeth-form warnings | 0 |
 | Include-hygiene warnings | 94 |
@@ -142,6 +142,7 @@ that `make certify` requests.
 | `books/nntp-session.lisp` | root | 1 | 34 | 34/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-syntax.lisp` | root | 6 | 45 | 39/0/6/0 | 0 | 0 | 0 |
 | `books/nntp.lisp` | root | 0 | 5 | 5/0/0/0 | 0 | 0 | 0 |
+| `books/node-config.lisp` | root | 48 | 23 | 10/0/13/0 | 0 | 0 | 1 |
 | `books/node-invariants.lisp` | root | 20 | 0 | 0/0/0/0 | 0 | 0 | 3 |
 | `books/node-traces.lisp` | root | 12 | 23 | 0/0/23/0 | 0 | 0 | 0 |
 | `books/node.lisp` | root | 31 | 33 | 27/0/6/0 | 0 | 0 | 2 |
@@ -164,7 +165,7 @@ that `make certify` requests.
 | `books/served.lisp` | root | 50 | 31 | 2/4/25/0 | 0 | 0 | 0 |
 | `books/statement-invariants.lisp` | root | 59 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/statement.lisp` | root | 30 | 65 | 0/0/65/0 | 0 | 0 | 0 |
-| `books/store-config.lisp` | root | 8 | 6 | 0/0/6/0 | 0 | 0 | 0 |
+| `books/store-config.lisp` | root | 7 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/store-files-invariants.lisp` | root | 43 | 3 | 0/0/0/3 | 0 | 0 | 0 |
 | `books/store-files-traces.lisp` | root | 51 | 12 | 0/0/0/12 | 0 | 0 | 0 |
 | `books/store-files.lisp` | root | 30 | 49 | 47/0/2/0 | 0 | 0 | 0 |
@@ -222,7 +223,7 @@ that `make certify` requests.
 | `tests/acl2/cbor-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
 | `tests/acl2/checkpoint-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/clock-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 0 | 0 |
-| `tests/acl2/config-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 54 | 0 | 0 |
+| `tests/acl2/config-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 95 | 0 | 0 |
 | `tests/acl2/container-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 62 | 0 | 0 |
 | `tests/acl2/crypto-seam-tests.lisp` | root | 11 | 7 | 0/0/7/0 | 18 | 0 | 0 |
 | `tests/acl2/exchange-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 162 | 0 | 0 |
@@ -285,6 +286,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bpf-out-of-bounds-input-allocates-nothing` | `books/bp-fragment-invariants.lisp` | 390 | branch-of-definition: the hypothesis is a branch test of fn-bpf-reassemble and the conclusion is that branch's value |
 | `fn-bpr-context-from-request-is-constructor` | `books/bp-receiver-state-invariants.lisp` | 94 | definition-restated: the conclusion is the body of fn-bpr-context-from-request |
 | `fn-clock-drop-permission-is-exactly-expired-by-definition` | `books/clock-invariants.lisp` | 164 | definition-restated: the conclusion is the body of fn-clock-may-drop-local-copyp; reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-cnode-inadmissible-config-changes-nothing` | `books/node-config.lisp` | 423 | branch-of-definition: the hypothesis is a branch test of fn-cnode-apply-config and the conclusion is that branch's value |
 | `fn-exchange-ingest-refusal-is-no-op` | `books/exchange.lisp` | 529 | branch-of-definition: the hypothesis negates a branch test of fn-exchange-ingest and the conclusion is that branch's value |
 | `fn-frame-decode-refuses-oversize-before-validation` | `books/frame-invariants.lisp` | 653 | branch-of-definition: the hypothesis is a branch test of fn-frame-decode and the conclusion is that branch's value |
 | `fn-inj-instantp-opens` | `books/injection-invariants.lisp` | 207 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-inj-instantp |

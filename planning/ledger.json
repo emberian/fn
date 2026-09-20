@@ -65,6 +65,7 @@
     "books/replay-invariants",
     "tests/acl2/replay-tests",
     "books/config-records",
+    "books/node-config",
     "tests/acl2/config-tests",
     "books/store-files",
     "books/store-files-invariants",
@@ -214,21 +215,21 @@
     "tests/acl2/policy-tests"
   ],
   "totals": {
-    "books": 211,
-    "books_in_root_closure": 210,
-    "roots": 210,
-    "theorems": 3480,
-    "functions": 2587,
-    "assert_events": 3595,
+    "books": 212,
+    "books_in_root_closure": 211,
+    "roots": 211,
+    "theorems": 3527,
+    "functions": 2611,
+    "assert_events": 3636,
     "must_fails": 59,
     "encapsulates": 14,
     "guards": {
-      "verified": 1064,
+      "verified": 1074,
       "declared-off": 138,
-      "default-guarded": 940,
-      "default-unguarded": 445
+      "default-guarded": 951,
+      "default-unguarded": 448
     },
-    "suspect_theorems": 28,
+    "suspect_theorems": 29,
     "export_hygiene_warnings": 62,
     "teeth_form_warnings": 0,
     "include_hygiene_warnings": 94
@@ -2523,6 +2524,36 @@
       "read_error": null
     },
     {
+      "book": "books/node-config.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 48,
+      "functions": 23,
+      "guards": {
+        "verified": 10,
+        "declared-off": 0,
+        "default-guarded": 13,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 10,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-invariants",
+        "config-records",
+        "nntp-syntax",
+        "node-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-cnode-inadmissible-config-changes-nothing"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/node-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -3106,18 +3137,18 @@
       "book": "books/store-config.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 8,
-      "functions": 6,
+      "theorems": 7,
+      "functions": 4,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 6,
+        "default-guarded": 4,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 3,
+      "defconsts": 1,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -4612,22 +4643,23 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 0,
+      "functions": 3,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 0
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 54,
+      "assert_events": 95,
       "must_fails": 0,
-      "defconsts": 16,
+      "defconsts": 29,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/config-invariants",
         "../../books/config-records",
+        "../../books/node-config",
         "../../books/store-config"
       ],
       "system_includes": [],
@@ -5800,6 +5832,14 @@
       "reasons": [
         "definition-restated: the conclusion is the body of fn-clock-may-drop-local-copyp",
         "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
+      "theorem": "fn-cnode-inadmissible-config-changes-nothing",
+      "book": "books/node-config.lisp",
+      "line": 423,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-cnode-apply-config and the conclusion is that branch's value"
       ]
     },
     {

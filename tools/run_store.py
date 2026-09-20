@@ -40,14 +40,13 @@ DEFAULT_CONFIG = {
     # `books/identity`; a store holding pre-v1 `"sha256:"`/`"archive:"`
     # identities is format 4 and is refused at open rather than misread.
     # Format 3 was the first written under the ACL2-owned frame grammar, which
-    # carries the record kind octet the Python framing lacked.  The configured
-    # group list is no longer copied here: `books/store-config` owns it and a
-    # store records only which version of that table it was written under.
+    # carries the record kind octet the Python framing lacked.  The group
+    # table is not here at all: it is the store's configuration record
+    # history under `config/`, replayed by the core at every open.
     # The encoded-record bound left with it: `books/frame` owns
     # `*fn-frame-max-store-payload*`, the host reads it from the bridge, and a
     # configuration that could disagree with the model is not written at all.
     "format": "fn-store-experiment-5",
-    "group_table": "fn-store-groups-1",
     "capacity": 1048576,
     "max_payload_bytes": 32768,
     "max_recovery_record_bytes": MAX_RECOVERY_RECORD_BYTES,
@@ -57,7 +56,7 @@ DEFAULT_CONFIG = {
 # A second *named* profile, not a raised default.  `max_transactions` and the
 # aggregate replay input it derives are the two bounds this host owns; every
 # bound the model owns (`*fn-frame-max-store-payload*`, `*fn-article-max-octets*`,
-# `*fn-store-groups*`, `fn-af-message-idp`, `fn-charge-for-payload`) is
+# the configured group table, `fn-af-message-idp`, `fn-charge-for-payload`) is
 # unchanged here and cannot be raised from configuration at all.  A store
 # carries its profile name in its checksummed configuration, so a dev store and
 # a scale store are distinguishable on disk and neither is read under the
@@ -74,6 +73,12 @@ SCALE_CONFIG = dict(
 # `profile` key, so every store written before this profile existed still
 # checksums and still opens.
 SUPPORTED_PROFILES = (DEFAULT_CONFIG, SCALE_CONFIG)
+# The CLI's default `init --group` list: the two experimental groups every
+# existing test posts into.  A default argument for an operator command, not
+# a group table; the table a store serves is decided by the configuration
+# records ACL2 admits and replays.
+DEFAULT_GROUPS = ("fn.letters", "fn.test")
+CONFIG_RECORD_BYTES = 65538
 # `books/frame` owns the grammar.  These two are the slice arithmetic that
 # `durable_records` and the corruption tests still do over a file they never
 # interpret; `frame_bridge.FrameSession` checks both against the ACL2
@@ -385,6 +390,15 @@ def acl2_symbol(output):
     return body.decode("ascii").lower()[1:]
 
 
+def acl2_keyword(output):
+    """A keyword reply outside the store-action vocabulary: a configuration
+    outcome (:ok/:refused) or an admissibility reason named by books/config."""
+    body = acl2_result(output).upper()
+    if not re.fullmatch(rb":[A-Z0-9-]+", body):
+        raise StoreError("ACL2 returned a non-keyword: {}".format(body.decode("ascii", "replace")))
+    return body.decode("ascii").lower()[1:]
+
+
 def acl2_nat(output):
     body = acl2_result(output)
     if not re.fullmatch(rb"[0-9]+", body):
@@ -483,9 +497,11 @@ class Acl2Store:
     def record_txid(self, record):
         return acl2_nat(self.call("(fn-store-record-txid '" + self.literal(record) + ")"))
 
-    def recover(self, records, frontier):
+    def recover(self, records, frontier, config_records=()):
         literal = "(" + " ".join(self.literal(record) for record in records) + ")"
-        form = "(fn-store-sn-recover '" + literal + " " + str(frontier) + " state)"
+        config = "(" + " ".join(self.literal(record) for record in config_records) + ")"
+        form = ("(fn-store-sn-recover '" + literal + " " + str(frontier)
+                + " '" + config + " state)")
         # Replay cost grows with the recovered history, so the bound does too.
         timeout = max(ACL2_RECOVER_BASE_SECONDS + ACL2_RECOVER_PER_RECORD_SECONDS * len(records),
                       self.form_timeout(form))
@@ -600,6 +616,32 @@ class Acl2Store:
     def group_next(self, code):
         return acl2_nat(self.call("(fn-store-sn-group-next {} state)".format(code)))
 
+    # -- the replayed configuration -------------------------------------------
+
+    def config_generation(self):
+        return acl2_nat(self.call("(fn-store-cfg-generation state)"))
+
+    def _names(self, form):
+        joined = bytes(acl2_octets(self.call(form)))
+        return tuple(name.decode("utf-8") for name in joined.split(b"\n") if name)
+
+    def config_served(self):
+        return self._names("(fn-store-cfg-served state)")
+
+    def config_domain(self):
+        return self._names("(fn-store-cfg-domain state)")
+
+    def reconfigure(self, kind, name, monotonic, wall):
+        """One create/retire request.  Returns ("ok", octets) or ("refused", reason)."""
+        form = "(fn-store-cfg-reconfigure {} '{} {} {} state)".format(
+            kind, self.literal(name.encode("utf-8", "strict")), int(monotonic), int(wall))
+        status = acl2_keyword(self.call(form))
+        if status == "ok":
+            return status, acl2_octets(self.call("(fn-store-cfg-last-octets state)"))
+        if status != "refused":
+            raise StoreFault("unexpected reconfiguration outcome: {}".format(status))
+        return "refused", acl2_keyword(self.call("(fn-store-cfg-last-reason state)"))
+
     def pin_count(self):
         return acl2_nat(self.call("(fn-store-sn-pin-count state)"))
 
@@ -648,6 +690,11 @@ class Store:
         self.profile = DEFAULT_CONFIG if profile is None else profile
         self.lock_fd = None
         self.config = None
+        # The replayed configuration: generation, served table and allocation
+        # domain, all as ACL2 returned them at the last recover.
+        self.config_generation = None
+        self.config_served = ()
+        self.config_domain = ()
         self.frontier = None
         self.fenced = False
         # Staged names an interrupted publication left behind.  Recovery
@@ -718,7 +765,18 @@ class Store:
         fsync_dir(self.root)
 
     @property
-    def config_record_path(self): return self.root / "config-record"
+    def config_dir(self): return self.root / "config"
+
+    def config_record_path(self, generation):
+        return self.config_dir / "{:08d}.cfg".format(generation)
+
+    def config_record_files(self):
+        """The durable configuration records in generation order."""
+        if not self.config_dir.is_dir():
+            return ()
+        names = sorted(entry.name for entry in os.scandir(self.config_dir)
+                       if entry.name.endswith(".cfg"))
+        return tuple(self.config_dir / name for name in names)
 
     @staticmethod
     def _frontier_with_checksum(next_txid):
@@ -794,15 +852,15 @@ class Store:
             except OSError:
                 pass
 
-    def initialize(self, bridge=None):
-        # One durable configuration record, its content decided entirely by
-        # `books/config`: packet R4 deletes the *fn-store-groups* line, not a
-        # Python copy of the table.
+    def initialize(self, bridge=None, groups=DEFAULT_GROUPS):
+        # One durable configuration record at generation 1, built and admitted
+        # by the core from the operator's group names.
         self._safe_directory(self.root, create=True)
         lock_fd = self._open_lock(exclusive=True, create=True)
         try:
             self._safe_directory(self.transactions, create=True)
             self._safe_directory(self.staging, create=True)
+            self._safe_directory(self.config_dir, create=True)
             config = config_with_checksum(self.profile)
             if self._publish_initial_file(self.config_path, canonical_json(config) + b"\n"):
                 self.config = config
@@ -810,10 +868,13 @@ class Store:
                 self._load_config()
             # A missing allocator alongside committed history would permit
             # reuse of an aborted ID.  It is a fault, never an implicit 0.
-            if not check_regular(self.config_record_path):
-                self._publish_initial_file(
-                    self.config_record_path,
-                    frame_bridge.session(bridge).config_record_default())
+            if not self.config_record_files():
+                try:
+                    octets = frame_bridge.session(bridge).config_record_initial(groups)
+                except frame_bridge.BridgeError as error:
+                    raise StoreError("refused initial group table: {}".format(error)) from error
+                self._publish_initial_file(self.config_record_path(1), octets)
+                fsync_dir(self.config_dir)
             if not check_regular(self.frontier_path) and self.transaction_files():
                 raise StoreFault("refusing missing allocator frontier with committed history")
             frontier = canonical_json(self._frontier_with_checksum(0)) + b"\n"
@@ -822,7 +883,8 @@ class Store:
             else:
                 self._load_frontier()
             fsync_regular(self.config_path)
-            fsync_regular(self.config_record_path)
+            for path in self.config_record_files():
+                fsync_regular(path)
             fsync_regular(self.frontier_path)
             fsync_dir(self.transactions)
             fsync_dir(self.root)
@@ -949,25 +1011,37 @@ class Store:
             records.append(record)
         return records
 
-    def _replay_config_record(self, acl2):
-        """Replay the durable configuration record, or refuse the store.
+    def config_records(self):
+        """The durable configuration record history, oldest first.
 
-        A store with no configuration record, or with a record whose kind the
-        core does not know, is a refused store -- a distinct outcome from an
-        uncertain persistence observation, and never a compiled-in default.
+        A store with no configuration record is a refused store -- a distinct
+        outcome from an uncertain persistence observation, and never a
+        compiled-in default.  The core decides whether the records replay.
         """
-        if not check_regular(self.config_record_path):
+        paths = self.config_record_files()
+        if not paths:
             raise StoreFault("refusing store with no durable configuration record")
-        raw = read_regular_bounded(self.config_record_path, 65538)
+        records = []
+        for path in paths:
+            check_regular(path)
+            records.append(read_regular_bounded(path, CONFIG_RECORD_BYTES))
+        return records
+
+    def write_config_record(self, generation, octets):
+        """Make one admitted configuration record durable under its generation.
+
+        The three outcomes stay distinct: the record either reaches its final
+        name and its directory barrier (accepted), or an I/O failure leaves
+        it uncertain -- the next open replays whatever became durable.
+        """
         try:
-            generation, groups, capacity = (
-                frame_bridge.session(acl2).config_record_replay(raw))
-        except frame_bridge.BridgeError as error:
-            raise StoreFault(
-                "unusable durable configuration record: {}".format(error)) from error
-        self.config_generation = generation
-        self.config_groups = groups
-        self.config_capacity = capacity
+            if not self._publish_initial_file(self.config_record_path(generation), octets):
+                raise StoreFault("configuration generation {} already exists".format(generation))
+            fsync_regular(self.config_record_path(generation))
+            fsync_dir(self.config_dir)
+        except OSError as error:
+            raise StoreIndeterminate(
+                "configuration record {} may not be durable: {}".format(generation, error)) from error
 
     def recover(self, acl2):
         # Recovery owns the mutation gate from the start of scanning through
@@ -979,11 +1053,14 @@ class Store:
             # barrier failed. Recover the observed frontier under the held
             # store lock, never a cached pre-error allocation value.
             self._load_frontier()
-            self._replay_config_record(acl2)
+            config_records = self.config_records()
             records = self.durable_records(acl2)
             self.orphans = self.staging_orphans()
-            if acl2.recover(records, self.frontier) != "recovering":
-                raise StoreFault("ACL2 replay rejected committed transaction history")
+            if acl2.recover(records, self.frontier, config_records) != "recovering":
+                raise StoreFault("ACL2 replay rejected committed transaction history or configuration history")
+            self.config_generation = acl2.config_generation()
+            self.config_served = acl2.config_served()
+            self.config_domain = acl2.config_domain()
         except (StoreFault, StoreIndeterminate):
             self.fenced = True
             raise
@@ -1233,17 +1310,15 @@ def metadata(msgid, payload, bridge=None):
         raise StoreError("ACL2 refused to derive content identity") from error
 
 
-def group_codes(groups, config, bridge=None):
-    """`books/store-config` owns the group table; this asks it for the codes."""
+def group_codes(groups, store, bridge=None):
+    """Codes in the allocation domain the core handed `store` at recover."""
     session = frame_bridge.session(bridge)
-    if config.get("format") != session.format_id():
+    if store.config.get("format") != session.format_id():
         raise StoreFault("store was written under a different store format")
-    if config.get("group_table") != session.group_table_id():
-        raise StoreFault("store was written under a different group table")
     if not groups:
         raise StoreError("provide one or more distinct configured groups")
     try:
-        return session.group_codes(groups)
+        return session.group_codes(groups, store.config_domain)
     except frame_bridge.BridgeError as error:
         raise StoreError("unknown or duplicate configured group") from error
 
@@ -1272,10 +1347,48 @@ def validate_post_boundary(msgid, payload, groups, charge, config, bridge=None):
 def command_init(args):
     store = Store(args.store, writable=True)
     try:
-        store.initialize()
+        store.initialize(groups=tuple(args.group) if args.group else DEFAULT_GROUPS)
         store.acquire()
         print("initialized {}".format(store.root))
     finally:
+        store.close()
+
+
+def command_group(args):
+    """`group create <name>` / `group retire <name>`: one configuration record.
+
+    The core admits or refuses the request (exit 1 with the reason); an
+    admitted record is made durable under its generation, and an I/O failure
+    after admission is reported uncertain (exit 3), never as either.
+    """
+    import time
+    kind = {"create": ":create-group", "retire": ":remove-group"}[args.action]
+    store, bridge, unused_records = open_live_store(args.store, writable=True)
+    try:
+        status, payload = bridge.reconfigure(kind, args.name, time.monotonic(), time.time())
+        if status != "ok":
+            print("store: refused group {}: {}".format(args.action, payload), file=sys.stderr)
+            return EXIT_REFUSED
+        generation = store.config_generation + 1
+        store.write_config_record(generation, payload)
+        print("group {} name={} generation={}".format(
+            "created" if args.action == "create" else "retired", args.name, generation))
+        return EXIT_OK
+    finally:
+        bridge.close()
+        store.close()
+
+
+def command_config(args):
+    """Print the replayed configuration: generation, served table, domain."""
+    store, bridge, unused_records = open_live_store(args.store, writable=False)
+    try:
+        print("generation={} served={} domain={}".format(
+            store.config_generation, ",".join(store.config_served),
+            ",".join(store.config_domain)))
+        return EXIT_OK
+    finally:
+        bridge.close()
         store.close()
 
 
@@ -1355,7 +1468,7 @@ def post_article(store, bridge, records_count, msgid, payload, groups, charge):
     duplicate.  Every refusal, uncertainty and fault is raised as the store
     error that names it, so the CLI and the owner map one outcome to one code.
     """
-    codes = group_codes(groups, store.config)
+    codes = group_codes(groups, store)
     charge = charge if charge is not None else conservative_charge(payload)
     validate_post_boundary(msgid, payload, codes, charge, store.config)
     existing = bridge.existing_action(msgid, payload, codes)
@@ -1588,7 +1701,13 @@ def main(argv=None):
     parser = UsageParser(description=__doc__)
     parser.add_argument("--store", required=True, help="local store root")
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("init")
+    init = sub.add_parser("init")
+    init.add_argument("--group", action="append",
+                      help="a group the new store serves (default: the two experimental groups)")
+    group = sub.add_parser("group")
+    group.add_argument("action", choices=("create", "retire"))
+    group.add_argument("name")
+    sub.add_parser("config")
     post = sub.add_parser("post")
     post.add_argument("--message-id", required=True)
     post.add_argument("--payload", required=True)
@@ -1613,7 +1732,8 @@ def main(argv=None):
     try:
         return {"init": command_init, "post": command_post, "recover": command_recover,
                 "status": command_status, "inspect": command_inspect,
-                "anchor": command_anchor}[args.command](args)
+                "anchor": command_anchor, "group": command_group,
+                "config": command_config}[args.command](args)
     except (StoreError, OSError, UnicodeError) as error:
         print("store: {}".format(error), file=sys.stderr)
         return exit_code_for(error)
