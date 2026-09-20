@@ -26,13 +26,19 @@ def post_many(store_path, count, prefix):
     """Post `count` articles through one live owner and one bridge."""
     store, bridge, records = run_store.open_live_store(store_path, writable=True)
     try:
-        codes = run_store.group_codes(["fn.letters"], store.config)
+        # `group_codes` takes the Store: it reads the allocation domain the
+        # core handed it at recover, not the configuration dict.
+        codes = run_store.group_codes(["fn.letters"], store)
         for index in range(count):
             msgid = "<{}-{}@example.invalid>".format(prefix, index).encode("ascii")
             payload = "article {} of {}\r\n".format(index, prefix).encode("ascii")
             charge = run_store.conservative_charge(payload)
             run_store.validate_post_boundary(msgid, payload, codes, charge, store.config)
-            assert bridge.existing_action(msgid, payload, codes) == "new"
+            # `fn-store-sn-existing-action` answers `:absent` when nothing
+            # is stored under this identity; `duplicate` and `conflict` are
+            # the two the production path in `run_store.post` refuses on.
+            # `"new"` is not in the model vocabulary any more.
+            assert bridge.existing_action(msgid, payload, codes) == "absent"
             store.advance_frontier(bridge, bridge.next_txid())
             obligation, subject, evidence = run_store.metadata(msgid, payload)
             action = bridge.prepare(msgid, payload, codes, obligation, subject,
