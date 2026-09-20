@@ -106,12 +106,27 @@
           items
         (fn-stx-commit-of-items (fn-stmt-value items))))))
 
+; fn-stmt-okp, fn-stmt-value and fn-stmt-ok are opaque here: books/statement
+; withdraws their definitions and books/statement-invariants withdraws the
+; result algebra that relates them (fn-stmt-invariants-vocabulary).  Nothing
+; in this book's include chain re-opens either, so without the two rewrites
+; named below the accepting branch of fn-stx-commit-of-items stops at
+; (fn-me-commitp (fn-stmt-value (fn-stmt-ok (fn-me-commit ...)))) -- the
+; commit is built and the conclusion cannot see it.  The two rewrites are
+; enabled AT THIS FORM (docs/proof-style.md, "never enable a vocabulary
+; book-wide"): each is about fn-stmt-ok alone, so neither fans.
+;
+; No shape fact about fn-stmt-decode-items is needed.  Every field the
+; conclusion constrains is constrained by fn-stx-commit-of-items' own branch
+; tests: the base by fn-stmt-uint-item-p (hence fn-record-uint32p, hence
+; natp) and the op by fn-stx-op-of-code-is-an-op.  The decoder stays disabled.
 (defthm fn-stx-commit-decode-is-a-commit
   (implies (fn-stmt-okp (fn-stx-commit-decode-exact octets))
            (fn-me-commitp (fn-stmt-value (fn-stx-commit-decode-exact octets))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-me-commitp fn-me-commit fn-stmt-uint-item-p
                             fn-record-uint32p fn-me-opp
+                            fn-stmt-okp-of-ok fn-stmt-value-of-ok
                             (:d fn-stx-commit-of-items)
                             (:d fn-stx-commit-decode-exact))
                            (fn-stmt-decode-items fn-cbor-at-mostp)))))
@@ -193,13 +208,53 @@
                   (fn-stx-commit-witness-scan c delta keyring))
          :hints (("Goal" :in-theory (disable fn-stx-commit-of-statement)))))
 
+; Every statement of a lace verifies under this keyring.  The witness scan
+; walks the list, so the member-shaped
+; fn-stx-batch-delta-members-are-verified is the wrong shape for its
+; induction; this is the same fact in the shape the induction consumes.
+(local
+ (defun fn-stx-lace-verifiedp (lace keyring)
+   (declare (xargs :guard (and (fn-lace-p lace) (fn-prin-keyringp keyring))))
+   (if (consp lace)
+       (and (fn-prin-verifiedp (car lace) keyring)
+            (fn-stx-lace-verifiedp (cdr lace) keyring))
+     t)))
+
+(local (defthm fn-stx-lace-verifiedp-of-append
+         (iff (fn-stx-lace-verifiedp (append a b) keyring)
+              (and (fn-stx-lace-verifiedp a keyring)
+                   (fn-stx-lace-verifiedp b keyring)))))
+
+(local (defthm fn-stx-lace-verifiedp-of-delta
+         (fn-stx-lace-verifiedp (fn-stx-delta octets keyring) keyring)
+         :hints (("Goal" :in-theory (enable (:d fn-stx-verifiedp))))))
+
+(local (defthm fn-stx-lace-verifiedp-of-batch-delta
+         (fn-stx-lace-verifiedp (fn-stx-batch-delta batch keyring) keyring)
+         :hints (("Goal" :induct (fn-stx-batch-delta batch keyring)
+                  :in-theory (disable fn-stx-delta)))))
+
+; The hypothesis is the verification of the delta, not its lace shape.  As
+; first written this lemma asked only (fn-lace-p delta) and was FALSE: the
+; scan's disjunct requires (fn-prin-verifiedp (car delta) keyring), and an
+; arbitrary lace supplies no such thing -- ACL2's checkpoint was exactly
+; (implies (fn-stmt-p delta1) (fn-prin-verifiedp delta1 keyring)).  The
+; hypothesis holds on every reachable delta: fn-stx-batch-delta is built out
+; of fn-stx-delta, which is a singleton only for a verified statement.
 (local (defthm fn-stx-commits-of-lace-have-witnesses
          (implies (and (member-equal c (fn-stx-commits-of-lace delta))
-                       (fn-lace-p delta))
+                       (fn-stx-lace-verifiedp delta keyring))
                   (fn-stx-commit-witness-scan c delta keyring))
          :rule-classes nil
          :hints (("Goal" :induct (fn-stx-commits-of-lace delta)
                   :in-theory (disable fn-stx-commit-of-statement)))))
+
+(local (defthm fn-stx-subsetp-equal-cons
+         (implies (subsetp-equal a b)
+                  (subsetp-equal a (cons x b)))))
+
+(local (defthm fn-stx-subsetp-equal-reflexive
+         (subsetp-equal x x)))
 
 (local (defthm fn-stx-every-commit-by-sublist
          (implies (and (subsetp-equal commits
@@ -211,8 +266,11 @@
                                   commits batch keyring)
                   :in-theory (disable fn-stx-commit-witness-scan
                                       fn-stx-commits-of-lace
-                                      fn-stx-batch-delta))
-                 ("Subgoal *1/1"
+                                      fn-stx-batch-delta
+                                      (:d fn-stx-lace-verifiedp)))
+                 ; The scheme is three-way (base, no witness, witness), so
+                 ; the case that needs the witness is *1/2, not *1/1.
+                 ("Subgoal *1/2"
                   :use ((:instance fn-stx-commits-of-lace-have-witnesses
                                    (c (car commits))
                                    (delta (fn-stx-batch-delta batch

@@ -231,3 +231,69 @@ the whole of the evidence.
    deputies in one batch.
 6. **root.** Certify this closure once the cache is rebuilt (order above), and
    record the after times against the four before times in this report.
+
+---
+
+# Deputy report: substrate, round 2 (2026-09-20, lane `w10/substrate-2`)
+
+HEAD: `w10/substrate-2` at e397be1, from `dev` c6ebc68 with `dev` f730c24
+merged. Scope: the four substrate roots a full gate of `dev` left red.
+
+## Per root
+
+| Root | Before | After |
+| --- | --- | --- |
+| `books/stx-index` | open at `fn-stx-index-equivocators-agree` | **certified**, 0.73 s |
+| `books/stx-epochs` | open at `fn-stx-commit-decode-is-a-commit` | **certified**, 0.52 s |
+| `books/stx-authority` | cascade | **certified**, 0.65 s |
+| `tests/acl2/stx-transit-tests` | cascade | **certified**, 0.72 s, 60 assertions |
+
+persvati, ACL2 8.7, `run-20260920T211342Z-aa20`,
+`build/acl2/certify-20260920T211346Z-3327395`, **31 of 31 roots, exit 0**,
+128 s wall at `--jobs 4`. Baseline, same command before any edit:
+`run-20260920T204626Z-b9b3`, 27 of 31. Closure certify wall time for the
+cluster: 123 s before, 128 s after — the four roots add 2.6 s.
+
+## Ledger, before and after
+
+Cluster SUSPECT count 2 → 3. The new one is honest and wanted:
+`fn-stx-index-lookup-cost-is-index-bounded` is now flagged
+`instance-corollary`, because its content moved into
+`fn-stx-alist-steps-is-len-bounded` where the induction variable is a
+variable. As it stood it suggested no induction scheme and had never been
+admitted by any run. No new global rewrite rule leaves any book in the
+cluster: every lemma this round added is `local`, and the two bridges and
+both step lemmas are `:rule-classes nil`. One local `deftheory`,
+`fn-stx-index-equivocator-fan`, withdraws the fifteen zero-useful runes
+`tools/proof_profile.py` measured.
+
+## What changed and why
+
+Two theorems closed with their statements unchanged (`fn-stx-index-
+equivocators-agree`, `fn-stx-commit-decode-is-a-commit`), and four forms
+below them — which no run had ever reached, because a red root hides
+everything under it — were wrong and are repaired: one FALSE local lemma
+(`fn-stx-commits-of-lace-have-witnesses`, missing the verification
+hypothesis), one `:use` on the wrong subgoal of a three-way scheme, the D3
+cost shadow above, and the S4-1/S5-1 witnesses, which were VACUOUS because a
+non-`:article` statement's carrier article carried a prose body where
+`fn-stx-payload-for` projects base64. Full account:
+[`planning/lanes/HANDOFF-w10-substrate-2.md`](../lanes/HANDOFF-w10-substrate-2.md).
+
+## Proposal: the cross-cluster step
+
+**Give the node an index slot.** Neither keystone has a host line, so PRF-023
+and PRF-025 are `in-progress` and D3's "the served query walks the index,
+never the store" is proved about a query the served path does not carry.
+`fn-node-statep` is `(acceptance retention stage bindings)`; the change is a
+fifth slot holding `(fn-stx-index-of-store (fn-stx-store node) keyring)`,
+with the already-certified `fn-stx-index-invariant-preserved-by-accept` as
+the preservation obligation at the one transition that extends the store.
+Owner: whoever owns `books/node.lisp` and the served path, with this cluster.
+It is the same shape the provenance lane asked for — a structured value
+carried beside the node — so the two should land together.
+
+**Second, smaller:** `books/stx-index.lisp:23` enables three lace
+recognizers book-wide (locally) and every theorem below disables them again.
+Narrowing that to the forms that want it is what would have prevented this
+round's fan. Owner: this cluster.
