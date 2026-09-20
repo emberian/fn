@@ -121,10 +121,15 @@
 ; with the begin-article marker; whether the offer is made is decided above
 ; this dispatcher by fn-nntp-post-step (books/nntp-post.lisp), and the wire
 ; switches into article mode on the marker (books/served.lisp).
-(assert-event
- (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (73 72 65 86 69))))
-        '((:reply (53 48 48 32 99 111 109 109 97 110 100 32 110 111 116 32 114 101 99 111 103 110 105 122 101 100 13 10)))))
+; A reader connection: IHAVE is recognized (RFC 3977 section 6.3.2) and not
+; permitted here (section 3.2.1's 502), never 500; the peer connection's
+; transit is books/peer-inbound.lisp (w6/peering-inbound).
+(assert-event (equal (fn-nntp-result-effects
+                      (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
+                                    '(:command (73 72 65 86 69))))
+                     (list (fn-nntp-reply-effect
+                            (fn-nntp-crlf (fn-nntp-string-octets
+                                           "502 transit is not permitted on this connection"))))))
 (assert-event
  (equal (fn-nntp-result-effects
          (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (80 79 83 84))))
@@ -561,8 +566,13 @@
  (equal (fn-nntp-result-effects
          (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
                        '(:command (76 73 83 84 32 78 69 87 83 71 82 79 85 80 83 32 102 110 46 108 101 116 116 101 114 115))))
+        ; Re-pinned from `ld` 2026-09-20: w5/legacy-commands made LIST
+        ; NEWSGROUPS render `name TAB (no description)' (RFC 3977 section
+        ; 7.6.6; an empty description makes nntplib drop the group), and this
+        ; pin still carried the old space-separated text.  The group table has
+        ; no description field yet, so the marker is what the renderer emits.
         '((:reply (50 49 53 32 108 105 115 116 32 111 102 32 110 101 119 115 103 114 111 117 112 115 32 102 111 108 108 111 119 115 13 10
-                   102 110 46 108 101 116 116 101 114 115 32 102 110 32 101 120 112 101 114 105 109 101 110 116 97 108 32 103 114 111 117 112 13 10 46 13 10)))))
+                   102 110 46 108 101 116 116 101 114 115 9 40 110 111 32 100 101 115 99 114 105 112 116 105 111 110 41 13 10 46 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
          (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
@@ -609,7 +619,12 @@
 (assert-event
  (equal (fn-nntp-result-effects
          (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 32 65 67 84 73 86 69 46 84 73 77 69 83 32 102 110 46 42))))
-        '((:reply (53 48 51 32 100 97 116 97 32 105 116 101 109 32 110 111 116 32 115 116 111 114 101 100 13 10)))))
+        ; Re-pinned from `ld' 2026-09-20: w5/legacy-commands implemented LIST
+        ; ACTIVE.TIMES (RFC 3977 section 7.6.4) out of the environment's
+        ; creation facts, so this is 215 and two lines, not the old 503.
+        '((:reply (50 49 53 32 105 110 102 111 114 109 97 116 105 111 110 32 102 111 108 108 111 119 115 13 10
+                   102 110 46 108 101 116 116 101 114 115 32 57 52 54 54 56 52 56 48 48 32 117 110 97 116 116 114 105 98 117 116 101 100 13 10
+                   102 110 46 101 109 112 116 121 32 49 55 53 56 52 49 50 56 48 48 32 117 110 97 116 116 114 105 98 117 116 101 100 13 10 46 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
          (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 32 68 73 83 84 82 73 66 46 80 65 84 83 32 120))))
@@ -617,7 +632,10 @@
 (assert-event
  (equal (fn-nntp-result-effects
          (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 32 72 69 65 68 69 82 83 32 77 83 71 73 68))))
-        '((:reply (53 48 51 32 100 97 116 97 32 105 116 101 109 32 110 111 116 32 115 116 111 114 101 100 13 10)))))
+        ; Re-pinned from `ld' 2026-09-20: LIST HEADERS (RFC 3977 section 8.6)
+        ; is implemented, so MSGID gets the field list, not the old 503.
+        '((:reply (50 49 53 32 102 105 101 108 100 32 108 105 115 116 32 102 111 108 108 111 119 115 13 10
+                   58 13 10 58 98 121 116 101 115 13 10 58 108 105 110 101 115 13 10 46 13 10)))))
 
 ; Core-side line and argument caps protect direct callers as well as the wire
 ; adapter.  LIST ACTIVE's second token is a variant keyword, not part of the
@@ -791,3 +809,21 @@
          (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
                        '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115 32 49 32 50))))
         '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
+
+; -----------------------------------------------------------------------------
+; The label hypothesis of fn-nntp-hdr-line-is-block-text (books/nntp-effects)
+;
+; That lemma reads a rendered HDR line back as block text from one hypothesis,
+; that the label is a clean field.  The hypothesis does work: a label carrying
+; a bare CR renders a line that is not block text, so the three HDR responses
+; may put only a decimal number, the section 8.5.2 zero or a scrubbed
+; message-id in that position.  The content half needs no hypothesis --
+; fn-nntp-hdr-content-is-clean is unconditional -- so there is one tooth here.
+(assert-event (not (fn-nov-clean-fieldp '(65 13 66))))
+(assert-event
+ (with-guard-checking :none
+  (not (fn-nntp-block-textp
+        (list (fn-nntp-hdr-line
+               '(65 13 66)
+               (fn-nntp-hdr-octets
+                (fn-nntp-hdr-content '(58 98 121 116 101 115) nil))))))))

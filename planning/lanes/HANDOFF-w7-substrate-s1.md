@@ -44,12 +44,34 @@ rest) is certified and cached there.
 | Root | State | Evidence |
 | --- | --- | --- |
 | `books/stx-carrier` | **certified** | `run-20260920T052853Z-b82b`, `build/acl2/certify-20260920T052855Z-*/books--stx-carrier.certify.log`, zero failures |
-| `books/stx-verify` | **open** at `(defthm fn-stx-decimal-octets-are-printable ...)` | same run, `books--stx-verify.certify.log:1754`. Fix committed (`:use` of the revappend lemma with `revappend` closed), not re-certified. |
-| `books/stx-invariants` | **not reached** | cascade: `include-book "stx-verify"` |
-| `tests/acl2/stx-tests` | **not reached** | cascade |
+| `books/stx-verify` | **certified** (w7/substrate-s1-2) | `run-20260920T173829Z-2510`, `build/acl2/certify-20260920T173833Z-1235046` |
+| `books/stx-invariants` | **certified** (w7/substrate-s1-2) | `run-20260920T174338Z-6891`, `build/acl2/certify-20260920T174341Z-1287238` |
+| `tests/acl2/stx-tests` | **certified** (w7/substrate-s1-2) | `run-20260920T174716Z-9575`, `build/acl2/certify-20260920T174721Z-1322621`, exit code 0 |
 
-`tests/test_stx.py` has not run: it drives `tools/stx.py`, which
-`include-book`s `books/stx-invariants`, and that root has no certificate.
+Summary of evidence and its limits: `tests/evidence/2026-09-20-substrate-s1.md`.
+
+**w7/substrate-s1-2 closed the three open roots.** Four defects, none a change
+of statement: (1) `fn-stx-verified-item-is-printable` needs the renderer's
+callees closed and their printability lemmas cited by `:use`, because an open
+`fn-stx-decimal-octets` exposes `(revappend d nil)` and the std/lists `rev`
+rules turn it into `(rev d)`; (2) `fn-stmt-encode`'s item list closes with a
+nil tail, so the detached-encoding theorem met `(append A B C nil)` against
+`(append A B C)`; (3) `fn-stx-detached-round-trip` could not reach
+`(fn-cbor-valuep (cons :bytes sig))` from `(fn-sig-signature-p sig)` without
+both definitions enabled; (4) `fn-stx-detached-accepted-input-is-canonical`
+needed the rebuilt signature item `(cons :bytes (cdr (car i1)))` to be the
+one-item list `i1` under that branch's own tests. In the test book, ten
+`defconst`s that reach an attached function through the toy realiser became
+`make-event` (:DOC `ignored-attachment`); no assertion or tooth changed.
+
+`tests/test_stx.py` ran on persvati in
+`/home/ember/fn-lanes/w7-substrate-s1-2` with
+`FN_ACL2=$HOME/fn-tools/acl2-8.7/saved_acl2`: **5 tests, 0 skipped, OK**.
+
+**PRF-019 and PRF-020 are now `in-progress`**, not `planned` and not closed:
+S1-1 and the grounding theorem are certified, and PRF-020's host-line
+companion `fn-stx-transit-verdict-is-fn-stx-verdict` still needs K1's transit
+path.
 
 **Removed and recorded open, never weakened**: `fn-stx-authored-source-is-octet-list`
 and `fn-stx-payload-for-is-octet-list`. They do not follow from
