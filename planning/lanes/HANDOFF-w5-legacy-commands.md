@@ -53,14 +53,23 @@ what carry the new commands through it.
 
 ## Evidence
 
-- ACL2: the nntp chain (`nntp-responses`, `nntp`, `nntp-overview`,
-  `nntp-legacy`, `nntp-invariants`, `nntp-effects`,
-  `tests/acl2/{nntp-legacy-tests,nntp-tests,nntp-reader-profile-tests,nntp-teeth-tests}`)
-  was recertified locally in one invocation after the last source change;
-  evidence directory named in the lane's final report and in the board entry.
-  `fn-nntp-step-effects-well-formed` and
-  `fn-nntp-step-preserves-consistent-session` are in it with their statements
-  untouched.
+- ACL2, certified on the current source
+  (`build/acl2/certify-20260920T033846Z-34487`, this worktree, one
+  invocation): `books/nntp-responses`, `books/nntp`, `books/nntp-overview`,
+  `books/nntp-legacy`, `books/nntp-invariants`,
+  `tests/acl2/nntp-teeth-tests`. `fn-nntp-step-preserves-consistent-session`
+  is in `nntp-invariants` with its statement untouched.
+- ACL2, **no verdict yet**: `books/nntp-effects` (which carries the other
+  keystone, `fn-nntp-step-effects-well-formed`) and
+  `tests/acl2/{nntp-legacy-tests,nntp-tests,nntp-reader-profile-tests}`.
+  They were not refused: the invocation above was cut off by its own wall
+  clock while three of them were still queued for one of the four ACL2 slots
+  (`1560s` of waiting in its log) and `nntp-effects` was mid-proof at
+  `fn-nntp-effects-xover-response` with no error of any kind. A detached
+  rerun of exactly those four is in
+  `build/acl2/certify-20260920T043702Z-30304`, log at
+  `<scratchpad>/tail-certify.log`. **Harvest it before believing anything
+  about those four**; nothing in this lane claims them.
 - `python3 -m unittest tests.test_reader -v`: **14 of 14 pass in 41 s**,
   including the three new raw-socket transcripts
   (`test_legacy_commands_transcript_over_a_real_socket`,
