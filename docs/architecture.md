@@ -105,6 +105,24 @@ keep that visible. Signature verification did not move: `fn-sig-verify` and
 `fn-anchor-sig-verify` stay constrained, Ed25519 stays a host facility in
 `tools/crypto_host.py`, and nothing here is evidence about a signature.
 
+**TLS is inside that boundary and the digest is not.** RFC 4642 STARTTLS is
+served by `books/nntp-auth.lisp`, which sees plaintext octets on both sides of
+the handshake: it answers 382 and emits a `(:starttls)` effect, and
+`tools/run_owner.py` `Owner.upgrade` performs the handshake with Python's
+`ssl` using the configured `[listener] tls_cert`/`tls_key`. No theorem in this
+tree says anything about confidentiality, integrity, certificate validation,
+cipher selection or the handshake itself. What ACL2 owns is the protocol state
+machine around it, and all of it: that a handshake is owed (the effect leaves
+only the branch that answered 382), that the octets behind the command line in
+the same read are handshake bytes and are never framed as NNTP
+(`fn-served-tls-handshakingp` stops the byte fold, RFC 4642 §2.2's
+no-pipelining rule), and when the TLS layer is recorded (the host's
+`(:tls-established)` wire event is the only transition that sets `tlsp`). The
+host owns the socket and nothing else. The AUTHINFO secret is a different
+matter: it crosses an unprotected connection in the clear, which is what RFC
+4643 §2.3's mechanism is, and `[auth] protected_only` is how an operator
+refuses to accept it before a layer is up.
+
 Stored evidence is not automatically authority. An untrusted article cannot
 change configuration, authorize a new peer, erase another article, or create a
 retention obligation simply by naming it. The policy version and authorization

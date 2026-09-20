@@ -66,7 +66,7 @@
 (defconst *fn-t-served-open*
   (fn-served-open *fn-t-served-archive* 510 8192
                   *fn-t-served-config* *fn-t-served-observation*
-                  *fn-t-served-observation*))
+                  *fn-t-served-observation* (fn-auth-open-config)))
 (defconst *fn-t-served-conn* (fn-served-result-conn *fn-t-served-open*))
 
 ; RFC 3977 section 5.1.1: the greeting code is the connection's posting
@@ -307,8 +307,12 @@
 (assert-event (not (fn-served-closingp *fn-t-served-post-effects*)))
 (assert-event (equal (fn-wire-state-mode (fn-served-conn-wire *fn-t-served-post-conn*))
                      :command))
+; The POST-composed reader session is two wrappers down now: the served
+; session is fn-auth-step's, an auth session over a peer session over it.
 (assert-event (not (fn-post-session-awaiting
-                    (fn-served-conn-session *fn-t-served-post-conn*))))
+                    (fn-peer-session-base
+                     (fn-auth-session-base
+                      (fn-served-conn-session *fn-t-served-post-conn*))))))
 (assert-event (fn-served-connp *fn-t-served-post-conn*))
 (assert-event (equal (fn-served-step-nntp-steps *fn-t-served-conn*
                                                 *fn-t-served-post-read*)
@@ -383,7 +387,7 @@
    (fn-served-result-conn
     (fn-served-open *fn-t-served-archive* 510 8192
                     *fn-t-served-closed-config* *fn-t-served-observation*
-                    *fn-t-served-observation*))
+                    *fn-t-served-observation* (fn-auth-open-config)))
    *fn-t-served-post-command*))
 (assert-event (equal (take 4 (fn-served-reply-octets
                               (fn-served-result-effects *fn-t-served-440-result*)))
@@ -403,9 +407,12 @@
 ; three cannot disagree.  Witnessed both ways.
 
 (defconst *fn-t-served-prohibited-open*
+  ; The AUTHINFO policy that requires nothing and offers nothing, which is
+  ; what every served theorem written before this book carried
+  ; authentication means (books/nntp-auth.lisp fn-auth-open-config).
   (fn-served-open *fn-t-served-archive* 510 8192
                   *fn-t-served-closed-config* *fn-t-served-observation*
-                  *fn-t-served-observation*))
+                  *fn-t-served-observation* (fn-auth-open-config)))
 (assert-event (equal (fn-served-reply-octets
                       (fn-served-result-effects *fn-t-served-prohibited-open*))
                      *fn-t-served-greeting-prohibited*))
