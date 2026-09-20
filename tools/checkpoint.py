@@ -94,7 +94,7 @@ def _ensure_dir(store):
 def capture_protected(bridge, records, frontier):
     """ACL2 captures the checkpoint of `records` at `frontier` and frames it."""
     literal = "(" + " ".join(bridge.literal(record) for record in records) + ")"
-    form = "(fn-store-checkpoint-protected '{} {})".format(literal, int(frontier))
+    form = "(fn-store-checkpoint-protected '{} {} state)".format(literal, int(frontier))
     timeout = max(run_store.ACL2_RECOVER_BASE_SECONDS
                   + run_store.ACL2_RECOVER_PER_RECORD_SECONDS * len(records),
                   bridge.form_timeout(form))
