@@ -177,7 +177,6 @@ class Lab:
               and facts["acks_from_b"] == 2 and facts["acks_from_a"] == 2
               and facts["b_holds_a_bundle"] and facts["a_holds_b_bundle"])
         self.record("exchange", ok, **facts)
-        return root, trace
 
     def scenario_refused(self):
         """A transfer the peer's MRU cannot hold: refused, and no segment sent."""
@@ -253,12 +252,12 @@ class Lab:
         small = root / "small.bundle"
         big = root / "big.bundle"
         small.write_bytes(bundle(900, 4))
-        # Large enough that the kill lands between segments and small enough
-        # that the run finishes: `fn-tcl-drive`'s guard is `fn-tcl-sessionp`,
-        # a whole-session recognizer whose `fn-tcl-octet-listsp` walks every
-        # octet staged so far, so a transfer of n octets costs O(n^2/chunk) in
-        # guard checking alone.  That is the books' served path, not this
-        # lab's; see the evidence record.
+        # Large enough that the kill lands between segments.  This used to
+        # have to stay small as well, because `fn-tcl-drive`'s guard named
+        # `fn-tcl-sessionp`, whose `fn-tcl-octet-listsp` walked every octet
+        # staged so far, and the host checks that guard once per socket chunk.
+        # The guard is now `fn-tcl-session-cheapp`, which reads carried
+        # scalars only; `profile` below is the measurement.
         big.write_bytes(bundle(120000, 5))
 
         # First, a transfer that completes and is acknowledged.
@@ -341,10 +340,104 @@ class Lab:
               and facts["no_partials"])
         self.record("crash", ok, **facts)
 
-    def scenario_replay(self, root: Path, trace: Path):
-        """The listener's octets, folded back through `fn-tcl-drive' alone."""
+    def scenario_profile(self):
+        """The per-chunk guard is not quadratic in the transfer.
+
+        `fn-tcl-drive` is reached through its executable counterpart once per
+        socket chunk, and that counterpart checks the callee's guard.  While
+        the guard named `fn-tcl-sessionp` it walked every octet staged so far,
+        so quadrupling a transfer quadrupled the chunks *and* the walk: about
+        sixteen times the guard work.  With `fn-tcl-session-cheapp` the walk
+        is gone and the cost is linear in the transfer.
+
+        The verdict is the ratio, not the seconds: a box under load moves both
+        measurements together.  The bar is deliberately loose (below 8x for a
+        4x transfer) so that this fails on a quadratic guard and passes on a
+        linear one without becoming a timing flake.
+        """
+        root = self.fresh("profile")
+        small_n, large_n = 64 * 1024, 256 * 1024
+        times = {}
+        staged = {}
+        for name, size, seed in (("small", small_n, 6), ("large", large_n, 7)):
+            spool = root / ("spool-" + name)
+            payload = root / (name + ".bundle")
+            payload.write_bytes(bundle(size, seed))
+            listener = self.spawn(
+                ["tcpcl", "listen", 0, 1, spool, "dtn://fn-b/", "-",
+                 4, 4096, 1048576, "-", "-"], root / ("listen-" + name + ".log"))
+            try:
+                port = self.port_of(listener)
+                started = time.time()
+                sent = subprocess.run(
+                    [self.image, "--fn", "tcpcl", "send", "127.0.0.1", str(port),
+                     str(payload), str(root / ("active-" + name)), "dtn://fn-a/",
+                     "-", "4", "4096", "1048576", "0", "-"],
+                    capture_output=True, timeout=900)
+                times[name] = time.time() - started
+                listener.wait(timeout=120)
+            finally:
+                if listener.poll() is None:
+                    listener.kill()
+                listener.handle.close()
+            landed = spool / "passive-0.bundle"
+            staged[name] = dict(
+                rc=sent.returncode,
+                intact=landed.exists() and landed.read_bytes() == payload.read_bytes())
+        ratio = (times["large"] / times["small"]) if times["small"] > 0 else None
+        facts = dict(small_octets=small_n, large_octets=large_n,
+                     small_seconds=round(times["small"], 3),
+                     large_seconds=round(times["large"], 3),
+                     ratio=(round(ratio, 2) if ratio is not None else None),
+                     size_ratio=large_n // small_n,
+                     small=staged["small"], large=staged["large"])
+        ok = (staged["small"]["rc"] == EXIT_OK and staged["large"]["rc"] == EXIT_OK
+              and staged["small"]["intact"] and staged["large"]["intact"]
+              and ratio is not None and ratio < 8.0)
+        self.record("profile", ok, **facts)
+
+    def scenario_replay(self):
+        """The listener's octets, folded back through `fn-tcl-drive' alone.
+
+        Receive-only, and that is the point.  `tcpcl replay` folds
+        `fn-tcl-drive` over the trace and calls nothing else, so it models a
+        session that consumes octets and never originates a transfer.  A node
+        that also *sends* reaches `fn-tcl-send` and `fn-tcl-pump` from the
+        host, not from the wire, so the replay's state has no outbound
+        transfer when the peer's XFER_ACK arrives and the machine is right to
+        answer MSG_REJECT Unexpected where the loop said `:outbound-sent`.
+
+        The lab's first run, 2026-09-20, replayed `exchange`'s trace, and
+        `exchange`'s listener carries a reply bundle: the differential failed
+        at exactly that divergence.  The trace was wrong for the differential,
+        not the machine, so this scenario now drives its own listener with no
+        reply.  Extending the differential to a sending node means putting the
+        host's aux calls in the trace; that is not done, and `specs/tcpcl.md`
+        records the limit.
+        """
+        root = self.fresh("replay")
+        spool = root / "passive-spool"
+        trace = root / "passive.trace"
+        payload = root / "to-b.bundle"
+        payload.write_bytes(bundle(1500, 8))
+        listener = self.spawn(
+            ["tcpcl", "listen", 0, 1, spool, "dtn://fn-b/", "-", 4, 1024, 1048576,
+             "-", trace], root / "listen.log")
+        try:
+            port = self.port_of(listener)
+            sender = subprocess.run(
+                [self.image, "--fn", "tcpcl", "send", "127.0.0.1", str(port),
+                 str(payload), str(root / "active-spool"), "dtn://fn-a/", "-",
+                 "4", "1024", "1048576", "0", "-"],
+                capture_output=True, timeout=120)
+            (root / "send.log").write_bytes(sender.stdout + sender.stderr)
+            listener.wait(timeout=60)
+        finally:
+            if listener.poll() is None:
+                listener.kill()
+            listener.handle.close()
         if not trace.exists():
-            return self.record("replay", False, reason="no trace from `exchange'")
+            return self.record("replay", False, reason="the listener wrote no trace")
         replayed = subprocess.run(
             [self.image, "--fn", "tcpcl", "replay", str(trace), "passive",
              "dtn://fn-b/", "-", "4", "1024", "1048576"],
@@ -355,28 +448,32 @@ class Lab:
                  out.read_text(errors="replace").splitlines()
                  if line.startswith("TCPCL replay event ")]
         loop = self.events(root / "listen.log", "passive")
-        facts = dict(rc=replayed.returncode, loop_events=len(loop),
-                     model_events=len(model), equal=(loop == model))
+        facts = dict(rc=replayed.returncode, sender_rc=sender.returncode,
+                     loop_events=len(loop), model_events=len(model),
+                     received=sorted(p.name for p in spool.glob("*.bundle")),
+                     equal=(loop == model))
         if loop != model:
             facts["first_difference"] = next(
                 ("{!r} != {!r}".format(a, b) for a, b in zip(loop, model) if a != b),
                 "lengths differ")
-        self.record("replay", facts["rc"] == EXIT_OK and facts["equal"], **facts)
+        self.record("replay", facts["rc"] == EXIT_OK and facts["equal"]
+                    and facts["loop_events"] > 0, **facts)
 
     # -- the whole lab ----------------------------------------------------
     def run(self, which: str) -> int:
         self.work.mkdir(parents=True, exist_ok=True)
-        root, trace = (None, None)
-        if which in ("all", "exchange", "replay"):
-            root, trace = self.scenario_exchange()
+        if which in ("all", "exchange"):
+            self.scenario_exchange()
         if which in ("all", "refused"):
             self.scenario_refused()
         if which in ("all", "keepalive"):
             self.scenario_keepalive()
         if which in ("all", "crash"):
             self.scenario_crash()
+        if which in ("all", "profile"):
+            self.scenario_profile()
         if which in ("all", "replay"):
-            self.scenario_replay(root, trace)
+            self.scenario_replay()
         summary = dict(scenario="summary",
                        passed=[r["scenario"] for r in self.results if r["ok"]],
                        failed=[r["scenario"] for r in self.results if not r["ok"]])
@@ -391,7 +488,7 @@ def main(argv=None) -> int:
     parser.add_argument("--work", default="/tmp/tcpcl-lab")
     parser.add_argument("--scenario", default="all",
                         choices=["all", "exchange", "refused", "keepalive",
-                                 "crash", "replay"])
+                                 "crash", "profile", "replay"])
     args = parser.parse_args(argv)
     if not Path(args.image).exists():
         print(json.dumps({"scenario": "summary", "ok": False,

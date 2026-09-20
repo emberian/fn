@@ -82,22 +82,45 @@ State is the opaque session record: role, phase (`:tcp-connected`,
 parameters, the negotiated Enable TLS, the peer's SESS_INIT, the negotiated
 parameters, at most one inbound and one outbound transfer, the Transfer ID
 frontier, the monotonic milliseconds of the last message each way, and the
-SESS_TERM state (`nil`, `:sent`, `:both`). `fn-tcl-sessionp` is the carried
-invariant: it guards every entry point, is preserved by every transition
-(`fn-tcl-step-preserves-sessionp`, `fn-tcl-drive-preserves-sessionp`,
-`fn-tcl-send-`, `fn-tcl-pump-`, `fn-tcl-tick-`, `fn-tcl-terminate-`,
-`fn-tcl-tcp-closed-preserves-sessionp`), and is never re-run per octet.
-The inbound record carries the sum of its staged segment lengths and the
-recognizer requires that sum to be the measurement of the staged list, so
-the transfer MRU is a carried bound (`fn-tcl-retained-transfer-is-bounded-
-by-definition`), as in `books/wire.lisp`.
+SESS_TERM state (`nil`, `:sent`, `:both`).
+
+Two recognizers, one state. `fn-tcl-sessionp` is the specification: it says
+in addition that the staged inbound segments are octet lists whose measured
+length is the carried sum, so the transfer MRU is a bound on retained input
+(`fn-tcl-retained-transfer-is-bounded-by-definition`), as in
+`books/wire.lisp`. `fn-tcl-session-cheapp` is that recognizer without those
+two conjuncts: record shapes and carried scalars only. Every keystone is
+stated over `fn-tcl-sessionp`; every executable entry point is guarded by
+`fn-tcl-session-cheapp`; `fn-tcl-sessionp-is-cheap` connects them, so a
+keystone and a guard speak of the same function.
+
+**Why the guard is the cheap one (w9/dtn-e2e, 2026-09-20).** The native host
+reaches this machine through the executable counterpart of a host wrapper
+(`host/native/io.lisp`, `fnn-call`), and that counterpart checks the
+callee's guard on every call. While the guard named `fn-tcl-sessionp`, its
+`fn-tcl-octet-listsp` and `fn-tcl-lists-len` walked every octet staged so
+far, once per socket chunk: a transfer of n octets cost O(n^2/chunk) in
+guard checking alone, which is what
+[HANDOFF-w8-tcpcl-native](../planning/lanes/HANDOFF-w8-tcpcl-native.md)
+recorded as open and what the earlier claim here -- "no recognizer runs over
+retained input on the served path, `fn-tcl-drive`'s `mbe` check is `:exec
+nil`" -- got wrong: the `mbe` was free and the guard was not. The carried
+invariant is now the cheap one, preserved by every transition
+(`fn-tcl-next-preserves-cheapp`, `fn-tcl-step-preserves-cheapp`,
+`fn-tcl-drive-preserves-cheapp`, and one lemma per entry point), and
+established once by `fn-tcl-initial-session-is-cheap`. `fn-tcl-lists-len`
+and `fn-tcl-concat-rev` are guard-total so that no caller has to establish
+the walk in order to measure or concatenate.
 
 Work per octet: the decoder reads each octet once and copies each data
 octet once (`fn-tcl-take` under a checked bound); an inbound segment is
 consed onto the staged list, concatenated once on END
 (`fn-tcl-concat-rev`); an outbound transfer keeps the unsent suffix so each
-`fn-tcl-pump` costs its segment. No recognizer runs over retained input on
-the served path (`fn-tcl-drive`'s `mbe` check is `:exec nil`).
+`fn-tcl-pump` costs its segment. The per-chunk guard no longer reads the
+staged inbound segments at all. It still reads the unsent outbound suffix,
+through `fn-tcl-outboundp`'s `(fn-cbor-octet-listp remaining)` and
+`(equal (+ sent-len (len remaining)) total)`, so a *send* of n octets is
+still quadratic in n; §6 records that as open with the obligation it needs.
 
 ## 4. Keystones C1 to C4 (`books/tcpcl-invariants`)
 
@@ -209,6 +232,19 @@ a segment is staged, so at most one segment (≤ Segment MRU) is held
 transiently beyond it.
 
 ## 6. Open
+
+- **The outbound suffix is still walked per chunk.** `fn-tcl-outboundp` is a
+  conjunct of `fn-tcl-session-cheapp`, and two of its conjuncts measure the
+  unsent remainder, so the per-chunk guard of a *send* is O(remaining). The
+  same move would close it -- drop those two conjuncts into an
+  `fn-tcl-outbound-cheapp` -- but the obligation it leaves is concrete and
+  not free: `fn-tcl-pump` takes and drops `k` octets of `remaining` under
+  `fn-tcl-take`/`fn-tcl-drop`, whose guard is `(fn-tcl-has octets k)`, and
+  the only thing that discharges it for `k = min(mtu, total - sent)` is the
+  length equation being removed. Closing it needs either guard-total
+  `fn-tcl-take`/`fn-tcl-drop` (the `fn-wire-ag-car` pattern of
+  `books/wire.lisp`) or a `remaining`-length scalar carried in the outbound
+  record and proved equal to `(- total sent)`. Not attempted in w9.
 
 - The wave-4 checkpoint at `Subgoal 1082.10'` is closed. Its cause was not
   the `:do-not-induct` hint -- `fn-tcl-step` is not recursive, so induction

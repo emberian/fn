@@ -688,7 +688,8 @@ else echo NONE; fi
             self.skip("tcpcl exchange", "tools/tcpcl_lab.py",
                       "build/fn-host was not produced on this commit")
             return
-        lab = self.sh("tcpcl lab (exchange, refused, keepalive, crash, replay)",
+        lab = self.sh("tcpcl lab (exchange, refused, keepalive, crash, "
+                      "profile, replay)",
                       self.cd("python3 tools/tcpcl_lab.py --image build/fn-host "
                               "--work {}/tcpcl-lab".format(self.deploy)),
                       timeout=900, expect=None)
@@ -705,7 +706,8 @@ else echo NONE; fi
         self.facts["tcpcl"] = "passed={} failed={}".format(
             ",".join(summary.get("passed", [])) or "none",
             ",".join(summary.get("failed", [])) or "none")
-        for name in ("exchange", "refused", "keepalive", "crash", "replay"):
+        for name in ("exchange", "refused", "keepalive", "crash",
+                     "profile", "replay"):
             row = rows.get(name)
             if row is None:
                 self.skip("tcpcl {}".format(name), "tools/tcpcl_lab.py",
