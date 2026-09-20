@@ -8,12 +8,18 @@
 ; The protected prefix of a checkpoint generation captured from the decoded
 ; durable records at the durable allocator frontier.  Capture replays the
 ; records in ACL2 (fn-checkpoint-capture); Python never sees the node.
-(defun fn-store-checkpoint-protected (octet-records frontier)
-  (declare (xargs :mode :program))
+;
+; The allocation domain is the live node's, read with the same accessor the
+; rest of the store host uses (fn-store-sn-domain).  `*fn-store-groups*' was
+; deleted with the compiled group table in 4ba5599; these three sites still
+; named it, so every Acl2Store bridge failed to load this file.
+(defun fn-store-checkpoint-protected (octet-records frontier state)
+  (declare (xargs :stobjs state :mode :program))
   (let ((records (fn-store-decode-records octet-records)))
     (if (equal records :bad)
         :bad
-      (let ((captured (fn-checkpoint-capture *fn-store-groups* *fn-store-capacity*
+      (let ((captured (fn-checkpoint-capture (fn-store-sn-domain state)
+                                             *fn-store-capacity*
                                              records frontier)))
         (if (not (equal (car captured) :ok))
             captured
@@ -33,7 +39,7 @@
 ; frontier so the host can slice the suffix ACL2 will revalidate.
 (defun fn-store-checkpoint-decode (octets digest max-frontier max-sequence state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((decoded (fn-cpc-frame-decode octets digest *fn-store-groups*
+  (let ((decoded (fn-cpc-frame-decode octets digest (fn-store-sn-domain state)
                                       *fn-store-capacity* max-frontier
                                       max-sequence)))
     (if (not (fn-cpc-result-okp decoded))
@@ -54,7 +60,8 @@
         (value (list :error :suffix-octets))
       (let ((restored (fn-checkpoint-restore
                        (f-get-global 'fn-store-checkpoint state)
-                       *fn-store-groups* *fn-store-capacity* suffix frontier)))
+                       (fn-store-sn-domain state) *fn-store-capacity*
+                       suffix frontier)))
         (if (not (equal (car restored) :ok))
             (value restored)
           (let ((state (f-put-global 'fn-store-checkpoint-node

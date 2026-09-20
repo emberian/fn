@@ -293,8 +293,19 @@ class WorkflowJournalTests(unittest.TestCase):
         digest=__import__("hashlib").sha256(IDENTITY).hexdigest()+".bp"
         (self.journal.inbound/digest).write_bytes(
             encode_inbound("bid", OTHER_IDENTITY, b"bundle"))
+        # The recovering owner is a later process, so it holds no lock of its
+        # own: release this one before reopening, or the reopen stops at the
+        # exclusive lock and the recovery claim below is never reached.
+        self.journal.close()
+        reopened=WorkflowJournal(self.root, lambda records: records)
         with self.assertRaisesRegex(JournalFault, "inbound name"):
-            reopened=WorkflowJournal(self.root, lambda records: records); reopened.open()
+            reopened.open()
+        # The fence is a fence: no image, no inbox, and the lock released for
+        # the operator's next attempt.
+        self.assertTrue(reopened.fenced)
+        self.assertIsNone(reopened.image)
+        self.assertEqual(reopened.inbound_items, ())
+        self.assertIsNone(reopened.lock_fd)
 
 
 if __name__ == "__main__": unittest.main()
