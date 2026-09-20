@@ -18,7 +18,8 @@ absence: `--skip inn` is recorded in the table and in the claim.
 Two gates must never overlap on one box -- a gate is a fresh directory
 certified once, and a second `make certify` against the same cache while the
 first is publishing gives the second a cache it cannot vouch for.  So every
-host this run touches is locked (an atomic `mkdir` under `$HOME/fn-gates`)
+host this run touches is locked (an atomic `mkdir` beside that box's
+gate directories)
 before the first fiber starts and unlocked in a `finally`.  A lock older than
 `--stale-hours` is reported, not stolen; `--force-unlock` is the deliberate
 act.
@@ -70,6 +71,17 @@ OWNERS: tuple[tuple[str, str], ...] = (
     ("membership-epochs", "substrate"), ("assumptions", "substrate"),
     ("stx", "substrate"), ("tcpcl", "substrate"), ("config", "core"),
 )
+
+
+def gate_root(host: str) -> str:
+    """Where this box keeps its gate directories.
+
+    hbox puts them on its pool (`/tank/fn/gates`), which is also what
+    `tools/inn_lab.py` uses; everywhere else it is `$HOME/fn-gates`. The lock
+    lives beside the gates it protects, so an operator finds it where the
+    thing it guards already is.
+    """
+    return "/tank/fn/gates" if host == "hbox" else GATE_ROOT
 
 
 def owner_of(book: str) -> str:
@@ -155,8 +167,8 @@ class Lock:
         self.force = force
         self.held: list[str] = []
 
-    def path(self) -> str:
-        return "{}/{}".format(GATE_ROOT, LOCK_NAME)
+    def path(self, host: str) -> str:
+        return "{}/{}".format(gate_root(host), LOCK_NAME)
 
     def acquire(self) -> None:
         stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -172,7 +184,7 @@ else
   age=$(( $(date +%s) - $(stat -c %Y "$lock" 2>/dev/null || echo 0) ))
   echo "HELD age=${{age}}s $(cat "$lock/owner" 2>/dev/null)"
 fi
-""".format(root=GATE_ROOT, lock=self.path(), rev=self.rev, stamp=stamp,
+""".format(root=gate_root(host), lock=self.path(host), rev=self.rev, stamp=stamp,
            force="1" if self.force else "")
             code, output = ssh(host, script)
             last = output.strip().splitlines()[-1] if output.strip() else "?"
@@ -182,12 +194,12 @@ fi
                     "verdict: {} is locked by another gate: {}\n"
                     "  release it with: ssh {} rm -rf {}\n"
                     "  or re-run with --force-unlock if that lock is stale."
-                    .format(host, last, host, self.path()))
+                    .format(host, last, host, self.path(host)))
             self.held.append(host)
 
     def release(self) -> None:
         for host in self.held:
-            ssh(host, "rm -rf {}\n".format(self.path()), timeout=120)
+            ssh(host, "rm -rf {}\n".format(self.path(host)), timeout=120)
         self.held = []
 
 
@@ -252,7 +264,7 @@ def certify_gate(fiber: Fiber, repo: Path, commit: str, rev: str, tree: str,
     poll reads one file; it never greps a log for progress and never touches
     another run's processes.
     """
-    gate = "{}/{}-{}".format(GATE_ROOT, tree, rev)
+    gate = "{}/{}-{}".format(gate_root(fiber.host), tree, rev)
     started = time.monotonic()
     facts: dict = {"gate": gate, "reused": False}
     code, output = ssh(fiber.host, "test -f {}/gate.done && cat {}/gate.done".format(
@@ -272,11 +284,22 @@ def certify_gate(fiber: Fiber, repo: Path, commit: str, rev: str, tree: str,
                   "chmod +x {g}/gate.sh\n"
                   "cd {g} && setsid nohup ./gate.sh > gate.out 2>&1 < /dev/null &\n"
                   "echo LAUNCHED $!\n").format(g=gate, s=script)
-        code, output = ssh(fiber.host, launch)
+        code, output = ssh(fiber.host, launch, timeout=900)
         if code != 0:
-            fiber.rc, fiber.summary = code, "launch failed: " + output[:300]
-            fiber.seconds = time.monotonic() - started
-            return facts
+            # The launch is fire-and-forget, so whether its ssh returned is
+            # not evidence about the gate. Measured on persvati 2026-09-20:
+            # the ssh did not close inside 300 s while `gate.sh` was already
+            # certifying, and the run reported `launch failed` over a gate
+            # that went on to finish. Ask the box instead.
+            alive = ssh(fiber.host, "ls -d {}/build/acl2/certify-* 2>/dev/null "
+                                    "| head -1\n".format(gate))[1].strip()
+            if not alive:
+                fiber.rc, fiber.summary = code, "launch failed: " + output[:300]
+                fiber.seconds = time.monotonic() - started
+                return facts
+            facts["launch"] = ("the launch ssh returned {} but {} is certifying, "
+                               "so the gate was followed rather than failed"
+                               .format(code, alive))
         deadline = time.monotonic() + wait_seconds
         while time.monotonic() < deadline:
             time.sleep(60)
@@ -413,9 +436,11 @@ def claim(fibers: list[Fiber], gate_facts: dict) -> str:
     if gate is None or gate.state == "not run":
         return ("This tree claims nothing: the certify gate did not run, so no "
                 "book on this commit has a certificate this run established.")
-    head = ("On this commit {} of {} Makefile roots certified under ACL2 {} and "
+    acl2 = str(gate_facts.get("acl2_version") or "an unrecorded ACL2")
+    acl2 = acl2.replace("ACL2 Version ", "ACL2 ").strip()
+    head = ("On this commit {} of {} Makefile roots certified under {} and "
             "the Python suite ran {} tests ({})".format(
-                roots - bad, roots, gate_facts.get("acl2_version", "?"),
+                roots - bad, roots, acl2,
                 suite.get("ran", 0), suite.get("verdict", "unknown")))
     lived = [n for n in ("deploy", "twonode", "inn", "scale") if n in passed]
     if lived:
@@ -424,19 +449,20 @@ def claim(fibers: list[Fiber], gate_facts: dict) -> str:
                      ", ".join(lived), "es" if len(lived) > 1 else ""))
     limits = []
     if bad:
-        limits.append("{} root{} did not certify ({})".format(
+        limits.append("anything in the {} root{} that did not certify ({})".format(
             bad, "s" if bad != 1 else "",
             ", ".join(sorted({owner_of(b) for b in gate_facts.get("bad") or []}))))
     if suite.get("failures") or suite.get("errors"):
-        limits.append("{} suite failures and {} errors".format(
+        limits.append("whatever the {} suite failures and {} errors cover".format(
             suite.get("failures"), suite.get("errors")))
     if failed:
-        limits.append("the {} harness{} reported failing steps".format(
+        limits.append("the steps the {} harness{} reported failing".format(
             ", ".join(failed), "es" if len(failed) > 1 else ""))
     if absent:
-        limits.append("{} did not run at all".format(", ".join(absent)))
+        limits.append("anything {} would have shown, which did not run".format(
+            " or ".join(absent)))
     if limits:
-        head += "; it claims nothing about " + "; ".join(limits)
+        head += "; it claims nothing about " + ", nor ".join(limits)
     return head + "."
 
 
