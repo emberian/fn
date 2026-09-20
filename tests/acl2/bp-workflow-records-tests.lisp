@@ -311,3 +311,95 @@
 (assert-event (fn-bp-statep (fn-bp-journal-nth 1 *bpr-ghost-next*)))
 (must-fail
  (assert-event (fn-bp-binding-statep (fn-bp-journal-nth 1 *bpr-ghost-next*))))
+
+; ---------------------------------------------------------------------------
+; A reopen keeps the works its history enqueued, and the host's read model
+; distinguishes "no such work" from "enqueued, not yet attempted".
+; Witness for fn-bp-replay-preserves-works: a replay that really runs --
+; a durable attempt and an expiry over a state that already holds a work --
+; still finds that work, and the replay is not a no-op (the status moved).
+(defconst *bpr-ghost-replayed*
+  (fn-bp-replay-records
+   *bpr-ghost-state*
+   (list '(:attempt 20 0 "work:ghost" "attempt:g" 0
+           "dtn://local/" "dtn://peer/" "policy:1" 3600)
+         '(:outcome 20 0 :ordinary :durable)
+         '(:transport "work:ghost" "attempt:g" 0 :expired))
+   nil))
+(assert-event (car *bpr-ghost-replayed*))
+(assert-event (consp (fn-bp-find-work
+                      "work:ghost"
+                      (fn-bp-state-works
+                       (fn-bp-journal-nth 1 *bpr-ghost-replayed*)))))
+(assert-event (not (equal (fn-bp-journal-nth 1 *bpr-ghost-replayed*)
+                          *bpr-ghost-state*)))
+; Tooth for the one hypothesis: an id the state does not hold is not found
+; after the same replay either.  Replay adds no work it was not given.
+(assert-event (not (consp (fn-bp-find-work
+                           "work:absent"
+                           (fn-bp-state-works
+                            (fn-bp-journal-nth 1 *bpr-ghost-replayed*))))))
+
+; Witness and teeth for fn-bp-durable-enqueue-holds-the-work.  The kind
+; hypothesis has no reachable violating value: a pending :attempt or :receipt
+; always names a work the state already holds, so the conclusion survives its
+; violation; it is kept because fn-bp-replace-work adds nothing on a miss.
+(defconst *bpr-prepared-enqueue*
+  (fn-bp-journal-nth
+   1 (fn-bp-apply-journal-record
+      (fn-bp-initial-state *bpr-node* (fn-bp-config-from-record *bpr-config*))
+      *bpr-enqueue*)))
+(assert-event (equal (fn-bp-pending-kind
+                      (fn-bp-state-pending *bpr-prepared-enqueue*))
+                     :enqueue))
+(assert-event (not (fn-bp-state-fenced *bpr-prepared-enqueue*)))
+(assert-event (consp (fn-bp-find-work
+                      "work:a"
+                      (fn-bp-state-works
+                       (fn-bp-result-state
+                        (fn-bp-complete *bpr-prepared-enqueue* 10 0 :durable))))))
+; Tooth for fn-bp-pending-matchesp: another transaction pair commits nothing.
+(assert-event (not (consp (fn-bp-find-work
+                           "work:a"
+                           (fn-bp-state-works
+                            (fn-bp-result-state
+                             (fn-bp-complete *bpr-prepared-enqueue* 99 0
+                                             :durable)))))))
+; Tooth for the fence: an uncertain outcome fences the same pending, and the
+; later durable claim adds no work.  Recovery, not a second completion.
+(defconst *bpr-fenced-enqueue*
+  (fn-bp-result-state
+   (fn-bp-complete *bpr-prepared-enqueue* 10 0 :indeterminate)))
+(assert-event (fn-bp-state-fenced *bpr-fenced-enqueue*))
+(assert-event (not (consp (fn-bp-find-work
+                           "work:a"
+                           (fn-bp-state-works
+                            (fn-bp-result-state
+                             (fn-bp-complete *bpr-fenced-enqueue* 10 0
+                                             :durable)))))))
+
+; fn-bp-work-status: three distinct answers, each on a state replay reaches.
+; The defect the four-node lab hit is the first of these: a committed enqueue
+; read :absent, so a reopened journal looked empty to its caller.
+(defconst *bpr-enqueued*
+  (fn-bp-journal-nth
+   1 (fn-bp-replay-journal
+      *bpr-node*
+      (list *bpr-config* *bpr-enqueue* '(:outcome 10 0 :ordinary :durable)))))
+(assert-event (equal (fn-bp-work-status "work:a"
+                                        (fn-bp-state-works *bpr-enqueued*))
+                     :outstanding))
+(assert-event (equal (fn-bp-work-status "work:none"
+                                        (fn-bp-state-works *bpr-enqueued*))
+                     :absent))
+(assert-event (equal (fn-bp-work-status
+                      "work:a"
+                      (fn-bp-state-works (fn-bp-journal-nth 1 *bpr-image*)))
+                     :expired))
+; Once the receipt of *bpr-all-kinds* commits, the work is no longer
+; outstanding and reads :receipted rather than its last attempt status.
+(defconst *bpr-all-kinds-image*
+  (fn-bp-journal-nth 1 (fn-bp-replay-journal *bpr-node* *bpr-all-kinds*)))
+(assert-event (equal (fn-bp-work-status "work:a"
+                                        (fn-bp-state-works *bpr-all-kinds-image*))
+                     :receipted))

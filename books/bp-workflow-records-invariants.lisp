@@ -646,3 +646,211 @@
             fn-bp-storage-complete-event fn-bp-storage-recover-event
             fn-bp-event-kind fn-bp-nth-of-cons fn-bp-nth-of-atom
             fn-bp-outcome-record-outcome-shape))))
+
+
+; -----------------------------------------------------------------------------
+; A reopen keeps the works its history enqueued (w6/workflow-restart)
+;
+; The four-node lab read :absent for every work id after a journal reopen and
+; concluded that fn-bp-replay-journal drops works.  It does not: the accessor
+; the host called reported the attempt status, and an enqueued work has no
+; attempt yet.  What the lab doubted is proved here rather than observed.
+; fn-bp-replay-journal calls fn-bp-replay-records (bp-workflow-records.lisp:245),
+; which host/workflow-host.lisp:9 and :35 reach through it; the keystone is
+; stated over that interpreter.  The fn-bp-statep hypothesis these proofs began
+; with proved unnecessary and was deleted: every transition that can drop a work
+; id already demands a well-formed state through fn-bp-pending-matchesp, and the
+; rest replace, cons or map over the list.
+; ---- accessor-of-constructor, so every goal below stays in accessor terms --
+(local (in-theory (enable fn-bp-nth-of-cons fn-bp-nth-of-atom)))
+(local
+(defthm fn-bp-wr-state-works-of-make-state
+  (equal (fn-bp-state-works (fn-bp-make-state n c w r p f u)) w)
+  :hints (("Goal" :in-theory (enable fn-bp-make-state fn-bp-state-works)))))
+(local
+(defthm fn-bp-wr-state-pending-of-make-state
+  (equal (fn-bp-state-pending (fn-bp-make-state n c w r p f u)) p)
+  :hints (("Goal" :in-theory (enable fn-bp-make-state fn-bp-state-pending)))))
+(local
+(defthm fn-bp-wr-pending-work-of-make-pending
+  (equal (fn-bp-pending-work (fn-bp-make-pending k tx g w r)) w)
+  :hints (("Goal" :in-theory (enable fn-bp-make-pending fn-bp-pending-work)))))
+(local
+(defthm fn-bp-wr-pending-kind-of-make-pending
+  (equal (fn-bp-pending-kind (fn-bp-make-pending k tx g w r)) k)
+  :hints (("Goal" :in-theory (enable fn-bp-make-pending fn-bp-pending-kind)))))
+(local
+(defthm fn-bp-wr-result-state-of-make-result
+  (equal (fn-bp-result-state (fn-bp-make-result st e)) st)
+  :hints (("Goal" :in-theory (enable fn-bp-make-result fn-bp-result-state)))))
+(local (in-theory (disable fn-bp-make-state fn-bp-state-works
+                           fn-bp-state-pending fn-bp-state-fenced
+                           fn-bp-make-pending fn-bp-pending-work
+                           fn-bp-pending-kind fn-bp-make-result
+                           fn-bp-result-state fn-bp-nth)))
+
+; ---- work lists: no operation the model performs drops a work id ----------
+(local (in-theory (enable fn-bp-find-work fn-bp-replace-work
+                          fn-bp-restart-work fn-bp-restart-works
+                          fn-bp-work-with-attempt fn-bp-work-with-status
+                          fn-bp-work-with-receipt fn-bp-make-work
+                          fn-bp-work-id fn-bp-work-attempt fn-bp-work-receipt)))
+(local
+(defthm fn-bp-wr-find-work-of-replace-work
+  (implies (and (consp w) (consp (fn-bp-find-work id xs)))
+           (consp (fn-bp-find-work id (fn-bp-replace-work w xs))))))
+(local
+(defthm fn-bp-wr-find-work-of-cons-other
+  (implies (and (consp w) (consp (fn-bp-find-work id xs)))
+           (consp (fn-bp-find-work id (cons w xs))))))
+(local
+(defthm fn-bp-wr-find-work-of-cons-same-id
+  (implies (consp w) (consp (fn-bp-find-work (fn-bp-work-id w) (cons w xs))))))
+(local
+(defthm fn-bp-wr-find-work-of-restart-works
+  (implies (consp (fn-bp-find-work id xs))
+           (consp (fn-bp-find-work id (fn-bp-restart-works xs))))))
+(local
+(defthm fn-bp-wr-work-with-status-is-consp (consp (fn-bp-work-with-status w st))))
+(local
+(defthm fn-bp-wr-work-with-receipt-is-consp (consp (fn-bp-work-with-receipt w r))))
+(local
+(defthm fn-bp-wr-workp-is-consp
+  (implies (fn-bp-workp config w) (consp w))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-bp-workp)))))
+(local (in-theory (disable fn-bp-find-work fn-bp-replace-work
+                           fn-bp-restart-work fn-bp-restart-works
+                           fn-bp-work-with-attempt fn-bp-work-with-status
+                           fn-bp-work-with-receipt fn-bp-make-work
+                           fn-bp-work-id fn-bp-work-attempt
+                           fn-bp-work-receipt)))
+
+; ---- the pending work of a well-formed state is a work --------------------
+(local
+(defthm fn-bp-wr-statep-pending-work-is-consp
+  (implies (and (fn-bp-statep s) (consp (fn-bp-state-pending s)))
+           (consp (fn-bp-pending-work (fn-bp-state-pending s))))
+  :hints (("Goal" :in-theory (enable fn-bp-statep fn-bp-pendingp)
+           :use ((:instance fn-bp-wr-workp-is-consp
+                            (config (fn-bp-state-config s))
+                            (w (fn-bp-pending-work (fn-bp-state-pending s)))))))))
+(local
+(defthm fn-bp-wr-recovery-pending-work-is-consp
+  (implies (consp (fn-bp-pending-work p))
+           (consp (fn-bp-pending-work (fn-bp-recovery-pending p))))
+  :hints (("Goal" :in-theory (enable fn-bp-recovery-pending)))))
+(local
+(defthm fn-bp-wr-pending-matchesp-has-pending
+  (implies (fn-bp-pending-matchesp s txid gen) (consp (fn-bp-state-pending s)))
+  :hints (("Goal" :in-theory (enable fn-bp-pending-matchesp)))))
+(local
+(defthm fn-bp-wr-pending-matchesp-is-statep
+  (implies (fn-bp-pending-matchesp s txid gen) (fn-bp-statep s))
+  :hints (("Goal" :in-theory (enable fn-bp-pending-matchesp)))))
+(local (in-theory (disable fn-bp-statep fn-bp-workp fn-bp-work-listp
+                           fn-bp-configp fn-bp-pendingp fn-bp-receiptp
+                           fn-bp-receipt-listp fn-bp-attemptp
+                           fn-bp-tx-key-listp fn-node-statep
+                           fn-bp-pending-matchesp fn-bp-recovery-pending)))
+
+(local
+(defthm fn-bp-wr-find-work-of-apply-pending
+  (implies (and (consp (fn-bp-pending-work pending))
+                (consp (fn-bp-find-work id (fn-bp-state-works s))))
+           (consp (fn-bp-find-work
+                   id (fn-bp-state-works (fn-bp-apply-pending s pending)))))
+  :hints (("Goal" :in-theory (enable fn-bp-apply-pending)))))
+(local
+(defthm fn-bp-wr-state-works-of-apply-pending-enqueue
+  (implies (equal (fn-bp-pending-kind pending) :enqueue)
+           (equal (fn-bp-state-works (fn-bp-apply-pending s pending))
+                  (cons (fn-bp-pending-work pending) (fn-bp-state-works s))))
+  :hints (("Goal" :in-theory (enable fn-bp-apply-pending)))))
+(local (in-theory (disable fn-bp-apply-pending)))
+
+; ---- one lemma per transition ---------------------------------------------
+(local
+(defthm fn-bp-wr-state-works-of-prepare-enqueue
+  (equal (fn-bp-state-works (fn-bp-prepare-enqueue s a b c d e f g))
+         (fn-bp-state-works s))
+  :hints (("Goal" :in-theory (enable fn-bp-prepare-enqueue)))))
+(local
+(defthm fn-bp-wr-state-works-of-prepare-attempt
+  (equal (fn-bp-state-works (fn-bp-prepare-attempt s a b c d))
+         (fn-bp-state-works s))
+  :hints (("Goal" :in-theory (enable fn-bp-prepare-attempt)))))
+(local
+(defthm fn-bp-wr-state-works-of-prepare-receipt
+  (equal (fn-bp-state-works (fn-bp-prepare-receipt s a b c d))
+         (fn-bp-state-works s))
+  :hints (("Goal" :in-theory (enable fn-bp-prepare-receipt)))))
+(local
+(defthm fn-bp-wr-find-work-of-complete
+  (implies (consp (fn-bp-find-work id (fn-bp-state-works s)))
+           (consp (fn-bp-find-work
+                   id (fn-bp-state-works
+                       (fn-bp-result-state (fn-bp-complete s a b c))))))
+  :hints (("Goal" :in-theory (enable fn-bp-complete)))))
+(local
+(defthm fn-bp-wr-find-work-of-recover
+  (implies (consp (fn-bp-find-work id (fn-bp-state-works s)))
+           (consp (fn-bp-find-work
+                   id (fn-bp-state-works
+                       (fn-bp-result-state (fn-bp-recover s a b c))))))
+  :hints (("Goal" :in-theory (enable fn-bp-recover)))))
+(local
+(defthm fn-bp-wr-find-work-of-observe-transport
+  (implies (consp (fn-bp-find-work id (fn-bp-state-works s)))
+           (consp (fn-bp-find-work
+                   id (fn-bp-state-works (fn-bp-observe-transport s a b c d)))))
+  :hints (("Goal" :in-theory (enable fn-bp-observe-transport)))))
+(local
+(defthm fn-bp-wr-find-work-of-request-retry
+  (implies (consp (fn-bp-find-work id (fn-bp-state-works s)))
+           (consp (fn-bp-find-work
+                   id (fn-bp-state-works (fn-bp-request-retry s a b c d)))))
+  :hints (("Goal" :in-theory (enable fn-bp-request-retry)))))
+(local
+(defthm fn-bp-wr-find-work-of-restart
+  (implies (consp (fn-bp-find-work id (fn-bp-state-works s)))
+           (consp (fn-bp-find-work id (fn-bp-state-works (fn-bp-restart s)))))
+  :hints (("Goal" :in-theory (enable fn-bp-restart)))))
+(local (in-theory (disable fn-bp-prepare-enqueue fn-bp-prepare-attempt
+                           fn-bp-prepare-receipt fn-bp-complete fn-bp-recover
+                           fn-bp-observe-transport fn-bp-request-retry
+                           fn-bp-restart)))
+
+(defthm fn-bp-step-preserves-works
+  (implies (consp (fn-bp-find-work id (fn-bp-state-works s)))
+           (consp (fn-bp-find-work
+                   id (fn-bp-state-works
+                       (fn-bp-result-state (fn-bp-step s event))))))
+  :hints (("Goal" :in-theory (enable fn-bp-step fn-bp-event-kind))))
+
+(defthm fn-bp-durable-enqueue-holds-the-work
+  (implies (and (fn-bp-pending-matchesp s txid generation)
+                (not (fn-bp-state-fenced s))
+                (equal (fn-bp-pending-kind (fn-bp-state-pending s)) :enqueue))
+           (consp (fn-bp-find-work
+                   (fn-bp-work-id (fn-bp-pending-work (fn-bp-state-pending s)))
+                   (fn-bp-state-works
+                    (fn-bp-result-state
+                     (fn-bp-complete s txid generation :durable))))))
+  :hints (("Goal" :in-theory (enable fn-bp-complete))))
+
+(defthm fn-bp-replay-preserves-works
+  (implies (consp (fn-bp-find-work id (fn-bp-state-works s)))
+           (consp (fn-bp-find-work
+                   id (fn-bp-state-works
+                       (fn-bp-journal-nth
+                        1 (fn-bp-replay-records s records effects))))))
+  :hints (("Goal" :induct (fn-bp-replay-records s records effects)
+           :in-theory
+           (e/d (fn-bp-replay-records fn-bp-step-preserves-state
+                 fn-bp-journal-nth-1-of-list3)
+                (fn-bp-record-event fn-bp-record-contextp
+                 fn-bp-journal-recordp fn-bp-storage-complete-event
+                 fn-bp-storage-recover-event fn-bp-restart-event
+                 fn-bp-journal-nth fn-bp-result-effects fn-ag-append
+                 fn-bp-step)))))
