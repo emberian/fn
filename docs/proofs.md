@@ -161,11 +161,11 @@ Its limits, stated so nobody reads a clean report as a clean bill of health:
   `tests/acl2/assumptions-tests.lisp` are for.
 - The absence of a flag is not evidence of strength. Teeth are.
 
-### The two export lints
+### The three shape lints
 
-Besides the suspect detector, `tools/ledger.py` reports two WARN lints, counted
-in the generated ledger and listed in full under `lints` in `ledger.json`.
-Neither judges truth; each names a cost this tree has already paid.
+Besides the suspect detector, `tools/ledger.py` reports three WARN lints,
+counted in the generated ledger and listed in full under `lints` in
+`ledger.json`. None judges truth; each names a cost this tree has already paid.
 *Export hygiene* flags a theorem a book leaves enabled whose conclusion is an
 equality between two *different* one-argument applications, or a `consp`/`len`
 conclusion backchained to a `len` hypothesis. The same accessor on both sides
@@ -181,7 +181,18 @@ read literally, such as a computed theory over `current-theory`, contributes
 nothing, so an unresolvable withdrawal warns rather than going quiet. *Teeth form* flags a `must-fail` whose body is a bare
 `thm`/`defthm` whose statement mentions no constant -- no keyword, literal,
 string or `defconst` -- so it refutes a general claim rather than a specific
-violating value. `make check` prints both as `WARN`;
+violating value. *Include hygiene* flags a non-local `(include-book "x")`
+whose target is a local book of this tree that ends with no theory withdrawal
+at all -- the same computation export hygiene uses to exempt a rule, applied
+to the whole book. Such an include is not an interface: it enables every rule
+`x` leaves enabled in the includer and in everything that includes the
+includer. The measured case is `books/bp-ingress.lisp`, which took a non-local
+include of `article-properties` for a single guard hint and turned a
+six-minute proof into an 1800 s timeout, 1.92M backchain frames of which none
+contributed; making that include `local` is what the lint asks for, and a
+`local` include is never flagged. A `:dir :system` include, and a reference
+this tree does not read as a book, are not judged, because there is no export
+theory here to read. `make check` prints all three as `WARN`;
 `python3 tools/ledger.py --check --strict` fails on them, which is how a book
 or a cluster that has been cleaned keeps its state.
 
@@ -237,6 +248,19 @@ first takes a slot from a machine-wide pool of `flock` files
 darwin and 16 on linux), waits rather than starting when the pool is full,
 reports the wait once a minute, and records each wait in the run manifest. The
 lock lives on the open file description, so a killed run leaks no slot.
+Iterative `ld` work is the other way ACL2 starts here, and it does not go
+through the runner: on 2026-09-19 six ACL2 processes were live on a laptop
+whose pool is four, because lanes' scratch drivers invoked `acl2` directly.
+[`tools/acl2`](../tools/acl2) is that path's entry to the same pool. It takes
+one slot with the same lock directory and the same once-a-minute wait line,
+sets `ACL2_CUSTOMIZATION=NONE` and `ACL2_BOOK_HASH_ALISTP=NIL` so an `ld`
+session iterates against the world certification will see, and runs `$FN_ACL2`
+(default `acl2`) with this process's stdin, stdout and stderr passed through;
+`tools/acl2 --timeout 240 < driver.lsp`, also `make acl2-ld`, terminates the
+child at that many seconds and exits 124, which makes the brief's
+three-minute rule mechanical rather than a PID a lane has to remember to kill.
+The slot is released when ACL2 exits, when it is killed by the timeout, and
+when the wrapper itself dies.
 [`tools/farm.py`](../tools/farm.py) moves a wide run to persvati or hbox:
 `submit` mirrors the worktree to the same absolute path and starts the runner
 detached with its own log and status file, `wait` blocks with a bounded
