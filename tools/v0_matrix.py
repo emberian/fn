@@ -665,6 +665,13 @@ import argparse, json, os, socket, sys, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from drive import Conn
 
+# tools/deploy_gate.py's Conn defaults to 30 s.  A READER command comes back
+# in milliseconds, but POST, AUTHINFO PASS and a transit transfer each cross
+# the ACL2 bridge, and one of those calls can take tens of seconds on a busy
+# box -- the eighth run recorded every AUTHINFO and POST row as
+# "TimeoutError: timed out" on both nodes for that reason and nothing else.
+SOCKET_TIMEOUT = 240
+
 
 def send_block(conn, lines):
     payload = b""
@@ -720,7 +727,7 @@ def login(conn, args, out, prefix=""):
 def surface(args):
     """The whole reader profile, one status line per command."""
     out = {}
-    conn = Conn(args.port)
+    conn = Conn(args.port, timeout=SOCKET_TIMEOUT)
     out["greeting"] = conn.greeting
     status, caps = conn.cmd("CAPABILITIES", multiline=True)
     out["CAPABILITIES"] = status
@@ -763,7 +770,7 @@ def surface(args):
     conn.close()
     # Framing: the same command, split across two segments with a pause, must
     # be answered once and identically (NNT-003).
-    split = Conn(args.port)
+    split = Conn(args.port, timeout=SOCKET_TIMEOUT)
     split.sock.sendall(b"DAT")
     time.sleep(0.4)
     split.sock.sendall(b"E\r\n")
@@ -803,7 +810,7 @@ def pins(args):
     One connection per probe, because a 340 or a 335 puts the connection into
     a transfer and a POST is one per connection on this tree.
     """
-    conn = Conn(args.port)
+    conn = Conn(args.port, timeout=SOCKET_TIMEOUT)
     out_login = {}
     login(conn, args, out_login)
     status, caps = conn.cmd("CAPABILITIES", multiline=True)
@@ -811,7 +818,7 @@ def pins(args):
     conn.close()
     answered = {}
     for label, template, opens in PROBES:
-        probe = Conn(args.port)
+        probe = Conn(args.port, timeout=SOCKET_TIMEOUT)
         try:
             # Everything but AUTHINFO itself is probed on an AUTHENTICATED
             # connection, because that is the connection whose CAPABILITIES
@@ -862,7 +869,7 @@ def pins(args):
 def postcycle(args):
     """One POST on its own connection, with the read-back in three places."""
     out = {}
-    poster = Conn(args.port)
+    poster = Conn(args.port, timeout=SOCKET_TIMEOUT)
     login(poster, args, out)
     out["GROUP BEFORE"] = poster.cmd("GROUP " + args.group)[0]
     out["POST"] = poster.cmd("POST")[0]
@@ -876,7 +883,7 @@ def postcycle(args):
         out["GROUP AFTER"] = "(not attempted)"
     poster.close()
 
-    fresh = Conn(args.port)
+    fresh = Conn(args.port, timeout=SOCKET_TIMEOUT)
     login(fresh, args, {})
     out["FRESH ARTICLE"] = fresh.cmd("ARTICLE " + args.msgid, multiline=True)[0]
     fresh.close()
@@ -884,7 +891,7 @@ def postcycle(args):
     # The duplicate, on its own connection: one clock observation is pinned per
     # connection at accept, so a second POST on the poster's connection would
     # be refused for a reason that is not duplicate suppression.
-    again = Conn(args.port)
+    again = Conn(args.port, timeout=SOCKET_TIMEOUT)
     login(again, args, {})
     out["DUPLICATE POST"] = again.cmd("POST")[0]
     if out["DUPLICATE POST"].startswith("340"):
@@ -907,10 +914,10 @@ def postcycle(args):
 def concurrent(args):
     """A second reader stays live across another connection's whole POST."""
     out = {}
-    watcher = Conn(args.port)
+    watcher = Conn(args.port, timeout=SOCKET_TIMEOUT)
     login(watcher, args, {})
     out["WATCHER BEFORE"] = watcher.cmd("GROUP " + args.group)[0]
-    poster = Conn(args.port)
+    poster = Conn(args.port, timeout=SOCKET_TIMEOUT)
     login(poster, args, out)
     out["POST"] = poster.cmd("POST")[0]
     if not out["POST"].startswith("340"):
@@ -935,7 +942,7 @@ def concurrent(args):
 def auth(args):
     """AUTHINFO (RFC 4643) and the posting permission it carries."""
     out = {}
-    conn = Conn(args.port)
+    conn = Conn(args.port, timeout=SOCKET_TIMEOUT)
     status, caps = conn.cmd("CAPABILITIES", multiline=True)
     out["CAPABILITIES BEFORE"] = status
     out["advertised_before"] = labels(caps)
@@ -954,7 +961,7 @@ def auth(args):
         c.upper().startswith("AUTHINFO") for c in caps if c.strip())
     conn.close()
 
-    poster = Conn(args.port)
+    poster = Conn(args.port, timeout=SOCKET_TIMEOUT)
     poster.cmd("AUTHINFO USER " + args.user)
     poster.cmd("AUTHINFO PASS " + args.secret)
     out["POST AFTER"] = poster.cmd("POST")[0]
@@ -966,7 +973,7 @@ def auth(args):
         out["POST AFTER COMMIT"] = out["POST AFTER"]
     poster.close()
 
-    wrong = Conn(args.port)
+    wrong = Conn(args.port, timeout=SOCKET_TIMEOUT)
     wrong.cmd("AUTHINFO USER " + args.user)
     out["AUTHINFO WRONG"] = wrong.cmd("AUTHINFO PASS not-" + args.secret)[0]
     wrong.close()
@@ -977,7 +984,7 @@ def auth(args):
 def stream(args):
     """The accepted CHECK/TAKETHIS path: 238 then 239 (RFC 4644 2.4, 2.5)."""
     out = {}
-    source = Conn(args.from_port)
+    source = Conn(args.from_port, timeout=SOCKET_TIMEOUT)
     status, lines = source.cmd("ARTICLE " + args.msgid, multiline=True)
     out["SOURCE"] = status
     source.close()
@@ -985,7 +992,7 @@ def stream(args):
         out["ok"] = False
         out["reason"] = "the source node does not serve " + args.msgid
         return out
-    conn = Conn(args.to_port)
+    conn = Conn(args.to_port, timeout=SOCKET_TIMEOUT)
     out["MODE STREAM"] = conn.cmd("MODE STREAM")[0]
     out["CHECK"] = conn.cmd("CHECK " + args.msgid)[0]
     conn.sock.sendall(("TAKETHIS " + args.msgid + "\r\n").encode())
@@ -996,7 +1003,7 @@ def stream(args):
     send_block(conn, lines)
     out["TAKETHIS AGAIN"] = conn.line()
     conn.close()
-    reread = Conn(args.to_port)
+    reread = Conn(args.to_port, timeout=SOCKET_TIMEOUT)
     status, got = reread.cmd("ARTICLE " + args.msgid, multiline=True)
     reread.close()
     out["REREAD"] = status
