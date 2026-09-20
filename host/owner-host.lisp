@@ -247,6 +247,15 @@
          (state (fn-owner-install-effects (car result) state)))
     (value :fed)))
 
+; The allocation domain the owner's live node carries (every name ever
+; created): the store bridge's fn-store-cfg-domain reads the global
+; fn-store-sn, which the owner never sets (its store lives in fn-owner), so
+; the owner answers the same question from its own node.
+(defun fn-owner-domain (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-store-cfg-join-names
+          (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
+
 (defun fn-owner-next-txid (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-state-next-txid (fn-node-acceptance (fn-owner-node state)))))

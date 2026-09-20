@@ -135,6 +135,11 @@ class Acl2Owner(Acl2Store):
     def finish(self):
         return self._symbol("(fn-owner-finish state)")
 
+    def config_domain(self):
+        # Store.recover asks the bridge for the allocation domain; the store
+        # bridge's entry reads fn-store-sn, which this image never sets.
+        return self._names("(fn-owner-domain state)")
+
     def next_txid(self):
         return self._nat("(fn-owner-next-txid state)")
 

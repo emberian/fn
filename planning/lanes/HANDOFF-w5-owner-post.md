@@ -78,4 +78,36 @@ rewritten with.
 
 ## Evidence
 
-EVIDENCE-PLACEHOLDER
+ACL2 (this worktree, `ACL2_BOOK_HASH_ALISTP=NIL`, `FN_ACL2_TIMEOUT_SECONDS=1800`),
+on the tree merged with dev 7a9e89a (config-groups, reader profile): the
+dev-changed books in the owner closure recertified in place
+(`build/acl2/certify-20260920T025533Z-22858`: nntp-responses, nntp,
+nntp-overview, nntp-invariants, nntp-effects, nntp-post), then one invocation
+`build/acl2/certify-20260920T030724Z-59801` certifies `books/served`,
+`tests/acl2/served-tests`, `books/owner`, `books/owner-invariants` and
+`tests/acl2/owner-tests`, every `assert-event` of the owner test book
+passing under real ACL2. Before the merge the three owner roots certified on
+b7f106b in `certify-20260920T014456Z-95448`, `-014458Z-95661` and
+`-015014Z-10448`.
+
+Python: see the farm gate of dev after 40b75e4. The last local run
+(`python3 -m unittest tests.test_post tests.test_owner tests.test_reader
+tests.test_served_differential -v`, 31 tests, 102 s): 25 pass, including the
+served 440, both 441s (From-less, uncarried group), the duplicate-Message-ID
+refusal, every reader and differential case; 6 fail, and all six are the one
+defect this lane's last commit addresses: on the merged tree
+`Store.recover` asks the bridge for the allocation domain and the inherited
+`fn-store-cfg-domain` reads `fn-store-sn`, a global the owner image never
+sets, so `group_codes` saw an empty domain and every durable post (served
+240 and control-channel `committed`) was refused. `fn-owner-domain` answers
+from the owner's own node; that fix is committed untested locally (the
+laptop's slot pool starves further suite runs) and the farm gate is its
+verdict. Two harness defects fixed on the way: `OwnerProcess.start` read the
+two banner lines through a `BufferedReader` after `select`, which slurped
+both on one read and then never saw the second (every owner "did not start"
+with an empty stderr); and the failure path read a stopped process's stderr.
+A hand-driven transcript against the merged owner before that fix (fresh
+store, one CLI seed post) showed the served path itself working end to end:
+201, 340, the duplicate refusal `441 posting failed; the article was
+refused`, `version 1`, QUIT.
+
