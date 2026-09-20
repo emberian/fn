@@ -78,7 +78,7 @@
 (assert-event (equal (fn-own-view-version (fn-own-view *own-0*)) 0))
 
 ; Reader A opens at version 0 and is greeted.
-(defconst *own-open-a* (fn-own-open *own-0*))
+(defconst *own-open-a* (fn-own-open *own-0* nil))
 (assert-event (equal (fn-served-reply-octets (car *own-open-a*)) *fn-served-greeting*))
 (defconst *own-a* (cdr *own-open-a*))
 (assert-event (equal (fn-own-conn-version (fn-own-find-conn 0 (fn-own-conns *own-a*))) 0))
@@ -299,8 +299,8 @@
 (assert-event (equal (len (fn-own-conns *own-full*)) 4))
 (assert-event (equal (fn-own-max-conns *own-full*) 4))
 (assert-event (fn-own-conns-boundedp (fn-own-conns *own-full*) *own-groups*))
-(assert-event (null (car (fn-own-open *own-full*))))
-(assert-event (equal (cdr (fn-own-open *own-full*)) *own-full*))
+(assert-event (null (car (fn-own-open *own-full* nil))))
+(assert-event (equal (cdr (fn-own-open *own-full* nil)) *own-full*))
 
 ; -----------------------------------------------------------------------------
 ; Clock and facts on the witness.
@@ -483,11 +483,11 @@
   (let* ((archive (fn-own-view-archive (fn-own-view *own-after*)))
          (sconn (fn-served-result-conn
                  (fn-served-open archive *fn-nntp-max-initial-line-octets*
-                                 *fn-own-body-limit* nil nil nil))))
+                                 *fn-own-body-limit* nil nil nil nil))))
     (fn-own-make (fn-own-store *own-after*) (fn-own-view *own-after*)
                  (list (fn-own-conn-make 0 0 0 (fn-served-conn-wire sconn)
                                          (fn-served-conn-session sconn) archive nil nil))
-                 1 4 nil nil nil nil nil nil nil)))
+                 1 4 nil nil nil nil nil nil nil nil)))
 (assert-event (not (fn-own-relation *own-bogus*)))
 
 ; K1 (served) without (fn-own-relation o): the reply is not the served step
@@ -517,7 +517,7 @@
         (sconn (fn-served-result-conn
                 (fn-served-open (fn-own-view-archive (fn-own-view o))
                                 *fn-nntp-max-initial-line-octets* *fn-own-body-limit*
-                                nil nil nil))))
+                                nil nil nil nil))))
    (not (equal (car (fn-own-read o 99 *own-group-octets*))
                (fn-served-result-effects
                 (fn-served-step
@@ -561,7 +561,8 @@
                     (fn-sf-replay-node (fn-sn-groups s) (fn-sn-capacity s)
                                        (fn-own-take 2 (fn-sf-records (fn-sn-files s)))
                                        (fn-sf-frontier (fn-sn-files s))))
-                   *fn-nntp-max-initial-line-octets* *fn-own-body-limit* nil nil nil))
+                   *fn-nntp-max-initial-line-octets* *fn-own-body-limit* nil nil nil
+                   nil))
                  *own-group-command*))))))
 ; The after-any-trace forms, on the same values with the empty trace.
 (assert-event (not (fn-own-relation (fn-own-run *own-bogus* nil))))
@@ -572,7 +573,7 @@
 (defconst *own-bogus-pin*
   (fn-own-make (fn-own-store *own-0*) (fn-own-view *own-0*)
                (list (fn-own-conn-make 0 7 0 nil nil nil nil nil))
-               1 4 nil nil nil nil nil nil nil))
+               1 4 nil nil nil nil nil nil nil nil))
 (assert-event
  (not (equal (fn-own-take 7 (fn-sf-records (fn-sn-files (fn-own-store
                                                          (fn-own-run *own-bogus-pin* *own-trace*)))))
@@ -591,7 +592,7 @@
  (with-guard-checking :none
   (let ((o (fn-own-make (fn-own-store *own-0*) (fn-own-view-make 3 0 nil)
                         (list (fn-own-conn-make 0 "seven" 0 nil nil nil nil nil))
-                        1 4 nil nil nil nil nil nil nil)))
+                        1 4 nil nil nil nil nil nil nil nil)))
     (not (<= (fn-own-reclaim-floor o)
              (fn-own-conn-version (fn-own-find-conn 0 (fn-own-conns o))))))))
 
@@ -604,7 +605,7 @@
                      (fn-own-conn-make 2 2 2 nil nil nil nil nil)
                      (fn-own-conn-make 3 2 2 nil nil nil nil nil)
                      (fn-own-conn-make 4 2 2 nil nil nil nil nil))
-               5 4 nil nil nil nil nil nil nil))
+               5 4 nil nil nil nil nil nil nil nil))
 (assert-event (not (<= (len (fn-own-conns (fn-own-run *own-over* nil)))
                        (fn-own-max-conns *own-over*))))
 (assert-event (not (fn-own-conns-boundedp (fn-own-conns (fn-own-run *own-over* nil))
@@ -613,7 +614,7 @@
 ; K5 without (fn-own-relation o): a ledger entry with no record.
 (defconst *own-forged*
   (fn-own-make (fn-own-store *own-0*) (fn-own-view *own-0*) nil 0 4 nil
-               (list (cons 0 0)) nil nil nil nil nil))
+               (list (cons 0 0)) nil nil nil nil nil nil))
 (assert-event
  (not (fn-sf-record-has-pairp (cons 0 0)
                               (fn-sf-records (fn-sn-files (fn-own-store
@@ -630,7 +631,7 @@
 (assert-event (not (fn-own-relation (fn-own-run *own-bogus* nil))))
 (assert-event
  (with-guard-checking :none
-  (not (fn-snt-relation (fn-own-store (fn-own-run (fn-own-make nil nil nil 0 4 nil nil nil nil nil nil nil)
+  (not (fn-snt-relation (fn-own-store (fn-own-run (fn-own-make nil nil nil 0 4 nil nil nil nil nil nil nil nil)
                                                   nil))))))
 
 ; Root without open-okp: a rejected image (malformed frontier) has kind
@@ -662,7 +663,7 @@
 ; stamped nil; without (member-equal fact facts): a fact the log never held.
 (defconst *own-unstamped*
   (fn-own-make (fn-own-store *own-0*) (fn-own-view *own-0*) nil 0 4 nil nil nil
-               (list (fn-own-group-fact-make "fn.new" nil)) nil nil nil))
+               (list (fn-own-group-fact-make "fn.new" nil)) nil nil nil nil))
 (assert-event (not (fn-own-relation *own-unstamped*)))
 (assert-event (not (fn-clock-observationp
                     (fn-own-group-fact-stamp (car (fn-own-facts *own-unstamped*))))))
@@ -676,7 +677,8 @@
 (defconst *own-forged-post*
   (fn-own-make (fn-own-store *own-p1*) (fn-own-view *own-p1*) (fn-own-conns *own-p1*)
                5 4 4 (list (cons 9 9)) (fn-own-clock *own-p1*) nil *own-config* nil
-               (fn-own-sub-make 4 2 0 (fn-served-submission (car *own-submitted*)))))
+               (fn-own-sub-make 4 2 0 (fn-served-submission (car *own-submitted*)))
+               nil))
 (assert-event (not (fn-own-relation *own-forged-post*)))
 (assert-event
  (let ((conn (fn-own-find-conn 4 (fn-own-conns *own-forged-post*))))
@@ -691,20 +693,33 @@
 (assert-event
  (not (fn-sf-record-has-pairp (car (last (fn-own-ledger *own-forged-post*)))
                               (fn-sf-records (fn-sn-files (fn-own-store *own-forged-post*))))))
-; Without (fn-own-find-conn id conns): an unknown connection is answered
-; nothing, the served outcome over the absent connection's fields is nothing
-; too, and nothing is in flight.
+; Without (fn-own-find-conn id conns): the owner answers an unknown
+; connection NOTHING and nothing is in flight.  Until `w10/session-depth'
+; this was also the witness that the theorem's equality hypothesis can hold
+; with no connection, because the served outcome over the absent
+; connection's fields was nothing too.  It is not any more:
+; `fn-nntp-post-outcome' now answers a malformed session with the FOURTH
+; outcome, 403 (`*fn-post-malformed-session-line*',
+; books/nntp-post.lisp), so the two sides DIFFER.  What is asserted is
+; therefore the separation: the owner's refusal is its own, taken before
+; the served path is entered, and it is not the served 403.
+; That settles the hypothesis: no connection-free state can satisfy the
+; equality any more, so `(fn-own-find-conn id (fn-own-conns o))' has no
+; violating value and is DELETED from
+; `fn-own-durable-reply-names-a-durable-record' (docs/proof-style.md
+; section 5).  The theorem is strictly stronger; this assertion is why.
 (assert-event
  (with-guard-checking :none
   (let ((conn (fn-own-find-conn 99 (fn-own-conns *own-after-post*))))
-    (and (equal (car (fn-own-outcome *own-after-post* 99 :durable))
-                (fn-served-result-effects
-                 (fn-served-post-outcome
-                  (fn-served-make-conn (fn-own-conn-wire conn) (fn-own-conn-session conn)
-                                       (fn-own-conn-archive conn) (fn-own-conn-config conn)
-                                       (fn-own-conn-observation conn)
-                                       (fn-own-clock *own-after-post*))
-                  :durable)))
+    (and (null (car (fn-own-outcome *own-after-post* 99 :durable)))
+         (not (equal (car (fn-own-outcome *own-after-post* 99 :durable))
+                     (fn-served-result-effects
+                      (fn-served-post-outcome
+                       (fn-served-make-conn (fn-own-conn-wire conn) (fn-own-conn-session conn)
+                                            (fn-own-conn-archive conn) (fn-own-conn-config conn)
+                                            (fn-own-conn-observation conn)
+                                            (fn-own-clock *own-after-post*))
+                       :durable))))
          (null (fn-own-inflight *own-after-post*))))))
 ; Without the 240 hypothesis: the reply on *own-taken* is the uncertain 441
 ; and nothing was consumed after the mark.
