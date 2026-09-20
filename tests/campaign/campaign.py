@@ -51,6 +51,8 @@ from tests.campaign import child as child_module  # noqa: E402
 from tests.campaign import cuts as cuts_module
 from tests.campaign import model_images as model_images_module  # noqa: E402
 from tools import run_bp_ingress, run_bp_receive, run_store, workflow_journal  # noqa: E402
+from tools import deploy_gate  # noqa: E402
+from tools.deploy_gate import evidence_path  # noqa: E402
 from tools.workflow_bridge import Acl2WorkflowReplay  # noqa: E402
 
 BASELINE_BID = "bid-baseline"
@@ -732,7 +734,9 @@ def main(argv=None) -> int:
                         help="run only these cut ids (component:point); "
                              "repeatable. For checking a newly added cut "
                              "without paying for the whole table.")
-    parser.add_argument("--json", type=Path, default=None)
+    parser.add_argument("--json", default=None,
+                        help="write the report here; a relative path is "
+                             "under the worktree this was invoked from")
     parser.add_argument("--model-images", action="store_true",
                         help="also check the recovered store against the byte "
                              "model's admissible image set at each cut")
@@ -755,7 +759,12 @@ def main(argv=None) -> int:
             print("cases kept in {}".format(workdir))
     body = json.dumps(report.as_json(), indent=2, sort_keys=True)
     if args.json:
-        args.json.write_text(body + "\n")
+        # Anchored on the invoking worktree, never on the process's working
+        # directory: a lane's report must not land in another checkout.
+        target = evidence_path(args.json, deploy_gate.repo_root(), "")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(body + "\n")
+        print("report: {}".format(target))
     print("pairs={} failures={} seconds={:.1f}".format(
         report.pairs, len(report.failures), report.seconds))
     for failure in report.failures:
