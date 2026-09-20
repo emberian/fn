@@ -7,7 +7,6 @@
 
 (in-package "ACL2")
 (include-book "../../books/peer-feed-invariants")
-(include-book "std/testing/assert-bang" :dir :system)
 
 ; -----------------------------------------------------------------------------
 ; Witnesses

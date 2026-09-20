@@ -144,9 +144,9 @@
   (declare (xargs :guard t))
   (and (true-listp x) (equal (len x) 4)))
 
-(defun fn-feed-entry (msgid state attempts tick)
+(defun fn-feed-entry (msgid st attempts tick)
   (declare (xargs :guard t))
-  (list msgid state attempts tick))
+  (list msgid st attempts tick))
 
 (defun fn-feed-entry-msgid (x)
   (declare (xargs :guard t))
@@ -162,18 +162,18 @@
   (fn-bp-nth 3 x))
 
 (defthm fn-feed-entry-shapep-of-fn-feed-entry
-  (fn-feed-entry-shapep (fn-feed-entry msgid state attempts tick)))
+  (fn-feed-entry-shapep (fn-feed-entry msgid st attempts tick)))
 (defthm fn-feed-entry-msgid-of-fn-feed-entry
-  (equal (fn-feed-entry-msgid (fn-feed-entry msgid state attempts tick))
+  (equal (fn-feed-entry-msgid (fn-feed-entry msgid st attempts tick))
          msgid))
 (defthm fn-feed-entry-state-of-fn-feed-entry
-  (equal (fn-feed-entry-state (fn-feed-entry msgid state attempts tick))
-         state))
+  (equal (fn-feed-entry-state (fn-feed-entry msgid st attempts tick))
+         st))
 (defthm fn-feed-entry-attempts-of-fn-feed-entry
-  (equal (fn-feed-entry-attempts (fn-feed-entry msgid state attempts tick))
+  (equal (fn-feed-entry-attempts (fn-feed-entry msgid st attempts tick))
          attempts))
 (defthm fn-feed-entry-tick-of-fn-feed-entry
-  (equal (fn-feed-entry-tick (fn-feed-entry msgid state attempts tick))
+  (equal (fn-feed-entry-tick (fn-feed-entry msgid st attempts tick))
          tick))
 (defthm fn-feed-entry-shapep-forward-shape
   (implies (fn-feed-entry-shapep x) (and (consp x) (true-listp x)))
@@ -275,16 +275,16 @@
           (fn-feed-entry-msgid (car xs))
           (fn-feed-head-queued (cdr xs)))))
 
-(defun fn-feed-queue-set-state (xs msgid state)
+(defun fn-feed-queue-set-state (xs msgid st)
   (declare (xargs :guard t))
   (if (atom xs)
       nil
       (if (equal (fn-feed-entry-msgid (car xs)) msgid)
-          (cons (fn-feed-entry (fn-feed-entry-msgid (car xs)) state
+          (cons (fn-feed-entry (fn-feed-entry-msgid (car xs)) st
                                (fn-feed-entry-attempts (car xs))
                                (fn-feed-entry-tick (car xs)))
                 (cdr xs))
-          (cons (car xs) (fn-feed-queue-set-state (cdr xs) msgid state)))))
+          (cons (car xs) (fn-feed-queue-set-state (cdr xs) msgid st)))))
 
 ; Requeue after a 431/436 or a connection loss: back to :queued, one more
 ; attempt counted, the tick remembered.
