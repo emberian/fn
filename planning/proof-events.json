@@ -881,6 +881,47 @@
           "kind": "theorem"
         }
       ]
+    },
+    {
+      "id": "PRF-029",
+      "events": [
+        {
+          "name": "fn-provp-of-string",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-prov-render-of-post",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-prov-render-of-transit",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-prov-render-of-bp",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-prov-render-of-local",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-prov-render-of-legacy",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-prov-of-wire-of-a-plain-string",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-prov-of-wire-of-wire",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-prov-of-wire-of-a-durable-wire",
+          "kind": "theorem"
+        }
+      ]
     }
   ]
 }

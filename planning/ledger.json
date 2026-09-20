@@ -50,6 +50,7 @@
     "books/identity",
     "books/identity-invariants",
     "tests/acl2/identity-tests",
+    "books/provenance",
     "books/retention",
     "books/retention-invariants",
     "tests/acl2/retention-tests",
@@ -62,6 +63,8 @@
     "books/records-canonicality",
     "tests/acl2/records-tests",
     "tests/acl2/records-teeth-tests",
+    "books/provenance-codec",
+    "tests/acl2/provenance-tests",
     "books/config",
     "books/config-invariants",
     "books/replay",
@@ -267,24 +270,24 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 264,
-    "books_in_root_closure": 263,
-    "roots": 263,
-    "theorems": 5139,
-    "functions": 3685,
-    "assert_events": 4879,
+    "books": 267,
+    "books_in_root_closure": 266,
+    "roots": 266,
+    "theorems": 5241,
+    "functions": 3748,
+    "assert_events": 4979,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
-      "verified": 1385,
+      "verified": 1398,
       "declared-off": 183,
-      "default-guarded": 1623,
+      "default-guarded": 1673,
       "default-unguarded": 494
     },
-    "suspect_theorems": 38,
+    "suspect_theorems": 40,
     "export_hygiene_warnings": 72,
     "teeth_form_warnings": 0,
-    "include_hygiene_warnings": 85,
+    "include_hygiene_warnings": 86,
     "host_names_warnings": 0,
     "hand_written_record_warnings": 19
   },
@@ -3183,7 +3186,7 @@
       "book": "books/peer-inbound-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 9,
+      "theorems": 13,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -3209,11 +3212,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 48,
-      "functions": 54,
+      "functions": 56,
       "guards": {
         "verified": 6,
         "declared-off": 4,
-        "default-guarded": 44,
+        "default-guarded": 46,
         "default-unguarded": 0
       },
       "verify_guards_events": 6,
@@ -3226,7 +3229,8 @@
         "identity",
         "nntp-post",
         "node-config",
-        "peer-config"
+        "peer-config",
+        "provenance-codec"
       ],
       "system_includes": [],
       "suspects": [],
@@ -3337,6 +3341,66 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/provenance-codec.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 27,
+      "functions": 25,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 24,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "identity-invariants",
+        "provenance",
+        "records-canonicality"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-prov-wire-of-a-string-is-itself-by-definition"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/provenance.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 71,
+      "functions": 35,
+      "guards": {
+        "verified": 12,
+        "declared-off": 0,
+        "default-guarded": 23,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 12,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "acceptance-alloc",
+        "cbor",
+        "defrecord"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-prov-transit-kindp-forward"
+      ],
       "read_error": null
     },
     {
@@ -3591,7 +3655,8 @@
       "encapsulates": 0,
       "includes": [
         "acceptance-alloc",
-        "defrecord"
+        "defrecord",
+        "provenance"
       ],
       "system_includes": [],
       "suspects": [
@@ -6384,6 +6449,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/provenance-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 100,
+      "must_fails": 0,
+      "defconsts": 10,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/provenance-codec"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/records-teeth-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -7418,6 +7508,22 @@
       ]
     },
     {
+      "theorem": "fn-prov-transit-kindp-forward",
+      "book": "books/provenance.lisp",
+      "line": 56,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-prov-transit-kindp"
+      ]
+    },
+    {
+      "theorem": "fn-prov-wire-of-a-string-is-itself-by-definition",
+      "book": "books/provenance-codec.lisp",
+      "line": 543,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-prov-wire and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-record-result-okp-is-parse-okp",
       "book": "books/records-canonicality.lisp",
       "line": 600,
@@ -7428,7 +7534,7 @@
     {
       "theorem": "fn-retain-admission-refusal-is-no-op",
       "book": "books/retention.lisp",
-      "line": 286,
+      "line": 287,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-retain-admit and the conclusion is that branch's value"
       ]
@@ -7436,7 +7542,7 @@
     {
       "theorem": "fn-retain-wrong-evidence-does-not-release",
       "book": "books/retention.lisp",
-      "line": 326,
+      "line": 327,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value"
       ]
@@ -8190,6 +8296,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/provenance.lisp",
+        "line": 41,
+        "include": "acceptance-alloc",
+        "included": "books/acceptance-alloc.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/relay-invariants.lisp",
         "line": 18,
         "include": "relay",
@@ -8652,7 +8765,7 @@
       },
       {
         "book": "books/peer-inbound.lisp",
-        "line": 62,
+        "line": 63,
         "shape": "fn-peer-decision-shapep",
         "shapes": 3,
         "accessors": 10,

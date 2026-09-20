@@ -588,6 +588,34 @@
         "No run here is proof evidence: it exercises the design's acceptance criteria against books that do not exist at this revision."
       ],
       "evidence": []
+    },
+    {
+      "id": "SCN-020",
+      "title": "A provenance survives the store, and a legacy one keeps its meaning",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "RET-007",
+        "RET-001",
+        "STO-006"
+      ],
+      "steps": [
+        "Post one article to a fresh store; ACL2 decides the provenance from the live configuration and hands the host the form the record grammar accepts.",
+        "Close the store and reopen it, which replays the journal into a fresh node.",
+        "Ask the node for the provenance of that Message-ID and for the provenance of a value written before the typed record existed.",
+        "Ask for the provenance of a Message-ID the node does not hold."
+      ],
+      "expected": [
+        "The stored evidence is the canonical wire form: prefixed, printable in octets 33 to 126, and at most 256 octets, so the host boundary guard and the record grammar both admit it.",
+        "The provenance read back after the reopen is the provenance the acceptance recorded, field for field.",
+        "A value written before the typed record existed reads back as the :legacy kind, verbatim, and renders as the string it always rendered as.",
+        "A Message-ID the node does not hold is a refusal (exit 1), distinct from a fault (exit 3)."
+      ],
+      "evidence": [
+        "tests/test_provenance.py",
+        "tests/acl2/provenance-tests.lisp"
+      ],
+      "note": "The transit path is NOT covered: it still stores fn-peer-evidence's rendering. See planning/lanes/HANDOFF-w10-provenance.md."
     }
   ]
 }
