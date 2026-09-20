@@ -26,6 +26,16 @@
 
 (in-package "ACL2")
 
+;;; The one dependency.  Every socket, filesystem and core call below is
+;;; host/native/io.lisp's, so this file loads it rather than leave the order
+;;; to a loader: `load' is the raw-mode edge that `ld' is for the interpreted
+;;; host files.  The guard keeps host/native/build.lisp, which loads io.lisp
+;;; first, from re-evaluating it.  The path is repository-relative, as every
+;;; other load of this pair is.
+(eval-when (:load-toplevel :execute)
+  (unless (fboundp 'fnn-core)
+    (load "host/native/io.lisp")))
+
 ;;; ---------------------------------------------------------------------------
 ;;; Defaults.  Operator configuration, not protocol: each one is handed to
 ;;; `fn-tcl-host-params' and the machine decides what it means.
@@ -457,3 +467,7 @@ never reach the Lisp reader."
         (number 6 +fnn-tcl-transfer-mru+)))
       (t (error 'fnn-usage-error
                 :message (format nil "unknown tcpcl command ~a" command))))))
+
+;;; The verb this file owns, registered with host/native/io.lisp's dispatcher
+;;; (`fnn-dispatch'): io.lisp names nothing here.
+(fnn-register-verb "tcpcl" #'fnn-dispatch-tcpcl)
