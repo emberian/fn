@@ -9,6 +9,7 @@
 ; books/scheduler-invariants.lisp is the equation between them.
 (in-package "ACL2")
 (include-book "../books/scheduler")
+(include-book "../books/records") ; fn-record-string-octets
 
 (defun fn-sched-host-install (config next-tx state)
  (declare (xargs :stobjs state :mode :program))
@@ -82,7 +83,13 @@
     (value (fn-sched-decision-protected
             (fn-sched-decision
              (fn-sched-generation ss) (nfix (fn-sched-tick ss))
-             (fn-sched-contact-peer contact) work-id attempt-id
+             ; `:text' fields are octet lists (`fn-frame-textp',
+             ; books/frame-fields.lisp).  The state keeps the peer and the ids
+             ; as strings; this is the one place the representation is
+             ; converted, and the codec is not touched.
+             (fn-record-string-octets (fn-sched-contact-peer contact))
+             (fn-record-string-octets work-id)
+             (fn-record-string-octets attempt-id)
              (nfix (fn-bp-work-next-generation
                     (fn-bp-find-work work-id (fn-bp-state-works wf))))
              (fn-sched-selection-reason ss wf)
