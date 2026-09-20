@@ -111,12 +111,20 @@ closed.
 
 * **K1, K2, K3** (`books/byte-store-scan.lisp`) were not written. The lane
   spent its probe budget on the two seams above. The decomposition it
-  worked out is in `specs/crash-model-v2.md` §7's K1 row: the crux is one
-  lemma, "with at most one pending entry operation on a directory, the
-  image's entries for it are the durable ones or their `put-assoc`",
-  from (S1) `assoc-equal` of `fn-bs-apply-entries` restricted to
-  `fn-bs-ops-for-dir`, and (S2) the crash selection of a directory's
-  operations is a subsequence of them. `fn-bs-txn-name` should be a
+  worked out, and the pitfall it paid for, are in
+  `specs/crash-model-v2.md` §7's K1 row. The natural per-directory form --
+  "one directory's entries after a list of operations depend only on that
+  directory's operations" -- was attempted here and does NOT work: it is a
+  looping rewrite (its right side matches its own left side with `ops`
+  bound to `(fn-bs-ops-for-dir ops dir)`, so it must be `:rule-classes
+  nil`) and its induction does not close, because the branch where the head
+  operation names another directory needs a missing commutation lemma. The
+  route that does work is the PER-NAME machinery the book already has:
+  `fn-bs-apply-entries-entry-is-entry-after` reduces one name's value to
+  `fn-bs-entry-after`, which ignores other directories' operations by
+  construction, and `fn-bs-crash-entry-is-old-or-a-pending-target` is
+  already the conclusion for a single name. What is left for K1 is then the
+  NAME SET -- `strip-cars` -- and contiguity. `fn-bs-txn-name` should be a
   constrained function (`fn-bs-namep` plus injectivity): the decimal format
   is the host's and ACL2 owning it is its own packet.
 * **The A-CRASH-IMAGE and A-CRYPTO-TRAILER move into
