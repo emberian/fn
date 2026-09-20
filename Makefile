@@ -246,6 +246,7 @@ ACL2_BOOKS ?= books/assumptions \
 	books/stx-index \
 	books/stx-policy \
 	books/stx-epochs \
+	books/stx-authority \
 	tests/acl2/stx-tests \
 	tests/acl2/stx-transit-tests
 
