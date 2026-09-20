@@ -1672,6 +1672,11 @@
     fn-own-take-submission-preserves-relation fn-own-outcome-preserves-relation
     fn-own-find-conn-of-replace-conn-other fn-own-find-conn-of-remove-conn-other
     fn-own-conn-boundedp-is-post-session
+    ; free-variable `groups' on its one hypothesis, so as a rewrite rule it
+    ; would be tried on every `fn-auth-sessionp' term an includer states,
+    ; exactly as its `-is-post-session' sibling would.  Both are withdrawn;
+    ; this book reaches them with `:use' and so should an includer.
+    fn-own-conn-boundedp-is-auth-session
     fn-own-step-preserves-relation
     fn-own-start-relation fn-own-complete-ledger-is-exact-pair
     fn-own-connection-events-keep-store-bound-and-ledger
