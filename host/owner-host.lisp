@@ -37,12 +37,13 @@
             (fn-owner-group-octets (cdr names)))
     nil))
 
-; The posting configuration: the groups this store carries, the store's
-; payload bound.  Derived from the store configuration by ACL2.
-(defun fn-owner-post-config ()
+; The posting configuration: the groups served at the live configuration
+; generation (books/node-config, fn-cnode-served-of), the store's payload
+; bound.  Derived from the replayed configuration by ACL2.
+(defun fn-owner-post-config (cfg)
   (declare (xargs :mode :program))
   (fn-inj-make-config t *fn-owner-agent*
-                      (fn-owner-group-octets *fn-store-groups*)
+                      (fn-owner-group-octets (fn-cnode-served-of cfg))
                       *fn-store-max-payload*))
 
 (defun fn-owner-state (state)
@@ -65,24 +66,38 @@
 ; would run the whole-state recognizer once more per recovery: a result of
 ; kind :ok is fn-sn-open-okp by fn-own-open-kind-ok-is-okp
 ; (books/owner-invariants.lisp, under fn-sn-open-observed-result-is-typed).
-(defun fn-owner-recover (octet-records frontier max-conns state)
+; The configuration history is replayed first (fn-cnode-config-replay,
+; books/node-config), exactly as host/store-node-host.lisp fn-store-sn-recover
+; does; the node opens over the allocation domain and the configured capacity
+; and the live configuration is kept in the same global the store bridge's
+; fn-store-cfg-* entries read.
+(defun fn-owner-recover (octet-records frontier config-octet-records max-conns state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((records (fn-store-decode-records octet-records)))
-    (if (or (equal records :bad) (not (natp max-conns)))
+  (let ((records (fn-store-decode-records octet-records))
+        (config-records (fn-store-cfg-decode-records config-octet-records)))
+    (if (or (equal records :bad) (equal config-records :bad)
+            (null config-records) (not (natp max-conns)))
         (value :fault)
-      (let ((opened (fn-sn-open-observed *fn-store-groups*
-                                         *fn-store-capacity* frontier records)))
-        (if (and (equal (fn-sn-open-kind opened) :ok)
-                 (equal (fn-sf-phase (fn-sn-files (fn-sn-open-state opened)))
-                        :recovering))
-            (let ((state (f-put-global 'fn-owner
-                                       (fn-own-configure
-                                        (fn-own-start (fn-sn-open-state opened)
-                                                      max-conns)
-                                        (fn-owner-post-config))
-                                       state)))
-              (value :recovering))
-          (value :fault))))))
+      (let ((replayed (fn-cnode-config-replay config-records)))
+        (if (not (equal (fn-replay-result-kind replayed) :ok))
+            (value :fault)
+          (let* ((cn (fn-replay-result-node replayed))
+                 (cfg (fn-cnode-config cn))
+                 (opened (fn-sn-open-observed (fn-cnode-domain cn)
+                                              (fn-cfg-capacity (fn-cfg-value cfg))
+                                              frontier records)))
+            (if (and (equal (fn-sn-open-kind opened) :ok)
+                     (equal (fn-sf-phase (fn-sn-files (fn-sn-open-state opened)))
+                            :recovering))
+                (let* ((state (f-put-global 'fn-store-cfg cfg state))
+                       (state (f-put-global 'fn-owner
+                                            (fn-own-configure
+                                             (fn-own-start (fn-sn-open-state opened)
+                                                           max-conns)
+                                             (fn-owner-post-config cfg))
+                                            state)))
+                  (value :recovering))
+              (value :fault))))))))
 
 (defun fn-owner-store (state)
   (declare (xargs :stobjs state :mode :program))
@@ -111,8 +126,9 @@
 (defun fn-owner-prepare (msgid-octets payload group-codes id-octets
                           subject-octets evidence-octets charge state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((groups (fn-store-groups-from-codes group-codes))
-        (s (fn-owner-store state)))
+  (let* ((s (fn-owner-store state))
+         (groups (fn-store-groups-from-codes
+                  group-codes (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
             (not (fn-octet-listp payload)) (> (len payload) *fn-store-max-payload*)
             (equal groups :bad) (null groups)
@@ -120,6 +136,10 @@
             (not (fn-store-text-octetsp subject-octets))
             (not (fn-store-text-octetsp evidence-octets)) (not (posp charge)))
         (value :invalid)
+      ; A name in the domain but not served at the live generation (a retired
+      ; group) is refused by the predicate fn-cnode-prepare applies.
+      (if (not (fn-cnode-selection-servedp (f-get-global 'fn-store-cfg state) groups))
+          (value :refused)
       (let* ((node (fn-sn-node s))
              (msgid (fn-store-octets->string msgid-octets))
              (existing (fn-store-article-match msgid payload groups node)))
@@ -136,7 +156,7 @@
                  (state (fn-owner-step (list :store (list :prepare record)) state)))
             (if (equal (fn-owner-store state) s)
                 (value :refused)
-              (value :prepared))))))))
+              (value :prepared)))))))))
 
 (defun fn-owner-refuse-reservation (state)
   (declare (xargs :stobjs state :mode :program))
@@ -237,7 +257,9 @@
 
 (defun fn-owner-existing-action (msgid-octets payload group-codes state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((groups (fn-store-groups-from-codes group-codes)))
+  (let ((groups (fn-store-groups-from-codes
+                 group-codes
+                 (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
             (not (fn-octet-listp payload)) (equal groups :bad) (null groups))
         (value :absent)

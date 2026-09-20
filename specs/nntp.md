@@ -1,9 +1,12 @@
 # NNTP projection and article acceptance
 
-Status: the first usable profile below is still proposed. An experimental reader
-subset now exists in `books/nntp.lisp`; it advertises VERSION/IMPLEMENTATION only,
-without READER or POST. Resolve D05 and finish the clause-level audit before
-claiming the complete profile. See [implementation status](../docs/implementation.md).
+Status: the selected reader profile is implemented and advertised; POST is not.
+`books/nntp.lisp` now advertises `VERSION 2`, `READER`, `OVER MSGID` and
+`LIST ACTIVE NEWSGROUPS OVERVIEW.FMT`. Every clause RFC 3977 appendix B assigns
+to those labels is marked proved or tested in
+[the clause matrix](nntp-audit.md#the-reader-clause-matrix); none is open.
+POST, IHAVE, NEWNEWS, HDR and MODE-READER remain unadvertised. D05's checklist
+is the matrix. See [implementation status](../docs/implementation.md).
 
 ## Planned surface
 
@@ -15,6 +18,7 @@ claiming the complete profile. See [implementation status](../docs/implementatio
 | Posting | POST |
 | Overview | OVER, LIST OVERVIEW.FMT |
 | Compatibility behavior | MODE READER, according to the actual advertised mode |
+| Clock and creation facts | DATE and NEWGROUPS consume an explicit `fn-clock-observationp` and a persisted `fn-nntp-group-factp` list; neither is invented by the reader |
 | Later optional capabilities | IHAVE, NEWNEWS, HDR, streaming, authentication/compression extensions as selected |
 
 NNT-001: advertise only complete supported bundles and variants. Build a checklist
@@ -24,6 +28,39 @@ part of that work. A command name appearing in this table is not conformance.
 Use RFC 3977 §§3.4 and 3.4.2, command sections, and Appendix B as the baseline.
 The [implementation checklist](nntp-audit.md) tracks branches and remaining work;
 it is not a completed conformance audit.
+
+## Clock and group-creation inputs
+
+The reader answers DATE and NEWGROUPS only from inputs an owner or
+host supplies. `fn-nntp-step` takes a fourth argument, the reader environment
+`(:fn-nntp-env observation facts)`. `observation` is `books/clock.lisp`'s
+`fn-clock-observationp`; with `has-wall` false, DATE answers the stated 503
+refusal and a two-digit NEWGROUPS year is refused rather than resolved against a
+guess. `facts` is a list of `(:fn-nntp-group-fact name created-at-dtn-ms
+observation)` records: the group's name, the DTN time (RFC 9171 §4.2.6) at
+which it was created, and the clock observation under which that time was
+established, so a creation time carries its own provenance and can never be
+back-filled from the reader's current clock. The mutable-owner lane persists
+these records; the reader consumes the shape and stores none of its own. The
+POSIX-to-DTN epoch shift is `fn-nntp-unix-dtn-ms` in ACL2, not in the adapter.
+
+fn's reader has no timezone database. Its local time zone **is** Coordinated
+Universal Time, which RFC 3977 §7.3.2 notes the protocol cannot convey; the
+optional GMT token therefore changes nothing and is accepted only where the
+grammar allows it.
+
+## Overview projection
+
+Every OVER field comes from the proved `fields` view of
+`books/article.lisp`, read through `books/article-fields.lisp`'s lookup. The
+reader does not parse an article a second time and holds no overview database:
+a line is projected on demand from the exact retained octets. RFC 3977 §8.3.2's
+transformation - remove CRLF pairs, then replace each remaining TAB, NUL, LF and
+CR with one space - is applied once, and `books/nntp-overview.lisp` proves the
+result clean for any input whatsoever. `:bytes` is the retained octet count and
+`:lines` the retained body line count; Xref is omitted rather than approximated,
+so exactly eight fields are emitted and LIST OVERVIEW.FMT lists exactly the
+seven fixed lines of §8.4.2.
 
 ## Sessions and framing
 

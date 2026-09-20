@@ -1,28 +1,20 @@
-; fn: the store's configured group table, in one place.
+; fn: the store's group table as a lookup between a name and a small code.
 ;
-; The list of carried newsgroups and the mapping between a group name and the
-; small integer code the bridge passes existed in four hand-synchronised
-; copies: `tools/run_store.py`'s `DEFAULT_CONFIG["groups"]` and `group_codes`,
-; `host/store-host.lisp`, `host/bp-ingress-host.lisp` and
-; `host/reader-host.lisp`.  This book is the single source.  The code is the
-; group's position in the list, so the two directions are inverse by
-; construction rather than by a second table, and the theorems below say so.
-;
-; The table is a local configuration choice, not an RFC or protocol fact.
-; `*fn-store-group-table-id*` names this version of it so a durable store can
-; record which table it was written under without copying the names.
+; The compiled group list `*fn-store-groups*` and its hand-bumped version id
+; are gone (packet R4 of specs/reconfiguration.md): a store's group table is
+; its configuration record history (`books/config`, `books/node-config`),
+; replayed at open, and the node carries it as the acceptance state's
+; allocation domain.  What stays here is the one thing the bridge needs from a
+; table it is handed: the mapping between a group name and its zero-based
+; position, in both directions, and the theorems that the two directions are
+; inverse.  A code is a name's position in the domain list, which creation
+; only ever appends to, so a code is stable across retirement and revival.
 
 (in-package "ACL2")
 (include-book "cbor")
 
-; The group table is encoded with the CBOR primitives, opened locally here.
+; The format id is encoded with the CBOR primitives, opened locally here.
 (local (in-theory (enable fn-cbor-codec-vocabulary)))
-
-(defconst *fn-store-groups* '("fn.letters" "fn.test"))
-
-; "fn-store-groups-1"
-(defconst *fn-store-group-table-id*
-  '(102 110 45 115 116 111 114 101 45 103 114 111 117 112 115 45 49))
 
 ; The durable store's configuration format.  A store records this string and
 ; a host refuses to open one whose format it does not recognise, so a store
@@ -55,37 +47,31 @@
           (if (null rest) nil (+ 1 rest))))
     nil))
 
-(defun fn-store-group-code (code)
-  ; The host's existing entry point, now a lookup in the one table.
-  (declare (xargs :guard t))
-  (if (natp code) (fn-store-group-name code *fn-store-groups*) nil))
-
-(defun fn-store-group-of-name (name)
-  (declare (xargs :guard t))
-  (fn-store-group-code-in name *fn-store-groups*))
-
-(defun fn-store-groups-from-codes (codes)
-  ; A code list becomes a distinct, configured group list, or :bad.  Duplicate
-  ; and unknown codes are refused here rather than deeper in the model.
-  (declare (xargs :guard t))
+(defun fn-store-groups-from-codes (codes groups)
+  ; A code list becomes a distinct group list from the table, or :bad.
+  ; Duplicate and unknown codes are refused here rather than deeper in the
+  ; model.
+  (declare (xargs :guard (true-listp groups)))
   (if (consp codes)
-      (let ((group (fn-store-group-code (car codes))))
+      (let ((group (if (natp (car codes))
+                       (fn-store-group-name (car codes) groups)
+                     nil)))
         (if group
-            (let ((rest (fn-store-groups-from-codes (cdr codes))))
+            (let ((rest (fn-store-groups-from-codes (cdr codes) groups)))
               (if (or (equal rest :bad) (member-equal group rest))
                   :bad
                 (cons group rest)))
           :bad))
     (if (null codes) nil :bad)))
 
-(defun fn-store-codes-from-groups (names)
+(defun fn-store-codes-from-groups (names groups)
   ; The inverse direction the Python boundary needs: names to codes, or :bad.
-  (declare (xargs :guard t))
+  (declare (xargs :guard (true-listp groups)))
   (if (consp names)
-      (let ((code (fn-store-group-of-name (car names))))
+      (let ((code (fn-store-group-code-in (car names) groups)))
         (if (null code)
             :bad
-          (let ((rest (fn-store-codes-from-groups (cdr names))))
+          (let ((rest (fn-store-codes-from-groups (cdr names) groups)))
             (if (or (equal rest :bad) (member-equal code rest))
                 :bad
               (cons code rest)))))
@@ -122,37 +108,40 @@
                   code))
   :hints (("Goal" :induct (fn-store-group-name code groups))))
 
-(defthm fn-store-group-code-of-name
-  (implies (fn-store-group-of-name name)
-           (equal (fn-store-group-code (fn-store-group-of-name name)) name))
-  :hints (("Goal" :in-theory (e/d (fn-store-group-of-name fn-store-group-code)
-                                  (fn-store-group-name-of-code-in))
-           :use ((:instance fn-store-group-name-of-code-in
-                            (groups *fn-store-groups*))))))
-
-(defthm fn-store-group-name-of-code
-  (implies (fn-store-group-code code)
-           (equal (fn-store-group-of-name (fn-store-group-code code)) code))
-  :hints (("Goal" :in-theory (e/d (fn-store-group-of-name fn-store-group-code)
-                                  (fn-store-group-code-in-of-name))
-           :use ((:instance fn-store-group-code-in-of-name
-                            (groups *fn-store-groups*))))))
+; A code names one group: two names with the same code are the same name.
+; With the compiled table this was decided by evaluation; over a table
+; parameter it is the inversion lemma applied to both names.
+(defthm fn-store-group-code-in-is-injective
+  (implies (and (fn-store-group-code-in a groups)
+                (fn-store-group-code-in b groups))
+           (iff (equal (fn-store-group-code-in a groups)
+                       (fn-store-group-code-in b groups))
+                (equal a b)))
+  :hints (("Goal" :use ((:instance fn-store-group-name-of-code-in (name a))
+                        (:instance fn-store-group-name-of-code-in (name b)))
+           :in-theory (disable fn-store-group-name-of-code-in))))
 
 ; Membership of a name list transfers to membership of its code list, which
 ; is what turns "no duplicate codes" into "no duplicate names" and back.
 (defthm fn-store-codes-from-groups-member
-  (implies (not (equal (fn-store-codes-from-groups names) :bad))
+  (implies (not (equal (fn-store-codes-from-groups names groups) :bad))
            (iff (member-equal name names)
-                (and (fn-store-group-of-name name)
-                     (member-equal (fn-store-group-of-name name)
-                                   (fn-store-codes-from-groups names)))))
-  :hints (("Goal" :induct (fn-store-codes-from-groups names))))
+                (and (fn-store-group-code-in name groups)
+                     (member-equal (fn-store-group-code-in name groups)
+                                   (fn-store-codes-from-groups names groups)))))
+  :hints (("Goal" :induct (fn-store-codes-from-groups names groups))))
 
+; Over a table parameter the inversion needs one hypothesis the compiled
+; table made invisible: a NIL entry is a name whose code round-trips to NIL,
+; which `fn-store-groups-from-codes' reads as "unknown".  A configured domain
+; never holds NIL (`fn-record-group-namep' is a string); the tooth is in
+; tests/acl2/config-tests.lisp.
 (defthm fn-store-codes-from-groups-inverts
   (implies (and (true-listp names)
-                (not (equal (fn-store-codes-from-groups names) :bad)))
+                (not (member-equal nil names))
+                (not (equal (fn-store-codes-from-groups names groups) :bad)))
            (equal (fn-store-groups-from-codes
-                   (fn-store-codes-from-groups names))
+                   (fn-store-codes-from-groups names groups) groups)
                   names)))
 
 ; -----------------------------------------------------------------------------
@@ -162,9 +151,8 @@
 ; The membership and type facts are proof vocabulary.
 
 (deftheory fn-store-config-vocabulary
-  '(    fn-store-group-code-in-natp fn-store-group-name-of-code-in
-    fn-store-group-name-is-a-member fn-store-codes-from-groups-member))
+  '(fn-store-group-code-in-natp fn-store-group-name-of-code-in
+    fn-store-group-name-is-a-member fn-store-group-code-in-is-injective
+    fn-store-codes-from-groups-member))
 
-(in-theory (disable fn-store-group-code-in-natp fn-store-group-name-of-code-in
-             fn-store-group-name-is-a-member
-             fn-store-codes-from-groups-member))
+(in-theory (disable fn-store-config-vocabulary))
