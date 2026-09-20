@@ -83,6 +83,62 @@ run ids and the per-root outcome.
 - `books/owner*.lisp` and the host: not touched; `fn-own-read` still builds
   the served conn with three arguments (board note of w3/reader-profile).
 
+## Per-root state, successor lane `w6/peering-inbound-2` (branch from `dev`
+## at 52eb0db, merged `dev` again at cda964e; worktree
+## `build/lanes/w6-peering-inbound-2`)
+
+| Root | State | Evidence |
+| --- | --- | --- |
+| `books/peer-config` | certified | persvati `run-20260920T173911Z-6cf7`, `build/acl2/certify-20260920T173915Z-1242593`. Closed independently on `dev` as well (clock-seam lane); this lane merged `dev` and kept `dev`'s version. The failure was two missing facts, `(fn-record-ascii-stringp (fn-cfg-peer-name p))` and `(<= (len (fn-cfg-peer-rows p)) 1024)`, plus a hint that disabled `fn-cfg-labelp` as a whole symbol and so withdrew its executable counterpart. |
+| `books/peer-inbound` | **all definitions admit**; open at the theorem `fn-peer-echo-reply-effects-well-formed` | hbox `run-20260920T183108Z-1096`, `/tank/fn/lanes/w6-peering-inbound-2/build/acl2/certify-20260920T183458Z-1061518` (pre-fix), then `ld` on hbox (`/tank/fn/acl2-8.7/saved_acl2`) |
+| `books/peer-inbound-invariants`, `tests/acl2/peer-inbound-tests`, `books/served`, `tests/acl2/served-tests`, `books/owner`, `books/owner-invariants`, `tests/acl2/owner-tests`, `books/ideal` | blocked on `books/peer-inbound` (all fail with "no certificate on file") | same hbox run |
+
+### What this lane fixed in `books/peer-inbound`
+
+Two translate errors stopped every definition in the book, and with them
+`books/served`, `books/owner` and the served host, whose `ld` loads them:
+
+1. `fn-peer-decide-offer` called `fn-charge-for-payload`, which
+   `books/identity` defines and which was in no book of the include closure.
+   `(include-book "identity")` added (it includes only `books/frame`).
+2. `fn-nntp-capability-lines` gained a `postingp` argument on `dev`.
+   `fn-peer-capability-lines` takes it too and `fn-peer-command` passes
+   `nil`: a transit connection reads only its session, carries no injection
+   configuration, and so does not promise POST (RFC 3977 3.2.2/3.3.2
+   advertise only what is served). **If the test book pins a CAPABILITIES
+   transcript containing POST on a peer connection, that pin changes.**
+
+### The one open form, with its exact remaining obligation
+
+`fn-peer-echo-reply-effects-well-formed` (`books/peer-inbound.lisp`).
+The `fn-nntp-response-textp` half is now discharged: the hint keeps the
+append closed (`(:d binary-append)`, `(:d fn-nntp-string-octets)` withdrawn)
+and cites `fn-nntp-response-text-of-append` and
+`fn-nntp-printable-token-is-response-text`. The remaining checkpoint is
+
+```
+Subgoal 12'
+(IMPLIES (AND (NOT (FN-NNTP-INITIAL-STATUS-LINEP (APPEND '(50 51 56 32) MSGID)))
+              (FN-NNTP-PRINTABLE-TOKENP MSGID)
+              (FN-AF-MESSAGE-IDP MSGID))
+         (FN-NNTP-REPLYP (FN-NNTP-CRLF (APPEND '(50 51 56 32) MSGID))))
+```
+
+i.e. the RFC 3977 3.1 initial-line bound. What is needed is a length lemma
+`(implies (fn-af-message-idp msgid) (<= (len msgid) <bound>))` (RFC 5536
+bounds a Message-ID) and then `fn-nntp-initial-status-linep` of a
+three-digit code, a space and that many octets. State it once,
+`:rule-classes nil`, in the book that owns `fn-af-message-idp`
+(`books/article-fields.lisp`) or locally here, and `:use` it.
+
+### Box note
+
+`ld` on hbox is `/tank/fn/acl2-8.7/saved_acl2`, not `$HOME/fn-tools/...`
+(that path is persvati's). persvati was heavily contended during this lane
+and one run lost `books/nntp-effects` to a dependency race under
+`--jobs 12`, cascading "no certificate" failures into six roots; hbox
+answered the same closure with `installed 188, uncached 52`.
+
 ## Per-root state at handoff (HEAD after this commit; runs under `build/acl2/` in this worktree)
 
 | Root | State | Evidence |
