@@ -27,17 +27,27 @@ SPEC.loader.exec_module(ledger)
 
 
 def tree_from(sources: dict[str, str], roots: list[str] | None = None) -> ledger.Tree:
-    """A Tree over inline books, with no filesystem and no ACL2."""
+    """A Tree over inline sources, with no filesystem and no ACL2.
+
+    A source under `books/` or `tests/acl2/` is read as a book; anything else
+    is read as a host file, which is the same rule `ledger.host_paths` applies
+    to the repository.
+    """
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
-        books = {}
+        books, hosts = {}, {}
         for relative, text in sources.items():
             path = root / relative
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(text)
-            books[relative] = ledger.analyze_book(path, relative)
+            if relative.startswith(("books/", "tests/acl2/")):
+                books[relative] = ledger.analyze_book(path, relative)
+            else:
+                hosts[relative] = ledger.analyze_host(path, relative)
     return ledger.Tree(books, roots if roots is not None else
-                       [relative[:-5] for relative in sources])
+                       [relative[:-5] for relative in sources
+                        if relative.startswith(("books/", "tests/acl2/"))],
+                       hosts)
 
 
 class ReaderTests(unittest.TestCase):
@@ -493,6 +503,72 @@ class IncludeHygieneLintTests(unittest.TestCase):
         self.assertEqual([entry["included"] for entry in found], ["books/open.lisp"])
 
 
+class HostNamesLintTests(unittest.TestCase):
+    """The fourth lint, over the files no certification reads.
+
+    `host/*.lisp` is `ld`ed by a bridge at start-up, so an undefined name in
+    it is found by the bridge dying: `host/checkpoint-host.lisp` named
+    `*fn-store-groups*` after the compiled group table deleted it, and every
+    `Acl2Store` constructor failed with a Translate error.
+    """
+
+    BOOK = ('(in-package "ACL2")\n'
+            '(defconst *fn-store-capacity* 8)\n'
+            '(defun fn-store-decode (x) x)\n')
+
+    def findings(self, host: str) -> list[dict]:
+        return ledger.host_names(tree_from({
+            "books/store.lisp": self.BOOK,
+            "host/h.lisp": host,
+        }))
+
+    def test_a_deleted_defconst_is_flagged(self):
+        found = self.findings('(in-package "ACL2")\n'
+                              '(include-book "../books/store")\n'
+                              '(defun fn-host-capacity () *fn-store-groups*)\n')
+        self.assertEqual([entry["name"] for entry in found], ["*fn-store-groups*"])
+        self.assertEqual(found[0]["host"], "host/h.lisp")
+        self.assertEqual(found[0]["line"], 3)
+        self.assertIsNone(found[0]["source"])
+        self.assertIn("undefined", found[0]["reason"])
+
+    def test_a_name_from_an_included_book_is_clean(self):
+        self.assertEqual(self.findings(
+            '(in-package "ACL2")\n'
+            '(include-book "../books/store")\n'
+            '(defun fn-host-decode (x) (fn-store-decode x))\n'
+            '(defun fn-host-capacity () *fn-store-capacity*)\n'), [])
+
+    def test_an_acl2_builtin_from_the_allowlist_is_clean(self):
+        self.assertIn("f-put-global", ledger.acl2_builtins())
+        self.assertEqual(self.findings(
+            '(in-package "ACL2")\n'
+            "(defun fn-host-note (state) (f-put-global 'fn-host-note 1 state))\n"), [])
+
+    def test_a_name_defined_in_a_host_file_this_one_does_not_load_is_named(self):
+        found = ledger.host_names(tree_from({
+            "host/a.lisp": '(in-package "ACL2")\n(defun fn-a () 1)\n',
+            "host/b.lisp": '(in-package "ACL2")\n(defun fn-b () (fn-a))\n',
+        }))
+        self.assertEqual([(e["host"], e["name"], e["source"]) for e in found],
+                         [("host/b.lisp", "fn-a", "host/a.lisp")])
+
+    def test_an_ld_of_the_defining_host_file_is_clean(self):
+        self.assertEqual(ledger.host_names(tree_from({
+            "host/a.lisp": '(in-package "ACL2")\n(defun fn-a () 1)\n',
+            "host/b.lisp": ('(in-package "ACL2")\n(ld "host/a.lisp")\n'
+                            "(defun fn-b () (fn-a))\n"),
+        })), [])
+
+    def test_a_macro_argument_is_syntax_and_a_cond_test_is_not_a_call(self):
+        self.assertEqual(ledger.host_names(tree_from({
+            "host/a.lisp": ('(in-package "ACL2")\n'
+                            "(defmacro fn-with (vars form) (list 'quote vars form))\n"
+                            "(defun fn-b (x) (fn-with (path) x))\n"
+                            "(defun fn-c (x) (let ((ctx x)) (cond (ctx :yes) (t :no))))\n"),
+        })), [])
+
+
 class LintReportingTests(unittest.TestCase):
     def test_warnings_carry_the_book_line_and_name(self):
         tree = tree_from({
@@ -514,6 +590,18 @@ class LintReportingTests(unittest.TestCase):
         self.assertEqual(ledger_data["totals"]["include_hygiene_warnings"], 0)
         self.assertIn("Export-hygiene warnings | 1",
                       ledger.ledger_markdown(ledger_data))
+
+    def test_a_host_warning_carries_the_file_line_and_name(self):
+        tree = tree_from({
+            "host/h.lisp": '(in-package "ACL2")\n(defun fn-h () *fn-gone*)\n',
+        })
+        warnings = ledger.lint_warnings(tree)
+        self.assertEqual(len(warnings), 1)
+        self.assertTrue(warnings[0].startswith(
+            "host names: host/h.lisp:2: *fn-gone*:"), warnings[0])
+        ledger_data = ledger.build_ledger(tree)
+        self.assertEqual(ledger_data["totals"]["host_names_warnings"], 1)
+        self.assertIn("Host-names warnings | 1", ledger.ledger_markdown(ledger_data))
 
     def test_an_include_warning_carries_the_includer_line_and_target(self):
         tree = tree_from({

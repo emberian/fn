@@ -161,9 +161,9 @@ Its limits, stated so nobody reads a clean report as a clean bill of health:
   `tests/acl2/assumptions-tests.lisp` are for.
 - The absence of a flag is not evidence of strength. Teeth are.
 
-### The three shape lints
+### The four shape lints
 
-Besides the suspect detector, `tools/ledger.py` reports three WARN lints,
+Besides the suspect detector, `tools/ledger.py` reports four WARN lints,
 counted in the generated ledger and listed in full under `lints` in
 `ledger.json`. None judges truth; each names a cost this tree has already paid.
 *Export hygiene* flags a theorem a book leaves enabled whose conclusion is an
@@ -192,7 +192,29 @@ six-minute proof into an 1800 s timeout, 1.92M backchain frames of which none
 contributed; making that include `local` is what the lint asks for, and a
 `local` include is never flagged. A `:dir :system` include, and a reference
 this tree does not read as a book, are not judged, because there is no export
-theory here to read. `make check` prints all three as `WARN`;
+theory here to read.
+
+*Host names* is the fourth, and the only lint that reads files no
+certification touches. `host/*.lisp` and `host/native/*.lisp` are `ld`ed by
+the bridges at start-up, so an undefined name in them is found by a bridge
+dying: `host/checkpoint-host.lisp` went on naming `*fn-store-groups*` after
+the compiled group table was deleted, and every `Acl2Store` constructor failed
+with a Translate error until a later lane noticed. The lint reads each host
+file, plus any `.lisp` outside `books/` and `tests/acl2/` that a host file or
+a `tools/*.py` bridge names in an `(ld "...")`, and reports every symbol used
+in function position and every `*constant*` that is defined neither in that
+file, nor in a file it `ld`s, nor in the include-closure of the books it
+includes, nor in [`tools/acl2-builtins.txt`](../tools/acl2-builtins.txt) --
+the ACL2 and Common Lisp names the host files use today, generated from the
+ACL2 8.7 sources by the recipe in that file's header rather than typed. A
+finding says which: a name defined nowhere in the tree will fail the `ld`,
+and a name defined in a book or host file this one does not load resolves
+only because something else loaded that file into the same session first,
+which is a load-order coupling no file declares. The reading is deliberately
+quiet, because these files are not certified and a noisy lint is a skipped
+one: `loop` bodies, package-qualified heads (`sb-posix:open`) and the
+arguments of a macro this tree defines are not read at all, and a `local`
+book definition counts as visible. `make check` prints all four as `WARN`;
 `python3 tools/ledger.py --check --strict` fails on them, which is how a book
 or a cluster that has been cleaned keeps its state.
 
