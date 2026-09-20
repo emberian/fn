@@ -165,6 +165,21 @@ class EmitTests(unittest.TestCase):
         self.assertEqual(PLAN_BY_KEY["V0-NODE-LOOPBACK"].expected, REFUSED)
         self.assertTrue(row.agrees)
 
+    def test_an_outcome_row_names_the_client_that_saw_it(self):
+        row = self.gate.emit("V0-NODE-LOOPBACK", REFUSED, "bin/fn run", "rc=1")
+        self.assertEqual(row.client, v0_matrix.CLIENT_DRIVER)
+        self.assertFalse(row.independent)
+
+    def test_a_foreign_client_is_marked_independent(self):
+        row = self.gate.emit("V0-CLIENT-NNTPLIB", ACCEPTED, "python3.12 ...", "ok",
+                             node="a", client="stdlib nntplib on python3.12")
+        self.assertTrue(row.independent)
+
+    def test_a_row_that_did_not_run_has_no_client(self):
+        row = self.gate.emit("V0-BP-NODE", NOT_BUILT, "cmd", "obs", blocker="x")
+        self.assertIsNone(row.client)
+        self.assertIsNone(row.independent)
+
     def test_backfill_leaves_no_planned_row_silent(self):
         self.gate.backfill()
         self.assertEqual(len(self.gate.rows), len(PLANNED_IDS))
@@ -252,6 +267,12 @@ class ValidateRefusesTypingTests(unittest.TestCase):
             doc["rows"], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
         problems = v0_matrix.validate(doc)
         self.assertTrue(any("summary" in p for p in problems), problems)
+
+    def test_a_client_rewritten_by_hand_is_refused(self):
+        doc = json.loads(json.dumps(self.doc))
+        doc["rows"][0]["client"] = "a newsreader that never ran"
+        problems = v0_matrix.validate(doc)
+        self.assertTrue(problems)
 
     def test_a_missing_planned_row_is_refused(self):
         doc = json.loads(json.dumps(self.doc))
