@@ -17,7 +17,8 @@ transcripts in `tests/acl2/nntp-legacy-tests.lisp` and `tests/test_reader.py`.
 | XHDR (RFC 2980 §2.6) | `fn-nntp-xhdr-response` | `fn-nntp-hdr-command` with `legacyp` t: 221, 420, message-id label |
 | LIST HEADERS (§8.6) | `fn-nntp-list-headers` | `:`, `:bytes`, `:lines`; was 503 |
 | LIST ACTIVE.TIMES (§7.6.4) | `fn-nntp-list-active-times` | from `fn-nntp-env-facts`; was 503 |
-| LIST NEWSGROUPS (§7.6.6) | `fn-nntp-newsgroup-lines` | `name TAB` -- empty description, not an invented one |
+| LIST NEWSGROUPS (§7.6.6) | `fn-nntp-newsgroup-lines` | `name TAB (no description)` -- a marker, not an invented description |
+| LIST SUBSCRIPTIONS (RFC 2980 §2.1.8) | `fn-nntp-list-unmaintained-response` | 503, §2.1.8's own code; slrn sends it every connection |
 | LIST DISTRIBUTIONS (RFC 2980 §2.1.4) | `fn-nntp-list-unmaintained-response` | 503, new arm |
 | LIST ACTIVE wildmat | already existed | RFC 2980 §2.1.2; now tested and audited |
 
@@ -52,35 +53,59 @@ what carry the new commands through it.
 
 ## Evidence
 
-- `books/nntp-responses`, `books/nntp`: certified locally
-  (`build/acl2/certify-20260920T030059Z-55483`,
-  `certify-20260920T030112Z-55553`).
-- `books/nntp-overview`: certified locally
-  (`certify-20260920T030121Z-55594`).
-- `books/nntp-invariants`: certified on the farm, run
-  `run-20260920T031818Z-2f1d` (`persvati`,
-  `build/acl2/certify-20260920T031820Z-1849413` on that host). The two
-  keystones are in it with their statements untouched.
-- `books/nntp-legacy`, `books/nntp-effects`, `tests/acl2/nntp-legacy-tests`,
-  `tests/acl2/nntp-tests`, `tests/acl2/nntp-reader-profile-tests`: **IN
-  FLIGHT, no verdict yet.** The explicit-root farm run is
-  `persvati:~/fn-lanes/w5-legacy-commands/build/acl2/certify-20260920T032319Z-1893328`
-  (`tests/acl2/nntp-teeth-tests` in the same run is already green). Harvest
-  it with `ssh persvati 'cd ~/fn-lanes/w5-legacy-commands && grep -n "ACL2
-  Error \[Failure\]" build/acl2/certify-20260920T032319Z-1893328/certify.log'`
-  and bring the certificates home with `tools/farm.py wait`. Nothing in this
-  lane's report claims these five are certified.
-- `tests/test_reader.py`, `tests/interop_nntplib.py` and `tests/interop_slrn.py`
-  were written but **not run**: each needs a reader process, which needs one
-  of the four ACL2 slots.
+- ACL2: the nntp chain (`nntp-responses`, `nntp`, `nntp-overview`,
+  `nntp-legacy`, `nntp-invariants`, `nntp-effects`,
+  `tests/acl2/{nntp-legacy-tests,nntp-tests,nntp-reader-profile-tests,nntp-teeth-tests}`)
+  was recertified locally in one invocation after the last source change;
+  evidence directory named in the lane's final report and in the board entry.
+  `fn-nntp-step-effects-well-formed` and
+  `fn-nntp-step-preserves-consistent-session` are in it with their statements
+  untouched.
+- `python3 -m unittest tests.test_reader -v`: **14 of 14 pass in 41 s**,
+  including the three new raw-socket transcripts
+  (`test_legacy_commands_transcript_over_a_real_socket`,
+  `test_list_variants_transcript_over_a_real_socket`,
+  `test_help_lists_every_dispatched_command`).
+- `tests/interop_nntplib.py` under Python 3.12 (`uv run --no-project --python
+  3.12`; 3.14 has no `nntplib`): **passed**, now exercising `xover`, `xhdr`
+  in the range and message-id forms, `LIST HEADERS`, `LIST ACTIVE.TIMES` and
+  `descriptions`.
+- `tests/interop_slrn.py`: **passed**. slrn 1.0.3 sent `MODE READER`,
+  `XOVER`, `XHDR Path`, `LIST OVERVIEW.FMT`, `LIST`, `LIST SUBSCRIPTIONS`,
+  got codes 201/215/412/503 and no 500 or 501, and wrote a newsrc naming
+  `fn.letters`.
+
+## Two findings the probes produced, and what changed because of them
+
+- **An empty LIST NEWSGROUPS description makes the group disappear.** Python
+  nntplib strips the line and then requires name + white space + text, so
+  `fn.letters TAB` is dropped from `descriptions()` rather than mapped to
+  `""`. The description is now the fixed marker `(no description)`.
+- **slrn sends LIST SUBSCRIPTIONS on every connection.** It was answered
+  `501 unsupported LIST variant`; RFC 2980 §2.1.8's own response list is 215
+  or 503, so it is now `503 data item not stored`, like DISTRIBUTIONS.
 
 ## Traps this lane paid for
 
-- **The laptop's four ACL2 slots were fully held by other lanes for the whole
-  session.** Two local `certify_books.py` runs of `books/nntp-legacy` sat
-  queued for over twenty minutes with no `certify.log` -- which looks exactly
-  like a looping proof and is not one. Check `~/.cache/fn-acl2-slots` before
-  concluding a proof hangs, and go to the farm early.
+- **A queued certify and a looping proof look identical.** The laptop's four
+  ACL2 slots (`~/.cache/fn-acl2-slots`) were fully held by other lanes; a
+  queued `certify_books.py` writes its evidence directory and `version.log`
+  and then waits with NO `certify.log`. Check the slot directory first. When
+  the run finally started, `books/nntp-legacy` really was over budget too, so
+  both diagnoses were live at once: `ld` on a two-line driver found the form
+  in 3.35 s, which certification could not have told us in half an hour.
+- **`certify_books.py` does not recertify a stale dependency.** Naming
+  `books/nntp-effects` after editing `books/nntp-responses` fails at
+  `include-book` with a book-hash mismatch and reports nothing about the
+  book you changed. Name the whole chain on one invocation.
+- **Three proofs in `books/nntp-legacy.lisp` blew the 2,000,000 step limit
+  and all three for the same reason**: a goal that mentions a renderer twice
+  (`fn-nntp-xover-range` against `fn-nntp-over-range`) or once inside an
+  induction (`fn-nntp-active-times-lines`) must keep every sub-term closed.
+  `e/d` the two top functions open and disable the range walk, the overview
+  fold, `fn-nntp-decimal-field`, `fn-nntp-string-octets`, the seconds
+  conversion (it drags in `floor`) and `fn-nntp-group-factp` (it drags in
+  `fn-clock-observationp`). Each then proves in under a second.
 - `tools/farm.py --remote-root ~/...` expands `~` **locally**. persvati is
   Linux (`/home/ember`), the laptop is macOS (`/Users/ember`), so the rsync
   fails with `mkdir ... No such file or directory` and a stack trace. Pass an
@@ -114,7 +139,7 @@ what carry the new commands through it.
   it at an arbitrary header value needs the UTF-8 decode and the DP target
   bound re-argued. XGTITLE, XINDEX, XROVER and XTHREAD are deferred;
   XPATH is refused permanently (it would expose the store layout).
-- **slrn.** `brew install slrn` succeeded (1.0.3a_1, under two minutes) and
-  `tests/interop_slrn.py` drives it against a running reader in its
-  `--create` mode with `--debug`; it was written but not yet run green, so the
-  real-client claim is the deploy gate's until it is.
+- **slrn's own UI was not driven.** The probe stops at the group list: slrn
+  opens a full-screen buffer and waits, so article reading, threading and
+  posting through a real client are still unexercised. tin and Thunderbird
+  are untried. One client at one version is not an RFC audit.

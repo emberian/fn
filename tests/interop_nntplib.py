@@ -88,24 +88,33 @@ def main():
         assert subjects == [("1", "")], subjects
         response, ids = client.xhdr("message-id", "1-1")
         assert ids == [("1", message_id)], ids
+        # nntplib's xhdr() strips a LEADING ARTICLE NUMBER only (its pattern is
+        # ^([0-9]+) ?(.*)); RFC 2980 section 2.6 labels the message-id form
+        # with the message-id, so the client hands that line back unsplit.
+        # That is the legacy label arriving intact, not a parse failure.
         response, by_msgid = client.xhdr("message-id", message_id)
-        assert by_msgid == [(message_id, message_id)], by_msgid
+        assert by_msgid == [message_id + " " + message_id], by_msgid
         response, counts = client.xhdr(":lines", "1-1")
         assert counts == [("1", "1")], counts
 
         # Section 8.6: any header is retrievable, so the list is the single
         # colon plus the two metadata items.
-        response, fields = client.list("HEADERS")
+        # nntplib's list() sends LIST ACTIVE <wildmat>, never a LIST variant
+        # keyword, so these two go through _longcmdstring as MODE READER does.
+        response, fields = client._longcmdstring("LIST HEADERS")
         assert fields == [":", ":bytes", ":lines"], fields
 
-        # Section 7.6.6.  The group table carries no description, so the
-        # description is empty; nntplib returns the pair either way.
+        # Section 7.6.6.  The group table carries no description, so every
+        # group carries the same fixed marker.  This call is why the marker
+        # is not the empty string: nntplib strips the line and then requires
+        # name + white space + text, so "fn.letters TAB" alone drops the
+        # group from this dictionary instead of mapping it to "".
         response, descriptions = client.descriptions("fn.*")
-        assert descriptions == {"fn.letters": ""}, descriptions
+        assert descriptions == {"fn.letters": "(no description)"}, descriptions
 
         # Section 7.6.4.  The served connection carries no persisted creation
         # facts, so the list is empty rather than a fabricated stamp.
-        response, times = client.list("ACTIVE.TIMES")
+        response, times = client._longcmdstring("LIST ACTIVE.TIMES")
         assert times == [], times
 
         # nntplib has no public MODE READER call (it sends one itself only

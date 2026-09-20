@@ -145,14 +145,16 @@
 (assert-event (equal (lg-reply *lg-env* "LIST HEADERS MSGID")
                      (lg-reply *lg-env* "LIST HEADERS")))
 ; §7.6.6: name, TAB, description.  fn holds no description, so the second
-; field is empty.
+; field is the fixed marker, the same for every group.
 (assert-event
  (equal (lg-reply *lg-env* "LIST NEWSGROUPS")
         (list (list :reply
                     (append (fn-nntp-string-octets
                              "215 list of newsgroups follows") '(13 10)
-                            (fn-nntp-string-octets "fn.letters") '(9) '(13 10)
-                            (fn-nntp-string-octets "fn.empty") '(9) '(13 10)
+                            (fn-nntp-string-octets "fn.letters") '(9)
+                            (fn-nntp-string-octets "(no description)") '(13 10)
+                            (fn-nntp-string-octets "fn.empty") '(9)
+                            (fn-nntp-string-octets "(no description)") '(13 10)
                             '(46 13 10))))))
 ; §7.6.4: name, creation seconds since 1970-01-01, creator text.  Only
 ; fn.empty has a creation fact, and §7.6.4 permits omitting the other.
@@ -168,6 +170,8 @@
 (assert-event (equal (lg-reply *lg-env* "LIST DISTRIBUTIONS")
                      (lg-single "503 data item not stored")))
 (assert-event (equal (lg-reply *lg-env* "LIST SUBSCRIPTIONS")
+                     (lg-single "503 data item not stored")))
+(assert-event (equal (lg-reply *lg-env* "LIST NOSUCHVARIANT")
                      (lg-single "501 unsupported LIST variant")))
 
 ; -----------------------------------------------------------------------------

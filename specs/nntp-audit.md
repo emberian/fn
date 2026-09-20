@@ -240,7 +240,7 @@ socket.
 | §7.3.2 NEWGROUPS | Results in LIST ACTIVE format; empty list valid; groups may be omitted | tested (the transcript compares the NEWGROUPS block with the LIST ACTIVE block) |
 | §7.3.2 NEWGROUPS | Server's local time zone | fn's local zone **is** UTC and the protocol cannot convey another; stated local policy |
 | §3.2.1/§3.3.2 | Advertise a label only when the whole bundle is available | proved by construction: one constant, `*fn-nntp-advertise-readerp*`, decides both the capability list and MODE READER, so the two cannot disagree |
-| §7.6.6 LIST NEWSGROUPS | Group name, separator, short description; description may be passed on as held | Implemented; the description is **empty**. fn's group table (`books/config-records.lisp`) carries names, policy ids and created/retired stamps and no description, so there is nothing to pass on and nothing is invented. Until R5 carries a description per group this row is a stated local limitation, not conformance to the spirit of §7.6.6. The line is `name TAB` and is proved clean (`fn-nntp-newsgroup-lines-are-clean`) |
+| §7.6.6 LIST NEWSGROUPS | Group name, separator, short description; description may be passed on as held | Implemented; the second field is the fixed marker `(no description)`, identical for every group. fn's group table (`books/config-records.lisp`) carries names, policy ids and created/retired stamps and no description, so nothing group-specific is invented; the marker is a statement about the server. It is **not** the empty string, and that is measured: Python nntplib strips the line and then requires name + white space + text, so a bare `name TAB` drops the group from `descriptions()` entirely (`tests/interop_nntplib.py`, 2026-09-20). Until R5 carries a description per group this row is a stated local limitation. The line is proved clean (`fn-nntp-newsgroup-lines-are-clean`) |
 
 ## The RFC 2980 clause matrix
 
@@ -255,9 +255,9 @@ differ from RFC 3977's.
 | §2.1.3 LIST ACTIVE.TIMES | Name, creation seconds since 1970-01-01, creator; optional wildmat | implemented from the environment's creation facts; the creator field is the plain text `unattributed` because no creator is recorded. See the §7.6.4 row |
 | §2.1.4 LIST DISTRIBUTIONS | Distribution list | deferred: fn has no distribution data. Recognized with its arity and answered `503 data item not stored`, never a fabricated list |
 | §2.1.5 LIST DISTRIB.PATS | Distribution patterns | deferred, as §2.1.4 |
-| §2.1.6 LIST NEWSGROUPS | Name and description, optional wildmat | implemented with an empty description; see the §7.6.6 row |
+| §2.1.6 LIST NEWSGROUPS | Name and description, optional wildmat | implemented with the fixed `(no description)` marker; see the §7.6.6 row |
 | §2.1.7 LIST OVERVIEW.FMT | The overview field order | implemented; the seven fixed lines, proved clean (`fn-nov-fmt-lines-are-clean`) |
-| §2.1.8 LIST SUBSCRIPTIONS | Default subscription list | deferred: fn has no subscription policy and inventing one would be a recommendation the operator did not make. `501 unsupported LIST variant` |
+| §2.1.8 LIST SUBSCRIPTIONS | Default subscription list | deferred: fn has no subscription policy and inventing one would be a recommendation the operator did not make. Answered `503 data item not stored`, which is §2.1.8's own second response code; it was 501 until slrn 1.0.3 was measured sending this on every connection (2026-09-20) |
 | §2.2 LISTGROUP | Group and range forms | implemented (RFC 3977 §6.1.2 row) |
 | §2.3 MODE READER | 200/201 or 502 | implemented (RFC 3977 §5.3 row) |
 | §2.4 XGTITLE | Per-group description by wildmat | deferred: the same missing descriptions as LIST NEWSGROUPS. `500 command not recognized` |
@@ -270,6 +270,18 @@ differ from RFC 3977's.
 | §2.11 XROVER | Bare References overview | deferred: `XHDR references <range>` is the same information and is implemented. `500 command not recognized` |
 | §2.12 XTHREAD | The threading database | deferred: fn maintains no threading database. `500 command not recognized` |
 | §3.x AUTHINFO | Authentication | deferred; no capability claim, and see RFC 4643 |
+
+### What a real legacy client sends
+
+slrn 1.0.3 (Homebrew `slrn`, macOS arm64), driven by `tests/interop_slrn.py`
+against `tools/run_reader.py` on 2026-09-20, sends exactly this and nothing
+else before it reaches its group list: `MODE READER`, `XOVER`, `XHDR Path`,
+`LIST OVERVIEW.FMT`, `LIST`, `LIST SUBSCRIPTIONS`, `QUIT`. Three of those
+(`XOVER`, `XHDR`, `LIST SUBSCRIPTIONS`) did not exist in fn before this lane
+and two of them are the reason it exists. fn answered every one without a
+500 or a 501, and slrn built a newsrc naming the served group. The 412s in
+that transcript are correct: slrn probes `XOVER` and `XHDR` before selecting
+a group. That is one client at one version, not an RFC audit.
 
 No READER clause is open, so **READER is advertised**. The one item this table
 leaves open, the §6.1.1.2 count *theorem*, is an assurance gap about a value the
