@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 228 |
 | Certification roots in the Makefile | 227 |
 | Books inside the root closure | 227 |
-| `defthm` and `defthmd` events | 4353 |
+| `defthm` and `defthmd` events | 4357 |
 | `defun` events | 3123 |
 | Functions with verified guards | 1292 |
 | Functions declared `:verify-guards nil` and never verified | 141 |
 | Functions left at the default with an explicit guard | 1230 |
 | Functions left at the default with no guard | 460 |
-| `assert-event` checks | 4204 |
+| `assert-event` checks | 4211 |
 | `must-fail` checks | 59 |
 | `encapsulate` events | 15 |
 | Theorems flagged SUSPECT by shape | 32 |
@@ -187,7 +187,7 @@ that `make certify` requests.
 | `books/store-node.lisp` | root | 9 | 23 | 21/0/2/0 | 0 | 0 | 0 |
 | `books/store-observed-traces.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/store-observed.lisp` | root | 36 | 13 | 12/0/1/0 | 0 | 0 | 1 |
-| `books/tcpcl-invariants.lisp` | root | 47 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/tcpcl-invariants.lisp` | root | 51 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/tcpcl-octets.lisp` | root | 172 | 36 | 14/0/22/0 | 0 | 0 | 1 |
 | `books/tcpcl-records.lisp` | root | 133 | 99 | 62/0/37/0 | 0 | 0 | 0 |
 | `books/tcpcl-session.lisp` | root | 55 | 54 | 9/0/45/0 | 0 | 0 | 0 |
@@ -282,7 +282,7 @@ that `make certify` requests.
 | `tests/acl2/store-node-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
 | `tests/acl2/store-observed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
 | `tests/acl2/store-observed-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 63 | 0 | 0 |
-| `tests/acl2/tcpcl-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 97 | 0 | 0 |
+| `tests/acl2/tcpcl-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 104 | 0 | 0 |
 | `tests/acl2/transfer-journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 58 | 0 | 0 |
 | `tests/acl2/transfer-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 60 | 0 | 0 |
 | `tests/acl2/wildmat-parser-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
