@@ -366,7 +366,11 @@
                            (and (<= 0 (fn-tcl-uint width octets))
                                 (< (fn-tcl-uint width octets) (expt 256 width))))))
   :hints (("Goal" :use ((:instance fn-tcl-be-from-bound
-                                   (octets (fn-tcl-take width octets)))))))
+                                   (octets (fn-tcl-take width octets))))
+           ; The used instance must survive as literals: the rewrite form of
+           ; fn-tcl-be-from-bound rewrites its integerp literal to T and drops
+           ; it, and type-set cannot relieve the type-prescription's hypothesis.
+           :in-theory (disable fn-tcl-be-from-bound))))
 
 (defthm fn-tcl-uint-of-be-bytes
   (implies (and (natp n) (natp width) (< n (expt 256 width)))
@@ -1182,7 +1186,43 @@
                 (fn-tcl-parse-needp (fn-tcl-decode-segment body mru)))
            (< (len body) (+ 4117 mru)))
   :rule-classes (:rewrite :linear)
-  :hints (("Goal" :do-not-induct t :in-theory (disable fn-tcl-decode-segment-data))))
+  ; The data part's need bound is stated over its own buffer, which is a drop
+  ; of body and never a term of this goal, so both branches cite it by :use:
+  ; 1 + 8 + (len after-id) for a continuation, 1 + 8 + 4 + ext-len + (len
+  ; rest) with ext-len at most 4096 for a START.
+  :hints (("Goal" :do-not-induct t :in-theory (disable fn-tcl-decode-segment-data)
+           :use ((:instance fn-tcl-decode-segment-data-need-short
+                            (flags (car body)) (xfer-id (fn-tcl-uint 8 (cdr body)))
+                            (ext nil) (buf (fn-tcl-drop 8 (cdr body))))
+                 (:instance fn-tcl-decode-segment-data-need-short
+                            (flags (car body)) (xfer-id (fn-tcl-uint 8 (cdr body)))
+                            (ext (fn-tcl-parse-msg
+                                  (fn-tcl-decode-items
+                                   (fn-tcl-take (fn-tcl-uint 4 (fn-tcl-drop 8 (cdr body)))
+                                                (fn-tcl-drop 4 (fn-tcl-drop 8 (cdr body)))))))
+                            (buf (fn-tcl-drop (fn-tcl-uint 4 (fn-tcl-drop 8 (cdr body)))
+                                              (fn-tcl-drop 4 (fn-tcl-drop 8 (cdr body))))))))))
+
+; --- Fixed-layout decoders (ack, refuse, term, reject) read (car body) and
+; (car (cdr body)) raw.  Under fn-tcl-has-is-len-bound their has-check is a
+; len bound, and fn-tcl-consp-by-len then reopens the definition of len on
+; every cdr under the if-intro case split of fn-tcl-messagep: measured at
+; 406 s and 2.6e8 prover steps for fn-tcl-decode-term-yields-message
+; (build/acl2/certify-20260919T234310Z-5770).  For these four blocks len
+; stays closed; the two rules below are the only way from a len bound to a
+; cons fact, and each strips one cdr, so the chain is bounded by the layout.
+(local (defthm fn-tcl-len-of-cons
+         (equal (len (cons a x)) (+ 1 (len x)))))
+(local (defthm fn-tcl-len-of-cdr
+         (implies (consp x) (equal (len (cdr x)) (+ -1 (len x))))))
+(local (in-theory (disable len)))
+; The need bounds of the decoders above are :linear rules on (len body)
+; whose hypothesis is the decoder itself, still open in this section: on a
+; goal with several len terms each is re-run per term (fn-tcl-decode-init
+; on (cdr left), on (append left right), ...), and
+; fn-tcl-decode-term-append-ok did not return in 1600 s
+; (build/acl2/certify-20260920T005346Z-77003).  Withdrawn for these blocks.
+(local (in-theory (disable (:linear fn-tcl-decode-segment-data-need-short) (:linear fn-tcl-decode-init-need-short) (:linear fn-tcl-decode-segment-need-short))))
 
 ; --- :xfer-ack through fn-tcl-decode-ack.
 
@@ -1464,6 +1504,14 @@
   :rule-classes (:rewrite :linear)
   :hints (("Goal" :do-not-induct t)))
 
+; The MRU block and the message-level block below reason in the section's
+; original theory with len open; the decoders' need bounds return as linear
+; rules only once the decoders are closed (the message-level disable below),
+; because with a decoder open they re-run it on every len term: the MRU
+; bound's conclusion is a len term and it did not return in 2e7 steps.
+(local (in-theory (enable len)))
+(local (in-theory (disable fn-tcl-len-of-cons fn-tcl-len-of-cdr)))
+
 ; --- The segment MRU bound at the decoder.
 
 (defthm fn-tcl-decoded-segment-fits-mru
@@ -1483,42 +1531,66 @@
                            fn-tcl-encode-init-body fn-tcl-encode-segment-body
                            fn-tcl-encode-ack-body fn-tcl-encode-refuse-body
                            fn-tcl-encode-term-body fn-tcl-encode-reject-body)))
+(local (in-theory (enable (:linear fn-tcl-decode-segment-data-need-short) (:linear fn-tcl-decode-init-need-short) (:linear fn-tcl-decode-segment-need-short))))
 
 (defthm fn-tcl-decode-message-of-encode-init
   (implies (fn-tcl-messagep (fn-tcl-make-sess-init keepalive segment-mru transfer-mru node-id ext) mru)
            (equal (fn-tcl-decode-message (append (fn-tcl-encode (fn-tcl-make-sess-init keepalive segment-mru transfer-mru node-id ext)) rest) mru)
                   (fn-tcl-parse-ok (fn-tcl-make-sess-init keepalive segment-mru transfer-mru node-id ext) rest)))
-  :hints (("Goal" :do-not-induct t)))
+  ; The sub-decoder round trip has mru only in its hypothesis, which the
+  ; goal would otherwise open into conjuncts, so the recognizer stays closed
+  ; here and the keystone is cited with mru bound.
+  :hints (("Goal" :do-not-induct t :in-theory (disable fn-tcl-messagep)
+           :use ((:instance fn-tcl-decode-init-of-encode-body (mru mru))))))
 
 (defthm fn-tcl-decode-message-of-encode-segment
   (implies (fn-tcl-messagep (fn-tcl-make-xfer-segment flags xfer-id ext data) mru)
            (equal (fn-tcl-decode-message (append (fn-tcl-encode (fn-tcl-make-xfer-segment flags xfer-id ext data)) rest) mru)
                   (fn-tcl-parse-ok (fn-tcl-make-xfer-segment flags xfer-id ext data) rest)))
-  :hints (("Goal" :do-not-induct t)))
+  ; As for the other kinds: the recognizer stays closed so the keystone's
+  ; hypothesis is the goal's own literal, and the keystone is cited.
+  :hints (("Goal" :do-not-induct t :in-theory (disable fn-tcl-messagep)
+           :use ((:instance fn-tcl-decode-segment-of-encode-body (mru mru))))))
 
 (defthm fn-tcl-decode-message-of-encode-ack
   (implies (fn-tcl-messagep (fn-tcl-make-xfer-ack flags xfer-id acked-len) mru)
            (equal (fn-tcl-decode-message (append (fn-tcl-encode (fn-tcl-make-xfer-ack flags xfer-id acked-len)) rest) mru)
                   (fn-tcl-parse-ok (fn-tcl-make-xfer-ack flags xfer-id acked-len) rest)))
-  :hints (("Goal" :do-not-induct t)))
+  ; The sub-decoder round trip has mru only in its hypothesis, which the
+  ; goal would otherwise open into conjuncts, so the recognizer stays closed
+  ; here and the keystone is cited with mru bound.
+  :hints (("Goal" :do-not-induct t :in-theory (disable fn-tcl-messagep)
+           :use ((:instance fn-tcl-decode-ack-of-encode-body (mru mru))))))
 
 (defthm fn-tcl-decode-message-of-encode-refuse
   (implies (fn-tcl-messagep (fn-tcl-make-xfer-refuse reason xfer-id) mru)
            (equal (fn-tcl-decode-message (append (fn-tcl-encode (fn-tcl-make-xfer-refuse reason xfer-id)) rest) mru)
                   (fn-tcl-parse-ok (fn-tcl-make-xfer-refuse reason xfer-id) rest)))
-  :hints (("Goal" :do-not-induct t)))
+  ; The sub-decoder round trip has mru only in its hypothesis, which the
+  ; goal would otherwise open into conjuncts, so the recognizer stays closed
+  ; here and the keystone is cited with mru bound.
+  :hints (("Goal" :do-not-induct t :in-theory (disable fn-tcl-messagep)
+           :use ((:instance fn-tcl-decode-refuse-of-encode-body (mru mru))))))
 
 (defthm fn-tcl-decode-message-of-encode-term
   (implies (fn-tcl-messagep (fn-tcl-make-sess-term flags reason) mru)
            (equal (fn-tcl-decode-message (append (fn-tcl-encode (fn-tcl-make-sess-term flags reason)) rest) mru)
                   (fn-tcl-parse-ok (fn-tcl-make-sess-term flags reason) rest)))
-  :hints (("Goal" :do-not-induct t)))
+  ; The sub-decoder round trip has mru only in its hypothesis, which the
+  ; goal would otherwise open into conjuncts, so the recognizer stays closed
+  ; here and the keystone is cited with mru bound.
+  :hints (("Goal" :do-not-induct t :in-theory (disable fn-tcl-messagep)
+           :use ((:instance fn-tcl-decode-term-of-encode-body (mru mru))))))
 
 (defthm fn-tcl-decode-message-of-encode-reject
   (implies (fn-tcl-messagep (fn-tcl-make-msg-reject reason header) mru)
            (equal (fn-tcl-decode-message (append (fn-tcl-encode (fn-tcl-make-msg-reject reason header)) rest) mru)
                   (fn-tcl-parse-ok (fn-tcl-make-msg-reject reason header) rest)))
-  :hints (("Goal" :do-not-induct t)))
+  ; The sub-decoder round trip has mru only in its hypothesis, which the
+  ; goal would otherwise open into conjuncts, so the recognizer stays closed
+  ; here and the keystone is cited with mru bound.
+  :hints (("Goal" :do-not-induct t :in-theory (disable fn-tcl-messagep)
+           :use ((:instance fn-tcl-decode-reject-of-encode-body (mru mru))))))
 
 (defthm fn-tcl-decode-message-of-encode-keepalive
   (equal (fn-tcl-decode-message (append (fn-tcl-encode (fn-tcl-make-keepalive)) rest) mru)
