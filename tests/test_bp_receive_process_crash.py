@@ -18,11 +18,41 @@ import sys
 import tempfile
 import time
 import unittest
+import zlib
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from tools import run_bp_ingress, run_bp_receive, run_store, workflow_journal
+
+# The receiver settles identity and expiry from the bundle's own primary
+# block, so every BID here carries real bundle octets.  Nothing below spells a
+# BPv7 field: `fn-bpi-host-bundle-prefix` returns the indefinite-array head
+# and the certified primary-block encoding, and the break stop code stands in
+# for the blocks the boundary never interprets.  Distinct creation sequences
+# make these distinct bundles that one agent happens to carry, which is what
+# the "same ADU under a fresh BID" case needs.
+LIVE_LIFETIME = 10 ** 15
+
+
+def lab_bundles(bids) -> dict[str, bytes]:
+    """One bundle per BID, all built in a single ACL2 session."""
+    bridge = run_bp_ingress.Acl2BpIngress()
+    try:
+        def eid(ssp: bytes) -> str:
+            return "(cons :dtn '" + bridge.literal(ssp) + ")"
+
+        built = {}
+        for bid in bids:
+            form = ("(fn-bpi-host-bundle-prefix (fn-bpp-make-block 0 0 {} {} {} "
+                    "1000 {} {} nil nil))".format(
+                        eid(b"//fn.lab/inbox"), eid(b"//sender.lab/"),
+                        eid(b"//fn.lab/report"),
+                        zlib.crc32(bid.encode("ascii")) + 1, LIVE_LIFETIME))
+            built[bid] = run_store.acl2_octets(bridge.call(form)) + b"\xff"
+        return built
+    finally:
+        bridge.close()
 
 
 def _pause(ready_fd: int, control_fd: int, point: str) -> None:
@@ -33,6 +63,7 @@ def _pause(ready_fd: int, control_fd: int, point: str) -> None:
 def _child_main(args: argparse.Namespace) -> None:
     """Run the actual receiver and stop at one test-only postcondition hook."""
     request = Path(args.request).read_bytes()
+    bundle = Path(args.bundle).read_bytes()
     original_stage = run_bp_receive._stage
     original_store = run_bp_receive.run_bp_ingress._publish_accepted
     original_intent = run_bp_receive.ReceiptJournal.prepare_receipt
@@ -84,7 +115,7 @@ def _child_main(args: argparse.Namespace) -> None:
             store_root=Path(args.store), inbox_root=Path(args.inbox),
             receipt_root=Path(args.receipts), bid=args.bid,
             source_eid="dtn://sender.lab", inventory=lambda: [args.bid],
-            download=lambda bid: request,
+            download=lambda bid: request, bundle=lambda bid: bundle,
             delete=lambda bid: Path(args.deleted_marker).write_text(bid, encoding="ascii"),
         )
     finally:
@@ -137,9 +168,12 @@ class ReceiverProcessCrashTests(unittest.TestCase):
             child.kill()
             child.wait(timeout=10)
 
-    def _kill_at(self, root: Path, request: bytes, point: str, bid: str) -> Path:
+    def _kill_at(self, root: Path, request: bytes, bundle: bytes, point: str,
+                 bid: str) -> Path:
         request_path = root / "request.adu"
         request_path.write_bytes(request)
+        bundle_path = root / "bundle.bp"
+        bundle_path.write_bytes(bundle)
         ready_read, ready_write = os.pipe()
         control_read, control_write = os.pipe()
         marker = root / "bpa-delete-called"
@@ -147,7 +181,8 @@ class ReceiverProcessCrashTests(unittest.TestCase):
             sys.executable, "tests/test_bp_receive_process_crash.py", "--child",
             "--point", point, "--store", str(root / "store"),
             "--inbox", str(root / "inbox"), "--receipts", str(root / "receipts"),
-            "--request", str(request_path), "--bid", bid,
+            "--request", str(request_path), "--bundle", str(bundle_path),
+            "--bid", bid,
             "--deleted-marker", str(marker), "--ready-fd", str(ready_write),
             "--control-fd", str(control_read),
         ]
@@ -193,7 +228,8 @@ class ReceiverProcessCrashTests(unittest.TestCase):
             bridge.close()
             store.close()
 
-    def _retry(self, root: Path, inventory: dict[str, bytes], bid: str,
+    def _retry(self, root: Path, inventory: dict[str, bytes],
+               bundles: dict[str, bytes], bid: str,
                *, pending_outcome: str | None = None):
         deleted: list[str] = []
 
@@ -205,7 +241,8 @@ class ReceiverProcessCrashTests(unittest.TestCase):
             store_root=root / "store", inbox_root=root / "inbox",
             receipt_root=root / "receipts", bid=bid,
             source_eid="dtn://sender.lab", inventory=lambda: list(inventory),
-            download=lambda found: inventory[found], delete=delete,
+            download=lambda found: inventory[found],
+            bundle=lambda found: bundles[found], delete=delete,
             pending_outcome=pending_outcome,
         )
         return result, deleted
@@ -219,8 +256,10 @@ class ReceiverProcessCrashTests(unittest.TestCase):
                 root = Path(temporary)
                 run_store.Store(root / "store", True).initialize()
                 bid = "bid-" + point
+                retry_bid = bid + "-again"
                 request = self._request(point)
-                self._kill_at(root, request, point, bid)
+                bundles = lab_bundles((bid, retry_bid))
+                self._kill_at(root, request, bundles[bid], point, bid)
 
                 staged = list((root / "inbox" / "inbound").glob("*.bp"))
                 self.assertEqual(len(staged), 1)
@@ -233,9 +272,9 @@ class ReceiverProcessCrashTests(unittest.TestCase):
                 inventory = {bid: request}
                 if point == "intent":
                     with self.assertRaises(run_bp_receive.BpReceiveError):
-                        self._retry(root, inventory, bid)
+                        self._retry(root, inventory, bundles, bid)
                 result, deleted = self._retry(
-                    root, inventory, bid,
+                    root, inventory, bundles, bid,
                     pending_outcome="committed" if point == "intent" else None)
                 self.assertEqual(result.outcome, expected)
                 self.assertEqual(deleted, [bid])
@@ -245,9 +284,9 @@ class ReceiverProcessCrashTests(unittest.TestCase):
 
                 # A fresh BPA BID carrying the exact ADU must not charge a
                 # second article/pin and must regenerate the committed receipt.
-                retry_bid = bid + "-again"
                 inventory[retry_bid] = request
-                repeated, repeated_delete = self._retry(root, inventory, retry_bid)
+                repeated, repeated_delete = self._retry(root, inventory, bundles,
+                                                        retry_bid)
                 self.assertEqual(repeated.outcome, "duplicate")
                 self.assertEqual(repeated_delete, [retry_bid])
                 self.assertEqual(repeated.receipt_adu, result.receipt_adu)
@@ -262,6 +301,7 @@ def _parse_child() -> argparse.Namespace:
     parser.add_argument("--inbox")
     parser.add_argument("--receipts")
     parser.add_argument("--request")
+    parser.add_argument("--bundle")
     parser.add_argument("--bid")
     parser.add_argument("--deleted-marker")
     parser.add_argument("--ready-fd", type=int)
