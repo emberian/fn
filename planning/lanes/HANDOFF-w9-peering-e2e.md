@@ -45,7 +45,7 @@ which is what it always meant.
 | --- | --- | --- |
 | `books/scheduler-peers` | certified | persvati `run-20260920T180716Z-da35`, `build/acl2/certify-20260920T180719Z-1531308` |
 | `tests/acl2/scheduler-peers-tests` | certified | same run |
-| `books/owner`, `books/owner-invariants` | **uncertified, blocked on two other lanes' open forms** | persvati `run-20260920T180927Z-a8a4`, evidence `build/acl2/certify-20260920T180931Z-1553858`: 29 books published, and exactly six failed. Two are root causes and neither is this lane's: `books/peer-config` fails at `DEFTHM FN-CFG-SET-PEER-DELTA-IS-ADMISSIBLE` (the form w6/peering-inbound-2 has already closed on its own branch, commit `3901d55`, not yet on dev) and `books/nntp-effects` has no certificate on dev (the board's standing note, `fn-nntp-hdr-labelled-line-is-block-text`). The other four are cascades: `peer-inbound` and `nntp-post` include them, `served` includes `peer-inbound`, `owner` includes `served`. **Nothing in this lane's owner edits has been refuted or confirmed**; the books were never reached. |
+| `books/owner`, `books/owner-invariants` | **uncertified, blocked on two other lanes' open forms** | persvati `run-20260920T180927Z-a8a4`, evidence `build/acl2/certify-20260920T180931Z-1553858`: 29 books published, and exactly six failed. Two are root causes and neither is this lane's: `books/peer-config` fails at `DEFTHM FN-CFG-SET-PEER-DELTA-IS-ADMISSIBLE` (the form w6/peering-inbound-2 has already closed on its own branch, commit `3901d55`, not yet on dev) and `books/nntp-effects` has no certificate on dev: in THIS run it was cut by the runner's 1800 s per-invocation cap (its log stops inside the XOVER block), and in w5/owner-followups' 5400 s run it reached a real verdict and FAILED at `fn-nntp-hdr-labelled-line-is-block-text`. So the owner is not one long run away: `books/nntp-effects` is genuinely open and `books/peer-inbound` includes `nntp-post` which includes it. The other four are cascades: `peer-inbound` and `nntp-post` include them, `served` includes `peer-inbound`, `owner` includes `served`. **Nothing in this lane's owner edits has been refuted or confirmed**; the books were never reached. |
 | everything else touched | host and Python only | `make check` green; `tests/test_twonode_gate.py` 19 tests pass |
 
 `tests/test_inn_lab.py` has one error on this branch and the SAME error on
@@ -61,7 +61,9 @@ by running it in the dev checkout, not caused by this lane.
    /home/ember/fn-lanes/w9-peering-e2e --closure books/owner
    books/owner-invariants tests/acl2/owner-tests`. Until those two land, no
    run of this lane's owner books can reach a verdict: they are six levels
-   above the failing forms.
+   above the failing forms. Use `--timeout-seconds 5400` when you do:
+   `books/nntp-effects` needs about 2600 s and is cut silently at the default
+   1800 s, which reads as "no certificate" rather than as a failure.
 2. **Teeth for the owner's three transit theorems.** `tests/acl2/owner-tests.lisp`
    needs a transit submission witness (a `(:transit peer kind msgid octets)`
    at the head of the queue) and one violating value per hypothesis. Not
