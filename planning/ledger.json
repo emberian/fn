@@ -176,6 +176,7 @@
     "books/nntp-responses",
     "books/nntp",
     "books/nntp-overview",
+    "books/nntp-legacy",
     "books/nntp-invariants",
     "books/nntp-effects",
     "tests/acl2/nntp-tests",
@@ -194,6 +195,7 @@
     "books/nntp-index",
     "tests/acl2/nntp-index-tests",
     "tests/acl2/nntp-reader-profile-tests",
+    "tests/acl2/nntp-legacy-tests",
     "books/bp-release",
     "books/bp-release-invariants",
     "tests/acl2/bp-release-tests",
@@ -217,19 +219,19 @@
     "tests/acl2/policy-tests"
   ],
   "totals": {
-    "books": 214,
-    "books_in_root_closure": 213,
-    "roots": 213,
-    "theorems": 3581,
-    "functions": 2689,
-    "assert_events": 3736,
+    "books": 216,
+    "books_in_root_closure": 215,
+    "roots": 215,
+    "theorems": 3624,
+    "functions": 2721,
+    "assert_events": 3788,
     "must_fails": 59,
     "encapsulates": 14,
     "guards": {
-      "verified": 1152,
+      "verified": 1177,
       "declared-off": 138,
       "default-guarded": 951,
-      "default-unguarded": 448
+      "default-unguarded": 455
     },
     "suspect_theorems": 30,
     "export_hygiene_warnings": 63,
@@ -2298,7 +2300,7 @@
       "book": "books/nntp-effects.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 119,
+      "theorems": 134,
       "functions": 12,
       "guards": {
         "verified": 0,
@@ -2314,6 +2316,7 @@
       "encapsulates": 0,
       "includes": [
         "nntp-invariants",
+        "nntp-legacy",
         "nntp-overview"
       ],
       "system_includes": [],
@@ -2352,7 +2355,7 @@
       "book": "books/nntp-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 77,
+      "theorems": 88,
       "functions": 4,
       "guards": {
         "verified": 0,
@@ -2361,6 +2364,31 @@
         "default-unguarded": 4
       },
       "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "nntp-overview"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/nntp-legacy.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 17,
+      "functions": 1,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -2456,17 +2484,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 5,
-      "functions": 95,
+      "functions": 119,
       "guards": {
-        "verified": 95,
+        "verified": 119,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 95,
+      "verify_guards_events": 119,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 10,
+      "defconsts": 12,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -4977,6 +5005,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/nntp-legacy-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 7
+      },
+      "verify_guards_events": 0,
+      "assert_events": 52,
+      "must_fails": 0,
+      "defconsts": 15,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/nntp-effects"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/nntp-post-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -5937,7 +5992,7 @@
     {
       "theorem": "fn-nntp-block-scan-start-without-a-dot",
       "book": "books/nntp-effects.lisp",
-      "line": 453,
+      "line": 454,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-nntp-block-scan and the conclusion is that branch's value"
       ]
