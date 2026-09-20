@@ -281,18 +281,18 @@
     "books": 275,
     "books_in_root_closure": 274,
     "roots": 274,
-    "theorems": 5535,
-    "functions": 3919,
-    "assert_events": 5244,
+    "theorems": 5550,
+    "functions": 3926,
+    "assert_events": 5305,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
-      "verified": 1453,
-      "declared-off": 189,
-      "default-guarded": 1781,
+      "verified": 1458,
+      "declared-off": 190,
+      "default-guarded": 1782,
       "default-unguarded": 496
     },
-    "suspect_theorems": 44,
+    "suspect_theorems": 45,
     "export_hygiene_warnings": 72,
     "enabled_projection_warnings": 26,
     "teeth_form_warnings": 0,
@@ -4026,11 +4026,11 @@
       "book": "books/store-files-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 43,
-      "functions": 3,
+      "theorems": 58,
+      "functions": 4,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 1,
         "default-guarded": 0,
         "default-unguarded": 3
       },
@@ -4046,7 +4046,9 @@
       "system_includes": [
         "arithmetic/top"
       ],
-      "suspects": [],
+      "suspects": [
+        "fn-sf-stable-records-outside-the-window"
+      ],
       "read_error": null
     },
     {
@@ -4079,14 +4081,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 30,
-      "functions": 49,
+      "functions": 55,
       "guards": {
-        "verified": 47,
+        "verified": 52,
         "declared-off": 0,
-        "default-guarded": 2,
+        "default-guarded": 3,
         "default-unguarded": 0
       },
-      "verify_guards_events": 47,
+      "verify_guards_events": 52,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 2,
@@ -6375,7 +6377,7 @@
         "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 81,
+      "assert_events": 82,
       "must_fails": 0,
       "defconsts": 15,
       "defmacros": 1,
@@ -6481,7 +6483,7 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 165,
+      "assert_events": 167,
       "must_fails": 0,
       "defconsts": 65,
       "defmacros": 0,
@@ -6558,9 +6560,9 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 155,
+      "assert_events": 166,
       "must_fails": 0,
-      "defconsts": 56,
+      "defconsts": 57,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -6583,7 +6585,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 107,
+      "assert_events": 108,
       "must_fails": 0,
       "defconsts": 38,
       "defmacros": 0,
@@ -6659,7 +6661,7 @@
         "default-unguarded": 12
       },
       "verify_guards_events": 0,
-      "assert_events": 43,
+      "assert_events": 44,
       "must_fails": 0,
       "defconsts": 5,
       "defmacros": 0,
@@ -6685,7 +6687,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 100,
+      "assert_events": 103,
       "must_fails": 0,
       "defconsts": 10,
       "defmacros": 0,
@@ -6762,7 +6764,7 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 61,
+      "assert_events": 62,
       "must_fails": 4,
       "defconsts": 35,
       "defmacros": 0,
@@ -7241,9 +7243,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 63,
+      "assert_events": 101,
       "must_fails": 0,
-      "defconsts": 26,
+      "defconsts": 28,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7317,7 +7319,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 60,
+      "assert_events": 62,
       "must_fails": 0,
       "defconsts": 7,
       "defmacros": 0,
@@ -7369,7 +7371,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 58,
+      "assert_events": 59,
       "must_fails": 0,
       "defconsts": 29,
       "defmacros": 0,
@@ -7602,7 +7604,7 @@
     {
       "theorem": "fn-bs-names-outcomes-of-no-ops",
       "book": "books/byte-store-scan.lisp",
-      "line": 295,
+      "line": 298,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-bs-names-outcomes and the conclusion is that branch's value"
       ]
@@ -7793,6 +7795,14 @@
       "line": 327,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-sf-stable-records-outside-the-window",
+      "book": "books/store-files-invariants.lisp",
+      "line": 88,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-sf-stable-records and the conclusion is that branch's value"
       ]
     },
     {
@@ -8126,7 +8136,7 @@
       {
         "theorem": "fn-sf-completed-frontier-barrier-removes-old-choice",
         "book": "books/store-files-invariants.lisp",
-        "line": 262,
+        "line": 313,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {

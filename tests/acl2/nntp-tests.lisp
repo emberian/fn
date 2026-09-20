@@ -236,8 +236,10 @@
                  (list *fn-nntp-mixed-broken* *fn-nntp-mixed-good*) 0 nil nil))
 (assert-event (fn-statep *fn-nntp-mixed-archive*))
 (assert-event (fn-articlep '("fn.letters") *fn-nntp-mixed-broken*))
+(assert-event (fn-nntp-projection-articlep *fn-nntp-mixed-good*))
 (assert-event (not (fn-nntp-projection-articlep *fn-nntp-mixed-broken*)))
 (assert-event (fn-nntp-article-idp *fn-nntp-mixed-broken*))
+(assert-event (fn-nntp-article-framedp *fn-nntp-mixed-good*))
 (assert-event (not (fn-nntp-article-framedp *fn-nntp-mixed-broken*)))
 ; The configuration is still projectable, so the reader opens and serves.
 (assert-event (fn-nntp-projectionp *fn-nntp-mixed-archive*))

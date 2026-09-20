@@ -484,7 +484,11 @@
                                  (fn-auth-capability-lines *au-required*
                                                            *au-principal* nil t))))
 
-; fn-auth-pass-accepts-only-a-matching-secret.  The separating pair: the same
+; fn-auth-pass-accepts-only-a-checking-secret (books/nntp-auth.lisp:1372;
+; the name here was the pre-rename one and matched nothing).  Note what
+; the theorem does NOT say: that a wrong secret fails is A-CRYPTO, not a
+; consequence of it, so the 481 below is a witness and not a corollary.
+; The separating pair: the same
 ; cached name with the configured secret is 281 and with any other octet
 ; string is 481.  A secret that differs in one octet:
 (assert-event (not (equal (fn-nntp-string-octets "correct-horsf") *au-secret*)))
