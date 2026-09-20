@@ -1122,6 +1122,10 @@ STX = {"a": "<statement-a@example.invalid>", "b": "<statement-b@example.invalid>
 SOCKET_POST = {"a": "<socket-a@example.invalid>", "b": "<socket-b@example.invalid>"}
 AUTH_POST = {"a": "<auth-a@example.invalid>", "b": "<auth-b@example.invalid>"}
 CONCURRENT_ID = "<concurrent@example.invalid>"
+# `bin/fn run` defaults to 8. The capability audit alone opens one connection
+# per label because a 340 or a 335 puts a connection into a transfer, so the
+# ceiling is raised here and the number is recorded with the rows.
+MAX_CONNECTIONS = 64
 LOOP_ID = {"ab": "<loop-ab@example.invalid>", "ba": "<loop-ba@example.invalid>"}
 INTERRUPTED_ID = "<interrupted@example.invalid>"
 ABSENT_ID = "<absent@example.invalid>"
@@ -2217,6 +2221,15 @@ else echo NONE; fi
                              or "it skipped every direction"),
                          invocation="twonode_gate.scenario_owner_feed")
             return
+        if any("440" in x.output for x in posts):
+            self.blocked(self.FEED_KEYS,
+                         "the POST that would give the feed something to offer drew "
+                         "440: `tools/twonode_gate.py`'s `post` driver phase does not "
+                         "authenticate, and posting on this tree is the authenticated "
+                         "principal's allowance (fn-auth-postingp, RFC 3977 section "
+                         "6.3.1.1). The feed itself was never reached",
+                         invocation=posts[0].command)
+            return
         worst = next((x for x in posts if x.rc != 0), None)
         self.emit("V0-FEED-QUEUE", ACCEPTED if worst is None else exit_verdict(worst.rc),
                   posts[0].command,
@@ -2691,8 +2704,14 @@ else echo NONE; fi
                   exit_code=step.rc, client="InterNetNews",
                   limit="one INN version on one box; not a Usenet conformance audit")
 
-    def clients(self):
+    def independent_clients(self):
         """The one observation in this matrix that fn did not make itself.
+
+        NOT named `clients`: `DeployGate.preflight` assigns `self.clients`
+        the dict of newsreader binaries it found on the box, and a method of
+        that name is replaced by it on the instance -- which is how the
+        fifth run ended with "TypeError: 'dict' object is not callable" and
+        three client rows backfilled.
 
         Every other row is fn's CLI, fn's harness or this file's socket
         driver. A feature that only fn's own client has seen is a weaker
@@ -2769,11 +2788,13 @@ else echo NONE; fi
         out = []
         if self.has("fn-run") and node.name in getattr(self, "configured", ()):
             out.append(("fn", "python3 bin/fn --config {dir}/fn.toml run "
-                              "--control {dir}/control.sock".format(dir=node.dir)))
+                              "--control {dir}/control.sock "
+                              "--max-connections {n}".format(
+                                  dir=node.dir, n=MAX_CONNECTIONS)))
         port = getattr(node, "assigned_port", 0)
         out.append(("owner", "python3 tools/run_owner.py --store {} --port {} "
-                             "--control {}/control.sock".format(
-                                 node.store, port, node.dir)))
+                             "--control {}/control.sock --max-connections {}".format(
+                                 node.store, port, node.dir, MAX_CONNECTIONS)))
         reader = "python3 tools/run_reader.py --store {} --port {}".format(
             node.store, port)
         if self.has("reader-post"):
@@ -2810,7 +2831,8 @@ else echo NONE; fi
                           node=node.name,
                           limit="the entry point that started is `{}`; every served row "
                                 "for this node is about that process, not about the "
-                                "ones above it in the list".format(kind))
+                                "ones above it in the list, which was given "
+                                "--max-connections {}".format(kind, MAX_CONNECTIONS))
             else:
                 self.emit("V0-NODE-START", REFUSED,
                           " ;; ".join(a[1] for a in attempts),
@@ -2965,7 +2987,8 @@ else echo NONE; fi
                     ("live reconfiguration", self.live_reconfiguration,
                      ("V0-CFG-LIVE", "V0-CFG-LIVE-REFUSE")),
                     ("outbound feed", self.outbound_feed, self.FEED_KEYS),
-                    ("clients", self.clients, ("V0-CLIENT-NNTPLIB",)),
+                    ("independent clients", self.independent_clients,
+                     ("V0-CLIENT-NNTPLIB", "V0-CLIENT-SLRN")),
                     ("crash", self.crash_phase, self.CRASH_KEYS)):
                 if all(self.alive(n) for n in self.nodes):
                     self.phase(label, method)
