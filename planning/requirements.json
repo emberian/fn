@@ -411,7 +411,8 @@
       "milestone": "M2",
       "status": "implemented",
       "proof_targets": [
-        "PRF-007"
+        "PRF-007",
+        "PRF-032"
       ],
       "verification": [
         "proof",
@@ -511,7 +512,8 @@
       "milestone": "M2",
       "status": "implemented",
       "proof_targets": [
-        "PRF-007"
+        "PRF-007",
+        "PRF-032"
       ],
       "verification": [
         "proof",

@@ -1084,6 +1084,14 @@
         "fn-sf-crash-rollback-image-is-recovery-admissible",
         "fn-sf-crash-imagep-implies-recovery-crash-imagep",
         "fn-sf-image-crash-preserves-state"
+      ],
+      "evidence": [
+        "books/store-files.lisp",
+        "books/store-files-invariants.lisp",
+        "tests/acl2/store-observed-traces-tests.lisp",
+        "tests/acl2/owner-tests.lisp",
+        "planning/evidence/kernel-freedom-d14b-2026-09-20.md",
+        "planning/lanes/HANDOFF-w10-kernel-freedom.md"
       ]
     }
   ]
