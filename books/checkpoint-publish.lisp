@@ -601,9 +601,9 @@
 ; false: fn-cpp-find returns the matching element, so a NIL element of GENS
 ; that matches NAME is a hit the recursion reports as a miss, and the
 ; realignment (which withdrew the accessor unfold) made that branch visible.
-; An entry's name is a natural, so (fn-cpp-entryp e) refutes it.
+; An entry's name is a natural, hence non-NIL, which refutes it.
 (defthm fn-cpp-find-of-append
-  (implies (fn-cpp-entryp e)
+  (implies (fn-cpp-entry-name e)
            (equal (fn-cpp-find name (append gens (list e)))
                   (if (fn-cpp-find name gens)
                       (fn-cpp-find name gens)
