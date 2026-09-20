@@ -222,9 +222,9 @@
     "books": 216,
     "books_in_root_closure": 215,
     "roots": 215,
-    "theorems": 3624,
+    "theorems": 3626,
     "functions": 2721,
-    "assert_events": 3788,
+    "assert_events": 3789,
     "must_fails": 59,
     "encapsulates": 14,
     "guards": {
@@ -2380,7 +2380,7 @@
       "book": "books/nntp-legacy.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 17,
+      "theorems": 19,
       "functions": 1,
       "guards": {
         "verified": 1,
@@ -5017,7 +5017,7 @@
         "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 52,
+      "assert_events": 53,
       "must_fails": 0,
       "defconsts": 15,
       "defmacros": 1,

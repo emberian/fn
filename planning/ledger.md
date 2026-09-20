@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 216 |
 | Certification roots in the Makefile | 215 |
 | Books inside the root closure | 215 |
-| `defthm` and `defthmd` events | 3624 |
+| `defthm` and `defthmd` events | 3626 |
 | `defun` events | 2721 |
 | Functions with verified guards | 1177 |
 | Functions declared `:verify-guards nil` and never verified | 138 |
 | Functions left at the default with an explicit guard | 951 |
 | Functions left at the default with no guard | 455 |
-| `assert-event` checks | 3788 |
+| `assert-event` checks | 3789 |
 | `must-fail` checks | 59 |
 | `encapsulate` events | 14 |
 | Theorems flagged SUSPECT by shape | 30 |
@@ -136,7 +136,7 @@ that `make certify` requests.
 | `books/nntp-effects.lisp` | root | 134 | 12 | 0/0/0/12 | 0 | 0 | 1 |
 | `books/nntp-index.lisp` | root | 33 | 25 | 25/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-invariants.lisp` | root | 88 | 4 | 0/0/0/4 | 0 | 0 | 0 |
-| `books/nntp-legacy.lisp` | root | 17 | 1 | 1/0/0/0 | 0 | 0 | 0 |
+| `books/nntp-legacy.lisp` | root | 19 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-overview.lisp` | root | 18 | 6 | 6/0/0/0 | 0 | 0 | 1 |
 | `books/nntp-post.lisp` | root | 15 | 18 | 12/1/5/0 | 0 | 0 | 0 |
 | `books/nntp-projection.lisp` | root | 23 | 22 | 22/0/0/0 | 0 | 0 | 0 |
@@ -237,7 +237,7 @@ that `make certify` requests.
 | `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 52 | 0 | 0 |
 | `tests/acl2/membership-epochs-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 100 | 0 | 0 |
 | `tests/acl2/nntp-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 50 | 0 | 0 |
-| `tests/acl2/nntp-legacy-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 52 | 0 | 0 |
+| `tests/acl2/nntp-legacy-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 53 | 0 | 0 |
 | `tests/acl2/nntp-post-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 28 | 0 | 0 |
 | `tests/acl2/nntp-reader-profile-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 95 | 0 | 0 |
 | `tests/acl2/nntp-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 2 | 0 |
