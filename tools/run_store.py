@@ -662,6 +662,58 @@ class Acl2Store:
             raise StoreFault("unexpected reconfiguration outcome: {}".format(status))
         return "refused", acl2_keyword(self.call("(fn-store-cfg-last-reason state)"))
 
+    def set_peer(self, peer, monotonic, wall):
+        """One `peer add': the record, the delta and the octets are ACL2's.
+
+        `peer' is the operator's words (name, path identity, endpoint, port,
+        the two halves, the auth slot); nothing here decides whether they
+        denote a well-formed peer -- fn-store-cfg-set-peer builds the record
+        with fn-cfg-peer-make and refuses `:peer-record' when
+        `fn-cfg-peerp' is false.
+        """
+        form = ("(fn-store-cfg-set-peer '{name} '{path} '{host} {port} "
+                "'{ing} {inmax} {inflight} '{outg} {stream} {maxq} {backoff} "
+                ":{authkind} '{auth} {monotonic} {wall} state)").format(
+            name=self.literal(peer["name"]), path=self.literal(peer["path_identity"]),
+            host=self.literal(peer["endpoint"]), port=int(peer["port"]),
+            ing=self.literal(peer["inbound_groups"]),
+            inmax=int(peer["inbound_max_octets"]), inflight=int(peer["inbound_max_inflight"]),
+            outg=self.literal(peer["outbound_groups"]),
+            stream="t" if peer["streaming"] else "nil",
+            maxq=int(peer["max_queue"]), backoff=int(peer["backoff_ms"]),
+            authkind=peer["auth_kind"], auth=self.literal(peer["auth_value"]),
+            monotonic=int(monotonic), wall=int(wall))
+        status = acl2_keyword(self.call(form))
+        if status == "ok":
+            return status, acl2_octets(self.call("(fn-store-cfg-last-octets state)"))
+        if status != "refused":
+            raise StoreFault("unexpected peer outcome: {}".format(status))
+        return "refused", acl2_keyword(self.call("(fn-store-cfg-last-reason state)"))
+
+    def remove_peer(self, name, monotonic, wall):
+        """One `peer remove': `:no-such-peer' is ACL2's refusal, not a lookup here."""
+        form = "(fn-store-cfg-remove-peer '{} {} {} state)".format(
+            self.literal(name), int(monotonic), int(wall))
+        status = acl2_keyword(self.call(form))
+        if status == "ok":
+            return status, acl2_octets(self.call("(fn-store-cfg-last-octets state)"))
+        if status != "refused":
+            raise StoreFault("unexpected peer outcome: {}".format(status))
+        return "refused", acl2_keyword(self.call("(fn-store-cfg-last-reason state)"))
+
+    def peer_names(self):
+        names = acl2_octets(self.call("(fn-store-cfg-peer-names state)"))
+        return [line for line in names.decode("utf-8", "strict").split("\n") if line]
+
+    def peer_slot_text(self, name, slot):
+        return acl2_octets(self.call("(fn-store-cfg-peer-slot-text '{} '{} state)".format(
+            self.literal(name.encode("utf-8")), self.literal(slot.encode("ascii")))))
+
+    def peer_slot_nat(self, name, slot):
+        body = acl2_result(self.call("(fn-store-cfg-peer-slot-nat '{} '{} state)".format(
+            self.literal(name.encode("utf-8")), self.literal(slot.encode("ascii")))))
+        return int(body)
+
     def pin_count(self):
         return acl2_nat(self.call("(fn-store-sn-pin-count state)"))
 
@@ -1493,6 +1545,78 @@ def command_capacity(args):
         store.close()
 
 
+def peer_listing(bridge):
+    """One line per configured peer, every field read from the record's rows."""
+    lines = []
+    for name in bridge.peer_names():
+        port = bridge.peer_slot_nat(name, "transport-nntp")
+        endpoint = bridge.peer_slot_text(name, "transport-nntp")
+        if port < 0:
+            endpoint, port = bridge.peer_slot_text(name, "transport-bp"), None
+        fields = ["name={}".format(name),
+                  "path-identity={}".format(
+                      bridge.peer_slot_text(name, "path-identity").decode("utf-8", "replace")),
+                  "transport={}{}".format(endpoint.decode("utf-8", "replace"),
+                                          "" if port is None else ":{}".format(port))]
+        in_groups = bridge.peer_slot_text(name, "inbound-groups")
+        if bridge.peer_slot_nat(name, "inbound-groups") >= 0:
+            fields.append("inbound={} max-octets={} max-inflight={}".format(
+                in_groups.decode("utf-8", "replace"),
+                bridge.peer_slot_nat(name, "inbound-groups"),
+                bridge.peer_slot_nat(name, "inbound-inflight")))
+        else:
+            fields.append("inbound=none")
+        if bridge.peer_slot_nat(name, "outbound-groups") >= 0:
+            fields.append("outbound={} max-queue={} streaming={} backoff-ms={}".format(
+                bridge.peer_slot_text(name, "outbound-groups").decode("utf-8", "replace"),
+                bridge.peer_slot_nat(name, "outbound-groups"),
+                "yes" if bridge.peer_slot_nat(name, "outbound-streaming") == 1 else "no",
+                bridge.peer_slot_nat(name, "outbound-backoff")))
+        else:
+            fields.append("outbound=none")
+        source = bridge.peer_slot_text(name, "auth-source-address")
+        principal = bridge.peer_slot_text(name, "auth-principal")
+        fields.append("auth=source-address:{}".format(source.decode("utf-8", "replace"))
+                      if source else "auth=principal:{}".format(
+                          principal.decode("utf-8", "replace")))
+        lines.append(" ".join(fields))
+    return lines
+
+
+def command_peer(args):
+    """`peer add|remove|list': the peer table as configuration records.
+
+    Three outcomes stay distinct: an admitted record that becomes durable is
+    exit 0, a record the core refuses (malformed, unknown peer, a bound) is
+    exit 1 with ACL2's named reason, and an I/O failure after admission is
+    exit 3 -- the record may or may not be on disk and the next open decides.
+    """
+    import time
+    writable = args.action != "list"
+    store, bridge, unused_records = open_live_store(args.store, writable=writable)
+    try:
+        if args.action == "list":
+            for line in peer_listing(bridge):
+                print(line)
+            return EXIT_OK
+        if args.action == "add":
+            status, payload = bridge.set_peer(peer_arguments(args), time.monotonic(), time.time())
+        else:
+            status, payload = bridge.remove_peer(
+                args.name.encode("utf-8"), time.monotonic(), time.time())
+        if status != "ok":
+            print("store: refused peer {}: {}".format(args.action, payload), file=sys.stderr)
+            return EXIT_REFUSED
+        generation = store.config_generation + 1
+        store.write_config_record(generation, payload)
+        print("peer {} name={} generation={}".format(
+            "added" if args.action == "add" else "removed", args.name, generation))
+        return EXIT_OK
+    finally:
+        bridge.close()
+        store.close()
+
+
 def _candidate_history_opens(store, config_records):
     """Would a store whose configuration history were `config_records` open?
 
@@ -1507,6 +1631,25 @@ def _candidate_history_opens(store, config_records):
         return False
     finally:
         probe.close()
+
+def peer_arguments(args):
+    """The operator's words, typed but not interpreted: ACL2 decides the record."""
+    host, _, port = (args.nntp or "").rpartition(":")
+    return {
+        "name": args.name.encode("utf-8"),
+        "path_identity": (args.path_identity or args.name).encode("utf-8"),
+        "endpoint": (host or args.bp or "").encode("utf-8"),
+        "port": int(port) if port.isdigit() else 0,
+        "inbound_groups": (args.inbound_groups or "").encode("utf-8"),
+        "inbound_max_octets": args.inbound_max_octets,
+        "inbound_max_inflight": args.inbound_max_inflight,
+        "outbound_groups": (args.outbound_groups or "").encode("utf-8"),
+        "streaming": bool(args.streaming),
+        "max_queue": args.max_queue,
+        "backoff_ms": args.backoff_ms,
+        "auth_kind": "principal" if args.principal else "source-address",
+        "auth_value": (args.principal or args.source_address or "").encode("utf-8"),
+    }
 
 
 def command_config(args):
@@ -1850,6 +1993,22 @@ def main(argv=None):
     capacity = sub.add_parser("capacity")
     capacity.add_argument("capacity", type=int,
                           help="the retention capacity in bytes; must be above the reservation total")
+
+    peer = sub.add_parser("peer")
+    peer.add_argument("action", choices=("add", "remove", "list"))
+    peer.add_argument("name", nargs="?", default="")
+    peer.add_argument("--path-identity")
+    peer.add_argument("--nntp", help="HOST:PORT of the peer's NNTP listener")
+    peer.add_argument("--bp", help="the peer's BP endpoint id (instead of --nntp)")
+    peer.add_argument("--inbound-groups", help="wildmat this peer may feed us")
+    peer.add_argument("--inbound-max-octets", type=int, default=1048576)
+    peer.add_argument("--inbound-max-inflight", type=int, default=16)
+    peer.add_argument("--outbound-groups", help="wildmat we feed this peer")
+    peer.add_argument("--streaming", action="store_true")
+    peer.add_argument("--max-queue", type=int, default=1024)
+    peer.add_argument("--backoff-ms", type=int, default=1000)
+    peer.add_argument("--source-address")
+    peer.add_argument("--principal")
     sub.add_parser("config")
     post = sub.add_parser("post")
     post.add_argument("--message-id", required=True)
@@ -1882,6 +2041,8 @@ def main(argv=None):
                 "status": command_status, "inspect": command_inspect,
                 "anchor": command_anchor, "group": command_group,
                 "capacity": command_capacity,
+
+                "peer": command_peer,
                 "config": command_config}[args.command](args)
     except (StoreError, OSError, UnicodeError) as error:
         print("store: {}".format(error), file=sys.stderr)

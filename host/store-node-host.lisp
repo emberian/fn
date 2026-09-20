@@ -11,6 +11,8 @@
 ; re-admits identical definitions, which ACL2 accepts as redundant.
 (ld "store-host.lisp" :ld-error-action :error)
 
+(include-book "../books/peer-config")
+
 ; This wrapper reuses the established decimal-octet boundary helpers from the
 ; store host. Python supplies only ordered filesystem observations.
 (defun fn-store-sn-reset (state)
@@ -161,6 +163,154 @@
                                 (if (consp (fn-node-stage node)) :group-staged :record))
                             state)))
                 (value :refused)))))))))
+
+; -----------------------------------------------------------------------------
+; Peer records (specs/peering.md section 1.2; `fn peer add|remove|list').
+;
+; The CLI hands over the operator's words and nothing else: the record shape,
+; its well-formedness, the delta, the admissibility test and the record octets
+; are all decided here, by `books/peer-config' and the same
+; `fn-cnode-record-acceptablep' that `group create' uses and that replay will
+; apply to the stored record.  A malformed record is `:refused' with a named
+; reason before any generation is spent.
+
+(defun fn-store-cfg-peer-record (name-octets path-octets host-octets port
+                                 in-groups-octets in-max-octets in-inflight
+                                 out-groups-octets out-streaming out-max-queue
+                                 out-backoff auth-kind auth-octets)
+  ; The typed record the operator's words denote, or nil.  `port' 0 selects a
+  ; BP transport whose eid is `host-octets'; an empty inbound or outbound
+  ; group pattern selects the absent half.
+  (declare (xargs :mode :program))
+  (let ((name (fn-store-octets->string name-octets))
+        (path (fn-store-octets->string path-octets))
+        (endpoint (fn-store-octets->string host-octets))
+        (ingroups (fn-store-octets->string in-groups-octets))
+        (outgroups (fn-store-octets->string out-groups-octets))
+        (auth (fn-store-octets->string auth-octets)))
+    (if (or (equal name :bad) (equal path :bad) (equal endpoint :bad)
+            (equal ingroups :bad) (equal outgroups :bad) (equal auth :bad))
+        nil
+      (let ((p (fn-cfg-peer-make
+                name path
+                (if (posp port)
+                    (list :nntp endpoint port)
+                  (list :bp endpoint))
+                (if (equal ingroups "")
+                    nil
+                  (list ingroups (nfix in-max-octets) (nfix in-inflight)))
+                (if (equal outgroups "")
+                    nil
+                  (list outgroups (and out-streaming t) (nfix out-max-queue)
+                        (nfix out-backoff)))
+                (list (if (equal auth-kind :principal) :principal :source-address)
+                      auth))))
+        (if (fn-cfg-peerp p) p nil)))))
+
+(defun fn-store-cfg-peer-delta-record (deltas monotonic wall state)
+  ; The configuration record carrying one peer delta, admitted by the
+  ; predicate replay applies.  :ok leaves the octets in
+  ; `fn-store-cfg-last-octets'; :refused leaves the reason in
+  ; `fn-store-cfg-last-reason'.
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((s (f-get-global 'fn-store-sn state))
+         (cfg (f-get-global 'fn-store-cfg state))
+         (node (fn-sn-node s))
+         (cn (fn-cnode-make node cfg))
+         (state (f-put-global 'fn-store-cfg-last-octets nil state))
+         (generation (+ 1 (fn-cfg-generation cfg)))
+         (stamp (fn-clock-observation (nfix monotonic) (nfix wall) 0 t))
+         (record (fn-cfg-record-make (fn-cfg-generation cfg)
+                                     (fn-state-next-txid (fn-node-acceptance node))
+                                     generation deltas stamp)))
+    (if (not (equal (fn-sf-phase (fn-sn-files s)) :ready))
+        (let ((state (f-put-global 'fn-store-cfg-last-reason :not-ready state)))
+          (value :refused))
+      (if (fn-cnode-record-acceptablep cn record (fn-cnode-line-ceiling))
+          (let* ((state (f-put-global 'fn-store-cfg-last-octets
+                                      (fn-cfg-encode record) state))
+                 (state (f-put-global 'fn-store-cfg-last-reason nil state)))
+            (value :ok))
+        (let ((state (f-put-global
+                      'fn-store-cfg-last-reason
+                      (or (fn-cfg-admissible-reason
+                           (fn-cfg-value cfg) generation stamp
+                           (fn-retain-reserved (fn-node-retention node))
+                           (fn-cnode-line-ceiling) deltas)
+                          :record)
+                      state)))
+          (value :refused))))))
+
+(defun fn-store-cfg-set-peer (name-octets path-octets host-octets port
+                              in-groups-octets in-max-octets in-inflight
+                              out-groups-octets out-streaming out-max-queue
+                              out-backoff auth-kind auth-octets
+                              monotonic wall state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((p (fn-store-cfg-peer-record
+            name-octets path-octets host-octets port in-groups-octets
+            in-max-octets in-inflight out-groups-octets out-streaming
+            out-max-queue out-backoff auth-kind auth-octets)))
+    (if (null p)
+        (let ((state (f-put-global 'fn-store-cfg-last-reason :peer-record state)))
+          (value :refused))
+      (fn-store-cfg-peer-delta-record (list (fn-cfg-set-peer-delta p))
+                                      monotonic wall state))))
+
+(defun fn-store-cfg-remove-peer (name-octets monotonic wall state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((name (fn-store-octets->string name-octets)))
+    (if (equal name :bad)
+        (let ((state (f-put-global 'fn-store-cfg-last-reason :peer-name state)))
+          (value :refused))
+      (if (null (fn-cfg-peer-find name (fn-cfg-peers
+                                        (fn-cfg-value (f-get-global 'fn-store-cfg state)))))
+          (let ((state (f-put-global 'fn-store-cfg-last-reason :no-such-peer state)))
+            (value :refused))
+        (fn-store-cfg-peer-delta-record (list (fn-cfg-remove-peer-delta name))
+                                        monotonic wall state)))))
+
+; The listing.  Names first, then one slot at a time in the codec's own
+; vocabulary (books/peer-config, `fn-cfg-peer-rows'): nothing about a peer is
+; rendered by Python from a shape it guessed.
+(defun fn-store-cfg-peer-name-list (rows)
+  (declare (xargs :mode :program))
+  (if (consp rows)
+      (if (equal (fn-cfg-row-b (car rows)) "path-identity")
+          (cons (fn-cfg-row-a (car rows)) (fn-store-cfg-peer-name-list (cdr rows)))
+        (fn-store-cfg-peer-name-list (cdr rows)))
+    nil))
+
+(defun fn-store-cfg-peer-names (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-store-cfg-join-names
+          (fn-store-cfg-peer-name-list
+           (fn-cfg-peers (fn-cfg-value (f-get-global 'fn-store-cfg state)))))))
+
+(defun fn-store-cfg-peer-rows-of (name-octets state)
+  (declare (xargs :mode :program :stobjs state))
+  (let ((name (fn-store-octets->string name-octets)))
+    (if (equal name :bad)
+        nil
+      (fn-cfg-rows-with-key (fn-cfg-peers (fn-cfg-value (f-get-global 'fn-store-cfg state)))
+                            name))))
+
+(defun fn-store-cfg-peer-slot-text (name-octets slot-octets state)
+  ; The text half of one row of a peer's group, as octets; nil when absent.
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((slot (fn-store-octets->string slot-octets))
+         (row (and (not (equal slot :bad))
+                   (fn-cfg-peer-slot (fn-store-cfg-peer-rows-of name-octets state) slot))))
+    (value (if row (fn-record-string-octets (fn-cfg-row-c row)) nil))))
+
+(defun fn-store-cfg-peer-slot-nat (name-octets slot-octets state)
+  ; The numeric half of one row, or -1 when the row is absent: the CLI never
+  ; substitutes a default for a slot the record does not carry.
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((slot (fn-store-octets->string slot-octets))
+         (row (and (not (equal slot :bad))
+                   (fn-cfg-peer-slot (fn-store-cfg-peer-rows-of name-octets state) slot))))
+    (value (if row (fn-cfg-row-n row) -1))))
 
 (defun fn-store-cfg-last-octets (state)
   (declare (xargs :stobjs state :mode :program))
