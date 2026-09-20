@@ -16,8 +16,37 @@ STATEMENT is unchanged.
 | Artifact | Status | Evidence |
 | --- | --- | --- |
 | `books/scheduler.lisp` | CERTIFIED | `build/acl2/certify-20260919T235031Z-17711` |
-| `books/scheduler-invariants.lisp` | see the evidence directory recorded below | |
-| `tests/acl2/scheduler-tests.lisp` | see the evidence directory recorded below | |
+| `books/scheduler-invariants.lisp` | **OPEN — not certified** | failing runs: `certify-20260919T235132Z-19523`, `-20260920T000608Z-58607`, `-20260920T001250Z-64345`, `-20260920T002505Z-68951`, `-20260920T003732Z-71605`, `-20260920T005003Z-74779` |
+| `tests/acl2/scheduler-tests.lisp` | **OPEN — blocked on the invariants certificate** | `certify-20260920T000519Z-58058` |
+
+`books/scheduler` is the only certified book of this cluster. Commit `3886f5a`
+is titled "Certify the rewritten scheduler cluster"; that title is wrong and
+this table is the correction. Nothing below is a certified claim except the
+`books/scheduler` row.
+
+### The invariants book, failure by failure
+
+Each failure was a fact the raw-list records used to supply by type reasoning
+and an opaque record does not. In order, with the fix that closed it:
+
+1. `fn-sched-statep-of-{pass-over,take}` — the enabled list recognizers opened
+   `(fn-sched-string-listp (fn-sched-next-aged ...))` into `(stringp (car ...))`
+   before the `-of-next-aged` rewrite could fire. Fix: name
+   `fn-sched-string-listp` and `fn-sched-item-listp` in the hint's disable.
+2. `fn-sched-statep-of-tick-step`, then `fn-sched-{step,trace}-preserves-state`
+   — `fn-sched-statep` opened instead of the per-transition preservation
+   lemmas applying. Fix: close `fn-sched-statep` in those three hints.
+3. `fn-sched-expire-queue-preserves-queued` — `fn-sched-find` could not see
+   through a marked item. Fix: `fn-sched-mark-expired-keeps-the-fields`.
+4. `fn-sched-selection-is-the-promotion-head` — the head being eligible no
+   longer gives `(consp (fn-sched-find head queue))`. Fix: cite
+   `fn-sched-eligible-is-consp` at that instance.
+5. `fn-sched-promotion-position-decreases` — three separate gaps, fixed by
+   `fn-sched-member-of-append-left`,
+   `fn-sched-aged-advance-consp-when-an-eligible-member-exists` and
+   `fn-sched-selection-is-consp-when-the-promotion-queue-is-not-empty`.
+
+The last run of this sequence was still open when the lane's budget ran out.
 | `host/scheduler-host.lisp` | `:program` mode, outside the proof boundary | — |
 | `tools/scheduler.py`, `tests/test_scheduler.py` | PASS | 22 tests |
 
