@@ -820,6 +820,16 @@ class Owner:
             session = Session(host, port, 5.0)
         except OSError:
             return False
+        if not session.greeting.startswith(b"20"):
+            # RFC 3977 5.1.1: a server that does not greet has not given us a
+            # session. Without this, a peer that closes at accept -- or
+            # anything forwarding to a peer that is down -- looks like an open
+            # connection, and the feed writes a `(:feed-offer ...)` record and
+            # counts an attempt for an offer that can never be sent. Three of
+            # those reach `*fn-own-feed-retry-bound*` and the entry is
+            # dropped, so a peer that is merely down would cost an article.
+            session.close()
+            return False
         if self.bridge.feed_streamingp(feed.peer):
             session.send(b"MODE STREAM\r\n")
             session.line()
