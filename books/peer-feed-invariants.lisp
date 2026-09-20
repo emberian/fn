@@ -69,6 +69,15 @@
            (equal (fn-feed-find msgid (append xs ys))
                   (fn-feed-find msgid xs))))
 
+; And the same fact in `fn-feed-state-of' vocabulary.  The rule above cannot
+; serve a proof that closes `(:d fn-feed-state-of)' -- the goal never becomes
+; a `fn-feed-find' term for it to match -- and the enqueue arm of the
+; dispatcher is exactly such a proof (`Subgoal 2.77''').
+(defthm fn-feed-state-of-of-append-when-present
+  (implies (consp (fn-feed-find msgid xs))
+           (equal (fn-feed-state-of msgid (append xs ys))
+                  (fn-feed-state-of msgid xs))))
+
 (defthm fn-feed-state-of-of-requeue-same
   (implies (consp (fn-feed-find msgid xs))
            (equal (fn-feed-state-of msgid
@@ -636,7 +645,12 @@
 ; theorems after them run on: with the transitions closed -- which is what
 ; keeps the dispatcher's case split from re-splitting under every arm --
 ; nothing else can reduce `(fn-feed-peer (fn-feed-give-up f ...))', and that
-; is the `Subgoal 40'' the previous lane measured.
+; is the `Subgoal 40'' the previous lane measured.  The six single-valued
+; members (`enqueue', `done', `back-off', `lost', `give-up', `restart') came
+; from lane w6/peering-inbound-2 on dev at `ca1ce5d' and are kept here, in
+; one block with the four field updates and the two `mv' transitions, so the
+; family is read in one place; the four `fn-feed-peer-of-with-*' equations
+; make each proof a rewrite rather than an `e/d' per form.
 
 (defthm fn-feed-peer-of-with-queue
   (equal (fn-feed-peer (fn-feed-with-queue f queue)) (fn-feed-peer f)))
@@ -960,7 +974,9 @@
 (deftheory fn-feed-invariants-vocabulary
   '(fn-feed-state-of-of-set-state-same fn-feed-state-of-of-set-state-other
     fn-feed-state-of-of-requeue-other
-    fn-feed-find-of-append-when-present fn-feed-state-of-of-requeue-same
+    fn-feed-find-of-append-when-present
+    fn-feed-state-of-of-append-when-present
+    fn-feed-state-of-of-requeue-same
     fn-feed-state-of-of-requeue-inflight-when-inflight
     fn-feed-state-of-of-settle-when-inflight
     fn-feed-droppedp-of-the-offer-states
