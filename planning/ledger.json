@@ -109,6 +109,11 @@
     "books/clock",
     "books/clock-invariants",
     "tests/acl2/clock-tests",
+    "books/tcpcl-records",
+    "books/tcpcl-octets",
+    "books/tcpcl-session",
+    "books/tcpcl-invariants",
+    "tests/acl2/tcpcl-tests",
     "books/anchor",
     "books/anchor-record",
     "books/anchor-invariants",
@@ -206,21 +211,21 @@
     "tests/acl2/policy-tests"
   ],
   "totals": {
-    "books": 203,
-    "books_in_root_closure": 202,
-    "roots": 202,
-    "theorems": 3319,
-    "functions": 2417,
-    "assert_events": 3409,
+    "books": 208,
+    "books_in_root_closure": 207,
+    "roots": 207,
+    "theorems": 3689,
+    "functions": 2610,
+    "assert_events": 3506,
     "must_fails": 59,
-    "encapsulates": 14,
+    "encapsulates": 15,
     "guards": {
-      "verified": 991,
-      "declared-off": 131,
-      "default-guarded": 859,
+      "verified": 1076,
+      "declared-off": 134,
+      "default-guarded": 964,
       "default-unguarded": 436
     },
-    "suspect_theorems": 29,
+    "suspect_theorems": 30,
     "export_hygiene_warnings": 62,
     "teeth_form_warnings": 0
   },
@@ -3224,6 +3229,112 @@
       "read_error": null
     },
     {
+      "book": "books/tcpcl-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 30,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "tcpcl-session"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/tcpcl-octets.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 172,
+      "functions": 36,
+      "guards": {
+        "verified": 14,
+        "declared-off": 0,
+        "default-guarded": 22,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 14,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 1,
+      "includes": [
+        "tcpcl-records"
+      ],
+      "system_includes": [
+        "arithmetic/top",
+        "ihs/quotient-remainder-lemmas"
+      ],
+      "suspects": [
+        "fn-tcl-segment-never-exceeds-mru"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/tcpcl-records.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 133,
+      "functions": 99,
+      "guards": {
+        "verified": 62,
+        "declared-off": 0,
+        "default-guarded": 37,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 62,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "cbor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/tcpcl-session.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 35,
+      "functions": 54,
+      "guards": {
+        "verified": 9,
+        "declared-off": 0,
+        "default-guarded": 45,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 9,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 17,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "clock",
+        "tcpcl-octets"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/transfer-assembly-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -5357,6 +5468,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/tcpcl-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 97,
+      "must_fails": 0,
+      "defconsts": 51,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/tcpcl-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/transfer-journal-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -5735,6 +5871,14 @@
       "line": 126,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-refuse-reservation and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-tcl-segment-never-exceeds-mru",
+      "book": "books/tcpcl-octets.lisp",
+      "line": 1044,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-tcl-decode-segment-data and the conclusion is that branch's value"
       ]
     },
     {

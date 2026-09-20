@@ -1,8 +1,11 @@
 # TCPCLv4 convergence layer
 
-Status: implemented as ACL2 books in wave 4 (`books/tcpcl-records`,
-`books/tcpcl-octets`, `books/tcpcl-session`, `books/tcpcl-invariants`,
-`tests/acl2/tcpcl-tests`); the native host integration is proposed in
+Status: `books/tcpcl-records` and `books/tcpcl-octets` are certified on the
+merged tree (dev d83dea5); `books/tcpcl-session` is OPEN at
+`fn-tcl-refuse-preserves-sessionp` (section 6), and `books/tcpcl-invariants`
+and `tests/acl2/tcpcl-tests` are uncertified behind it. Until session
+certifies, nothing in sections 3 and 4 is a theorem proved by ACL2; the
+statements stand as proposed. The native host integration is proposed in
 [the lane handoff](../planning/lanes/HANDOFF-w4-tcpcl.md) and not built.
 Design: [bp-design.md §2](bp-design.md). RFC: `rfc9174.txt` (RFC 9174,
 TCPCLv4). No interoperability, server or flight claim follows from this
@@ -194,6 +197,20 @@ transiently beyond it.
 
 ## 6. Open
 
+- `books/tcpcl-session.lisp` `fn-tcl-refuse-preserves-sessionp`, exact
+  obligation (evidence `build/acl2/certify-20260920T014417Z-93813`,
+  checkpoint Goal''): under `(fn-tcl-sessionp s)` and `(fn-clock-timep now)`,
+  `(fn-tcl-sessionp (fn-tcl-next s (fn-tcl-session-phase s) nil
+  (fn-tcl-session-outbound s) (fn-tcl-session-term s) now))`.
+  `fn-tcl-next-preserves-sessionp` is not relieved from
+  `fn-tcl-sessionp-facts`: its phase-consistency hypotheses are `implies`
+  over the enabled glue predicates `fn-tcl-pre-establishedp` and
+  `fn-tcl-transferringp`, which the facts rule exports in opened form. The
+  two lemmas whose transition builds the session directly
+  (`fn-tcl-recv-contact`, `fn-tcl-recv-init`) open the recognizer in their
+  hints and pass; the remaining transition lemmas (`fn-tcl-refuse` onward),
+  the guard closure, `tcpcl-invariants` and `tcpcl-tests` are unattempted
+  behind this form.
 - The host integration (`host/native/tcpcl.lisp`) and lab I1 are proposed
   in the handoff, not built; the final XFER_ACK after the FNBS record is
   barriered (bp-design §2.4) is a host ordering the model states as
