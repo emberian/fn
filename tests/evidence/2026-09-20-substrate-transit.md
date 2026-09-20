@@ -14,13 +14,19 @@ run on. Every result below is hbox's.
 | Root | Run | Evidence directory | Result |
 | --- | --- | --- | --- |
 | `books/stx-lace` | `run-20260920T181308Z-0b1b` | `build/acl2/certify-20260920T181311Z-1023611` | certified |
-| `books/stx-index` | RUNPLACEHOLDER | DIRPLACEHOLDER | STATEPLACEHOLDER |
+| `books/stx-index` | `run-20260920T183034Z-b081` | `build/acl2/certify-20260920T183037Z-1057241` | **open** at `(defthm fn-stx-index-equivocators-agree ...)`; every form before it, including `fn-stx-index-bindings-agree` and `fn-stx-index-slots-agree`, is admitted in that run |
 | `books/stx-policy` | `run-20260920T182629Z-333c` | `build/acl2/certify-20260920T182632Z-1047438` | certified |
-| `books/stx-epochs` | RUNPLACEHOLDER | DIRPLACEHOLDER | STATEPLACEHOLDER |
-| `tests/acl2/stx-transit-tests` | RUNPLACEHOLDER | DIRPLACEHOLDER | STATEPLACEHOLDER |
+| `books/stx-epochs` | `run-20260920T183034Z-b081` | same | **open** at `(defthm fn-stx-commit-decode-is-a-commit ...)`; the codec and its guards are admitted |
+| `books/stx-authority` | `run-20260920T183034Z-b081` | same | not reached: cascade from `stx-index` |
+| `tests/acl2/stx-transit-tests` | `run-20260920T183034Z-b081` | same | not reached: cascade from `stx-epochs` and `stx-authority` |
 
 Limitations, and they are the point of reading this file next to the claim:
 
+- **Two roots are open and their witnesses have therefore not run.** The
+  teeth in `tests/acl2/stx-transit-tests.lisp` are written and committed but
+  unexecuted; nothing in this lane's claims may lean on them until that book
+  certifies. The two open forms and what each needs are in
+  `specs/substrate-transport.md` section 10.
 - Every witness runs under the **toy realisers** of
   `tests/acl2/crypto-seam-tests.lisp` (a polynomial mix digest and a
   sign-by-public-key scheme). Nothing here is evidence about unforgeability
