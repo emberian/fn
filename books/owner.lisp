@@ -586,7 +586,16 @@
 ; pinned: fn-own-read supplies the owner's current observation with every
 ; read, so each submission is injected at its own time (RFC 5537 section
 ; 3.4).
-(defun fn-own-open (o)
+; `acfg' is the AUTHINFO/STARTTLS policy the operator configured
+; (books/nntp-auth.lisp fn-auth-configp): the credentials, whether
+; authentication is required and whether AUTHINFO needs a protected channel.
+; It is pinned into the connection at open exactly as the posting
+; configuration and the reader clock are, so no command re-reads it and a
+; reconfiguration reaches only connections opened after it.  Anything that
+; is not a configuration opens fn-auth-open-config, which requires nothing
+; and offers nothing, so every owner theorem written before authentication
+; keeps its meaning with `acfg' free.
+(defun fn-own-open (o acfg)
   (declare (xargs :guard t))
   (if (< (len (fn-own-conns o)) (nfix (fn-own-max-conns o)))
       (let* ((view (fn-own-view o))
@@ -594,7 +603,7 @@
              (id (fn-own-next-id o))
              (opened (fn-served-open archive *fn-nntp-max-initial-line-octets*
                                      *fn-own-body-limit* (fn-own-config o)
-                                     (fn-own-clock o) (fn-own-clock o)))
+                                     (fn-own-clock o) (fn-own-clock o) acfg))
              (sconn (fn-served-result-conn opened))
              (conn (fn-own-conn-make id (fn-own-view-version view)
                                      (fn-own-view-frontier view)
@@ -630,9 +639,14 @@
                              (posp (fn-cfg-peer-inbound-max-octets record)))
                         (fn-cfg-peer-inbound-max-octets record)
                       *fn-own-body-limit*))
+             ; The injection clock, as fn-own-open passes it: the sixth
+             ; formal has been there since the six-field connection landed
+             ; and this call was never updated, so this defun did not
+             ; translate.
              (opened (fn-served-open-peer archive
                                           *fn-nntp-max-initial-line-octets*
-                                          limit (fn-own-config o) (fn-own-clock o)
+                                          limit (fn-own-config o)
+                                          (fn-own-clock o) (fn-own-clock o)
                                           peer (fn-sn-node (fn-own-store o)) cfg))
              (sconn (fn-served-result-conn opened))
              (conn (fn-own-conn-make id (fn-own-view-version view)
@@ -1019,11 +1033,15 @@
                                   (fn-own-config o) (fn-own-queue o) nil)))
           (cons (fn-served-result-effects
                  (fn-served-transit-outcome
+                  ; The sixth formal, as fn-own-outcome passes it: this call
+                  ; was never updated when the connection gained the
+                  ; injection clock, so this defun did not translate.
                   (fn-served-make-conn (fn-own-conn-wire conn)
                                        (fn-own-conn-session conn)
                                        (fn-own-conn-archive conn)
                                        (fn-own-conn-config conn)
-                                       (fn-own-conn-observation conn))
+                                       (fn-own-conn-observation conn)
+                                       (fn-own-clock o))
                   (fn-own-sub-decision sub) d completion))
                 (if (equal completion :durable)
                     (fn-own-advance next id)
@@ -1039,7 +1057,7 @@
 (defun fn-own-step (o event)
   (declare (xargs :guard (fn-sn-statep (fn-own-store o)) :verify-guards nil))
   (case (car event)
-    (:open (cdr (fn-own-open o)))
+    (:open (cdr (fn-own-open o (cadr event))))
     (:open-peer (cdr (fn-own-open-peer o (cadr event) (caddr event))))
     (:octets (cdr (fn-own-read o (cadr event) (caddr event))))
     (:read (cdr (fn-own-read-step o (cadr event) (caddr event))))
