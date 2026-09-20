@@ -592,15 +592,24 @@
 (defconst *fn-feed-takethis-prefix* '(84 65 75 69 84 72 73 83 32))  ; "TAKETHIS "
 (defconst *fn-feed-crlf* '(13 10))
 
+; `append' wants a true list on its left, and a Message-ID is only a true list
+; when it is `fn-feed-namep'.  The fix is in the total builder, not a guard on
+; the three callers: a malformed Message-ID renders as the bare command line,
+; which no peer answers, rather than making the renderer partial.
+(defun fn-feed-line (prefix msgid)
+  (declare (xargs :guard (true-listp prefix)))
+  (append prefix
+          (append (if (true-listp msgid) msgid nil) *fn-feed-crlf*)))
+
 (defun fn-feed-check-line (msgid)
   (declare (xargs :guard t))
-  (append *fn-feed-check-prefix* (append msgid *fn-feed-crlf*)))
+  (fn-feed-line *fn-feed-check-prefix* msgid))
 (defun fn-feed-ihave-line (msgid)
   (declare (xargs :guard t))
-  (append *fn-feed-ihave-prefix* (append msgid *fn-feed-crlf*)))
+  (fn-feed-line *fn-feed-ihave-prefix* msgid))
 (defun fn-feed-takethis-line (msgid)
   (declare (xargs :guard t))
-  (append *fn-feed-takethis-prefix* (append msgid *fn-feed-crlf*)))
+  (fn-feed-line *fn-feed-takethis-prefix* msgid))
 
 (defun fn-feed-offer-line (msgid streamingp)
   (declare (xargs :guard t))
@@ -1182,6 +1191,7 @@
     (:d fn-feed-lost) (:d fn-feed-give-up) (:d fn-feed-retry-exhaustedp)
     (:d fn-feed-observe) (:d fn-feed-restart) (:d fn-feed-settle)
     (:d fn-feed-tick-step) (:d fn-feed-responsep)
+    (:d fn-feed-line)
     (:d fn-feed-record-okp) (:d fn-feed-encode) (:d fn-feed-decode)
     (:d fn-feed-apply-record) (:d fn-feed-record-drivenp)
     fn-feed-spec-for-is-spec-list))
