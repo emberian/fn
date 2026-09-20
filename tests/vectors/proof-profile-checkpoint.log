@@ -1,0 +1,325 @@
+
+*1.1 (Subgoal *1/2') is pushed for proof by induction.
+
+])
+Subgoal *1/1
+Subgoal *1/1'
+Subgoal *1/1''
+Subgoal *1/1'''
+Subgoal *1/1'4'
+Subgoal *1/1'5'
+
+([ A key checkpoint while proving *1 (descended from Goal):
+
+Subgoal *1/1''
+(IMPLIES (AND (CONSP X)
+              (NOT (STRINGP (CDR X)))
+              (EQUAL (MYREV (CDR X))
+                     (REVAPPEND (CDR X) NIL)))
+         (EQUAL (APPEND (MYREV (CDR X)) (LIST (CAR X)))
+                (REVAPPEND (CDR X) (LIST (CAR X)))))
+
+*1.2 (Subgoal *1/1'5') is pushed for proof by induction.
+
+])
+
+So we now return to *1.2, which is
+
+(IMPLIES (NOT (STRINGP X2))
+         (EQUAL (APPEND (REVAPPEND X2 NIL) (LIST X1))
+                (REVAPPEND X2 (LIST X1)))).
+Subgoal *1.2/3
+Subgoal *1.2/3'
+Subgoal *1.2/3''
+Subgoal *1.2/3'''
+Subgoal *1.2/3'4'
+
+*1.2.1 (Subgoal *1.2/3'4') is pushed for proof by induction.
+Subgoal *1.2/2
+Subgoal *1.2/2'
+Subgoal *1.2/1
+Subgoal *1.2/1'
+
+So we now return to *1.2.1, which is
+
+(IMPLIES (EQUAL (APPEND (REVAPPEND X4 NIL) (LIST X1))
+                (REVAPPEND X4 (LIST X1)))
+         (EQUAL (APPEND (REVAPPEND X4 (LIST X3))
+                        (LIST X1))
+                (REVAPPEND X4 (LIST X3 X1)))).
+Subgoal *1.2.1/3
+Subgoal *1.2.1/3'
+Subgoal *1.2.1/3''
+Subgoal *1.2.1/3'''
+Subgoal *1.2.1/3'4'
+
+*1.2.1.1 (Subgoal *1.2.1/3'4') is pushed for proof by induction.
+Subgoal *1.2.1/2
+Subgoal *1.2.1/2'
+Subgoal *1.2.1/2''
+Subgoal *1.2.1/2'''
+Subgoal *1.2.1/2'4'
+
+*1.2.1.2 (Subgoal *1.2.1/2'4') is pushed for proof by induction.
+Subgoal *1.2.1/1
+Subgoal *1.2.1/1'
+
+So we now return to *1.2.1.2, which is
+
+(IMPLIES (AND (NOT (EQUAL (APPEND (REVAPPEND X6 NIL) (LIST X1))
+                          (REVAPPEND X6 (LIST X1))))
+              (EQUAL (APPEND (REVAPPEND X6 (LIST X5))
+                             (LIST X1))
+                     (REVAPPEND X6 (LIST X5 X1))))
+         (EQUAL (APPEND (REVAPPEND X6 (LIST X5 X3))
+                        (LIST X1))
+                (REVAPPEND X6 (LIST X5 X3 X1)))).
+Subgoal *1.2.1.2/4
+Subgoal *1.2.1.2/4'
+Subgoal *1.2.1.2/4''
+Subgoal *1.2.1.2/4'''
+Subgoal *1.2.1.2/4'4'
+
+*1.2.1.2.1 (Subgoal *1.2.1.2/4'4') is pushed for proof by induction.
+Subgoal *1.2.1.2/3
+Subgoal *1.2.1.2/3'
+Subgoal *1.2.1.2/3''
+Subgoal *1.2.1.2/3'''
+Subgoal *1.2.1.2/3'4'
+
+*1.2.1.2.2 (Subgoal *1.2.1.2/3'4') is pushed for proof by induction.
+Subgoal *1.2.1.2/2
+Subgoal *1.2.1.2/2'
+Subgoal *1.2.1.2/2''
+Subgoal *1.2.1.2/2'''
+Subgoal *1.2.1.2/2'4'
+
+*1.2.1.2.3 (Subgoal *1.2.1.2/2'4') is pushed for proof by induction.
+Subgoal *1.2.1.2/1
+Subgoal *1.2.1.2/1'
+
+So we now return to *1.2.1.2.3, which is
+
+(IMPLIES (AND (EQUAL (APPEND (REVAPPEND X8 NIL) (LIST X1))
+                     (REVAPPEND X8 (LIST X1)))
+              (NOT (EQUAL (APPEND (REVAPPEND X8 (LIST X7))
+                                  (LIST X1))
+                          (REVAPPEND X8 (LIST X7 X1))))
+              (EQUAL (APPEND (REVAPPEND X8 (LIST X7 X5))
+                             (LIST X1))
+                     (REVAPPEND X8 (LIST X7 X5 X1))))
+         (EQUAL (APPEND (REVAPPEND X8 (LIST X7 X5 X3))
+                        (LIST X1))
+                (REVAPPEND X8 (LIST X7 X5 X3 X1)))).
+
+The formula above is subsumed by one of its parents, *1.2.1, which
+we're in the process of trying to prove by induction.  When an inductive
+proof pushes a subgoal for induction that is less general than the
+original goal, it may be a sign that either an inappropriate induction
+was chosen or that the original goal is insufficiently general.  In
+any case, our proof attempt has failed.
+
+Summary
+Form:  ( DEFTHM MYREV-IS-REVERSE ...)
+Rules: ((:DEFINITION BINARY-APPEND)
+        (:DEFINITION ENDP)
+        (:DEFINITION MYREV)
+        (:DEFINITION NOT)
+        (:DEFINITION REVAPPEND)
+        (:DEFINITION REVERSE)
+        (:ELIM CAR-CDR-ELIM)
+        (:EXECUTABLE-COUNTERPART CONSP)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION MYREV)
+        (:INDUCTION REVAPPEND)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:TYPE-PRESCRIPTION MYREV))
+Splitter rules (see :DOC splitter):
+  if-intro: ((:DEFINITION REVERSE))
+Time:  0.04 seconds (prove: 0.04, print: 0.00, other: 0.00)
+Prover steps counted:  12512
+
+---
+The key checkpoint goals, below, may help you to debug this failure.
+See :DOC failure and see :DOC set-checkpoint-summary-limit.
+---
+
+*** Key checkpoints before reverting to proof by induction: ***
+
+Subgoal 2'
+(NOT (STRINGP X))
+
+Subgoal 1
+(IMPLIES (NOT (STRINGP X))
+         (EQUAL (MYREV X) (REVAPPEND X NIL)))
+
+*** Key checkpoints under a top-level induction: ***
+
+Subgoal *1/2'
+(IMPLIES (AND (NOT (CONSP X)) (STRINGP X))
+         (NOT (COERCE (REVAPPEND (COERCE X 'LIST) NIL)
+                      'STRING)))
+
+Subgoal *1/1''
+(IMPLIES (AND (CONSP X)
+              (NOT (STRINGP (CDR X)))
+              (EQUAL (MYREV (CDR X))
+                     (REVAPPEND (CDR X) NIL)))
+         (EQUAL (APPEND (MYREV (CDR X)) (LIST (CAR X)))
+                (REVAPPEND (CDR X) (LIST (CAR X)))))
+
+ACL2 Error [Failure] in ( DEFTHM MYREV-IS-REVERSE ...):  See :DOC failure.
+
+******** FAILED ********
+ACL2 !>
+FN-PROFILE-SECTION frames-a
+NIL
+ACL2 !>
+Accumulated Persistence (18841 :tries useful, 1797 :tries not useful)
+
+   :frames   :tries    :ratio  rune
+   --------------------------------
+      8610     2906 (    2.96) (:TYPE-PRESCRIPTION TRUE-LISTP-APPEND)
+   --------------------------------
+      6170     6170 (    1.00) (:TYPE-PRESCRIPTION
+                                    TRUE-LISTP-REVAPPEND-TYPE-PRESCRIPTION)
+   --------------------------------
+      6170     6170 (    1.00) (:TYPE-PRESCRIPTION REVAPPEND)
+   --------------------------------
+      2906     2906 (    1.00) (:TYPE-PRESCRIPTION BINARY-APPEND)
+   --------------------------------
+      1517      716 (    2.11) (:REWRITE DEFAULT-CDR)
+   --------------------------------
+      1484      683 (    2.17) (:REWRITE DEFAULT-CAR)
+   --------------------------------
+       988      127 (    7.77) (:DEFINITION BINARY-APPEND)
+   --------------------------------
+       829      283 (    2.92) (:DEFINITION REVAPPEND)
+   --------------------------------
+       344      344 (    1.00) (:TYPE-PRESCRIPTION MYREV)
+   --------------------------------
+       113       16 (    7.06) (:DEFINITION MYREV)
+   --------------------------------
+       108      108 (    1.00) (:DEFINITION NOT)
+   --------------------------------
+        53       53 (    1.00) (:TYPE-PRESCRIPTION REVERSE)
+   --------------------------------
+        53        4 (   13.25) (:DEFINITION REVERSE)
+   --------------------------------
+        42        6 (    7.00) (:REWRITE DEFAULT-COERCE-3)
+   --------------------------------
+        37       37 (    1.00) (:TYPE-PRESCRIPTION CHARACTER-LISTP)
+   --------------------------------
+        34       34 (    1.00) (:TYPE-PRESCRIPTION EQLABLE-LISTP)
+   --------------------------------
+        31       31 (    1.00) (:TYPE-PRESCRIPTION ATOM-LISTP)
+   --------------------------------
+        12       12 (    1.00) (:REWRITE DEFAULT-COERCE-2)
+   --------------------------------
+        10       10 (    1.00) (:DEFINITION ENDP)
+   --------------------------------
+         6        6 (    1.00) (:REWRITE DEFAULT-COERCE-1)
+   --------------------------------
+         3        3 (    1.00) (:FORWARD-CHAINING
+                                    EQLABLE-LISTP-FORWARD-TO-ATOM-LISTP)
+   --------------------------------
+         3        3 (    1.00) (:FORWARD-CHAINING
+                                    CHARACTER-LISTP-FORWARD-TO-EQLABLE-LISTP)
+   --------------------------------
+         3        3 (    1.00) (:FORWARD-CHAINING CHARACTER-LISTP-COERCE)
+   --------------------------------
+         3        3 (    1.00) (:FORWARD-CHAINING
+                                    ATOM-LISTP-FORWARD-TO-TRUE-LISTP)
+   --------------------------------
+         2        2 (    1.00) (:REWRITE CDR-CONS)
+   --------------------------------
+         2        2 (    1.00) (:REWRITE CAR-CONS)
+   --------------------------------
+NIL
+ACL2 !>
+FN-PROFILE-SECTION useless
+NIL
+ACL2 !>
+Accumulated Persistence (18841 :tries useful, 1797 :tries not useful)
+
+   :frames   :tries    :ratio  rune
+   --------------------------------
+      1517      716 (    2.11) (:REWRITE DEFAULT-CDR)
+   --------------------------------
+      1484      683 (    2.17) (:REWRITE DEFAULT-CAR)
+   --------------------------------
+        42        6 (    7.00) (:REWRITE DEFAULT-COERCE-3)
+   --------------------------------
+        12       12 (    1.00) (:REWRITE DEFAULT-COERCE-2)
+   --------------------------------
+         6        6 (    1.00) (:REWRITE DEFAULT-COERCE-1)
+   --------------------------------
+NIL
+ACL2 !>
+FN-PROFILE-SECTION tries-a
+NIL
+ACL2 !>
+Accumulated Persistence (18841 :tries useful, 1797 :tries not useful)
+
+   :frames   :tries    :ratio  rune
+   --------------------------------
+      6170     6170 (    1.00) (:TYPE-PRESCRIPTION
+                                    TRUE-LISTP-REVAPPEND-TYPE-PRESCRIPTION)
+   --------------------------------
+      6170     6170 (    1.00) (:TYPE-PRESCRIPTION REVAPPEND)
+   --------------------------------
+      8610     2906 (    2.96) (:TYPE-PRESCRIPTION TRUE-LISTP-APPEND)
+   --------------------------------
+      2906     2906 (    1.00) (:TYPE-PRESCRIPTION BINARY-APPEND)
+   --------------------------------
+      1517      716 (    2.11) (:REWRITE DEFAULT-CDR)
+   --------------------------------
+      1484      683 (    2.17) (:REWRITE DEFAULT-CAR)
+   --------------------------------
+       344      344 (    1.00) (:TYPE-PRESCRIPTION MYREV)
+   --------------------------------
+       829      283 (    2.92) (:DEFINITION REVAPPEND)
+   --------------------------------
+       988      127 (    7.77) (:DEFINITION BINARY-APPEND)
+   --------------------------------
+       108      108 (    1.00) (:DEFINITION NOT)
+   --------------------------------
+        53       53 (    1.00) (:TYPE-PRESCRIPTION REVERSE)
+   --------------------------------
+        37       37 (    1.00) (:TYPE-PRESCRIPTION CHARACTER-LISTP)
+   --------------------------------
+        34       34 (    1.00) (:TYPE-PRESCRIPTION EQLABLE-LISTP)
+   --------------------------------
+        31       31 (    1.00) (:TYPE-PRESCRIPTION ATOM-LISTP)
+   --------------------------------
+       113       16 (    7.06) (:DEFINITION MYREV)
+   --------------------------------
+        12       12 (    1.00) (:REWRITE DEFAULT-COERCE-2)
+   --------------------------------
+        10       10 (    1.00) (:DEFINITION ENDP)
+   --------------------------------
+        42        6 (    7.00) (:REWRITE DEFAULT-COERCE-3)
+   --------------------------------
+         6        6 (    1.00) (:REWRITE DEFAULT-COERCE-1)
+   --------------------------------
+        53        4 (   13.25) (:DEFINITION REVERSE)
+   --------------------------------
+         3        3 (    1.00) (:FORWARD-CHAINING
+                                    EQLABLE-LISTP-FORWARD-TO-ATOM-LISTP)
+   --------------------------------
+         3        3 (    1.00) (:FORWARD-CHAINING
+                                    CHARACTER-LISTP-FORWARD-TO-EQLABLE-LISTP)
+   --------------------------------
+         3        3 (    1.00) (:FORWARD-CHAINING CHARACTER-LISTP-COERCE)
+   --------------------------------
+         3        3 (    1.00) (:FORWARD-CHAINING
+                                    ATOM-LISTP-FORWARD-TO-TRUE-LISTP)
+   --------------------------------
+         2        2 (    1.00) (:REWRITE CDR-CONS)
+   --------------------------------
+         2        2 (    1.00) (:REWRITE CAR-CONS)
+   --------------------------------
+NIL
+ACL2 !>NIL
+ACL2 !>

@@ -29,6 +29,7 @@
 ; because TCPCL messages are not self-delimiting (section 8.5).
 
 (in-package "ACL2")
+(include-book "deftransition")
 (include-book "tcpcl-octets")
 (include-book "clock")
 ; clock withdraws fn-clock-observationp under fn-clock-vocabulary and keeps
@@ -1169,7 +1170,11 @@
 ; fn-tcl-next carries), so their lemmas conclude the recognizer of a
 ; constructor and open it in their hints; every other transition goes
 ; through fn-tcl-next and its lemma is fn-tcl-next-preserves-sessionp.
-(local (in-theory (disable fn-tcl-sessionp fn-tcl-next fn-tcl-with-outbound)))
+; The closed theory every transition property below is proved in, named once
+; so a proof cites it instead of depending on where this line happens to sit
+; (books/deftransition.lisp).
+(fn-deftransition-closed fn-tcl-session-closed
+  (fn-tcl-sessionp fn-tcl-next fn-tcl-with-outbound))
 
 (defthm fn-tcl-settle-preserves-sessionp
   (implies (fn-tcl-sessionp (fn-tcl-result-session r))
@@ -1197,9 +1202,16 @@
            (fn-tcl-sessionp (fn-tcl-result-session (fn-tcl-recv-init s m now))))
   :hints (("Goal" :in-theory (e/d (fn-tcl-sessionp) (fn-tcl-negotiate fn-tcl-init-acceptablep)))))
 
-(defthm fn-tcl-refuse-preserves-sessionp
-  (implies (and (fn-tcl-sessionp s) (fn-clock-timep now))
-           (fn-tcl-sessionp (fn-tcl-result-session (fn-tcl-refuse s xfer-id reason now)))))
+; The statement is unchanged; what the macro adds is the theory, pinned here:
+; `fn-tcl-sessionp' and its eleven sub-recognizers stay shut and only the
+; transition opens.  Measured on 2026-09-20: opening the recognizer for a
+; property of this shape produced 1082 subgoals.
+(fn-deftransition fn-tcl-refuse-preserves-sessionp
+  :statement (implies (and (fn-tcl-sessionp s) (fn-clock-timep now))
+                      (fn-tcl-sessionp
+                       (fn-tcl-result-session (fn-tcl-refuse s xfer-id reason now))))
+  :closed (fn-tcl-session-closed)
+  :opens (fn-tcl-refuse))
 
 (defthm fn-tcl-complete-preserves-sessionp
   (implies (and (fn-tcl-sessionp s) (fn-clock-timep now))
