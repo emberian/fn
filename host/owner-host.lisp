@@ -11,8 +11,39 @@
 ; the reply stream and the close verdict are the book's two projections of an
 ; effect list (fn-served-reply-octets, fn-served-closingp), installed in the
 ; globals `fn-owner-output` and `fn-owner-closep`.
+; The served POST path: a read that injected an article leaves its
+; submission queued inside the owner (fn-own-read); fn-owner-take is the
+; writer step (fn-own-take-submission) and exposes the submission in flight
+; (its connection, Message-ID, octets and groups, all produced by
+; books/injection.lisp); the host carries it through the same store events
+; tools/run_store.py `post' reports and feeds the word it observed to
+; fn-owner-outcome (fn-own-outcome), which renders the 240 or 441 for that
+; connection alone.  The submission flag is the third projection of an
+; effect list, `fn-owner-submittedp' (fn-served-submission).  The host never
+; writes a reply octet.
 (in-package "ACL2")
 (include-book "../books/owner")
+
+; The injecting-agent identity this owner uses (books/injection.lisp reads
+; it for Path, Injection-Info and any generated Message-ID).  Configuration,
+; not a decision.
+(defconst *fn-owner-agent*
+  '(102 110 46 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100))
+
+(defun fn-owner-group-octets (names)
+  (declare (xargs :mode :program))
+  (if (consp names)
+      (cons (fn-nntp-string-octets (car names))
+            (fn-owner-group-octets (cdr names)))
+    nil))
+
+; The posting configuration: the groups this store carries, the store's
+; payload bound.  Derived from the store configuration by ACL2.
+(defun fn-owner-post-config ()
+  (declare (xargs :mode :program))
+  (fn-inj-make-config t *fn-owner-agent*
+                      (fn-owner-group-octets *fn-store-groups*)
+                      *fn-store-max-payload*))
 
 (defun fn-owner-state (state)
   (declare (xargs :stobjs state :mode :program))
@@ -22,7 +53,9 @@
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-owner-effects effects state))
          (state (f-put-global 'fn-owner-output (fn-served-reply-octets effects) state))
-         (state (f-put-global 'fn-owner-closep (fn-served-closingp effects) state)))
+         (state (f-put-global 'fn-owner-closep (fn-served-closingp effects) state))
+         (state (f-put-global 'fn-owner-submittedp
+                              (if (fn-served-submission effects) t nil) state)))
     state))
 
 ; The process root.  A decoded observed image opens through
@@ -43,8 +76,10 @@
                  (equal (fn-sf-phase (fn-sn-files (fn-sn-open-state opened)))
                         :recovering))
             (let ((state (f-put-global 'fn-owner
-                                       (fn-own-start (fn-sn-open-state opened)
-                                                     max-conns)
+                                       (fn-own-configure
+                                        (fn-own-start (fn-sn-open-state opened)
+                                                      max-conns)
+                                        (fn-owner-post-config))
                                        state)))
               (value :recovering))
           (value :fault))))))
@@ -157,13 +192,39 @@
          (state (fn-owner-step (list :begin id) state)))
     (value (if (equal (f-get-global 'fn-owner state) before) :refused :begun))))
 
-; The durable outcome of a submission a connection made through the served
-; path (w4/post's POST fold) is fed back through the owner as one event.  The
-; book treats (:outcome ...) as a no-op until that lane lands; the shape of
-; the call is fixed here so the fold has a port to fill.
-(defun fn-owner-outcome (id outcome state)
+; The writer step: fn-own-take-submission moves the oldest queued submission
+; into the durable path when nothing is in flight, no transaction is pending
+; and the store is :ready.  The submission in flight is exposed to the host
+; through four globals read off the injection decision; the host passes them
+; back through fn-owner-prepare exactly as the CLI passes its own.
+(defun fn-owner-take (state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((state (fn-owner-step (list :outcome id outcome) state)))
+  (let* ((before (f-get-global 'fn-owner state))
+         (state (fn-owner-step (list :take) state))
+         (after (f-get-global 'fn-owner state))
+         (sub (fn-own-inflight after)))
+    (if (or (equal after before) (null sub))
+        (value :idle)
+      (let* ((decision (fn-own-sub-decision sub))
+             (state (f-put-global 'fn-owner-submit-id (fn-own-sub-id sub) state))
+             (state (f-put-global 'fn-owner-submit-msgid
+                                  (fn-inj-decision-msgid decision) state))
+             (state (f-put-global 'fn-owner-submit-octets
+                                  (fn-inj-decision-octets decision) state))
+             (state (f-put-global 'fn-owner-submit-groups
+                                  (fn-inj-decision-groups decision) state)))
+        (value :taken)))))
+
+; The word the host observed for the submission in flight (:durable,
+; :refused, :uncertain or anything else) is fed back as one owner event;
+; fn-own-outcome renders the reply (240 only when a completion was consumed
+; after the take, fn-own-durable-reply-names-a-durable-record) for that
+; connection and installs it in fn-owner-output.
+(defun fn-owner-outcome (id word state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((result (fn-own-outcome (f-get-global 'fn-owner state) id word))
+         (state (f-put-global 'fn-owner (cdr result) state))
+         (state (fn-owner-install-effects (car result) state)))
     (value :fed)))
 
 (defun fn-owner-next-txid (state)

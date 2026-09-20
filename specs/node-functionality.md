@@ -345,8 +345,11 @@ event kind once, every port once, mirroring the w2 owner witness and the
 
 ### 2.1 The real system R
 
-R is the running system: `tools/run_reader.py` and `tools/run_store.py` (and
-`run_owner.py` once w2 lands) over `host/*.lisp`, over the certified books,
+R is the running system: `tools/run_owner.py` (the one process that holds a
+store: it pins a committed version per connection, serializes durable posts
+through `fn-own-take-submission` and serves readers and POST on one
+listener, w2 and w5), `tools/run_reader.py` (read-only, answers POST with
+440) and `tools/run_store.py` over `host/*.lisp`, over the certified books,
 over the BPA. Its observable trace is the sequence of port events and the
 effects performed: bytes written to a socket, files written and barriered,
 bundles submitted or deleted, receipt bytes returned. The environment sees
@@ -766,13 +769,23 @@ connection whose pin is not advanced:
                   (fn-ideal-replies id (mv-nth 1 (fn-ideal-run s mine))))))
 ```
 
-Its lemmas are the w2 owner keystones `fn-own-reader-sees-pinned-prefix-replay-after-any-trace`
-and `fn-own-pinned-prefix-survives-any-trace`
-(the owner design, `specs/owner.md`, on the pending owner lane): the session is a
-function of the pinned prefix, and the prefix only grows. Together with 3.5
-this is the whole "we implement the semantics" claim for readers: the reply
-stream of a connection is a function of its own octets and the version it
-pinned, and of nothing else.
+Its lemmas are the owner keystones `fn-own-read-is-served-step-on-pinned-prefix-after-any-trace`,
+`fn-own-reader-sees-pinned-prefix-replay-after-any-trace` and
+`fn-own-pinned-prefix-survives-any-trace` (`books/owner-invariants.lisp`,
+landed with w2 and carried over the served POST events by w5): the session
+is a function of the pinned prefix, and the prefix only grows. For POST the
+owner adds `fn-own-read-touches-only-its-connection` and
+`fn-own-outcome-touches-only-its-connection` (a read and an outcome change
+one connection and answer one connection) and
+`fn-own-durable-reply-names-a-durable-record` (a 240 rendered for a
+connection names a completion consumed after its submission was taken,
+hence a record in the durable history). Together with 3.5 this is the whole
+"we implement the semantics" claim for readers: the reply stream of a
+connection is a function of its own octets and the version it pinned, and of
+nothing else. Open: the interleaving theorem itself over `fn-ideal-run`
+(M7), and that the completion a 240 names is the submission's own article
+rather than a control-channel post consumed in the same window (the host
+serializes; the book records only the ledger mark).
 
 ## 4. Strawman audit
 
@@ -944,8 +957,9 @@ violates A-HOST; keep them, since F_node must be total on those inputs
    `fn-ideal-size-bound`, `posp` charges, the one-per-work bounds for
    receipts and undertakings. Depends on M1; the wildmat and article budgets
    exist.
-7. **M7 isolation** (P1 after w2 lands): `fn-ideal-connection-isolation`
-   from the owner keystones. Depends on M1 and `w2/mutable-owner`.
+7. **M7 isolation** (P1): `fn-ideal-connection-isolation` from the owner
+   keystones. Depends on M1; `w2/mutable-owner` and `w5/owner-post` have
+   landed the owner keystones it lifts.
 8. **M8 A-HOST and A-DURABILITY applied** (P5): `fn-ideal-run` stated with
    `fn-assume-host-events` on the event list; `:reopen` with
    `fn-sf-crash-imagep`; the first theorems in the tree that take an
