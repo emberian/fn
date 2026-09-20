@@ -1187,7 +1187,7 @@ Open at the end of this lane, with the obligation each one needs:
 
 | Item | State | What closes it |
 | --- | --- | --- |
-| `books/owner`, `books/owner-invariants` with the transit port | **uncertified**: persvati `run-20260920T180927Z-a8a4` was still running when the lane's budget ended | resubmit the same two roots with `--closure`; the closure was warm except for 52 books at submit time |
+| `books/owner`, `books/owner-invariants` with the transit port | **uncertified and unreached**: persvati `run-20260920T180927Z-a8a4` published 29 books and failed six. The two root causes are `books/peer-config`'s `fn-cfg-set-peer-delta-is-admissible` (closed on `w6/peering-inbound-2`, not yet on dev) and `books/nntp-effects` having no certificate on dev; `peer-inbound`, `nntp-post`, `served` and `owner` are cascades of those | merge those two fixes, then resubmit the two roots with `--closure` |
 | K6 (`fn-ideal-*` restated over the peer event kinds) | open, not attempted | `books/ideal.lisp` gains `(:open id peer)`, `:feed-octets` and `:tick`; the served-path robustness for peer connections is `fn-peer-step-effects-well-formed` today, which is the per-connection half, not the F_node half |
 | K7 (`fn-cfg-peer-delta-preserves-the-node-and-changes-only-decisions`) | open | `fn-cfg-peer-deltas-change-only-peers` is the value-level half and is certified; the node-level statement needs `fn-node-apply-config` |
 | K8 / `(:principal id)` | reserved, unimplemented | a keyring lookup at accept beside the address match |

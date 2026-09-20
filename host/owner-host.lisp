@@ -325,9 +325,14 @@
                                       (fn-peer-decision-kind d) state))
                  (state (f-put-global 'fn-owner-transit-reason
                                       (fn-peer-decision-reason d) state))
+                 ; (nth 3 args) is fn-peer-scope-groups' answer: the list
+                 ; fn-peer-injection-arguments hands fn-node-prepare as the
+                 ; memberships (generation, msgid, octets, GROUPS, id,
+                 ; subject, evidence, charge).  The generation passed here is
+                 ; 0 because no element read from this list depends on it.
                  (state (f-put-global 'fn-owner-submit-groups
                                       (if (equal (fn-peer-decision-kind d) :want)
-                                          (nth 4 args)
+                                          (nth 3 args)
                                         nil)
                                       state))
                  (state (f-put-global 'fn-owner-transit-evidence
