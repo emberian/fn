@@ -1504,3 +1504,52 @@
                            (fn-frame-decode fn-frame-encode fn-cbor-encode
                             fn-cbor-decode-exact fn-frame-decode-of-encode
                             fn-cbor-uint32-round-trip)))))
+
+; -----------------------------------------------------------------------------
+; Export theory (docs/proof-style.md s2).  Withdrawn under a name: every
+; reader-domain, re-encoding, of-encoding and append fact these proofs induct
+; with -- proof vocabulary, not a claim about the codec -- so a book above
+; re-enables exactly this list in one line.  Withdrawn outright: the readers,
+; the tree and header encoders and decoders, the encodability recognizer, the
+; assembler, the whole-checkpoint codec, the validation predicate, and the
+; frame and selection operations.  Enabled on include: the eleven keystones
+; (the two tree directions, the two checkpoint directions, the four
+; before-node rejections, exact binding, and the frame and selection round
+; trips), the frame kind table, the reassembly lemmas FN-CPC-ASSEMBLE-
+; ACCESSORS and FN-CPC-CHECKPOINTP-REASSEMBLES, and the two result
+; projections the host dispatches on (glue over FN-FRAME-ITEM, which the
+; codecs cluster keeps withdrawn).
+(deftheory fn-checkpoint-codec-vocabulary
+  '(fn-cpc-read-item-reencode fn-cpc-read-item-shrinks fn-cpc-read-item-domain
+    fn-cpc-read-uint-domain fn-cpc-read-bytes-domain
+    fn-cpc-read-uint-reencode fn-cpc-read-bytes-reencode
+    fn-cpc-read-uint-of-encoding fn-cpc-read-bytes-of-encoding
+    fn-cpc-read-uint-of-small-head fn-cpc-read-uint-small-reencode
+    fn-cpc-append-assoc fn-cpc-append-nil fn-cpc-read-bytes-of-magic
+    fn-cpc-encode-value-octets fn-cpc-encode-value-true-listp
+    fn-cpc-decode-tree-rest-octets fn-cpc-octets-string-of-string-octets
+    fn-cpc-decoded-string-is-string fn-cpc-symbol-index-in-range
+    fn-cpc-symbol-item-is-symbol fn-cpc-enum-index-of-symbol-item
+    fn-cpc-encode-tree-octets fn-cpc-encode-tree-true-listp
+    fn-cpc-depth-below-encoding fn-cpc-depth-positive
+    fn-cpc-octet-list-tagp-of-encoding
+    fn-cpc-encode-uints-true-listp fn-cpc-encode-uints-octets
+    fn-cpc-read-uints-domain fn-cpc-read-uints-of-encoding
+    fn-cpc-read-uints-of-encoding-count fn-cpc-read-uints-reencode
+    fn-cpc-encode-strings-true-listp fn-cpc-encode-strings-octets
+    fn-cpc-read-strings-domain fn-cpc-read-strings-of-encoding
+    fn-cpc-read-strings-of-encoding-count fn-cpc-read-strings-reencode
+    fn-cpc-uint-list-item fn-cpc-accepted-is-consp))
+(in-theory (disable fn-checkpoint-codec-vocabulary
+                    fn-cpc-read-item fn-cpc-read-uint fn-cpc-read-bytes
+                    fn-cpc-stringp fn-cpc-treep fn-cpc-depth
+                    fn-cpc-encode-tree fn-cpc-octet-list-tagp
+                    fn-cpc-decode-tree fn-cpc-uint-listp fn-cpc-encode-uints
+                    fn-cpc-read-uints fn-cpc-string-listp
+                    fn-cpc-encode-strings fn-cpc-read-strings
+                    fn-cpc-encodablep fn-cpc-encode-header fn-cpc-encode
+                    fn-cpc-assemble fn-cpc-decode fn-cpc-validp
+                    fn-cpc-frame-protected fn-cpc-frame-encode
+                    fn-cpc-frame-seal fn-cpc-frame-decode fn-cpc-frame-open
+                    fn-cpc-selection-protected fn-cpc-selection-encode
+                    fn-cpc-selection-decode))
