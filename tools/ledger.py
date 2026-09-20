@@ -572,7 +572,12 @@ def defrecord_expansion(form: list) -> list:
         recognizer_formals = options.get(":recognizer-formals")
         leading = ([item for item in recognizer_formals if isinstance(item, Sym)]
                    if isinstance(recognizer_formals, list) else [])
-        events.append([Sym("defun"), Sym(recognizer), leading + [Sym("x")], guard,
+        rguard = options.get(":recognizer-guard", Sym("t"))
+        rverify = options.get(":recognizer-verify-guards", Sym("t"))
+        rdecl = [Sym("declare"), [Sym("xargs"), Sym(":guard"), rguard]]
+        if isinstance(rverify, Sym) and str(rverify) == "nil":
+            rdecl[1] = rdecl[1] + [Sym(":verify-guards"), Sym("nil")]
+        events.append([Sym("defun"), Sym(recognizer), leading + [Sym("x")], rdecl,
                        [Sym("and")] + conjuncts_])
         events.append([Sym("defthm"), Sym(f"{recognizer}-forward-shape"),
                        [Sym("implies"), [Sym(recognizer)] + leading + [Sym("x")],
