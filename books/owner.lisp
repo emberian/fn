@@ -5,7 +5,8 @@
 ; through host/owner-host.lisp (tools/run_owner.py).  It performs no I/O.
 ;
 ; The owner record is
-;   (store view conns next-id max-conns pending ledger clock facts)
+;   (store view conns next-id max-conns pending ledger clock facts
+;    config queue inflight)
 ; where
 ;   store     the actual fn-sn composition (books/store-node.lisp), stepped
 ;             only through fn-snrt-step and fn-sn-finish;
@@ -13,9 +14,10 @@
 ;             generation, the length of the durable record history; archive
 ;             is the acceptance projection of the node at that generation;
 ;   conns     the open connections, each
-;             (id version frontier wire session archive): pinned to one
-;             committed view and carrying the wire framing state and the NNTP
-;             session of one served connection (books/served.lisp);
+;             (id version frontier wire session archive config observation):
+;             pinned to one committed view and carrying the wire framing
+;             state, the POST session, the posting configuration and the one
+;             clock observation of one served connection (books/served.lisp);
 ;   next-id   the next connection identifier;
 ;   max-conns the configured bound on open connections;
 ;   pending   nil or the identifier of the connection that began the one
@@ -25,12 +27,33 @@
 ;             durability keystone reads it and the records carry the claim;
 ;   clock     nil or the latest fn-clock-observationp the host supplied;
 ;   facts     the group-configuration fact records, each stamped with the
-;             clock observation current when it was created.
+;             clock observation current when it was created;
+;   config    the posting configuration (fn-inj-configp, books/injection.lisp)
+;             pinned into every connection at open; nil refuses POST with 440;
+;   queue     the submissions served reads produced and the writer has not
+;             taken, each (id version mark decision), in arrival order;
+;   inflight  nil or the one submission in the durable path: taken from the
+;             queue by fn-own-take-submission when nothing is in flight, the store is
+;             :ready and no transaction is pending; answered by
+;             fn-own-outcome, which is the only owner entry that produces a
+;             POST outcome reply, and produces it for that connection only.
+;
+; A served read that injects an article (the :submit effect of
+; fn-served-step) records a submission against the connection and its pinned
+; version.  The writer step is fn-own-take followed by the store events the
+; host observes (the same :store / :complete events tools/run_store.py `post`
+; reports: fn-node-prepare through fn-sn-finish) and then fn-own-outcome,
+; which turns the host's observed word into the completion
+; fn-served-post-outcome renders: :durable only when a completion was
+; consumed into the ledger after the take (the ledger mark), :refused for a
+; refusal, :uncertain for everything else including a host that claims
+; :durable without a consumed completion.
 ;
 ; The served port is fn-own-read: one socket read of one connection is one
 ; fn-served-step (books/served.lisp) over the connection's wire, session and
 ; PINNED archive, never over the live node.  fn-own-read-step is the
-; per-event law underneath it (one fn-nntp-step against the pinned archive).
+; per-event law underneath it (one fn-served-dispatch, the byte fold's step,
+; against the pinned archive).
 ; The committed view is refreshed only when the store is at an idle phase,
 ; where fn-snt-relation says the live node is the exact replay of the durable
 ; records (books/store-node-traces.lisp).
@@ -54,11 +77,12 @@
 (verify-guards fn-snt-idle-phasep)
 
 ; -----------------------------------------------------------------------------
-; The connection record: (id version frontier wire session archive)
+; The connection record:
+;   (id version frontier wire session archive config observation)
 
 (defun fn-own-conn-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 6)))
+  (and (true-listp x) (equal (len x) 8)))
 (defun fn-own-conn-id (c)
   (declare (xargs :guard t))
   (mbe :logic (car c) :exec (fn-ag-car c)))
@@ -81,29 +105,43 @@
   (declare (xargs :guard t))
   (mbe :logic (car (cdr (cdr (cdr (cdr (cdr c))))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr c))))))))
-(defun fn-own-conn-make (id version frontier wire session archive)
+(defun fn-own-conn-config (c)
   (declare (xargs :guard t))
-  (list id version frontier wire session archive))
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr c)))))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr c)))))))))
+(defun fn-own-conn-observation (c)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr c))))))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr c))))))))))
+(defun fn-own-conn-make (id version frontier wire session archive config observation)
+  (declare (xargs :guard t))
+  (list id version frontier wire session archive config observation))
 
 (defthm fn-own-conn-shapep-of-fn-own-conn-make
-  (fn-own-conn-shapep (fn-own-conn-make id version frontier wire session archive)))
+  (fn-own-conn-shapep (fn-own-conn-make id version frontier wire session archive config observation)))
 (defthm fn-own-conn-id-of-fn-own-conn-make
-  (equal (fn-own-conn-id (fn-own-conn-make id version frontier wire session archive)) id))
+  (equal (fn-own-conn-id (fn-own-conn-make id version frontier wire session archive config observation)) id))
 (defthm fn-own-conn-version-of-fn-own-conn-make
-  (equal (fn-own-conn-version (fn-own-conn-make id version frontier wire session archive))
+  (equal (fn-own-conn-version (fn-own-conn-make id version frontier wire session archive config observation))
          version))
 (defthm fn-own-conn-frontier-of-fn-own-conn-make
-  (equal (fn-own-conn-frontier (fn-own-conn-make id version frontier wire session archive))
+  (equal (fn-own-conn-frontier (fn-own-conn-make id version frontier wire session archive config observation))
          frontier))
 (defthm fn-own-conn-wire-of-fn-own-conn-make
-  (equal (fn-own-conn-wire (fn-own-conn-make id version frontier wire session archive))
+  (equal (fn-own-conn-wire (fn-own-conn-make id version frontier wire session archive config observation))
          wire))
 (defthm fn-own-conn-session-of-fn-own-conn-make
-  (equal (fn-own-conn-session (fn-own-conn-make id version frontier wire session archive))
+  (equal (fn-own-conn-session (fn-own-conn-make id version frontier wire session archive config observation))
          session))
 (defthm fn-own-conn-archive-of-fn-own-conn-make
-  (equal (fn-own-conn-archive (fn-own-conn-make id version frontier wire session archive))
+  (equal (fn-own-conn-archive (fn-own-conn-make id version frontier wire session archive config observation))
          archive))
+(defthm fn-own-conn-config-of-fn-own-conn-make
+  (equal (fn-own-conn-config (fn-own-conn-make id version frontier wire session archive config observation))
+         config))
+(defthm fn-own-conn-observation-of-fn-own-conn-make
+  (equal (fn-own-conn-observation (fn-own-conn-make id version frontier wire session archive config observation))
+         observation))
 (defthm fn-own-conn-shapep-forward-shape
   (implies (fn-own-conn-shapep x) (and (consp x) (true-listp x)))
   :rule-classes :forward-chaining)
@@ -113,7 +151,9 @@
        (implies (fn-own-conn-frontier x) (consp x))
        (implies (fn-own-conn-wire x) (consp x))
        (implies (fn-own-conn-session x) (consp x))
-       (implies (fn-own-conn-archive x) (consp x)))
+       (implies (fn-own-conn-archive x) (consp x))
+       (implies (fn-own-conn-config x) (consp x))
+       (implies (fn-own-conn-observation x) (consp x)))
   :rule-classes ((:forward-chaining :corollary (implies (fn-own-conn-id x) (consp x))
                                     :trigger-terms ((fn-own-conn-id x)))
                  (:forward-chaining :corollary (implies (fn-own-conn-version x) (consp x))
@@ -125,11 +165,62 @@
                  (:forward-chaining :corollary (implies (fn-own-conn-session x) (consp x))
                                     :trigger-terms ((fn-own-conn-session x)))
                  (:forward-chaining :corollary (implies (fn-own-conn-archive x) (consp x))
-                                    :trigger-terms ((fn-own-conn-archive x)))))
+                                    :trigger-terms ((fn-own-conn-archive x)))
+                 (:forward-chaining :corollary (implies (fn-own-conn-config x) (consp x))
+                                    :trigger-terms ((fn-own-conn-config x)))
+                 (:forward-chaining :corollary (implies (fn-own-conn-observation x) (consp x))
+                                    :trigger-terms ((fn-own-conn-observation x)))))
 (in-theory (disable (:d fn-own-conn-shapep) (:d fn-own-conn-id) (:d fn-own-conn-version)
                     (:d fn-own-conn-frontier) (:d fn-own-conn-wire)
                     (:d fn-own-conn-session) (:d fn-own-conn-archive)
+                    (:d fn-own-conn-config) (:d fn-own-conn-observation)
                     (:d fn-own-conn-make)))
+
+; -----------------------------------------------------------------------------
+; The submission record: (id version mark decision).  A served read of
+; connection `id`, pinned at `version`, injected `decision` (an
+; fn-inj-injectedp decision record: the article's octets, Message-ID and
+; groups, books/injection.lisp).  `mark` is nil in the queue and the length
+; of the ledger at the moment fn-own-take-submission moved it into the durable path.
+
+(defun fn-own-sub-shapep (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 4)))
+(defun fn-own-sub-id (x)
+  (declare (xargs :guard t))
+  (mbe :logic (car x) :exec (fn-ag-car x)))
+(defun fn-own-sub-version (x)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
+(defun fn-own-sub-mark (x)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr x))) :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
+(defun fn-own-sub-decision (x)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr (cdr x))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
+(defun fn-own-sub-make (id version mark decision)
+  (declare (xargs :guard t))
+  (list id version mark decision))
+
+(defthm fn-own-sub-shapep-of-fn-own-sub-make
+  (fn-own-sub-shapep (fn-own-sub-make id version mark decision)))
+(defthm fn-own-sub-id-of-fn-own-sub-make
+  (equal (fn-own-sub-id (fn-own-sub-make id version mark decision)) id))
+(defthm fn-own-sub-version-of-fn-own-sub-make
+  (equal (fn-own-sub-version (fn-own-sub-make id version mark decision)) version))
+(defthm fn-own-sub-mark-of-fn-own-sub-make
+  (equal (fn-own-sub-mark (fn-own-sub-make id version mark decision)) mark))
+(defthm fn-own-sub-decision-of-fn-own-sub-make
+  (equal (fn-own-sub-decision (fn-own-sub-make id version mark decision)) decision))
+(defthm fn-own-sub-shapep-forward-shape
+  (implies (fn-own-sub-shapep x) (and (consp x) (true-listp x)))
+  :rule-classes :forward-chaining)
+(defthm fn-own-sub-make-is-consp
+  (consp (fn-own-sub-make id version mark decision))
+  :rule-classes (:rewrite :type-prescription))
+(in-theory (disable (:d fn-own-sub-shapep) (:d fn-own-sub-id) (:d fn-own-sub-version)
+                    (:d fn-own-sub-mark) (:d fn-own-sub-decision) (:d fn-own-sub-make)))
 
 ; -----------------------------------------------------------------------------
 ; The committed view record: (version frontier archive)
@@ -180,7 +271,7 @@
 
 (defun fn-own-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 9)))
+  (and (true-listp x) (equal (len x) 12)))
 (defun fn-own-store (o)
   (declare (xargs :guard t))
   (mbe :logic (car o) :exec (fn-ag-car o)))
@@ -214,39 +305,62 @@
   (declare (xargs :guard t))
   (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr o)))))))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr o)))))))))))
-(defun fn-own-make (store view conns next-id max-conns pending ledger clock facts)
+(defun fn-own-config (o)
   (declare (xargs :guard t))
-  (list store view conns next-id max-conns pending ledger clock facts))
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr o))))))))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr o))))))))))))
+(defun fn-own-queue (o)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr o)))))))))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr o)))))))))))))
+(defun fn-own-inflight (o)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr o))))))))))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr o))))))))))))))
+(defun fn-own-make (store view conns next-id max-conns pending ledger clock facts
+                          config queue inflight)
+  (declare (xargs :guard t))
+  (list store view conns next-id max-conns pending ledger clock facts
+        config queue inflight))
 
 (defthm fn-own-shapep-of-fn-own-make
-  (fn-own-shapep (fn-own-make store view conns next-id max-conns pending ledger clock facts)))
+  (fn-own-shapep (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight)))
 (defthm fn-own-store-of-fn-own-make
-  (equal (fn-own-store (fn-own-make store view conns next-id max-conns pending ledger clock facts))
+  (equal (fn-own-store (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight))
          store))
 (defthm fn-own-view-of-fn-own-make
-  (equal (fn-own-view (fn-own-make store view conns next-id max-conns pending ledger clock facts))
+  (equal (fn-own-view (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight))
          view))
 (defthm fn-own-conns-of-fn-own-make
-  (equal (fn-own-conns (fn-own-make store view conns next-id max-conns pending ledger clock facts))
+  (equal (fn-own-conns (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight))
          conns))
 (defthm fn-own-next-id-of-fn-own-make
-  (equal (fn-own-next-id (fn-own-make store view conns next-id max-conns pending ledger clock facts))
+  (equal (fn-own-next-id (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight))
          next-id))
 (defthm fn-own-max-conns-of-fn-own-make
-  (equal (fn-own-max-conns (fn-own-make store view conns next-id max-conns pending ledger clock facts))
+  (equal (fn-own-max-conns (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight))
          max-conns))
 (defthm fn-own-pending-of-fn-own-make
-  (equal (fn-own-pending (fn-own-make store view conns next-id max-conns pending ledger clock facts))
+  (equal (fn-own-pending (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight))
          pending))
 (defthm fn-own-ledger-of-fn-own-make
-  (equal (fn-own-ledger (fn-own-make store view conns next-id max-conns pending ledger clock facts))
+  (equal (fn-own-ledger (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight))
          ledger))
 (defthm fn-own-clock-of-fn-own-make
-  (equal (fn-own-clock (fn-own-make store view conns next-id max-conns pending ledger clock facts))
+  (equal (fn-own-clock (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight))
          clock))
 (defthm fn-own-facts-of-fn-own-make
-  (equal (fn-own-facts (fn-own-make store view conns next-id max-conns pending ledger clock facts))
+  (equal (fn-own-facts (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight))
          facts))
+(defthm fn-own-config-of-fn-own-make
+  (equal (fn-own-config (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight))
+         config))
+(defthm fn-own-queue-of-fn-own-make
+  (equal (fn-own-queue (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight))
+         queue))
+(defthm fn-own-inflight-of-fn-own-make
+  (equal (fn-own-inflight (fn-own-make store view conns next-id max-conns pending ledger clock facts config queue inflight))
+         inflight))
 (defthm fn-own-shapep-forward-shape
   (implies (fn-own-shapep x) (and (consp x) (true-listp x)))
   :rule-classes :forward-chaining)
@@ -259,7 +373,10 @@
        (implies (fn-own-pending x) (consp x))
        (implies (fn-own-ledger x) (consp x))
        (implies (fn-own-clock x) (consp x))
-       (implies (fn-own-facts x) (consp x)))
+       (implies (fn-own-facts x) (consp x))
+       (implies (fn-own-config x) (consp x))
+       (implies (fn-own-queue x) (consp x))
+       (implies (fn-own-inflight x) (consp x)))
   :rule-classes ((:forward-chaining :corollary (implies (fn-own-store x) (consp x))
                                     :trigger-terms ((fn-own-store x)))
                  (:forward-chaining :corollary (implies (fn-own-view x) (consp x))
@@ -277,10 +394,17 @@
                  (:forward-chaining :corollary (implies (fn-own-clock x) (consp x))
                                     :trigger-terms ((fn-own-clock x)))
                  (:forward-chaining :corollary (implies (fn-own-facts x) (consp x))
-                                    :trigger-terms ((fn-own-facts x)))))
+                                    :trigger-terms ((fn-own-facts x)))
+                 (:forward-chaining :corollary (implies (fn-own-config x) (consp x))
+                                    :trigger-terms ((fn-own-config x)))
+                 (:forward-chaining :corollary (implies (fn-own-queue x) (consp x))
+                                    :trigger-terms ((fn-own-queue x)))
+                 (:forward-chaining :corollary (implies (fn-own-inflight x) (consp x))
+                                    :trigger-terms ((fn-own-inflight x)))))
 (in-theory (disable (:d fn-own-shapep) (:d fn-own-store) (:d fn-own-view) (:d fn-own-conns)
                     (:d fn-own-next-id) (:d fn-own-max-conns) (:d fn-own-pending)
                     (:d fn-own-ledger) (:d fn-own-clock) (:d fn-own-facts)
+                    (:d fn-own-config) (:d fn-own-queue) (:d fn-own-inflight)
                     (:d fn-own-make)))
 
 ; -----------------------------------------------------------------------------
@@ -379,7 +503,8 @@
                                        (fn-node-acceptance (fn-sn-node s)))
                      (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
                      (fn-own-pending o) (fn-own-ledger o) (fn-own-clock o)
-                     (fn-own-facts o))
+                     (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
+                     (fn-own-inflight o))
       o)))
 
 ; The owner of a store.  The host calls this once per process over the state
@@ -391,7 +516,7 @@
                 (fn-own-view-make 0 0 (fn-own-prefix-archive
                                        (fn-sn-groups store) (fn-sn-capacity store)
                                        (fn-sf-records (fn-sn-files store)) 0 0))
-                nil 0 max-conns nil nil nil nil)))
+                nil 0 max-conns nil nil nil nil nil nil nil)))
 
 ; -----------------------------------------------------------------------------
 ; Connections
@@ -420,28 +545,30 @@
         (fn-own-find-conn id (cdr conns)))
     nil))
 
-; The per-connection retained session is bounded by configuration: a session
-; is four fields, its group is one of the configured names or nil, and its
+; The per-connection retained session is bounded by configuration: a POST
+; session is a reader session and one bit (books/nntp-post.lisp), the reader
+; session is four fields, its group is one of the configured names or nil, and its
 ; cursor is nil or inside RFC 3977 section 6's article-number range.  A read
 ; whose result leaves this set closes the connection (fn-own-read).  This is
 ; a four-field check and one member-equal over the configured names, not a
 ; whole-state recognizer.
 (defun fn-own-conn-boundedp (conn groups)
   (declare (xargs :guard t))
-  (let ((session (fn-own-conn-session conn)))
-    (and (fn-nntp-sessionp session)
-         (or (null (fn-nntp-session-group session))
-             (fn-ag-member (fn-nntp-session-group session) groups))
-         (or (null (fn-nntp-session-current session))
-             (and (posp (fn-nntp-session-current session))
-                  (<= (fn-nntp-session-current session)
-                      *fn-nntp-max-article-number*))))))
+  (let ((ps (fn-own-conn-session conn)))
+    (and (fn-post-sessionp ps)
+         (let ((session (fn-post-session-base ps)))
+           (and (or (null (fn-nntp-session-group session))
+                    (fn-ag-member (fn-nntp-session-group session) groups))
+                (or (null (fn-nntp-session-current session))
+                    (and (posp (fn-nntp-session-current session))
+                         (<= (fn-nntp-session-current session)
+                             *fn-nntp-max-article-number*))))))))
 
 (defun fn-own-set-conns (o conns)
   (declare (xargs :guard t))
   (fn-own-make (fn-own-store o) (fn-own-view o) conns (fn-own-next-id o)
                (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
-               (fn-own-clock o) (fn-own-facts o)))
+               (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o)))
 
 ; The wire limits of one connection.  RFC 3977 section 3.1's 512 octets
 ; include the CRLF (books/nntp-syntax.lisp); the body limit is the reader's.
@@ -451,7 +578,10 @@
 ; it (fn-served-open: the one place the whole-archive projection recognizer
 ; runs, once per connection, never per command).  The result is
 ; (effects . owner): the greeting the host writes, and the owner with the
-; connection installed.  A refused open (bound reached) is (nil . o).
+; connection installed.  A refused open (bound reached) is (nil . o).  The
+; posting configuration and the owner's latest clock observation are pinned
+; into the connection here: one observation per connection, read by the
+; served step from the connection and never from the owner.
 (defun fn-own-open (o)
   (declare (xargs :guard t))
   (if (< (len (fn-own-conns o)) (nfix (fn-own-max-conns o)))
@@ -459,63 +589,94 @@
              (archive (fn-own-view-archive view))
              (id (fn-own-next-id o))
              (opened (fn-served-open archive *fn-nntp-max-initial-line-octets*
-                                     *fn-own-body-limit*))
+                                     *fn-own-body-limit* (fn-own-config o)
+                                     (fn-own-clock o)))
              (sconn (fn-served-result-conn opened))
              (conn (fn-own-conn-make id (fn-own-view-version view)
                                      (fn-own-view-frontier view)
                                      (fn-served-conn-wire sconn)
                                      (fn-served-conn-session sconn)
-                                     archive)))
+                                     archive (fn-own-config o) (fn-own-clock o))))
         (cons (fn-served-result-effects opened)
               (fn-own-make (fn-own-store o) view (cons conn (fn-own-conns o))
                            (1+ (nfix id)) (fn-own-max-conns o) (fn-own-pending o)
-                           (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o))))
+                           (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o))))
     (cons nil o)))
 
 ; The served port: one socket read of one connection is one fn-served-step
 ; over the connection's wire, session and pinned archive.  The result is
 ; (effects . owner); the host writes `effects` through fn-served-reply-octets
 ; and fn-served-closingp (host/owner-host.lisp, fn-owner-chunk) and takes no
-; decision of its own.  An unknown connection reads nothing.
+; decision of its own.  An unknown connection reads nothing.  A read whose
+; effects carry a submission (fn-served-submission: the :submit effect of an
+; injected article) records it in the queue against this connection and its
+; pinned version; the effects returned are still exactly the served step's.
+(defun fn-own-enqueue (o sub)
+  (declare (xargs :guard t))
+  (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
+               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
+               (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
+               (fn-ag-append (fn-own-queue o) (list sub)) (fn-own-inflight o)))
+
 (defun fn-own-read (o id octets)
   (declare (xargs :guard t))
   (let ((conn (fn-own-find-conn id (fn-own-conns o))))
     (if conn
         (let* ((result (fn-served-step (fn-served-make-conn (fn-own-conn-wire conn)
                                                             (fn-own-conn-session conn)
-                                                            (fn-own-conn-archive conn))
+                                                            (fn-own-conn-archive conn)
+                                                            (fn-own-conn-config conn)
+                                                            (fn-own-conn-observation conn))
                                        octets))
+               (effects (fn-served-result-effects result))
                (sconn (fn-served-result-conn result))
                (next (fn-own-conn-make (fn-own-conn-id conn)
                                        (fn-own-conn-version conn)
                                        (fn-own-conn-frontier conn)
                                        (fn-served-conn-wire sconn)
                                        (fn-served-conn-session sconn)
-                                       (fn-own-conn-archive conn))))
-          (cons (fn-served-result-effects result)
+                                       (fn-own-conn-archive conn)
+                                       (fn-own-conn-config conn)
+                                       (fn-own-conn-observation conn)))
+               (decision (fn-served-submission effects)))
+          (cons effects
                 (if (fn-own-conn-boundedp next (fn-sn-groups (fn-own-store o)))
-                    (fn-own-set-conns o (fn-own-replace-conn next (fn-own-conns o)))
+                    (let ((o2 (fn-own-set-conns o (fn-own-replace-conn next (fn-own-conns o)))))
+                      (if decision
+                          (fn-own-enqueue o2 (fn-own-sub-make id (fn-own-conn-version conn)
+                                                              nil decision))
+                        o2))
                   (fn-own-set-conns o (fn-own-remove-conn id (fn-own-conns o))))))
       (cons nil o))))
 
 ; The per-event law under the served port: one framed wire event is one
-; fn-nntp-step against the connection's own pinned archive.  fn-served-step
-; is fn-wire-drive followed by fn-served-nntp-run, the fold of fn-nntp-step
-; over the framed events (books/served.lisp); this is that fold's one step
-; with the owner's bookkeeping around it.
+; fn-served-dispatch (fn-nntp-post-step with the article-mode switch,
+; books/served.lisp) against the connection's own pinned archive.
+; fn-served-step is the byte fold that runs fn-served-dispatch on each framed
+; event before the next byte is framed; this is that fold's one step with the
+; owner's bookkeeping around it.  It records no submission: the served port
+; does that once per read.
 (defun fn-own-read-step (o id event)
   (declare (xargs :guard t))
   (let ((conn (fn-own-find-conn id (fn-own-conns o))))
     (if conn
-        (let* ((result (fn-nntp-step (fn-own-conn-session conn)
-                                     (fn-own-conn-archive conn) event))
+        (let* ((result (fn-served-dispatch
+                        (fn-served-make-conn (fn-own-conn-wire conn)
+                                             (fn-own-conn-session conn)
+                                             (fn-own-conn-archive conn)
+                                             (fn-own-conn-config conn)
+                                             (fn-own-conn-observation conn))
+                        event))
+               (sconn (fn-served-result-conn result))
                (next (fn-own-conn-make (fn-own-conn-id conn)
                                        (fn-own-conn-version conn)
                                        (fn-own-conn-frontier conn)
-                                       (fn-own-conn-wire conn)
-                                       (fn-nntp-result-session result)
-                                       (fn-own-conn-archive conn))))
-          (cons (fn-nntp-result-effects result)
+                                       (fn-served-conn-wire sconn)
+                                       (fn-served-conn-session sconn)
+                                       (fn-own-conn-archive conn)
+                                       (fn-own-conn-config conn)
+                                       (fn-own-conn-observation conn))))
+          (cons (fn-served-result-effects result)
                 (if (fn-own-conn-boundedp next (fn-sn-groups (fn-own-store o)))
                     (fn-own-set-conns o (fn-own-replace-conn next (fn-own-conns o)))
                   (fn-own-set-conns o (fn-own-remove-conn id (fn-own-conns o))))))
@@ -532,26 +693,47 @@
         (let* ((view (fn-own-view o))
                (archive (fn-own-view-archive view))
                (old (fn-own-conn-session conn))
-               (session (fn-nntp-set-cursor (fn-nntp-open-session archive)
-                                            (fn-nntp-session-group old)
-                                            (fn-nntp-session-current old)))
+               (base (fn-post-session-base old))
+               (session (fn-post-make-session
+                         (fn-nntp-set-cursor (fn-nntp-open-session archive)
+                                             (fn-nntp-session-group base)
+                                             (fn-nntp-session-current base))
+                         (fn-post-session-awaiting old)))
                (next (fn-own-conn-make (fn-own-conn-id conn)
                                        (fn-own-view-version view)
                                        (fn-own-view-frontier view)
                                        (fn-own-conn-wire conn)
-                                       session archive)))
+                                       session archive
+                                       (fn-own-conn-config conn)
+                                       (fn-own-conn-observation conn))))
           (if (fn-own-conn-boundedp next (fn-sn-groups (fn-own-store o)))
               (fn-own-set-conns o (fn-own-replace-conn next (fn-own-conns o)))
             o))
       o)))
 
+(defun fn-own-remove-subs (id subs)
+  (declare (xargs :guard t))
+  (if (consp subs)
+      (if (equal (fn-own-sub-id (car subs)) id)
+          (fn-own-remove-subs id (cdr subs))
+        (cons (car subs) (fn-own-remove-subs id (cdr subs))))
+    nil))
+
+; Closing drops the connection, its pending transaction, its queued
+; submissions and its submission in flight (a durable path already running
+; for it completes through the store events and is acknowledged to nobody).
 (defun fn-own-close (o id)
   (declare (xargs :guard t))
   (fn-own-make (fn-own-store o) (fn-own-view o)
                (fn-own-remove-conn id (fn-own-conns o))
                (fn-own-next-id o) (fn-own-max-conns o)
                (if (equal (fn-own-pending o) id) nil (fn-own-pending o))
-               (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)))
+               (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
+               (fn-own-remove-subs id (fn-own-queue o))
+               (if (and (fn-own-inflight o)
+                        (equal (fn-own-sub-id (fn-own-inflight o)) id))
+                   nil
+                 (fn-own-inflight o))))
 
 ; -----------------------------------------------------------------------------
 ; Transactions: the fn-sn machine, owned by one connection at a time.
@@ -563,7 +745,7 @@
            (equal (fn-sf-phase (fn-sn-files (fn-own-store o))) :ready))
       (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                    (fn-own-next-id o) (fn-own-max-conns o) id
-                   (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o))
+                   (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o))
     o))
 
 ; Every kernel/node transition of the store, including the resolution
@@ -576,7 +758,7 @@
    (fn-own-make (fn-snrt-step (fn-own-store o) event) (fn-own-view o)
                 (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
                 (fn-own-pending o) (fn-own-ledger o) (fn-own-clock o)
-                (fn-own-facts o))))
+                (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o))))
 
 ; Completion is the actual fn-sn-finish.  It is consumed exactly when the
 ; kernel is at :completing with a bound record; the consumed pair is the
@@ -591,7 +773,8 @@
                       (fn-own-next-id o) (fn-own-max-conns o) nil
                       (fn-ag-append (fn-own-ledger o)
                                     (list (fn-sf-completion (fn-sn-files s))))
-                      (fn-own-clock o) (fn-own-facts o)))
+                      (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
+                      (fn-own-queue o) (fn-own-inflight o)))
       o)))
 
 ; A process restart.  The image (frontier records) is what the platform left
@@ -613,7 +796,8 @@
         (fn-own-refresh
          (fn-own-make (fn-sn-open-state opened) (fn-own-view o) nil
                       (fn-own-next-id o) (fn-own-max-conns o) nil
-                      (fn-own-ledger o) nil (fn-own-facts o)))
+                      (fn-own-ledger o) nil (fn-own-facts o) (fn-own-config o)
+                      nil nil))
       o)))
 
 ; -----------------------------------------------------------------------------
@@ -627,7 +811,8 @@
                     (fn-clock-later-observationp (fn-own-clock o) obs))))
       (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                    (fn-own-next-id o) (fn-own-max-conns o) (fn-own-pending o)
-                   (fn-own-ledger o) obs (fn-own-facts o))
+                   (fn-own-ledger o) obs (fn-own-facts o) (fn-own-config o)
+                   (fn-own-queue o) (fn-own-inflight o))
     o))
 
 ; No fact without a clock observation: creation is refused until the host
@@ -641,14 +826,92 @@
                    (fn-own-next-id o) (fn-own-max-conns o) (fn-own-pending o)
                    (fn-own-ledger o) (fn-own-clock o)
                    (fn-ag-append (fn-own-facts o)
-                                 (list (fn-own-group-fact-make name (fn-own-clock o)))))
+                                 (list (fn-own-group-fact-make name (fn-own-clock o))))
+                   (fn-own-config o) (fn-own-queue o) (fn-own-inflight o))
     o))
 
 ; -----------------------------------------------------------------------------
+; The served POST path: configuration, the writer step and the outcome.
+
+; The posting configuration new connections pin.  Open connections keep the
+; configuration they were opened with.
+(defun fn-own-configure (o config)
+  (declare (xargs :guard t))
+  (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
+               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
+               (fn-own-clock o) (fn-own-facts o) config (fn-own-queue o)
+               (fn-own-inflight o)))
+
+; The writer step takes the oldest queued submission into the durable path:
+; only when nothing is in flight, no transaction is pending and the store is
+; :ready, so at most one submission is in the durable path at a time and it
+; owns the transaction (pending) exactly as a control-channel post would.
+; The mark is the ledger length now; fn-own-outcome reads it.
+(defun fn-own-take-submission (o)
+  (declare (xargs :guard t))
+  (if (and (null (fn-own-inflight o))
+           (consp (fn-own-queue o))
+           (null (fn-own-pending o))
+           (equal (fn-sf-phase (fn-sn-files (fn-own-store o))) :ready))
+      (let ((sub (car (fn-own-queue o))))
+        (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
+                     (fn-own-next-id o) (fn-own-max-conns o) (fn-own-sub-id sub)
+                     (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                     (fn-own-config o) (cdr (fn-own-queue o))
+                     (fn-own-sub-make (fn-own-sub-id sub) (fn-own-sub-version sub)
+                                      (len (fn-own-ledger o))
+                                      (fn-own-sub-decision sub))))
+    o))
+
+; The completion the owner reports for the submission in flight, from the
+; word the host observed.  :durable needs a completion consumed into the
+; ledger after the take (fn-own-complete is the only ledger writer, and it
+; consumes the actual fn-sn-finish, fn-own-completion-consumed-once); a host
+; word of :durable without one is :uncertain, never 240.  :refused is the
+; host's typed refusal (nothing was staged, or the reservation was consumed
+; by a refusal); everything else is :uncertain.
+(defun fn-own-outcome-completion (o word)
+  (declare (xargs :guard t))
+  (let ((sub (fn-own-inflight o)))
+    (cond ((and (equal word :durable)
+                sub
+                (natp (fn-own-sub-mark sub))
+                (< (fn-own-sub-mark sub) (len (fn-own-ledger o))))
+           :durable)
+          ((equal word :refused) :refused)
+          (t :uncertain))))
+
+; The outcome reaches exactly the connection whose submission is in flight:
+; the reply is fn-served-post-outcome over that connection's served state
+; (fn-nntp-post-outcome's line, the only place 240 exists), the connection
+; itself is unchanged (fn-served-post-outcome returns it as it was), and
+; every other connection is untouched.  The result is (effects . owner);
+; with nothing in flight for `id`, or an unknown connection, it is (nil . o).
+(defun fn-own-outcome (o id word)
+  (declare (xargs :guard t))
+  (let ((conn (fn-own-find-conn id (fn-own-conns o)))
+        (sub (fn-own-inflight o)))
+    (if (and conn sub (equal (fn-own-sub-id sub) id))
+        (cons (fn-served-result-effects
+               (fn-served-post-outcome
+                (fn-served-make-conn (fn-own-conn-wire conn)
+                                     (fn-own-conn-session conn)
+                                     (fn-own-conn-archive conn)
+                                     (fn-own-conn-config conn)
+                                     (fn-own-conn-observation conn))
+                (fn-own-outcome-completion o word)))
+              (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
+                           (fn-own-next-id o) (fn-own-max-conns o)
+                           (if (equal (fn-own-pending o) id) nil (fn-own-pending o))
+                           (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                           (fn-own-config o) (fn-own-queue o) nil))
+      (cons nil o))))
+
+; -----------------------------------------------------------------------------
 ; The owner event machine.  (:octets id octets) is the served port; (:read id
-; event) is its per-event law.  (:outcome id outcome) is reserved for the
-; POST fold (w4/post): the host feeds the durable outcome of a submission back
-; through this event; until that lane lands it is a no-op here.
+; event) is its per-event law; (:take) is the writer step; (:outcome id word)
+; feeds the durable outcome of the submission in flight back through the
+; book, which renders the reply (fn-own-outcome).
 
 (defun fn-own-step (o event)
   (declare (xargs :guard (fn-sn-statep (fn-own-store o)) :verify-guards nil))
@@ -664,6 +927,9 @@
     (:reopen (fn-own-reopen o (cadr event) (caddr event)))
     (:observe (fn-own-observe o (cadr event)))
     (:declare-group (fn-own-declare-group o (cadr event)))
+    (:configure (fn-own-configure o (cadr event)))
+    (:take (fn-own-take-submission o))
+    (:outcome (cdr (fn-own-outcome o (cadr event) (caddr event))))
     (otherwise o)))
 
 (defun fn-own-run (o events)
@@ -693,15 +959,16 @@
 ; Export theory.  What leaves enabled: the record lemmas and forward shape
 ; facts above, and the list-recursive vocabulary proofs induct on
 ; (fn-own-take, fn-own-{find,replace,remove}-conn, fn-own-facts-okp,
-; fn-own-replay-facts, fn-own-min-pinned).  Withdrawn: the recognizer of a
+; fn-own-replay-facts, fn-own-remove-subs, fn-own-min-pinned).  Withdrawn: the recognizer of a
 ; fact, the glue predicates, the view projection, the transitions and the
 ; machine; owner-invariants opens them locally.
 
 (deftheory fn-own-vocabulary
   '(fn-own-group-factp fn-own-prefix-archive fn-own-store-idlep fn-own-refresh
-    fn-own-start fn-own-conn-boundedp fn-own-set-conns fn-own-open fn-own-read
-    fn-own-read-step fn-own-advance fn-own-close fn-own-begin fn-own-store-step
-    fn-own-complete fn-own-reopen fn-own-observe fn-own-declare-group
-    fn-own-step fn-own-run fn-own-reclaim-floor))
+    fn-own-start fn-own-conn-boundedp fn-own-set-conns fn-own-open fn-own-enqueue
+    fn-own-read fn-own-read-step fn-own-advance fn-own-close fn-own-begin
+    fn-own-store-step fn-own-complete fn-own-reopen fn-own-observe
+    fn-own-declare-group fn-own-configure fn-own-take-submission fn-own-outcome-completion
+    fn-own-outcome fn-own-step fn-own-run fn-own-reclaim-floor))
 
 (in-theory (disable fn-own-vocabulary))
