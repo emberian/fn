@@ -18,26 +18,18 @@
 ; events (2026-09-19 split of books/nntp.lisp).
 (local (in-theory (enable fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary fn-nntp-projection-vocabulary fn-nntp-responses-vocabulary fn-nntp-vocabulary)))
 
-; fn-article-nonempty-true-list-is-consp (books/article.lisp) is a consp-
-; backchaining rewrite rule that its book exports enabled.  With the session
-; record open here, every (cdr session) that default-cdr inspects asks
-; (consp session), the rule turns that into (true-listp session), and every
-; *-true-listp rule in the closure then opens its recognizer on a bare
-; variable: fn-nntp-article-response-keeps-projection ran past 1800 s that
-; way (certify-20260919T233733Z-91115; accumulated-persistence puts 921k of
-; its frames under this one rule).  The five true-listp-backchaining rules
-; below are the limbs of the same fan-out (books/article.lisp and
-; books/wildmat.lisp export them enabled): each (true-listp X) they meet opens
-; its recursive recognizer on X, and fn-nntp-next-or-last-preserves-
-; consistent-session ran past 40M prover steps that way with or without the
-; consp rule.  All six withdrawn here by name; the owning books should
-; withdraw them at their exports (docs/proof-style.md section 8).
-(local (in-theory (disable fn-article-nonempty-true-list-is-consp
-                           fn-article-field-list-true-listp
-                           fn-article-header-bytes-true-listp
-                           fn-article-octet-list-true-listp
-                           fn-wildmat-guard-items-p-true-listp
-                           fn-wildmat-guard-octet-listp-true-listp)))
+; The consp- and true-listp-backchaining rules that made this book's proofs
+; fan out (921k of 921k frames of fn-nntp-article-response-keeps-projection
+; sat under fn-article-nonempty-true-list-is-consp, and
+; fn-nntp-next-or-last-preserves-consistent-session ran past 40M prover steps
+; under the five *-true-listp limbs) are no longer enabled on include:
+; books/article.lisp withdraws them as fn-article-guard-backchaining and
+; books/wildmat.lisp as fn-wildmat-guard-backchaining, and each recognizer's
+; shape fact is exported back as a :forward-chaining rule instead
+; (fn-article-header-bytes-p-forward-shape and its siblings,
+; docs/proof-style.md section 1).  The book-wide withdrawal that used to
+; stand here is therefore gone; the one proof that genuinely wants the consp
+; rule enables it in its own hint, below.
 
 ; -----------------------------------------------------------------------------
 ; The session relation

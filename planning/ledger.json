@@ -223,7 +223,7 @@
     "books": 217,
     "books_in_root_closure": 216,
     "roots": 216,
-    "theorems": 3694,
+    "theorems": 3699,
     "functions": 2793,
     "assert_events": 3839,
     "must_fails": 59,
@@ -235,9 +235,9 @@
       "default-unguarded": 448
     },
     "suspect_theorems": 30,
-    "export_hygiene_warnings": 63,
+    "export_hygiene_warnings": 62,
     "teeth_form_warnings": 0,
-    "include_hygiene_warnings": 96
+    "include_hygiene_warnings": 87
   },
   "books": [
     {
@@ -645,7 +645,7 @@
       "book": "books/article.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 21,
+      "theorems": 24,
       "functions": 45,
       "guards": {
         "verified": 45,
@@ -3856,7 +3856,7 @@
       "book": "books/wildmat.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 11,
+      "theorems": 13,
       "functions": 54,
       "guards": {
         "verified": 54,
@@ -6019,7 +6019,7 @@
     {
       "theorem": "fn-nntp-block-scan-start-without-a-dot",
       "book": "books/nntp-effects.lisp",
-      "line": 453,
+      "line": 447,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-nntp-block-scan and the conclusion is that branch's value"
       ]
@@ -6518,12 +6518,6 @@
         "book": "books/wildmat-work.lisp",
         "line": 369,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
-      },
-      {
-        "theorem": "fn-wildmat-guard-pattern-row-length",
-        "book": "books/wildmat.lisp",
-        "line": 462,
-        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       }
     ],
     "teeth_form": [],
@@ -6533,27 +6527,6 @@
         "line": 16,
         "include": "acceptance-alloc",
         "included": "books/acceptance-alloc.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/article-fields.lisp",
-        "line": 12,
-        "include": "article",
-        "included": "books/article.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/article-invariants.lisp",
-        "line": 4,
-        "include": "article",
-        "included": "books/article.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/article-properties.lisp",
-        "line": 9,
-        "include": "article",
-        "included": "books/article.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -6795,13 +6768,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/frame-fields.lisp",
-        "line": 9,
-        "include": "wildmat",
-        "included": "books/wildmat.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "books/injection.lisp",
         "line": 43,
         "include": "article-fields",
@@ -6813,13 +6779,6 @@
         "line": 7,
         "include": "article-fields",
         "included": "books/article-fields.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/nntp-syntax.lisp",
-        "line": 11,
-        "include": "wildmat",
-        "included": "books/wildmat.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -6942,31 +6901,10 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/wildmat-matcher-invariants.lisp",
-        "line": 3,
-        "include": "wildmat",
-        "included": "books/wildmat.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "books/wildmat-parser-invariants.lisp",
         "line": 10,
         "include": "wildmat-utf8-invariants",
         "included": "books/wildmat-utf8-invariants.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/wildmat-utf8-invariants.lisp",
-        "line": 13,
-        "include": "wildmat",
-        "included": "books/wildmat.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/wildmat-work.lisp",
-        "line": 11,
-        "include": "wildmat",
-        "included": "books/wildmat.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -7191,13 +7129,6 @@
         "line": 12,
         "include": "../../books/wildmat-matcher-invariants",
         "included": "books/wildmat-matcher-invariants.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/wildmat-tests.lisp",
-        "line": 3,
-        "include": "../../books/wildmat",
-        "included": "books/wildmat.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       }
     ]
