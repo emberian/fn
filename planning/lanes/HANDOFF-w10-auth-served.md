@@ -14,7 +14,47 @@ Branch `w10/auth-served`, worktree `build/lanes/w10-auth-served`, from dev
 
 ## Certification table
 
-**Nothing in this lane is CERTIFIED.** Every ACL2 result below is an
+**Update, and it is the headline: the served chain CERTIFIES.** Farm run
+`run-20260920T202606Z-a8dd` on persvati (`--jobs 6`, `--remote-root
+/home/ember/fn-lanes/w10-auth-served`, `--affected-by books/nntp-auth.lisp
+--closure`, installed 39 kept 79 uncached 146) produced real certificates
+for **`books/peer-inbound`, `books/nntp-auth`, `books/served`,
+`books/owner`, `books/nntp-auth-invariants`, `books/ideal` and
+`tests/acl2/nntp-auth-tests`**, plus `sha256`, `crypto-seam`,
+`crypto-attach`, `auth-secret` and `nntp-post`.  That is the first verdict
+above `books/nntp-effects` since the peer port merged.  It failed exactly
+four roots, all of them this lane's arity ripple:
+`books/owner-invariants`, `books/owner-config`,
+`tests/acl2/served-tests`, `tests/acl2/owner-tests`.  Commits `2152437`
+and later chase those; the state at the end of the lane is below.
+
+**`books/owner-invariants` is still open, and it is the lane's one
+unfinished root.** It went from failing at its FIRST served form to
+failing at `fn-own-advanced-session-is-bounded`, roughly forty forms in,
+with three dependents behind it (`fn-own-advance-repins-the-connection`,
+`fn-own-durable-outcome-repins-the-poster`,
+`fn-own-durable-reply-names-a-durable-record`).  The remaining checkpoint
+wants `fn-post-sessionp` of the post session the re-pin builds; the
+wrapper-preservation lemmas either side of it
+(`fn-own-peer-with-base-is-a-session`,
+`fn-own-auth-with-base-is-a-session`,
+`fn-own-auth-sessionp-forward-bases`) are proved and in place.
+`books/owner-config` and `tests/acl2/owner-tests` are cascades of it.
+
+**The two real defects that chase uncovered, both fixed here**:
+`fn-own-advance` rebuilt the connection's session as a BARE post session,
+throwing away the peer wrapper (and, after this lane, the login); the
+rebuilt connection then failed `fn-own-conn-boundedp` and the advance was
+silently refused, so **ADVANCE has been a no-op since the peer port**.
+And `fn-own-open-peer-preserves-relation` did not exist, so
+`fn-own-step-preserves-relation`'s `:open-peer` arm had nothing to use.
+
+The table below is the LOCAL admission record, which is what the lane had
+before the farm run and is still the fastest way to re-check a single
+book.
+
+**The rest of this section was written before the farm run and is kept
+because the reasoning still applies to a laptop `certify-book`.** Every ACL2 result below is an
 ADMISSION: the book's own source processed by `tools/acl2 --timeout <n>`
 under `(set-ld-error-action :continue)` with a 2,000,000-step prover limit,
 ACL2 8.7 on this laptop, 2026-09-20. An admission proves every form in the

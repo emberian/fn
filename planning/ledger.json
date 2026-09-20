@@ -270,7 +270,7 @@
     "books": 264,
     "books_in_root_closure": 263,
     "roots": 263,
-    "theorems": 5122,
+    "theorems": 5128,
     "functions": 3668,
     "assert_events": 4895,
     "must_fails": 59,
@@ -3020,7 +3020,7 @@
       "book": "books/owner-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 95,
+      "theorems": 101,
       "functions": 7,
       "guards": {
         "verified": 0,
