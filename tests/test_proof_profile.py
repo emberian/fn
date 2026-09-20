@@ -99,6 +99,20 @@ class Report(unittest.TestCase):
     def test_report_says_so_when_there_is_none(self):
         self.assertIn("CHECKPOINT  none printed", proof_profile.report(CLOSED))
 
+    def test_a_step_limit_cut_is_not_reported_as_a_closed_form(self):
+        # Measured on 2026-09-20 (w10/dtn-3): a form needing about 10M prover
+        # steps ran under the 4M default, ACL2 aborted it with the step-limit
+        # error and printed NO key checkpoint, and the report read "the form
+        # closed, or it was cut".  A cut is not a result and must say so.
+        cut = CLOSED.replace(
+            "Summary",
+            "ACL2 Error [Step-limit] in ( DEFTHM FOO ...):  The prover has\n"
+            "been instructed to abort.\n\nSummary", 1)
+        text = proof_profile.report(cut)
+        self.assertIn("CUT BY THE STEP LIMIT", text)
+        self.assertNotIn("the form closed", text)
+        self.assertIn("--steps", text)
+
     def test_top_is_respected(self):
         text = proof_profile.report(CLOSED, top=2)
         head = text.split("top 2 by frames, all")[1].split("top 2 by tries")[0]

@@ -281,18 +281,18 @@
     "books": 275,
     "books_in_root_closure": 274,
     "roots": 274,
-    "theorems": 5550,
-    "functions": 3926,
-    "assert_events": 5305,
+    "theorems": 5547,
+    "functions": 3928,
+    "assert_events": 5310,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
       "verified": 1458,
       "declared-off": 190,
-      "default-guarded": 1782,
-      "default-unguarded": 496
+      "default-guarded": 1783,
+      "default-unguarded": 497
     },
-    "suspect_theorems": 45,
+    "suspect_theorems": 46,
     "export_hygiene_warnings": 72,
     "enabled_projection_warnings": 26,
     "teeth_form_warnings": 0,
@@ -810,13 +810,13 @@
       "book": "books/bp-bundle-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 28,
-      "functions": 0,
+      "theorems": 32,
+      "functions": 1,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 0
+        "default-unguarded": 1
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -829,7 +829,8 @@
       ],
       "system_includes": [],
       "suspects": [
-        "fn-bpb-decode-refuses-overlong-input"
+        "fn-bpb-decode-refuses-overlong-input",
+        "fn-bpbi-bpp-encode-unfolds"
       ],
       "read_error": null
     },
@@ -3525,7 +3526,7 @@
       "book": "books/provenance.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 75,
+      "theorems": 68,
       "functions": 35,
       "guards": {
         "verified": 12,
@@ -5311,17 +5312,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 0,
+      "functions": 1,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 0,
+        "default-guarded": 1,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 45,
+      "assert_events": 50,
       "must_fails": 0,
-      "defconsts": 12,
+      "defconsts": 14,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7564,9 +7565,17 @@
     {
       "theorem": "fn-bpb-decode-refuses-overlong-input",
       "book": "books/bp-bundle-invariants.lisp",
-      "line": 339,
+      "line": 472,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-bpb-decode and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-bpbi-bpp-encode-unfolds",
+      "book": "books/bp-bundle-invariants.lisp",
+      "line": 272,
+      "reasons": [
+        "definition-restated: the conclusion is the body of fn-bpp-encode"
       ]
     },
     {
@@ -7768,7 +7777,7 @@
     {
       "theorem": "fn-prov-wire-of-a-string-is-itself-by-definition",
       "book": "books/provenance-codec.lisp",
-      "line": 543,
+      "line": 561,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-prov-wire and the conclusion is that branch's value"
       ]
