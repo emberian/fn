@@ -75,6 +75,20 @@ ssh persvati 'cd /home/ember/fn-lanes/w8-tcpcl-native \
   && python3 tools/tcpcl_lab.py --image build/fn-host --work /tmp/tcpcl-lab'
 ```
 
+**Checked again 2026-09-20 by w6/tcpcl-tests, and the dependency still holds.**
+`python3 tools/certs.py install` in `/home/ember/fn-lanes/w8-tcpcl-native`
+brought that tree to exactly **60 book certificates** and left
+`books/served`, `books/nntp-post` and `books/nntp-effects` uncached: the box's
+cache holds no pair for any of the three at that tree's source text. The build
+list cannot route around them — `host/native/build.lisp` names `books/served`
+and `books/nntp-effects` in its own `include-book` list (lines 23 and 24) and
+`books/nntp-post` arrives under `served` — so the image is blocked on those
+three roots certifying *in that directory*, not on anything in this layer.
+`books/nntp-effects` is `w6/nntp-effects`'s open work on dev; `books/served`
+and `books/nntp-post` exceeded the runner's 1800 s cap here and want a quiet
+box and a raised `FN_ACL2_TIMEOUT_SECONDS`. Until then `tools/tcpcl_lab.py`
+has no image to run and the five scenarios stay unrun.
+
 What did run: the raw file compiles clean against stubs for io.lisp's surface
 (35 forms, no caught warning), `host/tcpcl-host.lisp` reads as ACL2 (22
 forms), `make check` is green, and `tests/test_twonode_gate.py` passes 19/19

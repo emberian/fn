@@ -42,7 +42,40 @@ Spec: [specs/tcpcl.md](../../specs/tcpcl.md). Design: bp-design.md §2.
 | `books/tcpcl-octets` | certified | `build/acl2/certify-20260920T013843Z-86679` | 125.0 s |
 | `books/tcpcl-session` | certified | `build/acl2/certify-20260920T021558Z-83845` | 26.8 s |
 | `books/tcpcl-invariants` | certified | `build/acl2/certify-20260920T052819Z-3093104` (persvati) | 671.8 s |
-| `tests/acl2/tcpcl-tests` | OPEN: certify-book FAILED in 0.2 s (the manifest records exit 0 for that root, which is wrong) at the golden vector `(assert-event (equal (fn-tcl-encode *t-seg-1*) ...))`, a wave-4 XFER_SEGMENT vector well before anything C4 added. The book has never certified; the two new C4 witnesses are written and unrun | `build/acl2/certify-20260920T052819Z-3093104` (persvati) | 0.2 s (no certificate) |
+| `tests/acl2/tcpcl-tests` | certified (w6/tcpcl-tests, every witness run, the two C4 ones included) | `build/acl2/certify-20260920T175604Z-1409642` (persvati) | 0.6 s |
+
+Two defects stood between the book and its certificate, neither in the books:
+the wave-4 XFER_SEGMENT golden vector (below), and the final partition tooth
+`(fn-tcl-drive 42 *t-seg-octets* 0)`, which evaluates the `:logic` body
+outside `fn-tcl-drive`'s guard and so must be made under
+`with-guard-checking :none` (docs/proof-style.md §5) — it was not, and the
+guard violation ended the certification on the book's last form.  The run
+before it (`certify-20260920T173807Z-1231440`) shows the shape: every other
+assert-event `:PASSED`, including `*t-b-term*` and `*t-b-inter-both*`.  The
+manifest recording exit 0 for the failed root was a runner defect and is
+fixed: the driver ends in `(quit)`, which exits 0 whether or not the inner
+`ld` returned on a failed `certify-book`, so a per-book verdict
+(`book_results`) is now computed from the book's own log and the run's pass
+rule conjoins it (`tools/certify_books.py`, `tests/test_certify_runner.py`).
+
+## The golden vector, decided by the RFC (w6/tcpcl-tests, 2026-09-20)
+
+The encoder was right and the wave-4 vector was wrong. Derived field by field
+from RFC 9174 before either was run: figure 22 (§5.2.2) gives message type
+0x01, flags U8, transfer ID U64, then — START only — transfer extension items
+length U32 and the items, then data length U64 and the data; figure 25
+(§5.2.5) gives each item as **Item Flags (U8), Item Type (U16), Item Length
+(U16), Item Value**, in that order; §8.4 table 13 gives the Transfer Length
+Extension the code 0x0001 and §5.2.5.1 its U64 value.  So `*t-seg-1*` is
+`1 2 | 0×8 | 0 0 0 13 | 0 | 0 1 | 0 8 | 0 0 0 0 0 0 0 5 | 0 0 0 0 0 0 0 3 |
+10 20 30`, 38 octets.  The wave-4 vector had the item header as `0 1 0 0 8`,
+which puts the type before the flags — figure 25 puts Item Flags first.
+`fn-tcl-encode-items` emits flags, then `fn-tcl-be-bytes` of the type, then of
+the value length: RFC order.  The vector is corrected in place with the
+derivation as its comment; no book changed.  Every other golden vector in the
+book was re-derived the same way and is right (contact header §4.2, SESS_INIT
+§4.6, KEEPALIVE §5.1.1, MSG_REJECT §5.1.2, XFER_ACK §5.2.3, XFER_REFUSE
+§5.2.4, SESS_TERM §6.1), including `*t-ack-raw*`, the canonicality vector.
 
 The RFC clause matrix of specs/tcpcl.md section 5: every "implemented" entry
 that names a session function is now backed by that function's certified
