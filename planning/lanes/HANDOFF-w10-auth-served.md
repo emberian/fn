@@ -12,6 +12,44 @@ Branch `w10/auth-served`, worktree `build/lanes/w10-auth-served`, from dev
 | `dfd2b55` | the host side, `tests/test_auth.py`, the live evidence |
 | `307e007` | `books/nntp-auth-invariants`, the teeth, the registries, the audit |
 
+## Post-merge state (read this first)
+
+The lane merged dev at `f730c24` after the farm runs below. dev had landed
+the inbound lane's own repair of `books/peer-inbound.lisp` (better than
+this lane's: `:rule-classes nil` facts cited by `:use`, and
+`fn-peer-session-consistentp-forward` exported as a strict superset of
+this lane's bridge), the clock seam's arity fixes in `books/owner.lisp`,
+the owner's thirteenth field and six feed step arms. The merge commit
+records every resolution and why.
+
+**The post-merge tree is NOT certified and the laptop cannot certify it.**
+`tools/certs.py install` put pairs beside `books/node`, `books/config` and
+others whose `book-hash` no longer matches the merged source, so
+`certify-book` refuses at the first `include-book` with
+`book-hash-mismatch`. That is a cache fault, not a proof fault, and the
+cure is the farm, which installs the box's own consistent cache first. The
+post-merge farm submission was still mirroring when this lane ended.
+
+**What IS certified post-merge, locally**: `books/nntp-auth-invariants`
+and `tests/acl2/nntp-auth-tests` (120 assertions), because their closures
+happened to hold consistent pairs.
+
+**What the pre-merge farm proved, and it still stands as evidence about
+that revision**: run `run-20260920T202606Z-a8dd` certified
+`books/peer-inbound`, `books/nntp-auth`, `books/served`, `books/owner`,
+`books/nntp-auth-invariants`, `books/ideal` and
+`tests/acl2/nntp-auth-tests`. Run `run-20260920T205732Z-45b6`, after the
+served-tests fix, left only `books/owner-invariants`,
+`books/owner-config` and `tests/acl2/owner-tests` failing --
+`tests/acl2/served-tests` passed.
+
+**The next lane's first action** is one farm run over the closure on the
+merged tree:
+
+    python3 tools/farm.py submit persvati --jobs 6 \
+        --remote-root /home/ember/fn-lanes/w10-auth-served \
+        --affected-by books/nntp-auth.lisp --closure
+
 ## Certification table
 
 **Update, and it is the headline: the served chain CERTIFIES.** Farm run
