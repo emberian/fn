@@ -771,13 +771,26 @@
     (if conn
         (let* ((view (fn-own-view o))
                (archive (fn-own-view-archive view))
+               ; The served session is three deep -- auth over peer over
+               ; the POST-composed reader -- and the re-pin replaces only
+               ; the innermost one.  Rebuilding it as a bare post session
+               ; (what this did) threw away the peer half and, since this
+               ; lane, the login as well: the rebuilt connection then
+               ; failed fn-own-conn-boundedp and the advance was silently
+               ; refused, so ADVANCE has been a no-op since the peer port.
                (old (fn-own-conn-session conn))
-               (base (fn-post-session-base old))
-               (session (fn-post-make-session
-                         (fn-nntp-set-cursor (fn-nntp-open-session archive)
-                                             (fn-nntp-session-group base)
-                                             (fn-nntp-session-current base))
-                         (fn-post-session-awaiting old)))
+               (pold (fn-auth-session-base old))
+               (told (fn-peer-session-base pold))
+               (base (fn-post-session-base told))
+               (session (fn-auth-with-base
+                         old
+                         (fn-peer-with-base
+                          pold
+                          (fn-post-make-session
+                           (fn-nntp-set-cursor (fn-nntp-open-session archive)
+                                               (fn-nntp-session-group base)
+                                               (fn-nntp-session-current base))
+                           (fn-post-session-awaiting told)))))
                (next (fn-own-conn-make (fn-own-conn-id conn)
                                        (fn-own-view-version view)
                                        (fn-own-view-frontier view)
