@@ -63,7 +63,11 @@
 ; today; this book's config arm is that same list, so the two agree by
 ; definition and the equality is named for what it is.
 (defthm fn-cstr-config-jrecs-is-fn-cnode-config-jrecs-by-definition
-  (equal (fn-cstr-config-jrecs rs) (fn-cnode-config-jrecs rs)))
+  (equal (fn-cstr-config-jrecs rs) (fn-cnode-config-jrecs rs))
+  ; A documentation equality, not a rewrite: as a rule it would turn every
+  ; goal about this book's own arm into one about a withdrawn definition.
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable (:d fn-cnode-config-jrecs)))))
 
 ; -----------------------------------------------------------------------------
 ; The merge
@@ -140,10 +144,19 @@
       (cons (nfix (fn-jrec-sequence (car js))) (fn-cstr-jrec-seqs (cdr js)))
     nil))
 
-(defun fn-cstr-nondecreasingp (ns)
+(defun fn-cstr-seqs-at-least (n ns)
   (declare (xargs :guard t))
-  (if (and (consp ns) (consp (cdr ns)))
-      (and (<= (nfix (car ns)) (nfix (car (cdr ns))))
+  (if (consp ns)
+      (and (<= (nfix n) (nfix (car ns)))
+           (fn-cstr-seqs-at-least n (cdr ns)))
+    t))
+
+(defun fn-cstr-nondecreasingp (ns)
+  ; Sorted: every element is at least every earlier one.  For a chain this is
+  ; nondecreasing, and it is the form a merge proof needs.
+  (declare (xargs :guard t))
+  (if (consp ns)
+      (and (fn-cstr-seqs-at-least (car ns) (cdr ns))
            (fn-cstr-nondecreasingp (cdr ns)))
     t))
 
@@ -167,6 +180,25 @@
   (equal (fn-cstr-jrec-seqs (fn-cstr-article-jrecs rs))
          (fn-cstr-article-seqs rs))))
 
+(local (defthm fn-cstr-seqs-at-least-weaken
+  (implies (and (fn-cstr-seqs-at-least m ns) (<= (nfix n) (nfix m)))
+           (fn-cstr-seqs-at-least n ns))))
+
+(local (defthm fn-cstr-seqs-at-least-of-a-sorted-list
+  (implies (and (fn-cstr-nondecreasingp ns) (consp ns)
+                (<= (nfix n) (nfix (car ns))))
+           (fn-cstr-seqs-at-least n ns))))
+
+(local (defthm fn-cstr-merge-seqs-at-least
+  (implies (and (fn-cstr-seqs-at-least n (fn-cstr-config-seqs configs))
+                (fn-cstr-seqs-at-least n (fn-cstr-article-seqs articles)))
+           (fn-cstr-seqs-at-least
+            n (fn-cstr-jrec-seqs (fn-cstr-merge configs articles))))
+  :hints (("Goal" :induct (fn-cstr-merge configs articles)))))
+
+(local (defthm fn-cstr-nondecreasingp-of-cdr
+  (implies (fn-cstr-nondecreasingp ns) (fn-cstr-nondecreasingp (cdr ns)))))
+
 ; KEYSTONE.  Two sequence-ordered files merge into one sequence-ordered
 ; stream.  With `fn-jrec-sequences-from' (books/config-records) this is what
 ; says the layout split loses no ordering information: the unified stream the
@@ -175,7 +207,8 @@
   (implies (and (fn-cstr-nondecreasingp (fn-cstr-config-seqs configs))
                 (fn-cstr-nondecreasingp (fn-cstr-article-seqs articles)))
            (fn-cstr-nondecreasingp
-            (fn-cstr-jrec-seqs (fn-cstr-merge configs articles)))))
+            (fn-cstr-jrec-seqs (fn-cstr-merge configs articles))))
+  :hints (("Goal" :induct (fn-cstr-merge configs articles))))
 
 ; -----------------------------------------------------------------------------
 ; What the merged replay buys, and the honest name for what it does not
@@ -183,10 +216,17 @@
 ; A configuration-only history merges to the stream the host replays today,
 ; so adopting the merge changes nothing about a store that has no articles.
 ; This is a definitional agreement, not a proof event.
+(local (defthm fn-cstr-merge-of-no-articles-is-the-config-arm
+  (equal (fn-cstr-merge configs nil) (fn-cstr-config-jrecs configs))))
+
 (defthm fn-cstr-replay-of-a-config-only-history-is-fn-cnode-config-replay-by-definition
   (equal (fn-cstr-replay configs nil) (fn-cnode-config-replay configs))
-  :hints (("Goal" :in-theory (enable (:d fn-cstr-replay) (:d fn-cstr-merge)
-                                     (:d fn-cnode-config-replay)))))
+  :hints (("Goal"
+           :use ((:instance fn-cstr-config-jrecs-is-fn-cnode-config-jrecs-by-definition
+                            (rs configs)))
+           :in-theory (e/d ((:d fn-cstr-replay) (:d fn-cnode-config-replay))
+                           (fn-cstr-merge fn-cstr-config-jrecs
+                            fn-cnode-config-jrecs fn-cnode-replay)))))
 
 (local (defthm fn-cstr-replay-loop-ok-is-a-configured-node
   (implies (equal (fn-replay-result-kind (fn-cnode-replay-loop cn ceiling js expected))
@@ -224,6 +264,33 @@
 ; number partitions the connections into those that see a creation and those
 ; that do not.
 
+(local (defthm fn-cstr-find-of-groups-create
+  (and (equal (fn-cfg-group-created-gen
+               (fn-cfg-group-find (fn-cfg-groups-create es gen stamp name policy)
+                                  name))
+              gen)
+       (equal (fn-cfg-group-retired-gen
+               (fn-cfg-group-find (fn-cfg-groups-create es gen stamp name policy)
+                                  name))
+              nil)
+       (consp (fn-cfg-group-find (fn-cfg-groups-create es gen stamp name policy)
+                                 name)))
+  :hints (("Goal" :in-theory (enable (:d fn-cfg-groups-create)
+                                     (:d fn-cfg-group-find))))))
+
+(local (defthm fn-cstr-find-of-groups-retire
+  (implies (fn-cfg-entry-livep (fn-cfg-group-find es name) gen)
+           (and (equal (fn-cfg-group-created-gen
+                        (fn-cfg-group-find (fn-cfg-groups-retire es gen name) name))
+                       (fn-cfg-group-created-gen (fn-cfg-group-find es name)))
+                (equal (fn-cfg-group-retired-gen
+                        (fn-cfg-group-find (fn-cfg-groups-retire es gen name) name))
+                       gen)
+                (consp (fn-cfg-group-find (fn-cfg-groups-retire es gen name) name))))
+  :hints (("Goal" :in-theory (enable (:d fn-cfg-groups-retire)
+                                     (:d fn-cfg-group-find)
+                                     (:d fn-cfg-entry-livep))))))
+
 ; KEYSTONE.  A group created by the delta that produces generation g is
 ; served at every generation from g on, and at none below it.  Both
 ; directions: a connection pinned below g must not see it, which is the half
@@ -234,10 +301,12 @@
                  (fn-cfg-apply-delta v gen stamp (fn-cfg-create-group name policy))
                  g2 name)
                 (<= gen g2)))
-  :hints (("Goal" :in-theory (enable (:d fn-cfg-apply-delta)
-                                     (:d fn-cfg-create-group)
-                                     (:d fn-cfg-group-livep)
-                                     (:d fn-cfg-set-groups)))))
+  :hints (("Goal" :in-theory (e/d ((:d fn-cfg-apply-delta)
+                                   (:d fn-cfg-create-group)
+                                   (:d fn-cfg-group-livep)
+                                   (:d fn-cfg-entry-livep)
+                                   (:d fn-cfg-set-groups))
+                                  (fn-cfg-groups-create fn-cfg-group-find)))))
 
 ; KEYSTONE.  A group retired by the delta that produces generation g is
 ; served at every generation below g at which it was served, and at none
@@ -251,10 +320,12 @@
                           (fn-cfg-group-find (fn-cfg-groups v) name))
                          g2)
                      (< g2 gen))))
-  :hints (("Goal" :in-theory (enable (:d fn-cfg-apply-delta)
-                                     (:d fn-cfg-remove-group)
-                                     (:d fn-cfg-group-livep)
-                                     (:d fn-cfg-set-groups)))))
+  :hints (("Goal" :in-theory (e/d ((:d fn-cfg-apply-delta)
+                                   (:d fn-cfg-remove-group)
+                                   (:d fn-cfg-group-livep)
+                                   (:d fn-cfg-entry-livep)
+                                   (:d fn-cfg-set-groups))
+                                  (fn-cfg-groups-retire fn-cfg-group-find)))))
 
 ; -----------------------------------------------------------------------------
 ; Export theory.
@@ -264,6 +335,7 @@
     (:d fn-cstr-config-jrecs) (:d fn-cstr-article-jrecs)
     (:d fn-cstr-merge) (:d fn-cstr-replay) (:d fn-cstr-kind-bodies)
     (:d fn-cstr-jrec-seqs) (:d fn-cstr-nondecreasingp)
+    (:d fn-cstr-seqs-at-least)
     (:d fn-cstr-config-seqs) (:d fn-cstr-article-seqs)))
 
 (in-theory (disable fn-cstr-vocabulary))
