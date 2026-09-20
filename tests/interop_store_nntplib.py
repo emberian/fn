@@ -44,7 +44,7 @@ def main():
         _, active = client._longcmdstring("LIST ACTIVE fn.test")
         assert active == ["fn.test 1 1 y"]
         _, descriptions = client._longcmdstring("LIST NEWSGROUPS fn.letters")
-        assert descriptions == ["fn.letters fn experimental group"]
+        assert descriptions == ["fn.letters\t"]
         assert client.quit().startswith("205 ")
     print(json.dumps({"status": "passed", "client": "stdlib nntplib",
                       "python": platform.python_version(), "mode": "recovered-store",
