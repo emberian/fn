@@ -562,11 +562,30 @@
            (fn-own-relation (fn-own-take-submission o)))
   :hints (("Goal" :in-theory (enable fn-own-relation))))
 
+; The outcome releases the transaction and empties `inflight'; neither is
+; read by the relation, so the only content is the :durable branch's
+; fn-own-advance, which is fn-own-advance-preserves-relation above.
+(local
+ (defthm fn-own-outcome-body-preserves-relation
+   (implies (fn-own-relation o)
+            (fn-own-relation
+             (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
+                          (fn-own-next-id o) (fn-own-max-conns o) p
+                          (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                          (fn-own-config o) (fn-own-queue o) nil)))
+   :hints (("Goal" :in-theory (enable fn-own-relation)))))
+
 (defthm fn-own-outcome-preserves-relation
   (implies (fn-own-relation o)
            (fn-own-relation (cdr (fn-own-outcome o id word))))
-  :hints (("Goal" :in-theory (e/d (fn-own-relation)
-                                  (fn-own-outcome-completion fn-served-post-outcome)))))
+  :hints (("Goal"
+           :use ((:instance fn-own-outcome-body-preserves-relation
+                            (p (if (equal (fn-own-pending o) id)
+                                   nil (fn-own-pending o)))))
+           :in-theory (e/d (fn-own-outcome)
+                           (fn-own-relation fn-own-outcome-completion
+                            fn-served-post-outcome fn-own-advance
+                            fn-own-outcome-body-preserves-relation)))))
 
 ; -----------------------------------------------------------------------------
 ; K6: every step, and every finite trace, preserves the relation; the store
@@ -1020,6 +1039,13 @@
                   (fn-own-find-conn other conns)))
   :hints (("Goal" :induct (fn-own-replace-conn conn conns))))
 
+(defthm fn-own-find-conn-of-replace-conn-same
+  (implies (fn-own-find-conn (fn-own-conn-id conn) conns)
+           (equal (fn-own-find-conn (fn-own-conn-id conn)
+                                    (fn-own-replace-conn conn conns))
+                  conn))
+  :hints (("Goal" :induct (fn-own-replace-conn conn conns))))
+
 (defthm fn-own-find-conn-of-remove-conn-other
   (implies (not (equal id other))
            (equal (fn-own-find-conn other (fn-own-remove-conn id conns))
@@ -1032,11 +1058,21 @@
                   (fn-own-find-conn other (fn-own-conns o))))
   :hints (("Goal" :in-theory (disable fn-served-step fn-own-conn-boundedp))))
 
+; Statement changed by the read-back follow-up, and only where the new
+; behaviour forces it: a :durable outcome re-pins the poster's own
+; connection (fn-own-outcome), so the first conjunct is now what the
+; theorem's name always said -- every connection other than the one named is
+; found exactly as it was.  The second conjunct is unchanged.
 (defthm fn-own-outcome-touches-only-its-connection
-  (and (equal (fn-own-conns (cdr (fn-own-outcome o id word))) (fn-own-conns o))
+  (and (implies (not (equal id other))
+                (equal (fn-own-find-conn other
+                                         (fn-own-conns (cdr (fn-own-outcome o id word))))
+                       (fn-own-find-conn other (fn-own-conns o))))
        (implies (not (equal (fn-own-sub-id (fn-own-inflight o)) id))
                 (equal (car (fn-own-outcome o id word)) nil)))
-  :hints (("Goal" :in-theory (disable fn-served-post-outcome fn-own-outcome-completion))))
+  :hints (("Goal" :in-theory (e/d (fn-own-advance fn-own-set-conns)
+                                  (fn-served-post-outcome fn-own-outcome-completion
+                                   fn-own-conn-boundedp)))))
 
 ; The completion the reply renders is one of the three words, whatever the
 ; host said.
@@ -1047,6 +1083,108 @@
   (implies (fn-own-conn-boundedp conn groups)
            (fn-post-sessionp (fn-own-conn-session conn)))
   :hints (("Goal" :in-theory (enable fn-own-conn-boundedp))))
+
+; -----------------------------------------------------------------------------
+; Read-back: a 240 moves the poster's pin, and only the poster's.
+;
+; fn-own-advance rebuilds the connection's session over the committed view's
+; archive, keeping the group and the cursor.  Both are carried by the old
+; connection's boundedness, so the advance is never refused for a bounded
+; connection: that is what makes the re-pin in fn-own-outcome unconditional
+; rather than best-effort.
+
+(local
+ (defthm fn-own-advanced-session-is-bounded
+   (implies (and (fn-own-conn-boundedp conn groups)
+                 (fn-post-sessionp (fn-own-conn-session conn)))
+            (fn-own-conn-boundedp
+             (fn-own-conn-make cid version frontier wire
+                               (fn-post-make-session
+                                (fn-nntp-set-cursor
+                                 (fn-nntp-open-session archive)
+                                 (fn-nntp-session-group
+                                  (fn-post-session-base (fn-own-conn-session conn)))
+                                 (fn-nntp-session-current
+                                  (fn-post-session-base (fn-own-conn-session conn))))
+                                (fn-post-session-awaiting (fn-own-conn-session conn)))
+                               archive config observation)
+             groups))
+   :hints (("Goal"
+            :use ((:instance fn-nntp-consistent-session-is-session
+                             (session (fn-nntp-open-session archive))
+                             (archive archive))
+                  (:instance fn-nntp-open-session-is-consistent (archive archive)))
+            :in-theory (e/d (fn-own-conn-boundedp fn-post-sessionp fn-nntp-set-cursor)
+                            (fn-nntp-open-session fn-nntp-sessionp
+                             fn-nntp-consistent-session-is-session
+                             fn-nntp-open-session-is-consistent))))))
+
+(local
+ (defthm fn-own-advance-repins-the-connection
+   (implies (and (fn-own-relation o)
+                 (fn-own-find-conn id (fn-own-conns o)))
+            (and (equal (fn-own-conn-version
+                         (fn-own-find-conn id (fn-own-conns (fn-own-advance o id))))
+                        (fn-own-view-version (fn-own-view o)))
+                 (equal (fn-own-conn-archive
+                         (fn-own-find-conn id (fn-own-conns (fn-own-advance o id))))
+                        (fn-own-view-archive (fn-own-view o)))))
+   :hints (("Goal"
+            :use ((:instance fn-own-find-conn-okp
+                             (conns (fn-own-conns o))
+                             (groups (fn-sn-groups (fn-own-store o)))
+                             (capacity (fn-sn-capacity (fn-own-store o)))
+                             (records (fn-sf-records (fn-sn-files (fn-own-store o)))))
+                  (:instance fn-own-advanced-session-is-bounded
+                             (conn (fn-own-find-conn id (fn-own-conns o)))
+                             (groups (fn-sn-groups (fn-own-store o)))
+                             (cid id)
+                             (version (fn-own-view-version (fn-own-view o)))
+                             (frontier (fn-own-view-frontier (fn-own-view o)))
+                             (wire (fn-own-conn-wire (fn-own-find-conn id (fn-own-conns o))))
+                             (archive (fn-own-view-archive (fn-own-view o)))
+                             (config (fn-own-conn-config (fn-own-find-conn id (fn-own-conns o))))
+                             (observation (fn-own-conn-observation
+                                           (fn-own-find-conn id (fn-own-conns o)))))
+                  (:instance fn-own-conn-boundedp-is-post-session
+                             (conn (fn-own-find-conn id (fn-own-conns o)))
+                             (groups (fn-sn-groups (fn-own-store o)))))
+            :in-theory (e/d (fn-own-relation fn-own-advance fn-own-set-conns)
+                            (fn-own-conn-boundedp fn-own-find-conn-okp
+                             fn-post-sessionp fn-nntp-open-session
+                             fn-own-advanced-session-is-bounded))))))
+
+; K1 read-back.  After a 240 for connection `id', that connection is pinned
+; to the committed view, so the served step its next GROUP or ARTICLE runs
+; (fn-own-read-is-served-step-on-pinned-prefix) is over the prefix that
+; contains its own article.  Every other connection is found exactly as it
+; was: fn-own-outcome-touches-only-its-connection above.
+(defthm fn-own-durable-outcome-repins-the-poster
+  (implies (and (fn-own-relation o)
+                (fn-own-find-conn id (fn-own-conns o))
+                (fn-own-inflight o)
+                (equal (fn-own-sub-id (fn-own-inflight o)) id)
+                (equal (fn-own-outcome-completion o word) :durable))
+           (and (equal (fn-own-conn-version
+                        (fn-own-find-conn id (fn-own-conns (cdr (fn-own-outcome o id word)))))
+                       (fn-own-view-version (fn-own-view o)))
+                (equal (fn-own-conn-archive
+                        (fn-own-find-conn id (fn-own-conns (cdr (fn-own-outcome o id word)))))
+                       (fn-own-view-archive (fn-own-view o)))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-own-advance-repins-the-connection
+                            (o (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
+                                            (fn-own-next-id o) (fn-own-max-conns o)
+                                            (if (equal (fn-own-pending o) id)
+                                                nil (fn-own-pending o))
+                                            (fn-own-ledger o) (fn-own-clock o)
+                                            (fn-own-facts o) (fn-own-config o)
+                                            (fn-own-queue o) nil))))
+           :in-theory (e/d (fn-own-relation fn-own-outcome)
+                           (fn-own-advance fn-own-conn-boundedp
+                            fn-served-post-outcome fn-own-outcome-completion
+                            fn-own-advance-repins-the-connection)))))
 
 (local
  (defthm fn-own-post-outcome-answers

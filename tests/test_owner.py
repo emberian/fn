@@ -11,7 +11,8 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-GREETING = b"201 fn-nntp experimental reader ready\r\n"
+# RFC 3977 section 5.1.1: the owner allows posting, so its greeting is 200.
+GREETING = b"200 fn-nntp experimental server ready\r\n"
 
 
 class OwnerProcess:

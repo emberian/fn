@@ -275,7 +275,7 @@
                                   (fn-nntp-date-response)))))
 
 (defthm fn-nntp-mode-response-preserves-session
-  (equal (fn-nntp-result-session (fn-nntp-mode-response session args)) session))
+  (equal (fn-nntp-result-session (fn-nntp-mode-response session env args)) session))
 
 (defthm fn-nntp-newgroups-response-preserves-session
   (equal (fn-nntp-result-session
@@ -419,7 +419,7 @@
 (in-theory (disable fn-nntp-list-command))
 
 (defthm fn-nntp-capabilities-preserves-session
-  (equal (fn-nntp-result-session (fn-nntp-capabilities session)) session)
+  (equal (fn-nntp-result-session (fn-nntp-capabilities session postingp)) session)
   :hints (("Goal" :in-theory (enable fn-nntp-capabilities))))
 
 (defthm fn-nntp-help-preserves-session
@@ -437,7 +437,7 @@
            ; the keystone would rewrite its own instance to (equal s s)
            :in-theory (disable fn-nntp-date-response-preserves-session)))))
 (local (defthm fn-nntp-mode-response-result-unfolds
-  (equal (car (fn-nntp-mode-response session args)) session)
+  (equal (car (fn-nntp-mode-response session env args)) session)
   :hints (("Goal" :use fn-nntp-mode-response-preserves-session
            ; the keystone would rewrite its own instance to (equal s s)
            :in-theory (disable fn-nntp-mode-response-preserves-session)))))
