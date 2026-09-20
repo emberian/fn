@@ -77,7 +77,139 @@ before any of the work below.
 
 ## 2. Packet 1 — the fold's round trip
 
-PLACEHOLDER-P1
+`fn-bpb-decode-blocks-of-encode-blocks` was the one open form in
+`books/bp-bundle-invariants` and the previous lane was killed on it at the
+1200 s cap. **It closes in 0.05 seconds, 21,275 prover steps.**
+
+The cause was never a missing fact, and no hint would have found it. The
+form carried
+
+```lisp
+:induct (fn-bpb-decode-blocks
+          (append (fn-bpb-encode-blocks xs) (cons *fn-bpb-array-break* rest))
+          budget)
+```
+
+--- an induction on the DECODER applied to the encoded octets. The scheme
+that generates has, in its induction hypothesis, the term
+`(fn-cbor-result-rest (fn-bpb-decode-block (append ...)))`, which becomes
+the subject of the hypothesis only AFTER the one-block keystone has fired on
+it; so the hypothesis never matches the goal it is supposed to discharge and
+the search does not terminate. Replacing it with a scheme over the block
+list --- one block and one unit of budget per step, which is exactly the
+recursion the goal has --- makes each step an application of the keystone:
+
+```lisp
+(local (defun fn-bpbi-blocks-induction (xs budget)
+         (declare (xargs :measure (len xs)))
+         (if (consp xs) (fn-bpbi-blocks-induction (cdr xs) (- budget 1))
+           (list xs budget))))
+```
+
+with two local `append` facts (`consp` and `car` of an `append` whose first
+argument is a cons) so that the break octet is distinguished from an encoded
+block's head without opening `binary-append`.
+
+**`tools/proof_profile.py` paid for itself twice on this form.** Its first
+run did not profile the fold at all: it stopped at
+`fn-bpb-decode-block-of-encode-block`, on `Subgoal 17.3'`, and that
+checkpoint is the hazard packet 0 introduced --- see section 1. Its second
+run named the fan: `fn-bpp-vchar-listp` and `fn-bpp-vcharp`, 1,527,614 and
+1,369,220 frames with no useful application, the two largest runes in the
+run, on a form about a canonical block that is not an endpoint ID.
+Disabling those two at the keystone took the whole book's run to that point
+from what had been a 1200 s cap to 129 s.
+
+**Then the tail behind it ran for the first time, and the next keystone was
+open too.** `certify-book` stops at the first failure, so "everything before
+the fold proves" had never been a statement about `fn-bpb-decode-of-encode`:
+that form had never been attempted. It fails on the branch where
+`(fn-bpc-dec :item 0 (append (fn-bpp-encode primary) ...) 128)` is not `ok`,
+which its `:use` of `fn-bpc-decode-of-encode` is meant to refute and cannot,
+because the `:use` names `(fn-bpc-enc :item (fn-bpp-block-value b
+(fn-bpp-block-crc b)))` while the goal contains `(fn-bpp-encode b)`. That
+equality is `fn-bpp-encode`'s definition and
+`books/bp-primary-invariants` keeps its copy of it (`fn-bpp-encode-unfolds`)
+`local`, so this book has to restate it.
+
+**Stated `:rule-classes nil` and cited by `:use`, it changed nothing** --- the
+checkpoint came back byte-identical. An equality carried as a hypothesis is
+not a normal form: the two terms never become the same term. It has to be a
+REWRITE that is active at the form, so `fn-bpbi-bpp-encode-unfolds` is a
+`local` rewrite, withdrawn on the line after it is proved and enabled in
+exactly one hint.
+
+**The measurement that nearly became a false claim, and the tool fix it
+bought.** In between, `tools/proof_profile.py` reported this form with no
+checkpoint and a 100.93 s Summary, which its own last line renders as "the
+form closed, or it was cut by the step limit or the timeout". It had been
+cut: the form needs about 10M prover steps (`certify-book` counted
+10,058,074 for the book) and the tool's default is `DEFAULT_STEPS =
+4_000_000`, so ACL2 aborted it with `ACL2 Error [Step-limit]` and printed no
+key checkpoint --- indistinguishable, in that report, from success. The tool
+now detects the marker and prints **CUT BY THE STEP LIMIT: the form did not
+close and ACL2 printed no checkpoint because it was aborted, not refuted**,
+naming `--steps`; `tests/test_proof_profile.py` pins it. A profile is not a
+verdict, and until today it could read like one.
+
+**What was actually wrong, in three measured layers.** The form is a
+composition and each layer hid the next.
+
+1. `(fn-bpp-encode primary)` and `(fn-bpc-enc :item (fn-bpp-block-value
+   primary (fn-bpp-block-crc primary)))` are the same by definition and were
+   not the same term. Fixed by the local rewrite above.
+2. With the terms matched, the `:use`d lemmas still went unrelieved, because
+   **`fn-bpp-blockp` had been opened**. `fn-bpb-bundlep` opens to a conjunct
+   `(fn-bpp-blockp (fn-bpb-bundle-primary bundle))`, and with that recognizer
+   enabled the conjunct becomes eleven `nth` hypotheses; the literal the
+   three `:use`d lemmas hypothesise is then not in the goal at all and
+   cannot be relieved. Closing `fn-bpp-blockp` at the form --- with
+   `fn-bpp-eidp`, `fn-bpp-vchar-listp` and `fn-bpp-vcharp`, which are only
+   reachable through it --- relieved all three AND removed the fan: the form
+   went from 100.93 s and about 10M steps to **0.13 s and 45,658 steps**.
+   This is `docs/proof-style.md`'s "never open a recognizer", costing a
+   whole afternoon on the goal's HYPOTHESES rather than on its conclusion.
+3. One element. The payload block is a field of the bundle, not the last
+   element of its block list, so the fold is instantiated at
+   `(append blocks (list payload))`; `fn-bpb-encode-blocks-of-append` splits
+   that into `(append (fn-bpb-encode-blocks blocks) (fn-bpb-encode-blocks
+   (list payload)))` while `fn-bpb-encode` wrote `(fn-bpb-encode-block
+   payload)`. `fn-bpbi-encode-blocks-of-one`, local and enabled only at the
+   form, is that one-element difference.
+
+4. And then the composition itself. `fn-bpb-decode` is a scan, a fold and
+   an assemble; with the fold proved and the primary's facts available, the
+   remaining gap was the scan's `take`: `(take (- (len octets) (len after))
+   octets)`, whose count is the head's length only after
+   `fn-bpc-len-of-append` and a cancellation base ACL2 will not do inside a
+   subterm. The cure is a decomposition, not arithmetic:
+   **`fn-bpb-scan-primary-of-encode`** --- the primary block scans back out
+   of a bundle image and what follows it is returned untouched, the same
+   shape `fn-bpb-decode-block-of-encode-block` has one block down. It closes
+   in 0.01 s and 2,459 steps, and `fn-bpb-decode-of-encode` is then two
+   `:use`s and nothing else.
+
+Two smaller measured facts worth keeping. `fn-bpbi-len-of-append-minus-tail`
+is stated in BOTH argument orders because ACL2 sorts a sum by term order and
+matches the rule against the sorted form; written one way round it does not
+fire. And `fn-bpc-len-of-append` is deliberately DISABLED at the scan
+keystone, so the count keeps the `(- (len (append a b)) (len b))` shape the
+rule matches; enabled, it becomes a five-term sum nothing cancels.
+
+**And the round trip found a defect in the codec, not in the proof.** At
+`(len (fn-bpb-bundle-blocks bundle))` = `*fn-bpb-max-blocks*` = 32 the
+theorem is FALSE as `books/bp-bundle` stood: `fn-bpb-splitp` admits 32
+canonical blocks, the payload block is a thirty-third element of the array
+on the wire (section 4.1 requires it last), and `fn-bpb-decode` budgeted
+`fn-bpb-decode-blocks` at 32 --- so **fn's decoder refused fn's own
+encoder's output with `:too-many-blocks`** for every bundle at the bound.
+`fn-bpb-decode` now budgets `(+ 1 *fn-bpb-max-blocks*)`, which is the count
+of blocks in the array rather than the count of canonical blocks; the bound
+on canonical blocks is not loosened, because one more of them makes the
+array two longer than the budget. `tests/acl2/bp-bundle-tests.lisp` gains
+the witness at the boundary (a 32-block bundle that round-trips) and the
+refusal one past it. No theorem was weakened to reach this: the statement
+of `fn-bpb-decode-of-encode` is the one the previous lane wrote.
 
 ## 3. Packet 2 — what the round trip unblocked
 
@@ -85,7 +217,45 @@ PLACEHOLDER-P2
 
 ## 4. Packet 3 — the §1.5 machine, named and not started
 
-PLACEHOLDER-P3
+`books/bp-node.lisp` is two ends of the machine of `specs/bp-design.md`
+section 1.5, not the machine, and section 1.5.1 of that spec already lists
+what is absent. Not started, and this is what starting it would mean.
+
+**What the machine adds that the two ends do not have.** `fn-bpn-send` and
+`fn-bpn-receive` are pure functions of a configuration and some octets;
+neither has a STATE. The machine is `(fn-bpn-step st event) -> (st'
+effects)` over `fn-bpn-make-state (config bundles reassembly next-seq
+reports)`, and everything the two ends cannot express lives in that state:
+
+- the bundle store, so a received bundle can be held, retried, expired and
+  deleted rather than decided once and dropped;
+- the reassembly alist, so `fn-bpn-receive` can stop refusing a fragment
+  with `:fragment-not-reassembled` and call `books/bp-fragment`, which is
+  certified and has no caller;
+- `next-seq`, the durable creation-timestamp frontier of section 1.3 with
+  its FNBS `(:bpn-sequence n)` record, which is the one thing that makes
+  `bp send` restart-safe: today `host/native/bp.lisp` takes the sequence as
+  an argument and says in its own header that a restarted operator must not
+  reuse one;
+- the status-report intents of section 6.1.1, so a received administrative
+  record becomes a transport observation instead of an ADU;
+- dispatch, so local delivery is decided against forwarding.
+
+**What it would need that does not exist.** Three things, in order. (a)
+The FNBS record family in `books/frame` and its journal, because every
+`(:persist record)` effect must be barriered before the next step --- this
+is the same shape as FNWF and `books/frame-journal`, and until it exists
+`fn-bpn-step` can be written but not run by the host. (b) A join to
+`books/scheduler` for `(:contact peer open-p)` and to `books/bp-receipt`
+for `(:deliver ...)`: both are certified and neither is in the DTN image's
+build list. (c) A trace function and its preservation keystone
+(`fn-bpn-trace`, `fn-bpn-step-preserves-statep`) before any of T1 to T6 has
+a subject; T1 to T6 are stated in section 1.6 against `fn-bpn-step` and are
+**not proved, and nothing in this tree claims them**.
+
+The honest first packet is (a) alone, because it is the one that changes a
+claim: with the durable frontier, `bp send` stops carrying a
+restart-unsafety note in its own header.
 
 ## 5. Per-root table
 
@@ -93,4 +263,19 @@ PLACEHOLDER-TABLE
 
 ## 6. What the next lane should take
 
-PLACEHOLDER-NEXT
+1. **The fan in `fn-bpb-decode-of-encode`.** 67 runes with no useful
+   application and `(:TYPE-PRESCRIPTION LEN)` at 3,533,005 frames, in a form
+   whose own reasoning is 24 steps of `:use`. The endpoint-ID vocabulary
+   (`fn-bpp-eidp`, `fn-bpp-vchar-listp`, `fn-bpp-vcharp`) is in the goal only
+   because `fn-bpb-bundlep` reaches `fn-bpp-blockp`; the same `e/d` cure that
+   took the one-block keystone from a 1200 s cap to seconds applies, and it
+   is the cheapest minute anyone will spend on this cluster.
+2. **A `PRF-` row for the bundle codec.** `planning/proofs.json` has no
+   `fn-bpb-*` target at all: the three keystones of
+   `books/bp-bundle-invariants` are proved and unregistered. Claim the id on
+   the board first (`dev` is at `PRF-031` as of this lane).
+3. **The FNBS record family and the `(:bpn-sequence n)` frontier**
+   (`specs/bp-design.md` section 1.3), which is packet 3's item (a) and the
+   one open item that changes a claim rather than adding a feature.
+4. **The outbound-suffix obligation of `specs/tcpcl.md` section 6**, still
+   untouched by any lane.

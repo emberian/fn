@@ -260,17 +260,97 @@
 ; keeps its copy of this equality `local` (`fn-bpp-encode-unfolds`), so the
 ; whole-bundle round trip has to restate it: without it the `:use` of the
 ; CBOR round trip below names a term the goal does not contain, and the
-; decode branch of `fn-bpb-decode` cannot be refuted.  `:rule-classes nil`
-; and cited by `:use` (proof-style sections 3 and 7): as a rewrite it would
-; unfold every primary encoding in this book.
+; decode branch of `fn-bpb-decode` cannot be refuted.
+;
+; It has to be a REWRITE, not a `:use`.  Measured 2026-09-20: stated
+; `:rule-classes nil` and cited by `:use`, it changed nothing --- an equality
+; carried as a hypothesis is not a normal form, so the two terms never became
+; the same term and the checkpoint was identical.  As a rewrite both sides
+; normalise to `(fn-bpc-enc :item ...)` and the `:use` above matches.  It is
+; `local`, enabled only in the one hint that wants it, and withdrawn
+; immediately (proof-style, "never enable a vocabulary book-wide").
 (local
  (defthm fn-bpbi-bpp-encode-unfolds
    (equal (fn-bpp-encode b)
           (fn-bpc-enc :item (fn-bpp-block-value b (fn-bpp-block-crc b))))
-   :rule-classes nil
    :hints (("Goal" :in-theory (e/d (fn-bpp-encode)
                                    (fn-bpc-enc fn-bpp-block-value
                                     fn-bpp-block-crc))))))
+(local (in-theory (disable fn-bpbi-bpp-encode-unfolds)))
+
+; The payload block is a FIELD of the bundle, not the last element of its
+; block list (`specs/bp-design.md` section 1.4.1), so the round trip below
+; instantiates the fold at `(append blocks (list payload))`.
+; `fn-bpb-encode-blocks-of-append` then splits that into
+; `(append (fn-bpb-encode-blocks blocks) (fn-bpb-encode-blocks (list payload)))`
+; while `fn-bpb-encode` wrote `(fn-bpb-encode-block payload)`, and the two
+; terms are equal but not identical.  Measured 2026-09-20: that one-element
+; difference is the whole of `Subgoal 39.52`.  `(append x nil)` is `x` only
+; for a true list, which is `fn-bpb-encode-block-is-true-list`.
+(local
+ (defthm fn-bpbi-encode-blocks-of-one
+   (implies (fn-bpb-blockp b)
+            (equal (fn-bpb-encode-blocks (list b)) (fn-bpb-encode-block b)))
+   :hints (("Goal" :use fn-bpb-encode-block-is-true-list
+            :in-theory (disable fn-bpb-encode-block
+                                fn-bpb-encode-block-is-true-list)))))
+(local (in-theory (disable fn-bpbi-encode-blocks-of-one)))
+
+; `fn-bpb-scan-primary` takes the prefix its own scan consumed:
+; `(take (- (len octets) (len after)) octets)`.  Once the CBOR round trip has
+; told it that `after` is the tail, that count is the length of the head, and
+; this is the one arithmetic step of the whole codec.  Stated over the
+; DIFFERENCE rather than over `(len a)` on purpose: `fn-bpc-len-of-append` is
+; disabled at the form below, so the count stays in exactly this shape and
+; the rule matches it syntactically, with no arithmetic library anywhere in
+; this book's include closure.
+; Both argument orders, because ACL2 sorts a sum by term order and the rule
+; is matched against the sorted form: measured 2026-09-20, the goal carries
+; `(+ (- (len rest)) (len (append e rest)))` and a rule written the other way
+; round does not fire.  `fn-bpc-len-of-append` stays DISABLED at the form
+; below so that the count keeps this shape; with it enabled the count becomes
+; a five-term sum that base ACL2 does not cancel inside a `take`.
+(local
+ (defthm fn-bpbi-len-of-append-minus-tail
+   (and (equal (+ (- (len b)) (len (append a b))) (len a))
+        (equal (+ (len (append a b)) (- (len b))) (len a)))
+   :hints (("Goal" :in-theory (enable fn-bpc-vocabulary)))))
+
+; Keystone: the primary block scans back out of a bundle image, and what
+; follows it is returned untouched.  The same shape as
+; `fn-bpb-decode-block-of-encode-block` one block down, and the reason the
+; whole-bundle round trip is a composition of two keystones rather than one
+; proof over the whole decoder.
+(defthm fn-bpb-scan-primary-of-encode
+  (implies (and (fn-bpp-blockp b) (fn-cbor-octet-listp rest))
+           (equal (fn-bpb-scan-primary (append (fn-bpp-encode b) rest))
+                  (fn-cbor-ok b rest)))
+  :hints (("Goal"
+           :do-not-induct t
+           :use ((:instance fn-bpc-decode-of-encode
+                            (flg :item)
+                            (x (fn-bpp-block-value b (fn-bpp-block-crc b)))
+                            (rest rest)
+                            (budget *fn-bpc-max-items*))
+                 (:instance fn-bpp-block-value-is-shape
+                            (b b) (crc-octets (fn-bpp-block-crc b)))
+                 (:instance fn-bpp-block-value-cost
+                            (b b) (crc-octets (fn-bpp-block-crc b)))
+                 (:instance fn-bpp-block-crc-is-octets (b b))
+                 (:instance fn-bpp-block-crc-length (b b))
+                 (:instance fn-bpp-decode-of-encode (b b)))
+           :in-theory (e/d (fn-bpb-scan-primary fn-bpc-vocabulary
+                            fn-bpbi-bpp-encode-unfolds
+                            fn-bpbi-len-of-append-minus-tail)
+                           (fn-bpc-dec fn-bpc-enc fn-bpp-encode fn-bpp-decode
+                            fn-bpp-blockp fn-bpp-eidp
+                            fn-bpp-vchar-listp fn-bpp-vcharp
+                            fn-bpp-block-value fn-bpp-block-crc
+                            fn-bpc-len-of-append
+                            fn-bpc-decode-of-encode
+                            fn-bpp-block-value-is-shape
+                            fn-bpp-block-value-cost
+                            fn-bpp-decode-of-encode)))))
 
 (defthm fn-bpb-decode-of-encode
   (implies (and (fn-bpb-bundlep bundle) (natp limit)
@@ -279,50 +359,57 @@
                   (fn-cbor-ok bundle nil)))
   :hints (("Goal"
            :do-not-induct t
-           :use ((:instance fn-bpbi-bpp-encode-unfolds
-                            (b (fn-bpb-bundle-primary bundle)))
-                 (:instance fn-bpc-decode-of-encode
-                            (flg :item)
-                            (x (fn-bpp-block-value
-                                (fn-bpb-bundle-primary bundle)
-                                (fn-bpp-block-crc
-                                 (fn-bpb-bundle-primary bundle))))
+           ;; Two keystones and nothing else, each cited by `:use` and
+           ;; disabled in the same `e/d` so the rewriter cannot collapse the
+           ;; hypothesis it adds.  The primary block is
+           ;; `fn-bpb-scan-primary-of-encode`; `fn-bpb-scan-primary` is
+           ;; closed here and `fn-bpp-encode` is left FOLDED, so the
+           ;; instance names the term the goal contains.  The block
+           ;; sequence is the fold, instantiated
+           ;; at the block list with the payload block appended, because the
+           ;; payload is a FIELD of the bundle and the last element of the
+           ;; array on the wire.  The rebuild `fn-bpb-assemble` performs is
+           ;; then `fn-bpb-make-bundle-of-accessors`, generated by
+           ;; `fn-defrecord` (w10/dtn-3) and firing with the recognizer
+           ;; closed off `fn-bpb-bundlep-forward-shape`; no eliminator for
+           ;; this record existed in the tree before, which is why this form
+           ;; had never closed.
+           :use ((:instance fn-bpb-scan-primary-of-encode
+                            (b (fn-bpb-bundle-primary bundle))
                             (rest (append
                                    (fn-bpb-encode-blocks
                                     (fn-bpb-bundle-blocks bundle))
                                    (append
                                     (fn-bpb-encode-block
                                      (fn-bpb-bundle-payload bundle))
-                                    (list *fn-bpb-array-break*))))
-                            (budget *fn-bpc-max-items*))
-                 (:instance fn-bpp-block-value-is-shape
-                            (b (fn-bpb-bundle-primary bundle))
-                            (crc-octets (fn-bpp-block-crc
-                                         (fn-bpb-bundle-primary bundle))))
-                 (:instance fn-bpp-block-value-cost
-                            (b (fn-bpb-bundle-primary bundle))
-                            (crc-octets (fn-bpp-block-crc
-                                         (fn-bpb-bundle-primary bundle))))
-                 (:instance fn-bpp-block-crc-is-octets
-                            (b (fn-bpb-bundle-primary bundle)))
-                 (:instance fn-bpp-block-crc-length
-                            (b (fn-bpb-bundle-primary bundle)))
-                 (:instance fn-bpp-decode-of-encode
-                            (b (fn-bpb-bundle-primary bundle)))
+                                    (list *fn-bpb-array-break*)))))
                  (:instance fn-bpb-decode-blocks-of-encode-blocks
                             (xs (append (fn-bpb-bundle-blocks bundle)
                                         (list (fn-bpb-bundle-payload bundle))))
                             (rest nil)
-                            (budget *fn-bpb-max-blocks*)))
-           :in-theory (e/d (fn-bpb-decode fn-bpb-encode fn-bpc-vocabulary)
+                            (budget (+ 1 *fn-bpb-max-blocks*))))
+           :in-theory (e/d (fn-bpb-decode fn-bpb-encode fn-bpc-vocabulary
+                            fn-bpbi-encode-blocks-of-one)
                            (fn-bpc-dec fn-bpc-enc fn-bpp-encode fn-bpp-decode
                             fn-bpb-encode-block fn-bpb-encode-blocks
                             fn-bpb-decode-block fn-bpb-decode-blocks
+                            fn-bpb-scan-primary
                             fn-bpp-block-value fn-bpp-block-crc
-                            fn-bpc-decode-of-encode
-                            fn-bpp-block-value-is-shape
-                            fn-bpp-block-value-cost
-                            fn-bpp-decode-of-encode
+                            ;; The primary block's recognizer stays CLOSED.
+                            ;; Opened, `(fn-bpp-blockp (fn-bpb-bundle-primary
+                            ;; bundle))` becomes eleven `nth` conjuncts, and
+                            ;; then it is no longer a literal of the goal, so
+                            ;; the scan keystone's hypothesis goes unrelieved
+                            ;; and the decode branch is never refuted.
+                            ;; Measured 2026-09-20: that, and not a missing
+                            ;; fact, is what three runs of this form failed
+                            ;; on.  Closing it also removes the endpoint-ID
+                            ;; vocabulary the profile named as the fan
+                            ;; (`fn-bpp-eidp` 2,094,352 frames,
+                            ;; `fn-bpp-vchar-listp` 1,994,593).
+                            fn-bpp-blockp fn-bpp-eidp
+                            fn-bpp-vchar-listp fn-bpp-vcharp
+                            fn-bpb-scan-primary-of-encode
                             fn-bpb-decode-blocks-of-encode-blocks)))))
 
 ; -----------------------------------------------------------------------------
@@ -418,6 +505,7 @@
     fn-bpb-final-of-append-one fn-bpb-block-listp-of-append
     fn-bpb-payload-block-is-a-block fn-bpb-bundle-tail-are-octets
     fn-bpb-decode-blocks-of-encode-blocks
-    fn-bpb-decode-block-of-encode-block))
+    fn-bpb-decode-block-of-encode-block
+    fn-bpb-scan-primary-of-encode))
 
 (in-theory (disable fn-bpb-invariants-vocabulary))
