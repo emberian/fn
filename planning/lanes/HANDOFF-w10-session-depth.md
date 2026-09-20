@@ -145,6 +145,19 @@ into a real separation. Owner: whoever holds `books/peer-inbound`.
 | `books/provenance-codec` | **FAILED**, the one genuine failure | same run, `books--provenance-codec.certify.log:2658` |
 | `books/peer-inbound`, `books/nntp-auth`, `books/served`, `tests/acl2/served-tests`, `books/owner`, `books/owner-config` and seven more | NOT ATTEMPTED, cascades of it | see §5 |
 
+**The teeth DID run.** `certify-book` cannot reach `books/served`, but `ld`
+can: a driver that `ld`s `provenance-codec`, `peer-inbound`, `nntp-auth`,
+`served` and `served-tests` in order, under `:ld-error-action :continue`,
+admits every definition, closes `fn-served-transit-outcome`'s two theorems
+**Q.E.D.** (the restatement in 0.18 s and 91,383 steps), and runs
+`tests/acl2/served-tests.lisp` with **95 of 95 assertions `:PASSED`**,
+including all sixteen this lane added. It is an admission in a world
+contaminated by the technique — `nntp-auth`'s `(include-book "peer-inbound")`
+re-processes the uncertified source and its `deftheory fn-peer-vocabulary`
+collides with the earlier `ld`, so peer-inbound's export theory never runs
+and eight served theorems fail on theory grounds, none of them this lane's.
+Evidence §4b has the driver, the quotes and the caveat in full.
+
 Every number and log line above, and the sweep's before/after output, is in
 [`planning/evidence/session-depth-2026-09-20.md`](../evidence/session-depth-2026-09-20.md).
 

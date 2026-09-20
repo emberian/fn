@@ -198,6 +198,46 @@ certificate`.
 `tests/acl2/served-tests.lisp` are NOT certified.** §3 is what is known
 about them without ACL2.
 
+## 4b. The teeth DID run, by `ld`, and what that run is and is not
+
+`certify-book` cannot reach `books/served`, but `ld` can, because
+`include-book`'s missing certificate is the only thing in the way. Driver,
+run from the worktree root with `tools/acl2 --timeout 3000`:
+
+    (set-ld-error-action :continue state)
+    (set-prover-step-limit 2000000)
+    (ld "books/provenance-codec.lisp" :ld-error-action :continue)
+    (ld "books/peer-inbound.lisp"     :ld-error-action :continue)
+    (ld "books/nntp-auth.lisp"        :ld-error-action :continue)
+    (ld "books/served.lisp"           :ld-error-action :continue)
+    (ld "tests/acl2/served-tests.lisp" :ld-error-action :continue)
+
+**What it establishes.** Every definition in the four books admits.
+`FN-SERVED-TRANSIT-OUTCOME` admits; its two theorems close **Q.E.D.** —
+`FN-SERVED-TRANSIT-OUTCOME-EFFECTS-BY-DEFINITION` in 0.18 s and 91,383
+prover steps, `FN-SERVED-TRANSIT-OUTCOME-EFFECTS-ARE-TYPED` in 0.01 s over
+`FN-PEER-TRANSIT-OUTCOME-EFFECTS-WELL-FORMED`. And
+**`tests/acl2/served-tests.lisp` ran with 95 of 95 assertions `:PASSED`**,
+including all sixteen this lane added: the transit-depth separation, the
+result record's session, the negative control, the 235 prefix, and the six
+403 assertions over the forged connection.
+
+**What it is NOT.** It is an admission in a contaminated world, and the
+contamination is the technique's, not the tree's: `books/nntp-auth.lisp`'s
+`(include-book "peer-inbound")` re-processes `books/peer-inbound.lisp`
+(it has no certificate) in a world where the `ld` above already defined
+`FN-PEER-VOCABULARY`, so its `deftheory` fails with *"The name
+FN-PEER-VOCABULARY is in use as a theory"* and peer-inbound's export theory
+never runs. Served's proofs therefore run with 10,933 enabled runes instead
+of the theory the book builds, and eight of them fail on theory grounds —
+the first, `FN-SERVED-DISPATCH-EFFECTS-ARE-TYPED`, with *"A theory
+expression could not be evaluated"*, which names the cause exactly. None of
+the eight is one this lane wrote or touched. **So this run is evidence about
+the definitions, the two new theorems and the assertions, and about nothing
+else; `books/served` remains uncertified.** 46 `ACL2 Error` lines in the
+log, all of them in that cascade or in `books/provenance-codec`'s own three
+failures.
+
 ## 5. The checker's own tests
 
     python3 -m unittest tests.test_session_depth
