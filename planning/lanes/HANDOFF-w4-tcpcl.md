@@ -42,7 +42,7 @@ Spec: [specs/tcpcl.md](../../specs/tcpcl.md). Design: bp-design.md §2.
 | `books/tcpcl-octets` | certified | `build/acl2/certify-20260920T013843Z-86679` | 125.0 s |
 | `books/tcpcl-session` | certified | `build/acl2/certify-20260920T021558Z-83845` | 26.8 s |
 | `books/tcpcl-invariants` | certified | `build/acl2/certify-20260920T052819Z-3093104` (persvati) | 671.8 s |
-| `tests/acl2/tcpcl-tests` | OPEN: certify-book FAILED in 0.2 s (the manifest records exit 0 for it, which is wrong). It aborted before any form, so the two new witnesses are written and unrun | `build/acl2/certify-20260920T052819Z-3093104` (persvati) | 0.2 s (no certificate) |
+| `tests/acl2/tcpcl-tests` | OPEN: certify-book FAILED in 0.2 s (the manifest records exit 0 for that root, which is wrong) at the golden vector `(assert-event (equal (fn-tcl-encode *t-seg-1*) ...))`, a wave-4 XFER_SEGMENT vector well before anything C4 added. The book has never certified; the two new C4 witnesses are written and unrun | `build/acl2/certify-20260920T052819Z-3093104` (persvati) | 0.2 s (no certificate) |
 
 The RFC clause matrix of specs/tcpcl.md section 5: every "implemented" entry
 that names a session function is now backed by that function's certified
