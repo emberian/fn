@@ -84,6 +84,8 @@ WORLD = {"w", "state", "symbol-class", "guard", "formals", "arity",
 STRIP = {"not", "null"}
 SPLIT = {"and"}
 EQUALITIES = {"equal", "eq", "eql", "equalp", "iff", "=", "string-equal"}
+# Forms whose first argument is a binding list rather than a term.
+BINDERS = {"let", "let*", "mv-let", "mv?-let", "b*", "cond", "case", "lambda"}
 # Claims that hold of an empty collection whatever else is true.  The
 # collection is the argument named by the index.
 VACUOUS_OVER_EMPTY = {
@@ -262,15 +264,21 @@ def subjects(term: object) -> list[tuple[object, str]]:
     argument of the claim that is a call or a defconst, plus, for an equality,
     each side that is not a literal.
     """
-    if not isinstance(term, list) or not term:
+    if not isinstance(term, list) or not term or head(term) in BINDERS:
+        # A binder's first argument is a BINDING LIST, not a term: probing
+        # `((s (fn-sn-test-... )))` hands ACL2 a list in function position
+        # and it refuses the form.  The claim as a whole is still probed.
         return []
     out: list[tuple[object, str]] = []
     for position, argument in enumerate(term[1:]):
-        if isinstance(argument, list) and head(argument) == "quote":
+        if not isinstance(argument, list):
+            if defconst_name(argument):
+                out.append((argument, f"arg{position}"))
             continue
-        if isinstance(argument, list) or defconst_name(argument):
-            note = "side" if head(term) in EQUALITIES else f"arg{position}"
-            out.append((argument, note))
+        if head(argument) is None or head(argument) == "quote":
+            continue  # quoted or bare data, not a call
+        note = "side" if head(term) in EQUALITIES else f"arg{position}"
+        out.append((argument, note))
     return out
 
 
@@ -661,6 +669,34 @@ def multi_valued_calls(form: object, names: set[str],
     return found
 
 
+_COMMENTED: dict[str, str] | None = None
+
+
+def commented_out() -> dict[str, str]:
+    """Names that appear only inside a comment in `books/`, and where.
+
+    A book records a theorem it could not close by commenting the event out
+    with a reason (`books/bp-fragment-invariants.lisp:246`).  A test book
+    that cites such a name is not stale: it is carrying a witness for an
+    OPEN theorem, which is a different thing to say and a worse one to leave
+    unsaid.
+    """
+    global _COMMENTED
+    if _COMMENTED is None:
+        found: dict[str, str] = {}
+        token = re.compile(r"\bfn-[a-z0-9-]*[a-z0-9]")
+        for path in sorted((ROOT / "books").glob("*.lisp")):
+            for number, text in enumerate(
+                    path.read_text(encoding="utf-8").splitlines(), 1):
+                if ";" not in text:
+                    continue
+                for name in token.findall(text[text.index(";"):]):
+                    found.setdefault(
+                        name, f"{path.relative_to(ROOT).as_posix()}:{number}")
+        _COMMENTED = found
+    return _COMMENTED
+
+
 _MACROS: set[str] | None = None
 
 
@@ -747,7 +783,10 @@ def evaluated_findings(books: dict[str, list[Assertion]],
         run = saved.get(book)
         if run is None:
             continue
-        errors = run.get("errors", [])
+        # A `TOP-LEVEL` error is one of THIS TOOL's probe forms, not the
+        # book's: the book's own forms are named (DEFCONST, ASSERT-EVENT).
+        # Counting them made ten clean books look as if they did not run.
+        errors = [e for e in run.get("errors", []) if e["form"] != "TOP-LEVEL"]
         if errors:
             first = errors[0]
             kinds = collections.Counter(e["form"] for e in errors)
@@ -905,7 +944,8 @@ def registry_findings(books: dict[str, list[Assertion]]) -> list[Finding]:
     token = re.compile(r"\bfn-[a-z0-9-]*[a-z0-9]")
     for path in sorted(TESTS.glob("*.lisp")):
         book = path.relative_to(ROOT).as_posix()
-        for number, text in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        lines = path.read_text(encoding="utf-8").splitlines()
+        for number, text in enumerate(lines, 1):
             if ";" not in text:
                 continue
             comment = text[text.index(";"):]
@@ -928,10 +968,24 @@ def registry_findings(books: dict[str, list[Assertion]]) -> list[Finding]:
                 # next line.  `fn-served-run-is-the-' in owner-tests is one.
                 if comment[match.end():].rstrip() == "-":
                     continue
+                where = commented_out().get(name)
+                if where:
+                    # A test book that SAYS the theorem is open has already
+                    # done what this check asks for.
+                    nearby = "\n".join(lines[number - 1:number + 2])
+                    if "OPEN" in nearby:
+                        continue
+                    out.append(Finding(
+                        "witness-for-an-open-theorem", book, number,
+                        f"the comment cites `{name}`, which exists only as a "
+                        f"COMMENTED-OUT event at {where}: the witness below "
+                        f"is evidence for a theorem that is not proved, and "
+                        f"the test book does not say so"))
+                    continue
                 out.append(Finding(
                     "stale-citation", book, number,
                     f"the comment cites `{name}`, which nothing in the tree "
-                    f"defines"))
+                    f"defines and no comment in `books/` mentions either"))
 
     # A keystone with no witness in any test book.
     mentioned: dict[str, set[str]] = collections.defaultdict(set)
@@ -1007,6 +1061,43 @@ def counts(assertions: dict[str, list[Assertion]]) -> dict[str, int]:
     }
 
 
+# --------------------------------------------------------------------------
+# suggesting an anchor
+# --------------------------------------------------------------------------
+
+
+def anchor_probes(book: str, assertions: list[Assertion],
+                  constants: list[str], wanted: set[str]) -> list[Probe]:
+    """`(R c)` for every unary recogniser R flagged in this book and every
+    constant c it defines.
+
+    A recogniser the corpus only ever asserts FALSE is satisfied by a
+    definition that is false of everything, which is how `owner-tests` pinned
+    `fn-own-conn-boundedp` for a fortnight.  The repair is one positive
+    assertion, and the constant it names has to be DERIVED, not typed: this
+    finds the constants of the book that the recogniser actually accepts.
+    """
+    out: list[Probe] = []
+    for record in assertions:
+        if record.kind != "assert-event" or record.audit:
+            continue
+        for claim in record.claims:
+            name = claim.predicate
+            if name not in wanted or claim.positive:
+                continue
+            if not isinstance(claim.term, list) or len(claim.term) != 2:
+                continue  # arity 1 only: an n-ary recogniser needs its tuple
+            for number, constant in enumerate(constants):
+                out.append(Probe(
+                    key=f"anchor:{name}:{number}", book=book, line=record.line,
+                    text=f"({name} {constant})", role="anchor", claim=-1,
+                    note=constant))
+    seen: dict[str, Probe] = {}
+    for probe in out:
+        seen.setdefault(probe.key, probe)
+    return list(seen.values())
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("books", nargs="*",
@@ -1025,11 +1116,34 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--logs", help="keep each book's raw ACL2 log here")
     parser.add_argument("--strict", action="store_true",
                         help="exit 1 when there is any finding")
+    parser.add_argument("--anchors", action="store_true",
+                        help="with --evaluate: also probe every flagged unary "
+                             "recogniser against every constant its book "
+                             "defines, and print the ones it accepts")
     arguments = parser.parse_args(argv)
 
     paths = test_books(arguments.books)
-    assertions, _constants, errors = load_books(paths)
+    assertions, constants, errors = load_books(paths)
     values_path = Path(arguments.values)
+
+    if arguments.anchors and arguments.evaluate:
+        wanted = {f.detail.split("`")[1]
+                  for f in static_findings(assertions, errors)
+                  if f.check == "predicate-never-anchored"}
+        for path in paths:
+            book = path.relative_to(ROOT).as_posix()
+            probe_list = anchor_probes(book, assertions.get(book, []),
+                                       constants.get(book, []), wanted)
+            if not probe_list:
+                continue
+            where = {probe.key: len(book_text(path)) - 1 for probe in probe_list}
+            run = evaluate(path, probe_list, arguments.timeout, None,
+                           book_text(path), where)
+            for probe in probe_list:
+                value = run["values"].get(probe.key)
+                if value and value.strip() != "NIL":
+                    print(f"anchor {book}: {probe.text} = {value.strip()[:40]}")
+        return 0
 
     if arguments.evaluate:
         saved = ({} if not values_path.exists()

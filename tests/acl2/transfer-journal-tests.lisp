@@ -321,6 +321,7 @@
 ; Hypothesis 1 dropped: a record outside the grammar encodes to :bad, which
 ; decodes to a frame error, not to the record.
 (defconst *tj-bad-record* (list :reserve nil 6 :reserved))
+(assert-event (fn-tj-record-okp *tj-identical-record*))
 (assert-event (not (fn-tj-record-okp *tj-bad-record*)))
 (assert-event (equal (fn-tj-encode *tj-bad-record* *tj-digest*) :bad))
 (assert-event (not (fn-frame-result-okp (fn-tj-decode :bad *tj-digest*))))
