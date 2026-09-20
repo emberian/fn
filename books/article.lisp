@@ -547,3 +547,45 @@
 (defthm fn-article-source-recomposes
   (equal (fn-article-source (fn-article-make header body fields))
          (append header '(13 10) body)))
+
+; -----------------------------------------------------------------------------
+; Export theory.
+;
+; The three recognizer-to-`true-listp` rules above and
+; `fn-article-nonempty-true-list-is-consp` are guard vocabulary: as enabled
+; rewrite rules they backchain from any `(consp X)` or `(true-listp X)` goal
+; into a recursive recognizer on a bare variable.  Measured in
+; `books/nntp-invariants.lisp`, 921k of 921k frames of
+; `fn-nntp-article-response-keeps-projection` sat under that fan-out, and two
+; books withdrew the four by name to certify at all.  They are withdrawn here
+; instead, under one name, and the type-reasoning role they served for an
+; includer is exported back as `:forward-chaining` shape facts
+; (`docs/proof-style.md` section 1: the fact lands in the context when the
+; recognizer is mentioned, and no `consp`/`true-listp` rewrite rule leaves the
+; book).
+
+(defthm fn-article-header-bytes-p-forward-shape
+  (implies (fn-article-header-bytes-p bytes)
+           (true-listp bytes))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :by fn-article-header-bytes-true-listp)))
+
+(defthm fn-article-field-listp-forward-shape
+  (implies (fn-article-field-listp fields)
+           (true-listp fields))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :by fn-article-field-list-true-listp)))
+
+(defthm fn-article-octet-listp-forward-shape
+  (implies (fn-cbor-octet-listp octets)
+           (true-listp octets))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :by fn-article-octet-list-true-listp)))
+
+(deftheory fn-article-guard-backchaining
+  '(fn-article-header-bytes-true-listp
+    fn-article-field-list-true-listp
+    fn-article-octet-list-true-listp
+    fn-article-nonempty-true-list-is-consp))
+
+(in-theory (disable fn-article-guard-backchaining))

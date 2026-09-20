@@ -171,7 +171,9 @@ class OwnershipAndOrphanTests(unittest.TestCase):
         with mock.patch("run_store.os.open", side_effect=record_open):
             run_store.Store(self.path, writable=True).initialize()
         created = [path for path in opened if path.parent == self.path / "staging"]
-        self.assertEqual(len(created), 2)
+        # Three initial files go through staging: the config, the allocation
+        # frontier, and (since R1) the generation-1 configuration record.
+        self.assertEqual(len(created), 3)
         self.assertTrue((self.path / "config.json").is_file())
         self.assertTrue((self.path / "allocation-frontier.json").is_file())
         self.assertEqual(list((self.path / "staging").iterdir()), [])

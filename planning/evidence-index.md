@@ -1,6 +1,6 @@
 # Evidence index
 
-One row per record in `tests/evidence/`. "Covers" and "Does not show" are
+One row per record in `tests/evidence/`, and for the deploy gate's records in `planning/evidence/`. "Covers" and "Does not show" are
 qualitative; exact root/test/function counts belong to each record's own JSON
 file and to planning/ledger.md, never repeated here as prose. Records are
 ordered by their position in the project's own narrative
@@ -27,6 +27,7 @@ the calendar date 2026-09-18 because that date compresses many batches.
 | [2026-09-18-bp-guards.md](../tests/evidence/2026-09-18-bp-guards.md) | `input_base_revision a56b080` | Complete guard verification of the BP ADU decoder book, including the public guard-`T` decoder and typed streaming callees | Six other inventoried BP base books still have unverified functions (see planning/ledger.md for the current count); this is not a raw-execution claim for the whole BP call graph |
 | 2026-09-19 | `60c5322` | [wave1a](../tests/evidence/2026-09-19-wave1a.md) | Green-lane convergence: assumptions, ledger, teeth, sender replay/intent theorems, index/checkpoint, host repairs; all roots certified on persvati; Python suite green | Nothing about the six pending repair lanes; laptop certification of this tree is not a passing record |
 | 2026-09-19 | `4af825a` | [wave1b](../tests/evidence/2026-09-19-wave1b.md) | Base-book lanes converged: crash fidelity, wire/article/transfer, NNTP served path, ACL2-owned framing and identity; all roots certified on persvati at `03f15fa`; Python suite green on Linux | Nothing about substrate or BP primary/clock; macOS Python not re-run since `60c5322` |
+| [deploy-cce4b11-2026-09-20.md](evidence/deploy-cce4b11-2026-09-20.md) (under `planning/evidence/`, written by `tools/deploy_gate.py`, not a certification record) | `cce4b11` | One commit deployed to persvati and run as a real service: certificate pairs taken by content from the host's own gate, a two-group store, accepted/refused/uncertain distinct in the exit codes, a raw-socket NNTP transcript, `kill -9` from inside an open POST, recovery through the real path, and a reread of the acknowledged article through a fresh server | No certification is re-established here and no book is proved; the owner did not start on this commit so the served evidence is the reader's; no concurrent session, no independent `nntplib` decoder (the host has only Python 3.13), no newsreader (none installed), one kill point only, and a SIGKILL is not a power loss |
 
 Every `.json` companion of a row above is the authoritative machine-readable
 record; this table summarizes it and is not a substitute for reading it.

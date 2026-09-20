@@ -8,6 +8,7 @@ Python owns bounded filesystem I/O, POSIX barriers, and SHA-256 over byte
 strings it does not interpret (A-CRYPTO).
 """
 import argparse
+import base64
 import errno
 import fcntl
 import hashlib
@@ -35,26 +36,58 @@ MAX_TRANSACTION_COUNT = 128
 MAX_RECOVERY_RECORD_BYTES = MAX_TRANSACTION_COUNT * 65538
 UINT32_MAX = (1 << 32) - 1
 DEFAULT_CONFIG = {
-    # Format 3 is the first written under the ACL2-owned frame grammar, which
-    # carries the record kind octet the Python framing lacked.  The configured
-    # group list is no longer copied here: `books/store-config` owns it and a
-    # store records only which version of that table it was written under.
+    # Format 5 is the first written under the v1 content identity profile of
+    # `books/identity`; a store holding pre-v1 `"sha256:"`/`"archive:"`
+    # identities is format 4 and is refused at open rather than misread.
+    # Format 3 was the first written under the ACL2-owned frame grammar, which
+    # carries the record kind octet the Python framing lacked.  The group
+    # table is not here at all: it is the store's configuration record
+    # history under `config/`, replayed by the core at every open.
     # The encoded-record bound left with it: `books/frame` owns
     # `*fn-frame-max-store-payload*`, the host reads it from the bridge, and a
     # configuration that could disagree with the model is not written at all.
-    "format": "fn-store-experiment-4",
-    "group_table": "fn-store-groups-1",
+    "format": "fn-store-experiment-5",
     "capacity": 1048576,
     "max_payload_bytes": 32768,
     "max_recovery_record_bytes": MAX_RECOVERY_RECORD_BYTES,
     "max_transactions": MAX_TRANSACTION_COUNT,
     "allocation_frontier_format": "fn-store-allocation-frontier-1",
 }
+# A second *named* profile, not a raised default.  `max_transactions` and the
+# aggregate replay input it derives are the two bounds this host owns; every
+# bound the model owns (`*fn-frame-max-store-payload*`, `*fn-article-max-octets*`,
+# the configured group table, `fn-af-message-idp`, `fn-charge-for-payload`) is
+# unchanged here and cannot be raised from configuration at all.  A store
+# carries its profile name in its checksummed configuration, so a dev store and
+# a scale store are distinguishable on disk and neither is read under the
+# other's bounds.  `planning/scale-profile.md` holds the measurements that
+# justify the number and the reopen cost it implies.
+SCALE_TRANSACTION_COUNT = 4096
+SCALE_CONFIG = dict(
+    DEFAULT_CONFIG,
+    profile="fn-store-profile-scale-1",
+    max_transactions=SCALE_TRANSACTION_COUNT,
+    max_recovery_record_bytes=SCALE_TRANSACTION_COUNT * 65538,
+)
+# The development profile keeps its exact configuration bytes: it gains no
+# `profile` key, so every store written before this profile existed still
+# checksums and still opens.
+SUPPORTED_PROFILES = (DEFAULT_CONFIG, SCALE_CONFIG)
+# The CLI's default `init --group` list: the two experimental groups every
+# existing test posts into.  A default argument for an operator command, not
+# a group table; the table a store serves is decided by the configuration
+# records ACL2 admits and replays.
+DEFAULT_GROUPS = ("fn.letters", "fn.test")
+CONFIG_RECORD_BYTES = 65538
 # `books/frame` owns the grammar.  These two are the slice arithmetic that
 # `durable_records` and the corruption tests still do over a file they never
 # interpret; `frame_bridge.FrameSession` checks both against the ACL2
 # constants when a session opens, so a divergence fails at startup.
 MAGIC = b"FNST\x01\x01"
+# The FNAN anchor record: `books/anchor` bounds its payload at 1024 octets and
+# `books/frame` adds the 42-octet header and trailer.  This is the read bound,
+# not a second grammar; ACL2 refuses anything it does not recognize.
+ANCHOR_RECORD_BYTES = 1024 + 42
 TRAILER_BYTES = 32
 SEQ_NAME = re.compile(r"^[0-9]{20}\.txn$")
 MAX_STAGING_REPORT = 64
@@ -357,6 +390,15 @@ def acl2_symbol(output):
     return body.decode("ascii").lower()[1:]
 
 
+def acl2_keyword(output):
+    """A keyword reply outside the store-action vocabulary: a configuration
+    outcome (:ok/:refused) or an admissibility reason named by books/config."""
+    body = acl2_result(output).upper()
+    if not re.fullmatch(rb":[A-Z0-9-]+", body):
+        raise StoreError("ACL2 returned a non-keyword: {}".format(body.decode("ascii", "replace")))
+    return body.decode("ascii").lower()[1:]
+
+
 def acl2_nat(output):
     body = acl2_result(output)
     if not re.fullmatch(rb"[0-9]+", body):
@@ -378,6 +420,7 @@ class Acl2Store:
     def __init__(self):
         env = os.environ.copy()
         env["ACL2_CUSTOMIZATION"] = "NONE"
+        env["ACL2_BOOK_HASH_ALISTP"] = "NIL"  # content-hashed certificates: relocatable across worktrees and hosts
         self.proc = None
         # A bridge whose correlation is lost cannot be repaired by reading
         # further: a new ACL2 process is the only recovery.
@@ -391,6 +434,8 @@ class Acl2Store:
             self.call('(ld "host/store-host.lisp" :ld-error-action :return :ld-error-triples t)')
             self.call('(ld "host/store-node-host.lisp" :ld-error-action :return :ld-error-triples t)')
             self.call('(ld "host/checkpoint-host.lisp" :ld-error-action :return :ld-error-triples t)')
+            self.call('(ld "host/anchor-host.lisp" :ld-error-action :return :ld-error-triples t)')
+            self.call('(ld "host/config-host.lisp" :ld-error-action :return :ld-error-triples t)')
             self.reset()
         except BaseException:
             self.close()
@@ -453,13 +498,88 @@ class Acl2Store:
     def record_txid(self, record):
         return acl2_nat(self.call("(fn-store-record-txid '" + self.literal(record) + ")"))
 
-    def recover(self, records, frontier):
+    def recover(self, records, frontier, config_records=()):
         literal = "(" + " ".join(self.literal(record) for record in records) + ")"
-        form = "(fn-store-sn-recover '" + literal + " " + str(frontier) + " state)"
+        config = "(" + " ".join(self.literal(record) for record in config_records) + ")"
+        form = ("(fn-store-sn-recover '" + literal + " " + str(frontier)
+                + " '" + config + " state)")
         # Replay cost grows with the recovered history, so the bound does too.
         timeout = max(ACL2_RECOVER_BASE_SECONDS + ACL2_RECOVER_PER_RECORD_SECONDS * len(records),
                       self.form_timeout(form))
         return acl2_symbol(self.call(form, timeout=timeout))
+
+
+    # -- the external freshness anchor ---------------------------------------
+    # Every decision below is ACL2's: the anchor grammar, what the signature
+    # covers, the ordering, the monotone rule and the three outcomes all live
+    # in books/anchor.lisp.  Python moves octets and runs Ed25519.
+
+    def _form(self, form, timeout=None):
+        return frame_bridge.read_form(self.call(form, timeout=timeout))
+
+    @classmethod
+    def anchor_fields_form(cls, fields):
+        if fields is None:
+            return "nil"
+        (key, delegate, mint, maxt, delegation_signature,
+         midpoint, radius, nonce, signature) = fields
+        return "(list '{} '{} {} {} '{} {} {} '{} '{})".format(
+            cls.literal(key), cls.literal(delegate), mint, maxt,
+            cls.literal(delegation_signature), midpoint, radius,
+            cls.literal(nonce), cls.literal(signature))
+
+    @classmethod
+    def anchor_pinned_form(cls, pinned):
+        return "(list " + " ".join("'" + cls.literal(key) for key in pinned) + ")"
+
+    def anchor_signed_octets(self, radius, midpoint, root):
+        """The octets ACL2 says the server signed, for the host to verify."""
+        value = self._form("(fn-anchor-host-signed-octets {} {} '{})".format(
+            radius, midpoint, self.literal(root)))
+        return bytes(value)
+
+    def anchor_delegation_octets(self, fields):
+        """The delegation octets ACL2 says the pinned key signed."""
+        value = self._form("(fn-anchor-host-delegation-octets {})".format(
+            self.anchor_fields_form(fields)))
+        if not isinstance(value, list):
+            raise StoreFault("ACL2 refused an anchor delegation")
+        return bytes(value)
+
+    def anchor_wellformed(self, fields):
+        return self._form("(fn-anchor-host-wellformedp {})".format(
+            self.anchor_fields_form(fields))) == 1
+
+    def anchor_protected(self, incarnation, fields):
+        value = self._form("(fn-anchor-host-protected {} {})".format(
+            incarnation, self.anchor_fields_form(fields)))
+        if not isinstance(value, list):
+            raise StoreFault("ACL2 refused to frame an anchor record")
+        return bytes(value)
+
+    def anchor_decode(self, octets, digest):
+        value = self._form("(fn-anchor-host-decode '{} '{})".format(
+            self.literal(octets), self.literal(digest)))
+        if not isinstance(value, list) or len(value) != 10:
+            raise StoreFault("durable anchor record does not decode")
+        return value
+
+    def anchor_accept(self, pinned, latest, incarnation, fields, verdict):
+        status, reason = self._form(
+            "(fn-anchor-host-accept {} {} {} {} {})".format(
+                self.anchor_pinned_form(pinned), self.anchor_fields_form(latest),
+                incarnation, self.anchor_fields_form(fields),
+                "t" if verdict else "nil"))
+        return str(status), (str(reason) if reason else None)
+
+    def anchor_restore(self, pinned, incarnation, referenced, presented, verdict):
+        status, reason, next_incarnation = self._form(
+            "(fn-anchor-host-restore {} {} {} {} {})".format(
+                self.anchor_pinned_form(pinned), incarnation,
+                self.anchor_fields_form(referenced),
+                self.anchor_fields_form(presented),
+                "t" if verdict else "nil"))
+        return str(status), (str(reason) if reason else None), next_incarnation
 
     def io(self, operation, result="ok"):
         return acl2_symbol(self.call("(fn-store-sn-io :{} :{} state)".format(operation, result)))
@@ -496,6 +616,32 @@ class Acl2Store:
 
     def group_next(self, code):
         return acl2_nat(self.call("(fn-store-sn-group-next {} state)".format(code)))
+
+    # -- the replayed configuration -------------------------------------------
+
+    def config_generation(self):
+        return acl2_nat(self.call("(fn-store-cfg-generation state)"))
+
+    def _names(self, form):
+        joined = bytes(acl2_octets(self.call(form)))
+        return tuple(name.decode("utf-8") for name in joined.split(b"\n") if name)
+
+    def config_served(self):
+        return self._names("(fn-store-cfg-served state)")
+
+    def config_domain(self):
+        return self._names("(fn-store-cfg-domain state)")
+
+    def reconfigure(self, kind, name, monotonic, wall):
+        """One create/retire request.  Returns ("ok", octets) or ("refused", reason)."""
+        form = "(fn-store-cfg-reconfigure {} '{} {} {} state)".format(
+            kind, self.literal(name.encode("utf-8", "strict")), int(monotonic), int(wall))
+        status = acl2_keyword(self.call(form))
+        if status == "ok":
+            return status, acl2_octets(self.call("(fn-store-cfg-last-octets state)"))
+        if status != "refused":
+            raise StoreFault("unexpected reconfiguration outcome: {}".format(status))
+        return "refused", acl2_keyword(self.call("(fn-store-cfg-last-reason state)"))
 
     def pin_count(self):
         return acl2_nat(self.call("(fn-store-sn-pin-count state)"))
@@ -536,12 +682,20 @@ class Acl2Store:
 
 
 class Store:
-    def __init__(self, root, writable=False, faults=NO_FAULTS):
+    def __init__(self, root, writable=False, faults=NO_FAULTS, profile=None):
         self.root = Path(root).absolute()
         self.writable = writable
         self.faults = faults
+        # Which named profile `initialize` would write.  Opening an existing
+        # store still takes the profile from its durable configuration.
+        self.profile = DEFAULT_CONFIG if profile is None else profile
         self.lock_fd = None
         self.config = None
+        # The replayed configuration: generation, served table and allocation
+        # domain, all as ACL2 returned them at the last recover.
+        self.config_generation = None
+        self.config_served = ()
+        self.config_domain = ()
         self.frontier = None
         self.fenced = False
         # Staged names an interrupted publication left behind.  Recovery
@@ -565,6 +719,67 @@ class Store:
     def lock_path(self): return self.root / "writer.lock"
     @property
     def frontier_path(self): return self.root / "allocation-frontier.json"
+    @property
+    def anchor_path(self): return self.root / "anchor.fnan"
+
+    def load_anchor(self, acl2):
+        """The node's latest accepted anchor, or None if it holds none.
+
+        The record is an FNAN frame; ACL2 decodes it and applies every bound.
+        An unreadable or undecodable record is a fault: a store that once held
+        a freshness anchor and now cannot show one is not a store with no
+        anchor, and must never be silently treated as one.
+        """
+        if not check_regular(self.anchor_path):
+            return (0, None)
+        raw = read_regular_bounded(self.anchor_path, ANCHOR_RECORD_BYTES)
+        digest = hashlib.sha256(raw[:-TRAILER_BYTES]).digest() if len(raw) > TRAILER_BYTES else b""
+        values = acl2.anchor_decode(raw, digest)
+        octets = (1, 2, 5, 8, 9)
+        fields = tuple(bytes(value) if index in octets else value
+                       for index, value in enumerate(values[1:], start=1))
+        return (values[0], fields)
+
+    def write_anchor(self, acl2, incarnation, fields):
+        """Replace the durable anchor record with a newer accepted one.
+
+        The monotone rule has already been applied by ACL2 when this runs.
+        The bytes reach the final name through a staged write, a barrier and
+        an atomic rename, so a crash leaves either the old record or the new
+        one and never a truncated frame.
+        """
+        prefix = acl2.anchor_protected(incarnation, fields)
+        contents = prefix + hashlib.sha256(prefix).digest()
+        stage = self.staging / ".anchor-{}-{}".format(os.getpid(), os.urandom(12).hex())
+        fd = os.open(stage, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        try:
+            write_all(fd, contents)
+            durable_barrier(fd)
+        finally:
+            os.close(fd)
+        try:
+            os.replace(stage, self.anchor_path)
+        except BaseException:
+            try:
+                os.unlink(stage)
+            except OSError:
+                pass
+            raise
+        fsync_dir(self.root)
+
+    @property
+    def config_dir(self): return self.root / "config"
+
+    def config_record_path(self, generation):
+        return self.config_dir / "{:08d}.cfg".format(generation)
+
+    def config_record_files(self):
+        """The durable configuration records in generation order."""
+        if not self.config_dir.is_dir():
+            return ()
+        names = sorted(entry.name for entry in os.scandir(self.config_dir)
+                       if entry.name.endswith(".cfg"))
+        return tuple(self.config_dir / name for name in names)
 
     @staticmethod
     def _frontier_with_checksum(next_txid):
@@ -640,19 +855,29 @@ class Store:
             except OSError:
                 pass
 
-    def initialize(self):
+    def initialize(self, bridge=None, groups=DEFAULT_GROUPS):
+        # One durable configuration record at generation 1, built and admitted
+        # by the core from the operator's group names.
         self._safe_directory(self.root, create=True)
         lock_fd = self._open_lock(exclusive=True, create=True)
         try:
             self._safe_directory(self.transactions, create=True)
             self._safe_directory(self.staging, create=True)
-            config = config_with_checksum(DEFAULT_CONFIG)
+            self._safe_directory(self.config_dir, create=True)
+            config = config_with_checksum(self.profile)
             if self._publish_initial_file(self.config_path, canonical_json(config) + b"\n"):
                 self.config = config
             else:
                 self._load_config()
             # A missing allocator alongside committed history would permit
             # reuse of an aborted ID.  It is a fault, never an implicit 0.
+            if not self.config_record_files():
+                try:
+                    octets = frame_bridge.session(bridge).config_record_initial(groups)
+                except frame_bridge.BridgeError as error:
+                    raise StoreError("refused initial group table: {}".format(error)) from error
+                self._publish_initial_file(self.config_record_path(1), octets)
+                fsync_dir(self.config_dir)
             if not check_regular(self.frontier_path) and self.transaction_files():
                 raise StoreFault("refusing missing allocator frontier with committed history")
             frontier = canonical_json(self._frontier_with_checksum(0)) + b"\n"
@@ -661,6 +886,8 @@ class Store:
             else:
                 self._load_frontier()
             fsync_regular(self.config_path)
+            for path in self.config_record_files():
+                fsync_regular(path)
             fsync_regular(self.frontier_path)
             fsync_dir(self.transactions)
             fsync_dir(self.root)
@@ -678,7 +905,8 @@ class Store:
             raise StoreFault("invalid durable config: {}".format(error)) from error
         if not isinstance(config, dict) or config_with_checksum(config) != config:
             raise StoreFault("config checksum mismatch")
-        if config != config_with_checksum(DEFAULT_CONFIG):
+        if not any(config == config_with_checksum(supported)
+                   for supported in SUPPORTED_PROFILES):
             raise StoreFault("unsupported store configuration")
         self.config = config
 
@@ -786,6 +1014,38 @@ class Store:
             records.append(record)
         return records
 
+    def config_records(self):
+        """The durable configuration record history, oldest first.
+
+        A store with no configuration record is a refused store -- a distinct
+        outcome from an uncertain persistence observation, and never a
+        compiled-in default.  The core decides whether the records replay.
+        """
+        paths = self.config_record_files()
+        if not paths:
+            raise StoreFault("refusing store with no durable configuration record")
+        records = []
+        for path in paths:
+            check_regular(path)
+            records.append(read_regular_bounded(path, CONFIG_RECORD_BYTES))
+        return records
+
+    def write_config_record(self, generation, octets):
+        """Make one admitted configuration record durable under its generation.
+
+        The three outcomes stay distinct: the record either reaches its final
+        name and its directory barrier (accepted), or an I/O failure leaves
+        it uncertain -- the next open replays whatever became durable.
+        """
+        try:
+            if not self._publish_initial_file(self.config_record_path(generation), octets):
+                raise StoreFault("configuration generation {} already exists".format(generation))
+            fsync_regular(self.config_record_path(generation))
+            fsync_dir(self.config_dir)
+        except OSError as error:
+            raise StoreIndeterminate(
+                "configuration record {} may not be durable: {}".format(generation, error)) from error
+
     def recover(self, acl2):
         # Recovery owns the mutation gate from the start of scanning through
         # the final barrier, including unexpected read/runtime failures.
@@ -796,10 +1056,14 @@ class Store:
             # barrier failed. Recover the observed frontier under the held
             # store lock, never a cached pre-error allocation value.
             self._load_frontier()
+            config_records = self.config_records()
             records = self.durable_records(acl2)
             self.orphans = self.staging_orphans()
-            if acl2.recover(records, self.frontier) != "recovering":
-                raise StoreFault("ACL2 replay rejected committed transaction history")
+            if acl2.recover(records, self.frontier, config_records) != "recovering":
+                raise StoreFault("ACL2 replay rejected committed transaction history or configuration history")
+            self.config_generation = acl2.config_generation()
+            self.config_served = acl2.config_served()
+            self.config_domain = acl2.config_domain()
         except (StoreFault, StoreIndeterminate):
             self.fenced = True
             raise
@@ -1047,31 +1311,36 @@ class Store:
 
 
 def metadata(msgid, payload, bridge=None):
-    """Content identity, derived in ACL2 by `books/identity`.
+    """Content identity, derived in ACL2 by `books/identity`, v1 profile.
 
-    The host hashes two byte strings it does not interpret and ACL2 decides
-    the labels, the hexadecimal spelling, the separator octet and the order of
-    the obligation preimage.  The evidence label stays a host constant: it
+    The host hashes two byte strings it does not interpret; ACL2 decides the
+    domain labels, the length prefixes, the version and algorithm octets, the
+    order of each preimage and the rendering.  The obligation binds the
+    CANONICAL subject identity octets; what comes back here is each identity's
+    text, because a store record metadata field, a journal record and an NNTP
+    header are all strings.  The evidence label stays a host constant: it
     names a provenance the model only compares.
     """
     session = frame_bridge.session(bridge)
     try:
         subject = session.subject_id(payload)
         obligation = session.obligation_id(msgid, subject)
+        return (session.identity_text(obligation),
+                session.identity_text(subject),
+                b"unsigned-legacy-v0")
     except frame_bridge.BridgeError as error:
         raise StoreError("ACL2 refused to derive content identity") from error
-    return obligation, subject, b"unsigned-legacy-v0"
 
 
-def group_codes(groups, config, bridge=None):
-    """`books/store-config` owns the group table; this asks it for the codes."""
+def group_codes(groups, store, bridge=None):
+    """Codes in the allocation domain the core handed `store` at recover."""
     session = frame_bridge.session(bridge)
-    if config.get("group_table") != session.group_table_id():
-        raise StoreFault("store was written under a different group table")
+    if store.config.get("format") != session.format_id():
+        raise StoreFault("store was written under a different store format")
     if not groups:
         raise StoreError("provide one or more distinct configured groups")
     try:
-        return session.group_codes(groups)
+        return session.group_codes(groups, store.config_domain)
     except frame_bridge.BridgeError as error:
         raise StoreError("unknown or duplicate configured group") from error
 
@@ -1100,10 +1369,48 @@ def validate_post_boundary(msgid, payload, groups, charge, config, bridge=None):
 def command_init(args):
     store = Store(args.store, writable=True)
     try:
-        store.initialize()
+        store.initialize(groups=tuple(args.group) if args.group else DEFAULT_GROUPS)
         store.acquire()
         print("initialized {}".format(store.root))
     finally:
+        store.close()
+
+
+def command_group(args):
+    """`group create <name>` / `group retire <name>`: one configuration record.
+
+    The core admits or refuses the request (exit 1 with the reason); an
+    admitted record is made durable under its generation, and an I/O failure
+    after admission is reported uncertain (exit 3), never as either.
+    """
+    import time
+    kind = {"create": ":create-group", "retire": ":remove-group"}[args.action]
+    store, bridge, unused_records = open_live_store(args.store, writable=True)
+    try:
+        status, payload = bridge.reconfigure(kind, args.name, time.monotonic(), time.time())
+        if status != "ok":
+            print("store: refused group {}: {}".format(args.action, payload), file=sys.stderr)
+            return EXIT_REFUSED
+        generation = store.config_generation + 1
+        store.write_config_record(generation, payload)
+        print("group {} name={} generation={}".format(
+            "created" if args.action == "create" else "retired", args.name, generation))
+        return EXIT_OK
+    finally:
+        bridge.close()
+        store.close()
+
+
+def command_config(args):
+    """Print the replayed configuration: generation, served table, domain."""
+    store, bridge, unused_records = open_live_store(args.store, writable=False)
+    try:
+        print("generation={} served={} domain={}".format(
+            store.config_generation, ",".join(store.config_served),
+            ",".join(store.config_domain)))
+        return EXIT_OK
+    finally:
+        bridge.close()
         store.close()
 
 
@@ -1133,58 +1440,115 @@ CLI_FAULTS = {
 }
 
 
+def durable_post(store, bridge, records_count, msgid, payload, codes, charge):
+    """The durable acceptance path, shared by the CLI and the served POST.
+
+    ACL2 decides: `bridge.prepare` is fn-node-prepare and `store.finish` is the
+    exact fn-sn durable completion.  This function performs I/O around those
+    decisions and reports the sequence it committed.  It never invents a
+    durable status.
+    """
+    current_txid = bridge.next_txid()
+    next_frontier = store.advance_frontier(bridge, current_txid)
+    obligation, subject, evidence = metadata(msgid, payload)
+    action = bridge.prepare(msgid, payload, codes, obligation,
+                            subject, evidence, charge)
+    if action != "prepared":
+        # The allocator reservation is durable even for a synchronous
+        # semantic refusal.  The file kernel consumes it; Python only
+        # reports the already-observed allocator sequence.
+        store.fenced = True
+        if bridge.refuse_reservation() != "refused":
+            raise StoreIndeterminate("ACL2 could not consume refused reservation")
+        raise StoreError("ACL2 refused post: {}".format(action))
+    record = bridge.pending_record()
+    try:
+        store.publish(bridge, records_count, record)
+    except StoreIndeterminate:
+        raise
+    except StoreError:
+        # A pre-publication staging failure has no final-name event.  Its
+        # exact candidate is resolved through fn-sf/fn-node; a bridge
+        # inconsistency stays fenced for observed replay.
+        if not store.fenced:
+            store.fenced = True
+            if bridge.known_abort() != "aborted":
+                raise StoreIndeterminate("ACL2 rejected known pre-publication abort")
+        raise
+    # Final-name publication and its directory barrier have put the file
+    # kernel in :completing.  Only fn-sn-finish performs the exact actual
+    # node durable completion; there is no host durable-status string.
+    store.fenced = True
+    store.finish(bridge)
+    return records_count
+
+
+def post_article(store, bridge, records_count, msgid, payload, groups, charge):
+    """Post one article through an open writable store and its bridge.
+
+    Returns (sequence, charge) for a durable commit and (None, charge) for a
+    duplicate.  Every refusal, uncertainty and fault is raised as the store
+    error that names it, so the CLI and the owner map one outcome to one code.
+    """
+    codes = group_codes(groups, store)
+    charge = charge if charge is not None else conservative_charge(payload)
+    validate_post_boundary(msgid, payload, codes, charge, store.config)
+    existing = bridge.existing_action(msgid, payload, codes)
+    if existing == "duplicate":
+        return None, charge
+    if existing == "conflict":
+        raise StoreError("conflicting immutable Message-ID")
+    if records_count >= store.config["max_transactions"]:
+        raise StoreError("transaction count has reached configured bound")
+    return (durable_post(store, bridge, records_count, msgid, payload, codes, charge),
+            charge)
+
+
+def post_via_owner(control, msgid, payload, groups, charge):
+    """Thin client of tools/run_owner.py: one request line, one reply line."""
+    import socket
+    line = "POST {} {} {} {}\n".format(msgid.decode("ascii"), ",".join(groups),
+                                       "-" if charge is None else charge, len(payload))
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+        sock.settimeout(ACL2_RECOVER_BASE_SECONDS + 60)
+        sock.connect(control)
+        sock.sendall(line.encode("ascii") + payload)
+        reply = b""
+        while not reply.endswith(b"\n"):
+            chunk = sock.recv(4096)
+            if not chunk:
+                break
+            reply += chunk
+    reply = reply.strip().decode("utf-8", "replace")
+    if reply.startswith("committed ") or reply == "duplicate":
+        print(reply)
+        return EXIT_OK
+    print("store: {}".format(reply), file=sys.stderr)
+    if reply.startswith("refused"):
+        return EXIT_REFUSED
+    if reply.startswith("uncertain"):
+        return EXIT_UNCERTAIN
+    return EXIT_FAULT
+
+
 def command_post(args, faults=NO_FAULTS):
     """Post one article.  `faults` is the test-only injector; the CLI hook wins."""
     msgid = args.message_id.encode("ascii")
     payload = read_regular_bounded(args.payload, DEFAULT_CONFIG["max_payload_bytes"])
+    # Optional: harnesses build argument objects without every CLI flag.
+    owner = getattr(args, "owner", None)
+    if owner is not None:
+        return post_via_owner(owner, msgid, payload, args.group, args.charge)
     if args.inject_fault is not None:
         faults = CLI_FAULTS[args.inject_fault]()
     store, bridge, records = open_live_store(args.store, writable=True, faults=faults)
     try:
-        codes = group_codes(args.group, store.config)
-        charge = args.charge if args.charge is not None else conservative_charge(payload)
-        validate_post_boundary(msgid, payload, codes, charge, store.config)
-        existing = bridge.existing_action(msgid, payload, codes)
-        if existing == "duplicate":
+        sequence, charge = post_article(store, bridge, len(records), msgid, payload,
+                                        args.group, args.charge)
+        if sequence is None:
             print("duplicate")
             return 0
-        if existing == "conflict":
-            raise StoreError("conflicting immutable Message-ID")
-        if len(records) >= store.config["max_transactions"]:
-            raise StoreError("transaction count has reached configured bound")
-        current_txid = bridge.next_txid()
-        next_frontier = store.advance_frontier(bridge, current_txid)
-        obligation, subject, evidence = metadata(msgid, payload)
-        action = bridge.prepare(msgid, payload, codes, obligation,
-                                subject, evidence, charge)
-        if action != "prepared":
-            # The allocator reservation is durable even for a synchronous
-            # semantic refusal.  The file kernel consumes it; Python only
-            # reports the already-observed allocator sequence.
-            store.fenced = True
-            if bridge.refuse_reservation() != "refused":
-                raise StoreIndeterminate("ACL2 could not consume refused reservation")
-            raise StoreError("ACL2 refused post: {}".format(action))
-        record = bridge.pending_record()
-        try:
-            store.publish(bridge, len(records), record)
-        except StoreIndeterminate:
-            raise
-        except StoreError:
-            # A pre-publication staging failure has no final-name event.  Its
-            # exact candidate is resolved through fn-sf/fn-node; a bridge
-            # inconsistency stays fenced for observed replay.
-            if not store.fenced:
-                store.fenced = True
-                if bridge.known_abort() != "aborted":
-                    raise StoreIndeterminate("ACL2 rejected known pre-publication abort")
-            raise
-        # Final-name publication and its directory barrier have put the file
-        # kernel in :completing.  Only fn-sn-finish performs the exact actual
-        # node durable completion; there is no host durable-status string.
-        store.fenced = True
-        store.finish(bridge)
-        print("committed sequence={} charge={}".format(len(records), charge))
+        print("committed sequence={} charge={}".format(sequence, charge))
         return EXIT_OK
     finally:
         bridge.close()
@@ -1198,15 +1562,141 @@ def orphan_report(store):
     return "staging-orphans={} [{}]".format(len(store.orphans), " ".join(store.orphans))
 
 
+
+# -----------------------------------------------------------------------------
+# The external freshness anchor (books/anchor.lisp, specs/anchor.md)
+#
+# FLR-003: a checksummed store image cannot show it is not an old snapshot.
+# A Roughtime response bound to a nonce this node chose can.  Python obtains
+# and parses it and runs Ed25519; ACL2 owns the statement, the octets the
+# signatures cover, the ordering and the monotone rule.
+
+
+def pinned_keys():
+    """The long-term keys this node trusts, from tools/roughtime_servers.json."""
+    from tools import roughtime
+    return [base64.b64decode(entry["public_key_base64"])
+            for entry in roughtime.load_servers().values()]
+
+
+def obtain_anchor(args):
+    """One anchor, from a pinned server or a captured response.
+
+    Returns (anchor, None) or (None, reason).  A reason is never a refusal:
+    not reaching a server means the freshness question is unanswered.
+    """
+    from tools import crypto_host, roughtime
+    try:
+        vector = getattr(args, "anchor_vector", None)
+        if vector:
+            record = json.loads(Path(vector).read_bytes())
+            return roughtime.parse_response(
+                bytes.fromhex(record["response_hex"]),
+                bytes.fromhex(record["nonce_hex"]),
+                bytes.fromhex(record["key_id_hex"]),
+                record.get("server", "captured")), None
+        servers = roughtime.load_servers()
+        name = getattr(args, "anchor_server", None) or "int08h"
+        if name not in servers:
+            return None, "no pinned server named {}".format(name)
+        return roughtime.query(servers[name],
+                               getattr(args, "anchor_timeout", 5.0))[0], None
+    except crypto_host.CryptoUnavailable as error:
+        return None, str(error)
+    except (roughtime.RoughtimeError, OSError, ValueError, KeyError) as error:
+        return None, "{}: {}".format(type(error).__name__, error)
+
+
+def anchor_verdict(bridge, anchor):
+    """Ed25519 over exactly the octets ACL2 says were signed.
+
+    ACL2 rebuilds both signed messages; if its reconstruction and the octets
+    on the wire disagree, that is a fault, not a verdict.  Two checks make the
+    chain: the pinned long-term key over the delegation, and the delegated key
+    over the response.
+    """
+    from tools import crypto_host, roughtime
+    signed = bridge.anchor_signed_octets(anchor.radius, anchor.midpoint, anchor.root)
+    if signed != roughtime.RESPONSE_CONTEXT + anchor.srep:
+        raise StoreFault("ACL2 and the wire disagree about the signed response")
+    delegation = bridge.anchor_delegation_octets(anchor.fields())
+    if delegation != roughtime.DELEGATION_CONTEXT + anchor.dele:
+        raise StoreFault("ACL2 and the wire disagree about the signed delegation")
+    return (crypto_host.verify(anchor.key_id, delegation, anchor.delegation_signature)
+            and crypto_host.verify(anchor.delegate, signed, anchor.signature))
+
+
+def command_anchor(args):
+    """Obtain one anchor and record it durably if the model accepts it."""
+    store = Store(args.store, writable=True)
+    store.acquire()
+    bridge = None
+    try:
+        bridge = Acl2Store()
+        incarnation, held = store.load_anchor(bridge)
+        anchor, reason = obtain_anchor(args)
+        if anchor is None:
+            print("anchor uncertain: {}".format(reason))
+            return EXIT_UNCERTAIN
+        fields = anchor.fields()
+        status, why = bridge.anchor_accept(
+            pinned_keys(), held, incarnation, fields,
+            anchor_verdict(bridge, anchor))
+        if status == "accepted":
+            store.write_anchor(bridge, incarnation, fields)
+            print("anchor accepted server={} midpoint_us={} radius_us={} "
+                  "incarnation={}".format(anchor.server, anchor.midpoint,
+                                          anchor.radius, incarnation))
+            return EXIT_OK
+        if status == "uncertain":
+            print("anchor uncertain: {}".format(why))
+            return EXIT_UNCERTAIN
+        print("anchor refused: {}".format(why))
+        return EXIT_REFUSED
+    finally:
+        if bridge is not None:
+            bridge.close()
+        store.close()
+
+
+def anchor_restore_check(store, bridge, args):
+    """The monotone rule over a recovered image.  Returns (report, exit code).
+
+    A store that never recorded an anchor has nothing to be stale against and
+    is reported as such.  One that did must show an anchor newer than the one
+    its durable records stand under, or the restore is refused.
+    """
+    incarnation, referenced = store.load_anchor(bridge)
+    if referenced is None:
+        return "anchor=none", EXIT_OK
+    anchor, reason = obtain_anchor(args)
+    if anchor is None:
+        return "anchor=uncertain [{}]".format(reason), EXIT_UNCERTAIN
+    status, why, next_incarnation = bridge.anchor_restore(
+        pinned_keys(), incarnation, referenced, anchor.fields(),
+        anchor_verdict(bridge, anchor))
+    if status == "accepted":
+        store.write_anchor(bridge, next_incarnation, anchor.fields())
+        return "anchor=accepted incarnation={}".format(next_incarnation), EXIT_OK
+    if status == "uncertain":
+        return "anchor=uncertain [{}]".format(why), EXIT_UNCERTAIN
+    return "anchor=refused:{}".format(why), EXIT_REFUSED
+
+
 def command_recover(args):
     from tools import checkpoint
     store, bridge, records = open_live_store(args.store, writable=True)
     try:
-        print("recovered transactions={} articles={} {} {}".format(
-            len(records), bridge.article_count(), orphan_report(store),
+        report, code = anchor_restore_check(store, bridge, args)
+        print("recovered transactions={} articles={} {} {} {}".format(
+            len(records), bridge.article_count(), orphan_report(store), report,
             checkpoint.describe(store.checkpoint_outcome)))
-        # A corrupt selected generation is a distinct, reported outcome: the
-        # journal recovered, the checkpoint subsystem did not.
+        # Three outcomes stay distinct: an uncertain or refused anchor keeps its
+        # own code; otherwise a corrupt selected generation is its own fault
+        # code, because the journal recovered and the checkpoint subsystem did
+        # not.
+        if code != EXIT_OK:
+            return code
         return EXIT_FAULT if store.checkpoint_outcome[0] == "corrupt" else EXIT_OK
     finally:
         bridge.close()
@@ -1243,7 +1733,13 @@ def main(argv=None):
     parser = UsageParser(description=__doc__)
     parser.add_argument("--store", required=True, help="local store root")
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("init")
+    init = sub.add_parser("init")
+    init.add_argument("--group", action="append",
+                      help="a group the new store serves (default: the two experimental groups)")
+    group = sub.add_parser("group")
+    group.add_argument("action", choices=("create", "retire"))
+    group.add_argument("name")
+    sub.add_parser("config")
     post = sub.add_parser("post")
     post.add_argument("--message-id", required=True)
     post.add_argument("--payload", required=True)
@@ -1251,14 +1747,25 @@ def main(argv=None):
     post.add_argument("--charge", type=int)
     post.add_argument("--inject-fault", choices=tuple(CLI_FAULTS),
                       help="test-only: select one scripted publication fault point")
-    sub.add_parser("recover")
+    post.add_argument("--owner", help="post through the running owner's control socket")
+    recover = sub.add_parser("recover")
+    anchor = sub.add_parser("anchor")
+    for parser_with_anchor in (recover, anchor):
+        parser_with_anchor.add_argument(
+            "--anchor-server", help="a name from tools/roughtime_servers.json")
+        parser_with_anchor.add_argument(
+            "--anchor-vector",
+            help="test-only: a captured response instead of a live query")
+        parser_with_anchor.add_argument("--anchor-timeout", type=float, default=5.0)
     sub.add_parser("status")
     inspect = sub.add_parser("inspect")
     inspect.add_argument("--message-id", required=True)
     args = parser.parse_args(argv)
     try:
         return {"init": command_init, "post": command_post, "recover": command_recover,
-                "status": command_status, "inspect": command_inspect}[args.command](args)
+                "status": command_status, "inspect": command_inspect,
+                "anchor": command_anchor, "group": command_group,
+                "config": command_config}[args.command](args)
     except (StoreError, OSError, UnicodeError) as error:
         print("store: {}".format(error), file=sys.stderr)
         return exit_code_for(error)

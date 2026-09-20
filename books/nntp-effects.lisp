@@ -10,6 +10,25 @@
 ; octets back.
 (in-package "ACL2")
 (include-book "nntp-invariants")
+(include-book "nntp-overview")
+
+; The five books of the nntp cluster withdraw their definitions at their
+; export events (2026-09-19 split of books/nntp.lisp); this book reasons
+; about the transitions, so it re-enables exactly them, locally.
+(local (in-theory (enable fn-nntp-syntax-vocabulary
+                          fn-nntp-session-vocabulary
+                          fn-nntp-projection-vocabulary
+                          fn-nntp-responses-vocabulary
+                          fn-nntp-vocabulary)))
+(local (in-theory (enable fn-statep fn-articlep fn-pendingp)))
+
+; The consp- and true-listp-backchaining rules that ran the -is-response-text
+; theorems here past 40M prover steps on 2026-09-20 are no longer enabled on
+; include: books/article.lisp withdraws them as fn-article-guard-backchaining
+; and books/wildmat.lisp as fn-wildmat-guard-backchaining, exporting each
+; recognizer's shape fact as a :forward-chaining rule instead
+; (docs/proof-style.md section 1).  The book-wide withdrawal that used to
+; stand here is therefore gone.
 
 ; -----------------------------------------------------------------------------
 ; The response grammar
@@ -109,7 +128,12 @@
            (equal (car effect) :reply)
            (fn-octet-listp (car (cdr effect)))
            (fn-nntp-replyp (car (cdr effect))))
-      (equal effect (fn-nntp-close-effect))))
+      (equal effect (fn-nntp-close-effect))
+      ; POST (RFC 3977 section 6.3.1) changes the framing mode rather than
+      ; emitting octets: the host applies this one by calling
+      ; fn-wire-begin-article.  It carries no payload, so nothing about it can
+      ; be malformed; books/nntp-post.lisp is what reads it.
+      (equal effect (fn-nntp-begin-article-effect))))
 
 (defun fn-nntp-effectsp (effects)
   (if (consp effects)
@@ -140,6 +164,16 @@
   (implies (fn-octet-listp x)
            (fn-octet-listp (reverse x)))
   :hints (("Goal" :in-theory (enable reverse))))
+
+; std/lists/rev (books/article.lisp:13) rewrites the (revappend x nil) that
+; reverse opens to into (rev x), so every reverse inside an opened
+; fn-nntp-crlf-lines-aux reaches a proof as rev and the lemma above cannot
+; match it (certify-20260920T010731Z-93121).  The same lemma in that normal
+; form, from the one above.
+(defthm fn-nntp-effects-octet-listp-rev
+  (implies (fn-octet-listp x)
+           (fn-octet-listp (rev x)))
+  :hints (("Goal" :use fn-nntp-effects-octet-listp-reverse :in-theory (e/d (reverse) (fn-nntp-effects-octet-listp-reverse)))))
 
 (defthm fn-nntp-effects-string-octets-aux
   (implies (character-listp chars)
@@ -297,6 +331,15 @@
   (implies (fn-nntp-block-textp x) (fn-nntp-block-textp (reverse x)))
   :hints (("Goal" :in-theory (enable reverse))))
 
+; std/lists/rev (books/article.lisp:13) rewrites the (revappend x nil) that
+; reverse opens to into (rev x), so every reverse inside an opened
+; fn-nntp-crlf-lines-aux reaches a proof as rev and the lemma above cannot
+; match it (certify-20260920T010731Z-93121).  The same lemma in that normal
+; form, from the one above.
+(defthm fn-nntp-block-textp-rev
+  (implies (fn-nntp-block-textp x) (fn-nntp-block-textp (rev x)))
+  :hints (("Goal" :use fn-nntp-block-textp-reverse :in-theory (e/d (reverse) (fn-nntp-block-textp-reverse)))))
+
 (defthm fn-nntp-response-textp-revappend
   (implies (and (fn-nntp-response-textp x) (fn-nntp-response-textp accumulator))
            (fn-nntp-response-textp (revappend x accumulator))))
@@ -304,6 +347,15 @@
 (defthm fn-nntp-response-textp-reverse
   (implies (fn-nntp-response-textp x) (fn-nntp-response-textp (reverse x)))
   :hints (("Goal" :in-theory (enable reverse))))
+
+; std/lists/rev (books/article.lisp:13) rewrites the (revappend x nil) that
+; reverse opens to into (rev x), so every reverse inside an opened
+; fn-nntp-crlf-lines-aux reaches a proof as rev and the lemma above cannot
+; match it (certify-20260920T010731Z-93121).  The same lemma in that normal
+; form, from the one above.
+(defthm fn-nntp-response-textp-rev
+  (implies (fn-nntp-response-textp x) (fn-nntp-response-textp (rev x)))
+  :hints (("Goal" :use fn-nntp-response-textp-reverse :in-theory (e/d (reverse) (fn-nntp-response-textp-reverse)))))
 
 (defthm fn-nntp-crlf-lines-aux-is-response-text
   (implies (and (fn-octet-listp bytes)
@@ -751,11 +803,24 @@
                                    fn-nntp-list-active fn-nntp-list-newsgroups
                                    fn-nntp-list-filtered-response)))))
 
+; LIST OVERVIEW.FMT (RFC 3977 section 8.4) is answered from the unmaintained
+; LIST dispatcher below, which keeps fn-nntp-list-overview-fmt closed, so its
+; effects lemma has to exist first: it was stated 300 lines further down and
+; the dispatcher theorem failed on exactly this statement (ld replay,
+; 2026-09-20).  A ground fact: the seven lines are a constant.
+(defthm fn-nntp-effects-list-overview-fmt
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects (fn-nntp-list-overview-fmt session)))
+  :hints (("Goal" :in-theory (enable fn-nntp-list-overview-fmt
+                                     fn-nov-fmt-octet-lines
+                                     fn-nntp-block-textp))))
+
 (defthm fn-nntp-effects-list-unmaintained-response
   (fn-nntp-effectsp
    (fn-nntp-result-effects
     (fn-nntp-list-unmaintained-response session keyword args)))
-  :hints (("Goal" :in-theory (enable fn-nntp-list-unmaintained-response))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-list-unmaintained-response)
+                                  (fn-nntp-list-overview-fmt)))))
 
 (defthm fn-nntp-effects-list-response
   (implies (fn-nntp-projectionp archive)
@@ -773,6 +838,8 @@
   (fn-nntp-effectsp
    (fn-nntp-result-effects (fn-nntp-capabilities session)))
   :hints (("Goal" :in-theory (enable fn-nntp-capabilities
+                                     fn-nntp-capability-lines
+                                     fn-nntp-unadvertised-capability-lines
                                      fn-nntp-block-textp))))
 
 (defthm fn-nntp-effects-help
@@ -780,6 +847,142 @@
    (fn-nntp-result-effects (fn-nntp-help session)))
   :hints (("Goal" :in-theory (enable fn-nntp-help
                                      fn-nntp-block-textp))))
+
+; -----------------------------------------------------------------------------
+; The reader profile's new branches (RFC 3977 sections 5.3, 7.1, 7.3, 8.3, 8.4)
+;
+; books/nntp-overview.lisp proves that every overview field and every overview
+; line is clean, with no hypothesis about the stored article.  These two
+; bridges carry that into this book's response grammar, so an overview line can
+; neither split a response nor invent a field boundary.
+
+(defthm fn-nntp-clean-line-is-response-text
+  (implies (fn-nov-clean-linep bytes) (fn-nntp-response-textp bytes))
+  :hints (("Goal" :induct (fn-nov-clean-linep bytes)
+           :in-theory (enable fn-nov-clean-linep fn-nntp-response-textp))))
+
+(defthm fn-nntp-clean-lines-are-block-text
+  (implies (fn-nov-clean-line-listp lines) (fn-nntp-block-textp lines))
+  :hints (("Goal" :induct (fn-nov-clean-line-listp lines)
+           :in-theory (enable fn-nov-clean-line-listp fn-nntp-block-textp))))
+
+(defthm fn-nntp-over-block-is-block-text
+  (fn-nntp-block-textp (fn-nov-lines-for-numbers group numbers articles))
+  :hints (("Goal" :use fn-nov-lines-for-numbers-are-clean
+           :in-theory (disable fn-nov-lines-for-numbers-are-clean
+                               fn-nov-lines-for-numbers))))
+
+(defthm fn-nntp-over-one-line-is-block-text
+  (implies (fn-nov-okp (fn-nov-overview article))
+           (fn-nntp-block-textp (list (fn-nov-line number (fn-nov-overview article)))))
+  :hints (("Goal" :use ((:instance fn-nov-line-is-a-clean-line
+                         (over (fn-nov-overview article)))
+                        (:instance fn-nov-overview-is-an-overview))
+           :in-theory (e/d (fn-nntp-block-textp)
+                           (fn-nov-line-is-a-clean-line
+                            fn-nov-overview-is-an-overview
+                            fn-nov-line fn-nov-overview fn-nov-overviewp)))))
+
+(defthm fn-nntp-effects-over-current
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects (fn-nntp-over-current session archive)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-over-current)
+                                  (fn-nov-overview fn-nov-line
+                                   fn-nntp-available-article fn-nntp-single)))))
+
+(defthm fn-nntp-effects-over-range
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects (fn-nntp-over-range session archive token)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-over-range)
+                                  (fn-nov-lines-for-numbers
+                                   fn-nntp-group-range-numbers
+                                   fn-nntp-parse-range fn-nntp-single)))))
+
+(defthm fn-nntp-effects-over-msgid
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects (fn-nntp-over-msgid session archive token)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-over-msgid)
+                                  (fn-nov-overview fn-nov-line
+                                   fn-find-article fn-nntp-single
+                                   fn-nntp-token-string)))))
+
+(defthm fn-nntp-effects-over-response
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects (fn-nntp-over-response session archive args)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-over-response)
+                                  (fn-nntp-over-current fn-nntp-over-range
+                                   fn-nntp-over-msgid fn-nntp-single
+                                   fn-nntp-parse-range
+                                   fn-nntp-message-id-tokenp)))))
+
+; DATE renders only fixed octets and table-looked-up digits, so its line is a
+; status line of exactly eighteen octets whatever the clock reads.
+(defthm fn-nntp-pad2-is-response-text
+  (fn-nntp-response-textp (fn-nntp-pad2 n)))
+
+(defthm fn-nntp-pad4-is-response-text
+  (fn-nntp-response-textp (fn-nntp-pad4 n))
+  :hints (("Goal" :in-theory (enable fn-nntp-pad4 fn-nntp-pad2))))
+
+(defthm fn-nntp-date-octets-is-response-text
+  (fn-nntp-response-textp (fn-nntp-date-octets civil))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-date-octets fn-nntp-append-pieces)
+                                  (fn-nntp-pad2 fn-nntp-pad4)))))
+
+(defthm fn-nntp-date-octets-is-a-status-line
+  (fn-nntp-initial-status-linep (fn-nntp-date-octets civil))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-date-octets fn-nntp-append-pieces
+                                   fn-nntp-initial-status-linep)
+                                  (fn-nntp-pad2 fn-nntp-pad4)))))
+
+(defthm fn-nntp-date-octets-length
+  (equal (len (fn-nntp-date-octets civil)) 18)
+  :rule-classes (:rewrite :linear)
+  :hints (("Goal" :in-theory (enable fn-nntp-date-octets fn-nntp-append-pieces
+                                     fn-nntp-pad2 fn-nntp-pad4))))
+
+(defthm fn-nntp-effects-date-response
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects (fn-nntp-date-response session env)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-date-response fn-nntp-effectsp)
+                                  (fn-nntp-date-octets fn-nntp-single
+                                   fn-nntp-replyp fn-nntp-crlf
+                                   fn-nntp-dtn-civil
+                                   fn-clock-observationp fn-clock-has-wall)))))
+
+(defthm fn-nntp-effects-mode-response
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects (fn-nntp-mode-response session args)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-mode-response fn-nntp-effectsp
+                                   fn-nntp-effectp fn-nntp-reply-effect
+                                   fn-nntp-close-effect)
+                                  (fn-nntp-replyp fn-nntp-single
+                                   fn-nntp-keywordp)))))
+
+; NEWGROUPS lists group names that came from persisted creation facts, so the
+; environment recognizer is what makes every emitted name renderable.
+; fn-nntp-facts-since screens every fact it keeps, so the emitted names are
+; renderable whatever the host passed: no environment hypothesis is needed, and
+; one would have no teeth.
+(defthm fn-nntp-facts-since-are-facts
+  (fn-nntp-group-fact-listp (fn-nntp-facts-since threshold facts)))
+
+(defthm fn-nntp-fact-names-are-safe
+  (implies (fn-nntp-group-fact-listp facts)
+           (fn-nntp-safe-group-listp (fn-nntp-fact-names facts))))
+
+(defthm fn-nntp-effects-newgroups-response
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects
+    (fn-nntp-newgroups-response session archive env args)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-newgroups-response)
+                                  (fn-nntp-active-lines fn-nntp-single
+                                   fn-nntp-fact-names fn-nntp-facts-since
+                                   fn-nntp-newgroups-date-parse
+                                   fn-nntp-newgroups-time-parse
+                                   fn-nntp-civil-dtn-ms
+                                   fn-nntp-observed-year
+                                   fn-nntp-keywordp)))))
 
 (in-theory (disable fn-nntp-listgroup-command
                     fn-nntp-current-retrieval
@@ -790,7 +993,11 @@
                     fn-nntp-list-active-or-newsgroups
                     fn-nntp-list-unmaintained-response
                     fn-nntp-list-response
-                    fn-nntp-capabilities fn-nntp-help))
+                    fn-nntp-capabilities fn-nntp-help
+                    fn-nntp-date-response fn-nntp-mode-response
+                    fn-nntp-newgroups-response fn-nntp-list-overview-fmt
+                    fn-nntp-over-current fn-nntp-over-range
+                    fn-nntp-over-msgid fn-nntp-over-response))
 
 (defthm fn-nntp-close-effect-is-well-formed
   (fn-nntp-effectp (fn-nntp-close-effect))
@@ -798,17 +1005,18 @@
 
 (defthm fn-nntp-session-command-effects-well-formed
   (fn-nntp-effectsp
-   (fn-nntp-result-effects (fn-nntp-session-command session keyword args)))
+   (fn-nntp-result-effects (fn-nntp-session-command session env keyword args)))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-session-command fn-nntp-effectsp)
                 (fn-nntp-capabilities fn-nntp-help fn-nntp-single
+                 fn-nntp-date-response fn-nntp-mode-response
                  fn-nntp-keywordp fn-nntp-keyword-tokenp)))))
 
 (defthm fn-nntp-archive-command-effects-well-formed
   (implies (fn-nntp-projectionp archive)
            (fn-nntp-effectsp
             (fn-nntp-result-effects
-             (fn-nntp-archive-command session archive keyword args))))
+             (fn-nntp-archive-command session archive env keyword args))))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-archive-command)
                 (fn-nntp-projectionp
@@ -817,13 +1025,14 @@
                  fn-nntp-group-result fn-nntp-listgroup-command
                  fn-nntp-list-response fn-nntp-next-or-last
                  fn-nntp-retrieval fn-nntp-single
+                 fn-nntp-over-response fn-nntp-newgroups-response
                  fn-nntp-token-string)))))
 
 (defthm fn-nntp-command-effects-well-formed
   (implies (fn-nntp-session-consistentp session archive)
            (fn-nntp-effectsp
             (fn-nntp-result-effects
-             (fn-nntp-command session archive tokens))))
+             (fn-nntp-command session archive env tokens))))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-command)
                 (fn-nntp-session-command fn-nntp-archive-command
@@ -836,7 +1045,7 @@
 (defthm fn-nntp-step-effects-well-formed
   (implies (fn-nntp-session-consistentp session archive)
            (fn-nntp-effectsp
-            (fn-nntp-result-effects (fn-nntp-step session archive wire-event))))
+            (fn-nntp-result-effects (fn-nntp-step session archive env wire-event))))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-step)
                 (fn-nntp-result-effects fn-nntp-make-result
@@ -849,7 +1058,7 @@
 (defthm fn-nntp-closed-step-has-no-effects
   (implies (or (not (fn-nntp-sessionp session))
                (not (equal (fn-nntp-session-openp session) t)))
-           (equal (fn-nntp-result-effects (fn-nntp-step session archive wire-event))
+           (equal (fn-nntp-result-effects (fn-nntp-step session archive env wire-event))
                   nil))
   :hints (("Goal" :in-theory (e/d (fn-nntp-step) (fn-nntp-command)))))
 
@@ -857,7 +1066,7 @@
   (implies (or (not (fn-nntp-sessionp session))
                (not (equal (fn-nntp-session-openp session) t)))
            (fn-nntp-effectsp
-            (fn-nntp-result-effects (fn-nntp-step session archive wire-event))))
+            (fn-nntp-result-effects (fn-nntp-step session archive env wire-event))))
   :hints (("Goal" :use fn-nntp-closed-step-has-no-effects)))
 
 (defthm fn-nntp-quit-step-effects-well-formed
@@ -865,7 +1074,7 @@
                 (equal (fn-nntp-session-openp session) t))
            (fn-nntp-effectsp
             (fn-nntp-result-effects
-             (fn-nntp-step session archive '(:command (81 85 73 84))))))
+             (fn-nntp-step session archive env '(:command (81 85 73 84))))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-step
                                    fn-nntp-command
                                    fn-nntp-session-command
@@ -873,7 +1082,8 @@
                                    fn-nntp-effectp
                                    fn-nntp-reply-effect
                                    fn-nntp-close-effect)
-                                  (fn-nntp-replyp)))))
+                                  (fn-nntp-replyp fn-nntp-date-response
+                                   fn-nntp-mode-response)))))
 
 ; -----------------------------------------------------------------------------
 ; The decimal rendering guard is inactive across RFC 3977 section 6's range

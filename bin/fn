@@ -1,0 +1,553 @@
+#!/usr/bin/env python3
+"""fn: one command, one configuration file, one service.
+
+`fn` is the operator surface over the tools that already exist:
+`tools/run_store.py` owns the durable store decisions and
+`tools/run_owner.py` is the service process that holds the store and serves
+readers.  This file adds no semantics of its own.  It reads one
+configuration file, turns it into the arguments those tools already take,
+writes one outcome line per invocation, and keeps the three outcomes --
+accepted, refused, uncertain -- on the three distinct exit codes all the way
+out to the shell (docs/operator.md, AGENTS.md).
+
+Nothing here recomputes a value ACL2 computes.  The generation, article
+count, group admission and post outcome printed below are the values the
+store bridge returned; `fn` only names them.
+
+Subcommands: init, run, post, group, status, recover, anchor.
+"""
+
+import argparse
+import contextlib
+import io
+import os
+import signal
+import socket
+import sys
+import time
+import tomllib
+from pathlib import Path
+from types import SimpleNamespace
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "tools"))
+
+import run_store  # noqa: E402  (after the path is set)
+from run_store import (EXIT_FAULT, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN,  # noqa: E402
+                       EXIT_USAGE, StoreError, UsageParser, exit_code_for)
+
+DEFAULT_CONFIG = "fn.toml"
+DEFAULT_PORT = 1119
+DEFAULT_AGENT = "fn-operator@localhost"
+# tools/run_owner.py binds 127.0.0.1 and nothing else, and architecture.md
+# says this scaffold does not authorize opening a public listener.  A
+# configured host that is not loopback is refused here rather than silently
+# served on loopback.
+LOOPBACK = frozenset(("127.0.0.1", "::1", "localhost"))
+
+# One vocabulary for every outcome line and every log line.  EXIT_OK is
+# "accepted" so that a log and an exit status read the same way.
+OUTCOME = {EXIT_OK: "accepted", EXIT_REFUSED: "refused", EXIT_UNCERTAIN: "uncertain",
+           EXIT_FAULT: "fault", EXIT_USAGE: "usage"}
+
+
+class ConfigError(StoreError):
+    """A configuration the operator can fix: refused, never a fault."""
+
+
+# -----------------------------------------------------------------------------
+# Configuration
+
+
+class Settings:
+    """The configuration file, with command-line overrides already applied."""
+
+    def __init__(self, path, data):
+        self.path = path
+        store = section(data, "store")
+        listener = section(data, "listener")
+        posting = section(data, "posting")
+        anchor = section(data, "anchor")
+        acl2 = section(data, "acl2")
+        log = section(data, "log")
+        control = section(data, "control")
+        self.store = store.get("path")
+        # The served groups are the store's configuration records, which ACL2
+        # replays; they are deliberately not a second time in this file.  Only
+        # `fn init --group` fills this, once, before the store exists.
+        self.groups = ()
+        self.host = listener.get("host", "127.0.0.1")
+        self.port = int(listener.get("port", DEFAULT_PORT))
+        self.posting_enabled = bool(posting.get("enabled", True))
+        self.agent = posting.get("agent", DEFAULT_AGENT)
+        self.anchor_server = anchor.get("server")
+        self.acl2_path = acl2.get("path")
+        self.acl2_slots = acl2.get("slots")
+        self.log_path = log.get("path")
+        self.control_path = control.get("path")
+
+    def control(self):
+        if self.control_path:
+            return self.control_path
+        return str(Path(self.require_store()) / "control.sock")
+
+    def require_store(self):
+        if not self.store:
+            raise ConfigError("no [store] path in {}".format(self.path))
+        return self.store
+
+    def apply_environment(self):
+        """`[acl2] path slots` reaches ACL2 the way every fn tool reads it."""
+        if self.acl2_path:
+            os.environ["FN_ACL2"] = str(self.acl2_path)
+        if self.acl2_slots is not None:
+            os.environ["FN_ACL2_SLOTS"] = str(int(self.acl2_slots))
+
+
+def section(data, name):
+    value = data.get(name, {})
+    if not isinstance(value, dict):
+        raise ConfigError("[{}] is not a table".format(name))
+    return value
+
+
+def load_settings(path, must_exist=True):
+    location = Path(path)
+    if not location.exists():
+        if must_exist:
+            raise ConfigError("no configuration file at {} (write one with `fn init`, "
+                              "or pass --config)".format(location))
+        return Settings(location, {})
+    try:
+        data = tomllib.loads(location.read_text(encoding="utf-8"))
+    except (tomllib.TOMLDecodeError, UnicodeError, OSError) as error:
+        raise ConfigError("cannot read {}: {}".format(location, error)) from error
+    return Settings(location, data)
+
+
+def render_config(settings):
+    """The configuration file `fn init` writes; docs/operator.md explains it."""
+    lines = ["# fn configuration; see docs/operator.md and packaging/fn.toml.example",
+             "",
+             "[store]",
+             'path = "{}"'.format(settings.store),
+             "",
+             "[listener]",
+             '# loopback only: architecture.md does not authorize a public listener',
+             'host = "{}"'.format(settings.host),
+             "port = {}".format(settings.port),
+             "",
+             "[posting]",
+             "enabled = {}".format("true" if settings.posting_enabled else "false"),
+             '# the injecting agent this node records for locally accepted articles',
+             'agent = "{}"'.format(settings.agent),
+             ""]
+    if settings.anchor_server:
+        lines += ["[anchor]", 'server = "{}"'.format(settings.anchor_server), ""]
+    lines += ["[acl2]", 'path = "{}"'.format(settings.acl2_path or "acl2")]
+    if settings.acl2_slots is not None:
+        lines.append("slots = {}".format(int(settings.acl2_slots)))
+    lines.append("")
+    if settings.log_path:
+        lines += ["[log]", 'path = "{}"'.format(settings.log_path), ""]
+    if settings.control_path:
+        lines += ["[control]", 'path = "{}"'.format(settings.control_path), ""]
+    return "\n".join(lines).rstrip() + "\n"
+
+
+# -----------------------------------------------------------------------------
+# The service log: one line per post and per reader connection, outcome first
+
+
+class Log:
+    """Append-only operator log.  The outcome word is the first token."""
+
+    def __init__(self, path=None):
+        self.stream = sys.stderr
+        self.opened = False
+        if path:
+            directory = Path(path).parent
+            if str(directory):
+                directory.mkdir(parents=True, exist_ok=True)
+            self.stream = open(path, "a", encoding="utf-8")  # noqa: SIM115
+            self.opened = True
+
+    def line(self, text):
+        stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        try:
+            self.stream.write("{} time={}\n".format(text, stamp))
+            self.stream.flush()
+        except (OSError, ValueError):
+            pass
+
+    def close(self):
+        if self.opened:
+            self.stream.close()
+            self.opened = False
+
+
+# -----------------------------------------------------------------------------
+# `fn run`: tools/run_owner.py with logging wrapped around it
+#
+# run_owner.py belongs to another lane.  It is not edited here: `fn run`
+# replaces the two classes its `main` looks up by name with subclasses that
+# log and then defer, so the owner's own decisions, arguments and exit codes
+# stay exactly as that lane wrote them.
+
+CONTROL_LOGGED = frozenset((b"POST", b"DECLARE-GROUP", b"QUIT"))
+SERVED_OUTCOME = {"committed": "accepted", "duplicate": "accepted",
+                  "refused": "refused", "uncertain": "uncertain"}
+
+
+def word_for_reply(reply):
+    text = reply.decode("ascii", "replace") if isinstance(reply, bytes) else str(reply)
+    if text.startswith("refused"):
+        return "refused"
+    if text.startswith("uncertain"):
+        return "uncertain"
+    if text.startswith("fault"):
+        return "fault"
+    return "accepted"
+
+
+def install_logging_owner(run_owner, log, agent):
+    """Wrap run_owner's two constructed classes; return nothing it can see."""
+    # Captured before the module attributes are rebound below: a later
+    # `run_owner.Owner` is the subclass, and calling through it would recurse.
+    base_owner = run_owner.Owner
+
+    class LoggedBridge(run_owner.Acl2Owner):
+        """The served POST seam: the book's own outcome word, logged once."""
+
+        def outcome(self, cid, word):
+            log.line("{} post path=served connection={} agent={}".format(
+                SERVED_OUTCOME.get(word, "fault"), cid, agent))
+            return super().outcome(cid, word)
+
+    class LoggedOwner(run_owner.Owner):
+        def __init__(self, *arguments):
+            super().__init__(*arguments)
+            self.command = b""
+
+        # -- reader connections -------------------------------------------
+        def accept_nntp(self, listener):
+            before = set(self.connections)
+            super().accept_nntp(listener)
+            fresh = set(self.connections) - before
+            if fresh:
+                log.line("accepted reader connection={}".format(
+                    self.connections[next(iter(fresh))].cid))
+            else:
+                log.line("refused reader connection=none "
+                         "reason=connection-bound-or-accept-failed")
+
+        def drop(self, conn):
+            log.line("closed reader connection={}".format(conn.cid))
+            super().drop(conn)
+
+        # -- the control channel ------------------------------------------
+        def read_line(self, sock):
+            line = base_owner.read_line(sock)
+            self.command = line
+            return line
+
+        def control(self, sock):
+            self.command = b""
+            try:
+                reply = super().control(sock)
+            except (StoreError, OSError) as error:
+                self.log_control(self.outcome_word(error), str(error))
+                raise
+            self.log_control(word_for_reply(reply), reply.decode("ascii", "replace"))
+            return reply
+
+        def log_control(self, word, detail):
+            words = self.command.split()
+            verb = words[0].upper() if words else b"-"
+            if verb not in CONTROL_LOGGED:
+                return
+            if verb == b"POST":
+                subject = "post path=control message-id={} agent={}".format(
+                    words[1].decode("ascii", "replace") if len(words) > 1 else "-", agent)
+            elif verb == b"DECLARE-GROUP":
+                subject = "group-fact name={}".format(
+                    words[1].decode("ascii", "replace") if len(words) > 1 else "-")
+            else:
+                subject = "shutdown reason=control-quit"
+            log.line("{} {} detail={}".format(word, subject, " ".join(detail.split())))
+
+    run_owner.Acl2Owner = LoggedBridge
+    run_owner.Owner = LoggedOwner
+
+
+def command_run(settings, args):
+    if settings.host not in LOOPBACK:
+        return EXIT_REFUSED, ("run listener host {!r} is not loopback; the owner binds "
+                              "127.0.0.1 only (docs/architecture.md)".format(settings.host))
+    store = settings.require_store()
+    control = args.control or settings.control()
+    log = Log(settings.log_path)
+    import run_owner  # noqa: PLC0415  (only `run` needs the owner process)
+    install_logging_owner(run_owner, log, settings.agent)
+    argv = ["--store", str(store), "--port", str(settings.port), "--control", str(control),
+            "--max-connections", str(args.max_connections),
+            "--clock-error-ms", str(args.clock_error_ms)]
+    log.line("accepted service store={} port={} control={}".format(store, settings.port, control))
+    try:
+        code = run_owner.main(argv)
+    except SystemExit as stop:
+        # run_owner installs the SIGTERM handler; it raises through the owner's
+        # own `finally`, which releases the writer lock and the control socket.
+        code = stop.code if isinstance(stop.code, int) else EXIT_FAULT
+        if code == 128 + signal.SIGTERM:
+            log.line("accepted shutdown reason=sigterm store-released=yes")
+            log.close()
+            return EXIT_OK, "run stopped on SIGTERM; store released"
+        log.line("fault shutdown code={}".format(code))
+        log.close()
+        return EXIT_FAULT, "run exited with {}".format(code)
+    except (StoreError, OSError) as error:
+        log.line("{} service detail={}".format(OUTCOME[exit_code_for(error)],
+                                               " ".join(str(error).split())))
+        log.close()
+        return exit_code_for(error), "run {}".format(error)
+    if code == EXIT_OK:
+        log.line("accepted shutdown reason=control-quit store-released=yes")
+        log.close()
+        return EXIT_OK, "run stopped on a control QUIT; store released"
+    # The owner reported its own outcome and already released the store; its
+    # code is passed through unchanged.
+    log.line("{} service detail=owner-exit-{}".format(OUTCOME.get(code, "fault"), code))
+    log.close()
+    return code, "run the owner did not serve (see the log or the journal)"
+
+
+# -----------------------------------------------------------------------------
+# Delegation to tools/run_store.py
+#
+# The delegated command already prints its own reason on stderr.  It is
+# captured so that one invocation of `fn` writes exactly one stderr line.
+
+
+def delegate(function, arguments, label):
+    captured = io.StringIO()
+    try:
+        with contextlib.redirect_stderr(captured):
+            code = function(arguments)
+    except (StoreError, OSError, UnicodeError) as error:
+        return exit_code_for(error), "{} {}".format(label, error)
+    code = EXIT_OK if code is None else code
+    detail = " ".join(captured.getvalue().split())
+    return code, "{}{}".format(label, " " + detail if detail else "")
+
+
+def owner_probe(control, request=b"VERSION\n", timeout=10.0):
+    """Ask a live owner one control question; None when no owner answers."""
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+            sock.settimeout(timeout)
+            sock.connect(str(control))
+            sock.sendall(request)
+            reply = b""
+            while not reply.endswith(b"\n"):
+                chunk = sock.recv(4096)
+                if not chunk:
+                    break
+                reply += chunk
+    except OSError:
+        return None
+    return reply.strip().decode("ascii", "replace")
+
+
+def command_init(settings, args):
+    """Initialize the store and write the configuration file beside it."""
+    location = Path(args.config)
+    if location.exists() and not args.force:
+        return EXIT_REFUSED, "init {} already exists (pass --force to rewrite)".format(location)
+    store = settings.require_store()
+    namespace = SimpleNamespace(store=store, group=list(settings.groups) or None)
+    code, detail = delegate(run_store.command_init, namespace, "init")
+    if code != EXIT_OK:
+        return code, detail
+    try:
+        location.parent.mkdir(parents=True, exist_ok=True)
+        location.write_text(render_config(settings), encoding="utf-8")
+    except OSError as error:
+        return EXIT_FAULT, "init store initialized but {} not written: {}".format(location, error)
+    return EXIT_OK, "init store={} config={} groups={}".format(
+        store, location, ",".join(settings.groups) or "default")
+
+
+def command_post(settings, args):
+    if not settings.posting_enabled:
+        return EXIT_REFUSED, "post [posting] enabled is false in {}".format(settings.path)
+    control = args.control or settings.control()
+    live = owner_probe(control) is not None
+    namespace = SimpleNamespace(
+        store=settings.require_store(), message_id=args.message_id, payload=args.payload,
+        group=args.group, charge=args.charge, inject_fault=None,
+        owner=str(control) if live else None)
+    label = "post message-id={} path={}".format(args.message_id, "control" if live else "store")
+    return delegate(run_store.command_post, namespace, label)
+
+
+def command_group(settings, args):
+    control = settings.control()
+    if owner_probe(control) is not None:
+        return EXIT_REFUSED, ("group {} {} an owner is live on {}; a configuration record "
+                              "needs the writer lock, so stop the service first"
+                              .format(args.action, args.name, control))
+    namespace = SimpleNamespace(store=settings.require_store(), action=args.action,
+                                name=args.name)
+    return delegate(run_store.command_group, namespace,
+                    "group {} {}".format(args.action, args.name))
+
+
+def command_status(settings, args):
+    """Generation, article count, last anchor, and whether an owner is live.
+
+    While an owner holds the store no other process can take the lock, so the
+    store-side numbers are reported from the owner's control channel and the
+    rest is named `owner-held` rather than guessed.  A `STATUS` control line
+    is the fix and belongs to the owner; see planning/lanes/HANDOFF-w5-fn-cli.md.
+    """
+    control = args.control or settings.control()
+    version = owner_probe(control)
+    if version is not None:
+        connections = owner_probe(control, b"CONNECTIONS\n") or "connections"
+        print("owner=live control={} {} {} generation=owner-held articles=owner-held "
+              "anchor=owner-held".format(control, version, connections))
+        return EXIT_OK, "status owner=live"
+    captured = io.StringIO()
+    try:
+        with contextlib.redirect_stderr(captured):
+            store, bridge, records = run_store.open_live_store(settings.require_store(),
+                                                               writable=False)
+    except (StoreError, OSError) as error:
+        return exit_code_for(error), "status {}".format(error)
+    try:
+        incarnation, held = store.load_anchor(bridge)
+        anchor = "none" if held is None else "recorded incarnation={}".format(incarnation)
+        print("owner=absent generation={} transactions={} articles={} {} anchor={}".format(
+            store.config_generation, len(records), bridge.article_count(),
+            run_store.orphan_report(store), anchor))
+        return EXIT_OK, "status owner=absent"
+    except (StoreError, OSError) as error:
+        return exit_code_for(error), "status {}".format(error)
+    finally:
+        bridge.close()
+        store.close()
+
+
+def anchor_namespace(settings, args):
+    return SimpleNamespace(
+        store=settings.require_store(),
+        anchor_server=getattr(args, "anchor_server", None) or settings.anchor_server,
+        anchor_vector=getattr(args, "anchor_vector", None),
+        anchor_timeout=getattr(args, "anchor_timeout", 5.0))
+
+
+def command_recover(settings, args):
+    return delegate(run_store.command_recover, anchor_namespace(settings, args), "recover")
+
+
+def command_anchor(settings, args):
+    return delegate(run_store.command_anchor, anchor_namespace(settings, args), "anchor")
+
+
+# -----------------------------------------------------------------------------
+# Command line
+
+
+def build_parser():
+    parser = UsageParser(prog="fn", description=__doc__.splitlines()[0])
+    parser.add_argument("--config", default=os.environ.get("FN_CONFIG", DEFAULT_CONFIG),
+                        help="configuration file (default: ./fn.toml)")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    init = sub.add_parser("init", help="initialize a store and write the configuration")
+    init.add_argument("--store", help="store root (overrides [store] path)")
+    init.add_argument("--group", action="append", help="a group the new store serves")
+    init.add_argument("--listen", help="HOST:PORT for the reader/posting listener")
+    init.add_argument("--agent", help="injecting-agent identity for locally accepted articles")
+    init.add_argument("--anchor-server", help="a name from tools/roughtime_servers.json")
+    init.add_argument("--log", help="operator log file (default: stderr)")
+    init.add_argument("--acl2", help="the ACL2 executable (FN_ACL2)")
+    init.add_argument("--acl2-slots", type=int, help="machine-wide ACL2 slot count")
+    init.add_argument("--control", help="control socket path")
+    init.add_argument("--no-posting", action="store_true", help="write [posting] enabled = false")
+    init.add_argument("--force", action="store_true", help="rewrite an existing configuration")
+
+    run = sub.add_parser("run", help="run the owner in the foreground (the service)")
+    run.add_argument("--control", help="control socket path")
+    run.add_argument("--max-connections", type=int, default=8)
+    run.add_argument("--clock-error-ms", type=int, default=1000)
+
+    post = sub.add_parser("post", help="post one article")
+    post.add_argument("--message-id", required=True)
+    post.add_argument("--payload", required=True, help="file holding the article octets")
+    post.add_argument("--group", action="append", required=True)
+    post.add_argument("--charge", type=int)
+    post.add_argument("--control", help="control socket path")
+
+    group = sub.add_parser("group", help="create or retire a served group")
+    group.add_argument("action", choices=("create", "retire"))
+    group.add_argument("name")
+
+    status = sub.add_parser("status", help="generation, articles, anchor, owner liveness")
+    status.add_argument("--control", help="control socket path")
+
+    for name, help_text in (("recover", "reopen the store and check freshness"),
+                            ("anchor", "obtain and record one freshness anchor")):
+        command = sub.add_parser(name, help=help_text)
+        command.add_argument("--anchor-server", help="a name from tools/roughtime_servers.json")
+        command.add_argument("--anchor-vector", help="test-only: a captured response")
+        command.add_argument("--anchor-timeout", type=float, default=5.0)
+    return parser
+
+
+def overrides(settings, args):
+    """Command-line arguments win over the configuration file."""
+    if getattr(args, "store", None):
+        settings.store = args.store
+    if getattr(args, "group", None) and args.command == "init":
+        settings.groups = tuple(args.group)
+    if getattr(args, "listen", None):
+        host, _, port = args.listen.rpartition(":")
+        if not host or not port.isdigit():
+            raise ConfigError("--listen takes HOST:PORT, not {!r}".format(args.listen))
+        settings.host, settings.port = host, int(port)
+    for attribute, field in (("agent", "agent"), ("log", "log_path"), ("acl2", "acl2_path"),
+                             ("control", "control_path")):
+        value = getattr(args, attribute, None)
+        if value:
+            setattr(settings, field, value)
+    if getattr(args, "acl2_slots", None) is not None:
+        settings.acl2_slots = args.acl2_slots
+    if getattr(args, "anchor_server", None):
+        settings.anchor_server = args.anchor_server
+    if getattr(args, "no_posting", False):
+        settings.posting_enabled = False
+    return settings
+
+
+COMMANDS = {"init": command_init, "run": command_run, "post": command_post,
+            "group": command_group, "status": command_status,
+            "recover": command_recover, "anchor": command_anchor}
+
+
+def main(argv=None):
+    args = build_parser().parse_args(argv)
+    try:
+        settings = overrides(load_settings(args.config, must_exist=args.command != "init"), args)
+        settings.apply_environment()
+        code, summary = COMMANDS[args.command](settings, args)
+    except (StoreError, OSError, UnicodeError) as error:
+        code, summary = exit_code_for(error), "{} {}".format(args.command, error)
+    print("{} {}".format(OUTCOME.get(code, "fault"), summary), file=sys.stderr, flush=True)
+    return code
+
+
+if __name__ == "__main__":
+    sys.exit(main())

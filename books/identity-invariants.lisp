@@ -1,11 +1,24 @@
 ; Invariants for content identity and the charge policy.
 ;
-; The hexadecimal projection is proved invertible both ways, which is what
-; makes a subject or obligation string a faithful rendering of its digest
-; rather than a lossy label: two different digests cannot produce the same
-; identity string, so identity collisions are digest collisions and nothing
-; else.  That is the only claim; digest collision resistance itself is
-; A-CRYPTO and is not proved anywhere in this tree.
+; Three claims carry the v1 profile.
+;
+;   * Domain separation.  `fn-id-subject-and-obligation-preimages-differ` has
+;     no hypotheses: for EVERY payload and EVERY (msgid, subject) pair the two
+;     preimages are different octet strings, because the label octets differ.
+;     Two kinds of identity therefore cannot share a preimage by construction,
+;     which is what ENC-003 asks for.
+;
+;   * Length prefixing.  Each variable field of a preimage is preceded by its
+;     own length as four big-endian octets, and that length is read back out
+;     of the preimage below.  A field boundary is a decoded number, not a
+;     separator octet that the field might itself contain.
+;
+;   * The hexadecimal projection is invertible both ways, which is what makes
+;     `fn-id-text` a faithful rendering of a canonical identity rather than a
+;     lossy label: two different identities cannot produce the same string, so
+;     identity collisions are digest collisions and nothing else.  That is the
+;     only claim; digest collision resistance itself is A-CRYPTO and is not
+;     proved anywhere in this tree.
 ;
 ; The charge theorems are the two properties the accounting depends on: a
 ; charge is always positive (the retention book's `posp` obligation), and it
@@ -15,6 +28,20 @@
 (in-package "ACL2")
 (include-book "identity")
 (include-book "frame-invariants")
+(include-book "cbor-invariants")
+
+; This book is about the definitions in `identity', so it opens them, the
+; frame vocabulary and the CBOR list vocabulary locally.
+(local (in-theory (enable fn-id-definitions
+                          fn-frame-octet-vocabulary
+                          fn-frame-fields-vocabulary
+                          fn-frame-codec-vocabulary
+                          fn-frame-journal-vocabulary
+                          fn-frame-invariants-vocabulary
+                          fn-cbor-codec-vocabulary
+                          fn-cbor-invariants-vocabulary
+                          (:d fn-frame-split)
+                          (:d fn-frame-u64-bytes))))
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -54,7 +81,7 @@
   (equal (len (fn-id-hex-octets octets)) (* 2 (len octets)))
   :hints (("Goal" :in-theory (enable fn-id-hex-octets))))
 
-; KEYSTONE: the value direction.  Every digest is recovered from its hex.
+; KEYSTONE: the value direction.  Every identity is recovered from its text.
 (defthm fn-id-unhex-of-hex-octets
   (implies (fn-cbor-octet-listp octets)
            (equal (fn-id-unhex (fn-id-hex-octets octets)) octets))
@@ -100,8 +127,8 @@
                            (floor mod fn-id-hex-digit fn-id-hex-value
                             fn-id-hex-digitp)))))
 
-; KEYSTONE: distinct digests never collide in the identity string, so an
-; identity comparison is a digest comparison.
+; KEYSTONE: distinct identities never collide in the text, so a comparison at
+; a string boundary is an octet comparison.
 (defthm fn-id-hex-octets-injective
   (implies (and (fn-cbor-octet-listp a) (fn-cbor-octet-listp b)
                 (equal (fn-id-hex-octets a) (fn-id-hex-octets b)))
@@ -112,6 +139,152 @@
   :rule-classes nil)
 
 ; -----------------------------------------------------------------------------
+; The string boundary, in both directions
+
+(defthm fn-id-from-text-of-text
+  (implies (fn-cbor-octet-listp identity)
+           (equal (fn-id-from-text (fn-id-text identity)) identity))
+  :hints (("Goal" :in-theory (enable fn-id-text fn-id-from-text))))
+
+(defthm fn-id-text-of-from-text
+  (implies (and (fn-id-hex-listp octets)
+                (equal (mod (len octets) 2) 0))
+           (equal (fn-id-text (fn-id-from-text octets)) octets))
+  :hints (("Goal" :in-theory (enable fn-id-text fn-id-from-text))))
+
+(defthm fn-id-text-is-hex-octets
+  (implies (fn-cbor-octet-listp identity)
+           (and (fn-cbor-octet-listp (fn-id-text identity))
+                (fn-id-hex-listp (fn-id-text identity))
+                (equal (len (fn-id-text identity)) (* 2 (len identity)))))
+  :hints (("Goal" :in-theory (enable fn-id-text))))
+
+(defthm fn-id-text-injective
+  (implies (and (fn-cbor-octet-listp a) (fn-cbor-octet-listp b)
+                (equal (fn-id-text a) (fn-id-text b)))
+           (equal a b))
+  :hints (("Goal" :in-theory (enable fn-id-text)
+           :use ((:instance fn-id-hex-octets-injective (a a) (b b)))))
+  :rule-classes nil)
+
+; -----------------------------------------------------------------------------
+; Domain separation: the whole point of the v1 profile
+
+; KEYSTONE.  No hypotheses: for every payload and every (msgid, subject) pair
+; the two preimages differ, at the fourth octet, because the domain labels
+; "fn/subject/v1" and "fn/obligation/v1" differ there.  A subject digest can
+; therefore never be an obligation digest by construction; only a SHA-256
+; collision could make the two identities meet.
+(defthm fn-id-subject-and-obligation-preimages-differ
+  (not (equal (fn-id-subject-preimage payload)
+              (fn-id-obligation-preimage msgid subject)))
+  :hints (("Goal" :in-theory (enable fn-id-subject-preimage
+                                     fn-id-subject-prefix
+                                     fn-id-obligation-preimage))))
+
+; -----------------------------------------------------------------------------
+; Length prefixing: a field boundary is a decoded number
+
+(local
+ (defthm fn-id-u32-from-append
+   (equal (fn-cbor-u32-from (append (fn-cbor-u32-bytes n) tail))
+          (fn-cbor-u32-from (fn-cbor-u32-bytes n)))
+   :hints (("Goal" :in-theory (enable fn-cbor-u32-from fn-cbor-u32-bytes)))))
+
+(local
+ (defthm fn-id-nthcdr-len-append
+   (equal (nthcdr (+ (len a) (nfix k)) (append a b))
+          (nthcdr (nfix k) b))
+   :hints (("Goal" :induct (append a b)
+            :in-theory (enable append len nthcdr)))))
+
+; The payload length is read back out of the subject preimage: 13 label
+; octets and the separator, then the four length octets.
+(defthm fn-id-subject-preimage-length-is-recoverable
+  (implies (and (natp n) (<= n *fn-cbor-max-uint*))
+           (equal (fn-cbor-u32-from
+                   (nthcdr 14 (append (fn-id-subject-prefix n) payload)))
+                  n))
+  :hints (("Goal" :in-theory (e/d (fn-id-subject-prefix)
+                                  (fn-cbor-u32-bytes fn-cbor-u32-from)))))
+
+; The Message-ID length is read back out of the obligation preimage: 16 label
+; octets and the separator, then the four length octets.
+(defthm fn-id-obligation-preimage-msgid-length-is-recoverable
+  (implies (and (fn-cbor-octet-listp msgid)
+                (<= (len msgid) *fn-cbor-max-uint*))
+           (equal (fn-cbor-u32-from
+                   (nthcdr 17 (fn-id-obligation-preimage msgid subject)))
+                  (len msgid)))
+  :hints (("Goal" :in-theory (e/d (fn-id-obligation-preimage)
+                                  (fn-cbor-u32-bytes fn-cbor-u32-from)))))
+
+; Three steps the subject-length read needs and the msgid-length read does not.
+; Its offset is `(+ 21 (len msgid))`, so the fixed head has to be cut off
+; before the Message-ID can be: `fn-id-nthcdr-of-sum' splits the offset so the
+; constant 21 evaluates, `fn-id-nthcdr-past-u32-bytes' steps over a length
+; prefix that stays CLOSED (four octets by `fn-frame-u32-bytes-len', never by
+; opening a floor/mod term), and `fn-id-nthcdr-len-of-append' steps over a
+; field whose own length was just read back.  All three are instances of
+; `fn-id-nthcdr-len-append' above, stated as rewrite rules.  Two ways of not
+; doing this were measured: reaching the cut by `:use` and leaving the
+; arithmetic library to find the rest by induction loops
+; (`GENERALIZE-CLAUSE` three times on one subgoal, under the `mod` rules), and
+; opening `fn-cbor-u32-bytes` to get the four octets does not come back at all
+; (1800 s timeout in an arithmetic induction).
+(local
+ (defthm fn-id-nthcdr-of-sum
+   (implies (and (natp a) (natp b))
+            (equal (nthcdr (+ a b) x) (nthcdr b (nthcdr a x))))
+   :hints (("Goal" :induct (nthcdr a x)))))
+
+(local
+ (defthm fn-id-nthcdr-past-u32-bytes
+   (equal (nthcdr 4 (append (fn-cbor-u32-bytes n) tail)) tail)
+   :hints (("Goal" :use ((:instance fn-id-nthcdr-len-append
+                                    (a (fn-cbor-u32-bytes n)) (b tail) (k 0)))
+            :in-theory (disable fn-id-nthcdr-len-append
+                                fn-cbor-u32-bytes fn-cbor-u32-from)))))
+
+(local
+ (defthm fn-id-nthcdr-len-of-append
+   (equal (nthcdr (len a) (append a b)) b)
+   :hints (("Goal" :use ((:instance fn-id-nthcdr-len-append (k 0)))
+            :in-theory (disable fn-id-nthcdr-len-append)))))
+
+; And so is the subject length, past the Message-ID the first prefix measured.
+(defthm fn-id-obligation-preimage-subject-length-is-recoverable
+  (implies (and (fn-cbor-octet-listp subject)
+                (<= (len subject) *fn-cbor-max-uint*))
+           (equal (fn-cbor-u32-from
+                   (nthcdr (+ 21 (len msgid))
+                           (fn-id-obligation-preimage msgid subject)))
+                  (len subject)))
+  :hints (("Goal" :in-theory (e/d (fn-id-obligation-preimage)
+                                  (fn-cbor-u32-bytes fn-cbor-u32-from)))))
+
+(defthm fn-id-subject-preimage-octets
+  (implies (and (fn-cbor-octet-listp payload)
+                (<= (len payload) *fn-cbor-max-uint*))
+           (and (fn-cbor-octet-listp (fn-id-subject-preimage payload))
+                (equal (len (fn-id-subject-preimage payload))
+                       (+ 18 (len payload)))))
+  :hints (("Goal" :in-theory (enable fn-id-subject-preimage
+                                     fn-id-subject-prefix
+                                     fn-cbor-octet-listp))))
+
+(defthm fn-id-obligation-preimage-octets
+  (implies (and (fn-cbor-octet-listp msgid)
+                (<= (len msgid) *fn-cbor-max-uint*)
+                (fn-cbor-octet-listp subject)
+                (<= (len subject) *fn-cbor-max-uint*))
+           (and (fn-cbor-octet-listp (fn-id-obligation-preimage msgid subject))
+                (equal (len (fn-id-obligation-preimage msgid subject))
+                       (+ 25 (len msgid) (len subject)))))
+  :hints (("Goal" :in-theory (enable fn-id-obligation-preimage
+                                     fn-cbor-octet-listp))))
+
+; -----------------------------------------------------------------------------
 ; The two identities
 
 (defthm fn-id-subject-shape
@@ -119,8 +292,9 @@
            (and (fn-cbor-octet-listp (fn-id-subject digest))
                 (equal (len (fn-id-subject digest)) *fn-id-subject-octets*)
                 (fn-id-subjectp (fn-id-subject digest))))
-  :hints (("Goal" :in-theory (enable fn-id-subject fn-id-digestp
-                                     fn-id-subjectp fn-id-labelledp))))
+  :hints (("Goal" :in-theory (enable fn-id-subject fn-id-render fn-id-digestp
+                                     fn-id-subjectp fn-id-labelledp
+                                     fn-cbor-octet-listp fn-cbor-octetp))))
 
 (defthm fn-id-obligation-shape
   (implies (fn-id-digestp digest)
@@ -128,55 +302,45 @@
                 (equal (len (fn-id-obligation digest))
                        *fn-id-obligation-octets*)
                 (fn-id-obligationp (fn-id-obligation digest))))
-  :hints (("Goal" :in-theory (enable fn-id-obligation fn-id-digestp
-                                     fn-id-obligationp fn-id-labelledp))))
+  :hints (("Goal" :in-theory (enable fn-id-obligation fn-id-render
+                                     fn-id-digestp fn-id-obligationp
+                                     fn-id-labelledp fn-cbor-octet-listp
+                                     fn-cbor-octetp))))
 
 (defthm fn-id-subject-injective
   (implies (and (fn-id-digestp a) (fn-id-digestp b)
                 (equal (fn-id-subject a) (fn-id-subject b)))
            (equal a b))
-  :hints (("Goal" :in-theory (enable fn-id-subject fn-id-digestp)
-           :use ((:instance fn-id-hex-octets-injective
-                            (a a) (b b)))))
+  :hints (("Goal" :in-theory (enable fn-id-subject fn-id-render fn-id-digestp)))
   :rule-classes nil)
 
 (defthm fn-id-obligation-injective
   (implies (and (fn-id-digestp a) (fn-id-digestp b)
                 (equal (fn-id-obligation a) (fn-id-obligation b)))
            (equal a b))
-  :hints (("Goal" :in-theory (enable fn-id-obligation fn-id-digestp)
-           :use ((:instance fn-id-hex-octets-injective
-                            (a a) (b b)))))
+  :hints (("Goal" :in-theory (enable fn-id-obligation fn-id-render
+                                     fn-id-digestp)))
   :rule-classes nil)
 
 ; A subject identity can never be mistaken for an obligation identity: the
-; labels differ in their first octet and neither is a prefix of the other.
+; labels differ and neither is a prefix of the other.
 (defthm fn-id-subject-is-not-an-obligation
   (implies (fn-id-digestp digest)
            (not (fn-id-obligationp (fn-id-subject digest))))
-  :hints (("Goal" :in-theory (enable fn-id-subject fn-id-digestp
+  :hints (("Goal" :in-theory (enable fn-id-subject fn-id-render fn-id-digestp
                                      fn-id-obligationp fn-id-labelledp))))
 
 (defthm fn-id-obligation-is-not-a-subject
   (implies (fn-id-digestp digest)
            (not (fn-id-subjectp (fn-id-obligation digest))))
-  :hints (("Goal" :in-theory (enable fn-id-obligation fn-id-digestp
-                                     fn-id-subjectp fn-id-labelledp))))
-
-; The preimage keeps the Message-ID and the subject apart with one octet that
-; neither of them can contain, so no pair of distinct (msgid, subject) inputs
-; whose parts are printable produces the same preimage by re-splitting.
-(defthm fn-id-obligation-preimage-octets
-  (implies (and (fn-cbor-octet-listp msgid) (fn-cbor-octet-listp subject))
-           (and (fn-cbor-octet-listp (fn-id-obligation-preimage msgid subject))
-                (equal (len (fn-id-obligation-preimage msgid subject))
-                       (+ 1 (len msgid) (len subject)))))
-  :hints (("Goal" :in-theory (enable fn-id-obligation-preimage))))
+  :hints (("Goal" :in-theory (enable fn-id-obligation fn-id-render
+                                     fn-id-digestp fn-id-subjectp
+                                     fn-id-labelledp))))
 
 ; A-CRYPTO: the host-facing pair is the specification pair exactly when the
 ; host supplied the constrained digest of the right preimage.
 (defthm fn-id-subject-is-subject-of-payload
-  (implies (equal digest (fn-frame-digest payload))
+  (implies (equal digest (fn-frame-digest (fn-id-subject-preimage payload)))
            (equal (fn-id-subject digest)
                   (fn-id-subject-of-payload payload)))
   :hints (("Goal" :in-theory (enable fn-id-subject-of-payload))))
@@ -212,3 +376,21 @@
            (<= (fn-charge-for-payload length) *fn-cbor-max-uint*))
   :hints (("Goal" :in-theory (enable fn-charge-for-payload)))
   :rule-classes :linear)
+
+; -----------------------------------------------------------------------------
+; Export theory.
+;
+; The keystones leave this book enabled: the hex round trips
+; (`fn-id-unhex-of-hex-octets', `fn-id-hex-octets-of-unhex'), the two shape
+; theorems, the domain separation facts and the charge properties.  The
+; digit-level arithmetic and `fn-id-subject-is-subject-of-payload' (an
+; accessor equality) are proof vocabulary.
+
+(deftheory fn-id-invariants-vocabulary
+  '(    fn-id-hex-digit-is-a-hex-digit fn-id-hex-value-of-hex-digit
+    fn-id-hex-digit-of-hex-value fn-id-hex-value-natp
+    fn-id-hex-value-bound fn-id-subject-is-subject-of-payload))
+
+(in-theory (disable fn-id-hex-digit-is-a-hex-digit fn-id-hex-value-of-hex-digit
+             fn-id-hex-digit-of-hex-value fn-id-hex-value-natp
+             fn-id-hex-value-bound fn-id-subject-is-subject-of-payload))
