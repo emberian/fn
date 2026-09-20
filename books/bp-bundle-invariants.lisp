@@ -76,8 +76,8 @@
            :use ((:instance fn-bpc-uint-head-decodes (n n) (rest rest))
                  (:instance fn-bpc-uint-head-range (n n))
                  (:instance fn-bpc-argument-is-consp (major 0) (n n)))
-           :in-theory (e/d (fn-bpc-car-of-append fn-bpc-cdr-of-append)
-                           (fn-bpc-argument fn-bpc-decode-head
+           :in-theory (e/d (fn-bpc-vocabulary)
+                           (fn-bpc-argument (:e fn-bpc-argument) fn-bpc-decode-head
                             fn-bpc-decode-argument fn-cbor-decode-argument)))))
 
 (defthm fn-bpb-take-bytes-of-argument
@@ -93,11 +93,62 @@
                             (n (len data)) (rest (append data rest)))
                  (:instance fn-bpc-bytes-head-range (n (len data)))
                  (:instance fn-bpc-argument-is-consp (major 2) (n (len data))))
-           :in-theory (e/d (fn-bpc-car-of-append fn-bpc-cdr-of-append
-                            fn-bpc-len-of-append fn-bpc-take-of-append
-                            fn-bpc-nthcdr-of-append fn-bpc-append-associativity)
-                           (fn-bpc-argument fn-bpc-decode-head
+           :in-theory (e/d (fn-bpc-vocabulary)
+                           (fn-bpc-argument (:e fn-bpc-argument) fn-bpc-decode-head
                             fn-bpc-decode-argument fn-cbor-decode-argument)))))
+
+; The same reader against a field whose value the case split has made a
+; constant.  `(fn-bpc-argument 0 0)` is evaluated by the prover -- disabling
+; its `:executable-counterpart` does not stop constant propagation -- so in
+; the CRC-type-zero branch the encoder's `append` has already collapsed to a
+; `cons` and the rule above no longer matches its own left-hand side.  This
+; is that branch, and RFC 8949 section 4.2.1 is why it is exactly the values
+; below 24.
+; RFC 8949 section 4.2.1: additional information below 24 IS the argument.
+; The prover constant-folds `(fn-bpc-argument 0 0)` in the CRC-type-zero
+; branch whatever the `:executable-counterpart` is set to, so the reader's
+; own rule no longer matches there and the already-opened head does.  Both
+; are stated because both shapes occur in the same proof.
+(defthm fn-bpb-decode-head-of-small-additional
+  (implies (and (natp n) (< n 24))
+           (equal (fn-bpc-decode-head n xs) (fn-cbor-ok n xs)))
+  :hints (("Goal" :in-theory (enable fn-bpc-decode-head fn-bpc-decode-argument
+                                     fn-cbor-decode-argument
+                                     fn-bpc-canonical-argumentp))))
+
+(defthm fn-bpb-take-uint-of-small-head
+  (implies (and (natp n) (< n 24) (fn-cbor-octet-listp rest))
+           (equal (fn-bpb-take-uint (cons n rest)) (fn-cbor-ok n rest)))
+  :hints (("Goal" :in-theory (enable fn-bpb-take-uint fn-bpc-decode-head
+                                     fn-bpc-decode-argument
+                                     fn-cbor-decode-argument
+                                     fn-bpc-canonical-argumentp))))
+
+; The eliminator `fn-defrecord` deliberately does not generate: a record
+; rebuilt from its own five accessors is that record.  This is the one form
+; in this book that opens a record, and it opens it by the name the record
+; provides for exactly that purpose (`<record>-internals`, proof-style
+; section 8).  `:rule-classes nil`, because as a rewrite it would fire on
+; every constructor call in the tree; the round trip cites it by `:use`,
+; which is what lets the prover substitute through the branch where the case
+; split has already replaced an accessor by its value.
+(local
+ (defthm fn-bpbi-one-element-list
+   (implies (and (true-listp x) (equal (len x) 1))
+            (equal (cons (car x) nil) x))
+   :rule-classes nil))
+
+(defthm fn-bpb-block-is-its-own-accessors
+  (implies (fn-bpb-block-shapep b)
+           (equal (fn-bpb-make-block (fn-bpb-block-type b)
+                                     (fn-bpb-block-number b)
+                                     (fn-bpb-block-flags b)
+                                     (fn-bpb-block-crc-type b)
+                                     (fn-bpb-block-data b))
+                  b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-bpb-block-internals len true-listp)
+           :use ((:instance fn-bpbi-one-element-list (x (cdr (cddddr b))))))))
 
 ; -----------------------------------------------------------------------------
 ; Keystone: one canonical block decodes back from its own encoding, with the
@@ -109,9 +160,10 @@
                   (fn-cbor-ok b rest)))
   :hints (("Goal"
            :do-not-induct t
+           :use ((:instance fn-bpb-block-is-its-own-accessors (b b)))
            :in-theory (e/d (fn-bpb-decode-block fn-bpb-encode-block
                             fn-bpb-encode-block-with-crc
-                            fn-bpc-append-associativity)
+                            fn-bpc-vocabulary)
                            (fn-bpc-argument fn-bpb-block-crc
                             fn-bpc-decode-head fn-bpc-decode-argument
                             fn-cbor-decode-argument
@@ -154,9 +206,12 @@
                     (append (fn-bpb-encode-blocks xs)
                             (cons *fn-bpb-array-break* rest))
                     budget)
-           :in-theory (e/d (fn-bpc-append-associativity)
+           :in-theory (e/d (fn-bpc-vocabulary)
                            (fn-bpb-encode-block fn-bpb-decode-block
-                            fn-bpb-block-crc)))))
+                            fn-bpb-block-crc fn-bpc-argument
+                            (:e fn-bpc-argument)
+                            fn-bpc-decode-head fn-bpc-decode-argument
+                            fn-cbor-decode-argument)))))
 
 ; -----------------------------------------------------------------------------
 ; Keystone: decode of encode, over the whole bundle.
@@ -213,9 +268,7 @@
                                         (list (fn-bpb-bundle-payload bundle))))
                             (rest nil)
                             (budget *fn-bpb-max-blocks*)))
-           :in-theory (e/d (fn-bpb-decode fn-bpb-encode
-                            fn-bpc-len-of-append fn-bpc-take-of-append
-                            fn-bpc-append-associativity)
+           :in-theory (e/d (fn-bpb-decode fn-bpb-encode fn-bpc-vocabulary)
                            (fn-bpc-dec fn-bpc-enc fn-bpp-encode fn-bpp-decode
                             fn-bpb-encode-block fn-bpb-encode-blocks
                             fn-bpb-decode-block fn-bpb-decode-blocks
@@ -274,8 +327,7 @@
            :use ((:instance fn-bpc-dec-reencodes-consumed-prefix
                             (flg :item) (count 0) (octets (cdr octets))
                             (budget *fn-bpc-max-items*)))
-           :in-theory (e/d (fn-bpb-decode fn-bpb-encode
-                            fn-bpc-len-of-append fn-bpc-take-of-append)
+           :in-theory (e/d (fn-bpb-decode fn-bpb-encode fn-bpc-vocabulary)
                            (fn-bpc-dec fn-bpc-enc fn-bpp-decode fn-bpp-encode
                             fn-bpb-decode-blocks fn-bpb-encode-block
                             fn-bpb-encode-blocks fn-bpb-block-crc
@@ -313,7 +365,9 @@
 (deftheory fn-bpb-invariants-vocabulary
   '(fn-bpb-encode-block-is-consp
     fn-bpb-encode-block-head fn-bpb-take-uint-of-argument
-    fn-bpb-take-bytes-of-argument fn-bpb-encode-blocks-of-append
+    fn-bpb-take-bytes-of-argument fn-bpb-take-uint-of-small-head
+    fn-bpb-decode-head-of-small-additional
+    fn-bpb-encode-blocks-of-append
     fn-bpb-front-final-reassemble fn-bpb-front-of-append-one
     fn-bpb-final-of-append-one fn-bpb-block-listp-of-append
     fn-bpb-payload-block-is-a-block fn-bpb-bundle-tail-are-octets
