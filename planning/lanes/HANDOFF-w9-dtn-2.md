@@ -97,8 +97,56 @@ accepted.
 
 ## 4. What ran, and what is open
 
-Filled in by the lane's final report; see `planning/deputies/BOARD.md` for
-the CHANGE entries.
+**`books/bp-bundle` CERTIFIES.** hbox, ACL2 8.7 under `swarm-build`,
+evidence `build/acl2/certify-20260920T204124Z-1174239`, **3.06 s**
+(`book_wall_seconds`), 5.91 prover seconds over the whole book. The 11- and
+30-minute runs before it were the prover flailing on the two forms of §2,
+not the book's cost.
+
+**`books/bp-bundle-invariants` is OPEN at one form**, and the form is named:
+`fn-bpb-decode-blocks-of-encode-blocks`, the round trip of the fold over the
+block sequence. Everything before it proves, including the keystone it rests
+on: `fn-bpb-decode-block-of-encode-block` closed in the run
+`build/acl2/certify-20260920T210105Z-1191520`, which then hit the 1200 s cap
+with the fold still open (the log reaches
+`fn-bpb-block-listp-of-append`, the form immediately before it). What closing
+it wants, in the order to try: `tools/proof_profile.py` on that form first,
+because the induction is over `fn-bpb-decode-blocks` with
+`fn-bpb-decode-block` closed and the one-block keystone is already a rule, so
+the cost is in what the induction hypothesis carries rather than in a missing
+fact.
+
+Because that book is open, **the four books above it did not certify**:
+`tests/acl2/bp-bundle-tests`, `books/bp-node` and `tests/acl2/bp-node-tests`
+fail at `(include-book "bp-bundle-invariants")`
+(`build/acl2/certify-20260920T204435Z-1177466`). Their content is on disk and
+their statements are unchanged; none of it is claimed proved.
+
+**Not run, for the same reason**: the DTN image
+(`host/native/build-dtn.lisp` now includes `books/bp-node`, which needs that
+certificate), so `tools/tcpcl_lab.py --scenario adu` and
+`tests/bp-dtn7/run_fn_bp_interop.py` have not executed. **No claim about the
+`bp` verb, the lab scenario or dtn7 interoperability follows from this
+lane.** The commands are:
+
+```sh
+ssh hbox 'cd /tank/fn/lanes/w9-dtn-2 && FN_ACL2=/tank/fn/acl2-8.7/saved_acl2 \
+  FN_CERT_CACHE=/tank/fn/certcache FN_ACL2_TIMEOUT_SECONDS=2400 \
+  swarm-build python3 tools/certify_books.py --jobs 2 \
+  books/bp-bundle-invariants tests/acl2/bp-bundle-tests \
+  books/bp-node tests/acl2/bp-node-tests'
+ssh hbox 'cd /tank/fn/lanes/w9-dtn-2 && FN_NATIVE_BUILD=host/native/build-dtn.lisp \
+  FN_NATIVE_IMAGE=build/fn-host-dtn FN_ACL2=/tank/fn/acl2-8.7/saved_acl2 \
+  swarm-build sh tools/build_native_host.sh \
+  && swarm-build python3 tools/tcpcl_lab.py --image build/fn-host-dtn \
+       --work build/bp-lab --scenario adu \
+  && swarm-build python3 tests/bp-dtn7/run_fn_bp_interop.py \
+       --image build/fn-host-dtn --dtn7-repo /tank/fn/dtn7/repo --work build/bp-interop'
+```
+
+`make check` is green on this tree (scaffold OK, ledger OK, 220 lint
+warnings, down one because `nthcdr` joined `tools/acl2-builtins.txt`).
+`python3 tools/ledger.py --write` has been run.
 
 ## 5. What the next lane should take
 
