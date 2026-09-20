@@ -144,6 +144,15 @@ class DryRun:
 
 class LabTests(DryRun, unittest.TestCase):
 
+    def test_every_message_id_carries_this_run_s_tag(self):
+        # INN's history is not reset between runs, so a fixed Message-ID would
+        # make the second run of the transfer scenario a duplicate.
+        ids = inn_lab.message_ids("abc1234-20260920T000000Z")
+        self.assertEqual(len(set(ids.values())), len(inn_lab.ID_TEMPLATES))
+        for one in ids.values():
+            self.assertIn("abc1234-20260920T000000Z", one)
+        self.assertIn("<inn-lab-fed-", self.text)
+
     def test_the_lab_is_green_against_a_tree_with_no_transit_surface(self):
         self.assertEqual(self.code, 0, "\n".join(self.failures()) or self.text[-4000:])
         self.assertNotIn("lab error", self.text)
@@ -164,7 +173,9 @@ class LabTests(DryRun, unittest.TestCase):
         row = self.named("| ihave |")
         self.assertTrue(row, self.text[-4000:])
         self.assertIn("transfer=235", row[0])
-        self.assertIn(inn_lab.FED_ID, self.inn_spool()["articles"])
+        self.assertTrue([one for one in self.inn_spool()["articles"]
+                         if one.startswith("<inn-lab-fed-")],
+                        self.inn_spool()["articles"])
         accepted = self.named("INN accepted the transfer with 235")
         self.assertTrue(accepted and "| 0 |" in accepted[0], accepted)
         read = self.named("nnrpd served the article the transit path stored")
@@ -174,7 +185,8 @@ class LabTests(DryRun, unittest.TestCase):
         row = self.named("| ihave |")[0]
         self.assertIn("duplicate=435", row)
         self.assertIn("loop=437", row)
-        self.assertNotIn(inn_lab.LOOP_ID, self.inn_spool()["articles"],
+        self.assertFalse([one for one in self.inn_spool()["articles"]
+                          if one.startswith("<inn-lab-loop-")],
                          "the loop article was stored by INN")
 
     def test_the_absent_fn_transit_surface_is_a_skip_and_never_a_pass(self):
@@ -194,7 +206,7 @@ class LabTests(DryRun, unittest.TestCase):
         gone = self.named("the fn node is gone")
         self.assertTrue(gone and "GONE" in gone[0], gone)
         self.assertTrue(self.named("fn recover after the kill"))
-        held = self.named("the fn node still holds {}".format(inn_lab.FN_SEED_ID))
+        held = self.named("the fn node still holds <inn-lab-fn-seed-")
         self.assertTrue(held and "| 0 |" in held[0], held)
         lost = self.named("the fn node does not hold the interrupted")
         self.assertTrue(lost and "| 1 |" in lost[0], lost)
