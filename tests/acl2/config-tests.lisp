@@ -15,22 +15,27 @@
 (in-package "ACL2")
 (include-book "../../books/config-invariants")
 (include-book "../../books/config-records")
+(include-book "../../books/node-config")
 (include-book "../../books/store-config")
 
-(local (in-theory (enable fn-cfg-vocabulary fn-cfg-invariants-vocabulary)))
+(local (in-theory (enable fn-cfg-vocabulary fn-cfg-invariants-vocabulary
+                          fn-cnode-vocabulary)))
 
 ; -----------------------------------------------------------------------------
-; The default record is exactly today's compiled-in table.
+; The default record is exactly the former compiled-in table.
 ;
-; `*fn-store-groups*' survives until packet R4 deletes it.  Until then this is
-; the equality that says the configuration record replaces it rather than
-; competing with it.
+; `*fn-store-groups*' is gone (packet R4); the two names below are what it
+; said, and the configured node built on the default record has exactly the
+; acceptance state `fn-initial-state' built from them (the keystone
+; `fn-cnode-initial-of-the-default-record-is-fn-initial-state-of-its-groups').
 
 (assert-event
  (equal (fn-cfg-group-names
-         (fn-cfg-value (fn-config-replay 0 510 (list *fn-cfg-default-record*)))
+         (fn-cfg-value (fn-config-replay 0 (fn-cnode-line-ceiling)
+                                         (list *fn-cfg-default-record*)))
          1)
-        *fn-store-groups*))
+        '("fn.letters" "fn.test")))
+(assert-event (equal (fn-cnode-line-ceiling) 510))
 
 (assert-event (fn-cfg-recordp *fn-cfg-default-record*))
 (assert-event (equal (fn-cfg-record-generation *fn-cfg-default-record*) 1))
@@ -318,7 +323,7 @@
   (list (fn-jrec-make :config 0
                       (fn-cfg-record-make 0 10 5 (list (fn-cfg-set-capacity 1))
                                           *cfg-t-stamp*))))
-(defconst *cfg-t-node* (fn-node-initial-state *fn-store-groups* 1048576))
+(defconst *cfg-t-node* (fn-node-initial-state '("fn.letters" "fn.test") 1048576))
 (assert-event (fn-node-statep *cfg-t-node*))
 (assert-event (and (fn-jrec-listp *cfg-t-refused-js*)
                    (fn-jrec-config-onlyp *cfg-t-refused-js*)
@@ -333,3 +338,158 @@
                                     *cfg-t-refused-js* 0))
              (fn-config-replay-loop (fn-cfg-initial) 0 510
                                     (fn-jrec-bodies *cfg-t-refused-js*)))))
+
+; =============================================================================
+; The configured node (books/node-config): witnesses and teeth
+
+(defconst *cn-t-cfg1*
+  (fn-config-replay 0 (fn-cnode-line-ceiling) (list *fn-cfg-default-record*)))
+(defconst *cn-t-cn1* (fn-cnode-initial *cn-t-cfg1*))
+(assert-event (fn-cnode-statep *cn-t-cn1*))
+(assert-event (equal (fn-cnode-served *cn-t-cn1*) '("fn.letters" "fn.test")))
+(assert-event (equal (fn-cnode-domain *cn-t-cn1*) '("fn.letters" "fn.test")))
+
+; Two articles into fn.test at generation 1, through the lifted transitions:
+; the served check passes at the pinned generation 1 and fails at any other.
+(defconst *cn-t-payload* '(72 105))
+(defun cn-t-post (cn msgid txid)
+  (declare (xargs :mode :program))
+  (fn-cnode-complete
+   (fn-cnode-prepare cn 1 1 msgid *cn-t-payload* '("fn.test")
+                     (concatenate 'string "ob-" msgid) "subject" "ev" 1)
+   txid 1 :durable))
+(defconst *cn-t-cn1b* (cn-t-post (cn-t-post *cn-t-cn1* "<a@t>" 0) "<b@t>" 1))
+(assert-event (fn-cnode-statep *cn-t-cn1b*))
+(assert-event (equal (len (fn-state-articles (fn-node-acceptance (fn-cnode-node *cn-t-cn1b*)))) 2))
+(assert-event (equal (fn-next-number "fn.test" (fn-state-nexts (fn-node-acceptance (fn-cnode-node *cn-t-cn1b*)))) 3))
+
+; --- fn-cnode-prepare-stages-only-served-groups -----------------------------
+; Witness: a staged prepare carries exactly the offered, served groups.
+(defconst *cn-t-staged*
+  (fn-cnode-prepare *cn-t-cn1b* 1 1 "<c@t>" *cn-t-payload* '("fn.letters" "fn.test")
+                    "ob-c" "subject" "ev" 1))
+(assert-event (not (equal *cn-t-staged* *cn-t-cn1b*)))
+(assert-event (equal (fn-pending-groups (fn-state-pending (fn-node-acceptance (fn-cnode-node *cn-t-staged*))))
+                     '("fn.letters" "fn.test")))
+; Tooth (the one hypothesis, "prepare staged"): a stale pin (generation 0) is
+; refused, and then the pin is NOT the node's generation.
+(assert-event (equal (fn-cnode-prepare *cn-t-cn1b* 0 1 "<c@t>" *cn-t-payload* '("fn.test")
+                                       "ob-c" "subject" "ev" 1)
+                     *cn-t-cn1b*))
+(assert-event (not (equal 0 (fn-cfg-generation (fn-cnode-config *cn-t-cn1b*)))))
+
+; --- retirement: generation 2 retires fn.test -------------------------------
+(defconst *cn-t-retire*
+  (fn-cfg-record-make 1 2 2 (list (fn-cfg-remove-group "fn.test")) *cfg-t-stamp*))
+(assert-event (fn-cnode-record-acceptablep *cn-t-cn1b* *cn-t-retire* (fn-cnode-line-ceiling)))
+(defconst *cn-t-cn2* (fn-cnode-apply-config *cn-t-cn1b* *cn-t-retire* (fn-cnode-line-ceiling)))
+(assert-event (fn-cnode-statep *cn-t-cn2*))
+(assert-event (equal (fn-cfg-generation (fn-cnode-config *cn-t-cn2*)) 2))
+; SEPARATING WITNESS for fn-cnode-apply-config-keeps-watermarks-and-articles:
+; the served table lost fn.test, the domain and the watermark did not, and
+; both articles are still bound.
+(assert-event (equal (fn-cnode-served *cn-t-cn2*) '("fn.letters")))
+(assert-event (equal (fn-cnode-domain *cn-t-cn2*) '("fn.letters" "fn.test")))
+(assert-event (equal (fn-next-number "fn.test" (fn-state-nexts (fn-node-acceptance (fn-cnode-node *cn-t-cn2*)))) 3))
+(assert-event (equal (fn-state-articles (fn-node-acceptance (fn-cnode-node *cn-t-cn2*)))
+                     (fn-state-articles (fn-node-acceptance (fn-cnode-node *cn-t-cn1b*)))))
+; The separation that makes the served table load-bearing: at generation 2 a
+; post into fn.test is refused by the configured node while the plain node,
+; whose list is the domain, would still stage it.
+(assert-event (equal (fn-cnode-prepare *cn-t-cn2* 2 1 "<d@t>" *cn-t-payload* '("fn.test")
+                                       "ob-d" "subject" "ev" 1)
+                     *cn-t-cn2*))
+(assert-event (not (equal (fn-node-prepare (fn-cnode-node *cn-t-cn2*) 1 "<d@t>" *cn-t-payload*
+                                           '("fn.test") "ob-d" "subject" "ev" 1)
+                          (fn-cnode-node *cn-t-cn2*))))
+; Revival at generation 3 resumes the numbering: the next article in fn.test
+; takes local number 3, not 1.
+(defconst *cn-t-revive*
+  (fn-cfg-record-make 2 2 3 (list (fn-cfg-create-group "fn.test" "policy-b")) *cfg-t-stamp*))
+(defconst *cn-t-cn3* (fn-cnode-apply-config *cn-t-cn2* *cn-t-revive* (fn-cnode-line-ceiling)))
+(assert-event (fn-cnode-statep *cn-t-cn3*))
+(assert-event (equal (fn-cnode-served *cn-t-cn3*) '("fn.letters" "fn.test")))
+(defconst *cn-t-cn3b*
+  (fn-cnode-complete
+   (fn-cnode-prepare *cn-t-cn3* 3 1 "<e@t>" *cn-t-payload* '("fn.test") "ob-<e@t>" "subject" "ev" 1)
+   2 1 :durable))
+(assert-event (equal (fn-article-memberships
+                      (car (fn-state-articles (fn-node-acceptance (fn-cnode-node *cn-t-cn3b*)))))
+                     '(("fn.test" . 3))))
+; Refusals change nothing: a retire of a name that is not served, and a
+; reconfiguration while a transaction is staged (:group-staged).
+(assert-event (equal (fn-cnode-apply-config *cn-t-cn2* *cn-t-retire* (fn-cnode-line-ceiling)) *cn-t-cn2*))
+(assert-event (equal (fn-cnode-apply-config *cn-t-staged* *cn-t-retire* (fn-cnode-line-ceiling)) *cn-t-staged*))
+(assert-event (not (fn-cnode-record-acceptablep *cn-t-staged* *cn-t-retire* (fn-cnode-line-ceiling))))
+; A capacity decrease below the live reservation is refused at the node's real
+; reservation total (two admitted charges of 1).
+(assert-event (equal (fn-retain-reserved (fn-node-retention (fn-cnode-node *cn-t-cn1b*))) 2))
+(assert-event (not (fn-cnode-record-acceptablep
+                    *cn-t-cn1b* (fn-cfg-record-make 1 2 2 (list (fn-cfg-set-capacity 1)) *cfg-t-stamp*)
+                    (fn-cnode-line-ceiling))))
+(assert-event (fn-cnode-record-acceptablep
+               *cn-t-cn1b* (fn-cfg-record-make 1 2 2 (list (fn-cfg-set-capacity 2)) *cfg-t-stamp*)
+               (fn-cnode-line-ceiling)))
+
+; --- the two-kind replay ------------------------------------------------------
+(defun cn-t-article (seq txid msgid)
+  (declare (xargs :mode :program))
+  (fn-jrec-make :article seq
+                (fn-record-make seq txid 1 msgid *cn-t-payload* '("fn.test")
+                                (concatenate 'string "ob-" msgid) "subject" "ev" 1)))
+(defconst *cn-t-js*
+  (list (fn-jrec-make :config 0 *fn-cfg-default-record*)
+        (cn-t-article 1 0 "<a@t>")
+        (cn-t-article 2 1 "<b@t>")
+        (fn-jrec-make :config 3 (fn-cfg-record-make 3 2 2 (list (fn-cfg-remove-group "fn.test")) *cfg-t-stamp*))
+        (fn-jrec-make :config 4 (fn-cfg-record-make 4 2 3 (list (fn-cfg-create-group "fn.test" "policy-b")) *cfg-t-stamp*))
+        (cn-t-article 5 2 "<e@t>")))
+(defconst *cn-t-replayed* (fn-cnode-replay *cn-t-js*))
+(assert-event (equal (fn-replay-result-kind *cn-t-replayed*) :ok))
+(assert-event (equal (fn-cfg-generation (fn-cnode-config (fn-replay-result-node *cn-t-replayed*))) 3))
+(assert-event (equal (fn-replay-result-node *cn-t-replayed*) *cn-t-cn3b*))
+; Witness for fn-cnode-replay-loop-splits-at-any-prefix: every split of the
+; six-record history resumes to the same result.
+(defun cn-t-split-ok (n)
+  (declare (xargs :mode :program))
+  (let ((mid (fn-cnode-replay-loop (fn-cnode-initial (fn-cfg-initial)) (fn-cnode-line-ceiling)
+                                   (take n *cn-t-js*) 0)))
+    (equal (fn-cnode-replay-loop (fn-replay-result-node mid) (fn-cnode-line-ceiling)
+                                 (nthcdr n *cn-t-js*) (fn-replay-result-sequence mid))
+           *cn-t-replayed*)))
+(assert-event (and (cn-t-split-ok 0) (cn-t-split-ok 1) (cn-t-split-ok 3) (cn-t-split-ok 5) (cn-t-split-ok 6)))
+; Tooth (true-listp a): an improper prefix faults where the appended history
+; does not.
+(assert-event (equal (fn-replay-result-reason
+                      (fn-cnode-replay-loop (fn-cnode-initial (fn-cfg-initial)) (fn-cnode-line-ceiling)
+                                            (cons (car *cn-t-js*) 17) 0))
+                     :improper-record-list))
+(assert-event (equal (fn-replay-result-kind (fn-cnode-replay (append (list (car *cn-t-js*)) nil))) :ok))
+; Witness for fn-cnode-recovered-generation-is-at-most-the-live-generation:
+; the prefix that lost the last two records recovers generation 3, the prefix
+; that lost the last three recovers 2, both at most the live 3.  A record
+; posting into fn.test at generation 2 (retired) is a :node-refusal fault,
+; and the plain replay would have accepted it.
+(assert-event (equal (fn-cfg-generation (fn-cnode-config (fn-replay-result-node
+                      (fn-cnode-replay (take 4 *cn-t-js*))))) 2))
+(defconst *cn-t-into-retired*
+  (list (car *cn-t-js*) (cadr *cn-t-js*) (caddr *cn-t-js*) (cadddr *cn-t-js*)
+        (cn-t-article 4 2 "<z@t>")))
+(assert-event (equal (fn-replay-result-reason (fn-cnode-replay *cn-t-into-retired*)) :node-refusal))
+; The same three posts as a plain (transaction-only, sequences from 0) history
+; are accepted by fn-replay, whose node admits over the domain and knows no
+; retirement; the served check is what refused the third one above.
+(assert-event (fn-replay-okp (fn-replay '("fn.letters" "fn.test") 1048576
+                                        (fn-jrec-bodies (list (cn-t-article 0 0 "<a@t>")
+                                                              (cn-t-article 1 1 "<b@t>")
+                                                              (cn-t-article 2 2 "<z@t>"))))))
+
+; --- books/store-config over a table parameter ------------------------------
+; The name/code inversion holds over the configured domain and needs the
+; no-NIL-name hypothesis: a NIL name's code comes back as "unknown".
+(assert-event (equal (fn-store-groups-from-codes
+                      (fn-store-codes-from-groups '("fn.test" "fn.letters") '("fn.letters" "fn.test"))
+                      '("fn.letters" "fn.test"))
+                     '("fn.test" "fn.letters")))
+(assert-event (equal (fn-store-codes-from-groups '(nil) '(nil)) '(0)))
+(assert-event (equal (fn-store-groups-from-codes '(0) '(nil)) :bad))
