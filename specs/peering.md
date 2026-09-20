@@ -823,6 +823,24 @@ hypothesis (a record list with an outcome for an attempt never offered); a
 separating witness for `fn-feed-done-is-never-reoffered` that is `:done` by
 `438` rather than `239`.
 
+**What is earned, and by which theorem** (lane `w6/peering-feed-4`,
+`books/peer-feed-invariants`; the per-root evidence and the exact hypothesis
+of each is in the outbound-feed status section at the end of this file).
+All FIVE keystones of that book are proved; of the four design statements
+above, three are earned with the subject substitution named and one is not:
+
+| Statement above | Earned by | Reading |
+| --- | --- | --- |
+| `fn-feed-at-most-one-accepted-outcome` | the theorem of that name | **Earned.** Same name, same content. The hypothesis is `fn-feed-drivenp` -- each record admissible in the state the fold had reached -- in place of the design's `fn-feed-journal-okp`, and it is a check over the fold, never the conclusion. |
+| `fn-feed-done-is-never-reoffered` | `fn-feed-done-is-never-selected` with `fn-feed-tick-step-offers-the-selection` and `fn-feed-tick-step-is-silent-without-a-selection` | **Earned over `fn-feed-tick-step`**, the function the host calls once per scheduler tick, not over `fn-ideal-run`, which does not carry the feed. `fn-feed-done-is-never-selected` carries `(fn-feed-selection f obs)` as a hypothesis: without it the statement is FALSE at `msgid` = `NIL` (a feed that selects nothing selects `NIL`, and `NIL` is not `:queued`), and the silent-without-a-selection theorem is the other half of the pair. |
+| `fn-feed-replay-is-the-live-feed-modulo-inflight` | `fn-feed-replay-is-the-fold`, `fn-feed-replay-preserves-feedp`, `fn-feed-replay-preserves-peer` and the ground crash scenario | **Not earned.** All three replay theorems are now proved, but the general equation still needs a live machine that emits its own journal, which no lane has built. |
+| `fn-feed-restart-resolves-by-offer` | `fn-feed-restart-emits-no-transfer` with `fn-feed-restart-then-tick-offers` | **Earned over `fn-feed-send`** -- the only producer of a TAKETHIS or an article block -- **and `fn-feed-tick-step`**, not over `fn-ideal-restart`. |
+
+The fifth keystone of the book has no row above because §4 does not state it:
+`fn-feed-drop-needs-a-drop-record`, "nothing leaves the queue without a drop
+record naming a reason", which is §3.2's give-up rule. It is proved, with
+`fn-feed-not-dropped-survives-a-non-drop-record` under it.
+
 ### K6. Every peer input is on the served path
 
 The robustness theorems of node-functionality §3 are restated over the
@@ -1156,9 +1174,20 @@ inbound half's rows are the sibling lane's and are not repeated here.
 | §3.2 `fn-feed-observe` | the same code map | `335`/`238` send, `235`/`239`/`435`/`438`/`437`/`439` done, `431`/`436` exponential backoff with a one-hour ceiling then the retry bound, `400` and any other code loss. |
 | §3.3 FNFD, "one file per peer under `<journal>/feed/<peer>/`" | `<journal>/feed/<peer>.fnfd`, a 4-octet big-endian length before each frame | The length prefix is file layout, not a frame field: it is what lets the host hand ACL2 one whole record at a time, and a torn tail ends the record stream. |
 | §4 K5 `fn-feed-at-most-one-accepted-outcome` | `books/peer-feed-invariants.lisp`, same name | The hypothesis is `fn-feed-drivenp`, a check over the fold that each record was admissible in the state the fold had reached — never the conclusion. |
-| §4 K5 `fn-feed-done-is-never-reoffered` | `fn-feed-done-is-never-selected` + `fn-feed-tick-step-offers-the-selection` | Stated over `fn-feed-tick-step`, the function the host calls, rather than over `fn-ideal-run`, which does not yet carry the feed. |
-| §4 K5 `fn-feed-replay-is-the-live-feed-modulo-inflight` | `fn-feed-replay-is-the-fold` and the ground witness of `tests/acl2/peer-feed-tests.lisp` | **Open.** The general equation needs a second machine (a live run that emits its own journal) that this lane did not build. What is proved is that replay is a fold, plus the scenario on ground values. |
+| §4 K5 `fn-feed-done-is-never-reoffered` | `fn-feed-done-is-never-selected` + `fn-feed-tick-step-offers-the-selection` + `fn-feed-tick-step-is-silent-without-a-selection` | Stated over `fn-feed-tick-step`, the function the host calls, rather than over `fn-ideal-run`, which does not yet carry the feed. `fn-feed-done-is-never-selected` gained the hypothesis `(fn-feed-selection f obs)` in lane `w6/peering-feed-4`: without it the statement is FALSE at `msgid` = `NIL`, and the third theorem covers the states it excludes. |
+| §4 K5 `fn-feed-replay-is-the-live-feed-modulo-inflight` | `fn-feed-replay-is-the-fold`, `fn-feed-replay-preserves-feedp`, `fn-feed-replay-preserves-peer` and the ground witness of `tests/acl2/peer-feed-tests.lisp` | **Open.** The general equation needs a second machine (a live run that emits its own journal) that no lane has built. The three replay theorems are proved (`w6/peering-feed-3` and `w6/peering-feed-4`), so what is missing is the live side, not the fold. |
 | §4 K5 `fn-feed-restart-resolves-by-offer` | `fn-feed-restart-emits-no-transfer` + `fn-feed-restart-then-tick-offers` | Stated over `fn-feed-send` (the only producer of a TAKETHIS or an article block) and `fn-feed-tick-step`, not over `fn-ideal-restart`. |
+
+**Certification, lane `w6/peering-feed-4`.** `books/peer-feed-invariants`
+certifies with **no open form**: laptop, ACL2 8.7, `tools/certify_books.py`,
+31.9 s, evidence
+`build/lanes/w6-peering-feed-4/build/acl2/certify-20260920T211815Z-98758/`.
+That closed the eleven events behind `fn-feed-apply-record-preserves-feedp`,
+which no run of this book had ever reached, and with them all five of its
+keystones. One of the eleven, `fn-feed-done-is-never-selected`, was FALSE as
+stated and is repaired with a hypothesis true on every state where the host
+emits a command; the row above says which, and
+`tests/acl2/peer-feed-tests.lisp` carries the violating value.
 
 Open, recorded rather than weakened:
 

@@ -651,6 +651,20 @@
 ; one block with the four field updates and the two `mv' transitions, so the
 ; family is read in one place; the four `fn-feed-peer-of-with-*' equations
 ; make each proof a rewrite rather than an `e/d' per form.
+;
+; The eleven transition members and the four field equations are PROOF
+; VOCABULARY and are withdrawn at the end of this book under
+; `fn-feed-invariants-vocabulary' (docs/proof-style.md sec. 2 and 8).
+; Exported enabled they are a rule an includer has to disable: measured on
+; persvati `run-20260920T211802Z-ba78', `fn-feed-tick-step-preserves-peer'
+; fired on the `:use'd hypothesis of `books/owner-feed's
+; `fn-own-feed-tick-step-keeps-the-feed-half', rewrote it to T, and left
+; that proof with a conclusion in `car' vocabulary and nothing to close it.
+; What leaves this book enabled is the two DISPATCHER members,
+; `fn-feed-apply-record-preserves-peer' and `fn-feed-replay-preserves-peer',
+; which are what an includer folding a journal actually needs.  An includer
+; that wants one of the eleven enables the vocabulary name in the one hint
+; that needs it and deletes its local twin.
 
 (defthm fn-feed-peer-of-with-queue
   (equal (fn-feed-peer (fn-feed-with-queue f queue)) (fn-feed-peer f)))
@@ -811,10 +825,16 @@
                 (consp (fn-feed-find msgid xs)))
            (not (fn-feed-state-inflightp (fn-feed-state-of msgid xs)))))
 
+; No `fn-feedp' hypothesis: it has no violating value, which the micro
+; discipline's fourth rule says is a hypothesis to delete rather than to
+; decorate.  `fn-feed-send' refuses a feed it does not recognize on its own,
+; and `fn-feed-restart' returns such a feed unchanged, so both sides are nil
+; there too.  Measured 2026-09-20: the tooth in the test book asserted the
+; opposite -- that a forged two-in-flight feed still emits a transfer -- and
+; had never been evaluated, because the root had no certificate.
 (defthm fn-feed-restart-emits-no-transfer
-  (implies (fn-feedp f)
-           (equal (mv-nth 1 (fn-feed-send (fn-feed-restart f) msgid article))
-                  nil))
+  (equal (mv-nth 1 (fn-feed-send (fn-feed-restart f) msgid article))
+         nil)
   :hints (("Goal"
            :use ((:instance fn-feed-inflight-count-zero-means-not-inflight
                             (xs (fn-feed-queue (fn-feed-restart f)))))
@@ -1032,6 +1052,12 @@
     fn-feed-droppedp-of-state-of-append-one
     fn-feed-peer-of-with-queue fn-feed-peer-of-with-conn
     fn-feed-peer-of-with-contact fn-feed-peer-of-with-backoff
+    fn-feed-enqueue-preserves-peer fn-feed-offer-preserves-peer
+    fn-feed-send-preserves-peer fn-feed-done-preserves-peer
+    fn-feed-back-off-preserves-peer fn-feed-lost-preserves-peer
+    fn-feed-give-up-preserves-peer fn-feed-restart-preserves-peer
+    fn-feed-settle-preserves-peer fn-feed-observe-preserves-peer
+    fn-feed-tick-step-preserves-peer
     fn-feed-state-of-of-requeue-inflight-when-not-inflight
     fn-feed-state-of-of-settle-when-not-inflight
     fn-feed-find-of-append-when-absent
