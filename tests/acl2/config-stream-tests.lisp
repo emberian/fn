@@ -9,8 +9,10 @@
 
 (in-package "ACL2")
 (include-book "../../books/config-stream")
-(include-book "std/testing/assert-event" :dir :system)
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "../../books/store-config")
+
+(local (in-theory (enable fn-cfg-vocabulary fn-cfg-invariants-vocabulary
+                          fn-cnode-vocabulary fn-cstr-vocabulary)))
 
 (defconst *cstr-t-stamp* (fn-clock-observation 7 1000 5 t))
 (defconst *cstr-t-payload* '(72 105))

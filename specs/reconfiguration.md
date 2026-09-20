@@ -949,8 +949,10 @@ D11's portable group authority is M4 work.
 ## 8. Status
 
 Packets R1 and R2 landed on lane `w4/config-records`; R3 (model) and R4
-(store host) on lane `w5/config-groups`; the owner half of R3, R5 and R6
-remain design.
+(store host) on lane `w5/config-groups`; the two-kind stream decision, the
+owner event and the capacity command on lane `w9/reconfig` (2026-09-20).
+Contact plans as configuration records and propagation between peers remain
+design, with the seams named in the last two bullets of this section.
 Everything above this section is still a *proposal* except what this section
 names. The landed books do not follow the design's shapes exactly, and the
 differences are deliberate:
@@ -1054,6 +1056,104 @@ differences are deliberate:
   history through `fn-cnode-config-replay` and the article history into a
   node whose domain and capacity come from the configured node; codes are
   positions in the domain, stable across retirement and revival.
+- **The two-kind stream, decided (lane `w9/reconfig`).** The layout stays
+  two directories -- article records in the transaction journal, configuration
+  records under `config/` -- and the STREAM is one: every record of either
+  kind carries its position in the unified stream in its own sequence field,
+  and recovery merges the two files by that field before it replays anything.
+  [`books/config-stream.lisp`](../books/config-stream.lisp) (`fn-cstr-`) is
+  that merge. Keystones: `fn-cstr-merge-keeps-every-config-record` and
+  `-keeps-every-article-record` (the merge drops nothing and invents nothing;
+  the left side walks the merge, the right side walks the input file),
+  `fn-cstr-merge-is-sequence-ordered` (two sequence-ordered files merge to one
+  sequence-ordered stream, so the split loses no ordering information),
+  `fn-cstr-ok-merged-replay-ends-in-a-configured-node` (an `:ok` merged replay
+  ends in a state carrying `reserved <= capacity`, which a configuration-only
+  replay cannot say because its nodes have replayed no articles), and the two
+  per-generation facts a pin observes,
+  `fn-cstr-created-group-is-served-exactly-from-its-generation` and
+  `fn-cstr-retired-group-is-served-exactly-below-its-generation` -- both
+  directions, so a connection pinned below the creating generation must NOT
+  see the group. `fn-cnode-replay-loop` and its fold keystone are unchanged.
+  The separating witness in
+  [`tests/acl2/config-stream-tests.lisp`](../tests/acl2/config-stream-tests.lisp)
+  is the argument for the whole decision: one `(:set-capacity 1)` over a
+  history whose two articles hold a reservation total of 2, which the
+  configuration-only replay accepts (`:ok`, capacity 1, about to replay two
+  articles that need 2) and the merged replay refuses at the record with
+  `:config-refusal`. Controls: a raise and a decrease to exactly the
+  reservation total are both admitted, so the merged replay is not simply
+  refusing every decrease.
+- **The owner event and the per-connection pin (lane `w9/reconfig`).**
+  [`books/owner-config.lisp`](../books/owner-config.lisp) (`fn-ocfg-`) pairs
+  the `fn-own` state with its live configuration, a per-connection pin table
+  and one staged configuration record. `(:reconfigure id deltas)` takes the
+  owner's single pending-transaction slot, so a post and a reconfiguration
+  cannot straddle a generation bump; `fn-ocfg-reconfig-refusal` is a named
+  reason and never `nil`. Keystones:
+  `fn-ocfg-reconfiguration-never-changes-what-an-open-connection-serves`,
+  `fn-ocfg-pin-is-stable-without-advance`,
+  `fn-ocfg-open-pins-the-live-configuration`,
+  `fn-ocfg-advance-observes-the-live-configuration`,
+  `fn-ocfg-list-active-lists-the-pinned-served-table`.
+  **Deviation from section 2.2**: the pin is a table beside the owner, not a
+  ninth slot of `fn-own-conn-make`; `books/owner.lisp` and
+  `books/owner-invariants.lisp` are untouched. `fn-ocfg-statep` requires the
+  table's domain to be exactly the open connections, which is what makes the
+  pin a derived quantity the relation constrains rather than a writable field.
+  **Not certified**: `books/owner` has no certificate on any box (it is the
+  milestone's current task), so nothing that includes it can certify, and this
+  book claims no event.
+- **Capacity as a configuration change (R6, lane `w9/reconfig`).**
+  `fn store capacity <n>` and `run_store.py capacity <n>`;
+  `fn-store-cfg-reconfigure` gains `:set-capacity` and hands it to the same
+  `fn-cnode-record-acceptablep` replay applies, against the live node's
+  reservation total -- the rule is `books/config`'s
+  (`:capacity-below-reserved`) and Python owns none of it. Because the two
+  kinds are not yet interleaved ON DISK, a decrease carries one extra gate
+  before anything becomes durable: the candidate configuration history is
+  replayed against the store's real article records in a second core, and the
+  record is refused if that store would not open. Three outcomes stay
+  distinct: refused 1, uncertain 3, accepted 0. `*fn-store-capacity*` is gone
+  from `fn-store-sn-reset`, whose state before any open now has capacity zero
+  -- section 1.6's fail-closed floor. It survives in
+  `host/checkpoint-host.lisp` only.
+- **R7, contact plans as configuration records: OPEN, with its seam.** The
+  configuration value has no contact slot and neither does `fn-cfg-peerp`
+  (`books/peer-config.lisp`), so a contact plan cannot be written today
+  without changing one of the two most depended-on books while another lane
+  is certifying both. The design: two delta kinds `:set-contact name rows` /
+  `:remove-contact name`, writing rows keyed by peer name and slot-labelled
+  `"contact"` into the peers slot, with a slot-aware `fn-cfg-rows-without-key`
+  variant so that a contact upsert does not clobber the peer's transport rows;
+  and a reader book `books/contact-config.lisp` deriving
+  `fn-sched-contact peer start end` (`books/scheduler.lisp` line 66) from the
+  configuration generation, with the keystone that a contact read from an
+  admissible configuration is a `fn-sched-contactp` and every scheduler
+  keystone unchanged. Owner: the BP/scheduler lane, after `books/config` and
+  `books/peer-config` are both quiet.
+- **R8, propagation between peers: the guarantee is proved, the path is
+  OPEN.** The requirement's core -- a group creation on A becomes a
+  configuration record on B only through B's own admissibility -- is
+  `fn-cnode-article-transitions-never-change-config`
+  ([`books/node-config.lisp`](../books/node-config.lisp)): every article and
+  ingest transition leaves `fn-cnode-config` equal, so nothing a peer sends
+  can move B's served table. The only transition that moves it is
+  `fn-cnode-apply-config` on a record B's own `fn-cnode-record-acceptablep`
+  admits. What is NOT built: the proposal path. The design, posted on the
+  board for the substrate lane: a peer's group creation reaches B as a
+  `:proposed-group` artifact that is **not** a configuration record and never
+  enters the configuration value -- it is a control-channel notice the
+  operator sees and answers with `fn group create`, or a `:policy` statement
+  (substrate lane) that a local admissibility rule may consult. Keeping it out
+  of the configuration value is what preserves the guarantee above: if a
+  proposal were a delta, the theorem that a peer cannot change B's served
+  table would have to be reproved and would be weaker. The two-node harness
+  scenario (create on A, propose to B, admit on B, post reaches B's new group)
+  is NOT in `tools/twonode_gate.py`: `fn group create` refuses while an owner
+  is live (the writer lock), so the scenario needs the owner's
+  `(:reconfigure ...)` wired into `host/owner-host.lisp`, which is the R5 host
+  step this lane did not take.
 - **Still open, recorded rather than claimed.** (1) The two-kind stream on
   disk: configuration records live beside the transaction journal, not
   interleaved in it, so a capacity decrease cannot be replayed against the
@@ -1067,10 +1167,27 @@ differences are deliberate:
   (proposal on the board). (3) The plain node's `LIST ACTIVE` lists the
   domain, retired names included, until R5's per-generation projection takes
   the configuration. (4) `fn-initial-state (groups)` keeps its signature.
-  (5) `*fn-store-capacity*` survives only in `fn-store-sn-reset`, the state
-  before any open. (6) The `true-listp` hypothesis of
+  (5) `*fn-store-capacity*` in `fn-store-sn-reset`: CLOSED by
+  `w9/reconfig` (capacity zero, the fail-closed floor). (6) The `true-listp` hypothesis of
   `fn-cnode-recovered-generation-is-at-most-the-live-generation` has no
   known violating value (the `<=` also holds for an improper prefix); it is
   inherited from the split lemma the proof goes through. The schema-0 stamp
   fields are uint32, so a clock time beyond 2^32 is outside the codec; the
   64-bit stamp is an open item for the next codec schema.
+- **Still open after `w9/reconfig`.** (7) The served port answers
+  `LIST ACTIVE` from the allocation domain, not from the pin:
+  `fn-nntp-dispatch` supplies `(fn-state-groups archive)` at
+  [`books/nntp-responses.lisp`](../books/nntp-responses.lisp) lines 225, 308
+  and 319, so `fn-ocfg-list-active` is not yet the function the host calls and
+  the equating theorem is written down in the book but deliberately not
+  stated. The fix is one served-table argument on `fn-served-conn`,
+  `fn-served-dispatch` and `fn-nntp-dispatch`; owner, the NNTP cluster. (8)
+  `fn-own-reopen` replays the article history only, so the owner cannot state
+  the recovered generation; section 3.5's owner statement has no subject and
+  is not stated. Its store-level half is proved
+  (`fn-cnode-recovered-generation-is-at-most-the-live-generation`,
+  `fn-cstr-ok-merged-replay-ends-in-a-configured-node`). (9) The two kinds are
+  interleaved in the MODEL and not on disk; `host/store-node-host.lisp` still
+  replays configuration first and gates a capacity decrease with a dry-run
+  replay instead. (10) `books/owner` certifies nowhere, so
+  `books/owner-config` cannot be certified and claims no event.
