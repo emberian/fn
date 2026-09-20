@@ -225,6 +225,9 @@
                        *fn-t-served-observation*))
 
 (assert-event (fn-wire-statep (fn-served-conn-wire *fn-t-served-forged*)))
+; session-depth-ok: the point of this witness is a session at the WRONG level
+; -- a bare POST session where a served connection carries an auth session --
+; so tools/session_depth.py must not read it as a miss.
 (assert-event (fn-post-sessionp (fn-served-conn-session *fn-t-served-forged*)))
 (assert-event (fn-served-conn-shapep *fn-t-served-forged*))
 (assert-event (not (fn-served-connp *fn-t-served-forged*)))
@@ -310,9 +313,8 @@
 ; The POST-composed reader session is two wrappers down now: the served
 ; session is fn-auth-step's, an auth session over a peer session over it.
 (assert-event (not (fn-post-session-awaiting
-                    (fn-peer-session-base
-                     (fn-auth-session-base
-                      (fn-served-conn-session *fn-t-served-post-conn*))))))
+                    (fn-auth-post-session
+                     (fn-served-conn-session *fn-t-served-post-conn*)))))
 (assert-event (fn-served-connp *fn-t-served-post-conn*))
 (assert-event (equal (fn-served-step-nntp-steps *fn-t-served-conn*
                                                 *fn-t-served-post-read*)
@@ -481,12 +483,10 @@
 ; POST-composed reader session, so the reader session is three accessors
 ; down, not two.
 (assert-event (equal (fn-nntp-session-group
-                      (fn-post-session-base
-                       (fn-peer-session-base
-                        (fn-auth-session-base
-                         (fn-served-conn-session
-                          (fn-served-result-conn
-                           *fn-t-served-pipelined-result*))))))
+                      (fn-auth-reader-session
+                       (fn-served-conn-session
+                        (fn-served-result-conn
+                         *fn-t-served-pipelined-result*))))
                      "fn.letters"))
 
 ; The framing fact the keystone rests on: the byte that completed the article
@@ -507,3 +507,111 @@
                      *fn-t-served-pipelined-read*))
 (assert-event (equal (fn-served-run *fn-t-served-conn* *fn-t-served-pipelined-cut*)
                      *fn-t-served-pipelined-result*))
+
+; -----------------------------------------------------------------------------
+; Teeth for the transit depth (fn-served-transit-outcome)
+;
+; A served connection's session is three records deep, and
+; fn-peer-transit-outcome wants the PEER session -- one accessor in, not
+; none.  Until this lane it was handed the whole auth session.  The reply
+; octets were right anyway, and that is the whole difficulty: the transit
+; reply does not read its session, so nothing on the wire could separate the
+; two depths.  So this witness observes the SESSION the outcome is computed
+; from, not the octets it comes out as.
+
+; The Message-ID a transit submission carries is OCTETS, not the string the
+; archive fixture names it by (fn-af-message-idp, books/article-fields.lisp).
+(defconst *fn-t-served-transit-msgid*
+  (fn-nntp-string-octets *fn-t-served-id*))
+(defconst *fn-t-served-transit-sub*
+  (fn-peer-make-submission "innA" :ihave *fn-t-served-transit-msgid*
+                           *fn-t-served-payload*))
+(defconst *fn-t-served-transit-want* (fn-peer-decision :want nil))
+(defconst *fn-t-served-transit-session*
+  (fn-auth-session-base (fn-served-conn-session *fn-t-served-conn*)))
+
+; The witness is not degenerate: it is a real transit submission and a real
+; connection, and the two candidate sessions are DIFFERENT values of which
+; exactly one is a peer session.  That is the separation: the miss was a type
+; error, not a synonym.
+(assert-event (fn-peer-submissionp *fn-t-served-transit-sub*))
+(assert-event (fn-served-connp *fn-t-served-conn*))
+(assert-event (fn-peer-sessionp *fn-t-served-transit-session*))
+; session-depth-ok: the whole point of this line is that the served session
+; is NOT a peer session, which is the separation the fix rests on.
+(assert-event (not (fn-peer-sessionp
+                    (fn-served-conn-session *fn-t-served-conn*))))
+(assert-event (not (equal *fn-t-served-transit-session*
+                          (fn-served-conn-session *fn-t-served-conn*))))
+
+; The outcome the served path computes is the one over the PEER session, and
+; the session that comes back out of fn-peer-transit-outcome -- which is what
+; a state-dependent transit reply would read -- is that same peer session and
+; not the auth session above it.
+(assert-event
+ (equal (fn-served-result-effects
+         (fn-served-transit-outcome *fn-t-served-conn* *fn-t-served-transit-sub*
+                                    *fn-t-served-transit-want* :durable))
+        (fn-post-result-effects
+         (fn-peer-transit-outcome *fn-t-served-transit-session*
+                                  *fn-t-served-transit-sub*
+                                  *fn-t-served-transit-want* :durable))))
+(assert-event
+ (equal (fn-post-result-session
+         (fn-peer-transit-outcome *fn-t-served-transit-session*
+                                  *fn-t-served-transit-sub*
+                                  *fn-t-served-transit-want* :durable))
+        *fn-t-served-transit-session*))
+(assert-event
+ (not (equal (fn-post-result-session
+              (fn-peer-transit-outcome *fn-t-served-transit-session*
+                                       *fn-t-served-transit-sub*
+                                       *fn-t-served-transit-want* :durable))
+             (fn-served-conn-session *fn-t-served-conn*))))
+
+; A NEGATIVE CONTROL that is also the alarm.  Today the transit reply ignores
+; its session, which is the only reason the wrong depth was invisible on the
+; wire.  When that stops being true this assertion FAILS, and its failure is
+; the notice that every fn-peer-transit-outcome call site must be re-read --
+; the POST outcome is the cautionary case, where the same accident held until
+; a reply became session-shaped and the served path fell silent.
+; session-depth-ok: this assertion deliberately calls fn-peer-transit-outcome
+; at the WRONG depth, to pin that today it makes no difference to the octets.
+(assert-event
+ (equal (fn-post-result-effects
+         (fn-peer-transit-outcome (fn-served-conn-session *fn-t-served-conn*)
+                                  *fn-t-served-transit-sub*
+                                  *fn-t-served-transit-want* :durable))
+        (fn-post-result-effects
+         (fn-peer-transit-outcome *fn-t-served-transit-session*
+                                  *fn-t-served-transit-sub*
+                                  *fn-t-served-transit-want* :durable))))
+(assert-event
+ (equal (take 4 (fn-served-reply-octets
+                 (fn-served-result-effects
+                  (fn-served-transit-outcome *fn-t-served-conn*
+                                             *fn-t-served-transit-sub*
+                                             *fn-t-served-transit-want* :durable))))
+        '(50 51 53 32)))
+
+; -----------------------------------------------------------------------------
+; Teeth for the fourth POST outcome, on the served path
+;
+; The miss this lane exists for emitted NOTHING.  It cannot any more: a
+; connection whose session is at the wrong level earns a 403 through
+; fn-served-post-outcome, distinct from 240 and from both 441s, and the
+; served effect enumeration accepts it.  *fn-t-served-forged* above is a
+; connection whose session is a bare POST session -- one wrapper short of a
+; served connection, the exact shape of the 2026-09-20 miss.
+(defconst *fn-t-served-403*
+  (fn-served-reply-octets
+   (fn-served-result-effects
+    (fn-served-post-outcome *fn-t-served-forged* :durable))))
+(assert-event (equal (take 4 *fn-t-served-403*) '(52 48 51 32)))
+(assert-event (consp *fn-t-served-403*))
+(assert-event (not (equal *fn-t-served-403* *fn-t-served-240*)))
+(assert-event (not (equal *fn-t-served-403* *fn-t-served-441-refused*)))
+(assert-event (not (equal *fn-t-served-403* *fn-t-served-441-uncertain*)))
+(assert-event (fn-served-effectsp
+               (fn-served-result-effects
+                (fn-served-post-outcome *fn-t-served-forged* :uncertain))))
