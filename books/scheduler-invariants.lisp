@@ -500,6 +500,19 @@
            (member-equal w (fn-sched-aged-advance aged queue wf)))
   :hints (("Goal" :in-theory (disable fn-sched-eligiblep fn-sched-find))))
 
+; The promotion queue is drained from the head: a member that is not the head
+; is a member of the tail.  With `fn-sched-aged-advance' held closed this is
+; the only way the goal of `fn-sched-promotion-position-decreases' reaches the
+; `cdr' the tick appends its promotions to.
+; `:rule-classes nil': as a rewrite it backchains from `(member-equal w (cdr x))'
+; to `(member-equal w x)' and matches itself on every nested `cdr', which sent
+; `fn-sched-promotion-position-decreases' into an unbounded induction descent
+; (certify-20260920T011543Z-94761).  Cited by `:use' at its one instance.
+(defthm fn-sched-member-of-cdr-when-not-the-car
+  (implies (and (member-equal w lst) (not (equal w (car lst))))
+           (member-equal w (cdr lst)))
+  :rule-classes nil)
+
 (defthm fn-sched-member-of-append-left
   (implies (member-equal w a) (member-equal w (append a b))))
 
@@ -577,6 +590,26 @@
                                          (fn-sched-queue ss) wf))
                                    (fn-sched-queue ss))))))))
 
+; The member half of the keystone below, isolated: inside the keystone's own
+; case split this goal sat two hundred levels deep and the prover descended
+; without end (certify-20260920T011543Z-94761, -20260920T014616Z-7729).
+; Proved here with the tick, the advance and the promotions all closed.
+(defthm fn-sched-next-aged-keeps-a-non-selected-eligible-member
+  (implies (and (member-equal w (fn-sched-aged ss))
+                (fn-sched-eligiblep (fn-sched-find w (fn-sched-queue ss)) wf)
+                (not (equal w selected-id)))
+           (member-equal w (fn-sched-next-aged ss wf selected-id)))
+  :hints (("Goal" :in-theory (e/d (fn-sched-next-aged)
+                                  (fn-sched-aged-advance fn-sched-promotions
+                                   fn-sched-eligiblep fn-sched-find))
+           :use ((:instance fn-sched-aged-advance-keeps-eligible-member
+                            (aged (fn-sched-aged ss))
+                            (queue (fn-sched-queue ss)))
+                 (:instance fn-sched-member-of-cdr-when-not-the-car
+                            (lst (fn-sched-aged-advance (fn-sched-aged ss)
+                                                        (fn-sched-queue ss)
+                                                        wf)))))))
+
 ; KEYSTONE.  One admissible tick either selects a promoted work or moves it
 ; strictly closer to the head of the promotion queue.
 (defthm fn-sched-promotion-position-decreases
@@ -611,7 +644,11 @@
                             (queue (fn-sched-queue ss)))
                  (:instance fn-sched-pos-of-aged-advance
                             (aged (fn-sched-aged ss))
-                            (queue (fn-sched-queue ss)))))))
+                            (queue (fn-sched-queue ss)))
+                 (:instance
+                  fn-sched-next-aged-keeps-a-non-selected-eligible-member
+                  (selected-id (fn-sched-item-work-id
+                                (fn-sched-selection ss wf))))))))
 
 ; KEYSTONE.  A promoted work that stays eligible is selected within one more
 ; tick than its position in the promotion queue.
@@ -740,6 +777,7 @@
     fn-sched-bump-queue-preserves-queued fn-sched-expire-queue-preserves-queued
     fn-sched-append-preserves-queued fn-sched-admit-preserves-queued
     fn-sched-member-of-append-left
+    fn-sched-next-aged-keeps-a-non-selected-eligible-member
     fn-sched-aged-advance-keeps-eligible-member
     fn-sched-aged-advance-consp-when-an-eligible-member-exists
     fn-sched-aged-advance-head-is-eligible fn-sched-pos-of-aged-advance
