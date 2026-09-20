@@ -482,7 +482,7 @@
  (equal (fn-nntp-result-effects
          (fn-nntp-step
           (fn-nntp-result-session
-           (fn-nntp-step *fn-nntp-unsafe-id-session* *fn-nntp-unsafe-id-archive*
+           (fn-nntp-step *fn-nntp-unsafe-id-session* *fn-nntp-unsafe-id-archive* *fn-nntp-env0*
                          '(:command (71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115))))
           *fn-nntp-unsafe-id-archive* *fn-nntp-env0* '(:command (83 84 65 84 32 49))))
         '((:reply (53 48 51 32 115 116 111 114 101 100 32 97 114 116 105 99 108 101 32 105 100 101 110 116 105 102 105 101 114 32 117 110 97 118 97 105 108 97 98 108 101 13 10)))))
@@ -492,7 +492,7 @@
  (equal (fn-nntp-result-effects
          (fn-nntp-step
           (fn-nntp-result-session
-           (fn-nntp-step *fn-nntp-unsafe-payload-session* *fn-nntp-unsafe-payload-archive*
+           (fn-nntp-step *fn-nntp-unsafe-payload-session* *fn-nntp-unsafe-payload-archive* *fn-nntp-env0*
                          '(:command (71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115))))
           *fn-nntp-unsafe-payload-archive* *fn-nntp-env0* '(:command (65 82 84 73 67 76 69))))
         '((:reply (53 48 51 32 115 116 111 114 101 100 32 97 114 116 105 99 108 101 32 102 114 97 109 105 110 103 32 117 110 97 118 97 105 108 97 98 108 101 13 10)))))

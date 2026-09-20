@@ -206,6 +206,16 @@ Every clause below is marked **proved** (with the theorem that carries it),
 **tested** (with where the expectation lives), or **open**. "Tested" means an
 independently written expected transcript, not a recorded run.
 
+Verification state (2026-09-20, branch `w3/reader-profile` merged with dev
+`b7f106b`): every book the rows cite certifies; the rows stand as written,
+none moved. Counts: eleven rows; four **proved** plus one **proved by
+construction**; six **tested** (`tests/acl2/nntp-reader-profile-tests`,
+`tests/acl2/nntp-tests`, `tests/test_reader.py`); one **stated local policy**;
+one **open** (the §6.1.1.2 estimate-bounds theorem). On the served path the
+environment carries no group-creation facts, so NEWGROUPS there is the empty
+block; the tested NEWGROUPS rows are evidence at the dispatcher, not over a
+socket.
+
 | RFC clause | Requirement | Status |
 | --- | --- | --- |
 | §6.1.1.2 GROUP | 211 count/low/high, 411 for an unknown group, cursor to the first available article | proved (`fn-nntp-group-selects-the-first-available-article`, `fn-nntp-group-on-empty-group-invalidates-the-cursor`, `fn-nntp-unknown-group-keeps-the-session`) |

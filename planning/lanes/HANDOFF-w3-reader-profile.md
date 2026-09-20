@@ -156,17 +156,23 @@ at a time, after `make certs-install`):
 
 | book | verdict | evidence dir |
 | --- | --- | --- |
-| `books/nntp-syntax` | certified (unchanged by this lane; installed cert kept) | `make certs-install` |
-| `books/nntp-session` | certified (unchanged; installed cert kept) | `make certs-install` |
-| `books/nntp-projection` | certified (unchanged; installed cert kept) | `make certs-install` |
-| `books/nntp-responses` | **certified** | `build/acl2/certify-20260919T215419Z-641` |
-| `books/nntp` | **certified** | `build/acl2/certify-20260919T215430Z-1272` |
-| `books/nntp-overview` | **certified** (parser, syntax recognizer, splitter and trimmer closed for the whole book; 6 s prove) | `build/acl2/certify-20260919T233722Z-90655` |
-| `books/nntp-invariants` | **certified** (43 s; six article/wildmat backchaining rules withdrawn locally, seven reader-profile theorems given closed-vocabulary hints, two local `-unfolds` bridges; statements unchanged) | `build/acl2/certify-20260920T010648Z-92769` |
-| `books/nntp-effects` | **certified** (three `rev` twins for the `-reverse` lemmas, same six-rule withdrawal, `fn-nntp-effects-list-overview-fmt` moved above its consumer) | `build/acl2/certify-20260920T014459Z-95715` |
-| `tests/acl2/nntp-reader-profile-tests` | not reached (behind `nntp-tests`) | - |
-| `tests/acl2/nntp-tests` | **open**: `assert-event` `(equal (fn-nntp-result-effects *fn-nntp-caps*) '((:reply (49 48 49 32 99 97 112 ...))))` fails; dev's capabilities pin predates the advertised `READER`, `OVER MSGID` and `LIST ACTIVE NEWSGROUPS OVERVIEW.FMT` lines and must be re-pinned to the lane's list (a transcript expectation, not a theorem) | `build/acl2/certify-20260920T014624Z-7807` |
-| `tests/acl2/nntp-teeth-tests` | not reached (behind `nntp-tests`); likewise `books/served`, `tests/acl2/served-tests`, `books/ideal`, `books/nntp-index`, `tests/acl2/nntp-index-tests` | - |
+| `books/nntp-syntax`, `nntp-session`, `nntp-projection` | certified (unchanged; installed cert kept) | `make certs-install` |
+| `books/nntp-responses` | **certified** (export list is the union with dev's POST names) | `build/acl2/certify-20260920T015332Z-13805` |
+| `books/nntp` | **certified** | `build/acl2/certify-20260920T015342Z-13993` |
+| `books/nntp-overview` | **certified** | `build/acl2/certify-20260920T015343Z-14022` |
+| `books/nntp-invariants` | **certified** | `build/acl2/certify-20260920T015349Z-14111` |
+| `books/nntp-effects` | **certified** | `build/acl2/certify-20260920T015430Z-14448` |
+| `books/injection`, `books/injection-invariants` | certified (dev books, recertified here because their certificates were foreign-local) | `build/acl2/certify-20260920T015727Z-37770`, `build/acl2/certify-20260920T015728Z-37777` |
+| `books/nntp-post` | **certified** (522 s; the two keystone `:instance` hints bind `env`) | `build/acl2/certify-20260920T015941Z-67428` |
+| `books/served` | **certified** (dev's byte fold, unchanged) | `build/acl2/certify-20260920T020824Z-80057` |
+| `books/ideal` | certified (dev's file; this branch's `env` port argument dropped) | `build/acl2/certify-20260920T021106Z-81875` |
+| `books/nntp-index` | certified | `build/acl2/certify-20260920T021107Z-81884` |
+| `tests/acl2/nntp-tests` | **certified**: `*fn-nntp-caps*`, the IHAVE 500 and the POST 340/begin-article pins re-quoted from `ld` | `build/acl2/certify-20260920T021242Z-82609` |
+| `tests/acl2/nntp-teeth-tests` | **certified** | `build/acl2/certify-20260920T021243Z-82618` |
+| `tests/acl2/served-tests` | certified (dev's file) | `build/acl2/certify-20260920T021244Z-82627` |
+| `tests/acl2/nntp-post-tests` | certified (one `fn-nntp-step` call given `(fn-nntp-env *fn-tp-obs* nil)`) | `build/acl2/certify-20260920T021246Z-82687` |
+| `tests/acl2/nntp-index-tests` | certified | `build/acl2/certify-20260920T021248Z-82694` |
+| `tests/acl2/nntp-reader-profile-tests` | **certified** (the leap-day pin read 11015 for 2000-02-29; 11016 is right and `days-from-civil` is now pinned to agree) | `build/acl2/certify-20260920T021728Z-8989` |
 
 **The open root, closed 2026-09-20.** `books/nntp-overview.lisp` failed to certify on 2026-09-19: the shape lemma
 `fn-nov-overview-is-an-overview`
@@ -217,6 +223,24 @@ The clause matrix in `specs/nntp-audit.md` is unchanged by the rebase: eleven
 rows, four **proved** plus one **proved by construction**, six **tested**, one
 **stated local policy**, and the §6.1.1.2 count theorem **open**.
 
+
+**Integration pass, 2026-09-20 (merged with dev `b7f106b`, HEAD in `git log -1`).**
+Every root above certifies. The seam: dev's `fn-served-dispatch` calls
+`fn-nntp-post-step (ps archive config observation wire-event)`, whose
+signature is unchanged; it hands `fn-nntp-step` the environment
+`(fn-nntp-env observation nil)`, the connection's pinned clock observation
+and an empty fact list, because the five-field served conn carries no
+creation facts (proposal 3 below now covers the seed path too: the host's
+`*fn-reader-seed-facts*` and `fn-reader-facts` global are gone, and the
+socket transcript expects the empty NEWGROUPS block). `fn-served-step (conn
+octets)`, `fn-reader-chunk (octets state)` and `tools/run_reader.py` are dev's
+shape. Python: 32 tests, 30 pass; the two failures are dev's store-backed
+`test_post` read-back cases (`211 1 1 1` after 240): the served conn pins its
+archive at open, `reselect` refreshes only the host global, and no host line
+re-pins the connection, so a post is invisible on the connection that made
+it. That is dev's seam (w4/post handoff recorded these cases as dying in
+`setUp` before the anchor-host fix, never as passing), not this lane's.
+nntplib probe: `tests/interop_nntplib.py` "status": "passed" (stdlib nntplib on python3.12: DATE, NEWGROUPS both ranges, LIST OVERVIEW.FMT, OVER by range and by message-id, MODE READER, exact capability set).
 
 ## Proposals for root
 

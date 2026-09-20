@@ -40,17 +40,21 @@
 (assert-event (fn-nntp-envp *rp-env*))
 (assert-event (fn-nntp-envp *rp-blind-env*))
 
-(defun rp-reply (session archive env line)
-  (declare (xargs :mode :program))
-  (fn-nntp-result-effects
-   (fn-nntp-step session archive env (list :command line))))
+; A macro, so each transcript below writes its command line as a bare octet
+; list; every use in this book is a literal.
+(defmacro rp-reply (session archive env line)
+  `(fn-nntp-result-effects
+    (fn-nntp-step ,session ,archive ,env (list :command ',line))))
 
 ; -----------------------------------------------------------------------------
 ; The calendar conversion, pinned at boundaries an off-by-one would move
 
 (assert-event (equal (fn-nntp-civil-from-days 10957) '(2000 1 1)))
 (assert-event (equal (fn-nntp-civil-from-days 0) '(1970 1 1)))
-(assert-event (equal (fn-nntp-civil-from-days 11015) '(2000 2 29)))
+; 11016 days after 1970-01-01 is 2000-02-29 (30 years with seven leap days
+; is 10957 days to 2000-01-01, then 31 + 28); the earlier 11015 was typed.
+(assert-event (equal (fn-nntp-civil-from-days 11016) '(2000 2 29)))
+(assert-event (equal (fn-nntp-days-from-civil 2000 2 29) 11016))
 (assert-event (equal (fn-nntp-dtn-civil 843136496000) '(2026 9 19 12 34 56)))
 (assert-event (equal (fn-nntp-dtn-civil 0) '(2000 1 1 0 0 0)))
 (assert-event (equal (fn-nntp-civil-dtn-ms 2000 1 1 0 0 0) 0))

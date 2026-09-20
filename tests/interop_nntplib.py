@@ -45,16 +45,23 @@ def main():
         stamp = client.date()[1]
         assert stamp.year >= 2026, stamp
 
-        # Section 7.3: group creation facts, in LIST ACTIVE format.
+        # Section 7.3: group creation facts, in LIST ACTIVE format.  The
+        # served connection carries no persisted creation facts yet
+        # (books/nntp-post.lisp builds its environment with an empty fact
+        # list), so both queries answer the empty block rather than a date
+        # the reader invented.
         response, new_groups = client.newgroups(datetime.date(1970, 1, 1))
-        assert [g.group for g in new_groups] == ["fn.letters"], new_groups
+        assert [g.group for g in new_groups] == [], new_groups
         response, none_new = client.newgroups(datetime.date(2099, 1, 1))
         assert none_new == [], none_new
 
         # Sections 8.3 and 8.4.  nntplib reads LIST OVERVIEW.FMT and keys the
         # OVER result by those field names, so a disagreement between the two
         # commands shows up as a KeyError or a shifted value here.
-        fmt = client.getoverviewfmt()
+        # nntplib exposes LIST OVERVIEW.FMT only through the private
+        # _getoverviewfmt (over() calls it to key its dictionaries); there is
+        # no public accessor.
+        fmt = client._getoverviewfmt()
         assert fmt == ["subject", "from", "date", "message-id", "references",
                        ":bytes", ":lines"], fmt
         response, overviews = client.over((1, 1))
@@ -66,7 +73,10 @@ def main():
         response, by_id = client.over(message_id)
         assert [number for number, _ in by_id] == [0], by_id
 
-        response = client.mode_reader()
+        # nntplib has no public MODE READER call (it sends one itself only
+        # when constructed with readermode=True); _shortcmd returns the
+        # status line as every public command does.
+        response = client._shortcmd("MODE READER")
         assert response.startswith("201 "), response
         response = client.quit()
         assert response.startswith("205 "), response
