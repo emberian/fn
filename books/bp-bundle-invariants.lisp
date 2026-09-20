@@ -238,11 +238,6 @@
                   octets))
   :hints (("Goal" :in-theory (disable fn-bpb-encode-block fn-bpb-block-crc))))
 
-(defthm fn-bpb-decode-block-yields-a-block
-  (implies (fn-cbor-result-okp (fn-bpb-decode-block octets))
-           (fn-bpb-blockp (fn-cbor-result-value (fn-bpb-decode-block octets))))
-  :hints (("Goal" :in-theory (disable fn-bpb-encode-block fn-bpb-block-crc))))
-
 (defthm fn-bpb-decode-blocks-are-canonical-by-construction
   (implies (and (fn-cbor-octet-listp octets)
                 (fn-cbor-result-okp (fn-bpb-decode-blocks octets budget)))

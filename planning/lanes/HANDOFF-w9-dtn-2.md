@@ -57,10 +57,32 @@ first assertion.
 fn-authored bundles: dtn7 authors and fn decodes in leg 1, fn authors and
 dtn7 decodes and delivers in leg 2.
 
-## 2. Evidence
+## 2. Evidence, and the three measured traps
 
-See §4 below for what ran and what did not. Nothing in this handoff is a
-claim that a theorem was proved unless §4 names the run that proved it.
+Nothing in this handoff is a claim that a theorem was proved unless §4 names
+the run that proved it. What §4 does record is three failures that cost this
+lane most of its budget, each of which the next lane would otherwise repeat.
+
+**An `ld` probe that passes can still exhaust the control stack under
+`certify-book`.** `fn-bpb-decode` written as one nested `let*` admitted and
+proved under `ld` on hbox in 11 minutes, then died in `certify-book` with an
+`IF-COMPILE` backtrace and no error message
+(`build/acl2/certify-20260920T193841Z-1121774`). ACL2 inlines every branch
+into one guard conjecture and its size is the whole cause. The cure is three
+functions, not a hint.
+
+**A guard obligation that looks arithmetic is usually a missing rule.**
+`take`'s non-negative count — that the scan's remainder is no longer than what
+it scanned — is a corollary of `fn-bpc-dec-reencodes-consumed-prefix` plus
+`fn-bpc-len-of-append`. Left to induct over `fn-bpc-dec`, the prover hits the
+induction-depth limit.
+
+**A closed callee needs its fact as a rule before the fold over it.**
+`fn-bpb-decode-blocks-yield-blocks` inducts over the fold with
+`fn-bpb-decode-block` closed; with the one-block fact still in the invariants
+book above it, the induction had nothing to apply and the run was killed at
+the 2400 s cap (`build/acl2/certify-20260920T195958Z-1136779`). The one-block
+fact moved down into `books/bp-bundle`.
 
 ## 3. The three outcomes, at every boundary
 
