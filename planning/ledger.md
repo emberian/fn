@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 275 |
 | Certification roots in the Makefile | 274 |
 | Books inside the root closure | 274 |
-| `defthm` and `defthmd` events | 5473 |
+| `defthm` and `defthmd` events | 5495 |
 | `defun` events | 3917 |
 | Functions with verified guards | 1453 |
 | Functions declared `:verify-guards nil` and never verified | 189 |
 | Functions left at the default with an explicit guard | 1781 |
 | Functions left at the default with no guard | 494 |
-| `assert-event` checks | 5190 |
+| `assert-event` checks | 5201 |
 | `must-fail` checks | 59 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 45 |
@@ -189,11 +189,11 @@ that `make certify` requests.
 | `books/node.lisp` | root | 34 | 33 | 27/0/6/0 | 0 | 0 | 2 |
 | `books/owner-config.lisp` | root | 19 | 34 | 0/4/30/0 | 0 | 0 | 1 |
 | `books/owner-feed.lisp` | root | 74 | 54 | 0/0/54/0 | 0 | 0 | 0 |
-| `books/owner-invariants.lisp` | root | 101 | 7 | 0/0/0/7 | 0 | 0 | 0 |
+| `books/owner-invariants.lisp` | root | 102 | 7 | 0/0/0/7 | 0 | 0 | 0 |
 | `books/owner.lisp` | root | 46 | 95 | 0/3/92/0 | 0 | 0 | 0 |
 | `books/path.lisp` | root | 0 | 21 | 0/0/21/0 | 0 | 0 | 0 |
 | `books/peer-config.lisp` | root | 26 | 27 | 0/0/27/0 | 0 | 0 | 0 |
-| `books/peer-feed-invariants.lisp` | root | 106 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/peer-feed-invariants.lisp` | root | 127 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/peer-feed.lisp` | root | 35 | 100 | 3/0/97/0 | 0 | 0 | 0 |
 | `books/peer-inbound-invariants.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/peer-inbound.lisp` | root | 50 | 56 | 6/4/46/0 | 0 | 0 | 0 |
@@ -319,7 +319,7 @@ that `make certify` requests.
 | `tests/acl2/node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 92 | 0 | 0 |
 | `tests/acl2/owner-feed-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 98 | 0 | 0 |
 | `tests/acl2/owner-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 155 | 0 | 0 |
-| `tests/acl2/peer-feed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 96 | 0 | 0 |
+| `tests/acl2/peer-feed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 107 | 0 | 0 |
 | `tests/acl2/peer-inbound-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 147 | 0 | 0 |
 | `tests/acl2/policy-tests.lisp` | root | 0 | 27 | 0/0/0/27 | 66 | 0 | 0 |
 | `tests/acl2/principal-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 43 | 0 | 0 |
