@@ -123,7 +123,7 @@
 ; one (now octets) pair per socket read, in order, with the octets exactly as
 ; they arrived.  Folding fn-tcl-drive over it with the carry reproduces the
 ; loop's whole event stream in one call, with no socket and no host in the way;
-; tests/tcpcl_differential.py compares the two digests.
+; tools/tcpcl_lab.py compares the two digests.
 
 (defun fn-tcl-host-fold (s carry steps acc)
   (declare (xargs :measure (len steps)))
