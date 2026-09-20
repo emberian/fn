@@ -75,11 +75,9 @@ class Acl2Feed:
 
     def __init__(self, peer: bytes, max_queue: int, backoff_ms: int,
                  retry_bound: int, streaming: bool, horizon: int):
-        self.bridge = Acl2Store.__new__(Acl2Store)
-        Acl2Store.__init__(self.bridge)
+        self.bridge = Acl2Store()
         self.peer = peer
         self.bridge.call('(include-book "books/peer-feed")')
-        self.bridge.call('(include-book "books/peer-feed-invariants")')
         self.limits = "(fn-feed-limits {} {} {} {})".format(
             max_queue, backoff_ms, retry_bound, "t" if streaming else "nil")
         self.contact = '(fn-sched-contact "{}" 0 {})'.format(
@@ -175,12 +173,12 @@ class Acl2Feed:
 
     def apply_frame(self, frame: bytes):
         digest = hashlib.sha256(frame[:-TRAILER_BYTES]).digest()
+        decoded = "(fn-feed-decode {} {})".format(literal_octets(frame),
+                                                  literal_octets(digest))
         self.bridge.call(
             "(assign ff (fn-feed-apply-record (@ ff)"
-            " (fn-frame-item 3 (fn-feed-decode {} {}))"
-            " (fn-frame-item 4 (fn-feed-decode {} {}))))".format(
-                literal_octets(frame), literal_octets(digest),
-                literal_octets(frame), literal_octets(digest)))
+            " (fn-frame-result-kind {0}) (fn-frame-result-payload {0})))"
+            .format(decoded))
 
     def close(self):
         self.bridge.close()
@@ -296,7 +294,7 @@ def run(args) -> int:
 
         session = Session(args.host, args.port, args.timeout)
         print("GREETING {}".format(
-            feed and session.greeting.decode("ascii", "replace")), flush=True)
+            session.greeting.decode("ascii", "replace")), flush=True)
         if not args.no_streaming:
             session.send(b"MODE STREAM\r\n")
             print("MODE {}".format(session.line().decode("ascii", "replace")),
