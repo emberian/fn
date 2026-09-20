@@ -33,21 +33,7 @@
 ; clock withdraws fn-clock-observationp under fn-clock-vocabulary; the tick
 ; keystone reads fn-clock-monotonic under it, so it is opened here as well.
 (local (in-theory (enable fn-clock-observationp)))
-; Both whole-state recognizers stay closed here, and they must be named
-; together: line 32 enables the whole session vocabulary, and the vocabulary
-; now holds two of them.  fn-tcl-drive's totality test names
-; fn-tcl-session-cheapp (w9/dtn-e2e), so leaving that one open turns every
-; expansion of fn-tcl-drive into a case split over its twenty conjuncts and
-; their sub-recognizers -- 8844 subgoals for fn-tcl-drive-is-a-result, which
-; is 1371 prover steps with it closed.
-(local (in-theory (disable fn-tcl-sessionp fn-tcl-session-cheapp fn-tcl-messagep)))
-; fn-tcl-session-cheapp reaches this book only as fn-tcl-drive's totality
-; test, and the one rewrite fn-tcl-sessionp-is-cheap discharges it wherever
-; the session is known.  Everything else the cheap recognizer exports is put
-; aside: the forward-chaining field family would otherwise run to fixpoint
-; beside the fn-tcl-sessionp family on every goal that opens fn-tcl-drive,
-; which cost C1 2688 s of `other` time against 0.02 s of `prove`.
-(local (in-theory (disable fn-tcl-cheap-rules)))
+(local (in-theory (disable fn-tcl-sessionp fn-tcl-messagep)))
 
 (local (defthm fn-tcl-append-assoc
          (equal (append (append a b) c) (append a (append b c)))))
