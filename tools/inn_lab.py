@@ -77,13 +77,26 @@ FN_PORT = 11190           # the fn node's listener; innfeed.conf names this port
 
 INN_PATH_IDENTITY = "inn.hbox.test"
 FN_PATH_IDENTITY = "fnA.hbox.test"
-FED_ID = "<inn-lab-fed@example.invalid>"
-DUP_ID = FED_ID
-LOOP_ID = "<inn-lab-loop@example.invalid>"
-OFFER_ID = "<inn-lab-offer@example.invalid>"
-FN_SEED_ID = "<inn-lab-fn-seed@example.invalid>"
-FN_CUT_ID = "<inn-lab-fn-cut@example.invalid>"
-ABSENT_ID = "<inn-lab-absent@example.invalid>"
+# Message-IDs carry a per-run tag.  INN's history is deliberately NOT reset
+# between runs -- the install is the lab, and a history that survives is what
+# the innd-restart control asserts -- so a fixed Message-ID makes the second
+# run of the transfer scenario a duplicate of the first.  Two runs an hour
+# apart on the same box must both be able to offer a new article.
+FED_ID = "<inn-lab-fed-{tag}@example.invalid>"
+LOOP_ID = "<inn-lab-loop-{tag}@example.invalid>"
+LOOP2_ID = "<inn-lab-loop2-{tag}@example.invalid>"
+OFFER_ID = "<inn-lab-offer-{tag}@example.invalid>"
+FN_SEED_ID = "<inn-lab-fn-seed-{tag}@example.invalid>"
+FN_CUT_ID = "<inn-lab-fn-cut-{tag}@example.invalid>"
+UNCERTAIN_ID = "<inn-lab-uncertain-{tag}@example.invalid>"
+ABSENT_ID = "<inn-lab-absent-{tag}@example.invalid>"
+ID_TEMPLATES = ("FED_ID", "LOOP_ID", "LOOP2_ID", "OFFER_ID", "FN_SEED_ID",
+                "FN_CUT_ID", "UNCERTAIN_ID", "ABSENT_ID")
+
+
+def message_ids(tag: str) -> dict:
+    """This run's Message-IDs, keyed by the template name."""
+    return {name: globals()[name].format(tag=tag) for name in ID_TEMPLATES}
 
 # --------------------------------------------------------------------------
 # INN's configuration.  These four templates are the lab: docs/interop-inn.md
@@ -440,6 +453,9 @@ class InnLab(deploy_gate.DeployGate):
         self.fn_transit = ""
         self.farm_cost = ""
         self.farm_allowed = False
+        self.tag = "{}-{}".format(self.rev, dt.datetime.now(
+            dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ"))
+        self.ids = message_ids(self.tag)
 
     # -- plumbing ---------------------------------------------------------
     def bin(self, name: str) -> str:
@@ -571,14 +587,14 @@ fi
             ("Path: {}!not-for-mail\r\nFrom: lab@example.invalid\r\n"
              "Subject: seeded on the fn node\r\nNewsgroups: {}\r\n"
              "Message-ID: {}\r\n\r\nWritten on the fn node by the INN lab.\r\n"
-             .format(FN_PATH_IDENTITY, GROUPS[0], FN_SEED_ID)).encode(), payload)
-        uncertain = "<inn-lab-uncertain@example.invalid>"
+             .format(FN_PATH_IDENTITY, GROUPS[0], self.ids["FN_SEED_ID"])).encode(), payload)
+        uncertain = self.ids["UNCERTAIN_ID"]
         accepted = self.sh("fn outcome accepted", self.cd(self.fn(
             "--store {} post --message-id '{}' --payload {} --group {}".format(
-                self.store, FN_SEED_ID, payload, GROUPS[0]))),
+                self.store, self.ids["FN_SEED_ID"], payload, GROUPS[0]))),
             timeout=900, expect=EXIT_OK)
         refused = self.sh("fn outcome refused", self.cd(self.fn(
-            "--store {} inspect --message-id '{}'".format(self.store, ABSENT_ID))),
+            "--store {} inspect --message-id '{}'".format(self.store, self.ids["ABSENT_ID"]))),
             timeout=900, expect=EXIT_REFUSED)
         unsure = self.sh("fn outcome uncertain", self.cd(self.fn(
             "--store {} post --message-id '{}' --payload {} --group {} "
@@ -640,7 +656,7 @@ fi
         step = self.sh("INN install", """
 P={prefix}
 if [ ! -x $P/bin/innd ]; then echo "NO-INN $P"; exit 1; fi
-echo "innd=$($P/bin/innconfval --version 2>&1 | head -1)"
+echo "innd=$($P/bin/innconfval version 2>&1 | head -1)"
 echo "tarball=$(cat $(dirname $P)/src/inn-{version}.tar.gz.sha256 2>/dev/null | head -1)"
 echo "owner=$(stat -c '%U' $P 2>/dev/null || stat -f '%Su' $P)"
 # A connect probe, not `ss -ltn`: it is portable (the dry run is a laptop),
@@ -692,6 +708,10 @@ done
                                ("readers.conf", READERS_CONF)):
             self.push_file(template.format(**fields),
                            "{}/etc/{}".format(self.inn_prefix, name))
+        # innfeed appends for ever; a tail of it must be THIS run's, so the log
+        # is truncated before innd is started and never after.
+        self.sh("truncate innfeed's log", ": > {p}/log/innfeed.log".format(
+            p=self.inn_prefix))
         self.sh("INN history cold start", """
 P={p}
 if [ ! -f $P/db/history.dir ]; then
@@ -739,13 +759,21 @@ echo INND-TIMEOUT; tail -20 $P/log/innd-stdout.log; exit 1
                     "{} newgroup {} y $(id -un)".format(self.bin("ctlinnd"), group),
                     expect=None)
         self.sh("INN active", "cat {}/db/active".format(self.inn_prefix))
+        # innd does not bring the innfeed channel up from a cold start here;
+        # a reload does, and it is the same thing rc.news does after a change.
+        self.sh("ctlinnd reload newsfeeds",
+                "{} -t 10 reload newsfeeds 'inn lab' 2>&1; sleep 3; "
+                "pgrep -a innfeed || echo NO-INNFEED".format(self.bin("ctlinnd")),
+                expect=None)
         nnrpd = self.sh("start nnrpd", """
 P={p}
+# `nnrpd -D` daemonises, so $! is the shell child that exits: the pid to
+# remember is the one nnrpd writes itself, run/nnrpd-<port>.pid.  Killing $!
+# left a stray reader daemon on the box on 2026-09-20.
 nohup $P/bin/nnrpd -D -p {port} > $P/log/nnrpd-stdout.log 2>&1 < /dev/null &
-echo $! > $P/run/nnrpd-lab.pid
 for i in $(seq 1 30); do
   if python3 -c "import socket,sys; s=socket.socket(); s.settimeout(2); sys.exit(0 if s.connect_ex(('127.0.0.1',{port}))==0 else 1)"; then
-    echo "NNRPD-UP pid=$(cat $P/run/nnrpd-lab.pid)"; exit 0; fi
+    echo "NNRPD-UP pid=$(cat $P/run/nnrpd-{port}.pid 2>/dev/null)"; exit 0; fi
   sleep 1
 done
 echo NNRPD-TIMEOUT; tail -10 $P/log/nnrpd-stdout.log; exit 1
@@ -784,9 +812,9 @@ pgrep -F {p}/run/innfeed.pid >/dev/null 2>&1 && echo INNFEED-ALIVE || echo INNFE
             "ihave",
             "--port {} --group {} --msgid '{}' --loop-msgid '{}' --loop-identity {} "
             "--from-identity {} --absent '{}'".format(
-                self.inn_port, GROUPS[0], FED_ID, LOOP_ID, INN_PATH_IDENTITY,
-                FN_PATH_IDENTITY, ABSENT_ID),
-            name="IHAVE {} into INN".format(FED_ID), expect=None)
+                self.inn_port, GROUPS[0], self.ids["FED_ID"], self.ids["LOOP_ID"], INN_PATH_IDENTITY,
+                FN_PATH_IDENTITY, self.ids["ABSENT_ID"]),
+            name="IHAVE {} into INN".format(self.ids["FED_ID"]), expect=None)
         result = self.payload(probe)
         self.facts["ihave"] = (
             "MODE STREAM={mode} IHAVE={offer} transfer={transfer} duplicate={dup} "
@@ -797,20 +825,20 @@ pgrep -F {p}/run/innfeed.pid >/dev/null 2>&1 && echo INNFEED-ALIVE || echo INNFE
                 cd=result.get("check_duplicate")))
         self.derive("INN accepted the transfer with 235", probe,
                     "IHAVE {}, 335, the article, 235: INN's inbound transit path, "
-                    "the one fn's feed lane will drive".format(FED_ID),
+                    "the one fn's feed lane will drive".format(self.ids["FED_ID"]),
                     ok=str(result.get("transfer", "")).startswith("235"))
         if not str(result.get("duplicate", "")).startswith("435"):
             self.gaps.append(
                 "the second IHAVE of {} drew '{}', not 435: INN's history did not "
                 "refuse an article it already holds.".format(
-                    FED_ID, result.get("duplicate")))
+                    self.ids["FED_ID"], result.get("duplicate")))
         if not str(result.get("loop_result", "")).startswith("437"):
             self.gaps.append(
                 "an article whose Path names {} drew '{}', not 437: INN's ME exclusion "
                 "list is not refusing the loop, so the loop scenario is unfounded."
                 .format(INN_PATH_IDENTITY, result.get("loop_result")))
-        self.sh("INN history for {}".format(FED_ID),
-                "{} '{}' 2>&1 | head -3".format(self.bin("grephistory"), FED_ID),
+        self.sh("INN history for {}".format(self.ids["FED_ID"]),
+                "{} '{}' 2>&1 | head -3".format(self.bin("grephistory"), self.ids["FED_ID"]),
                 expect=None)
         self.sh("news.notice tail", "tail -20 {}/log/news.notice 2>/dev/null || "
                 "tail -20 {}/log/innd-stdout.log".format(
@@ -819,13 +847,13 @@ pgrep -F {p}/run/innfeed.pid >/dev/null 2>&1 && echo INNFEED-ALIVE || echo INNFE
     def scenario_read_from_inn(self):
         """nnrpd serves back what the transit path stored."""
         if "nnrpd" not in self.started_pids:
-            self.skip("read {} back from INN's nnrpd".format(FED_ID),
+            self.skip("read {} back from INN's nnrpd".format(self.ids["FED_ID"]),
                       "inn.py read", "nnrpd did not start, so nothing read it back")
             return
         probe = self.drive_inn(
             "read", "--port {} --group {} --msgid '{}' --absent '{}'".format(
-                self.nnrpd_port, GROUPS[0], FED_ID, ABSENT_ID),
-            name="read {} back from INN's nnrpd".format(FED_ID), expect=None)
+                self.nnrpd_port, GROUPS[0], self.ids["FED_ID"], self.ids["ABSENT_ID"]),
+            name="read {} back from INN's nnrpd".format(self.ids["FED_ID"]), expect=None)
         result = self.payload(probe)
         self.facts["read"] = "GROUP={} ARTICLE={} Path={} absent={}".format(
             result.get("group"), result.get("article"), result.get("path"),
@@ -843,8 +871,8 @@ pgrep -F {p}/run/innfeed.pid >/dev/null 2>&1 && echo INNFEED-ALIVE || echo INNFE
         """INN's innfeed offers to fn, and the same offer by hand."""
         probe = self.drive_inn(
             "offer", "--port {} --group {} --msgid '{}' --from-identity {}".format(
-                self.port or self.fn_port, GROUPS[0], OFFER_ID, INN_PATH_IDENTITY),
-            name="offer {} to the fn node by hand".format(OFFER_ID), expect=None)
+                self.port or self.fn_port, GROUPS[0], self.ids["OFFER_ID"], INN_PATH_IDENTITY),
+            name="offer {} to the fn node by hand".format(self.ids["OFFER_ID"]), expect=None)
         result = self.payload(probe)
         self.fn_transit = str(result.get("ihave", ""))
         self.facts["offer"] = (
@@ -855,13 +883,21 @@ pgrep -F {p}/run/innfeed.pid >/dev/null 2>&1 && echo INNFEED-ALIVE || echo INNFE
                 iv=result.get("ihave")))
         # Now INN's own innfeed, driven by innd: offer the article INN holds.
         flush = self.sh("ctlinnd flush fn (innfeed offers to the fn node)",
-                        "{} -t 10 flush fn 2>&1 || true; sleep 20; "
-                        "tail -25 {}/log/innfeed.log 2>/dev/null; "
-                        "echo '--- status:'; grep -A4 'Peer fn' {}/log/innfeed.status "
-                        "2>/dev/null | head -20".format(
+                        "{} -t 10 flush fn 2>&1 || true; sleep 25; "
+                        "echo '--- innfeed.log (this run):'; "
+                        "tail -25 {}/log/innfeed.log 2>/dev/null || true; "
+                        "echo '--- innfeed.status:'; "
+                        "(grep -A6 'Peer fn' {}/log/innfeed.status 2>/dev/null "
+                        "|| echo '(no innfeed.status)') | head -20".format(
                             self.bin("ctlinnd"), self.inn_prefix, self.inn_prefix),
                         timeout=180, expect=None)
         self.facts["innfeed"] = flush.first_line or "(no innfeed log line)"
+        if "innfeed:" not in flush.output:
+            self.gaps.append(
+                "INN's innfeed wrote nothing to its log during this run, so what "
+                "crossed INN's outbound half is not recorded here: the hand-driven "
+                "offer below is the only fn-side evidence, and it is the lab's "
+                "client wearing innfeed's clothes, not innfeed.")
         if not result.get("transit"):
             self.skip("INN's innfeed transfers an article to fn",
                       "inn.py offer (IHAVE/CHECK/TAKETHIS on the fn listener)",
@@ -872,7 +908,7 @@ pgrep -F {p}/run/innfeed.pid >/dev/null 2>&1 && echo INNFEED-ALIVE || echo INNFE
                       "innfeed reads an unknown response code as `cxnsleep response "
                       "unknown` (innfeed/connection.c:1953) and sleeps the connection "
                       "with the article still queued, so nothing was lost and nothing "
-                      "crossed.".format(OFFER_ID, result.get("ihave"),
+                      "crossed.".format(self.ids["OFFER_ID"], result.get("ihave"),
                                         result.get("check")))
             self.skip("the article INN fed is served by the fn node",
                       "inn.py read against the fn node",
@@ -880,7 +916,7 @@ pgrep -F {p}/run/innfeed.pid >/dev/null 2>&1 && echo INNFEED-ALIVE || echo INNFE
                       "read back")
             return
         self.derive("the fn node took INN's offer", probe,
-                    "IHAVE {}, 335, the article, 235 on the fn listener".format(OFFER_ID),
+                    "IHAVE {}, 335, the article, 235 on the fn listener".format(self.ids["OFFER_ID"]),
                     ok=str(result.get("transfer", "")).startswith("235"))
 
     def scenario_fn_restart(self):
@@ -894,7 +930,7 @@ pgrep -F {p}/run/innfeed.pid >/dev/null 2>&1 && echo INNFEED-ALIVE || echo INNFE
                 "transfer.")
         step = self.drive_inn(
             "cut", "--port {} --mode {} --group {} --msgid '{}' --from-identity {} "
-            "--pid {}".format(self.port, mode, GROUPS[0], FN_CUT_ID,
+            "--pid {}".format(self.port, mode, GROUPS[0], self.ids["FN_CUT_ID"],
                               INN_PATH_IDENTITY, self.fn_pid or 0),
             name="kill -9 the fn node mid-{}".format(mode), timeout=180, expect=None)
         self.facts["fn cut"] = "mode={} {}".format(
@@ -911,12 +947,12 @@ pgrep -F {p}/run/innfeed.pid >/dev/null 2>&1 && echo INNFEED-ALIVE || echo INNFE
             "--store {} recover".format(self.store))), timeout=1800)
         self.sh("fn status after recovery", self.cd(self.fn(
             "--store {} status".format(self.store))), timeout=1800)
-        self.sh("the fn node still holds {}".format(FN_SEED_ID), self.cd(self.fn(
-            "--store {} inspect --message-id '{}'".format(self.store, FN_SEED_ID))),
+        self.sh("the fn node still holds {}".format(self.ids["FN_SEED_ID"]), self.cd(self.fn(
+            "--store {} inspect --message-id '{}'".format(self.store, self.ids["FN_SEED_ID"]))),
             timeout=900, expect=EXIT_OK)
-        self.sh("the fn node does not hold the interrupted {}".format(FN_CUT_ID),
+        self.sh("the fn node does not hold the interrupted {}".format(self.ids["FN_CUT_ID"]),
                 self.cd(self.fn("--store {} inspect --message-id '{}'".format(
-                    self.store, FN_CUT_ID))), timeout=900, expect=EXIT_REFUSED)
+                    self.store, self.ids["FN_CUT_ID"]))), timeout=900, expect=EXIT_REFUSED)
         if not self.start_fn(tag="after-recovery"):
             self.skip("reread the fn node after recovery", "inn.py read",
                       "the fn node did not restart after the recovery")
@@ -960,13 +996,13 @@ echo INND-TIMEOUT; tail -20 $P/log/innd-stdout.log; exit 1
         survives = self.drive_inn(
             "ihave", "--port {} --group {} --msgid '{}' --loop-msgid '{}' "
             "--loop-identity {} --from-identity {} --absent '{}'".format(
-                self.inn_port, GROUPS[0], FED_ID, "<inn-lab-loop2@example.invalid>",
-                INN_PATH_IDENTITY, FN_PATH_IDENTITY, ABSENT_ID),
-            name="after innd's restart, {} is still a duplicate".format(FED_ID),
+                self.inn_port, GROUPS[0], self.ids["FED_ID"], self.ids["LOOP2_ID"],
+                INN_PATH_IDENTITY, FN_PATH_IDENTITY, self.ids["ABSENT_ID"]),
+            name="after innd's restart, {} is still a duplicate".format(self.ids["FED_ID"]),
             expect=None)
         result = self.payload(survives)
         self.facts["innd cut"] = "after restart: IHAVE {} -> {}".format(
-            FED_ID, result.get("offer"))
+            self.ids["FED_ID"], result.get("offer"))
         self.derive("INN's history survived the SIGKILL", survives,
                     "the article INN acknowledged before the kill is still refused as "
                     "a duplicate after it: the control that says this lab's assertions "
