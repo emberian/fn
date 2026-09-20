@@ -99,11 +99,26 @@ class VocabularyTests(unittest.TestCase):
             self.assertEqual(v0_matrix.reply_verdict(status), want, status)
 
     def test_a_missing_verb_is_recognised_apart_from_a_refusal(self):
-        for status in ("500 command not recognized", "501 syntax error",
-                       "502 service permanently unavailable"):
+        for status in ("500 command not recognized", "501 syntax error"):
             self.assertTrue(v0_matrix.unsupported(status), status)
-        for status in ("435 not wanted", "430 no such article", "239 taken"):
+        for status in ("435 not wanted", "430 no such article", "239 taken",
+                       "502 transit is not permitted on this connection"):
             self.assertFalse(v0_matrix.unsupported(status), status)
+
+    def test_a_permission_answer_is_not_a_missing_verb(self):
+        # Measured on persvati: an fn node answers `IHAVE` with
+        # "502 transit is not permitted on this connection".  The verb is
+        # there and the node decided about the caller.
+        for status in ("502 transit is not permitted on this connection",
+                       "440 posting not permitted", "480 authentication required",
+                       "483 secure connection required"):
+            self.assertTrue(v0_matrix.not_permitted(status), status)
+            self.assertFalse(v0_matrix.available(status), status)
+        for status in ("411 no such group", "423 no article with that number",
+                       "430 no article with that message-id", "340 send it",
+                       "215 list follows"):
+            self.assertFalse(v0_matrix.not_permitted(status), status)
+            self.assertTrue(v0_matrix.available(status), status)
 
     def test_the_three_exit_codes_stay_distinct(self):
         self.assertEqual(v0_matrix.exit_verdict(0), ACCEPTED)
