@@ -61,6 +61,11 @@
   (let* ((state (f-put-global 'fn-owner-effects effects state))
          (state (f-put-global 'fn-owner-output (fn-served-reply-octets effects) state))
          (state (f-put-global 'fn-owner-closep (fn-served-closingp effects) state))
+         ; RFC 4642 section 2.2.2: the host owes a TLS handshake.  The book
+         ; decided it (fn-auth-starttls, books/nntp-auth.lisp); this reads
+         ; its answer off the effect list, exactly as the close is read.
+         (state (f-put-global 'fn-owner-starttlsp
+                              (if (fn-served-starttlsp effects) t nil) state))
          (state (f-put-global 'fn-owner-submittedp
                               (if (fn-served-submission effects) t nil) state)))
     state))
@@ -441,11 +446,63 @@
 ; (fn-own-open); the greeting is the effect list it returns.  A refused open
 ; (bound reached) installs no connection and returns NIL so the host closes
 ; the socket without a reply.
+; -----------------------------------------------------------------------------
+; The AUTHINFO policy (RFC 4643), set once at start-up and pinned per
+; connection.
+;
+; The host reads the operator's credential file and passes the FIELDS; ACL2
+; builds the record, the verifier and the configuration.  Nothing here
+; derives a digest, compares a secret or decides a permission: the rows are
+; transport (AGENTS.md's one-owner rule).  A row is
+; (name-octets principal-octets salt-octets digest-octets postingp).
+
+(defun fn-owner-auth-cred-of (row)
+  (declare (xargs :mode :program))
+  (fn-auth-make-cred (nth 0 row) (nth 1 row)
+                     (fn-authsec-verifier (nth 2 row) (nth 3 row))
+                     (and (nth 4 row) t)))
+
+(defun fn-owner-auth-creds-of (rows)
+  (declare (xargs :mode :program))
+  (if (consp rows)
+      (cons (fn-owner-auth-cred-of (car rows))
+            (fn-owner-auth-creds-of (cdr rows)))
+    nil))
+
+(defun fn-owner-set-auth (requiredp protected-onlyp tls-availablep rows state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((acfg (fn-auth-make-config (and requiredp t) (and protected-onlyp t)
+                                   (and tls-availablep t)
+                                   (fn-owner-auth-creds-of rows))))
+    (if (not (fn-auth-configp acfg))
+        (value :rejected)
+      (let ((state (f-put-global 'fn-owner-auth acfg state)))
+        (value :ok)))))
+
+(defun fn-owner-auth (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-auth state)
+      (f-get-global 'fn-owner-auth state)
+    (fn-auth-open-config)))
+
+; The host's re-entry after the TLS handshake (RFC 4642 section 2.2.2).  It
+; is a wire event, not octets: no client input produces it, and
+; fn-auth-step is the only thing that reads it.
+(defun fn-owner-tls-established (id state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((owner (f-get-global 'fn-owner state)))
+    (if (not (fn-own-find-conn id (fn-own-conns owner)))
+        (value :unknown)
+      (let* ((result (fn-own-read-step owner id (list :tls-established)))
+             (state (f-put-global 'fn-owner (cdr result) state))
+             (state (fn-owner-install-effects (car result) state)))
+        (value :ok)))))
+
 (defun fn-owner-open (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((before (f-get-global 'fn-owner state))
          (id (fn-own-next-id before))
-         (opened (fn-own-open before))
+         (opened (fn-own-open before (fn-owner-auth state)))
          (state (f-put-global 'fn-owner (cdr opened) state))
          (state (fn-owner-install-effects (car opened) state)))
     (if (fn-own-find-conn id (fn-own-conns (f-get-global 'fn-owner state)))

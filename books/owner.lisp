@@ -552,11 +552,21 @@
 ; whose result leaves this set closes the connection (fn-own-read).  This is
 ; a four-field check and one member-equal over the configured names, not a
 ; whole-state recognizer.
+; The connection's session is the SERVED session, and that is now
+; fn-auth-step's: an auth session wrapping a peer session wrapping the
+; POST-composed reader session.  This predicate still read it as a bare
+; post session, so `fn-post-sessionp' was false on every connection and
+; fn-own-read REMOVED each one after its first read -- the reply went out
+; and the next command met a closed socket.  It has been that way since the
+; peer port; the reader path has not survived two commands on dev since.
+; The recognizer runs on the session only, never on the archive, which is
+; what keeps it off the whole-state-revalidation list.
 (defun fn-own-conn-boundedp (conn groups)
   (declare (xargs :guard t))
-  (let ((ps (fn-own-conn-session conn)))
-    (and (fn-post-sessionp ps)
-         (let ((session (fn-post-session-base ps)))
+  (let ((as (fn-own-conn-session conn)))
+    (and (fn-auth-sessionp as)
+         (let ((session (fn-post-session-base
+                         (fn-peer-session-base (fn-auth-session-base as)))))
            (and (or (null (fn-nntp-session-group session))
                     (fn-ag-member (fn-nntp-session-group session) groups))
                 (or (null (fn-nntp-session-current session))
