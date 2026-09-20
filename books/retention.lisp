@@ -15,6 +15,7 @@
 (in-package "ACL2")
 (include-book "acceptance-alloc")
 (include-book "defrecord")
+(include-book "provenance")
 
 ; -----------------------------------------------------------------------------
 ; Records and finite-list utilities
@@ -47,7 +48,7 @@
            (fn-retain-obligation-subject stringp)
            (fn-retain-obligation-kind
             (fn-retain-kindp (fn-retain-obligation-kind x)))
-           (fn-retain-obligation-evidence stringp)
+           (fn-retain-obligation-evidence fn-provp)
            (fn-retain-obligation-charge posp)))
 
 (defun fn-retain-obligation-listp (xs)
@@ -95,7 +96,7 @@
            (fn-retain-release-subject stringp)
            (fn-retain-release-kind
             (fn-retain-kindp (fn-retain-release-kind x)))
-           (fn-retain-release-evidence stringp)))
+           (fn-retain-release-evidence fn-provp)))
 
 (defun fn-retain-release-listp (xs)
   (declare (xargs :guard t))
@@ -161,7 +162,7 @@
        (stringp id)
        (stringp subject)
        (fn-retain-kindp kind)
-       (stringp evidence)
+       (fn-provp evidence)
        (posp charge)
        (not (fn-retain-known-idp id (fn-retain-pins s)
                                  (fn-retain-releases s)))

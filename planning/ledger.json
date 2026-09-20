@@ -50,6 +50,7 @@
     "books/identity",
     "books/identity-invariants",
     "tests/acl2/identity-tests",
+    "books/provenance",
     "books/retention",
     "books/retention-invariants",
     "tests/acl2/retention-tests",
@@ -62,6 +63,8 @@
     "books/records-canonicality",
     "tests/acl2/records-tests",
     "tests/acl2/records-teeth-tests",
+    "books/provenance-codec",
+    "tests/acl2/provenance-tests",
     "books/config",
     "books/config-invariants",
     "books/replay",
@@ -212,9 +215,6 @@
     "tests/acl2/nntp-auth-tests",
     "books/served",
     "tests/acl2/served-tests",
-    "books/owner",
-    "books/owner-invariants",
-    "tests/acl2/owner-tests",
     "books/config-stream",
     "tests/acl2/config-stream-tests",
     "books/owner-config",
@@ -232,6 +232,11 @@
     "books/peer-feed",
     "books/peer-feed-invariants",
     "tests/acl2/peer-feed-tests",
+    "books/owner-feed",
+    "tests/acl2/owner-feed-tests",
+    "books/owner",
+    "books/owner-invariants",
+    "tests/acl2/owner-tests",
     "books/relay",
     "books/relay-invariants",
     "books/relay-crash-invariants",
@@ -267,24 +272,24 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 264,
-    "books_in_root_closure": 263,
-    "roots": 263,
-    "theorems": 5128,
-    "functions": 3689,
-    "assert_events": 4877,
+    "books": 269,
+    "books_in_root_closure": 268,
+    "roots": 268,
+    "theorems": 5328,
+    "functions": 3826,
+    "assert_events": 5077,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
-      "verified": 1379,
-      "declared-off": 193,
-      "default-guarded": 1623,
+      "verified": 1398,
+      "declared-off": 187,
+      "default-guarded": 1747,
       "default-unguarded": 494
     },
-    "suspect_theorems": 39,
+    "suspect_theorems": 41,
     "export_hygiene_warnings": 72,
     "teeth_form_warnings": 0,
-    "include_hygiene_warnings": 84,
+    "include_hygiene_warnings": 87,
     "host_names_warnings": 0,
     "hand_written_record_warnings": 18
   },
@@ -3021,6 +3026,33 @@
       "read_error": null
     },
     {
+      "book": "books/owner-feed.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 74,
+      "functions": 54,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 54,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "article-fields",
+        "peer-config",
+        "peer-feed-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/owner-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -3051,12 +3083,12 @@
       "book": "books/owner.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 45,
-      "functions": 77,
+      "theorems": 46,
+      "functions": 95,
       "guards": {
         "verified": 0,
         "declared-off": 3,
-        "default-guarded": 74,
+        "default-guarded": 92,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -3067,6 +3099,7 @@
       "encapsulates": 0,
       "includes": [
         "clock",
+        "owner-feed",
         "served",
         "store-observed"
       ],
@@ -3103,7 +3136,7 @@
       "book": "books/peer-config.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 24,
+      "theorems": 26,
       "functions": 27,
       "guards": {
         "verified": 0,
@@ -3130,7 +3163,7 @@
       "book": "books/peer-feed-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 90,
+      "theorems": 100,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -3186,7 +3219,7 @@
       "book": "books/peer-inbound-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 9,
+      "theorems": 13,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -3211,15 +3244,15 @@
       "book": "books/peer-inbound.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 37,
-      "functions": 54,
+      "theorems": 48,
+      "functions": 56,
       "guards": {
-        "verified": 0,
-        "declared-off": 10,
-        "default-guarded": 44,
+        "verified": 6,
+        "declared-off": 4,
+        "default-guarded": 46,
         "default-unguarded": 0
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 6,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 2,
@@ -3229,7 +3262,8 @@
         "identity",
         "nntp-post",
         "node-config",
-        "peer-config"
+        "peer-config",
+        "provenance-codec"
       ],
       "system_includes": [],
       "suspects": [],
@@ -3340,6 +3374,66 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/provenance-codec.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 27,
+      "functions": 25,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 24,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "identity-invariants",
+        "provenance",
+        "records-canonicality"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-prov-wire-of-a-string-is-itself-by-definition"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/provenance.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 71,
+      "functions": 35,
+      "guards": {
+        "verified": 12,
+        "declared-off": 0,
+        "default-guarded": 23,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 12,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "acceptance-alloc",
+        "cbor",
+        "defrecord"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-prov-transit-kindp-forward"
+      ],
       "read_error": null
     },
     {
@@ -3594,7 +3688,8 @@
       "encapsulates": 0,
       "includes": [
         "acceptance-alloc",
-        "defrecord"
+        "defrecord",
+        "provenance"
       ],
       "system_includes": [],
       "suspects": [
@@ -6260,6 +6355,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/owner-feed-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 98,
+      "must_fails": 0,
+      "defconsts": 23,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-feed"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/owner-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -6322,7 +6442,7 @@
         "default-unguarded": 5
       },
       "verify_guards_events": 0,
-      "assert_events": 145,
+      "assert_events": 147,
       "must_fails": 0,
       "defconsts": 47,
       "defmacros": 0,
@@ -6381,6 +6501,31 @@
       "includes": [
         "../../books/principal-invariants",
         "crypto-seam-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/provenance-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 100,
+      "must_fails": 0,
+      "defconsts": 10,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/provenance-codec"
       ],
       "system_includes": [],
       "suspects": [],
@@ -7429,6 +7574,22 @@
       ]
     },
     {
+      "theorem": "fn-prov-transit-kindp-forward",
+      "book": "books/provenance.lisp",
+      "line": 56,
+      "reasons": [
+        "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-prov-transit-kindp"
+      ]
+    },
+    {
+      "theorem": "fn-prov-wire-of-a-string-is-itself-by-definition",
+      "book": "books/provenance-codec.lisp",
+      "line": 543,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-prov-wire and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-record-result-okp-is-parse-okp",
       "book": "books/records-canonicality.lisp",
       "line": 600,
@@ -7439,7 +7600,7 @@
     {
       "theorem": "fn-retain-admission-refusal-is-no-op",
       "book": "books/retention.lisp",
-      "line": 286,
+      "line": 287,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-retain-admit and the conclusion is that branch's value"
       ]
@@ -7447,7 +7608,7 @@
     {
       "theorem": "fn-retain-wrong-evidence-does-not-release",
       "book": "books/retention.lisp",
-      "line": 326,
+      "line": 327,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value"
       ]
@@ -8194,10 +8355,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/owner-feed.lisp",
+        "line": 51,
+        "include": "article-fields",
+        "included": "books/article-fields.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/path.lisp",
         "line": 21,
         "include": "article-fields",
         "included": "books/article-fields.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/provenance.lisp",
+        "line": 41,
+        "include": "acceptance-alloc",
+        "included": "books/acceptance-alloc.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -8481,6 +8656,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/peer-inbound-tests.lisp",
+        "line": 8,
+        "include": "../../books/peer-inbound-invariants",
+        "included": "books/peer-inbound-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/policy-tests.lisp",
         "line": 5,
         "include": "crypto-seam-tests",
@@ -8629,7 +8811,7 @@
       },
       {
         "book": "books/owner.lisp",
-        "line": 83,
+        "line": 90,
         "shape": "fn-own-conn-shapep",
         "shapes": 5,
         "accessors": 6,
@@ -8647,7 +8829,7 @@
       },
       {
         "book": "books/peer-inbound.lisp",
-        "line": 62,
+        "line": 63,
         "shape": "fn-peer-decision-shapep",
         "shapes": 3,
         "accessors": 10,
