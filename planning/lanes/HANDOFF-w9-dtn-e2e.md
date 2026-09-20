@@ -182,3 +182,84 @@ ssh hbox 'cd /tank/fn/lanes/w9-dtn-e2e && FN_ACL2=/tank/fn/acl2-8.7/saved_acl2 \
 After that, §2's three packets, in that order. The one thing not to do is add
 a `bp send` verb that wraps `tcpcl send` in a contact check: it would look
 like a BP node and would not be one.
+
+## 6. The regression I merged, every measurement, and the checkpoint
+
+`books/tcpcl-invariants` went from certifying to timing out because of this
+lane, and I merged it to dev before it had a verdict. The cause, the four
+configurations measured, and where it stands.
+
+### The root cause, in one sentence
+
+`fn-tcl-drive`'s totality test used to be the literal `(fn-tcl-sessionp s)`,
+which a theorem carrying that hypothesis decided by assumption at no cost;
+making it `(fn-tcl-session-cheapp s)` put a *second* whole-state recognizer,
+with a *second* family of rules over it, into a book
+(`books/tcpcl-invariants`) that enables `fn-tcl-session-vocabulary` wholesale.
+
+### Two diagnostics worth more than the certificate
+
+1. **A `Time:` line with near-zero `prove` and large `other` is not the
+   rewriter.** C1 measured `Time: 2386.26 seconds (prove: 0.02, print: 0.00,
+   other: 2386.24)`, twice, on two different configurations. That is forward
+   chaining or type reasoning running to fixpoint, not proof search, and the
+   cure is a **theory change, not a hint**. I lost most of a lane reasoning
+   about hints and case splits because I read the subgoal count and not that
+   line. No other lane has this written down.
+2. **Exporting a second forward-chaining family over a second whole-state
+   recognizer costs a fixpoint pass per goal carrying either recognizer's
+   term** — and once `fn-tcl-drive`'s test names the new one, that is every
+   goal that opens `fn-tcl-drive`. The profile is exact:
+   `FN-TCL-SESSION-CHEAPP-FACTS` **79,623 tries / 147,539 frames (ratio
+   1.85)**, beside the pre-existing `FN-TCL-SESSIONP-FACTS` at **76,473
+   tries**. The new family does not add work; it *doubles* it. The note is at
+   the `deftheory` in `books/tcpcl-session.lisp`.
+
+### Every configuration, with its step limit stated
+
+| # | Configuration | Step limit | Result |
+| --- | --- | --- | --- |
+| 0 | as merged at `ca13c56`: cheap recognizer in the vocabulary, nothing closed | none, 3600 s cap | `fn-tcl-drive-is-a-result`: `Splitter note ... (8844 subgoals)`, book times out, 3600.175 s (`certify-20260920T182111Z-1037731`) |
+| A | + `fn-tcl-session-cheapp` closed in `tcpcl-invariants` (`7517296`, **this is what dev carries**) | none, 3600 s cap | that theorem passes; book reaches C1 and times out there, 3600.175 s (`certify-20260920T193233Z-1118110`); closure all green (`tcpcl-octets` 104.8 s, `tcpcl-session` 64.2 s) |
+| — | A again under `ld` | **3,000,000 steps** | **measures nothing** — aborted a theorem the certify had already passed. Recorded because I reported a finding from it and had to retract it. |
+| B | bridge as `(:rewrite :forward-chaining)` | 3,000,000 steps | **measures nothing**, same abort. Retracted; and the profile later showed it pointed the wrong way, since it *adds* to the family that was the cost. |
+| A′ | A + the preservation chain alone put aside | none, 2700 s cap | C1 still open: `Time: 2688.15 seconds (prove: 0.02, print: 0.00, other: 2688.13)`. The preservation lemmas were the wrong half. |
+| C | the **whole** cheap rule set — facts, forward-chaining fields, preservation — under `fn-tcl-cheap-rules`, closed in `tcpcl-invariants`; bridge stays a plain rewrite | none, 3600 s cap | the last attempt of this lane; its verdict is in §7 |
+
+The profile that chose C: `python3 tools/proof_profile.py books/tcpcl-invariants
+fn-tcl-drive-partition-independence --host hbox --steps 40000000 --timeout 2400`
+(the profiler is only correct from dev `f730c24` onward — before that it ran
+the driver at the tree root, every `include-book` failed, and it profiled an
+empty world while reporting success).
+
+### The checkpoint, if C did not close it
+
+The tree carries configuration C. `books/tcpcl-session` certifies in every
+configuration measured; only `books/tcpcl-invariants` is at issue, and
+`tests/acl2/tcpcl-tests` is unattempted behind it (certify-book stops at the
+first failure). Nothing in §1 to §5 depends on it: the image, the 6/6 lab,
+the profile and the dtn7 interop all stand on `books/tcpcl-session`.
+
+Three honest ways out, in the order I would try them:
+
+1. **Finish the theory work.** The profile's top runes after the cheap family
+   are all pre-existing and all from line 32 enabling the vocabulary
+   wholesale: `FN-TCL-STEP` (481,747 frames / 81 tries), `FN-TCL-RECV-SEGMENT`
+   (213,787 / 19), `FN-TCL-RECV-INIT` (182,438 / 19), `FN-TCL-BROKEN-STREAM`
+   (130,858 / 57). C1's hint closes `fn-tcl-step` and four others by name; the
+   rest of the transitions are open. Closing them is the same move that fixed
+   the cheap family and would likely pay for itself independently of this lane.
+2. **Revert the totality test only.** Keep the cheap **guard** — which is
+   where the measured win is, §3's `profile` scenario — and give `fn-tcl-drive`
+   back its `fn-tcl-sessionp` `:logic` test. This does **not** work as written
+   (the `mbe`'s `:exec nil` needs the guard to imply the `:logic` branch is
+   false, and the cheap guard does not imply `fn-tcl-sessionp`), so it means
+   either guard-total `take`/`drop` or an explicit equating theorem between a
+   `fn-tcl-drive` the host calls and the one the keystones name — the pattern
+   AGENTS.md blesses, and a packet, not an edit.
+3. **Revert this lane's `books/tcpcl-session` change on dev** and re-land the
+   guard fix in a fresh lane together with the C1 theory work. Dev is green
+   again immediately and the measurements above survive in this record. If C
+   did not close, this is what I would recommend, and it is root's call.
+
+What must not happen is weakening C1.
