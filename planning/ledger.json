@@ -240,15 +240,15 @@
     "books": 234,
     "books_in_root_closure": 233,
     "roots": 233,
-    "theorems": 4451,
-    "functions": 3177,
-    "assert_events": 4271,
+    "theorems": 4473,
+    "functions": 3181,
+    "assert_events": 4276,
     "must_fails": 59,
     "encapsulates": 15,
     "guards": {
       "verified": 1294,
       "declared-off": 141,
-      "default-guarded": 1282,
+      "default-guarded": 1286,
       "default-unguarded": 460
     },
     "suspect_theorems": 32,
@@ -2192,12 +2192,12 @@
       "book": "books/injection-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 19,
-      "functions": 2,
+      "theorems": 38,
+      "functions": 5,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 2,
+        "default-guarded": 5,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -2210,7 +2210,8 @@
         "injection"
       ],
       "system_includes": [
-        "arithmetic/top"
+        "arithmetic/top",
+        "ihs/quotient-remainder-lemmas"
       ],
       "suspects": [
         "fn-inj-instantp-opens"
@@ -2507,7 +2508,7 @@
       "book": "books/nntp-post.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 15,
+      "theorems": 17,
       "functions": 18,
       "guards": {
         "verified": 12,
@@ -2523,6 +2524,7 @@
       "encapsulates": 0,
       "includes": [
         "injection",
+        "injection-invariants",
         "nntp-effects"
       ],
       "system_includes": [],
@@ -3250,12 +3252,12 @@
       "book": "books/served.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 50,
-      "functions": 32,
+      "theorems": 51,
+      "functions": 33,
       "guards": {
         "verified": 2,
         "declared-off": 4,
-        "default-guarded": 26,
+        "default-guarded": 27,
         "default-unguarded": 0
       },
       "verify_guards_events": 2,
@@ -5435,9 +5437,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 28,
+      "assert_events": 33,
       "must_fails": 0,
-      "defconsts": 19,
+      "defconsts": 22,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
