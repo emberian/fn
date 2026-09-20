@@ -480,9 +480,13 @@
         (list :rename :staging stage :checkpoints "selection") ; 165 os.replace
         (list :cut "checkpoint:selection-replaced")        ; 172
         (list :fsync-dir :checkpoints)                     ; 173
-        (list :cut "checkpoint:selection-published")       ; 174
-        (list :unlink :staging stage)                      ; 176 best effort
-        (list :cut "checkpoint:selection-stage-unlinked")))
+        (list :cut "checkpoint:selection-published")))     ; 174
+; tools/checkpoint.py also calls os.unlink(stage) at 163, but that is the
+; except arm of the replace: on the success path os.replace has already
+; removed the staging name, and a model program that unlinked it would stop
+; at :enoent.  tools/transcribe_check.py reports it as syscall drift and
+; this comment is the answer; the assert-event on the ground run is what
+; refused the step.
 
 ; -----------------------------------------------------------------------------
 ; The checks, on the constants.  The byte side of every program runs here

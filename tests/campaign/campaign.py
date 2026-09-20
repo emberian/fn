@@ -47,7 +47,8 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from tests.campaign import child as child_module  # noqa: E402
-from tests.campaign import cuts as cuts_module  # noqa: E402
+from tests.campaign import cuts as cuts_module
+from tests.campaign import model_images as model_images_module  # noqa: E402
 from tools import run_bp_ingress, run_bp_receive, run_store, workflow_journal  # noqa: E402
 from tools.workflow_bridge import Acl2WorkflowReplay  # noqa: E402
 
@@ -136,7 +137,7 @@ class Report:
 class Campaign:
     def __init__(self, workdir: Path, quick: bool = False,
                  scenarios: tuple[str, ...] | None = None,
-                 log=lambda message: None):
+                 log=lambda message: None, model_images: bool = False):
         self.workdir = Path(workdir)
         self.quick = quick
         self.scenarios = scenarios
@@ -144,6 +145,9 @@ class Campaign:
         self.templates: dict[str, Path] = {}
         self.references: dict[str, Reference] = {}
         self.template_states: dict[str, StoreState] = {}
+        self.model_images = model_images
+        self.model_bridge = None
+        self.model_sets: dict[str, model_images_module.ModelImages] = {}
 
     # -- configuration ------------------------------------------------------
     @staticmethod
@@ -491,10 +495,53 @@ class Campaign:
         # What the host told the world before the kill, against the table and
         # against the recovered state.
         checks += self.check_acknowledgement(cut, observed, recovered)
+        # The byte model's own answer: what it admits at this cut.
+        checks += self.check_model_images(scenario, cut, recovered)
         # The retry, and the state it must reach.
         checks += getattr(self, "retry_" + scenario.replace("-", "_"))(
             case, cut, reference, observed)
         return checks
+
+    def check_model_images(self, scenario: str, cut, recovered) -> list[str]:
+        """The recovered record count is one the byte model admits here.
+
+        crash model v2 section 5.1 step 2, at the level the kernel predicate
+        constrains.  The model state at the cut comes from fn-bs-run over
+        the program constant applied to the imported template store; the
+        admissible set is enumerated over the whole-or-lost choices of its
+        pending list.  A count outside the set is a counterexample to K1/K2
+        and is reported with that pending list.
+        """
+        if not self.model_images:
+            return []
+        program = model_images_module.PROGRAM_OF.get((cut.component, cut.path))
+        if program is None:
+            return []
+        key = "{}/{}".format(scenario, cut.cut_id)
+        try:
+            if self.model_bridge is None:
+                self.model_bridge = model_images_module.ModelBridge()
+            if key not in self.model_sets:
+                self.model_sets[key] = model_images_module.images_at_cut(
+                    self.model_bridge, self.template(scenario) / "store",
+                    model_images_module.program_form(program, cut.point),
+                    model_images_module.cut_index(program, cut.point))
+        except Exception as error:
+            return ["model image set unavailable: {}: {}".format(
+                type(error).__name__, error)]
+        admitted = self.model_sets[key]
+        # Log what the model said, so a green run is not mistaken for a
+        # vacuous one: an empty or singleton set that happens to contain the
+        # recovered count is visible here, not hidden behind "ok".
+        self.log("    model {}: admits {} records, recovered {}, pending {}".format(
+            cut.cut_id, admitted.record_counts, recovered.records,
+            " ".join(admitted.pending.split())))
+        if recovered.records not in admitted.record_counts:
+            return ["recovered {} records; the byte model admits {} at this "
+                    "cut (pending {})".format(recovered.records,
+                                              admitted.record_counts,
+                                              admitted.pending)]
+        return []
 
     @staticmethod
     def check_acknowledgement(cut, observed: dict, recovered: StoreState) -> list[str]:
@@ -647,6 +694,9 @@ def main(argv=None) -> int:
                         help="run the marked subset of cuts only")
     parser.add_argument("--scenario", action="append", dest="scenarios")
     parser.add_argument("--json", type=Path, default=None)
+    parser.add_argument("--model-images", action="store_true",
+                        help="also check the recovered store against the byte "
+                             "model's admissible image set at each cut")
     parser.add_argument("--keep", action="store_true",
                         help="keep the case directories for inspection")
     args = parser.parse_args(argv)
@@ -655,7 +705,8 @@ def main(argv=None) -> int:
     try:
         campaign = Campaign(workdir, quick=args.quick,
                             scenarios=tuple(args.scenarios) if args.scenarios else None,
-                            log=lambda message: print(message, flush=True))
+                            log=lambda message: print(message, flush=True),
+                            model_images=args.model_images)
         report = campaign.run()
     finally:
         if not args.keep:

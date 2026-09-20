@@ -21,10 +21,14 @@ directions, against `books/byte-store-programs.lisp`:
   sequence is read in source-line order over every branch of the function,
   while a model program is one path through it, so an `except` cleanup, a
   reconciliation branch or a helper call shows as drift that is not drift.
-  Read each line before acting on it; the two that were real when this tool
-  was written were `checkpoint:select`s stage unlink, which the model
-  program had dropped, and `store:initialize`, whose three `mkdir`s and the
-  staged files it publishes live in `_publish_initial_file`.
+  Read each line before acting on it.  Of the five drift lines this tree
+  reports, none is a defect: `checkpoint:select`s extra unlink is the
+  except arm of its replace, `workflow:publish`s extra unlink is its error
+  cleanup, `workflow:stage_inbound`s leading directory fence is the
+  reconciliation branch, `receipt:publish` orders its barrier and its write
+  on one source line, and `store:initialize` publishes through
+  `_publish_initial_file`.  The reading each of them needed is the value:
+  a drift line is answered in the book or it is a defect.
 
 A host write path with no model program at all is listed under
 UNMODELLED_PATHS with the reason, and is reported, not silently skipped.
