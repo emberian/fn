@@ -38,12 +38,13 @@
 ; FN-TCL-RECV-INIT 182,438/19, FN-TCL-BROKEN-STREAM 130,858/57) are closed
 ; for the whole book and opened at the forms that need them.  The enable
 ; above is wholesale, so they were open everywhere -- including under the
-; subgoal `:in-theory' hints below, because a subgoal's `:in-theory' is
-; evaluated against the book's CURRENT theory and not against its parent
-; goal's: C1's ("Subgoal *1/3" :in-theory (enable fn-tcl-drive-is-a-result))
-; undid C1's own Goal `(e/d ... (fn-tcl-step ...))' and reopened the step
-; function under every subgoal of the fold.  Measured: with nothing else
-; changed, C1 went from 0.42 s to 0.05 s when this line closed them.
+; subgoal `:in-theory' hints below.  ACL2 8.7's :doc hints says it: an
+; `:in-theory' hint "will always be evaluated relative to the current ACL2
+; logical world, not relative to the theory of a previous goal", so C1's
+; ("Subgoal *1/3" :in-theory (enable fn-tcl-drive-is-a-result)) undid C1's
+; own Goal `(e/d ... (fn-tcl-step ...))' and reopened the step function
+; under every subgoal of the fold.  Measured: with nothing else changed,
+; C1 went from 0.42 s to 0.05 s when this line closed them.
 ; Both whole-state recognizers are named here, and they must be: the
 ; vocabulary now holds two of them, and fn-tcl-drive's totality test names
 ; fn-tcl-session-cheapp, so an open one turns every expansion of

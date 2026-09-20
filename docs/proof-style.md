@@ -468,6 +468,42 @@ configurations, or to locate a split, run without a limit under a wall-clock
 9) --- both of which report what happened rather than that something was
 cut off.
 
+### 9.3 A Goal `:in-theory` does not survive a subgoal that has one
+
+An `:in-theory` hint is a theory *expression*, and ACL2 evaluates it against
+the current logical world --- not against the theory its parent goal was
+proved in. ACL2 8.7's `:doc hints` says so under `:in-theory`, with an
+example:
+
+    (defthm prop
+      (p (f (g x)))
+      :hints (("Goal"      :in-theory (disable f))
+              ("Subgoal 3" :in-theory (enable  g))))
+
+    ... This call of the `enable` macro enables g relative to the
+    current-theory of the current logical world, not relative to the theory
+    produced by the hint at Goal.  Thus, the disable of f on behalf of the
+    hint at Goal will be lost at Subgoal 3 ...
+
+So a book that enables a vocabulary wholesale and then narrows it in one
+theorem's `Goal` hint has narrowed nothing under any subgoal that names an
+`:in-theory` of its own. Measured on `books/tcpcl-invariants`' C1
+(w11/tcpcl-theory, 2026-09-20): its `Goal` hint disables `fn-tcl-step`, and
+its `("Subgoal *1/3" :in-theory (enable fn-tcl-drive-is-a-result))` put it
+back under every subgoal of the fold --- which is why the profile of that
+theorem reported `FN-TCL-STEP` at 481,747 frames. Closing the four
+transitions once, at the top of the book, took C1 from 0.42 s to 0.05 s and
+the whole book from 609.53 s to 6.54 s.
+
+Two consequences worth remembering:
+
+1. **To hold everywhere, close it in the book**, not in a `Goal` hint. A
+   `Goal` `e/d` is a statement about one goal; a `(local (in-theory
+   (disable ...)))` above the form is a statement about all of them.
+2. **A subgoal hint that means "the Goal's theory plus this" must spell the
+   whole `e/d` again.** `(enable X)` at a subgoal is `(enable X)` over the
+   ambient theory, and reads as if it were incremental.
+
 ## 10. The FTY question
 
 Should records migrate to `fty::defprod`/`deftagsum` instead of the raw-list

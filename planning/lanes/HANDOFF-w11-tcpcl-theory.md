@@ -83,9 +83,16 @@ not against its parent goal's.** So
 does not mean "the Goal's theory plus that rule"; it means "the book's
 ambient theory plus that rule", and C1's Goal hint — the one that closes
 `fn-tcl-step` for the fold — was silently undone under every subgoal it named.
-Measured: with nothing else changed, closing the four transitions at the top
-of the book took C1 from 0.42 s to 0.05 s, and it is why the profile saw
-`FN-TCL-STEP` at 481,747 frames in a theorem whose Goal hint disables
+This is documented, not inferred: ACL2 8.7's `:doc hints` says under
+`:in-theory` that "an `:in-theory` hint will always be evaluated relative to
+the current ACL2 logical world, not relative to the theory of a previous
+goal", and its example is structurally C1's --
+`(("Goal" :in-theory (disable f)) ("Subgoal 3" :in-theory (enable g)))` --
+with the note that "the `disable` of `f` on behalf of the hint at Goal will
+be lost at Subgoal 3" (`/tank/fn/acl2-8.7/doc.lisp:54271`). It is also
+measured here: with nothing else changed, closing the four transitions at the
+top of the book took C1 from 0.42 s to 0.05 s, and it is why w9's profile saw
+`FN-TCL-STEP` at 481,747 frames inside a theorem whose Goal hint disables
 `fn-tcl-step`. The general rule: **a Goal-level `e/d` only holds under a
 subgoal that names no `:in-theory` of its own; to hold everywhere, close it in
 the book.**
@@ -155,7 +162,26 @@ close all of it at once.
 
 PROFILE-PLACEHOLDER
 
-## 8. Open, in the order I would take them
+## 8. Two things the next lane inherits rather than fixes
+
+**Not merged.** The branch is three commits on `w11/tcpcl-theory` and `dev`
+is untouched at `19f3302`. It is not merged because the main checkout
+`/Users/ember/dev/fn` held another lane's STAGED work when this one finished
+(`w11/snt-guards`: `books/owner-config.lisp`, `books/store-node-traces.lisp`,
+`planning/deputies/BOARD.md`, `planning/lanes/HANDOFF-w11-snt-guards.md`),
+and merging into a shared checkout across another lane's index is not this
+lane's to do.
+
+**`planning/ledger.md` on dev is stale against dev's own sources**, and
+regenerating it here makes that visible in this lane's diff: `defthm` 5507 →
+5548 and `defun` 3926 → 3928 are this lane's cheap family, but "functions
+with verified guards" 1460 → 1458 and the `books/owner-config.lisp` row are
+not — they are dev's committed ledger disagreeing with dev's committed
+sources before this branch existed. `tools/ledger.py --write` in this
+worktree reads dev's sources plus this lane's three files and nothing else.
+Whoever merges second regenerates.
+
+## 9. Open, in the order I would take them
 
 1. **The outbound suffix is still walked per chunk.** Unchanged from
    `specs/tcpcl.md` §6: `fn-tcl-outboundp` is a conjunct of
