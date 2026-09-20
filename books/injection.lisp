@@ -43,6 +43,9 @@
 (include-book "article-fields")
 (include-book "clock")
 (local (include-book "arithmetic/top" :dir :system))
+; books/clock.lisp withdraws its observation recognizer at export (bp CHANGE,
+; 8983f24); the guard of fn-inj-decide reads the wall reading through it.
+(local (in-theory (enable fn-clock-observationp)))
 
 ; -----------------------------------------------------------------------------
 ; Literal octets

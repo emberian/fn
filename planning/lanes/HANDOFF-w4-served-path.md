@@ -156,3 +156,19 @@ The Python suites are `unittest`, not pytest:
 versions and pass unchanged, including the every-two-piece-cut matrices. The
 seven new differential tests compare the socket's bytes to `fn-served-run`
 evaluated inside ACL2 over the same octets and agree on every partition.
+
+## Composed with w4/post (2026-09-19, integration lane)
+
+The "fn-served-step needs no change for POST" prediction above was wrong by
+one fact: the wire must be switched into article mode *between* framing the
+POST line and framing the byte after it, and `fn-wire-drive` frames the whole
+read before the dispatcher sees anything. `books/served.lisp` is therefore a
+byte fold now (`fn-served-feed` over `fn-wire-feed-byte`, dispatcher per
+framed event, `fn-wire-begin-article` on the `:begin-article` effect). Every
+keystone named above keeps its statement; `fn-served-nntp-run` and its bridge
+to `fn-nntp-run-session` are gone (the fold is over bytes, not events), and
+partition independence is now `fn-served-feed-of-append`, structural, with no
+wire lemma. `fn-served-step-effects-are-typed` concludes `fn-served-effectsp`
+(adds `:submit`). `fn-served-open` takes the posting configuration and the
+clock observation. Details and open items in
+[`HANDOFF-w4-post.md`](HANDOFF-w4-post.md).

@@ -91,3 +91,82 @@ durable post; a refusal there is fatal to the process rather than served from
 a stale snapshot. The mutable-owner lane (C1-05) replaces this whole
 arrangement with a separate owner. One clock observation is taken per
 connection, so two posts on one connection can carry the same Injection-Date.
+
+## Composition with the served path (2026-09-19, integration lane)
+
+`git merge dev` (d83dea5) into this branch conflicted in `host/reader-host.lisp`
+and `tools/run_reader.py`: the served-path lane had rewritten the host around
+`books/served.lisp` while this lane had wired POST into the old per-event
+`fn-reader-chunk`. The composition, not the union:
+
+- **`books/served.lisp` owns framing and article mode.** `fn-served-step` is
+  now a fold over the read's octets (`fn-served-feed`: `fn-wire-feed-byte` per
+  byte, which is what `fn-wire-drive` computes by
+  `fn-wire-drive-is-feed-proper`), and `fn-served-dispatch` runs
+  `fn-nntp-post-step` on each framed event *before the next byte is framed*.
+  On the 340 offer's `:begin-article` effect it switches the wire with
+  `fn-wire-begin-article`, so the article body is framed in article mode inside
+  the same read and comes back as one `(:article lines)` event that the fold
+  hands to the injection path. The connection record gained the posting
+  configuration and the clock observation (`fn-served-conn-config`,
+  `fn-served-conn-observation`), pinned at `fn-served-open archive line-limit
+  body-limit config observation`; its session is the `fn-post-session`.
+- **A submission is an effect, the outcome is one more input.** An injected
+  article leaves the step as `(:submit decision)` (`fn-served-submit-effect`);
+  `fn-served-submission` projects it for the host, which carries it through
+  `durable_post` and answers with `fn-served-post-outcome conn completion`,
+  whose reply is `fn-nntp-post-outcome`'s (`fn-served-post-outcome-effects-by-
+  definition`). The host never writes a reply octet.
+- **Host.** `host/reader-host.lisp`: one include (`../books/served`; served
+  includes `nntp-post`), one open, one step (`fn-served-step`), one outcome
+  entry (`fn-reader-outcome` → `fn-served-post-outcome`);
+  `fn-reader-install-result` stores the connection opaquely and the
+  submission's octets/msgid/groups off `fn-served-submission`.
+  `tools/run_reader.py:serve_client` is the served path's one `reader.chunk`
+  per `recv` followed by this lane's `submission()`/`owner.accept`/`outcome()`.
+- **Theorems.** Every served keystone keeps its name and statement
+  (`fn-served-step-preserves-connp`, `-partition-independence`,
+  `fn-served-run-is-the-concatenated-step`,
+  `fn-served-reply-stream-is-partition-independent`,
+  `fn-served-step-nntp-steps-is-bounded`); their proofs now come from
+  `fn-wire-feed-byte-preserves-statep`, `fn-wire-begin-article-preserves-
+  statep`, `fn-post-step-preserves-consistent-session` and the append law of
+  the byte fold, `fn-served-feed-of-append`, which needs no wire lemma at all.
+  The one statement that changed: `fn-served-step-effects-are-typed` concludes
+  `fn-served-effectsp`, the enumeration with the `:submit` disjunct
+  (`fn-served-typed-effect-enumeration-by-definition` reads it off), because a
+  submission is not an `fn-nntp-effectp` and saying so would misdescribe the
+  dispatcher. Every nntp and nntp-post keystone is untouched.
+
+Open, recorded rather than weakened:
+
+5. The byte fold makes the `fn-wire-octet-listp` hypotheses of
+   `fn-served-step-preserves-connp` and `fn-served-step-partition-independence`
+   and the `fn-served-connp` hypothesis of `fn-served-step-nntp-steps-is-
+   bounded` unnecessary; they are kept as stated and should be deleted with
+   the served-tests probes that record them.
+6. RFC 3977 section 3.5 forbids pipelining after POST's article until its
+   response; a client that does so anyway gets the pipelined replies before
+   the 240/441, because the read is consumed whole and the outcome is a later
+   input. The session has no awaiting-outcome state to refuse such commands.
+7. `fn-served-dispatch` acts on the offer only if `fn-wire-begin-article`
+   admits it; after a framed command line the wire is always quiesced, so the
+   refused branch is unreachable in the composition and is not a theorem.
+
+Evidence (this worktree, ACL2 8.7 / SBCL, `ACL2_BOOK_HASH_ALISTP=NIL`,
+`FN_ACL2_TIMEOUT_SECONDS=1800`): the sixteen dependency books of the served
+closure (acceptance-alloc through nntp-effects) recertified in place in
+`build/acl2/certify-20260919T235414Z-24220`; then, in one invocation in
+Makefile order, `build/acl2/certify-20260919T235949Z-29450` certifies
+`books/injection`, `books/nntp-post`, `tests/acl2/nntp-post-tests`,
+`books/served`, `tests/acl2/served-tests` and `books/ideal`, every
+`assert-event` of the two test books passing under real ACL2 (the POST
+transcript 340 / article / submission, the cut inside the body equal to the
+whole read, 240 from `:durable` and two distinct 441s, the From-less refusal,
+the 440 for a closed configuration). `books/injection.lisp` needed one local
+enable of `fn-clock-observationp`, which `books/clock.lisp` withdraws since
+8983f24 (the guard of `fn-inj-decide` reads the wall clock through it).
+Not recertified here and therefore open on the merged tree:
+`books/injection-invariants` and `tests/acl2/injection-tests` (their
+certificates are from ca66782; the same local enable is the likely fix).
+Python: PYTHON-PENDING
