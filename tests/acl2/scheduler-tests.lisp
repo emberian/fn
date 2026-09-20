@@ -494,6 +494,22 @@
  (not (fn-sched-selected-withinp *sched-promoted-expired* *sched-promoted-wf* 5
                                  "attempt:9" "work-big")))
 
+; the horizon is `(nfix n)' ticks.  Over a bare `n' both aging keystones were
+; false: at n = 1/2 every run predicate holds (`(zp (nfix 1/2))'), the head of
+; the promotion queue has position 0 < 1/2, and nothing is selected.  This is
+; the value that put `nfix' into the two statements; under `nfix' the bound
+; hypothesis fails at 1/2 and the theorems say nothing.
+(assert-event (fn-sched-contact-runp *sched-promoted* *sched-promoted-wf* 1/2
+                                     "attempt:2"))
+(assert-event (fn-sched-eligible-runp *sched-promoted* *sched-promoted-wf* 1/2
+                                      "attempt:2" "work-big"))
+(assert-event (< (fn-sched-pos "work-big" (fn-sched-aged *sched-promoted*)) 1/2))
+(assert-event (not (< (fn-sched-pos "work-big" (fn-sched-aged *sched-promoted*))
+                      (nfix 1/2))))
+(assert-event (not (fn-sched-selected-withinp *sched-promoted*
+                                              *sched-promoted-wf* 1/2
+                                              "attempt:2" "work-big")))
+
 ; OPEN TEETH, recorded rather than faked (AGENTS.md: a claim earns its name).
 ;
 ;  * `(member-equal w (fn-sched-aged ss))' of `fn-sched-aging-bound'.  A
