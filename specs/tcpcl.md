@@ -215,10 +215,15 @@ transiently beyond it.
   `fn-tcl-inbound-is-created-only-by-start` and every C3 theorem are
   admitted before it. The checkpoint has the same shape as C2's: the
   recognizer is open again from C3 onward and `fn-tcl-no-interleaving`
-  dispatches over `fn-tcl-step`. The next step is the closed-recognizer
-  theory (`(e/d (fn-tcl-step fn-tcl-settle) (fn-tcl-c2-closed))`) on it and
-  on the remaining C4 theorems that dispatch over the step; C3 also costs
-  about 780 s with the recognizer open and should move to the same theory.
+  dispatches over `fn-tcl-step`. C2's closed-recognizer theory alone does
+  NOT close it: `(e/d (fn-tcl-step fn-tcl-settle) (fn-tcl-c2-closed))` was
+  measured on it and failed too (evidence
+  `build/acl2/certify-20260920T044438Z-2651297` on persvati, 682.0 s), so
+  the next lane reads that checkpoint rather than reapplying the recipe;
+  the likely missing pieces are branch lemmas for what `fn-tcl-step` does
+  to the phase and the outbound record, the analogues of the
+  `-emits-no-bundle-received` and `-keeps-inbound` families. C3 also costs
+  about 780 s with the recognizer open and is worth the same treatment.
 - `tests/acl2/tcpcl-tests` is uncertified, behind invariants.
 - The host integration (`host/native/tcpcl.lisp`) and lab I1 are proposed
   in the handoff, not built; the final XFER_ACK after the FNBS record is
