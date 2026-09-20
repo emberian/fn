@@ -92,60 +92,86 @@ two peers are two queues.
 - RFC 4644's streaming window: `fn-feedp` allows one entry in flight.
 - No INN and no second fn node has been fed; only the fake peer.
 
-## Certification: per root, as of run `run-20260920T184819Z-d3a5`
+## Certification: per root, as of run `run-20260920T190708Z-5477`
 
 `persvati`, ACL2 8.7 (`/home/ember/fn-tools/acl2-8.7/saved_acl2`, SBCL 2.6.8),
-`--jobs 6`, `--closure`, 151.2 s wall over 20 roots. Evidence fetched home to
-`build/acl2/certify-20260920T184901Z-1935126/` (manifest, one `*.certify.log`
-and one `*.certify.lsp` per root). The manifest's own verdict is
-`failure: ACL2 did not produce complete clean certification evidence`.
+`--jobs 6`, `--closure`. Evidence on the host at
+`/home/ember/fn-lanes/w6-peering-feed/build/acl2/certify-20260920T190753Z-2109102/`;
+the earlier `certify-20260920T184901Z-1935126` is fetched into this worktree.
 
 | Root | Result |
 | --- | --- |
-| `books/peer-feed` | **certified**; certificate published to the content-keyed cache (`tools/certs.py publish`, mirrored to `persvati:~/fn-certcache`). The feed machine, the FNFD codec with `fn-feed-decode-of-encode` and `fn-feed-encode-is-injective`, the replay fold and `fn-feed-drivenp`. |
-| `books/peer-feed-invariants` | **open at `fn-feed-apply-record-preserves-feedp`** (`books--peer-feed-invariants.certify.log:15788`; last checkpoint `Subgoal 116.11'` at line 15573). Everything before it certifies, including the bridge lemma added this round and preservation for enqueue, offer, send, done, back-off, lost, give-up, restart, observe and tick-step. |
+| `books/peer-feed` | **certified**; certificate published to the content-keyed cache and mirrored to `persvati:~/fn-certcache`. |
+| `books/peer-feed-invariants` | **open at `fn-feed-apply-record-preserves-feedp`**, checkpoint `Subgoal 100.10.3`. Every other theorem of the book certifies, including preservation for enqueue, offer, send, done, back-off, lost, give-up, restart, observe and tick-step. |
 | `tests/acl2/peer-feed-tests` | **blocked** on the book above; no assertion has been run. |
 
-`Subgoal 116.11'`, exactly. It is the **`:feed-sent` arm** of
-`fn-feed-apply-record`, not the `:feed-offer` arm: among its hypotheses are
+### What the state-vocabulary hint bought, and the exact remaining checkpoint
+
+Closing `fn-feed-state-of`, the three offer-state predicates and their
+constructors in that one hint worked: the goal now stays in
+`fn-feed-state-of` vocabulary, so `fn-feed-inflight-count-of-set-state-exact`
+and `fn-feed-find-is-consp-when-the-state-is-a-state` match, and two further
+shape facts (`fn-feed-offer-states-forward-consp`,
+`fn-feed-offer-states-forward-natp`) plus
+`fn-feed-attempts-belowp-of-set-state-open-inflight` carried it further still.
+What is left is `Subgoal 100.10.3`, the **`:feed-sent` arm with a journaled
+attempt at or above `fn-feed-next-attempt`**:
 
 ```lisp
-(CONSP (FN-FEED-ENTRY-STATE (FN-FEED-FIND (FN-FRAME-ITEM 1 VALUES)
-                                          (FN-FEED-QUEUE F))))
-(EQUAL (CAR (FN-FEED-ENTRY-STATE (FN-FEED-FIND (FN-FRAME-ITEM 1 VALUES)
-                                               (FN-FEED-QUEUE F))))
-       :OFFERED)
-(TRUE-LISTP (FN-FEED-ENTRY-STATE (FN-FEED-FIND ...)))
-(EQUAL (LEN (FN-FEED-ENTRY-STATE (FN-FEED-FIND ...))) 2)
+(IMPLIES
+ (AND (INTEGERP (FN-FRAME-ITEM 2 VALUES)) (<= 0 (FN-FRAME-ITEM 2 VALUES))
+      (<= (FN-FEED-NEXT-ATTEMPT F) (FN-FRAME-ITEM 2 VALUES))
+      ... the `fn-feedp' conjuncts of F, including
+      (FN-FEED-ATTEMPTS-BELOWP (FN-FEED-QUEUE F) (FN-FEED-NEXT-ATTEMPT F)) ...
+      (FN-FEED-OFFEREDP (FN-FEED-STATE-OF (FN-FRAME-ITEM 1 VALUES)
+                                          (FN-FEED-QUEUE F)))
+      (EQUAL (FN-BP-NTH 1 (FN-FEED-STATE-OF (FN-FRAME-ITEM 1 VALUES)
+                                            (FN-FEED-QUEUE F)))
+             (FN-FRAME-ITEM 2 VALUES)))
+ (FN-FEED-ATTEMPTS-BELOWP
+  (FN-FEED-QUEUE-SET-STATE (FN-FEED-QUEUE F) (FN-FRAME-ITEM 1 VALUES)
+                           (FN-FEED-SENT (FN-FRAME-ITEM 2 VALUES)))
+  (FN-FEED-NEXT-ATTEMPT F)))
 ```
 
-together with `(NOT (INTEGERP (FN-FRAME-ITEM 2 VALUES)))` (so the attempt is
-0), `(< 0 (FN-FEED-NEXT-ATTEMPT F))`, the `fn-feedp` conjuncts of `f`, and the
-`:use` instance's conclusion
-`(FN-FEED-ATTEMPTS-BELOWP (FN-FEED-QUEUE-SET-STATE (FN-FEED-QUEUE F) (FN-FRAME-ITEM 1 VALUES) '(:OFFERED 0)) (FN-FEED-NEXT-ATTEMPT F))`.
+The hypotheses are contradictory and that is the whole content: the entry is
+in flight, so `fn-feed-attempts-belowp` puts its attempt strictly BELOW
+`fn-feed-next-attempt`, while the record names an attempt at or above it. A
+`(:feed-sent ...)` record with that attempt is unreachable. What the prover
+cannot do is join those two, because `fn-feed-state-inflightp` is closed in
+this hint and the hypothesis says `fn-feed-offeredp`.
 
-So the attempt bound is discharged and the bridge lemma is not the blocker.
-What blocks it is **vocabulary, not content**: `fn-feed-state-of`,
-`fn-feed-offeredp` and `fn-feed-state-inflightp` are all enabled through
-`fn-feed-vocabulary`, so by the time the goal is reached the entry's state has
-been opened into `consp`/`car`/`true-listp`/`len` and neither
-`fn-feed-inflight-count-of-set-state-exact` nor
-`fn-feed-find-is-consp-when-the-state-is-a-state` -- both stated in
-`fn-feed-state-of` vocabulary -- can match. The next step is to add
-`(:d fn-feed-state-of) (:d fn-feed-offeredp) (:d fn-feed-sentp)
-(:d fn-feed-state-inflightp)` to that one hint's disable list, which is
-`docs/proof-style.md` sec. 1 ("rules are stated in accessor vocabulary and
-goals stay in it") and is **not** opening `fn-feedp`. `fn-feed-state-inflightp`
-of a ground state such as `'(:sent 0)` still decides by executable
-counterpart; a state with a variable attempt needs the
-`fn-feed-attempts-belowp-after-a-transfer` shape already written for
-`fn-feed-send-preserves-feedp`.
+### The attempt that made it worse, recorded so it is not repeated
 
-Two genuine defects the prover found earlier, both fixed in the transition and
-never in a theorem: `fn-feed-offer` and the `:feed-offer` arm of
-`fn-feed-apply-record` each admitted a second simultaneous offer, which breaks
-`fn-feedp`'s one-in-flight conjunct. Both refuse now, and `fn-feed-drivenp`
-carries the matching conjunct so replay and the journal check stay aligned.
+Supplying that join as two more rules -- `fn-feed-offer-states-forward-inflightp`
+(`offeredp`/`sentp` forward-chaining to `fn-feed-state-inflightp`) and
+`fn-feed-inflight-attempt-below-bound-raw` (the bound as a `:linear` rule over
+`(fn-bp-nth 1 (fn-feed-state-of msgid xs))`) -- **sent the proof into a
+runaway**: run `run-20260920T191056Z-aa48` ground for over 30 minutes and was
+killed by the per-invocation timeout at
+`Subgoal *1/2.1426.154.103.103.50''`, with no `ACL2 Error [Failure]` line and
+no checkpoint to read. A forward-chaining rule into a closed predicate, and a
+`:linear` rule whose trigger contains `fn-feed-state-of`, both fire under
+every arm of a large case split. Those two rules are **reverted**; the tree is
+back to the source that produced the clean `Subgoal 100.10.3` above.
+
+The shape that should work instead, for whoever takes it: make the
+contradiction a `:rule-classes nil` lemma and cite it by `:use` at exactly the
+instance the arm needs, rather than giving the prover a rule that fires
+everywhere --
+
+```lisp
+(local
+ (defthm fn-feed-sent-record-above-the-bound-is-unreachable
+   (implies (and (fn-feed-attempts-belowp xs n)
+                 (fn-feed-offeredp (fn-feed-state-of msgid xs)))
+            (< (fn-bp-nth 1 (fn-feed-state-of msgid xs)) (nfix n)))
+   :rule-classes nil))
+```
+
+cited with `(xs (fn-feed-queue f)) (n (fn-feed-next-attempt f))
+(msgid (fn-feed-record-msgid values))` in the same hint. Nothing else about
+the theorem or the book needs to change, and no keystone statement does.
 
 ## How certification is run
 
