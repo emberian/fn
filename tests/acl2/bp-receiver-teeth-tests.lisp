@@ -11,6 +11,11 @@
 (include-book "../../books/bp-receiver-retention-invariants")
 (include-book "bp-receipt-records-tests")
 (include-book "std/testing/must-fail" :dir :system)
+; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
+; this book reasons under them, so open them here, locally.
+(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary
+                          fn-record-invariants-vocabulary fn-cbor-record-vocabulary
+                          fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary)))
 
 ; -----------------------------------------------------------------------------
 ; A reachable, non-degenerate witness.

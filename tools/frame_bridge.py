@@ -284,11 +284,24 @@ class FrameSession:
     # -- identity, charge, groups, Message-ID -------------------------------
 
     def subject_id(self, payload: bytes) -> bytes:
-        digest = hashlib.sha256(payload).digest()
+        """The canonical subject-v1 identity octets for an article payload.
+
+        ACL2 owns the preimage.  It hands back the fixed head
+        (`"fn/subject/v1" || 0x00 || uint32-be(len)`) and the host appends the
+        payload and hashes, exactly as with the inbound frame prefix, so a
+        32 KiB article never crosses the bridge.
+        """
+        prefix = _as_bytes(self.call(
+            "(fn-store-subject-prefix {})".format(len(payload))))
+        digest = hashlib.sha256(prefix + payload).digest()
         return _as_bytes(self.call(
             "(fn-store-subject-id " + _octets(digest) + ")"))
 
     def obligation_id(self, msgid: bytes, subject: bytes) -> bytes:
+        """The canonical obligation-v1 identity octets.
+
+        `subject` is the canonical subject identity octets, not its text.
+        """
         preimage = _as_bytes(self.call(
             "(fn-store-obligation-preimage " + _octets(msgid) + " "
             + _octets(subject) + ")"))
@@ -317,17 +330,35 @@ class FrameSession:
         return self.call(
             "(fn-store-msgid-validp " + _octets(msgid) + ")") is True
 
-    def group_names(self) -> tuple[str, ...]:
-        return tuple(_as_bytes(name).decode("utf-8")
-                     for name in self.call("(fn-store-group-names)"))
+    def identity_text(self, identity: bytes) -> bytes:
+        """The one rendering of a canonical identity where a string is forced.
 
-    def group_table_id(self) -> str:
-        return _as_bytes(self.call("(fn-store-group-table-id)")).decode("utf-8")
+        The store record metadata fields, the workflow journal JSON and the
+        NNTP header value all carry text; ACL2 decides what that text is.
+        """
+        return _as_bytes(self.call(
+            "(fn-store-identity-text " + _octets(identity) + ")"))
 
-    def group_codes(self, names) -> list[int]:
+    def config_record_initial(self, names) -> bytes:
+        """The initial configuration record for these group names, encoded
+        and admitted by `books/config`/`books/node-config`."""
+        forms = " ".join(_octets(name.encode("utf-8", "strict")) for name in names)
+        value = self.call("(fn-cfg-host-initial-octets (list {}))".format(forms))
+        if isinstance(value, Keyword):
+            raise BridgeError("ACL2 refused the initial group table")
+        return _as_bytes(value)
+
+    def format_id(self) -> str:
+        return _as_bytes(self.call("(fn-store-format-id)")).decode("utf-8")
+
+    def group_codes(self, names, domain) -> list[int]:
+        """Codes of `names` in `domain`, the allocation domain ACL2 handed the
+        store at open; Python carries the domain back, never indexes it."""
         forms = " ".join(_octets(name.encode("utf-8", "strict"))
                          for name in names)
-        value = self.call("(fn-store-group-codes (list {}))".format(forms))
+        table = " ".join(_octets(name.encode("utf-8", "strict"))
+                         for name in domain)
+        value = self.call("(fn-store-group-codes (list {}) (list {}))".format(forms, table))
         if isinstance(value, Keyword):
             raise BridgeError("unknown or duplicate configured group")
         if not isinstance(value, list) or len(value) != len(list(names)):

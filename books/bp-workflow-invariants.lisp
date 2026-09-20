@@ -1,6 +1,8 @@
 (in-package "ACL2")
 
 (include-book "bp-workflow")
+; withdrawn at node's export (core, 2026-09-19); this book opens them.
+(local (in-theory (enable fn-node-statep fn-node-bindingp)))
 
 ; -----------------------------------------------------------------------------
 ; Typed list and constructor facts

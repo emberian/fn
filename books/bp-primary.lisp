@@ -23,6 +23,9 @@
 (include-book "bp-primary-cbor")
 
 (local (include-book "arithmetic/top" :dir :system))
+; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
+; this book reasons under them, so open them here, locally.
+(local (in-theory (enable fn-cbor-record-vocabulary fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary)))
 
 ; `arithmetic/top`'s generalization rule for `mod` introduces fresh `mod`
 ; terms into case trees that never had one, and loops the waterfall on the

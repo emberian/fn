@@ -1,0 +1,127 @@
+{
+  "schema": 1,
+  "date": "2026-09-19",
+  "packet": "C1-12 LTP feasibility with a real second BPA",
+  "status": "feasible with two named blockers",
+  "fn_revision": "9321344",
+  "certified_tree": "/tank/fn/gates/dev-9321344 (dev@9321344, ACL2 8.7)",
+  "host": {
+    "machine": "Linux x86_64, 24 cores",
+    "platform": "Linux-6.11.0-29-generic-x86_64-with-glibc2.40",
+    "toolchain": "gcc 14.2.0, autoconf 2.72, automake 1.16.5, libtool 2.4.7 (installed for this build)"
+  },
+  "pinned_bpa": {
+    "upstream": "https://github.com/nasa-jpl/ION-DTN",
+    "revision": "4912bf82de7d03a9a11bf5d68614cc002f9ac911",
+    "tag": "ion-open-source-4.2.1-a.1",
+    "bootstrap": "autoreconf -fi",
+    "configure": "./configure --prefix=/tank/fn/ltp/install",
+    "build": "make -j8 && make install",
+    "build_outcome": "clean, BUILD_EXIT=0"
+  },
+  "topology": {
+    "nodes": ["ipn:1", "ipn:2"],
+    "convergence_layer": "LTP (RFC 5326) over UDP, IPv4 loopback",
+    "udplsi": ["127.0.0.1:41113", "127.0.0.1:42113"],
+    "daemons": ["ltpclock", "ltpmeter", "ltpdeliv", "ltpcli", "ltpclo", "udplsi", "udplso"],
+    "ltp_span_parameters": {
+      "max_segment_size": 1200,
+      "aggregation_size_threshold": 100100,
+      "aggregation_time_limit": 1,
+      "max_export_sessions": 200,
+      "max_import_sessions": 20,
+      "max_timeouts": 5,
+      "max_repair_rounds": 8,
+      "session_inactivity_limit": 0,
+      "owlt": 0
+    }
+  },
+  "steps": {
+    "ion_pinned_and_built": true,
+    "two_node_ltp_link_up": true,
+    "bp_over_ltp_confirmed_with_ion_utilities": {
+      "ran": true,
+      "detail": "bpsource ipn:2.1 'fn LTP hello' delivered to bpsink on node 2 (12 octets)"
+    },
+    "durable_staging_receiver_built": true,
+    "fn_request_adu_crossed_ltp": {
+      "ran": true,
+      "request_octets": 449,
+      "request_sha256": "781f7ff3ff237bf3df46cae2b68baeaf78a3a8750101568243704cb4cdfa4016",
+      "staged_sha256": "781f7ff3ff237bf3df46cae2b68baeaf78a3a8750101568243704cb4cdfa4016",
+      "staged_bid": "ipn:1.1|843144481988|2",
+      "bytes_identical": true
+    },
+    "fn_acceptance_ran_on_ltp_delivered_adu": {
+      "ran": true,
+      "driver": "tools/run_bp_receive.py receive_bpa_request",
+      "outcome": "accepted",
+      "receipt_sha256": "f2cbfa70a869716941312eed6786f69404e025d2b463e4bf396343a78de1ae3e",
+      "article_sha256": "51a1df58651010bdd1a177873e45f3cf0929de3d0aa966adfb58dd0d81162a88",
+      "receiver_snapshot": {"records": 1, "articles": 1, "pins": 1, "exact_article": true},
+      "staged_copy_deleted_only_after_durable_receipt": true
+    },
+    "receipt_returned_over_bp": {
+      "ran": false,
+      "reason": "ION gives the sender no transport handle to bind to a durable attempt record; the return leg is blocked behind that seam, not attempted"
+    },
+    "interruption": {
+      "ran": true,
+      "method": "iptables INPUT -i lo -p udp --dport 42113 -j DROP, inserted then deleted by rule; the ruleset is never flushed",
+      "adu_octets": 60000,
+      "bundle_lifetime_seconds": 600,
+      "seconds_link_cut": 20,
+      "staged_while_cut": "none",
+      "staged_after_restore": "ipn:1.1|843144526009|3",
+      "bytes_identical_to_source": true,
+      "conclusion": "LTP resumed the session and repaired the lost red-part segments after the link returned; the ADU arrived intact"
+    },
+    "expiry": {
+      "ran": true,
+      "adu_octets": 4096,
+      "bundle_lifetime_seconds": 20,
+      "seconds_link_cut": 60,
+      "seconds_waited_after_restore": 45,
+      "staged_after_restore": "none",
+      "conclusion": "the bundle's lifetime elapsed during the outage and it was never delivered; nothing was staged and fn's obligation is untouched by that transport event"
+    }
+  },
+  "blockers": [
+    {
+      "id": "LTP-B1",
+      "title": "ION has no non-destructive receive",
+      "detail": "bp_receive() (bpv7/library/libbp.c) deletes the delivery-queue element, zeroes bundle.payload.content, calls bpDestroyBundle() and commits the SDR transaction before returning. After it returns nothing redelivers the ADU. bprecvfile additionally writes testfile<N> with no fsync, no rename, and a per-process counter that restarts at 1.",
+      "consequence": "fn's inventory/download/delete contract in tools/run_bp_receive.py cannot be served by ION. An app-level staging copy (tests/ltp/fn_ltp_stage.c) is mandatory, and its delete removes fn's own staged file, never an ION-retained bundle.",
+      "residual": "the window between bp_receive()'s commit and the staging fsync cannot be closed with ION's public API; it is covered at the fn layer by durable sender work, retry and receipt idempotence"
+    },
+    {
+      "id": "LTP-B2",
+      "title": "ION returns no bundle identifier to the sending application",
+      "detail": "bpsendfile prints none; bp_send() returns only an in-process SdrObject address for the new bundle.",
+      "consequence": "fn's durable attempt record has no observed transport handle to bind. The lab recorded 'ion-unreported:request-ltp'. A real adapter must read the RFC 9171 bundle id out of that SDR object through the C API before the bundle is destroyed."
+    },
+    {
+      "id": "LTP-B3",
+      "title": "EID scheme mismatch",
+      "detail": "fn's configured peer-eid dtn://fn.lab/inbox is an application identity ACL2 binds inside the request ADU. ION registers the ipn scheme (node.service); an unmapped first run failed with 'bpsendfile: failed to send'. ION does accept the dtn scheme via dtn2fw/dtn2adminep.",
+      "consequence": "an ION adapter must carry an explicit application-peer-EID to BP-destination-EID mapping; the pinned dtn7-rs lab conflated the two only because dtn7-rs is natively dtn:-scheme"
+    }
+  ],
+  "delegated_to_ion": [
+    "LTP session establishment, red-part segmentation at 1200 octets, checkpoints, reception reports and retransmission",
+    "bundle lifetime expiry and deletion",
+    "BP forwarding, duct selection and the contact/range plan"
+  ],
+  "delegated_limits": [
+    "LTP repair is budgeted: maxTimeouts 5 and maxRepairRounds 8 per session. An outage longer than that budget cancels the session; BPv7 has no custody transfer to recover it, so recovery falls to fn's own durable retry.",
+    "sessionInactivityLimit 0 means no inactivity cancellation was configured in this profile",
+    "owlt 0 and a 1,000,000 byte/s loopback rate; no real light time, asymmetry or contact schedule was exercised"
+  ],
+  "not_demonstrated": [
+    "not interoperability qualification: one implementation, one host, one profile, no cross-implementation vectors, no errata audit",
+    "not a mission profile: IPv4 loopback UDP, zero light time, no contact plan, no rate limiting",
+    "no BPSec, no authenticated peer, no author signature; trusted local A_POLICY only",
+    "no power-loss or physical media qualification",
+    "no receipt return over BP, no relay topology, no backpressure or staging-quota campaign"
+  ]
+}
