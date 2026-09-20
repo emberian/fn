@@ -54,11 +54,13 @@ car
 catch
 cddddr
 cdddr
+cddr
 cdr
 char
 char-code
 char<=
 char=
+close
 coerce
 concatenate
 cons
@@ -101,6 +103,7 @@ make-array
 make-instance
 map
 mapcar
+max
 member
 member-equal
 min

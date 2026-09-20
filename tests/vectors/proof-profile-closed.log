@@ -1,0 +1,210 @@
+ + ACL2 Version 8.7                                                     +
+ +   built September 19, 2026  03:13:23.                                +
+ + Copyright (C) 2026, Regents of the University of Texas.              +
+ + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and   +
+ + you are welcome to redistribute it under certain conditions.  For    +
+ + details, see the LICENSE file distributed with ACL2.                 +
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>NIL
+ACL2 !> 4000000
+ACL2 !>
+The admission of MYREV is trivial, using the relation O< (which is
+known to be well-founded on the domain recognized by O-P) and the measure
+(ACL2-COUNT X).  We observe that the type of MYREV is described by
+the theorem (TRUE-LISTP (MYREV X)).  We used primitive type reasoning
+and the :type-prescription rules BINARY-APPEND and TRUE-LISTP-APPEND.
+
+Summary
+Form:  ( DEFUN MYREV ...)
+Rules: ((:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:TYPE-PRESCRIPTION BINARY-APPEND)
+        (:TYPE-PRESCRIPTION TRUE-LISTP-APPEND))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+ MYREV
+ACL2 !>
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+Perhaps we can prove *1 by induction.  Three induction schemes are
+suggested by this conjecture.  Subsumption reduces that number to two.
+However, one of these is flawed and so we are left with one viable
+candidate.  
+
+We will induct according to a scheme suggested by (APPEND A B), while
+accommodating (APPEND A B C).
+
+These suggestions were produced using the :induction rule BINARY-APPEND.
+If we let (:P A B C) denote *1 above then the induction scheme we'll
+use is
+(AND (IMPLIES (AND (NOT (ENDP A)) (:P (CDR A) B C))
+              (:P A B C))
+     (IMPLIES (ENDP A) (:P A B C))).
+This induction is justified by the same argument used to admit BINARY-APPEND.
+When applied to the goal at hand the above induction scheme produces
+two nontautological subgoals.
+Subgoal *1/2
+Subgoal *1/2'
+Subgoal *1/1
+Subgoal *1/1'
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM APPEND-ASSOC ...)
+Rules: ((:DEFINITION BINARY-APPEND)
+        (:DEFINITION ENDP)
+        (:DEFINITION NOT)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION BINARY-APPEND)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  435
+ APPEND-ASSOC
+ACL2 !>
+*1 (the initial Goal, a key checkpoint) is pushed for proof by induction.
+
+Perhaps we can prove *1 by induction.  Three induction schemes are
+suggested by this conjecture.  These merge into two derived induction
+schemes.  However, one of these is flawed and so we are left with one
+viable candidate.  
+
+We will induct according to a scheme suggested by (MYREV A), while
+accommodating (APPEND A B).
+
+These suggestions were produced using the :induction rules BINARY-APPEND
+and MYREV.  If we let (:P A B) denote *1 above then the induction scheme
+we'll use is
+(AND (IMPLIES (NOT (CONSP A)) (:P A B))
+     (IMPLIES (AND (CONSP A) (:P (CDR A) B))
+              (:P A B))).
+This induction is justified by the same argument used to admit MYREV.
+When applied to the goal at hand the above induction scheme produces
+two nontautological subgoals.
+Subgoal *1/2
+Subgoal *1/1
+Subgoal *1/1'
+Subgoal *1/1''
+Subgoal *1/1'''
+Subgoal *1/1'4'
+
+*1 is COMPLETED!
+Thus key checkpoint Goal is COMPLETED!
+
+Q.E.D.
+
+Summary
+Form:  ( DEFTHM MYREV-APPEND ...)
+Rules: ((:DEFINITION BINARY-APPEND)
+        (:DEFINITION MYREV)
+        (:ELIM CAR-CDR-ELIM)
+        (:FAKE-RUNE-FOR-TYPE-SET NIL)
+        (:INDUCTION BINARY-APPEND)
+        (:INDUCTION MYREV)
+        (:REWRITE APPEND-ASSOC)
+        (:REWRITE APPEND-TO-NIL)
+        (:REWRITE CAR-CONS)
+        (:REWRITE CDR-CONS)
+        (:TYPE-PRESCRIPTION MYREV))
+Time:  0.00 seconds (prove: 0.00, print: 0.00, other: 0.00)
+Prover steps counted:  1793
+ MYREV-APPEND
+ACL2 !>
+FN-PROFILE-SECTION frames-a
+NIL
+ACL2 !>
+Accumulated Persistence (2282 :tries useful, 1683 :tries not useful)
+
+   :frames   :tries    :ratio  rune
+   --------------------------------
+      2602     1036 (    2.51) (:TYPE-PRESCRIPTION TRUE-LISTP-APPEND)
+   --------------------------------
+      1238     1036 (    1.19) (:TYPE-PRESCRIPTION BINARY-APPEND)
+   --------------------------------
+       819      819 (    1.00) (:TYPE-PRESCRIPTION MYREV)
+   --------------------------------
+       640      640 (    1.00) (:TYPE-PRESCRIPTION TRUE-LISTP)
+   --------------------------------
+       425       91 (    4.67) (:DEFINITION BINARY-APPEND)
+   --------------------------------
+       393       39 (   10.07) (:DEFINITION MYREV)
+   --------------------------------
+       194      143 (    1.35) (:REWRITE DEFAULT-CAR)
+   --------------------------------
+       191      140 (    1.36) (:REWRITE DEFAULT-CDR)
+   --------------------------------
+        13       13 (    1.00) (:DEFINITION NOT)
+   --------------------------------
+         2        2 (    1.00) (:REWRITE CDR-CONS)
+   --------------------------------
+         2        2 (    1.00) (:REWRITE CAR-CONS)
+   --------------------------------
+         2        2 (    1.00) (:DEFINITION ENDP)
+   --------------------------------
+         2        1 (    2.00) (:REWRITE APPEND-TO-NIL)
+   --------------------------------
+         1        1 (    1.00) (:REWRITE APPEND-ASSOC)
+   --------------------------------
+NIL
+ACL2 !>
+FN-PROFILE-SECTION useless
+NIL
+ACL2 !>
+Accumulated Persistence (2282 :tries useful, 1683 :tries not useful)
+
+   :frames   :tries    :ratio  rune
+   --------------------------------
+       640      640 (    1.00) (:TYPE-PRESCRIPTION TRUE-LISTP)
+   --------------------------------
+       194      143 (    1.35) (:REWRITE DEFAULT-CAR)
+   --------------------------------
+       191      140 (    1.36) (:REWRITE DEFAULT-CDR)
+   --------------------------------
+NIL
+ACL2 !>
+FN-PROFILE-SECTION tries-a
+NIL
+ACL2 !>
+Accumulated Persistence (2282 :tries useful, 1683 :tries not useful)
+
+   :frames   :tries    :ratio  rune
+   --------------------------------
+      2602     1036 (    2.51) (:TYPE-PRESCRIPTION TRUE-LISTP-APPEND)
+   --------------------------------
+      1238     1036 (    1.19) (:TYPE-PRESCRIPTION BINARY-APPEND)
+   --------------------------------
+       819      819 (    1.00) (:TYPE-PRESCRIPTION MYREV)
+   --------------------------------
+       640      640 (    1.00) (:TYPE-PRESCRIPTION TRUE-LISTP)
+   --------------------------------
+       194      143 (    1.35) (:REWRITE DEFAULT-CAR)
+   --------------------------------
+       191      140 (    1.36) (:REWRITE DEFAULT-CDR)
+   --------------------------------
+       425       91 (    4.67) (:DEFINITION BINARY-APPEND)
+   --------------------------------
+       393       39 (   10.07) (:DEFINITION MYREV)
+   --------------------------------
+        13       13 (    1.00) (:DEFINITION NOT)
+   --------------------------------
+         2        2 (    1.00) (:REWRITE CDR-CONS)
+   --------------------------------
+         2        2 (    1.00) (:REWRITE CAR-CONS)
+   --------------------------------
+         2        2 (    1.00) (:DEFINITION ENDP)
+   --------------------------------
+         2        1 (    2.00) (:REWRITE APPEND-TO-NIL)
+   --------------------------------
+         1        1 (    1.00) (:REWRITE APPEND-ASSOC)
+   --------------------------------
+NIL
+ACL2 !>NIL
+ACL2 !>

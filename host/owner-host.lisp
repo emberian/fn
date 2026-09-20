@@ -23,6 +23,12 @@
 ; writes a reply octet.
 (in-package "ACL2")
 (include-book "../books/owner")
+;
+; Loaded here, not left to a bridge's `ld' order: this file uses names
+; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
+; must get them too.  A second `ld' of a file already in the session
+; re-admits identical definitions, which ACL2 accepts as redundant.
+(ld "store-node-host.lisp" :ld-error-action :error)
 
 ; The injecting-agent identity this owner uses (books/injection.lisp reads
 ; it for Path, Injection-Info and any generated Message-ID).  Configuration,

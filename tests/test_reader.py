@@ -246,6 +246,52 @@ class ReaderSocketTests(unittest.TestCase):
             sock, b"430 no article with that message-id\r\n")
         self.reader.assert_bytes(sock, b"501 syntax error\r\n")
 
+    def test_xpat_transcript_over_a_real_socket(self):
+        """RFC 2980 section 2.9.  XPAT is XHDR with a wildmat on the value.
+
+        The seed article is `Message-ID: <reader@example.invalid>' with no
+        Subject, so `XPAT subject' matches only the empty value and
+        `XPAT message-id' matches the identifier.  Expected replies are
+        written from section 2.9.1's response list, not recorded.
+        """
+        sock = self.reader.connect()
+        self.addCleanup(sock.close)
+        sock.sendall(b"GROUP fn.letters\r\n")
+        self.reader.assert_bytes(sock, b"211 1 1 1 fn.letters\r\n")
+
+        # A matching pattern: 221 and the XHDR line.
+        sock.sendall(b"XPAT message-id 1-1 *example.invalid*\r\n")
+        self.reader.assert_bytes(
+            sock,
+            b"221 header follows\r\n1 <reader@example.invalid>\r\n.\r\n")
+        # Section 2.9: "This includes an empty list."  A non-matching
+        # pattern is still 221, not 420 and not 423.
+        sock.sendall(b"XPAT message-id 1-1 *nothing*\r\n")
+        self.reader.assert_bytes(sock, b"221 header follows\r\n.\r\n")
+        # A pattern that selects everything is XHDR's own block.
+        sock.sendall(b"XPAT message-id 1-1 *\r\nXHDR message-id 1-1\r\n")
+        expected = (b"221 header follows\r\n1 <reader@example.invalid>\r\n"
+                    b".\r\n")
+        self.reader.assert_bytes(sock, expected)
+        self.reader.assert_bytes(sock, expected)
+        # The message-id form labels with the message-id (section 2.9 as
+        # section 2.6 does), and 430 when no such article exists.
+        sock.sendall(b"XPAT message-id <reader@example.invalid> *\r\n"
+                     b"XPAT message-id <absent@example.invalid> *\r\n")
+        self.reader.assert_bytes(
+            sock,
+            b"221 header follows\r\n"
+            b"<reader@example.invalid> <reader@example.invalid>\r\n.\r\n")
+        self.reader.assert_bytes(
+            sock, b"430 no article with that message-id\r\n")
+        # Section 2.9 requires at least one pattern, and joins the trailing
+        # arguments with a single space into one pattern.
+        sock.sendall(b"XPAT message-id 1-1\r\nXPAT\r\n"
+                     b"XPAT message-id 1-1 *reader* *invalid*\r\n")
+        self.reader.assert_bytes(sock, b"501 syntax error\r\n")
+        self.reader.assert_bytes(sock, b"501 syntax error\r\n")
+        self.reader.assert_bytes(sock, b"221 header follows\r\n.\r\n")
+
     def test_list_variants_transcript_over_a_real_socket(self):
         """LIST HEADERS, LIST NEWSGROUPS, LIST ACTIVE wildmat, ACTIVE.TIMES.
 
@@ -307,7 +353,7 @@ class ReaderSocketTests(unittest.TestCase):
             b"CAPABILITIES HELP QUIT MODE DATE POST\r\n"
             b"GROUP LISTGROUP LIST NEXT LAST NEWGROUPS\r\n"
             b"ARTICLE HEAD BODY STAT\r\n"
-            b"OVER XOVER HDR XHDR\r\n.\r\n")
+            b"OVER XOVER HDR XHDR XPAT\r\n.\r\n")
 
     def test_quit_replies_then_closes(self):
         sock = self.reader.connect()

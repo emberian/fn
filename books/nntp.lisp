@@ -45,6 +45,7 @@
       (fn-nntp-keywordp keyword "XOVER")
       (fn-nntp-keywordp keyword "HDR")
       (fn-nntp-keywordp keyword "XHDR")
+      (fn-nntp-keywordp keyword "XPAT")
       (fn-nntp-keywordp keyword "NEWGROUPS")))
 
 (defun fn-nntp-session-command (session env keyword args)
@@ -113,6 +114,9 @@
    ((fn-nntp-keywordp keyword "XOVER") (fn-nntp-xover-response session archive args))
    ((fn-nntp-keywordp keyword "HDR") (fn-nntp-hdr-response session archive args))
    ((fn-nntp-keywordp keyword "XHDR") (fn-nntp-xhdr-response session archive args))
+   ; RFC 2980 section 2.9: XHDR with a wildmat filter on the rendered
+   ; content.  The same renderer; see fn-nntp-xpat-lines-are-hdr-lines.
+   ((fn-nntp-keywordp keyword "XPAT") (fn-nntp-xpat-response session archive args))
    ((fn-nntp-keywordp keyword "NEWGROUPS")
     (fn-nntp-newgroups-response session archive env args))
    (t (fn-nntp-retrieval session archive :stat args))))

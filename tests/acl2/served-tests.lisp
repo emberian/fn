@@ -65,10 +65,20 @@
   (fn-clock-observation 1000000 843004800000 500 t))
 (defconst *fn-t-served-open*
   (fn-served-open *fn-t-served-archive* 510 8192
-                  *fn-t-served-config* *fn-t-served-observation*))
+                  *fn-t-served-config* *fn-t-served-observation*
+                  *fn-t-served-observation*))
 (defconst *fn-t-served-conn* (fn-served-result-conn *fn-t-served-open*))
 
+; RFC 3977 section 5.1.1: the greeting code is the connection's posting
+; permission.  This connection's pinned configuration allows posting
+; (*fn-t-served-config*, fn-inj-make-config with allow T), so the greeting is
+; 200 and not 201.  The 201 spelling is witnessed below against a
+; configuration that refuses posting.
 (defconst *fn-t-served-greeting*
+  '(50 48 48 32 102 110 45 110 110 116 112 32 101 120 112 101 114 105 109
+    101 110 116 97 108 32 115 101 114 118 101 114 32 114 101 97 100 121 13
+    10))
+(defconst *fn-t-served-greeting-prohibited*
   '(50 48 49 32 102 110 45 110 110 116 112 32 101 120 112 101 114 105 109
     101 110 116 97 108 32 114 101 97 100 101 114 32 114 101 97 100 121 13 10))
 (defconst *fn-t-served-command*
@@ -211,7 +221,8 @@
   (fn-served-make-conn (fn-wire-initial-state 510 8192)
                        (fn-post-make-session (fn-nntp-make-session t nil nil t)
                                              nil)
-                       nil *fn-t-served-config* *fn-t-served-observation*))
+                       nil *fn-t-served-config* *fn-t-served-observation*
+                       *fn-t-served-observation*))
 
 (assert-event (fn-wire-statep (fn-served-conn-wire *fn-t-served-forged*)))
 (assert-event (fn-post-sessionp (fn-served-conn-session *fn-t-served-forged*)))
@@ -371,7 +382,8 @@
   (fn-served-step
    (fn-served-result-conn
     (fn-served-open *fn-t-served-archive* 510 8192
-                    *fn-t-served-closed-config* *fn-t-served-observation*))
+                    *fn-t-served-closed-config* *fn-t-served-observation*
+                    *fn-t-served-observation*))
    *fn-t-served-post-command*))
 (assert-event (equal (take 4 (fn-served-reply-octets
                               (fn-served-result-effects *fn-t-served-440-result*)))
@@ -382,3 +394,103 @@
                      :command))
 (assert-event (null (fn-served-submission
                      (fn-served-result-effects *fn-t-served-440-result*))))
+
+; -----------------------------------------------------------------------------
+; RFC 3977 section 5.1.1: the greeting states the posting permission
+;
+; The same configuration bit decides the greeting, the POST capability label
+; (section 5.2.2) and what fn-nntp-post-step does with a POST command, so the
+; three cannot disagree.  Witnessed both ways.
+
+(defconst *fn-t-served-prohibited-open*
+  (fn-served-open *fn-t-served-archive* 510 8192
+                  *fn-t-served-closed-config* *fn-t-served-observation*))
+(assert-event (equal (fn-served-reply-octets
+                      (fn-served-result-effects *fn-t-served-prohibited-open*))
+                     *fn-t-served-greeting-prohibited*))
+(assert-event (not (equal *fn-t-served-greeting*
+                          *fn-t-served-greeting-prohibited*)))
+(assert-event (equal (take 4 *fn-t-served-greeting*) '(50 48 48 32)))
+(assert-event (equal (take 4 *fn-t-served-greeting-prohibited*)
+                     '(50 48 49 32)))
+
+; -----------------------------------------------------------------------------
+; RFC 3977 section 3.5: a command pipelined behind the POST body
+;
+; One read carries POST, the article, its terminator and a GROUP command.
+; The teeth for fn-served-pipelined-read-is-the-sequential-reply: the
+; hypotheses are reachable on a real transcript, the conclusion is
+; non-degenerate (`later' earns its own 211, so neither side of the equality
+; is the other's prefix by accident), and no octet of the trailing command
+; was swallowed into the article body.
+
+(defconst *fn-t-served-pipelined-read*
+  (append *fn-t-served-post-read* *fn-t-served-group-command*))
+(defconst *fn-t-served-pipelined-result*
+  (fn-served-step *fn-t-served-conn* *fn-t-served-pipelined-read*))
+(defconst *fn-t-served-pipelined-effects*
+  (fn-served-result-effects *fn-t-served-pipelined-result*))
+
+(assert-event (fn-wire-octet-listp *fn-t-served-post-read*))
+(assert-event (fn-wire-octet-listp *fn-t-served-group-command*))
+(assert-event (fn-served-connp *fn-t-served-conn*))
+
+; The trailing GROUP is framed as a command and answered: the reply stream is
+; the offer followed by the 211, and the 211 is the same octets the GROUP
+; earns on its own.
+(assert-event (equal (fn-served-reply-octets *fn-t-served-pipelined-effects*)
+                     (append *fn-t-served-offer* *fn-t-served-group-reply*)))
+(assert-event (consp *fn-t-served-group-reply*))
+(assert-event (not (equal (fn-served-reply-octets *fn-t-served-pipelined-effects*)
+                          *fn-t-served-offer*)))
+
+; The article was still injected: the pipelined command neither removed nor
+; replaced the submission.
+(assert-event (fn-inj-injectedp
+               (fn-served-submission *fn-t-served-pipelined-effects*)))
+(assert-event (equal (fn-served-submission *fn-t-served-pipelined-effects*)
+                     (fn-served-submission *fn-t-served-post-effects*)))
+
+; The single read equals the two sequential reads, effects and connection:
+; the theorem instantiated on this transcript.
+(defconst *fn-t-served-pipelined-sequential*
+  (fn-served-step *fn-t-served-post-conn* *fn-t-served-group-command*))
+(assert-event (equal (fn-served-reply-octets *fn-t-served-pipelined-effects*)
+                     (append (fn-served-reply-octets *fn-t-served-post-effects*)
+                             (fn-served-reply-octets
+                              (fn-served-result-effects
+                               *fn-t-served-pipelined-sequential*)))))
+(assert-event (equal (fn-served-result-conn *fn-t-served-pipelined-result*)
+                     (fn-served-result-conn *fn-t-served-pipelined-sequential*)))
+(assert-event (fn-served-connp
+               (fn-served-result-conn *fn-t-served-pipelined-result*)))
+(assert-event (fn-served-effectsp *fn-t-served-pipelined-effects*))
+
+; The group selection really happened in the same read: the session carries
+; the selected group afterwards, so the trailing command was executed and not
+; merely echoed.
+(assert-event (equal (fn-nntp-session-group
+                      (fn-post-session-base
+                       (fn-peer-session-base
+                        (fn-served-conn-session
+                         (fn-served-result-conn *fn-t-served-pipelined-result*)))))
+                     "fn.letters"))
+
+; The framing fact the keystone rests on: the byte that completed the article
+; left the wire in command mode, so the next octet of the SAME read was
+; framed as a command.
+(assert-event (equal (fn-wire-state-mode
+                      (fn-served-conn-wire *fn-t-served-post-conn*))
+                     :command))
+
+; A three-command pipeline in one read, cut at every octet boundary the
+; network could choose: partition independence holds across the POST body.
+(defconst *fn-t-served-pipelined-cut*
+  (list (take 3 *fn-t-served-pipelined-read*)
+        (take 40 (nthcdr 3 *fn-t-served-pipelined-read*))
+        (nthcdr 43 *fn-t-served-pipelined-read*)))
+(assert-event (fn-served-chunk-listp *fn-t-served-pipelined-cut*))
+(assert-event (equal (fn-served-concat *fn-t-served-pipelined-cut*)
+                     *fn-t-served-pipelined-read*))
+(assert-event (equal (fn-served-run *fn-t-served-conn* *fn-t-served-pipelined-cut*)
+                     *fn-t-served-pipelined-result*))

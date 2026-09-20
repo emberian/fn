@@ -4,15 +4,28 @@
 (include-book "../books/store-sweep")
 (include-book "../books/store-node-resolution")
 (include-book "../books/node-config")
+;
+; Loaded here, not left to a bridge's `ld' order: this file uses names
+; host/store-host.lisp defines, so a session that loads this file alone
+; must get them too.  A second `ld' of a file already in the session
+; re-admits identical definitions, which ACL2 accepts as redundant.
+(ld "store-host.lisp" :ld-error-action :error)
 
 ; This wrapper reuses the established decimal-octet boundary helpers from the
 ; store host. Python supplies only ordered filesystem observations.
 (defun fn-store-sn-reset (state)
   (declare (xargs :stobjs state :mode :program))
   (let ((state (f-put-global 'fn-store-sn
-                             ; No compiled group table: the domain is empty
-                             ; until the configuration history is replayed.
-                             (fn-sn-initial nil *fn-store-capacity*) state)))
+                             ; No compiled group table and no compiled
+                             ; capacity: the domain is empty and the capacity
+                             ; is zero until the configuration history is
+                             ; replayed.  That is the fail-closed floor of
+                             ; specs/reconfiguration.md section 1.6 -- a store
+                             ; that has not been configured accepts nothing,
+                             ; rather than accepting into a compiled-in
+                             ; default (the last `*fn-store-capacity*' read
+                             ; outside host/checkpoint-host.lisp).
+                             (fn-sn-initial nil 0) state)))
     (value :ready)))
 
 (defun fn-store-sn-state (state)
@@ -100,7 +113,7 @@
 ; the record octets left in `fn-store-cfg-last-octets', or :refused with the
 ; reason in `fn-store-cfg-last-reason'.  Nothing here mutates the store: the
 ; record becomes durable in Python and is replayed at the next open.
-(defun fn-store-cfg-reconfigure (kind name-octets monotonic wall state)
+(defun fn-store-cfg-reconfigure (kind name-octets n monotonic wall state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((s (f-get-global 'fn-store-sn state))
          (cfg (f-get-global 'fn-store-cfg state))
@@ -119,6 +132,13 @@
                               (list (fn-cfg-create-group name *fn-cfg-default-policy-id*)))
                              ((equal kind :remove-group)
                               (list (fn-cfg-remove-group name)))
+                             ; R6.  The capacity delta.  Admissibility is
+                             ; `books/config''s own rule, checked here against
+                             ; the LIVE node's reservation total by the same
+                             ; `fn-cnode-record-acceptablep' replay applies --
+                             ; no second owner of the bound.
+                             ((equal kind :set-capacity)
+                              (list (fn-cfg-set-capacity (nfix n))))
                              (t nil)))
                (stamp (fn-clock-observation (nfix monotonic) (nfix wall) 0 t))
                (record (fn-cfg-record-make (fn-cfg-generation cfg)

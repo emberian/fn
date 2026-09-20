@@ -363,7 +363,8 @@
       "milestone": "M2",
       "status": "implemented",
       "proof_targets": [
-        "PRF-007"
+        "PRF-007",
+        "PRF-027"
       ],
       "verification": [
         "proof",
@@ -1022,7 +1023,8 @@
       "proof_targets": [
         "PRF-002",
         "PRF-010",
-        "PRF-015"
+        "PRF-015",
+        "PRF-028"
       ],
       "verification": [
         "proof",

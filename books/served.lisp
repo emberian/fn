@@ -70,7 +70,7 @@
 
 (defun fn-served-conn-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 5)))
+  (and (true-listp x) (equal (len x) 6)))
 
 (defun fn-served-conn-wire (x)
   (declare (xargs :guard t))
@@ -94,38 +94,63 @@
   (mbe :logic (car (cdr (cdr (cdr (cdr x)))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
 
-(defun fn-served-make-conn (wire session archive config observation)
+; The clock reading supplied with THIS read.  It is not pinned: the owner
+; rebuilds the served connection on every read and puts its current
+; observation here (books/owner.lisp, fn-own-read), because RFC 5537
+; section 3.4 makes Injection-Date the time of injection and a generated
+; Message-ID is derived from the same reading.  `observation` above is the
+; reading pinned at accept and is the reader environment; the two are
+; deliberately distinct fields.
+(defun fn-served-conn-injection (x)
   (declare (xargs :guard t))
-  (list wire session archive config observation))
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr x))))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
+                                                          (fn-ag-cdr x))))))))
+
+(defun fn-served-make-conn (wire session archive config observation injection)
+  (declare (xargs :guard t))
+  (list wire session archive config observation injection))
 
 (defthm fn-served-conn-shapep-of-fn-served-make-conn
   (fn-served-conn-shapep
-   (fn-served-make-conn wire session archive config observation)))
+   (fn-served-make-conn wire session archive config observation
+                        injection)))
 
 (defthm fn-served-conn-wire-of-fn-served-make-conn
   (equal (fn-served-conn-wire
-          (fn-served-make-conn wire session archive config observation))
+          (fn-served-make-conn wire session archive config observation
+                        injection))
          wire))
 
 (defthm fn-served-conn-session-of-fn-served-make-conn
   (equal (fn-served-conn-session
-          (fn-served-make-conn wire session archive config observation))
+          (fn-served-make-conn wire session archive config observation
+                        injection))
          session))
 
 (defthm fn-served-conn-archive-of-fn-served-make-conn
   (equal (fn-served-conn-archive
-          (fn-served-make-conn wire session archive config observation))
+          (fn-served-make-conn wire session archive config observation
+                        injection))
          archive))
 
 (defthm fn-served-conn-config-of-fn-served-make-conn
   (equal (fn-served-conn-config
-          (fn-served-make-conn wire session archive config observation))
+          (fn-served-make-conn wire session archive config observation
+                        injection))
          config))
 
 (defthm fn-served-conn-observation-of-fn-served-make-conn
   (equal (fn-served-conn-observation
-          (fn-served-make-conn wire session archive config observation))
+          (fn-served-make-conn wire session archive config observation
+                               injection))
          observation))
+
+(defthm fn-served-conn-injection-of-fn-served-make-conn
+  (equal (fn-served-conn-injection
+          (fn-served-make-conn wire session archive config observation
+                               injection))
+         injection))
 
 (defthm fn-served-conn-shapep-forward-shape
   (implies (fn-served-conn-shapep x) (and (consp x) (true-listp x)))
@@ -134,6 +159,7 @@
 (in-theory (disable (:d fn-served-conn-shapep) (:d fn-served-conn-wire)
                     (:d fn-served-conn-session) (:d fn-served-conn-archive)
                     (:d fn-served-conn-config) (:d fn-served-conn-observation)
+                    (:d fn-served-conn-injection)
                     (:d fn-served-make-conn)))
 
 ; The result record: the connection after the read, and the effects the host
@@ -178,10 +204,10 @@
 
 (local
  (defthm fn-served-make-conn-equal
-   (equal (equal (fn-served-make-conn w1 s1 a1 c1 o1)
-                 (fn-served-make-conn w2 s2 a2 c2 o2))
+   (equal (equal (fn-served-make-conn w1 s1 a1 c1 o1 j1)
+                 (fn-served-make-conn w2 s2 a2 c2 o2 j2))
           (and (equal w1 w2) (equal s1 s2) (equal a1 a2)
-               (equal c1 c2) (equal o1 o2)))
+               (equal c1 c2) (equal o1 o2) (equal j1 j2)))
    :hints (("Goal" :in-theory (enable fn-served-make-conn)))))
 
 (local
@@ -291,6 +317,7 @@
                                (fn-served-conn-archive conn)
                                (fn-served-conn-config conn)
                                (fn-served-conn-observation conn)
+                               (fn-served-conn-injection conn)
                                event))
          (effects (fn-post-result-effects r))
          (submission (fn-post-result-submission r))
@@ -302,7 +329,8 @@
      (fn-served-make-conn wire2 (fn-post-result-session r)
                           (fn-served-conn-archive conn)
                           (fn-served-conn-config conn)
-                          (fn-served-conn-observation conn))
+                          (fn-served-conn-observation conn)
+                          (fn-served-conn-injection conn))
      (mbe :logic (append effects
                          (if submission
                              (list (fn-served-submit-effect submission))
@@ -326,6 +354,7 @@
                                    (fn-served-conn-archive conn)
                                    (fn-served-conn-config conn)
                                    (fn-served-conn-observation conn)
+                                   (fn-served-conn-injection conn)
                                    event)))
         (equal (fn-served-conn-archive
                 (fn-served-result-conn (fn-served-dispatch conn event)))
@@ -335,7 +364,10 @@
                (fn-served-conn-config conn))
         (equal (fn-served-conn-observation
                 (fn-served-result-conn (fn-served-dispatch conn event)))
-               (fn-served-conn-observation conn)))
+               (fn-served-conn-observation conn))
+        (equal (fn-served-conn-injection
+                (fn-served-result-conn (fn-served-dispatch conn event)))
+               (fn-served-conn-injection conn)))
    :hints (("Goal" :in-theory (disable fn-peer-step fn-post-offeredp
                                        fn-wire-begin-article)))))
 
@@ -346,6 +378,7 @@
                                       (fn-served-conn-archive conn)
                                       (fn-served-conn-config conn)
                                       (fn-served-conn-observation conn)
+                                      (fn-served-conn-injection conn)
                                       event)))
             (append (fn-post-result-effects r)
                     (if (fn-post-result-submission r)
@@ -383,6 +416,7 @@
                             (archive (fn-served-conn-archive conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
+                            (injection (fn-served-conn-injection conn))
                             (wire-event event))))))
 
 (defthm fn-served-dispatch-effects-are-typed
@@ -402,12 +436,14 @@
                             (archive (fn-served-conn-archive conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
+                            (injection (fn-served-conn-injection conn))
                             (wire-event event))
                  (:instance fn-peer-step-submission-is-typed
                             (ps (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
+                            (injection (fn-served-conn-injection conn))
                             (wire-event event))))))
 
 ; The three theorems above are the only readers of the two local projections;
@@ -483,7 +519,8 @@
                                        (fn-served-conn-session conn)
                                        (fn-served-conn-archive conn)
                                        (fn-served-conn-config conn)
-                                       (fn-served-conn-observation conn))
+                                       (fn-served-conn-observation conn)
+                                       (fn-served-conn-injection conn))
                   (fn-wire-result-events fed)))
            (tail (fn-served-feed (fn-served-result-conn here) (cdr octets))))
       (fn-served-make-result
@@ -516,7 +553,8 @@
               (fn-served-conn-session conn)
               (fn-served-conn-archive conn)
               (fn-served-conn-config conn)
-              (fn-served-conn-observation conn))))
+              (fn-served-conn-observation conn)
+              (fn-served-conn-injection conn))))
    :hints (("Goal" :in-theory (e/d (fn-served-connp)
                                    (fn-wire-feed-byte fn-wire-statep
                                     fn-peer-session-consistentp))))))
@@ -632,6 +670,12 @@
         (fn-served-submission (cdr effects)))
     nil))
 
+(defthm fn-served-submission-of-append
+  (equal (fn-served-submission (append left right))
+         (if (fn-served-submission left)
+             (fn-served-submission left)
+           (fn-served-submission right))))
+
 ; The host's durable observation, fed back as one more served input.  The
 ; connection is unchanged; the reply is fn-nntp-post-outcome's, which is the
 ; only place 240 exists (fn-post-outcome-240-only-for-a-durable-observation).
@@ -707,32 +751,34 @@
       *fn-served-greeting-posting*
     *fn-served-greeting*))
 
-(defun fn-served-open (archive line-limit body-limit config observation)
+(defun fn-served-open (archive line-limit body-limit config observation
+                               injection)
   (declare (xargs :guard t))
   (fn-served-make-result
    (fn-served-make-conn (fn-wire-initial-state line-limit body-limit)
                         (fn-peer-open-session archive nil nil nil)
-                        archive config observation)
-   (list (fn-nntp-reply-effect *fn-served-greeting*))))
+                        archive config observation injection)
+   (list (fn-nntp-reply-effect (fn-served-greeting config)))))
 
 ; A peer connection (specs/peering.md section 1.1): the host resolved the
 ; source to a peer name at :open and hands the node and configuration the
 ; offer decision reads; both are checked once here under their recognizers
 ; (fn-peer-open-session) and never per command.
 (defun fn-served-open-peer (archive line-limit body-limit config observation
-                                    peer node cfg)
+                                    injection peer node cfg)
   (declare (xargs :guard t))
   (fn-served-make-result
    (fn-served-make-conn (fn-wire-initial-state line-limit body-limit)
                         (fn-peer-open-session archive peer node cfg)
-                        archive config observation)
+                        archive config observation injection)
    (list (fn-nntp-reply-effect (fn-served-greeting config)))))
 
 (defthm fn-served-open-is-a-connection
   (implies (and (posp line-limit) (posp body-limit))
            (fn-served-connp
             (fn-served-result-conn
-             (fn-served-open archive line-limit body-limit config observation))))
+             (fn-served-open archive line-limit body-limit config observation
+                             injection))))
   :hints (("Goal" :in-theory (e/d (fn-served-connp)
                                   (fn-wire-statep fn-wire-initial-state
                                    fn-peer-open-session
@@ -923,6 +969,121 @@
                  (:instance fn-served-run-is-the-concatenated-step (chunks two))))))
 
 ; -----------------------------------------------------------------------------
+; Keystone 3b: pipelining across the POST body (RFC 3977 section 3.5)
+;
+; Section 3.5 lets a client send a command before the previous reply arrives,
+; and requires the server neither to discard data nor to lose synchronisation.
+; Partition independence above settles the byte-boundary half of that: the
+; network may cut the stream anywhere.  It does NOT settle the framing half,
+; which is what POST introduces.  Between the 340 and the terminator the wire
+; is in article mode; an octet arriving in the same read AFTER the terminator
+; must be framed as a command and not swallowed into the body.
+;
+; The load-bearing fact is about the framer: a byte that completes an article
+; leaves the wire in command mode, in the same call, so the fold's next byte
+; is framed as a command with nothing in between.  Everything else is the
+; append law.
+;
+; The subject is fn-served-step, which is what host/owner-host.lisp
+; `fn-own-read' calls once per socket read (books/owner.lisp fn-own-read,
+; fn-own-read-is-served-step-on-pinned-prefix); tools/run_owner.py
+; `Owner.serve' performs exactly one such call per recv.
+
+(defthm fn-wire-article-event-resumes-command-mode
+  (implies (and (fn-wire-statep wire-state)
+                (consp (fn-wire-result-events (fn-wire-feed-byte wire-state byte)))
+                (equal (car (car (fn-wire-result-events
+                                  (fn-wire-feed-byte wire-state byte))))
+                       :article))
+           (equal (fn-wire-state-mode
+                   (fn-wire-result-state (fn-wire-feed-byte wire-state byte)))
+                  :command))
+  :hints (("Goal" :in-theory (enable fn-wire-feed-byte fn-wire-statep
+                                     fn-wire-state-shapep fn-wire-state-mode
+                                     fn-wire-event-article fn-wire-result-state
+                                     fn-wire-result-events))))
+
+; The reply stream of a read is the concatenation of the reply streams of its
+; effect list's halves.  A list-shape lemma, exported because the pipelining
+; statement below is read in terms of it.
+(defthm fn-served-reply-octets-of-append
+  (equal (fn-served-reply-octets (append left right))
+         (append (fn-served-reply-octets left)
+                 (fn-served-reply-octets right))))
+
+; The pipelining statement the host needs.  A read carrying a POST block (the
+; command line, the body and its terminator) immediately followed by another
+; command produces exactly the reply octets of the two delivered separately,
+; and reaches the same connection.  A corollary of
+; fn-served-step-partition-independence and the two lemmas above, named as
+; one: no octet of `later' is lost to the article body and none is
+; reattributed to the POST.
+(defthm fn-served-pipelined-read-is-the-sequential-reply
+  (implies (and (fn-served-connp conn)
+                (fn-wire-octet-listp post-block)
+                (fn-wire-octet-listp later))
+           (and (equal (fn-served-result-conn
+                        (fn-served-step conn (append post-block later)))
+                       (fn-served-result-conn
+                        (fn-served-step
+                         (fn-served-result-conn (fn-served-step conn post-block))
+                         later)))
+                (equal (fn-served-reply-octets
+                        (fn-served-result-effects
+                         (fn-served-step conn (append post-block later))))
+                       (append
+                        (fn-served-reply-octets
+                         (fn-served-result-effects
+                          (fn-served-step conn post-block)))
+                        (fn-served-reply-octets
+                         (fn-served-result-effects
+                          (fn-served-step
+                           (fn-served-result-conn
+                            (fn-served-step conn post-block))
+                           later)))))))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (disable fn-served-step fn-served-connp
+                               fn-served-reply-octets
+                               fn-served-step-partition-independence)
+           :use ((:instance fn-served-step-partition-independence
+                            (left post-block) (right later))))))
+
+; The submission a pipelined read carries is the one the POST block earned:
+; the later command cannot add or remove a submission, because a submission
+; leaves only from the (:article lines) event the terminator framed.
+(defthm fn-served-pipelined-read-submission-is-the-post-block-submission
+  (implies (and (fn-served-connp conn)
+                (fn-wire-octet-listp post-block)
+                (fn-wire-octet-listp later)
+                (not (fn-served-submission
+                      (fn-served-result-effects
+                       (fn-served-step
+                        (fn-served-result-conn (fn-served-step conn post-block))
+                        later)))))
+           (equal (fn-served-submission
+                   (fn-served-result-effects
+                    (fn-served-step conn (append post-block later))))
+                  (fn-served-submission
+                   (fn-served-result-effects
+                    (fn-served-step conn post-block)))))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (disable fn-served-step fn-served-connp
+                               fn-served-submission
+                               fn-served-step-partition-independence)
+           :use ((:instance fn-served-step-partition-independence
+                            (left post-block) (right later))
+                 (:instance fn-served-submission-of-append
+                            (left (fn-served-result-effects
+                                   (fn-served-step conn post-block)))
+                            (right (fn-served-result-effects
+                                    (fn-served-step
+                                     (fn-served-result-conn
+                                      (fn-served-step conn post-block))
+                                     later))))))))
+
+; -----------------------------------------------------------------------------
 ; Keystone 4: work per read
 ;
 ; The number of dispatcher steps one read performs is at most the length of the
@@ -954,7 +1115,8 @@
                                        (fn-served-conn-session conn)
                                        (fn-served-conn-archive conn)
                                        (fn-served-conn-config conn)
-                                       (fn-served-conn-observation conn))
+                                       (fn-served-conn-observation conn)
+                                       (fn-served-conn-injection conn))
                   (fn-wire-result-events fed))))
       (+ (len (fn-wire-result-events fed))
          (fn-served-feed-steps (fn-served-result-conn here) (cdr octets))))))

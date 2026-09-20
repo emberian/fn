@@ -233,6 +233,27 @@ agent's identity, the groups it accepts, and its size bound. The host computes
 none of it — not the Message-ID, not the Injection-Date, not the Path, not the
 injected octets.
 
+**Which clock reading.** The observation `fn-inj-decide` is given is the one
+the host took *for this submission*, not the one the connection pinned when it
+was accepted. RFC 5537 §3.4 makes `Injection-Date` the time of injection, and
+fn derives a generated `Message-ID` from the same reading, so one reading per
+connection would give every submission on a connection the identity of the
+first: the second POST on a connection would be refused as a duplicate
+identity whatever its body. `fn-nntp-post-step` therefore takes two readings —
+`observation`, pinned at accept, which is the reader environment (DATE,
+NEWGROUPS, `fn-nntp-env`), and `injection`, supplied with the article event,
+which is the only one `fn-inj-decide` sees. `books/owner.lisp` supplies the
+owner's current observation on every `fn-own-read`; `tools/run_owner.py` takes
+that reading before each socket chunk. Two submissions on one connection whose
+injection clocks differ in either number receive distinct identities
+(`fn-post-distinct-injection-clocks-give-distinct-identities`, over
+`fn-inj-generated-identity-separates-different-clock-readings`). Under the
+*same* reading the retry rule still holds: the same proto-article injected
+twice is the same article, and — because the generator's only inputs are the
+clock and the configured agent — two different bodies under one reading do
+share a generated Message-ID. That is why the reading must move, and it is
+witnessed both ways in `tests/acl2/nntp-post-tests.lisp`.
+
 The injecting agent generates `Path`, `Injection-Date`, `Injection-Info`, and
 `Message-ID` and `Date` when the proto-article omits them (RFC 5537 §3.4.1
 permits exactly those three omissions). `From`, `Subject` and `Newsgroups`
@@ -267,11 +288,58 @@ assumes otherwise.
 ### Not yet true of POST
 
 There is no
-freshness window on a supplied `Date` (§3.5 item 3), no trusted-source check
-(item 1) and no moderated-group handling (item 7). RFC 3977 section 3.5
-forbids pipelining after POST's article until its response; a client that
-does so anyway gets the pipelined replies before the 240/441, because the
-read is consumed whole and the outcome is a later input.
+freshness window on a supplied `Date` (RFC 5537 §3.5 item 3), no
+trusted-source check (item 1) and no moderated-group handling (item 7).
+
+An earlier version of this section said RFC 3977 §3.5 forbids pipelining
+after POST's article. It does not, and the claim is withdrawn: §3.5 requires
+the server to allow pipelining and forbids it from throwing away text
+received after a command, and only a command whose own description says
+"MUST NOT be pipelined" ends a pipeline. POST's description says no such
+thing. fn now serves the pipelined case and proves it
+(`fn-served-pipelined-read-is-the-sequential-reply`,
+`fn-wire-article-event-resumes-command-mode`, `books/served.lisp`). What
+remains true is the ordering: a command pipelined behind the article body is
+answered before the 240 or 441, because the durable outcome is a later input
+(`fn-served-post-outcome`). That is §3.5's "process commands in the order
+they are sent" together with fn's refusal to acknowledge a posting before it
+has observed durability, not a pipelining defect.
+
+## Transport security, and what is trusted
+
+TLS is a **host facility and is outside the model**. RFC 4642 STARTTLS is
+served by `books/nntp-auth.lisp`, which emits a `(:starttls)` effect;
+`tools/run_owner.py` wraps the accepted socket with Python's `ssl` module
+using the configured `[listener] tls cert key`. The book sees plaintext
+octets on both sides of the handshake, and no theorem in this tree says
+anything about confidentiality, integrity, certificate validation, cipher
+selection or the handshake itself. What is proved is the protocol state
+machine around the upgrade: the capability label appears only where RFC 4642
+§2.1 allows, 382 is emitted only from the branch that also records the TLS
+layer, a second STARTTLS is 502, and the cached username and the
+authenticated subject are discarded across the handshake. The clause-by-clause
+split is the RFC 4642 matrix in [the audit](nntp-audit.md).
+
+AUTHINFO USER/PASS is likewise a **cleartext** mechanism: the configuration
+holds the shared secret, not a digest, because fn's only digest is the
+constrained `fn-digest` of `books/crypto-seam.lisp`, which has no attachment
+and cannot be evaluated. `OB-AUTH-DIGEST` in the audit records that with its
+cause. An operator who needs the secret protected on the wire sets
+`[listener] auth protected-only`, which makes AUTHINFO answer 483 until a TLS
+layer is active.
+
+**Open, and a real one**: RFC 4642 §2.2 says STARTTLS MUST NOT be pipelined,
+and the handshake begins with the first octet after the 382's CRLF. Any
+octets that arrived in the same read after the `STARTTLS` command line are
+therefore TLS handshake bytes, not NNTP. `fn-served-feed` is a byte fold with
+one stopping condition — a closed wire — so today it would frame those octets
+as NNTP before the host upgrades the socket. `tools/run_owner.py` discards the
+unread remainder of that read before handshaking, which §2.2 permits ("the
+server MAY ignore any data received after the command"), but that is a host
+decision about octets and this tree's rule is that ACL2 owns those. Closing it
+needs a second stopping condition in `fn-served-feed`, carried in the
+connection exactly as the closed wire is; the effect is already there to key
+on. Recorded rather than papered over.
 
 ## Scope
 

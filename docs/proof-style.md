@@ -3,9 +3,21 @@
 These are the conventions every book in `books/` and `tests/acl2/` follows.
 They were set on the core cluster (acceptance, retention, node, replay,
 exchange) in the 2026-09-19 realignment; each worked example below is real
-code from that cluster, cited by file. The assurance rules in
-[`AGENTS.md`](../AGENTS.md) say what a claim must be; this document says how
-a book is written so that green stays green when lanes merge.
+code, cited by file. The assurance rules in [`AGENTS.md`](../AGENTS.md) say
+what a claim must be; this document says how a book is written so that green
+stays green when lanes merge.
+
+Three of the conventions are now machinery, and the machinery is the
+convention:
+
+| what | where | it replaces |
+| --- | --- | --- |
+| `fn-defrecord`, `fn-defrecord-export` | `books/defrecord.lisp` | eleven to forty-one hand-written events per record (section 1) |
+| `fn-deftransition-closed`, `fn-deftransition` | `books/deftransition.lisp` | a floating `(local (in-theory (disable ...)))` and hand-wired branch lemmas ("Never open a recognizer") |
+| `tools/proof_profile.py` | one command | rediscovering `accumulated-persistence` on every slow form (section 9) |
+
+`tools/ledger.py`'s fifth lint counts the records still written by hand, so
+the migration is visible rather than remembered.
 
 The problem these solve, measured on the tree before the realignment: no
 typed structures (806 raw-list accessors), 642 `-is-`/`-of-` equalities of
@@ -15,15 +27,43 @@ include, whole-state recognizers recomputed on every served operation
 negated `must-fail` teeth, and 116 reaches for `minimal-theory`. Each of
 those is a symptom of the same thing: books exported their internals.
 
-## 1. Records are opaque
+## 1. Records are opaque, and generated
 
-A record is a shape recognizer, a constructor and accessors. The accessors
-are total (`:guard t`) with an `mbe` whose `:logic` is the raw selector and
-whose `:exec` is the total `fn-ag-` helper. Immediately after the
-constructor, prove the shape lemma and one accessor-of-constructor lemma per
-field, then withdraw the `:definition` runes of the shape, the accessors and
-the constructor. Nothing below that point opens a record: rules are stated
-in accessor vocabulary and goals stay in it.
+A record is a shape recognizer, a constructor and accessors. Write it with
+`fn-defrecord` (`books/defrecord.lisp`); do not write the events out.
+
+```lisp
+(fn-defrecord fn-sched-config
+  :tag :fn-sched-config
+  :constructor (fn-sched-config queue-bound aging-limit retry-bound)
+  :fields ((fn-sched-queue-bound posp)
+           (fn-sched-aging-limit posp)
+           (fn-sched-retry-bound posp)))
+```
+(`books/scheduler.lisp`; its five records are five such forms, and the
+migration removed 293 lines.)
+
+Accessor names are given in full because the tree does not derive them from
+the record name (`fn-sched-config` has `fn-sched-queue-bound`,
+`fn-sched-state` has `fn-sched-generation`). The constructor is given with
+its formals because those formals are the variables of the generated lemmas.
+A field type is `t` (unconstrained), a unary predicate applied to the field,
+or a term over the recognizer variable `x`; `:extra` adds whole-record
+conjuncts in the same vocabulary; `:recognizer nil` suppresses the recognizer
+for a record that has none (`fn-sched-result`). `:tag` puts a keyword at
+index 0 and shifts the fields by one, which is the tree's existing raw-list
+encoding, so a migration moves no bytes --- `tests/acl2/defrecord-tests.lisp`
+proves both layouts equal to the `list` call they replace.
+
+### What it generates, and why each part is there
+
+The accessors are total (`:guard t`) with an `mbe` whose `:logic` is the raw
+selector and whose `:exec` is the total `fn-ag-` helper. Immediately after
+the constructor come the shape lemma and one accessor-of-constructor lemma
+per field; then the `:definition` runes of the shape, the accessors and the
+constructor are withdrawn under the name `<record>-internals`. Nothing below
+that point opens a record: rules are stated in accessor vocabulary and goals
+stay in it.
 
 ```lisp
 (defun fn-article-shapep (x)
@@ -44,16 +84,19 @@ in accessor vocabulary and goals stay in it.
   (equal (fn-article-msgid (fn-make-article msgid payload groups memberships pin))
          msgid))
 ...
-(in-theory (disable (:d fn-article-shapep) (:d fn-article-msgid) ...
-                    (:d fn-make-article)))
+(deftheory fn-article-internals
+  '((:d fn-article-shapep) (:d fn-article-msgid) ... (:d fn-make-article)))
+(in-theory (disable fn-article-internals))
 ```
-(`books/acceptance.lisp`, article; the same pattern for pending, state,
-obligation, release, stage, binding, fact, policy, result.)
+(`books/acceptance.lisp`, article, still hand-written at the time of writing;
+the same pattern for pending, state, obligation, release, stage, binding,
+fact, policy, result. The ledger's fifth lint counts what is left.)
 
 Withdraw only the `:definition` rune (`(:d name)`). The constructor's
 type-prescription (it is a cons) and every executable counterpart stay, so
 `(null (fn-make-pending ...))` still decides and ground evaluation still
-works.
+works. The `<record>-internals` name exists so that the one form that must
+open the record opens it in its own hint, never book-wide.
 
 The recognizer of a record is then written over the shape predicate and the
 accessors, never over `car`/`len`:
@@ -70,6 +113,20 @@ Why this and not `(len x)` in the recognizer: a `len` conjunct is a
 `len`-backchaining invitation every time the recognizer opens. The shape
 predicate opens to it only if you enable it, and you never need to.
 
+Injectivity is generated `:rule-classes nil`, a name for one includer's
+`:use` rather than a rewrite rule that fires on every constructor equality
+(section 3). `:injective :rewrite` asks for the rule, and is a decision to
+defend in the book that asks.
+
+Editing `fn-defrecord` means editing two files. `tools/ledger.py` mirrors the
+expansion (`defrecord_expansion`), because a static reader cannot see through
+a macro: without the mirror a migrated book loses forty names from the
+ledger's `definitions` and the host-names lint calls every accessor the
+bridges use undefined. `tests/acl2/defrecord-tests.lisp` pins the Lisp side
+and `tests/test_ledger.py` the Python side. Note that a change to
+`books/defrecord.lisp` --- a comment included --- invalidates its certificate
+and every certificate above it, so batch such changes.
+
 ### What opacity takes away and what you must export back
 
 While `fn-article-msgid` opened to `(car x)`, type reasoning gave
@@ -77,9 +134,9 @@ While `fn-article-msgid` opened to `(car x)`, type reasoning gave
 `(fn-articlep c a)` gave `(true-listp a)` by opening. Withdrawing the
 definitions withdraws those facts, and an includer that projects a field out
 of a record found by `fn-find-article` (`fn-nntp-group-low-is-available`,
-`books/nntp.lisp`) fails for want of `(consp a)`. So every opaque record
-exports, beside its record lemmas and as `:forward-chaining` rules only
-(never rewrite), the three shape facts type reasoning used to supply:
+`books/nntp.lisp`) fails for want of `(consp a)`. So `fn-defrecord` emits,
+beside the record lemmas and as `:forward-chaining` rules only (never
+rewrite), the three shape facts type reasoning used to supply:
 
 ```lisp
 (defthm fn-article-shapep-forward-shape
@@ -93,14 +150,15 @@ exports, beside its record lemmas and as `:forward-chaining` rules only
   (implies (fn-articlep configured x) (and (consp x) (true-listp x)))
   :rule-classes :forward-chaining)
 ```
-(`books/acceptance.lisp`; the same three per record in every cluster book,
-named `<shape>-forward-shape`, `<rec>-accessors-forward-consp`,
+(named `<shape>-forward-shape`, `<rec>-accessors-forward-consp`,
 `<recognizer>-forward-shape`.) The accessor rule triggers on the field term
 itself, so `(stringp (fn-article-msgid a))` in a hypothesis yields
 `(consp a)` exactly as before. Forward-chaining is the right class: the
 facts land in the context when the record is mentioned, and no rewrite rule
 about `consp` or `true-listp` leaves the book. An includer that wrote a local
-bridge for one of these deletes it.
+bridge for one of these deletes it. Losing one of these three by hand is how
+the tree bought four rule fans in one cycle, which is the whole argument for
+generating them.
 
 ## 2. Export theory at book end
 
@@ -120,6 +178,17 @@ vocabulary. A book that withdraws nothing says so:
                     fn-install-pending fn-clear-pending
                     fn-accept-prepare fn-accept-complete fn-accept-recover))
                                             ; books/acceptance.lisp
+```
+
+The export event is written with `fn-defrecord-export`
+(`books/defrecord.lisp`), which names the records' recognizers by convention
+and the rest by hand:
+
+```lisp
+(fn-defrecord-export fn-sched-vocabulary
+  :records (fn-sched-contact fn-sched-config fn-sched-item fn-sched-state)
+  :also (fn-sched-contact-holdsp fn-sched-initial-state
+         fn-sched-step fn-sched-trace ...))     ; books/scheduler.lisp
 ```
 
 Lemmas that are proof vocabulary (allocator, watermark, set and length
@@ -283,6 +352,10 @@ induction vocabulary: `fn-article-listp`, `fn-node-binding-msgids`,
 (`fn-pending-matchesp`, `fn-retain-matching-releasep`); the total `fn-ag-`
 helpers.
 
+`<record>-internals` is the name to reach for when a single form must open
+one record; it is the `:d` runes of that record's shape, constructor and
+accessors and nothing else.
+
 May not: record accessors, constructors and shapes; recognizers of records
 and states; initial states; transitions; `len`-, `consp`- or
 `true-listp`-backchaining rules; `-is-`/`-of-` equalities other than record
@@ -291,7 +364,37 @@ lemmas); corollaries; anything an includer would have to `disable` to keep
 its own proofs stable. A hint that reaches for `minimal-theory` is a book
 that exported too much; say which rules you mean with `e/d`.
 
-## 9. The FTY question
+## 9. The first thing to run on a slow form
+
+Before hints, before `e/d`, before splitting the book: profile it.
+
+    python3 tools/proof_profile.py books/scheduler \
+        fn-sched-step-preserves-statep --host hbox
+
+It builds a driver from the book's own source up to the named form --- so
+the form runs in exactly the theory the book builds for it, with the book's
+dependencies coming from the box's certificate cache --- runs the form under
+`(accumulated-persistence t)` with a step limit, and prints the top rules by
+frames that never contributed a useful application (that is the fan), the top
+by frames overall, the top by tries, the form's Summary, and the first key
+checkpoint if it did not close. With no `--host` it takes the less loaded of
+persvati and hbox, one `ssh host uptime` each; `--log <file>` re-renders a
+saved log, which is how `tests/test_proof_profile.py` pins the parser against
+two real ACL2 8.7 logs.
+
+ACL2 attributes frames and tries per rune and time only per form, so the
+tool reports the form's own time and does not invent a per-rule figure.
+Frames are the cost proxy: a rune with a large frame count and no useful
+application is the thing to withdraw.
+
+This is how every fan in this document was found. `:frames-a` is what
+identified the 921k-of-921k frames of the article and wildmat `*-true-listp`
+rules under an open session record (`planning/deputies/BOARD.md`,
+w3/reader-profile), and the same measurement is behind the C2, checkpoint and
+article-exports diagnoses. A lane that reaches for `minimal-theory` instead
+has skipped this step.
+
+## 10. The FTY question
 
 Should records migrate to `fty::defprod`/`deftagsum` instead of the raw-list
 discipline above? `centaur/fty/top` is certified in the laptop install
@@ -313,6 +416,11 @@ records as positional lists today (`books/records.lisp`, the CBOR record
 codec) and `defprod` layouts are `:layout :list`-compatible only when asked
 and only for the tagless form; and the ledger's guard reader would need to
 learn `fty` events.
+
+Since 2026-09-20 the "generated rather than written" half of what `fty`
+would buy is bought by `fn-defrecord`, at no include cost and with no fixing
+functions in keystone statements. What remains genuinely `fty`-only is
+congruence reasoning over record equivalences.
 
 Recommendation: keep raw-list records under the opaque discipline. It
 gives the same interface (shape, constructor, accessors, one lemma per
@@ -340,10 +448,34 @@ the one name to reach for when a single name suffices.
 ### Never open a recognizer to prove a property of a transition
 
 A theorem about a transition of a record (`fn-x-step`, `fn-x-recv-*`) is
-proved with the recognizer and every sub-recognizer CLOSED: a local
+proved with the recognizer and every sub-recognizer CLOSED: a named
 `fn-x-closed` theory, one lemma per branch dismissing the transitions that
 cannot affect the property, the content proved at the owning transition, and
-the theorem lifted by `:use`. The forward-chaining field facts exported with
+the theorem lifted by `:use`. `books/deftransition.lisp` writes the three
+mechanical parts:
+
+```lisp
+(fn-deftransition-closed fn-tcl-session-closed
+  (fn-tcl-sessionp fn-tcl-next fn-tcl-with-outbound))
+
+(fn-deftransition fn-tcl-refuse-preserves-sessionp
+  :statement (implies (and (fn-tcl-sessionp s) (fn-clock-timep now))
+                      (fn-tcl-sessionp
+                       (fn-tcl-result-session (fn-tcl-refuse s xfer-id reason now))))
+  :closed (fn-tcl-session-closed)
+  :opens (fn-tcl-refuse))       ; books/tcpcl-session.lisp
+```
+
+`:statement` is the keystone, unchanged and unwrapped: the macro never edits
+a statement, it fixes the theory the proof runs in and pins it AT THE FORM,
+so a later `in-theory` cannot widen it by accident. Each `:branches` entry is
+`(<lemma-name> <branch-test> <claim>)`; the lemma is local, `:rule-classes
+nil` (section 7), proved in the same closed theory, and its name is appended
+to the lift's `:use`, so a branch lemma cannot be left as decoration. The
+content --- the one thing that needs the recognizer open --- is proved
+separately at the transition that owns it, and is the only part the macro
+does not write. `tests/acl2/defrecord-tests.lisp` runs the whole idiom on a
+three-branch transition. The forward-chaining field facts exported with
 the record supply what type reasoning used to. Measured on 2026-09-20: a
 `(local (in-theory (enable fn-tcl-sessionp)))` above C2 put its eleven
 sub-recognizers into the clause and produced 1082 subgoals; closed, the same
