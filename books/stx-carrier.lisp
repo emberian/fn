@@ -550,15 +550,24 @@
                 nil))))
       (if (fn-stx-okp r) (fn-stx-val r) nil))))
 
-(defthm fn-stx-authored-source-is-octet-list
-  (implies (fn-article-syntax-p article)
-           (fn-cbor-octet-listp (fn-stx-authored-source article)))
-  :hints (("Goal" :in-theory (enable fn-article-syntax-p))))
-
-(defthm fn-stx-payload-for-is-octet-list
-  (implies (fn-article-syntax-p article)
-           (fn-cbor-octet-listp (fn-stx-payload-for article header)))
-  :hints (("Goal" :in-theory (enable fn-article-syntax-p))))
+; REMOVED, RECORDED OPEN (never weakened).  Two shape theorems stood here:
+;   fn-stx-authored-source-is-octet-list
+;   fn-stx-payload-for-is-octet-list
+; both of the form (implies (fn-article-syntax-p article) (fn-cbor-octet-listp
+; ...)).  They do not follow from fn-article-syntax-p and are very likely
+; false as stated: the projection is built from fn-article-field-raw-lines,
+; and books/article.lisp's fn-article-fieldp constrains a field's raw lines
+; to true-listp only -- the octet-ness lives in the article's header bytes
+; and in the field's UNFOLDED value, not in the raw line list the recomposer
+; walks.  Closing them needs either a parser theorem that the raw lines of a
+; parsed article are octet lists, or a projection written over the unfolded
+; values instead of the raw lines; both are more than a shape lemma and
+; neither is attempted here.
+;
+; Nothing in this cluster needs them: fn-stx-reattach tests fn-stmt-p, which
+; re-establishes fn-stmt-payloadp on the projected octets itself, and every
+; function on the path has guard T.  Recorded in
+; planning/lanes/HANDOFF-w7-substrate-s1.md.
 
 ; -----------------------------------------------------------------------------
 ; Export theory (docs/proof-style.md section 2).  The record accessors, the
