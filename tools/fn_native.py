@@ -60,6 +60,12 @@ def store_protocol(args):
                 args.inject_fault or "-", *args.group]
     if args.command == "inspect":
         # run_store encodes this one after opening the store; the image does too.
+        if getattr(args, "provenance", False):
+            # The image has no provenance surface yet.  Say so rather than
+            # dropping the flag and printing the payload as if it had been
+            # asked for (w10/provenance; the seam is fn-store-prov-for-msgid).
+            raise ValueError("the native image does not implement "
+                             "`inspect --provenance` yet")
         return ["store", root, "inspect", args.message_id]
     if args.command == "init":
         # The groups of the store's first configuration record.  The image
