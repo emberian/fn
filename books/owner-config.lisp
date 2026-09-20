@@ -337,11 +337,11 @@
 ; Every OTHER owner event leaves the table alone, which is the mechanism
 ; behind `fn-ocfg-pin-is-stable-without-advance' below.
 
-(defun fn-ocfg-open (oc)
+(defun fn-ocfg-open (oc acfg)
   (declare (xargs :guard t))
   (let* ((o (fn-ocfg-owner oc))
          (id (fn-own-next-id o))
-         (opened (fn-own-open o))
+         (opened (fn-own-open o acfg))
          (o2 (cdr opened)))
     (cons (car opened)
           (fn-ocfg-make o2 (fn-ocfg-config oc)
