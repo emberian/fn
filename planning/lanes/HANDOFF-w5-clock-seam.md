@@ -101,9 +101,21 @@ observation shown not to enter the identity.
   (`--jobs 8 --remote-root /home/ember/fn-lanes/w5-clock-seam --closure`
   over injection-invariants, nntp-post, served, owner, owner-invariants and
   the four test books; cache: installed 159, kept 11, uncached 46).
-  **Verdict recorded below.**
+  **Still running when this lane's budget ran out — NO VERDICT.** Harvest it
+  with `python3 tools/farm.py wait persvati --remote-root
+  /home/ember/fn-lanes/w5-clock-seam run-20260920T175602Z-51f8`. Nothing in
+  this lane may be reported as certified until that run reports.
+  Note before reading its verdict: `books/nntp-effects` is **open on dev** at
+  `fn-nntp-hdr-labelled-line-is-block-text` (owner-followups' final board
+  NOTE, 2598 s / 1.47e9 steps) and it is in this closure, so a failure there
+  is pre-existing and cascades onto nntp-post, served and owner through no
+  fault of this change.
 - Python on persvati in that root: `tests.test_post tests.test_owner
-  tests.test_reader`. **Result recorded below.**
+  tests.test_reader` with `FN_ACL2=$HOME/fn-tools/acl2-8.7/saved_acl2`.
+  **NOT RUN** — it needs the certificates the farm run had not produced. This
+  is the first thing a successor runs, and
+  `test_a_reader_pinned_before_a_post_keeps_its_view` is the case the whole
+  lane exists for.
 - `tests/test_post.py` was not edited. The design says the second post is a
   new article, not a retry: the two bodies differ, neither supplies a
   `Message-ID`, and the readings differ. If
