@@ -39,7 +39,7 @@ open / post / open / advance / post / close / reopen:
 The emptiness gate the proposal rests on is a fact about *this state's* success
 list, not about what earlier processes promised, so it does not protect that
 record. A widened `fn-sf-crash-imagep` -- which is the gate of `fn-own-reopen`
-(`books/owner.lisp:874`) -- therefore lets the reopen take the rolled-back
+(`books/owner.lisp:911`) -- therefore lets the reopen take the rolled-back
 image, and `fn-own-ledger-durablep` is then false, so
 `fn-own-reopen-preserves-relation` is FALSE.
 `fn-bprv-crash-image-extends-history` and `fn-bprv-observed-reopen-facts` fail
@@ -101,9 +101,9 @@ to each, which is the evidence for §2.
 
 | # | theorem | book:line | verdict | under a widened `fn-sf-crash-imagep` |
 | --- | --- | --- | --- | --- |
-| 1 | `fn-sf-crash-realizes-every-admissible-image` | `store-files-invariants:428` | unchanged, certified | would need `fn-sf-image-crash`; that version shipped as the `-recovery-` twin |
-| 2 | `fn-sf-crash-imagep-implies-state` | `store-files-invariants:456` | unchanged, certified | true; twin added |
-| 3 | `fn-sf-admissible-image-facts` | `store-files-invariants:479` | unchanged, certified | true; twin added (`-recovery-`), and it is K2r |
+| 1 | `fn-sf-crash-realizes-every-admissible-image` | `store-files-invariants:440` | unchanged, certified | would need `fn-sf-image-crash`; that version shipped as the `-recovery-` twin |
+| 2 | `fn-sf-crash-imagep-implies-state` | `store-files-invariants:468` | unchanged, certified | true; twin added |
+| 3 | `fn-sf-admissible-image-facts` | `store-files-invariants:491` | unchanged, certified | true; twin added (`-recovery-`), and it is K2r |
 | 4 | `fn-own-crash-image-extends-records` | `owner-invariants:336` | unchanged, certified | **FALSE** -- the image no longer extends the record list |
 | 5 | `fn-snt-admissible-crash-image-is-recoverable` | `store-node-traces:678` | unchanged, certified | **UNPROVED** -- needs prefix recoverability; measured failure in `run-20260920T211812Z-1f0a` |
 | 6 | `fn-sn-acknowledged-record-survives-observed-reopen` | `store-observed:625` | unchanged, certified | true (its `member-equal` hypothesis and the arm's gate are contradictory) |
@@ -112,8 +112,8 @@ to each, which is the evidence for §2.
 | 9 | `fn-bprv-observed-reopen-facts` | `bp-receiver-evolving-store-invariants:398` | unchanged, certified | **FALSE** via row 8 (`fn-bprv-extendsp`) |
 | 10 | `fn-bprv-evolving-invariant-survives-observed-reopen` | `bp-receiver-evolving-store-invariants:428` | unchanged, certified | **FALSE** via row 9 |
 | 11 | `fn-bpr-live-receipt-regenerated-after-restart` | `bp-receiver-evolving-store-invariants:627` | unchanged, certified | **FALSE** via rows 8 and 9 |
-| d1 | `fn-own-reopen` (definition, the host's reopen gate) | `owner.lisp:874` | unchanged | the gate would admit the rolled-back image: this is the counterexample |
-| d2 | `fn-bs-store-relation` (definition) | `byte-store-scan.lisp:525` | unchanged | unaffected; its recovery arm already carries the emptiness |
+| d1 | `fn-own-reopen` (definition, the host's reopen gate) | `owner.lisp:911` | unchanged | the gate would admit the rolled-back image: this is the counterexample |
+| d2 | `fn-bs-store-relation` (definition) | `byte-store-scan.lisp:510` | unchanged | unaffected; its recovery arm already carries the emptiness |
 | c1 | `fn-sf-crash-image-is-admissible` (conclusion, not premise) | `store-files-invariants:342` | unchanged, certified | wider conclusion, still true |
 
 **Separation witnesses.** Rows 1 to 11 keep the witnesses they had, and those

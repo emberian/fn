@@ -641,7 +641,7 @@
 ; only while a link may have been issued, that list extended by the exact
 ; data-durable candidate.  Theorems about the host's reopen path
 ; (store-observed.lisp) take this predicate as their premise, and the host's
-; own reopen gate is this predicate (fn-own-reopen, owner.lisp:874), so it is
+; own reopen gate is this predicate (fn-own-reopen, owner.lisp:911), so it is
 ; the RELIANCE predicate: what a consumer of this state may count on.
 ; fn-sf-crash below is one constructor that satisfies it and shows the premise
 ; is inhabited; the guarantee comes from the predicate, not from the
