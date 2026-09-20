@@ -569,10 +569,13 @@ def defrecord_expansion(form: list) -> list:
         extra = options.get(":extra")
         if isinstance(extra, list):
             conjuncts_.extend(extra)
-        events.append([Sym("defun"), Sym(recognizer), [Sym("x")], guard,
+        recognizer_formals = options.get(":recognizer-formals")
+        leading = ([item for item in recognizer_formals if isinstance(item, Sym)]
+                   if isinstance(recognizer_formals, list) else [])
+        events.append([Sym("defun"), Sym(recognizer), leading + [Sym("x")], guard,
                        [Sym("and")] + conjuncts_])
         events.append([Sym("defthm"), Sym(f"{recognizer}-forward-shape"),
-                       [Sym("implies"), [Sym(recognizer), Sym("x")],
+                       [Sym("implies"), [Sym(recognizer)] + leading + [Sym("x")],
                         [Sym("and"), [Sym("consp"), Sym("x")],
                          [Sym("true-listp"), Sym("x")]]],
                        Sym(":rule-classes"), Sym(":forward-chaining")])

@@ -167,6 +167,13 @@
 ; whole-record conjuncts in the same vocabulary.  `:recognizer nil' suppresses
 ; the recognizer for a record that has none (`fn-sched-result'), and then the
 ; third forward fact is not generated either.
+;
+; `:recognizer-formals' prepends formals to the recognizer and to its forward
+; fact, for a recognizer that is relative to context the record does not
+; carry: `(fn-articlep configured x)' checks the article's groups against the
+; configured ones, `(fn-pendingp configured nexts next-txid x)' checks the
+; transaction against the state that holds it.  The record variable stays `x'
+; and stays last, so field types and `:extra' are unaffected.
 
 (defmacro fn-defrecord (name &key
                              constructor          ; (ctor formal ...); required
@@ -175,6 +182,7 @@
                              (layout ':positional)
                              shape                ; default <name>-SHAPEP
                              (recognizer ':default) ; symbol, or nil to suppress
+                             recognizer-formals   ; extra formals before `x'
                              extra                ; more recognizer conjuncts
                              (injective 'nil)     ; nil | :rewrite
                              internals            ; default <name>-INTERNALS
@@ -229,13 +237,13 @@
       `(in-theory (disable ,theory)))
      (if (null recp) nil
        (list
-        `(defun ,recp (x)
+        `(defun ,recp (,@recognizer-formals x)
            (declare (xargs :guard t))
            (and (,shapep x)
                 ,@(fn-defrecord-recognizer-conjuncts fields)
                 ,@extra))
         `(defthm ,(fn-defrecord-name (list recp "-FORWARD-SHAPE") name)
-           (implies (,recp x) (and (consp x) (true-listp x)))
+           (implies (,recp ,@recognizer-formals x) (and (consp x) (true-listp x)))
            :rule-classes :forward-chaining
            :hints (("Goal" :in-theory (enable ,shapep)))))))))))
 
