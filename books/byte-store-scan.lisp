@@ -245,7 +245,9 @@
 ; entry's value: every name list a crash can leave, from the operations of
 ; this directory alone.
 (defun fn-bs-names-outcomes (ops old dir)
-  (declare (xargs :guard t :verify-guards nil))
+  ; DIR is carried so the statement below reads beside fn-bs-names-after;
+  ; the enumeration itself only walks OPS, which is already this directory's.
+  (declare (xargs :guard t :verify-guards nil) (ignorable dir))
   (if (consp ops)
       (append (fn-bs-names-outcomes (cdr ops) old dir)
               (fn-bs-names-outcomes (cdr ops) (fn-bs-name-step (car ops) old) dir))
