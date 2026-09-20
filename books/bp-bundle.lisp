@@ -542,6 +542,26 @@
 ; primary block's CBOR item ends; the octets up to there go to `fn-bpp-decode`
 ; unchanged, so the decoder of a bundle's primary block is the certified one
 ; and not a second implementation of it.
+; `take` wants a non-negative count, so the scan's remainder must be no
+; longer than what it scanned.  That is a corollary of the CBOR decoder's own
+; `-reencodes-consumed-prefix`: the consumed prefix appended to the remainder
+; IS the input, so the remainder's length is at most the input's.  Proving it
+; by induction over `fn-bpc-dec` instead is what exhausted the prover here on
+; 2026-09-20.
+(local
+ (defthm fn-bpb-dec-rest-is-no-longer
+   (implies (and (fn-cbor-octet-listp octets)
+                 (fn-cbor-result-okp (fn-bpc-dec :item 0 octets budget)))
+            (<= (len (fn-cbor-result-rest (fn-bpc-dec :item 0 octets budget)))
+                (len octets)))
+   :rule-classes :linear
+   :hints (("Goal"
+            :use ((:instance fn-bpc-dec-reencodes-consumed-prefix
+                             (flg :item) (count 0)))
+            :in-theory (e/d (fn-bpc-len-of-append)
+                            (fn-bpc-dec fn-bpc-enc
+                             fn-bpc-dec-reencodes-consumed-prefix))))))
+
 (defun fn-bpb-scan-primary (octets)
   (declare (xargs :guard (fn-cbor-octet-listp octets)
                   :guard-hints
@@ -561,7 +581,8 @@
 (defthm fn-bpb-scan-primary-yields-a-block
   (implies (fn-cbor-result-okp (fn-bpb-scan-primary octets))
            (fn-bpp-blockp (fn-cbor-result-value (fn-bpb-scan-primary octets))))
-  :hints (("Goal" :in-theory (disable fn-bpc-dec fn-bpp-decode))))
+  :hints (("Goal" :in-theory (disable fn-bpc-dec fn-bpp-decode
+                                      fn-bpp-blockp fn-bpp-result-block))))
 
 (defthm fn-bpb-scan-primary-rest-are-octets
   (implies (fn-cbor-octet-listp octets)
@@ -569,6 +590,17 @@
             (fn-cbor-result-rest (fn-bpb-scan-primary octets))))
   :hints (("Goal" :in-theory (e/d (fn-bpc-dec-rest-are-octets)
                                   (fn-bpc-dec fn-bpp-decode)))))
+
+; The list version below inducts over `fn-bpb-decode-blocks` with
+; `fn-bpb-decode-block` CLOSED, so the one-block fact has to be a rule before
+; it.  Without it the induction has nothing to apply and the prover runs
+; away: measured 2026-09-20, the run was killed at the 2400 s cap with this
+; theorem still open (`build/acl2/certify-20260920T195958Z-1136779`).
+(defthm fn-bpb-decode-block-yields-a-block
+  (implies (fn-cbor-result-okp (fn-bpb-decode-block octets))
+           (fn-bpb-blockp (fn-cbor-result-value (fn-bpb-decode-block octets))))
+  :hints (("Goal" :in-theory (disable fn-bpb-encode-block fn-bpb-block-crc
+                                      fn-bpb-take-uint fn-bpb-take-bytes))))
 
 (defthm fn-bpb-decode-blocks-yield-blocks
   (implies (and (fn-cbor-octet-listp octets)
