@@ -99,6 +99,100 @@ bound, whichever is larger. The recorded maximum-profile reopen on this machine
 is 11.7 s for 128 records, so the bound is about 158 s: an order of magnitude
 above measurement, instead of a fixed 20 s that sat within 2x of it.
 
+## The native host
+
+`build/fn-host` is one saved SBCL image: ACL2 8.7, the certified books the
+hosts drive, the `:program` wrappers in `host/*-host.lisp`, and the raw-Lisp
+adapter `host/native/io.lisp`. `tools/build_native_host.sh` feeds
+`host/native/build.lisp` to a certified ACL2 and refuses the image on any
+error marker, any uncertified-book warning, or a missing ready marker; the
+books it `include-book`s are Makefile certification roots, so the image holds
+the certified definitions and nothing reinterpreted. `tools/fn_native.py`
+launches it with the Python hosts' command-line surface, and `FN_HOST=native`
+makes `tools/run_store.py` and `tools/run_reader.py` delegate to it after
+parsing, so the same tests drive either host.
+
+The decimal-octet pipe, its nonce correlation and its reply bounds do not
+exist in this host: every call is an in-process application of the wrapper's
+executable counterpart (`fnn-call`, the raw-Lisp spelling of `ec-call`), under
+the image's `guard-checking-on`, which the entry asserts is `t`, the same
+policy the interpreted bridge evaluates under. A `:program` wrapper therefore
+runs raw beneath its counterpart in both hosts; the complete call-graph guard
+requirement of packet C3-05 is unchanged by the packaging.
+
+### The served reader path
+
+One socket read is one `fn-served-step` (books/served.lisp): a fold of
+`fn-wire-feed-byte` with `fn-nntp-post-step` on each framed event, with the
+reply concatenation, over a five-field connection that carries the posting
+configuration and the clock observation pinned at `fn-served-open`. The host
+hands the whole chunk over and takes back reply octets, a closing flag and
+whatever submission the step produced; it re-feeds nothing, frames nothing
+and holds no wire state, so `fn-wire-drive` has one owner and it is the book.
+A submission is completed as refused while the reader holds only a shared
+lock, and ACL2 -- never the host -- writes the 240 or the 441.
+
+The store path opens on the replayed configuration history: `config/*.cfg`,
+oldest first, to `fn-store-sn-recover` with the article records and the
+frontier. A store with no configuration record is refused, and the served
+group names, their codes and the generation come back from the core
+(`fn-store-cfg-served/-domain/-generation`); the image holds no compiled
+group table and `init` asks `fn-cfg-host-initial-octets` for generation 1.
+
+### Trust boundary of the native host
+
+Everything below is asserted, not proved. The raw surface is exactly
+`host/native/io.lisp`, loaded under the trust tag `:fn-native-host`, which is
+retired (`(defttag nil)`) before the image is saved; `fn-native-entry` is the
+one ACL2-visible symbol whose raw definition that file replaces.
+
+| Surface | Functions | What it does |
+| --- | --- | --- |
+| SBCL runtime | `sb-ext:exit`, `sb-sys:enable-interrupt` (SIGTERM exits 143), `sb-sys:make-fd-stream` on descriptors 1 and 2, `sb-ext:*posix-argv*` after `--fn` | Process entry, exit and standard streams; `--disable-debugger` in the saved script so an escaped condition exits rather than waits on a terminal |
+| Files (sb-posix, sb-unix) | `fnn-open`, `fnn-close`, `fnn-fstat`, `fnn-lstat`, `fnn-check-regular`, `fnn-read-fd`, `fnn-read-regular-bounded`, `fnn-write-all`, `fnn-list-directory`, `fnn-link`, `fnn-replace`, `fnn-unlink`, `fnn-mkdir`, `fnn-safe-directory` | The same `O_NOFOLLOW` opens, `fstat` regularity checks, bounded reads, `O_EXCL` staging, `link`/`rename` publication and directory grammar as `tools/run_store.py` |
+| Barriers | `fnn-durable-barrier`, `fnn-fsync-file`, `fnn-fsync-dir`, `fnn-fsync-regular` | The platform table above: `fcntl(fd, 51)` (`F_FULLFSYNC`, which sb-posix does not name) on darwin, `fsync(2)` after `ENOTTY`/`ENOTSUP`/`EOPNOTSUPP`/`EINVAL`/`EPERM`, `fsync(2)` elsewhere; the five recovery barriers, the staged-file and directory barriers are real calls |
+| Locks | `fnn-flock` (alien `flock(2)`), `fnn-open-lock` | `LOCK_EX`/`LOCK_SH` with `LOCK_NB`, the same refusal and fault classes |
+| Cryptography | `fnn-sha256` (A-CRYPTO) | SHA-256 in Lisp; `python3 tools/fn_native.py sha256-selftest` compares it with `hashlib` on the FIPS vectors and random lengths across the padding boundaries. Digest octets go to the constrained `fn-frame-digest` consumers exactly as Python's do |
+| Metadata JSON | `fnn-json-parse`, `fnn-json-canonical`, `fnn-with-checksum`, `fnn-frontier-with-checksum`, `fnn-load-config`, `fnn-load-frontier` | `config.json` and `allocation-frontier.json`: a bounded hand parser (never the Lisp reader) and Python's `json.dumps(sort_keys=True, separators=(",", ":"))`. This is a host decision with two host implementations; the differential run is what keeps them equal (see open items) |
+| Core calls | `fnn-call`, `fnn-core`, `fnn-core-state`, `fnn-global` | Counterparts of `fn-store-sn-reset/-recover/-io/-prepare/-existing-action/-pending-octets/-known-abort/-refuse-reservation/-finish/-article-count/-next-txid/-group-next/-pin-count/-reserved/-lookup/-lookup-foundp`, `fn-store-record-sequence/-txid`, `fn-store-frame-constants/-store-protected/-store-decode`, `fn-store-subject-id`, `fn-store-obligation-preimage/-id`, `fn-store-post-boundary`, `fn-store-charge`, `fn-store-group-codes` (names against the replayed domain), `fn-store-cfg-generation/-served/-domain`, `fn-cfg-host-initial-octets`, `fn-reader-use-seed/-use-store/-set-posting/-reset/-chunk/-outcome`, `fn-reader-model-octets`; the globals `fn-reader-output`, `fn-reader-closep`, `fn-reader-submit-octets/-msgid`, `guard-checking-on`. A `raw-ev-fncall` throw or Lisp error inside a call is a refusal, as an `ACL2 Error` reply is for the pipe |
+| Sockets | `fnn-listen` (`sb-bsd-sockets` `inet-socket`/`inet6-socket`, loopback unless an address is passed), `fnn-connect`, `fnn-accept-loop`, `fnn-socket-fd`, `fnn-socket-shut`; `fnn-recv`, `fnn-send-all` (`sb-sys:wait-until-fd-usable` with the 10 s timeouts), `fnn-graceful-close` (alien `shutdown(fd, SHUT_WR)` then a one-second drain), `fnn-serve-client` | `tools/run_reader.py`'s loop: 512-octet reads, **one `fn-served-step` per read** and no retained suffix, the reply octets from `fn-served-reply-octets`, close after a framing rejection. These eight are the whole socket surface, and the surface `host/native/tcpcl.lisp` is to build on (planning/lanes/HANDOFF-w4-tcpcl.md) |
+| Entry | `fnn-main`, `fnn-dispatch`, `fn-native-entry` | The fixed positional protocol behind `--fn`, the outcome-to-exit-code map (the reader's pre-listen failures exit 1, as an uncaught Python exception does) |
+
+Remaining Python-only: the BP hosts (`run_bp_ingress.py`, `run_bp_receive.py`,
+`workflow_journal.py`, `receipt_journal.py`), the in-process `Acl2Store`,
+`Store` and `Acl2Reader` classes that the fault-matrix, process-crash and
+partition tests drive through `mock.patch`, and the reader's
+`ReaderBridgeFault` path, which has no in-process analogue: a Lisp condition
+that escapes a core call while serving is reported and exits 4.
+
+### Differential evidence and measurements
+
+`python3 -m unittest tests.test_native_served_differential` feeds one chunk
+list through the image twice -- `--fn model` (one `fn-served-open` then one
+`fn-served-run`, projected with `fn-served-reply-octets`) and `--fn reader`
+(the production listener) -- and requires identical bytes, for a whole
+transcript, three cut points, a bytewise partition, a cut inside a UTF-8
+sequence, input after QUIT and a framing rejection. It is the native mirror
+of `tests/test_served_differential.py`, and it is what says the thing on the
+socket is the certified fold and nothing else.
+
+`python3 tests/native_differential.py` runs one scripted store sequence
+through both hosts and compares, after every command, the exit code, standard
+output and every byte under the store (staging names, which carry a pid and
+random octets, are compared by content), then twelve identically damaged
+copies, then four reader transcripts octet for octet. Recorded run:
+FN_DIFF_RESULT. The four test files `tests/test_store.py`,
+`tests/test_store_corruption.py`, `tests/test_reader.py` and
+`tests/test_reader_partitions.py` under `FN_HOST=native`: FN_TEST_RESULT.
+
+Reopen of the 128-record maximum profile (32768-octet payloads, both groups),
+same machine, load average FN_LOAD at the time:
+
+| Host | Commit 128 records | Reopen (recover, replay, five barriers) | Scope |
+| --- | --- | --- | --- |
+| Python (`tests/store_capacity_probe.py`) | FN_PY_COMMIT s | FN_PY_REOPEN s | the reopen includes starting a fresh ACL2 process and loading the books, then marshaling about 34 MiB of decimal octets |
+| native (`fn-host --fn store DIR probe 128`) | FN_NA_COMMIT s | FN_NA_REOPEN s | in-process; image start (`status` on an empty store end to end) is FN_NA_START s |
+
 ## Scope of the first adapter
 
 Prefer one host process, one owner of core state, bounded I/O staging, and local
