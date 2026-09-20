@@ -42,12 +42,15 @@ class Bundle:
     lifetime: int
     age: int
     payload_sha256: str
+    # Spool arrival order.  A store-and-forward queue is first in, first out;
+    # the slot name is a digest of the BID, so the directory listing is not.
+    sequence: int = 0
 
     @staticmethod
     def from_document(document: dict) -> "Bundle":
         return Bundle(document["bid"], document["destination"],
                       document["lifetime"], document["age"],
-                      document["payload_sha256"])
+                      document["payload_sha256"], document.get("sequence", 0))
 
 
 def _durable_write(path: Path, data: bytes) -> None:
@@ -80,6 +83,7 @@ class MockBpa:
         for directory in (self.root, self.queue, self.local, self.expired):
             directory.mkdir(mode=0o700, parents=True, exist_ok=True)
         self.counter = 0
+        self.spool = 0
         self.starts = 1
         self.events: list[dict] = []
 
@@ -93,9 +97,13 @@ class MockBpa:
         self._note("restart", starts=self.starts)
 
     def _write(self, directory: Path, bid: str, adu: bytes, destination: str,
-               lifetime: int, age: int = 0) -> None:
+               lifetime: int, age: int = 0, sequence: int | None = None) -> None:
+        if sequence is None:
+            self.spool += 1
+            sequence = self.spool
         document = {"bid": bid, "destination": destination, "lifetime": lifetime,
-                    "age": age, "payload_sha256": hashlib.sha256(adu).hexdigest()}
+                    "age": age, "payload_sha256": hashlib.sha256(adu).hexdigest(),
+                    "sequence": sequence}
         slot = directory / _slot(bid)
         slot.mkdir(mode=0o700, exist_ok=True)
         _durable_write(slot / "payload.adu", adu)
@@ -115,6 +123,7 @@ class MockBpa:
         for slot in sorted(p.name for p in directory.iterdir() if p.is_dir()):
             bundle, payload = self._read(directory, slot)
             result.append((bundle, payload, slot))
+        result.sort(key=lambda entry: (entry[0].sequence, entry[2]))
         return result
 
     # -- the surface fn uses ---------------------------------------------
@@ -166,13 +175,13 @@ class MockBpa:
             age = bundle.age + seconds
             if age > bundle.lifetime:
                 self._write(self.expired, bundle.bid, payload, bundle.destination,
-                            bundle.lifetime, age)
+                            bundle.lifetime, age, bundle.sequence)
                 self._drop_queued(slot)
                 dropped.append(bundle.bid)
                 self._note("expired", bid=bundle.bid, age=age, lifetime=bundle.lifetime)
             else:
                 self._write(self.queue, bundle.bid, payload, bundle.destination,
-                            bundle.lifetime, age)
+                            bundle.lifetime, age, bundle.sequence)
         return dropped
 
     def deliver_into(self, peer: "MockBpa", bundle: Bundle, payload: bytes,
