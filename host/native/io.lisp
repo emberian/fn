@@ -1372,12 +1372,32 @@ provenance the model only compares."
              +fnn-exit-ok+)
         (fnn-store-close store)))))
 
+(defun fnn-regular-path-p (path)
+  (handler-case (fnn-regular-p (sb-posix:lstat path))
+    (sb-posix:syscall-error () nil)))
+
+(defun fnn-anchor-report (store)
+  "The freshness question, answered the way tools/run_store.py answers it.
+
+A store that never recorded an anchor has nothing to be stale against, and
+`anchor=none' says exactly that.  A store that holds one cannot be answered by
+this image: it has no pinned Roughtime client, so the answer is uncertain --
+never `none', which would report a possibly stale store as a fresh one.  The
+record itself is books/anchor's (host/anchor-host.lisp is in the image now);
+this reads only whether there is one."
+  (if (fnn-regular-path-p (fnn-join (fnn-store-root store) "anchor.fnan"))
+      (values "anchor=uncertain [no anchor source in the native host]"
+              +fnn-exit-uncertain+)
+      (values "anchor=none" +fnn-exit-ok+)))
+
 (defun fnn-command-recover (root)
   (multiple-value-bind (store records) (fnn-open-live-store root t)
     (unwind-protect
-         (progn (fnn-out "recovered transactions=~d articles=~d ~a"
-                         (length records) (fnn-bridge-article-count) (fnn-orphan-report store))
-                +fnn-exit-ok+)
+         (multiple-value-bind (report code) (fnn-anchor-report store)
+           (fnn-out "recovered transactions=~d articles=~d ~a ~a"
+                    (length records) (fnn-bridge-article-count)
+                    (fnn-orphan-report store) report)
+           code)
       (fnn-store-close store))))
 
 (defun fnn-command-status (root)
@@ -1744,6 +1764,12 @@ connection `fn-reader-reset' opens and projects with
 ;;;   store ROOT probe COUNT
 ;;;   reader PORT ONCE(0|1) STORE-ROOT|-
 ;;;   model CHUNK-FILE STORE-ROOT|-
+;;;   tcpcl listen PORT [ONCE SPOOL NODE-ID PEER KEEPALIVE SEGMENT-MRU
+;;;                      TRANSFER-MRU REPLY-FILE TRACE]
+;;;   tcpcl send HOST PORT BUNDLE-FILE [SPOOL NODE-ID PEER KEEPALIVE
+;;;                      SEGMENT-MRU TRANSFER-MRU EXPECT TRACE]
+;;;   tcpcl replay TRACE-FILE [ROLE NODE-ID PEER KEEPALIVE SEGMENT-MRU
+;;;                      TRANSFER-MRU]
 ;;;   sha256 PATH
 
 (defun fnn-dash-nil (text) (if (string= text "-") nil text))
@@ -1774,6 +1800,12 @@ connection `fn-reader-reset' opens and projects with
         ((string= verb "model")
          (need 3)
          (fnn-command-model (second args) (fnn-dash-nil (third args))))
+        ;; The TCPCLv4 convergence layer (host/native/tcpcl.lisp).  Its own
+        ;; positional protocol, because its arguments are a peer and a session
+        ;; and not a store.
+        ((string= verb "tcpcl")
+         (need 2)
+         (fnn-dispatch-tcpcl (second args) (cddr args)))
         ((string= verb "sha256")
          (need 2)
          (fnn-out "~a" (fnn-hex (fnn-sha256 (fnn-read-regular-bounded (second args) (ash 1 26)))))
