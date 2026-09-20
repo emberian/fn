@@ -143,10 +143,41 @@ are new, and there is one per conjunct of its gate:
 
 ## 5. Per-root certification
 
-| run | box | scope | result |
+All on persvati, `--jobs 4`, `--remote-root /home/ember/fn-lanes/w10-kernel-freedom`,
+`--affected-by books/store-files.lisp --closure`, ACL2 8.7 / SBCL.
+
+| run | tree | roots | result |
 | --- | --- | --- | --- |
-| `run-20260920T211812Z-1f0a` | persvati, `--jobs 4` | the FIRST shape (widened `fn-sf-crash-imagep`), `--affected-by books/store-files.lisp --closure`, 122 roots | **23 failed**, 272 s. One genuine failure (`fn-snt-admissible-crash-image-is-recoverable`); 22 cascades. This is the measurement behind §2 and it is kept, not discarded. |
-| `run-20260920T213023Z-4804` | persvati, `--jobs 4` | the shipped shape, same scope, 122 roots | see §6 |
+| `run-20260920T211812Z-1f0a` | the FIRST shape: `fn-sf-crash-imagep` itself widened | 122 | **23 failed**, 272.2 s. One genuine proof failure, `fn-snt-admissible-crash-image-is-recoverable`; 22 includes of it. Kept: this is the measurement behind §2. |
+| `run-20260920T213023Z-4804` | the shipped shape, before merging `dev` `e5e6218` | 122 | **7 failed**, 306.8 s, none in the `fn-sf-crash-imagep` closure. Every store root passed: `books/store-files{,-invariants}`, `books/store-node-traces`, `books/store-observed`, `books/byte-store-scan`, `books/bp-receiver-evolving-store-invariants`, `tests/acl2/store-files-tests`, `tests/acl2/store-observed-traces-tests`, `tests/acl2/store-node-teeth-tests`, `tests/acl2/bp-receiver-evolving-tests`. |
+| `run-20260920T213846Z-bd4f` | the shipped shape, after merging `dev` `e5e6218` | 129 | **125 passed, 4 failed**, 286.9 s. Evidence `build/acl2/certify-20260920T213853Z-3576178`. |
+| `run-20260920T214551Z-90a4` | the final tree, `--affected-by books/store-files.lisp --affected-by books/byte-store-scan.lisp --closure` | - | the confirming run over the `:rule-classes nil` and byte-store-scan comment commits; see the board. |
+
+**The four failures of the third run, and why none is this lane's.**
+
+* `books/owner-invariants` is open at `fn-own-advanced-session-is-bounded`, a
+  theorem in the auth/peer session vocabulary, and **this lane does not touch
+  that book**: `git diff dev...HEAD -- books/owner-invariants.lisp
+  books/owner.lisp books/owner-config.lisp` is empty. It is a defect in dev's
+  current merge state (`w10/auth-served` against `w6/peering-feed-4`); the
+  peering lane recorded the same three roots failing on dev `ca1ce5d`, at a
+  later form (`planning/deputies/BOARD.md`, `w6/peering-feed-4`'s verdict).
+* `books/owner-config` and `tests/acl2/owner-tests` are includes of it.
+* `tests/acl2/checkpoint-codec-tests` fails an `assert-event` about
+  `fn-cpc-validp` on a bad-generation record; its include closure is
+  `books/checkpoint-codec` alone, with no path to `books/store-files`. It
+  failed identically in the first run, under a different kernel.
+
+**Consequence for the counterexample.** The owner-specific spelling of it
+(`tests/acl2/owner-tests.lisp`, using `fn-own-ledger-durablep`) is **admitted
+but not certified**, because that book cannot be certified in this tree at
+all. Its substance is certified: `tests/acl2/store-observed-traces-tests`
+passed, and it asserts that the pair `(1 . 2)` of `*fn-so-second*` is in the
+two-record list, is **not** in the one-record list, and that
+`fn-sf-recovery-crash-imagep` admits that one-record image of
+`*fn-so-gap-opened*` while `fn-sf-crash-imagep` does not. That is the ledger
+clause's content without the owner's name for it. Say this, and do not call
+the owner half certified, until the owner cluster reopens.
 
 ## 6. Open, with its checkpoint
 
