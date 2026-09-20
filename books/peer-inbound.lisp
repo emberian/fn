@@ -780,9 +780,20 @@
                                   (fn-nntp-replyp fn-nntp-crlf
                                    fn-nntp-initial-status-linep
                                    fn-nntp-response-textp
-                                   fn-af-message-idp fn-nntp-printable-tokenp))
+                                   fn-af-message-idp fn-nntp-printable-tokenp
+                                   (:d binary-append)
+                                   (:d fn-nntp-string-octets)))
+           ; Keep the append closed so fn-nntp-response-text-of-append can
+           ; see it: the code is a ground four-octet prefix and the
+           ; Message-ID is a printable token, and response text is closed
+           ; under append.
            :use ((:instance fn-nntp-replyp-of-single-line
-                            (line (append (fn-nntp-string-octets code-text) msgid)))))))
+                            (line (append (fn-nntp-string-octets code-text) msgid)))
+                 (:instance fn-nntp-response-text-of-append
+                            (x (fn-nntp-string-octets code-text))
+                            (y msgid))
+                 (:instance fn-nntp-printable-token-is-response-text
+                            (octets msgid))))))
 
 (defthm fn-peer-single-effects-well-formed
   (implies (and (fn-nntp-response-textp (fn-nntp-string-octets text))
