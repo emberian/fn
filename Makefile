@@ -179,6 +179,7 @@ ACL2_BOOKS ?= books/assumptions \
 	books/nntp-responses \
 	books/nntp \
 	books/nntp-overview \
+	books/nntp-legacy \
 	books/nntp-invariants \
 	books/nntp-effects \
 	tests/acl2/nntp-tests \
@@ -197,6 +198,7 @@ ACL2_BOOKS ?= books/assumptions \
 	books/nntp-index \
 	tests/acl2/nntp-index-tests \
 	tests/acl2/nntp-reader-profile-tests \
+	tests/acl2/nntp-legacy-tests \
 	books/bp-release \
 	books/bp-release-invariants \
 	tests/acl2/bp-release-tests \

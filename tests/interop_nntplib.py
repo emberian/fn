@@ -23,10 +23,11 @@ def main():
         assert caps["VERSION"] == ["2"], caps
         assert caps["READER"] == [], caps
         assert caps["OVER"] == ["MSGID"], caps
-        assert caps["LIST"] == ["ACTIVE", "NEWSGROUPS", "OVERVIEW.FMT"], caps
+        assert caps["LIST"] == ["ACTIVE", "ACTIVE.TIMES", "HEADERS",
+                                "NEWSGROUPS", "OVERVIEW.FMT"], caps
+        assert caps["HDR"] == [], caps
         assert "POST" not in caps and "IHAVE" not in caps, caps
         assert "MODE-READER" not in caps and "NEWNEWS" not in caps, caps
-        assert "HDR" not in caps, caps
         response, count, first, last, name = client.group("fn.letters")
         assert (count, first, last, name) == (1, 1, 1, "fn.letters")
         response, number, msgid = client.stat()
@@ -73,6 +74,40 @@ def main():
         response, by_id = client.over(message_id)
         assert [number for number, _ in by_id] == [0], by_id
 
+        # RFC 2980 section 2.8.  nntplib sends XOVER when the server does not
+        # advertise OVER; xover() is the public entry point for the legacy
+        # spelling and parses the same seven fields, so a drift between the
+        # two renderers shows up as a mismatch here.
+        response, legacy = client.xover(1, 1)
+        assert legacy == overviews, (legacy, overviews)
+
+        # Section 2.6 / RFC 3977 section 8.5.  nntplib's xhdr() sends XHDR and
+        # returns (label, value) pairs; the label is the article number for a
+        # range and the message-id for the message-id form.
+        response, subjects = client.xhdr("subject", "1-1")
+        assert subjects == [("1", "")], subjects
+        response, ids = client.xhdr("message-id", "1-1")
+        assert ids == [("1", message_id)], ids
+        response, by_msgid = client.xhdr("message-id", message_id)
+        assert by_msgid == [(message_id, message_id)], by_msgid
+        response, counts = client.xhdr(":lines", "1-1")
+        assert counts == [("1", "1")], counts
+
+        # Section 8.6: any header is retrievable, so the list is the single
+        # colon plus the two metadata items.
+        response, fields = client.list("HEADERS")
+        assert fields == [":", ":bytes", ":lines"], fields
+
+        # Section 7.6.6.  The group table carries no description, so the
+        # description is empty; nntplib returns the pair either way.
+        response, descriptions = client.descriptions("fn.*")
+        assert descriptions == {"fn.letters": ""}, descriptions
+
+        # Section 7.6.4.  The served connection carries no persisted creation
+        # facts, so the list is empty rather than a fabricated stamp.
+        response, times = client.list("ACTIVE.TIMES")
+        assert times == [], times
+
         # nntplib has no public MODE READER call (it sends one itself only
         # when constructed with readermode=True); _shortcmd returns the
         # status line as every public command does.
@@ -83,8 +118,10 @@ def main():
     print(json.dumps({"status": "passed", "client": "stdlib nntplib",
                       "python": platform.python_version(),
                       "commands": ["CAPABILITIES", "GROUP", "STAT", "HEAD", "BODY",
-                                   "ARTICLE", "LIST", "DATE", "NEWGROUPS",
-                                   "LIST OVERVIEW.FMT", "OVER", "MODE READER",
+                                   "ARTICLE", "LIST", "LIST ACTIVE.TIMES",
+                                   "LIST HEADERS", "LIST NEWSGROUPS", "DATE",
+                                   "NEWGROUPS", "LIST OVERVIEW.FMT", "OVER",
+                                   "XOVER", "XHDR", "MODE READER",
                                    "QUIT"]}, sort_keys=True))
 
 

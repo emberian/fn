@@ -157,10 +157,16 @@
     nil))
 
 (defun fn-nntp-newsgroup-lines (groups)
+  ; RFC 3977 section 7.6.6: the group name, one or more space or TAB (the
+  ; usual practice is a single TAB), then a short description.  fn's
+  ; configuration carries no description for a group -- the group table holds
+  ; names, policy ids and created/retired stamps only -- so the description is
+  ; EMPTY rather than an invented per-group sentence.  Section 7.6.6 lets the
+  ; server pass the description on as it holds it; it does not let the server
+  ; make one up.  See the LIST NEWSGROUPS row of specs/nntp-audit.md.
   (if (consp groups)
       (cons (fn-nntp-append-pieces
-             (list (fn-nntp-string-octets (car groups))
-                   (fn-nntp-string-octets " fn experimental group")))
+             (list (fn-nntp-string-octets (car groups)) (list 9)))
             (fn-nntp-newsgroup-lines (cdr groups)))
     nil))
 ; `patterns` is an internal successful `fn-wildmat-parse` result, never an
@@ -241,15 +247,33 @@
    session (fn-nntp-string-octets "215 order of fields in overview database")
    (fn-nov-fmt-octet-lines *fn-nov-fmt-lines*)))
 
+; LIST HEADERS (RFC 3977 section 8.6).  HDR below retrieves ANY header of the
+; parsed article view, so section 8.6.2 requires the single-colon entry and
+; forbids naming individual headers; the two metadata items are listed
+; explicitly because they are calculated, not read.  The list is the same for
+; the MSGID and the RANGE form, so the argument is accepted and ignored
+; exactly as section 8.6.2 directs for a server that does not distinguish
+; them.
+(defconst *fn-nntp-hdr-field-lines* '(":" ":bytes" ":lines"))
+
+(defun fn-nntp-list-headers (session)
+  (fn-nntp-multi-octets
+   session (fn-nntp-string-octets "215 field list follows")
+   (fn-nov-fmt-octet-lines *fn-nntp-hdr-field-lines*)))
+
 (defun fn-nntp-list-unmaintained-response (session keyword args)
-  ; RFC 3977 sections 7.6.4/7.6.5, 8.4, 8.6, and 9.6 specify these arities.
-  ; A syntactically valid request for a recognized but unmaintained item is
-  ; 503; an argument forbidden by that item's grammar remains 501.
-  (if (fn-nntp-keywordp keyword "ACTIVE.TIMES")
-      (if (fn-nntp-list-wildmat-argumentp args)
+  ; RFC 3977 sections 7.6.5, 8.4, 8.6, and 9.6 and RFC 2980 section 2.1.4
+  ; specify these arities.  A syntactically valid request for a recognized but
+  ; unmaintained item is 503; an argument forbidden by that item's grammar
+  ; remains 501.  ACTIVE.TIMES is NOT decided here: fn-nntp-list-command, at
+  ; the end of this book, answers it from the environment's creation facts
+  ; before this function is reached, so an arm for it here would be a branch
+  ; the composed dispatcher cannot take.
+  (if (fn-nntp-keywordp keyword "DISTRIB.PATS")
+      (if (null args)
           (fn-nntp-single session "503 data item not stored")
         (fn-nntp-single session "501 syntax error"))
-    (if (fn-nntp-keywordp keyword "DISTRIB.PATS")
+    (if (fn-nntp-keywordp keyword "DISTRIBUTIONS")
         (if (null args)
             (fn-nntp-single session "503 data item not stored")
           (fn-nntp-single session "501 syntax error"))
@@ -262,7 +286,7 @@
                     (and (consp args) (null (cdr args))
                          (or (fn-nntp-keywordp (car args) "MSGID")
                              (fn-nntp-keywordp (car args) "RANGE"))))
-                (fn-nntp-single session "503 data item not stored")
+                (fn-nntp-list-headers session)
               (fn-nntp-single session "501 syntax error"))
           (fn-nntp-single session "501 unsupported LIST variant"))))))
 
@@ -308,13 +332,18 @@
   ; indicates in appendix B is implemented with its argument forms:
   ; READER covers ARTICLE, BODY, DATE, GROUP, LAST, LISTGROUP, NEWGROUPS and
   ; NEXT; OVER MSGID covers OVER in all three forms and LIST OVERVIEW.FMT;
-  ; LIST names exactly the variants that answer with data.  No POST, IHAVE,
-  ; NEWNEWS, HDR, MODE-READER, TLS, authentication or compression capability
-  ; is advertised, and this reader is not mode-switching (section 3.4.2).
+  ; HDR covers HDR in all three forms and LIST HEADERS (section 8.6); LIST
+  ; names exactly the variants that answer with data.  No POST, IHAVE,
+  ; NEWNEWS, MODE-READER, TLS, authentication or compression capability is
+  ; advertised, and this reader is not mode-switching (section 3.4.2).  XOVER
+  ; and XHDR carry no capability label: RFC 2980 predates section 3.3 and
+  ; names no label for them, and a client discovers them by trying them.
   (list (fn-nntp-string-octets "VERSION 2")
         (fn-nntp-string-octets "READER")
         (fn-nntp-string-octets "OVER MSGID")
-        (fn-nntp-string-octets "LIST ACTIVE NEWSGROUPS OVERVIEW.FMT")
+        (fn-nntp-string-octets "HDR")
+        (fn-nntp-string-octets
+         "LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT")
         (fn-nntp-string-octets "IMPLEMENTATION fn-nntp-lab")))
 
 (defun fn-nntp-unadvertised-capability-lines ()
@@ -328,10 +357,20 @@
                    (fn-nntp-unadvertised-capability-lines))))
 
 (defun fn-nntp-help (session)
+  ; RFC 3977 section 7.2: a short summary of the commands that are
+  ; understood.  Every keyword fn-nntp-session-command or
+  ; fn-nntp-archive-command (books/nntp.lisp) recognizes appears here, and
+  ; nothing else does; tests/acl2/nntp-legacy-tests.lisp pins the two lists
+  ; against each other.
   (fn-nntp-multi session "100 help text follows"
-                 (list (fn-nntp-string-octets "CAPABILITIES HEAD HELP QUIT STAT")
-                       (fn-nntp-string-octets "GROUP ARTICLE BODY NEXT LAST LIST LISTGROUP")
-                       (fn-nntp-string-octets "DATE NEWGROUPS MODE OVER"))))
+                 (list (fn-nntp-string-octets
+                        "CAPABILITIES HELP QUIT MODE DATE POST")
+                       (fn-nntp-string-octets
+                        "GROUP LISTGROUP LIST NEXT LAST NEWGROUPS")
+                       (fn-nntp-string-octets
+                        "ARTICLE HEAD BODY STAT")
+                       (fn-nntp-string-octets
+                        "OVER XOVER HDR XHDR"))))
 
 ; -----------------------------------------------------------------------------
 ; Reader environment: the clock observation and the persisted group-creation
@@ -1027,6 +1066,8 @@
 
 (verify-guards fn-nntp-list-overview-fmt)
 
+(verify-guards fn-nntp-list-headers)
+
 (verify-guards fn-nntp-list-unmaintained-response)
 
 (verify-guards fn-nntp-list-response)
@@ -1210,6 +1251,306 @@
 
 (verify-guards fn-nntp-post-offer)
 
+; -----------------------------------------------------------------------------
+; XOVER (RFC 2980 section 2.8): OVER's legacy spelling
+;
+; The same overview renderer and the same 224 multi-line body.
+; fn-nntp-xover-range and fn-nntp-over-range differ in exactly one octet
+; string, because RFC 2980 section 2.8.1 assigns 420 where RFC 3977 section
+; 8.3.1 assigns 423; RFC 2980 defines no message-id form and so no 430, and
+; this spelling refuses one as a syntax error rather than inventing a code.
+; The agreement is proved, not asserted: see
+; fn-nntp-xover-agrees-with-over-on-a-nonempty-range in books/nntp-legacy.lisp.
+
+(defun fn-nntp-xover-range (session archive token)
+  (let ((group (fn-nntp-session-group session))
+        (range (fn-nntp-parse-range token)))
+    (if (null group)
+        (fn-nntp-single session "412 no newsgroup selected")
+      (let* ((numbers (fn-nntp-group-range-numbers
+                       group (fn-nntp-range-low range)
+                       (fn-nntp-range-high range) (fn-state-articles archive)))
+             (lines (fn-nov-lines-for-numbers group numbers
+                                              (fn-state-articles archive))))
+        (if (consp lines)
+            (fn-nntp-multi session "224 overview information follows" lines)
+          (fn-nntp-single session "420 no article(s) selected"))))))
+
+(defun fn-nntp-xover-response (session archive args)
+  (if (null args)
+      (fn-nntp-over-current session archive)
+    (if (and (consp args) (null (cdr args))
+             (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
+        (fn-nntp-xover-range session archive (car args))
+      (fn-nntp-single session "501 syntax error"))))
+
+; -----------------------------------------------------------------------------
+; HDR (RFC 3977 section 8.5) and XHDR (RFC 2980 section 2.6)
+;
+; One field of one article at a time, read from the same proved article view
+; the overview renderer reads (books/article.lisp fn-article-get-headers) and
+; put through the same section 8.3.2 transformation (fn-nov-scrub), so an HDR
+; value can no more split a line or invent a field than an overview field can.
+; Any header may be requested, which is why LIST HEADERS answers with the
+; single colon of section 8.6.2; the two calculated metadata items :bytes and
+; :lines are the same two the overview line carries and are computed by the
+; same two functions, never re-derived.
+;
+; The two spellings differ in three places and nowhere else, each fixed by its
+; RFC: the initial line is 225 (section 8.5.1) or 221 (section 2.6.1); an
+; empty range is 423 (section 8.5.2) or 420 (section 2.6.1); and the
+; message-id form renders the article number as 0 (section 8.5.2) or as the
+; message-id itself (section 2.6).
+
+(defun fn-nntp-contains-colonp (token)
+  (if (consp token)
+      (or (equal (car token) 58) (fn-nntp-contains-colonp (cdr token)))
+    nil))
+
+(defun fn-nntp-hdr-metadata-tokenp (token)
+  (or (fn-nntp-keywordp token ":BYTES") (fn-nntp-keywordp token ":LINES")))
+
+(defun fn-nntp-hdr-fieldp (token)
+  ; A header name (RFC 5536 section 2.2: printable US-ASCII except colon) or
+  ; one of the two metadata items of RFC 3977 section 8.5.2.  The tokenizer
+  ; has already excluded space and TAB; fn-nntp-printable-tokenp excludes CR,
+  ; LF, NUL and every octet above 126, so a field name can never carry a
+  ; separator into a rendered line.
+  (and (consp token)
+       (fn-nntp-printable-tokenp token)
+       (or (fn-nntp-hdr-metadata-tokenp token)
+           (not (fn-nntp-contains-colonp token)))))
+
+(defun fn-nntp-hdr-okp (x)
+  (mbe :logic (equal (car x) :ok) :exec (equal (fn-ag-car x) :ok)))
+(defun fn-nntp-hdr-octets (x)
+  (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
+
+(defun fn-nntp-hdr-content (field article)
+  ; (:ok octets) | (:error).  :error only where the retained octets do not
+  ; parse: section 8.5.2 produces a line for every article in the range that
+  ; exists, and an unparsable article degrades only itself, exactly as in
+  ; fn-nov-lines-for-numbers.
+  (declare (xargs :guard t :verify-guards nil))
+  (if (fn-nntp-hdr-metadata-tokenp field)
+      (list :ok
+            (fn-nntp-decimal-field
+             (if (fn-nntp-keywordp field ":BYTES")
+                 (fn-ng-len (fn-article-payload article))
+               (fn-nov-body-line-count (fn-article-payload article)))))
+    (let* ((payload (fn-article-payload article))
+           (parsed (fn-article-parse payload)))
+      (if (not (and (true-listp parsed)
+                    (fn-article-result-okp parsed)
+                    (fn-article-syntax-p (fn-article-result-article parsed))))
+          (list :error)
+        (list :ok (fn-nov-header-content
+                   (fn-article-result-article parsed) field))))))
+
+(defun fn-nntp-hdr-line (label content)
+  ; RFC 3977 section 8.5.2: the article number, a space, then the contents of
+  ; the field.
+  (fn-nntp-append-pieces (list label '(32) content)))
+
+(defun fn-nntp-hdr-lines-for-numbers (field group numbers articles)
+  (if (consp numbers)
+      (let* ((number (car numbers))
+             (article (fn-nntp-available-article group number articles))
+             (content (if (consp article)
+                          (fn-nntp-hdr-content field article)
+                        (list :error))))
+        (if (fn-nntp-hdr-okp content)
+            (cons (fn-nntp-hdr-line (fn-nntp-decimal-field number)
+                                    (fn-nntp-hdr-octets content))
+                  (fn-nntp-hdr-lines-for-numbers field group (cdr numbers)
+                                                 articles))
+          (fn-nntp-hdr-lines-for-numbers field group (cdr numbers) articles)))
+    nil))
+
+(defun fn-nntp-hdr-initial (legacyp)
+  (if legacyp "221 header follows" "225 headers follow"))
+
+(defun fn-nntp-hdr-current (session archive field legacyp)
+  (let ((group (fn-nntp-session-group session))
+        (current (fn-nntp-session-current session)))
+    (if (null group)
+        (fn-nntp-single session "412 no newsgroup selected")
+      (if (null current)
+          (fn-nntp-single session "420 no current article")
+        (let ((article (fn-nntp-available-article
+                        group current (fn-state-articles archive))))
+          (if (not (consp article))
+              (fn-nntp-single session "420 no current article")
+            (let ((content (fn-nntp-hdr-content field article)))
+              (if (fn-nntp-hdr-okp content)
+                  (fn-nntp-multi
+                   session (fn-nntp-hdr-initial legacyp)
+                   (list (fn-nntp-hdr-line (fn-nntp-decimal-field current)
+                                           (fn-nntp-hdr-octets content))))
+                (fn-nntp-single
+                 session "503 stored article framing unavailable")))))))))
+
+(defun fn-nntp-hdr-range (session archive field token legacyp)
+  (let ((group (fn-nntp-session-group session))
+        (range (fn-nntp-parse-range token)))
+    (if (null group)
+        (fn-nntp-single session "412 no newsgroup selected")
+      (let* ((numbers (fn-nntp-group-range-numbers
+                       group (fn-nntp-range-low range)
+                       (fn-nntp-range-high range) (fn-state-articles archive)))
+             (lines (fn-nntp-hdr-lines-for-numbers
+                     field group numbers (fn-state-articles archive))))
+        (if (consp lines)
+            (fn-nntp-multi session (fn-nntp-hdr-initial legacyp) lines)
+          (if legacyp
+              (fn-nntp-single session "420 no article(s) selected")
+            (fn-nntp-single session "423 no articles in that range")))))))
+
+(defun fn-nntp-hdr-msgid (session archive field token legacyp)
+  ; RFC 3977 section 8.5.2 renders the article number as zero; RFC 2980
+  ; section 2.6 renders the message-id itself.  Neither form alters the
+  ; selected group or the current article.  The legacy label goes through
+  ; fn-nov-scrub, which is the identity on a printable token and total on
+  ; every other value, so the label cannot carry a separator either.
+  (let ((article (fn-find-article (fn-nntp-token-string token)
+                                  (fn-state-articles archive))))
+    (if (not (consp article))
+        (fn-nntp-single session "430 no article with that message-id")
+      (let ((content (fn-nntp-hdr-content field article)))
+        (if (fn-nntp-hdr-okp content)
+            (fn-nntp-multi
+             session (fn-nntp-hdr-initial legacyp)
+             (list (fn-nntp-hdr-line (if legacyp
+                                         (fn-nov-scrub token)
+                                       (fn-nntp-decimal-field 0))
+                                     (fn-nntp-hdr-octets content))))
+          (fn-nntp-single session "503 stored article framing unavailable"))))))
+
+(defun fn-nntp-hdr-command (session archive args legacyp)
+  (if (not (and (consp args) (fn-nntp-hdr-fieldp (car args))))
+      (fn-nntp-single session "501 syntax error")
+    (let ((field (car args)) (rest (cdr args)))
+      (if (null rest)
+          (fn-nntp-hdr-current session archive field legacyp)
+        (if (and (consp rest) (null (cdr rest)))
+            (let ((token (car rest)))
+              (if (fn-nntp-range-okp (fn-nntp-parse-range token))
+                  (fn-nntp-hdr-range session archive field token legacyp)
+                (if (fn-nntp-message-id-tokenp token)
+                    (fn-nntp-hdr-msgid session archive field token legacyp)
+                  (fn-nntp-single session "501 syntax error"))))
+          (fn-nntp-single session "501 syntax error"))))))
+
+(defun fn-nntp-hdr-response (session archive args)
+  (fn-nntp-hdr-command session archive args nil))
+
+(defun fn-nntp-xhdr-response (session archive args)
+  (fn-nntp-hdr-command session archive args t))
+
+; -----------------------------------------------------------------------------
+; LIST ACTIVE.TIMES (RFC 3977 section 7.6.4, RFC 2980 section 2.1.3)
+;
+; The list is exactly the persisted group-creation facts the host supplies,
+; which are the same facts NEWGROUPS reads, so the two are consistent by
+; construction rather than by a second derivation.  Section 7.6.4 permits
+; omitting groups whose creation information is unavailable, which is every
+; group the configuration history has no created stamp for.  The third field
+; is "plain text intended to describe the entity that created the newsgroup";
+; a configuration record carries no creator, so the text says so rather than
+; naming a mailbox that does not exist.
+
+(defconst *fn-nntp-active-times-creator* " unattributed")
+
+(defun fn-nntp-dtn-unix-seconds (ms)
+  ; Section 7.6.4 measures the creation time in seconds since 1970-01-01; a
+  ; creation fact carries it as DTN time (RFC 9171 section 4.2.6,
+  ; milliseconds since 2000-01-01).  *fn-nntp-unix-dtn-offset-ms* is the same
+  ; constant fn-nntp-unix-dtn-ms uses in the other direction.
+  (declare (xargs :guard t :verify-guards nil))
+  (if (natp ms)
+      (fn-nntp-div (+ ms *fn-nntp-unix-dtn-offset-ms*) 1000)
+    (fn-nntp-div *fn-nntp-unix-dtn-offset-ms* 1000)))
+
+(defun fn-nntp-active-times-line (fact)
+  (fn-nntp-append-pieces
+   (list (fn-nntp-string-octets (fn-nntp-fact-name fact)) '(32)
+         (fn-nntp-decimal-field
+          (fn-nntp-dtn-unix-seconds (fn-nntp-fact-created fact)))
+         (fn-nntp-string-octets *fn-nntp-active-times-creator*))))
+
+(defun fn-nntp-active-times-lines (facts)
+  (if (consp facts)
+      (if (fn-nntp-group-factp (car facts))
+          (cons (fn-nntp-active-times-line (car facts))
+                (fn-nntp-active-times-lines (cdr facts)))
+        (fn-nntp-active-times-lines (cdr facts)))
+    nil))
+
+(defun fn-nntp-filter-facts-by-wildmat (patterns facts)
+  (if (consp facts)
+      (if (and (fn-nntp-group-factp (car facts))
+               (fn-nntp-group-matches-parsed-wildmatp
+                patterns (fn-nntp-fact-name (car facts))))
+          (cons (car facts)
+                (fn-nntp-filter-facts-by-wildmat patterns (cdr facts)))
+        (fn-nntp-filter-facts-by-wildmat patterns (cdr facts)))
+    nil))
+
+(defun fn-nntp-list-active-times (session env args)
+  (if (null args)
+      (fn-nntp-multi session "215 information follows"
+                     (fn-nntp-active-times-lines (fn-nntp-env-facts env)))
+    (if (and (consp args) (null (cdr args)))
+        (let ((parsed (fn-wildmat-parse (car args))))
+          (if (fn-wildmat-result-okp parsed)
+              (fn-nntp-multi
+               session "215 information follows"
+               (fn-nntp-active-times-lines
+                (fn-nntp-filter-facts-by-wildmat
+                 (fn-wildmat-result-value parsed) (fn-nntp-env-facts env))))
+            (fn-nntp-single session "501 syntax error")))
+      (fn-nntp-single session "501 syntax error"))))
+
+(defun fn-nntp-list-command (session archive env args)
+  ; LIST's variant keyword is dispatched here so that ACTIVE.TIMES can read
+  ; the environment's creation facts; every other variant is decided by
+  ; fn-nntp-list-response above, which needs no environment.  This is the
+  ; function books/nntp.lisp calls for LIST.
+  (if (and (consp args)
+           (fn-nntp-keyword-tokenp (car args))
+           (fn-nntp-keywordp (car args) "ACTIVE.TIMES"))
+      (fn-nntp-list-active-times session env (cdr args))
+    (fn-nntp-list-response session archive args)))
+
+(verify-guards fn-nntp-xover-range)
+(verify-guards fn-nntp-xover-response)
+(verify-guards fn-nntp-contains-colonp)
+(verify-guards fn-nntp-hdr-metadata-tokenp)
+(verify-guards fn-nntp-hdr-fieldp)
+(verify-guards fn-nntp-hdr-okp)
+(verify-guards fn-nntp-hdr-octets)
+; The article accessors stay closed here so that
+; fn-nov-get-headers-car-is-a-field (local, above) is what discharges the
+; field obligation; opening fn-article-get-headers buries it.
+(verify-guards fn-nntp-hdr-content
+  :hints (("Goal" :in-theory (disable fn-article-get-headers
+                                      fn-article-syntax-p))))
+(verify-guards fn-nntp-hdr-line)
+(verify-guards fn-nntp-hdr-lines-for-numbers)
+(verify-guards fn-nntp-hdr-initial)
+(verify-guards fn-nntp-hdr-current)
+(verify-guards fn-nntp-hdr-range)
+(verify-guards fn-nntp-hdr-msgid)
+(verify-guards fn-nntp-hdr-command)
+(verify-guards fn-nntp-hdr-response)
+(verify-guards fn-nntp-xhdr-response)
+(verify-guards fn-nntp-dtn-unix-seconds)
+(verify-guards fn-nntp-active-times-line)
+(verify-guards fn-nntp-active-times-lines)
+(verify-guards fn-nntp-filter-facts-by-wildmat)
+(verify-guards fn-nntp-list-active-times)
+(verify-guards fn-nntp-list-command)
+
 ; ---------------------------------------------------------------------------
 ; Export theory
 ;
@@ -1251,6 +1592,15 @@
     fn-nov-lines-for-numbers fn-nntp-over-current fn-nntp-over-range
     fn-nntp-over-msgid fn-nntp-over-response fn-nntp-mode-response
     fn-nntp-capability-lines fn-nntp-unadvertised-capability-lines
-    fn-nntp-begin-article-effect fn-nntp-post-offer))
+    fn-nntp-begin-article-effect fn-nntp-post-offer
+    fn-nntp-list-headers fn-nntp-xover-range fn-nntp-xover-response
+    fn-nntp-contains-colonp fn-nntp-hdr-metadata-tokenp fn-nntp-hdr-fieldp
+    fn-nntp-hdr-okp fn-nntp-hdr-octets fn-nntp-hdr-content fn-nntp-hdr-line
+    fn-nntp-hdr-lines-for-numbers fn-nntp-hdr-initial fn-nntp-hdr-current
+    fn-nntp-hdr-range fn-nntp-hdr-msgid fn-nntp-hdr-command
+    fn-nntp-hdr-response fn-nntp-xhdr-response fn-nntp-dtn-unix-seconds
+    fn-nntp-active-times-line fn-nntp-active-times-lines
+    fn-nntp-filter-facts-by-wildmat fn-nntp-list-active-times
+    fn-nntp-list-command))
 
 (in-theory (disable fn-nntp-responses-vocabulary))
