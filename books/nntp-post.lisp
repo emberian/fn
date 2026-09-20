@@ -213,7 +213,14 @@
            (fn-post-make-session (fn-post-session-base ps) nil)
            (fn-post-single ps "441 posting failed; the article was not received")
            nil))
-      (let ((r (fn-nntp-step (fn-post-session-base ps) archive wire-event)))
+      ; The reader environment is built here, where the dispatcher is called:
+      ; the connection's pinned clock observation and the persisted
+      ; group-creation facts.  The served tree persists no creation facts yet
+      ; (planning/lanes/HANDOFF-w3-reader-profile.md, proposal 3), so the fact
+      ; list is empty and NEWGROUPS reports no group rather than an invented
+      ; creation date.
+      (let ((r (fn-nntp-step (fn-post-session-base ps) archive
+                             (fn-nntp-env observation nil) wire-event)))
         (if (fn-post-offeredp (fn-nntp-result-effects r))
             (if (fn-inj-config-allow config)
                 (fn-post-make-result
@@ -277,11 +284,14 @@
             archive))
   :hints (("Goal"
            :use ((:instance fn-nntp-step-preserves-consistent-session
-                            (session (fn-post-session-base ps)))
+                            (session (fn-post-session-base ps))
+                            (env (fn-nntp-env observation nil)))
                  (:instance fn-nntp-consistent-session-is-session
                             (session (fn-nntp-result-session
                                       (fn-nntp-step (fn-post-session-base ps)
-                                                    archive wire-event))))
+                                                    archive
+                                                    (fn-nntp-env observation nil)
+                                                    wire-event))))
                  (:instance fn-nntp-consistent-session-is-session
                             (session (fn-post-session-base ps))))
            :in-theory (disable fn-nntp-step-preserves-consistent-session
@@ -299,7 +309,8 @@
              (fn-nntp-post-step ps archive config observation wire-event))))
   :hints (("Goal"
            :use ((:instance fn-nntp-step-effects-well-formed
-                            (session (fn-post-session-base ps))))
+                            (session (fn-post-session-base ps))
+                            (env (fn-nntp-env observation nil))))
            :in-theory (e/d (fn-post-single fn-nntp-effectsp
                             fn-post-refusal-line)
                            (fn-nntp-step-effects-well-formed
