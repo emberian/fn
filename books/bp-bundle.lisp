@@ -532,44 +532,95 @@
 (verify-guards fn-bpb-front)
 (verify-guards fn-bpb-final)
 
-; The decoder.  `limit` is the caller's whole-input bound -- the convergence
-; layer's transfer MRU when the caller is `fn-bpn-receive` -- and it is applied
+; The decoder, in three functions rather than one.  Written out as a single
+; nested `let*` its guard conjecture is one term with every branch inlined,
+; and ACL2 8.7 exhausts the control stack normalizing it under `certify-book`
+; (measured 2026-09-20: `IF-COMPILE` backtrace, no error message).  Each
+; piece below has a guard conjecture the prover can hold.
+
+; The primary block prefix.  `fn-bpc-dec` is used ONLY to find where the
+; primary block's CBOR item ends; the octets up to there go to `fn-bpp-decode`
+; unchanged, so the decoder of a bundle's primary block is the certified one
+; and not a second implementation of it.
+(defun fn-bpb-scan-primary (octets)
+  (declare (xargs :guard (fn-cbor-octet-listp octets)
+                  :guard-hints
+                  (("Goal" :in-theory
+                    (e/d (fn-bpc-dec-rest-are-octets fn-bpc-octet-listp-take)
+                         (fn-bpc-dec fn-bpp-decode))))))
+  (let ((scan (fn-bpc-dec :item 0 octets *fn-bpc-max-items*)))
+    (if (not (fn-cbor-result-okp scan))
+        (fn-cbor-error :malformed)
+      (let* ((after (fn-cbor-result-rest scan))
+             (chunk (take (- (len octets) (len after)) octets))
+             (p (fn-bpp-decode chunk)))
+        (if (not (fn-bpp-result-okp p))
+            (fn-cbor-error :primary-block-refused)
+          (fn-cbor-ok (fn-bpp-result-block p) after))))))
+
+(defthm fn-bpb-scan-primary-yields-a-block
+  (implies (fn-cbor-result-okp (fn-bpb-scan-primary octets))
+           (fn-bpp-blockp (fn-cbor-result-value (fn-bpb-scan-primary octets))))
+  :hints (("Goal" :in-theory (disable fn-bpc-dec fn-bpp-decode))))
+
+(defthm fn-bpb-scan-primary-rest-are-octets
+  (implies (fn-cbor-octet-listp octets)
+           (fn-cbor-octet-listp
+            (fn-cbor-result-rest (fn-bpb-scan-primary octets))))
+  :hints (("Goal" :in-theory (e/d (fn-bpc-dec-rest-are-octets)
+                                  (fn-bpc-dec fn-bpp-decode)))))
+
+(defthm fn-bpb-decode-blocks-yield-blocks
+  (implies (and (fn-cbor-octet-listp octets)
+                (fn-cbor-result-okp (fn-bpb-decode-blocks octets budget)))
+           (fn-bpb-block-listp
+            (fn-cbor-result-value (fn-bpb-decode-blocks octets budget))))
+  :hints (("Goal"
+           :induct (fn-bpb-decode-blocks octets budget)
+           :in-theory (e/d (fn-bpc-octet-listp-cdr)
+                           (fn-bpb-decode-block fn-bpb-encode-block
+                            fn-bpb-block-crc)))))
+
+; Section 4.1: the payload block is the last one, and there is one.  The
+; recognizer decides the rest -- pairwise distinct block numbers, no
+; canonical block numbered 0 or 1, the payload block numbered 1 -- so a
+; separate uniqueness check here would restate a conjunct of `fn-bpb-bundlep`.
+(defun fn-bpb-assemble (primary blocks)
+  (declare (xargs :guard (and (fn-bpp-blockp primary)
+                              (fn-bpb-block-listp blocks))))
+  (if (not (consp blocks))
+      (fn-cbor-error :no-payload-block)
+    (let ((bundle (fn-bpb-make-bundle primary (fn-bpb-front blocks)
+                                      (fn-bpb-final blocks))))
+      (if (not (fn-bpb-bundlep bundle))
+          (fn-cbor-error :malformed)
+        (fn-cbor-ok bundle nil)))))
+
+; `limit` is the caller's whole-input bound -- the convergence layer's
+; transfer MRU when the caller is `fn-bpn-receive` -- and it is applied
 ; before the first octet is examined.
 (defun fn-bpb-decode (octets limit)
-  (declare (xargs :guard (and (fn-cbor-octet-listp octets) (natp limit))))
+  (declare (xargs :guard (and (fn-cbor-octet-listp octets) (natp limit))
+                  :guard-hints
+                  (("Goal" :in-theory
+                    (e/d (fn-bpc-octet-listp-cdr)
+                         (fn-bpb-scan-primary fn-bpb-decode-blocks
+                          fn-bpb-assemble))))))
   (if (not (fn-cbor-at-mostp octets limit))
       (fn-cbor-error :limit)
     (if (not (and (consp octets) (equal (car octets) *fn-bpb-array-open*)))
         (fn-cbor-error :malformed)
-      (let ((scan (fn-bpc-dec :item 0 (cdr octets) *fn-bpc-max-items*)))
-        (if (not (fn-cbor-result-okp scan))
-            (fn-cbor-error :malformed)
-          (let* ((after (fn-cbor-result-rest scan))
-                 (used (- (len (cdr octets)) (len after)))
-                 (chunk (take used (cdr octets)))
-                 (p (fn-bpp-decode chunk)))
-            (if (not (fn-bpp-result-okp p))
-                (fn-cbor-error :primary-block-refused)
-              (let ((bs (fn-bpb-decode-blocks after *fn-bpb-max-blocks*)))
-                (if (not (fn-cbor-result-okp bs))
-                    bs
-                  (let ((blocks (fn-cbor-result-value bs)))
-                    (if (not (consp blocks))
-                        (fn-cbor-error :no-payload-block)
-                      (if (not (null (fn-cbor-result-rest bs)))
-                          (fn-cbor-error :trailing-octets)
-                        (let ((bundle (fn-bpb-make-bundle
-                                       (fn-bpp-result-block p)
-                                       (fn-bpb-front blocks)
-                                       (fn-bpb-final blocks))))
-                          (if (not (fn-bpb-bundlep bundle))
-                              (fn-cbor-error :malformed)
-                            (fn-cbor-ok bundle nil)))))))))))))))
-
-(verify-guards fn-bpb-decode
-  :hints (("Goal" :in-theory (enable fn-bpc-octet-listp-cdr
-                                     fn-bpc-octet-listp-take
-                                     fn-bpc-dec-rest-are-octets))))
+      (let ((p (fn-bpb-scan-primary (cdr octets))))
+        (if (not (fn-cbor-result-okp p))
+            p
+          (let ((bs (fn-bpb-decode-blocks (fn-cbor-result-rest p)
+                                          *fn-bpb-max-blocks*)))
+            (if (not (fn-cbor-result-okp bs))
+                bs
+              (if (not (null (fn-cbor-result-rest bs)))
+                  (fn-cbor-error :trailing-octets)
+                (fn-bpb-assemble (fn-cbor-result-value p)
+                                 (fn-cbor-result-value bs))))))))))
 
 ; -----------------------------------------------------------------------------
 ; Extension blocks (section 4.4) as canonical blocks.
@@ -666,6 +717,7 @@
          fn-bpb-encode-block-with-crc fn-bpb-block-crc fn-bpb-encode-block
          fn-bpb-take-uint fn-bpb-take-bytes fn-bpb-decode-block
          fn-bpb-decode-blocks fn-bpb-encode fn-bpb-decode
+         fn-bpb-scan-primary fn-bpb-assemble
          fn-bpb-payload fn-bpb-bundle-id
          fn-bpb-previous-node-block fn-bpb-bundle-age-block
          fn-bpb-hop-count-block fn-bpb-payload-block
