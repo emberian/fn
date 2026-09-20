@@ -46,6 +46,8 @@ import sys
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from farm import HOSTS as FARM_HOSTS      # noqa: E402  one table of farm boxes
 
 DEFAULT_HOST = "persvati"
 GATE_ROOT = "$HOME/fn-gates"
@@ -174,6 +176,15 @@ class Step:
     @property
     def exercised(self) -> bool:
         return self.rc is not None
+
+
+def compact(script: str) -> str:
+    """One readable line for a step's whole script, preamble dropped."""
+    lines = [line.strip() for line in script.strip().splitlines()
+             if line.strip() and not line.strip().startswith(
+                 ("set -o pipefail", "export FN_ACL2", "#"))]
+    joined = " ; ".join(lines)
+    return joined if len(joined) <= 400 else joined[:397] + "..."
 
 
 def not_exercised(name, command, reason) -> Step:
@@ -371,6 +382,59 @@ if __name__ == "__main__":
 '''
 
 
+CERTPICK = r'''#!/usr/bin/env python3
+"""Copy in only the certificate pairs whose book content still matches.
+
+A certificate is valid for a book and its whole include closure by content
+(`ACL2_BOOK_HASH_ALISTP=NIL`), so a pair from a neighbouring revision of the
+same tree is either exactly right or exactly wrong, and which one is decided
+here rather than assumed: a pair is copied only when the `.lisp` beside it in
+the gate hashes the same as the `.lisp` in the deploy tree.  ACL2 checks the
+closure again at include time; this only avoids handing it pairs that cannot
+hold.
+"""
+import hashlib, os, shutil, sys
+
+
+def digest(path):
+    with open(path, "rb") as handle:
+        return hashlib.sha256(handle.read()).hexdigest()
+
+
+def main():
+    gate, deploy = sys.argv[1], sys.argv[2]
+    matched = mismatched = absent = 0
+    for sub in ("books", "tests/acl2"):
+        source = os.path.join(gate, sub)
+        target = os.path.join(deploy, sub)
+        if not os.path.isdir(source) or not os.path.isdir(target):
+            continue
+        for name in sorted(os.listdir(source)):
+            if not name.endswith(".cert"):
+                continue
+            stem = name[: -len(".cert")]
+            book = os.path.join(source, stem + ".lisp")
+            mine = os.path.join(target, stem + ".lisp")
+            if not (os.path.exists(book) and os.path.exists(mine)):
+                absent += 1
+                continue
+            if digest(book) != digest(mine):
+                mismatched += 1
+                continue
+            for extension in (".cert", ".port"):
+                one = os.path.join(source, stem + extension)
+                if os.path.exists(one):
+                    shutil.copy2(one, os.path.join(target, stem + extension))
+            matched += 1
+    print("matched={} mismatched={} absent={}".format(matched, mismatched, absent))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+'''
+
+
 # --------------------------------------------------------------------------
 # the gate
 
@@ -378,7 +442,7 @@ if __name__ == "__main__":
 class DeployGate:
     def __init__(self, host: Host, repo: Path, commit: str, rev: str, tree: str,
                  overlay: Path | None = None, jobs: int = 16, keep: bool = False,
-                 nntplib_python: str = "auto"):
+                 nntplib_python: str = "auto", acl2: str = "acl2"):
         self.host = host
         self.repo = repo
         self.commit = commit
@@ -388,6 +452,7 @@ class DeployGate:
         self.jobs = jobs
         self.keep = keep
         self.nntplib_python = nntplib_python
+        self.acl2 = acl2
         self.steps: list[Step] = []
         self.facts: dict[str, str] = {}
         self.gaps: list[str] = []
@@ -397,16 +462,19 @@ class DeployGate:
         self.log = "{}/server.log".format(self.run)
         self.server_kind = "none"
         self.port = 0
+        self.posted = [SEED_ID]     # what a reread after recovery must find
+        self.post_enabled = False
 
     # -- plumbing ---------------------------------------------------------
     def sh(self, name, script, timeout=600, note="", expect=0) -> Step:
         start = time.monotonic()
         try:
-            done = self.host.sh("set -o pipefail\n" + script, timeout)
+            done = self.host.sh("set -o pipefail\nexport FN_ACL2={}\n".format(
+                self.acl2) + script, timeout)
             rc, output = done.returncode, done.stdout.decode("utf-8", "replace")
         except subprocess.TimeoutExpired:
             rc, output = 124, "timed out after {}s".format(timeout)
-        step = Step(name, script.strip().splitlines()[-1][:300], rc, output,
+        step = Step(name, compact(script), rc, output,
                     time.monotonic() - start, note, expect)
         self.steps.append(step)
         return step
@@ -419,9 +487,15 @@ class DeployGate:
         return "cd {} || exit 9\n".format(self.deploy) + script
 
     def fn(self, args: str) -> str:
-        """The store CLI, through bin/fn when the tree has one."""
-        return ("if [ -x bin/fn ]; then bin/fn store {a}; "
-                "else python3 tools/run_store.py {a}; fi").format(a=args)
+        """The store CLI.
+
+        `bin/fn` (w5/fn-cli) is the service wrapper, not a second store CLI:
+        its store surface is `fn status` and `fn group`, a different shape
+        with its own exit codes, and it wraps `tools/run_store.py` for the
+        rest.  The gate drives the wrapped entry point, so the exit codes it
+        records are the ones the assurance rules are about.
+        """
+        return "python3 tools/run_store.py {}".format(args)
 
     # -- phases -----------------------------------------------------------
     def preflight(self):
@@ -436,7 +510,7 @@ for c in slrn tin nn trn inews expect script; do
   printf 'client %s=%s\\n' "$c" "$(command -v $c 2>/dev/null || echo ABSENT)"
 done
 { printf '(good-bye)\\n' | ACL2_CUSTOMIZATION=NONE \\
-    $HOME/fn-tools/acl2-8.7/saved_acl2 2>&1 | grep -m1 -i 'ACL2 Version' \\
+    "$FN_ACL2" 2>&1 | grep -m1 -i 'ACL2 Version' \\
     | sed 's/^/acl2version=/'; } || echo "acl2version=unavailable on this host"
 """, timeout=300)
         for line in step.output.splitlines():
@@ -464,6 +538,7 @@ done
         if self.overlay is not None:
             self.push_tree(self.overlay)
         self.push_file(DRIVER, "{}/drive.py".format(self.run), mode="755")
+        self.push_file(CERTPICK, "{}/certpick.py".format(self.run), mode="755")
 
     def push_file(self, content, remote: str, mode="644"):
         """Byte-exact: an article payload carries CRLF a heredoc would reshape."""
@@ -485,27 +560,37 @@ done
             self.push_file(path.read_bytes(), "{}/{}".format(self.deploy, rel), mode="755")
 
     def certificates(self):
-        gate = "{}/{}-{}".format(GATE_ROOT, self.tree, self.rev)
-        probe = self.sh("certificate source",
-                        "if [ -d {g}/books ]; then echo GATE {g}; "
-                        "ls {g}/books/*.cert 2>/dev/null | wc -l; else echo NOGATE; fi".format(g=gate))
-        if probe.output.startswith("GATE"):
-            count = probe.output.splitlines()[1].strip()
-            step = self.sh("install certificates", """
-cp {g}/books/*.cert {g}/books/*.port {d}/books/ 2>/dev/null || true
-mkdir -p {d}/tests/acl2
-cp {g}/tests/acl2/*.cert {g}/tests/acl2/*.port {d}/tests/acl2/ 2>/dev/null || true
-echo "books=$(ls {d}/books/*.cert 2>/dev/null | wc -l) tests=$(ls {d}/tests/acl2/*.cert 2>/dev/null | wc -l)"
-""".format(g=gate, d=self.deploy), timeout=300,
-                           note="from the host's own gate {} ({} certificates there)".format(
-                               gate, count))
-            self.facts["certificates"] = "copied from {} ({})".format(gate, step.first_line)
+        """The host's own gate of this tree, verified pair by pair, else certify."""
+        exact = "{}/{}-{}".format(GATE_ROOT, self.tree, self.rev)
+        probe = self.sh("certificate source", """
+if [ -d {exact}/books ]; then echo "GATE {exact}"; else
+  newest=$(ls -dt {root}/{tree}-* 2>/dev/null | head -1)
+  if [ -n "$newest" ] && [ -d "$newest/books" ]; then echo "NEIGHBOUR $newest"; else echo NOGATE; fi
+fi
+""".format(exact=exact, root=GATE_ROOT, tree=self.tree))
+        first = probe.output.strip().splitlines()[-1] if probe.output.strip() else "NOGATE"
+        if first.startswith(("GATE", "NEIGHBOUR")):
+            kind, gate = first.split(None, 1)
+            step = self.sh("install certificates",
+                           "python3 {}/certpick.py {} {}".format(self.run, gate, self.deploy),
+                           timeout=600,
+                           note=("the host's own gate for this revision" if kind == "GATE"
+                                 else "the host's newest gate of this tree; only the pairs "
+                                      "whose book content matches this revision were copied"))
+            self.facts["certificates"] = "{} {} -> {}".format(
+                kind.lower(), gate, step.first_line)
             self.gaps.append(
-                "certificates were copied from a live origin root on the same host "
-                "({}); tools/certs.py calls that foreign-local and refuses it for a "
-                "worktree that will itself certify. This deploy tree never certifies, "
-                "so ACL2 only reads the pairs; nothing here re-establishes them."
+                "certificates were copied from {}, a live origin root on the same host. "
+                "tools/certs.py calls that foreign-local and refuses it for a worktree "
+                "that will itself certify, because the pairs' post-alists name that "
+                "root's absolute paths; this deploy tree never certifies, so ACL2 only "
+                "reads them. Nothing in this gate re-establishes any certificate, and a "
+                "book whose pair did not come across is included uncertified."
                 .format(gate))
+            if "mismatched=0" not in step.output:
+                self.gaps.append(
+                    "some books in the gate did not hash to this revision's sources, so "
+                    "their pairs were not copied: {}".format(step.first_line))
             return step
         step = self.sh("certify on host",
                        self.cd("make certify FN_CERTIFY_JOBS={} 2>&1 | tail -40".format(self.jobs)),
@@ -552,12 +637,25 @@ echo "books=$(ls {d}/books/*.cert 2>/dev/null | wc -l) tests=$(ls {d}/tests/acl2
                 self.cd(self.fn("--store {} recover".format(self.store))), timeout=900)
 
     def server_command(self) -> tuple[str, str]:
-        probe = self.sh("server selection", self.cd(
-            "if [ -x bin/fn ]; then echo fn; elif [ -f tools/run_owner.py ]; then echo owner; "
-            "else echo reader; fi"))
+        """bin/fn when it can be pointed at this store, else the owner, else the reader."""
+        probe = self.sh("server selection", self.cd("""
+if [ -x bin/fn ]; then
+  if ./bin/fn run --help 2>&1 | grep -q -- '--store'; then echo fn
+  else echo fn-config; fi
+elif [ -f tools/run_owner.py ]; then echo owner
+else echo reader; fi
+"""))
         kind = probe.output.strip().splitlines()[-1] if probe.output.strip() else "reader"
         if kind == "fn":
-            return kind, "bin/fn serve --store {} --port 0".format(self.store)
+            return kind, "./bin/fn run --store {} --port 0 --control {}/control.sock".format(
+                self.store, self.run)
+        if kind == "fn-config":
+            self.gaps.append(
+                "bin/fn is in this tree but its `run` is configuration-file driven and "
+                "takes no --store, and this gate does not author a configuration for it. "
+                "The gate drove tools/run_owner.py, the entry point bin/fn wraps, so the "
+                "service wrapper's own argument handling and logging are not exercised.")
+            kind = "owner"
         if kind == "owner":
             return kind, "python3 tools/run_owner.py --store {} --port 0 --control {}/control.sock".format(
                 self.store, self.run)
@@ -582,6 +680,7 @@ echo SERVER-TIMEOUT; tail -25 {log}; exit 1
             return False
         self.port = int(match.group(1))
         self.server_kind = kind
+        self.post_enabled = "--post" in command or kind.startswith(("owner", "fn"))
         self.facts["server"] = "{} on port {} ({})".format(kind, self.port, tag)
         return True
 
@@ -648,22 +747,41 @@ echo stopped
             return
         client = present[0]
         if client == "slrn":
-            script = self.cd("""
-cat > {run}/slrn.rc <<'EOF'
+            inner = ("slrn -f {run}/slrn.jnews -i {run}/slrn.rc --nntp -h 127.0.0.1 "
+                     "-p {port} --create -n").format(run=self.run, port=self.port)
+            prelude = """
+cat > {run}/slrn.rc <<'FN_SLRN_EOF'
 set hostname "gate.example.invalid"
 set username "gate"
 set realname "Deploy Gate"
-EOF
-NNTPSERVER=127.0.0.1 script -q -c "slrn -f {run}/slrn.jnews -i {run}/slrn.rc --nntp -h 127.0.0.1 -p {port} --create -n" \\
-  {run}/slrn.typescript < /dev/null || true
-head -5 {run}/slrn.typescript
-""".format(run=self.run, port=self.port))
+FN_SLRN_EOF
+""".format(run=self.run)
         else:
-            script = self.cd("script -q -c 'tin -r -g 127.0.0.1 -p {port} -R' "
-                             "{run}/tin.typescript < /dev/null || true; "
-                             "head -5 {run}/tin.typescript".format(run=self.run, port=self.port))
+            inner = "tin -r -g 127.0.0.1 -p {} -R".format(self.port)
+            prelude = ""
+        # util-linux script takes `-c CMD FILE`; the BSD one takes `FILE CMD...`.
+        script = self.cd(prelude + """
+typescript={run}/{client}.typescript
+# A newsreader is interactive; /dev/null on its stdin should end it, and the
+# bounded wait is here because "should" is not a property of a strange client.
+if script --version 2>/dev/null | grep -qi util-linux; then
+  NNTPSERVER=127.0.0.1 script -q -c {inner} $typescript < /dev/null > /dev/null 2>&1 &
+else
+  NNTPSERVER=127.0.0.1 script -q $typescript /bin/sh -c {inner} < /dev/null > /dev/null 2>&1 &
+fi
+client_pid=$!
+for i in $(seq 1 20); do kill -0 $client_pid 2>/dev/null || break; sleep 1; done
+if kill -0 $client_pid 2>/dev/null; then
+  kill -9 $client_pid 2>/dev/null || true
+  echo "(the client was still running after 20 s and was killed)"
+fi
+wait $client_pid 2>/dev/null || true
+head -5 $typescript 2>/dev/null || echo "(the client left no typescript)"
+""".format(run=self.run, client=client, inner="'" + inner + "'"))
         self.sh("scripted {} session".format(client), script, timeout=180,
-                note="driven over a pty by script(1); no expect on the host")
+                note="a real newsreader driven over a pty by script(1); no expect on "
+                     "the host, and the session is not interactive: it records that the "
+                     "client connected and what it said, not a browsing session")
 
     # -- the whole gate ---------------------------------------------------
     def execute(self):
@@ -682,8 +800,27 @@ head -5 {run}/slrn.typescript
                 "reader's, not the {}'s.".format(kind, kind))
             if kind == "reader" or not self.start_server("reader", fallback, "main"):
                 raise GateError("no server entry point reached LISTENING")
-        self.drive("transcript", "--group {}".format(GROUPS[0]))
-        self.drive("concurrent", "--group {} --msgid '{}'".format(GROUPS[0], POSTED_ID))
+        transcript = self.drive("transcript", "--group {}".format(GROUPS[0]))
+        if self.post_enabled and '"post_offered": false' in transcript.output:
+            self.gaps.append(
+                "the server was started with POST enabled and answers POST with 340 (see "
+                "the kill cut below), but its CAPABILITIES block does not list POST. RFC "
+                "3977 section 5.2.2 requires the POST capability exactly when posting is "
+                "permitted, so an independent client that reads capabilities before "
+                "posting will not offer posting at all.")
+        concurrent = self.drive("concurrent", "--group {} --msgid '{}'".format(
+            GROUPS[0], POSTED_ID))
+        if concurrent.rc == 0:
+            self.posted.append(POSTED_ID)
+        else:
+            self.gaps.append(
+                "a second reader live across another connection's POST was NOT exercised: "
+                "tools/run_reader.py serves one connection at a time (its accept loop "
+                "calls serve_client to completion before accepting again, and it listens "
+                "with a backlog of 1), so the second connection never gets a greeting. "
+                "The concurrent server is tools/run_owner.py, which did not start on this "
+                "commit; nothing below establishes that a reader's pinned snapshot "
+                "survives another connection's post.")
         pid = self.sh("server pid", "cat {}/server.pid".format(self.run)).output.strip()
         self.drive("killcut", "--group {} --msgid '<interrupted@example.invalid>' --pid {}".format(
             GROUPS[0], pid), name="kill -9 mid-session")
@@ -696,8 +833,8 @@ head -5 {run}/slrn.typescript
                              command if kind != "owner" else
                              "python3 tools/run_reader.py --store {} --port 0 --post".format(
                                  self.store), "after-recovery"):
-            self.drive("reread", "--groups {} --msgids '{},{}'".format(
-                ",".join(GROUPS), SEED_ID, POSTED_ID), name="reread after recovery")
+            self.drive("reread", "--groups {} --msgids '{}'".format(
+                ",".join(GROUPS), ",".join(self.posted)), name="reread after recovery")
             self.news_client()
             self.stop_server("after-recovery")
         else:
@@ -809,6 +946,9 @@ def main(argv=None) -> int:
     parser.add_argument("--dry-run", action="store_true",
                         help="run every script through local bash with HOME redirected")
     parser.add_argument("--home", default=None, help="the fake HOME for --dry-run")
+    parser.add_argument("--acl2", default=None,
+                        help="the host's ACL2 image; the default is tools/farm.py's "
+                             "entry for the host, else `acl2` on its PATH")
     parser.add_argument("--nntplib-python", default="auto",
                         help="auto, none, or an interpreter with a stdlib nntplib")
     parser.add_argument("--overlay", default=None,
@@ -826,7 +966,8 @@ def main(argv=None) -> int:
     overlay = Path(args.overlay).resolve() if args.overlay else None
     gate = DeployGate(host, repo, commit, rev, args.tree, overlay=overlay,
                       jobs=args.jobs, keep=args.keep,
-                      nntplib_python=args.nntplib_python)
+                      nntplib_python=args.nntplib_python,
+                      acl2=args.acl2 or FARM_HOSTS.get(args.host, {}).get("acl2", "acl2"))
     started = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     clock = time.monotonic()
     failure = None
