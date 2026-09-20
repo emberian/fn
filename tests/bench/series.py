@@ -199,12 +199,18 @@ def checkpoints(start, top):
     return out
 
 
+def peak_rss(point):
+    return max([(point.get(key) or {}).get("VmRSS") or 0
+                for key in ("rss_kib", "rss_kib_after_posting")], default=0)
+
+
 def series(root, payload_bytes, start, top, seed, post_ceiling, recover_ceiling,
-           budget_seconds):
+           budget_seconds, rss_ceiling_kib):
     result = {"payload_bytes": payload_bytes, "profile": SCALE_CONFIG["profile"],
               "groups": GROUP_NAMES, "seed": seed, "start": start, "max_articles": top,
               "post_ceiling_seconds": post_ceiling,
               "recover_ceiling_seconds": recover_ceiling,
+              "rss_ceiling_kib": rss_ceiling_kib,
               "bound": SCALE_CONFIG["max_transactions"],
               "points": [], "stopped_by": None, "committed": 0, "status": "running"}
     started = time.monotonic()
@@ -238,6 +244,7 @@ def series(root, payload_bytes, start, top, seed, post_ceiling, recover_ceiling,
                     raise RuntimeError("the store already held %s" % msgid)
                 committed += 1
                 result["committed"] = committed
+            point["rss_kib_after_posting"] = rss_kib(bridge.proc.pid)
         except (StoreError, RuntimeError) as error:
             point["error"] = "%s: %s" % (type(error).__name__, str(error)[:300])
             result["stopped_by"] = point["error"]
@@ -264,6 +271,14 @@ def series(root, payload_bytes, start, top, seed, post_ceiling, recover_ceiling,
         if point.get("recover_seconds", 0) > recover_ceiling:
             result["stopped_by"] = ("recover took %.1f s, over the %.0f s ceiling"
                                     % (point["recover_seconds"], recover_ceiling))
+            break
+        # Articles are held by value: the box is a ceiling too, and this one
+        # is a guard as much as a measurement -- the host is co-tenant.
+        if peak_rss(point) > rss_ceiling_kib:
+            result["stopped_by"] = ("the bridge process reached %.1f GiB, over the "
+                                    "%.1f GiB ceiling"
+                                    % (peak_rss(point) / 1048576.0,
+                                       rss_ceiling_kib / 1048576.0))
             break
         if target >= SCALE_CONFIG["max_transactions"]:
             result["stopped_by"] = ("the %s transaction bound of %d, reached with every "
@@ -297,6 +312,8 @@ def main(argv=None):
     parser.add_argument("--post-ceiling", type=float, default=20.0,
                         help="tools/run_store.py's ACL2_CALL_BASE_SECONDS")
     parser.add_argument("--recover-ceiling", type=float, default=60.0)
+    parser.add_argument("--rss-ceiling-kib", type=int, default=16 * 1024 * 1024,
+                        help="stop when the ACL2 bridge process reaches this RSS")
     parser.add_argument("--budget-seconds", type=float, default=3600.0)
     parser.add_argument("--profile-only", action="store_true",
                         help="do not post: reopen the store at --root once and "
@@ -322,7 +339,8 @@ def main(argv=None):
     result = {"status": "crashed", "root": args.root}
     try:
         result = series(Path(args.root), args.payload, args.start, args.max, args.seed,
-                        args.post_ceiling, args.recover_ceiling, args.budget_seconds)
+                        args.post_ceiling, args.recover_ceiling, args.budget_seconds,
+                        args.rss_ceiling_kib)
         result["root"] = args.root
         return 0
     except BaseException as error:               # the partial curve is the evidence

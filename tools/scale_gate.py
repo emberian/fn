@@ -274,7 +274,8 @@ class ScaleGate(deploy_gate.DeployGate):
                  max_articles=4096, start=16, post_ceiling=20.0,
                  recover_ceiling=60.0, budget_seconds=3600.0, connections=100,
                  previous_points=PREVIOUS_METHOD_POINTS, skip_previous=False,
-                 niceness=10, extra_overlays=(), **kwargs):
+                 niceness=10, rss_ceiling_kib=16 * 1024 * 1024,
+                 extra_overlays=(), **kwargs):
         super().__init__(host, repo, commit, rev, tree, **kwargs)
         self.payloads = list(payloads)
         self.max_articles = max_articles
@@ -286,6 +287,7 @@ class ScaleGate(deploy_gate.DeployGate):
         self.previous_points = list(previous_points)
         self.skip_previous = skip_previous
         self.niceness = niceness
+        self.rss_ceiling_kib = rss_ceiling_kib
         self.extra_overlays = [Path(one) for one in extra_overlays]
         self.series: dict[int, dict] = {}
         self.reader: dict = {}
@@ -308,9 +310,11 @@ class ScaleGate(deploy_gate.DeployGate):
         step = self.sh("series {} octets".format(payload), self.cd(self.nice(
             "python3 tests/bench/series.py --root {root} --payload {payload} "
             "--start {start} --max {top} --post-ceiling {post} "
-            "--recover-ceiling {recover} --budget-seconds {budget} --json {out}"
+            "--recover-ceiling {recover} --rss-ceiling-kib {rss} "
+            "--budget-seconds {budget} --json {out}"
             .format(root=root, payload=payload, start=self.start, top=self.max_articles,
                     post=self.post_ceiling, recover=self.recover_ceiling,
+                    rss=self.rss_ceiling_kib,
                     budget=int(self.budget_seconds), out=out))),
             timeout=int(self.budget_seconds) + 1800, expect=None)
         data = extract(step.output, "SCALE-SERIES")
@@ -723,6 +727,8 @@ def main(argv=None) -> int:
     parser.add_argument("--connections", type=int, default=100)
     parser.add_argument("--server-ready", type=int, default=1800,
                         help="seconds to wait for LISTENING over a large store")
+    parser.add_argument("--rss-ceiling-gib", type=float, default=16.0,
+                        help="stop a series when the bridge process reaches this RSS")
     parser.add_argument("--nice", type=int, default=10,
                         help="niceness for every measured command on the host")
     parser.add_argument("--skip-previous", action="store_true",
@@ -754,6 +760,7 @@ def main(argv=None) -> int:
                      recover_ceiling=args.recover_ceiling,
                      budget_seconds=args.budget_seconds,
                      connections=args.connections, niceness=args.nice,
+                     rss_ceiling_kib=int(args.rss_ceiling_gib * 1024 * 1024),
                      skip_previous=args.skip_previous)
     started = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     clock = time.monotonic()
