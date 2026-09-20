@@ -986,6 +986,22 @@
     },
     {
       "id": "PRF-029",
+      "title": "The outbound feed offers exactly the peers in scope, and never a loop (K2, outbound half)",
+      "statement": "fn-own-feed-target-is-offerable with fn-own-feed-targets-omit-no-offerable-peer: for a feed table the owner carries, the peers one durably accepted article is offered to are exactly the peers of that table whose own configured record has an outbound half, whose outbound wildmat matches one of the article's own Newsgroups names, whose path-identity the article's Path does not already name, and which is not the peer the article arrived from. fn-own-feed-never-offers-a-loop is the loop-freedom half (RFC 5537 section 3.6) and fn-own-feed-target-is-in-scope the scope half; fn-own-feed-accept-touches-only-its-targets and fn-own-feed-accept-never-enqueues-on-the-origin transport both to the table the owner holds, and fn-own-feed-tick-peer-is-the-feed-tick is the subject rule tying one peer's tick to fn-feed-tick-step on that peer's own feed. Covered scope: one article's octets against one table; the hypothesis is the carried recognizer fn-own-feed-tablep. NOT covered: the statement over fn-own-step (books/owner does not admit on this tree) and fn-feedp preservation, which is cited from books/peer-feed-invariants and not restated.",
+      "milestone": "M2",
+      "requirements": [
+        "REP-001",
+        "REP-002",
+        "REP-005"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [],
+      "progress_note": "books/owner-feed.lisp admits with no open form and tests/acl2/owner-feed-tests.lisp runs 98 assertions green (laptop ACL2 8.7, ld over books/peer-feed-invariants then the book, 2026-09-20, lane w10/owner-feed). NOT CERTIFIED: books/owner-feed includes books/peer-feed-invariants, which fails at fn-feed-apply-record-preserves-feedp (residue: the attempt bound in the :feed-sent arm), so no certificate exists for this closure. The owner-side statement over fn-own-step is open because books/served has no certificate on dev."
+    },
+    {
+      "id": "PRF-030",
       "title": "Provenance is typed, and its wire form is lossless and legacy-compatible",
       "statement": "Every string is an admissible provenance (the :legacy kind), so widening the retention evidence slot from stringp to fn-provp changes no stored value; the rendered form of each typed kind is exactly the string that kind's writer produced before the widening; and a provenance the codec can write is the provenance it reads back from its wire form.",
       "milestone": "M4",
@@ -997,6 +1013,7 @@
       ],
       "assumptions": [],
       "status": "in-progress",
+      "note": "The transit path's DURABLE provenance is not covered: fn-peer-injection-arguments still passes fn-peer-evidence's rendering, and fn-peer-evidence-is-the-legacy-rendering is the equation between the typed record and that string, not evidence that the record reaches the store. books/peer-inbound and books/peer-inbound-invariants have no certificate on dev (blocked on fn-peer-echo-reply-effects-well-formed), so those two events are admitted, not certified, and are not listed here.",
       "events": [
         "fn-provp-of-string",
         "fn-prov-render-of-post",
@@ -1007,8 +1024,7 @@
         "fn-prov-of-wire-of-a-plain-string",
         "fn-prov-of-wire-of-wire",
         "fn-prov-of-wire-of-a-durable-wire"
-      ],
-      "note": "The transit path's DURABLE provenance is not covered: fn-peer-injection-arguments still passes fn-peer-evidence's rendering, and fn-peer-evidence-is-the-legacy-rendering is the equation between the typed record and that string, not evidence that the record reaches the store. books/peer-inbound and books/peer-inbound-invariants have no certificate on dev (blocked on fn-peer-echo-reply-effects-well-formed), so those two events are admitted, not certified, and are not listed here."
+      ]
     }
   ]
 }
