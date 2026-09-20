@@ -56,6 +56,7 @@ survey. Counts after this lane's repairs:
 | keystone-without-witness | 19 | 19 |
 | no-subject | 8 | 8 |
 | multi-valued-in-evaluation | 0 | 0 (tripwire) |
+| hypotheses-without-teeth | 1 | 1 |
 
 Verified by hand: every one of the 21 evaluated findings and all 15 citation
 and no-subject findings, by reading the book and the probe's value — about
@@ -194,11 +195,21 @@ Stated so nobody reads a clean run as a clean corpus.
   books the cache had no certificate for. That loads the book with proofs
   skipped: the VALUES are the book's own, but **no proof in this run is
   evidence**, and none is claimed.
-- One flag per hypothesis is not checked. AGENTS.md wants a `must-fail` per
-  hypothesis; the tool can see that a hypothesis of an `(implies P Q)`
-  assertion is `NIL`, and nothing more. Counting a keystone's hypotheses
-  against the teeth in the section that cites it is the obvious next check and
-  is not written.
+- One-must-fail-per-hypothesis is checked only where a test book SAYS which
+  keystone it is witnessing. `hypotheses-without-teeth` reads a keystone's
+  hypothesis count out of its `defthm` and counts the `assert-event`s between
+  the comment citing it and the next such comment. That is the corpus's
+  `; <theorem-name>` convention, not a declaration, so the count is a FLOOR
+  and the tool cannot tell which hypothesis a given witness is for. **72
+  keystones have two or more hypotheses and a test book names 12 of them**, so
+  the rule is unchecked for 60; `--summary` prints that gap rather than
+  turning it into findings nobody can act on one at a time. The one finding it
+  does raise is `fn-bprv-evolving-invariant-survives-observed-reopen`
+  (`tests/acl2/bp-receiver-evolving-tests.lisp:352`): two hypotheses,
+  `fn-bprv-system-invariantp` and `fn-sf-crash-imagep`, and only the second
+  has a violating value. Its neighbour is also a general negated `must-fail`,
+  which `docs/proof-style.md` section 5 forbids and the ledger's teeth-form
+  lint does not catch because the body mentions a constant.
 
 ## What ran
 

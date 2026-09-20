@@ -922,6 +922,121 @@ def never_true(books: dict[str, list[Assertion]],
 # --------------------------------------------------------------------------
 
 
+def hypotheses_of(statement: object) -> list[object]:
+    """The hypotheses of `(implies (and h1 ... hn) c)`, or of `(implies h c)`."""
+    if head(statement) != "implies" or len(statement) != 3:
+        return []
+    antecedent = statement[1]
+    if head(antecedent) == "and":
+        return list(antecedent[1:])
+    return [antecedent]
+
+
+def cited_sections(name: str) -> list[tuple[str, int, int]]:
+    """Where a test book cites `name` in a comment, and how many
+    `assert-event`s follow before the next citation of another keystone.
+
+    The corpus writes teeth as `; <theorem-name>` and then the witnesses, so
+    the assertions between one citation and the next are the teeth for that
+    theorem.  This is a CONVENTION, not a declaration: the count below is a
+    heuristic and the finding says so.
+    """
+    out: list[tuple[str, int, int]] = []
+    for path, lines, marks in _sections():
+        for index, (number, cited) in enumerate(marks):
+            if cited != name:
+                continue
+            stop = marks[index + 1][0] if index + 1 < len(marks) else len(lines)
+            body = "\n".join(lines[number:stop])
+            out.append((path, number, body.count("(assert-event")))
+    return out
+
+
+_SECTIONS: list | None = None
+
+
+def _sections() -> list:
+    """Every test book as (path, lines, [(line, keystone cited)])."""
+    global _SECTIONS
+    if _SECTIONS is None:
+        keystones = {event for target in json.loads(
+            PROOFS.read_text(encoding="utf-8"))["proofs"]
+            for event in target.get("events", [])}
+        token = re.compile(r"\bfn-[a-z0-9-]*[a-z0-9]")
+        found = []
+        for path in sorted(TESTS.glob("*.lisp")):
+            lines = path.read_text(encoding="utf-8").splitlines()
+            marks = []
+            for number, text in enumerate(lines, 1):
+                if ";" not in text:
+                    continue
+                for cited in token.findall(text[text.index(";"):]):
+                    if cited in keystones:
+                        marks.append((number, cited))
+                        break
+            found.append((path.relative_to(ROOT).as_posix(), lines, marks))
+        _SECTIONS = found
+    return _SECTIONS
+
+
+def hypothesis_coverage() -> tuple[int, int]:
+    """(keystones with 2+ hypotheses, how many a test book cites by name).
+
+    AGENTS.md wants one violating value per hypothesis for ALL of the first
+    number.  The tool can only look where a test book says which keystone it
+    is witnessing, which is the second.  The gap is the honest figure and it
+    is printed rather than turned into findings nobody can act on one by one.
+    """
+    tree = ledger.load_tree()
+    statements = {theorem.name: theorem.statement
+                  for book in tree.books.values() for theorem in book.theorems}
+    registry = json.loads(PROOFS.read_text(encoding="utf-8"))
+    total = cited = 0
+    for target in registry["proofs"]:
+        for event in target.get("events", []):
+            if len(hypotheses_of(statements.get(event))) < 2:
+                continue
+            total += 1
+            cited += bool(cited_sections(event))
+    return total, cited
+
+
+def hypothesis_teeth() -> list[Finding]:
+    """Keystones whose cited section has fewer witnesses than hypotheses.
+
+    AGENTS.md: "one `must-fail` case per hypothesis showing the conclusion
+    fails without it".  A hypothesis with no violating value anywhere is a
+    hypothesis that is not doing work -- the feed lane deleted one on
+    2026-09-20 after finding the tooth asserted the OPPOSITE of what the
+    machine does.  This counts; it cannot tell WHICH hypothesis a witness is
+    for, so it is a floor and not a verdict.
+    """
+    tree = ledger.load_tree()
+    statements = {theorem.name: theorem.statement
+                  for book in tree.books.values() for theorem in book.theorems}
+    registry = json.loads(PROOFS.read_text(encoding="utf-8"))
+    out: list[Finding] = []
+    for target in registry["proofs"]:
+        for event in target.get("events", []):
+            wanted = len(hypotheses_of(statements.get(event)))
+            if wanted < 2:
+                continue  # one hypothesis: the negative assertion is the case
+            sections = cited_sections(event)
+            if not sections:
+                continue  # keystone-without-witness already says this
+            book, line, witnesses = max(sections, key=lambda s: s[2])
+            if witnesses >= wanted:
+                continue
+            out.append(Finding(
+                "hypotheses-without-teeth", book, line,
+                f"`{event}` ({target['id']}) has {wanted} hypotheses and the "
+                f"section citing it carries {witnesses} assert-event(s); "
+                f"AGENTS.md wants one violating value per hypothesis. "
+                f"Section boundaries are the `; <name>` convention, so this "
+                f"is a floor, not a verdict"))
+    return out
+
+
 def registry_findings(books: dict[str, list[Assertion]]) -> list[Finding]:
     """Keystones with no witness, and cited names the tree no longer defines."""
     out: list[Finding] = []
@@ -986,6 +1101,8 @@ def registry_findings(books: dict[str, list[Assertion]]) -> list[Finding]:
                     "stale-citation", book, number,
                     f"the comment cites `{name}`, which nothing in the tree "
                     f"defines and no comment in `books/` mentions either"))
+
+    out += hypothesis_teeth()
 
     # A keystone with no witness in any test book.
     mentioned: dict[str, set[str]] = collections.defaultdict(set)
@@ -1197,6 +1314,10 @@ def main(argv: list[str] | None = None) -> int:
               f"{totals['witnesses']} witnesses)"
               + (f", {len(saved)} books evaluated" if saved else
                  ", values not evaluated (run --evaluate)"))
+        total, cited = hypothesis_coverage()
+        print(f"teeth: {total} keystones have two or more hypotheses and a "
+              f"test book names {cited} of them, so one-must-fail-per-"
+              f"hypothesis is unchecked for {total - cited}")
         for check, number in sorted(by_check.items()):
             print(f"teeth: {number} {check}")
         if not by_check:

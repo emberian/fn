@@ -6,7 +6,7 @@ probe spliced in after the top-level form that holds each assertion, run
 in the book's directory) followed by the static pass. Do not hand-edit:
 regenerate it.
 
-- tree: `w10/teeth-audit` at `6f3df381203ec70534a0463ee70656035ad0cba3`, merged with dev `99a348c`
+- tree: `w10/teeth-audit` at `7cd1d0b77434fcbdac4d5f9845c060beef2b0fab`, merged with dev `99a348c`
 - ACL2 8.7, `/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2`, this laptop,
   through `tools/acl2` (the machine-wide slot pool), one process at a time
 - certificates: `python3 tools/certs.py install` into the worktree; a book
@@ -16,12 +16,15 @@ regenerate it.
 
 5194 `assert-event`s in 96 test books: 525 guard-world audits and 4669 witnesses.
 
+72 keystones in `planning/proofs.json` have two or more hypotheses and a test book names 12 of them, so AGENTS.md's one-must-fail-per-hypothesis rule is unchecked for 60.
+
 | check | count |
 | --- | --- |
 | assertion-false | 3 |
 | book-does-not-run | 3 |
 | both-sides-degenerate | 4 |
 | empty-collection | 6 |
+| hypotheses-without-teeth | 1 |
 | keystone-without-witness | 19 |
 | no-subject | 8 |
 | predicate-never-anchored | 37 |
@@ -55,6 +58,10 @@ regenerate it.
 - `tests/acl2/membership-epochs-tests.lisp:341` `member-equal` is applied to an EMPTY collection, so the claim holds of nothing: (member-equal (fn-me-message "alice" 1 "x") (fn-me-held (fn-me-receive *me-site-a* (fn-me-message "a
 - `tests/acl2/nntp-auth-tests.lisp:348` `member-equal` is applied to an EMPTY collection, so the claim holds of nothing: (member-equal (fn-auth-starttls-effect) (au-reply (fn-post-result-session *au-starttls*) "STARTTLS")
 - `tests/acl2/scheduler-tests.lisp:447` `member-equal` is applied to an EMPTY collection, so the claim holds of nothing: (member-equal "work-big" (fn-sched-aged *sched-ss*))
+
+## hypotheses-without-teeth (1)
+
+- `tests/acl2/bp-receiver-evolving-tests.lisp:352` `fn-bprv-evolving-invariant-survives-observed-reopen` (PRF-007) has 2 hypotheses and the section citing it carries 1 assert-event(s); AGENTS.md wants one violating value per hypothesis. Section boundaries are the `; <name>` convention, so this is a floor, not a verdict
 
 ## keystone-without-witness (19)
 
