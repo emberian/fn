@@ -12,6 +12,7 @@
 (in-package "ACL2")
 ; Reuse the proved total CAR/CDR and membership execution helpers.
 (include-book "acceptance-alloc")
+(include-book "defrecord")
 
 ; -----------------------------------------------------------------------------
 ; Portable facts, identities, and explicit validation policy
@@ -20,148 +21,23 @@
 ; `message-id', `content-id', and `(origin incarnation sequence)' deliberately
 ; name different namespaces.  Facts that share a Message-ID but differ in their
 ; content IDs are retained as separate evidence.
-(defun fn-exchange-fact-shapep (x)
-  (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 8)))
-(defun fn-exchange-schema (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car x) :exec (fn-ag-car x)))
-(verify-guards fn-exchange-schema)
-(defun fn-exchange-kind (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
-(verify-guards fn-exchange-kind)
-(defun fn-exchange-message-id (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr x)))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))))
-(verify-guards fn-exchange-message-id)
-(defun fn-exchange-content-id (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr x))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
-(verify-guards fn-exchange-content-id)
-(defun fn-exchange-origin (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr (cdr x)))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
-(verify-guards fn-exchange-origin)
-(defun fn-exchange-incarnation (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr x))))))
-       :exec (fn-ag-car
-              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))))
-(verify-guards fn-exchange-incarnation)
-(defun fn-exchange-sequence (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr x)))))))
-       :exec (fn-ag-car
-              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
-                                     (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))))
-(verify-guards fn-exchange-sequence)
-(defun fn-exchange-provenance (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr x))))))))
-       :exec (fn-ag-car
-              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
-                                     (fn-ag-cdr (fn-ag-cdr
-                                                 (fn-ag-cdr (fn-ag-cdr x))))))))))
-(verify-guards fn-exchange-provenance)
-
-(defun fn-exchange-make-fact
-  (schema kind message-id content-id origin incarnation sequence provenance)
-  (declare (xargs :guard t))
-  (list schema kind message-id content-id origin incarnation sequence provenance))
-
-(defthm fn-exchange-fact-shapep-of-fn-exchange-make-fact
-  (fn-exchange-fact-shapep
-   (fn-exchange-make-fact schema kind message-id content-id origin incarnation
-                          sequence provenance)))
-(defthm fn-exchange-schema-of-fn-exchange-make-fact
-  (equal (fn-exchange-schema
-          (fn-exchange-make-fact schema kind message-id content-id origin
-                                 incarnation sequence provenance))
-         schema))
-(defthm fn-exchange-kind-of-fn-exchange-make-fact
-  (equal (fn-exchange-kind
-          (fn-exchange-make-fact schema kind message-id content-id origin
-                                 incarnation sequence provenance))
-         kind))
-(defthm fn-exchange-message-id-of-fn-exchange-make-fact
-  (equal (fn-exchange-message-id
-          (fn-exchange-make-fact schema kind message-id content-id origin
-                                 incarnation sequence provenance))
-         message-id))
-(defthm fn-exchange-content-id-of-fn-exchange-make-fact
-  (equal (fn-exchange-content-id
-          (fn-exchange-make-fact schema kind message-id content-id origin
-                                 incarnation sequence provenance))
-         content-id))
-(defthm fn-exchange-origin-of-fn-exchange-make-fact
-  (equal (fn-exchange-origin
-          (fn-exchange-make-fact schema kind message-id content-id origin
-                                 incarnation sequence provenance))
-         origin))
-(defthm fn-exchange-incarnation-of-fn-exchange-make-fact
-  (equal (fn-exchange-incarnation
-          (fn-exchange-make-fact schema kind message-id content-id origin
-                                 incarnation sequence provenance))
-         incarnation))
-(defthm fn-exchange-sequence-of-fn-exchange-make-fact
-  (equal (fn-exchange-sequence
-          (fn-exchange-make-fact schema kind message-id content-id origin
-                                 incarnation sequence provenance))
-         sequence))
-(defthm fn-exchange-provenance-of-fn-exchange-make-fact
-  (equal (fn-exchange-provenance
-          (fn-exchange-make-fact schema kind message-id content-id origin
-                                 incarnation sequence provenance))
-         provenance))
-
-; What opacity takes away, exported back: the shape and a well-typed field
-; each imply the record is a cons (forward-chaining, never rewrite).
-(defthm fn-exchange-fact-shapep-forward-shape
-  (implies (fn-exchange-fact-shapep x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-exchange-fact-shapep))))
-(defthm fn-exchange-fact-accessors-forward-consp
-  (and
-   (implies (fn-exchange-schema x) (consp x))
-   (implies (fn-exchange-kind x) (consp x))
-   (implies (fn-exchange-message-id x) (consp x))
-   (implies (fn-exchange-content-id x) (consp x))
-   (implies (fn-exchange-origin x) (consp x))
-   (implies (fn-exchange-incarnation x) (consp x))
-   (implies (fn-exchange-sequence x) (consp x))
-   (implies (fn-exchange-provenance x) (consp x))
-   )
-  :rule-classes
-  ((:forward-chaining :corollary (implies (fn-exchange-schema x) (consp x))
-                      :trigger-terms ((fn-exchange-schema x)))
-   (:forward-chaining :corollary (implies (fn-exchange-kind x) (consp x))
-                      :trigger-terms ((fn-exchange-kind x)))
-   (:forward-chaining :corollary (implies (fn-exchange-message-id x) (consp x))
-                      :trigger-terms ((fn-exchange-message-id x)))
-   (:forward-chaining :corollary (implies (fn-exchange-content-id x) (consp x))
-                      :trigger-terms ((fn-exchange-content-id x)))
-   (:forward-chaining :corollary (implies (fn-exchange-origin x) (consp x))
-                      :trigger-terms ((fn-exchange-origin x)))
-   (:forward-chaining :corollary (implies (fn-exchange-incarnation x) (consp x))
-                      :trigger-terms ((fn-exchange-incarnation x)))
-   (:forward-chaining :corollary (implies (fn-exchange-sequence x) (consp x))
-                      :trigger-terms ((fn-exchange-sequence x)))
-   (:forward-chaining :corollary (implies (fn-exchange-provenance x) (consp x))
-                      :trigger-terms ((fn-exchange-provenance x)))
-   )
-  :hints (("Goal" :in-theory (enable fn-exchange-schema fn-exchange-kind fn-exchange-message-id fn-exchange-content-id fn-exchange-origin fn-exchange-incarnation fn-exchange-sequence fn-exchange-provenance))))
-
-(in-theory (disable (:d fn-exchange-fact-shapep) (:d fn-exchange-schema) (:d fn-exchange-kind) (:d fn-exchange-message-id) (:d fn-exchange-content-id) (:d fn-exchange-origin) (:d fn-exchange-incarnation) (:d fn-exchange-sequence) (:d fn-exchange-provenance) (:d fn-exchange-make-fact)))
-
 (defun fn-exchange-kindp (x)
   (declare (xargs :guard t :verify-guards nil))
   (or (equal x :object) (equal x :statement)))
 
 (verify-guards fn-exchange-kindp)
+
+(fn-defrecord fn-exchange-fact
+  :constructor (fn-exchange-make-fact schema kind message-id content-id
+                                      origin incarnation sequence provenance)
+  :fields ((fn-exchange-schema natp)
+           (fn-exchange-kind (fn-exchange-kindp (fn-exchange-kind x)))
+           (fn-exchange-message-id stringp)
+           (fn-exchange-content-id stringp)
+           (fn-exchange-origin stringp)
+           (fn-exchange-incarnation stringp)
+           (fn-exchange-sequence natp)
+           (fn-exchange-provenance stringp)))
 
 (defun fn-exchange-origin-event-id (x)
   (declare (xargs :guard t :verify-guards nil))
@@ -170,25 +46,6 @@
         (fn-exchange-sequence x)))
 
 (verify-guards fn-exchange-origin-event-id)
-
-(defun fn-exchange-factp (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (and (fn-exchange-fact-shapep x)
-       (natp (fn-exchange-schema x))
-       (fn-exchange-kindp (fn-exchange-kind x))
-       (stringp (fn-exchange-message-id x))
-       (stringp (fn-exchange-content-id x))
-       (stringp (fn-exchange-origin x))
-       (stringp (fn-exchange-incarnation x))
-       (natp (fn-exchange-sequence x))
-       (stringp (fn-exchange-provenance x))))
-
-(defthm fn-exchange-factp-forward-shape
-  (implies (fn-exchange-factp x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-exchange-factp))))
-
-(verify-guards fn-exchange-factp)
 
 (defun fn-exchange-string-listp (xs)
   (declare (xargs :guard t :verify-guards nil))
@@ -215,68 +72,16 @@
 ; Policy: (enabled-schemas authorized-provenances).  Schema 1 is the one
 ; understood semantic schema in this model.  A policy cannot promote another
 ; schema by listing it; this makes unknown input unable to authorize a change.
-(defun fn-exchange-policy-shapep (p)
-  (declare (xargs :guard t))
-  (and (true-listp p) (equal (len p) 2)))
-(defun fn-exchange-policy-schemas (p)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car p) :exec (fn-ag-car p)))
-(verify-guards fn-exchange-policy-schemas)
-(defun fn-exchange-policy-authorizations (p)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr p)) :exec (fn-ag-car (fn-ag-cdr p))))
-(verify-guards fn-exchange-policy-authorizations)
-
-(defun fn-exchange-make-policy (schemas authorizations)
-  (declare (xargs :guard t))
-  (list schemas authorizations))
-
-(defthm fn-exchange-policy-shapep-of-fn-exchange-make-policy
-  (fn-exchange-policy-shapep (fn-exchange-make-policy schemas authorizations)))
-(defthm fn-exchange-policy-schemas-of-fn-exchange-make-policy
-  (equal (fn-exchange-policy-schemas
-          (fn-exchange-make-policy schemas authorizations))
-         schemas))
-(defthm fn-exchange-policy-authorizations-of-fn-exchange-make-policy
-  (equal (fn-exchange-policy-authorizations
-          (fn-exchange-make-policy schemas authorizations))
-         authorizations))
-
-; What opacity takes away, exported back: the shape and a well-typed field
-; each imply the record is a cons (forward-chaining, never rewrite).
-(defthm fn-exchange-policy-shapep-forward-shape
-  (implies (fn-exchange-policy-shapep x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-exchange-policy-shapep))))
-(defthm fn-exchange-policy-accessors-forward-consp
-  (and
-   (implies (fn-exchange-policy-schemas x) (consp x))
-   (implies (fn-exchange-policy-authorizations x) (consp x))
-   )
-  :rule-classes
-  ((:forward-chaining :corollary (implies (fn-exchange-policy-schemas x) (consp x))
-                      :trigger-terms ((fn-exchange-policy-schemas x)))
-   (:forward-chaining :corollary (implies (fn-exchange-policy-authorizations x) (consp x))
-                      :trigger-terms ((fn-exchange-policy-authorizations x)))
-   )
-  :hints (("Goal" :in-theory (enable fn-exchange-policy-schemas fn-exchange-policy-authorizations))))
-
-(in-theory (disable (:d fn-exchange-policy-shapep) (:d fn-exchange-policy-schemas) (:d fn-exchange-policy-authorizations) (:d fn-exchange-make-policy)))
-
-(defun fn-exchange-policyp (p)
-  (declare (xargs :guard t :verify-guards nil))
-  (and (fn-exchange-policy-shapep p)
-       (true-listp (fn-exchange-policy-schemas p))
-       (fn-exchange-no-duplicatesp (fn-exchange-policy-schemas p))
-       (fn-exchange-string-listp (fn-exchange-policy-authorizations p))
-       (fn-exchange-no-duplicatesp (fn-exchange-policy-authorizations p))))
-
-(defthm fn-exchange-policyp-forward-shape
-  (implies (fn-exchange-policyp p) (and (consp p) (true-listp p)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-exchange-policyp))))
-
-(verify-guards fn-exchange-policyp)
+(fn-defrecord fn-exchange-policy
+  :constructor (fn-exchange-make-policy schemas authorizations)
+  :fields ((fn-exchange-policy-schemas
+            (and (true-listp (fn-exchange-policy-schemas x))
+                 (fn-exchange-no-duplicatesp (fn-exchange-policy-schemas x))))
+           (fn-exchange-policy-authorizations
+            (and (fn-exchange-string-listp
+                  (fn-exchange-policy-authorizations x))
+                 (fn-exchange-no-duplicatesp
+                  (fn-exchange-policy-authorizations x))))))
 
 (defun fn-exchange-known-schemap (schema policy)
   (declare (xargs :guard t :verify-guards nil))
@@ -404,52 +209,6 @@
 ; State: (capacity facts).  Capacity is charged by distinct retained facts in
 ; this abstract slice.  A real byte/obligation charge needs the storage and
 ; retention correspondence; no such durability claim is made here.
-(defun fn-exchange-state-shapep (s)
-  (declare (xargs :guard t))
-  (and (true-listp s) (equal (len s) 2)))
-(defun fn-exchange-capacity (s)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car s) :exec (fn-ag-car s)))
-(verify-guards fn-exchange-capacity)
-(defun fn-exchange-facts (s)
-  (declare (xargs :guard t :verify-guards nil))
-  (mbe :logic (car (cdr s)) :exec (fn-ag-car (fn-ag-cdr s))))
-(verify-guards fn-exchange-facts)
-
-(defun fn-exchange-make-state (capacity facts)
-  (declare (xargs :guard t))
-  (list capacity facts))
-
-(defthm fn-exchange-state-shapep-of-fn-exchange-make-state
-  (fn-exchange-state-shapep (fn-exchange-make-state capacity facts)))
-(defthm fn-exchange-capacity-of-fn-exchange-make-state
-  (equal (fn-exchange-capacity (fn-exchange-make-state capacity facts))
-         capacity))
-(defthm fn-exchange-facts-of-fn-exchange-make-state
-  (equal (fn-exchange-facts (fn-exchange-make-state capacity facts))
-         facts))
-
-; What opacity takes away, exported back: the shape and a well-typed field
-; each imply the record is a cons (forward-chaining, never rewrite).
-(defthm fn-exchange-state-shapep-forward-shape
-  (implies (fn-exchange-state-shapep x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-exchange-state-shapep))))
-(defthm fn-exchange-state-accessors-forward-consp
-  (and
-   (implies (fn-exchange-capacity x) (consp x))
-   (implies (fn-exchange-facts x) (consp x))
-   )
-  :rule-classes
-  ((:forward-chaining :corollary (implies (fn-exchange-capacity x) (consp x))
-                      :trigger-terms ((fn-exchange-capacity x)))
-   (:forward-chaining :corollary (implies (fn-exchange-facts x) (consp x))
-                      :trigger-terms ((fn-exchange-facts x)))
-   )
-  :hints (("Goal" :in-theory (enable fn-exchange-capacity fn-exchange-facts))))
-
-(in-theory (disable (:d fn-exchange-state-shapep) (:d fn-exchange-capacity) (:d fn-exchange-facts) (:d fn-exchange-make-state)))
-
 (defun fn-exchange-fact-listp (facts)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp facts)
@@ -459,20 +218,14 @@
 
 (verify-guards fn-exchange-fact-listp)
 
-(defun fn-exchange-statep (s)
-  (declare (xargs :guard t :verify-guards nil))
-  (and (fn-exchange-state-shapep s)
-       (natp (fn-exchange-capacity s))
-       (fn-exchange-fact-listp (fn-exchange-facts s))
-       (fn-exchange-no-duplicatesp (fn-exchange-facts s))
-       (<= (len (fn-exchange-facts s)) (fn-exchange-capacity s))))
-
-(defthm fn-exchange-statep-forward-shape
-  (implies (fn-exchange-statep s) (and (consp s) (true-listp s)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-exchange-statep))))
-
-(verify-guards fn-exchange-statep)
+(fn-defrecord fn-exchange-state
+  :constructor (fn-exchange-make-state capacity facts)
+  :fields ((fn-exchange-capacity natp)
+           (fn-exchange-facts
+            (and (fn-exchange-fact-listp (fn-exchange-facts x))
+                 (fn-exchange-no-duplicatesp (fn-exchange-facts x))
+                 (<= (len (fn-exchange-facts x))
+                     (fn-exchange-capacity x))))))
 
 (defun fn-exchange-initial-state (capacity)
   (declare (xargs :guard t :verify-guards nil))

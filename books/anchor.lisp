@@ -42,6 +42,7 @@
 (in-package "ACL2")
 (include-book "cbor-invariants")
 (include-book "clock")
+(include-book "defrecord")
 (local (include-book "arithmetic/top" :dir :system))
 (local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
 
@@ -220,217 +221,32 @@
 ; -----------------------------------------------------------------------------
 ; The anchor statement, as an opaque record
 
-(defun fn-anchor-shapep (x)
-  (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 10) (equal (car x) :fn-anchor)))
-
-(defun fn-anchor-key (a)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr a)) :exec (fn-anchor-ag-car (fn-anchor-ag-cdr a))))
-
-(defun fn-anchor-delegate (a)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr (cdr a)))
-       :exec (fn-anchor-ag-car (fn-anchor-ag-cdr (fn-anchor-ag-cdr a)))))
-
-(defun fn-anchor-mint (a)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr (cdr (cdr a))))
-       :exec (fn-anchor-ag-car
-              (fn-anchor-ag-cdr (fn-anchor-ag-cdr (fn-anchor-ag-cdr a))))))
-
-(defun fn-anchor-maxt (a)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr (cdr (cdr (cdr a)))))
-       :exec (fn-anchor-ag-car
-              (fn-anchor-ag-cdr
-               (fn-anchor-ag-cdr (fn-anchor-ag-cdr (fn-anchor-ag-cdr a)))))))
-
-(defun fn-anchor-delegation-signature (a)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr a))))))
-       :exec (fn-anchor-ag-car
-              (fn-anchor-ag-cdr
-               (fn-anchor-ag-cdr
-                (fn-anchor-ag-cdr
-                 (fn-anchor-ag-cdr (fn-anchor-ag-cdr a))))))))
-
-(defun fn-anchor-midpoint (a)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr a)))))))
-       :exec (fn-anchor-ag-car
-              (fn-anchor-ag-cdr
-               (fn-anchor-ag-cdr
-                (fn-anchor-ag-cdr
-                 (fn-anchor-ag-cdr
-                  (fn-anchor-ag-cdr (fn-anchor-ag-cdr a)))))))))
-
-(defun fn-anchor-radius (a)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr a))))))))
-       :exec (fn-anchor-ag-car
-              (fn-anchor-ag-cdr
-               (fn-anchor-ag-cdr
-                (fn-anchor-ag-cdr
-                 (fn-anchor-ag-cdr
-                  (fn-anchor-ag-cdr
-                   (fn-anchor-ag-cdr (fn-anchor-ag-cdr a))))))))))
-
-(defun fn-anchor-nonce (a)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr a)))))))))
-       :exec (fn-anchor-ag-car
-              (fn-anchor-ag-cdr
-               (fn-anchor-ag-cdr
-                (fn-anchor-ag-cdr
-                 (fn-anchor-ag-cdr
-                  (fn-anchor-ag-cdr
-                   (fn-anchor-ag-cdr
-                    (fn-anchor-ag-cdr (fn-anchor-ag-cdr a)))))))))))
-
-(defun fn-anchor-signature (a)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr a))))))))))
-       :exec (fn-anchor-ag-car
-              (fn-anchor-ag-cdr
-               (fn-anchor-ag-cdr
-                (fn-anchor-ag-cdr
-                 (fn-anchor-ag-cdr
-                  (fn-anchor-ag-cdr
-                   (fn-anchor-ag-cdr
-                    (fn-anchor-ag-cdr
-                     (fn-anchor-ag-cdr (fn-anchor-ag-cdr a))))))))))))
-
-(defun fn-anchor (key-id delegate mint maxt delegation-signature
-                  midpoint radius nonce signature)
-  (declare (xargs :guard t))
-  (list :fn-anchor key-id delegate mint maxt delegation-signature
-        midpoint radius nonce signature))
-
-(defthm fn-anchor-shapep-of-fn-anchor
-  (fn-anchor-shapep (fn-anchor key-id delegate mint maxt delegation-signature
-                               midpoint radius nonce signature)))
-
-(defthm fn-anchor-key-of-fn-anchor
-  (equal (fn-anchor-key (fn-anchor key-id delegate mint maxt
-                                   delegation-signature midpoint radius
-                                   nonce signature))
-         key-id))
-
-(defthm fn-anchor-delegate-of-fn-anchor
-  (equal (fn-anchor-delegate (fn-anchor key-id delegate mint maxt
-                                        delegation-signature midpoint radius
-                                        nonce signature))
-         delegate))
-
-(defthm fn-anchor-mint-of-fn-anchor
-  (equal (fn-anchor-mint (fn-anchor key-id delegate mint maxt
-                                    delegation-signature midpoint radius
-                                    nonce signature))
-         mint))
-
-(defthm fn-anchor-maxt-of-fn-anchor
-  (equal (fn-anchor-maxt (fn-anchor key-id delegate mint maxt
-                                    delegation-signature midpoint radius
-                                    nonce signature))
-         maxt))
-
-(defthm fn-anchor-delegation-signature-of-fn-anchor
-  (equal (fn-anchor-delegation-signature
-          (fn-anchor key-id delegate mint maxt delegation-signature
-                     midpoint radius nonce signature))
-         delegation-signature))
-
-(defthm fn-anchor-midpoint-of-fn-anchor
-  (equal (fn-anchor-midpoint (fn-anchor key-id delegate mint maxt
-                                        delegation-signature midpoint radius
-                                        nonce signature))
-         midpoint))
-
-(defthm fn-anchor-radius-of-fn-anchor
-  (equal (fn-anchor-radius (fn-anchor key-id delegate mint maxt
-                                      delegation-signature midpoint radius
-                                      nonce signature))
-         radius))
-
-(defthm fn-anchor-nonce-of-fn-anchor
-  (equal (fn-anchor-nonce (fn-anchor key-id delegate mint maxt
-                                     delegation-signature midpoint radius
-                                     nonce signature))
-         nonce))
-
-(defthm fn-anchor-signature-of-fn-anchor
-  (equal (fn-anchor-signature (fn-anchor key-id delegate mint maxt
-                                         delegation-signature midpoint radius
-                                         nonce signature))
-         signature))
-
-; What opacity takes away (docs/proof-style.md sec. 1): the shape facts type
-; reasoning used to supply, exported back as forward-chaining rules only.
-(defthm fn-anchor-shapep-forward-shape
-  (implies (fn-anchor-shapep x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining)
-
-(defthm fn-anchor-accessors-forward-consp
-  (and (implies (fn-anchor-key x) (consp x))
-       (implies (fn-anchor-delegate x) (consp x))
-       (implies (fn-anchor-mint x) (consp x))
-       (implies (fn-anchor-maxt x) (consp x))
-       (implies (fn-anchor-delegation-signature x) (consp x))
-       (implies (fn-anchor-midpoint x) (consp x))
-       (implies (fn-anchor-radius x) (consp x))
-       (implies (fn-anchor-nonce x) (consp x))
-       (implies (fn-anchor-signature x) (consp x)))
-  :rule-classes
-  ((:forward-chaining :corollary (implies (fn-anchor-key x) (consp x))
-                      :trigger-terms ((fn-anchor-key x)))
-   (:forward-chaining :corollary (implies (fn-anchor-delegate x) (consp x))
-                      :trigger-terms ((fn-anchor-delegate x)))
-   (:forward-chaining :corollary (implies (fn-anchor-mint x) (consp x))
-                      :trigger-terms ((fn-anchor-mint x)))
-   (:forward-chaining :corollary (implies (fn-anchor-maxt x) (consp x))
-                      :trigger-terms ((fn-anchor-maxt x)))
-   (:forward-chaining :corollary (implies (fn-anchor-delegation-signature x)
-                                          (consp x))
-                      :trigger-terms ((fn-anchor-delegation-signature x)))
-   (:forward-chaining :corollary (implies (fn-anchor-midpoint x) (consp x))
-                      :trigger-terms ((fn-anchor-midpoint x)))
-   (:forward-chaining :corollary (implies (fn-anchor-radius x) (consp x))
-                      :trigger-terms ((fn-anchor-radius x)))
-   (:forward-chaining :corollary (implies (fn-anchor-nonce x) (consp x))
-                      :trigger-terms ((fn-anchor-nonce x)))
-   (:forward-chaining :corollary (implies (fn-anchor-signature x) (consp x))
-                      :trigger-terms ((fn-anchor-signature x)))))
-
-(in-theory (disable (:d fn-anchor-shapep) (:d fn-anchor)
-                    (:d fn-anchor-key) (:d fn-anchor-delegate)
-                    (:d fn-anchor-mint) (:d fn-anchor-maxt)
-                    (:d fn-anchor-delegation-signature)
-                    (:d fn-anchor-midpoint) (:d fn-anchor-radius)
-                    (:d fn-anchor-nonce) (:d fn-anchor-signature)))
-
-(defun fn-anchor-p (x)
-  (declare (xargs :guard t))
-  (and (fn-anchor-shapep x)
-       (fn-anchor-octets-of-lengthp (fn-anchor-key x) *fn-anchor-key-octets*)
-       (fn-anchor-octets-of-lengthp (fn-anchor-delegate x)
-                                    *fn-anchor-key-octets*)
-       (fn-anchor-timep (fn-anchor-mint x))
-       (fn-anchor-timep (fn-anchor-maxt x))
-       (fn-anchor-octets-of-lengthp (fn-anchor-delegation-signature x)
-                                    *fn-anchor-sig-octets*)
-       (fn-anchor-timep (fn-anchor-midpoint x))
-       (fn-anchor-timep (fn-anchor-radius x))
-       (fn-anchor-octets-of-lengthp (fn-anchor-nonce x)
-                                    *fn-anchor-nonce-octets*)
-       (fn-anchor-octets-of-lengthp (fn-anchor-signature x)
-                                    *fn-anchor-sig-octets*)))
-
-(verify-guards fn-anchor-p)
-
-(defthm fn-anchor-p-forward-shape
-  (implies (fn-anchor-p x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining)
+(fn-defrecord fn-anchor
+  :tag :fn-anchor
+  :constructor (fn-anchor key-id delegate mint maxt delegation-signature
+                          midpoint radius nonce signature)
+  :fields ((fn-anchor-key
+            (fn-anchor-octets-of-lengthp (fn-anchor-key x)
+                                         *fn-anchor-key-octets*))
+           (fn-anchor-delegate
+            (fn-anchor-octets-of-lengthp (fn-anchor-delegate x)
+                                         *fn-anchor-key-octets*))
+           (fn-anchor-mint fn-anchor-timep)
+           (fn-anchor-maxt fn-anchor-timep)
+           (fn-anchor-delegation-signature
+            (fn-anchor-octets-of-lengthp (fn-anchor-delegation-signature x)
+                                         *fn-anchor-sig-octets*))
+           (fn-anchor-midpoint fn-anchor-timep)
+           (fn-anchor-radius fn-anchor-timep)
+           (fn-anchor-nonce
+            (fn-anchor-octets-of-lengthp (fn-anchor-nonce x)
+                                         *fn-anchor-nonce-octets*))
+           (fn-anchor-signature
+            (fn-anchor-octets-of-lengthp (fn-anchor-signature x)
+                                         *fn-anchor-sig-octets*)))
+  :recognizer fn-anchor-p
+  :car-fn fn-anchor-ag-car
+  :cdr-fn fn-anchor-ag-cdr)
 
 ; -----------------------------------------------------------------------------
 ; What the server signed
@@ -674,147 +490,28 @@
 ; is the answer when no anchor could be obtained at all: the node does not know
 ; whether the image is stale, and that is not the same as knowing it is.
 
-(defun fn-anchor-outcome-shapep (x)
-  (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 4) (equal (car x) :fn-anchor-outcome)))
-
-(defun fn-anchor-status (x)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr x)) :exec (fn-anchor-ag-car (fn-anchor-ag-cdr x))))
-
-(defun fn-anchor-reason (x)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr (cdr x)))
-       :exec (fn-anchor-ag-car (fn-anchor-ag-cdr (fn-anchor-ag-cdr x)))))
-
-(defun fn-anchor-payload (x)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr (cdr (cdr x))))
-       :exec (fn-anchor-ag-car
-              (fn-anchor-ag-cdr (fn-anchor-ag-cdr (fn-anchor-ag-cdr x))))))
-
-(defun fn-anchor-outcome (status reason payload)
-  (declare (xargs :guard t))
-  (list :fn-anchor-outcome status reason payload))
-
-(defthm fn-anchor-outcome-shapep-of-fn-anchor-outcome
-  (fn-anchor-outcome-shapep (fn-anchor-outcome status reason payload)))
-
-(defthm fn-anchor-status-of-fn-anchor-outcome
-  (equal (fn-anchor-status (fn-anchor-outcome status reason payload)) status))
-
-(defthm fn-anchor-reason-of-fn-anchor-outcome
-  (equal (fn-anchor-reason (fn-anchor-outcome status reason payload)) reason))
-
-(defthm fn-anchor-payload-of-fn-anchor-outcome
-  (equal (fn-anchor-payload (fn-anchor-outcome status reason payload)) payload))
-
-(defthm fn-anchor-outcome-shapep-forward-shape
-  (implies (fn-anchor-outcome-shapep x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining)
-
-(defthm fn-anchor-outcome-accessors-forward-consp
-  (and (implies (fn-anchor-status x) (consp x))
-       (implies (fn-anchor-reason x) (consp x))
-       (implies (fn-anchor-payload x) (consp x)))
-  :rule-classes
-  ((:forward-chaining :corollary (implies (fn-anchor-status x) (consp x))
-                      :trigger-terms ((fn-anchor-status x)))
-   (:forward-chaining :corollary (implies (fn-anchor-reason x) (consp x))
-                      :trigger-terms ((fn-anchor-reason x)))
-   (:forward-chaining :corollary (implies (fn-anchor-payload x) (consp x))
-                      :trigger-terms ((fn-anchor-payload x)))))
-
-(in-theory (disable (:d fn-anchor-outcome-shapep) (:d fn-anchor-outcome)
-                    (:d fn-anchor-status) (:d fn-anchor-reason)
-                    (:d fn-anchor-payload)))
-
-(defun fn-anchor-outcomep (x)
-  (declare (xargs :guard t))
-  (fn-anchor-outcome-shapep x))
-
-(verify-guards fn-anchor-outcomep)
-
-(defthm fn-anchor-outcomep-forward-shape
-  (implies (fn-anchor-outcomep x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining)
+(fn-defrecord fn-anchor-outcome
+  :tag :fn-anchor-outcome
+  :constructor (fn-anchor-outcome status reason payload)
+  :fields ((fn-anchor-status t)
+           (fn-anchor-reason t)
+           (fn-anchor-payload t))
+  :car-fn fn-anchor-ag-car
+  :cdr-fn fn-anchor-ag-cdr)
 
 ; -----------------------------------------------------------------------------
 ; The node's durable anchor state, as an opaque record
 
-(defun fn-anchor-node-shapep (x)
-  (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 4) (equal (car x) :fn-anchor-node)))
-
-(defun fn-anchor-node-pinned (x)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr x)) :exec (fn-anchor-ag-car (fn-anchor-ag-cdr x))))
-
-(defun fn-anchor-node-latest (x)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr (cdr x)))
-       :exec (fn-anchor-ag-car (fn-anchor-ag-cdr (fn-anchor-ag-cdr x)))))
-
-(defun fn-anchor-node-incarnation (x)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr (cdr (cdr x))))
-       :exec (fn-anchor-ag-car
-              (fn-anchor-ag-cdr (fn-anchor-ag-cdr (fn-anchor-ag-cdr x))))))
-
-(defun fn-anchor-node (pinned latest incarnation)
-  (declare (xargs :guard t))
-  (list :fn-anchor-node pinned latest incarnation))
-
-(defthm fn-anchor-node-shapep-of-fn-anchor-node
-  (fn-anchor-node-shapep (fn-anchor-node pinned latest incarnation)))
-
-(defthm fn-anchor-node-pinned-of-fn-anchor-node
-  (equal (fn-anchor-node-pinned (fn-anchor-node pinned latest incarnation))
-         pinned))
-
-(defthm fn-anchor-node-latest-of-fn-anchor-node
-  (equal (fn-anchor-node-latest (fn-anchor-node pinned latest incarnation))
-         latest))
-
-(defthm fn-anchor-node-incarnation-of-fn-anchor-node
-  (equal (fn-anchor-node-incarnation
-          (fn-anchor-node pinned latest incarnation))
-         incarnation))
-
-(defthm fn-anchor-node-shapep-forward-shape
-  (implies (fn-anchor-node-shapep x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining)
-
-(defthm fn-anchor-node-accessors-forward-consp
-  (and (implies (fn-anchor-node-pinned x) (consp x))
-       (implies (fn-anchor-node-latest x) (consp x))
-       (implies (fn-anchor-node-incarnation x) (consp x)))
-  :rule-classes
-  ((:forward-chaining :corollary (implies (fn-anchor-node-pinned x) (consp x))
-                      :trigger-terms ((fn-anchor-node-pinned x)))
-   (:forward-chaining :corollary (implies (fn-anchor-node-latest x) (consp x))
-                      :trigger-terms ((fn-anchor-node-latest x)))
-   (:forward-chaining :corollary (implies (fn-anchor-node-incarnation x)
-                                          (consp x))
-                      :trigger-terms ((fn-anchor-node-incarnation x)))))
-
-(in-theory (disable (:d fn-anchor-node-shapep) (:d fn-anchor-node)
-                    (:d fn-anchor-node-pinned) (:d fn-anchor-node-latest)
-                    (:d fn-anchor-node-incarnation)))
-
-(defun fn-anchor-nodep (x)
-  (declare (xargs :guard t))
-  (and (fn-anchor-node-shapep x)
-       (true-listp (fn-anchor-node-pinned x))
-       (or (null (fn-anchor-node-latest x))
-           (fn-anchor-p (fn-anchor-node-latest x)))
-       (natp (fn-anchor-node-incarnation x))))
-
-(verify-guards fn-anchor-nodep)
-
-(defthm fn-anchor-nodep-forward-shape
-  (implies (fn-anchor-nodep x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining)
+(fn-defrecord fn-anchor-node
+  :tag :fn-anchor-node
+  :constructor (fn-anchor-node pinned latest incarnation)
+  :fields ((fn-anchor-node-pinned (true-listp (fn-anchor-node-pinned x)))
+           (fn-anchor-node-latest
+            (or (null (fn-anchor-node-latest x))
+                (fn-anchor-p (fn-anchor-node-latest x))))
+           (fn-anchor-node-incarnation natp))
+  :car-fn fn-anchor-ag-car
+  :cdr-fn fn-anchor-ag-cdr)
 
 ; Accepting an anchor into the node's durable state.  A node that already holds
 ; an anchor accepts only a strictly newer one; the refusal reasons stay apart
@@ -881,65 +578,15 @@
 ; only under an anchor the node can verify, because there is nothing it could
 ; be stale with respect to.
 
-(defun fn-anchor-image-shapep (x)
-  (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 3) (equal (car x) :fn-anchor-image)))
-
-(defun fn-anchor-image-incarnation (x)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr x)) :exec (fn-anchor-ag-car (fn-anchor-ag-cdr x))))
-
-(defun fn-anchor-image-referenced (x)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr (cdr x)))
-       :exec (fn-anchor-ag-car (fn-anchor-ag-cdr (fn-anchor-ag-cdr x)))))
-
-(defun fn-anchor-image (incarnation referenced)
-  (declare (xargs :guard t))
-  (list :fn-anchor-image incarnation referenced))
-
-(defthm fn-anchor-image-shapep-of-fn-anchor-image
-  (fn-anchor-image-shapep (fn-anchor-image incarnation referenced)))
-
-(defthm fn-anchor-image-incarnation-of-fn-anchor-image
-  (equal (fn-anchor-image-incarnation (fn-anchor-image incarnation referenced))
-         incarnation))
-
-(defthm fn-anchor-image-referenced-of-fn-anchor-image
-  (equal (fn-anchor-image-referenced (fn-anchor-image incarnation referenced))
-         referenced))
-
-(defthm fn-anchor-image-shapep-forward-shape
-  (implies (fn-anchor-image-shapep x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining)
-
-(defthm fn-anchor-image-accessors-forward-consp
-  (and (implies (fn-anchor-image-incarnation x) (consp x))
-       (implies (fn-anchor-image-referenced x) (consp x)))
-  :rule-classes
-  ((:forward-chaining
-    :corollary (implies (fn-anchor-image-incarnation x) (consp x))
-    :trigger-terms ((fn-anchor-image-incarnation x)))
-   (:forward-chaining
-    :corollary (implies (fn-anchor-image-referenced x) (consp x))
-    :trigger-terms ((fn-anchor-image-referenced x)))))
-
-(in-theory (disable (:d fn-anchor-image-shapep) (:d fn-anchor-image)
-                    (:d fn-anchor-image-incarnation)
-                    (:d fn-anchor-image-referenced)))
-
-(defun fn-anchor-imagep (x)
-  (declare (xargs :guard t))
-  (and (fn-anchor-image-shapep x)
-       (natp (fn-anchor-image-incarnation x))
-       (or (null (fn-anchor-image-referenced x))
-           (fn-anchor-p (fn-anchor-image-referenced x)))))
-
-(verify-guards fn-anchor-imagep)
-
-(defthm fn-anchor-imagep-forward-shape
-  (implies (fn-anchor-imagep x) (and (consp x) (true-listp x)))
-  :rule-classes :forward-chaining)
+(fn-defrecord fn-anchor-image
+  :tag :fn-anchor-image
+  :constructor (fn-anchor-image incarnation referenced)
+  :fields ((fn-anchor-image-incarnation natp)
+           (fn-anchor-image-referenced
+            (or (null (fn-anchor-image-referenced x))
+                (fn-anchor-p (fn-anchor-image-referenced x)))))
+  :car-fn fn-anchor-ag-car
+  :cdr-fn fn-anchor-ag-cdr)
 
 (defun fn-anchor-restore (node image presented)
   (declare (xargs :guard (and (fn-anchor-nodep node) (fn-anchor-imagep image))
