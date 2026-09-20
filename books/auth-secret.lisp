@@ -180,6 +180,32 @@
   (equal (fn-authsec-ver-digest (fn-authsec-enrol salt secret))
          (fn-authsec-digest salt secret)))
 
+; The verifier reassembled from the two fields the operator's file stores.
+; `fn principal set-password' writes what `fn-authsec-enrol' produced and
+; the owner reads the two fields back at start-up; this is the ONLY place
+; the stored shape is rebuilt, so the host never writes the tag or the
+; layout and `fn-authsec-enrol' and this function cannot drift
+; (fn-authsec-enrol-is-a-verifier-of-its-fields).
+(defun fn-authsec-verifier (salt digest)
+  (declare (xargs :guard t))
+  (list :fn-authsec-v1 (fn-authsec-octets salt) (fn-authsec-octets digest)))
+
+(defthm fn-authsec-enrol-is-a-verifier-of-its-fields
+  (equal (fn-authsec-enrol salt secret)
+         (fn-authsec-verifier salt (fn-authsec-digest salt secret)))
+  :hints (("Goal" :in-theory (e/d (fn-authsec-enrol fn-authsec-verifier)
+                                  (fn-authsec-digest fn-authsec-octets))))
+  :rule-classes nil)
+
+(defthm fn-authsec-verifierp-of-fn-authsec-verifier
+  (implies (and (fn-authsec-saltp salt)
+                (fn-cbor-octet-listp digest)
+                (equal (len digest) 32))
+           (fn-authsec-verifierp (fn-authsec-verifier salt digest)))
+  :hints (("Goal" :in-theory (e/d (fn-authsec-verifierp fn-authsec-verifier
+                                   fn-authsec-saltp)
+                                  nil))))
+
 (defun fn-authsec-checkp (ver supplied)
   ; The whole of the AUTHINFO password comparison.  A function of the stored
   ; verifier and the supplied octets; it reads no secret, because the
@@ -248,7 +274,7 @@
 (deftheory fn-authsec-internals
   '((:d fn-authsec-saltp) (:d fn-authsec-octets)
     (:d fn-authsec-preimage) (:d fn-authsec-digest) (:d fn-authsec-enrol)
-    (:d fn-authsec-verifierp) (:d fn-authsec-ver-salt)
+    (:d fn-authsec-verifierp) (:d fn-authsec-verifier) (:d fn-authsec-ver-salt)
     (:d fn-authsec-ver-digest) (:d fn-authsec-checkp)))
 
 (in-theory (disable fn-authsec-internals))

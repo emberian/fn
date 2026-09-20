@@ -20,7 +20,6 @@ Subcommands: init, run, post, group, capacity, status, recover, anchor.
 import argparse
 import contextlib
 import getpass
-import hashlib
 import io
 import os
 import signal
@@ -320,6 +319,19 @@ def command_run(settings, args):
     argv = ["--store", str(store), "--port", str(settings.port), "--control", str(control),
             "--max-connections", str(args.max_connections),
             "--clock-error-ms", str(args.clock_error_ms)]
+    # RFC 4642/4643.  The certificate is offered through STARTTLS; the
+    # credential file and the two policy bits reach ACL2 once, at start-up
+    # (tools/run_owner.py load_credentials, Acl2Owner.set_auth).
+    if settings.tls_cert:
+        argv += ["--tls-cert", str(settings.tls_cert),
+                 "--tls-key", str(settings.tls_key)]
+    credentials = auth_path(settings)
+    if credentials.exists():
+        argv += ["--auth-file", str(credentials)]
+    if settings.auth_required:
+        argv.append("--auth-required")
+    if settings.auth_protected_only:
+        argv.append("--auth-protected-only")
     log.line("accepted service store={} port={} control={}".format(store, settings.port, control))
     try:
         code = run_owner.main(argv)
@@ -532,15 +544,45 @@ def toml_quote(text):
     return '"{}"'.format(text)
 
 
+def credential_entries(settings):
+    """The credential file as (name, entry) pairs, with the v1 format refused.
+
+    A v1 entry carries `secret` in the clear.  It is REFUSED by name rather
+    than migrated: the cleartext cannot be turned into a verifier without
+    reading it, and reading an operator's stored password to re-derive it is
+    the thing the scheme exists to stop.  The operator re-sets it; that is
+    the local policy, recorded in specs/nntp.md.
+    """
+    data = load_auth(settings)
+    logins = data.get("login", {})
+    if not isinstance(logins, dict):
+        raise ConfigError("[login] is not a table")
+    pairs = []
+    for name in sorted(logins):
+        entry = logins[name]
+        if not isinstance(entry, dict):
+            raise ConfigError("[login.{}] is not a table".format(name))
+        if "secret" in entry:
+            raise ConfigError(
+                "cleartext-credential: [login.{}] in {} stores `secret` in the "
+                "clear (the format fn wrote before 2026-09-20).  fn refuses to "
+                "read it: the stored value is now a salted digest that no one "
+                "can derive from the file.  Re-set it with "
+                "`fn principal set-password {}` and delete the old entry."
+                .format(name, auth_path(settings), name))
+        pairs.append((name, entry))
+    return pairs
+
+
 def _principal_set_password(settings, args):
     """`fn principal set-password NAME` -- an RFC 4643 AUTHINFO login.
 
-    The secret is stored as the operator typed it.  It is NOT a digest, and
-    that is not an oversight: fn's only digest is the constrained `fn-digest`
-    of books/crypto-seam.lisp, which has no attachment and cannot be
-    evaluated, and deriving one in Python would make Python compute a value
-    ACL2 compares, which AGENTS.md forbids.  See OB-AUTH-DIGEST in
-    specs/nntp-audit.md.  The file is written 0600 and the command says so.
+    What is stored is books/auth-secret.lisp's verifier -- a 16-octet salt
+    and the tagged SHA-256 of salt || secret -- and ACL2 derives it: this
+    function marshals octets to `fn-authsec-enrol` through
+    tools/auth_secret.py and writes back what the session returned.  There is
+    no `hashlib` on this path and there must not be one (AGENTS.md: Python
+    may not compute a value ACL2 compares).  The file is written 0600.
     """
     name = args.name
     if not name or not all(33 <= ord(c) <= 126 for c in name):
@@ -555,33 +597,60 @@ def _principal_set_password(settings, args):
             return EXIT_REFUSED, "the two entries differ; nothing was written"
     if not secret or not all(33 <= ord(c) <= 126 for c in secret):
         return EXIT_REFUSED, ("a secret is printable US-ASCII with no space, at "
-                              "most 256 octets; fn compares it octet for octet")
+                              "most 256 octets")
     if len(secret.encode("ascii")) > 256:
         return EXIT_REFUSED, "a secret is at most 256 octets"
     principal = args.principal
     if principal is None:
-        principal = hashlib.sha256(("fn-principal-local-v1:" + name)
-                                   .encode("ascii")).hexdigest()
-    if len(principal) != 64 or any(c not in "0123456789abcdef" for c in principal.lower()):
+        # The local principal id is the tagged digest of the login name, and
+        # ACL2 derives it in the same session as the verifier: it is a
+        # content identity and Python does not compute those either.
+        principal = None
+    if principal is not None and (
+            len(principal) != 64
+            or any(c not in "0123456789abcdef" for c in principal.lower())):
         return EXIT_REFUSED, "a principal id is 64 lowercase hex digits (32 octets)"
-    data = load_auth(settings)
-    logins = data.get("login", {})
-    if not isinstance(logins, dict):
-        raise ConfigError("[login] is not a table")
-    logins[name] = {"principal": principal.lower(),
-                    "secret": secret,
-                    "posting": bool(args.posting)}
-    lines = ["# fn AUTHINFO credentials (RFC 4643).  Written by",
-             "# `fn principal set-password`.  The secret is stored in the clear:",
-             "# see OB-AUTH-DIGEST in specs/nntp-audit.md for why, and use",
-             "# [listener] tls_cert/tls_key with [auth] protected_only = true",
-             "# so the secret is never sent over an unprotected connection.",
+    try:
+        entries = dict(credential_entries(settings))
+    except ConfigError as error:
+        return EXIT_REFUSED, str(error)
+    from tools import auth_secret  # noqa: PLC0415  (only this path needs ACL2)
+    try:
+        session = auth_secret.AuthSecretSession()
+    except (OSError, run_store.StoreError) as error:
+        return EXIT_FAULT, ("set-password needs an ACL2 session to derive the "
+                            "verifier (books/auth-secret): {}".format(error))
+    try:
+        salt, digest = session.enrol(os.urandom(auth_secret.SALT_OCTETS),
+                                     secret.encode("ascii"))
+        if principal is None:
+            principal = session.octets(
+                '(fn-digest-tagged (fn-record-string-octets "fn-principal-local-v1") '
+                '(fn-record-string-octets "{}"))'.format(name)).hex()
+    except run_store.StoreError as error:
+        return EXIT_FAULT, "set-password: ACL2 refused: {}".format(error)
+    finally:
+        session.close()
+    if len(principal) != 64:
+        return EXIT_FAULT, "ACL2 returned a principal id that is not 32 octets"
+    entries[name] = {"principal": principal.lower(),
+                     "salt": salt.hex(),
+                     "digest": digest.hex(),
+                     "posting": bool(args.posting)}
+    lines = ["# fn AUTHINFO credentials (RFC 4643), format v2.  Written by",
+             "# `fn principal set-password`.  Each entry is the verifier of",
+             "# books/auth-secret.lisp: a 16-octet salt and the tagged SHA-256",
+             "# of salt || secret.  The secret is NOT here and cannot be",
+             "# recovered from here.  It still crosses an unprotected",
+             "# connection in the clear, so set [listener] tls_cert/tls_key",
+             "# with [auth] protected_only = true.",
              ""]
-    for key in sorted(logins):
-        entry = logins[key]
+    for key in sorted(entries):
+        entry = entries[key]
         lines += ["[login.{}]".format(toml_quote(key)),
                   "principal = {}".format(toml_quote(str(entry["principal"]))),
-                  "secret = {}".format(toml_quote(str(entry["secret"]))),
+                  "salt = {}".format(toml_quote(str(entry["salt"]))),
+                  "digest = {}".format(toml_quote(str(entry["digest"]))),
                   "posting = {}".format("true" if entry.get("posting") else "false"),
                   ""]
     location = auth_path(settings)
@@ -591,9 +660,10 @@ def _principal_set_password(settings, args):
         stream.write("\n".join(lines))
     os.chmod(str(location), 0o600)
     return EXIT_OK, ("wrote {} (mode 0600) with login {!r}, principal {}, "
-                     "posting {}.  The secret is stored in the clear; set "
-                     "[auth] protected_only = true so AUTHINFO answers 483 "
-                     "until STARTTLS has run."
+                     "posting {}.  The stored value is a salted digest "
+                     "(books/auth-secret); the secret itself is not in the "
+                     "file.  AUTHINFO still sends it in the clear, so set "
+                     "[auth] protected_only = true and configure TLS."
                      .format(location, name, principal[:16] + "...",
                              "allowed" if args.posting else "refused"))
 
