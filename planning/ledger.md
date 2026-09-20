@@ -13,11 +13,11 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 267 |
 | Certification roots in the Makefile | 266 |
 | Books inside the root closure | 266 |
-| `defthm` and `defthmd` events | 5241 |
-| `defun` events | 3748 |
+| `defthm` and `defthmd` events | 5246 |
+| `defun` events | 3749 |
 | Functions with verified guards | 1398 |
 | Functions declared `:verify-guards nil` and never verified | 183 |
-| Functions left at the default with an explicit guard | 1673 |
+| Functions left at the default with an explicit guard | 1674 |
 | Functions left at the default with no guard | 494 |
 | `assert-event` checks | 4979 |
 | `must-fail` checks | 59 |
@@ -216,7 +216,7 @@ that `make certify` requests.
 | `books/store-sweep.lisp` | root | 7 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/stx-authority.lisp` | root | 3 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/stx-carrier.lisp` | root | 49 | 26 | 1/0/25/0 | 0 | 0 | 0 |
-| `books/stx-epochs.lisp` | root | 12 | 12 | 0/1/11/0 | 0 | 0 | 0 |
+| `books/stx-epochs.lisp` | root | 17 | 13 | 0/1/12/0 | 0 | 0 | 0 |
 | `books/stx-index.lisp` | root | 50 | 26 | 8/0/18/0 | 0 | 0 | 1 |
 | `books/stx-invariants.lisp` | root | 24 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/stx-lace.lisp` | root | 19 | 8 | 0/0/8/0 | 0 | 0 | 0 |
