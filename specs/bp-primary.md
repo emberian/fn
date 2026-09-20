@@ -140,6 +140,16 @@ the duplicate key, and `books/frame.lisp` carries them in the FNBI frame
 beside the BID, with `fn-frame-inbound-open-of-prefix` proving the round trip
 over both fields.
 
+Two theorems carry it. `fn-bpp-primary-identity-value-is-shape` says the
+projection of a block is a CBOR item of this profile, and its `fn-bpp-blockp`
+hypothesis is bitten by a block whose creation time is not a natural.
+`fn-bpp-primary-identity-is-octets` says the encoding is an octet list, which
+is what lets the host hash and frame it; it carries no hypothesis, because
+every branch of `fn-bpc-enc` returns octets or nil and the `fn-bpp-blockp`
+hypothesis it once had has no violating value. Its content is
+`fn-bpc-enc-are-octets` at the identity value, stated of the term the host
+calls; cite that lemma, not this restatement, for the encoder.
+
 It is **not** `fn-bpp-bundle-id`, and the difference is a real loss, stated
 here rather than in a comment: RFC 9171 §4.3.1 identifies a fragment by *this
 bundle's* payload length, which lives in the payload block and is not modeled.

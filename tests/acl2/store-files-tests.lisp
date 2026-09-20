@@ -1,13 +1,12 @@
 ; Executable crash traces for the immutable-file publication kernel, and the
 ; teeth for the crash-point theorems in store-files-invariants.lisp.
 ;
-; Each must-fail below instantiates a keystone at a concrete witness with one
-; hypothesis dropped and shows the conclusion is then false.  The witnesses
+; Each tooth below instantiates a keystone at a concrete witness with one
+; hypothesis dropped and asserts the conclusion is then false.  The witnesses
 ; are reachable kernel states except where a hypothesis is the state
 ; recognizer itself, in which case the witness is a malformed tuple.
 (in-package "ACL2")
 (include-book "../../books/store-files-invariants")
-(include-book "std/testing/must-fail" :dir :system)
 
 (defconst *sf-groups* '("fn.letters" "fn.test"))
 (defconst *sf-record-0*
@@ -41,17 +40,17 @@
 (assert-event (not (fn-sf-crash-imagep *sf-fa1* 0 (list *sf-record-0*))))
 ; Teeth for fn-sf-unobserved-frontier-replacement-crash-is-old-or-new.
 ; Phase hypothesis dropped: in :frontier-staged :new does not reach the candidate.
-(must-fail (thm (equal (fn-sf-frontier (fn-sf-crash *sf-fa0* :new :absent))
-                       (fn-sf-frontier-candidate *sf-fa0*))))
+(assert-event (with-guard-checking :none (not (equal (fn-sf-frontier (fn-sf-crash *sf-fa0* :new :absent))
+                       (fn-sf-frontier-candidate *sf-fa0*)))))
 ; Record-choice hypothesis dropped: an invalid choice makes the crash a no-op.
-(must-fail (thm (equal (fn-sf-frontier (fn-sf-crash *sf-fa1* :new :bogus))
-                       (fn-sf-frontier-candidate *sf-fa1*))))
+(assert-event (with-guard-checking :none (not (equal (fn-sf-frontier (fn-sf-crash *sf-fa1* :new :bogus))
+                       (fn-sf-frontier-candidate *sf-fa1*)))))
 ; State hypothesis dropped: a malformed tuple in the phase is a no-op crash.
 (defconst *sf-bogus-data-durable*
   (fn-sf-make :frontier-data-durable 0 1 '(not-a-record) nil nil nil 5))
 (assert-event (not (fn-sf-statep *sf-bogus-data-durable*)))
-(must-fail (thm (equal (fn-sf-frontier (fn-sf-crash *sf-bogus-data-durable* :new :absent))
-                       (fn-sf-frontier-candidate *sf-bogus-data-durable*))))
+(assert-event (with-guard-checking :none (not (equal (fn-sf-frontier (fn-sf-crash *sf-bogus-data-durable* :new :absent))
+                       (fn-sf-frontier-candidate *sf-bogus-data-durable*)))))
 
 ; :frontier-attempted (crash point frontier-dir-barrier): still both values.
 (defconst *sf-fa2* (fn-sf-frontier-replace-result *sf-fa1* :ok))
@@ -94,17 +93,17 @@
 (assert-event (not (fn-sf-crash-imagep *sf-f1* 0 nil)))
 ; Teeth.  Phase hypothesis dropped: from :frontier-data-durable the barrier
 ; step is a no-op and :old still selects the old value.
-(must-fail (thm (equal (fn-sf-frontier
+(assert-event (with-guard-checking :none (not (equal (fn-sf-frontier
                         (fn-sf-crash (fn-sf-frontier-dir-result *sf-fa1* :ok) :old :absent))
-                       (fn-sf-frontier-candidate *sf-fa1*))))
+                       (fn-sf-frontier-candidate *sf-fa1*)))))
 ; State hypothesis dropped.
 (defconst *sf-bogus-attempted*
   (fn-sf-make :frontier-attempted 0 1 '(not-a-record) nil nil nil 5))
 (assert-event (not (fn-sf-statep *sf-bogus-attempted*)))
-(must-fail (thm (equal (fn-sf-frontier
+(assert-event (with-guard-checking :none (not (equal (fn-sf-frontier
                         (fn-sf-crash (fn-sf-frontier-dir-result *sf-bogus-attempted* :ok)
                                      :old :absent))
-                       (fn-sf-frontier-candidate *sf-bogus-attempted*))))
+                       (fn-sf-frontier-candidate *sf-bogus-attempted*)))))
 
 ; A mismatched refusal is a no-op.  A real semantic refusal consumes the one
 ; durable reservation and cannot be mistaken for permission to reuse txid 0.
@@ -155,20 +154,20 @@
                      nil))
 ; Teeth for fn-sf-unobserved-record-link-crash-is-absent-or-present.
 ; Phase hypothesis dropped: in :record-staged :present does not append.
-(must-fail (thm (equal (fn-sf-records (fn-sf-crash *sf-r0* :old :present))
+(assert-event (with-guard-checking :none (not (equal (fn-sf-records (fn-sf-crash *sf-r0* :old :present))
                        (append (fn-sf-records *sf-r0*)
-                               (list (fn-sf-record-candidate *sf-r0*))))))
+                               (list (fn-sf-record-candidate *sf-r0*)))))))
 ; Frontier-choice hypothesis dropped: an invalid choice is a no-op crash.
-(must-fail (thm (equal (fn-sf-records (fn-sf-crash *sf-rdata* :bogus :present))
+(assert-event (with-guard-checking :none (not (equal (fn-sf-records (fn-sf-crash *sf-rdata* :bogus :present))
                        (append (fn-sf-records *sf-rdata*)
-                               (list (fn-sf-record-candidate *sf-rdata*))))))
+                               (list (fn-sf-record-candidate *sf-rdata*)))))))
 ; State hypothesis dropped.
 (defconst *sf-bogus-record-durable*
   (fn-sf-make :record-data-durable 1 nil nil *sf-record-0* nil nil 3))
 (assert-event (not (fn-sf-statep *sf-bogus-record-durable*)))
-(must-fail (thm (equal (fn-sf-records (fn-sf-crash *sf-bogus-record-durable* :old :present))
+(assert-event (with-guard-checking :none (not (equal (fn-sf-records (fn-sf-crash *sf-bogus-record-durable* :old :present))
                        (append (fn-sf-records *sf-bogus-record-durable*)
-                               (list (fn-sf-record-candidate *sf-bogus-record-durable*))))))
+                               (list (fn-sf-record-candidate *sf-bogus-record-durable*)))))))
 
 ; The composed known abort is two kernel steps: :aborting is transient.
 (defconst *sf-aborting* (fn-sf-prepublish-abort *sf-rdata*))
@@ -228,19 +227,19 @@
 (assert-event (fn-sf-crash-imagep *sf-published* 1 (list *sf-record-0*)))
 ; Teeth.  Phase hypothesis dropped: from :record-data-durable the barrier step
 ; is a no-op and :absent still selects absence.
-(must-fail (thm (equal (fn-sf-records
+(assert-event (with-guard-checking :none (not (equal (fn-sf-records
                         (fn-sf-crash (fn-sf-record-dir-result *sf-rdata* :ok) :old :absent))
                        (append (fn-sf-records *sf-rdata*)
-                               (list (fn-sf-record-candidate *sf-rdata*))))))
+                               (list (fn-sf-record-candidate *sf-rdata*)))))))
 ; State hypothesis dropped.
 (defconst *sf-bogus-record-attempted*
   (fn-sf-make :record-attempted 1 nil nil *sf-record-0* nil nil 3))
 (assert-event (not (fn-sf-statep *sf-bogus-record-attempted*)))
-(must-fail (thm (equal (fn-sf-records
+(assert-event (with-guard-checking :none (not (equal (fn-sf-records
                         (fn-sf-crash (fn-sf-record-dir-result *sf-bogus-record-attempted* :ok)
                                      :old :absent))
                        (append (fn-sf-records *sf-bogus-record-attempted*)
-                               (list (fn-sf-record-candidate *sf-bogus-record-attempted*))))))
+                               (list (fn-sf-record-candidate *sf-bogus-record-attempted*)))))))
 
 ; :completing admits only the exact matching completion
 ; (fn-sf-completing-admits-only-matching-completion).  A lost or rejected

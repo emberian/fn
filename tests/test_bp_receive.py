@@ -78,7 +78,14 @@ class ReceiveTests(unittest.TestCase):
   try:self.assertEqual((len(records),b.article_count(),b.pin_count()),(1,1,1))
   finally:b.close();store.close()
  def test_bad_subject_stays_staged(self):
-  request=self.request().replace(b'sha256:',b'Sha256:',1);self.stage('bid-bad',request)
+  # The label lives inside the encoded identity now, so a wrong subject is a
+  # wrong identity, not a wrong prefix.  The fixture asks the bridge for the
+  # subject the receiver will derive and then breaks one digit of it.
+  b=run_bp_ingress.Acl2BpIngress()
+  try:msgid=b.extract_message_id(self.article);_,subject,_=run_store.metadata(msgid,self.article)
+  finally:b.close()
+  wrong=subject[:-1]+(b'0' if subject[-1:]!=b'0' else b'1')
+  request=self.request().replace(subject,wrong,1);self.stage('bid-bad',request)
   with self.assertRaises(run_bp_receive.BpReceiveError):self.invoke('bid-bad')
   self.assertIn('bid-bad',self.inventory);self.assertEqual(self.deleted,[])
  def test_wrong_destination_or_policy_stays_staged_before_store_mutation(self):

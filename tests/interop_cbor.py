@@ -111,6 +111,7 @@ class ACL2:
     def __init__(self, executable: Path):
         environment = os.environ.copy()
         environment["ACL2_CUSTOMIZATION"] = "NONE"
+        environment["ACL2_BOOK_HASH_ALISTP"] = "NIL"  # content-hashed certificates: relocatable across worktrees and hosts
         environment.pop("ACL2_SYSTEM_BOOKS", None)
         self.proc = subprocess.Popen(
             [str(executable)], cwd=ROOT, stdin=subprocess.PIPE,

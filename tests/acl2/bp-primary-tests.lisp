@@ -29,7 +29,9 @@
 (in-package "ACL2")
 
 (include-book "../../books/bp-primary-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
+; this book reasons under them, so open them here, locally.
+(local (in-theory (enable fn-cbor-record-vocabulary fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary)))
 
 ; -----------------------------------------------------------------------------
 ; CRC algorithm vectors
@@ -319,15 +321,12 @@
 ; fn-bpc-decode-of-encode
 ;   without `fn-bpc-shapep`: a value outside the domain has no encoding to
 ;   decode.
-(local
- (must-fail
-  (thm (implies (and (fn-cbor-octet-listp rest)
-                     (natp budget)
-                     (<= (fn-bpc-cost flg x) budget))
-                (equal (fn-bpc-dec flg (if (eq flg :list) (len x) 0)
-                                   (append (fn-bpc-enc flg x) rest)
-                                   budget)
-                       (fn-cbor-ok x rest))))))
+(assert-event
+ (with-guard-checking :none
+  (and (not (fn-bpc-shapep :item 7))
+       (fn-cbor-octet-listp nil) (natp 100) (<= (fn-bpc-cost :item 7) 100)
+       (not (equal (fn-bpc-dec :item 0 (append (fn-bpc-enc :item 7) nil) 100)
+                   (fn-cbor-ok 7 nil))))))
 
 ;   without the budget bound: the decoder refuses rather than looping.  Stated
 ;   generally, the negated goal sends the prover into the induction on
@@ -345,23 +344,19 @@
                       (fn-cbor-ok '(:uint . 1) nil)))))
 
 ;   without the octet-list hypothesis on the remainder.
-(local
- (must-fail
-  (thm (implies (and (fn-bpc-shapep flg x)
-                     (natp budget)
-                     (<= (fn-bpc-cost flg x) budget))
-                (equal (fn-bpc-dec flg (if (eq flg :list) (len x) 0)
-                                   (append (fn-bpc-enc flg x) rest)
-                                   budget)
-                       (fn-cbor-ok x rest))))))
+;   OPEN: no violating value was found.  The decoder returns the remainder
+;   unread, so (fn-bpc-dec :item 0 (append (fn-bpc-enc :item x) rest) budget)
+;   is (fn-cbor-ok x rest) for rest = (300) and for rest = a alike (probed
+;   2026-09-19).  The hypothesis looks unnecessary in fn-bpc-decode-of-encode
+;   (books/bp-primary-cbor.lisp, codecs); recorded for its owner.
 
 ; fn-bpc-accepted-input-is-canonical
 ;   without the success hypothesis: a refused input is not re-encoded.
-(local
- (must-fail
-  (thm (equal (fn-bpc-encode (fn-cbor-result-value
-                              (fn-bpc-decode-exact octets)))
-              octets))))
+(assert-event
+ (with-guard-checking :none
+  (and (not (fn-cbor-result-okp (fn-bpc-decode-exact '(255))))
+       (not (equal (fn-bpc-encode (fn-cbor-result-value (fn-bpc-decode-exact '(255))))
+                   '(255))))))
 
 ; fn-bpp-decode-of-encode
 ;   without `fn-bpp-blockp`: a malformed record encodes to something the
@@ -376,14 +371,13 @@
   (not (equal (fn-bpp-decode (fn-bpp-encode 0)) (fn-bpp-ok 0)))))
 
 ; fn-bpp-value-block-of-block-value
-;   without the CRC width hypothesis: a CRC field of the wrong width makes the
-;   arity disagree with the CRC type.
-(local
- (must-fail
-  (thm (implies (and (fn-bpp-blockp b)
-                     (fn-cbor-octet-listp crc-octets))
-                (equal (fn-bpp-value-block (fn-bpp-block-value b crc-octets))
-                       b)))))
+;   The width hypothesis (and the octet-list one) had no violating value: the
+;   reader does not consult the CRC field, so both were dropped from the
+;   theorem (books/bp-primary-invariants.lisp, 2026-09-19).  The witness below
+;   shows the round trip on a CRC field of the wrong width.
+(assert-event
+ (equal (fn-bpp-value-block (fn-bpp-block-value *bpp-block-a* '(1 2 3)))
+        *bpp-block-a*))
 
 ;   without `fn-bpp-blockp`: a non-record has no fields to build the value
 ;   from, so the reader cannot give the non-record back.  Stated generally
@@ -516,13 +510,24 @@
  (not (equal (fn-bpp-primary-identity (bpp-id-fragment *bpp-id-n1* 100 1 0 8))
              (fn-bpp-primary-identity (bpp-id-fragment *bpp-id-n1* 100 1 4 8)))))
 
-; The documented limit of the projection, stated as a fact rather than as
-; prose: two fragments at one offset whose payload lengths differ have
-; identical primary blocks, so this identity cannot tell them apart.  RFC 9171
-; section 4.3.1 does, by the payload length, which is not in this block.
+; The documented limit of the projection, stated as a ground fact rather than
+; as prose.  The identity of a fragment is exactly five values: the source,
+; the creation time, the sequence number, the fragment offset and the TOTAL
+; ADU length.  RFC 9171 section 4.3.1 identifies a fragment by THIS bundle's
+; payload length, which lives in the payload block and appears nowhere in the
+; list below, so two fragments of one ADU at one offset with different payload
+; lengths have equal identities here.
 (assert-event
- (equal (fn-bpp-primary-identity (bpp-id-fragment *bpp-id-n1* 100 1 0 8))
-        (fn-bpp-primary-identity (bpp-id-fragment *bpp-id-n1* 100 1 0 8))))
+ (equal (fn-bpp-primary-identity-value (bpp-id-fragment *bpp-id-n1* 100 1 0 8))
+        (list :array (fn-bpp-eid-value *bpp-id-n1*)
+              (cons :uint 100) (cons :uint 1) (cons :uint 0) (cons :uint 8))))
+
+; The fifth value is the total ADU length and not a payload length: changing
+; it separates, which is what makes the assertion above a statement about
+; which field is absent rather than about a field that does nothing.
+(assert-event
+ (not (equal (fn-bpp-primary-identity (bpp-id-fragment *bpp-id-n1* 100 1 0 8))
+             (fn-bpp-primary-identity (bpp-id-fragment *bpp-id-n1* 100 1 0 9)))))
 
 ; Routing, lifetime and CRC type are outside the projection, by witness as
 ; well as by the general theorem.
@@ -541,3 +546,49 @@
          (fn-bpc-decode-exact
           (fn-bpp-primary-identity (bpp-id-block *bpp-id-n1* 100 1))))
         (fn-bpp-primary-identity-value (bpp-id-block *bpp-id-n1* 100 1))))
+
+; Teeth for the two hypothesis-carrying identity theorems.
+;
+; `fn-bpp-primary-identity-is-octets` has no hypothesis to bite: every branch
+; of `fn-bpc-enc` returns octets or nil, so no violating value exists and the
+; hypothesis was deleted rather than left unbitten (docs/proof-style.md
+; section 5).
+
+; `fn-bpp-primary-identity-value-is-shape`, hypothesis `(fn-bpp-blockp b)`: a
+; block whose creation time is not a natural encodes a `:uint` of a non-number,
+; and the conclusion fails on it.
+(defconst *bpp-id-bad-time* (bpp-id-block *bpp-id-n1* :not-a-time 1))
+
+(assert-event (not (fn-bpp-blockp *bpp-id-bad-time*)))
+(assert-event
+ (with-guard-checking :none
+  (not (fn-bpc-shapep :item
+                      (fn-bpp-primary-identity-value *bpp-id-bad-time*)))))
+
+; `fn-bpp-primary-identity-determines-adu-key`, hypothesis `(fn-bpp-blockp b)`:
+; `fn-bpp-eid-value` sends every endpoint that is not `dtn:none` and not `ipn`
+; to the same value as the `dtn` endpoint with that scheme-specific part, so a
+; forged source with an unknown scheme tag has the identity of the real one and
+; a different ADU key.  Only `fn-bpp-eidp` in the hypothesis rules it out.
+(defconst *bpp-id-forged*
+  (bpp-id-block (cons :other '(47 47 110 49 47)) 100 1))
+
+(assert-event (not (fn-bpp-blockp *bpp-id-forged*)))
+(assert-event (fn-bpp-blockp (bpp-id-block *bpp-id-n1* 100 1)))
+(assert-event
+ (with-guard-checking :none
+  (equal (fn-bpp-primary-identity-value *bpp-id-forged*)
+         (fn-bpp-primary-identity-value (bpp-id-block *bpp-id-n1* 100 1)))))
+(assert-event
+ (with-guard-checking :none
+  (not (equal (fn-bpp-adu-key *bpp-id-forged*)
+              (fn-bpp-adu-key (bpp-id-block *bpp-id-n1* 100 1))))))
+
+; ... and its equality hypothesis is not vacuous: two blocks that differ in the
+; sequence number have different identity values and different ADU keys.
+(assert-event
+ (not (equal (fn-bpp-primary-identity-value (bpp-id-block *bpp-id-n1* 100 1))
+             (fn-bpp-primary-identity-value (bpp-id-block *bpp-id-n1* 100 2)))))
+(assert-event
+ (not (equal (fn-bpp-adu-key (bpp-id-block *bpp-id-n1* 100 1))
+             (fn-bpp-adu-key (bpp-id-block *bpp-id-n1* 100 2)))))

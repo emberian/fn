@@ -176,8 +176,15 @@ def main() -> int:
     # reads the books themselves, so it fails on an event name that no book
     # defines, on a theorem whose shape disqualifies it as evidence, and on a
     # stale planning/ledger.md.  Counts are never typed into prose.
-    for problem in ledger.check_problems():
+    tree = ledger.load_tree()
+    for problem in ledger.check_problems(tree):
         fail(f"ledger: {problem}")
+    # The two shape lints are WARN here by design: they describe a cost the
+    # tree is already carrying, and failing `make check` on them would stop
+    # unrelated work.  `python3 tools/ledger.py --check --strict` fails.
+    warnings = ledger.lint_warnings(tree)
+    for warning in warnings:
+        print(f"WARN: ledger: {warning}", file=sys.stderr)
 
     covered = set()
     for ident, entry in scenarios.items():
@@ -196,6 +203,8 @@ def main() -> int:
     print(f"Scaffold OK: {len(markdown)} Markdown files, {len(requirements)} requirements, "
           f"{len(proofs)} proof targets, {len(scenarios)} scenario specifications.")
     print("Ledger OK: cited events exist, are not SUSPECT, and planning/ledger.md is current.")
+    print(f"Ledger lints: {len(warnings)} warnings (export hygiene, teeth form, "
+          f"include hygiene); see planning/ledger.json.")
     print("Structural checks only; no ACL2 certification or scenario execution performed.")
     return 0
 

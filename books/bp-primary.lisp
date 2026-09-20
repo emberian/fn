@@ -23,6 +23,9 @@
 (include-book "bp-primary-cbor")
 
 (local (include-book "arithmetic/top" :dir :system))
+; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
+; this book reasons under them, so open them here, locally.
+(local (in-theory (enable fn-cbor-record-vocabulary fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary)))
 
 ; `arithmetic/top`'s generalization rule for `mod` introduces fresh `mod`
 ; terms into case trees that never had one, and loops the waterfall on the
@@ -827,3 +830,24 @@
 (verify-guards fn-bpp-hop-limit-exceededp)
 (verify-guards fn-bpp-hop-count-data)
 (verify-guards fn-bpp-data-hop-count)
+
+; -----------------------------------------------------------------------------
+; Export theory: the primary-block identity.
+;
+; The identity projection and its encoding are proof vocabulary, not keystones:
+; a book above reasons about them through the theorems in
+; `books/bp-primary-invariants.lisp` (shape, octets, the routing/lifetime/CRC
+; projection fact and `fn-bpp-primary-identity-determines-adu-key`), and the
+; host evaluates them.  Nothing above needs their definitions opened, so they
+; are withdrawn here under a name a book that does can enable in one line.
+;
+; The rest of this book -- the block record, the endpoint and time codecs, the
+; extension-block data -- still exports its definitions enabled.  Making those
+; opaque is item 4 of the bp deputy's proposal
+; (planning/deputies/bp.md, "opaque records for bp-workflow, relay, bp-primary,
+; bp-fragment") and is not this lane's to take.
+
+(deftheory fn-bpp-identity-vocabulary
+  '((:d fn-bpp-primary-identity-value) (:d fn-bpp-primary-identity)))
+
+(in-theory (disable fn-bpp-identity-vocabulary))

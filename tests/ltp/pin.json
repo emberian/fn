@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/nasa-jpl/ION-DTN",
+  "revision": "4912bf82de7d03a9a11bf5d68614cc002f9ac911",
+  "revision_date": "2026-09-07",
+  "tag": "ion-open-source-4.2.1-a.1",
+  "release_version": "4.2.1-a.1",
+  "host": "Linux x86_64, Ubuntu, gcc 14.2.0, autoconf 2.72, automake 1.16.5, libtool 2.4.7",
+  "bootstrap": ["autoreconf", "-fi"],
+  "configure": ["./configure", "--prefix=/tank/fn/ltp/install"],
+  "build": ["make", "-j8"],
+  "install": ["make", "install"],
+  "configure_flags_reported_by_configure": [
+    "-D__unix__", "-D__linux__", "-DSPACE_ORDER=3", "-fno-strict-aliasing",
+    "-DVNAME=ION-OPEN-SOURCE-4.2.1-a.1", "-DBUILD_BPv7", "-DENABLE_IMC",
+    "-DENABLE_TC", "-DENABLE_DGR", "-DENABLE_DTPC", "-DENABLE_MANPAGES",
+    "-std=iso9899:2018", "crypto suite NULL_SUITES"
+  ],
+  "bp_version": "BPv7 (RFC 9171)",
+  "convergence_layer": "LTP (RFC 5326) over UDP on IPv4 loopback",
+  "ltp_daemons": ["ltpclock", "ltpmeter", "ltpcli", "ltpclo", "udplsi", "udplso"],
+  "nodes": {"1": "ipn:1, udplsi 127.0.0.1:41113", "2": "ipn:2, udplsi 127.0.0.1:42113"},
+  "eid_scheme": "ipn (node.service); ION also accepts the dtn scheme via dtn2fw/dtn2adminep",
+  "shared_memory": {"node1": {"wmKey": 76001, "sdrName": "ion1"},
+                    "node2": {"wmKey": 76002, "sdrName": "ion2"}},
+  "fn_receiver_helper": "tests/ltp/fn_ltp_stage.c, built against the installed ION headers/libs"
+}

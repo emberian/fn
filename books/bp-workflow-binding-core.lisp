@@ -2,6 +2,7 @@
 (in-package "ACL2")
 
 (include-book "bp-workflow-invariants")
+(local (in-theory (enable fn-node-statep)))
 
 ; Plain fn-bp-statep intentionally accepts structurally valid work whose
 ; article/archive fields were not derived from its node.  This stronger,

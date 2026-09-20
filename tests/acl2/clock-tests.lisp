@@ -1,13 +1,12 @@
 ; Witnesses and teeth for the bundle expiry decision.
 ;
 ; Every keystone in `books/clock-invariants.lisp` gets a reachable
-; non-degenerate witness here and one `must-fail` case per hypothesis showing
-; that the conclusion does not survive dropping it.
+; non-degenerate witness here and one concrete violating value per hypothesis
+; showing that the conclusion does not survive dropping it.
 
 (in-package "ACL2")
 
 (include-book "../../books/clock-invariants")
-(include-book "std/testing/must-fail" :dir :system)
 
 ; -----------------------------------------------------------------------------
 ; A host observation with a real wall reading and a five-second error bound.
@@ -125,120 +124,68 @@
 ; -----------------------------------------------------------------------------
 ; Teeth.
 ;
-; One `must-fail` per hypothesis of each keystone.  Each shows that ACL2
-; cannot prove the conclusion once that hypothesis is removed.
+; Teeth: one concrete violating value per hypothesis of each keystone
+; (docs/proof-style.md, section 5).  Each assert-event checks that the other
+; hypotheses hold on the value and that the conclusion fails.
+(defconst *clock-teeth-wall-only*
+  ; earliest = latest = 1599999000000: live at that creation time, admissible
+  ; only at exactly that instant.
+  (fn-clock-observation 1000 1599999000000 0 t))
+(defconst *clock-teeth-anchor* (cons 200000 1000))
 
 ; fn-clock-expired-requires-every-admissible-clock-to-agree
-;   without `fn-clock-admissible-truep`: an arbitrary `now` says nothing.
-(local
- (must-fail
-  (thm (implies (and (fn-clock-observationp obs)
-                     (fn-clock-timep creation-time)
-                     (fn-clock-timep lifetime)
-                     (null bundle-age)
-                     (equal (fn-clock-expiry-decision creation-time lifetime
-                                                      bundle-age obs)
-                            :expired))
-                (< lifetime (- now creation-time))))))
-
-;   without `(null bundle-age)`: the age path can answer `:expired` while the
-;   wall clock still admits liveness, and it is right to.
-(local
- (must-fail
-  (thm (implies (and (fn-clock-observationp obs)
-                     (fn-clock-timep creation-time)
-                     (fn-clock-timep lifetime)
-                     (fn-clock-admissible-truep obs now)
-                     (equal (fn-clock-expiry-decision creation-time lifetime
-                                                      bundle-age obs)
-                            :expired))
-                (< lifetime (- now creation-time))))))
-
-;   without the `:expired` hypothesis: a live or uncertain verdict says
-;   nothing about the true age.
-(local
- (must-fail
-  (thm (implies (and (fn-clock-observationp obs)
-                     (fn-clock-timep creation-time)
-                     (fn-clock-timep lifetime)
-                     (null bundle-age)
-                     (fn-clock-admissible-truep obs now))
-                (< lifetime (- now creation-time))))))
-
-; fn-clock-expiry-is-monotone-in-local-time
-;   without `fn-clock-later-observationp`: an unrelated observation may put the
-;   earliest admissible true time back before expiry.
-(local
- (must-fail
-  (thm (implies (and (fn-clock-observationp a)
-                     (fn-clock-observationp b)
-                     (fn-clock-age-anchorp bundle-age)
-                     (fn-clock-timep creation-time)
-                     (fn-clock-timep lifetime)
-                     (equal (fn-clock-expiry-decision creation-time lifetime
-                                                      bundle-age a)
-                            :expired))
-                (equal (fn-clock-expiry-decision creation-time lifetime
-                                                 bundle-age b)
-                       :expired)))))
-
-;   without `fn-clock-observationp` on the later observation.
-(local
- (must-fail
-  (thm (implies (and (fn-clock-observationp a)
-                     (fn-clock-age-anchorp bundle-age)
-                     (fn-clock-timep creation-time)
-                     (fn-clock-timep lifetime)
-                     (fn-clock-later-observationp a b)
-                     (equal (fn-clock-expiry-decision creation-time lifetime
-                                                      bundle-age a)
-                            :expired))
-                (equal (fn-clock-expiry-decision creation-time lifetime
-                                                 bundle-age b)
-                       :expired)))))
+; without (fn-clock-admissible-truep obs now): now before the bound.
+(assert-event
+ (and (not (fn-clock-admissible-truep *clock-obs* 1599999000000))
+      (equal (fn-clock-expiry-decision 1599999000000 100000 nil *clock-obs*) :expired)
+      (not (< 100000 (- 1599999000000 1599999000000)))))
+; without (null bundle-age): expired by age while the wall clock says created now.
+(assert-event
+ (and (consp *clock-teeth-anchor*)
+      (fn-clock-admissible-truep *clock-obs* 1600000000000)
+      (equal (fn-clock-expiry-decision 1600000000000 100000 *clock-teeth-anchor* *clock-obs*)
+             :expired)
+      (not (< 100000 (- 1600000000000 1600000000000)))))
+; without the :expired decision: a live bundle.
+(assert-event
+ (and (fn-clock-admissible-truep *clock-obs* 1600000000000)
+      (equal (fn-clock-expiry-decision 1600000000000 100000 nil *clock-obs*) :live)
+      (not (< 100000 (- 1600000000000 1600000000000)))))
 
 ; fn-clock-expired-and-live-cannot-both-be-sound
-;   without node B's admissibility: B may simply be wrong.
-(local
- (must-fail
-  (thm (implies (and (fn-clock-observationp a)
-                     (fn-clock-observationp b)
-                     (fn-clock-timep creation-time)
-                     (fn-clock-timep lifetime)
-                     (fn-clock-admissible-truep a now)
-                     (equal (fn-clock-expiry-decision creation-time lifetime
-                                                      nil a)
-                            :expired))
-                (not (equal (fn-clock-expiry-decision creation-time lifetime
-                                                      nil b)
-                            :live))))))
+; without (fn-clock-admissible-truep b now).
+(assert-event
+ (and (fn-clock-observationp *clock-obs*) (fn-clock-observationp *clock-teeth-wall-only*)
+      (fn-clock-admissible-truep *clock-obs* 1600000000000)
+      (not (fn-clock-admissible-truep *clock-teeth-wall-only* 1600000000000))
+      (equal (fn-clock-expiry-decision 1599999000000 100000 nil *clock-obs*) :expired)
+      (equal (fn-clock-expiry-decision 1599999000000 100000 nil *clock-teeth-wall-only*) :live)))
+; without (fn-clock-admissible-truep a now).
+(assert-event
+ (and (not (fn-clock-admissible-truep *clock-obs* 1599999000000))
+      (fn-clock-admissible-truep *clock-teeth-wall-only* 1599999000000)
+      (equal (fn-clock-expiry-decision 1599999000000 100000 nil *clock-obs*) :expired)
+      (equal (fn-clock-expiry-decision 1599999000000 100000 nil *clock-teeth-wall-only*) :live)))
 
-;   without node A's admissibility.
-(local
- (must-fail
-  (thm (implies (and (fn-clock-observationp a)
-                     (fn-clock-observationp b)
-                     (fn-clock-timep creation-time)
-                     (fn-clock-timep lifetime)
-                     (fn-clock-admissible-truep b now)
-                     (equal (fn-clock-expiry-decision creation-time lifetime
-                                                      nil a)
-                            :expired))
-                (not (equal (fn-clock-expiry-decision creation-time lifetime
-                                                      nil b)
-                            :live))))))
+; fn-clock-expiry-is-monotone-in-local-time
+; without (fn-clock-later-observationp a b): a blind later reading.
+(assert-event
+ (and (fn-clock-observationp *clock-obs*) (fn-clock-observationp *clock-obs-blind*)
+      (not (fn-clock-later-observationp *clock-obs* *clock-obs-blind*))
+      (equal (fn-clock-expiry-decision 1599999000000 100000 nil *clock-obs*) :expired)
+      (not (equal (fn-clock-expiry-decision 1599999000000 100000 nil *clock-obs-blind*)
+                  :expired))))
+; without (fn-clock-observationp b): OPEN.  No violating value was found:
+; fn-clock-later-observationp compares the readings b exposes and the decision
+; reads b only through them, so a malformed b that is later than an expired a
+; is expired too.  The hypothesis looks unnecessary; dropping it from the
+; theorem is recorded open (bp deputy, 2026-09-19) until the proof is redone
+; without it.
 
 ; fn-clock-expired-by-age-requires-true-age-over-lifetime
-;   without the lower-bound hypothesis on the true age: the Bundle Age block
-;   is only ever a lower bound because it sums known intervals, and nothing
-;   in the model forces a caller to respect that.
-(local
- (must-fail
-  (thm (implies (and (fn-clock-observationp obs)
-                     (fn-clock-age-anchorp bundle-age)
-                     (consp bundle-age)
-                     (fn-clock-timep lifetime)
-                     (equal (fn-clock-expiry-decision creation-time lifetime
-                                                      bundle-age obs)
-                            :expired))
-                (< lifetime true-age)))))
+; without (<= (fn-clock-age-estimate bundle-age obs) true-age): true age 0.
+(assert-event
+ (and (fn-clock-observationp *clock-obs*) (fn-clock-age-anchorp *clock-teeth-anchor*)
+      (not (<= (fn-clock-age-estimate *clock-teeth-anchor* *clock-obs*) 0))
+      (equal (fn-clock-expiry-decision 0 100000 *clock-teeth-anchor* *clock-obs*) :expired)
+      (not (< 100000 0))))

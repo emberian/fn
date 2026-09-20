@@ -158,7 +158,7 @@ record-data-durable phases. Stale, repeated, and post-publication requests are
 no-ops; publication uncertainty requires crash/recovery. Neither operation can
 add an acknowledgement, and both preserve `fn-snt-relation`.
 
-[`books/store-node-resolution-traces.lisp`](../books/store-node-resolution-traces.lisp)
+[`books/store-node-resolution.lisp` (the resolution traces were folded into it, 2026-09-19)](../books/store-node-resolution.lisp)
 extends the actual trace dispatcher with these refusal and known-abort
 operations. `fn-snrt-mixed-trace-preserves-live-history-relation` and its
 initialized corollary cover arbitrary finite mixtures of preparation, exposed
@@ -199,7 +199,7 @@ Exact frame decoding and truthful physical observations remain adapter premises.
 This entry is the root of every process (`host/store-node-host.lisp`,
 `fn-store-sn-recover`), and the trace theorems are rooted there in
 [`store-observed-traces`](../books/store-observed-traces.lisp), which includes
-`store-observed` and `store-node-resolution-traces`. The two books are
+`store-observed` and `store-node-resolution`. The two books are
 separate because the opening theorems above certify in the theory of
 `store-node-invariants` and stall under the rewrite rules the trace books
 export; the host includes only `store-observed`.
