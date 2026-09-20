@@ -98,7 +98,7 @@ Certification on **persvati**, ACL2 8.7, `/home/ember/fn-lanes/w6-peering-inboun
 | `books/served` | **certified** | `certify-20260920T194106Z-2419178` |
 | `tests/acl2/served-tests` | **certified** | `certify-20260920T195046Z-2511951` |
 | `books/owner`, `books/ideal` | **certified** | `certify-20260920T194347Z-2445219` |
-| `books/owner-invariants`, `tests/acl2/owner-tests` | **open**, owner-side semantics (below) | same run |
+| `books/owner-invariants`, `tests/acl2/owner-tests` | certified at `e8372fa` (`certify-20260920T203813Z-2981507`, `certify-20260920T204258Z-3028825`); at the merged HEAD they are blocked on `books/peer-feed-invariants` (below), not on anything here | |
 
 ### What was wrong, and what closed it
 
@@ -143,6 +143,65 @@ requires an `fn-inj-injectedp` or `fn-peer-submissionp` payload and
 neither is `nil`, so on the only effect lists the served path produces
 the equality holds. Discharged at its one use site from
 `fn-served-step-effects-are-typed`.
+
+### The owner predicate, and the two-node gate
+
+`fn-own-conn-boundedp` (`books/owner.lisp`) tested `fn-post-sessionp` on a
+session that has been a peer session since the inbound port -- two fields
+against six -- so it was false on every connection `fn-own-open` builds.
+The branches at `owner.lisp:657/695/724` were never taken (the owner never
+re-pinned a connection and never enqueued a submission) and
+`fn-own-relation`, which conjoins it through `fn-own-conn-okp`, was false
+on every state holding a connection, so every theorem hypothesising it was
+vacuous there. It now tests `fn-peer-sessionp` and reads the reader session
+through `(fn-post-session-base (fn-peer-session-base ps))`; `fn-own-advance`
+keeps the peer slots and rebuilds only the POST base through
+`fn-peer-with-base`.
+
+**Two-node gate, `planning/evidence/twonode-e8372fa-2026-09-20.md`
+(persvati): 63 steps, 0 failed, 6 not exercised.** The run at `d8b1e8f`
+had five failures -- both independence controls and the three crash and
+recovery steps, all `server closed the connection` or `connection
+refused` -- and every one of them was this predicate closing the
+connection. The six that remain unexercised are the three feed steps
+(`42` reread on B, `43` the second IHAVE drawing `435`, `44` the
+Path-names-B refusal), their two setup steps (`35`, `37`, the peer
+records) and `57 tcpcl exchange`. The feed five are unexercised because
+the host opens every connection as a reader with `fn-served-open`, so
+node B answers `IHAVE` with `502 transit is not permitted on this
+connection` -- the model's correct reader answer, and an improvement on
+the previous run's silence. Making them run is the owner's transit port
+(`(:open id peer)` calling `fn-served-open-peer`), which is
+w10/owner-feed's packet. **Nothing yet establishes that an article can
+cross between two fn nodes.**
+
+The gate was run at `e8372fa`, before the merge of `dev` that brought
+w10/owner-feed in; at the merged HEAD `books/owner` does not certify, for
+the reason below, so a rerun there would be red for a cause outside this
+lane.
+
+### Blocking someone else: `books/peer-feed-invariants`
+
+The feed lane's book does not certify on dev, and `books/owner-feed`
+includes it, so `books/owner`, `tests/acl2/owner-tests` and everything
+above them cannot be read at the merged HEAD. Two failures:
+
+1. `fn-feed-apply-record-preserves-peer` keeps every arm closed and so
+   needs one `-preserves-peer` rewrite per arm, exactly as
+   `-preserves-feedp` has; only `-preserves-feedp` existed. Six were added
+   here (`give-up`, `restart`, `enqueue`, `done`, `back-off`, `lost`;
+   `fn-feed-offer` and `fn-feed-send` return an `mv` and the dispatcher
+   builds them inline, so they need none) and the theorem closes.
+2. The next form, `fn-feed-selection-is-queued`, then fails on its own.
+   Not touched; it is the feed lane's, and there is a board ASK.
+
+### Guard verification is not optional below `fn-served-dispatch`
+
+`books/served` guard-verifies `fn-served-dispatch`, which calls
+`fn-peer-step`. A `:verify-guards nil` anywhere in that call graph makes
+`books/served` uncertifiable and the served host unloadable. Verified:
+`fn-peer-decide-offer`, `fn-peer-sessionp`, `fn-peer-open-session`,
+`fn-peer-delegate`, `fn-peer-command`, `fn-peer-step`.
 
 ### Still open
 

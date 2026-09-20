@@ -92,18 +92,84 @@ two peers are two queues.
 - RFC 4644's streaming window: `fn-feedp` allows one entry in flight.
 - No INN and no second fn node has been fed; only the fake peer.
 
-## Certification: per root, as of run `run-20260920T190708Z-5477`
+## Certification: per root, as of run `run-20260920T200246Z-fa0b` (lane w6/peering-feed-3)
 
 `persvati`, ACL2 8.7 (`/home/ember/fn-tools/acl2-8.7/saved_acl2`, SBCL 2.6.8),
-`--jobs 6`, `--closure`. Evidence on the host at
-`/home/ember/fn-lanes/w6-peering-feed/build/acl2/certify-20260920T190753Z-2109102/`;
-the earlier `certify-20260920T184901Z-1935126` is fetched into this worktree.
+`--jobs 4`, `--affected-by books/peer-feed-invariants.lisp --closure`,
+`FN_ACL2_TIMEOUT_SECONDS=1800`. Evidence on the host at
+`/home/ember/fn-lanes/w6-peering-feed-3/build/acl2/certify-20260920T200423Z-2642224/`
+(the run's own `manifest.json` carries the per-book exit codes quoted below);
+`installed 90` from the box cache, 21 books certified in the run.
 
 | Root | Result |
 | --- | --- |
-| `books/peer-feed` | **certified**; certificate published to the content-keyed cache and mirrored to `persvati:~/fn-certcache`. |
-| `books/peer-feed-invariants` | **open at `fn-feed-apply-record-preserves-feedp`**, checkpoint `Subgoal 100.10.3`. Every other theorem of the book certifies, including preservation for enqueue, offer, send, done, back-off, lost, give-up, restart, observe and tick-step. |
-| `tests/acl2/peer-feed-tests` | **blocked** on the book above; no assertion has been run. |
+| `books/peer-feed` | **certified** in 1.35 s (`books--peer-feed.certify.log`, `FN_CERTIFY_SUCCESS`); published to the content-keyed cache and mirrored to `persvati:~/fn-certcache`. Its whole closure (`acceptance`, `node`, `retention`, `scheduler`, `frame*`, `cbor*`, `wildmat`, `bp-workflow`, `clock`, `defrecord`) certified in the same run. |
+| `books/peer-feed-invariants` | **open, and the open set has moved.** `fn-feed-apply-record-preserves-feedp` is **PROVED** (Q.E.D., 1.95 s, 840,002 prover steps, `books--peer-feed-invariants.certify.log`, `Hint-events: ((:USE FN-FEED-ATTEMPTS-BELOWP-OF-AN-OFFERED-STATE-CLOSED) (:USE FN-FEED-SENT-RECORD-ABOVE-THE-BOUND-IS-UNREACHABLE))`). The book then **timed out after 1800 s** on the next theorem. See the tail inventory below: the eleven events after the keystone had never been reached by any run of this book, and ten of them are open. |
+| `tests/acl2/peer-feed-tests` | **blocked** on the book above (`tests--acl2--peer-feed-tests.certify.log`: `ACL2 Error [Failure] in (CERTIFY-BOOK ...)`, 0.00 s); no assertion has been run. |
+
+### What actually closed the keystone
+
+A `local`, `:rule-classes nil` lemma cited by `:use` at the one instance the
+arm needs, exactly the shape the previous lane prescribed:
+
+```lisp
+(local
+ (defthm fn-feed-sent-record-above-the-bound-is-unreachable
+   (implies (and (fn-feed-attempts-belowp xs n)
+                 (fn-feed-offeredp (fn-feed-state-of msgid xs)))
+            (< (fn-bp-nth 1 (fn-feed-state-of msgid xs)) (nfix n)))
+   :rule-classes nil
+   :hints (("Goal"
+            :use ((:instance fn-feed-inflight-attempt-is-below-the-bound))))))
+```
+
+It is stated over `fn-bp-nth` because that is what `fn-feed-state-attempt`
+opens to and what the arm's goal carries, and over `fn-feed-offeredp` rather
+than `fn-feed-state-inflightp` because the arm closes the latter. It proves in
+**818 prover steps, 0.00 s** from the existing
+`fn-feed-inflight-attempt-is-below-the-bound`. The `:use` instance added to
+the keystone's hint is `(xs (fn-feed-queue f)) (n (fn-feed-next-attempt f))
+(msgid (fn-frame-item 1 values))`. No keystone statement moved, no rule was
+promoted, and the comment at the lemma records the runaway that a general rule
+in that spot caused, so it is not retried.
+
+### The tail of the book: ten theorems that no run had ever reached
+
+Certification stops at the first failure, so every previous report of this
+book ("every other theorem certifies") described only the events **before**
+the keystone. With the keystone closed, the eleven events after it ran for the
+first time. Measured by `ld` of the book's own source against the certified
+`books/peer-feed` (laptop, ACL2 8.7, `tools/acl2 --timeout 900`, driver step
+limit 4,000,000; three of the entries below hit that driver limit rather than
+failing, and are marked):
+
+| Event | State | Key checkpoint |
+| --- | --- | --- |
+| `fn-feed-replay-preserves-feedp` | **fixed in this lane** | timed out at 1800 s on the farm with `fn-feed-apply-record` open; closing `(:d fn-feed-apply-record)` and `(:d fn-feedp)` at the form makes the record-step keystone the rewrite and it proves in seconds |
+| `fn-feed-apply-record-preserves-peer` | open | `Subgoal 40'`: `(equal (fn-feed-peer (fn-feed-give-up f (fn-frame-item 1 values) (fn-frame-item 2 values))) (car values))` under `(fn-feedp f)` and `(equal (car values) (fn-feed-peer f))`. The hint closes every transition and **no `-preserves-peer` lemma exists for any of them**; the fix is one such lemma per arm (`enqueue`, `done`, `give-up`, `restart`, `with-queue`, and the `fn-feed-make` of the offer arm), or dropping the transitions from that one disable. |
+| `fn-feed-replay-preserves-peer` | open, cascade | `Subgoal *1/3'4'`: needs the row above as a rewrite. The `(:d fn-feed-apply-record)` closure is already added at the form. |
+| `fn-feed-replay-is-the-fold` | open | `Goal` unchanged; the induction reaches `Subgoal *1/2.490.3` with `fn-feed-apply-record` open (driver step limit). Wants the same closure. |
+| `fn-feed-selection-is-queued` | open, **independent** | `Subgoal 6'`: `fn-feedp` open with `(not (fn-feed-contact f))`, `(fn-sched-contact-holdsp nil obs)` and `(fn-feed-head-queued (fn-feed-queue f))`. Nothing to do with the fold; `fn-feed-selection` needs its own branch lemmas. |
+| `fn-feed-done-is-never-selected` | open, cascade | its `:use` names the row above. |
+| `fn-feed-done-survives-a-driven-record` | open | `Subgoal 103.62''`, the dispatcher's case split again. |
+| `fn-feed-done-means-no-more-accepted-outcomes` | open | `Goal`; the induction reaches `Subgoal *1/2.673.116` (driver step limit). |
+| `fn-feed-accepted-outcome-makes-it-done` | open | `Subgoal 32''`. |
+| `fn-feed-at-most-one-accepted-outcome` | open | `Goal`; induction reaches `Subgoal *1/2.175` (driver step limit). |
+| `fn-feed-not-dropped-survives-a-non-drop-record` | open | `Subgoal 142.104.78''`. |
+| `fn-feed-drop-needs-a-drop-record` | open | `Goal`; induction reaches `Subgoal *1/2.2525.8` (driver step limit). |
+
+Four of the five KEYSTONES this book exists for are in that list
+(`fn-feed-replay-is-the-fold`, `fn-feed-done-is-never-selected`,
+`fn-feed-at-most-one-accepted-outcome`, `fn-feed-drop-needs-a-drop-record`),
+so **specs/peering.md's §4 claims for K5 are not yet earned**, and the status
+section there should say so rather than naming one open theorem. The shared
+disease in seven of the twelve rows is the same one the keystone had and the
+same one `fn-feed-observe-preserves-feedp` and `fn-feed-tick-step-preserves-feedp`
+already cure: `fn-feed-apply-record` left OPEN inside an induction over the
+journal re-splits the dispatcher under every arm. The next lane's first move is
+that one-line closure at each folding form, then the per-transition
+`-preserves-peer` family, then `fn-feed-selection`'s own branch lemmas --- in
+that order, because the first two unblock most of the cascade.
 
 ### What the state-vocabulary hint bought, and the exact remaining checkpoint
 
