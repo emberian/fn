@@ -92,7 +92,32 @@ two peers are two queues.
 - RFC 4644's streaming window: `fn-feedp` allows one entry in flight.
 - No INN and no second fn node has been fed; only the fake peer.
 
-## Certification
+## Certification: per root, as of run `run-20260920T051709Z-b840`
+
+Farm only (`persvati`, ACL2 8.7, `--jobs 8`, `--closure`); evidence directory
+`/home/ember/fn-lanes/w6-peering-feed/build/acl2/certify-20260920T051711Z-2977540/`,
+one `*.certify.log` per root.
+
+| Root | Result |
+| --- | --- |
+| `books/peer-feed` | **certified** (`books/peer-feed.cert` on the host; the whole feed machine, the FNFD codec with `fn-feed-decode-of-encode` and `fn-feed-encode-is-injective`, and the replay fold) |
+| `books/peer-feed-invariants` | **open at `fn-feed-offer-preserves-feedp`** (`books--peer-feed-invariants.certify.log:11095`). Every lemma before it certifies: the queue vocabulary, the append cases, the exact in-flight count under a state replacement, the backoff keystones and `fn-feed-enqueue-preserves-feedp`. |
+| `tests/acl2/peer-feed-tests` | **blocked** on the book above (`include-book` of an uncertified book); no assertion has been run. |
+
+What the open form needs, from its checkpoint (`Subgoal 9.1`, `fn-feedp`
+opened into its conjuncts): the goal is the new feed's recognizer after
+`fn-feed-queue-set-state` puts an `(:offered n)` in. The transition was
+repaired this round so the theorem is now TRUE -- `fn-feed-offer` refuses when
+anything is already in flight, which is what `fn-feedp`'s one-in-flight
+conjunct requires and what `fn-feed-selection` already enforced -- and the
+remaining gap is a rewrite gap, not a falsehood. The next lane should read the
+`Subgoal 9.1` checkpoint in full and supply the missing case lemma (most
+likely the `<= (len ...) max-queue` or the `fn-feed-attempts-belowp` conjunct
+under `(+ 1 (fn-feed-next-attempt f))`, since the in-flight case now has
+`fn-feed-inflight-count-of-set-state-exact`). Nothing downstream of it has
+been tried.
+
+## How certification is run
 
 Farm only — the laptop's ACL2 slots were saturated for this lane's whole
 window and the brief's box rule forbids taking one by force.

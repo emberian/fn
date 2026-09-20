@@ -60,17 +60,35 @@
            (equal (fn-feed-state-of other (fn-feed-queue-settle xs))
                   (fn-feed-state-of other xs))))
 
+; Every entry of an `fn-feed-entry-listp' is a cons (`fn-feed-entry-shapep'
+; forward-chains to it), so "find returned a non-cons" IS "no entry matches"
+; -- but only under that hypothesis, which is why it is stated here.
 (defthm fn-feed-find-of-append-when-absent
-  (implies (not (consp (fn-feed-find msgid xs)))
+  (implies (and (fn-feed-entry-listp xs)
+                (not (consp (fn-feed-find msgid xs))))
            (equal (fn-feed-find msgid (append xs (list e)))
                   (if (equal (fn-feed-entry-msgid e) msgid) e nil))))
 
-(defthm fn-feed-head-queued-is-queued
+; The head queued Message-ID is one of the queue's, and a Message-ID of the
+; queue is found: the two facts the head-queued lemmas below run on.
+(defthm fn-feed-head-queued-is-in-msgids
   (implies (fn-feed-head-queued xs)
+           (member-equal (fn-feed-head-queued xs) (fn-feed-msgids xs))))
+
+(defthm fn-feed-find-of-a-member-is-consp
+  (implies (and (fn-feed-entry-listp xs)
+                (member-equal msgid (fn-feed-msgids xs)))
+           (consp (fn-feed-find msgid xs))))
+
+; Distinctness is what makes `fn-feed-state-of' of the head queued
+; Message-ID the head queued entry: without it an earlier entry with the same
+; Message-ID would answer first.
+(defthm fn-feed-head-queued-is-queued
+  (implies (and (fn-feed-distinctp xs) (fn-feed-head-queued xs))
            (equal (fn-feed-state-of (fn-feed-head-queued xs) xs) :queued)))
 
 (defthm fn-feed-head-queued-is-a-member
-  (implies (fn-feed-head-queued xs)
+  (implies (and (fn-feed-entry-listp xs) (fn-feed-head-queued xs))
            (consp (fn-feed-find (fn-feed-head-queued xs) xs))))
 
 (defthm fn-feed-inflight-count-of-settle
@@ -155,6 +173,72 @@
 (defthm fn-feed-attempts-belowp-of-set-state-not-inflight
   (implies (and (fn-feed-attempts-belowp xs n) (not (fn-feed-state-inflightp s)))
            (fn-feed-attempts-belowp (fn-feed-queue-set-state xs msgid s) n)))
+
+; Enqueue appends one entry, so every conjunct of `fn-feedp' needs its
+; append case.  These are the five, plus the two membership bridges the
+; distinctness case runs on.
+
+; The exact in-flight count under a state replacement, and the two facts an
+; offer needs: the new state is a state, and an attempt id below the bumped
+; next-attempt keeps every other entry below it too.
+
+(defthm fn-feed-state-okp-of-offered
+  (fn-feed-state-okp (fn-feed-offered a)))
+(defthm fn-feed-state-okp-of-sent
+  (fn-feed-state-okp (fn-feed-sent a)))
+(defthm fn-feed-state-okp-of-dropped
+  (fn-feed-state-okp (fn-feed-dropped r)))
+
+(defthm fn-feed-inflight-count-of-set-state-exact
+  (implies (consp (fn-feed-find msgid xs))
+           (equal (fn-feed-inflight-count (fn-feed-queue-set-state xs msgid s))
+                  (+ (fn-feed-inflight-count xs)
+                     (if (fn-feed-state-inflightp s) 1 0)
+                     (- (if (fn-feed-state-inflightp (fn-feed-state-of msgid xs))
+                            1 0))))))
+
+(defthm fn-feed-attempts-belowp-monotone
+  (implies (and (fn-feed-attempts-belowp xs m) (<= (nfix m) (nfix n)))
+           (fn-feed-attempts-belowp xs n)))
+
+(defthm fn-feed-attempts-belowp-of-set-state-inflight
+  (implies (and (fn-feed-attempts-belowp xs n) (< (nfix a) (nfix n)))
+           (and (fn-feed-attempts-belowp
+                 (fn-feed-queue-set-state xs msgid (fn-feed-offered a)) n)
+                (fn-feed-attempts-belowp
+                 (fn-feed-queue-set-state xs msgid (fn-feed-sent a)) n))))
+
+(defthm fn-feed-member-of-append
+  (iff (member-equal a (append p q))
+       (or (member-equal a p) (member-equal a q))))
+
+(defthm fn-feed-not-member-when-find-is-not-consp
+  (implies (and (fn-feed-entry-listp xs)
+                (not (consp (fn-feed-find msgid xs))))
+           (not (member-equal msgid (fn-feed-msgids xs)))))
+
+(defthm fn-feed-entry-listp-of-append-one
+  (implies (and (fn-feed-entry-listp xs) (fn-feed-entryp e))
+           (fn-feed-entry-listp (append xs (list e)))))
+
+(defthm fn-feed-distinctp-of-append-one
+  (implies (and (fn-feed-entry-listp xs)
+                (fn-feed-distinctp xs)
+                (not (consp (fn-feed-find (fn-feed-entry-msgid e) xs))))
+           (fn-feed-distinctp (append xs (list e)))))
+
+(defthm fn-feed-inflight-count-of-append-one
+  (implies (not (fn-feed-state-inflightp (fn-feed-entry-state e)))
+           (equal (fn-feed-inflight-count (append xs (list e)))
+                  (fn-feed-inflight-count xs))))
+
+(defthm fn-feed-attempts-belowp-of-append-one
+  (implies (and (fn-feed-attempts-belowp xs n)
+                (not (fn-feed-state-inflightp (fn-feed-entry-state e))))
+           (fn-feed-attempts-belowp (append xs (list e)) n)))
+
+(defthm fn-feed-len-of-append-one
+  (equal (len (append xs (list e))) (+ 1 (len xs))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE: backoff is monotone (specs/peering.md sec. 3.2)
@@ -400,13 +484,22 @@
     fn-feed-state-of-of-requeue-inflight-when-not-inflight
     fn-feed-state-of-of-settle-when-not-inflight
     fn-feed-find-of-append-when-absent
+    fn-feed-head-queued-is-in-msgids fn-feed-find-of-a-member-is-consp
     fn-feed-head-queued-is-queued fn-feed-head-queued-is-a-member
     fn-feed-inflight-count-of-settle fn-feed-inflight-count-of-requeue-inflight
     fn-feed-entry-listp-of-set-state fn-feed-entry-listp-of-requeue
     fn-feed-entry-listp-of-requeue-inflight fn-feed-entry-listp-of-settle
     fn-feed-msgids-of-set-state fn-feed-msgids-of-requeue
     fn-feed-msgids-of-requeue-inflight fn-feed-msgids-of-settle
-    fn-feed-msgids-of-append
+    fn-feed-state-okp-of-offered fn-feed-state-okp-of-sent
+    fn-feed-state-okp-of-dropped fn-feed-inflight-count-of-set-state-exact
+    fn-feed-attempts-belowp-monotone
+    fn-feed-attempts-belowp-of-set-state-inflight
+    fn-feed-msgids-of-append fn-feed-member-of-append
+    fn-feed-not-member-when-find-is-not-consp
+    fn-feed-entry-listp-of-append-one fn-feed-distinctp-of-append-one
+    fn-feed-inflight-count-of-append-one
+    fn-feed-attempts-belowp-of-append-one fn-feed-len-of-append-one
     fn-feed-distinctp-of-set-state fn-feed-distinctp-of-requeue
     fn-feed-distinctp-of-requeue-inflight fn-feed-distinctp-of-settle
     fn-feed-len-of-set-state fn-feed-len-of-requeue
