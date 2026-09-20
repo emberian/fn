@@ -6,9 +6,11 @@ at `9396a86` and `5dbd745`. Full detail:
 
 ## Per root
 
-persvati `run-20260920T222651Z-97fc` (`--jobs 4`, `--closure`, evidence
-`build/acl2/certify-20260920T222654Z-4053945/manifest.json`; the same
-verdicts as `run-20260920T222128Z-eedc` one commit earlier). 73 roots, 72
+persvati `run-20260920T224103Z-7c59` on the merged tree (`--jobs 4`,
+`--closure`, evidence
+`build/acl2/certify-20260920T224106Z-4192084/manifest.json`; the same
+verdicts as `run-20260920T222128Z-eedc` and `run-20260920T222651Z-97fc`
+before the merge of `w10/dtn-3` and `w10/session-depth`). 73 roots, 72
 certified.
 
 | root | verdict |
@@ -45,6 +47,15 @@ installed from the box cache.
    hard error) and three arity changes behind. No assertion weakened.
 6. `tests/test_feed.py` and `tools/run_feed.py`: four never-run defects,
    all host-side.
+7. After merging dev: `books/provenance-codec` takes `w10/dtn-3`'s fix
+   (deeper cause, subsumes this lane's two lemmas); `tools/session_depth.py`'s
+   two `OPEN_DEFECTS` entries for `books/owner-invariants.lisp` are deleted
+   because the sites are fixed; and `w10/session-depth`'s 403 fourth
+   outcome killed the witness for
+   `fn-own-durable-reply-names-a-durable-record`'s
+   `(fn-own-find-conn id (fn-own-conns o))`, so that hypothesis has no
+   violating value and is deleted from the theorem
+   (docs/proof-style.md section 5). The theorem is strictly stronger.
 
 ## Proposal (cross-cluster; each with its owner)
 
