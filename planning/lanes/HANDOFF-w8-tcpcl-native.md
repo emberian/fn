@@ -47,7 +47,39 @@ buffer is dropped, the ack is never written, the session ends, exit 3.
 
 ## Evidence
 
-See [`planning/evidence/tcpcl-EVREV-EVDATE.md`](../evidence/tcpcl-EVREV-EVDATE.md).
+[`planning/evidence/tcpcl-9cbf301-2026-09-20.md`](../evidence/tcpcl-9cbf301-2026-09-20.md),
+and its headline is a negative one: **the image did not build, so none of the
+five scenarios ran.** 60 of the image's 63-book closure certified in the lane's
+own directory on persvati (`run-20260920T051453Z-c9a2`, `--jobs 12 --closure`),
+including all three tcpcl books and `anchor-invariants`; `books/served`,
+`books/nntp-post` and `books/nntp-effects` — the NNTP reader's, not this
+layer's — each exceeded the runner's 1800 s cap on a box carrying five other
+lanes and were still retrying when the lane ended.
+
+**The trap that cost the most, written down so the next lane does not pay it
+again: an ACL2 certificate records absolute full-book-names, so certificates
+are not relocatable and must never be mixed across directories.** Installing
+217 certificates scavenged from every gate and lane whose book *text* matched
+made ACL2 include each book from the directory its own certificate named, and
+the build refused with `its certificate requires
+/home/ember/fn-gates/dev-056b29b/books/acceptance.lisp, but ...
+dev-498b766/books/acceptance.lisp ... has been included`. No existing
+directory holds this image's whole closure (the best gate matches 57 of 63 and
+has no tcpcl book; the two directories with a matching `tcpcl-session.cert`
+match 5 of 63), so the image needs its own closure certified in its own
+directory. When the three books land, one command finishes the lane:
+
+```sh
+ssh persvati 'cd /home/ember/fn-lanes/w8-tcpcl-native \
+  && FN_ACL2=$HOME/fn-tools/acl2-8.7/saved_acl2 nice -n 10 sh tools/build_native_host.sh \
+  && python3 tools/tcpcl_lab.py --image build/fn-host --work /tmp/tcpcl-lab'
+```
+
+What did run: the raw file compiles clean against stubs for io.lisp's surface
+(35 forms, no caught warning), `host/tcpcl-host.lisp` reads as ACL2 (22
+forms), `make check` is green, and `tests/test_twonode_gate.py` passes 19/19
+with the new `tcpcl` scenario in place — it skips with the build's last lines
+and keeps the gate green when no image is produced.
 
 ## Open
 
@@ -55,7 +87,7 @@ See [`planning/evidence/tcpcl-EVREV-EVDATE.md`](../evidence/tcpcl-EVREV-EVDATE.m
   `fn-tcl-drive`'s guard is `fn-tcl-sessionp`, and `fn-tcl-inboundp` inside it
   runs `fn-tcl-octet-listsp` and `fn-tcl-lists-len` over every octet staged so
   far. A transfer of n octets therefore costs O(n²/chunk) in guard checking
-  alone, measured below. This is the books' decision, not the host's: the fix
+  alone. This is the books' decision, not the host's: the fix
   is the one `books/served.lisp` already made for the wire — carry the
   invariant in the state and prove it preserved, so the recognizer never runs
   per chunk. Until then the layer is not usable for large bundles.
@@ -80,5 +112,4 @@ See [`planning/evidence/tcpcl-EVREV-EVDATE.md`](../evidence/tcpcl-EVREV-EVDATE.m
   strict image build inside `$HOME/fn-deploy/<rev>` refuses books whose
   certificates name another directory. The scenario reports that as a skip
   with the build's last lines rather than as a pass. Running the lab in a
-  worktree whose own closure was certified there is what produced the
-  evidence below.
+  worktree whose own closure was certified there is the way to run it.
