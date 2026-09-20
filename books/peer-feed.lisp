@@ -636,8 +636,12 @@
 ; the state change and the effect it authorizes.
 (defun fn-feed-offer (f msgid)
   (declare (xargs :guard t))
+  ; The one-in-flight rule is enforced HERE and not only in the selection: an
+  ; offer made while another entry is in flight would break `fn-feedp', and a
+  ; recognizer a transition can break is not a carried invariant.
   (if (or (not (fn-feedp f))
           (not (equal (fn-feed-state-of msgid (fn-feed-queue f)) :queued))
+          (not (equal (fn-feed-inflight-count (fn-feed-queue f)) 0))
           (not (natp (fn-feed-conn f))))
       (mv f nil)
       (let ((attempt (fn-feed-next-attempt f)))
@@ -853,8 +857,14 @@
   (list (cons :feed-enqueue '(:text :text :nat))           ; peer msgid tick
         (cons :feed-offer   '(:text :text :nat :nat))      ; peer msgid attempt tick
         (cons :feed-sent    '(:text :text :nat))           ; peer msgid attempt
-        (cons :feed-outcome (list :text :text :nat
-                                  (cons :enum *fn-feed-outcome-codes*)))
+        ; The response code is a `:nat' with a membership conjunct in
+        ; `fn-feed-record-okp', not an `:enum': the frame grammar's enums are
+        ; keyword-keyed (`fn-frame-enum-index' over a symbol list) and a
+        ; numeric enum was never in the codec's contract.  The enumeration is
+        ; still closed -- no record carries a code outside
+        ; `*fn-feed-outcome-codes*' -- it is just checked beside the spec
+        ; rather than inside it.
+        (cons :feed-outcome '(:text :text :nat :nat))
         (cons :feed-drop    (list :text :text
                                   (cons :enum *fn-feed-drop-reasons*)))
         (cons :feed-restart '(:text))))                    ; peer
@@ -867,7 +877,11 @@
   (declare (xargs :guard t :verify-guards nil))
   (let ((spec (fn-frame-spec-for kind *fn-feed-specs*)))
     (and (not (equal spec :none))
-         (fn-frame-values-okp spec values))))
+         (fn-frame-values-okp spec values)
+         (or (not (equal kind :feed-outcome))
+             (and (member-equal (fn-frame-item 3 values)
+                                *fn-feed-outcome-codes*)
+                  t)))))
 
 (verify-guards fn-feed-record-okp)
 
@@ -881,8 +895,10 @@
   (declare (xargs :guard t))
   (fn-frame-item 1 values))
 (defun fn-feed-record-nat (n values)
+  ; `fn-frame-item' has `(natp n)' for its guard and this one is called with a
+  ; variable index, so the index is nfixed here rather than guarded upward.
   (declare (xargs :guard t))
-  (nfix (fn-frame-item n values)))
+  (nfix (fn-frame-item (nfix n) values)))
 
 (defun fn-feed-encode (kind values digest)
   (declare (xargs :guard t :verify-guards nil))
@@ -1122,7 +1138,9 @@
           (t nil)))))
 
 (defun fn-feed-drivenp (f es)
-  (declare (xargs :guard t))
+  ; The recursion is on the record list; the feed argument changes with it, so
+  ; the measure is named rather than guessed.
+  (declare (xargs :guard t :measure (acl2-count es)))
   (if (atom es)
       (fn-feedp f)
       (and (fn-feed-journal-entryp (car es))
