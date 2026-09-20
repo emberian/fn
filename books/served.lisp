@@ -470,7 +470,8 @@
 
 (defun fn-served-feed (conn octets)
   (declare (xargs :guard (fn-wire-statep (fn-served-conn-wire conn))
-                  :verify-guards nil))
+                  :verify-guards nil
+                  :measure (len octets)))
   (if (or (not (consp octets))
           (fn-served-closed-wirep (fn-served-conn-wire conn)))
       (fn-served-make-result conn nil)
@@ -872,7 +873,8 @@
 
 (defun fn-served-feed-steps (conn octets)
   (declare (xargs :guard (fn-wire-statep (fn-served-conn-wire conn))
-                  :verify-guards nil))
+                  :verify-guards nil
+                  :measure (len octets)))
   (if (or (not (consp octets))
           (fn-served-closed-wirep (fn-served-conn-wire conn)))
       0
