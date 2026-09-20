@@ -801,7 +801,10 @@ def build_parser():
     peer.add_argument("--nntp", help="HOST:PORT of the peer's NNTP listener")
     peer.add_argument("--bp", help="the peer's BP endpoint id (instead of --nntp)")
     peer.add_argument("--inbound-groups", help="wildmat of what this peer may feed us")
-    peer.add_argument("--inbound-max-octets", type=int, default=1048576)
+    peer.add_argument("--inbound-max-octets", type=int, default=0,
+                      help="the largest article this peer may send; 0, the "
+                           "default, is the record layer's own ceiling, which "
+                           "ACL2 supplies (fn-store-cfg-peer-record)")
     peer.add_argument("--inbound-max-inflight", type=int, default=16)
     peer.add_argument("--outbound-groups", help="wildmat of what we feed this peer")
     peer.add_argument("--streaming", action="store_true",

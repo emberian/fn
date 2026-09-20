@@ -181,7 +181,8 @@
                                  out-backoff auth-kind auth-octets)
   ; The typed record the operator's words denote, or nil.  `port' 0 selects a
   ; BP transport whose eid is `host-octets'; an empty inbound or outbound
-  ; group pattern selects the absent half.
+  ; group pattern selects the absent half; an inbound bound of 0 selects
+  ; *fn-record-max-payload*, the largest article this store can hold.
   (declare (xargs :mode :program))
   (let ((name (fn-store-octets->string name-octets))
         (path (fn-store-octets->string path-octets))
@@ -199,7 +200,17 @@
                   (list :bp endpoint))
                 (if (equal ingroups "")
                     nil
-                  (list ingroups (nfix in-max-octets) (nfix in-inflight)))
+                  ; An unsaid inbound bound (0) is the record layer's own
+                  ; ceiling.  `fn-cfg-peer-inboundp' refuses anything above
+                  ; *fn-record-max-payload*, so a default typed into the CLI
+                  ; would be a second owner of that number -- and the one
+                  ; that was there (1048576, 32 times the ceiling) refused
+                  ; every `peer add' made with the defaults.
+                  (list ingroups
+                        (if (posp in-max-octets)
+                            in-max-octets
+                          *fn-record-max-payload*)
+                        (nfix in-inflight)))
                 (if (equal outgroups "")
                     nil
                   (list outgroups (and out-streaming t) (nfix out-max-queue)
