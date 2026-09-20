@@ -37,12 +37,15 @@ class Fake:
     """
 
     def __init__(self, statuses: list[str], log: str = "",
-                 home: str = "/home/ember", codes: dict[str, int] | None = None) -> None:
+                 home: str = "/home/ember", codes: dict[str, int] | None = None,
+                 certs: str = "") -> None:
         self.commands: list[list[str]] = []
         self.statuses = list(statuses)
         self.log = log
         self.home = home
         self.codes = dict(codes or {})
+        # What `tools/certs.py` on the box prints: submit reads its counts.
+        self.certs = certs
 
     def code_for(self, command) -> int:
         joined = " ".join(command)
@@ -61,6 +64,8 @@ class Fake:
             elif "STATUS" in script:
                 state = self.statuses.pop(0) if self.statuses else "0"
                 output = f"STATUS {state}\nMARKERS 7\nTAIL working\n"
+            elif "tools/certs.py" in script:
+                output = self.certs
             elif script.startswith("cat "):
                 output = self.log
         code = self.code_for(command)
@@ -85,6 +90,7 @@ def driving(fake, cache: Path):
     with mock.patch.object(farm, "RUN", fake), \
             mock.patch.object(farm, "SLEEP", lambda seconds: None), \
             mock.patch.dict(os.environ, {"FN_CERT_CACHE": str(cache)}), \
+            contextlib.redirect_stderr(io.StringIO()), \
             contextlib.redirect_stdout(io.StringIO()):
         yield
 
@@ -239,6 +245,83 @@ class ClosureTests(unittest.TestCase):
             record = json.loads(next((root / "build" / "farm").glob("*.json"))
                                 .read_text())
             self.assertTrue(record["closure"])
+
+
+INSTALLED = ("install: 220 books, cache /home/ember/fn-certcache\n"
+             "  installed 31, kept identical local 2, no cached pair 4, "
+             "foreign-local 0, removed foreign 0\n")
+
+
+class CacheTests(unittest.TestCase):
+    """The box's cache is what a run should start from, and add to.
+
+    Measured 2026-09-20: a lane's `--closure` submit onto an empty remote root
+    certified the whole substrate for four new books, 30 minutes, because
+    nothing on the box offered its certificates to a lane.
+    """
+
+    def test_submit_installs_the_boxs_cache_before_the_runner_starts(self):
+        fake = Fake([], certs=INSTALLED)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"):
+                identifier = farm.submit("persvati", root, [], jobs=4,
+                                         timeout_seconds=60, affected_by=[],
+                                         remote=Path("/home/ember/fn-lanes/w5"))
+            scripts = fake.scripts()
+            install = next(i for i, s in enumerate(scripts) if "tools/certs.py" in s)
+            runner = next(i for i, s in enumerate(scripts) if "certify_books.py" in s)
+            self.assertLess(install, runner)  # certify only what is not cached
+            self.assertIn('--cache "$HOME"/fn-certcache install', scripts[install])
+            self.assertIn("cd /home/ember/fn-lanes/w5 ||", scripts[install])
+            # The mirror overwrites the tree, so the install follows it.
+            self.assertEqual(fake.commands[fake.commands.index(
+                next(c for c in fake.commands if c[0] == "rsync")) + 1][0], "ssh")
+            record = json.loads(farm.record_path(root, identifier).read_text())
+            self.assertEqual(record["cache_install"],
+                             {"installed": 31, "kept": 2, "uncached": 4,
+                              "foreign_local": 0})
+
+    def test_an_install_that_did_not_run_is_recorded_not_raised(self):
+        fake = Fake([], certs="Traceback: no such cache\n",
+                    codes={"tools/certs.py": 1})
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"):
+                identifier = farm.submit("hbox", root, [], jobs=4,
+                                         timeout_seconds=60, affected_by=[],
+                                         remote=Path("/tank/fn/tree"))
+            self.assertIn("certify_books.py", " ".join(fake.scripts()))
+            record = json.loads(farm.record_path(root, identifier).read_text())
+            self.assertIn("no such cache", record["cache_install"]["error"])
+
+    def test_the_runner_publishes_its_pairs_as_a_snapshot_of_this_run(self):
+        # A finished run root is not a live worktree, and the pairs say so, so
+        # the next lane on the box installs them instead of certifying again.
+        script = farm.remote_script("persvati", Path("/home/ember/fn-lanes/w5"),
+                                    "run-1", [], 4, 60, [])
+        self.assertIn("FN_CERT_CACHE=~/fn-certcache", script)
+        self.assertIn("FN_CERT_ORIGIN_KIND=run", script)
+
+    def test_wait_publishes_the_new_pairs_into_the_boxs_cache_too(self):
+        fake = Fake(["0"], log=WaitTests.LOG, certs="publish: 3 books\n")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            (root / "books").mkdir()
+            with driving(fake, root / "cache"):
+                identifier = farm.submit("hbox", root, [], jobs=2,
+                                         timeout_seconds=60, affected_by=[],
+                                         remote=Path("/tank/fn/tree"))
+                farm.wait("hbox", identifier, root, poll=1, timeout_seconds=60)
+            published = [s for s in fake.scripts()
+                         if "--origin-kind run publish" in s]
+            self.assertEqual(len(published), 1)
+            self.assertIn("--cache /tank/fn/certcache", published[0])
+            self.assertIn("cd /tank/fn/tree ||", published[0])
+            # After the runner: the pairs it made are what is published.
+            self.assertGreater(fake.scripts().index(published[0]),
+                               next(i for i, s in enumerate(fake.scripts())
+                                    if "certify_books.py" in s))
 
 
 class WaitTests(unittest.TestCase):
