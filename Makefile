@@ -68,6 +68,7 @@ ACL2_BOOKS ?= books/assumptions \
 	books/replay-invariants \
 	tests/acl2/replay-tests \
 	books/config-records \
+	books/node-config \
 	tests/acl2/config-tests \
 	books/store-files \
 	books/store-files-invariants \
