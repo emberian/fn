@@ -1,32 +1,3 @@
-; ACL2 and Common Lisp names the host files use that no book defines.
-;
-; The host-names lint in tools/ledger.py reads host/*.lisp and
-; host/native/*.lisp and reports every symbol used in function position, and
-; every *constant*, that nothing the file loads defines.  ACL2's own world is
-; not in this repository, so these names would be reported forever.  This
-; file is that world, restricted to what the host files use today: a new
-; built-in reaching a host file is one WARN and one line added here.
-;
-; HOW IT WAS MADE.  Not typed and not guessed: every name below was produced
-; by the lint and then required to be a real ACL2 or Common Lisp name.
-;
-;   1. Run the lint with this file absent.  Collect the reported names that
-;      nothing in the tree defines (the findings whose "source" is null in
-;      planning/ledger.json).
-;   2. Build ACL2's vocabulary from the ACL2 8.7 sources in
-;      $(dirname $(readlink -f $(which acl2)))/../libexec:
-;        - every name matching ^\s{0,4}\((def[a-z0-9!*+-]*)\s+\|?(acl2::)?NAME
-;          in libexec/*.lisp (10679 names in 8.7), and
-;        - the quoted list in the `defconst
-;          *common-lisp-symbols-from-main-lisp-package*` of libexec/axioms.lisp
-;          (1021 names), which is ACL2's own statement of what Common Lisp
-;          means.
-;   3. Keep the intersection of (1) and (2); that is this file.  On
-;      2026-09-20 step (1) produced 130 names and step (3) kept all 130, so
-;      no host file names anything that is neither defined in this tree nor a
-;      name of ACL2's.
-;
-; One name per line, lower case, ; starts a comment.
 *
 *print-startup-banner*
 *standard-output*
@@ -37,6 +8,32 @@
 /=
 1+
 1-
+;
+;          (1021 names), which is ACL2's own statement of what Common Lisp
+;          *common-lisp-symbols-from-main-lisp-package*` of libexec/axioms.lisp
+;          in libexec/*.lisp (10679 names in 8.7), and
+;          means.
+;        - every name matching ^\s{0,4}\((def[a-z0-9!*+-]*)\s+\|?(acl2::)?NAME
+;        - the quoted list in the `defconst
+;      $(dirname $(readlink -f $(which acl2)))/../libexec:
+;      2026-09-20 step (1) produced 130 names and step (3) kept all 130, so
+;      name of ACL2's.
+;      no host file names anything that is neither defined in this tree nor a
+;      nothing in the tree defines (the findings whose "source" is null in
+;      planning/ledger.json).
+;   1. Run the lint with this file absent.  Collect the reported names that
+;   2. Build ACL2's vocabulary from the ACL2 8.7 sources in
+;   3. Keep the intersection of (1) and (2); that is this file.  On
+; ACL2 and Common Lisp names the host files use that no book defines.
+; HOW IT WAS MADE.  Not typed and not guessed: every name below was produced
+; One name per line, lower case, ; starts a comment.
+; The host-names lint in tools/ledger.py reads host/*.lisp and
+; built-in reaching a host file is one WARN and one line added here.
+; by the lint and then required to be a real ACL2 or Common Lisp name.
+; every *constant*, that nothing the file loads defines.  ACL2's own world is
+; file is that world, restricted to what the host files use today: a new
+; host/native/*.lisp and reports every symbol used in function position, and
+; not in this repository, so these names would be reported forever.  This
 <
 <=
 =
@@ -114,6 +111,7 @@ nfix
 not
 nreverse
 nth
+nthcdr
 null
 or
 parse-integer
