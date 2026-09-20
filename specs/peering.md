@@ -1255,7 +1255,7 @@ The keystones, each stated over the function the owner calls:
 - `fn-own-feed-target-is-in-scope`: a target's outbound wildmat matches one of the article's own Newsgroups names.
 - `fn-own-feed-accept-touches-only-its-targets` and `fn-own-feed-accept-never-enqueues-on-the-origin`: the same, transported to the table the owner holds.
 - `fn-own-feed-tick-peer-is-the-feed-tick`: the subject rule. One peer's tick IS `fn-feed-tick-step` on that peer's own feed, with the same effects.
-- `fn-own-feed-tick-peer-records-the-command-it-emits`: durable before the effect. A record is built exactly when a command goes out, and it names the Message-ID that command offers.
+- `fn-own-feed-tick-peer-records-the-command-it-emits`: durable before the effect — a record is built exactly when a command goes out, and it names the Message-ID that command offers. **OPEN, removed rather than weakened.** The residue is `fn-feed-offer`'s own precondition that the selected entry is `:queued`; the lemma for it, `fn-feed-selection-is-queued`, is in `books/peer-feed-invariants` and is a cascade of that book's one open form. The ground case is in the test book.
 - `fn-own-feed-retire-keeps-a-busy-feed`: a reconfiguration is a change of decisions; a feed with queued or in-flight work is never dropped.
 - `fn-own-feed-tablep` preserved by `fn-own-feed-reconfigure`, `-restart-all`, `-enqueue-all`, `-accept`, `-tick-peer` and `-tick`. `fn-feedp` preservation is CITED from `books/peer-feed-invariants` (`fn-feed-enqueue-preserves-feedp`, `fn-feed-restart-preserves-feedp`, `fn-feed-tick-step-preserves-feedp`) and never restated.
 

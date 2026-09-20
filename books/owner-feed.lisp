@@ -1258,26 +1258,21 @@
                obs))
     nil))
 
-; KEYSTONE.  A record is built exactly when a command goes out, and it names
-; the Message-ID that command offers: this is what "durable before the effect"
-; means at the one place the owner emits a feed command.
-(defthm fn-own-feed-tick-peer-records-the-command-it-emits
-  (implies (fn-own-feed-entry-of peer tbl)
-           (and (iff (consp (fn-own-feed-tick-peer-records peer tbl obs))
-                     (consp (cdr (fn-own-feed-tick-peer peer tbl obs))))
-                (implies (consp (cdr (fn-own-feed-tick-peer peer tbl obs)))
-                         (equal (fn-feed-record-msgid
-                                 (fn-feed-journal-values
-                                  (car (fn-own-feed-tick-peer-records peer tbl
-                                                                      obs))))
-                                (fn-feed-selection (fn-own-feed-find peer tbl)
-                                                   obs)))))
-  :hints (("Goal" :in-theory (enable fn-own-feed-tick-peer fn-feed-tick-step
-                                     fn-own-feed-offer-record
-                                     fn-feed-journal-entry
-                                     fn-feed-journal-values
-                                     fn-own-feed-find
-                                     fn-feed-record-msgid fn-feed-offer))))
+; OPEN, recorded rather than weakened (docs/proof-style.md sec. 5, AGENTS.md).
+; `fn-own-feed-tick-peer-records-the-command-it-emits' -- a record is built
+; exactly when a command goes out and names the Message-ID that command
+; offers -- does not close here.  The residue is the offer's own
+; preconditions: `fn-feed-offer' re-checks that the selected entry is
+; `:queued', and the lemma that says a selection IS queued is
+; `fn-feed-selection-is-queued' in books/peer-feed-invariants, which is
+; itself a cascade of that book's one open form
+; (`fn-feed-apply-record-preserves-feedp'), so it is not available to cite.
+; What IS evidenced is the ground case: tests/acl2/owner-feed-tests.lisp
+; asserts, on a connected feed with one queued article, that the tick emits
+; exactly one command, that `fn-feed-command-offersp' holds of it for that
+; Message-ID, that `fn-own-feed-tick-peer-records' is exactly one
+; `:feed-offer' record naming the same Message-ID, and that replaying that
+; record reaches the state the live tick reached.
 
 ; -----------------------------------------------------------------------------
 ; Export theory.  What leaves enabled: the table lemmas above, the

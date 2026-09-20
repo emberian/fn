@@ -57,8 +57,8 @@ open forms, and both are named exactly.
 
 | Root | State | Evidence |
 | --- | --- | --- |
-| `books/owner-feed` | **admitted, no open form; NOT certified** | laptop ACL2 8.7, `tools/acl2 --timeout 840` over the driver `ld books/peer-feed-invariants.lisp` (`:ld-error-action :continue`), `(in-theory (disable fn-feed-vocabulary))`, `ld books/owner-feed.lisp`. Zero `ACL2 Error` in the owner-feed portion. |
-| `tests/acl2/owner-feed-tests` | **admitted, 98/98 assertions pass; NOT certified** | the same driver with the test body appended; 98 `:PASSED`, no failure. |
+| `books/owner-feed` | **admits with no open form; NOT certified** | laptop ACL2 8.7, `tools/acl2 --timeout 840` over the driver `ld books/peer-feed-invariants.lisp` (`:ld-error-action :continue`), `(in-theory (disable fn-feed-vocabulary))`, `ld books/owner-feed.lisp`. Zero `ACL2 Error` over this book's forms, after one theorem was removed and recorded open (below). |
+| `tests/acl2/owner-feed-tests` | **admits, 98/98 assertions pass; NOT certified** | the same driver with the test body appended; 98 `:PASSED`, no failure. |
 | `books/owner` with the `feeds` field and the five arms | **ADMITS with no open form; not certified** | laptop ACL2 8.7, driver `ld peer-feed-invariants.lisp`, `(in-theory (disable fn-feed-vocabulary))`, `ld owner-feed.lisp`, `ld owner.lisp` (the book's own `include-book "owner-feed"` has no certificate to take and is stepped over; the definitions are already in the world). Zero `ACL2 Error` over `books/owner.lisp`'s forms. Getting there needed **two arity fixes that are dev's, not this lane's**: `fn-own-open-peer` called `fn-served-open-peer` with eight arguments where it takes nine since the clock seam, and `fn-own-transit-outcome` called `fn-served-make-conn` with five where it takes six. Both are on the board. |
 | `books/owner-invariants`, `tests/acl2/owner-tests` | **not admitted** | `include-book "served"` needs a certificate `books/served` does not have. With `books/peer-inbound.lisp` taken from `w10/auth-served`, persvati run `run-20260920T200209Z-0bf0` (remote root `/home/ember/fn-lanes/w10-owner-feed-b`) **did** produce `books/peer-inbound.cert`, `books/nntp-post.cert` and `books/nntp-effects.cert` — the blocker the wave-9 handoff named is closed — but `books/served` then failed one level up, at **`fn-served-dispatch-effects-are-typed`** (`books--served.certify.log:1852`). The checkpoint is the submission branch of a NON-peer session: with `(not (fn-peer-sessionp (fn-served-conn-session conn)))` and a `fn-post-result-submission` from `fn-peer-step`, the goal wants `(fn-served-effectsp (append <peer-step effects> (list (list :submit <submission>))))` and nothing says that submission is an injected one. One lemma, in the served/auth lane's cluster. |
 | `books/peer-feed-invariants` (dependency) | **open at `fn-feed-apply-record-preserves-feedp`** | persvati `run-20260920T190044Z-c815`, `books--peer-feed-invariants.certify.log:15702`. The residue has MOVED since the w6 handoff: the `find`/`consp` bridge is closed, and what remains is the attempt bound in the `:feed-sent` arm — `(fn-feed-attempts-belowp (fn-feed-queue-set-state (fn-feed-queue f) msgid '(:sent 0)) (fn-feed-next-attempt f))` with `(fn-bp-nth 1 (state)) = 0` in the split. The feed lane owns it. |
@@ -100,6 +100,19 @@ The lane merged `dev` once the coordinator reported that `books/served`,
   post shape).
 
 ## What is open, with the obligation each needs
+
+0. `fn-own-feed-tick-peer-records-the-command-it-emits` -- a record is built
+  exactly when a command goes out and names the Message-ID that command
+  offers -- is **REMOVED and recorded open**, not weakened. Its residue is
+  the offer's own precondition: `fn-feed-offer` re-checks that the selected
+  entry is `:queued`, and the lemma that says a selection is queued is
+  `fn-feed-selection-is-queued` in `books/peer-feed-invariants`, itself a
+  cascade of that book's one open form. The ground case IS evidenced: the
+  test book asserts, on a connected feed with one queued article, one
+  command, `fn-feed-command-offersp` of it for that Message-ID, exactly one
+  `:feed-offer` record naming the same Message-ID, and that replaying that
+  record reaches the state the live tick reached.
+
 
 1. **Certify the owner chain.** Merge `w10/auth-served`'s
    `books/peer-inbound.lisp` fix into dev, then

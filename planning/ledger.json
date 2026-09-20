@@ -272,7 +272,7 @@
     "books": 266,
     "books_in_root_closure": 265,
     "roots": 265,
-    "theorems": 5215,
+    "theorems": 5214,
     "functions": 3759,
     "assert_events": 4977,
     "must_fails": 59,
@@ -3023,7 +3023,7 @@
       "book": "books/owner-feed.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 75,
+      "theorems": 74,
       "functions": 54,
       "guards": {
         "verified": 0,
