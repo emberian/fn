@@ -519,8 +519,13 @@
 ; two depths.  So this witness observes the SESSION the outcome is computed
 ; from, not the octets it comes out as.
 
+; The Message-ID a transit submission carries is OCTETS, not the string the
+; archive fixture names it by (fn-af-message-idp, books/article-fields.lisp).
+(defconst *fn-t-served-transit-msgid*
+  (fn-nntp-string-octets *fn-t-served-id*))
 (defconst *fn-t-served-transit-sub*
-  (fn-peer-make-submission "innA" :ihave *fn-t-served-id* *fn-t-served-payload*))
+  (fn-peer-make-submission "innA" :ihave *fn-t-served-transit-msgid*
+                           *fn-t-served-payload*))
 (defconst *fn-t-served-transit-want* (fn-peer-decision :want nil))
 (defconst *fn-t-served-transit-session*
   (fn-auth-session-base (fn-served-conn-session *fn-t-served-conn*)))
