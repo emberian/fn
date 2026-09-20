@@ -240,9 +240,19 @@ nothing here proves a book certifies. That is the runner's fresh success
 marker per book, and ACL2 checks the installed pair again at include time.
 
 Two further controls on ACL2 processes. `--affected-by BOOK` keeps only the
-requested roots that are, or transitively include, a named book, in the
-requested (Makefile) order, so a change certifies what it can have invalidated
-and nothing else; `--dry-run` prints that list. Every ACL2 this project starts
+roots that are, or transitively include, a named book, in Makefile order, so a
+change certifies what it can have invalidated and nothing else. It searches
+the roots it was given, and with none named that is every root of the
+Makefile's `ACL2_BOOKS`, read by `tools/ledger.py`'s `makefile_roots`: the
+runner used to carry its own list, which held 71 of the Makefile's 216 roots,
+so the same command answered a question about a third of the tree and looked
+identical doing it. `--closure` adds the selected roots' own local
+dependencies, in dependency order, for the run that cannot assume a valid
+certificate exists for them -- a fresh box, or one whose pairs were made under
+another worktree's absolute paths; without it such a run dies on `There is no
+certificate on file`. `--dry-run` prints the final ordered list, and the
+manifest's `requested_books` is that same list, so the evidence names what was
+certified rather than what was asked for. Every ACL2 this project starts
 first takes a slot from a machine-wide pool of `flock` files
 ([`tools/acl2_slots.py`](../tools/acl2_slots.py), `FN_ACL2_SLOTS`, default 4 on
 darwin and 16 on linux), waits rather than starting when the pool is full,
@@ -262,12 +272,29 @@ three-minute rule mechanical rather than a PID a lane has to remember to kill.
 The slot is released when ACL2 exits, when it is killed by the timeout, and
 when the wrapper itself dies.
 [`tools/farm.py`](../tools/farm.py) moves a wide run to persvati or hbox:
-`submit` mirrors the worktree to the same absolute path and starts the runner
-detached with its own log and status file, `wait` blocks with a bounded
-sleep-and-report loop and then rsyncs back the evidence directory and the new
-pairs and publishes them locally, and `status` lists the runs on a host. On
-hbox the runner is wrapped in `swarm-build`, which is where that box's memory
-cap is enforced.
+`submit` mirrors the worktree and starts the runner detached with its own log
+and status file, `wait` blocks with a bounded sleep-and-report loop and then
+rsyncs back the evidence directory and the new pairs and publishes them
+locally, and `status` lists the runs on a host. On hbox the runner is wrapped
+in `swarm-build`, which is where that box's memory cap is enforced. The
+invocation for a lane is
+
+    python3 tools/farm.py submit persvati --jobs 12 \
+        --remote-root /home/ember/fn-lanes/<lane> \
+        --affected-by books/article.lisp --closure
+
+and three things in it were each paid for by a run that produced nothing.
+`--remote-root` takes an **absolute** path: a leading `~` is resolved against
+the host's own `$HOME` in one `ssh host 'echo $HOME'` before anything uses it,
+because the recorded path is also the origin the returning pairs are published
+under and a certificate's post-alist names its sub-books absolutely --
+`shlex.quote` had been making the tilde literal, so the remote `cd` landed
+nowhere. rsync creates the last component of its destination and no more, so
+`submit` makes the path first. And `cd X && ... &` backgrounds the whole list,
+which meant ssh exited 0 whatever happened; each step of the submit script now
+exits on its own (9 no directory, 10 no runner in the tree, 11 no writable
+`build/farm`, 12 the runner did not start), `submit` raises on any of them and
+`main` returns 2, so a run id is printed only for a run that exists.
 
 ### Qualifying a platform against A-DURABILITY
 

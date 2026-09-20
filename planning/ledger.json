@@ -110,6 +110,11 @@
     "books/clock",
     "books/clock-invariants",
     "tests/acl2/clock-tests",
+    "books/tcpcl-records",
+    "books/tcpcl-octets",
+    "books/tcpcl-session",
+    "books/tcpcl-invariants",
+    "tests/acl2/tcpcl-tests",
     "books/anchor",
     "books/anchor-record",
     "books/anchor-invariants",
@@ -197,6 +202,9 @@
     "books/bp-release",
     "books/bp-release-invariants",
     "tests/acl2/bp-release-tests",
+    "books/scheduler",
+    "books/scheduler-invariants",
+    "tests/acl2/scheduler-tests",
     "books/relay",
     "books/relay-invariants",
     "books/relay-crash-invariants",
@@ -217,24 +225,24 @@
     "tests/acl2/policy-tests"
   ],
   "totals": {
-    "books": 214,
-    "books_in_root_closure": 213,
-    "roots": 213,
-    "theorems": 3581,
-    "functions": 2689,
-    "assert_events": 3736,
+    "books": 222,
+    "books_in_root_closure": 221,
+    "roots": 221,
+    "theorems": 4092,
+    "functions": 2986,
+    "assert_events": 3936,
     "must_fails": 59,
-    "encapsulates": 14,
+    "encapsulates": 15,
     "guards": {
-      "verified": 1152,
-      "declared-off": 138,
-      "default-guarded": 951,
+      "verified": 1239,
+      "declared-off": 141,
+      "default-guarded": 1158,
       "default-unguarded": 448
     },
-    "suspect_theorems": 30,
-    "export_hygiene_warnings": 63,
+    "suspect_theorems": 31,
+    "export_hygiene_warnings": 62,
     "teeth_form_warnings": 0,
-    "include_hygiene_warnings": 93
+    "include_hygiene_warnings": 87
   },
   "books": [
     {
@@ -642,7 +650,7 @@
       "book": "books/article.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 21,
+      "theorems": 24,
       "functions": 45,
       "guards": {
         "verified": 45,
@@ -3090,6 +3098,60 @@
       "read_error": null
     },
     {
+      "book": "books/scheduler-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 59,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "assumptions",
+        "bp-workflow-invariants",
+        "scheduler"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/scheduler.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 54,
+      "functions": 104,
+      "guards": {
+        "verified": 2,
+        "declared-off": 0,
+        "default-guarded": 102,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 2,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-workflow",
+        "clock",
+        "frame"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/served.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -3427,6 +3489,112 @@
       "suspects": [
         "fn-sn-open-observed-invalid-history-refuses"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/tcpcl-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 33,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "tcpcl-session"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/tcpcl-octets.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 172,
+      "functions": 36,
+      "guards": {
+        "verified": 14,
+        "declared-off": 0,
+        "default-guarded": 22,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 14,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 6,
+      "defmacros": 0,
+      "encapsulates": 1,
+      "includes": [
+        "tcpcl-records"
+      ],
+      "system_includes": [
+        "arithmetic/top",
+        "ihs/quotient-remainder-lemmas"
+      ],
+      "suspects": [
+        "fn-tcl-segment-never-exceeds-mru"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/tcpcl-records.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 133,
+      "functions": 99,
+      "guards": {
+        "verified": 62,
+        "declared-off": 0,
+        "default-guarded": 37,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 62,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "cbor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/tcpcl-session.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 55,
+      "functions": 54,
+      "guards": {
+        "verified": 9,
+        "declared-off": 0,
+        "default-guarded": 45,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 9,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 17,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "clock",
+        "tcpcl-octets"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -3799,7 +3967,7 @@
       "book": "books/wildmat.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 11,
+      "theorems": 13,
       "functions": 54,
       "guards": {
         "verified": 54,
@@ -5314,6 +5482,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/scheduler-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 103,
+      "must_fails": 0,
+      "defconsts": 45,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/scheduler-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/served-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -5666,6 +5859,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/tcpcl-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 97,
+      "must_fails": 0,
+      "defconsts": 51,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/tcpcl-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/transfer-journal-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -5937,7 +6155,7 @@
     {
       "theorem": "fn-nntp-block-scan-start-without-a-dot",
       "book": "books/nntp-effects.lisp",
-      "line": 453,
+      "line": 447,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-nntp-block-scan and the conclusion is that branch's value"
       ]
@@ -6052,6 +6270,14 @@
       "line": 126,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-refuse-reservation and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-tcl-segment-never-exceeds-mru",
+      "book": "books/tcpcl-octets.lisp",
+      "line": 1044,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-tcl-decode-segment-data and the conclusion is that branch's value"
       ]
     },
     {
@@ -6436,12 +6662,6 @@
         "book": "books/wildmat-work.lisp",
         "line": 369,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
-      },
-      {
-        "theorem": "fn-wildmat-guard-pattern-row-length",
-        "book": "books/wildmat.lisp",
-        "line": 462,
-        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       }
     ],
     "teeth_form": [],
@@ -6451,27 +6671,6 @@
         "line": 16,
         "include": "acceptance-alloc",
         "included": "books/acceptance-alloc.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/article-fields.lisp",
-        "line": 12,
-        "include": "article",
-        "included": "books/article.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/article-invariants.lisp",
-        "line": 4,
-        "include": "article",
-        "included": "books/article.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/article-properties.lisp",
-        "line": 9,
-        "include": "article",
-        "included": "books/article.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -6713,13 +6912,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/frame-fields.lisp",
-        "line": 9,
-        "include": "wildmat",
-        "included": "books/wildmat.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "books/injection.lisp",
         "line": 43,
         "include": "article-fields",
@@ -6731,13 +6923,6 @@
         "line": 7,
         "include": "article-fields",
         "included": "books/article-fields.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/nntp-syntax.lisp",
-        "line": 11,
-        "include": "wildmat",
-        "included": "books/wildmat.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -6766,6 +6951,27 @@
         "line": 16,
         "include": "acceptance-alloc",
         "included": "books/acceptance-alloc.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/scheduler-invariants.lisp",
+        "line": 14,
+        "include": "assumptions",
+        "included": "books/assumptions.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/scheduler-invariants.lisp",
+        "line": 15,
+        "include": "bp-workflow-invariants",
+        "included": "books/bp-workflow-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/scheduler.lisp",
+        "line": 47,
+        "include": "bp-workflow",
+        "included": "books/bp-workflow.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -6839,31 +7045,10 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/wildmat-matcher-invariants.lisp",
-        "line": 3,
-        "include": "wildmat",
-        "included": "books/wildmat.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "books/wildmat-parser-invariants.lisp",
         "line": 10,
         "include": "wildmat-utf8-invariants",
         "included": "books/wildmat-utf8-invariants.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/wildmat-utf8-invariants.lisp",
-        "line": 13,
-        "include": "wildmat",
-        "included": "books/wildmat.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/wildmat-work.lisp",
-        "line": 11,
-        "include": "wildmat",
-        "included": "books/wildmat.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -7088,13 +7273,6 @@
         "line": 12,
         "include": "../../books/wildmat-matcher-invariants",
         "included": "books/wildmat-matcher-invariants.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/wildmat-tests.lisp",
-        "line": 3,
-        "include": "../../books/wildmat",
-        "included": "books/wildmat.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       }
     ]
