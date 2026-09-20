@@ -253,14 +253,14 @@
     "books": 247,
     "books_in_root_closure": 246,
     "roots": 246,
-    "theorems": 4676,
-    "functions": 3428,
-    "assert_events": 4634,
+    "theorems": 4711,
+    "functions": 3437,
+    "assert_events": 4648,
     "must_fails": 59,
-    "encapsulates": 15,
+    "encapsulates": 16,
     "guards": {
       "verified": 1360,
-      "declared-off": 156,
+      "declared-off": 165,
       "default-guarded": 1423,
       "default-unguarded": 489
     },
@@ -1483,11 +1483,11 @@
       "book": "books/byte-store-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 106,
-      "functions": 9,
+      "theorems": 130,
+      "functions": 11,
       "guards": {
         "verified": 0,
-        "declared-off": 6,
+        "declared-off": 8,
         "default-guarded": 0,
         "default-unguarded": 3
       },
@@ -1496,12 +1496,13 @@
       "must_fails": 0,
       "defconsts": 0,
       "defmacros": 0,
-      "encapsulates": 2,
+      "encapsulates": 3,
       "includes": [
         "byte-store",
         "frame"
       ],
       "system_includes": [
+        "arithmetic-5/top",
         "arithmetic/top"
       ],
       "suspects": [],
@@ -1512,17 +1513,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 1,
-      "functions": 23,
+      "functions": 29,
       "guards": {
         "verified": 0,
-        "declared-off": 23,
+        "declared-off": 29,
         "default-guarded": 0,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 18,
+      "assert_events": 32,
       "must_fails": 0,
-      "defconsts": 23,
+      "defconsts": 34,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -1538,10 +1539,10 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 10,
-      "functions": 57,
+      "functions": 58,
       "guards": {
         "verified": 5,
-        "declared-off": 39,
+        "declared-off": 40,
         "default-guarded": 13,
         "default-unguarded": 0
       },
@@ -1616,7 +1617,7 @@
       "book": "books/checkpoint-codec.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 88,
+      "theorems": 99,
       "functions": 32,
       "guards": {
         "verified": 13,
@@ -6805,7 +6806,7 @@
     {
       "theorem": "fn-cpc-uint32p-bridge",
       "book": "books/checkpoint-codec.lisp",
-      "line": 1083,
+      "line": 1193,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-record-uint32p"
       ]

@@ -16,7 +16,7 @@
 ; The definitions are specs/crash-model-v2.md §1.2-1.6 with three changes
 ; the well-formedness keystones of byte-store-invariants required, each
 ; recorded in that document's status section:
-;   * fn-bs-statep carries two more conjuncts: every inode id in the table is
+;   * fn-bs-statep carries three more conjuncts: every inode id in the table is
 ;     below next-ino, and every pending :write names a table inode.  Without
 ;     them fn-bs-create and fn-bs-crash do not preserve the inode table.
 ;   * fn-bs-write reports :ebadf for an inode the table does not hold (the
@@ -196,6 +196,23 @@
            (fn-bs-writes-knownp (cdr ops) inodes))
     t))
 
+; Every pending :write carries at least one octet.  write(2) of zero octets
+; changes nothing on POSIX, and fn-bs-write issues no operation for it
+; ((zp n) returns the state unchanged), so this is a domain invariant of the
+; model's own syscalls, in the same sense as fn-bs-writes-knownp above.  It
+; is needed: fn-bs-unit-count of a zero-length write is 0, so a crash tears
+; it into no pieces at all, while fn-bs-apply-op splices it and zero-extends
+; the inode when the offset is past the end.  Without this conjunct the view
+; of (:byte-store 4 ((0)) NIL ((:write 0 5 NIL)) 1) is five zero octets and
+; no crash image of that state has them, which refutes
+; fn-bs-view-is-an-admissible-image (byte-store-invariants).
+(defun fn-bs-writes-nonemptyp (ops)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp ops)
+      (and (or (not (equal (car (car ops)) :write)) (consp (nth 3 (car ops))))
+           (fn-bs-writes-nonemptyp (cdr ops)))
+    t))
+
 (defun fn-bs-statep (s)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-bs-shapep s)
@@ -205,7 +222,8 @@
        (fn-bs-op-listp (fn-bs-pending s))
        (natp (fn-bs-next-ino s))
        (fn-bs-keys-belowp (fn-bs-inodes s) (fn-bs-next-ino s))
-       (fn-bs-writes-knownp (fn-bs-pending s) (fn-bs-inodes s))))
+       (fn-bs-writes-knownp (fn-bs-pending s) (fn-bs-inodes s))
+       (fn-bs-writes-nonemptyp (fn-bs-pending s))))
 
 (defthm fn-bs-statep-forward-shape
   (implies (fn-bs-statep x) (and (consp x) (true-listp x)))
