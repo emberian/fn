@@ -44,6 +44,23 @@
 ; The wire adds base64 and folding ABOVE fn-stmt-encode and changes nothing
 ; below it (specs/substrate-transport.md section 1.2).
 
+; fn-stmt-encode's item list closes with a nil tail, so both sides of the
+; theorem below meet as (append A B C nil) against (append A B C).  The
+; std/lists rule for that tail is not in this world; cbor-invariants'
+; fn-cbor-encoding-is-true-list discharges the hypothesis.
+(local (defthm fn-stx-append-nil-on-a-true-list
+         (implies (true-listp x)
+                  (equal (append x nil) x))))
+
+(local (defthm fn-stx-octet-list-is-a-true-list
+         (implies (fn-cbor-octet-listp x) (true-listp x))
+         :hints (("Goal" :in-theory (enable (:d fn-cbor-octet-listp))))))
+
+(local (defthm fn-stx-cbor-encoding-is-a-true-list
+         (true-listp (fn-cbor-encode value))
+         :hints (("Goal" :in-theory (disable fn-cbor-encode)
+                  :use ((:instance fn-record-cbor-encode-octets))))))
+
 (defthm fn-stx-detached-encode-is-fn-stmt-encode-without-the-payload
   (implies (fn-stmt-p s)
            (and (equal (fn-stmt-encode s)
@@ -126,6 +143,7 @@
                             (:d fn-stx-detached-items)
                             (:d fn-stmt-p)
                             (:d fn-stmt-bytes-item-p)
+                            (:d fn-sig-signature-p) (:d fn-cbor-valuep)
                             fn-cbor-at-mostp-from-length
                             fn-stmt-header-of-items-of-header-items
                             fn-stmt-okp-of-ok fn-stmt-value-of-ok
@@ -144,6 +162,14 @@
                  (:instance fn-stx-detached-items-length
                             (header (fn-stmt-header s))
                             (signature (fn-stmt-signature s)))))))
+
+; fn-stx-detached-of-items rebuilds the signature item as (cons :bytes (cdr
+; (car i1))); under the branch's own tests that is the one-item list i1
+; itself, which is what lets fn-stmt-header-of-items-sound close the goal.
+(local (defthm fn-stx-one-bytes-item-rebuilt
+         (implies (and (consp i1) (null (cdr i1)) (consp (car i1))
+                       (equal (car (car i1)) :bytes))
+                  (equal (list (cons :bytes (cdr (car i1)))) i1))))
 
 (defthm fn-stx-detached-accepted-input-is-canonical
   (implies (fn-stx-okp (fn-stx-detached-decode-exact octets))
