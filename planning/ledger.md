@@ -13,11 +13,11 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 239 |
 | Certification roots in the Makefile | 238 |
 | Books inside the root closure | 238 |
-| `defthm` and `defthmd` events | 4528 |
-| `defun` events | 3291 |
+| `defthm` and `defthmd` events | 4570 |
+| `defun` events | 3293 |
 | Functions with verified guards | 1294 |
 | Functions declared `:verify-guards nil` and never verified | 151 |
-| Functions left at the default with an explicit guard | 1381 |
+| Functions left at the default with an explicit guard | 1383 |
 | Functions left at the default with no guard | 465 |
 | `assert-event` checks | 4418 |
 | `must-fail` checks | 59 |
@@ -198,7 +198,7 @@ that `make certify` requests.
 | `books/tcpcl-invariants.lisp` | root | 51 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/tcpcl-octets.lisp` | root | 172 | 36 | 14/0/22/0 | 0 | 0 | 1 |
 | `books/tcpcl-records.lisp` | root | 133 | 99 | 62/0/37/0 | 0 | 0 | 0 |
-| `books/tcpcl-session.lisp` | root | 55 | 54 | 9/0/45/0 | 0 | 0 | 0 |
+| `books/tcpcl-session.lisp` | root | 97 | 56 | 9/0/47/0 | 0 | 0 | 0 |
 | `books/transfer-assembly-invariants.lisp` | root | 25 | 5 | 0/0/0/5 | 0 | 0 | 0 |
 | `books/transfer-invariants.lisp` | root | 14 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/transfer-journal-invariants.lisp` | root | 32 | 1 | 0/0/0/1 | 0 | 0 | 0 |
