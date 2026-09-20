@@ -126,7 +126,8 @@ class ReaderSocketTests(unittest.TestCase):
         self.reader.assert_bytes(
             sock,
             b"101 capability list follows\r\nVERSION 2\r\nREADER\r\n"
-            b"OVER MSGID\r\nLIST ACTIVE NEWSGROUPS OVERVIEW.FMT\r\n"
+            b"OVER MSGID\r\nHDR\r\n"
+            b"LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT\r\n"
             b"IMPLEMENTATION fn-nntp-lab\r\n.\r\n")
 
     def test_reader_profile_transcript_over_a_real_socket(self):
@@ -181,6 +182,125 @@ class ReaderSocketTests(unittest.TestCase):
         self.assertEqual(len(reply), 20, reply)
         self.assertTrue(reply[4:18].isdigit(), reply)
         self.assertEqual(reply[4:8], time.strftime("%Y", time.gmtime()).encode())
+
+    def test_legacy_commands_transcript_over_a_real_socket(self):
+        """XOVER, XHDR, HDR, LIST HEADERS and LIST ACTIVE.TIMES.
+
+        Raw octets over the real socket adapter; expected replies are written
+        from RFC 2980 sections 2.6 and 2.8 and RFC 3977 sections 8.5 and 8.6,
+        not recorded from a previous run.  The seed article is
+        `Message-ID: <reader@example.invalid>' with the one body line
+        `Hello': 47 retained octets, one body line, and no Subject, so the
+        Subject field of both OVER and HDR is empty.
+        """
+        sock = self.reader.connect()
+        self.addCleanup(sock.close)
+        sock.sendall(b"GROUP fn.letters\r\nXOVER\r\nXOVER 1-\r\n")
+        self.reader.assert_bytes(sock, b"211 1 1 1 fn.letters\r\n")
+        overview = (b"224 overview information follows\r\n"
+                    b"1\t\t\t\t<reader@example.invalid>\t\t47\t1\r\n.\r\n")
+        self.reader.assert_bytes(sock, overview)
+        self.reader.assert_bytes(sock, overview)
+
+        # RFC 2980 section 2.8.1 lists 420, not RFC 3977's 423, for an empty
+        # range, and defines no message-id form at all.
+        sock.sendall(b"XOVER 5-2\r\nXOVER <reader@example.invalid>\r\n")
+        self.reader.assert_bytes(sock, b"420 no article(s) selected\r\n")
+        self.reader.assert_bytes(sock, b"501 syntax error\r\n")
+
+        # RFC 3977 section 8.5.2: number, space, the header content with the
+        # name, colon and first space removed; an absent header renders empty.
+        sock.sendall(b"HDR message-id 1\r\nHDR subject 1\r\n"
+                     b"HDR :bytes 1\r\nHDR :lines 1\r\n")
+        self.reader.assert_bytes(
+            sock,
+            b"225 headers follow\r\n1 <reader@example.invalid>\r\n.\r\n")
+        self.reader.assert_bytes(sock, b"225 headers follow\r\n1 \r\n.\r\n")
+        self.reader.assert_bytes(sock, b"225 headers follow\r\n1 47\r\n.\r\n")
+        self.reader.assert_bytes(sock, b"225 headers follow\r\n1 1\r\n.\r\n")
+
+        # Section 8.5.2: the message-id form labels its line with zero.
+        # RFC 2980 section 2.6 labels it with the message-id, and 221 is its
+        # initial line.
+        sock.sendall(b"HDR message-id <reader@example.invalid>\r\n"
+                     b"XHDR message-id <reader@example.invalid>\r\n"
+                     b"XHDR message-id 1\r\n")
+        self.reader.assert_bytes(
+            sock,
+            b"225 headers follow\r\n0 <reader@example.invalid>\r\n.\r\n")
+        self.reader.assert_bytes(
+            sock,
+            b"221 header follows\r\n"
+            b"<reader@example.invalid> <reader@example.invalid>\r\n.\r\n")
+        self.reader.assert_bytes(
+            sock,
+            b"221 header follows\r\n1 <reader@example.invalid>\r\n.\r\n")
+
+        # Section 8.5.2 assigns 423 to an empty range; RFC 2980 section 2.6.1
+        # assigns 420.  430 for an absent message-id is common to both.
+        sock.sendall(b"HDR subject 5-2\r\nXHDR subject 5-2\r\n"
+                     b"HDR subject <absent@example.invalid>\r\nHDR\r\n")
+        self.reader.assert_bytes(sock, b"423 no articles in that range\r\n")
+        self.reader.assert_bytes(sock, b"420 no article(s) selected\r\n")
+        self.reader.assert_bytes(
+            sock, b"430 no article with that message-id\r\n")
+        self.reader.assert_bytes(sock, b"501 syntax error\r\n")
+
+    def test_list_variants_transcript_over_a_real_socket(self):
+        """LIST HEADERS, LIST NEWSGROUPS, LIST ACTIVE wildmat, ACTIVE.TIMES.
+
+        Expected replies from RFC 3977 sections 7.6.3, 7.6.4, 7.6.6 and 8.6
+        and RFC 2980 sections 2.1.2, 2.1.3 and 2.1.6.
+        """
+        sock = self.reader.connect()
+        self.addCleanup(sock.close)
+        # Section 8.6.2: any header may be retrieved, so the list is the
+        # single colon plus the metadata items and no header names.
+        sock.sendall(b"LIST HEADERS\r\nLIST HEADERS MSGID\r\n")
+        headers = b"215 field list follows\r\n:\r\n:bytes\r\n:lines\r\n.\r\n"
+        self.reader.assert_bytes(sock, headers)
+        self.reader.assert_bytes(sock, headers)
+
+        # Section 7.6.6: name, TAB, description.  fn's group table carries no
+        # description, so the description is empty rather than invented.
+        sock.sendall(b"LIST NEWSGROUPS\r\nLIST NEWSGROUPS fn.*\r\n"
+                     b"LIST NEWSGROUPS other.*\r\n")
+        newsgroups = b"215 list of newsgroups follows\r\nfn.letters\t\r\n.\r\n"
+        self.reader.assert_bytes(sock, newsgroups)
+        self.reader.assert_bytes(sock, newsgroups)
+        self.reader.assert_bytes(sock, b"215 list of newsgroups follows\r\n.\r\n")
+
+        # Sections 7.6.3 / RFC 2980 section 2.1.2: LIST ACTIVE takes a wildmat.
+        sock.sendall(b"LIST ACTIVE\r\nLIST ACTIVE fn.l*\r\nLIST ACTIVE zz*\r\n")
+        active = (b"215 list of active newsgroups follows\r\n"
+                  b"fn.letters 1 1 y\r\n.\r\n")
+        self.reader.assert_bytes(sock, active)
+        self.reader.assert_bytes(sock, active)
+        self.reader.assert_bytes(
+            sock, b"215 list of active newsgroups follows\r\n.\r\n")
+
+        # Section 7.6.4 permits omitting a group whose creation information is
+        # unavailable.  The served connection carries no persisted creation
+        # facts yet, so the block is empty rather than a date fn invented.
+        sock.sendall(b"LIST ACTIVE.TIMES\r\nLIST ACTIVE.TIMES fn.*\r\n"
+                     b"LIST DISTRIBUTIONS\r\nLIST SUBSCRIPTIONS\r\n")
+        self.reader.assert_bytes(sock, b"215 information follows\r\n.\r\n")
+        self.reader.assert_bytes(sock, b"215 information follows\r\n.\r\n")
+        self.reader.assert_bytes(sock, b"503 data item not stored\r\n")
+        self.reader.assert_bytes(sock, b"501 unsupported LIST variant\r\n")
+
+    def test_help_lists_every_dispatched_command(self):
+        """RFC 3977 section 7.2.  The list is the dispatcher's, not a subset."""
+        sock = self.reader.connect()
+        self.addCleanup(sock.close)
+        sock.sendall(b"HELP\r\n")
+        self.reader.assert_bytes(
+            sock,
+            b"100 help text follows\r\n"
+            b"CAPABILITIES HELP QUIT MODE DATE POST\r\n"
+            b"GROUP LISTGROUP LIST NEXT LAST NEWGROUPS\r\n"
+            b"ARTICLE HEAD BODY STAT\r\n"
+            b"OVER XOVER HDR XHDR\r\n.\r\n")
 
     def test_quit_replies_then_closes(self):
         sock = self.reader.connect()
@@ -329,7 +449,8 @@ class StoreReaderSocketTests(unittest.TestCase):
             reader.assert_bytes(
                 client,
                 b"101 capability list follows\r\nVERSION 2\r\nREADER\r\n"
-                b"OVER MSGID\r\nLIST ACTIVE NEWSGROUPS OVERVIEW.FMT\r\n"
+                b"OVER MSGID\r\nHDR\r\n"
+                b"LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT\r\n"
                 b"IMPLEMENTATION fn-nntp-lab\r\n.\r\n")
             client.sendall(b"GROUP fn.letters\r\n")
             reader.assert_bytes(client, b"211 2 1 2 fn.letters\r\n")

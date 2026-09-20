@@ -10,6 +10,7 @@
 ; octets back.
 (in-package "ACL2")
 (include-book "nntp-invariants")
+(include-book "nntp-legacy")
 (include-book "nntp-overview")
 
 ; The five books of the nntp cluster withdraw their definitions at their
@@ -821,12 +822,20 @@
                                      fn-nov-fmt-octet-lines
                                      fn-nntp-block-textp))))
 
+(defthm fn-nntp-effects-list-headers
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects (fn-nntp-list-headers session)))
+  :hints (("Goal" :in-theory (enable fn-nntp-list-headers
+                                     fn-nov-fmt-octet-lines
+                                     fn-nntp-block-textp))))
+
 (defthm fn-nntp-effects-list-unmaintained-response
   (fn-nntp-effectsp
    (fn-nntp-result-effects
     (fn-nntp-list-unmaintained-response session keyword args)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-list-unmaintained-response)
-                                  (fn-nntp-list-overview-fmt)))))
+                                  (fn-nntp-list-overview-fmt
+                                   fn-nntp-list-headers)))))
 
 (defthm fn-nntp-effects-list-response
   (implies (fn-nntp-projectionp archive)
@@ -921,6 +930,123 @@
                                    fn-nntp-parse-range
                                    fn-nntp-message-id-tokenp)))))
 
+; -----------------------------------------------------------------------------
+; The legacy spellings (RFC 2980 sections 2.6, 2.8 and 2.1.3)
+;
+; XOVER renders the same block OVER does; HDR and XHDR render lines whose
+; cleanliness books/nntp-legacy.lisp proves with no hypothesis, so the two
+; bridges above carry them into this book's response grammar unchanged.
+
+(defthm fn-nntp-effects-xover-range
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects (fn-nntp-xover-range session archive token)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-xover-range)
+                                  (fn-nov-lines-for-numbers
+                                   fn-nntp-group-range-numbers
+                                   fn-nntp-parse-range fn-nntp-single)))))
+
+(defthm fn-nntp-effects-xover-response
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects (fn-nntp-xover-response session archive args)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-xover-response)
+                                  (fn-nntp-over-current fn-nntp-xover-range
+                                   fn-nntp-single fn-nntp-parse-range)))))
+
+(defthm fn-nntp-hdr-block-is-block-text
+  (fn-nntp-block-textp
+   (fn-nntp-hdr-lines-for-numbers field group numbers articles))
+  :hints (("Goal" :use (fn-nntp-hdr-lines-for-numbers-are-clean
+                        (:instance fn-nntp-hdr-clean-fields-are-clean-lines
+                                   (lines (fn-nntp-hdr-lines-for-numbers
+                                           field group numbers articles))))
+           :in-theory (disable fn-nntp-hdr-lines-for-numbers-are-clean
+                               fn-nntp-hdr-clean-fields-are-clean-lines
+                               fn-nntp-hdr-lines-for-numbers))))
+
+(defthm fn-nntp-hdr-numbered-line-is-block-text
+  (fn-nntp-block-textp
+   (list (fn-nntp-hdr-line (fn-nntp-decimal-field number)
+                           (fn-nntp-hdr-octets
+                            (fn-nntp-hdr-content field article)))))
+  :hints (("Goal" :use fn-nntp-hdr-numbered-line-is-clean
+           :in-theory (e/d (fn-nntp-block-textp)
+                           (fn-nntp-hdr-numbered-line-is-clean
+                            fn-nntp-hdr-line fn-nntp-hdr-content
+                            fn-nntp-hdr-octets fn-nntp-decimal-field)))))
+
+(defthm fn-nntp-hdr-labelled-line-is-block-text
+  (fn-nntp-block-textp
+   (list (fn-nntp-hdr-line (fn-nov-scrub token)
+                           (fn-nntp-hdr-octets
+                            (fn-nntp-hdr-content field article)))))
+  :hints (("Goal" :use fn-nntp-hdr-labelled-line-is-clean
+           :in-theory (e/d (fn-nntp-block-textp)
+                           (fn-nntp-hdr-labelled-line-is-clean
+                            fn-nntp-hdr-line fn-nntp-hdr-content
+                            fn-nntp-hdr-octets fn-nov-scrub)))))
+
+(defthm fn-nntp-effects-hdr-current
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects (fn-nntp-hdr-current session archive field legacyp)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-hdr-current)
+                                  (fn-nntp-hdr-content fn-nntp-hdr-line
+                                   fn-nntp-hdr-octets fn-nntp-decimal-field
+                                   fn-nntp-available-article fn-nntp-single)))))
+
+(defthm fn-nntp-effects-hdr-range
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects
+    (fn-nntp-hdr-range session archive field token legacyp)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-hdr-range)
+                                  (fn-nntp-hdr-lines-for-numbers
+                                   fn-nntp-group-range-numbers
+                                   fn-nntp-parse-range fn-nntp-single)))))
+
+(defthm fn-nntp-effects-hdr-msgid
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects
+    (fn-nntp-hdr-msgid session archive field token legacyp)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-hdr-msgid)
+                                  (fn-nntp-hdr-content fn-nntp-hdr-line
+                                   fn-nntp-hdr-octets fn-nntp-decimal-field
+                                   fn-nov-scrub fn-find-article
+                                   fn-nntp-single fn-nntp-token-string)))))
+
+(defthm fn-nntp-effects-hdr-command
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects (fn-nntp-hdr-command session archive args legacyp)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-hdr-command)
+                                  (fn-nntp-hdr-current fn-nntp-hdr-range
+                                   fn-nntp-hdr-msgid fn-nntp-single
+                                   fn-nntp-hdr-fieldp fn-nntp-parse-range
+                                   fn-nntp-message-id-tokenp)))))
+
+(defthm fn-nntp-effects-hdr-response
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects (fn-nntp-hdr-response session archive args)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-hdr-response)
+                                  (fn-nntp-hdr-command)))))
+
+(defthm fn-nntp-effects-xhdr-response
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects (fn-nntp-xhdr-response session archive args)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-xhdr-response)
+                                  (fn-nntp-hdr-command)))))
+
+(defthm fn-nntp-active-times-block-is-block-text
+  (fn-nntp-block-textp (fn-nntp-active-times-lines facts))
+  :hints (("Goal" :use fn-nntp-active-times-lines-are-clean
+           :in-theory (disable fn-nntp-active-times-lines-are-clean
+                               fn-nntp-active-times-lines))))
+
+(defthm fn-nntp-effects-list-active-times
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects (fn-nntp-list-active-times session env args)))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-list-active-times)
+                                  (fn-nntp-active-times-lines
+                                   fn-nntp-filter-facts-by-wildmat
+                                   fn-wildmat-parse fn-nntp-single)))))
+
 ; DATE renders only fixed octets and table-looked-up digits, so its line is a
 ; status line of exactly eighteen octets whatever the clock reads.
 (defthm fn-nntp-pad2-is-response-text
@@ -1003,7 +1129,27 @@
                     fn-nntp-date-response fn-nntp-mode-response
                     fn-nntp-newgroups-response fn-nntp-list-overview-fmt
                     fn-nntp-over-current fn-nntp-over-range
-                    fn-nntp-over-msgid fn-nntp-over-response))
+                    fn-nntp-over-msgid fn-nntp-over-response
+                    fn-nntp-list-headers fn-nntp-xover-range
+                    fn-nntp-xover-response fn-nntp-hdr-current
+                    fn-nntp-hdr-range fn-nntp-hdr-msgid fn-nntp-hdr-command
+                    fn-nntp-hdr-response fn-nntp-xhdr-response
+                    fn-nntp-list-active-times))
+
+(defthm fn-nntp-effects-list-command
+  (implies (fn-nntp-projectionp archive)
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects
+             (fn-nntp-list-command session archive env args))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-list-command)
+                                  (fn-nntp-projectionp fn-statep
+                                   fn-state-groups fn-state-articles
+                                   fn-state-nexts fn-nntp-keywordp
+                                   fn-nntp-keyword-tokenp
+                                   fn-nntp-list-response
+                                   fn-nntp-list-active-times)))))
+
+(in-theory (disable fn-nntp-list-command))
 
 (defthm fn-nntp-close-effect-is-well-formed
   (fn-nntp-effectp (fn-nntp-close-effect))
