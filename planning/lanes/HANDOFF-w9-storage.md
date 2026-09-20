@@ -91,10 +91,13 @@ Both limits are written into the module's docstring.
 **proved**, and three forms behind it with it: `fn-cpc-decode-tree-accepted`,
 `(verify-guards fn-cpc-decode)` and `fn-cpc-checkpointp-reassembles`. The
 handoff's table carries rows 8 to 12 with the cause, the fix and where the
-failure moved. Row 12 is the new frontier:
-`fn-cpc-accepted-input-is-canonical`, Subgoal 105.76', the octet-ness of
-`fn-cpc-read-strings`' remainder; the fix has the shape of row 9's second
-rule (a forward-chaining `fn-cpc-read-strings-domain` on the trigger term).
+failure moved. Row 12a closes the two spurious subgoal families of
+`fn-cpc-accepted-input-is-canonical` -- each reader's remainder by
+forward chaining, and a vacuous pair of hypotheses (`(not (parse-okp X))`
+beside `(equal (car X) :ok)`) that the closed recognizer hid. Row 12b is
+the new frontier: that form's real obligation, the FNCP magic prefix
+rebuilt in front of the remainder, where `fn-cpc-read-bytes-reencode`
+should be cited by `:use` at the instance.
 **The book is not certified**; these are `ld` probes.
 
 The lesson, beside the one that handoff already records: the scoped
