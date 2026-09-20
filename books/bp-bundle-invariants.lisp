@@ -124,35 +124,36 @@
                                      fn-cbor-decode-argument
                                      fn-bpc-canonical-argumentp))))
 
-; The eliminator `fn-defrecord` deliberately does not generate: a record
-; rebuilt from its own five accessors is that record.  This is the one form
-; in this book that opens a record, and it opens it by the name the record
-; provides for exactly that purpose (`<record>-internals`, proof-style
-; section 8).  `:rule-classes nil`, because as a rewrite it would fire on
-; every constructor call in the tree; the round trip cites it by `:use`,
-; which is what lets the prover substitute through the branch where the case
-; split has already replaced an accessor by its value.
-(local
- (defthm fn-bpbi-one-element-list
-   (implies (and (true-listp x) (equal (len x) 1))
-            (equal (cons (car x) nil) x))
-   :rule-classes nil))
-
-(defthm fn-bpb-block-is-its-own-accessors
-  (implies (fn-bpb-block-shapep b)
-           (equal (fn-bpb-make-block (fn-bpb-block-type b)
-                                     (fn-bpb-block-number b)
-                                     (fn-bpb-block-flags b)
-                                     (fn-bpb-block-crc-type b)
-                                     (fn-bpb-block-data b))
-                  b))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-bpb-block-internals len true-listp)
-           :use ((:instance fn-bpbi-one-element-list (x (cdr (cddddr b))))))))
-
 ; -----------------------------------------------------------------------------
 ; Keystone: one canonical block decodes back from its own encoding, with the
 ; octets after it returned untouched.
+;
+; The eliminator this rests on -- a record rebuilt from its own five
+; accessors is that record -- was written out here until 2026-09-20, as
+; `fn-bpb-block-is-its-own-accessors`, with a one-element-list lemma under
+; it and `fn-bpb-block-internals` opened at the form.  `fn-defrecord` now
+; generates it (`fn-bpb-make-block-of-accessors`, w10/dtn-3), so both are
+; gone and the `:use` below cites the generated name.  It is cited rather
+; than left to fire because the case split has already replaced accessors by
+; their values in some branches (`Subgoal 17.3'` reaches
+; `(fn-bpb-make-block (fn-bpb-block-type b) (fn-bpb-block-number b)
+; (fn-bpb-block-flags b) 0 nil)`, which the rule's own left-hand side no
+; longer matches), and `:use` substitutes through that.
+;
+; AND THE RULE IS DISABLED AT THIS FORM, which is new with the generated
+; version and is the whole difference from the hand-written one.  The
+; hand-written eliminator was `:rule-classes nil`; the generated one is an
+; enabled rewrite, so the hypothesis `:use` adds --- whose left-hand side IS
+; the rule's left-hand side --- is rewritten to `(equal b b)` and vanishes
+; before it can be used.  Measured 2026-09-20: without the disable this form
+; fails at that subgoal.  Every `:use` of a `<ctor>-of-accessors` wants the
+; same `e/d` entry.
+;
+; The two `fn-bpp-` character recognizers are disabled for a different
+; reason, measured by `tools/proof_profile.py` on this form: they burned
+; 1,527,614 and 1,369,220 frames with no useful application, the two largest
+; fans in the run.  They are endpoint-ID vocabulary and a canonical block is
+; not an endpoint ID.
 
 (defthm fn-bpb-decode-block-of-encode-block
   (implies (and (fn-bpb-blockp b) (fn-cbor-octet-listp rest))
@@ -160,11 +161,13 @@
                   (fn-cbor-ok b rest)))
   :hints (("Goal"
            :do-not-induct t
-           :use ((:instance fn-bpb-block-is-its-own-accessors (b b)))
+           :use ((:instance fn-bpb-make-block-of-accessors (x b)))
            :in-theory (e/d (fn-bpb-decode-block fn-bpb-encode-block
                             fn-bpb-encode-block-with-crc
                             fn-bpc-vocabulary)
-                           (fn-bpc-argument fn-bpb-block-crc
+                           (fn-bpb-make-block-of-accessors
+                            fn-bpp-vchar-listp fn-bpp-vcharp
+                            fn-bpc-argument fn-bpb-block-crc
                             fn-bpc-decode-head fn-bpc-decode-argument
                             fn-cbor-decode-argument
                             fn-bpp-crc-octets fn-bpp-zero-crc)))))
@@ -193,6 +196,32 @@
   (implies (and (fn-bpb-block-listp xs) (fn-bpb-block-listp ys))
            (fn-bpb-block-listp (append xs ys))))
 
+; The fold's round trip.  The induction is over the BLOCK LIST, not over the
+; decoder.  An `:induct` on `fn-bpb-decode-blocks` applied to the encoded
+; octets -- which is what this form carried until 2026-09-20 -- generates
+; hypotheses about `(fn-cbor-result-rest (fn-bpb-decode-block (append ...)))`,
+; a term that only becomes the induction hypothesis's subject AFTER the
+; one-block keystone has fired on it, so the scheme never matches its own
+; hypotheses and the search does not terminate: run
+; `build/acl2/certify-20260920T210105Z-1191520` was killed at the 1200 s cap
+; with the keystone already proved.  This scheme peels one block and one unit
+; of budget, which is exactly the recursion the goal has, and then the
+; keystone is a rewrite on each step.
+(local
+ (defthm fn-bpbi-consp-of-append
+   (implies (consp a) (consp (append a b)))))
+
+(local
+ (defthm fn-bpbi-car-of-append
+   (implies (consp a) (equal (car (append a b)) (car a)))))
+
+(local
+ (defun fn-bpbi-blocks-induction (xs budget)
+   (declare (xargs :measure (len xs)))
+   (if (consp xs)
+       (fn-bpbi-blocks-induction (cdr xs) (- budget 1))
+     (list xs budget))))
+
 (defthm fn-bpb-decode-blocks-of-encode-blocks
   (implies (and (fn-bpb-block-listp xs) (fn-cbor-octet-listp rest)
                 (natp budget) (<= (len xs) budget))
@@ -202,10 +231,7 @@
                    budget)
                   (fn-cbor-ok xs rest)))
   :hints (("Goal"
-           :induct (fn-bpb-decode-blocks
-                    (append (fn-bpb-encode-blocks xs)
-                            (cons *fn-bpb-array-break* rest))
-                    budget)
+           :induct (fn-bpbi-blocks-induction xs budget)
            :in-theory (e/d (fn-bpc-vocabulary)
                            (fn-bpb-encode-block fn-bpb-decode-block
                             fn-bpb-block-crc fn-bpc-argument
@@ -228,6 +254,24 @@
   :hints (("Goal" :in-theory (e/d (fn-cbor-octet-listp fn-cbor-octetp)
                                   (fn-bpb-encode-block fn-bpb-encode-blocks)))))
 
+; `fn-bpp-encode` IS `(fn-bpc-enc :item (fn-bpp-block-value b
+; (fn-bpp-block-crc b)))` by definition, and that is the form
+; `fn-bpc-decode-of-encode` is stated in.  `books/bp-primary-invariants`
+; keeps its copy of this equality `local` (`fn-bpp-encode-unfolds`), so the
+; whole-bundle round trip has to restate it: without it the `:use` of the
+; CBOR round trip below names a term the goal does not contain, and the
+; decode branch of `fn-bpb-decode` cannot be refuted.  `:rule-classes nil`
+; and cited by `:use` (proof-style sections 3 and 7): as a rewrite it would
+; unfold every primary encoding in this book.
+(local
+ (defthm fn-bpbi-bpp-encode-unfolds
+   (equal (fn-bpp-encode b)
+          (fn-bpc-enc :item (fn-bpp-block-value b (fn-bpp-block-crc b))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-bpp-encode)
+                                   (fn-bpc-enc fn-bpp-block-value
+                                    fn-bpp-block-crc))))))
+
 (defthm fn-bpb-decode-of-encode
   (implies (and (fn-bpb-bundlep bundle) (natp limit)
                 (fn-cbor-at-mostp (fn-bpb-encode bundle) limit))
@@ -235,7 +279,9 @@
                   (fn-cbor-ok bundle nil)))
   :hints (("Goal"
            :do-not-induct t
-           :use ((:instance fn-bpc-decode-of-encode
+           :use ((:instance fn-bpbi-bpp-encode-unfolds
+                            (b (fn-bpb-bundle-primary bundle)))
+                 (:instance fn-bpc-decode-of-encode
                             (flg :item)
                             (x (fn-bpp-block-value
                                 (fn-bpb-bundle-primary bundle)
