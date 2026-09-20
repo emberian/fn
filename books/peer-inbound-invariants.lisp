@@ -220,4 +220,7 @@
                                    fn-peer-injection-arguments
                                    fn-node-find-binding fn-acceptedp)))))
 
-(in-theory (disable fn-peer-refused-transfer-leaves-the-node))
+; fn-peer-refused-transfer-leaves-the-node is :rule-classes nil, so it
+; designates no rule and (in-theory (disable ...)) on it is a hard error,
+; not a no-op.  There is nothing to withdraw; includers cite it by :use.
+(in-theory (current-theory :here))
