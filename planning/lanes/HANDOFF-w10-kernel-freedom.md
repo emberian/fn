@@ -1,7 +1,7 @@
 # Handoff: lane `w10/kernel-freedom` (D14-b, the recovery freedom)
 
 Branch `w10/kernel-freedom` in `build/lanes/w10-kernel-freedom`, from `dev` at
-`f730c24`, merged `dev` at `6fba627`. All ACL2 on persvati
+`f730c24`, merged `dev` at `6fba627` and again at `e5e6218`. All ACL2 on persvati
 (`/home/ember/fn-lanes/w10-kernel-freedom`, ACL2 8.7 at
 `$HOME/fn-tools/acl2-8.7/saved_acl2`, via `tools/farm.py`) except three `ld`
 probes of `books/store-files` + `books/store-files-invariants` on the laptop,
@@ -22,7 +22,8 @@ were cascades of one include; the single genuine proof failure was
 the tree does not have.
 
 Reading the two `-extends-` theorems behind that cascade then produced a
-**counterexample that refutes the proposal**, and it is now mechanized.
+**counterexample that refutes the proposal**, and its kernel half is now
+mechanized and certified (the owner half is written; see §5).
 
 ## 2. The counterexample
 
