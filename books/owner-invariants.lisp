@@ -37,8 +37,9 @@
 ;   fn-own-outcome-touches-only-its-connection         (POST isolation; new)
 ;
 ; Statements changed by the w4-post-compose byte fold, not by this lane's
-; choice: the served connection is five fields, so the two served-port
-; keystones thread the connection's pinned config and observation into
+; choice: the served connection is six fields, so the two served-port
+; keystones thread the connection's pinned config and observation, and the
+; owner's current clock observation as the injection clock, into
 ; fn-served-make-conn; the per-event law is stated over fn-served-dispatch
 ; (fn-nntp-post-step with the article-mode switch), the step the fold now
 ; applies, where it was stated over fn-nntp-step before POST existed.
@@ -396,7 +397,8 @@
    (fn-own-conn-make id version frontier wire
                      (fn-served-conn-session
                       (fn-served-result-conn
-                       (fn-served-open archive line-limit body-limit config observation)))
+                       (fn-served-open archive line-limit body-limit config
+                                       observation injection)))
                      archive config observation)
    groups)
   :hints (("Goal" :in-theory (enable fn-served-open fn-post-open-session
@@ -675,7 +677,8 @@
                                                         (fn-sf-records (fn-sn-files s)))
                                            (fn-own-conn-frontier conn)))
                        (fn-own-conn-config conn)
-                       (fn-own-conn-observation conn))
+                       (fn-own-conn-observation conn)
+                       (fn-own-clock o))
                       octets)))))
   :hints (("Goal"
            :use ((:instance fn-own-find-conn-okp
@@ -704,7 +707,8 @@
                                                         (fn-sf-records (fn-sn-files s)))
                                            (fn-own-conn-frontier conn)))
                        (fn-own-conn-config conn)
-                       (fn-own-conn-observation conn))
+                       (fn-own-conn-observation conn)
+                       (fn-own-clock final))
                       octets)))))
   :hints (("Goal" :use (fn-own-run-preserves-relation
                         (:instance fn-own-read-is-served-step-on-pinned-prefix
@@ -738,7 +742,8 @@
                                                         (fn-sf-records (fn-sn-files s)))
                                            (fn-own-conn-frontier conn)))
                        (fn-own-conn-config conn)
-                       (fn-own-conn-observation conn))
+                       (fn-own-conn-observation conn)
+                       (fn-own-clock o))
                       event)))))
   :hints (("Goal"
            :use ((:instance fn-own-find-conn-okp
@@ -767,7 +772,8 @@
                                                         (fn-sf-records (fn-sn-files s)))
                                            (fn-own-conn-frontier conn)))
                        (fn-own-conn-config conn)
-                       (fn-own-conn-observation conn))
+                       (fn-own-conn-observation conn)
+                       (fn-own-clock final))
                       event)))))
   :hints (("Goal" :use (fn-own-run-preserves-relation
                         (:instance fn-own-reader-sees-pinned-prefix-replay

@@ -17,6 +17,18 @@
 ;                                        submission and no reply yet
 ;   awaiting, anything else              441, not awaiting
 ;
+; Two clock readings, and they are not the same reading.  `observation` is
+; the one the connection pinned when it was accepted: it is the reader
+; environment (DATE, NEWGROUPS) and stays fixed for the life of the
+; connection, so a reader's view of the server's calendar does not move under
+; it.  `injection` is the reading the host supplied with THIS event, and it
+; is the only one fn-inj-decide sees, because RFC 5537 section 3.4 makes
+; Injection-Date the time of injection and books/injection.lisp derives a
+; generated Message-ID from that same reading.  One reading per connection
+; would make every submission after the first on a connection a retry of the
+; first (same clock, same generated identity), which is why these are two
+; arguments.
+;
 ; A submission is not an acknowledgement.  `fn-nntp-post-step` never answers
 ; 240: the host must carry the submitted octets through the same durable
 ; acceptance path the command-line `post` uses (tools/run_store.py, through
@@ -186,7 +198,7 @@
 ; This is the function the serving host calls, once per wire event, at
 ; host/reader-host.lisp `fn-reader-chunk`.
 
-(defun fn-nntp-post-step (ps archive config observation wire-event)
+(defun fn-nntp-post-step (ps archive config observation injection wire-event)
   (declare (xargs :guard t))
   (if (not (fn-post-sessionp ps))
       (fn-post-make-result ps nil nil)
@@ -197,7 +209,7 @@
                  (null (cdr (cdr wire-event))))
             (let ((decision (fn-inj-decide
                              (fn-post-body-octets (car (cdr wire-event)))
-                             config observation)))
+                             config injection)))
               (if (fn-inj-injectedp decision)
                   ; No reply yet.  The host owes a durable acceptance attempt
                   ; and then fn-nntp-post-outcome.
@@ -280,7 +292,7 @@
   (implies (fn-post-session-consistentp ps archive)
            (fn-post-session-consistentp
             (fn-post-result-session
-             (fn-nntp-post-step ps archive config observation wire-event))
+             (fn-nntp-post-step ps archive config observation injection wire-event))
             archive))
   :hints (("Goal"
            :use ((:instance fn-nntp-step-preserves-consistent-session
@@ -306,7 +318,7 @@
   (implies (fn-post-session-consistentp ps archive)
            (fn-nntp-effectsp
             (fn-post-result-effects
-             (fn-nntp-post-step ps archive config observation wire-event))))
+             (fn-nntp-post-step ps archive config observation injection wire-event))))
   :hints (("Goal"
            :use ((:instance fn-nntp-step-effects-well-formed
                             (session (fn-post-session-base ps))
@@ -335,10 +347,10 @@
 
 (defthm fn-post-submission-is-an-injected-article
   (implies (fn-post-result-submission
-            (fn-nntp-post-step ps archive config observation wire-event))
+            (fn-nntp-post-step ps archive config observation injection wire-event))
            (fn-inj-injectedp
             (fn-post-result-submission
-             (fn-nntp-post-step ps archive config observation wire-event))))
+             (fn-nntp-post-step ps archive config observation injection wire-event))))
   :hints (("Goal" :in-theory (disable fn-inj-decide fn-inj-injectedp
                                       fn-nntp-step fn-post-offeredp
                                       fn-post-refusal-line))))
@@ -346,9 +358,9 @@
 (defthm fn-post-refused-body-submits-nothing
   (implies (not (fn-inj-injectedp
                  (fn-inj-decide (fn-post-body-octets body) config
-                                observation)))
+                                injection)))
            (equal (fn-post-result-submission
-                   (fn-nntp-post-step ps archive config observation
+                   (fn-nntp-post-step ps archive config observation injection
                                       (list :article body)))
                   nil))
   :hints (("Goal" :in-theory (disable fn-inj-decide fn-inj-injectedp
@@ -360,7 +372,7 @@
                 (not (fn-inj-config-allow config)))
            (not (fn-post-session-awaiting
                  (fn-post-result-session
-                  (fn-nntp-post-step ps archive config observation
+                  (fn-nntp-post-step ps archive config observation injection
                                      wire-event)))))
   :hints (("Goal" :in-theory (disable fn-nntp-step fn-post-offeredp
                                       fn-inj-decide fn-inj-injectedp
@@ -377,6 +389,99 @@
                                   (fn-nntp-replyp fn-post-sessionp
                                    fn-nntp-response-textp
                                    fn-nntp-initial-status-linep))))
+  :rule-classes nil)
+
+; -----------------------------------------------------------------------------
+; Two submissions on one connection
+;
+; books/injection-invariants.lisp is included LOCALLY: its rules are proof
+; vocabulary for the two forms below and are not inherited by an includer of
+; this book.
+
+(local (include-book "injection-invariants"))
+
+; A definitional restatement, cited by :use and never a registry event: the
+; submission this step emits for an article body is the injection decision
+; over that body, this connection's configuration and the injection clock
+; supplied with the event.
+(defthm fn-post-submission-is-the-decision-by-definition
+  (implies (fn-post-result-submission
+            (fn-nntp-post-step ps archive config observation injection
+                               (list :article body)))
+           (equal (fn-post-result-submission
+                   (fn-nntp-post-step ps archive config observation injection
+                                      (list :article body)))
+                  (fn-inj-decide (fn-post-body-octets body) config injection)))
+  :hints (("Goal" :in-theory (disable fn-inj-decide fn-inj-injectedp
+                                      fn-nntp-step fn-post-offeredp
+                                      fn-post-refusal-line)))
+  :rule-classes nil)
+
+; The keystone the owner's POST seam rests on.  One connection is one
+; session, one pinned archive, one configuration and one pinned reader
+; observation; the two submissions below differ only in their body and in
+; the injection clock the host supplied with each.  Neither supplies a
+; Message-ID, so each identity is generated, and two clock readings that
+; differ in either number generate two different identities
+; (fn-inj-generated-identity-separates-different-clock-readings).  A second
+; POST on a connection is therefore a new article, not a duplicate of the
+; first.  With ONE reading per connection this conclusion is false and the
+; host refuses the second post as a duplicate identity: the hypothesis that
+; the clocks differ is what the per-submission seam buys.
+(defthm fn-post-distinct-injection-clocks-give-distinct-identities
+  (implies (and (fn-clock-observationp ca) (fn-clock-observationp cb)
+                (fn-post-result-submission
+                 (fn-nntp-post-step ps archive config observation ca
+                                    (list :article b1)))
+                (fn-post-result-submission
+                 (fn-nntp-post-step ps archive config observation cb
+                                    (list :article b2)))
+                (not (fn-inj-nth 1 (fn-af-proto-article-check
+                                    (fn-article-result-article
+                                     (fn-article-parse
+                                      (fn-post-body-octets b1))))))
+                (not (fn-inj-nth 1 (fn-af-proto-article-check
+                                    (fn-article-result-article
+                                     (fn-article-parse
+                                      (fn-post-body-octets b2))))))
+                (not (and (equal (fn-clock-wall ca) (fn-clock-wall cb))
+                          (equal (fn-clock-monotonic ca)
+                                 (fn-clock-monotonic cb)))))
+           (not (equal (fn-inj-decision-msgid
+                        (fn-post-result-submission
+                         (fn-nntp-post-step ps archive config observation ca
+                                            (list :article b1))))
+                       (fn-inj-decision-msgid
+                        (fn-post-result-submission
+                         (fn-nntp-post-step ps archive config observation cb
+                                            (list :article b2)))))))
+  :hints (("Goal"
+           :use ((:instance fn-post-submission-is-the-decision-by-definition
+                            (injection ca) (body b1))
+                 (:instance fn-post-submission-is-the-decision-by-definition
+                            (injection cb) (body b2))
+                 (:instance fn-post-submission-is-an-injected-article
+                            (injection ca) (wire-event (list :article b1)))
+                 (:instance fn-post-submission-is-an-injected-article
+                            (injection cb) (wire-event (list :article b2)))
+                 (:instance fn-inj-generated-identity-is-the-clock-identity
+                            (source (fn-post-body-octets b1))
+                            (observation ca))
+                 (:instance fn-inj-generated-identity-is-the-clock-identity
+                            (source (fn-post-body-octets b2))
+                            (observation cb))
+                 (:instance
+                  fn-inj-generated-identity-separates-different-clock-readings
+                  (a ca) (b cb)))
+           :in-theory (disable fn-nntp-post-step fn-inj-decide
+                               fn-inj-injectedp fn-inj-decision-msgid
+                               fn-inj-generated-message-id
+                               fn-inj-generated-identity-is-the-clock-identity
+                               fn-post-submission-is-an-injected-article
+                               fn-clock-observationp fn-clock-wall
+                               fn-clock-monotonic fn-article-parse
+                               fn-af-proto-article-check
+                               fn-article-result-article)))
   :rule-classes nil)
 
 ; -----------------------------------------------------------------------------

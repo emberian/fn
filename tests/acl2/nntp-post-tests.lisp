@@ -36,7 +36,7 @@
 ; POST with posting configured: 340 and the one framing effect, and the
 ; session now awaits the article.
 (defconst *fn-tp-r1*
-  (fn-nntp-post-step *fn-tp-s0* *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs*
+  (fn-nntp-post-step *fn-tp-s0* *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs*
                      *fn-tp-post-event*))
 (assert-event
  (equal (fn-post-result-effects *fn-tp-r1*)
@@ -54,7 +54,7 @@
 
 ; POST with posting refused by configuration: 440, and no article mode.
 (defconst *fn-tp-r440*
-  (fn-nntp-post-step *fn-tp-s0* *fn-tp-archive* *fn-tp-cfg-closed* *fn-tp-obs*
+  (fn-nntp-post-step *fn-tp-s0* *fn-tp-archive* *fn-tp-cfg-closed* *fn-tp-obs* *fn-tp-obs*
                      *fn-tp-post-event*))
 (assert-event
  (equal (fn-post-result-effects *fn-tp-r440*)
@@ -67,7 +67,7 @@
 ; POST takes no argument.
 (assert-event
  (equal (fn-post-result-effects
-         (fn-nntp-post-step *fn-tp-s0* *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs*
+         (fn-nntp-post-step *fn-tp-s0* *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs*
                             *fn-tp-post-arg-event*))
         (list (fn-nntp-reply-effect
                (fn-nntp-crlf (fn-nntp-string-octets "501 syntax error"))))))
@@ -75,7 +75,7 @@
 ; Every command that is not POST is the reader profile, unchanged.
 (assert-event
  (equal (fn-post-result-effects
-         (fn-nntp-post-step *fn-tp-s0* *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs*
+         (fn-nntp-post-step *fn-tp-s0* *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs*
                             *fn-tp-quit-event*))
         (fn-nntp-result-effects
          (fn-nntp-step (fn-post-session-base *fn-tp-s0*) *fn-tp-archive*
@@ -87,7 +87,7 @@
 ; reachable from this step at all.
 (defconst *fn-tp-r2*
   (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*) *fn-tp-archive*
-                     *fn-tp-cfg* *fn-tp-obs* (list :article *fn-tp-good-lines*)))
+                     *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs* (list :article *fn-tp-good-lines*)))
 (assert-event (equal (fn-post-result-effects *fn-tp-r2*) nil))
 (assert-event (fn-inj-injectedp (fn-post-result-submission *fn-tp-r2*)))
 (assert-event (not (fn-post-session-awaiting
@@ -101,7 +101,7 @@
 ; A refused body: 441 carrying the injection reason, and nothing submitted.
 (defconst *fn-tp-r3*
   (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*) *fn-tp-archive*
-                     *fn-tp-cfg* *fn-tp-obs* (list :article *fn-tp-bad-lines*)))
+                     *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs* (list :article *fn-tp-bad-lines*)))
 (assert-event
  (equal (fn-post-result-effects *fn-tp-r3*)
         (list (fn-nntp-reply-effect
@@ -116,7 +116,7 @@
 (assert-event
  (equal (fn-post-result-effects
          (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*) *fn-tp-archive*
-                            *fn-tp-cfg* *fn-tp-obs* (list :reject :too-long)))
+                            *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs* (list :reject :too-long)))
         (list (fn-nntp-reply-effect
                (fn-nntp-crlf
                 (fn-nntp-string-octets
@@ -152,3 +152,64 @@
  (fn-nntp-effectsp
   (fn-post-result-effects
    (fn-nntp-post-outcome (fn-post-result-session *fn-tp-r2*) :durable))))
+
+; -----------------------------------------------------------------------------
+; Teeth for the injection clock
+;
+; One connection is one session, one pinned archive, one configuration and
+; one pinned reader observation.  These four cases exhibit
+; fn-post-distinct-injection-clocks-give-distinct-identities and its
+; hypothesis on a specific pair of values.
+
+(defconst *fn-tp-obs2* (fn-clock-observation 1000007 843004800007 500 t))
+(defconst *fn-tp-good2-lines*
+  (list (fn-nntp-string-octets "From: poster@example.invalid")
+        (fn-nntp-string-octets "Subject: hello again")
+        (fn-nntp-string-octets "Newsgroups: fn.letters")
+        nil
+        (fn-nntp-string-octets "Hello once more, news.")))
+(defconst *fn-tp-r2b*
+  (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*) *fn-tp-archive*
+                     *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs2*
+                     (list :article *fn-tp-good2-lines*)))
+(assert-event (fn-inj-injectedp (fn-post-result-submission *fn-tp-r2b*)))
+
+; The keystone's conclusion on this pair: a second post on the connection
+; that posted *fn-tp-r2* is a new article, not a duplicate identity.
+(assert-event
+ (not (equal (fn-inj-decision-msgid (fn-post-result-submission *fn-tp-r2*))
+             (fn-inj-decision-msgid (fn-post-result-submission *fn-tp-r2b*)))))
+
+; Without the hypothesis that the injection clocks differ: two DISTINCT
+; bodies under ONE injection clock share a generated Message-ID, because the
+; generator's inputs are the clock and the configured agent only.  This is
+; the defect the seam removes -- one reading pinned per connection made
+; every post after the first on it a duplicate of the first.
+(assert-event
+ (equal (fn-inj-decision-msgid (fn-post-result-submission *fn-tp-r2*))
+        (fn-inj-decision-msgid
+         (fn-post-result-submission
+          (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*)
+                             *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs*
+                             *fn-tp-obs* (list :article *fn-tp-good2-lines*))))))
+
+; The retry rule the other way (books/injection-invariants.lisp,
+; fn-inj-generated-identity-is-the-clock-identity): the same body under the
+; same injection clock is the same article, octet for octet.
+(assert-event
+ (equal (fn-inj-decision-octets (fn-post-result-submission *fn-tp-r2*))
+        (fn-inj-decision-octets
+         (fn-post-result-submission
+          (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*)
+                             *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs*
+                             *fn-tp-obs* (list :article *fn-tp-good-lines*))))))
+
+; The pinned reader observation does not enter the identity at all: moving
+; it and holding the injection clock gives the same identity.
+(assert-event
+ (equal (fn-inj-decision-msgid (fn-post-result-submission *fn-tp-r2b*))
+        (fn-inj-decision-msgid
+         (fn-post-result-submission
+          (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*)
+                             *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs2*
+                             *fn-tp-obs2* (list :article *fn-tp-good2-lines*))))))

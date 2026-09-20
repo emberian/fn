@@ -261,9 +261,9 @@ class Owner:
         except OSError:
             return
         sock.setblocking(False)
-        # One clock observation per connection, pinned into it at open
-        # (books/clock.lisp says what the host asserts; books/injection.lisp
-        # is what reads it).
+        # One clock observation per connection, pinned into it at open: the
+        # READER environment (DATE, NEWGROUPS).  The injection clock is taken
+        # per read in serve(), not here.
         self.clock.observe(self.bridge)
         cid, greeting = self.bridge.open()
         if cid is None:
@@ -299,6 +299,14 @@ class Owner:
                 self.drop(conn)
                 return
             if incoming:
+                # The injection clock is per submission, not per connection
+                # (RFC 5537 section 3.4; books/owner.lisp fn-own-read reads
+                # the owner's CURRENT observation, and the connection's
+                # pinned one stays the reader environment).  This is where
+                # the host supplies it: one reading before the chunk that
+                # may carry an article, so two posts on one connection get
+                # two identities.
+                self.clock.observe(self.bridge)
                 # One read, one certified step: fn-own-read consumes the
                 # whole chunk (books/served.lisp owns the framing loop and
                 # fn-served-run-is-the-concatenated-step says the cut points

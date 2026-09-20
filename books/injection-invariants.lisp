@@ -287,3 +287,195 @@
                                fn-inj-date-decode-inverts-the-rendering
                                fn-inj-instantp fn-inj-nth)))
   :rule-classes nil)
+
+; -----------------------------------------------------------------------------
+; The generated identifier separates two clock readings
+;
+; A generated Message-ID is <wall.monotonic.fn@agent> with each number
+; rendered at a fixed width of twenty decimal digits, and every
+; fn-clock-timep value is below 10^20.  Fixed-width decimal has an exact
+; left inverse, so two readings that differ in either number generate two
+; different identifiers.  This is the fact the owner's POST seam rests on:
+; an injection clock taken per submission gives each submission on a
+; connection its own identity, where one reading pinned per connection gave
+; every submission on it the identity of the first
+; (fn-post-distinct-injection-clocks-give-distinct-identities,
+; books/nntp-post.lisp).
+
+(local
+ (defthm fn-inj-append-is-associative
+   (equal (fn-inj-append (fn-inj-append a b) c)
+          (fn-inj-append a (fn-inj-append b c)))
+   :hints (("Goal" :in-theory (enable fn-inj-append)))))
+
+(local
+ (defthm fn-inj-append-nil-right
+   (implies (true-listp a) (equal (fn-inj-append a nil) a))
+   :hints (("Goal" :in-theory (enable fn-inj-append)))))
+
+; The non-tail-recursive reverse the accumulating one computes.  Stating the
+; accumulator lemma against this shape is what makes the induction close.
+(local
+ (defun fn-inj-rv (xs)
+   (declare (xargs :guard t))
+   (if (consp xs)
+       (fn-inj-append (fn-inj-rv (cdr xs)) (list (car xs)))
+     nil)))
+
+(local
+ (defthm fn-inj-true-listp-of-rv
+   (true-listp (fn-inj-rv xs))
+   :hints (("Goal" :in-theory (enable fn-inj-append)))))
+
+(local
+ (defthm fn-inj-rev-append-is-rv
+   (equal (fn-inj-rev-append xs acc)
+          (fn-inj-append (fn-inj-rv xs) acc))
+   :hints (("Goal" :in-theory (enable fn-inj-rev-append fn-inj-append)
+            :induct (fn-inj-rev-append xs acc)))))
+
+(local
+ (defthm fn-inj-rv-of-append
+   (equal (fn-inj-rv (fn-inj-append a b))
+          (fn-inj-append (fn-inj-rv b) (fn-inj-rv a)))
+   :hints (("Goal" :in-theory (enable fn-inj-append)))))
+
+(local
+ (defthm fn-inj-rv-of-rv
+   (implies (true-listp xs) (equal (fn-inj-rv (fn-inj-rv xs)) xs))
+   :hints (("Goal" :in-theory (enable fn-inj-append)
+            :induct (fn-inj-rv xs)))))
+
+(local
+ (defthm fn-inj-true-listp-of-digits-rev
+   (true-listp (fn-inj-digits-rev n w))
+   :hints (("Goal" :in-theory (enable fn-inj-digits-rev)))))
+
+(local
+ (defthm fn-inj-digits-is-rv-of-digits-rev
+   (equal (fn-inj-digits n w) (fn-inj-rv (fn-inj-digits-rev n w)))
+   :hints (("Goal" :in-theory (enable fn-inj-digits)))))
+
+; The exact left inverse of the least-significant-first rendering.  The
+; floor/mod facts the induction needs (books/arithmetic/top.lisp states
+; none) come from ihs, locally and only for the forms below.
+(local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
+
+(local
+ (defun fn-inj-undigits-rev (xs)
+   (declare (xargs :guard t))
+   (if (consp xs)
+       (+ (- (fix (car xs)) 48) (* 10 (fn-inj-undigits-rev (cdr xs))))
+     0)))
+
+(local
+ (defthm fn-inj-expt-10-step
+   (implies (and (integerp w) (< 0 w))
+            (equal (expt 10 w) (* 10 (expt 10 (+ -1 w)))))
+   :hints (("Goal" :expand ((expt 10 w))))
+   :rule-classes nil))
+
+(local
+ (defthm fn-inj-floor-10-is-a-natural
+   (implies (natp n) (and (integerp (floor n 10)) (<= 0 (floor n 10))))
+   :rule-classes ((:type-prescription
+                   :corollary (implies (natp n) (natp (floor n 10))))
+                  (:rewrite
+                   :corollary (implies (natp n) (natp (floor n 10)))))
+   :hints (("Goal" :in-theory (enable floor)))))
+
+(local
+ (defthm fn-inj-undigits-rev-inverts-digits-rev
+   (implies (and (natp n) (natp w) (< n (expt 10 w)))
+            (equal (fn-inj-undigits-rev (fn-inj-digits-rev n w)) n))
+   :hints (("Goal" :in-theory (e/d (fn-inj-digits-rev) (floor mod expt))
+            :induct (fn-inj-digits-rev n w))
+           ("Subgoal *1/1" :use ((:instance fn-inj-expt-10-step)))
+           ("Subgoal *1/2" :use ((:instance fn-inj-expt-10-step))))))
+
+(local
+ (defthm fn-inj-digits-are-injective-below-the-width
+   (implies (and (natp n) (natp m) (natp w)
+                 (< n (expt 10 w)) (< m (expt 10 w))
+                 (equal (fn-inj-digits n w) (fn-inj-digits m w)))
+            (equal n m))
+   :hints (("Goal"
+            :use ((:instance fn-inj-undigits-rev-inverts-digits-rev)
+                  (:instance fn-inj-undigits-rev-inverts-digits-rev (n m))
+                  (:instance fn-inj-rv-of-rv (xs (fn-inj-digits-rev n w)))
+                  (:instance fn-inj-rv-of-rv (xs (fn-inj-digits-rev m w))))
+            :in-theory (disable fn-inj-undigits-rev-inverts-digits-rev
+                                fn-inj-rv-of-rv fn-inj-undigits-rev
+                                fn-inj-digits-rev)))
+   :rule-classes nil))
+
+(local
+ (defthm fn-inj-len-of-append
+   (equal (len (fn-inj-append a b)) (+ (len a) (len b)))
+   :hints (("Goal" :in-theory (enable fn-inj-append)))))
+
+(local
+ (defthm fn-inj-len-of-rv
+   (equal (len (fn-inj-rv xs)) (len xs))))
+
+(local
+ (defthm fn-inj-len-of-digits-rev
+   (equal (len (fn-inj-digits-rev n w)) (nfix w))
+   :hints (("Goal" :in-theory (enable fn-inj-digits-rev)))))
+
+(local
+ (defthm fn-inj-len-of-digits
+   (equal (len (fn-inj-digits n w)) (nfix w))))
+
+(local
+ (defun fn-inj-two-list-induct (a b)
+   (declare (xargs :guard t))
+   (if (and (consp a) (consp b))
+       (fn-inj-two-list-induct (cdr a) (cdr b))
+     (list a b))))
+
+(local
+ (defthm fn-inj-append-cancels-at-equal-length
+   (implies (and (equal (len a) (len b))
+                 (true-listp a) (true-listp b)
+                 (equal (fn-inj-append a u) (fn-inj-append b v)))
+            (and (equal a b) (equal u v)))
+   :hints (("Goal" :in-theory (enable fn-inj-append)
+            :induct (fn-inj-two-list-induct a b)))
+   :rule-classes nil))
+
+(local
+ (defthm fn-inj-true-listp-of-digits
+   (true-listp (fn-inj-digits n w))
+   :hints (("Goal" :in-theory (e/d (fn-inj-digits)
+                                   (fn-inj-digits-is-rv-of-digits-rev))))))
+
+(defthm fn-inj-generated-identity-separates-different-clock-readings
+  (implies (and (fn-clock-observationp a) (fn-clock-observationp b)
+                (equal (fn-inj-generated-message-id a config)
+                       (fn-inj-generated-message-id b config)))
+           (and (equal (fn-clock-wall a) (fn-clock-wall b))
+                (equal (fn-clock-monotonic a) (fn-clock-monotonic b))))
+  :hints (("Goal"
+           :in-theory (e/d (fn-inj-generated-message-id fn-clock-observationp
+                            fn-clock-timep)
+                           (fn-inj-digits fn-inj-append
+                            fn-inj-digits-is-rv-of-digits-rev))
+           :use ((:instance fn-inj-append-cancels-at-equal-length (a '(60)) (b '(60))
+                            (u (fn-inj-append (fn-inj-digits (fn-clock-wall a) 20) (fn-inj-append '(46) (fn-inj-append (fn-inj-digits (fn-clock-monotonic a) 20) (fn-inj-append *fn-inj-id-tail* (fn-inj-append (fn-inj-config-agent config) '(62))))))) (v (fn-inj-append (fn-inj-digits (fn-clock-wall b) 20) (fn-inj-append '(46) (fn-inj-append (fn-inj-digits (fn-clock-monotonic b) 20) (fn-inj-append *fn-inj-id-tail* (fn-inj-append (fn-inj-config-agent config) '(62))))))))
+                 (:instance fn-inj-append-cancels-at-equal-length
+                            (a (fn-inj-digits (fn-clock-wall a) 20))
+                            (b (fn-inj-digits (fn-clock-wall b) 20))
+                            (u (fn-inj-append '(46) (fn-inj-append (fn-inj-digits (fn-clock-monotonic a) 20) (fn-inj-append *fn-inj-id-tail* (fn-inj-append (fn-inj-config-agent config) '(62)))))) (v (fn-inj-append '(46) (fn-inj-append (fn-inj-digits (fn-clock-monotonic b) 20) (fn-inj-append *fn-inj-id-tail* (fn-inj-append (fn-inj-config-agent config) '(62)))))))
+                 (:instance fn-inj-append-cancels-at-equal-length (a '(46)) (b '(46))
+                            (u (fn-inj-append (fn-inj-digits (fn-clock-monotonic a) 20) (fn-inj-append *fn-inj-id-tail* (fn-inj-append (fn-inj-config-agent config) '(62))))) (v (fn-inj-append (fn-inj-digits (fn-clock-monotonic b) 20) (fn-inj-append *fn-inj-id-tail* (fn-inj-append (fn-inj-config-agent config) '(62))))))
+                 (:instance fn-inj-append-cancels-at-equal-length
+                            (a (fn-inj-digits (fn-clock-monotonic a) 20))
+                            (b (fn-inj-digits (fn-clock-monotonic b) 20))
+                            (u (fn-inj-append *fn-inj-id-tail* (fn-inj-append (fn-inj-config-agent config) '(62)))) (v (fn-inj-append *fn-inj-id-tail* (fn-inj-append (fn-inj-config-agent config) '(62)))))
+                 (:instance fn-inj-digits-are-injective-below-the-width
+                            (n (fn-clock-wall a)) (m (fn-clock-wall b)) (w 20))
+                 (:instance fn-inj-digits-are-injective-below-the-width
+                            (n (fn-clock-monotonic a))
+                            (m (fn-clock-monotonic b)) (w 20)))))
+  :rule-classes nil)

@@ -69,7 +69,7 @@
 
 (defun fn-served-conn-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 5)))
+  (and (true-listp x) (equal (len x) 6)))
 
 (defun fn-served-conn-wire (x)
   (declare (xargs :guard t))
@@ -93,38 +93,63 @@
   (mbe :logic (car (cdr (cdr (cdr (cdr x)))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
 
-(defun fn-served-make-conn (wire session archive config observation)
+; The clock reading supplied with THIS read.  It is not pinned: the owner
+; rebuilds the served connection on every read and puts its current
+; observation here (books/owner.lisp, fn-own-read), because RFC 5537
+; section 3.4 makes Injection-Date the time of injection and a generated
+; Message-ID is derived from the same reading.  `observation` above is the
+; reading pinned at accept and is the reader environment; the two are
+; deliberately distinct fields.
+(defun fn-served-conn-injection (x)
   (declare (xargs :guard t))
-  (list wire session archive config observation))
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr x))))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
+                                                          (fn-ag-cdr x))))))))
+
+(defun fn-served-make-conn (wire session archive config observation injection)
+  (declare (xargs :guard t))
+  (list wire session archive config observation injection))
 
 (defthm fn-served-conn-shapep-of-fn-served-make-conn
   (fn-served-conn-shapep
-   (fn-served-make-conn wire session archive config observation)))
+   (fn-served-make-conn wire session archive config observation
+                        injection)))
 
 (defthm fn-served-conn-wire-of-fn-served-make-conn
   (equal (fn-served-conn-wire
-          (fn-served-make-conn wire session archive config observation))
+          (fn-served-make-conn wire session archive config observation
+                        injection))
          wire))
 
 (defthm fn-served-conn-session-of-fn-served-make-conn
   (equal (fn-served-conn-session
-          (fn-served-make-conn wire session archive config observation))
+          (fn-served-make-conn wire session archive config observation
+                        injection))
          session))
 
 (defthm fn-served-conn-archive-of-fn-served-make-conn
   (equal (fn-served-conn-archive
-          (fn-served-make-conn wire session archive config observation))
+          (fn-served-make-conn wire session archive config observation
+                        injection))
          archive))
 
 (defthm fn-served-conn-config-of-fn-served-make-conn
   (equal (fn-served-conn-config
-          (fn-served-make-conn wire session archive config observation))
+          (fn-served-make-conn wire session archive config observation
+                        injection))
          config))
 
 (defthm fn-served-conn-observation-of-fn-served-make-conn
   (equal (fn-served-conn-observation
-          (fn-served-make-conn wire session archive config observation))
+          (fn-served-make-conn wire session archive config observation
+                               injection))
          observation))
+
+(defthm fn-served-conn-injection-of-fn-served-make-conn
+  (equal (fn-served-conn-injection
+          (fn-served-make-conn wire session archive config observation
+                               injection))
+         injection))
 
 (defthm fn-served-conn-shapep-forward-shape
   (implies (fn-served-conn-shapep x) (and (consp x) (true-listp x)))
@@ -133,6 +158,7 @@
 (in-theory (disable (:d fn-served-conn-shapep) (:d fn-served-conn-wire)
                     (:d fn-served-conn-session) (:d fn-served-conn-archive)
                     (:d fn-served-conn-config) (:d fn-served-conn-observation)
+                    (:d fn-served-conn-injection)
                     (:d fn-served-make-conn)))
 
 ; The result record: the connection after the read, and the effects the host
@@ -177,10 +203,10 @@
 
 (local
  (defthm fn-served-make-conn-equal
-   (equal (equal (fn-served-make-conn w1 s1 a1 c1 o1)
-                 (fn-served-make-conn w2 s2 a2 c2 o2))
+   (equal (equal (fn-served-make-conn w1 s1 a1 c1 o1 j1)
+                 (fn-served-make-conn w2 s2 a2 c2 o2 j2))
           (and (equal w1 w2) (equal s1 s2) (equal a1 a2)
-               (equal c1 c2) (equal o1 o2)))
+               (equal c1 c2) (equal o1 o2) (equal j1 j2)))
    :hints (("Goal" :in-theory (enable fn-served-make-conn)))))
 
 (local
@@ -289,6 +315,7 @@
                                (fn-served-conn-archive conn)
                                (fn-served-conn-config conn)
                                (fn-served-conn-observation conn)
+                               (fn-served-conn-injection conn)
                                event))
          (effects (fn-post-result-effects r))
          (submission (fn-post-result-submission r))
@@ -300,7 +327,8 @@
      (fn-served-make-conn wire2 (fn-post-result-session r)
                           (fn-served-conn-archive conn)
                           (fn-served-conn-config conn)
-                          (fn-served-conn-observation conn))
+                          (fn-served-conn-observation conn)
+                          (fn-served-conn-injection conn))
      (mbe :logic (append effects
                          (if submission
                              (list (fn-served-submit-effect submission))
@@ -324,6 +352,7 @@
                                    (fn-served-conn-archive conn)
                                    (fn-served-conn-config conn)
                                    (fn-served-conn-observation conn)
+                                   (fn-served-conn-injection conn)
                                    event)))
         (equal (fn-served-conn-archive
                 (fn-served-result-conn (fn-served-dispatch conn event)))
@@ -333,7 +362,10 @@
                (fn-served-conn-config conn))
         (equal (fn-served-conn-observation
                 (fn-served-result-conn (fn-served-dispatch conn event)))
-               (fn-served-conn-observation conn)))
+               (fn-served-conn-observation conn))
+        (equal (fn-served-conn-injection
+                (fn-served-result-conn (fn-served-dispatch conn event)))
+               (fn-served-conn-injection conn)))
    :hints (("Goal" :in-theory (disable fn-nntp-post-step fn-post-offeredp
                                        fn-wire-begin-article)))))
 
@@ -344,6 +376,7 @@
                                       (fn-served-conn-archive conn)
                                       (fn-served-conn-config conn)
                                       (fn-served-conn-observation conn)
+                                      (fn-served-conn-injection conn)
                                       event)))
             (append (fn-post-result-effects r)
                     (if (fn-post-result-submission r)
@@ -381,6 +414,7 @@
                             (archive (fn-served-conn-archive conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
+                            (injection (fn-served-conn-injection conn))
                             (wire-event event))))))
 
 (defthm fn-served-dispatch-effects-are-typed
@@ -400,12 +434,14 @@
                             (archive (fn-served-conn-archive conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
+                            (injection (fn-served-conn-injection conn))
                             (wire-event event))
                  (:instance fn-post-submission-is-an-injected-article
                             (ps (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
+                            (injection (fn-served-conn-injection conn))
                             (wire-event event))))))
 
 ; The three theorems above are the only readers of the two local projections;
@@ -481,7 +517,8 @@
                                        (fn-served-conn-session conn)
                                        (fn-served-conn-archive conn)
                                        (fn-served-conn-config conn)
-                                       (fn-served-conn-observation conn))
+                                       (fn-served-conn-observation conn)
+                                       (fn-served-conn-injection conn))
                   (fn-wire-result-events fed)))
            (tail (fn-served-feed (fn-served-result-conn here) (cdr octets))))
       (fn-served-make-result
@@ -514,7 +551,8 @@
               (fn-served-conn-session conn)
               (fn-served-conn-archive conn)
               (fn-served-conn-config conn)
-              (fn-served-conn-observation conn))))
+              (fn-served-conn-observation conn)
+              (fn-served-conn-injection conn))))
    :hints (("Goal" :in-theory (e/d (fn-served-connp)
                                    (fn-wire-feed-byte fn-wire-statep
                                     fn-post-session-consistentp))))))
@@ -679,19 +717,21 @@
       *fn-served-greeting-posting*
     *fn-served-greeting*))
 
-(defun fn-served-open (archive line-limit body-limit config observation)
+(defun fn-served-open (archive line-limit body-limit config observation
+                               injection)
   (declare (xargs :guard t))
   (fn-served-make-result
    (fn-served-make-conn (fn-wire-initial-state line-limit body-limit)
                         (fn-post-open-session archive)
-                        archive config observation)
+                        archive config observation injection)
    (list (fn-nntp-reply-effect (fn-served-greeting config)))))
 
 (defthm fn-served-open-is-a-connection
   (implies (and (posp line-limit) (posp body-limit))
            (fn-served-connp
             (fn-served-result-conn
-             (fn-served-open archive line-limit body-limit config observation))))
+             (fn-served-open archive line-limit body-limit config observation
+                             injection))))
   :hints (("Goal" :in-theory (e/d (fn-served-connp)
                                   (fn-wire-statep fn-wire-initial-state
                                    fn-post-open-session
@@ -898,7 +938,8 @@
                                        (fn-served-conn-session conn)
                                        (fn-served-conn-archive conn)
                                        (fn-served-conn-config conn)
-                                       (fn-served-conn-observation conn))
+                                       (fn-served-conn-observation conn)
+                                       (fn-served-conn-injection conn))
                   (fn-wire-result-events fed))))
       (+ (len (fn-wire-result-events fed))
          (fn-served-feed-steps (fn-served-result-conn here) (cdr octets))))))
