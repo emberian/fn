@@ -314,7 +314,7 @@ process left pending, and a crash before the five recovery fences drops it.
 **Selected:** add `fn-sf-recovery-crash-imagep`, a second recognizer with the
 third arm, and leave `fn-sf-crash-imagep` byte-for-byte unchanged.
 `fn-sf-crash-imagep` is the RELIANCE predicate — the gate of `fn-own-reopen`
-(`books/owner.lisp:874`) and the premise of every reopen theorem — and
+(`books/owner.lisp:911`) and the premise of every reopen theorem — and
 `fn-sf-recovery-crash-imagep` is what the PLATFORM may leave. `K2`'s conclusion
 names the second; nothing takes it as a hypothesis.
 

@@ -1300,7 +1300,7 @@ namespace test decidable from the byte store alone.
             (fn-bs-scan-frontier (fn-bs-scan-store image))
             (fn-bs-scan-records (fn-bs-scan-store image)))))
 ; Why the conclusion is not fn-sf-crash-imagep, which D14-a proposed widening:
-; that predicate is the gate of fn-own-reopen (books/owner.lisp:874) and the
+; that predicate is the gate of fn-own-reopen (books/owner.lisp:911) and the
 ; premise of every reopen theorem, and widening it is FALSE for the
 ; composition.  tests/acl2/owner-tests.lisp carries the counterexample: an
 ; owner whose store is a recovery-window state with an empty success history

@@ -214,7 +214,7 @@
 ; -----------------------------------------------------------------------------
 ; D14-b, the owner half of the counterexample: why the recovery freedom is
 ; fn-sf-recovery-crash-imagep and NOT a widening of fn-sf-crash-imagep, which
-; is the gate of fn-own-reopen (owner.lisp:874).
+; is the gate of fn-own-reopen (owner.lisp:911).
 ;
 ; *own-reopened* is an ordinary reachable owner: its store is a
 ; recovery-window state, its own success history is empty (fn-sn-open-observed
