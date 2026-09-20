@@ -544,8 +544,17 @@
                             (n (fn-feed-next-attempt f))
                             (msgid (fn-frame-item 1 values)))))))
 
+; The fold over the journal, and the same discipline as the three composite
+; theorems above: the fold stays OPEN (it is the induction) and the record
+; step stays CLOSED, so `fn-feed-apply-record-preserves-feedp' is the rewrite
+; that carries the recognizer across one record.  Measured on 2026-09-20: with
+; `fn-feed-apply-record' open the induction step re-splits the dispatcher
+; under every arm and the form did not finish in 1800 s (run
+; `run-20260920T200246Z-fa0b'); closed, it is seconds.  `fn-feedp' is closed
+; with it, or the keystone's conclusion cannot match.
 (defthm fn-feed-replay-preserves-feedp
-  (implies (fn-feedp f) (fn-feedp (fn-feed-replay f es))))
+  (implies (fn-feedp f) (fn-feedp (fn-feed-replay f es)))
+  :hints (("Goal" :in-theory (disable (:d fn-feed-apply-record) (:d fn-feedp)))))
 
 (defthm fn-feed-apply-record-preserves-peer
   (implies (fn-feedp f)
@@ -561,9 +570,13 @@
                             ; preservation rewrite no longer matches.
                             mv-nth))))
 
+; The same closure, for the same reason: the two record-step keystones
+; (`-preserves-peer' for the value and `-preserves-feedp' for the induction
+; hypothesis) are the rewrites, and they only match with the step closed.
 (defthm fn-feed-replay-preserves-peer
   (implies (fn-feedp f)
-           (equal (fn-feed-peer (fn-feed-replay f es)) (fn-feed-peer f))))
+           (equal (fn-feed-peer (fn-feed-replay f es)) (fn-feed-peer f)))
+  :hints (("Goal" :in-theory (disable (:d fn-feed-apply-record) (:d fn-feedp)))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE: replay is a fold, so it is deterministic and order is all that
