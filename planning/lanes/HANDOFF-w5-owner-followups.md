@@ -153,3 +153,42 @@ refused it (it now runs after the recovery barriers, where the phase is
 `:ready`); and it joined the removal names with `fn-store-cfg-join-names`,
 which encodes *strings* — a staging name is an octet list, so
 `fn-store-sn-join-octet-names` is its joiner.
+
+## Evidence, second pass (farm)
+
+- `run-20260920T050532Z-db74` (nntp/served/owner closure, 48 roots):
+  **47 certified, one failed** —
+  `books/nntp-effects` **timed out at 1800.1 s** (evidence
+  `build/acl2/certify-20260920T050536Z-2854073`, the log ends inside
+  `FN-NNTP-EFFECTS-XOVER-RESPONSE`, a form this lane did not touch). The box
+  was co-tenant to a second 12-job certification at the time. The plausible
+  cost this lane added is upstream of it: `fn-nntp-capability-lines` built
+  its answer as an `append` of a conditional, so every block-text obligation
+  had to reason through the append. Fixed in `5bebaee` (one ground list per
+  branch; emitted octets unchanged, held by the two `ld`-quoted pins) and
+  resubmitted as `run-20260920T053849Z-9568`
+  (`--closure books/nntp-effects`), **still running at the end of this
+  lane's budget**. `books/nntp-effects` therefore has **no verdict**; every
+  other root in the chain (nntp-responses, nntp, nntp-invariants, nntp-post,
+  served, owner, owner-invariants, nntp-tests, nntp-teeth-tests,
+  nntp-legacy-tests, nntp-reader-profile-tests, nntp-post-tests,
+  served-tests, owner-tests and their closure) certified.
+- Python on persvati in the certified remote root
+  (`tests.test_post tests.test_owner tests.test_store_lifecycle
+  tests.test_reader`, 31 tests, 171.9 s): **29 pass, 1 skip** (the nntplib
+  probe; persvati's 3.13 has no `nntplib`), **1 fail**.
+
+### Open defect this lane introduced, not yet closed
+
+`tests.test_post.StorePostTests.test_a_reader_pinned_before_a_post_keeps_its_view`
+fails at its **second** post through the same poster connection: expected
+`240 article received OK`, received `441 posting failed; the a...`. The
+first post, its 240, the poster's re-pin to `211 2 1 2` and both readers'
+pins are all correct up to that point, and the single-post read-back test
+(`test_post_reaches_240_and_the_article_can_be_read_back`) passes. So the
+defect is in a **second** submission from a connection that has already been
+re-pinned by a 240 — the suspect is the interaction of
+`fn-own-advance`'s rebuilt session with the next POST on the same
+connection, not the re-pin itself. Do not merge this lane before this is
+diagnosed: either the second post is fixed, or `fn-own-outcome`'s advance is
+removed and the read-back recorded open.
