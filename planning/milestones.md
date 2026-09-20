@@ -42,6 +42,22 @@ dependency order, each ending with an evidence record:
 | v0.5 reconfiguration and storage | Live reconfiguration as an owner event; the byte-level crash model ([K1 to K11](lanes/DESIGN-crash-model-v2-summary.md)); persisted checkpoints; index adoption | Every crash point in the cut table is a transition the model expresses |
 | v0.6 convergence and release | Identity and authority (D01, OBJ-003, OBJ-007), the include-hygiene backlog, one gate over every root on one machine | Every requirement either `implemented`/`validated` with keystones, or `deferred` with a reason |
 
+**The gate over all six waves is one executable matrix.** `tools/v0_matrix.py`
+stands up two peered fn nodes on a farm box, drives every feature between them,
+and writes `planning/v0-matrix.json` plus an evidence record
+under `planning/evidence/`. It carries one row per feature observation with five
+verdicts that are never collapsed into pass/fail: `accepted`, `refused` and
+`uncertain` are D13's three outcomes and each is a real observation, so a
+refusal row that draws its refusal is the feature working; `not-exercised` names
+what blocked the row, and `not-built` names the lane that owns the missing
+feature. Whether a row did what it was designed to do is the separate `agrees`
+bit. Every row names its exact invocation, the revision, its log and what it
+does not show, and the counts come from the tool, never from typing:
+`make check` recomputes the rows' digest and refuses a hand-edited verdict.
+`python3 tools/v0_matrix.py --list` prints the inventory and runs nothing. v0 is
+reached when every row reads one of the three outcomes and agrees with its
+expectation; the wave gates below say what each wave contributes to that.
+
 The v0.4 wave has two halves that share a name. The convergence layer is
 TCPCLv4 (C1 to C4). The statement layer is
 [substrate transport](../specs/substrate-transport.md), whose packets run in

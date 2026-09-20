@@ -588,6 +588,143 @@
         "No run here is proof evidence: it exercises the design's acceptance criteria against books that do not exist at this revision."
       ],
       "evidence": []
+    },
+    {
+      "id": "SCN-020",
+      "title": "Two peered nodes stand up, reconfigure live, and stop",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "HST-001",
+        "HST-002",
+        "HST-003",
+        "HST-004",
+        "NNT-007",
+        "STO-001",
+        "FLR-002",
+        "NNT-006"
+      ],
+      "steps": [
+        "Initialize each node from the operator surface: a store, its served groups, and a configuration file naming the store, the listener and the ACL2 image.",
+        "Report each node's status; initialize over an existing store again; refuse a non-loopback listener host.",
+        "Create and retire a served group, and observe the created group over the socket.",
+        "Start each node's service, declare a group on the running service's control channel, and attempt the same change through the offline command while the service holds the store.",
+        "Stop each service and reopen each store."
+      ],
+      "expected": [
+        "Every command's exit code distinguishes accepted, refused and uncertain, and no command reports an outcome the store did not take.",
+        "A configuration written by the operator surface is the one the service reads; nothing infers a store path from the working directory.",
+        "A change made while the service is live reaches the served configuration through the control channel, and the offline path is refused rather than racing it.",
+        "A stopped service releases the writer lock, and the store reopens without recovery."
+      ],
+      "evidence": [],
+      "execution_scope": "Specified. `tools/v0_matrix.py` drives every step between two nodes on one host over loopback; the row verdicts and their blockers are in planning/v0-matrix.json. Nothing here exercises two machines, a real network, or an operator's own configuration."
+    },
+    {
+      "id": "SCN-021",
+      "title": "AUTHINFO login and posting permission",
+      "milestone": "M3",
+      "status": "specified",
+      "requirements": [
+        "OBJ-007",
+        "NNT-001",
+        "NNT-004",
+        "SEC-003"
+      ],
+      "steps": [
+        "Derive a principal from a seed and record an AUTHINFO credential for it on each node.",
+        "Connect unauthenticated and read the advertised capabilities; attempt a gated command.",
+        "Authenticate with AUTHINFO USER and PASS, read the capabilities again, and post.",
+        "Authenticate with a wrong password on a fresh connection."
+      ],
+      "expected": [
+        "AUTHINFO USER is advertised exactly while the connection is unauthenticated, and is withdrawn once it is not.",
+        "A gated command before the login is refused and not performed.",
+        "The posting allowance is the authenticated principal's, not the connection's.",
+        "A wrong password is refused and grants nothing; the refusal is distinct from a fault."
+      ],
+      "evidence": [],
+      "execution_scope": "Specified. The credential is held in the clear on this tree and the login runs over an unprotected loopback connection, so no confidentiality claim follows. RFC 4643 section 2.3's transport requirement is a separate obligation."
+    },
+    {
+      "id": "SCN-022",
+      "title": "Transit between two peered fn nodes in both directions",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-001",
+        "REP-002",
+        "OBJ-001",
+        "OBJ-005",
+        "NNT-005"
+      ],
+      "steps": [
+        "Peer each node with the other by a record naming its path-identity, its transport and its inbound and outbound wildmats.",
+        "Establish the control: each node serves its own article and refuses the other's.",
+        "Offer one article each way with IHAVE, then offer the same Message-ID a second time, then offer one whose Path already names the target.",
+        "Offer a further article each way with MODE STREAM, CHECK and TAKETHIS, and repeat the offer after the target holds it."
+      ],
+      "expected": [
+        "A wanted offer draws 335 and then 235, and the target serves the same octets the source served; local article numbers may differ.",
+        "A second offer of a held Message-ID draws 435 and no second copy is written.",
+        "An article whose Path already names the target is refused after its 335 and is not served afterwards.",
+        "CHECK answers 238 for a wanted article and 438 for one the target holds; TAKETHIS answers 239 and 439 to match, never a 2xx and never a retry code.",
+        "A peer record is configuration, not authorization: nothing in this scenario authenticates the peer."
+      ],
+      "evidence": [],
+      "execution_scope": "Specified. Both nodes run on one host over loopback, so nothing here exercises a partition, latency or clock disagreement, and two articles crossing once is not the merge property of specs/peering.md section 4."
+    },
+    {
+      "id": "SCN-023",
+      "title": "Owner-driven outbound feed",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-005",
+        "REP-002",
+        "RET-003",
+        "STO-003"
+      ],
+      "steps": [
+        "Configure an outbound wildmat on a peer record and accept an article that matches it.",
+        "Let the owner open the session and offer the article; drive no socket by hand.",
+        "Reread the target after the acknowledgement, and again after the source restarts.",
+        "Interrupt an offer in flight and restart the owner."
+      ],
+      "expected": [
+        "Each accepted article is offered to each peer whose outbound wildmat matches it, by the owner and not by an operator.",
+        "A transfer the target acknowledged is not offered again, and the target holds one copy.",
+        "The feed journal distinguishes transmission from retention, and survives the restart.",
+        "An interrupted offer is retried and produces no second copy."
+      ],
+      "evidence": [],
+      "execution_scope": "Specified. `books/peer-feed` exists and `tools/run_feed.py` drives one peer by hand; the owner calling that seam is the open work this scenario is about."
+    },
+    {
+      "id": "SCN-024",
+      "title": "A bundle each way over fn's own convergence layer",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-006",
+        "ENC-002",
+        "FLR-004",
+        "HST-001"
+      ],
+      "steps": [
+        "Build the node image carrying the convergence layer and establish a contact between two of them.",
+        "Transfer one bundle each way inside one session, segmented by the layer's own rules.",
+        "Interrupt the contact and re-establish it; hold an idle contact open with the keepalive.",
+        "Carry an fn article inside a bundle and deliver it to the receiving node's application."
+      ],
+      "expected": [
+        "The transfer is segmented and acknowledged by the layer's own rules, and the assertions are over the events the layer recorded.",
+        "A bundle's arrival is not an fn application acceptance, and the two are reported separately.",
+        "An interrupted contact loses no bundle and delivers none twice.",
+        "A refused contact is refused with its own reason, distinct from a fault."
+      ],
+      "evidence": [],
+      "execution_scope": "Specified. The layer transfers opaque octets today: it does not parse what it carries, and no BP node is wired behind it, so the last step has no implementation to exercise."
     }
   ]
 }
