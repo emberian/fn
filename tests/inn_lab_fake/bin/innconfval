@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+"""tests/inn_lab_fake: the innconfval role of the stand-in INN.  See _fakeinn.py."""
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _fakeinn
+sys.exit(_fakeinn.main("innconfval", sys.argv[1:]))
