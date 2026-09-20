@@ -233,11 +233,27 @@
                                   (fn-sched-table-find peer tbl)
                                   wf attempt-id))))))))
 
+; A fresh peer's state is a state: books/scheduler proves this of no
+; transition because `fn-sched-initial-state' is where every trace starts.
+(local (defthm fn-sched-statep-of-initial-state
+  (implies (and (fn-sched-configp config) (natp next-tx))
+           (fn-sched-statep (fn-sched-initial-state config next-tx)))))
+
 (defthm fn-sched-tablep-of-install
   (implies (fn-sched-tablep tbl)
            (fn-sched-tablep (fn-sched-table-install peer config next-tx tbl)))
   :hints (("Goal" :in-theory (disable fn-sched-statep fn-sched-table-put
-                                      fn-sched-initial-state))))
+                                      fn-sched-initial-state)
+           :use ((:instance fn-sched-statep-of-initial-state)
+                 (:instance fn-sched-tablep-of-put
+                            (ss (fn-sched-initial-state config next-tx)))))))
+
+; Forgetting a peer cannot bind a name that was not bound: the distinctness
+; conjunct of the entries in front of the dropped one survives.
+(defthm fn-sched-table-boundp-of-forget
+  (implies (not (fn-sched-table-boundp other tbl))
+           (equal (fn-sched-table-boundp other (fn-sched-table-forget peer tbl))
+                  nil)))
 
 (defthm fn-sched-tablep-of-forget
   (implies (fn-sched-tablep tbl)
