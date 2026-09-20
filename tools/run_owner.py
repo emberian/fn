@@ -875,15 +875,27 @@ class Owner:
     def feed_poll(self):
         now = self.clock.milliseconds()
         for feed in list(self.feeds.values()):
-            if feed.session is None:
-                if self.bridge.feed_queue_length(feed.peer) > 0:
-                    self.feed_dial(feed)
-                continue
+            # A feed that cannot make progress must not end the node. Before
+            # this, any unexpected error here unwound through `run` and the
+            # SERVICE EXITED -- readers, POST and every other peer with it --
+            # because one outbound connection went wrong. The fault is said
+            # once, loudly and by peer name, and the feed is dropped; the
+            # entry stays queued and the next dial retries it. `FEED-FAULT`
+            # is a defect signal, not an outcome.
             try:
+                if feed.session is None:
+                    if self.bridge.feed_queue_length(feed.peer) > 0:
+                        self.feed_dial(feed)
+                    continue
                 if self.bridge.feed_tick(feed.peer, now) == "offer":
                     self.feed_flush()
                     self.feed_write(feed, self.bridge.feed_command())
             except OSError:
+                self.feed_drop(feed)
+            except Exception as error:                   # noqa: BLE001
+                print("FEED-FAULT {}: {}: {}".format(
+                    feed.peer, type(error).__name__, error), file=sys.stderr,
+                    flush=True)
                 self.feed_drop(feed)
 
     def feed_read(self, peer):
@@ -909,6 +921,12 @@ class Owner:
                 self.feed_flush()
                 self.feed_write(feed, self.bridge.feed_command())
             except OSError:
+                self.feed_drop(feed)
+                return
+            except Exception as error:                   # noqa: BLE001
+                print("FEED-FAULT {}: {}: {}".format(
+                    peer, type(error).__name__, error), file=sys.stderr,
+                    flush=True)
                 self.feed_drop(feed)
                 return
 
