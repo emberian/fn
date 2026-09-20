@@ -833,7 +833,7 @@ the changed books (the red-umbrella rule).
 
 | Order | Packet | Owner | Deliverable | Acceptance | Depends on |
 | --- | --- | --- | --- | --- | --- |
-| S0 | prefixes and registry | assurance-tooling, Sonnet | `fn-stx-` row in `docs/prefixes.md`; requirement rows SUB-001 (a statement travels as `FN-Statement` and its canonical octets are `fn-stmt-encode`), SUB-002 (a verdict is computed locally over the statement's own octets and is three-valued), SUB-003 (a peer cannot change a group's policy in force), SUB-004 (equivocation is detected at merge, recorded and never dropped), SUB-005 (merging a reconnected peer's commits never revises admissibility), SUB-006 (the reader exposes the statement bytes and a three-valued verdict with its keyring generation) in `planning/requirements.json`, each with an authoritative definition line in this spec; proof rows for every §6 keystone in `proofs.json`, all `open` | `make check` green; no count typed into prose | K0 |
+| S0 | prefixes and registry | assurance-tooling, Sonnet | `fn-stx-` row in `docs/prefixes.md`; requirement rows SUB-001 to SUB-006 in `planning/requirements.json`, each defined once in §9 of this document and referenced everywhere else; proof rows for every §6 keystone in `proofs.json`, all `planned` (the registry's word for stated and unproved); the `FN-Statement` reservation in [nntp](nntp.md#reserved-header-fields); the two-node statement exchange as a scenario specification | `make check` green; no count typed into prose | K0 |
 | S1 | the field codec | substrate lane, Opus | `books/statement-field.lisp`: detached items, `fn-stx-detached-encode`/`-decode-exact`, base64 with canonicality, `fn-stx-field-decode` over `fn-article-field-unfolded-value`, the `FN-Statement` and `FN-Policy` grammar in `books/article-fields.lisp`; S1-1; `tests/acl2/statement-field-tests.lisp` | whole-tree `make certify` green; the golden field vector is byte-exact and independent of any digest; one `must-fail` per S1-1 hypothesis; a signed article survives the INN scenario of [peering](peering.md) §5 with `FN-Statement` byte-identical and verifying at fn | K8 (which this subsumes), w4/post for the authored-source projection |
 | S2 | verdict and evidence | substrate lane, Opus | `books/statement-transit.lisp` part 1: `fn-stx-payload-for`, `fn-stx-verdict`, `*fn-stx-verdicts*`, the `(:statement ...)` and `(:equivocation ...)` evidence values in `fn-record-p`; S2-1 and the `fn-peer-transfer` equation | whole-tree certify green; a witness at each of the five verdict outcomes; `must-fail` that a tampered body verifies, that an unknown creator verifies, and that the peer appears in the verdict's support; replay reproduces every verdict from the journal alone | S1, K1 |
 | S3 | lace projection, bridge, index | core lane, Fable design then Opus proofs | `books/statement-transit.lisp` part 2: `fn-stx-lace`, `fn-stx-delta`, `fn-stx-lace-of-accept-is-merge`, `fn-stx-index` and its invariant; S3-1, S3-2, S3-3; the `:equivocation`/`:authority-equivocation` reasons added to `*fn-peer-reasons*` | whole-tree certify green; the two-node reissue witness certifies and both forks are present at both nodes; the index cost shadow shows `fn-stx-lace` is not on the served path; `must-fail` per hypothesis of S3-1 and S3-2 | S2, K1, K3 |
@@ -843,6 +843,84 @@ the changed books (the red-umbrella rule).
 
 S1 and S2 can start against `72279c8` immediately; S3 needs K1's transit path;
 S4 needs S3; S5 and S6 are independent of each other.
+
+## 9. Registered requirements
+
+The six requirements this design adds are defined here and nowhere else: every
+other mention of a `SUB-` id, in this document or another, is a reference to
+its line below. They are registered in
+[`requirements.json`](../planning/requirements.json) with the keystones of §6
+as their proof targets, and the two-node exchange that exercises them is
+`SCN-019` in [the scenario catalog](../tests/scenarios/catalog.json). Each line
+keeps the vocabulary of the preamble: "MUST" quotes an RFC, "fn requires" is a
+stronger fn guarantee, "local policy" marks a choice the RFC leaves open.
+
+SUB-001: a statement about an article travels as that article's `FN-Statement`
+header field, whose value is the base64 of the detached `fn-stmt-` encoding —
+the statement's own canonical octets, with the payload item omitted (§1.2).
+RFC 5537 §3.6 is what carries it: a relaying agent MUST alter nothing but Path
+and Xref, so an unknown header field crosses a peer that does not understand it
+byte-identical. RFC 4648 §4 fixes the alphabet and padding and RFC 5536 §2.2
+the folding. fn requires more than those RFCs do: every accepted field value
+has exactly one canonical form, so no middle box can offer a second value that
+decodes to the same statement and split a reader population. Local policy: the
+8192-octet unfolded field bound, the 25-item budget, and the order in which
+both are checked before any item is parsed.
+
+SUB-002: the verdict on a statement is computed by the receiving node from the
+received bytes and its own keyring alone, and is exactly one of `:verified`,
+`:unverified` or `:absent` (§1.5). No RFC speaks to it. fn requires that the
+peer is not an argument, that the `ref` be recomputed from the receiver's own
+projection of the received octets, and that the verdict be stored with the
+keyring generation under which it was computed, so a replay reproduces it
+rather than inventing one. Local policy: which reasons accompany
+`:unverified` (`:malformed`, `:ref-mismatch`, `:signature`), and that an
+article whose statement is missing, malformed or unverifiable is still
+accepted, stored byte-exact and relayed unchanged — it loses authority, not
+bytes.
+
+SUB-003: no peer can change the policy in force for a group at this node
+(§3). The gate on a transit article is the policy function evaluated against
+this node's lace and this node's keyring; a contact batch containing no
+statement by the group's authority verified under the local keyring leaves the
+policy in force equal before and after, and a change always names the signed
+statement that caused it. RFC 5537 §5 would have an article carry an
+executable control verb; fn implements none of them (§7), which is a stronger
+guarantee than the RFC asks for. Local policy: the authority principal of a
+group is local configuration and is never named on the wire (D11).
+
+SUB-004: equivocation is detected when the statement merges at inbound
+transit, recorded durably, and never dropped (§2.3). fn requires that both
+forks of a reissued `(creator, incarnation, sequence)` slot stay in the lace —
+evidence of a fork cannot be erased by a later merge — that the durable
+`(:equivocation ...)` record be a proved twin of the lace rather than a second
+authority, and that the equivocating article be accepted while its authority
+is refused, with "accepted, authority refused" reported distinctly from
+"refused" and from "uncertain". The single exception is explicit and is an
+A-CRYPTO edge: two forks that collide in content id merge into one. Local
+policy: the two typed refusal reasons, `:equivocation` and
+`:authority-equivocation`.
+
+SUB-005: merging the commits a reconnected peer carries never revises an
+earlier admissibility decision (§4). What crosses a partition is commits and
+fork evidence, never a roster: the merge extends the commits set, adoption of
+a chain stays a local act, and every message admitted, refused or held before
+the merge decides the same way after it. Learning more never turns a refusal
+into an admission. No RFC is involved. fn requires that a commit enter the
+merge only from a verified statement, which is the carrier obligation of S5-1;
+local policy: the commits set is not pruned by this design (D13), and a held
+message that exceeds the hold limit is a distinct `:capacity` outcome.
+
+SUB-006: a reader exposes the statement bytes first and the node's verdict
+second (§5). `ARTICLE` and `HEAD` return `FN-Statement` as an ordinary header
+field, byte-identical after transit, so a client with its own keyring verifies
+without trusting fn; the `:fn-verified` HDR metadata item reports what
+acceptance recorded — one token per member of the verdict set, with the
+principal id in hex and the keyring generation — and is never recomputed per
+query. RFC 3977 §8.5 reserves the leading colon for exactly such a metadata
+item, and §8.4 permits appended OVER fields; fn requires that no rendering
+collapse two outcomes into one token. Local policy: whether the item is also
+appended to OVER, which packet S6 decides with its cost quoted.
 
 ## What this design does not decide
 
