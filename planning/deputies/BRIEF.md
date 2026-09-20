@@ -12,8 +12,13 @@ cross-cluster steps you could not take alone.
   time, with `FN_ACL2_TIMEOUT_SECONDS=1800 python3 tools/certify_books.py <book>`.
 - Iterate with `ld` on a scratch driver that starts with
   `(set-prover-step-limit 2000000)` and includes only your dependencies; the
-  runner is for the end, not for search. Kill your own runaway ACL2 by PID
-  after three minutes.
+  runner is for the end, not for search. Start it as
+  `tools/acl2 --timeout 240 < driver.lsp` (equivalently `make acl2-ld`), never
+  as bare `acl2`: the wrapper takes a slot from the machine-wide pool the
+  runner uses, sets the same two environment variables, and kills the child at
+  240 s and exits 124, so a runaway frees its slot with no PID to find. Bare
+  `acl2` takes no slot -- on 2026-09-19 that put six ACL2 processes on a
+  four-slot laptop. Do not hunt PIDs: raise or lower `--timeout` instead.
 - At most ONE ACL2 process of yours at a time. Any run over two minutes uses
   the Bash tool's `run_in_background: true` and you wait for its notification.
   Never a polling loop; never `pgrep -f` on other lanes' processes; never

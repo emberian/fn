@@ -104,3 +104,8 @@
                   (fn-anchor-image right-incarnation
                                    (fn-anchor-host-fields right-fields)))))
     (list (fn-anchor-status outcome) (fn-anchor-reason outcome))))
+
+;; Restore the logic-mode default: the store bridge waits for the
+;; "ACL2 !>" prompt, and a host file that leaves the session in program
+;; mode ("ACL2 p!>") makes every bridge call time out.
+(logic)
