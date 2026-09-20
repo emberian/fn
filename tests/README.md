@@ -174,3 +174,19 @@ statically. With `FN_ACL2` unset the tool prints that it did not run and exits
 0; a skipped run is not evidence. It needs installed certificates
 (`python3 tools/certs.py install`), because an `include-book` inside a host
 file reads a certificate `ld` will not produce.
+
+Three static checks run beside it, none of them needing ACL2.
+`tools/transcribe_check.py` is the crash model's cut correspondence;
+`tools/teeth_check.py --summary` is the teeth audit's static half, which
+reports and never fails; and `tools/session_depth.py` checks that every
+session reaches the level its callee wants. That last one exists because the
+served command chain is four session records deep and all three base
+accessors read `car`, so a call that stops one level short is answered with a
+plausible value rather than an error: four such misses shipped on 2026-09-20,
+one of them leaving POST with no reply at all. It infers each formal's
+session level from the calls the definitions make and fails on a wrong depth;
+a walk spelled by hand instead of through one of the three named projections
+is drift, counted and failed only under `--strict`. Its own cases are
+`tests/test_session_depth.py`, four of which are the historical misses
+reduced to their shape. `docs/proof-style.md` states the convention and what
+the check cannot see.
