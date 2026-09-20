@@ -562,18 +562,28 @@
         (fn-own-find-conn id (cdr conns)))
     nil))
 
-; The per-connection retained session is bounded by configuration: a POST
-; session is a reader session and one bit (books/nntp-post.lisp), the reader
-; session is four fields, its group is one of the configured names or nil, and its
-; cursor is nil or inside RFC 3977 section 6's article-number range.  A read
-; whose result leaves this set closes the connection (fn-own-read).  This is
-; a four-field check and one member-equal over the configured names, not a
-; whole-state recognizer.
+; The per-connection retained session is bounded by configuration.  The
+; session the served path hands the owner is a PEER session since the
+; inbound transit port (books/served.lisp: fn-served-connp asks
+; fn-peer-session-consistentp of it, and fn-served-open and
+; fn-served-open-peer both build it with fn-peer-open-session); its base is
+; the POST session, whose base in turn is the reader session, whose group is
+; one of the configured names or nil and whose cursor is nil or inside RFC
+; 3977 section 6's article-number range.  A read whose result leaves this
+; set closes the connection (fn-own-read).  This is a four-field check and
+; one member-equal over the configured names, not a whole-state recognizer.
+;
+; It tested fn-post-sessionp until 2026-09-20.  A post session is two fields
+; and a peer session is six, so that test was FALSE on every connection the
+; served path produces: the branches below that guard on it were never
+; taken, the owner never enqueued a submission, and fn-own-relation -- which
+; conjoins this through fn-own-conn-okp -- was false on every state holding
+; a connection, making every theorem that hypothesised it vacuous.
 (defun fn-own-conn-boundedp (conn groups)
   (declare (xargs :guard t))
   (let ((ps (fn-own-conn-session conn)))
-    (and (fn-post-sessionp ps)
-         (let ((session (fn-post-session-base ps)))
+    (and (fn-peer-sessionp ps)
+         (let ((session (fn-post-session-base (fn-peer-session-base ps))))
            (and (or (null (fn-nntp-session-group session))
                     (fn-ag-member (fn-nntp-session-group session) groups))
                 (or (null (fn-nntp-session-current session))
@@ -773,12 +783,18 @@
         (let* ((view (fn-own-view o))
                (archive (fn-own-view-archive view))
                (old (fn-own-conn-session conn))
-               (base (fn-post-session-base old))
-               (session (fn-post-make-session
-                         (fn-nntp-set-cursor (fn-nntp-open-session archive)
-                                             (fn-nntp-session-group base)
-                                             (fn-nntp-session-current base))
-                         (fn-post-session-awaiting old)))
+               ; the peer session's slots (peer, transfer, inflight, pinned
+               ; node and cfg) survive the re-pin; only its POST base is
+               ; rebuilt over the committed view's archive
+               (oldbase (fn-peer-session-base old))
+               (base (fn-post-session-base oldbase))
+               (session (fn-peer-with-base
+                         old
+                         (fn-post-make-session
+                          (fn-nntp-set-cursor (fn-nntp-open-session archive)
+                                              (fn-nntp-session-group base)
+                                              (fn-nntp-session-current base))
+                          (fn-post-session-awaiting oldbase))))
                (next (fn-own-conn-make (fn-own-conn-id conn)
                                        (fn-own-view-version view)
                                        (fn-own-view-frontier view)
