@@ -270,14 +270,14 @@
     "books": 264,
     "books_in_root_closure": 263,
     "roots": 263,
-    "theorems": 5119,
-    "functions": 3686,
+    "theorems": 5121,
+    "functions": 3689,
     "assert_events": 4877,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
       "verified": 1379,
-      "declared-off": 190,
+      "declared-off": 193,
       "default-guarded": 1623,
       "default-unguarded": 494
     },
@@ -1584,11 +1584,11 @@
       "book": "books/byte-store-scan.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 40,
-      "functions": 29,
+      "theorems": 42,
+      "functions": 32,
       "guards": {
         "verified": 0,
-        "declared-off": 24,
+        "declared-off": 27,
         "default-guarded": 0,
         "default-unguarded": 5
       },
