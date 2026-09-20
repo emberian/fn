@@ -411,7 +411,8 @@
       "milestone": "M2",
       "status": "implemented",
       "proof_targets": [
-        "PRF-007"
+        "PRF-007",
+        "PRF-032"
       ],
       "verification": [
         "proof",
@@ -511,7 +512,8 @@
       "milestone": "M2",
       "status": "implemented",
       "proof_targets": [
-        "PRF-007"
+        "PRF-007",
+        "PRF-032"
       ],
       "verification": [
         "proof",
@@ -527,12 +529,15 @@
       "implementation_note": "Abstract isolated-slot model plus real adapter barriers and injected failures. No claim that the slot model is already a proved refinement of this adapter or a qualified power-loss model.",
       "keystones": [
         "fn-sf-crash-realizes-every-admissible-image",
+        "fn-sf-recovery-crash-realizes-every-admissible-image",
+        "fn-sf-recovery-admissible-image-facts",
         "fn-sf-crash-preserves-state",
         "fn-sf-stable-records-prefix-of-crash",
+        "fn-sf-recovery-crash-image-extends-stable-records",
         "fn-sn-open-observed-not-ready-before-five-barriers",
         "fn-sn-open-observed-five-barriers-open-ready"
       ],
-      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). The crash relation realizes every admissible image, stable records are a prefix of any crash image, and the five barriers are what open a reopened store. Open, and named by review finding D4: the images are record-granular. Byte-level torn writes are planning/lanes/DESIGN-crash-model-v2-summary.md (K1 to K11), a design, so 'every crash point' is not claimed for the byte layer. Open and newly named (decision D14-a, 2026-09-20): the kernel's crash-image predicate has no freedom for a record that recovery replayed from the view and has not yet re-fenced, so a crash in the recovery window (run_store.py:1179-1200, before fsync_dir(self.transactions) at 1187) produces an image fn-sf-crash-imagep does not admit. Nothing acknowledged is at risk there -- that state carries no success -- but the obligation is recorded as K2r of specs/crash-model-v2.md and is not proved."
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). The crash relation realizes every admissible image, stable records are a prefix of any crash image, and the five barriers are what open a reopened store. Open, and named by review finding D4: the images are record-granular. Byte-level torn writes are planning/lanes/DESIGN-crash-model-v2-summary.md (K1 to K11), a design, so 'every crash point' is not claimed for the byte layer. The recovery-window gap decision D14-a named is CLOSED at the kernel by decision D14-b (2026-09-20, lane w10/kernel-freedom), in a shape that decision did not propose. fn-sf-recovery-crash-imagep is a second recognizer for what the platform may leave -- the stable list, that list plus the data-durable candidate, or, in the recovery window with an empty success history, that list without its last element -- and it is used as the conclusion of crash-model-v2 K2, never as a reopen premise. fn-sf-crash-imagep is unchanged: widening it is FALSE for the composition, because an owner reopened on an image is a recovery-window state whose own success history is empty while its LEDGER names records earlier processes acknowledged, and which of a state's records are fenced is a fact about the byte store's pending list rather than about the kernel state. The counterexample is mechanized in tests/acl2/owner-tests.lisp and tests/acl2/store-observed-traces-tests.lisp. What the kernel now proves is fn-sf-recovery-admissible-image-facts: an acknowledged pair names a record of every image the platform may leave, the rolled-back one included. Still open: the frontier sub-case K2f, where the recovery window is entered with a pending frontier rename and a crash rolls the frontier back to a value the kernel does not hold."
     },
     {
       "id": "FLR-002",
