@@ -13,11 +13,11 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 226 |
 | Certification roots in the Makefile | 229 |
 | Books inside the root closure | 225 |
-| `defthm` and `defthmd` events | 4198 |
-| `defun` events | 3111 |
+| `defthm` and `defthmd` events | 4219 |
+| `defun` events | 3112 |
 | Functions with verified guards | 1242 |
 | Functions declared `:verify-guards nil` and never verified | 141 |
-| Functions left at the default with an explicit guard | 1280 |
+| Functions left at the default with an explicit guard | 1281 |
 | Functions left at the default with no guard | 448 |
 | `assert-event` checks | 4032 |
 | `must-fail` checks | 59 |
@@ -150,8 +150,8 @@ that `make certify` requests.
 | `books/owner-invariants.lisp` | root | 74 | 7 | 0/0/0/7 | 0 | 0 | 0 |
 | `books/owner.lisp` | root | 33 | 56 | 0/3/53/0 | 0 | 0 | 0 |
 | `books/path.lisp` | root | 0 | 21 | 0/0/21/0 | 0 | 0 | 0 |
-| `books/peer-feed-invariants.lisp` | root | 69 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/peer-feed.lisp` | root | 35 | 99 | 3/0/96/0 | 0 | 0 | 0 |
+| `books/peer-feed-invariants.lisp` | root | 90 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/peer-feed.lisp` | root | 35 | 100 | 3/0/97/0 | 0 | 0 | 0 |
 | `books/policy-invariants.lisp` | root | 32 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/policy.lisp` | root | 13 | 29 | 1/0/28/0 | 0 | 0 | 0 |
 | `books/principal-invariants.lisp` | root | 19 | 0 | 0/0/0/0 | 0 | 0 | 1 |

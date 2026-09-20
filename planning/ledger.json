@@ -236,15 +236,15 @@
     "books": 226,
     "books_in_root_closure": 225,
     "roots": 229,
-    "theorems": 4198,
-    "functions": 3111,
+    "theorems": 4219,
+    "functions": 3112,
     "assert_events": 4032,
     "must_fails": 59,
     "encapsulates": 15,
     "guards": {
       "verified": 1242,
       "declared-off": 141,
-      "default-guarded": 1280,
+      "default-guarded": 1281,
       "default-unguarded": 448
     },
     "suspect_theorems": 31,
@@ -2768,7 +2768,7 @@
       "book": "books/peer-feed-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 69,
+      "theorems": 90,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -2796,11 +2796,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 35,
-      "functions": 99,
+      "functions": 100,
       "guards": {
         "verified": 3,
         "declared-off": 0,
-        "default-guarded": 96,
+        "default-guarded": 97,
         "default-unguarded": 0
       },
       "verify_guards_events": 3,
