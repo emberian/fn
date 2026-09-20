@@ -659,8 +659,16 @@
   (implies (fn-own-feed-article-of octets)
            (fn-article-syntax-p (fn-own-feed-article-of octets))))
 
+; Guard verified, so the owner's own guard-verified path may call it: the
+; obligation is `fn-af-proto-article-check''s, and
+; `fn-own-feed-article-of-is-syntax' discharges it.
 (defun fn-own-feed-groups-of (octets)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t
+                  :guard-hints (("Goal"
+                                 :use fn-own-feed-article-of-is-syntax
+                                 :in-theory
+                                 (disable fn-own-feed-article-of-is-syntax
+                                          fn-own-feed-article-of)))))
   (let ((a (fn-own-feed-article-of octets)))
     (if (null a)
         nil
@@ -670,7 +678,12 @@
           nil)))))
 
 (defun fn-own-feed-path-of (octets)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t
+                  :guard-hints (("Goal"
+                                 :use fn-own-feed-article-of-is-syntax
+                                 :in-theory
+                                 (disable fn-own-feed-article-of-is-syntax
+                                          fn-own-feed-article-of)))))
   (let ((a (fn-own-feed-article-of octets)))
     (if (null a) nil (fn-af-path-field-value a))))
 
@@ -844,7 +857,7 @@
 ; `origin' is nil for a POST and the peer name for a transit article; `msgid'
 ; is the Message-ID as octets and `octets' the article as accepted.
 (defun fn-own-feed-accept (tbl origin msgid octets tick)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (fn-own-feed-enqueue-all
    (fn-own-feed-targets tbl origin (fn-own-feed-groups-of octets)
                         (fn-own-feed-path-of octets))
@@ -1090,8 +1103,9 @@
                        (fn-frame-item
                         2 (car (mv-nth 1 (fn-feed-tick-step
                                           (fn-own-feed-find peer tbl) obs)))))))
-  :hints (("Goal" :in-theory (e/d (fn-own-feed-tick-peer fn-own-feed-find)
-                                  (fn-feed-tick-step mv-nth)))))
+  :hints (("Goal" :in-theory (e/d (fn-own-feed-tick-peer fn-own-feed-find
+                                   fn-feed-tick-step fn-feed-offer)
+                                  (fn-feedp fn-feed-selection)))))
 
 ; -----------------------------------------------------------------------------
 ; The FNFD records each transition authorizes
@@ -1111,7 +1125,7 @@
     nil))
 
 (defun fn-own-feed-accept-records (tbl origin msgid octets tick)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (fn-own-feed-enqueue-records
    (fn-own-feed-targets tbl origin (fn-own-feed-groups-of octets)
                         (fn-own-feed-path-of octets))
