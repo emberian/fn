@@ -10,22 +10,22 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 263 |
-| Certification roots in the Makefile | 262 |
-| Books inside the root closure | 262 |
-| `defthm` and `defthmd` events | 5073 |
-| `defun` events | 3657 |
+| Books read | 264 |
+| Certification roots in the Makefile | 263 |
+| Books inside the root closure | 263 |
+| `defthm` and `defthmd` events | 5117 |
+| `defun` events | 3685 |
 | Functions with verified guards | 1379 |
-| Functions declared `:verify-guards nil` and never verified | 166 |
+| Functions declared `:verify-guards nil` and never verified | 189 |
 | Functions left at the default with an explicit guard | 1623 |
-| Functions left at the default with no guard | 489 |
+| Functions left at the default with no guard | 494 |
 | `assert-event` checks | 4877 |
 | `must-fail` checks | 59 |
-| `encapsulate` events | 16 |
+| `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 38 |
 | Export-hygiene warnings | 72 |
 | Teeth-form warnings | 0 |
-| Include-hygiene warnings | 88 |
+| Include-hygiene warnings | 84 |
 | Host-names warnings | 0 |
 | Hand-written-record warnings | 19 |
 
@@ -85,7 +85,7 @@ that `make certify` requests.
 | `books/article-work-scanners.lisp` | root | 12 | 3 | 0/0/0/3 | 0 | 0 | 0 |
 | `books/article-work.lisp` | root | 23 | 6 | 0/0/0/6 | 0 | 0 | 0 |
 | `books/article.lisp` | root | 24 | 45 | 45/0/0/0 | 0 | 0 | 0 |
-| `books/assumptions.lisp` | root | 12 | 8 | 0/0/0/8 | 0 | 0 | 0 |
+| `books/assumptions.lisp` | root | 15 | 11 | 0/1/0/10 | 0 | 0 | 0 |
 | `books/auth-secret.lisp` | root | 16 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/bp-adu.lisp` | root | 18 | 41 | 7/0/34/0 | 0 | 0 | 0 |
 | `books/bp-fragment-invariants.lisp` | root | 40 | 3 | 0/0/0/3 | 0 | 0 | 2 |
@@ -116,12 +116,13 @@ that `make certify` requests.
 | `books/bp-workflow-records.lisp` | root | 0 | 12 | 10/0/2/0 | 0 | 0 | 0 |
 | `books/bp-workflow-transport-invariants.lisp` | root | 32 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/bp-workflow.lisp` | root | 0 | 111 | 0/0/111/0 | 0 | 0 | 0 |
-| `books/byte-store-invariants.lisp` | root | 130 | 11 | 0/8/0/3 | 0 | 0 | 0 |
+| `books/byte-store-invariants.lisp` | root | 127 | 8 | 0/7/0/1 | 0 | 0 | 0 |
 | `books/byte-store-programs.lisp` | root | 1 | 29 | 0/29/0/0 | 32 | 0 | 0 |
+| `books/byte-store-scan.lisp` | root | 38 | 28 | 0/23/0/5 | 0 | 0 | 0 |
 | `books/byte-store.lisp` | root | 10 | 58 | 5/40/13/0 | 0 | 0 | 0 |
 | `books/cbor-invariants.lisp` | root | 36 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/cbor.lisp` | root | 12 | 24 | 24/0/0/0 | 0 | 0 | 0 |
-| `books/checkpoint-codec.lisp` | root | 99 | 32 | 13/0/18/1 | 0 | 0 | 1 |
+| `books/checkpoint-codec.lisp` | root | 105 | 32 | 13/0/18/1 | 0 | 0 | 1 |
 | `books/checkpoint-publish.lisp` | root | 53 | 49 | 13/0/36/0 | 0 | 0 | 0 |
 | `books/checkpoint.lisp` | root | 18 | 14 | 12/0/2/0 | 0 | 0 | 0 |
 | `books/clock-invariants.lisp` | root | 10 | 0 | 0/0/0/0 | 0 | 0 | 1 |
