@@ -323,3 +323,16 @@ equivalences, and then trial `defprod :layout :list` on that cluster's one
 record behind its own `-fty.lisp` book so the include stays local. The
 scratch trial recorded in `planning/deputies/core.md` says what one
 `defprod` costs to include on this laptop.
+
+### Never enable a vocabulary book-wide
+
+An includer that needs another cluster's withdrawn vocabulary enables it in
+the one `verify-guards` or `defthm` hint that needs it, never with a
+book-level `(in-theory (enable ...))`. Measured twice on 2026-09-20: a
+book-wide enable of the codec vocabularies made every `:guard t` definition
+pay for the open codec (`books/config.lisp`, minutes per form), and in
+`books/checkpoint-codec.lisp` it opened the parse result to `car`/`cadr` so a
+domain lemma stated in accessor vocabulary stopped matching the induction
+goals. Widening a book-wide enable buys one form and costs the next; the
+cure is always to narrow it to the form. `fn-codecs-includer-vocabulary` is
+the one name to reach for when a single name suffices.
