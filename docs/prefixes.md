@@ -89,6 +89,9 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-defrecord-` | `defrecord` | `:program`-mode term and symbol plumbing behind the `fn-defrecord` and `fn-defrecord-export` macros; no definitional axiom, so no rule and nothing exported |
 | `fn-deftransition-` | `deftransition` | The same, behind `fn-deftransition-closed` and `fn-deftransition` |
 | `fn-drt-` | `tests/acl2/defrecord-tests` | The three throwaway records and the one transition that audit what the two macros generate; nothing outside that test book uses them |
+| `fn-sn-` | `store-node`, `store-node-invariants`, `store-node-resolution` | Live file/node composition: pending record binding, actual completion, refusal and known-abort resolution, observed opening |
+| `fn-frame-` | `frame`, `frame-invariants` | The one durable frame grammar (magic, version, kind, bounded length, payload, 32-octet trailer), its journal field grammar, and the constrained trailer function A-CRYPTO |
+| `fn-feed-` | `peer-feed`, `peer-feed-invariants`, `tests/acl2/peer-feed-tests` | The outbound feed machine of specs/peering.md §3: the per-peer feed record (queue of (message-id, offer-state), backoff, in-flight offer, attempt counter), enqueue on a durable local acceptance, selection under the scheduler's contact window, the RFC 3977 §6.3.2 / RFC 4644 response-code map, the FNFD journal record kinds and their frame codec, the replay fold and the restart that resolves an in-flight offer by CHECK/IHAVE |
 
 Host-only wrappers in `host/*.lisp` use `fn-store-`, `fn-bpreq-`, `fn-bpwf-`,
 `fn-bprj-` and similar; they are `:program` mode and outside the proof boundary.

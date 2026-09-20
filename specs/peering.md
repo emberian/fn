@@ -1123,3 +1123,39 @@ functions and the step is deferred (`:verify-guards nil`): they are
 the `verify-guards` events are the next packet's first task (the callees
 are verified; the obligations are the node-statep-to-retain-statep bridge).
 
+
+## Status: the outbound feed (packet K2, lane `w6/peering-feed`)
+
+What is built, where it differs from the design above, and what is open. The
+inbound half's rows are the sibling lane's and are not repeated here.
+
+| Design text | Built as | Difference |
+| --- | --- | --- |
+| §3.1 `fn-feed-make (peer queue contact backoff-until conn next-attempt)` | `books/peer-feed.lisp` `fn-feed-make (peer limits queue contact backoff-until conn next-attempt)` | The feed carries a `limits` record (max-queue, backoff base, retry bound, streaming) copied from the peer record's outbound half at open. The book therefore does not include `peer-config`, `fn-feedp` is self-contained, and the owner stays the one place that reads a `fn-cfg-peerp`. |
+| §3.1 "Message-IDs" | `fn-frame-textp` octets | Peer names and Message-IDs are bounded non-empty UTF-8 octet lists — the transit vocabulary of `books/peer-inbound.lisp` and exactly the `:text` field type of the FNFD records — so no string conversion happens between the state and the journal. The scheduler's `fn-sched-contact-peer` is a string; binding it to `fn-feed-peer` is the owner's obligation and is not proved. |
+| §3.1 "at most one entry in flight … up to inflight-window for streaming" | `(<= (fn-feed-inflight-count (fn-feed-queue f)) 1)` | fn does not take RFC 4644's streaming window yet. One in flight per peer is a conjunct of `fn-feedp`, which is what makes exactly-once an argument about one entry. Widening it is a later packet and would change the keystones' proofs, not their statements. |
+| §3.2 `fn-feed-observe` | the same code map | `335`/`238` send, `235`/`239`/`435`/`438`/`437`/`439` done, `431`/`436` exponential backoff with a one-hour ceiling then the retry bound, `400` and any other code loss. |
+| §3.3 FNFD, "one file per peer under `<journal>/feed/<peer>/`" | `<journal>/feed/<peer>.fnfd`, a 4-octet big-endian length before each frame | The length prefix is file layout, not a frame field: it is what lets the host hand ACL2 one whole record at a time, and a torn tail ends the record stream. |
+| §4 K5 `fn-feed-at-most-one-accepted-outcome` | `books/peer-feed-invariants.lisp`, same name | The hypothesis is `fn-feed-drivenp`, a check over the fold that each record was admissible in the state the fold had reached — never the conclusion. |
+| §4 K5 `fn-feed-done-is-never-reoffered` | `fn-feed-done-is-never-selected` + `fn-feed-tick-step-offers-the-selection` | Stated over `fn-feed-tick-step`, the function the host calls, rather than over `fn-ideal-run`, which does not yet carry the feed. |
+| §4 K5 `fn-feed-replay-is-the-live-feed-modulo-inflight` | `fn-feed-replay-is-the-fold` and the ground witness of `tests/acl2/peer-feed-tests.lisp` | **Open.** The general equation needs a second machine (a live run that emits its own journal) that this lane did not build. What is proved is that replay is a fold, plus the scenario on ground values. |
+| §4 K5 `fn-feed-restart-resolves-by-offer` | `fn-feed-restart-emits-no-transfer` + `fn-feed-restart-then-tick-offers` | Stated over `fn-feed-send` (the only producer of a TAKETHIS or an article block) and `fn-feed-tick-step`, not over `fn-ideal-restart`. |
+
+Open, recorded rather than weakened:
+
+- The scheduler's per-peer interface (a peer dimension on `fn-sched-item` and
+  per-peer `fn-sched-retries`) is designed and not built; the exact edit is in
+  [the lane handoff](../planning/lanes/HANDOFF-w6-peering-feed.md) and on the
+  board. Until it lands, a feed's contact is a `fn-sched-contactp` the owner
+  supplies and the scheduler does not know the feed exists.
+- `fn-feed-parse-response`: the RFC 3977 §3.2 status framing of a peer's reply
+  is read in `tools/run_feed.py`, not in ACL2. The decision the code carries is
+  ACL2's (`fn-feed-observe`); the three-digit split is not. An ACL2-side reader
+  closes it.
+- The feed is not yet a field of F_node's state, so K6's cost term
+  (`fn-cfg-max-queue-total`) and the `:feed-octets`/`:tick` event kinds are
+  untouched by this lane.
+- No INN and no second fn node has been fed by `tools/run_feed.py`; the only
+  peer it has driven is the two-node harness's fake
+  (`tests/twonode_gate_fake/tools/run_peer.py`), whose replies are that file's
+  and not ACL2's.
