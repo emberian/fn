@@ -312,6 +312,15 @@
 ; derives, and leaves them where the bridge can read them.  The obligation id
 ; and the subject are the host's digests, as for POST (fn-frame-digest is
 ; constrained and unattached).
+(defun fn-owner-group-octet-list (names)
+  ; Group NAMES as octets, so `fn-owner-submit-groups' holds one
+  ; representation whatever path filled it.
+  (declare (xargs :mode :program))
+  (if (consp names)
+      (cons (fn-record-string-octets (car names))
+            (fn-owner-group-octet-list (cdr names)))
+    nil))
+
 (defun fn-owner-transit-decide (id-octets subject-octets state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (f-get-global 'fn-owner state))
@@ -341,9 +350,21 @@
                  ; memberships (generation, msgid, octets, GROUPS, id,
                  ; subject, evidence, charge).  The generation passed here is
                  ; 0 because no element read from this list depends on it.
+                 ;
+                 ; It answers with STRINGS (`fn-record-octets-string', see
+                 ; books/peer-inbound.lisp fn-peer-scope-groups) where the
+                 ; POST path's `fn-inj-decision-groups' answers with octets,
+                 ; and the host reads ONE global for both.  Reading a string
+                 ; as an octet list raised `unexpected ACL2 octet-list
+                 ; result' inside `Owner.drain', which does not catch, so the
+                 ; OWNER PROCESS DIED on the first article a peer transferred
+                 ; -- the second half of the w10/v0-matrix board ASK.  The
+                 ; conversion is ACL2's own and happens here, so the two
+                 ; paths agree on a representation without Python choosing
+                 ; one.
                  (state (f-put-global 'fn-owner-submit-groups
                                       (if (equal (fn-peer-decision-kind d) :want)
-                                          (nth 3 args)
+                                          (fn-owner-group-octet-list (nth 3 args))
                                         nil)
                                       state))
                  (state (f-put-global 'fn-owner-transit-evidence

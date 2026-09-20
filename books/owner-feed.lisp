@@ -660,7 +660,7 @@
            (fn-article-syntax-p (fn-own-feed-article-of octets))))
 
 ; Guard verified, so the owner's own guard-verified path may call it: the
-; obligation is `fn-af-proto-article-check''s, and
+; obligation is `fn-af-relayed-article-check''s, and
 ; `fn-own-feed-article-of-is-syntax' discharges it.
 (defun fn-own-feed-groups-of (octets)
   (declare (xargs :guard t
@@ -672,7 +672,14 @@
   (let ((a (fn-own-feed-article-of octets)))
     (if (null a)
         nil
-      (let ((check (fn-af-proto-article-check a)))
+      ; The RELAYING agent's check (RFC 5537 section 3.6 step 1). The
+      ; article this reads is one this node has already accepted and
+      ; injected, so it carries Injection-Info, and the injecting agent's
+      ; check of section 3.4.1 answered `(:error :injection-info)` for it --
+      ; making this function answer NIL for every article, so
+      ; `fn-own-feed-offerablep`'s wildmat had nothing to match and NO PEER
+      ; WAS EVER A TARGET.
+      (let ((check (fn-af-relayed-article-check a)))
         (if (equal (fn-af-status-kind check) :ok)
             (fn-frame-item 2 check)
           nil)))))
@@ -688,7 +695,7 @@
     (if (null a) nil (fn-af-path-field-value a))))
 
 ; The parser stays SHUT below this line.  Opened, one goal about the feed
-; table pays for `fn-article-parse', `fn-af-proto-article-check' and the
+; table pays for `fn-article-parse', `fn-af-relayed-article-check' and the
 ; whole newsgroups grammar: the accept keystone went over two million steps
 ; before this (docs/proof-style.md sec. 9).
 (local (in-theory (disable fn-own-feed-article-of fn-own-feed-groups-of

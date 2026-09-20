@@ -282,12 +282,12 @@
     "books_in_root_closure": 274,
     "roots": 274,
     "theorems": 5506,
-    "functions": 3926,
-    "assert_events": 5310,
+    "functions": 3927,
+    "assert_events": 5315,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
-      "verified": 1458,
+      "verified": 1459,
       "declared-off": 190,
       "default-guarded": 1781,
       "default-unguarded": 497
@@ -470,14 +470,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 5,
-      "functions": 30,
+      "functions": 31,
       "guards": {
-        "verified": 30,
+        "verified": 31,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 30,
+      "verify_guards_events": 31,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 6,
@@ -5141,7 +5141,7 @@
         "default-unguarded": 4
       },
       "verify_guards_events": 0,
-      "assert_events": 31,
+      "assert_events": 36,
       "must_fails": 0,
       "defconsts": 11,
       "defmacros": 0,
@@ -7516,7 +7516,7 @@
     {
       "theorem": "fn-af-message-id-equalp-is-exact",
       "book": "books/article-fields.lisp",
-      "line": 311,
+      "line": 336,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-af-message-id-equalp with the conjuncts the hypotheses already assert struck out"
       ]
