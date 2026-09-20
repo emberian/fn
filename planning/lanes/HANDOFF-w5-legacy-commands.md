@@ -61,9 +61,18 @@ what carry the new commands through it.
   `run-20260920T031818Z-2f1d` (`persvati`,
   `build/acl2/certify-20260920T031820Z-1849413` on that host). The two
   keystones are in it with their statements untouched.
-- `books/nntp-legacy`, `books/nntp-effects`, the three nntp test books,
-  `books/served`, `books/ideal`: farm run
-  `run-20260920T0327*` -- see the board entry for its verdict.
+- `books/nntp-legacy`, `books/nntp-effects`, `tests/acl2/nntp-legacy-tests`,
+  `tests/acl2/nntp-tests`, `tests/acl2/nntp-reader-profile-tests`: **IN
+  FLIGHT, no verdict yet.** The explicit-root farm run is
+  `persvati:~/fn-lanes/w5-legacy-commands/build/acl2/certify-20260920T032319Z-1893328`
+  (`tests/acl2/nntp-teeth-tests` in the same run is already green). Harvest
+  it with `ssh persvati 'cd ~/fn-lanes/w5-legacy-commands && grep -n "ACL2
+  Error \[Failure\]" build/acl2/certify-20260920T032319Z-1893328/certify.log'`
+  and bring the certificates home with `tools/farm.py wait`. Nothing in this
+  lane's report claims these five are certified.
+- `tests/test_reader.py`, `tests/interop_nntplib.py` and `tests/interop_slrn.py`
+  were written but **not run**: each needs a reader process, which needs one
+  of the four ACL2 slots.
 
 ## Traps this lane paid for
 
