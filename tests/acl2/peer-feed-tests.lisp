@@ -320,6 +320,25 @@
 ; selects nothing however well the contact holds.
 (assert-event (null (fn-feed-selection (fn-feed-with-conn *ff1* nil) *ff-obs*)))
 
+; `fn-feed-done-is-never-selected' -- drop `(fn-feed-selection f obs)'.  That
+; hypothesis is not decoration; without it the theorem is FALSE, and this is
+; the counterexample the prover produced (`Subgoal 73'', lane
+; w6/peering-feed-4).  Take `msgid' to be NIL.  The feed below is `fn-feedp'
+; and has no connection, so it selects NOTHING; NIL is no Message-ID of its
+; queue, so `fn-feed-state-of' answers NIL, which is not `:queued'; and the
+; selection IS NIL, so the conclusion `(not (equal (fn-feed-selection f obs)
+; msgid))' fails on it.  Nothing is offered in that state, which is what
+; `fn-feed-tick-step-is-silent-without-a-selection' says, so the hypothesis
+; costs the keystone nothing.
+(defconst *ff-no-conn* (fn-feed-with-conn *ff1* nil))
+(assert-event (fn-feedp *ff-no-conn*))
+(assert-event (null (fn-feed-selection *ff-no-conn* *ff-obs*)))
+(assert-event (not (equal (fn-feed-state-of nil (fn-feed-queue *ff-no-conn*))
+                          :queued)))
+(assert-event (equal (fn-feed-selection *ff-no-conn* *ff-obs*) nil))
+(assert-event (not (not (equal (fn-feed-selection *ff-no-conn* *ff-obs*)
+                               nil))))
+
 ; `fn-feed-drop-needs-a-drop-record' -- the separating witness.  Replaying the
 ; journal WITHOUT its drop record leaves the entry queued, not dropped: the
 ; drop is in the record, not in the machine.
