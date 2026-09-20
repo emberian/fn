@@ -197,8 +197,22 @@ everything by design.
 - hbox, ACL2 8.7, farm `run-20260920T180725Z-ca18` (cache install: 177
   installed, 3 kept, 60 uncached): `books/deftransition`,
   `books/tcpcl-session`, `books/tcpcl-invariants`, `tests/acl2/tcpcl-tests`
-  and the re-run of `tests/acl2/defrecord-tests`. **See the final board note
-  for its verdict.**
+  and the re-run of `tests/acl2/defrecord-tests`. `books/deftransition`,
+  `books/tcpcl-records`, `books/tcpcl-octets`, `books/tcpcl-session` and
+  `books/tcpcl-invariants` certified with no ACL2 error;
+  `tests/acl2/tcpcl-tests` FAILED at an `assert-event` pinning
+  `(fn-tcl-encode *t-seg-1*)` against an octet vector. That assertion is a
+  ground evaluation of a function in `books/tcpcl-octets.lisp`, which this
+  lane does not touch and which certified unedited in the same run; this
+  lane's entire tcpcl diff is +16/-4 in `books/tcpcl-session.lisp` and
+  defines no function. Left failing and recorded (board note), not edited to
+  pass. `fn-tcl-refuse-preserves-sessionp` itself closes in 0.01 s and 1367
+  prover steps on `(:REWRITE FN-TCL-NEXT-PRESERVES-SESSIONP)`, the recognizer
+  shut, which is the measurement `fn-deftransition` exists for.
+- hbox, farm `run-20260920T182713Z-b95f`, exit 0: `tests/acl2/defrecord-tests`
+  in its final form (the two layout audits renamed `-unfolds` after the
+  earlier runs). That is the certificate that matches what is on disk; the
+  two earlier runs certified earlier revisions of the same book.
 - `make check` green. `python3 -m unittest tests.test_ledger
   tests.test_proof_profile`: 91 tests, all pass.
 - `python3 tools/ledger.py --write` run; `planning/ledger.md` and
