@@ -153,6 +153,31 @@ def success_markers(output: str, nonce: str) -> list[str]:
             for line in output.splitlines() if (match := pattern.fullmatch(line))]
 
 
+def book_result(book: str, output: str, exit_code: int | str, nonce: str,
+                certificate: bool) -> tuple[str, list[str]]:
+    """One book's verdict and, when it failed, why.
+
+    An exit code is not a verdict.  The driver ends in `(quit)`, which ACL2
+    reaches whether or not the inner `ld` returned on a failed `certify-book`,
+    so a book whose certification failed in 0.2 s still exits 0 -- on
+    2026-09-20 `tests/acl2/tcpcl-tests` was recorded that way in a farm run's
+    manifest, whose only per-book result field was that zero, and was read as
+    having passed.  The verdict is this book's own fresh nonce-tagged marker,
+    its own log clean of ACL2's failure markers, and a certificate on disk.
+    """
+    reasons: list[str] = []
+    if exit_code != 0:
+        reasons.append(f"ACL2 exited {exit_code}")
+    if success_markers(output, nonce) != [success_token(book, nonce)]:
+        reasons.append("no fresh success marker in this book's log")
+    observed = [marker for marker in FAILURE_MARKERS if marker in output]
+    if observed:
+        reasons.append("failure marker in this book's log: " + ", ".join(observed))
+    if not certificate:
+        reasons.append("no certificate on disk")
+    return ("passed" if not reasons else "failed"), reasons
+
+
 def digest(path: Path) -> str:
     hasher = hashlib.sha256()
     with path.open("rb") as source:
@@ -703,6 +728,11 @@ def main() -> int:
         if (ROOT / f"{book}.cert").is_file()
     }
     certificates_ok = len(certificates) == len(args.books)
+    verdicts = {book: book_result(book, outputs[book], exit_codes[book], nonce,
+                                  book in certificates)
+                for book in args.books}
+    book_results = {book: verdict for book, (verdict, _) in verdicts.items()}
+    book_failures = {book: reasons for book, (_, reasons) in verdicts.items() if reasons}
     try:
         source_digests_after = collect_book_sources(args.books)
     except ValueError as error:
@@ -715,6 +745,8 @@ def main() -> int:
     manifest.update(
         {
             "acl2_exit_codes": exit_codes,
+            "book_results": book_results,
+            "book_failures": book_failures,
             "book_wall_seconds": book_wall_seconds,
             "certify_wall_seconds": certify_wall_seconds,
             "start_order": start_order,
@@ -733,6 +765,7 @@ def main() -> int:
         version_result.returncode == 0
         and manifest["acl2_version"] is not None
         and all(code == 0 for code in exit_codes.values())
+        and all(verdict == "passed" for verdict in book_results.values())
         and marker_ok
         and certificates_ok
         and sources_unchanged
@@ -766,7 +799,10 @@ def main() -> int:
             except OSError as error:
                 manifest["cert_cache"] = {"error": str(error)}
     else:
-        manifest["failure"] = "ACL2 did not produce complete clean certification evidence. See certify.log."
+        failed = [book for book, verdict in book_results.items() if verdict == "failed"]
+        manifest["failure"] = (
+            "ACL2 did not produce complete clean certification evidence. See certify.log."
+            + (" Books that failed: " + ", ".join(failed) if failed else ""))
     write_json(run_dir / "manifest.json", manifest)
 
     if not success:

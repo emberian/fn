@@ -401,8 +401,14 @@ def certified_books(manifests: list[dict],
         exits = manifest.get("acl2_exit_codes") or {}
         evidence = str(manifest.get("evidence", "<in-memory manifest>"))
         origin = manifest_origin(manifest, default_origin)
+        # The runner's own per-book verdict, when the manifest carries one.  An
+        # exit code of 0 is not a verdict: the driver's `(quit)` exits 0 after a
+        # failed `certify-book` too, so this is the field that separates them.
+        results = manifest.get("book_results") or {}
         for book, token in zip(requested, expected):
             if token is not None and token not in observed:
+                continue
+            if results and results.get(book) != "passed":
                 continue
             source = sources.get(f"{book}.lisp")
             certificate = certificates.get(book)
