@@ -258,9 +258,17 @@ Durable scheduling is `implemented` (`REP-005`): all three scheduler roots
 pass the farm gate of `dev` `bdd59d2`. Two cautions travel with that status —
 both aging keystones were false as stated until `79e5227`, and conditional
 progress holds only under the constrained `fn-assume-fairness-contact-index`.
-TCPCLv4 is the cluster with **no farm gate at all**: it arrived with `c8886ee`
-itself, `books/tcpcl-invariants` is open at C2 and the test root is behind it.
-See [the wave record](evidence/wave-realignment-2026-09-19.md) §1.
+TCPCLv4 arrived with `c8886ee` and no farm gate at all; C1 to C4 were then
+closed by `w6/tcpcl-c4`, and `w9/dtn-e2e` gave the cluster its first **running**
+evidence: `books/tcpcl-session` certifies with an O(1)-per-chunk served-path
+guard, a native image carrying the layer builds, and `tools/tcpcl_lab.py`
+passes six scenarios — including a bundle each way between two images on
+loopback and one each way with dtn7-rs 0.21.0 over RFC 9174. That closes v0.4's
+gate, "a two-node transfer over fn's own convergence layer", and nothing more:
+the image is the DTN-only build list, there is no BP node behind the layer, and
+`books/tcpcl-invariants` had no verdict against the new text when this was
+written. See [the evidence](evidence/tcpcl-dtn-w9-2026-09-20.md) and
+[the wave record](evidence/wave-realignment-2026-09-19.md) §1.
 
 ## M5: bounded long-lived operation
 
