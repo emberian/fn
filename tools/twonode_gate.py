@@ -72,11 +72,23 @@ ABSENT_ID = "<absent@example.invalid>"
 
 
 def article(msgid: str, group: str, subject: str, body: str, path: str = "") -> bytes:
-    """An article as octets, CRLF, the shape tools/run_store.py post takes."""
+    """An article as octets, CRLF, the shape tools/run_store.py post takes.
+
+    The `Date` is not decoration. RFC 5536 section 3.1.1 makes it mandatory
+    and `fn-peer-decide-transfer` refuses an article that carries neither it
+    nor an Injection-Date with `437 transfer rejected; no Injection-Date or
+    Date`. The local store CLI accepts one without, so the omission is
+    invisible until an article crosses -- and then it makes every transfer a
+    refusal AND every duplicate row read as an acceptance, because nothing
+    crossed for them to be duplicates of. Found by tools/v0_matrix.py
+    (lane w10/v0-matrix, board 2026-09-20)."""
     headers = ["Path: {}!not-for-mail".format(path)] if path else []
     headers += ["From: gate@example.invalid",
                 "Subject: {}".format(subject),
                 "Newsgroups: {}".format(group),
+                "Date: {}".format(
+                    dt.datetime.now(dt.timezone.utc).strftime(
+                        "%a, %d %b %Y %H:%M:%S +0000")),
                 "Message-ID: {}".format(msgid)]
     return ("\r\n".join(headers) + "\r\n\r\n" + body + "\r\n").encode()
 
@@ -125,6 +137,27 @@ import argparse, json, os, socket, sys, time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from drive import Conn                 # tools/deploy_gate.py's driver
+
+
+def rfc5322_now():
+    """RFC 5536 section 3.1.1 makes Date mandatory, and transit enforces it."""
+    return time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime())
+
+
+def article(msgid, group, subject, body, path=""):
+    """The same shape tools/twonode_gate.py builds, on the host side.
+
+    This function was CALLED by `post` and never defined, so every
+    owner-feed post raised `NameError` and was recorded as an article that
+    did not become durable -- in a scenario that had been written and never
+    run."""
+    headers = ["Path: {}!not-for-mail".format(path)] if path else []
+    headers += ["From: gate@example.invalid",
+                "Subject: {}".format(subject),
+                "Newsgroups: {}".format(group),
+                "Date: {}".format(rfc5322_now()),
+                "Message-ID: {}".format(msgid)]
+    return ("\r\n".join(headers) + "\r\n\r\n" + body + "\r\n").encode()
 
 
 def send_block(conn, lines):
@@ -262,6 +295,7 @@ def relay(args):
     # inside the article, so a correct server says 335 and then rejects.
     loop = ["Path: {}!not-for-mail".format(args.loop_identity),
             "From: gate@example.invalid", "Subject: loop", "Newsgroups: " + args.group,
+            "Date: " + rfc5322_now(),
             "Message-ID: " + args.loop_msgid, "",
             "This article already names the target node in its Path."]
     out["loop_offer"] = conn.cmd("IHAVE " + args.loop_msgid)[0]

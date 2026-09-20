@@ -266,9 +266,17 @@ class Acl2Owner(Acl2Store):
         scope, loop, history, date, capacity -- is fn-peer-decide-transfer's;
         this reads its answer.
         """
+        # `metadata` returns what `fn-store-identity-text` rendered, and
+        # frame_bridge.identity_text is `(self, identity: bytes) -> bytes`:
+        # both of these are already octets, exactly as `prepare` above passes
+        # `obligation_id` straight to `literal`. Encoding them again raised
+        # AttributeError inside `drain`, which does not catch, so the OWNER
+        # PROCESS DIED on the first article any peer transferred to it.
+        # Found by tools/v0_matrix.py on persvati (lane w10/v0-matrix,
+        # a016ca0, not merged to dev); taken here because this lane cannot
+        # run a two-node feed without it.
         kind = self._symbol_any("(fn-owner-transit-decide '{} '{} state)".format(
-            self.literal(obligation.encode("utf-8")),
-            self.literal(subject.encode("utf-8"))))
+            self.literal(obligation), self.literal(subject)))
         reason = self._symbol_any("(fn-owner-transit-reason state)")
         return kind, reason
 
