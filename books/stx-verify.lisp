@@ -232,11 +232,40 @@
            :use ((:instance fn-stx-printablep-of-revappend
                             (a (fn-stx-decimal-rev n)) (b nil))))))
 
+(defthm fn-stx-reason-token-is-printable
+  (fn-stx-printablep (fn-stx-reason-token detail)))
+
+(defthm fn-stx-keyring-suffix-is-printable
+  (fn-stx-printablep (fn-stx-keyring-suffix generation))
+  :hints (("Goal" :in-theory (disable (:d fn-stx-decimal-octets))
+           :use ((:instance fn-stx-decimal-octets-are-printable
+                            (n generation))))))
+
+; The item is a rendered token, so it is proved the way
+; books/nntp-legacy.lisp proves fn-nntp-safe-group-name-renders-a-clean-field:
+; the renderer's callees are closed and their printability lemmas are cited by
+; :use.  Left open, fn-stx-decimal-octets exposes (revappend d nil), which the
+; std/lists rev rules turn into (rev d) -- a term no lemma here is about, and
+; the checkpoint the first certification stopped on
+; (run-20260920T053155Z, books--stx-verify.certify.log:1751, Subgoal 14').
 (defthm fn-stx-verified-item-is-printable
-  (fn-stx-printablep (fn-stx-verified-item verdict)))
+  (fn-stx-printablep (fn-stx-verified-item verdict))
+  :hints (("Goal"
+           :in-theory (disable (:d fn-stx-hex-octets) (:d fn-stx-reason-token)
+                               (:d fn-stx-keyring-suffix)
+                               (:d fn-stx-decimal-octets) (:d fn-stx-decimal-rev))
+           :use ((:instance fn-stx-hex-octets-are-printable
+                            (octets (fn-stx-verdict-detail verdict)))
+                 (:instance fn-stx-reason-token-is-printable
+                            (detail (fn-stx-verdict-detail verdict)))
+                 (:instance fn-stx-keyring-suffix-is-printable
+                            (generation (fn-stx-verdict-generation verdict)))))))
 
 (defthm fn-stx-verified-item-is-non-empty
-  (consp (fn-stx-verified-item verdict)))
+  (consp (fn-stx-verified-item verdict))
+  :hints (("Goal" :in-theory (disable (:d fn-stx-hex-octets) (:d fn-stx-reason-token)
+                                      (:d fn-stx-keyring-suffix)
+                                      (:d fn-stx-decimal-octets)))))
 
 ; Three outcomes stay distinct all the way out (D13): the rendered item
 ; begins with a different token for each member of *fn-stx-verdicts*, so no
