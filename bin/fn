@@ -409,6 +409,36 @@ def command_group(settings, args):
                     "group {} {}".format(args.action, args.name))
 
 
+def command_peer(settings, args):
+    """`fn peer add|remove|list`: the peer table, as configuration records.
+
+    A peer delta is a configuration record like a group delta, so it needs
+    the writer lock and the owner must be stopped for `add` and `remove`;
+    `list` reads the replayed configuration and runs against a live owner's
+    store read-only.  Every field of the record is decided by ACL2
+    (`fn-store-cfg-set-peer`, host/store-node-host.lisp); this function
+    carries the operator's words and the exit code.
+    """
+    if args.action in ("add", "remove"):
+        if not args.name:
+            return EXIT_USAGE, "peer {} needs a peer name".format(args.action)
+        control = settings.control()
+        if owner_probe(control) is not None:
+            return EXIT_REFUSED, ("peer {} {} an owner is live on {}; a configuration record "
+                                  "needs the writer lock, so stop the service first"
+                                  .format(args.action, args.name, control))
+    namespace = SimpleNamespace(
+        store=settings.require_store(), action=args.action, name=args.name,
+        path_identity=args.path_identity, nntp=args.nntp, bp=args.bp,
+        inbound_groups=args.inbound_groups, inbound_max_octets=args.inbound_max_octets,
+        inbound_max_inflight=args.inbound_max_inflight,
+        outbound_groups=args.outbound_groups, streaming=args.streaming,
+        max_queue=args.max_queue, backoff_ms=args.backoff_ms,
+        source_address=args.source_address, principal=args.principal)
+    return delegate(run_store.command_peer, namespace,
+                    "peer {} {}".format(args.action, args.name or ""))
+
+
 def command_status(settings, args):
     """Generation, article count, last anchor, and whether an owner is live.
 
@@ -500,6 +530,24 @@ def build_parser():
     group.add_argument("action", choices=("create", "retire"))
     group.add_argument("name")
 
+    peer = sub.add_parser("peer", help="add, remove or list a transit peer")
+    peer.add_argument("action", choices=("add", "remove", "list"))
+    peer.add_argument("name", nargs="?", default="")
+    peer.add_argument("--path-identity",
+                      help="the RFC 5537 path-identity this peer prepends (default: the name)")
+    peer.add_argument("--nntp", help="HOST:PORT of the peer's NNTP listener")
+    peer.add_argument("--bp", help="the peer's BP endpoint id (instead of --nntp)")
+    peer.add_argument("--inbound-groups", help="wildmat of what this peer may feed us")
+    peer.add_argument("--inbound-max-octets", type=int, default=1048576)
+    peer.add_argument("--inbound-max-inflight", type=int, default=16)
+    peer.add_argument("--outbound-groups", help="wildmat of what we feed this peer")
+    peer.add_argument("--streaming", action="store_true",
+                      help="offer with CHECK/TAKETHIS (RFC 4644) rather than IHAVE")
+    peer.add_argument("--max-queue", type=int, default=1024)
+    peer.add_argument("--backoff-ms", type=int, default=1000)
+    peer.add_argument("--source-address", help="the address this peer connects from")
+    peer.add_argument("--principal", help="reserved: a keyring principal id")
+
     status = sub.add_parser("status", help="generation, articles, anchor, owner liveness")
     status.add_argument("--control", help="control socket path")
 
@@ -538,7 +586,7 @@ def overrides(settings, args):
 
 
 COMMANDS = {"init": command_init, "run": command_run, "post": command_post,
-            "group": command_group, "status": command_status,
+            "group": command_group, "peer": command_peer, "status": command_status,
             "recover": command_recover, "anchor": command_anchor}
 
 

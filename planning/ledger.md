@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 239 |
-| Certification roots in the Makefile | 238 |
-| Books inside the root closure | 238 |
-| `defthm` and `defthmd` events | 4522 |
-| `defun` events | 3291 |
+| Books read | 241 |
+| Certification roots in the Makefile | 240 |
+| Books inside the root closure | 240 |
+| `defthm` and `defthmd` events | 4538 |
+| `defun` events | 3300 |
 | Functions with verified guards | 1294 |
 | Functions declared `:verify-guards nil` and never verified | 151 |
-| Functions left at the default with an explicit guard | 1381 |
+| Functions left at the default with an explicit guard | 1390 |
 | Functions left at the default with no guard | 465 |
-| `assert-event` checks | 4416 |
+| `assert-event` checks | 4447 |
 | `must-fail` checks | 59 |
 | `encapsulate` events | 15 |
 | Theorems flagged SUSPECT by shape | 32 |
@@ -177,6 +177,7 @@ that `make certify` requests.
 | `books/retention-invariants.lisp` | root | 16 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/retention.lisp` | root | 36 | 38 | 38/0/0/0 | 0 | 0 | 2 |
 | `books/scheduler-invariants.lisp` | root | 59 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/scheduler-peers.lisp` | root | 16 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/scheduler.lisp` | root | 54 | 104 | 2/0/102/0 | 0 | 0 | 0 |
 | `books/served.lisp` | root | 52 | 34 | 2/4/28/0 | 0 | 0 | 0 |
 | `books/statement-invariants.lisp` | root | 59 | 1 | 0/0/0/1 | 0 | 0 | 0 |
@@ -276,6 +277,7 @@ that `make certify` requests.
 | `tests/acl2/relay-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 61 | 4 | 0 |
 | `tests/acl2/replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 65 | 0 | 0 |
 | `tests/acl2/retention-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 49 | 0 | 0 |
+| `tests/acl2/scheduler-peers-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/scheduler-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 103 | 0 | 0 |
 | `tests/acl2/served-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 58 | 0 | 0 |
 | `tests/acl2/statement-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 40 | 0 | 0 |

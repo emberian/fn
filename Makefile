@@ -221,6 +221,8 @@ ACL2_BOOKS ?= books/assumptions \
 	books/scheduler \
 	books/scheduler-invariants \
 	tests/acl2/scheduler-tests \
+	books/scheduler-peers \
+	tests/acl2/scheduler-peers-tests \
 	books/relay \
 	books/relay-invariants \
 	books/relay-crash-invariants \
