@@ -4,8 +4,6 @@
   "roots": [
     "books/defrecord",
     "books/deftransition",
-    "books/assumptions",
-    "tests/acl2/assumptions-tests",
     "books/acceptance-alloc",
     "tests/acl2/defrecord-tests",
     "books/acceptance",
@@ -92,8 +90,11 @@
     "tests/acl2/store-observed-traces-tests",
     "books/byte-store",
     "books/byte-store-invariants",
+    "books/byte-store-scan",
     "books/byte-store-programs",
     "tests/acl2/byte-store-tests",
+    "books/assumptions",
+    "tests/acl2/assumptions-tests",
     "tests/acl2/store-node-guards-tests",
     "tests/acl2/store-node-teeth-tests",
     "books/checkpoint",
@@ -250,24 +251,24 @@
     "tests/acl2/stx-tests"
   ],
   "totals": {
-    "books": 247,
-    "books_in_root_closure": 246,
-    "roots": 246,
-    "theorems": 4711,
-    "functions": 3437,
+    "books": 248,
+    "books_in_root_closure": 247,
+    "roots": 247,
+    "theorems": 4755,
+    "functions": 3465,
     "assert_events": 4648,
     "must_fails": 59,
-    "encapsulates": 16,
+    "encapsulates": 19,
     "guards": {
       "verified": 1360,
-      "declared-off": 165,
+      "declared-off": 188,
       "default-guarded": 1423,
-      "default-unguarded": 489
+      "default-unguarded": 494
     },
     "suspect_theorems": 35,
     "export_hygiene_warnings": 67,
     "teeth_form_warnings": 0,
-    "include_hygiene_warnings": 87,
+    "include_hygiene_warnings": 83,
     "host_names_warnings": 0,
     "hand_written_record_warnings": 26
   },
@@ -704,21 +705,23 @@
       "book": "books/assumptions.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 12,
-      "functions": 8,
+      "theorems": 15,
+      "functions": 11,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 1,
         "default-guarded": 0,
-        "default-unguarded": 8
+        "default-unguarded": 10
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
       "defmacros": 0,
-      "encapsulates": 7,
-      "includes": [],
+      "encapsulates": 9,
+      "includes": [
+        "byte-store-invariants"
+      ],
       "system_includes": [],
       "suspects": [],
       "read_error": null
@@ -1483,20 +1486,20 @@
       "book": "books/byte-store-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 130,
-      "functions": 11,
+      "theorems": 127,
+      "functions": 8,
       "guards": {
         "verified": 0,
-        "declared-off": 8,
+        "declared-off": 7,
         "default-guarded": 0,
-        "default-unguarded": 3
+        "default-unguarded": 1
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
       "defmacros": 0,
-      "encapsulates": 3,
+      "encapsulates": 1,
       "includes": [
         "byte-store",
         "frame"
@@ -1531,6 +1534,34 @@
         "store-files-traces"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/byte-store-scan.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 38,
+      "functions": 28,
+      "guards": {
+        "verified": 0,
+        "declared-off": 23,
+        "default-guarded": 0,
+        "default-unguarded": 5
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 3,
+      "includes": [
+        "byte-store-invariants",
+        "store-files-invariants"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -1617,7 +1648,7 @@
       "book": "books/checkpoint-codec.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 99,
+      "theorems": 105,
       "functions": 32,
       "guards": {
         "verified": 13,
@@ -7180,7 +7211,7 @@
       {
         "theorem": "fn-cpp-crash-marker-is-authority-before-selection-attempted",
         "book": "books/checkpoint-publish.lisp",
-        "line": 698,
+        "line": 704,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -7576,13 +7607,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/bp-release.lisp",
-        "line": 30,
-        "include": "assumptions",
-        "included": "books/assumptions.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "books/bp-workflow-binding-core.lisp",
         "line": 4,
         "include": "bp-workflow-invariants",
@@ -7681,24 +7705,10 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/relay.lisp",
-        "line": 30,
-        "include": "assumptions",
-        "included": "books/assumptions.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "books/retention.lisp",
         "line": 16,
         "include": "acceptance-alloc",
         "included": "books/acceptance-alloc.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/scheduler-invariants.lisp",
-        "line": 14,
-        "include": "assumptions",
-        "included": "books/assumptions.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -7825,13 +7835,6 @@
         "line": 3,
         "include": "../../books/article-public-bound",
         "included": "books/article-public-bound.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/assumptions-tests.lisp",
-        "line": 22,
-        "include": "../../books/assumptions",
-        "included": "books/assumptions.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
