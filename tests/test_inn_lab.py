@@ -105,8 +105,14 @@ class DryRun:
         (base / "inn/src").mkdir(parents=True, exist_ok=True)
         (base / "inn/src/inn-2.7.4.tar.gz.sha256").write_text(
             "0000fake0000  inn-2.7.4.tar.gz\n")
-        commit = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"],
-                                stdout=subprocess.PIPE, check=True).stdout.decode().strip()
+        # A farm gate runs from a `git archive` tree with no repository; the
+        # fake-host run needs only a revision string, so fall back to a fixed one.
+        try:
+            commit = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"],
+                                    stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                    check=True).stdout.decode().strip()
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            commit = "0123456789abcdef0123456789abcdef01234567"
         cls.rev = commit[:7]
         books = cls.home / "fn-gates/dev-{}/books".format(cls.rev)
         books.mkdir(parents=True)

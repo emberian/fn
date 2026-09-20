@@ -113,7 +113,7 @@ class ExitCodeTests(unittest.TestCase):
         output = io.StringIO()
         arguments = ["--store", "s", "--journal", "j", "--workflow-journal", "w",
                      "--bid", "bid-1", "--inventory", "i", "--adu", "a",
-                     "--source-eid", "dtn://sender/"]
+                     "--bundle", "b", "--source-eid", "dtn://sender/"]
         with mock.patch.object(run_bp_ingress, "ingest_bpa_adu", side_effect=pending), \
              contextlib.redirect_stdout(output):
             self.assertEqual(run_bp_ingress.main(arguments), run_store.EXIT_OK)
@@ -123,7 +123,7 @@ class ExitCodeTests(unittest.TestCase):
     def test_ingress_refusal_and_fault_stay_distinct(self):
         arguments = ["--store", "s", "--journal", "j", "--workflow-journal", "w",
                      "--bid", "bid-1", "--inventory", "i", "--adu", "a",
-                     "--source-eid", "dtn://sender/"]
+                     "--bundle", "b", "--source-eid", "dtn://sender/"]
         cases = ((run_bp_ingress.BpIngressError("capacity"), run_store.EXIT_REFUSED),
                  (run_store.StoreIndeterminate("uncertain"), run_store.EXIT_UNCERTAIN),
                  (run_store.StoreFault("invalid"), run_store.EXIT_FAULT))
@@ -207,7 +207,7 @@ class ReceiverBoundaryTests(unittest.TestCase):
                 store_root="/nonexistent", inbox_root="/nonexistent",
                 receipt_root="/nonexistent", bid="bid-é", inventory=list,
                 download=lambda bid: b"", delete=lambda bid: None,
-                source_eid="dtn://sender/")
+                bundle=lambda bid: b"", source_eid="dtn://sender/")
         self.assertNotIsInstance(raised.exception, UnicodeError)
         self.assertIn("BID", str(raised.exception))
 
@@ -219,7 +219,7 @@ class ReceiverBoundaryTests(unittest.TestCase):
                         store_root="/nonexistent", inbox_root="/nonexistent",
                         receipt_root="/nonexistent", bid=bid, inventory=list,
                         download=lambda found: b"", delete=lambda found: None,
-                        source_eid="dtn://sender/")
+                        bundle=lambda found: b"", source_eid="dtn://sender/")
 
 
 if __name__ == "__main__":
