@@ -15,6 +15,7 @@
 (include-book "../books/replay")
 (include-book "../books/store-config")
 (include-book "../books/identity")
+(include-book "../books/crypto-attach")
 (include-book "../books/article-fields")
 
 (defconst *fn-store-capacity* 1048576)
@@ -182,9 +183,36 @@
 ; -----------------------------------------------------------------------------
 ; Identity, charge and group bridge
 
+; The identity derivation, whole, in logic.
+;
+; Until books/crypto-attach.lisp existed, `fn-frame-digest' was a constrained
+; function with no realiser, so the host had to hash: ACL2 handed back the
+; fixed preimage head and Python (tools/frame_bridge.py) or the native host
+; (host/native/io.lisp) appended the payload and ran its own SHA-256.  That
+; was a second owner for a value ACL2 defines, which AGENTS.md forbids.  The
+; two wrappers below derive the identity end to end from the payload, and the
+; two prefix/digest wrappers that follow are kept ONLY so an old session
+; script does not break; nothing in this tree calls them any more.
+(defun fn-store-subject-id-of-payload (payload)
+  ; The canonical subject-v1 identity of an article payload, preimage and
+  ; digest both in ACL2.  The payload crosses the bridge; see
+  ; planning/lanes/HANDOFF-w9-digest.md for the measured cost.
+  (if (and (fn-cbor-octet-listp payload)
+           (<= (len payload) *fn-cbor-max-uint*))
+      (fn-id-subject-of-payload payload)
+    nil))
+
+(defun fn-store-obligation-id-of (msgid subject)
+  ; The canonical obligation-v1 identity, preimage and digest both in ACL2.
+  (if (and (fn-cbor-octet-listp msgid)
+           (<= (len msgid) *fn-cbor-max-uint*)
+           (fn-cbor-octet-listp subject)
+           (<= (len subject) *fn-cbor-max-uint*))
+      (fn-id-obligation-of msgid subject)
+    nil))
+
 (defun fn-store-subject-prefix (length)
-  ; The fixed head of a subject-v1 preimage.  The host appends the article to
-  ; this and hashes it, so a 32 KiB payload never crosses the bridge.
+  ; Superseded by fn-store-subject-id-of-payload; retained for compatibility.
   (if (and (natp length) (<= length *fn-cbor-max-uint*))
       (fn-id-subject-prefix length)
     nil))
