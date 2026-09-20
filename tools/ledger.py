@@ -375,6 +375,9 @@ class Book:
     in_theory_forms: list[object] = field(default_factory=list)
     # Each ``must-fail`` as (line, arguments), for the teeth-form lint.
     must_fail_forms: list[tuple[int, list]] = field(default_factory=list)
+    # Each non-local ``(include-book "x")`` as (line, reference), for the
+    # include-hygiene lint: a local include costs the includer nothing.
+    nonlocal_includes: list[tuple[int, str]] = field(default_factory=list)
 
 
 TRANSPARENT = {"local", "progn", "progn!", "with-output", "defsection", "defsection-progn"}
@@ -475,6 +478,8 @@ def record(book: Book, form: object, line: int, *, local: bool, suppressed: bool
             book.system_includes.append(form[1])
         else:
             book.includes.append(form[1])
+            if not local:
+                book.nonlocal_includes.append((line, form[1]))
         return
     if name == "in-theory" and len(form) >= 2:
         if not local:
@@ -787,8 +792,8 @@ def if_branches(form: object, found: list | None = None) -> list:
 # export and teeth lints
 # --------------------------------------------------------------------------
 #
-# Two shape lints, both WARN by default and both counted in the generated
-# ledger.  Neither is a claim that a theorem is wrong: they name the two ways
+# Three shape lints, all WARN by default and all counted in the generated
+# ledger.  None is a claim that a theorem is wrong: they name the three ways
 # this tree has repeatedly made later proofs expensive.
 #
 # * Export hygiene.  A book's micro discipline (`planning/deputies/BRIEF.md`)
@@ -799,6 +804,11 @@ def if_branches(form: object, found: list | None = None) -> list:
 # * Teeth form.  A `must-fail` whose body is a bare `thm` over free variables
 #   shows only that ACL2 did not prove a general claim, which a typo also
 #   achieves.  Teeth are concrete: a specific violating value.
+# * Include hygiene.  A non-local ``include-book`` of a book that ends with no
+#   withdrawal re-exports every enabled rule of that book into the includer and
+#   into everything above it.  `books/bp-ingress.lisp` took a non-local include
+#   of `article-properties` for one guard hint and turned a six-minute proof
+#   into an 1800 s timeout: 1.92M backchain frames, none of them useful.
 
 # One-argument applications of these are recognizers or arithmetic, not the
 # accessor-shaped rewrites the export lint is about.
@@ -1002,8 +1012,48 @@ def teeth_form(tree: "Tree") -> list[dict]:
     return findings
 
 
+def has_export_theory(book: Book) -> bool:
+    """Does this book withdraw anything on its way out?
+
+    The same computation the export-hygiene lint exempts a theorem by: the
+    rules a non-local top-level ``in-theory`` turns off, with ``deftheory``
+    names expanded.  A book that withdraws nothing exports its whole enabled
+    world, so what it costs an includer is not bounded by its interface.
+    """
+    return bool(book.disabled_rules)
+
+
+def included_path(book: Book, reference: str) -> str:
+    """The repository path a book's ``include-book`` string names."""
+    return resolve((Path(book.path).parent / reference).with_suffix(".lisp").as_posix())
+
+
+def include_hygiene(tree: "Tree") -> list[dict]:
+    """Non-local includes of local books that withdraw nothing on exit."""
+    findings: list[dict] = []
+    for book in sorted(tree.books.values(), key=lambda b: b.path):
+        for line, reference in book.nonlocal_includes:
+            target = tree.books.get(included_path(book, reference))
+            # A book this tree does not read (a system book, or a path that
+            # does not resolve) has no export theory to judge.
+            if target is None or target.read_error is not None:
+                continue
+            if has_export_theory(target):
+                continue
+            findings.append({
+                "book": book.path, "line": line, "include": reference,
+                "included": target.path,
+                "reason": ("re-export: the included book ends with no theory "
+                           "withdrawal, so every rule it leaves enabled is "
+                           "enabled here and above"),
+            })
+    return findings
+
+
 def lint_findings(tree: "Tree") -> dict[str, list[dict]]:
-    return {"export_hygiene": export_hygiene(tree), "teeth_form": teeth_form(tree)}
+    return {"export_hygiene": export_hygiene(tree),
+            "teeth_form": teeth_form(tree),
+            "include_hygiene": include_hygiene(tree)}
 
 
 def lint_warnings(tree: "Tree | None" = None) -> list[str]:
@@ -1016,6 +1066,9 @@ def lint_warnings(tree: "Tree | None" = None) -> list[str]:
     for entry in findings["teeth_form"]:
         lines.append(f"teeth form: {entry['book']}:{entry['line']}: "
                      f"{entry['check']}: {entry['reason']}")
+    for entry in findings["include_hygiene"]:
+        lines.append(f"include hygiene: {entry['book']}:{entry['line']}: "
+                     f"{entry['included']}: {entry['reason']}")
     return lines
 
 
@@ -1128,6 +1181,7 @@ def build_ledger(tree: Tree) -> dict:
     lints = lint_findings(tree)
     totals["export_hygiene_warnings"] = len(lints["export_hygiene"])
     totals["teeth_form_warnings"] = len(lints["teeth_form"])
+    totals["include_hygiene_warnings"] = len(lints["include_hygiene"])
     suspects = [{"theorem": name,
                  "book": tree.theorems[name].book,
                  "line": tree.theorems[name].line,
@@ -1177,10 +1231,11 @@ def ledger_markdown(ledger: dict) -> str:
         f"| Theorems flagged SUSPECT by shape | {totals['suspect_theorems']} |",
         f"| Export-hygiene warnings | {totals['export_hygiene_warnings']} |",
         f"| Teeth-form warnings | {totals['teeth_form_warnings']} |",
+        f"| Include-hygiene warnings | {totals['include_hygiene_warnings']} |",
         "",
         "## Lints",
         "",
-        "Two WARN lints, counted above and listed in full under `lints` in",
+        "Three WARN lints, counted above and listed in full under `lints` in",
         "[`ledger.json`](ledger.json). *Export hygiene* counts theorems a book",
         "leaves enabled whose shape rewrites downstream goals out of accessor",
         "vocabulary: an equality between two one-argument applications, or a",
@@ -1190,8 +1245,13 @@ def ledger_markdown(ledger: dict) -> str:
         "book defines and then withdraws -- is not counted. *Teeth form*",
         "counts `must-fail`",
         "checks whose body is a bare `thm`/`defthm` mentioning no constant, so",
-        "nothing in particular is refuted. Neither lint judges truth;",
-        "`python3 tools/ledger.py --check --strict` turns both into errors.",
+        "nothing in particular is refuted. *Include hygiene* counts non-local",
+        "`include-book` forms whose target is a local book that ends with no",
+        "theory withdrawal: such an include enables every rule of that book in",
+        "the includer and in everything above it. `books/bp-ingress.lisp` took",
+        "one for a single guard hint and turned a six-minute proof into an",
+        "1800 s timeout. No lint judges truth;",
+        "`python3 tools/ledger.py --check --strict` turns all three into errors.",
         "",
         "## Per book",
         "",
@@ -1390,7 +1450,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--check", action="store_true",
                         help="fail on an unknown or SUSPECT cited theorem, or stale output")
     parser.add_argument("--strict", action="store_true",
-                        help="with --check, fail on export-hygiene and teeth-form warnings")
+                        help="with --check, fail on any lint warning: export "
+                             "hygiene, teeth form or include hygiene")
     arguments = parser.parse_args(argv)
     if arguments.check:
         tree = load_tree()

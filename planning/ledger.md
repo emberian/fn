@@ -25,10 +25,11 @@ stale. Counts describe artifacts, not coverage; see
 | Theorems flagged SUSPECT by shape | 29 |
 | Export-hygiene warnings | 62 |
 | Teeth-form warnings | 0 |
+| Include-hygiene warnings | 92 |
 
 ## Lints
 
-Two WARN lints, counted above and listed in full under `lints` in
+Three WARN lints, counted above and listed in full under `lints` in
 [`ledger.json`](ledger.json). *Export hygiene* counts theorems a book
 leaves enabled whose shape rewrites downstream goals out of accessor
 vocabulary: an equality between two one-argument applications, or a
@@ -38,8 +39,13 @@ closing `in-theory` -- directly, or through a `deftheory` name the
 book defines and then withdraws -- is not counted. *Teeth form*
 counts `must-fail`
 checks whose body is a bare `thm`/`defthm` mentioning no constant, so
-nothing in particular is refuted. Neither lint judges truth;
-`python3 tools/ledger.py --check --strict` turns both into errors.
+nothing in particular is refuted. *Include hygiene* counts non-local
+`include-book` forms whose target is a local book that ends with no
+theory withdrawal: such an include enables every rule of that book in
+the includer and in everything above it. `books/bp-ingress.lisp` took
+one for a single guard hint and turned a six-minute proof into an
+1800 s timeout. No lint judges truth;
+`python3 tools/ledger.py --check --strict` turns all three into errors.
 
 ## Per book
 
