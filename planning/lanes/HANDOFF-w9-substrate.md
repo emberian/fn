@@ -11,6 +11,22 @@ SUB-002 to SUB-005; PRF-021 to PRF-025. The status table is
 and it is where every open obligation is written with its exact shape.
 Certification evidence: `tests/evidence/2026-09-20-substrate-transit.md`.
 
+## Certification, hbox, ACL2 8.7
+
+`books/stx-lace` and `books/stx-policy` are **certified**
+(`run-20260920T181308Z-0b1b` and `run-20260920T182629Z-333c`); so is the
+whole dependency closure, cached on hbox at `/tank/fn/certcache`.
+`books/stx-index` is **open** at `fn-stx-index-equivocators-agree`,
+`books/stx-epochs` is **open** at `fn-stx-commit-decode-is-a-commit`, and
+`books/stx-authority` and `tests/acl2/stx-transit-tests` are cascades of
+those two. **The teeth have therefore not run**: they are written and
+committed and nothing here may lean on them until the test book certifies.
+PRF-019 to PRF-022 and PRF-024 are `in-progress` citing only certified
+roots; PRF-023, PRF-025 and PRF-026 stay `planned`.
+
+The first submission of this lane went to persvati before the coordinator
+moved the lane to hbox; everything after it is hbox's.
+
 ## What landed
 
 - **`books/stx-lace.lisp`** — the lace as the store projected. `fn-stx-parse`
