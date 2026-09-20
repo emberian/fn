@@ -92,14 +92,16 @@ recorded open) cascades into `checkpoint-publish` and two test books.
 1. **The transit path does not yet store the record.** `fn-peer-transit-
    provenance` exists and `fn-peer-evidence-is-the-legacy-rendering` proves
    the record renders to the string the transit path writes, but
-   `fn-peer-injection-arguments` (`books/peer-inbound.lisp:341`) still passes
+   `fn-peer-injection-arguments` (`books/peer-inbound.lisp:306`, the
+   seventh element of its answer, built at line 323) still passes
    `fn-peer-evidence`'s rendering, because the transit command is not in
    scope at `fn-peer-decide-transfer`.
    *Obligation*: add a `kind` formal to `fn-peer-decide-transfer`,
    `fn-peer-transfer` and `fn-peer-injection-arguments`, pass it from
    `fn-peer-step`'s IHAVE/TAKETHIS arms and from
    `host/owner-host.lisp:326,328`, and replace `(fn-peer-evidence peer cfg)`
-   at `books/peer-inbound.lisp:200,264,341` with
+   at `books/peer-inbound.lisp:232` (the offer probe), `:296` (the transfer
+   capacity check) and `:323` (the argument list) with
    `(fn-peer-transit-evidence peer cfg kind diagnostic)` where `diagnostic`
    is `(fn-path-diagnostic (fn-peer-local-identity cfg) (fn-af-path-field-
    value article))`. K1/K2/K3 gain the formal in their statements; their
