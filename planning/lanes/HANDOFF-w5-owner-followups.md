@@ -192,3 +192,33 @@ re-pinned by a 240 — the suspect is the interaction of
 connection, not the re-pin itself. Do not merge this lane before this is
 diagnosed: either the second post is fixed, or `fn-own-outcome`'s advance is
 removed and the read-back recorded open.
+
+### `books/nntp-effects`: no verdict, and it is a wall clock, not a proof
+
+`run-20260920T053849Z-9568` (`--closure books/nntp-effects`, after `5bebaee`)
+certified its 16 closure books and **timed out again at 1800.2 s**
+(`build/acl2/certify-20260920T053850Z-3202105`), at exactly the same point
+as the first run: after `FN-NNTP-EFFECTS-XOVER-RESPONSE` completes, inside
+the HDR block-text lemmas that follow it at `books/nntp-effects.lisp:948`
+onwards (`fn-nntp-hdr-lines-for-numbers-are-block-text`,
+`fn-nntp-hdr-numbered-line-is-block-text`,
+`fn-nntp-hdr-labelled-line-is-block-text`). **That region is untouched by
+this lane** — it mentions no capability line, no `fn-nntp-env` and no
+posting bit, and the two forms this lane did change in that book
+(`fn-nntp-effects-capabilities` at :846 and `fn-nntp-effects-mode-response`
+at :1079) are respectively before and after it, the first of which passed.
+persvati was carrying six concurrent ACL2 processes for other lanes, and
+`FN_ACL2_TIMEOUT_SECONDS` is 1800 per invocation; the owner-post lane
+certified this same book in `certify-20260920T025533Z-22858` on a quiet box.
+
+So the honest reading is a per-invocation wall-clock cap on a contended box,
+not a proof this lane broke — but **`books/nntp-effects` has no verdict on
+this tree and must not be reported as certified**. The instrument is the
+timeout, not a hint: resubmitted as `run-20260920T061124Z-7847`
+(`--jobs 4 --timeout-seconds 5400 --closure books/nntp-effects`), pending.
+If that run also stops inside the HDR block, the timeout is not the cause
+and the block needs profiling on its own.
+
+`5bebaee` stands on its own merits either way (a ground list per branch is
+cheaper than an `append` of a conditional for every block-text obligation
+above it) and changes no emitted octet.
