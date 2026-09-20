@@ -154,6 +154,19 @@ campaign packet**: an `initialize` scenario would make four of them live.
 | `tests/test_checkpoint` (python) | **passes** | hbox, `python3 -m unittest tests.test_checkpoint`: 6 tests, 136.6 s, including `test_process_death_at_every_cut_recovers_old_authority_or_complete_generation` with the new `checkpoint:candidate-stage-unlinked` marker |
 | `tests/campaign` (five new cuts) | **passes** | persvati, `pairs=5 failures=0 seconds=94.0` |
 
+**The final wide run, after merging `dev` at `35dce11`** (which carries
+`w10/provenance`): hbox `build/acl2/certify-20260920T205504Z-1187179`,
+`--affected-by books/byte-store-scan.lisp --affected-by
+books/checkpoint-publish.lisp --closure`, **31 of 31 roots passed in 111.8 s
+wall** -- `books/acceptance{,-alloc,-invariants}`, `books/byte-store{,-invariants,-scan}`,
+`books/cbor{,-invariants}`, `books/checkpoint{,-codec,-publish}`,
+`books/defrecord`, `books/frame{,-fields,-invariants,-journal,-octets}`,
+`books/node{,-invariants}`, `books/provenance`,
+`books/records{,-canonicality,-invariants}`, `books/replay`,
+`books/retention`, `books/store-files{,-invariants}`,
+`books/store-node{,-invariants}`, `books/wildmat`,
+`tests/acl2/checkpoint-publish-tests`.
+
 `books/replay` certifying closes the w4-byte-store ASK on the board
 (`planning/deputies/BOARD.md:110`) as an observation, not as a fix: nothing
 in this lane touched it.
@@ -183,3 +196,11 @@ in this lane touched it.
   `books/store-files.lisp`, with a witness per affected theorem.
 * **An `initialize` campaign scenario**, which would make four of the ten new
   cut rows live instead of `uncovered`.
+* **Hygiene, not a defect**: `books/checkpoint-publish` carries three
+  `fn-defrecord` forms and no `fn-defrecord-export` at book end. Neither do
+  the six books the records lane migrated (`acceptance`, `node`, `retention`,
+  `exchange`, `records`, `anchor`); only `books/scheduler` and
+  `books/provenance` use it. The accessors this book exports enabled were
+  exported enabled before the migration too, so nothing regressed; adding the
+  export event to all seven is one packet, and it changes what downstream
+  books see, so it should be done once with their test books.
