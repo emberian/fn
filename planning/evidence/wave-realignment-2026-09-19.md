@@ -15,7 +15,7 @@ log, or a lane report, and each is cited to the file it came from.
 | --- | --- | --- |
 | commit range | `0bd0b5c`..`c8886ee`, 319 commits | `git log --oneline 0bd0b5c..c8886ee \| wc -l` |
 | tree at the record | `dev` `c8886ee` (merge of `w4/tcpcl`) | `git log` |
-| newest gated revision | `dev` `7a9e89a` | persvati `~/fn-gates/dev-7a9e89a/` |
+| newest gated revision | `dev` `bdd59d2` (certify complete; its Python run was still writing) | persvati `~/fn-gates/dev-bdd59d2/` |
 | ACL2 | Version 8.7, `saved_acl2` sha256 `c8a7a804…5c8163` | gate manifest `acl2_version`, `acl2_executable_sha256` |
 | host Lisp | SBCL 2.6.8 | gate manifest `host_lisp_banner` |
 | gate platform | `Linux-6.17.0-40-generic-x86_64-with-glibc2.42`, Python 3.13.7 | gate manifest `platform`, `python` |
@@ -31,8 +31,8 @@ Read-only; not copied into the repository.
 | --- | --- | --- | --- | --- |
 | `dev-7a9e89a` certify | 213 | 210 | `failed` | 940.259 s at `jobs=16`, `timeout_seconds=1800` |
 | `dev-7a9e89a` pytests | — | `Ran 331 tests in 564.479s` | `FAILED (failures=3, errors=4, skipped=4)`, `exit=1` | 564.5 s |
-| `dev-bdd59d2` certify | (in flight) | — | no `manifest.json` written | evidence dir `certify-20260920T032713Z-1926256` has per-book logs only |
-| `dev-bdd59d2` pytests | — | — | no `pytests.log` | — |
+| `dev-bdd59d2` certify | 216 | 213 | `failed` | 709.846 s at `jobs=12` |
+| `dev-bdd59d2` pytests | — | still writing when this record was made (96 lines, no summary line) | unknown | — |
 
 `acl2_exit_codes` holds no nonzero entry: the three missing roots are missing
 success markers, not crashed processes. Failing roots, by index of the missing
@@ -50,15 +50,26 @@ sixteen slots (`book_wall_seconds`). The five costliest roots:
 `books/nntp-post` 520.4 s, `books/bp-release-invariants` 391.3 s,
 `books/bp-receiver-evolving-store-invariants` 224.7 s.
 
-**Scope of the gate, stated because it is smaller than the tree.** The gate's
-213 requested roots are the Makefile roots at `7a9e89a`. `dev` at `c8886ee`
-has 221 roots ([`ledger.md`](../ledger.md)). The eight roots added after
-`7a9e89a` — `books/scheduler`, `books/scheduler-invariants`,
-`tests/acl2/scheduler-tests`, `books/tcpcl-records`, `books/tcpcl-octets`,
-`books/tcpcl-session`, `books/tcpcl-invariants`, `tests/acl2/tcpcl-tests`, and
-the two `nntp-legacy` roots — **have no farm-gate result at all**; their
-evidence is the single-laptop certification recorded in each lane's handoff.
-Nothing in this record claims a farm gate for them.
+The later gate of `bdd59d2` fails on **exactly the same three owner roots**
+and adds the three scheduler roots, which pass. Its 216 roots are 213 plus
+`books/scheduler`, `books/scheduler-invariants` and
+`tests/acl2/scheduler-tests`.
+
+**Scope of the gate, stated because it is smaller than the tree.** `dev` at
+`c8886ee` has 221 Makefile roots ([`ledger.md`](../ledger.md)). Diffing that
+list against `bdd59d2`'s requested roots leaves exactly five with **no farm-gate
+result at all**: `books/tcpcl-records`, `books/tcpcl-octets`,
+`books/tcpcl-session`, `books/tcpcl-invariants` and `tests/acl2/tcpcl-tests`,
+which came in with the `w4/tcpcl` merge that is `c8886ee` itself. Their evidence
+is the single-laptop certification in
+[HANDOFF-w4-tcpcl](../lanes/HANDOFF-w4-tcpcl.md), and two of the five do not
+certify even there. Nothing in this record claims a farm gate for them.
+
+One board entry is ahead of its code: `4a2d020` records the w5/legacy-commands
+batch (XOVER, HDR/XHDR, LIST HEADERS/ACTIVE.TIMES, `books/nntp-legacy`), but
+**neither `books/nntp-legacy.lisp` nor `tests/acl2/nntp-legacy-tests.lisp`
+exists on `dev` at `c8886ee`** and neither is a Makefile root. The board entry
+describes a branch, not the tree.
 
 ### The seven Python failures of the gated revision
 
@@ -267,12 +278,11 @@ counterexample, which is stronger evidence than "ACL2 could not prove it".
 
 ## 5. What was NOT exercised
 
-- **No farm gate exists for `dev` at `c8886ee`, or for any revision after
-  `7a9e89a`.** The `dev-bdd59d2` gate had written per-book certify logs and no
-  `manifest.json` and no `pytests.log` when this record was made; its result is
-  unknown and is not reported here. Eight of the tree's 221 Makefile roots
-  (scheduler ×3, tcpcl ×4 plus tests, nntp-legacy ×2 — see §1) have never been
-  through a gate.
+- **No farm gate exists for `dev` at `c8886ee`.** The newest complete certify
+  gate is `bdd59d2`, 213 of 216. Five of the tree's 221 Makefile roots (the
+  tcpcl cluster, which arrived with `c8886ee`) have never been through a gate,
+  and the `bdd59d2` Python run had not finished when this record was made, so
+  the only Python result reported here is `7a9e89a`'s.
 - **No single machine certified the whole tree.** Every "after" number in §2 is
   a laptop run with a partly warm certificate cache; every "before" is a farm
   manifest. They are comparable in direction, not in absolute seconds.
