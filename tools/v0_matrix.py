@@ -776,7 +776,7 @@ def surface(args):
     split.sock.sendall(b"E\r\n")
     out["FRAMING"] = split.line()
     out["FRAMING SAME"] = out["FRAMING"][:3] == out["DATE"][:3]
-    split.close()
+    drop(split)
     out["ok"] = out["GROUP"].startswith("211")
     return out
 
@@ -838,7 +838,7 @@ def pins(args):
                 # until its timeout and the SERVER stays wedged on that
                 # connection -- which is what made every later phase of the
                 # sixth run time out.  Drop the socket instead.
-                probe.sock.close()
+                drop(probe)
                 continue
             if opens is True and reply[:1] in "34":
                 probe.sock.sendall(b".\r\n")
@@ -848,10 +848,7 @@ def pins(args):
                     pass
         except Exception as error:
             answered[label] = "{}: {}".format(type(error).__name__, error)
-        try:
-            probe.close()
-        except Exception:
-            pass
+        drop(probe)
     dispatched = [l for l, _, _ in PROBES if is_available(answered.get(l, ""))]
     out = {"advertised": advertised, "answered": answered,
            "dispatched": dispatched, "login": out_login,
@@ -881,12 +878,12 @@ def postcycle(args):
     else:
         out["COMMIT"] = "(nothing sent: POST answered " + out["POST"] + ")"
         out["GROUP AFTER"] = "(not attempted)"
-    poster.close()
+    drop(poster)
 
     fresh = Conn(args.port, timeout=SOCKET_TIMEOUT)
     login(fresh, args, {})
     out["FRESH ARTICLE"] = fresh.cmd("ARTICLE " + args.msgid, multiline=True)[0]
-    fresh.close()
+    drop(fresh)
 
     # The duplicate, on its own connection: one clock observation is pinned per
     # connection at accept, so a second POST on the poster's connection would
@@ -900,7 +897,7 @@ def postcycle(args):
         out["DUPLICATE"] = again.line()
     else:
         out["DUPLICATE"] = out["DUPLICATE POST"]
-    again.close()
+    drop(again)
 
     before = out["GROUP BEFORE"].split()
     after = out["GROUP AFTER"].split()
@@ -924,7 +921,7 @@ def concurrent(args):
         out["WATCHER MID"] = "(not attempted)"
         out["COMMIT"] = "(nothing sent)"
         out["ok"] = False
-        poster.close(); watcher.close()
+        drop(poster); drop(watcher)
         return out
     poster.sock.sendall(("From: matrix@example.invalid\r\nSubject: concurrent\r\n"
                          "Newsgroups: {}\r\nMessage-ID: {}\r\n\r\nhalf a ".format(
@@ -934,13 +931,34 @@ def concurrent(args):
     poster.sock.sendall(b"letter.\r\n.\r\n")
     out["COMMIT"] = poster.line()
     out["WATCHER AFTER"] = watcher.cmd("GROUP " + args.group)[0]
-    poster.close(); watcher.close()
+    drop(poster); drop(watcher)
     out["ok"] = out["WATCHER MID"].startswith("211") and out["COMMIT"].startswith("240")
     return out
 
 
+def drop(conn):
+    """Close the socket without a QUIT.
+
+    A QUIT after a 3xx is read as transfer data or as plaintext in a TLS
+    handshake, and the server then waits: the eighth and ninth runs lost
+    every AUTHINFO and POST row on both nodes to a connection left in that
+    state by the probe before them. Nothing this driver opens for a single
+    observation is closed politely.
+    """
+    try:
+        conn.sock.close()
+    except Exception:
+        pass
+
+
 def auth(args):
-    """AUTHINFO (RFC 4643) and the posting permission it carries."""
+    """AUTHINFO (RFC 4643) and the posting permission it carries.
+
+    One observation per connection. `POST` before a login may answer 340 --
+    posting can be permitted without one -- and a connection left inside an
+    open transfer is what wedges this server, so that probe gets a
+    connection of its own and the socket is dropped, never QUIT.
+    """
     out = {}
     conn = Conn(args.port, timeout=SOCKET_TIMEOUT)
     status, caps = conn.cmd("CAPABILITIES", multiline=True)
@@ -948,10 +966,13 @@ def auth(args):
     out["advertised_before"] = labels(caps)
     out["AUTHINFO ADVERTISED"] = any(
         c.upper().startswith("AUTHINFO") for c in caps if c.strip())
-    out["POST BEFORE"] = conn.cmd("POST")[0]
-    if out["POST BEFORE"].startswith("340"):
-        conn.sock.sendall(b".\r\n")
-        out["POST BEFORE CLOSE"] = conn.line()
+    drop(conn)
+
+    gate = Conn(args.port, timeout=SOCKET_TIMEOUT)
+    out["POST BEFORE"] = gate.cmd("POST")[0]
+    drop(gate)
+
+    conn = Conn(args.port, timeout=SOCKET_TIMEOUT)
     out["AUTHINFO USER"] = conn.cmd("AUTHINFO USER " + args.user)[0]
     out["AUTHINFO PASS"] = conn.cmd("AUTHINFO PASS " + args.secret)[0]
     status, caps = conn.cmd("CAPABILITIES", multiline=True)
@@ -959,7 +980,7 @@ def auth(args):
     out["advertised_after"] = labels(caps)
     out["AUTHINFO WITHDRAWN"] = not any(
         c.upper().startswith("AUTHINFO") for c in caps if c.strip())
-    conn.close()
+    drop(conn)
 
     poster = Conn(args.port, timeout=SOCKET_TIMEOUT)
     poster.cmd("AUTHINFO USER " + args.user)
@@ -971,12 +992,12 @@ def auth(args):
         out["POST AFTER COMMIT"] = poster.line()
     else:
         out["POST AFTER COMMIT"] = out["POST AFTER"]
-    poster.close()
+    drop(poster)
 
     wrong = Conn(args.port, timeout=SOCKET_TIMEOUT)
     wrong.cmd("AUTHINFO USER " + args.user)
     out["AUTHINFO WRONG"] = wrong.cmd("AUTHINFO PASS not-" + args.secret)[0]
-    wrong.close()
+    drop(wrong)
     out["ok"] = out["AUTHINFO PASS"].startswith("281")
     return out
 
