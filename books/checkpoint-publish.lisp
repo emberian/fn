@@ -597,11 +597,17 @@
                 (equal (fn-cpp-entry-name e) (+ index (len gens))))
            (fn-cpp-generation-listp (append gens (list e)) groups capacity index)))
 
+; The appended entry must BE an entry.  Without that hypothesis the rule is
+; false: fn-cpp-find returns the matching element, so a NIL element of GENS
+; that matches NAME is a hit the recursion reports as a miss, and the
+; realignment (which withdrew the accessor unfold) made that branch visible.
+; An entry's name is a natural, so (fn-cpp-entryp e) refutes it.
 (defthm fn-cpp-find-of-append
-  (equal (fn-cpp-find name (append gens (list e)))
-         (if (fn-cpp-find name gens)
-             (fn-cpp-find name gens)
-           (if (equal (fn-cpp-entry-name e) name) e nil))))
+  (implies (fn-cpp-entryp e)
+           (equal (fn-cpp-find name (append gens (list e)))
+                  (if (fn-cpp-find name gens)
+                      (fn-cpp-find name gens)
+                    (if (equal (fn-cpp-entry-name e) name) e nil)))))
 
 (defthm fn-cpp-find-of-replace-same
   (implies (fn-cpp-find name gens)
