@@ -72,11 +72,28 @@
                              *t-node-a* '(0 0 0 0))))
 (assert-event (equal (fn-tcl-decode-message (append (fn-tcl-encode *t-init-a*) '(4)) 3)
                      (fn-tcl-parse-ok *t-init-a* '(4))))
-; a START segment with the Transfer Length Extension, then its data
+; a START segment with the Transfer Length Extension, then its data.
+; Derived from the RFC, field by field, not read off the encoder: figure 22
+; (section 5.2.2) for the message, figure 25 (section 5.2.5) for the item
+; container, section 5.2.5.1 for the Transfer Length data.
+;   1                 message header: XFER_SEGMENT type code 0x01 (table 14)
+;   2                 message flags U8: START 0x02 set, END 0x01 clear (table 5)
+;   0 0 0 0 0 0 0 0   transfer ID U64 = 0
+;   0 0 0 13          transfer extension items length U32 = 13 (START only)
+;     0               item flags U8 = 0, CRITICAL 0x01 clear (table 7)
+;     0 1             item type U16 = 0x0001, Transfer Length (table 13)
+;     0 8             item length U16 = 8
+;     0 0 0 0 0 0 0 5 item value: total bundle length U64 = 5 (section 5.2.5.1)
+;   0 0 0 0 0 0 0 3   data length U64 = 3
+;   10 20 30          data contents
+; 38 octets.  The wave-4 vector wrote the item header as `0 1 0 0 8`: the type
+; before the flags.  Figure 25 puts Item Flags first, so the vector was wrong
+; and fn-tcl-encode-items (flags, then be-bytes of type, then be-bytes of the
+; value length) is right; this is the corrected vector.
 (defconst *t-seg-1*
   (fn-tcl-make-xfer-segment 2 0 (list (fn-tcl-make-item 0 1 (fn-tcl-be-bytes 5 8))) '(10 20 30)))
 (assert-event (equal (fn-tcl-encode *t-seg-1*)
-                     '(1 2 0 0 0 0 0 0 0 0 0 0 0 13 0 1 0 0 8 0 0 0 0 0 0 0 5
+                     '(1 2 0 0 0 0 0 0 0 0 0 0 0 13 0 0 1 0 8 0 0 0 0 0 0 0 5
                        0 0 0 0 0 0 0 3 10 20 30)))
 (assert-event (equal (fn-tcl-decode-message (fn-tcl-encode *t-seg-1*) 3)
                      (fn-tcl-parse-ok *t-seg-1* nil)))
@@ -354,4 +371,9 @@
 ; fn-tcl-drive-partition-independence: no separating value exists for its
 ; hypotheses (a non-session, a non-octet chunk and a non-time are no-ops on
 ; both sides); they are the guard of the served path, see specs/tcpcl.md.
-(assert-event (equal (fn-tcl-drive 42 *t-seg-octets* 0) (fn-tcl-make-result 42 nil *t-seg-octets*)))
+; 42 is outside fn-tcl-drive's guard, so the :logic body is what is being
+; evaluated here and the check is made under with-guard-checking :none
+; (docs/proof-style.md section 5).
+(assert-event
+ (with-guard-checking :none
+  (equal (fn-tcl-drive 42 *t-seg-octets* 0) (fn-tcl-make-result 42 nil *t-seg-octets*))))
