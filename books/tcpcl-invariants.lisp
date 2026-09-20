@@ -44,9 +44,26 @@
 ; undid C1's own Goal `(e/d ... (fn-tcl-step ...))' and reopened the step
 ; function under every subgoal of the fold.  Measured: with nothing else
 ; changed, C1 went from 0.42 s to 0.05 s when this line closed them.
-(local (in-theory (disable fn-tcl-sessionp fn-tcl-messagep
+; Both whole-state recognizers are named here, and they must be: the
+; vocabulary now holds two of them, and fn-tcl-drive's totality test names
+; fn-tcl-session-cheapp, so an open one turns every expansion of
+; fn-tcl-drive into a case split over its conjuncts and their
+; sub-recognizers -- 8844 subgoals for fn-tcl-drive-is-a-result when
+; w9/dtn-e2e first merged the guard change.
+(local (in-theory (disable fn-tcl-sessionp fn-tcl-session-cheapp fn-tcl-messagep
                            fn-tcl-step fn-tcl-recv-segment fn-tcl-recv-init
                            fn-tcl-broken-stream)))
+; fn-tcl-session-cheapp reaches this book only as fn-tcl-drive's totality
+; test, and the one rewrite fn-tcl-sessionp-is-cheap discharges it wherever
+; the session is known.  Everything else the cheap recognizer exports is put
+; aside under one name: the whole family, facts and forward-chaining fields
+; and preservation together, because the forward-chaining half is what costs
+; -- it runs to fixpoint beside the fn-tcl-sessionp family on every goal
+; carrying either recognizer's term, which C1 measured as
+; `Time: 2688.15 seconds (prove: 0.02, print: 0.00, other: 2688.13)`.
+; Naming only the preservation chain here (configuration A' of
+; HANDOFF-w9-dtn-e2e) left C1 open at 2688 s: it was the wrong half.
+(local (in-theory (disable fn-tcl-cheap-rules)))
 
 (local (defthm fn-tcl-append-assoc
          (equal (append (append a b) c) (append a (append b c)))))
@@ -138,13 +155,22 @@
            :in-theory (e/d (fn-tcl-drive)
                            (fn-tcl-step fn-tcl-decode-for fn-tcl-input-error
                             fn-tcl-drive-is-a-result fn-tcl-segment-mru)))
-          ; the need case: the split's right side is the whole drive rebuilt
+          ; the consuming case: the split's right side is the whole drive
+          ; rebuilt
           ("Subgoal *1/3" :in-theory (enable fn-tcl-drive-is-a-result))
-          ("Subgoal *1/2" :expand ((fn-tcl-drive s (append left right) now)))
+          ; the need case: the left part keeps the whole buffer, so the
+          ; right side is the whole drive rebuilt here too.  It needed no
+          ; rule while fn-tcl-drive's totality test was the literal
+          ; (fn-tcl-sessionp s) of this theorem's own hypothesis; with the
+          ; test naming fn-tcl-session-cheapp the two sides no longer open
+          ; to the same term and Subgoal *1/2'4' is fn-tcl-drive-is-a-result.
+          ("Subgoal *1/2" :expand ((fn-tcl-drive s (append left right) now))
+                          :in-theory (enable fn-tcl-drive-is-a-result))
           ; the base case: an empty or closed left leaves the whole drive,
           ; rebuilt, on the right
           ("Subgoal *1/1" :expand ((fn-tcl-drive s (append left right) now))
-                          :in-theory (enable fn-tcl-drive-is-a-result))))
+                          :in-theory (enable fn-tcl-drive-is-a-result))
+          ("Subgoal *1/4" :in-theory (enable fn-tcl-drive-is-a-result))))
 
 ; -----------------------------------------------------------------------------
 ; C2.  A final acknowledgement means every segment.
