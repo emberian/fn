@@ -149,3 +149,36 @@ already sent SESS_TERM, so the machine refused with Table 6 reason 6. Every
 reply on both sides is in the evidence record. What it does not show is fn
 *originating* a bundle — see the paragraph above; that boundary is the whole
 reason the harness is shaped this way.
+
+## 5. Where this stops, and the two commands that finish it
+
+**`books/tcpcl-invariants` has no verdict against the new `books/tcpcl-session`.**
+C1 to C4 are unchanged in statement and `books/tcpcl-session` certifies, but
+the invariants book was still queued for an ACL2 slot on a box carrying six
+lanes when this lane's budget ran out. It is recorded open, not passed. The
+one risk it carries is narrow and named: `fn-tcl-drive`'s totality `mbe` now
+tests `fn-tcl-session-cheapp`, so a proof there that opens `fn-tcl-drive` and
+splits on that test needs `fn-tcl-sessionp-is-cheap`, which is exported
+enabled and should close it without an edit.
+
+```sh
+ssh hbox 'cd /tank/fn/lanes/w9-dtn-e2e && FN_ACL2=/tank/fn/acl2-8.7/saved_acl2 \
+  FN_CERT_CACHE=/tank/fn/certcache FN_ACL2_TIMEOUT_SECONDS=3600 \
+  swarm-build python3 tools/certify_books.py --jobs 2 \
+  books/tcpcl-invariants tests/acl2/tcpcl-tests'
+```
+
+Its sibling, once `books/served` and `books/nntp-effects` are certified in
+that directory, is the *deployment* image and the same lab against it — which
+is also what makes `tools/twonode_gate.py`'s `tcpcl` scenario run for real
+rather than skip:
+
+```sh
+ssh hbox 'cd /tank/fn/lanes/w9-dtn-e2e && FN_ACL2=/tank/fn/acl2-8.7/saved_acl2 \
+  swarm-build sh tools/build_native_host.sh \
+  && swarm-build python3 tools/tcpcl_lab.py --image build/fn-host --work build/lab-full'
+```
+
+After that, §2's three packets, in that order. The one thing not to do is add
+a `bp send` verb that wraps `tcpcl send` in a contact check: it would look
+like a BP node and would not be one.
