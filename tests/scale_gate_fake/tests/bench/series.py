@@ -91,6 +91,7 @@ def main():
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--post-ceiling", type=float, default=20.0)
     ap.add_argument("--recover-ceiling", type=float, default=60.0)
+    ap.add_argument("--rss-ceiling-kib", type=int, default=16 * 1024 * 1024)
     ap.add_argument("--budget-seconds", type=float, default=3600.0)
     ap.add_argument("--profile-only", action="store_true")
     ap.add_argument("--json", default=None)
@@ -140,6 +141,14 @@ def main():
         point["article_count"] = committed
         point["rss_kib"] = {"VmRSS": 65536 + 512 * committed,
                             "VmHWM": 65536 + 600 * committed}
+        point["rss_kib_after_posting"] = {"VmRSS": 65536 + 520 * committed}
+        if point["rss_kib"]["VmRSS"] > args.rss_ceiling_kib:
+            result["stopped_by"] = ("the bridge process reached %.1f GiB, over the "
+                                    "%.1f GiB ceiling"
+                                    % (point["rss_kib"]["VmRSS"] / 1048576.0,
+                                       args.rss_ceiling_kib / 1048576.0))
+            result["points"].append(point)
+            break
         result["points"].append(point)
         if worst > args.post_ceiling:
             result["stopped_by"] = ("a single post took %.1f s, over the %.0f s ceiling"
