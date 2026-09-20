@@ -19,6 +19,8 @@ Subcommands: init, run, post, group, capacity, status, recover, anchor.
 
 import argparse
 import contextlib
+import getpass
+import hashlib
 import io
 import os
 import signal
@@ -72,6 +74,7 @@ class Settings:
         acl2 = section(data, "acl2")
         log = section(data, "log")
         control = section(data, "control")
+        auth = section(data, "auth")
         self.store = store.get("path")
         # The served groups are the store's configuration records, which ACL2
         # replays; they are deliberately not a second time in this file.  Only
@@ -79,6 +82,21 @@ class Settings:
         self.groups = ()
         self.host = listener.get("host", "127.0.0.1")
         self.port = int(listener.get("port", DEFAULT_PORT))
+        # RFC 4642: the certificate and key the owner upgrades a connection
+        # with.  Both or neither; with neither, STARTTLS answers 580 and the
+        # capability label is not advertised (books/nntp-auth.lisp
+        # fn-auth-config-tls-availablep).
+        self.tls_cert = listener.get("tls_cert")
+        self.tls_key = listener.get("tls_key")
+        if bool(self.tls_cert) != bool(self.tls_key):
+            raise ConfigError("[listener] needs both tls_cert and tls_key, or neither")
+        # RFC 4643: whether a connection must authenticate before a
+        # state-changing command, and whether AUTHINFO needs a protected
+        # channel first.  The credentials themselves live in their own file
+        # so the configuration can stay world-readable and that one need not.
+        self.auth_required = bool(auth.get("required", False))
+        self.auth_protected_only = bool(auth.get("protected_only", False))
+        self.auth_path = auth.get("path")
         self.posting_enabled = bool(posting.get("enabled", True))
         self.agent = posting.get("agent", DEFAULT_AGENT)
         self.anchor_server = anchor.get("server")
@@ -137,7 +155,11 @@ def render_config(settings):
              '# loopback only: architecture.md does not authorize a public listener',
              'host = "{}"'.format(settings.host),
              "port = {}".format(settings.port),
-             "",
+             "",] + (
+            ['# RFC 4642 STARTTLS: both or neither.  With neither, STARTTLS is 580.',
+             'tls_cert = "{}"'.format(settings.tls_cert),
+             'tls_key = "{}"'.format(settings.tls_key),
+             ""] if settings.tls_cert else []) + [
              "[posting]",
              "enabled = {}".format("true" if settings.posting_enabled else "false"),
              '# the injecting agent this node records for locally accepted articles',
@@ -456,6 +478,99 @@ def command_status(settings, args):
         store.close()
 
 
+def auth_path(settings):
+    """Where `fn principal set-password` writes credentials."""
+    if settings.auth_path:
+        return Path(settings.auth_path)
+    return Path(settings.require_store()) / "auth.toml"
+
+
+def load_auth(settings):
+    location = auth_path(settings)
+    if not location.exists():
+        return {}
+    try:
+        return tomllib.loads(location.read_text(encoding="utf-8"))
+    except (tomllib.TOMLDecodeError, UnicodeError, OSError) as error:
+        raise ConfigError("cannot read {}: {}".format(location, error)) from error
+
+
+def toml_quote(text):
+    if any(character in text for character in '"\\\n\r\t'):
+        raise ConfigError("the value {!r} cannot be written to the credential "
+                          "file; use printable US-ASCII without quotes or "
+                          "backslashes".format(text))
+    return '"{}"'.format(text)
+
+
+def command_principal(settings, args):
+    """`fn principal set-password NAME` -- an RFC 4643 AUTHINFO login.
+
+    The secret is stored as the operator typed it.  It is NOT a digest, and
+    that is not an oversight: fn's only digest is the constrained `fn-digest`
+    of books/crypto-seam.lisp, which has no attachment and cannot be
+    evaluated, and deriving one in Python would make Python compute a value
+    ACL2 compares, which AGENTS.md forbids.  See OB-AUTH-DIGEST in
+    specs/nntp-audit.md.  The file is written 0600 and the command says so.
+    """
+    if args.principal_command != "set-password":
+        return EXIT_REFUSED, "unknown principal command {!r}".format(args.principal_command)
+    name = args.name
+    if not name or not all(33 <= ord(c) <= 126 for c in name):
+        return EXIT_REFUSED, ("a login name is printable US-ASCII with no space, "
+                              "at most 64 octets (RFC 3977 section 9.8 token)")
+    if len(name.encode("ascii")) > 64:
+        return EXIT_REFUSED, "a login name is at most 64 octets"
+    secret = args.password
+    if secret is None:
+        secret = getpass.getpass("password for {}: ".format(name))
+        if secret != getpass.getpass("again: "):
+            return EXIT_REFUSED, "the two entries differ; nothing was written"
+    if not secret or not all(33 <= ord(c) <= 126 for c in secret):
+        return EXIT_REFUSED, ("a secret is printable US-ASCII with no space, at "
+                              "most 256 octets; fn compares it octet for octet")
+    if len(secret.encode("ascii")) > 256:
+        return EXIT_REFUSED, "a secret is at most 256 octets"
+    principal = args.principal
+    if principal is None:
+        principal = hashlib.sha256(("fn-principal-local-v1:" + name)
+                                   .encode("ascii")).hexdigest()
+    if len(principal) != 64 or any(c not in "0123456789abcdef" for c in principal.lower()):
+        return EXIT_REFUSED, "a principal id is 64 lowercase hex digits (32 octets)"
+    data = load_auth(settings)
+    logins = data.get("login", {})
+    if not isinstance(logins, dict):
+        raise ConfigError("[login] is not a table")
+    logins[name] = {"principal": principal.lower(),
+                    "secret": secret,
+                    "posting": bool(args.posting)}
+    lines = ["# fn AUTHINFO credentials (RFC 4643).  Written by",
+             "# `fn principal set-password`.  The secret is stored in the clear:",
+             "# see OB-AUTH-DIGEST in specs/nntp-audit.md for why, and use",
+             "# [listener] tls_cert/tls_key with [auth] protected_only = true",
+             "# so the secret is never sent over an unprotected connection.",
+             ""]
+    for key in sorted(logins):
+        entry = logins[key]
+        lines += ["[login.{}]".format(toml_quote(key)),
+                  "principal = {}".format(toml_quote(str(entry["principal"]))),
+                  "secret = {}".format(toml_quote(str(entry["secret"]))),
+                  "posting = {}".format("true" if entry.get("posting") else "false"),
+                  ""]
+    location = auth_path(settings)
+    location.parent.mkdir(parents=True, exist_ok=True)
+    handle = os.open(str(location), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(handle, "w", encoding="utf-8") as stream:
+        stream.write("\n".join(lines))
+    os.chmod(str(location), 0o600)
+    return EXIT_OK, ("wrote {} (mode 0600) with login {!r}, principal {}, "
+                     "posting {}.  The secret is stored in the clear; set "
+                     "[auth] protected_only = true so AUTHINFO answers 483 "
+                     "until STARTTLS has run."
+                     .format(location, name, principal[:16] + "...",
+                             "allowed" if args.posting else "refused"))
+
+
 def anchor_namespace(settings, args):
     return SimpleNamespace(
         store=settings.require_store(),
@@ -482,6 +597,14 @@ def build_parser():
                         help="configuration file (default: ./fn.toml)")
     sub = parser.add_subparsers(dest="command", required=True)
 
+    principal = sub.add_parser(
+        "principal", help="AUTHINFO logins (RFC 4643)")
+    principal.add_argument("principal_command", choices=("set-password",))
+    principal.add_argument("name", help="the AUTHINFO USER name")
+    principal.add_argument("--password", help="the secret; omitted, it is prompted for")
+    principal.add_argument("--principal", help="the 32-octet principal id, 64 hex digits")
+    principal.add_argument("--posting", dest="posting", action="store_true", default=True)
+    principal.add_argument("--no-posting", dest="posting", action="store_false")
     init = sub.add_parser("init", help="initialize a store and write the configuration")
     init.add_argument("--store", help="store root (overrides [store] path)")
     init.add_argument("--group", action="append", help="a group the new store serves")
@@ -552,6 +675,7 @@ def overrides(settings, args):
 
 
 COMMANDS = {"init": command_init, "run": command_run, "post": command_post,
+            "principal": command_principal,
             "group": command_group, "capacity": command_capacity,
             "status": command_status,
             "recover": command_recover, "anchor": command_anchor}
