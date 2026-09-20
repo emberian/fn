@@ -228,6 +228,10 @@
 ; transit article is an ordinary member of the receiver's lace, and
 ; fn-pol-current recomputes over it.
 
+(local (defthm fn-stx-policy-member-of-append
+         (iff (member-equal x (append a c))
+              (or (member-equal x a) (member-equal x c)))))
+
 (defthm fn-stx-policy-statement-propagates
   (implies (and (fn-stx-acceptedp node next article)
                 (fn-stx-delta-freshp
@@ -245,6 +249,7 @@
                             (delta (fn-stx-delta (fn-article-payload article)
                                                  keyring)))
                  (:instance fn-pol-member-candidate-is-in-candidates
+                            (p s)
                             (lace (append (fn-stx-lace node keyring)
                                           (list s)))))
            :in-theory (disable fn-stx-lace-of-accept-is-merge

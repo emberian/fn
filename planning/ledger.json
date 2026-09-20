@@ -251,7 +251,7 @@
     "books": 245,
     "books_in_root_closure": 244,
     "roots": 244,
-    "theorems": 4626,
+    "theorems": 4627,
     "functions": 3349,
     "assert_events": 4474,
     "must_fails": 59,
@@ -3811,7 +3811,7 @@
       "book": "books/stx-index.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 48,
+      "theorems": 49,
       "functions": 26,
       "guards": {
         "verified": 8,
@@ -6922,7 +6922,7 @@
     {
       "theorem": "fn-stx-index-query-is-store-free-by-definition",
       "book": "books/stx-index.lisp",
-      "line": 577,
+      "line": 582,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-stx-index-lookup",
         "reflexive-conclusion: a conjunct is (equal X X)"

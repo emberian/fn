@@ -15,7 +15,7 @@ run on. Every result below is hbox's.
 | --- | --- | --- | --- |
 | `books/stx-lace` | `run-20260920T181308Z-0b1b` | `build/acl2/certify-20260920T181311Z-1023611` | certified |
 | `books/stx-index` | RUNPLACEHOLDER | DIRPLACEHOLDER | STATEPLACEHOLDER |
-| `books/stx-policy` | RUNPLACEHOLDER | DIRPLACEHOLDER | STATEPLACEHOLDER |
+| `books/stx-policy` | `run-20260920T182629Z-333c` | `build/acl2/certify-20260920T182632Z-1047438` | certified |
 | `books/stx-epochs` | RUNPLACEHOLDER | DIRPLACEHOLDER | STATEPLACEHOLDER |
 | `tests/acl2/stx-transit-tests` | RUNPLACEHOLDER | DIRPLACEHOLDER | STATEPLACEHOLDER |
 
