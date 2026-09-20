@@ -395,10 +395,17 @@
                            (fn-tcl-c2-closed)))))
 
 ; The recognizer stays CLOSED from here too.  C3 and C4 were written against
-; an open one, and that cost 596.12 s of this book's 609.53 s (hbox,
-; certify-20260920T230902Z-1283742): six forms whose clauses carried the
-; eleven sub-recognizers of fn-tcl-sessionp.  What they actually need about
-; a field arrives by forward chaining, as it does in C2 above.
+; an open one, and the five forms below this line that paid for it were
+; 585.52 s of this book's 609.53 s (hbox,
+; certify-20260920T230902Z-1283742): 230.01 s for
+; fn-tcl-live-inbound-ends-in-exactly-one-outcome, 160.97 s for
+; fn-tcl-step-emits-at-most-one-inbound-outcome, 134.12 s for
+; fn-tcl-tick-fails-a-live-inbound-only-when-closing, 44.42 s for
+; fn-tcl-input-error-never-completes-a-transfer and 16.00 s for
+; fn-tcl-tcp-close-never-completes-a-transfer, each carrying the eleven
+; sub-recognizers of fn-tcl-sessionp into its clause.  They are 1.62, 1.09,
+; 0.21, 0.03 and 0.01 s closed.  What they actually need about a field
+; arrives by forward chaining, as it does in C2 above.
 
 ; -----------------------------------------------------------------------------
 ; C3.  Exactly one outcome.
