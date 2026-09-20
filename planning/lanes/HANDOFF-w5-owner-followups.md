@@ -237,3 +237,40 @@ and the block needs profiling on its own.
 `5bebaee` stands on its own merits either way (a ground list per branch is
 cheaper than an `append` of a conditional for every block-text obligation
 above it) and changes no emitted octet.
+
+### The second-post failure, diagnosed: it is not the re-pin
+
+Driven directly against the owner on persvati (fresh store, one connection,
+four posts; script kept out of the repo):
+
+| step | article | outcome | that connection's next GROUP |
+| --- | --- | --- | --- |
+| A | alpha, on conn1 | `240` | `211 1 1 1` — **its own article, the read-back works** |
+| B | bravo, on conn1 | `441 posting failed; the article was refused` | `211 1 1 1` |
+| C | charlie, on **conn2** (fresh) | `240` | `211 2 1 2` |
+| D | delta, on conn1 | `441 ... the article was refused` | `211 1 1 1` |
+
+So a connection can never post a second time, whatever the article, while a
+connection opened afterwards posts fine — and B was refused with a body
+sharing nothing with A, so it is not a content collision.
+
+**This is not caused by the advance.** `fn-nntp-post-step` builds the
+injected decision from `(body, config, observation)` only; the archive it is
+also handed is read by the reader commands, never by `fn-inj-decide`.
+`fn-own-advance` replaces a connection's version, frontier, archive and
+session and **preserves its `config` and its `observation`**, so B's
+decision — and hence the identity the host makes durable — is byte-identical
+with or without the re-pin. What distinguishes conn1 from conn2 is the one
+clock observation each connection pins at accept (owner-post: "one clock
+observation per connection at accept"), and `441 ... the article was
+refused` is the host's typed refusal, which is what a duplicate identity
+produces.
+
+The reading: **one pinned observation per connection means one durable post
+per connection**, and `test_a_reader_pinned_before_a_post_keeps_its_view`
+posts twice on its poster, so it could not have passed on any tree. It is
+left failing rather than edited to pass. The fix is a decision for whoever
+owns the clock seam — re-observe per submission, or make the identity not
+depend on the observation alone — and is **not** in this lane's scope. The
+read-back itself (row A, and `test_post_reaches_240_and_the_article_can_be_read_back`)
+works.
