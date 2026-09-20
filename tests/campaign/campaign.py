@@ -40,6 +40,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import zlib
 from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -136,10 +137,12 @@ class Report:
 
 class Campaign:
     def __init__(self, workdir: Path, quick: bool = False,
+                 only: tuple[str, ...] | None = None,
                  scenarios: tuple[str, ...] | None = None,
                  log=lambda message: None, model_images: bool = False):
         self.workdir = Path(workdir)
         self.quick = quick
+        self.only = only
         self.scenarios = scenarios
         self.log = log
         self.templates: dict[str, Path] = {}
@@ -177,6 +180,33 @@ class Campaign:
         return run_store.command_post(SimpleNamespace(
             store=root / "store", message_id=message_id, payload=target,
             group=list(groups), charge=None, inject_fault=None))
+
+    @staticmethod
+    def build_bundles(root: Path, bids) -> None:
+        """Write the BPv7 bundle octets the BPA holds for each carried BID.
+
+        Nothing here spells a BPv7 field: `fn-bpi-host-bundle-prefix` returns
+        the indefinite-array head and the certified primary-block encoding,
+        and the break stop code stands in for the blocks the boundary never
+        interprets.  Distinct creation sequences make these distinct bundles
+        one agent happens to carry, which is what the "same ADU under a fresh
+        BID is a duplicate" check needs.
+        """
+        bridge = run_bp_ingress.Acl2BpIngress()
+        try:
+            def eid(ssp: bytes) -> str:
+                return "(cons :dtn '" + bridge.literal(ssp) + ")"
+
+            for bid in bids:
+                form = ("(fn-bpi-host-bundle-prefix (fn-bpp-make-block 0 0 {} {} {} "
+                        "1000 {} {} nil nil))".format(
+                            eid(b"//fn.lab/inbox"), eid(b"//sender.lab/"),
+                            eid(b"//fn.lab/report"),
+                            zlib.crc32(bid.encode("ascii")) + 1, 10 ** 15))
+                child_module.bundle_path(root, bid).write_bytes(
+                    run_store.acl2_octets(bridge.call(form)) + b"\xff")
+        finally:
+            bridge.close()
 
     @staticmethod
     def build_request(name: str) -> bytes:
@@ -218,6 +248,7 @@ class Campaign:
             receipt_root=root / "receipts", bid=bid,
             inventory=lambda: list(inventory),
             download=lambda found: inventory[found], delete=delete,
+            bundle=lambda found: child_module.bundle_for(root, found),
             source_eid=child_module.SOURCE_EID, pending_outcome=pending_outcome)
         return result, deleted
 
@@ -250,6 +281,8 @@ class Campaign:
             run_store.Store(root / "store", True).initialize()
             if scenario in BP_SCENARIOS:
                 (root / "request.adu").write_bytes(self.build_request("campaign"))
+                self.build_bundles(root, (BASELINE_BID, child_module.CAMPAIGN_BID,
+                                          child_module.RETRY_BID, "bid-again"))
                 baseline = self.build_request("baseline")
                 # The baseline receive installs the receiver journal's config
                 # record, so a cut inside a journal publish lands on the
@@ -672,6 +705,8 @@ class Campaign:
                              for cut in cuts_module.model_gaps()]
         started = time.monotonic()
         for scenario, cut in cuts_module.pairs(self.quick):
+            if self.only and cut.cut_id not in self.only:
+                continue
             if self.scenarios and scenario not in self.scenarios:
                 continue
             case_started = time.monotonic()
@@ -693,6 +728,10 @@ def main(argv=None) -> int:
     parser.add_argument("--quick", action="store_true",
                         help="run the marked subset of cuts only")
     parser.add_argument("--scenario", action="append", dest="scenarios")
+    parser.add_argument("--cut", action="append", dest="only",
+                        help="run only these cut ids (component:point); "
+                             "repeatable. For checking a newly added cut "
+                             "without paying for the whole table.")
     parser.add_argument("--json", type=Path, default=None)
     parser.add_argument("--model-images", action="store_true",
                         help="also check the recovered store against the byte "
@@ -706,7 +745,8 @@ def main(argv=None) -> int:
         campaign = Campaign(workdir, quick=args.quick,
                             scenarios=tuple(args.scenarios) if args.scenarios else None,
                             log=lambda message: print(message, flush=True),
-                            model_images=args.model_images)
+                            model_images=args.model_images,
+                            only=tuple(args.only) if args.only else None)
         report = campaign.run()
     finally:
         if not args.keep:

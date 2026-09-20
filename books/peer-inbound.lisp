@@ -42,6 +42,7 @@
 ; fn-charge-for-payload: the retention charge a transit probe offers.
 (include-book "identity")
 (include-book "peer-config")
+(include-book "provenance-codec")
 
 (local (in-theory (enable fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
                           fn-nntp-projection-vocabulary
@@ -150,9 +151,40 @@
           rest))
     nil))
 
-; The provenance, as the retention ledger's evidence string.  The structured
-; (:transit peer kind msgid octets) submission is what the served path
-; carries; this is its rendering into the one slot the article record has.
+; The provenance of a transit acceptance (specs/peering.md section 2.4).
+;
+; `fn-peer-transit-provenance' is the typed record: the peer name as the
+; configuration knows it, the command that carried the bytes, the RFC 5537
+; section 3.2.1 Path diagnostic the transfer decision computed, and the
+; configuration generation the peer record was read at.
+; `fn-peer-transit-evidence' is its wire form --- a STRING whose octets are
+; the canonical encoding, so it fits the record grammar's evidence field
+; unchanged and `fn-prov-of-wire' recovers the whole record after replay.
+;
+; `fn-peer-evidence' is UNCHANGED and is still what the decisions below and
+; `fn-peer-injection-arguments' pass: it answers exactly the string this
+; function answered before the typed record existed, and
+; `fn-peer-evidence-is-the-legacy-rendering' (books/peer-inbound-invariants)
+; is the equation.  Moving the transit path onto
+; `fn-peer-transit-evidence' needs the transit command in scope, which means
+; a `kind' formal on `fn-peer-decide-transfer', `fn-peer-transfer' and
+; `fn-peer-injection-arguments' --- an arity change inside the K1/K2/K3
+; statements, which this lane does not own.  It is the ASK on
+; planning/deputies/BOARD.md and the open item in
+; planning/lanes/HANDOFF-w10-provenance.md.
+(defun fn-peer-transit-provenance (peer cfg kind diagnostic)
+  (declare (xargs :guard t))
+  (fn-prov-make-transit
+   (if (stringp peer) peer "")
+   (if (fn-prov-transit-kindp kind) kind :ihave)
+   (if (fn-prov-diagnosticp diagnostic) diagnostic (fn-prov-diagnostic-match))
+   (nfix (fn-cfg-generation cfg))))
+
+(defun fn-peer-transit-evidence (peer cfg kind diagnostic)
+  (declare (xargs :guard t))
+  (let ((p (fn-peer-transit-provenance peer cfg kind diagnostic)))
+    (if (fn-prov-durablep p) (fn-prov-wire p) (fn-prov-render p))))
+
 (defun fn-peer-evidence (peer cfg)
   (declare (xargs :guard t) (ignorable cfg))
   (if (stringp peer)
@@ -468,62 +500,6 @@
 ; Opening: peer nil is a reader connection (the POST-composed session
 ; unchanged); a peer connection pins the node and configuration once, under
 ; their recognizers, here and nowhere per command.
-; Three bridge lemmas, all local proof vocabulary (docs/proof-style.md
-; section 2).  Each opens exactly ONE recognizer and closes the cascade
-; underneath it: `fn-post-session-consistentp' expanded in place drags in
-; fn-nntp-session-consistentp, fn-nntp-sessionp, fn-nntp-projectionp and
-; fn-nntp-cursor-validp, which is the 2,000,000-step fan this book used to
-; pay at fn-peer-open-session-is-consistent.
-(local (defthm fn-peer-post-consistent-is-a-post-session
-  (implies (fn-post-session-consistentp x archive)
-           (fn-post-sessionp x))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (e/d (fn-post-session-consistentp)
-                                  (fn-post-sessionp
-                                   fn-nntp-session-consistentp))))))
-
-; EXPORTED, and forward-chaining only: books/nntp-auth.lisp wraps this
-; session and needs the same two facts of it, exactly as
-; docs/proof-style.md exports a record's three shape facts.  A rewrite rule
-; here would fire on every consistency hypothesis in every includer.
-(defthm fn-peer-consistent-forward
-  (implies (fn-peer-session-consistentp ps archive)
-           (and (fn-peer-sessionp ps)
-                (fn-post-session-consistentp (fn-peer-session-base ps)
-                                             archive)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (e/d (fn-peer-session-consistentp)
-                                  (fn-peer-sessionp
-                                   fn-post-session-consistentp)))))
-
-(local (defthm fn-peer-sessionp-transfer-is-a-transfer
-  (implies (fn-peer-sessionp x)
-           (fn-peer-transferp (fn-peer-session-transfer x)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (e/d (fn-peer-sessionp)
-                                  (fn-post-sessionp fn-node-statep fn-cfgp
-                                   fn-peer-transferp))))))
-
-; Every branch of fn-peer-step rebuilds the session from THIS session's
-; peer, node, configuration and inflight count, changing only the base and
-; the transfer, so the rule is stated in exactly that shape: it fires on
-; each branch with no instantiation hint, and the recognizer is opened here
-; and nowhere in the transition theorem.
-(local (defthm fn-peer-consistentp-of-make-session
-  (implies (and (fn-peer-sessionp ps)
-                (fn-post-session-consistentp base archive)
-                (fn-peer-transferp transfer))
-           (fn-peer-session-consistentp
-            (fn-peer-make-session base (fn-peer-session-peer ps) transfer
-                                  (fn-peer-session-inflight ps)
-                                  (fn-peer-session-node ps)
-                                  (fn-peer-session-cfg ps))
-            archive))
-  :hints (("Goal" :in-theory (e/d (fn-peer-session-consistentp fn-peer-sessionp)
-                                  (fn-post-session-consistentp fn-post-sessionp
-                                   fn-node-statep fn-cfgp fn-peer-transferp
-                                   fn-nntp-session-consistentp))))))
-
 (defun fn-peer-open-session (archive peer node cfg)
   (declare (xargs :guard t :verify-guards nil))
   (if (and peer (stringp peer) (fn-node-statep node) (fn-cfgp cfg))
@@ -694,11 +670,9 @@
 
 (defun fn-peer-command (ps keyword args)
   ; The peer connection's transit commands.  Anything else is nil: delegate.
-  ; The guard names the peer half explicitly.  fn-peer-sessionp pins the
-  ; node and the configuration only for a session that HAS a peer, and
-  ; the IHAVE, CHECK and TAKETHIS arms read both; fn-peer-step calls this
-  ; only on that branch, so the caller discharges it and no reader
-  ; connection can reach an arm that reads an unpinned node.
+  ; The guard names what fn-peer-step has already established when it calls
+  ; this: a peer connection, whose session pins a node and a configuration
+  ; under their recognizers.  A reader connection never reaches here.
   (declare (xargs :guard (and (fn-peer-sessionp ps) (fn-peer-session-peer ps))
                   :verify-guards nil))
   (let ((node (fn-peer-session-node ps))
@@ -830,29 +804,47 @@
   (implies (fn-af-message-idp msgid) (true-listp msgid))
   :hints (("Goal" :in-theory (enable fn-af-message-idp)))))
 
-; The four-octet code IS the initial status line's prefix.  This lemma has to
-; exist separately because the proof below keeps `binary-append' closed so
-; that fn-nntp-response-text-of-append keeps matching, and a closed append
-; hides the three digits and the space from fn-nntp-initial-status-linep.
-; Here the append is opened and nothing else is: the code is one of six
-; ground four-octet lists, so each case is decided by evaluation.
-(local (defthm fn-peer-code-text-is-an-initial-status-line
-  (implies (member-equal code-text
-                         '("238 " "431 " "438 " "239 " "436 " "439 "))
-           (fn-nntp-initial-status-linep
-            (append (fn-nntp-string-octets code-text) msgid)))
-  :hints (("Goal" :in-theory (enable fn-nntp-initial-status-linep
-                                     fn-nntp-decimal-digitp)))))
+; The echoed line, in two halves, because the two facts want opposite
+; theories: response text is closed under append (so the append stays
+; closed), and the status-line prefix and the length want it open.  Both
+; are :rule-classes nil and cited by :use, so nothing about append or
+; about these recognizers leaves the book.
 
-; And the line's length, for the same reason: with the append closed the
-; 512-octet bound cannot see the four ground octets in front of the
-; Message-ID, and fn-peer-message-id-len bounds only the Message-ID.
-(local (defthm fn-peer-len-of-code-append
-  (implies (member-equal code-text
-                         '("238 " "431 " "438 " "239 " "436 " "439 "))
-           (equal (len (append (fn-nntp-string-octets code-text) msgid))
-                  (+ 4 (len msgid))))
-  :hints (("Goal" :in-theory (enable len)))))
+(local (defthm fn-peer-echo-line-is-response-text
+  (implies (and (fn-nntp-printable-tokenp msgid)
+                (true-listp msgid)
+                (member-equal code-text
+                              '("238 " "431 " "438 " "239 " "436 " "439 ")))
+           (fn-nntp-response-textp
+            (append (fn-nntp-string-octets code-text) msgid)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable (:d binary-append)
+                                      (:d fn-nntp-string-octets)
+                                      (:d fn-nntp-response-textp)
+                                      (:d fn-nntp-printable-tokenp))
+           :use ((:instance fn-nntp-response-text-of-append
+                            (x (fn-nntp-string-octets code-text))
+                            (y msgid))
+                 (:instance fn-nntp-printable-token-is-response-text
+                            (octets msgid)))))))
+
+; RFC 3977 section 3.1: three decimal digits and a space, and the whole
+; line with its CRLF inside 512 octets.  The code is a ground four-octet
+; prefix and RFC 5536 section 3.1.3 bounds the Message-ID at 250, so the
+; line is at most 256 octets: the bound is not tight and is not the
+; interesting part.
+(local (defthm fn-peer-echo-line-is-a-status-line
+  (implies (and (fn-af-message-idp msgid)
+                (member-equal code-text
+                              '("238 " "431 " "438 " "239 " "436 " "439 ")))
+           (and (fn-nntp-initial-status-linep
+                 (append (fn-nntp-string-octets code-text) msgid))
+                (<= (+ (len (append (fn-nntp-string-octets code-text) msgid)) 2)
+                    *fn-nntp-max-response-octets*)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-nntp-initial-status-linep
+                                   fn-nntp-decimal-digitp)
+                                  ((:d fn-af-message-idp)))))))
 
 ; An echoed reply is a typed effect: the token is printable (so response
 ; text), the code is a status prefix, and 4 + 250 + 2 fits the line.
@@ -863,23 +855,17 @@
            (fn-nntp-effectsp (fn-peer-echo-reply code-text msgid)))
   :hints (("Goal" :in-theory (e/d (fn-peer-echo-reply fn-nntp-effectsp
                                    fn-nntp-effectp fn-nntp-reply-effect)
-                                  (fn-nntp-replyp fn-nntp-crlf
-                                   fn-nntp-initial-status-linep
-                                   fn-nntp-response-textp
-                                   fn-af-message-idp fn-nntp-printable-tokenp
+                                  ((:d fn-nntp-replyp) (:d fn-nntp-crlf)
+                                   (:d fn-nntp-initial-status-linep)
+                                   (:d fn-nntp-response-textp)
+                                   (:d fn-af-message-idp)
+                                   (:d fn-nntp-printable-tokenp)
                                    (:d binary-append)
                                    (:d fn-nntp-string-octets)))
-           ; Keep the append closed so fn-nntp-response-text-of-append can
-           ; see it: the code is a ground four-octet prefix and the
-           ; Message-ID is a printable token, and response text is closed
-           ; under append.
            :use ((:instance fn-nntp-replyp-of-single-line
                             (line (append (fn-nntp-string-octets code-text) msgid)))
-                 (:instance fn-nntp-response-text-of-append
-                            (x (fn-nntp-string-octets code-text))
-                            (y msgid))
-                 (:instance fn-nntp-printable-token-is-response-text
-                            (octets msgid))))))
+                 fn-peer-echo-line-is-response-text
+                 fn-peer-echo-line-is-a-status-line))))
 
 (defthm fn-peer-single-effects-well-formed
   (implies (and (fn-nntp-response-textp (fn-nntp-string-octets text))
@@ -887,11 +873,14 @@
                 (<= (+ (len (fn-nntp-string-octets text)) 2)
                     *fn-nntp-max-response-octets*))
            (fn-nntp-effectsp (fn-peer-single ps text)))
+  ; fn-nntp-effects-single (books/nntp-effects.lisp) is the fact; it is
+  ; stated over (fn-nntp-result-effects (fn-nntp-single ...)), so the
+  ; accessor stays closed or the rule stops matching.
   :hints (("Goal" :in-theory (e/d (fn-peer-single)
-                                  (fn-nntp-single fn-nntp-effectsp
-                                   fn-nntp-result-effects
-                                   fn-nntp-response-textp
-                                   fn-nntp-initial-status-linep)))))
+                                  ((:d fn-nntp-result-effects)
+                                   (:d fn-nntp-single) (:d fn-nntp-effectsp)
+                                   (:d fn-nntp-response-textp)
+                                   (:d fn-nntp-initial-status-linep))))))
 
 (local (defthm fn-peer-effectsp-of-append
   (implies (and (fn-nntp-effectsp a) (fn-nntp-effectsp b))
@@ -922,14 +911,14 @@
                                    fn-peer-decision-kind
                                    fn-peer-decision-reason)))))
 
-; The peer's capability block is block text: the reader's own list is, and
-; the two labels this book appends are printable ASCII.  Without it the
-; fn-nntp-effects-multi instance below has an undischarged hypothesis.
-(defthm fn-peer-capability-lines-are-block-text
+; Every advertised label is response text: the reader's list is ground and
+; IHAVE and STREAMING are two more ground lines.
+(local (defthm fn-peer-capability-lines-is-block-text
   (fn-nntp-block-textp (fn-peer-capability-lines record postingp))
   :hints (("Goal" :in-theory (e/d (fn-peer-capability-lines
-                                   fn-nntp-capability-lines)
-                                  nil))))
+                                   fn-nntp-capability-lines
+                                   fn-nntp-block-textp)
+                                  ((:d fn-cfg-peer-inbound)))))))
 
 (defthm fn-peer-command-effects-well-formed
   (implies (and (fn-peer-sessionp ps)
@@ -946,7 +935,6 @@
                                    fn-peer-decision-reason fn-nntp-keywordp
                                    fn-nntp-keyword-tokenp fn-peer-sessionp
                                    fn-nntp-multi fn-peer-capability-lines
-                                   fn-nntp-result-effects
                                    fn-cfg-peer-find fn-nntp-capability-lines))
            :use ((:instance fn-nntp-effects-multi
                             (session (fn-post-session-base (fn-peer-session-base ps)))
@@ -976,6 +964,48 @@
 ; The session stays consistent: the reader branches are
 ; fn-post-step-preserves-consistent-session under the base, and the transit
 ; branches touch only the transfer and inflight fields.
+; The two directions of the consistency predicate, so no proof below opens
+; it: forward-chaining puts its two conjuncts in the context when it is a
+; hypothesis, and the rewrite discharges it on a session just built.
+; Exported, not local: books/served.lisp needs (fn-peer-sessionp x) from a
+; consistent connection session to dismiss fn-peer-step's non-session
+; branch.  Forward-chaining, so no rewrite rule about the recognizer
+; leaves the book.
+(defthm fn-peer-session-consistentp-forward
+  (implies (fn-peer-session-consistentp x archive)
+           (and (fn-peer-sessionp x)
+                (fn-post-session-consistentp (fn-peer-session-base x) archive)
+                (fn-post-sessionp (fn-peer-session-base x))
+                (fn-peer-transferp (fn-peer-session-transfer x))
+                (natp (fn-peer-session-inflight x))
+                ; the peer half of the recognizer, as a conditional fact so
+                ; a reader connection carries nothing about node or cfg
+                (implies (fn-peer-session-peer x)
+                         (and (stringp (fn-peer-session-peer x))
+                              (fn-node-statep (fn-peer-session-node x))
+                              (fn-cfgp (fn-peer-session-cfg x))))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d ((:d fn-peer-session-consistentp)
+                                   (:d fn-peer-sessionp))
+                                  ((:d fn-post-session-consistentp)
+                                   (:d fn-post-sessionp) (:d fn-peer-transferp)
+                                   (:d fn-node-statep) (:d fn-cfgp))))))
+
+(local (defthm fn-peer-session-consistentp-of-make-session
+  (equal (fn-peer-session-consistentp
+          (fn-peer-make-session base peer transfer inflight node cfg) archive)
+         (and (fn-peer-sessionp
+               (fn-peer-make-session base peer transfer inflight node cfg))
+              (fn-post-session-consistentp base archive)
+              t))
+  :hints (("Goal" :in-theory (e/d (fn-peer-session-consistentp)
+                                  ((:d fn-peer-sessionp)
+                                   (:d fn-post-session-consistentp)))))))
+
+; Withdrawn from here down: the two lemmas above are the only way into it,
+; and the forward-chaining rule cannot trigger while it opens.
+(local (in-theory (disable (:d fn-peer-session-consistentp))))
+
 (defthm fn-peer-command-preserves-consistent-session
   (implies (and (fn-peer-session-consistentp ps archive)
                 (fn-peer-command ps keyword args))
@@ -994,22 +1024,56 @@
                                    fn-af-message-idp fn-nntp-printable-tokenp
                                    fn-peer-ihave-offer-line fn-peer-check-code)))))
 
-; The reader branch's whole content, stated at fn-peer-with-base so the
-; recognizer is opened HERE and nowhere in the transition theorem
-; (docs/proof-style.md, "Never open a recognizer to prove a property of a
-; transition").
-(local (defthm fn-peer-with-base-preserves-consistentp
-  (implies (and (fn-peer-session-consistentp ps archive)
-                (fn-post-session-consistentp base archive))
-           (fn-peer-session-consistentp (fn-peer-with-base ps base) archive))
-  :hints (("Goal"
-           :in-theory (e/d (fn-peer-with-base)
-                           (fn-peer-session-consistentp fn-peer-sessionp
-                            fn-post-session-consistentp fn-post-sessionp
-                            fn-node-statep fn-cfgp fn-peer-transferp
-                            fn-nntp-session-consistentp))
-           :use ((:instance fn-peer-consistentp-of-make-session
-                            (transfer (fn-peer-session-transfer ps))))))))
+; The session recognizer in both directions, so the step proof never opens
+; it: what a consistent session gives, and what rebuilding one with a new
+; base needs.  fn-peer-step only ever replaces the base (fn-peer-with-base)
+; or the transfer slot, so these two constructor rules cover it.
+(local (defthm fn-post-session-consistentp-forward
+  (implies (fn-post-session-consistentp x archive)
+           (fn-post-sessionp x))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d ((:d fn-post-session-consistentp))
+                                  ((:d fn-post-sessionp)
+                                   (:d fn-nntp-session-consistentp)))))))
+
+(local (defthm fn-peer-sessionp-forward-fields
+  (implies (fn-peer-sessionp x)
+           (and (fn-post-sessionp (fn-peer-session-base x))
+                (fn-peer-transferp (fn-peer-session-transfer x))
+                (natp (fn-peer-session-inflight x))
+                (implies (fn-peer-session-peer x)
+                         (and (stringp (fn-peer-session-peer x))
+                              (fn-node-statep (fn-peer-session-node x))
+                              (fn-cfgp (fn-peer-session-cfg x))))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp))
+                                  ((:d fn-post-sessionp) (:d fn-peer-transferp)
+                                   (:d fn-node-statep) (:d fn-cfgp)))))))
+
+(local (defthm fn-peer-sessionp-of-make-session-reader
+  (implies (and (fn-post-sessionp base)
+                (fn-peer-transferp transfer)
+                (natp inflight))
+           (fn-peer-sessionp
+            (fn-peer-make-session base nil transfer inflight node cfg)))
+  :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp))
+                                  ((:d fn-post-sessionp) (:d fn-peer-transferp)
+                                   (:d fn-node-statep) (:d fn-cfgp)))))))
+
+(local (defthm fn-peer-sessionp-of-make-session-peer
+  (implies (and (fn-post-sessionp base)
+                (stringp peer)
+                (fn-node-statep node)
+                (fn-cfgp cfg)
+                (fn-peer-transferp transfer)
+                (natp inflight))
+           (fn-peer-sessionp
+            (fn-peer-make-session base peer transfer inflight node cfg)))
+  :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp))
+                                  ((:d fn-post-sessionp) (:d fn-peer-transferp)
+                                   (:d fn-node-statep) (:d fn-cfgp)))))))
+
+(local (in-theory (disable (:d fn-peer-sessionp))))
 
 (defthm fn-peer-step-preserves-consistent-session
   (implies (fn-peer-session-consistentp ps archive)
@@ -1018,21 +1082,33 @@
              (fn-peer-step ps archive config observation injection wire-event))
             archive))
   :hints (("Goal" :in-theory (e/d (fn-peer-step fn-peer-delegate
-                                   fn-peer-with-transfer)
+                                   fn-peer-with-base fn-peer-with-transfer)
                                   (fn-peer-command fn-nntp-post-step
-                                   fn-peer-with-base
                                    fn-peer-sessionp fn-peer-session-consistentp
                                    fn-nntp-command-inputp fn-nntp-tokenize
                                    fn-nntp-keyword-tokenp
                                    fn-nntp-command-arguments-at-mostp
                                    fn-post-body-octets fn-nntp-session-openp
                                    fn-post-session-consistentp
+                                   ; every sub-recognizer stays closed: the
+                                   ; content is in the forward-chaining
+                                   ; facts and the two constructor rules
+                                   (:d fn-post-sessionp)
+                                   (:d fn-nntp-session-consistentp)
+                                   (:d fn-post-session-shapep)
+                                   (:d fn-peer-transferp)
+                                   (:d fn-node-statep) (:d fn-cfgp)
                                    fn-peer-command-preserves-consistent-session))
            :use ((:instance fn-peer-command-preserves-consistent-session
                             (keyword (car (fn-nntp-tokenize (car (cdr wire-event)))))
                             (args (cdr (fn-nntp-tokenize (car (cdr wire-event))))))
                  (:instance fn-post-step-preserves-consistent-session
-                            (ps (fn-peer-session-base ps)))))
+                            (ps (fn-peer-session-base ps)))
+                 (:instance fn-post-session-consistentp-forward
+                            (x (fn-post-result-session
+                                (fn-nntp-post-step (fn-peer-session-base ps)
+                                                   archive config observation
+                                                   injection wire-event))))))
           ("Subgoal *1/1" :in-theory (enable fn-peer-session-consistentp fn-peer-sessionp
                                               fn-post-session-consistentp))))
 
@@ -1069,133 +1145,78 @@
 
 (defthm fn-peer-open-session-is-consistent
   (fn-peer-session-consistentp (fn-peer-open-session archive peer node cfg) archive)
-  :hints (("Goal" :in-theory (e/d (fn-peer-open-session fn-peer-session-consistentp
-                                   fn-peer-sessionp fn-peer-transferp)
-                                  (fn-post-open-session fn-post-session-consistentp
-                                   fn-post-sessionp fn-node-statep fn-cfgp
+  ; Only fn-peer-open-session opens: the constructor rules above carry the
+  ; shape and the forward rule carries what the opened base gives.
+  :hints (("Goal" :in-theory (e/d (fn-peer-open-session)
+                                  ((:d fn-peer-session-consistentp)
+                                   (:d fn-peer-sessionp) (:d fn-peer-transferp)
+                                   (:d fn-post-open-session)
+                                   (:d fn-post-session-consistentp)
+                                   (:d fn-post-sessionp)
+                                   (:d fn-node-statep) (:d fn-cfgp)
                                    fn-post-open-session-is-consistent))
-           :use ((:instance fn-post-open-session-is-consistent)))))
+           :use ((:instance fn-post-open-session-is-consistent)
+                 (:instance fn-post-session-consistentp-forward
+                            (x (fn-post-open-session archive)))))))
 
 ; -----------------------------------------------------------------------------
-; Guards
+; Guard verification of the served chain
 ;
-; books/served.lisp's fold is executable: fn-served-dispatch has :guard t and
-; is guard verified at definition, so every function it calls must be too.
-; The chain below is what it reaches.  fn-peer-session-consistentp is NOT
-; here and must not be: it walks the pinned archive and is specification
-; vocabulary, exactly as fn-served-connp is (docs/proof-style.md section 4).
+; books/served.lisp guard-verifies fn-served-dispatch, which calls
+; fn-peer-step, so these are not optional: an unverified fn-peer-step makes
+; books/served uncertifiable and the served host unloadable.  The one
+; non-trivial obligation is the node-statep-to-retain-statep bridge that
+; fn-peer-decide-offer needs for fn-retain-admissiblep, and it is a
+; conjunct of fn-node-statep.
 
-; The two decision functions carry `(fn-node-statep node)' as their guard
-; and read the node's two sub-states through it; the recognizer is closed
-; everywhere else, so the fact is supplied once, by forward chaining, in the
-; shape books/bp-release-invariants.lisp already uses.
-(local (defthm fn-peer-node-statep-substates
+(local (defthm fn-peer-node-statep-forward
   (implies (fn-node-statep node)
            (and (fn-statep (fn-node-acceptance node))
                 (fn-retain-statep (fn-node-retention node))))
   :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (e/d (fn-node-statep)
-                                  (fn-statep fn-retain-statep
-                                   fn-node-binding-listp))))))
+  :hints (("Goal" :in-theory (e/d ((:d fn-node-statep))
+                                  ((:d fn-statep) (:d fn-retain-statep)
+                                   (:d fn-node-state-shapep)
+                                   (:d fn-node-binding-listp)))))))
 
-; A found peer record IS a peer record: fn-cfg-peer-of-rows ends in
-; `(if (fn-cfg-peerp p) p nil)', so the fact is unconditional, and with it
-; the inbound half's two bounds are posp by fn-cfg-peer-inboundp.  Without
-; these the guard obligations below ask `rationalp' of a total accessor and
-; cannot get it; WITH them no guard has to be strengthened, so the peer
-; interface is unchanged.
-(local (defthm fn-peer-cfg-peer-of-rows-is-a-peer
-  (implies (fn-cfg-peer-of-rows name rows)
-           (fn-cfg-peerp (fn-cfg-peer-of-rows name rows)))
-  :hints (("Goal" :in-theory (e/d (fn-cfg-peer-of-rows)
-                                  (fn-cfg-peerp fn-cfg-peer-make
-                                   fn-cfg-peer-slot))))))
-
-(local (defthm fn-peer-cfg-peer-find-is-a-peer
-  (implies (fn-cfg-peer-find name peers)
-           (fn-cfg-peerp (fn-cfg-peer-find name peers)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (e/d (fn-cfg-peer-find)
-                                  (fn-cfg-peer-of-rows fn-cfg-peerp
-                                   fn-cfg-rows-with-key))))))
-
-(local (defthm fn-peer-transferp-shape
+(local (defthm fn-peer-transferp-forward
   (implies (and (fn-peer-transferp x) x)
-           (and (consp x) (consp (cdr x)) (true-listp x)))
+           (and (consp x) (consp (cdr x))))
   :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (e/d (fn-peer-transferp)
-                                  (fn-nntp-printable-tokenp
-                                   fn-af-message-idp))))))
+  :hints (("Goal" :in-theory (e/d ((:d fn-peer-transferp))
+                                  ((:d fn-nntp-printable-tokenp)
+                                   (:d fn-af-message-idp)))))))
 
-(local (defthm fn-peer-sessionp-peer-fields
-  (implies (and (fn-peer-sessionp x) (fn-peer-session-peer x))
-           (and (stringp (fn-peer-session-peer x))
-                (fn-node-statep (fn-peer-session-node x))
-                (fn-cfgp (fn-peer-session-cfg x))
-                (natp (fn-peer-session-inflight x))))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (e/d (fn-peer-sessionp)
-                                  (fn-post-sessionp fn-node-statep fn-cfgp
-                                   fn-peer-transferp))))))
-
-(local (defthm fn-peer-inbound-bounds-are-posp
-  (implies (and (fn-cfg-peerp p) (fn-cfg-peer-inbound p))
-           (and (posp (fn-cfg-peer-inbound-max-inflight p))
-                (posp (fn-cfg-peer-inbound-max-octets p))))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (e/d (fn-cfg-peerp fn-cfg-peer-inboundp
-                                   fn-cfg-peer-inbound-max-inflight
-                                   fn-cfg-peer-inbound-max-octets)
-                                  (fn-cfg-labelp fn-cfg-wildmatp
-                                   fn-cfg-peer-transportp
-                                   fn-cfg-peer-outboundp fn-cfg-peer-authp
-                                   fn-path-identityp
-                                   fn-record-string-octets))))))
-
-; The configuration vocabulary this book enables at its top is the fan these
-; two obligations pay for: with fn-cfg-peerp, fn-cfg-peer-of-rows and
-; fn-wildmat-parse open, fn-peer-decide-transfer's guard cost more than
-; 2,000,000 prover steps in 38 s and did not close.  Narrowed to the form,
-; which is what docs/proof-style.md's "Never enable a vocabulary book-wide"
-; says to do; the book-wide enable at the top is the defect and is left for
-; the cluster's owner to remove.
-(verify-guards fn-peer-sessionp)
-(verify-guards fn-peer-open-session)
 (verify-guards fn-peer-decide-offer
-  :hints (("Goal" :in-theory (disable fn-cfg-vocabulary fn-cfg-peer-vocabulary
-                                      fn-path-vocabulary fn-node-statep))))
-(verify-guards fn-peer-decide-transfer
-  :hints (("Goal" :in-theory (disable fn-cfg-vocabulary fn-cfg-peer-vocabulary
-                                      fn-path-vocabulary fn-node-statep
-                                      fn-article-parse fn-article-syntax-p
-                                      fn-af-proto-article-check
-                                      fn-peer-scope-groups))))
-(verify-guards fn-peer-injection-arguments)
-(verify-guards fn-peer-transfer
-  :hints (("Goal" :in-theory (disable fn-cfg-vocabulary fn-cfg-peer-vocabulary
-                                      fn-path-vocabulary fn-node-statep
-                                      fn-article-parse fn-article-syntax-p
-                                      fn-af-proto-article-check
-                                      fn-peer-decide-transfer
-                                      fn-peer-injection-arguments
-                                      fn-peer-scope-groups))))
-(verify-guards fn-peer-command
-  :hints (("Goal" :in-theory (disable fn-cfg-vocabulary fn-cfg-peer-vocabulary
-                                      fn-path-vocabulary fn-node-statep
-                                      fn-peer-sessionp fn-cfgp
-                                      fn-article-parse fn-article-syntax-p
-                                      fn-af-proto-article-check
-                                      fn-peer-decide-offer
-                                      fn-peer-scope-groups))))
+  ; The recognizers stay closed: the forward rule above supplies
+  ; fn-retain-statep and the rest are guard t.
+  :hints (("Goal" :in-theory (disable (:d fn-node-statep) (:d fn-statep)
+                                      (:d fn-retain-statep)
+                                      (:d fn-node-state-shapep)
+                                      (:d fn-cfgp) (:d fn-cfg-peer-find)
+                                      (:d fn-af-message-idp)
+                                      (:d fn-peer-history-hasp)
+                                      (:d fn-peer-stagedp)
+                                      (:d fn-retain-admissiblep)
+                                      (:d fn-peer-evidence)
+                                      (:d fn-record-octets-string)
+                                      ; the inbound accessors stay closed or
+                                      ; fn-cfg-peerp-inbound-fields, which is
+                                      ; stated over them, stops matching
+                                      (:d fn-cfg-peer-inbound)
+                                      (:d fn-cfg-peer-inbound-groups)
+                                      (:d fn-cfg-peer-inbound-max-octets)
+                                      (:d fn-cfg-peer-inbound-max-inflight)
+                                      (:d fn-cfg-ag-car) (:d fn-cfg-ag-cdr)))))
+(verify-guards fn-peer-sessionp)
+; fn-peer-session-consistentp: OPEN, and not needed.  It calls
+; fn-post-session-consistentp (books/nntp-post.lisp), which is itself
+; :verify-guards nil; it is a specification predicate, not on the served
+; executable path, so nothing guard-verified calls it.
+(verify-guards fn-peer-open-session)
 (verify-guards fn-peer-delegate)
-(verify-guards fn-peer-step
-  :hints (("Goal" :in-theory (disable fn-cfg-vocabulary fn-cfg-peer-vocabulary
-                                      fn-path-vocabulary fn-node-statep
-                                      fn-peer-sessionp fn-cfgp
-                                      fn-article-parse fn-article-syntax-p
-                                      fn-af-proto-article-check
-                                      fn-peer-command fn-peer-delegate
-                                      fn-peer-transfer fn-peer-scope-groups))))
+(verify-guards fn-peer-command)
+(verify-guards fn-peer-step)
 
 ; -----------------------------------------------------------------------------
 ; Export theory
@@ -1203,6 +1224,7 @@
 (deftheory fn-peer-vocabulary
   '((:d fn-peer-decisionp) (:d fn-peer-reason-text) (:d fn-peer-history-hasp)
     (:d fn-peer-stagedp) (:d fn-peer-wildmat-matchp) (:d fn-peer-scope-groups)
+    (:d fn-peer-transit-provenance) (:d fn-peer-transit-evidence)
     (:d fn-peer-evidence) (:d fn-peer-local-identity)
     (:d fn-peer-probe-obligation-id) (:d fn-peer-probe-subject)
     (:d fn-peer-decide-offer) (:d fn-peer-check-msgid) (:d fn-peer-check-groups)

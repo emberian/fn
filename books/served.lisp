@@ -443,12 +443,18 @@
                            (fn-served-dispatch fn-auth-step
                             fn-auth-sessionp fn-served-connp
                             fn-nntp-effectp fn-inj-injectedp fn-peer-submissionp
-                            ; else the :use hypothesis is rewritten to T by
-                            ; this very rule and forward chaining never sees
-                            ; the consistency it was added for
+                            ; else the :use hypothesis is rewritten to T
+                            ; by this very rule and the forward-chaining
+                            ; bridge never sees the consistency it was
+                            ; added for
                             fn-served-connp-is-consistent-session
                             fn-auth-step-effects-well-formed))
+           ; a connection's session IS an auth session: that dismisses
+           ; fn-auth-step's non-session branch, which emits nothing
            :use ((:instance fn-served-connp-is-consistent-session (c conn))
+                 (:instance fn-auth-consistent-forward
+                            (as (fn-served-conn-session conn))
+                            (archive (fn-served-conn-archive conn)))
                  (:instance fn-auth-step-effects-well-formed
                             (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))
@@ -727,11 +733,27 @@
         (fn-served-submission (cdr effects)))
     nil))
 
+; DEFECT REPAIRED 2026-09-20 (w6/peering-inbound-2): without the
+; fn-served-effectsp hypothesis this is FALSE.  Counterexample:
+; left = ((:submit nil)), right = ((:submit 5)).  fn-served-submission
+; stops at the first :submit and returns its payload, so the left scan
+; yields nil and the appended scan also yields nil, while the right-hand
+; side yields 5.  fn-served-submit-effectp requires the payload to be an
+; fn-inj-injectedp or an fn-peer-submissionp, and neither holds of nil, so
+; on a typed effect list -- the only kind the served path produces -- a
+; :submit effect always carries a non-nil submission and the equality
+; holds.  The hypothesis is discharged at the one use site below from
+; fn-served-step-effects-are-typed.
 (defthm fn-served-submission-of-append
-  (equal (fn-served-submission (append left right))
-         (if (fn-served-submission left)
-             (fn-served-submission left)
-           (fn-served-submission right))))
+  (implies (fn-served-effectsp left)
+           (equal (fn-served-submission (append left right))
+                  (if (fn-served-submission left)
+                      (fn-served-submission left)
+                    (fn-served-submission right))))
+  :hints (("Goal" :in-theory (e/d (fn-served-effectsp fn-served-effectp
+                                   fn-served-submit-effectp)
+                                  ((:d fn-inj-injectedp)
+                                   (:d fn-peer-submissionp))))))
 
 ; The host's durable observation, fed back as one more served input.  The
 ; connection is unchanged; the reply is fn-nntp-post-outcome's, which is the
@@ -1093,17 +1115,20 @@
            (equal (fn-wire-state-mode
                    (fn-wire-result-state (fn-wire-feed-byte wire-state byte)))
                   :command))
-  ; fn-wire-close is in the enable list because the malformed-byte branch
-  ; returns its result, and the hypothesis "the event is (:article ...)" is
-  ; contradictory there: a close emits a (:reject ...).  With it closed the
-  ; prover cannot see that and the branch is left open.
-  :hints (("Goal" :in-theory (enable fn-wire-feed-byte fn-wire-statep
-                                     fn-wire-state-shapep fn-wire-state-mode
-                                     fn-wire-article-event fn-wire-result-state
-                                     fn-wire-close fn-wire-reject-event
-                                     fn-wire-make-result fn-wire-make-state
-                                     fn-wire-after-line fn-wire-command-event
-                                     fn-wire-result-events))))
+  ; The recognizer stays closed (opening it puts eight field conjuncts in
+  ; every branch of fn-wire-feed-byte); only the step and the two
+  ; constructors open.  fn-wire-article-event is the dev name of what this
+  ; hint used to call fn-wire-event-article.
+  :hints (("Goal" :in-theory (e/d (fn-wire-step-vocabulary)
+                                  ((:d fn-wire-state-mode)
+                                   (:d fn-wire-octet-listp)
+                                   (:d fn-wire-octet-linesp)
+                                   ; the result accessors stay closed: their
+                                   ; record lemmas say an eventless result
+                                   ; has no events, which is what dismisses
+                                   ; every branch that emits none
+                                   (:d fn-wire-result-state)
+                                   (:d fn-wire-result-events))))))
 
 ; The reply stream of a read is the concatenation of the reply streams of its
 ; effect list's halves.  A list-shape lemma, exported because the pipelining
@@ -1176,6 +1201,8 @@
                                fn-served-step-partition-independence)
            :use ((:instance fn-served-step-partition-independence
                             (left post-block) (right later))
+                 (:instance fn-served-step-effects-are-typed
+                            (octets post-block))
                  (:instance fn-served-submission-of-append
                             (left (fn-served-result-effects
                                    (fn-served-step conn post-block)))

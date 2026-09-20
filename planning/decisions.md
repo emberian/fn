@@ -219,3 +219,81 @@ that client/operator task; a web reader/composer stays later M6 interface work.
 This supersedes the provisional proposal to bring web into C2. It introduces no
 new protocol or release requirement and does not defer the selected D02 native
 signature capability.
+
+### 2026-09-20: D14-a — the pending transaction name in the byte-store/kernel relation
+
+An engineering decision under D14 (`Sector/write isolation and commit marker`),
+resolved from the host's own commit program rather than from taste, on the
+question lane `w9/storage-2` raised and did not decide.
+
+**Selected:** keep `books/byte-store-scan.lisp`'s
+`(fn-bs-txn-name (len (fn-bs-durable-names bs :transactions)))`; the form
+[`specs/crash-model-v2.md`](../specs/crash-model-v2.md) §3.2 proposed,
+`(fn-bs-txn-name (len (fn-sf-records ks)))`, is withdrawn. The unreachable
+image §3.2 was worried about is excluded instead by a phase-indexed clause on
+the record LIST, not by a blanket equality of counts.
+
+**Evidence: every cut between the record write and the pending link's removal,
+in `tools/run_store.py` at `ca8a2ef`.** The link is issued at
+`Store.publish:1334` and is removed from the pending list either by
+`fsync_dir(self.transactions)` at `publish:1348` (the process survives) or by
+`fsync_dir(self.transactions)` at `Store.recover:1187` (the process died with
+it pending and the next one drains it). That gives two windows and six cut
+states, and the two forms disagree in the second window.
+
+*The publish window.* With `R = (fn-sf-records ks)` at the link: the only
+transition that appends to `fn-sf-records` is `fn-sf-record-dir-result` with
+`:ok` (`books/store-files.lisp:507`), which the host issues at
+`publish:1353`, strictly after `fsync_dir` at 1348 returned — and that
+`fsync_dir` is the model's `fn-bs-fsync-dir :transactions`, which empties that
+directory's pending list (`books/byte-store.lisp:549`, `fn-bs-fence-dir` 370).
+So at `record-linked` (1338) and `record-attempted` (1346), and on the
+`record-link :error` branch (1336, kernel `:fenced-record`, records
+unchanged), the transaction directory is non-quiet and the durable record list
+is still exactly `R`. At `record-durable` (1352) the durable list is
+`R + [candidate]` — and there the directory is quiet. Both forms name
+`(fn-bs-txn-name (len R))` at every cut of this window: they agree.
+
+*The recovery window, which decides it.* A process-death cut at
+`record-linked` leaves the entry operation pending in the kernel's cache, not
+lost: process death is not power loss. The next process's
+`Store.durable_records` (1100) scans the live directory — the view — so it
+reads `R + 1` records, and `acl2.recover` (1164) builds its `:replaying` image
+from that scan (`host/store-node-host.lisp:39`, "constructs its own replaying
+kernel image"). At `recover-replayed` (1179) and at the first two
+`recover-barrier` cuts (1200, after the config and frontier file fences and
+before `fsync_dir(self.transactions)` at 1187) the durable namespace still
+holds `R` names while `(fn-sf-records ks)` already holds `R + 1`. There
+`(fn-bs-txn-name (len (fn-sf-records ks)))` is `(fn-bs-txn-name (1+ R))` and
+names nothing; `(fn-bs-txn-name (len (fn-bs-durable-names bs :transactions)))`
+is `(fn-bs-txn-name R)`, which is the pending entry's actual name. This is
+also the campaign's ordinary path, not a corner: `tests/campaign` kills at
+`record-linked` and reopens.
+
+**Consequences.** (1) The candidate equality
+`(equal (len (fn-bs-durable-records bs)) (len (fn-sf-records ks)))` "whenever
+the transaction directory is not quiet" is REJECTED: it is false at those
+three recovery cuts. (2) `fn-bs-pending-matches-phase`'s transaction arm
+becomes three-way — quiet; the publish window, which carries
+`(equal (fn-bs-durable-records bs) (fn-sf-records ks))` and so excludes the
+duplicate image outright; and a new recovery window
+(`fn-bs-replay-visiblep`: `:replaying`, `:recovering`, `:fenced-recovery`),
+which carries `(equal (fn-sf-records ks) (append (fn-bs-durable-records bs)
+(list <the pending link's record>)))`. (3) §3.2's claim that the relation is
+established at process start "because the image has no pending operations" is
+withdrawn in the same change: after a process-death cut it is established with
+a non-empty pending list, which is what the recovery window is.
+
+**What this exposes and does not close.** In the recovery window a crash can
+still produce the `R`-record image, and `fn-sf-crash-imagep`
+(`books/store-files.lisp:593`) does not admit it: the kernel's phase
+vocabulary has no freedom for "replayed, not yet re-fenced". K2 therefore
+takes `(not (fn-bs-replay-visiblep ks))` as a hypothesis and the recovery
+window is recorded as the open obligation K2r, whose content is that such a
+state carries no success (`fn-sn-initial nil 0`; `Store.recover` runs exactly
+once per process, at open — `run_store.py:1674`, `run_owner.py:660`,
+`fn9p.py:428`, `run_reader.py:313`, `run_bp_ingress.py:132`), so nothing
+acknowledged can be lost there. Widening the kernel predicate instead was not
+taken: it is a change to the interface `books/store-observed.lisp` and the
+store-node closure take as a premise, and it is not this lane's to make
+silently.
