@@ -403,10 +403,13 @@
 ; however the peer record is configured.
 (defun fn-feed-backoff-delay (base attempts)
   (declare (xargs :guard t :measure (nfix attempts)))
-  (if (zp attempts)
+  ; `zp' has `(natp x)' for its guard, so the counter is nfixed at the test
+  ; as well as at the recursive call: the guard conjecture is then
+  ; unconditional and the measure is the same nat.
+  (if (zp (nfix attempts))
       (if (<= *fn-feed-max-backoff* (nfix base)) *fn-feed-max-backoff*
           (nfix base))
-      (let ((d (fn-feed-backoff-delay base (- attempts 1))))
+      (let ((d (nfix (fn-feed-backoff-delay base (- (nfix attempts) 1)))))
         (if (<= *fn-feed-max-backoff* (* 2 d)) *fn-feed-max-backoff*
             (* 2 d)))))
 
@@ -575,7 +578,8 @@
            (fn-clock-observationp obs)
            (fn-sched-contact-holdsp (fn-feed-contact f) obs)
            (natp (fn-feed-conn f))
-           (<= (fn-feed-backoff-until f) (fn-clock-monotonic obs))
+           (<= (nfix (fn-feed-backoff-until f))
+               (nfix (fn-clock-monotonic obs)))
            (equal (fn-feed-inflight-count (fn-feed-queue f)) 0))
       (fn-feed-head-queued (fn-feed-queue f))
       nil))
@@ -672,8 +676,9 @@
   (declare (xargs :guard t))
   (fn-feed-make (fn-feed-peer f) (fn-feed-limits-of f) (fn-feed-queue f)
                 (fn-feed-contact f)
-                (if (<= (fn-feed-backoff-until f) (nfix until)) (nfix until)
-                    (fn-feed-backoff-until f))
+                (if (<= (nfix (fn-feed-backoff-until f)) (nfix until))
+                    (nfix until)
+                    (nfix (fn-feed-backoff-until f)))
                 (fn-feed-conn f) (fn-feed-next-attempt f)))
 
 ; 431/436: retry later.  attempts + 1, backoff-until pushed out exponentially,
@@ -729,7 +734,7 @@
 (defun fn-feed-retry-exhaustedp (f msgid)
   (declare (xargs :guard t))
   (and (consp (fn-feed-find msgid (fn-feed-queue f)))
-       (<= (fn-feed-retry-bound (fn-feed-limits-of f))
+       (<= (nfix (fn-feed-retry-bound (fn-feed-limits-of f)))
            (nfix (fn-feed-entry-attempts
                   (fn-feed-find msgid (fn-feed-queue f)))))))
 
@@ -752,6 +757,15 @@
        (natp (fn-feed-response-code r))
        (fn-feed-namep (fn-feed-response-msgid r))))
 
+; Confirmed against a real INN 2.7.4 on hbox
+; (planning/evidence/inn-lab-f4e8272-2026-09-20.md): IHAVE 335 then 235,
+; 435 duplicate, 436 transient, 437 rejected permanently (a Path already
+; naming the peer yields 437); CHECK 238/431/438; TAKETHIS 239/439;
+; MODE STREAM 203.  So 435/437/438/439 are FINAL here -- `fn-feed-done', never
+; re-offered -- 431/436 back off, and 400, 480, 503 and every unknown code
+; fall through to `fn-feed-lost', which requeues the in-flight entry so the
+; reconnect resolves it by CHECK.
+;
 ; The response the peer sent names a Message-ID for CHECK/TAKETHIS; for IHAVE
 ; the reply has no Message-ID and the host supplies the in-flight one, which
 ; is unambiguous because at most one entry is in flight.
