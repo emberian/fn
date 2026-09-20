@@ -477,11 +477,16 @@
 ; The group selection really happened in the same read: the session carries
 ; the selected group afterwards, so the trailing command was executed and not
 ; merely echoed.
+; The served session is an auth session over a peer session over the
+; POST-composed reader session, so the reader session is three accessors
+; down, not two.
 (assert-event (equal (fn-nntp-session-group
                       (fn-post-session-base
                        (fn-peer-session-base
-                        (fn-served-conn-session
-                         (fn-served-result-conn *fn-t-served-pipelined-result*)))))
+                        (fn-auth-session-base
+                         (fn-served-conn-session
+                          (fn-served-result-conn
+                           *fn-t-served-pipelined-result*))))))
                      "fn.letters"))
 
 ; The framing fact the keystone rests on: the byte that completed the article
