@@ -74,6 +74,8 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 
 | `fn-inj-` | `injection`, `injection-invariants` | RFC 5537 §3.5 injection: the injecting-agent configuration record, the Gregorian calendar of the 2000-2399 cycle and the RFC 5322 date-time rendering, the generated Message-ID, and the opaque decision record carrying either a refusal reason or the exact injected octets |
 | `fn-post-`, `fn-nntp-post-` | `nntp-post`, `tests/acl2/nntp-post-tests` | POST (RFC 3977 §6.3.1) composed over the reader dispatcher: the posting session (the reader session plus the awaiting bit), the result record carrying effects and a submission, and the two host entry points `fn-nntp-post-step` and `fn-nntp-post-outcome` |
+| `fn-nntp-` | `nntp`, `nntp-invariants`, `nntp-effects` | Reader command dispatcher, session cursor, projection, effects |
+| `fn-tcl-` | `tcpcl-records`, `tcpcl-octets`, `tcpcl-session`, `tcpcl-invariants` | TCPCLv4 convergence layer (RFC 9174): opaque message and session records, the exact octet grammar with bounds before allocation, the section 3.3 session machine (contact, SESS_INIT negotiation, one inbound and one outbound transfer, refusal, keepalive and idle timeout, SESS_TERM, MSG_REJECT), the served drive loop and its keystones C1 to C4 |
 
 Host-only wrappers in `host/*.lisp` use `fn-store-`, `fn-bpreq-`, `fn-bpwf-`,
 `fn-bprj-` and similar; they are `:program` mode and outside the proof boundary.
