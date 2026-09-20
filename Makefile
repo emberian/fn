@@ -229,6 +229,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/scheduler \
 	books/scheduler-invariants \
 	tests/acl2/scheduler-tests \
+	books/peer-feed \
+	books/peer-feed-invariants \
+	tests/acl2/peer-feed-tests \
 	books/relay \
 	books/relay-invariants \
 	books/relay-crash-invariants \
