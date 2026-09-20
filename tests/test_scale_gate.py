@@ -202,3 +202,49 @@ class PartialCurveTests(DryRun, unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReuseAndAdoptTests(DryRun, unittest.TestCase):
+    """A four-hour series is measured once; a later invocation adopts it.
+
+    The first run here is `CeilingTests`' own: this class runs the gate a
+    second time against the same fake HOME with `--reuse`, adopting the 1024
+    octet series from the JSON the first run left on the host. The tree and
+    its stores must survive, the tables must be rendered from the adopted
+    file, and the adoption must appear as a gap -- the steps that produced
+    those numbers are the earlier run's.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        series = cls.home / "fn-deploy/{}/gate-run/series-1024.json".format(cls.rev)
+        cls.adopted = json.loads(series.read_text())
+        second = Path(cls.temp.name) / "scale-evidence-2.md"
+        argv = [cls.rev, "--dry-run", "--home", str(cls.home), "--repo", str(ROOT),
+                "--evidence", str(second), "--keep", "--reuse", "--skip-previous",
+                "--overlay", str(ROOT / "tests/deploy_gate_fake"),
+                "--overlay", str(ROOT / "tests/scale_gate_fake"),
+                "--adopt-series", "1024={}".format(series),
+                "--payload", "1024", "--start", "8", "--max-articles", "8",
+                "--connections", "3"]
+        cls.second_code = scale_gate.main(argv)
+        cls.text = second.read_text()
+
+    def test_the_second_run_is_green_and_kept_the_stores(self):
+        self.assertEqual(self.second_code, 0, "\n".join(self.failures()))
+        self.assertIn("REUSING", self.text)
+
+    def test_the_adopted_series_is_what_the_tables_report(self):
+        table = self.section("The series: one store, grown by doubling")
+        self.assertIn("Largest passing store: {} articles".format(
+            self.adopted["largest_passing"]), table)
+        self.assertIn(self.adopted["stopped_by"], table)
+
+    def test_an_adopted_payload_is_not_measured_a_second_time(self):
+        self.assertNotIn("| series 1024 octets |", self.text)
+        self.assertIn("| adopt series 1024 octets |", self.text)
+
+    def test_the_adoption_is_recorded_as_a_gap(self):
+        self.assertIn("was measured by an earlier invocation of this gate",
+                      self.section("What was NOT exercised"))
