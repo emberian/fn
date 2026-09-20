@@ -19,14 +19,14 @@ call --- `fn-sf-replay-node`, `fn-sf-history-recoverablep`,
 
 | link | file | was | needed | verdict |
 | --- | --- | --- | --- | --- |
-| `fn-ocfg-statep` | `owner-config.lisp:191` | `:guard t`, verification FAILS | its callee's guards, then one type fact | **closed**: a `local` forward-chaining `fn-cfgp` → `natp` of the generation |
-| `fn-own-relation` | `owner-invariants.lisp:155` | `:ideal` | declaration only | **closed**: `(declare (xargs :guard t))`; guard conjecture "trivial to prove" |
-| `fn-own-view-okp` | `owner-invariants.lisp:139` | `:ideal` | declaration only | **closed**: `:guard t` |
-| `fn-own-conns-okp` | `owner-invariants.lisp:133` | `:ideal` | declaration only | **closed**: `:guard t` |
+| `fn-ocfg-statep` | `owner-config.lisp:213` (was `:191`) | `:guard t`, verification FAILS | its callee's guards, then one type fact | **closed**: a `local` forward-chaining `fn-cfgp` → `natp` of the generation |
+| `fn-own-relation` | `owner-invariants.lisp:164` (was `:155`) | `:ideal` | declaration only | **closed**: `(declare (xargs :guard t))`; guard conjecture "trivial to prove" |
+| `fn-own-view-okp` | `owner-invariants.lisp:141` | `:ideal` | declaration only | **closed**: `:guard t` |
+| `fn-own-conns-okp` | `owner-invariants.lisp:134` | `:ideal` | declaration only | **closed**: `:guard t` |
 | `fn-own-conn-okp` | `owner-invariants.lisp:121` | `:ideal` | declaration only | **closed**: `:guard t` |
-| `fn-own-ledger-durablep` | `owner-invariants.lisp:149` | `:ideal` | declaration only | **closed**: `:guard t` |
-| `fn-snt-relation` | `store-node-traces.lisp:159` | `:ideal` | declaration + deferred `verify-guards` + a theory hint | **closed** |
-| `fn-snt-pending-linkp` | `store-node-traces.lisp:145` | `:ideal` | a real GUARD (two typed hypotheses) + deferred verification | **closed** |
+| `fn-own-ledger-durablep` | `owner-invariants.lisp:152` | `:ideal` | declaration only | **closed**: `:guard t` |
+| `fn-snt-relation` | `store-node-traces.lisp:171` (was `:159`) | `:ideal` | declaration + deferred `verify-guards` + a theory hint | **closed** |
+| `fn-snt-pending-linkp` | `store-node-traces.lisp:155` (was `:145`) | `:ideal` | a real GUARD (two typed hypotheses) + deferred verification | **closed** |
 | `fn-snt-idle-phasep` | `store-node-traces.lisp:137` | `:ideal` | declaration only | **closed**: `:guard t`, trivial |
 
 Read the last three rows together: they are the only links that needed more
@@ -46,11 +46,12 @@ callees ask for:
 `fn-snt-relation` keeps `:guard t`, because its own first conjunct is
 `(fn-sn-statep s)` and an `and` puts that conjunct in the hypotheses of every
 later guard obligation the form generates. `fn-snt-typed-store-components`
-(`store-node-traces.lisp:225`, already in the book, `:forward-chaining`)
+(`store-node-traces.lisp:238`, already in the book, `:forward-chaining`)
 carries `(fn-sn-statep s)` to `(fn-sf-statep (fn-sn-files s))` and
 `(fn-node-statep (fn-sn-node s))`, which is the pair the call site owes. That
-is why both `verify-guards` forms are DEFERRED to just after line 225 rather
-than written under the `defun`s: the lemma that discharges them is between.
+is why both `verify-guards` forms are DEFERRED to just after that lemma rather
+than written under the `defun`s (they are at `:252` and `:258`): the lemma that
+discharges them is between.
 
 The `:reserved` arm's `(1- frontier)` needs `acl2-numberp`, and `(posp
 frontier)` precedes it in the same `and`; nothing was added for it.
@@ -125,3 +126,75 @@ freshness hypothesis to discharge", at `fn-ocfg-pin-add`). That sentence is
 never been admitted.
 
 ## 5. Per-root certification
+
+Box measured first, not chosen by habit: persvati load 2.60 with 62 G
+available, hbox load 2.92 with 21 G available (101 of 123 G in use by the
+co-tenant HOL build), so persvati. `--jobs 4`,
+`--remote-root /home/ember/fn-lanes/w11-snt-guards`,
+`--affected-by books/store-node-traces.lisp --closure`.
+
+Box cache on submit: **installed 59, kept 64, uncached 152, foreign_local 0**.
+152 uncached is expected and is not waste: `books/store-node-traces.lisp`
+changed in this lane, so every certificate above it in the include order is
+invalid by content, which is most of the selected closure (the whole
+`books/bp-receiver-*` family, `books/store-observed*`,
+`books/store-node-resolution*` and the owner roots all include it).
+
+persvati **`run-20260920T234122Z-7687`**, evidence fetched to
+`build/acl2/certify-20260920T234130Z-578320/manifest.json`; ACL2 8.7 / SBCL
+at `/home/ember/fn-tools/acl2-8.7/saved_acl2`, sha256
+`c8a7a804d9cc80e2025a8ab0e1d9325f2a0c4a027a5dcdcb2c1093e9cd5c8163`,
+`ACL2_CUSTOMIZATION=NONE`, `ACL2_BOOK_HASH_ALISTP=NIL`, the tree at this
+lane's `d93ca88`. 274 roots selected before the cache filter, **101 books
+attempted, 100 certified, 1 failed**, 327.6 s wall at `--jobs 4`. 100 pairs
+published to the box's cache and to this laptop's; `certs.py install` then
+put 73 of them into this worktree.
+
+| root | verdict | evidence |
+| --- | --- | --- |
+| `books/store-node-traces` | **certified**, 4.66 s (prove 3.86) | `run-...-7687`, `books--store-node-traces.certify.log`: `FN-SNT-PENDING-LINKP is compliant with Common Lisp` `:1122`, `FN-SNT-RELATION is compliant` `:1195`, 57 `Q.E.D.`, zero `ACL2 Error` |
+| `books/owner-invariants` | **certified**, 10.66 s | `run-...-7687`; the five new guard declarations, `fn-own-relation`'s guard conjecture "trivial to prove" |
+| `books/owner` | **certified**, 1.77 s | `run-...-7687` |
+| `books/served` | **certified**, 1.96 s | `run-...-7687` |
+| `books/store-node-resolution`, `books/store-observed` | **certified**, 0.90 s / 0.81 s | `run-...-7687`; both name `fn-snt-pending-linkp` in theory lists |
+| `tests/acl2/owner-tests` | **certified**, 1.49 s | `run-...-7687` |
+| `tests/acl2/store-node-traces-tests` | **certified**, 0.40 s | `run-...-7687` |
+| `tests/acl2/bp-receiver-evolving-tests` | **certified**, 0.62 s | `run-...-7687`; this is the root that EVALUATES `fn-snt-relation` in `assert-event`s, including at a forged store, so the guard change is measured against a caller and not only against the prover |
+| the other 92 attempted roots | **certified** | `run-...-7687`, `manifest.json` `book_results` |
+| `books/owner-config` | **OPEN**, 1.03 s | `run-...-7687`, `books--owner-config.certify.log:1691`: `ACL2 Error [Failure] in ( DEFTHM FN-OCFG-OPEN-PINS-THE-LIVE-CONFIGURATION`. It is the run's ONLY failure. `certify-book` stops there, so the events after it are unattempted on the box; they were attempted by `ld` with `:ld-error-action :continue` and exactly one of them fails (§4) |
+| `make check` | green | laptop, before each commit; `session_depth` 0 defects, ledger not stale |
+
+`books/store-node-traces` carries a pre-existing
+`ACL2 Warning [Guards]` for `fn-snt-run`, `fn-snt-step` and sixteen
+sub-book functions that are still unverified. None is reachable from
+`fn-ocfg-statep`, and none was in this packet.
+
+## 6. Ledger over the lane (`dev` `19f3302` to `d93ca88`)
+
+| quantity | before | after |
+| --- | --- | --- |
+| `defthm`/`defthmd` | 5506 | 5507 (one `local` guard lemma) |
+| functions with verified guards | 1458 | 1460 (the two explicit `verify-guards`) |
+| default with an explicit guard | 1781 | 1787 |
+| **default with NO guard** | **497** | **489** (the eight declarations) |
+| theorems flagged SUSPECT | 46 | 46 |
+| export-hygiene warnings | 72 | 72 |
+| enabled-projection warnings | 26 | 26 |
+| `assert-event` checks | 5310 | 5310 |
+
+Nothing was added to any export theory, so the three books' enabled rule
+sets on include are byte for byte what they were.
+
+## 7. What was NOT done
+
+* `books/owner-config` does not certify. Its two remaining failures are
+  keystones that are false as stated; both are left in the file unproved
+  with their key checkpoint and their missing hypothesis, neither weakened
+  nor deleted, and both are on the board as CHANGEs with the packet each
+  needs.
+* No `skip-proofs`, no `defaxiom`, no trust tag, no `:rule-classes nil`
+  escape, no statement weakened anywhere.
+* `tools/proof_profile.py` was not run: the longest form in this packet is
+  `prove: 0.00`, and the rule is to profile before a hint on a SLOW form.
+* The sixteen sub-book functions in the `Guards` warning above are
+  untouched; nothing in the owner chain reaches them.
