@@ -905,19 +905,64 @@
                                (:d fn-feed-offered) (:d fn-feed-sent)
                                (:d fn-feed-dropped)))))
 
+; Over the journal ENTRY, for the same reason as the lemma above: the fold
+; carries `(car es)', and a statement over a loose `(kind values)' pair asks
+; the prover for `(fn-feed-journal-entry (fn-feed-journal-kind e)
+; (fn-feed-journal-values e)) = e', which is true only for a well-formed
+; entry and is not the content of anything here.
 (defthm fn-feed-accepted-outcome-makes-it-done
   (implies (and (fn-feedp f)
-                (fn-feed-record-drivenp f kind values)
-                (fn-feed-accepted-outcomep (fn-feed-peer f) msgid
-                                           (fn-feed-journal-entry kind values)))
+                (fn-feed-record-drivenp f (fn-feed-journal-kind e)
+                                        (fn-feed-journal-values e))
+                (fn-feed-accepted-outcomep (fn-feed-peer f) msgid e))
            (equal (fn-feed-state-of
-                   msgid (fn-feed-queue (fn-feed-apply-record f kind values)))
+                   msgid
+                   (fn-feed-queue
+                    (fn-feed-apply-record f (fn-feed-journal-kind e)
+                                          (fn-feed-journal-values e))))
                   :done))
   :hints (("Goal" :in-theory (disable (:d fn-feed-state-of) (:d fn-feed-offeredp)
                                (:d fn-feed-sentp) (:d fn-feed-droppedp)
                                (:d fn-feed-state-inflightp)
                                (:d fn-feed-offered) (:d fn-feed-sent)
                                (:d fn-feed-dropped)))))
+
+; The head step of the keystone below, and the one thing its induction
+; cannot do by itself.  In the arm where the head record IS an accepted
+; outcome for this (peer, Message-ID), the induction hypothesis gives only
+; `<= 1' over the tail, and one plus one is two; what closes it is that the
+; head makes the entry `:done', after which the tail holds NO accepted
+; outcome at all.  Chaining those two is a `:use' of the two theorems above
+; at one instance, not a rule: stated as a rewrite on the tail's count, with
+; the two named instances cited, so nothing new fires anywhere else.  It is
+; `local' and it is the whole content of `Subgoal *1/2.3''''.
+(local
+ (defthm fn-feed-count-accepted-after-an-accepted-head
+   (implies (and (fn-feedp f)
+                 (fn-feed-record-drivenp f (fn-feed-journal-kind (car es))
+                                         (fn-feed-journal-values (car es)))
+                 (fn-feed-drivenp
+                  (fn-feed-apply-record f (fn-feed-journal-kind (car es))
+                                        (fn-feed-journal-values (car es)))
+                  (cdr es))
+                 (fn-feed-accepted-outcomep (fn-feed-peer f) msgid (car es)))
+            (equal (fn-feed-count-accepted (fn-feed-peer f) msgid (cdr es))
+                   0))
+   :hints (("Goal"
+            :use ((:instance fn-feed-accepted-outcome-makes-it-done
+                             (e (car es)))
+                  (:instance fn-feed-done-means-no-more-accepted-outcomes
+                             (f (fn-feed-apply-record
+                                 f (fn-feed-journal-kind (car es))
+                                 (fn-feed-journal-values (car es))))
+                             (es (cdr es))))
+            :in-theory (disable fn-feed-accepted-outcome-makes-it-done
+                                fn-feed-done-means-no-more-accepted-outcomes
+                                (:d fn-feed-state-of) (:d fn-feed-offeredp)
+                               (:d fn-feed-sentp) (:d fn-feed-droppedp)
+                               (:d fn-feed-state-inflightp)
+                               (:d fn-feed-offered) (:d fn-feed-sent)
+                               (:d fn-feed-dropped))))))
 
 (defthm fn-feed-at-most-one-accepted-outcome
   (implies (and (fn-feedp f) (fn-feed-drivenp f es))
