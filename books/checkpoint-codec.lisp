@@ -40,10 +40,7 @@
 ; board gives for an includer in this position.
 (local (in-theory (enable fn-codecs-includer-vocabulary
                           fn-record-record-vocabulary
-                          fn-record-codec-vocabulary
-                          fn-cbor-record-vocabulary
-                          fn-cbor-codec-vocabulary
-                          fn-record-canonicality-vocabulary)))
+                          fn-record-codec-vocabulary)))
 
 (defconst *fn-cpc-magic* '(102 110 45 99))          ; "fn-c"
 (defconst *fn-cpc-schema-version* 0)
@@ -316,6 +313,19 @@
                  (< (car (fn-cbor-encode-argument major n)) (+ 27 (* 32 major)))
                  (fn-cbor-canonical-argumentp
                   (- (car (fn-cbor-encode-argument major n)) (* 32 major)) n)))
+   :rule-classes
+   (:rewrite
+    (:linear :corollary
+             (implies (and (natp n) (<= n *fn-cbor-max-uint*)
+                           (natp major) (< major 8))
+                      (<= (* 32 major) (car (fn-cbor-encode-argument major n))))
+             :trigger-terms ((car (fn-cbor-encode-argument major n))))
+    (:linear :corollary
+             (implies (and (natp n) (<= n *fn-cbor-max-uint*)
+                           (natp major) (< major 8))
+                      (< (car (fn-cbor-encode-argument major n))
+                         (+ 27 (* 32 major))))
+             :trigger-terms ((car (fn-cbor-encode-argument major n)))))
    :hints (("Goal" :in-theory (e/d (fn-cbor-encode-argument
                                     fn-cbor-canonical-argumentp)
                                    (fn-cbor-u16-bytes fn-cbor-u32-bytes))))))
@@ -359,9 +369,15 @@
            :in-theory (e/d (fn-cpc-read-item fn-cbor-encode fn-cbor-valuep
                             fn-cbor-decode-bytes fn-cbor-ok
                             fn-cbor-result-okp fn-cbor-result-value
-                            fn-cbor-result-rest)
+                            fn-cbor-result-rest
+                            ; books/records.lisp, fn-record-guard-vocabulary:
+                            ; the codecs cluster's own decode-domain lemmas,
+                            ; cited here rather than enabled book-wide.
+                            fn-record-cbor-decode-argument-success-domain
+                            fn-record-cbor-decode-bytes-success-domain)
                            (fn-cbor-encode-argument fn-cbor-decode-argument
-                            fn-cbor-canonical-argumentp take nthcdr)))))
+                            fn-cbor-canonical-argumentp take nthcdr))
+           :do-not-induct t)))
 
 ; Tags are small immediates; ACL2 evaluates their encodings to constants, so
 ; both directions are also stated on a concrete head.
@@ -383,9 +399,16 @@
                 (< v 24))
            (equal (cons v (fn-record-parse-rest (fn-cpc-read-uint octets)))
                   octets))
-  :hints (("Goal" :use fn-cpc-read-uint-reencode
+  :hints (("Goal"
+           ; The value's natp and bound come from this book's own reader
+           ; domain lemma, cited rather than re-derived: without it the
+           ; proof inducted on OCTETS and generated a false goal
+           ; (certify-20260920T041617Z-2375759:2347).
+           :use (fn-cpc-read-uint-reencode fn-cpc-read-uint-domain)
            :in-theory (e/d (fn-cbor-encode fn-cbor-valuep fn-cbor-encode-argument)
-                           (fn-cpc-read-uint-reencode fn-cpc-read-uint)))))
+                           (fn-cpc-read-uint-reencode fn-cpc-read-uint-domain
+                            fn-cpc-read-uint))
+           :do-not-induct t)))
 
 (defthm fn-cpc-append-assoc
   (equal (append (append a b) c) (append a (append b c))))
@@ -471,9 +494,18 @@
         ((fn-cbor-octet-listp x)
          (append (fn-cbor-encode (cons :uint *fn-cpc-tag-octets*))
                  (fn-cbor-encode (cons :bytes x))))
-        (t (append (fn-cbor-encode (cons :uint *fn-cpc-tag-cons*))
-                   (fn-cpc-encode-tree (car x))
-                   (fn-cpc-encode-tree (cdr x))))))
+        ; The recursion is guarded by CONSP.  A T clause here is not
+        ; admissible: a character has ACL2-COUNT 0 and is none of the
+        ; cases above, so the measure conjecture fails on it.  Nothing
+        ; outside FN-CPC-TREEP has an encoding, which is what
+        ; FN-CPC-ENCODABLEP already says, so the residue encodes to no
+        ; octets; no keystone statement moves, since each carries
+        ; FN-CPC-TREEP or FN-CPC-ENCODABLEP.
+        ((consp x)
+         (append (fn-cbor-encode (cons :uint *fn-cpc-tag-cons*))
+                 (fn-cpc-encode-tree (car x))
+                 (fn-cpc-encode-tree (cdr x))))
+        (t nil)))
 
 ; The first item of a stream is the tag of an octet list (nil or bytes).
 (defun fn-cpc-octet-list-tagp (octets)

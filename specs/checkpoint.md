@@ -3,12 +3,15 @@
 Status: PRF-008 logical core (`books/checkpoint.lisp`) is a certified book.
 The canonical byte encoding (`books/checkpoint-codec.lisp`, C1-10) and the
 generation publication/selection machine (`books/checkpoint-publish.lisp`,
-C2-09) are **not certified** as of 2026-09-20: after the dev `c8886ee` merge
-`fn-cpc-read-bytes-of-encoding` fails for want of the CBOR byte-encoding
-facts the codecs realignment withdrew at export, and `checkpoint-publish`
-and both test books cascade off the failed include. Evidence:
-`build/acl2/certify-20260920T041014Z-2320373`. Nothing below is a proof
-claim until that closes; `tools/checkpoint.py` and the `recover` hook in
+C2-09) are **not certified** as of 2026-09-20. The codecs realignment
+withdrew the vocabulary these proofs were written against; five defects
+follow from it, four now closed and one open at
+`fn-cpc-decode-tree-rest-octets` (evidence
+`build/acl2/certify-20260920T042326Z-2445522`, log line 3426).
+`checkpoint-publish` and both test books have only ever failed on the
+cascade from the failed include; no theorem of theirs has been refuted, and
+no keystone has been weakened. Nothing below is a proof claim until the
+book certifies; `tools/checkpoint.py` and the `recover` hook in
 `tools/run_store.py` are the host adoption. Counts live in the generated
 ledger; this page carries each keystone's property, hypotheses and covered
 scope, and what the host still asserts.
