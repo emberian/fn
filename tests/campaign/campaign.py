@@ -40,6 +40,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import zlib
 from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -179,6 +180,33 @@ class Campaign:
             group=list(groups), charge=None, inject_fault=None))
 
     @staticmethod
+    def build_bundles(root: Path, bids) -> None:
+        """Write the BPv7 bundle octets the BPA holds for each carried BID.
+
+        Nothing here spells a BPv7 field: `fn-bpi-host-bundle-prefix` returns
+        the indefinite-array head and the certified primary-block encoding,
+        and the break stop code stands in for the blocks the boundary never
+        interprets.  Distinct creation sequences make these distinct bundles
+        one agent happens to carry, which is what the "same ADU under a fresh
+        BID is a duplicate" check needs.
+        """
+        bridge = run_bp_ingress.Acl2BpIngress()
+        try:
+            def eid(ssp: bytes) -> str:
+                return "(cons :dtn '" + bridge.literal(ssp) + ")"
+
+            for bid in bids:
+                form = ("(fn-bpi-host-bundle-prefix (fn-bpp-make-block 0 0 {} {} {} "
+                        "1000 {} {} nil nil))".format(
+                            eid(b"//fn.lab/inbox"), eid(b"//sender.lab/"),
+                            eid(b"//fn.lab/report"),
+                            zlib.crc32(bid.encode("ascii")) + 1, 10 ** 15))
+                child_module.bundle_path(root, bid).write_bytes(
+                    run_store.acl2_octets(bridge.call(form)) + b"\xff")
+        finally:
+            bridge.close()
+
+    @staticmethod
     def build_request(name: str) -> bytes:
         body = article(name)
         bridge = run_bp_ingress.Acl2BpIngress()
@@ -218,6 +246,7 @@ class Campaign:
             receipt_root=root / "receipts", bid=bid,
             inventory=lambda: list(inventory),
             download=lambda found: inventory[found], delete=delete,
+            bundle=lambda found: child_module.bundle_for(root, found),
             source_eid=child_module.SOURCE_EID, pending_outcome=pending_outcome)
         return result, deleted
 
@@ -250,6 +279,8 @@ class Campaign:
             run_store.Store(root / "store", True).initialize()
             if scenario in BP_SCENARIOS:
                 (root / "request.adu").write_bytes(self.build_request("campaign"))
+                self.build_bundles(root, (BASELINE_BID, child_module.CAMPAIGN_BID,
+                                          child_module.RETRY_BID, "bid-again"))
                 baseline = self.build_request("baseline")
                 # The baseline receive installs the receiver journal's config
                 # record, so a cut inside a journal publish lands on the
