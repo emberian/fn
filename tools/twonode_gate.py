@@ -421,10 +421,16 @@ server and appends every complete CRLF line to a file with its direction.
 It parses nothing, decides nothing and answers nothing: it is a recorder,
 and the gate reads its file afterwards.
 """
-import argparse, socket, threading, time
+import argparse, os, socket, threading, time
 
 
-def pump(name, source, target, log, lock):
+def pump(name, source, target, log, lock, cut_flag=None):
+    """Forward, record, and -- once, when armed -- cut after an article block.
+
+    The cut is how a gate reaches the one crash point a feed cannot otherwise
+    reach on purpose: the receiver has the whole article and the sender has
+    not yet heard the outcome. Arming it is creating `cut_flag`; the tap
+    disarms it by removing the file, so one arming cuts one transfer."""
     pending = b""
     try:
         while True:
@@ -439,6 +445,17 @@ def pump(name, source, target, log, lock):
                     log.write("{} {}\n".format(
                         name, line.decode("ascii", "replace")[:300]))
                     log.flush()
+                if (name == "C>" and line == b"." and cut_flag
+                        and os.path.exists(cut_flag)):
+                    try:
+                        os.unlink(cut_flag)
+                    except OSError:
+                        pass
+                    with lock:
+                        log.write("= cut after the article block at {:.3f}\n".format(
+                            time.time()))
+                        log.flush()
+                    return
     except OSError:
         pass
     finally:
@@ -449,7 +466,7 @@ def pump(name, source, target, log, lock):
                 pass
 
 
-def serve(client, port, log, lock):
+def serve(client, port, log, lock, cut_flag=None):
     try:
         server = socket.create_connection(("127.0.0.1", port), 5)
     except OSError as error:
@@ -462,7 +479,8 @@ def serve(client, port, log, lock):
         log.write("= session opened at {:.3f}\n".format(time.time()))
         log.flush()
     for name, source, target in (("C>", client, server), ("S<", server, client)):
-        threading.Thread(target=pump, args=(name, source, target, log, lock),
+        threading.Thread(target=pump,
+                         args=(name, source, target, log, lock, cut_flag),
                          daemon=True).start()
 
 
@@ -471,6 +489,9 @@ def main():
     parser.add_argument("--listen", type=int, default=0)
     parser.add_argument("--to", type=int, required=True)
     parser.add_argument("--log", required=True)
+    parser.add_argument("--cut-flag", default=None,
+                        help="while this file exists, cut the next transfer "
+                             "after its article block and remove the file")
     args = parser.parse_args()
     lock = threading.Lock()
     log = open(args.log, "a", buffering=1)
@@ -484,7 +505,7 @@ def main():
             client, _ = listener.accept()
         except OSError:
             continue
-        serve(client, args.to, log, lock)
+        serve(client, args.to, log, lock, args.cut_flag)
 
 
 if __name__ == "__main__":
@@ -685,7 +706,7 @@ class TwoNodeGate(deploy_gate.DeployGate):
         pid = "{}/tap.pid".format(node.dir)
         step = self.sh("wire tap in front of node {}".format(node.upper), self.cd("""
 rm -f {out}
-nohup python3 {run}/tap.py --to {port} --log {log} > {out} 2>&1 < /dev/null &
+nohup python3 {run}/tap.py --to {port} --log {log} --cut-flag {log}.cut > {out} 2>&1 < /dev/null &
 echo $! > {pid}
 for i in $(seq 1 20); do
   if grep -m1 '^TAPPING' {out}; then exit 0; fi
@@ -1110,6 +1131,7 @@ else echo NONE; fi
                       "owner feed: node A does not serve POST on this commit")
             return
         msgid = "<fed-restart@example.invalid>"
+        mark = self.tap_mark(self.b)
         self.stop_node(self.b)
         posted = self.feed("post", "--port {} --msgid '{}' --group {}".format(
             self.a.port, msgid, GROUPS[0]),
@@ -1157,9 +1179,157 @@ else echo NONE; fi
         counted = self.feed(
             "presence", "--port {} --groups {} --present '{}'".format(
                 self.b.port, GROUPS[0], msgid),
-            name="owner feed: B holds {} once after the restart".format(msgid),
+            name="owner feed: B serves {} after the restart".format(msgid),
             expect=None)
         self.facts["owner feed restart copies"] = str(self.payload(counted))
+        # K5's teeth, and the only place this gate can grow them: the tap in
+        # front of B saw every octet A's feed sent across the kill. A re-offer
+        # is an IHAVE or a CHECK; a duplicate TRANSFER would be a second
+        # accepted outcome for one Message-ID. "Exactly one copy" asserted by
+        # rereading the article cannot tell those apart -- the store would
+        # refuse the second copy and the reread would look identical.
+        wire = self.read_tap(
+            self.b, "owner feed: across the kill, B accepted {} exactly once".format(
+                msgid), since=mark, expect=None)
+        lines = wire.output.splitlines()
+        offers = [one for one in lines
+                  if one.startswith(("C> IHAVE", "C> CHECK")) and msgid in one]
+        accepted = [one for one in lines if one.startswith(("S< 235", "S< 239"))]
+        refused = [one for one in lines if one.startswith(("S< 435", "S< 438",
+                                                           "S< 439"))]
+        self.facts["owner feed restart wire"] = (
+            "offers={} accepted={} refused-as-duplicate={} | {}".format(
+                len(offers), len(accepted), len(refused),
+                "; ".join(one[3:] for one in lines
+                          if one.startswith("C> "))[:400] or "nothing recorded"))
+        if len(accepted) != 1:
+            self.gaps.append(
+                "owner feed: the tap in front of node B recorded {} accepted "
+                "transfers of {} across node A's kill, not exactly one. K5 says a "
+                "restart resolves by RE-OFFER and never by a second transfer; the "
+                "commands recorded were: {}".format(
+                    len(accepted), msgid,
+                    "; ".join(one for one in lines)[:400] or "none"))
+        if not offers:
+            self.gaps.append(
+                "owner feed: the tap in front of node B recorded no offer naming {} "
+                "after node A restarted, so what delivered it is not established by "
+                "this run.".format(msgid))
+
+    def scenario_feed_peer_cut(self):
+        """The receiver has the article; the sender has not heard the outcome.
+
+        The one crash point a feed cannot otherwise reach on purpose, and the
+        one K5 is really about: the transfer completed on the wire and the
+        reply did not come back. Node B is stopped, node A posts (the entry
+        is queued and undeliverable), the tap in front of B is ARMED, B is
+        started, and A's feed offers and transfers -- at which point the tap
+        cuts the connection after the article block and before the status
+        line. A therefore has an in-flight entry with no outcome and MUST NOT
+        record one.
+
+        What this asserts is the only thing that is true either way: B ends
+        holding the article exactly once, and node A observed at most one
+        accepted transfer of it. Whether B committed before the cut is
+        genuinely indeterminate, and a gate that asserted it either way would
+        be asserting a coin toss (D13).
+        """
+        if not self.a.post_enabled:
+            self.skip("owner feed: the reply is lost mid-transfer",
+                      "tap --cut-flag, then the feed re-offers",
+                      "owner feed: node A does not serve POST on this commit")
+            return
+        if not self.b.tap_port:
+            self.skip("owner feed: the reply is lost mid-transfer",
+                      "tap --cut-flag, then the feed re-offers",
+                      "no tap in front of node B, so the cut cannot be placed")
+            return
+        msgid = "<fed-cut@example.invalid>"
+        before = self.feed("presence", "--port {} --groups {}".format(
+            self.b.port, GROUPS[0]),
+            name="owner feed cut: node B group count before", expect=None)
+        start_count = self.group_count(self.payload(before), GROUPS[0])
+        mark = self.tap_mark(self.b)
+        self.stop_node(self.b, tag="pre-cut")
+        posted = self.feed("post", "--port {} --msgid '{}' --group {}".format(
+            self.a.port, msgid, GROUPS[0]),
+            name="owner feed cut: A posts {} while B is down".format(msgid),
+            expect=None)
+        if not self.payload(posted).get("ok"):
+            self.gaps.append(
+                "owner feed cut: POST of {} on node A answered '{}' while B was "
+                "down, so there was no queued offer to cut.".format(
+                    msgid, self.payload(posted).get("result", "nothing")))
+            self.start_node(self.b, tag="after-cut")
+            return
+        self.a.accepted.append(msgid)
+        self.sh("owner feed cut: arm the tap in front of node B",
+                "touch {}.cut".format(self.b.tap_log), expect=None)
+        if not self.start_node(self.b, tag="after-cut"):
+            self.gaps.append("owner feed cut: node B did not restart")
+            return
+        arrival = self.feed(
+            "wait", "--port {} --from-port {} --msgid '{}' --seconds 120".format(
+                self.b.port, self.a.port, msgid),
+            name="owner feed cut: B serves {} after the lost reply".format(msgid),
+            expect=None)
+        result = self.payload(arrival)
+        armed = self.sh("owner feed cut: the arming file was consumed",
+                        "test -e {}.cut && echo STILL-ARMED || echo CUT-TAKEN".format(
+                            self.b.tap_log), expect=None)
+        wire = self.read_tap(self.b, "owner feed cut: what crossed after the cut",
+                             since=mark, expect=None)
+        lines = wire.output.splitlines()
+        accepted = [one for one in lines if one.startswith(("S< 235", "S< 239"))]
+        self.facts["owner feed cut"] = (
+            "{} ; served={} identical={} accepted-transfers-observed={} | {}".format(
+                armed.output.strip().splitlines()[-1] if armed.output.strip() else "?",
+                result.get("status", "none"), result.get("identical"), len(accepted),
+                "; ".join(one[3:] for one in lines
+                          if one.startswith("C> "))[:400] or "nothing recorded"))
+        if "CUT-TAKEN" not in armed.output:
+            self.gaps.append(
+                "owner feed cut: the tap in front of node B never took the cut, so "
+                "no reply was lost and this scenario measured an ordinary transfer.")
+        if not result.get("ok"):
+            self.gaps.append(
+                "owner feed cut: node B never served {} within 120 s of the cut. A "
+                "lost reply must be resolved by a re-offer (K5); on this run it was "
+                "not, so the article is lost between two nodes that are both up."
+                .format(msgid))
+            return
+        self.b.accepted.append(msgid)
+        if len(accepted) > 1:
+            self.gaps.append(
+                "owner feed cut: node A observed {} accepted transfers of {} across "
+                "one lost reply, not at most one: the re-offer path transferred the "
+                "article twice.".format(len(accepted), msgid))
+        after = self.feed("presence", "--port {} --groups {} --present '{}'".format(
+            self.b.port, GROUPS[0], msgid),
+            name="owner feed cut: node B holds {} exactly once".format(msgid),
+            expect=None)
+        end_count = self.group_count(self.payload(after), GROUPS[0])
+        self.facts["owner feed cut copies"] = (
+            "node B {} held {} articles in {} and now holds {}".format(
+                GROUPS[0], start_count, GROUPS[0], end_count))
+        if start_count is None or end_count is None:
+            self.gaps.append(
+                "owner feed cut: node B's GROUP line did not carry a count either "
+                "side of the cut, so 'exactly one copy' rests on the reread alone.")
+        elif end_count != start_count + 1:
+            self.gaps.append(
+                "owner feed cut: node B's {} went from {} articles to {} across one "
+                "lost reply; exactly one article crossed, so exactly one is the "
+                "right difference.".format(GROUPS[0], start_count, end_count))
+
+    @staticmethod
+    def group_count(payload: dict, group: str):
+        """The article count out of a `211 n low high name` line, or None."""
+        line = (payload.get("groups") or {}).get(group, "")
+        parts = str(line).split()
+        if len(parts) >= 2 and parts[0] == "211" and parts[1].isdigit():
+            return int(parts[1])
+        return None
 
     def scenario_kill(self):
         """Kill B inside a transfer it agreed to take; recover it; reread both."""
@@ -1315,6 +1485,7 @@ else echo NONE; fi
         self.scenario_owner_feed()
         self.scenario_owner_feed_streaming()
         self.scenario_feed_restart()
+        self.scenario_feed_peer_cut()
         self.scenario_kill()
         self.scenario_tcpcl()
         for node in self.nodes:
