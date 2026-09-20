@@ -644,10 +644,17 @@ class Acl2Store:
             " ".join(self.literal(name) for name in held))
         return self._names(form)
 
-    def reconfigure(self, kind, name, monotonic, wall):
-        """One create/retire request.  Returns ("ok", octets) or ("refused", reason)."""
-        form = "(fn-store-cfg-reconfigure {} '{} {} {} state)".format(
-            kind, self.literal(name.encode("utf-8", "strict")), int(monotonic), int(wall))
+    def reconfigure(self, kind, name, monotonic, wall, n=0):
+        """One reconfiguration request.  Returns ("ok", octets) or ("refused", reason).
+
+        The kind, the name and the number go in; the deltas, the admissibility
+        and the record are the core's.  Python never decides whether a
+        capacity is above the reservation total: books/config does, through
+        fn-cnode-record-acceptablep against the live node.
+        """
+        form = "(fn-store-cfg-reconfigure {} '{} {} {} {} state)".format(
+            kind, self.literal(name.encode("utf-8", "strict")), int(n),
+            int(monotonic), int(wall))
         status = acl2_keyword(self.call(form))
         if status == "ok":
             return status, acl2_octets(self.call("(fn-store-cfg-last-octets state)"))
@@ -1449,6 +1456,59 @@ def command_group(args):
         store.close()
 
 
+def command_capacity(args):
+    """`capacity <n>`: one configuration record that sets the retention capacity.
+
+    Three outcomes stay distinct (D13).  The core refuses a capacity below the
+    live reservation total (exit 1, with the reason on stderr).  A DECREASE is
+    additionally gated here, before anything becomes durable, by replaying the
+    candidate configuration history against the store's real article history
+    in a second core: configuration records live beside the journal rather
+    than interleaved in it (specs/reconfiguration.md section 8 item 1), so a
+    decrease admitted against today's reservation total would be applied by
+    recovery BEFORE any article replays, and could brick a store that opens
+    fine today.  The dry run is the exact check, not an estimate: if the
+    candidate history does not open, the record is refused and never written.
+    An I/O failure after admission is uncertain (exit 3), never either.
+    """
+    import time
+    store, bridge, unused_records = open_live_store(args.store, writable=True)
+    try:
+        status, payload = bridge.reconfigure(
+            ":set-capacity", "", time.monotonic(), time.time(), n=args.capacity)
+        if status != "ok":
+            print("store: refused capacity: {}".format(payload), file=sys.stderr)
+            return EXIT_REFUSED
+        generation = store.config_generation + 1
+        candidate = list(store.config_records()) + [bytes(payload)]
+        if not _candidate_history_opens(store, candidate):
+            print("store: refused capacity: {}".format("would-not-replay"),
+                  file=sys.stderr)
+            return EXIT_REFUSED
+        store.write_config_record(generation, payload)
+        print("capacity set n={} generation={}".format(args.capacity, generation))
+        return EXIT_OK
+    finally:
+        bridge.close()
+        store.close()
+
+
+def _candidate_history_opens(store, config_records):
+    """Would a store whose configuration history were `config_records` open?
+
+    A second core, the store's real article records and frontier, and the
+    core's own `fn-store-sn-recover`.  ACL2 answers; Python only reports.
+    """
+    probe = Acl2Store()
+    try:
+        records = store.durable_records(probe)
+        return probe.recover(records, store.frontier, config_records) == "recovering"
+    except StoreFault:
+        return False
+    finally:
+        probe.close()
+
+
 def command_config(args):
     """Print the replayed configuration: generation, served table, domain."""
     store, bridge, unused_records = open_live_store(args.store, writable=False)
@@ -1787,6 +1847,9 @@ def main(argv=None):
     group = sub.add_parser("group")
     group.add_argument("action", choices=("create", "retire"))
     group.add_argument("name")
+    capacity = sub.add_parser("capacity")
+    capacity.add_argument("capacity", type=int,
+                          help="the retention capacity in bytes; must be above the reservation total")
     sub.add_parser("config")
     post = sub.add_parser("post")
     post.add_argument("--message-id", required=True)
@@ -1818,6 +1881,7 @@ def main(argv=None):
         return {"init": command_init, "post": command_post, "recover": command_recover,
                 "status": command_status, "inspect": command_inspect,
                 "anchor": command_anchor, "group": command_group,
+                "capacity": command_capacity,
                 "config": command_config}[args.command](args)
     except (StoreError, OSError, UnicodeError) as error:
         print("store: {}".format(error), file=sys.stderr)

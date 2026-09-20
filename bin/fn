@@ -14,7 +14,7 @@ Nothing here recomputes a value ACL2 computes.  The generation, article
 count, group admission and post outcome printed below are the values the
 store bridge returned; `fn` only names them.
 
-Subcommands: init, run, post, group, status, recover, anchor.
+Subcommands: init, run, post, group, capacity, status, recover, anchor.
 """
 
 import argparse
@@ -409,6 +409,17 @@ def command_group(settings, args):
                     "group {} {}".format(args.action, args.name))
 
 
+def command_capacity(settings, args):
+    control = settings.control()
+    if owner_probe(control) is not None:
+        return EXIT_REFUSED, ("capacity {} an owner is live on {}; a configuration record "
+                              "needs the writer lock, so stop the service first"
+                              .format(args.capacity, control))
+    namespace = SimpleNamespace(store=settings.require_store(), capacity=args.capacity)
+    return delegate(run_store.command_capacity, namespace,
+                    "capacity {}".format(args.capacity))
+
+
 def command_status(settings, args):
     """Generation, article count, last anchor, and whether an owner is live.
 
@@ -500,6 +511,9 @@ def build_parser():
     group.add_argument("action", choices=("create", "retire"))
     group.add_argument("name")
 
+    capacity = sub.add_parser("capacity", help="set the retention capacity")
+    capacity.add_argument("capacity", type=int)
+
     status = sub.add_parser("status", help="generation, articles, anchor, owner liveness")
     status.add_argument("--control", help="control socket path")
 
@@ -538,7 +552,8 @@ def overrides(settings, args):
 
 
 COMMANDS = {"init": command_init, "run": command_run, "post": command_post,
-            "group": command_group, "status": command_status,
+            "group": command_group, "capacity": command_capacity,
+            "status": command_status,
             "recover": command_recover, "anchor": command_anchor}
 
 
