@@ -540,7 +540,8 @@
 
 (defun fn-stx-payload-for (article header)
   (declare (xargs :guard t))
-  (if (equal (fn-stmt-header-kind header) :article)
+  (if (and (true-listp header)
+           (equal (fn-stmt-header-kind header) :article))
       (fn-stx-authored-source article)
     (let ((r (fn-stx-body-payload
               (if (and (true-listp article)
