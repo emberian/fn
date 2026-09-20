@@ -21,6 +21,10 @@ larger specification and its remaining proof, storage, and service work.
 9. [Proof strategy](proofs.md), [validation](../tests/README.md), and
    [milestones](../planning/milestones.md): how to establish the claims.
 
+To install and run a node -- one command, one configuration file and a
+service unit -- see the [operator guide](operator.md); its packaging templates are in
+[`packaging/`](../packaging/fn.toml.example).
+
 For concrete representation discussions, see the proposed
 [article-byte examples](article-byte-examples.md). For the current local adapter,
 see the [persistence experiment](../specs/store-experiment.md).
