@@ -415,6 +415,59 @@ w3/reader-profile), and the same measurement is behind the C2, checkpoint and
 article-exports diagnoses. A lane that reaches for `minimal-theory` instead
 has skipped this step.
 
+### 9.1 Read the `Time:` line before the subgoal count
+
+A `Time:` line whose `prove` is near zero and whose `other` is large is
+**not** the rewriter. `other` is where forward chaining and type reasoning
+go. Measured on `books/tcpcl-invariants`' C1
+(`fn-tcl-drive-partition-independence`, w9/dtn-e2e, 2026-09-20):
+
+    Time:  2386.26 seconds (prove: 0.02, print: 0.00, other: 2386.24)
+
+Forty minutes, and the prover did two hundredths of a second of proof
+search. The cure for that shape is a **theory change, not a hint**: no
+`:in-theory` on the goal, no `:expand`, no case-split cure will touch work
+that is not happening in the rewriter. Reading the splitter note instead of
+this line cost that lane most of its budget, twice, on two configurations
+that both reported the same thing.
+
+What the profile then named was the mechanism: a **second** whole-state
+recognizer (`fn-tcl-session-cheapp`) exported with its own family of rules
+into a book that enables the session vocabulary wholesale, with the new
+recognizer reachable from `fn-tcl-drive`'s totality test --- so every goal
+that opens `fn-tcl-drive` carries a term that triggers the new family beside
+the old one. `FN-TCL-SESSION-CHEAPP-FACTS` at 79,623 tries and 147,539
+frames, beside the pre-existing `FN-TCL-SESSIONP-FACTS` at 76,473 tries: the
+new family did not add to that class of work, it **doubled** it. Hence the
+rule of section 2 in its sharpest form --- if a book exports a second
+recognizer over the same state, export its whole rule set under one
+`deftheory` name (`fn-tcl-cheap-rules`) so that a book reasoning in the first
+one can close all of it at once, and keep out of that theory only the bridge
+lemma the includer actually wants.
+
+### 9.2 A probe that aborts on a step limit measures nothing
+
+`(set-prover-step-limit n)` makes a probe cheap and makes a *stopped* probe
+worthless. An `ACL2 Error [Step-limit]` says the form did not finish inside
+`n`; it says nothing about whether the form closes, how it splits, or
+whether the change under test helped --- and the control run aborts in the
+same place for the same reason, so a comparison between them is not a
+comparison at all.
+
+w9/dtn-e2e reported a finding from such a pair --- "adding
+`:forward-chaining` to the bridge made it worse" --- and retracted it: both
+runs had hit a 3,000,000-step limit, and the later profile showed the
+retracted configuration was pointed the wrong way for an unrelated reason.
+The earlier probe in the same pair also "failed" a theorem that the real
+certification had already passed.
+
+So: a probe with a step limit answers only "does this close within `n`
+steps", and a `yes` is evidence while a `no` is not. To compare two
+configurations, or to locate a split, run without a limit under a wall-clock
+`timeout` and read the `Time:` line (section 9.1) and the profile (section
+9) --- both of which report what happened rather than that something was
+cut off.
+
 ## 10. The FTY question
 
 Should records migrate to `fty::defprod`/`deftagsum` instead of the raw-list
