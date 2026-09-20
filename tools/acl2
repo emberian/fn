@@ -1,0 +1,144 @@
+#!/usr/bin/env python3
+"""Run one ACL2 under the machine-wide slot pool, for interactive `ld` work.
+
+`tools/certify_books.py` takes a slot from `tools/acl2_slots.py` before every
+ACL2 it starts, so the runner never exceeds the pool.  A lane iterating on a
+scratch driver does not go through the runner: it types `acl2 < driver.lsp`,
+which takes no slot at all.  On 2026-09-19 that put six ACL2 processes on a
+laptop whose pool is four, and the box swapped.
+
+This wrapper is the `ld` path's entry to the same pool.  It acquires exactly
+one slot the way the runner does -- the same lock directory, the same
+once-a-minute wait line on stderr, so a wait is never mistaken for a hang --
+sets the same two environment variables the runner sets, and runs `$FN_ACL2`
+(default `acl2`) with this process's stdin, stdout and stderr passed straight
+through.  The slot is an `flock` held by this process, so it is released when
+ACL2 exits, when the wrapper is killed, and when the harness that started it
+goes away.
+
+    tools/acl2 --timeout 240 < driver.lsp
+
+`--timeout` is the brief's three-minute rule made mechanical: the child is
+terminated after that many seconds and the wrapper exits 124, so a runaway
+proof search frees its slot without anyone having to find its PID.  Arguments
+after `--` are passed to ACL2.
+"""
+
+from __future__ import annotations
+
+import argparse
+import contextlib
+import os
+from pathlib import Path
+import shutil
+import signal
+import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import acl2_slots  # noqa: E402
+
+
+# `timeout(1)`'s exit code for "the command was killed by the time limit", so a
+# lane's shell can tell a timed-out search from ACL2's own failure exits.
+TIMEOUT_EXIT = 124
+# How long a terminated ACL2 gets to unwind before SIGKILL.
+GRACE_SECONDS = 5.0
+
+
+def resolve_executable(configured: str) -> Path | None:
+    """`$FN_ACL2` as a path: a name is looked up on PATH, a path is used."""
+    if os.sep in configured:
+        candidate = Path(configured).expanduser()
+        return candidate if candidate.exists() else None
+    found = shutil.which(configured)
+    return Path(found) if found else None
+
+
+def acl2_environment() -> dict[str, str]:
+    """The runner's environment, so `ld` and certification see one world.
+
+    A user customization can alter the world before anything is loaded, and
+    `ACL2_BOOK_HASH_ALISTP=NIL` is what makes this tree's certificates content
+    hashed and therefore valid in another lane's worktree.  An `ld` session run
+    with different settings is iterating against a different ACL2 than the one
+    that will certify the book.
+    """
+    environment = os.environ.copy()
+    environment["ACL2_CUSTOMIZATION"] = "NONE"
+    environment["ACL2_BOOK_HASH_ALISTP"] = "NIL"
+    environment.pop("ACL2_SYSTEM_BOOKS", None)
+    return environment
+
+
+def run(executable: Path, arguments: list[str], timeout: float | None) -> int:
+    """Run ACL2 with the caller's stdio, returning the exit code to report."""
+    process = subprocess.Popen([str(executable), *arguments],
+                               env=acl2_environment())
+
+    def forward(number: int, _frame: object) -> None:
+        # The lane pressing ctrl-C means ACL2, not the wrapper: pass the signal
+        # down and keep waiting, so the slot is released by the normal path.
+        with contextlib.suppress(ProcessLookupError, OSError):
+            process.send_signal(number)
+
+    # Only the main thread may install handlers; a caller that runs this from
+    # a worker thread (a unit test does) simply does not forward signals.
+    previous: dict[int, object] = {}
+    for number in (signal.SIGINT, signal.SIGTERM):
+        try:
+            previous[number] = signal.signal(number, forward)
+        except ValueError:  # not the main thread
+            break
+    try:
+        try:
+            return process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            print(f"fn: ACL2 exceeded --timeout {timeout:g}s; terminating",
+                  file=sys.stderr, flush=True)
+            process.terminate()
+            try:
+                process.wait(timeout=GRACE_SECONDS)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+            return TIMEOUT_EXIT
+    finally:
+        for number, handler in previous.items():
+            signal.signal(number, handler)  # type: ignore[arg-type]
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description=__doc__.splitlines()[0],
+        epilog="Arguments after -- are passed to ACL2.")
+    parser.add_argument("--timeout", type=float, default=None, metavar="SECONDS",
+                        help="terminate ACL2 after this many seconds and exit "
+                             f"{TIMEOUT_EXIT} (default: no limit)")
+    parser.add_argument("--label", default=None,
+                        help="what to call this run in the slot-wait line "
+                             "(default: ld <working directory name>)")
+    parser.add_argument("acl2_arguments", nargs="*", metavar="ARG",
+                        help=argparse.SUPPRESS)
+    arguments = parser.parse_args(sys.argv[1:] if argv is None else argv)
+    if arguments.timeout is not None and arguments.timeout <= 0:
+        parser.error("--timeout must be positive")
+
+    configured = os.environ.get("FN_ACL2", "acl2")
+    executable = resolve_executable(configured)
+    if executable is None or not os.access(executable, os.X_OK):
+        print(f"fn: no executable ACL2 at {configured!r}. Install the pinned "
+              f"project toolchain or set FN_ACL2 to an ACL2 path.",
+              file=sys.stderr, flush=True)
+        return 2
+
+    label = arguments.label or f"ld {Path.cwd().name}"
+    with acl2_slots.slot(label) as held:
+        if held.seconds > 0.5:
+            print(f"fn: acquired ACL2 slot {held.index} of {held.slots} after "
+                  f"{held.seconds:g}s", file=sys.stderr, flush=True)
+        return run(executable, arguments.acl2_arguments, arguments.timeout)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

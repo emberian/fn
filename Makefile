@@ -2,6 +2,9 @@ PYTHON ?= python3
 # Maximum concurrent ACL2 processes. Books still certify in local
 # include-book dependency order; 1 reproduces the sequential run.
 FN_CERTIFY_JOBS ?= 1
+# The wall clock an interactive `ld` gets before tools/acl2 kills it and frees
+# its slot: the brief's three-minute rule, with a minute of slack.
+FN_LD_TIMEOUT_SECONDS ?= 240
 ACL2_BOOKS ?= books/assumptions \
 	tests/acl2/assumptions-tests \
 	books/acceptance-alloc \
@@ -205,12 +208,19 @@ ACL2_BOOKS ?= books/assumptions \
 	books/policy-invariants \
 	tests/acl2/policy-tests
 
-.PHONY: check certify certs-install certs-publish model-test tooling-test test
+.PHONY: check certify acl2-ld certs-install certs-publish model-test tooling-test test
 check:
 	$(PYTHON) tools/check_scaffold.py
 
 certify:
 	$(PYTHON) tools/certify_books.py --jobs $(FN_CERTIFY_JOBS) $(ACL2_BOOKS)
+
+# One interactive ACL2 inside the machine-wide slot pool, for `ld` iteration:
+# `make acl2-ld < driver.lsp`.  Call tools/acl2 directly to pass ACL2 its own
+# arguments.  Never plain `acl2`: that takes no slot, and the pool is the only
+# thing keeping a wave of lanes off this box's memory.
+acl2-ld:
+	$(PYTHON) tools/acl2 --timeout $(FN_LD_TIMEOUT_SECONDS)
 
 # Content-hashed certificates are valid in any worktree whose book content
 # matches, so a lane installs what the cache already has instead of certifying
@@ -226,7 +236,8 @@ model-test: certify
 	$(PYTHON) tools/run_simulator.py
 
 tooling-test:
-	$(PYTHON) -m unittest discover -s tests -p test_certify_runner.py -v
+	$(PYTHON) -m unittest tests.test_certify_runner tests.test_acl2_wrapper \
+	    tests.test_ledger -v
 
 test: check certify
 	$(PYTHON) tools/run_simulator.py
