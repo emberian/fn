@@ -40,7 +40,10 @@
 ; board gives for an includer in this position.
 (local (in-theory (enable fn-codecs-includer-vocabulary
                           fn-record-record-vocabulary
-                          fn-record-codec-vocabulary)))
+                          fn-record-codec-vocabulary
+                          fn-cbor-record-vocabulary
+                          fn-cbor-codec-vocabulary
+                          fn-record-canonicality-vocabulary)))
 
 (defconst *fn-cpc-magic* '(102 110 45 99))          ; "fn-c"
 (defconst *fn-cpc-schema-version* 0)

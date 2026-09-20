@@ -50,6 +50,38 @@ two checkpoint directions (`fn-cpc-decode-of-encode`,
 - §5 Sixteen general negated `must-fail` teeth became ground witnesses;
   `std/testing/must-fail` is no longer included by either test book.
 
-## Open
+## Open (the next step, exactly)
 
-(none recorded; see specs/checkpoint.md if a keystone is withdrawn)
+`books/checkpoint-codec.lisp` does not certify against dev `c8886ee`. The
+codecs cluster withdrew its vocabulary at export, so this book's induction
+facts are gone. Two failures found and one still open, each one name in the
+local re-enable at the book's top:
+
+1. fixed: `fn-cpc-decode-argument-of-encoding` needed
+   `fn-codecs-includer-vocabulary` (the u16/u32 byte facts).
+   Evidence `build/acl2/certify-20260920T033854Z-2030600`.
+2. **open**: `fn-cpc-read-bytes-of-encoding` fails for the byte-encoding
+   facts. Evidence `build/acl2/certify-20260920T041014Z-2320373`
+   (`books--checkpoint-codec.certify.log:1967`). The committed book now also
+   enables `fn-cbor-record-vocabulary`, `fn-cbor-codec-vocabulary` and
+   `fn-record-canonicality-vocabulary`; that widening is **unverified** --
+   resubmit and read the next log.
+
+`checkpoint-publish` and both test books have only ever failed on the
+cascade from this include; no theorem of theirs has been refuted.
+
+Resubmit with:
+
+    python3 tools/farm.py submit persvati --jobs 12 \
+      --remote-root /home/ember/fn-lanes/w3-checkpoint \
+      --affected-by books/checkpoint-codec.lisp \
+      --affected-by books/checkpoint-publish.lisp --closure
+
+Do not certify these locally: on 2026-09-20 a local run sat 1560 s waiting
+for one of the four ACL2 slots and never started. The rest of the closure
+(43 books) certifies on the farm.
+
+`tests/test_checkpoint.py` (unittest, real store, real ACL2, process death
+at each of the six named cuts) has **not been run** this cycle: it loads
+`host/checkpoint-host.lisp`, which includes `checkpoint-codec`, so it cannot
+run before the book certifies.
