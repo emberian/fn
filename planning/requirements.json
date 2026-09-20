@@ -148,13 +148,20 @@
       "milestone": "M3",
       "status": "specified",
       "proof_targets": [
-        "PRF-013"
+        "PRF-013",
+        "PRF-031"
       ],
       "verification": [
         "proof",
         "scenario"
       ],
-      "evidence": [],
+      "evidence": [
+        "books/nntp-auth.lisp",
+        "books/nntp-auth-invariants.lisp",
+        "tests/acl2/nntp-auth-tests.lisp",
+        "tests/test_auth.py",
+        "planning/evidence/auth-w10-2026-09-20.md"
+      ],
       "implementation_note": "D02 requires native author signatures plus explicit legacy gateway provenance. D01 now fixes exact authored source bytes as the signed source and keeps mutable trace/injection projections separate. D09 suites, principal/key lifecycle and real verification/authority remain open.",
       "note": "PRF-013 has no events. books/crypto-seam and books/statement certify, but they are an abstract seam: nothing there is a real signature, and AGENTS.md forbids reading an abstract model as a signature claim."
     },
@@ -525,7 +532,7 @@
         "fn-sn-open-observed-not-ready-before-five-barriers",
         "fn-sn-open-observed-five-barriers-open-ready"
       ],
-      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). The crash relation realizes every admissible image, stable records are a prefix of any crash image, and the five barriers are what open a reopened store. Open, and named by review finding D4: the images are record-granular. Byte-level torn writes are planning/lanes/DESIGN-crash-model-v2-summary.md (K1 to K11), a design, so 'every crash point' is not claimed for the byte layer."
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). The crash relation realizes every admissible image, stable records are a prefix of any crash image, and the five barriers are what open a reopened store. Open, and named by review finding D4: the images are record-granular. Byte-level torn writes are planning/lanes/DESIGN-crash-model-v2-summary.md (K1 to K11), a design, so 'every crash point' is not claimed for the byte layer. Open and newly named (decision D14-a, 2026-09-20): the kernel's crash-image predicate has no freedom for a record that recovery replayed from the view and has not yet re-fenced, so a crash in the recovery window (run_store.py:1179-1200, before fsync_dir(self.transactions) at 1187) produces an image fn-sf-crash-imagep does not admit. Nothing acknowledged is at risk there -- that state carries no success -- but the obligation is recorded as K2r of specs/crash-model-v2.md and is not proved."
     },
     {
       "id": "FLR-002",
@@ -738,7 +745,7 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-029"
+        "PRF-030"
       ],
       "verification": [
         "proof",
@@ -758,7 +765,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-011"
+        "PRF-011",
+        "PRF-029"
       ],
       "verification": [
         "proof",
@@ -784,7 +792,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-011"
+        "PRF-011",
+        "PRF-029"
       ],
       "verification": [
         "proof",
@@ -857,7 +866,8 @@
       "milestone": "M4",
       "status": "implemented",
       "proof_targets": [
-        "PRF-018"
+        "PRF-018",
+        "PRF-029"
       ],
       "verification": [
         "proof",
@@ -914,7 +924,8 @@
       "milestone": "M3",
       "status": "specified",
       "proof_targets": [
-        "PRF-015"
+        "PRF-015",
+        "PRF-031"
       ],
       "verification": [
         "proof",
@@ -924,7 +935,12 @@
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "planning/evidence/deploy-cce4b11-2026-09-20.md",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "books/nntp-auth.lisp",
+        "books/nntp-auth-invariants.lisp",
+        "tests/acl2/nntp-auth-tests.lisp",
+        "tests/test_auth.py",
+        "planning/evidence/auth-w10-2026-09-20.md"
       ],
       "implementation_note": "Laboratory reader advertises VERSION/IMPLEMENTATION only; complete planned bundle audit pending.",
       "note": "Refuted by a live counterexample rather than merely unproved: the deploy gate found the server answering POST with 340 while its CAPABILITIES block omits POST, which RFC 3977 section 5.2.2 requires exactly when posting is permitted. Until the advertised bundle and the dispatched bundle are the same list, this requirement is not implemented."
@@ -998,7 +1014,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-013",
-        "PRF-015"
+        "PRF-015",
+        "PRF-031"
       ],
       "verification": [
         "proof",
@@ -1010,7 +1027,12 @@
         "specs/article-fields.md",
         "tests/evidence/2026-09-18-fields-transfer.md",
         "tests/evidence/2026-09-18-fields-transfer.json",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "books/nntp-auth.lisp",
+        "books/nntp-auth-invariants.lisp",
+        "tests/acl2/nntp-auth-tests.lisp",
+        "tests/test_auth.py",
+        "planning/evidence/auth-w10-2026-09-20.md"
       ],
       "implementation_note": "A narrow proto-article subset checks Message-ID/Newsgroups multiplicity/grammar and absence of Injection-Info/Xref while preserving source field views. Full injection, gateway provenance, dates, native signatures and authority policy remain open. D01 selects exact authored source plus separate mutable trace/injection projections; full injection must honor that boundary without rewriting signed bytes.",
       "note": "books/injection and books/injection-invariants certify, but provenance is the open half: no native signature, no gateway injection record and no authority check, and PRF-013 has no events."

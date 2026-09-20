@@ -82,6 +82,19 @@ class Cut:
 # whose comment says reality admits more than the model does is a `gap`.
 CUTS: tuple[Cut, ...] = (
     # -- store, advance_frontier ---------------------------------------------
+    Cut("store", "frontier-created", "advance_frontier",
+        "fn-sf phase :frontier-staged; frontier :old, record :absent. "
+        "fn-bs-create (byte-store.lisp:~500): the inode exists durably and "
+        "EMPTY from creation and only its staging name is pending, which is "
+        "the zero-length-file-after-crash outcome made first-class; the "
+        "staging directory is never fenced and recovery ignores it",
+        record="absent", scenarios=("cross-post",)),
+    Cut("store", "frontier-written", "advance_frontier",
+        "fn-sf phase :frontier-staged; frontier :old, record :absent. The "
+        "octets are a pending :write on the staged inode, so a crash here "
+        "admits any torn subset of them -- and none of it is under an "
+        "authority name, which is why no trailer is needed (K1/D1)",
+        record="absent", scenarios=("cross-post",)),
     Cut("store", "frontier-staged-durable", "advance_frontier",
         "fn-sf phase :frontier-data-durable; frontier :old (the model also "
         "admits :new here, an over-approximation: os.replace has not run)",
@@ -104,6 +117,16 @@ CUTS: tuple[Cut, ...] = (
         "is stable and no record candidate exists",
         record="absent", scenarios=("cross-post",)),
     # -- store, publish -------------------------------------------------------
+    Cut("store", "record-created", "publish",
+        "fn-sf phase :reserved (no record event is observed until the file "
+        "barrier); record :absent. fn-bs-create: the staged inode is durable "
+        "and empty, its staging name pending",
+        record="absent", scenarios=("cross-post",)),
+    Cut("store", "record-written", "publish",
+        "fn-sf phase :reserved; record :absent. The frame is a pending "
+        ":write on the staged inode and no final name exists, so every torn "
+        "subset the model admits is invisible to the scan",
+        record="absent", scenarios=("cross-post",)),
     Cut("store", "record-staged-durable", "publish",
         "fn-sf phase :record-data-durable, record :absent (the model also "
         "admits :present here, an over-approximation: os.link has not run)",
@@ -124,6 +147,12 @@ CUTS: tuple[Cut, ...] = (
         record="present", scenarios=("cross-post",)),
     Cut("store", "record-completing", "publish",
         "fn-sf phase :completing, record :present",
+        record="present", scenarios=("cross-post",)),
+    Cut("store", "record-stage-unlinked", "publish",
+        "fn-sf phase :completing, record :present; the staging entry's "
+        ":del-entry is pending on a directory that is never fenced, so the "
+        "orphan may or may not survive and recovery ignores either outcome "
+        "(fn-bs-unlink; staging names are not kernel state)",
         record="present", scenarios=("cross-post",)),
     Cut("store", "record-staging-cleaned", "publish",
         "fn-sf phase :completing, record :present; staging names are not "
@@ -147,6 +176,32 @@ CUTS: tuple[Cut, ...] = (
         "the *fn-sf-recovery-barrier-count* barriers; stable image",
         record="absent", scenarios=("cross-post", "capacity-refusal"),
         quick=True),
+    # -- store, initialize ----------------------------------------------------
+    # P-INIT (fn-bs-init-program, books/byte-store-programs.lisp:261). There
+    # is no fn-sf state to name: initialize runs before any kernel exists, so
+    # the crash choice is the byte model's alone and the recovery expectation
+    # is about the store's openability, not about a record.
+    Cut("store", "init-root-created", "initialize",
+        "no fn-sf state: fn-bs-mkdir of :root under :parent, whose entry is "
+        "pending until the parent is fenced. A crash leaves either no store "
+        "or an empty root, and initialize is idempotent over both",
+        uncovered="no campaign scenario initializes a store: the template is "
+                  "built by the harness before the injector exists. "
+                  "tests/test_store.py owns the initialize crash cases."),
+    Cut("store", "init-transactions-created", "initialize",
+        "no fn-sf state: fn-bs-mkdir of :transactions under :root",
+        uncovered="as init-root-created."),
+    Cut("store", "init-staging-created", "initialize",
+        "no fn-sf state: fn-bs-mkdir of :staging under :root",
+        uncovered="as init-root-created."),
+    Cut("store", "init-barrier", "initialize",
+        "no fn-sf state: one of the five closing fences of P-INIT (config "
+        "file, frontier file, :transactions, :root, :parent). Before the "
+        "last of them the store's own directory entry may still be pending "
+        "in :parent, so a crash can leave no store at all; after it the "
+        "store is openable and recover's own five barriers re-establish it",
+        uncovered="as init-root-created; the five sites share one cut name, "
+                  "as recover-barrier does."),
     # -- workflow journal, publish -------------------------------------------
     Cut("workflow", "write", "publish",
         "fn-journal-crash slot :lost -- the staged bytes are not durable and "
@@ -268,6 +323,12 @@ CUTS: tuple[Cut, ...] = (
     Cut("checkpoint", "checkpoint:candidate-published", "publish",
         "fn-cpp phase :candidate-attempted after the directory barrier: "
         "generation :present in reality; marker :old",
+        uncovered="reached by tests/test_checkpoint.py process-death cases, "
+                  "not by a campaign scenario"),
+    Cut("checkpoint", "checkpoint:candidate-stage-unlinked", "publish",
+        "fn-cpp phase :candidate-published, generation :present, marker "
+        ":old; the staging entry's :del-entry is pending on a directory that "
+        "is never fenced, so the orphan may or may not survive",
         uncovered="reached by tests/test_checkpoint.py process-death cases, "
                   "not by a campaign scenario"),
     Cut("checkpoint", "checkpoint:selection-durable", "select",
