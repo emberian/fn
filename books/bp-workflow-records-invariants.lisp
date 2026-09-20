@@ -13,6 +13,7 @@
 (in-package "ACL2")
 (include-book "bp-workflow-records")
 (include-book "bp-workflow-binding-invariants")
+(local (in-theory (enable fn-node-statep)))
 
 ; Every workflow definition and every unfolding rule is closed by default;
 ; each proof opens exactly what it needs.

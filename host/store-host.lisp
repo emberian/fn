@@ -6,8 +6,10 @@
 ; Every decision this file used to share with Python now has one owner in a
 ; certified book: framing and the integrity trailer comparison in
 ; `books/frame`, content identity and the charge policy in `books/identity`,
-; the group table in `books/store-config`, and the Message-ID grammar in
-; `books/article-fields`.  The wrappers below only marshal.
+; the group table in the store's replayed configuration (`books/config`,
+; `books/node-config`; `books/store-config` keeps the name/code inversion),
+; and the Message-ID grammar in `books/article-fields`.  The wrappers below
+; only marshal.
 
 (in-package "ACL2")
 (include-book "../books/replay")
@@ -180,11 +182,21 @@
 ; -----------------------------------------------------------------------------
 ; Identity, charge and group bridge
 
+(defun fn-store-subject-prefix (length)
+  ; The fixed head of a subject-v1 preimage.  The host appends the article to
+  ; this and hashes it, so a 32 KiB payload never crosses the bridge.
+  (if (and (natp length) (<= length *fn-cbor-max-uint*))
+      (fn-id-subject-prefix length)
+    nil))
+
 (defun fn-store-subject-id (digest)
   (if (fn-id-digestp digest) (fn-id-subject digest) nil))
 
 (defun fn-store-obligation-preimage (msgid subject)
-  (if (and (fn-cbor-octet-listp msgid) (fn-cbor-octet-listp subject))
+  (if (and (fn-cbor-octet-listp msgid)
+           (<= (len msgid) *fn-cbor-max-uint*)
+           (fn-cbor-octet-listp subject)
+           (<= (len subject) *fn-cbor-max-uint*))
       (fn-id-obligation-preimage msgid subject)
     nil))
 
@@ -203,12 +215,14 @@
             (fn-store-group-name-octets (cdr groups)))
     nil))
 
-(defun fn-store-group-names ()
-  ; The configured group list as octets, for the one call Python makes at open.
-  (fn-store-group-name-octets *fn-store-groups*))
+(defun fn-store-identity-text (identity)
+  ; The one rendering of a canonical identity into a string, for the three
+  ; boundaries that cannot carry octets: the store record metadata fields, the
+  ; workflow journal JSON and the NNTP header value.
+  (if (fn-cbor-octet-listp identity) (fn-id-text identity) nil))
 
-(defun fn-store-group-table-id ()
-  *fn-store-group-table-id*)
+(defun fn-store-format-id ()
+  *fn-store-format-id*)
 
 (defun fn-store-octet-lists->strings (xs)
   (if (consp xs)
@@ -220,12 +234,15 @@
             (cons (fn-store-octets->string (car xs)) rest))))
     (if (null xs) nil :bad)))
 
-(defun fn-store-group-codes (name-octets)
-  ; Distinct configured group names, given as octet lists, become codes.
-  (let ((names (fn-store-octet-lists->strings name-octets)))
-    (if (equal names :bad)
+(defun fn-store-group-codes (name-octets domain-octets)
+  ; Distinct group names, as octet lists, become their codes in the replayed
+  ; allocation domain the caller was handed at open (`fn-store-cfg-domain').
+  ; Python carries that list back verbatim; it never computes a code.
+  (let ((names (fn-store-octet-lists->strings name-octets))
+        (domain (fn-store-octet-lists->strings domain-octets)))
+    (if (or (equal names :bad) (equal domain :bad))
         :bad
-      (fn-store-codes-from-groups names))))
+      (fn-store-codes-from-groups names domain))))
 
 ; The whole POST admission boundary in one call.  Every bound it applies has
 ; one owner: the Message-ID grammar is `books/article-fields`, the payload cap

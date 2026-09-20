@@ -17,6 +17,13 @@
 (include-book "bp-primary")
 
 (local (include-book "arithmetic/top" :dir :system))
+; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
+; this book reasons under them, so open them here, locally.
+(local (in-theory (enable fn-cbor-record-vocabulary fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary)))
+; The identity projection is withdrawn at the end of `books/bp-primary.lisp`
+; (CHANGE bundle-identity on the board); this book proves the theorems about
+; it, so it opens it here and nowhere else.
+(local (in-theory (enable fn-bpp-identity-vocabulary)))
 
 ; -----------------------------------------------------------------------------
 ; Endpoint IDs
@@ -159,11 +166,12 @@
    :hints (("Goal" :use fn-bpp-eleven-element-list-reconstructs
             :in-theory (disable fn-bpp-eleven-element-list-reconstructs)))))
 
+; The CRC field is not read back by fn-bpp-value-block, so the former
+; hypotheses (fn-cbor-octet-listp crc-octets) and the width equation had no
+; violating value (probed 2026-09-19: '(0 0 0 0), '(1 2 3) and 'x all round
+; trip); they are dropped rather than kept as teeth-less hypotheses.
 (defthm fn-bpp-value-block-of-block-value
-  (implies (and (fn-bpp-blockp b)
-                (fn-cbor-octet-listp crc-octets)
-                (equal (len crc-octets)
-                       (fn-bpp-crc-width (fn-bpp-crc-type b))))
+  (implies (fn-bpp-blockp b)
            (equal (fn-bpp-value-block (fn-bpp-block-value b crc-octets)) b))
   :hints (("Goal" :in-theory (disable fn-bpp-eid-value fn-bpp-value-eid))))
 
@@ -430,9 +438,15 @@
            (fn-bpc-shapep :item (fn-bpp-primary-identity-value b)))
   :hints (("Goal" :in-theory (disable fn-bpp-eid-value))))
 
+; No violating value exists for a `(fn-bpp-blockp b)` hypothesis here: every
+; branch of `fn-bpc-enc` returns octets or nil, so `fn-bpc-enc-are-octets`
+; holds of every input and the hypothesis this theorem carried was
+; unnecessary.  It is deleted rather than bitten (docs/proof-style.md section
+; 5).  The content of this theorem is that one lemma at the identity value;
+; the keystone to cite for the encoder is `fn-bpc-enc-are-octets`, and this
+; states it of the term the host calls (host/bp-ingress-host.lisp:183).
 (defthm fn-bpp-primary-identity-is-octets
-  (implies (fn-bpp-blockp b)
-           (fn-cbor-octet-listp (fn-bpp-primary-identity b)))
+  (fn-cbor-octet-listp (fn-bpp-primary-identity b))
   :hints (("Goal"
            :use ((:instance fn-bpc-enc-are-octets
                             (flg :item) (x (fn-bpp-primary-identity-value b))))
@@ -448,6 +462,10 @@
                        (fn-bpp-primary-identity b))
                 (equal (fn-bpp-primary-identity (fn-bpp-with-crc-type b type))
                        (fn-bpp-primary-identity b))))
+  ; A projection restated over three constructors that do not touch the
+  ; projected fields: it unfolds, it is not a proof event, and it is not a
+  ; rewrite rule (docs/proof-style.md section 7).  Cited by `:use`.
+  :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-bpp-blockp fn-bpp-eidp fn-bpp-timep
                                       fn-bpp-crc-typep fn-bpc-enc
                                       fn-bpp-eid-value))))
@@ -464,3 +482,21 @@
                  (:instance fn-bpp-value-eid-of-eid-value
                             (e (fn-bpp-source b))))
            :in-theory (disable fn-bpp-eid-value fn-bpp-value-eid))))
+
+; -----------------------------------------------------------------------------
+; Export theory.
+;
+; Enabled on include from this book's identity section: the two keystones
+; `fn-bpp-primary-identity-value-is-shape` and
+; `fn-bpp-primary-identity-is-octets`, which are what the staging path needs
+; to hash and frame an identity at all.  The projection fact and
+; `fn-bpp-primary-identity-determines-adu-key` are `:rule-classes nil` and are
+; cited by `:use`.  The definitions they are about stay withdrawn, under
+; `fn-bpp-identity-vocabulary` from `books/bp-primary.lisp`.
+;
+; This book's earlier sections (the flag, CRC, endpoint, time and extension
+; theorems) still export their rules enabled, as they did before this lane;
+; withdrawing them belongs with the opaque-record work the bp deputy owns
+; (planning/deputies/bp.md, proposal item 4).
+
+(in-theory (disable fn-bpp-identity-vocabulary))

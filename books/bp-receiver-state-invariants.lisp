@@ -2,6 +2,14 @@
 ; its local journal replay.  Receiver decisions remain in the base books.
 (in-package "ACL2")
 (include-book "bp-receipt-records")
+; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
+; this book reasons under them, so open them here, locally.
+(local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary
+                          fn-record-invariants-vocabulary fn-cbor-record-vocabulary
+                          fn-cbor-codec-vocabulary fn-cbor-invariants-vocabulary)))
+; This book reasons under the receiver definitions; open them here, locally.
+(local (in-theory (enable fn-bp-receiver-vocabulary fn-bp-receiver-records-vocabulary
+                          fn-bpi-node-record-committedp)))
 
 (defthm fn-bpr-statep-components
   (implies (fn-bpr-statep st)
@@ -80,7 +88,7 @@
         (fn-bpa-requestp request)))
   :hints (("Goal"
            :in-theory
-           (e/d (fn-bpr-contextp fn-bpr-make-context)
+           (e/d (fn-bpr-contextp)
                 (fn-bpa-metadatap fn-bpa-requestp)))))
 
 (defthm fn-bpr-context-from-request-is-constructor

@@ -278,6 +278,22 @@
         {
           "name": "fn-wildmat-rightmost-match-is-last-reference-match",
           "kind": "theorem"
+        },
+        {
+          "name": "fn-served-step-partition-independence",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-served-reply-stream-is-partition-independent",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-served-feed-of-append",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-served-run-is-the-concatenated-step",
+          "kind": "theorem"
         }
       ]
     },
@@ -698,6 +714,22 @@
         {
           "name": "fn-nntp-closed-step-has-no-effects",
           "kind": "theorem"
+        },
+        {
+          "name": "fn-served-step-preserves-connp",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-served-run-preserves-connp",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-served-step-effects-are-typed",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-served-run-effects-are-typed",
+          "kind": "theorem"
         }
       ]
     },
@@ -796,6 +828,14 @@
         },
         {
           "name": "fn-article-parse-work-profile-bound",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-served-feed-steps-bounded-by-chunk-length",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-served-step-nntp-steps-is-bounded",
           "kind": "theorem"
         }
       ]

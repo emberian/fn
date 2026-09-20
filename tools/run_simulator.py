@@ -129,6 +129,7 @@ def main() -> int:
     all_passed = True
     environment = os.environ.copy()
     environment["ACL2_CUSTOMIZATION"] = "NONE"
+    environment["ACL2_BOOK_HASH_ALISTP"] = "NIL"  # content-hashed certificates: relocatable across worktrees and hosts
     environment.pop("ACL2_SYSTEM_BOOKS", None)
     for scenario in args.scenario:
         driver = driver_for(scenario)
