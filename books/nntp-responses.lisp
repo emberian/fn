@@ -354,17 +354,26 @@
   ; mode-switching (section 3.4.2).  XOVER and XHDR carry no capability
   ; label: RFC 2980 predates section 3.3 and names no label for them, and a
   ; client discovers them by trying them.
+  ; Two ground lists rather than an append of a conditional: every caller's
+  ; block-text obligation then evaluates one constant list per branch, which
+  ; is what keeps books/nntp-effects.lisp's effect theorems cheap.
   (declare (xargs :guard t))
-  (append
-   (list (fn-nntp-string-octets "VERSION 2")
-         (fn-nntp-string-octets "READER"))
-   (append
-    (if postingp (list (fn-nntp-string-octets "POST")) nil)
-    (list (fn-nntp-string-octets "OVER MSGID")
+  (if postingp
+      (list (fn-nntp-string-octets "VERSION 2")
+            (fn-nntp-string-octets "READER")
+            (fn-nntp-string-octets "POST")
+            (fn-nntp-string-octets "OVER MSGID")
+            (fn-nntp-string-octets "HDR")
+            (fn-nntp-string-octets
+             "LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT")
+            (fn-nntp-string-octets "IMPLEMENTATION fn-nntp-lab"))
+    (list (fn-nntp-string-octets "VERSION 2")
+          (fn-nntp-string-octets "READER")
+          (fn-nntp-string-octets "OVER MSGID")
           (fn-nntp-string-octets "HDR")
           (fn-nntp-string-octets
            "LIST ACTIVE ACTIVE.TIMES HEADERS NEWSGROUPS OVERVIEW.FMT")
-          (fn-nntp-string-octets "IMPLEMENTATION fn-nntp-lab")))))
+          (fn-nntp-string-octets "IMPLEMENTATION fn-nntp-lab"))))
 
 (defun fn-nntp-unadvertised-capability-lines ()
   (list (fn-nntp-string-octets "VERSION 2")
