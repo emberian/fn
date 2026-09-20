@@ -1167,6 +1167,7 @@ class V0Matrix(twonode_gate.TwoNodeGate):
         self.rows: list[Row] = []
         self.emitted: set[str] = set()
         self.support: dict = {}
+        self.dead: dict = {}
         self.group_counts = {"a": 0, "b": 0}
 
     # -- rows -------------------------------------------------------------
@@ -2057,6 +2058,14 @@ else echo NONE; fi
                              name="independence: node {} holds its own and not {}'s"
                              .format(node.upper, other.upper), expect=None)
             result = self.payload(step)
+            if not result or result.get("error"):
+                self.emit("V0-TRANSIT-INDEPENDENT", NOT_EXERCISED, step.command,
+                          str(result.get("error", step.first_line))[:200],
+                          node=node.name,
+                          blocker="the presence driver could not reach node {}: {}"
+                                  .format(node.upper,
+                                          result.get("error", step.first_line)))
+                continue
             self.emit("V0-TRANSIT-INDEPENDENT", exit_verdict(step.rc), step.command,
                       "groups={} present={} absent={}".format(
                           result.get("groups"), result.get("present"),
@@ -2821,6 +2830,48 @@ else echo NONE; fi
         self.facts["server entry point"] = self.selected
         return True
 
+    def alive(self, node: NodeSpec, tag="main") -> bool:
+        """Is this node's server still the process that reached LISTENING?
+
+        A server that dies in the middle of a run makes every later row a
+        connection error, and a connection error is not a verdict about the
+        feature the row is named for. Asking before each phase lets the
+        matrix say the death once, with the log that explains it, and record
+        the rest as not-exercised against that.
+        """
+        if not node.pid:
+            return False
+        step = self.sh("node {} server is alive".format(node.upper),
+                       "kill -0 {} 2>/dev/null && echo ALIVE || echo DEAD".format(
+                           node.pid), expect=None)
+        if "ALIVE" in step.output:
+            return True
+        if node.name not in self.dead:
+            tail = self.sh("node {} server log after it died".format(node.upper),
+                           "tail -25 {}/server-{}-{}.log 2>/dev/null || echo NO-LOG"
+                           .format(node.dir, node.name, tag), expect=None)
+            lines = [x for x in tail.output.strip().splitlines() if x.strip()]
+            self.dead[node.name] = " | ".join(lines[-6:]) or "(no log)"
+            self.gaps.append(
+                "node {}'s server process DIED during this run, after it had reached "
+                "LISTENING. Every row below that needed a socket on it is "
+                "not-exercised against that death, not against the feature. Its last "
+                "log lines: {}".format(node.upper, self.dead[node.name]))
+        return False
+
+    def require_live(self, node: NodeSpec, keys, nodes=None, directions=None) -> bool:
+        if self.alive(node):
+            return True
+        blocker = ("node {}'s server died earlier in this run: {}".format(
+            node.upper, self.dead.get(node.name, "no log")))
+        extra = {}
+        if nodes is not None:
+            extra["nodes"] = nodes
+        if directions is not None:
+            extra["directions"] = directions
+        self.blocked(keys, blocker, invocation="(the server was gone)", **extra)
+        return False
+
     def node_blocker(self, node: NodeSpec) -> str:
         attempts = getattr(node, "start_attempts", [])
         uncert = self.uncertified("owner", "served", "peer-inbound", "peer-config",
@@ -2832,6 +2883,13 @@ else echo NONE; fi
             "" if not uncert else
             ". Uncertified in the deploy tree: books/" + ", books/".join(uncert)))
 
+    AUTH_KEYS = ("V0-AUTH-ADVERTISED", "V0-AUTH-GATED", "V0-AUTH-LOGIN",
+                 "V0-AUTH-WITHDRAWN", "V0-AUTH-POST", "V0-AUTH-WRONG")
+    POST_KEYS = ("V0-POST-OPEN", "V0-POST-COMMIT", "V0-POST-READBACK",
+                 "V0-POST-FRESH", "V0-POST-DUPLICATE")
+    CRASH_KEYS = ("V0-CRASH-KILL", "V0-CRASH-SURVIVOR", "V0-CRASH-RECOVER",
+                  "V0-CRASH-ACKNOWLEDGED", "V0-CRASH-INTERRUPTED",
+                  "V0-CRASH-RESTART")
     NODE_SOCKET_KEYS = ("V0-GROUP-SERVED", "V0-POST-OPEN", "V0-POST-COMMIT",
                         "V0-POST-READBACK", "V0-POST-FRESH", "V0-POST-DUPLICATE",
                         "V0-AUTH-ADVERTISED", "V0-AUTH-GATED", "V0-AUTH-LOGIN",
@@ -2885,21 +2943,37 @@ else echo NONE; fi
                 self.blocked(self.NODE_SOCKET_KEYS, self.node_blocker(node),
                              nodes=(node.name,))
                 continue
-            self.phase("group served {}".format(node.name), self.group_served, node)
-            self.phase("reader surface {}".format(node.name), self.read_surface, node)
-            self.phase("capability pins {}".format(node.name), self.capability_pins, node)
-            self.phase("AUTHINFO {}".format(node.name), self.auth_session, node)
-            self.phase("POST cycle {}".format(node.name), self.post_cycle, node)
+            for label, method, keys in (
+                    ("group served", self.group_served, ("V0-GROUP-SERVED",)),
+                    ("reader surface", self.read_surface, self.READ_KEYS),
+                    ("capability pins", self.capability_pins,
+                     ("V0-PIN-DISPATCHED", "V0-PIN-ADVERTISED")),
+                    ("AUTHINFO", self.auth_session, self.AUTH_KEYS),
+                    ("POST cycle", self.post_cycle, self.POST_KEYS)):
+                if self.require_live(node, keys, nodes=(node.name,)):
+                    self.phase("{} {}".format(label, node.name), method, node)
 
-        if self.a.port and self.b.port:
+        live = [n for n in self.nodes if n.port and self.alive(n)]
+        if len(live) == 2:
             self.phase("independence", self.independence)
-            self.phase("transit AB", self.transit_direction, self.a, self.b, "ab")
-            self.phase("transit BA", self.transit_direction, self.b, self.a, "ba")
-            self.phase("concurrency", self.post_concurrent)
-            self.phase("live reconfiguration", self.live_reconfiguration)
-            self.phase("outbound feed", self.outbound_feed)
-            self.phase("clients", self.clients)
-            self.phase("crash", self.crash_phase)
+            for source, target, way in ((self.a, self.b, "ab"), (self.b, self.a, "ba")):
+                if self.require_live(target, self.TRANSIT_KEYS, directions=(way,)):
+                    self.phase("transit {}".format(way.upper()),
+                               self.transit_direction, source, target, way)
+            for label, method, keys in (
+                    ("concurrency", self.post_concurrent, ("V0-POST-CONCURRENT",)),
+                    ("live reconfiguration", self.live_reconfiguration,
+                     ("V0-CFG-LIVE", "V0-CFG-LIVE-REFUSE")),
+                    ("outbound feed", self.outbound_feed, self.FEED_KEYS),
+                    ("clients", self.clients, ("V0-CLIENT-NNTPLIB",)),
+                    ("crash", self.crash_phase, self.CRASH_KEYS)):
+                if all(self.alive(n) for n in self.nodes):
+                    self.phase(label, method)
+                else:
+                    self.blocked(keys, "a server died earlier in this run: {}".format(
+                        "; ".join("node {}: {}".format(k.upper(), v)
+                                  for k, v in self.dead.items()) or "no log"),
+                        invocation="(the server was gone)")
         else:
             blocker = "; ".join(self.node_blocker(n) for n in self.nodes if not n.port)
             self.blocked(self.PAIR_KEYS + self.TRANSIT_KEYS + self.FEED_KEYS, blocker)
