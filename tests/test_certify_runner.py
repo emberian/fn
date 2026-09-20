@@ -38,6 +38,15 @@ case " ${FAKE_FAIL:-} " in
     echo "ACL2 Error in ( CERTIFY-BOOK ...):  the fake harness refused this book."
     exit 1 ;;
 esac
+# Real ACL2's shape when certify-book fails: the inner ld returns, the marker
+# form is never reached, no certificate is written -- and the driver's (quit)
+# still exits 0.
+case " ${FAKE_QUIET_FAIL:-} " in
+  *" $book "*)
+    printf 'end %s\n' "$book" >> "$FAKE_EVENTS"
+    echo "ACL2 Error in ( CERTIFY-BOOK ...):  assertion failed."
+    exit 0 ;;
+esac
 # A certificate shaped like ACL2's, so the cache hook has something to judge.
 cat > "$book.cert" <<CERT
 (IN-PACKAGE "ACL2")
@@ -71,7 +80,8 @@ class FakeRepository:
         self.runs = 0
 
     def certify(self, books: list[str], jobs: int, fail: str = "",
-                slots: int = 16, extra: list[str] | None = None) -> tuple[int, dict]:
+                slots: int = 16, extra: list[str] | None = None,
+                quiet_fail: str = "") -> tuple[int, dict]:
         extra = extra or []
         self.runs += 1
         self.events.write_text("")
@@ -80,6 +90,7 @@ class FakeRepository:
             "FN_ACL2": str(self.acl2),
             "FAKE_EVENTS": str(self.events),
             "FAKE_FAIL": fail,
+            "FAKE_QUIET_FAIL": quiet_fail,
             "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
             # A private slot pool and a private certificate cache: a unit test
             # must not contend with this machine's real ACL2 runs or publish
@@ -206,6 +217,31 @@ class ParallelScheduleTests(unittest.TestCase):
             self.assertNotIn("books/leaf-b", manifest["certificate_digests_sha256"])
             self.assertNotEqual(manifest["observed_success_markers"],
                                 manifest["expected_success_markers"])
+
+    def test_a_book_that_fails_while_acl2_exits_zero_is_recorded_failed(self):
+        # The shape of the 2026-09-20 farm run: `tests/acl2/tcpcl-tests` failed
+        # at a golden vector in 0.2 s, and because the driver's `(quit)` exits 0
+        # the manifest's only per-book result field said 0 for it.
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, self.LAYERED)
+            code, manifest = repository.certify(self.ORDER, jobs=4,
+                                                quiet_fail="books/leaf-b")
+            self.assertEqual(code, 1)
+            self.assertEqual(manifest["status"], "failed")
+            self.assertEqual(manifest["acl2_exit_codes"]["books/leaf-b"], 0)
+            self.assertEqual(manifest["book_results"]["books/leaf-b"], "failed")
+            self.assertIn("books/leaf-b", manifest["failure"])
+            self.assertIn("no fresh success marker in this book's log",
+                          manifest["book_failures"]["books/leaf-b"])
+            for book in self.ORDER:
+                if book != "books/leaf-b":
+                    self.assertEqual(manifest["book_results"][book], "passed", book)
+                    self.assertNotIn(book, manifest["book_failures"])
+            # And the cache gate agrees: the failed root contributes no pair.
+            certified = runner.certs.certified_books(
+                [{**manifest, "evidence": str(repository.root / "build" / "acl2" / "run")}])
+            self.assertNotIn("books/leaf-b", certified)
+            self.assertIn("books/leaf-a", certified)
 
     def test_manifest_records_jobs_start_order_and_per_book_wall_time(self):
         with tempfile.TemporaryDirectory() as directory:
