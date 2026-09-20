@@ -638,7 +638,11 @@
 
 (defun fn-peer-command (ps keyword args)
   ; The peer connection's transit commands.  Anything else is nil: delegate.
-  (declare (xargs :guard (fn-peer-sessionp ps) :verify-guards nil))
+  ; The guard names what fn-peer-step has already established when it calls
+  ; this: a peer connection, whose session pins a node and a configuration
+  ; under their recognizers.  A reader connection never reaches here.
+  (declare (xargs :guard (and (fn-peer-sessionp ps) (fn-peer-session-peer ps))
+                  :verify-guards nil))
   (let ((node (fn-peer-session-node ps))
         (cfg (fn-peer-session-cfg ps))
         (peer (fn-peer-session-peer ps))
@@ -1000,7 +1004,11 @@
   (implies (fn-peer-sessionp x)
            (and (fn-post-sessionp (fn-peer-session-base x))
                 (fn-peer-transferp (fn-peer-session-transfer x))
-                (natp (fn-peer-session-inflight x))))
+                (natp (fn-peer-session-inflight x))
+                (implies (fn-peer-session-peer x)
+                         (and (stringp (fn-peer-session-peer x))
+                              (fn-node-statep (fn-peer-session-node x))
+                              (fn-cfgp (fn-peer-session-cfg x))))))
   :rule-classes :forward-chaining
   :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp))
                                   ((:d fn-post-sessionp) (:d fn-peer-transferp)
@@ -1114,6 +1122,65 @@
            :use ((:instance fn-post-open-session-is-consistent)
                  (:instance fn-post-session-consistentp-forward
                             (x (fn-post-open-session archive)))))))
+
+; -----------------------------------------------------------------------------
+; Guard verification of the served chain
+;
+; books/served.lisp guard-verifies fn-served-dispatch, which calls
+; fn-peer-step, so these are not optional: an unverified fn-peer-step makes
+; books/served uncertifiable and the served host unloadable.  The one
+; non-trivial obligation is the node-statep-to-retain-statep bridge that
+; fn-peer-decide-offer needs for fn-retain-admissiblep, and it is a
+; conjunct of fn-node-statep.
+
+(local (defthm fn-peer-node-statep-forward
+  (implies (fn-node-statep node)
+           (and (fn-statep (fn-node-acceptance node))
+                (fn-retain-statep (fn-node-retention node))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d ((:d fn-node-statep))
+                                  ((:d fn-statep) (:d fn-retain-statep)
+                                   (:d fn-node-state-shapep)
+                                   (:d fn-node-binding-listp)))))))
+
+(local (defthm fn-peer-transferp-forward
+  (implies (and (fn-peer-transferp x) x)
+           (and (consp x) (consp (cdr x))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d ((:d fn-peer-transferp))
+                                  ((:d fn-nntp-printable-tokenp)
+                                   (:d fn-af-message-idp)))))))
+
+(verify-guards fn-peer-decide-offer
+  ; The recognizers stay closed: the forward rule above supplies
+  ; fn-retain-statep and the rest are guard t.
+  :hints (("Goal" :in-theory (disable (:d fn-node-statep) (:d fn-statep)
+                                      (:d fn-retain-statep)
+                                      (:d fn-node-state-shapep)
+                                      (:d fn-cfgp) (:d fn-cfg-peer-find)
+                                      (:d fn-af-message-idp)
+                                      (:d fn-peer-history-hasp)
+                                      (:d fn-peer-stagedp)
+                                      (:d fn-retain-admissiblep)
+                                      (:d fn-peer-evidence)
+                                      (:d fn-record-octets-string)
+                                      ; the inbound accessors stay closed or
+                                      ; fn-cfg-peerp-inbound-fields, which is
+                                      ; stated over them, stops matching
+                                      (:d fn-cfg-peer-inbound)
+                                      (:d fn-cfg-peer-inbound-groups)
+                                      (:d fn-cfg-peer-inbound-max-octets)
+                                      (:d fn-cfg-peer-inbound-max-inflight)
+                                      (:d fn-cfg-ag-car) (:d fn-cfg-ag-cdr)))))
+(verify-guards fn-peer-sessionp)
+; fn-peer-session-consistentp: OPEN, and not needed.  It calls
+; fn-post-session-consistentp (books/nntp-post.lisp), which is itself
+; :verify-guards nil; it is a specification predicate, not on the served
+; executable path, so nothing guard-verified calls it.
+(verify-guards fn-peer-open-session)
+(verify-guards fn-peer-delegate)
+(verify-guards fn-peer-command)
+(verify-guards fn-peer-step)
 
 ; -----------------------------------------------------------------------------
 ; Export theory
