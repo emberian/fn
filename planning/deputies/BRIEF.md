@@ -30,7 +30,14 @@ cross-cluster steps you could not take alone.
   host's `$HOME`, but write the path out); `--affected-by` selects over every
   Makefile root; `--closure` certifies their dependencies too, which is what
   a box holding no usable certificate needs. Add `--dry-run` to
-  `tools/certify_books.py` locally to see the exact list first.
+  `tools/certify_books.py` locally to see the exact list first. `submit`
+  installs the box's own cache (`/home/ember/fn-certcache` on persvati) into
+  the mirrored tree before the runner starts and prints what it found
+  (`installed N, ... uncached N`), so `--closure` now certifies what the box
+  lacks rather than everything; `wait` publishes the run's pairs back there
+  for the next lane. If your `installed` count is near zero, say so in your
+  report: it means the box's cache has nothing for your books, not that the
+  run was wasted.
 - Never `git stash`; never `git add -A`; commit named files with
   `git commit -F <msgfile>` where `<msgfile>` is named after your lane
   (e.g. `commit-<cluster>-<n>.txt` in the scratchpad: two lanes sharing

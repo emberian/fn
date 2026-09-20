@@ -32,11 +32,22 @@ entry records the ``origin_root`` it was produced in; ``install`` takes this
 worktree's own entry, else one whose origin does not exist on this machine,
 and otherwise refuses and says ``foreign-local``.
 
+**Unless that origin is not a worktree.**  A gate directory and a farm run
+root are snapshots: each is made from one commit by one run, and nothing edits
+or certifies into them afterwards.  On a box where every gate directory is
+still on disk, the rule above would refuse the box's own cache to every lane,
+which is what made a lane re-certify a whole dependency closure.  So
+``publish --origin-kind gate`` (or ``run``) records what the origin tree is,
+and ``install`` accepts such an entry wherever it finds it.  A snapshot later
+overwritten with different books costs a loud refusal from ACL2 at include
+time -- the sub-book content no longer matches -- never a silent wrong result.
+
 What this still does not establish: nothing here proves a book certifies.
 ``tools/certify_books.py`` does that, with a fresh success marker per book; the
 cache only moves its result to another worktree, where ACL2 checks it again.
 
     python3 tools/certs.py publish [--manifest PATH] [--remote hbox]
+    python3 tools/certs.py publish --origin-kind gate    # from a gate directory
     python3 tools/certs.py install                   # entering a new worktree
     python3 tools/certs.py status
 """
@@ -66,6 +77,12 @@ DEFAULT_CACHE = "~/.cache/fn-certs"
 # Where a farm box keeps its copy.  `--remote host:path` overrides.
 REMOTE_CACHES = {"hbox": "/tank/fn/certcache", "persvati": "~/fn-certcache"}
 MANIFEST_GLOB = "build/acl2/certify-*/manifest.json"
+# What the origin tree is, which decides where its pairs may be installed.
+# `worktree` is live: someone certifies in it, and a pair whose sub-book paths
+# point there must not be followed from another tree on the same machine.
+# `gate` (a gate directory) and `run` (a farm run root) are snapshots.
+LIVE_ORIGIN = "worktree"
+ORIGIN_KINDS = (LIVE_ORIGIN, "gate", "run")
 # An older ACL2 and hand-written fixtures use the textual certificate form.
 CERT_MARKERS = (":BEGIN-PORTCULLIS-CMDS", ":END-PORTCULLIS-CMDS")
 
@@ -104,6 +121,8 @@ class Report:
     # exists on this machine: ACL2 would follow that worktree's sub-books.
     foreign_local: list[str] = field(default_factory=list)
     removed_foreign: int = 0
+    # Entries already cached whose recorded origin kind this run corrected.
+    relabelled: int = 0
     certified_locally: int = 0
     manifests: int = 0
     mirrored: str | None = None
@@ -113,6 +132,7 @@ class Report:
         if self.action == "publish":
             out.append(f"  {self.manifests} manifests; published {self.published}, "
                        f"already cached {self.already}, "
+                       f"relabelled {self.relabelled}, "
                        f"no manifest-verified pair {len(self.unverified)}")
         elif self.action == "install":
             out.append(f"  installed {self.installed}, kept identical local "
@@ -140,6 +160,17 @@ class Report:
 
 def cache_directory() -> Path:
     return Path(os.environ.get("FN_CERT_CACHE", DEFAULT_CACHE)).expanduser()
+
+
+def default_origin_kind() -> str:
+    """What a publish with no explicit kind says its origin tree is.
+
+    The farm runner is started with ``FN_CERT_ORIGIN_KIND=run``, so the pairs
+    it publishes into the box's cache during a run are already labelled when
+    the next lane's ``install`` reads them.
+    """
+    kind = os.environ.get("FN_CERT_ORIGIN_KIND", LIVE_ORIGIN)
+    return kind if kind in ORIGIN_KINDS else LIVE_ORIGIN
 
 
 def content_hash(path: Path) -> str:
@@ -296,7 +327,16 @@ def choose_entry(entries: list[tuple[Path, dict]],
     relocatable = [entry for entry in entries
                    if entry[1].get("origin_root")
                    and not Path(entry[1]["origin_root"]).exists()]
-    return relocatable[0] if relocatable else None
+    if relocatable:
+        return relocatable[0]
+    # A gate directory or a farm run root: a tree built from one commit by one
+    # run, never certified into again, so nothing here can be followed into a
+    # tree that is about to change under it.  An entry with no recorded kind
+    # predates this rule and counts as a live worktree.
+    snapshot = [entry for entry in entries
+                if entry[1].get("origin_root")
+                and entry[1].get("origin_kind", LIVE_ORIGIN) != LIVE_ORIGIN]
+    return snapshot[0] if snapshot else None
 
 
 def read_meta(directory: Path) -> dict:
@@ -395,14 +435,18 @@ def verified(records: list[Certified], source: str, cert: str) -> Certified | No
 
 def publish(root: Path, cache: Path, manifests: list[dict] | None = None,
             names: list[str] | None = None, origin: str | None = None,
-            origin_host: str | None = None) -> Report:
+            origin_host: str | None = None,
+            origin_kind: str | None = None) -> Report:
     """Cache every pair a certification manifest still vouches for.
 
     ``origin`` is the absolute worktree path the certificates were *produced*
     in, which is what their sub-book paths point at.  It defaults to each
     manifest's own evidence path, then to ``root``; a farm run passes the path
-    the run used on the box.
+    the run used on the box.  ``origin_kind`` says what that tree is
+    (``worktree``, ``gate`` or ``run``), which is what decides whether the
+    entry may be installed on a machine where the tree still exists.
     """
+    kind = origin_kind or default_origin_kind()
     report = Report(action="publish", cache=str(cache))
     loaded = load_manifests(root) if manifests is None else list(manifests)
     report.manifests = len(loaded)
@@ -434,20 +478,29 @@ def publish(root: Path, cache: Path, manifests: list[dict] | None = None,
         where = origin or record.origin or str(root.resolve())
         directory = entry_directory(cache, key, where)
         cached = directory / "book.cert"
+        port = source.with_suffix(".port")
+        port = port if port.is_file() else None
         if cached.is_file() and content_hash(cached) == content_hash(cert):
             report.already += 1
+            if read_meta(directory).get("origin_kind", LIVE_ORIGIN) != kind:
+                # The same bytes, published again by a run that knows what its
+                # origin tree is: the kind is metadata about the tree, not
+                # about the pair, so it is corrected in place.
+                write_entry(directory, name, key, listing, cert, port, record,
+                            where, origin_host, kind)
+                report.relabelled += 1
             continue
         directory.mkdir(parents=True, exist_ok=True)
-        port = source.with_suffix(".port")
-        write_entry(directory, name, key, listing, cert,
-                    port if port.is_file() else None, record, where, origin_host)
+        write_entry(directory, name, key, listing, cert, port, record, where,
+                    origin_host, kind)
         report.published += 1
     return report
 
 
 def write_entry(directory: Path, name: str, key: str, listing: list[str],
                 cert: Path, port: Path | None, record: Certified,
-                origin: str, origin_host: str | None = None) -> None:
+                origin: str, origin_host: str | None = None,
+                origin_kind: str = LIVE_ORIGIN) -> None:
     """Write the pair and its metadata, each file renamed into place."""
     place(cert, directory / "book.cert")
     target_port = directory / "book.port"
@@ -466,6 +519,9 @@ def write_entry(directory: Path, name: str, key: str, listing: list[str],
         # names its sub-books by absolute path, so this is what decides where
         # the pair may be installed; `origin_host` is provenance only.
         "origin_root": origin,
+        # `worktree` keeps the pair on its own machine; `gate` and `run` are
+        # snapshots, installable wherever the cache reaches.
+        "origin_kind": origin_kind,
         "origin_host": origin_host or os.uname().nodename,
         "has_port": port is not None,
         "published_at": dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -590,13 +646,19 @@ def main(argv: list[str] | None = None) -> int:
                              f"(default: every {MANIFEST_GLOB} under --root)")
     parser.add_argument("--remote", default=None,
                         help="after publishing, rsync the cache to host or host:path")
+    parser.add_argument("--origin-kind", default=None, choices=ORIGIN_KINDS,
+                        help="what the tree these pairs were produced in is: a "
+                             "live worktree (default, or FN_CERT_ORIGIN_KIND), a "
+                             "gate directory or a farm run root.  A snapshot's "
+                             "pairs install on the machine that holds it too")
     arguments = parser.parse_args(argv)
     root = Path(arguments.root).resolve()
     cache = Path(arguments.cache).expanduser() if arguments.cache else cache_directory()
     names = arguments.books or None
     if arguments.action == "publish":
         manifest = Path(arguments.manifest).resolve() if arguments.manifest else None
-        report = publish(root, cache, load_manifests(root, manifest), names)
+        report = publish(root, cache, load_manifests(root, manifest), names,
+                         origin_kind=arguments.origin_kind)
         if arguments.remote:
             mirror(cache, arguments.remote)
             report.mirrored = remote_target(arguments.remote)

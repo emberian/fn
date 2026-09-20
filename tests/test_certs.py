@@ -11,10 +11,12 @@ different key, not a cache hit ACL2 would then refuse.
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 
 TOOLS = Path(__file__).resolve().parents[1] / "tools"
@@ -343,6 +345,78 @@ class OriginTests(unittest.TestCase):
             report = certs.status(target, cache)
             self.assertEqual(report.foreign_local, ["books/mid"])
             self.assertTrue(any("foreign-local 1" in line for line in report.lines()))
+
+
+class SnapshotOriginTests(unittest.TestCase):
+    """A gate directory and a farm run root are not live worktrees.
+
+    The origin rule refuses an entry whose origin tree still exists here,
+    because ACL2 would follow that tree's absolute sub-book paths.  On a farm
+    box every gate directory and every lane root is still on disk, so the
+    rule refused the box its own cache: the measured cost was a lane
+    certifying a whole dependency closure that the box had already certified.
+    A gate directory is built from one commit by one run and never certified
+    into again, so its pairs carry `origin_kind` and install anywhere.
+    """
+
+    def gate(self, directory: str, kind: str | None = "gate") -> tuple[Path, Path]:
+        root = worktree(directory, certified=["books/mid"])
+        manifest_for(root, ["books/mid"])
+        cache = root / "cache"
+        certs.publish(root, cache, origin_kind=kind)
+        return root, cache
+
+    def test_a_gate_entry_installs_where_the_gate_directory_still_exists(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            gate, cache = self.gate(one)
+            self.assertEqual(
+                certs.read_meta(entry(cache, gate, "books/mid"))["origin_kind"],
+                "gate")
+            target = worktree(two)
+            report = certs.install(target, cache)
+            # The same publish without the kind is `test_an_entry_from_another
+            # _live_worktree_is_refused`: one field is the whole difference.
+            self.assertTrue(gate.is_dir())
+            self.assertEqual((report.installed, report.foreign_local), (1, []))
+            self.assertTrue(certs.valid_looking(target / "books/mid.cert"))
+
+    def test_this_worktrees_own_entry_still_wins_over_a_snapshot(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            _, cache = self.gate(one)
+            target = worktree(two, certified=["books/mid"])
+            manifest_for(target, ["books/mid"])
+            certs.publish(target, cache)
+            chosen = certs.choose_entry(
+                certs.cached_entries(cache, certs.closure_key(target, "books/mid")[0]),
+                str(target))
+            self.assertEqual(chosen[1]["origin_root"], str(target))
+
+    def test_the_label_is_corrected_on_a_pair_already_in_the_cache(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
+            root, cache = self.gate(one, kind=None)
+            self.assertEqual(
+                certs.read_meta(entry(cache, root, "books/mid"))["origin_kind"],
+                "worktree")
+            # The same bytes, published again by a run that knows its tree is
+            # a snapshot.  Nothing is copied; the classification changes.
+            again = certs.publish(root, cache, origin_kind="run")
+            self.assertEqual((again.published, again.already, again.relabelled),
+                             (0, 1, 1))
+            self.assertEqual(
+                certs.read_meta(entry(cache, root, "books/mid"))["origin_kind"],
+                "run")
+            self.assertEqual(certs.install(worktree(two), cache).installed, 1)
+
+    def test_the_farm_runners_environment_supplies_the_kind(self):
+        with tempfile.TemporaryDirectory() as one:
+            with mock.patch.dict(os.environ, {"FN_CERT_ORIGIN_KIND": "run"}):
+                root, cache = self.gate(one, kind=None)
+            self.assertEqual(
+                certs.read_meta(entry(cache, root, "books/mid"))["origin_kind"],
+                "run")
+            # An unknown value is not a licence to relocate certificates.
+            with mock.patch.dict(os.environ, {"FN_CERT_ORIGIN_KIND": "wishful"}):
+                self.assertEqual(certs.default_origin_kind(), "worktree")
 
 
 class StatusAndRemoteTests(unittest.TestCase):
