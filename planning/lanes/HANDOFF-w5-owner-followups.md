@@ -274,3 +274,36 @@ owns the clock seam — re-observe per submission, or make the identity not
 depend on the observation alone — and is **not** in this lane's scope. The
 read-back itself (row A, and `test_post_reaches_240_and_the_article_can_be_read_back`)
 works.
+
+### `books/nntp-effects`: the verdict is a FAILURE, at a named form
+
+With the cap raised (`run-20260920T061124Z-7847`, `--jobs 4
+--timeout-seconds 5400`, evidence
+`build/acl2/certify-20260920T061125Z-3513142`) the book runs to a real
+verdict instead of the cap, and it **fails**:
+
+```
+ACL2 Error [Failure] in ( DEFTHM FN-NNTP-HDR-LABELLED-LINE-IS-BLOCK-TEXT ...)
+Time: 2598.79 seconds   Prover steps counted: 1473740297
+```
+
+`fn-nntp-hdr-labelled-line-is-block-text` is `books/nntp-effects.lisp:971`,
+one of the three HDR block-text lemmas, and **this lane did not edit it or
+anything it mentions** — no capability line, no `fn-nntp-env`, no posting
+bit. Its 16 closure books all certified. So `books/nntp-effects` is
+**open**, at that form, and the whole lane must be treated as uncertified
+above it.
+
+Two readings, and the one run that separates them: either this lane's
+`books/nntp-responses.lisp` edit perturbed the theory this book inherits
+(the mechanism is not visible — `fn-nntp-capability-lines` and
+`fn-nntp-env-posting` are both withdrawn at export, and the two forms this
+lane does change in this book sit on either side of the failing one, the
+earlier of which passes), or the book was already failing and the last
+evidence for it is stale (owner-post cites
+`certify-20260920T025533Z-22858` of 2026-09-20 for it). **Certify
+`books/nntp-effects` on dev, unedited, and compare.** Until that is done,
+nothing here should be reported as attributable.
+
+Note also the cost: 2598 s and 1.47e9 prover steps for one book is itself a
+finding for the nntp cluster, independent of the verdict.
