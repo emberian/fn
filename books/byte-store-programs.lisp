@@ -387,6 +387,104 @@
          (fn-bs-run-statep (cdr pairs)))))
 
 ; -----------------------------------------------------------------------------
+; -----------------------------------------------------------------------------
+; The journals, the inbox and the checkpoint machine (design §2.2, packets
+; P5 and P8).  These three have no fn-sf kernel: their logical image is a
+; record list (§3.4), so every step is a syscall and no step is an
+; :observe.  Transcribed so that every cut the campaign kills at
+; (tests/campaign/cuts.py) is a :cut of a program here; tools/transcribe_check.py
+; is the check in both directions and names the remainder as fidelity
+; defects rather than leaving the correspondence to prose.
+
+; P-JOURNAL, workflow half (WorkflowJournal.publish, tools/workflow_journal.py
+; 197-266).  NAME is {seq:016x}.wf; STAGE is {seq:016x}.<pid>.tmp; FRAME is
+; the FNWF frame.  The host's own cut names are the ones below.
+(defun fn-bs-workflow-program (stage name frame)
+  (declare (xargs :guard t :verify-guards nil))
+  (list (list :create :staging stage)                      ; 220
+        (list :write-all :staging stage frame)             ; 223
+        (list :cut "write")
+        (list :fsync-file :staging stage)                  ; 225
+        (list :cut "file-fsync")
+        (list :cut "prepublish")
+        (list :link :staging stage :records name)          ; 235 os.link
+        (list :cut "postlink")
+        (list :fsync-dir :records)                         ; 237
+        (list :cut "directory-fsync")
+        (list :unlink :staging stage)                      ; finally, best effort
+        (list :cut "image-applied")))
+; On error before the link the stage is unlinked and the error raised; no
+; journal record exists.  At or after the link: JournalUncertain and
+; self.fenced = True, which is the journal form of "fence after uncertainty".
+
+; P-JOURNAL, receipt half (ReceiptJournal.publish).  Same shape, the host's
+; own cut names.
+(defun fn-bs-receipt-program (stage name frame)
+  (declare (xargs :guard t :verify-guards nil))
+  (list (list :create :staging stage)
+        (list :write-all :staging stage frame)
+        (list :fsync-file :staging stage)
+        (list :cut "receipt-staged-durable")
+        (list :link :staging stage :records name)
+        (list :cut "postlink")
+        (list :fsync-dir :records)
+        (list :cut "receipt-durable")
+        (list :unlink :staging stage)
+        (list :cut "receipt-applied")))
+
+; P-INBOX (WorkflowJournal.stage_inbound, 326-388).  NAME is
+; sha256(bid).hexdigest() + ".bp"; STAGE is NAME + ".<pid>.tmp".
+(defun fn-bs-inbox-program (stage name frame)
+  (declare (xargs :guard t :verify-guards nil))
+  (list (list :create :staging stage)                      ; 362
+        (list :write-all :staging stage frame)             ; 365
+        (list :fsync-file :staging stage)                  ; 365
+        (list :cut "inbound-staged-durable")               ; 366
+        (list :link :staging stage :inbound name)          ; 372
+        (list :cut "inbound-linked")                       ; 373
+        (list :fsync-dir :inbound)                         ; 374
+        (list :cut "inbound-durable")                      ; 375
+        (list :unlink :staging stage)                      ; finally
+        ; delete(bid) is a BPA transport side effect, outside this model
+        (list :cut "inbound-deleted")))                    ; 386
+
+; The reconciliation branch (final exists: 349-360) issues only the
+; directory fence.
+(defun fn-bs-inbox-reconcile-program ()
+  (declare (xargs :guard t :verify-guards nil))
+  (list (list :fsync-dir :inbound)
+        (list :cut "inbound-reconciled")))
+
+; P-CHECKPOINT (tools/checkpoint.py).  publish: a new generation file, the
+; shape of P-RECORD into :checkpoints.
+(defun fn-bs-checkpoint-publish-program (stage generation frame)
+  (declare (xargs :guard t :verify-guards nil))
+  (list (list :create :staging stage)                      ; _stage_and_link 97
+        (list :write-all :staging stage frame)
+        (list :fsync-file :staging stage)                  ; 100
+        (list :cut "checkpoint:candidate-durable")         ; 103
+        (list :link :staging stage :checkpoints generation) ; 105
+        (list :cut "checkpoint:candidate-linked")          ; 106
+        (list :fsync-dir :checkpoints)                     ; 107
+        (list :cut "checkpoint:candidate-published")       ; 108
+        (list :unlink :staging stage)                      ; 111
+        (list :cut "checkpoint:candidate-stage-unlinked")))
+
+; select: the authority marker, the shape of P-FRONTIER into :checkpoints.
+(defun fn-bs-checkpoint-select-program (stage frame)
+  (declare (xargs :guard t :verify-guards nil))
+  (list (list :create :staging stage)                      ; 157
+        (list :write-all :staging stage frame)
+        (list :fsync-file :staging stage)                  ; 160
+        (list :cut "checkpoint:selection-durable")         ; 163
+        (list :rename :staging stage :checkpoints "selection") ; 165 os.replace
+        (list :cut "checkpoint:selection-replaced")        ; 172
+        (list :fsync-dir :checkpoints)                     ; 173
+        (list :cut "checkpoint:selection-published")       ; 174
+        (list :unlink :staging stage)                      ; 176 best effort
+        (list :cut "checkpoint:selection-stage-unlinked")))
+
+; -----------------------------------------------------------------------------
 ; The checks, on the constants.  The byte side of every program runs here
 ; against an initialized store with the initial kernel state (the kernel's
 ; transitions are guarded by fn-sf-statep; an observation the phase does not
@@ -507,6 +605,98 @@
         (fn-bs-dir-quietp bs :parent)
         ; initialize never fences :staging either
         (not (fn-bs-dir-quietp bs :staging)))))
+
+; The journal, inbox and checkpoint programs run over their own stores:
+; :records, :inbound and :checkpoints beside :staging, no kernel.
+(defconst *fn-bs-journal-store*
+  (fn-bs-make 4 nil
+              (list (cons :root (list (cons "records" :records)
+                                      (cons "inbound" :inbound)
+                                      (cons "checkpoints" :checkpoints)
+                                      (cons "staging" :staging)))
+                    (cons :records nil) (cons :inbound nil)
+                    (cons :checkpoints nil) (cons :staging nil))
+              nil 0))
+(defconst *fn-bs-p-workflow*
+  (fn-bs-workflow-program "0000000000000000.1.tmp" "0000000000000000.wf"
+                          *fn-bs-sample-frame*))
+(defconst *fn-bs-p-receipt*
+  (fn-bs-receipt-program "0000000000000000.1.tmp" "0000000000000000.rj"
+                         *fn-bs-sample-frame*))
+(defconst *fn-bs-p-inbox*
+  (fn-bs-inbox-program "ab.bp.1.tmp" "ab.bp" *fn-bs-sample-frame*))
+(defconst *fn-bs-p-inbox-reconcile* (fn-bs-inbox-reconcile-program))
+(defconst *fn-bs-p-checkpoint-publish*
+  (fn-bs-checkpoint-publish-program ".cp-1" "generation-1.fncp" *fn-bs-sample-frame*))
+(defconst *fn-bs-p-checkpoint-select*
+  (fn-bs-checkpoint-select-program ".sel-1" *fn-bs-sample-frame*))
+
+(assert-event (and (fn-bs-step-listp *fn-bs-p-workflow*)
+                   (fn-bs-step-listp *fn-bs-p-receipt*)
+                   (fn-bs-step-listp *fn-bs-p-inbox*)
+                   (fn-bs-step-listp *fn-bs-p-inbox-reconcile*)
+                   (fn-bs-step-listp *fn-bs-p-checkpoint-publish*)
+                   (fn-bs-step-listp *fn-bs-p-checkpoint-select*)))
+(assert-event (and (fn-bs-links-only-fencedp *fn-bs-p-workflow*)
+                   (fn-bs-links-only-fencedp *fn-bs-p-receipt*)
+                   (fn-bs-links-only-fencedp *fn-bs-p-inbox*)
+                   (fn-bs-links-only-fencedp *fn-bs-p-checkpoint-publish*)
+                   (fn-bs-links-only-fencedp *fn-bs-p-checkpoint-select*)))
+(assert-event (and (fn-bs-never-overwrites-authorityp *fn-bs-p-workflow*)
+                   (fn-bs-never-overwrites-authorityp *fn-bs-p-receipt*)
+                   (fn-bs-never-overwrites-authorityp *fn-bs-p-inbox*)
+                   (fn-bs-never-overwrites-authorityp *fn-bs-p-checkpoint-publish*)
+                   (fn-bs-never-overwrites-authorityp *fn-bs-p-checkpoint-select*)))
+(assert-event (and (fn-bs-fences-authority-dirsp *fn-bs-p-workflow*)
+                   (fn-bs-fences-authority-dirsp *fn-bs-p-receipt*)
+                   (fn-bs-fences-authority-dirsp *fn-bs-p-inbox*)
+                   (fn-bs-fences-authority-dirsp *fn-bs-p-checkpoint-publish*)
+                   (fn-bs-fences-authority-dirsp *fn-bs-p-checkpoint-select*)))
+
+(assert-event (fn-bs-statep *fn-bs-journal-store*))
+(defconst *fn-bs-run-workflow*
+  (fn-bs-run *fn-bs-journal-store* nil *fn-bs-p-workflow* nil nil nil))
+(defconst *fn-bs-run-inbox*
+  (fn-bs-run *fn-bs-journal-store* nil *fn-bs-p-inbox* nil nil nil))
+(defconst *fn-bs-run-checkpoint-publish*
+  (fn-bs-run *fn-bs-journal-store* nil *fn-bs-p-checkpoint-publish* nil nil nil))
+(defconst *fn-bs-run-checkpoint-select*
+  (fn-bs-run *fn-bs-journal-store* nil *fn-bs-p-checkpoint-select* nil nil nil))
+(assert-event (equal (len *fn-bs-run-workflow*) (len *fn-bs-p-workflow*)))
+(assert-event (equal (len *fn-bs-run-inbox*) (len *fn-bs-p-inbox*)))
+(assert-event (equal (len *fn-bs-run-checkpoint-publish*)
+                     (len *fn-bs-p-checkpoint-publish*)))
+(assert-event (equal (len *fn-bs-run-checkpoint-select*)
+                     (len *fn-bs-p-checkpoint-select*)))
+(assert-event (and (fn-bs-run-pending-disjointp *fn-bs-run-workflow*)
+                   (fn-bs-run-pending-disjointp *fn-bs-run-inbox*)
+                   (fn-bs-run-pending-disjointp *fn-bs-run-checkpoint-publish*)
+                   (fn-bs-run-pending-disjointp *fn-bs-run-checkpoint-select*)))
+(assert-event (and (fn-bs-run-statep *fn-bs-run-workflow*)
+                   (fn-bs-run-statep *fn-bs-run-inbox*)
+                   (fn-bs-run-statep *fn-bs-run-checkpoint-publish*)
+                   (fn-bs-run-statep *fn-bs-run-checkpoint-select*)))
+
+; Where they leave the store: the final name carries the exact frame and is
+; fenced, and the authority directory is quiet.
+(assert-event
+ (let ((bs (car (car (last *fn-bs-run-workflow*)))))
+   (and (equal (fn-bs-durable-content
+                bs (fn-bs-durable-entry bs :records "0000000000000000.wf"))
+               *fn-bs-sample-frame*)
+        (fn-bs-dir-quietp bs :records))))
+(assert-event
+ (let ((bs (car (car (last *fn-bs-run-inbox*)))))
+   (and (equal (fn-bs-durable-content
+                bs (fn-bs-durable-entry bs :inbound "ab.bp"))
+               *fn-bs-sample-frame*)
+        (fn-bs-dir-quietp bs :inbound))))
+(assert-event
+ (let ((bs (car (car (last *fn-bs-run-checkpoint-select*)))))
+   (and (equal (fn-bs-durable-content
+                bs (fn-bs-durable-entry bs :checkpoints "selection"))
+               *fn-bs-sample-frame*)
+        (fn-bs-dir-quietp bs :checkpoints))))
 
 ; -----------------------------------------------------------------------------
 ; Export theory.  Enabled on include: the program constructors, the
