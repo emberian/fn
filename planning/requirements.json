@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "description": "Design requirements, not implemented/proved claims. Paths are repository-relative.",
+  "description": "Design requirements, not implemented/proved claims. Paths are repository-relative. `keystones` names the certified theorems that carry an advanced status; `note` says what the status covers and what it does not.",
   "requirements": [
     {
       "id": "OBJ-001",
@@ -20,14 +20,15 @@
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json"
       ],
-      "implementation_note": "Logical payload bindings are immutable; real digest binding/collision handling remains open."
+      "implementation_note": "Logical payload bindings are immutable; real digest binding/collision handling remains open.",
+      "note": "The immutability half is covered by OBJ-002's keystones; the digest half is not implemented at all -- no content digest is derived, bound or compared anywhere in the books, so there is no explicit digest conflict to certify. Stays specified until a digest exists."
     },
     {
       "id": "OBJ-002",
       "title": "Distinct exact Message-ID and content/local identities",
       "specification": "specs/objects.md#logical-records",
       "milestone": "M1",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-001",
         "PRF-003"
@@ -42,9 +43,16 @@
         "books/article-fields.lisp",
         "tests/acl2/article-fields-tests.lisp",
         "tests/evidence/2026-09-18-fields-transfer.md",
-        "tests/evidence/2026-09-18-fields-transfer.json"
+        "tests/evidence/2026-09-18-fields-transfer.json",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Exact Message-ID strings, content subjects and local numbers remain distinct. Article-field extraction validates the RFC identifier grammar, preserves exact octets and reports duplicates explicitly; native identity/signature composition remains open."
+      "implementation_note": "Exact Message-ID strings, content subjects and local numbers remain distinct. Article-field extraction validates the RFC identifier grammar, preserves exact octets and reports duplicates explicitly; native identity/signature composition remains open.",
+      "keystones": [
+        "fn-complete-preserves-existing-message-id-binding",
+        "fn-recover-preserves-existing-message-id-binding",
+        "fn-article-successful-parse-preserves-source"
+      ],
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). The exact Message-ID binding survives completion and recovery, and a successful parse reconstructs its exact source octets, so the wire identity, the content subject and the local number stay three things. Open: native identity and signature composition, and the digest side of OBJ-001."
     },
     {
       "id": "OBJ-003",
@@ -60,14 +68,15 @@
         "scenario"
       ],
       "evidence": [],
-      "implementation_note": "D01 selected: native signatures bind exact authored source bytes; mutable Path/Xref and gateway injection records live in separate projections. Unknown allowed headers and MIME/body bytes are preserved. Concrete native grammar and legacy-variant comparison/quarantine policy remain open; no new implementation evidence."
+      "implementation_note": "D01 selected: native signatures bind exact authored source bytes; mutable Path/Xref and gateway injection records live in separate projections. Unknown allowed headers and MIME/body bytes are preserved. Concrete native grammar and legacy-variant comparison/quarantine policy remain open; no new implementation evidence.",
+      "note": "No book states a source-variant or provenance property. D01 selected the source boundary; the native grammar and the legacy-variant comparison/quarantine policy are unwritten, and PRF-013 has no events."
     },
     {
       "id": "OBJ-004",
       "title": "Conflicting evidence is not resolved by arrival time",
       "specification": "specs/objects.md#logical-records",
       "milestone": "M4",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-011"
       ],
@@ -77,16 +86,23 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
-        "tests/evidence/2026-09-18-integrated.json"
+        "tests/evidence/2026-09-18-integrated.json",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Exchange retains competing content/provenance facts and reports conflict without arrival-time selection."
+      "implementation_note": "Exchange retains competing content/provenance facts and reports conflict without arrival-time selection.",
+      "keystones": [
+        "fn-exchange-admitted-ingest-retains-conflicting-evidence",
+        "fn-exchange-admitted-order-member",
+        "fn-exchange-merge-commutative-member"
+      ],
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). Admission retains conflicting evidence rather than overwriting it, and membership of the merge does not depend on ingestion order, so no arrival-time rule decides a conflict. Scope: the merge is over validated fact sets supplied to fn-exchange; authorization and signatures are inputs, not proved here."
     },
     {
       "id": "OBJ-005",
       "title": "Atomic local memberships and non-reused article numbers",
       "specification": "specs/objects.md#logical-records",
       "milestone": "M1",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-001",
         "PRF-002"
@@ -97,9 +113,17 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
-        "tests/evidence/2026-09-18-integrated.json"
+        "tests/evidence/2026-09-18-integrated.json",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Logical acceptance has atomic membership and general number/binding preservation proofs."
+      "implementation_note": "Logical acceptance has atomic membership and general number/binding preservation proofs.",
+      "keystones": [
+        "fn-allocate-at-watermark",
+        "fn-watermark-does-not-conflict",
+        "fn-state-has-fresh-local-numbers",
+        "fn-durable-completion-installs-exact-pending-article"
+      ],
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). Allocation is at the watermark, conflicts with no installed number, and a durable completion installs exactly the pending article. Open: fn-allocate-at-watermark still carries hypotheses H1/H2 that core's report records as droppable once fn-watermark-bump-other is restated without its membership-list hypothesis."
     },
     {
       "id": "OBJ-006",
@@ -114,7 +138,8 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [],
+      "note": "PRF-017 has no events. Origin identity and incarnation are records the host writes; no theorem relates them to a non-wall-clock order."
     },
     {
       "id": "OBJ-007",
@@ -130,14 +155,15 @@
         "scenario"
       ],
       "evidence": [],
-      "implementation_note": "D02 requires native author signatures plus explicit legacy gateway provenance. D01 now fixes exact authored source bytes as the signed source and keeps mutable trace/injection projections separate. D09 suites, principal/key lifecycle and real verification/authority remain open."
+      "implementation_note": "D02 requires native author signatures plus explicit legacy gateway provenance. D01 now fixes exact authored source bytes as the signed source and keeps mutable trace/injection projections separate. D09 suites, principal/key lifecycle and real verification/authority remain open.",
+      "note": "PRF-013 has no events. books/crypto-seam and books/statement certify, but they are an abstract seam: nothing there is a real signature, and AGENTS.md forbids reading an abstract model as a signature claim."
     },
     {
       "id": "ENC-001",
       "title": "Deterministic encoding and value round trips",
       "specification": "specs/encoding.md#layers",
       "milestone": "M2",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-005"
       ],
@@ -151,16 +177,26 @@
         "tests/evidence/2026-09-18-storage.md",
         "tests/evidence/2026-09-18-storage.json",
         "tests/evidence/2026-09-18-assurance.md",
-        "tests/evidence/2026-09-18-assurance.json"
+        "tests/evidence/2026-09-18-assurance.json",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Native schemas/signature preimages remain open."
+      "implementation_note": "Primitive/schema-0 full round trips and accepted-input canonicality certified; 38 independent cbor2 cases pass. Native schemas/signature preimages remain open.",
+      "keystones": [
+        "fn-cbor-value-round-trip",
+        "fn-cbor-accepted-input-is-canonical",
+        "fn-record-round-trip",
+        "fn-record-accepted-input-is-canonical",
+        "fn-bpa-round-trip",
+        "fn-bpa-success-is-canonical"
+      ],
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). Round trip and accepted-input canonicality hold for the CBOR primitives, the schema-0 transaction record and the BP ADU. Scope: these are fn's own provisional formats; no native object, signature-preimage or batch format is frozen."
     },
     {
       "id": "ENC-002",
       "title": "Bounded parsing without Lisp evaluation",
       "specification": "specs/encoding.md#layers",
       "milestone": "M2",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-016"
       ],
@@ -178,9 +214,19 @@
         "tests/evidence/2026-09-18-wildmat-storage.md",
         "tests/evidence/2026-09-18-wildmat-storage.json",
         "tests/evidence/2026-09-18-assurance.md",
-        "tests/evidence/2026-09-18-assurance.json"
+        "tests/evidence/2026-09-18-assurance.json",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Wire event accounting, article syntax recognition/component bounds, UTF-8 scalar/progress bounds, wildmat parser/matcher correspondence, and CBOR/record guard verification are certified. Untrusted input still uses bounded octet marshalling. Full parser work/allocation and host graph guards remain open."
+      "implementation_note": "Wire event accounting, article syntax recognition/component bounds, UTF-8 scalar/progress bounds, wildmat parser/matcher correspondence, and CBOR/record guard verification are certified. Untrusted input still uses bounded octet marshalling. Full parser work/allocation and host graph guards remain open.",
+      "keystones": [
+        "fn-article-parse-work-input-bound",
+        "fn-article-parse-work-value",
+        "fn-wire-feed-byte-preserves-statep",
+        "fn-cbor-byte-encoding-fits-input-bound",
+        "fn-wildmat-successful-decode-length-bounded-by-input",
+        "fn-transfer-missing-ranges-work-public-bound"
+      ],
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). Every parser in the served path is an ACL2 definition over octet lists with a certified input bound; nothing calls the Lisp reader or evaluator. The pessimistic number, with its scope: the closed-form work ceiling of the public article parser is roughly 16,000x the measured traversal cost of that same parser on the same inputs (tests/evidence/2026-09-18-article-work.md), and it is an instrumented shadow of the parser, not a measurement of host CPU, memory, GC or I/O."
     },
     {
       "id": "ENC-003",
@@ -196,7 +242,8 @@
         "scenario"
       ],
       "evidence": [],
-      "implementation_note": "D01 fixes the exact authored-byte signing subject and separate mutable projections. Neither candidate preimage encoding, native envelope, CBOR/COSE nor any hash/signature suite is selected by this decision; D08/D09 and implementation/proofs remain open."
+      "implementation_note": "D01 fixes the exact authored-byte signing subject and separate mutable projections. Neither candidate preimage encoding, native envelope, CBOR/COSE nor any hash/signature suite is selected by this decision; D08/D09 and implementation/proofs remain open.",
+      "note": "No versioned domain-separated preimage exists yet. The A-CRYPTO trailer in books/frame-octets.lisp is a placeholder position, not a preimage definition."
     },
     {
       "id": "ENC-004",
@@ -212,14 +259,15 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [],
+      "note": "Schema evolution is a single schema-0 grammar today. Unknown article headers and body bytes are preserved (OBJ-002's parse keystone), but no theorem says an unknown record object survives re-encoding opaquely."
     },
     {
       "id": "STO-001",
       "title": "Authoritative committed state and complete derived indexes",
       "specification": "specs/storage.md#authority-and-layout",
       "milestone": "M2",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-010"
       ],
@@ -229,16 +277,22 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-storage.md",
-        "tests/evidence/2026-09-18-storage.json"
+        "tests/evidence/2026-09-18-storage.json",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Immutable local transaction files are replayed by ACL2 into complete node articles, memberships, and pins. No disk indexes/checkpoints or full correspondence proof yet."
+      "implementation_note": "Immutable local transaction files are replayed by ACL2 into complete node articles, memberships, and pins. No disk indexes/checkpoints or full correspondence proof yet.",
+      "keystones": [
+        "fn-index-rebuild-correspondence",
+        "fn-index-range-query-correct"
+      ],
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). The derived group/local-number index is sound and complete against the committed memberships it is rebuilt from, and range queries agree with an independent reference. Open: no host adopts this index yet, so committed state is still read directly; this is a correspondence result, not a performance claim."
     },
     {
       "id": "STO-002",
       "title": "Atomic acceptance includes memberships and obligations",
       "specification": "specs/storage.md#authority-and-layout",
       "milestone": "M1",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-001",
         "PRF-002",
@@ -252,16 +306,24 @@
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-storage.md",
-        "tests/evidence/2026-09-18-storage.json"
+        "tests/evidence/2026-09-18-storage.json",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Actual CLI persists one complete cross-post with archive obligation, then publishes through the same ACL2 node. General physical transaction/refinement theorem remains open."
+      "implementation_note": "Actual CLI persists one complete cross-post with archive obligation, then publishes through the same ACL2 node. General physical transaction/refinement theorem remains open.",
+      "keystones": [
+        "fn-node-prepare-preserves-state",
+        "fn-node-complete-preserves-state",
+        "fn-node-trace-preserves-old-bindings",
+        "fn-node-recover-preserves-state"
+      ],
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). One transaction stages the acceptance and its reservation, completion publishes both, and finite actual node traces preserve prior bindings. Open: the disk observations the node consumes are still abstract inputs at this layer; STO-003 to STO-005 carry the durable half."
     },
     {
       "id": "STO-003",
       "title": "Success follows a matching durable commit",
       "specification": "specs/storage.md#commit-protocol",
       "milestone": "M2",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-007"
       ],
@@ -283,16 +345,23 @@
         "tests/evidence/2026-09-18-assurance.json",
         "books/store-node-resolution.lisp",
         "books/store-observed.lisp",
-        "tests/test_store_node_host.py"
+        "tests/test_store_node_host.py",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Actual file/kernel completion ordering and arbitrary finite stable-history/success-prefix proofs are certified; composed live completion calls actual node semantics before acknowledgement. Real syscall/process-death tests pass. Full adapter adoption/refinement and qualified physical persistence remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open."
+      "implementation_note": "Actual file/kernel completion ordering and arbitrary finite stable-history/success-prefix proofs are certified; composed live completion calls actual node semantics before acknowledgement. Real syscall/process-death tests pass. Full adapter adoption/refinement and qualified physical persistence remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open.",
+      "keystones": [
+        "fn-sf-success-requires-matching-completion",
+        "fn-sn-new-success-requires-actual-matching-durable-node-completion",
+        "fn-snrt-new-success-is-actual-matching-durable-completion"
+      ],
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). A new success in the composed machine requires an actual matching durable node completion, in single steps and across mixed live/refusal/recovery traces. Open: the refinement from these file events to real syscalls remains conditional on the platform assumptions in the trust boundary; no power-loss profile is qualified."
     },
     {
       "id": "STO-004",
       "title": "Uncertain persistence fences mutations pending recovery",
       "specification": "specs/storage.md#commit-protocol",
       "milestone": "M2",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-007"
       ],
@@ -313,16 +382,26 @@
         "tests/evidence/2026-09-18-assurance.json",
         "books/store-node-resolution.lisp",
         "books/store-observed.lisp",
-        "tests/test_store_node_host.py"
+        "tests/test_store_node_host.py",
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "planning/evidence/deploy-cce4b11-2026-09-20.md"
       ],
-      "implementation_note": "Recovery/read/publication/completion faults fence mutations; 47 injected cases and six process-death boundaries preserve the applicable obligations. Closed/read-only owners now reject mutation and lock lifecycle regressions pass. Live wrapper adoption and physical refinement remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open."
+      "implementation_note": "Recovery/read/publication/completion faults fence mutations; 47 injected cases and six process-death boundaries preserve the applicable obligations. Closed/read-only owners now reject mutation and lock lifecycle regressions pass. Live wrapper adoption and physical refinement remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open.",
+      "keystones": [
+        "fn-sf-fenced-rejects-frontier-start",
+        "fn-sf-fenced-rejects-record-prepare",
+        "fn-sf-fenced-rejects-success",
+        "fn-sf-frontier-replace-error-fences",
+        "fn-sf-incomplete-recovery-barrier-is-not-ready"
+      ],
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). An uncertain publication fences the machine: start, prepare and success are all rejected while fenced, and an incomplete recovery barrier does not reach ready. The three outcomes stay distinct out to the CLI exit codes (accepted 0, refused 1, uncertain 3) in the deploy gate. Open: an injected uncertain publication leaves a staging orphan that recovery reports and does not collect, and no registry row owns that choice."
     },
     {
       "id": "STO-005",
       "title": "Recovery preserves acknowledged commits without partial transactions",
       "specification": "specs/storage.md#recovery",
       "milestone": "M2",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-007"
       ],
@@ -342,16 +421,25 @@
         "tests/evidence/2026-09-18-assurance.json",
         "books/store-node-resolution.lisp",
         "books/store-observed.lisp",
-        "tests/test_store_node_host.py"
+        "tests/test_store_node_host.py",
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "planning/evidence/deploy-cce4b11-2026-09-20.md"
       ],
-      "implementation_note": "General finite file traces retain earlier acknowledged records under named stable-storage and ghost-history premises, and across a real reopen under fn-sf-crash-imagep (A-DURABILITY as hypothesis); the bounded exploration with a txid-gap record, fault injection and actual process reopen/lost-success retries pass, and every process-death cut is a model crash point. Freshness, host composition and platform qualification remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open."
+      "implementation_note": "General finite file traces retain earlier acknowledged records under named stable-storage and ghost-history premises, and across a real reopen under fn-sf-crash-imagep (A-DURABILITY as hypothesis); the bounded exploration with a txid-gap record, fault injection and actual process reopen/lost-success retries pass, and every process-death cut is a model crash point. Freshness, host composition and platform qualification remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open.",
+      "keystones": [
+        "fn-sn-acknowledged-record-survives-observed-reopen",
+        "fn-sf-prior-success-has-record-after-one-crash",
+        "fn-snrt-acknowledged-history-retained-through-mixed-trace",
+        "fn-sn-open-observed-success-exact-history"
+      ],
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). An acknowledged record survives an observed reopen and a mixed trace, and reopen yields the exact history. Real evidence at the process level: the deploy gate SIGKILLed the server from inside an open POST, the interrupted article was absent after recovery, and the article acknowledged before the kill reread byte-for-byte through a fresh server. Open: one kill point only, and a SIGKILL is not a power loss."
     },
     {
       "id": "STO-006",
       "title": "Checkpoints preserve complete future-relevant state",
       "specification": "specs/storage.md#checkpointing-and-compaction",
       "milestone": "M2",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-008"
       ],
@@ -362,9 +450,16 @@
       "evidence": [
         "books/checkpoint.lisp",
         "tests/acl2/checkpoint-tests.lisp",
-        "specs/checkpoint.md"
+        "specs/checkpoint.md",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Logical checkpoint plus suffix replay equivalence is implemented; persisted checkpoint bytes, generation publication, crash selection and freshness remain open."
+      "implementation_note": "Logical checkpoint plus suffix replay equivalence is implemented; persisted checkpoint bytes, generation publication, crash selection and freshness remain open.",
+      "keystones": [
+        "fn-checkpoint-plus-suffix-equals-full-replay",
+        "fn-checkpoint-admissible-capture-is-exact",
+        "fn-checkpoint-admissible-capture-value-is-valid"
+      ],
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). A capture plus its suffix replay equals the full replay, and an admissible capture is exact, with an explicit rejection theorem for a suffix that reuses a transaction id below the frontier. Scope: this is the logical checkpoint only. There is no persisted checkpoint codec, no publication and no crash-generation selection, so no durable checkpoint is claimed."
     },
     {
       "id": "STO-007",
@@ -379,7 +474,8 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [],
+      "note": "PRF-009 is planned with no events. No compaction exists."
     },
     {
       "id": "STO-008",
@@ -394,16 +490,18 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-storage.md",
-        "tests/evidence/2026-09-18-storage.json"
+        "tests/evidence/2026-09-18-storage.json",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Real frame checksum/truncation/schema/namespace faults refuse normal recovery. Repair workflow and old-valid-store rollback detection remain open."
+      "implementation_note": "Real frame checksum/truncation/schema/namespace faults refuse normal recovery. Repair workflow and old-valid-store rollback detection remain open.",
+      "note": "No proof target. Detection would be the frame integrity trailer; K11 of DESIGN-crash-model-v2 (truncation and resize never validate) is a design, and no repair path is written. The deploy gate also found a durable staging orphan that recovery reports and leaves in place, with no owner in this registry."
     },
     {
       "id": "FLR-001",
       "title": "Crash model includes torn/reordered writes and explicit barriers",
       "specification": "specs/failures.md#crash-only-storage-model",
       "milestone": "M2",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-007"
       ],
@@ -415,16 +513,25 @@
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-storage.md",
-        "tests/evidence/2026-09-18-storage.json"
+        "tests/evidence/2026-09-18-storage.json",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Abstract isolated-slot model plus real adapter barriers and injected failures. No claim that the slot model is already a proved refinement of this adapter or a qualified power-loss model."
+      "implementation_note": "Abstract isolated-slot model plus real adapter barriers and injected failures. No claim that the slot model is already a proved refinement of this adapter or a qualified power-loss model.",
+      "keystones": [
+        "fn-sf-crash-realizes-every-admissible-image",
+        "fn-sf-crash-preserves-state",
+        "fn-sf-stable-records-prefix-of-crash",
+        "fn-sn-open-observed-not-ready-before-five-barriers",
+        "fn-sn-open-observed-five-barriers-open-ready"
+      ],
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). The crash relation realizes every admissible image, stable records are a prefix of any crash image, and the five barriers are what open a reopened store. Open, and named by review finding D4: the images are record-granular. Byte-level torn writes are planning/lanes/DESIGN-crash-model-v2-summary.md (K1 to K11), a design, so 'every crash point' is not claimed for the byte layer."
     },
     {
       "id": "FLR-002",
       "title": "Known abort, uncertainty, and lost volatile state are distinct",
       "specification": "specs/failures.md#crash-only-storage-model",
       "milestone": "M2",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-007"
       ],
@@ -439,9 +546,18 @@
         "tests/evidence/2026-09-18-storage.json",
         "tests/evidence/2026-09-18-wildmat-storage.md",
         "tests/evidence/2026-09-18-wildmat-storage.json",
-        "tests/evidence/2026-09-18-bp-composition-assurance.md"
+        "tests/evidence/2026-09-18-bp-composition-assurance.md",
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "planning/evidence/deploy-cce4b11-2026-09-20.md"
       ],
-      "implementation_note": "Uncertain publication/completion fences mutation. File-kernel traces and real Store recovery have scoped evidence; sender binding covers uncertain completion/restart/recovery. Five actual BP receiver process-death cuts distinguish durable staging, article, context, pending intent requiring explicit recovery, and committed receipt before deletion. General physical byte/host correspondence remains open."
+      "implementation_note": "Uncertain publication/completion fences mutation. File-kernel traces and real Store recovery have scoped evidence; sender binding covers uncertain completion/restart/recovery. Five actual BP receiver process-death cuts distinguish durable staging, article, context, pending intent requiring explicit recovery, and committed receipt before deletion. General physical byte/host correspondence remains open.",
+      "keystones": [
+        "fn-sf-fenced-rejects-success",
+        "fn-sf-recover-preserves-state",
+        "fn-sf-recovery-barrier-preserves-state",
+        "fn-sf-incomplete-recovery-barrier-is-not-ready"
+      ],
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). Known abort, uncertainty and lost volatile state are three distinct transitions in the file machine, and the distinction reaches the operator: the deploy gate drove all three through the real CLI and got exit codes 0, 1 and 3. Open: the campaign's cut table is the enumeration of process deaths, and two of its cuts are still 'gap' pending the byte-level crash model."
     },
     {
       "id": "FLR-003",
@@ -454,7 +570,8 @@
         "integration",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [],
+      "note": "No proof target and no media/node-loss model."
     },
     {
       "id": "FLR-004",
@@ -470,14 +587,17 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "planning/evidence/wave-realignment-2026-09-19.md"
+      ],
+      "note": "PRF-017 and PRF-018 have no events. books/clock and books/anchor certify and books/assumptions holds the constrained A-* functions, but docs/proofs.md records that no theorem in the tree takes one of those constraints as a hypothesis yet, so the delay and liveness assumptions are declared, not applied."
     },
     {
       "id": "RET-001",
       "title": "Persist scoped accepted obligations before receipts",
       "specification": "specs/retention.md#acceptance-is-a-resource-decision",
       "milestone": "M1",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-001",
         "PRF-004"
@@ -490,9 +610,16 @@
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-storage.md",
-        "tests/evidence/2026-09-18-storage.json"
+        "tests/evidence/2026-09-18-storage.json",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Real local records persist the archive obligation with content; recovered article-to-pin relations checked. Forwarding receipts remain unimplemented."
+      "implementation_note": "Real local records persist the archive obligation with content; recovered article-to-pin relations checked. Forwarding receipts remain unimplemented.",
+      "keystones": [
+        "fn-retain-admit-preserves-statep",
+        "fn-retain-known-obligation-id-is-not-reused",
+        "fn-node-complete-preserves-state"
+      ],
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). An obligation is admitted into retention state inside the same transaction that stages the acceptance, and a known obligation id is never reused. Open: the scope on the obligation is an abstract pin, charging units are abstract rather than measured physical bytes, and RET-004's authorization check is not proved."
     },
     {
       "id": "RET-002",
@@ -512,16 +639,18 @@
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-storage.md",
-        "tests/evidence/2026-09-18-storage.json"
+        "tests/evidence/2026-09-18-storage.json",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Abstract reservations compose with acceptance; local adapter also refuses configured bounds and tests duplicates at capacity. Physical-space reservation accounting remains open."
+      "implementation_note": "Abstract reservations compose with acceptance; local adapter also refuses configured bounds and tests duplicates at capacity. Physical-space reservation accounting remains open.",
+      "note": "Reservation preservation is certified (fn-retain-admit-preserves-statep), but no keystone states that an unaffordable obligation is refused; the refusal exists in the definitions and nothing names it. Charges are abstract units, not measured physical bytes, which is also why AGENTS.md's twins rule bites here."
     },
     {
       "id": "RET-003",
       "title": "Receipts distinguish transmission, retention, and delivery",
       "specification": "specs/retention.md#receipts-and-release",
       "milestone": "M4",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-012"
       ],
@@ -530,9 +659,18 @@
         "scenario"
       ],
       "evidence": [
-        "tests/evidence/2026-09-18-bp-composition-assurance.md"
+        "tests/evidence/2026-09-18-bp-composition-assurance.md",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Actual sender workflow distinguishes transport observations from committed matching application receipts; finite transport traces preserve receipt decisions. The trusted loopback BP exchange and fixed-Store receiver decision/replay proofs are integrated. Concrete authenticated undertaking and full cooperative-peer handoff remain open."
+      "implementation_note": "Actual sender workflow distinguishes transport observations from committed matching application receipts; finite transport traces preserve receipt decisions. The trusted loopback BP exchange and fixed-Store receiver decision/replay proofs are integrated. Concrete authenticated undertaking and full cooperative-peer handoff remain open.",
+      "keystones": [
+        "fn-bp-transport-step-preserves-receipt",
+        "fn-bp-transport-trace-preserves-receipt",
+        "fn-bp-unchecked-receipt-is-no-op",
+        "fn-bpo-receipt-success-requires-local-policy",
+        "fn-bpo-receipt-success-is-actual-journal-preparation"
+      ],
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). Transport steps preserve the receipt rather than creating one, an unchecked receipt is a no-op, and a receipt success requires the local policy decision and an actual journal preparation, so transmission, retention and delivery stay three things. Open: receipts are unsigned and A-POLICY is trusted; no authenticated remote receipt."
     },
     {
       "id": "RET-004",
@@ -554,9 +692,11 @@
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-articles.md",
         "tests/evidence/2026-09-18-articles.json",
-        "tests/evidence/2026-09-18-bp-composition-assurance.md"
+        "tests/evidence/2026-09-18-bp-composition-assurance.md",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Exact supplied evidence gates abstract ledger release and preserves unrelated pins. BP sender discharge requires a matching locally authorized committed receipt decision; receiver replayed receipts are grounded in exact ready Store records and matching journal decisions. Real D01/D09 authority, host refinement and durable node-level archive release remain open; completing onward work does not release either node's archive pin."
+      "implementation_note": "Exact supplied evidence gates abstract ledger release and preserves unrelated pins. BP sender discharge requires a matching locally authorized committed receipt decision; receiver replayed receipts are grounded in exact ready Store records and matching journal decisions. Real D01/D09 authority, host refinement and durable node-level archive release remain open; completing onward work does not release either node's archive pin.",
+      "note": "Release records its evidence (fn-retain-exact-release-records-its-evidence) and preserves independent pins, but 'authorized' is not proved: the evidence check is a single admit-string equality, not an issuer, nonce, incarnation or authorization check, and PRF-013 has no events."
     },
     {
       "id": "RET-005",
@@ -571,7 +711,8 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [],
+      "note": "PRF-009 is planned with no events. No reclamation exists."
     },
     {
       "id": "RET-006",
@@ -586,14 +727,15 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [],
+      "note": "PRF-009 is planned with no events. D13's history rule is unresolved."
     },
     {
       "id": "REP-001",
       "title": "Exchange portable facts rather than local database identity",
       "specification": "specs/replication.md#portable-input",
       "milestone": "M4",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-011"
       ],
@@ -603,16 +745,23 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
-        "tests/evidence/2026-09-18-integrated.json"
+        "tests/evidence/2026-09-18-integrated.json",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Portable immutable fact model avoids local NNTP identity; no batch serialization yet."
+      "implementation_note": "Portable immutable fact model avoids local NNTP identity; no batch serialization yet.",
+      "keystones": [
+        "fn-exchange-admitted-order-member",
+        "fn-exchange-policy-ingest-trace-preserves-facts",
+        "fn-exchange-policy-ingest-trace-preserves-statep"
+      ],
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). What crosses is a fact set: admission is by member, an ingest trace preserves the facts it already holds, and no local database identity appears in the exchanged form. Open: portable batch framing, authenticated handoff and local NNTP numbers staying local across a real peering are not proved."
     },
     {
       "id": "REP-002",
       "title": "Duplicate/reordered ingestion converges within stated scope",
       "specification": "specs/replication.md#portable-input",
       "milestone": "M4",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-011"
       ],
@@ -622,9 +771,18 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
-        "tests/evidence/2026-09-18-integrated.json"
+        "tests/evidence/2026-09-18-integrated.json",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Duplicate/reordered whole-batch fact merging is tested/proved under explicit capacity/validation conditions."
+      "implementation_note": "Duplicate/reordered whole-batch fact merging is tested/proved under explicit capacity/validation conditions.",
+      "keystones": [
+        "fn-exchange-merge-idempotent",
+        "fn-exchange-merge-commutative-member",
+        "fn-transfer-exact-duplicate-no-overwrite",
+        "fn-transfer-reserve-preserves-statep",
+        "fn-transfer-add-chunk-preserves-statep"
+      ],
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). The merge is idempotent and order-independent in membership, and an exact duplicate chunk does not overwrite. The stated scope is exactly that: validated fact sets and declared-byte fragments. A byte-identical partial overlap is still a conservative :overlap-conflict with no byte comparison, and convergence across two real peers is the K3 seam, which no book states."
     },
     {
       "id": "REP-003",
@@ -649,9 +807,11 @@
         "tests/evidence/2026-09-18-assurance.md",
         "tests/evidence/2026-09-18-assurance.json",
         "tests/evidence/2026-09-18-bp-workflow.md",
-        "tests/evidence/2026-09-18-bp-exchange.md"
+        "tests/evidence/2026-09-18-bp-exchange.md",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Bounded in-memory fragment assembly has preservation/accounting/gap/work proofs. The experimental canonical BP ADU and actual durable sender/receiver journals now compose through a real two-node BPA exchange, including lost receipt and distinct-BID duplicate. Persistent fragmented progress, portable dependency closure and multi-object batches remain open."
+      "implementation_note": "Bounded in-memory fragment assembly has preservation/accounting/gap/work proofs. The experimental canonical BP ADU and actual durable sender/receiver journals now compose through a real two-node BPA exchange, including lost receipt and distinct-BID duplicate. Persistent fragmented progress, portable dependency closure and multi-object batches remain open.",
+      "note": "Bounded resumable staging is certified (transfer's reserve/add-chunk/candidate keystones), but 'validate complete dependencies' is not: transfer outputs are unverified candidates, never receipts, and no dependency-closure validation exists."
     },
     {
       "id": "REP-004",
@@ -666,14 +826,15 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [],
+      "note": "PRF-018 has no events. Inventories are not implemented."
     },
     {
       "id": "REP-005",
       "title": "Durable scheduling with resource and fairness policy",
       "specification": "specs/replication.md#scheduling-and-transport",
       "milestone": "M4",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-018"
       ],
@@ -683,9 +844,20 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-bp-workflow.md",
-        "tests/evidence/2026-09-18-bp-exchange.md"
+        "tests/evidence/2026-09-18-bp-exchange.md",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "BPv7 is active M3/M4 work. Durable enqueue, submission intent/outcome, explicit retry decisions, recovered receiver acceptance and returned application receipt are implemented in the bounded laboratory profile. Finite sender traces preserve state/node; scheduling fairness, non-overlapping contact plans and conditional progress remain open."
+      "implementation_note": "BPv7 is active M3/M4 work. Durable enqueue, submission intent/outcome, explicit retry decisions, recovered receiver acceptance and returned application receipt are implemented in the bounded laboratory profile. Finite sender traces preserve state/node; scheduling fairness, non-overlapping contact plans and conditional progress remain open.",
+      "note": "Certified on the farm gate of dev bdd59d2 (persvati, ACL2 8.7 / SBCL 2.6.8, 213 of 216 roots; the three that failed are the owner cluster, the same three as the 7a9e89a gate). A tick is select-drive-take, passed-over work reaches the promotion queue, and the aging bound holds over (nfix n). Two cautions that travel with the status: both aging keystones were FALSE as stated from a018394 until 79e5227 -- at n = 1/2 every run predicate is t and nothing is selected -- and the correction is the (nfix n) horizon, with the counterexample evaluated in tests/acl2/scheduler-tests.lisp. And fn-sched-conditional-progress-under-a-fairness is conditional: it holds under the constrained fn-assume-fairness-contact-index of books/assumptions.lisp, which is an assumption, not a fact about any peer.",
+      "keystones": [
+        "fn-sched-tick-step-is-select-drive-take",
+        "fn-sched-selected-submit-is-a-workflow-submit",
+        "fn-sched-refused-submit-is-a-no-op",
+        "fn-sched-promoted-work-is-selected-within-its-position",
+        "fn-sched-aging-bound",
+        "fn-sched-passed-over-work-reaches-the-promotion-queue",
+        "fn-sched-conditional-progress-under-a-fairness"
+      ]
     },
     {
       "id": "REP-006",
@@ -708,9 +880,11 @@
         "tests/evidence/2026-09-18-bpa-boundary.md",
         "tests/evidence/2026-09-18-bp-workflow.md",
         "tests/evidence/2026-09-18-bp-exchange.md",
-        "tests/evidence/2026-09-18-bp-composition-assurance.md"
+        "tests/evidence/2026-09-18-bp-composition-assurance.md",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Actual pinned dtn7-rs TCP-CLA exchange exercised durable fn work, outage/restart, lost receipt, duplicate recognition and return receipt. Joint sender binding and fixed-Store receiver replay are certified; five receiver SIGKILL cuts and the 133-test suite passed. BPA observations never discharge application work/archive pins. The prior inert-bundle restart failure and explicit fn retry are retained in evidence. Authentication, changing-Store/host refinement, LTP, multi-relay and physical qualification remain open."
+      "implementation_note": "Actual pinned dtn7-rs TCP-CLA exchange exercised durable fn work, outage/restart, lost receipt, duplicate recognition and return receipt. Joint sender binding and fixed-Store receiver replay are certified; five receiver SIGKILL cuts and the 133-test suite passed. BPA observations never discharge application work/archive pins. The prior inert-bundle restart failure and explicit fn retry are retained in evidence. Authentication, changing-Store/host refinement, LTP, multi-relay and physical qualification remain open.",
+      "note": "The BP half has certified keystones (fn-bp-step-preserves-node, fn-bp-trace-preserves-node, and the bp-receiver invariants), and the requirement as written also names LTP, for which there is only planning/ltp-feasibility.md -- a feasibility study, not an implementation. Stays specified because the requirement's scope is wider than the evidence."
     },
     {
       "id": "NNT-001",
@@ -727,16 +901,19 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
-        "tests/evidence/2026-09-18-integrated.json"
+        "tests/evidence/2026-09-18-integrated.json",
+        "planning/evidence/deploy-cce4b11-2026-09-20.md",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Laboratory reader advertises VERSION/IMPLEMENTATION only; complete planned bundle audit pending."
+      "implementation_note": "Laboratory reader advertises VERSION/IMPLEMENTATION only; complete planned bundle audit pending.",
+      "note": "Refuted by a live counterexample rather than merely unproved: the deploy gate found the server answering POST with 340 while its CAPABILITIES block omits POST, which RFC 3977 section 5.2.2 requires exactly when posting is permitted. Until the advertised bundle and the dispatched bundle are the same list, this requirement is not implemented."
     },
     {
       "id": "NNT-002",
       "title": "NNTP cursor transitions and error semantics",
       "specification": "specs/nntp.md#sessions-and-framing",
       "milestone": "M3",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-015"
       ],
@@ -750,16 +927,25 @@
         "tests/evidence/2026-09-18-articles.md",
         "tests/evidence/2026-09-18-articles.json",
         "tests/evidence/2026-09-18-wildmat-storage.md",
-        "tests/evidence/2026-09-18-wildmat-storage.json"
+        "tests/evidence/2026-09-18-wildmat-storage.json",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Reader subset includes LISTGROUP ranges/cursors, filtered ACTIVE/NEWSGROUPS, empty results, syntax/availability errors and explicit command bounds. Logical, socket and independent-client cases pass. Full session refinement remains open."
+      "implementation_note": "Reader subset includes LISTGROUP ranges/cursors, filtered ACTIVE/NEWSGROUPS, empty results, syntax/availability errors and explicit command bounds. Logical, socket and independent-client cases pass. Full session refinement remains open.",
+      "keystones": [
+        "fn-nntp-step-preserves-consistent-session",
+        "fn-nntp-finite-trace-preserves-consistent-session",
+        "fn-nntp-opened-finite-trace-is-consistent",
+        "fn-nntp-unknown-group-preserves-session",
+        "fn-nntp-listgroup-unknown-preserves-session"
+      ],
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). Every dispatched command preserves session consistency, over single steps and finite traces, with the error arms stated separately. Scope, because a board entry reads otherwise: the w5/legacy-commands batch (XOVER, HDR/XHDR, LIST HEADERS/ACTIVE.TIMES) is NOT on dev at c8886ee -- books/nntp-legacy.lisp does not exist and is not a Makefile root -- so the covered commands are the reader bundle as dispatched today, and NNT-001 records that the advertised bundle does not match it."
     },
     {
       "id": "NNT-003",
       "title": "Bounded framing independent of socket chunk boundaries",
       "specification": "specs/nntp.md#sessions-and-framing",
       "milestone": "M3",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-006"
       ],
@@ -769,9 +955,19 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
-        "tests/evidence/2026-09-18-integrated.json"
+        "tests/evidence/2026-09-18-integrated.json",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Bounded wire-state preservation, fixed-mode partition theorem, and event-yield/socket boundary tests exist."
+      "implementation_note": "Bounded wire-state preservation, fixed-mode partition theorem, and event-yield/socket boundary tests exist.",
+      "keystones": [
+        "fn-wire-next-consumed-prefix-reconstructs-input",
+        "fn-wire-feed-proper-append",
+        "fn-wire-next-preserves-statep",
+        "fn-served-step-partition-independence",
+        "fn-served-reply-stream-is-partition-independent",
+        "fn-served-step-preserves-connp"
+      ],
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). The framing keystones are chunk-independent: the consumed prefix reconstructs the input and feeding is a proper append. The subject rule is met here for the first time: the host no longer owns a :program-mode chunk loop, it calls fn-served-step once per socket read, and books/served states chunk independence of that very function: fn-served-step-partition-independence and fn-served-reply-stream-is-partition-independent. Open: the concurrent server (books/owner) does not certify, so this is exercised through the single-connection reader only."
     },
     {
       "id": "NNT-004",
@@ -792,9 +988,11 @@
         "tests/acl2/article-fields-tests.lisp",
         "specs/article-fields.md",
         "tests/evidence/2026-09-18-fields-transfer.md",
-        "tests/evidence/2026-09-18-fields-transfer.json"
+        "tests/evidence/2026-09-18-fields-transfer.json",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "A narrow proto-article subset checks Message-ID/Newsgroups multiplicity/grammar and absence of Injection-Info/Xref while preserving source field views. Full injection, gateway provenance, dates, native signatures and authority policy remain open. D01 selects exact authored source plus separate mutable trace/injection projections; full injection must honor that boundary without rewriting signed bytes."
+      "implementation_note": "A narrow proto-article subset checks Message-ID/Newsgroups multiplicity/grammar and absence of Injection-Info/Xref while preserving source field views. Full injection, gateway provenance, dates, native signatures and authority policy remain open. D01 selects exact authored source plus separate mutable trace/injection projections; full injection must honor that boundary without rewriting signed bytes.",
+      "note": "books/injection and books/injection-invariants certify, but provenance is the open half: no native signature, no gateway injection record and no authority check, and PRF-013 has no events."
     },
     {
       "id": "NNT-005",
@@ -810,14 +1008,17 @@
         "proof",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [
+        "planning/evidence/wave-realignment-2026-09-19.md"
+      ],
+      "note": "books/nntp-post certifies (520.4 s in the gate), but POST is not durable acceptance end to end: the store-backed read-back test fails on dev's own host path (211 1 1 1 after 240, because nothing re-pins the posting connection's archive after a durable outcome), and books/owner -- the only concurrent server -- does not certify."
     },
     {
       "id": "NNT-006",
       "title": "NNTP views reflect complete committed membership",
       "specification": "specs/nntp.md#posting-and-projection",
       "milestone": "M3",
-      "status": "specified",
+      "status": "implemented",
       "proof_targets": [
         "PRF-002",
         "PRF-010",
@@ -835,9 +1036,17 @@
         "tests/evidence/2026-09-18-articles.md",
         "tests/evidence/2026-09-18-articles.json",
         "tests/evidence/2026-09-18-wildmat-storage.md",
-        "tests/evidence/2026-09-18-wildmat-storage.json"
+        "tests/evidence/2026-09-18-wildmat-storage.json",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Actual recovered memberships feed LISTGROUP and filtered ACTIVE/NEWSGROUPS through ACL2. Independent client tests exact stored views. Complete reader/overview/profile guarantees remain open."
+      "implementation_note": "Actual recovered memberships feed LISTGROUP and filtered ACTIVE/NEWSGROUPS through ACL2. Independent client tests exact stored views. Complete reader/overview/profile guarantees remain open.",
+      "keystones": [
+        "fn-nntp-step-preserves-carried-projection",
+        "fn-index-rebuild-correspondence",
+        "fn-index-range-query-correct",
+        "fn-state-has-fresh-local-numbers"
+      ],
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). A step preserves the projection the session carries, and the derived index corresponds to the committed memberships. Open: a reader's pinned snapshot surviving another connection's POST is NOT established by any run, because the reader serves one connection at a time and the owner does not start."
     },
     {
       "id": "NNT-007",
@@ -855,9 +1064,11 @@
       "evidence": [
         "books/nntp-invariants.lisp",
         "tests/acl2/nntp-tests.lisp",
-        "specs/nntp-audit.md"
+        "specs/nntp-audit.md",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "fn-nntp-open-session runs the whole-archive recognizer once per connection and fn-nntp-step reads the carried verdict; an unrenderable committed article degrades only itself. Cursor behaviour under expiry or removal of a committed article remains open."
+      "implementation_note": "fn-nntp-open-session runs the whole-archive recognizer once per connection and fn-nntp-step reads the carried verdict; an unrenderable committed article degrades only itself. Cursor behaviour under expiry or removal of a committed article remains open.",
+      "note": "books/served certifies and fn-served-open now pins config and observation into the five-field connection, but no named theorem states that the verdict a session carries is the one decided at open, and the host that would exercise it (books/owner) does not certify."
     },
     {
       "id": "HST-001",
@@ -876,9 +1087,11 @@
         "tests/evidence/2026-09-18-integrated.md",
         "tests/evidence/2026-09-18-integrated.json",
         "tests/evidence/2026-09-18-storage.md",
-        "tests/evidence/2026-09-18-storage.json"
+        "tests/evidence/2026-09-18-storage.json",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Simulator, socket reader, and file-store bridge invoke actual ACL2 definitions. Raw-execution guards and production host packaging remain open."
+      "implementation_note": "Simulator, socket reader, and file-store bridge invoke actual ACL2 definitions. Raw-execution guards and production host packaging remain open.",
+      "note": "Advanced in substance and not in status. The w4/served-path lane removed the :program-mode fn-reader-chunk and the host's duplicate reply framing, so the wire pending_subject note is closed: the subject of fn-served-step-partition-independence and fn-served-step-preserves-connp is the one function the host calls per socket read. But host/scheduler-host.lisp is still :program mode, and books/owner -- the host of the real service -- does not certify, so no run executes the proved core through the service entry point."
     },
     {
       "id": "HST-002",
@@ -896,9 +1109,11 @@
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
-        "tests/evidence/2026-09-18-integrated.json"
+        "tests/evidence/2026-09-18-integrated.json",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Single-owner logical transactions and bounded serial loopback bridge exercised; durable effects/production concurrency open."
+      "implementation_note": "Single-owner logical transactions and bounded serial loopback bridge exercised; durable effects/production concurrency open.",
+      "note": "Bounded effects are certified (fn-nntp-step-effects-well-formed, fn-nntp-closed-step-has-no-effects, and the served effect-typing keystones). Serialization is the owner's exclusive writer lock, and the owner does not certify or start, so the serialization half has no evidence."
     },
     {
       "id": "HST-003",
@@ -918,9 +1133,12 @@
         "tests/evidence/2026-09-18-assurance.json",
         "books/store-node-resolution.lisp",
         "books/store-observed.lisp",
-        "tests/test_store_node_host.py"
+        "tests/test_store_node_host.py",
+        "planning/evidence/deploy-cce4b11-2026-09-20.md",
+        "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "POSIX adapter has 47 enumerated syscall/completion fault rows, six process-death boundaries, ownership/lifecycle regressions and actual ACL2 reopen. Logical file and live completion correspondence are certified components. Hardware durability and complete host refinement remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open."
+      "implementation_note": "POSIX adapter has 47 enumerated syscall/completion fault rows, six process-death boundaries, ownership/lifecycle regressions and actual ACL2 reopen. Logical file and live completion correspondence are certified components. Hardware durability and complete host refinement remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open.",
+      "note": "Integration-verified, and the first real evidence exists: tools/deploy_gate.py ran one commit as a service on persvati with a kill cut and a recovery. It records its own gaps -- the owner did not start, no independent nntplib decoder (the host has only Python 3.13.7 and PEP 594 removed it), no newsreader installed, one kill point, and a SIGKILL is not a power loss -- so the persistence contract is not met as written."
     },
     {
       "id": "HST-004",
@@ -941,7 +1159,8 @@
         "tests/evidence/2026-09-18-bp-composition-assurance.md",
         "tests/evidence/2026-09-18-bp-guards.md"
       ],
-      "implementation_note": "Logical certification excludes program-mode host helpers and retains ACL2/runtime/adapter assumptions. BP composition evidence records 11 scoped roots, unchanged source digests and 133 Python tests without an all-roots or power-loss claim. A separate seven-book inventory records the complete 41-function ADU guard graph and 97 remaining unverified BP functions."
+      "implementation_note": "Logical certification excludes program-mode host helpers and retains ACL2/runtime/adapter assumptions. BP composition evidence records 11 scoped roots, unchanged source digests and 133 Python tests without an all-roots or power-loss claim. A separate seven-book inventory records the complete 41-function ADU guard graph and 97 remaining unverified BP functions.",
+      "note": "The trust boundary and the certification procedure are documented and the tooling now enforces part of it (tools/certs.py will not cache a pair except against a passed manifest, keyed on the whole include closure). What is missing for a status change is a theorem-level statement of the boundary, not a document."
     },
     {
       "id": "SEC-001",
@@ -954,7 +1173,8 @@
         "design-review",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [],
+      "note": "Design-review verification; planning/private-profile-packet.md is the current artifact and no decision is recorded."
     },
     {
       "id": "SEC-002",
@@ -967,7 +1187,8 @@
         "design-review",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [],
+      "note": "Design-review verification; no ciphertext retention or secret-state separation exists in the books."
     },
     {
       "id": "SEC-003",
@@ -980,7 +1201,8 @@
         "design-review",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [],
+      "note": "Design-review verification; D04's scope is unresolved."
     },
     {
       "id": "SEC-004",
@@ -993,7 +1215,8 @@
         "design-review",
         "scenario"
       ],
-      "evidence": []
+      "evidence": [],
+      "note": "Design-review verification; no group crypto has been evaluated against disconnection and recovery."
     }
   ]
 }

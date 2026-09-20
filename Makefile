@@ -113,6 +113,11 @@ ACL2_BOOKS ?= books/assumptions \
 	books/clock \
 	books/clock-invariants \
 	tests/acl2/clock-tests \
+	books/tcpcl-records \
+	books/tcpcl-octets \
+	books/tcpcl-session \
+	books/tcpcl-invariants \
+	tests/acl2/tcpcl-tests \
 	books/anchor \
 	books/anchor-record \
 	books/anchor-invariants \
@@ -205,6 +210,9 @@ ACL2_BOOKS ?= books/assumptions \
 	books/bp-release \
 	books/bp-release-invariants \
 	tests/acl2/bp-release-tests \
+	books/scheduler \
+	books/scheduler-invariants \
+	tests/acl2/scheduler-tests \
 	books/relay \
 	books/relay-invariants \
 	books/relay-crash-invariants \

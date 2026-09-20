@@ -1,0 +1,42 @@
+# fn configuration.  `fn init` writes this file; every subcommand reads it
+# (default ./fn.toml, or --config <path>).  See docs/operator.md.
+
+[store]
+# The store root.  It holds the journal, the writer lock, the configuration
+# records that name the served groups, and the freshness anchor.  The served
+# groups are NOT listed here: they are durable configuration records that
+# ACL2 replays, changed with `fn group create` and `fn group retire`.
+path = "/var/lib/fn/store"
+
+[listener]
+# Loopback only.  docs/architecture.md does not authorize a public listener,
+# and `fn run` refuses any other host rather than quietly binding 127.0.0.1.
+host = "127.0.0.1"
+port = 1119
+
+[posting]
+enabled = true
+# The injecting agent this node names for locally accepted articles.  It is
+# recorded in the operator log today; the durable injection record is the
+# store's, not this file's.
+agent = "fn-operator@localhost"
+
+[anchor]
+# A name from tools/roughtime_servers.json, used by `fn anchor` and by the
+# freshness check inside `fn recover`.  Omit the table to skip live queries.
+server = "int08h"
+
+[acl2]
+# The ACL2 executable (exported as FN_ACL2) and the machine-wide cap on
+# concurrent ACL2 processes (FN_ACL2_SLOTS, tools/acl2_slots.py).
+path = "acl2"
+slots = 4
+
+[log]
+# One line per post and per reader connection, outcome word first.  Remove
+# this table to log to stderr, which under systemd is the journal.
+path = "/var/log/fn/fn.log"
+
+[control]
+# The owner's Unix control socket.  Defaults to <store>/control.sock.
+path = "/var/lib/fn/store/control.sock"

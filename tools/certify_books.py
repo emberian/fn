@@ -45,80 +45,17 @@ FAILURE_MARKERS = (
     "HARD ACL2 ERROR",
 )
 BOOK_NAME = re.compile(r"(?:books|tests/acl2)/(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+$")
-DEFAULT_BOOKS = (
-    "books/acceptance-alloc",
-    "books/acceptance",
-    "books/acceptance-invariants",
-    "tests/acl2/acceptance-tests",
-    "books/wire",
-    "books/wire-invariants",
-    "tests/acl2/wire-tests",
-    "books/cbor",
-    "books/cbor-invariants",
-    "tests/acl2/cbor-tests",
-    "books/wildmat",
-    "books/wildmat-utf8-invariants",
-    "books/wildmat-parser-invariants",
-    "books/wildmat-matcher-invariants",
-    "books/wildmat-work",
-    "tests/acl2/wildmat-parser-invariants-tests",
-    "tests/acl2/wildmat-tests",
-    "books/article",
-    "books/article-invariants",
-    "books/article-properties",
-    "tests/acl2/article-tests",
-    "books/article-fields",
-    "tests/acl2/article-fields-tests",
-    "books/retention",
-    "books/retention-invariants",
-    "tests/acl2/retention-tests",
-    "books/node",
-    "books/node-invariants",
-    "tests/acl2/node-tests",
-    "books/node-traces",
-    "books/records",
-    "books/records-invariants",
-    "books/records-canonicality",
-    "tests/acl2/records-tests",
-    "books/replay",
-    "books/replay-invariants",
-    "tests/acl2/replay-tests",
-    "books/store-files",
-    "books/store-files-invariants",
-    "tests/acl2/store-files-tests",
-    "books/store-files-traces",
-    "tests/acl2/store-files-traces-tests",
-    "tests/acl2/store-files-exploration-tests",
-    "books/store-node",
-    "books/store-node-invariants",
-    "tests/acl2/store-node-tests",
-    "books/store-node-traces",
-    "tests/acl2/store-node-traces-tests",
-    "books/store-node-resolution",
-    "tests/acl2/store-node-resolution-tests",
-    "books/store-observed",
-    "tests/acl2/store-observed-tests",
-    "books/store-observed-traces",
-    "tests/acl2/store-observed-traces-tests",
-    "tests/acl2/store-node-guards-tests",
-    "books/journal",
-    "tests/acl2/journal-tests",
-    "books/exchange",
-    "tests/acl2/exchange-tests",
-    "books/exchange-invariants",
-    "books/transfer",
-    "books/transfer-invariants",
-    "books/transfer-assembly-invariants",
-    "books/transfer-work",
-    "books/transfer-public-work",
-    "books/transfer-public-bound",
-    "tests/acl2/transfer-tests",
-    "books/nntp",
-    "books/nntp-invariants",
-    "books/nntp-effects",
-    "tests/acl2/nntp-tests",
-)
 FORBIDDEN_FACILITIES = {"skip-proofs", "defaxiom", "defttag", "set-raw-mode", "include-raw"}
+
+
+def default_books() -> list[str]:
+    """The roots `make certify` builds, read from the Makefile.
+
+    There is one list of roots and the Makefile owns it.  A second copy here
+    went stale: on 2026-09-20 it held 71 of the Makefile's 216 roots, so a
+    `--affected-by` run silently searched a third of the tree.
+    """
+    return ledger.makefile_roots()
 
 
 def source_symbols(source: str) -> list[str]:
@@ -363,8 +300,12 @@ def affected_roots(books: list[str], targets: list[str]) -> list[str]:
 
     Order is the requested order, which is the Makefile order under `make
     certify`, so a filtered run certifies in the same sequence as a full one.
-    A book's own dependencies are not selected: a book whose content did not
-    change has a valid content-hashed certificate already.
+    This searches the roots it is given and nothing else, so the candidate set
+    matters: with no roots named, that is every Makefile root, because
+    `--affected-by` over a subset answers a smaller question than it looks
+    like it is answering.  A book's own dependencies are not selected here; a
+    book whose content did not change has a valid content-hashed certificate
+    already, and `--closure` is for the run that cannot assume one.
     """
     names = {normalize_book(target) for target in targets}
     closure = local_closure(books)
@@ -381,6 +322,39 @@ def affected_roots(books: list[str], targets: list[str]) -> list[str]:
         if reached & names:
             selected.append(book)
     return selected
+
+
+def with_dependencies(books: list[str]) -> list[str]:
+    """`books` and everything they locally include, dependencies first.
+
+    A farm box need not hold a certificate for anything: its cache can be
+    empty, or hold pairs made in a worktree whose absolute paths make them
+    unusable here.  Certifying the whole local closure in this order is what
+    makes such a run self-contained, at the cost of the books a valid
+    certificate would have covered.
+    """
+    closure = local_closure(books)
+    cycle = cycle_through(closure)
+    if cycle is not None:
+        raise ValueError("local include-book cycle: " + " -> ".join(cycle))
+    ordered: list[str] = []
+    placed: set[str] = set()
+    for root in books:
+        stack: list[tuple[str, list[str]]] = [(root, list(closure[root]))]
+        while stack:
+            book, rest = stack[-1]
+            if book in placed:
+                stack.pop()
+                continue
+            if rest:
+                dependency = rest.pop()
+                if dependency not in placed:
+                    stack.append((dependency, list(closure[dependency])))
+                continue
+            placed.add(book)
+            ordered.append(book)
+            stack.pop()
+    return ordered
 
 
 def make_driver(book: str, nonce: str) -> str:
@@ -492,10 +466,9 @@ def main() -> int:
     parser.add_argument(
         "books",
         nargs="*",
-        default=list(DEFAULT_BOOKS),
         help=(
             "repository-relative ACL2 book names without .lisp "
-            "(default: current integrated model, invariant, and assertion books)"
+            "(default: every root the Makefile's ACL2_BOOKS names)"
         ),
     )
     parser.add_argument(
@@ -524,6 +497,14 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--closure",
+        action="store_true",
+        help=(
+            "also certify everything the selected roots locally include, in "
+            "dependency order, so the run needs no certificate to exist first"
+        ),
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="print the books this invocation would certify and exit",
@@ -534,6 +515,11 @@ def main() -> int:
         help="do not publish the resulting certificates to the local cache",
     )
     args = parser.parse_args()
+    if not args.books:
+        try:
+            args.books = default_books()
+        except (OSError, ValueError) as error:
+            parser.error(f"cannot read the Makefile's ACL2_BOOKS: {error}")
 
     invalid = [book for book in args.books if not BOOK_NAME.fullmatch(book)]
     if invalid:
@@ -553,6 +539,11 @@ def main() -> int:
     if args.affected_by:
         try:
             args.books = affected_roots(args.books, args.affected_by)
+        except ValueError as error:
+            parser.error(str(error))
+    if args.closure and args.books:
+        try:
+            args.books = with_dependencies(args.books)
         except ValueError as error:
             parser.error(str(error))
     if args.dry_run:
@@ -577,6 +568,7 @@ def main() -> int:
         "python": platform.python_version(),
         "requested_books": args.books,
         "affected_by": list(args.affected_by),
+        "closure": bool(args.closure),
         "requested_before_filter": requested_before_filter,
         "acl2_slots": acl2_slots.slot_count(),
         "timeout_seconds": args.timeout_seconds,

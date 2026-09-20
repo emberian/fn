@@ -29,27 +29,52 @@ SPEC.loader.exec_module(farm)
 
 
 class Fake:
-    """Records every command and answers the ones `wait` reads."""
+    """Records every command and answers the ones the tool reads.
 
-    def __init__(self, statuses: list[str], log: str = "") -> None:
+    `codes` maps a substring of the command to the exit code the box would
+    give it, which is how a failing `cd`, a failing mirror and a runner that
+    never started are told apart here.
+    """
+
+    def __init__(self, statuses: list[str], log: str = "",
+                 home: str = "/home/ember", codes: dict[str, int] | None = None) -> None:
         self.commands: list[list[str]] = []
         self.statuses = list(statuses)
         self.log = log
+        self.home = home
+        self.codes = dict(codes or {})
+
+    def code_for(self, command) -> int:
+        joined = " ".join(command)
+        for needle, code in self.codes.items():
+            if needle in joined:
+                return code
+        return 0
 
     def __call__(self, command, **kwargs):
         self.commands.append(list(command))
         output = ""
         if command[0] == "ssh":
             script = command[-1]
-            if "STATUS" in script:
+            if script == "echo $HOME":
+                output = f"{self.home}\n"
+            elif "STATUS" in script:
                 state = self.statuses.pop(0) if self.statuses else "0"
                 output = f"STATUS {state}\nMARKERS 7\nTAIL working\n"
             elif script.startswith("cat "):
                 output = self.log
-        return subprocess.CompletedProcess(command, 0, stdout=output, stderr="")
+        code = self.code_for(command)
+        if code and kwargs.get("check"):
+            raise subprocess.CalledProcessError(code, command, output=output)
+        return subprocess.CompletedProcess(command, code, stdout=output, stderr="")
 
     def scripts(self) -> list[str]:
         return [command[-1] for command in self.commands if command[0] == "ssh"]
+
+    def runner_script(self) -> str:
+        started = [s for s in self.scripts() if "certify_books.py" in s]
+        assert len(started) == 1, started
+        return started[0]
 
     def rsyncs(self) -> list[list[str]]:
         return [command for command in self.commands if command[0] == "rsync"]
@@ -77,7 +102,7 @@ class SubmitTests(unittest.TestCase):
             self.assertIn("--delete", mirror)
             self.assertIn("--exclude=build/", mirror)
             self.assertEqual(mirror[-2:], [f"{root}/", f"persvati:{root}/"])
-            script = fake.scripts()[0]
+            script = fake.runner_script()
             self.assertIn(f"cd {root}", script)
             self.assertIn("nohup sh -c", script)
             self.assertIn("tools/certify_books.py", script)
@@ -98,11 +123,122 @@ class SubmitTests(unittest.TestCase):
             with driving(fake, root / "cache"):
                 farm.submit("hbox", root, [], jobs=8, timeout_seconds=1800,
                             affected_by=["books/wire.lisp"])
-            script = fake.scripts()[0]
+            script = fake.runner_script()
             self.assertIn("swarm-build python3 tools/certify_books.py", script)
             self.assertIn("--affected-by books/wire.lisp", script)
             self.assertIn("FN_ACL2=/tank/fn/acl2-8.7/saved_acl2", script)
             self.assertIn("FN_CERT_CACHE=/tank/fn/certcache", script)
+
+
+class RemoteRootTests(unittest.TestCase):
+    """A `~` that reaches the remote `cd` makes the whole run a no-op."""
+
+    def test_remote_quote_leaves_the_tilde_for_the_shell_to_expand(self):
+        self.assertEqual(farm.remote_quote("~/fn-lanes/w5"), '"$HOME"/fn-lanes/w5')
+        self.assertEqual(farm.remote_quote("~"), '"$HOME"')
+        self.assertEqual(farm.remote_quote("/tank/fn/tree"), "/tank/fn/tree")
+        # The defect: shlex.quote makes it literal, so `cd` lands nowhere and
+        # the run produces no log at all.
+        self.assertNotEqual(farm.remote_quote("~/fn-lanes/w5"), "'~/fn-lanes/w5'")
+
+    def test_a_tilde_remote_root_is_resolved_once_and_recorded_absolute(self):
+        fake = Fake([], home="/home/ember")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"):
+                identifier = farm.submit("persvati", root, [], jobs=4,
+                                         timeout_seconds=60, affected_by=[],
+                                         remote=Path("~/fn-lanes/w5"))
+            self.assertEqual([s for s in fake.scripts() if s == "echo $HOME"],
+                             ["echo $HOME"])  # one ssh, not one per script
+            self.assertEqual(fake.rsyncs()[0][-1],
+                             "persvati:/home/ember/fn-lanes/w5/")
+            script = fake.runner_script()
+            self.assertIn("cd /home/ember/fn-lanes/w5 ||", script)
+            self.assertNotIn("~/fn-lanes", script)
+            record = json.loads(farm.record_path(root, identifier).read_text())
+            # The origin the pairs are published under must be the absolute
+            # path the certificates name their sub-books by.
+            self.assertEqual(record["remote_path"], "/home/ember/fn-lanes/w5")
+
+    def test_the_remote_path_is_made_before_the_mirror_runs(self):
+        fake = Fake([])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"):
+                farm.submit("hbox", root, [], jobs=2, timeout_seconds=60,
+                            affected_by=[], remote=Path("/tank/fn/tree"))
+            # rsync creates the last component only; a missing parent is
+            # exit 11 and nothing else.
+            self.assertEqual(fake.commands[0][-1], "mkdir -p /tank/fn/tree")
+            self.assertEqual(fake.commands[1][0], "rsync")
+
+
+class FailureTests(unittest.TestCase):
+    """submit reports what did not happen; it never prints a run id for it."""
+
+    def test_a_runner_that_did_not_start_fails_the_submit(self):
+        fake = Fake([], codes={"certify_books.py": 9})
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"):
+                with self.assertRaises(farm.FarmError) as refused:
+                    farm.submit("persvati", root, [], jobs=2,
+                                timeout_seconds=60, affected_by=[])
+            self.assertIn("did not start", str(refused.exception))
+            self.assertEqual(sorted((root / "build" / "farm").glob("*.json")), [])
+
+    def test_a_failing_mirror_is_reported_rather_than_swallowed(self):
+        fake = Fake([], codes={"rsync": 11})
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"):
+                with self.assertRaises(farm.FarmError) as refused:
+                    farm.submit("hbox", root, [], jobs=2, timeout_seconds=60,
+                                affected_by=[], remote=Path("/tank/fn/tree"))
+            self.assertIn("11", str(refused.exception))
+            self.assertNotIn("certify_books.py", " ".join(fake.scripts()))
+
+    def test_main_exits_non_zero_and_says_so(self):
+        fake = Fake([], codes={"certify_books.py": 9})
+        errors = io.StringIO()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"), contextlib.redirect_stderr(errors):
+                code = farm.main(["submit", "persvati", "--root", str(root),
+                                  "--remote-root", "~/fn-lanes/w5"])
+            self.assertEqual(code, 2)
+            self.assertIn("did not start", errors.getvalue())
+
+    def test_every_step_of_the_submit_script_has_its_own_exit(self):
+        script = farm.remote_script("persvati", Path("/tank/fn/tree"), "run-1",
+                                    [], 4, 60, [])
+        # `cd X && ... &` backgrounds the whole list, so ssh exited 0 whatever
+        # happened; each guard now exits on its own.
+        self.assertNotIn("&& mkdir -p build/farm &&", script)
+        self.assertIn("cd /tank/fn/tree || ", script)
+        self.assertIn("exit 9", script)
+        self.assertIn("test -f tools/certify_books.py", script)
+        self.assertIn("exit 10", script)
+        self.assertIn("kill -0 $pid", script)
+        self.assertIn("exit 12", script)
+
+
+class ClosureTests(unittest.TestCase):
+    def test_closure_reaches_the_runner_and_the_record(self):
+        fake = Fake([])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"):
+                code = farm.main(["submit", "hbox", "--root", str(root),
+                                  "--closure", "--affected-by",
+                                  "books/article.lisp"])
+            self.assertEqual(code, 0)
+            self.assertIn("--affected-by books/article.lisp --closure",
+                          fake.runner_script())
+            record = json.loads(next((root / "build" / "farm").glob("*.json"))
+                                .read_text())
+            self.assertTrue(record["closure"])
 
 
 class WaitTests(unittest.TestCase):
