@@ -3029,16 +3029,33 @@ else echo NONE; fi
                 self.blocked(self.NODE_SOCKET_KEYS, self.node_blocker(node),
                              nodes=(node.name,))
                 continue
+            # Order is deliberate and it is not cosmetic.  Every phase that
+            # can put an article into the owner's `drain` -- the capability
+            # audit's IHAVE, the transit offer -- can end the process, and
+            # this tree has twice proved it can.  The read-only phases and
+            # the independent client therefore run first, so that what they
+            # would have shown is not lost to a death caused by something
+            # else.  The audit runs last, after the transit rows, because it
+            # offers an article to every node it probes.
             for label, method, keys in (
                     ("group served", self.group_served, ("V0-GROUP-SERVED",)),
                     ("reader surface", self.read_surface, self.READ_KEYS),
-                    ("capability pins", self.capability_pins,
-                     ("V0-PIN-DISPATCHED", "V0-PIN-ADVERTISED")),
                     ("AUTHINFO", self.auth_session, self.AUTH_KEYS),
                     ("POST cycle", self.post_cycle, self.POST_KEYS)):
                 if self.require_live(node, keys, nodes=(node.name,)):
                     self.phase("{} {}".format(label, node.name), method, node)
 
+        if all(n.port and self.alive(n) for n in self.nodes):
+            self.phase("independent clients", self.independent_clients)
+        else:
+            self.blocked(("V0-CLIENT-NNTPLIB", "V0-CLIENT-SLRN"),
+                         "a node had no live listener when the independent client "
+                         "would have run: {}".format(
+                             "; ".join("node {}: {}".format(k.upper(), v)
+                                       for k, v in self.dead.items())
+                             or "; ".join(self.node_blocker(n) for n in self.nodes
+                                          if not n.port)),
+                         invocation="<interpreter> independent.py")
         live = [n for n in self.nodes if n.port and self.alive(n)]
         if len(live) == 2:
             self.phase("independence", self.independence)
@@ -3046,13 +3063,16 @@ else echo NONE; fi
                 if self.require_live(target, self.TRANSIT_KEYS, directions=(way,)):
                     self.phase("transit {}".format(way.upper()),
                                self.transit_direction, source, target, way)
+            for node in self.nodes:
+                if self.require_live(node, ("V0-PIN-DISPATCHED", "V0-PIN-ADVERTISED"),
+                                     nodes=(node.name,)):
+                    self.phase("capability pins {}".format(node.name),
+                               self.capability_pins, node)
             for label, method, keys in (
                     ("concurrency", self.post_concurrent, ("V0-POST-CONCURRENT",)),
                     ("live reconfiguration", self.live_reconfiguration,
                      ("V0-CFG-LIVE", "V0-CFG-LIVE-REFUSE")),
                     ("outbound feed", self.outbound_feed, self.FEED_KEYS),
-                    ("independent clients", self.independent_clients,
-                     ("V0-CLIENT-NNTPLIB", "V0-CLIENT-SLRN")),
                     ("crash", self.crash_phase, self.CRASH_KEYS)):
                 if all(self.alive(n) for n in self.nodes):
                     self.phase(label, method)
