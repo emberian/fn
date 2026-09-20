@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """Generate fn's assurance ledger from the books, and check the proof registry.
 
-Counts in fn are generated, never typed.  This tool reads ``books/*.lisp`` and
-``tests/acl2/*.lisp`` with the s-expression reader in this file.  It is not the
+Counts in fn are generated, never typed.  This tool reads ``books/*.lisp``,
+``tests/acl2/*.lisp`` and the ``ld``ed host files with the s-expression reader
+in this file.  It is not the
 Lisp reader: nothing is interned, evaluated, or macro-expanded, so reading a
 book cannot run a book.  The books are our own source, but the rule that
 parsing never invokes the reader holds for them too.
 
 What it reports per book: every ``defthm``, ``defun``, ``verify-guards``,
 ``must-fail``, ``assert-event`` and ``include-book``; the guard status of every
-function; and the theorems whose *shape* disqualifies them as registry
-evidence.
+function; the theorems whose *shape* disqualifies them as registry evidence;
+and, for the host files, every name they use that nothing they load defines.
 
 What it checks (``--check``): that every theorem cited by
 ``planning/proof-events.json`` exists, is not SUSPECT, and lives in a book
@@ -378,6 +379,12 @@ class Book:
     # Each non-local ``(include-book "x")`` as (line, reference), for the
     # include-hygiene lint: a local include costs the includer nothing.
     nonlocal_includes: list[tuple[int, str]] = field(default_factory=list)
+    # Every name this book brings into a world that includes it, for the
+    # host-names lint.  A ``local`` definition is counted too: over-counting
+    # here can only silence a warning, and the lint is deliberately quiet.
+    definitions: set[str] = field(default_factory=set)
+    # The ``defmacro`` subset of ``definitions``: see ``macro_names``.
+    macros: set[str] = field(default_factory=set)
 
 
 TRANSPARENT = {"local", "progn", "progn!", "with-output", "defsection", "defsection-progn"}
@@ -441,6 +448,8 @@ def record(book: Book, form: object, line: int, *, local: bool, suppressed: bool
     if name == "encapsulate":
         if not suppressed:
             book.encapsulates += 1
+            if len(form) >= 2:
+                book.definitions |= encapsulated_names(form[1])
         for item in form[2:]:
             record(book, item, line, local=local, suppressed=suppressed)
         return
@@ -457,6 +466,7 @@ def record(book: Book, form: object, line: int, *, local: bool, suppressed: bool
         return
     if name in ("defthm", "defthmd") and len(form) >= 3 and isinstance(form[1], Sym):
         options = keyword_plist(form[3:])
+        book.definitions.add(str(form[1]))
         book.theorems.append(Theorem(
             name=str(form[1]), book=book.path, line=line, statement=form[2],
             hints=options.get(":hints"), rest=list(form[3:]), local=local,
@@ -464,6 +474,7 @@ def record(book: Book, form: object, line: int, *, local: bool, suppressed: bool
         return
     if name in ("defun", "defund", "defun-nx") and len(form) >= 4 and isinstance(form[1], Sym):
         has_guard, setting = declared(form[3:])
+        book.definitions.add(str(form[1]))
         book.functions.append(Function(
             name=str(form[1]), book=book.path, line=line,
             formals=form[2] if isinstance(form[2], list) else [],
@@ -495,9 +506,18 @@ def record(book: Book, form: object, line: int, *, local: bool, suppressed: bool
         return
     if name == "defconst":
         book.defconsts += 1
+        if len(form) >= 2 and isinstance(form[1], Sym):
+            book.definitions.add(str(form[1]))
         return
     if name == "defmacro":
         book.defmacros += 1
+        if len(form) >= 2 and isinstance(form[1], Sym):
+            book.definitions.add(str(form[1]))
+            book.macros.add(str(form[1]))
+        return
+    if name in ("defun-sk", "defstobj", "defabbrev") and len(form) >= 2 \
+            and isinstance(form[1], Sym):
+        book.definitions.add(str(form[1]))
         return
 
 
@@ -540,9 +560,12 @@ def used_instances(value: object) -> list[list]:
 class Tree:
     """The whole readable tree: books, functions, theorems, roots."""
 
-    def __init__(self, books: dict[str, Book], roots: list[str]) -> None:
+    def __init__(self, books: dict[str, Book], roots: list[str],
+                 hosts: "dict[str, HostFile] | None" = None) -> None:
         self.books = books
         self.roots = roots
+        # The `ld`ed files, which no certification reads: see `host_names`.
+        self.hosts: dict[str, HostFile] = {} if hosts is None else hosts
         self.functions: dict[str, Function] = {}
         self.theorems: dict[str, Theorem] = {}
         for book in books.values():
@@ -792,9 +815,10 @@ def if_branches(form: object, found: list | None = None) -> list:
 # export and teeth lints
 # --------------------------------------------------------------------------
 #
-# Three shape lints, all WARN by default and all counted in the generated
-# ledger.  None is a claim that a theorem is wrong: they name the three ways
-# this tree has repeatedly made later proofs expensive.
+# Four WARN lints, all counted in the generated ledger.  None is a claim
+# that a theorem is wrong: the first three name the ways this tree has
+# repeatedly made later proofs expensive, and the fourth (below, over the
+# host files) names the way it has repeatedly made bridges fail to start.
 #
 # * Export hygiene.  A book's micro discipline (`planning/deputies/BRIEF.md`)
 #   is that accessor equalities and `len` backchaining rules stay inside the
@@ -1050,10 +1074,440 @@ def include_hygiene(tree: "Tree") -> list[dict]:
     return findings
 
 
+# --------------------------------------------------------------------------
+# host-names lint
+# --------------------------------------------------------------------------
+#
+# The fourth lint, and the only one that reads files no certification ever
+# touches.  `host/*.lisp` and `host/native/*.lisp` are `ld`ed by the bridges
+# at start-up, never certified, so an undefined name in them is found by a
+# bridge crashing: `host/checkpoint-host.lisp` kept naming `*fn-store-groups*`
+# after the compiled group table deleted it, and every `Acl2Store`
+# constructor died with a Translate error until a later lane noticed.  This
+# lint reads the host files the way the book lints read books and reports a
+# name that is defined nowhere the host file can see.
+#
+# What a host file can see: its own definitions, the definitions of every
+# host file it `ld`s, the definitions of every book reachable through its
+# `include-book` forms (transitively, the same include graph the other lints
+# use), and `tools/acl2-builtins.txt`.
+#
+# Deliberately conservative, because this is a WARN over unparsed code:
+# a `local` book definition counts as visible, `loop` bodies and
+# package-qualified symbols (`sb-posix:close`) are not read at all, and an
+# unresolvable `include-book` silences nothing but contributes nothing.
+# Under-reporting here is a missed crash; over-reporting would make the lint
+# noise that a lane learns to skip.
+
+BUILTINS = ROOT / "tools/acl2-builtins.txt"
+
+# Heads that define a name in the file being read.  The name is `form[1]`,
+# or the head of `form[1]` when that is a list (`(defstruct (name opts) ...)`).
+HOST_DEFINITION_HEADS = {
+    "defun", "defund", "defun-nx", "defun-inline", "defund-inline",
+    "defmacro", "defabbrev", "defn", "defnd", "defun-sk", "defstobj",
+    "defconst", "defconstant", "defparameter", "defvar", "defglobal",
+    "defstruct", "define-condition", "deftype", "defsetf", "defgeneric",
+}
+
+# Heads whose subforms are syntax, data, or another language.  `loop` is
+# SBCL's iteration macro in `host/native/io.lisp`: its keywords read as
+# symbols in function position, and reading them would report `collect`.
+HOST_OPAQUE_HEADS = {
+    "quote", "declare", "declaim", "in-package", "defpackage", "defttag",
+    "deftype", "defstruct", "define-condition", "defsetf", "loop", "loop-finish",
+}
+
+# Heads the reader itself produces, or that hold a form in every position.
+HOST_TRANSPARENT_HEADS = {"quasiquote", "unquote", "unquote-splicing",
+                          "function", "vector", "progn", "progn!", "local",
+                          "with-output", "eval-when", "value-triple"}
+
+DEFCONST_NAME = re.compile(r"^\*.+\*$")
+
+
+def macro_names(tree: "Tree") -> set[str]:
+    """Every `defmacro` name the tree defines, in books and in host files.
+
+    A macro's arguments are syntax, not forms: `(fnn-posix (path) ...)` binds
+    `path`, and reading its first argument as a call reports `path`.  The lint
+    judges the macro name and stops there.
+    """
+    names = {name for host in tree.hosts.values() for name in host.macros}
+    return names | {name for book in tree.books.values() for name in book.macros}
+
+
+def host_definition_name(form: list) -> str | None:
+    if len(form) < 2:
+        return None
+    target = form[1]
+    if isinstance(target, list):
+        target = target[0] if target and isinstance(target[0], Sym) else None
+    return str(target) if isinstance(target, Sym) else None
+
+
+def slot_accessors(form: list) -> set[str]:
+    """The reader names a `defstruct` or `define-condition` generates."""
+    names: set[str] = set()
+    name = host_definition_name(form)
+    if name is None:
+        return names
+    if head(form) == "defstruct":
+        prefix, slots = f"{name}-", form[2:]
+        if isinstance(form[1], list):
+            for option in form[1][1:]:
+                if head(option) == "conc-name":
+                    prefix = "" if len(option) < 2 else str(option[1])
+        names.add(f"make-{name}")
+        names.add(f"{name}-p")
+        if isinstance(form[1], list):
+            for option in form[1][1:]:
+                if str(head(option)).lstrip(":") in ("constructor", "predicate",
+                                                     "copier") \
+                        and len(option) >= 2 and isinstance(option[1], Sym):
+                    names.add(str(option[1]))
+        for slot in slots:
+            field_name = slot if isinstance(slot, Sym) else (
+                slot[0] if isinstance(slot, list) and slot and isinstance(slot[0], Sym)
+                else None)
+            if field_name is not None:
+                names.add(f"{prefix}{field_name}")
+    else:  # define-condition: readers are named, not derived
+        for slot in (form[3] if len(form) > 3 and isinstance(form[3], list) else []):
+            if not isinstance(slot, list):
+                continue
+            options = keyword_plist(slot[1:])
+            for key in (":accessor", ":reader", ":writer"):
+                if isinstance(options.get(key), Sym):
+                    names.add(str(options[key]))
+    return names
+
+
+def encapsulated_names(signatures: object) -> set[str]:
+    """The function names an `encapsulate` signature list constrains."""
+    names: set[str] = set()
+    if not isinstance(signatures, list):
+        return names
+    for signature in signatures:
+        if not isinstance(signature, list) or not signature:
+            continue
+        subject = signature[0]
+        if isinstance(subject, Sym):
+            names.add(str(subject))          # (f (x y) t)
+        elif isinstance(subject, list) and subject and isinstance(subject[0], Sym):
+            names.add(str(subject[0]))       # ((f * *) => *)
+    return names
+
+
+def referenceable(name: str) -> bool:
+    """Is this symbol one the lint judges?
+
+    Not a keyword, not package-qualified (`sb-posix:close` names another
+    package's world, which this tool does not read), not a lambda-list
+    marker, not a character or number.
+    """
+    return bool(name) and not (
+        name.startswith(":") or ":" in name or name.startswith("&")
+        or name.startswith("#") or is_number(name))
+
+
+@dataclass
+class HostFile:
+    """An `ld`ed Lisp file: never certified, so only a bridge start-up reads it."""
+    path: str
+    defines: set[str] = field(default_factory=set)
+    includes: list[str] = field(default_factory=list)
+    lds: list[str] = field(default_factory=list)
+    macros: set[str] = field(default_factory=set)
+    # Top-level forms, kept for the reference pass: which names are macros is
+    # not known until every book and host file has been read.
+    forms: list[tuple[object, int]] = field(default_factory=list)
+    # (name, line of the top-level form the reference sits in)
+    references: list[tuple[str, int]] = field(default_factory=list)
+    read_error: str | None = None
+
+
+def analyze_host(path: Path, relative: str) -> HostFile:
+    host = HostFile(path=relative)
+    try:
+        forms = Reader(path.read_text(encoding="utf-8")).top_level()
+    except ReadError as exc:
+        host.read_error = str(exc)
+        return host
+    host.forms = forms
+    for form, line in forms:
+        host_record(host, form, line)
+    return host
+
+
+def host_record(host: HostFile, form: object, line: int) -> None:
+    """One top-level form: its definitions, its dependencies, its references."""
+    name = head(form)
+    if name in ("local", "progn", "progn!", "with-output", "encapsulate",
+                "eval-when", "value-triple"):
+        if name == "encapsulate" and len(form) >= 2:
+            host.defines |= encapsulated_names(form[1])
+        for item in form[2 if name == "encapsulate" else 1:]:
+            host_record(host, item, line)
+        return
+    if name == "include-book" and len(form) >= 2 and isinstance(form[1], str):
+        if ":dir" not in keyword_plist(form[2:]):
+            host.includes.append(form[1])
+        return
+    if name == "ld" and len(form) >= 2 and isinstance(form[1], str):
+        host.lds.append(form[1])
+        return
+    if isinstance(name, str) and name.endswith("define-alien-routine"):
+        # `(sb-alien:define-alien-routine ("flock" fnn-%flock) ...)`: a raw
+        # foreign entry point, named in the second position of its first
+        # argument.  The rest is alien syntax, not forms.
+        alien = form[1] if len(form) >= 2 else None
+        if isinstance(alien, list) and len(alien) >= 2 and isinstance(alien[1], Sym):
+            host.defines.add(str(alien[1]))
+        elif isinstance(alien, Sym):
+            host.defines.add(str(alien))
+        return
+    if name in HOST_DEFINITION_HEADS and isinstance(form, list):
+        defined = host_definition_name(form)
+        if defined is not None:
+            host.defines.add(defined)
+            if name in ("defmacro", "defabbrev"):
+                host.macros.add(defined)
+        host.defines |= slot_accessors(form)
+
+
+def host_references(host: HostFile, form: object, line: int,
+                    macros: set[str] | None = None) -> None:
+    """Every symbol used in function position, and every `*constant*`."""
+    macros = set() if macros is None else macros
+    if isinstance(form, Sym):
+        text = str(form)
+        if DEFCONST_NAME.match(text) and referenceable(text):
+            host.references.append((text, line))
+        return
+    if not isinstance(form, list) or not form:
+        return
+    name = head(form)
+    if name is None:
+        for item in form:                      # ((lambda (x) ...) arg)
+            host_references(host, item, line, macros)
+        return
+    if name in HOST_OPAQUE_HEADS or ":" in name:
+        # A package-qualified head (`sb-alien:define-alien-routine`) names a
+        # macro in a package this tool does not read; its arguments are that
+        # macro's syntax.
+        return
+    if name in HOST_TRANSPARENT_HEADS:
+        for item in form[1:]:
+            host_references(host, item, line, macros)
+        return
+    if name in ("let", "let*"):
+        for binding in (form[1] if len(form) > 1 and isinstance(form[1], list) else []):
+            if isinstance(binding, list):
+                for item in binding[1:]:
+                    host_references(host, item, line, macros)
+        rest = form[2:]
+    elif name in ("flet", "labels", "macrolet"):
+        for binding in (form[1] if len(form) > 1 and isinstance(form[1], list) else []):
+            if isinstance(binding, list) and binding and isinstance(binding[0], Sym):
+                host.defines.add(str(binding[0]))
+                for item in binding[2:]:
+                    host_references(host, item, line, macros)
+        rest = form[2:]
+    elif name == "lambda":
+        rest = form[2:]
+    elif name in ("mv-let", "mv?-let", "destructuring-bind", "multiple-value-bind"):
+        rest = form[2:]
+    elif name in ("case", "case-match"):
+        for item in form[1:2]:
+            host_references(host, item, line, macros)
+        for clause in form[2:]:
+            for item in (clause[1:] if isinstance(clause, list) else []):
+                host_references(host, item, line, macros)
+        return
+    elif name in ("dolist", "dotimes"):
+        for item in (form[1][1:] if len(form) > 1 and isinstance(form[1], list) else []):
+            host_references(host, item, line, macros)
+        rest = form[2:]
+    elif name in ("do", "do*"):
+        for binding in (form[1] if len(form) > 1 and isinstance(form[1], list) else []):
+            for item in (binding[1:] if isinstance(binding, list) else []):
+                host_references(host, item, line, macros)
+        rest = form[2:]
+    elif name == "cond":
+        # A clause is `(test form ...)`: every element is a form, and a bare
+        # variable test (`(context :context)`) is not a call of `context`.
+        for clause in form[1:]:
+            for item in (clause if isinstance(clause, list) else [clause]):
+                host_references(host, item, line, macros)
+        return
+    elif name in ("handler-case", "handler-bind", "restart-case"):
+        host_references(host, form[1] if len(form) > 1 else None, line, macros)
+        for clause in form[2:]:
+            for item in (clause[2:] if isinstance(clause, list) else []):
+                host_references(host, item, line, macros)
+        return
+    elif name == "the":
+        rest = form[2:]
+    elif name.startswith("with-") and len(form) > 1 and isinstance(form[1], list):
+        # The `with-` convention: the first argument is a binding spec.
+        for binding in form[1]:
+            for item in (binding[1:] if isinstance(binding, list) else []):
+                host_references(host, item, line, macros)
+        rest = form[2:]
+    elif name in HOST_DEFINITION_HEADS:
+        # The name and the formals are not references; the body is.
+        rest = form[3:] if name.startswith("defun") or name in (
+            "defmacro", "defabbrev", "defn", "defnd", "defun-sk") else form[2:]
+    else:
+        if referenceable(name):
+            host.references.append((name, line))
+        if name in macros:
+            return  # a macro's arguments are its syntax, not forms
+        rest = form[1:]
+    for item in rest:
+        host_references(host, item, line, macros)
+
+
+def collect_references(host: HostFile, macros: set[str]) -> None:
+    """The second pass: every name used, once the macro names are known."""
+    host.references = []
+    for form, line in host.forms:
+        if head(form) in ("include-book", "ld"):
+            continue
+        host_references(host, form, line, macros)
+
+
+def host_paths() -> list[tuple[Path, str]]:
+    """Every `.lisp` outside `books/` and `tests/acl2/` that the tree loads.
+
+    `host/` and `host/native/` are the tree's two host directories; anything
+    else reaches this list by being named in an `(ld "...")` that a host file
+    or a `tools/*.py` bridge issues.
+    """
+    found: dict[str, Path] = {}
+    for directory in HOST_DIRS:
+        for path in sorted((ROOT / directory).glob("*.lisp")):
+            found[path.relative_to(ROOT).as_posix()] = path
+    sources = [ROOT / relative for relative in found] + sorted((ROOT / "tools").glob("*.py"))
+    for source in sources:
+        for reference in LD_REFERENCE.findall(source.read_text(encoding="utf-8")):
+            relative = resolve(reference)
+            if (relative.startswith(("books/", "tests/acl2/"))
+                    or not (ROOT / relative).is_file()):
+                continue
+            found[relative] = ROOT / relative
+    return [(path, relative) for relative, path in sorted(found.items())]
+
+
+LD_REFERENCE = re.compile(r'\(ld\s+"([^"]+\.lisp)"')
+
+
+def load_hosts() -> dict[str, HostFile]:
+    return {relative: analyze_host(path, relative) for path, relative in host_paths()}
+
+
+def acl2_builtins() -> set[str]:
+    if not BUILTINS.is_file():
+        return set()
+    return {line.split(";", 1)[0].strip().lower()
+            for line in BUILTINS.read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.lstrip().startswith(";")}
+
+
+def host_visible(host: HostFile, tree: "Tree") -> set[str]:
+    """Every name this host file can reach, transitively."""
+    visible: set[str] = set()
+    seen: set[str] = set()
+    pending = [host.path]
+    while pending:
+        relative = pending.pop()
+        if relative in seen:
+            continue
+        seen.add(relative)
+        current = tree.hosts.get(relative)
+        if current is None:
+            continue
+        visible |= current.defines
+        base = Path(relative).parent
+        for reference in current.includes:
+            for candidate in (resolve((base / reference).with_suffix(".lisp").as_posix()),
+                              resolve(f"{reference}.lisp")):
+                if candidate in tree.books:
+                    visible |= book_closure_definitions(tree, candidate)
+                    break
+        for reference in current.lds:
+            for candidate in (resolve((base / reference).as_posix()), resolve(reference)):
+                if candidate in tree.hosts:
+                    pending.append(candidate)
+                    break
+    return visible
+
+
+def book_closure_definitions(tree: "Tree", relative: str) -> set[str]:
+    """Every definition of a book and of the books it includes."""
+    names: set[str] = set()
+    seen: set[str] = set()
+    pending = [relative]
+    while pending:
+        current = pending.pop()
+        if current in seen:
+            continue
+        seen.add(current)
+        book = tree.books.get(current)
+        if book is None:
+            continue
+        names |= book.definitions
+        base = Path(current).parent
+        for reference in book.includes:
+            pending.append(resolve((base / reference).with_suffix(".lisp").as_posix()))
+    return names
+
+
+def host_names(tree: "Tree") -> list[dict]:
+    """Names a host file uses that nothing it loads defines."""
+    builtins = acl2_builtins()
+    macros = macro_names(tree)
+    elsewhere: dict[str, str] = {}
+    for book in sorted(tree.books.values(), key=lambda b: b.path):
+        for name in book.definitions:
+            elsewhere.setdefault(name, book.path)
+    for other in sorted(tree.hosts.values(), key=lambda h: h.path):
+        for name in other.defines:
+            elsewhere.setdefault(name, other.path)
+    findings: list[dict] = []
+    for host in sorted(tree.hosts.values(), key=lambda h: h.path):
+        if host.read_error is not None:
+            findings.append({"host": host.path, "line": 1, "name": host.path,
+                             "reason": f"unreadable: {host.read_error}"})
+            continue
+        collect_references(host, macros)
+        visible = host_visible(host, tree) | builtins
+        reported: set[str] = set()
+        for name, line in host.references:
+            key = name.lower()
+            if key in visible or key in reported:
+                continue
+            reported.add(key)
+            source = elsewhere.get(key)
+            reason = ("undefined: nothing in this tree defines it and it is "
+                      "not in tools/acl2-builtins.txt, so the bridge that "
+                      "loads this file fails at start-up")
+            if source is not None:
+                reason = (f"defined in {source}, which this file neither "
+                          "includes nor `ld`s: it resolves only because "
+                          "something else loaded that file into the same "
+                          "session first")
+            findings.append({"host": host.path, "line": line, "name": name,
+                             "source": source, "reason": reason})
+    return findings
+
+
 def lint_findings(tree: "Tree") -> dict[str, list[dict]]:
     return {"export_hygiene": export_hygiene(tree),
             "teeth_form": teeth_form(tree),
-            "include_hygiene": include_hygiene(tree)}
+            "include_hygiene": include_hygiene(tree),
+            "host_names": host_names(tree)}
 
 
 def lint_warnings(tree: "Tree | None" = None) -> list[str]:
@@ -1069,12 +1523,18 @@ def lint_warnings(tree: "Tree | None" = None) -> list[str]:
     for entry in findings["include_hygiene"]:
         lines.append(f"include hygiene: {entry['book']}:{entry['line']}: "
                      f"{entry['included']}: {entry['reason']}")
+    for entry in findings["host_names"]:
+        lines.append(f"host names: {entry['host']}:{entry['line']}: "
+                     f"{entry['name']}: {entry['reason']}")
     return lines
 
 
 # --------------------------------------------------------------------------
 # tree, roots and closure
 # --------------------------------------------------------------------------
+
+
+HOST_DIRS = ("host", "host/native")
 
 
 def book_paths() -> list[tuple[Path, str]]:
@@ -1126,7 +1586,7 @@ def resolve(relative: str) -> str:
 
 def load_tree() -> Tree:
     books = {relative: analyze_book(path, relative) for path, relative in book_paths()}
-    return Tree(books, makefile_roots())
+    return Tree(books, makefile_roots(), load_hosts())
 
 
 # --------------------------------------------------------------------------
@@ -1182,6 +1642,7 @@ def build_ledger(tree: Tree) -> dict:
     totals["export_hygiene_warnings"] = len(lints["export_hygiene"])
     totals["teeth_form_warnings"] = len(lints["teeth_form"])
     totals["include_hygiene_warnings"] = len(lints["include_hygiene"])
+    totals["host_names_warnings"] = len(lints["host_names"])
     suspects = [{"theorem": name,
                  "book": tree.theorems[name].book,
                  "line": tree.theorems[name].line,
@@ -1232,10 +1693,11 @@ def ledger_markdown(ledger: dict) -> str:
         f"| Export-hygiene warnings | {totals['export_hygiene_warnings']} |",
         f"| Teeth-form warnings | {totals['teeth_form_warnings']} |",
         f"| Include-hygiene warnings | {totals['include_hygiene_warnings']} |",
+        f"| Host-names warnings | {totals['host_names_warnings']} |",
         "",
         "## Lints",
         "",
-        "Three WARN lints, counted above and listed in full under `lints` in",
+        "Four WARN lints, counted above and listed in full under `lints` in",
         "[`ledger.json`](ledger.json). *Export hygiene* counts theorems a book",
         "leaves enabled whose shape rewrites downstream goals out of accessor",
         "vocabulary: an equality between two one-argument applications, or a",
@@ -1250,8 +1712,13 @@ def ledger_markdown(ledger: dict) -> str:
         "theory withdrawal: such an include enables every rule of that book in",
         "the includer and in everything above it. `books/bp-ingress.lisp` took",
         "one for a single guard hint and turned a six-minute proof into an",
-        "1800 s timeout. No lint judges truth;",
-        "`python3 tools/ledger.py --check --strict` turns all three into errors.",
+        "1800 s timeout. *Host names* counts symbols used in `host/*.lisp` and",
+        "`host/native/*.lisp` -- files the bridges `ld` and no certification",
+        "reads -- that nothing those files include, `ld` or inherit from",
+        "`tools/acl2-builtins.txt` defines: the shape of the",
+        "`*fn-store-groups*` reference that survived the group table and broke",
+        "every `Acl2Store` start-up. No lint judges truth;",
+        "`python3 tools/ledger.py --check --strict` turns all four into errors.",
         "",
         "## Per book",
         "",
@@ -1451,7 +1918,7 @@ def main(argv: list[str] | None = None) -> int:
                         help="fail on an unknown or SUSPECT cited theorem, or stale output")
     parser.add_argument("--strict", action="store_true",
                         help="with --check, fail on any lint warning: export "
-                             "hygiene, teeth form or include hygiene")
+                             "hygiene, teeth form, include hygiene or host names")
     arguments = parser.parse_args(argv)
     if arguments.check:
         tree = load_tree()

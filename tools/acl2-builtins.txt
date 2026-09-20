@@ -1,0 +1,159 @@
+; ACL2 and Common Lisp names the host files use that no book defines.
+;
+; The host-names lint in tools/ledger.py reads host/*.lisp and
+; host/native/*.lisp and reports every symbol used in function position, and
+; every *constant*, that nothing the file loads defines.  ACL2's own world is
+; not in this repository, so these names would be reported forever.  This
+; file is that world, restricted to what the host files use today: a new
+; built-in reaching a host file is one WARN and one line added here.
+;
+; HOW IT WAS MADE.  Not typed and not guessed: every name below was produced
+; by the lint and then required to be a real ACL2 or Common Lisp name.
+;
+;   1. Run the lint with this file absent.  Collect the reported names that
+;      nothing in the tree defines (the findings whose "source" is null in
+;      planning/ledger.json).
+;   2. Build ACL2's vocabulary from the ACL2 8.7 sources in
+;      $(dirname $(readlink -f $(which acl2)))/../libexec:
+;        - every name matching ^\s{0,4}\((def[a-z0-9!*+-]*)\s+\|?(acl2::)?NAME
+;          in libexec/*.lisp (10679 names in 8.7), and
+;        - the quoted list in the `defconst
+;          *common-lisp-symbols-from-main-lisp-package*` of libexec/axioms.lisp
+;          (1021 names), which is ACL2's own statement of what Common Lisp
+;          means.
+;   3. Keep the intersection of (1) and (2); that is this file.  On
+;      2026-09-20 step (1) produced 130 names and step (3) kept all 130, so
+;      no host file names anything that is neither defined in this tree nor a
+;      name of ACL2's.
+;
+; One name per line, lower case, ; starts a comment.
+*
+*print-startup-banner*
+*standard-output*
+*the-live-state*
++
+-
+/
+/=
+1+
+1-
+<
+<=
+=
+>
+>=
+and
+append
+apply
+aref
+ash
+assoc
+boundp-global
+byte
+car
+catch
+cddddr
+cdddr
+cdr
+char
+char-code
+char<=
+char=
+coerce
+concatenate
+cons
+consp
+cw
+digit-char-p
+eq
+eql
+equal
+equalp
+error
+every
+f-get-global
+f-put-global
+fboundp
+find-symbol
+finish-output
+first
+float
+floor
+format
+fourth
+funcall
+get-internal-real-time
+if
+ignore-errors
+incf
+integerp
+keywordp
+ldb
+len
+length
+list
+listp
+load
+logand
+logic
+logior
+make-array
+make-instance
+map
+mapcar
+member
+member-equal
+min
+mod
+multiple-value-list
+natp
+nfix
+not
+nreverse
+nth
+null
+or
+parse-integer
+position
+posp
+princ-to-string
+prog1
+prog2$
+program
+push
+random
+remove
+remove-if-not
+replace
+require
+return
+return-from
+save-exec
+second
+set-raw-mode
+set-state-ok
+setf
+setq
+sort
+string
+string-right-trim
+string=
+stringp
+subseq
+symbol-name
+t
+take
+third
+true-listp
+typecase
+typep
+unless
+unwind-protect
+value
+values
+when
+write-char
+write-sequence
+write-string
+zerop
+zp

@@ -26,10 +26,11 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 63 |
 | Teeth-form warnings | 0 |
 | Include-hygiene warnings | 84 |
+| Host-names warnings | 47 |
 
 ## Lints
 
-Three WARN lints, counted above and listed in full under `lints` in
+Four WARN lints, counted above and listed in full under `lints` in
 [`ledger.json`](ledger.json). *Export hygiene* counts theorems a book
 leaves enabled whose shape rewrites downstream goals out of accessor
 vocabulary: an equality between two one-argument applications, or a
@@ -44,8 +45,13 @@ nothing in particular is refuted. *Include hygiene* counts non-local
 theory withdrawal: such an include enables every rule of that book in
 the includer and in everything above it. `books/bp-ingress.lisp` took
 one for a single guard hint and turned a six-minute proof into an
-1800 s timeout. No lint judges truth;
-`python3 tools/ledger.py --check --strict` turns all three into errors.
+1800 s timeout. *Host names* counts symbols used in `host/*.lisp` and
+`host/native/*.lisp` -- files the bridges `ld` and no certification
+reads -- that nothing those files include, `ld` or inherit from
+`tools/acl2-builtins.txt` defines: the shape of the
+`*fn-store-groups*` reference that survived the group table and broke
+every `Acl2Store` start-up. No lint judges truth;
+`python3 tools/ledger.py --check --strict` turns all four into errors.
 
 ## Per book
 
