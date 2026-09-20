@@ -1,7 +1,14 @@
 {
  "a_policy": "explicitly trusted local lab; no signatures, no authenticated peer",
  "assertions": {
+  "attempt_expires_while_no_contact_is_open": true,
   "carried_media_is_not_modified_by_import": true,
+  "destination_accepts_each_letter_once_and_calls_the_rest_duplicates": true,
+  "destination_holds_exactly_one_acceptance_per_article": true,
+  "destination_holds_exactly_one_archive_pin_per_article": true,
+  "each_node_advanced_only_by_its_own_acceptances": true,
+  "every_node_holds_the_exact_article_bytes": true,
+  "expired_attempt_leaves_the_work_outstanding": true,
   "lost_receipt_regenerates_byte_identically": true,
   "media_hop_accepts_both_letters": true,
   "media_reimport_is_duplicate_not_a_second_acceptance": true,
@@ -10,9 +17,191 @@
   "relay_a_archival_receipts_survive_kill": true,
   "relay_a_archival_receipts_unchanged_by_recovery": true,
   "relay_a_journal_is_usable_after_recovery": true,
-  "window_1_delivers_both_letters": true
+  "relay_a_onward_obligation_recoverable_after_kill": true,
+  "retry_uses_a_distinct_transport_identity": true,
+  "the_pair_reaches_the_destination_in_the_reverse_of_its_submission_order": true,
+  "the_same_letter_carries_a_different_local_number_at_home_and_destination": true,
+  "window_1_delivers_both_letters": true,
+  "window_2_delivers_a_reordered_pair_and_a_duplicate": true
  },
- "error": "JournalError('ACL2 rejected workflow durable history before publication')",
+ "bpa_events": [
+  {
+   "bid": "dtn://home/-1",
+   "bpa": "home",
+   "destination": "dtn://fn.lab/inbox",
+   "event": "submit",
+   "label": "home-a1",
+   "lifetime": 300,
+   "octets": 440
+  },
+  {
+   "bid": "dtn://home/-2",
+   "bpa": "home",
+   "destination": "dtn://fn.lab/inbox",
+   "event": "submit",
+   "label": "home-a2",
+   "lifetime": 300,
+   "octets": 451
+  },
+  {
+   "bid": "dtn://relay-a/-in-1",
+   "bpa": "relay-a",
+   "event": "delivered",
+   "from_bid": "dtn://home/-1",
+   "via": "home"
+  },
+  {
+   "bid": "dtn://relay-a/-in-2",
+   "bpa": "relay-a",
+   "event": "delivered",
+   "from_bid": "dtn://home/-2",
+   "via": "home"
+  },
+  {
+   "bid": "dtn://relay-a/-in-1",
+   "bpa": "relay-a",
+   "event": "delete"
+  },
+  {
+   "bid": "dtn://relay-a/-in-2",
+   "bpa": "relay-a",
+   "event": "delete"
+  },
+  {
+   "bid": "dtn://relay-b/-1",
+   "bpa": "relay-b",
+   "destination": "dtn://fn.lab/inbox",
+   "event": "submit",
+   "label": "relay-b-a1-expiring",
+   "lifetime": 300,
+   "octets": 449
+  },
+  {
+   "age": 301,
+   "bid": "dtn://relay-b/-1",
+   "bpa": "relay-b",
+   "event": "expired",
+   "lifetime": 300
+  },
+  {
+   "bid": "dtn://relay-b/-2",
+   "bpa": "relay-b",
+   "destination": "dtn://fn.lab/inbox",
+   "event": "submit",
+   "label": "relay-b-a1-retry",
+   "lifetime": 300,
+   "octets": 449
+  },
+  {
+   "bid": "dtn://relay-b/-3",
+   "bpa": "relay-b",
+   "destination": "dtn://fn.lab/inbox",
+   "event": "submit",
+   "label": "relay-b-a2",
+   "lifetime": 300,
+   "octets": 460
+  },
+  {
+   "bid": "dtn://destination/-in-1",
+   "bpa": "destination",
+   "event": "delivered",
+   "from_bid": "dtn://relay-b/-3",
+   "via": "relay-b"
+  },
+  {
+   "bid": "dtn://destination/-in-2",
+   "bpa": "destination",
+   "event": "delivered",
+   "from_bid": "dtn://relay-b/-3",
+   "via": "relay-b"
+  },
+  {
+   "bid": "dtn://destination/-in-3",
+   "bpa": "destination",
+   "event": "delivered",
+   "from_bid": "dtn://relay-b/-2",
+   "via": "relay-b"
+  },
+  {
+   "bid": "dtn://destination/-in-4",
+   "bpa": "destination",
+   "event": "delivered",
+   "from_bid": "dtn://relay-b/-2",
+   "via": "relay-b"
+  },
+  {
+   "bid": "dtn://destination/-in-1",
+   "bpa": "destination",
+   "event": "delete"
+  },
+  {
+   "bid": "dtn://destination/-in-2",
+   "bpa": "destination",
+   "event": "delete"
+  },
+  {
+   "bid": "dtn://destination/-in-3",
+   "bpa": "destination",
+   "event": "delete"
+  },
+  {
+   "bid": "dtn://destination/-in-4",
+   "bpa": "destination",
+   "event": "delete"
+  }
+ ],
+ "contact_log": [
+  {
+   "contact": [
+    "home",
+    "relay-a"
+   ],
+   "delivered": [
+    {
+     "bid": "dtn://relay-a/-in-1",
+     "from_bid": "dtn://home/-1"
+    },
+    {
+     "bid": "dtn://relay-a/-in-2",
+     "from_bid": "dtn://home/-2"
+    }
+   ],
+   "duplicate": false,
+   "reorder": false
+  },
+  {
+   "contact": [
+    "relay-b",
+    "destination"
+   ],
+   "delivered": [
+    {
+     "bid": "dtn://destination/-in-1",
+     "from_bid": "dtn://relay-b/-3"
+    },
+    {
+     "bid": "dtn://destination/-in-2",
+     "from_bid": "dtn://relay-b/-3"
+    },
+    {
+     "bid": "dtn://destination/-in-3",
+     "from_bid": "dtn://relay-b/-2"
+    },
+    {
+     "bid": "dtn://destination/-in-4",
+     "from_bid": "dtn://relay-b/-2"
+    }
+   ],
+   "duplicate": true,
+   "reorder": true
+  }
+ ],
+ "destination_frontier_after_first_acceptance": {
+  "0": 2,
+  "1": 1,
+  "2": 0,
+  "3": 0
+ },
  "events": [
   {
    "bids": [
@@ -45,9 +234,8 @@
    "resolution": "durable-intent-recovered-committed",
    "returncode": -9,
    "signal": "SIGKILL",
-   "work_status_a1": "absent",
-   "work_status_a2": "absent",
-   "work_status_is_open": "fn-workflow-work-status does not report enqueued work; see planning/lanes/HANDOFF-w3-media-lab.md"
+   "work_status_a1": "outstanding",
+   "work_status_a2": "outstanding"
   },
   {
    "event": "media-exported",
@@ -77,12 +265,78 @@
   {
    "event": "receipt-lost-and-regenerated",
    "receipt_sha256": "6dbf8fed2c5667c8029571694eb3c22cb71289edef7386a6f3dbd9b293cc11db"
+  },
+  {
+   "event": "attempt-expired-and-retried",
+   "expired": "dtn://relay-b/-1",
+   "retry": "dtn://relay-b/-2"
+  },
+  {
+   "event": "destination-received",
+   "order": [
+    "a2",
+    "a2",
+    "a1",
+    "a1"
+   ],
+   "outcomes": [
+    "accepted",
+    "duplicate",
+    "accepted",
+    "duplicate"
+   ]
   }
  ],
  "invocation": [
   "/opt/homebrew/opt/python@3.14/bin/python3.14",
   "tests/bp-dtn7/run_four_node_lab.py"
  ],
+ "journals": {
+  "destination": [],
+  "home": [
+   "0000000000000000.wf",
+   "0000000000000001.wf",
+   "0000000000000002.wf",
+   "0000000000000003.wf",
+   "0000000000000004.wf",
+   "0000000000000005.wf",
+   "0000000000000006.wf",
+   "0000000000000007.wf",
+   "0000000000000008.wf",
+   "0000000000000009.wf",
+   "000000000000000a.wf"
+  ],
+  "relay-a": [
+   "0000000000000000.wf",
+   "0000000000000001.wf",
+   "0000000000000002.wf",
+   "0000000000000003.wf",
+   "0000000000000004.wf",
+   "0000000000000005.wf",
+   "0000000000000006.wf",
+   "0000000000000007.wf",
+   "0000000000000008.wf",
+   "0000000000000009.wf",
+   "000000000000000a.wf"
+  ],
+  "relay-b": [
+   "0000000000000000.wf",
+   "0000000000000001.wf",
+   "0000000000000002.wf",
+   "0000000000000003.wf",
+   "0000000000000004.wf",
+   "0000000000000005.wf",
+   "0000000000000006.wf",
+   "0000000000000007.wf",
+   "0000000000000008.wf",
+   "0000000000000009.wf",
+   "000000000000000a.wf",
+   "000000000000000b.wf",
+   "000000000000000c.wf",
+   "000000000000000d.wf",
+   "000000000000000e.wf"
+  ]
+ },
  "limitations": [
   "The mock BPA is a laboratory contact scheduler, not BPv7: no CBOR, convergence layer, routing or status reports. Nothing here is an interoperability result; the pinned-dtn7-rs run is separate.",
   "A relay is receiver-then-sender through two host paths. No relay receipt kind is emitted, so no accepted forwarding responsibility (SCN-001) is demonstrated; the forwarding undertaking is a proposal.",
@@ -91,10 +345,118 @@
   "Real local process death (SIGKILL of a created process group) and real filesystem recovery; no power-loss or media-hardware claim.",
   "Contact windows are explicit and never overlap by construction; this is not a scheduler, liveness or fairness result."
  ],
- "revision": "9ff2fb4c7ac2dcec94e153cdd8ecdaed7c28a7b6",
- "run": "/Users/ember/dev/fn/build/lanes/w3-media-lab/build/bp-four-node/four-node-_lysw_3t",
+ "local_number_frontiers": {
+  "destination": 3,
+  "home": 3,
+  "relay-a": 3,
+  "relay-b": 3
+ },
+ "node_states": {
+  "destination": {
+   "articles": 2,
+   "exact_articles": {
+    "a1": true,
+    "a2": true
+   },
+   "group_next": {
+    "0": 3,
+    "1": 1,
+    "2": 0,
+    "3": 0
+   },
+   "pins": 2,
+   "records": 2
+  },
+  "home": {
+   "articles": 2,
+   "exact_articles": {
+    "a1": true,
+    "a2": true
+   },
+   "group_next": {
+    "0": 3,
+    "1": 1,
+    "2": 0,
+    "3": 0
+   },
+   "pins": 2,
+   "records": 2
+  },
+  "relay-a": {
+   "articles": 2,
+   "exact_articles": {
+    "a1": true,
+    "a2": true
+   },
+   "group_next": {
+    "0": 3,
+    "1": 1,
+    "2": 0,
+    "3": 0
+   },
+   "pins": 2,
+   "records": 2
+  },
+  "relay-b": {
+   "articles": 2,
+   "exact_articles": {
+    "a1": true,
+    "a2": true
+   },
+   "group_next": {
+    "0": 3,
+    "1": 1,
+    "2": 0,
+    "3": 0
+   },
+   "pins": 2,
+   "records": 2
+  }
+ },
+ "receipts": {
+  "destination": {
+   "0000000000000000.rj": "3678f36f9b35b643e34f751a1851112fd514c6a9494b60c6ef6bfa9517ed118b",
+   "0000000000000001.rj": "ac153f33cdfd16f9bcebc606c2697bc43717071e23585465356c6fa7a169c2d2",
+   "0000000000000002.rj": "2e504f039706ec4232c92805c1b19929aa7368e7c71d00054d218936664744a1",
+   "0000000000000003.rj": "61cae477ba79490cd8e83b01b13a4a3150b27040d9d3119186b31eb0e30a0dc5",
+   "0000000000000004.rj": "5448670bb261413a4c861a11821113019dfe1e8040097416fa0cbf1a40f55215",
+   "0000000000000005.rj": "81bf68fe3fe59439c31cb1500066bd1e31e3ed98181516b2c59ceb86dd141154",
+   "0000000000000006.rj": "fef0add926b5daf7aeca9820b10edb082a66d7d552cb14169045d391483fc6d6"
+  },
+  "home": {},
+  "relay-a": {
+   "0000000000000000.rj": "3678f36f9b35b643e34f751a1851112fd514c6a9494b60c6ef6bfa9517ed118b",
+   "0000000000000001.rj": "66b1625af801db8a3dbfd14613ce89903cfd0859ea365e3156ec5ef82265f52b",
+   "0000000000000002.rj": "885520f9452a1aa258a4e759953bb601cf2eac0a9d46d3d87cef92f6b28c3f25",
+   "0000000000000003.rj": "73981c335cb81b86a658365b9b46f231f0a8f811da89906482acfe49029ecb22",
+   "0000000000000004.rj": "17728fa83293976942db349f2f7e4e81e98ab78f76859d25e9c34e3923199001",
+   "0000000000000005.rj": "e95be8e93fce9f85979cc5f875cf6d77fd88ba050d7735ad9bbe589fce4d3313",
+   "0000000000000006.rj": "9576292d67072e6042a5c38fac8cac0e20c6d28a098c41f3e8522f62b64f71cf"
+  },
+  "relay-b": {
+   "0000000000000000.rj": "3678f36f9b35b643e34f751a1851112fd514c6a9494b60c6ef6bfa9517ed118b",
+   "0000000000000001.rj": "af22ce4e59a93ce393f0b6891fd55274099d53cb47f221f0e5907cc58d27b5d4",
+   "0000000000000002.rj": "6a9565972389ad10c420ee56e1778044c3ceb9b52c5810999941c7a725fe4222",
+   "0000000000000003.rj": "cf1cfb96504d3c4275dfcc9e8eafe0f35e166bf5b4963dde20a6e77516f24d9e",
+   "0000000000000004.rj": "9fa36f919918f9425712ba200b47888420c9b8f0ebdae817d40d492ad87d5b30",
+   "0000000000000005.rj": "8c3a8023f359ddee9b9590727cb6dae9b9b8d03400883ad76c0bb0044577fe5a",
+   "0000000000000006.rj": "b10fcb0716bfd8fc2f937178c9f86f7a6ebef4b333c895d372afa3defaa2759f"
+  }
+ },
+ "relay_kinds": {
+  "archived": {
+   "status": "asserted",
+   "what": "each relay committed a receipt for content it durably holds, regenerated it byte-identically after a lost receipt, and kept its archive pin across a SIGKILL"
+  },
+  "forwarding": {
+   "status": "proposal",
+   "what": "books/relay.lisp's :forwarding kind, its fn-relay-record-undertaking ledger and the proposed FNWF (:relay-undertaking upstream onward) record have no host wiring and no byte grammar, so this lab enqueues the onward work through the ordinary sender path and asserts nothing about an accepted forwarding responsibility"
+  }
+ },
+ "revision": "9443fec3da807176bd168179016a66f3b74a84a6",
+ "run": "/Users/ember/dev/fn/build/lanes/w6-workflow-restart/build/bp-four-node/four-node-4kisya3v",
  "schema": 1,
- "seconds": 46.4,
+ "seconds": 40.5,
  "source_after_sha256": {
   "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
   "books/acceptance-invariants.lisp": "d9837d7cf602953989ce0539562e1b03471d2f76da5579efd3397bd66e4440c8",
@@ -138,8 +500,8 @@
   "books/bp-workflow-binding-core.lisp": "1cd486ec0576da8256cb96b634ecac255dcfad5a5419a1e6e65c03f679580247",
   "books/bp-workflow-binding-invariants.lisp": "7a112519aa4500444eee423ab8a761a5361d0c9c79daa26b052a58d8853b8e43",
   "books/bp-workflow-invariants.lisp": "27d1c8352e45c059f6d1036e8bb501e2cbb24f2b45e682481c739de68298ff42",
-  "books/bp-workflow-records-invariants.lisp": "05c9f2ad719a13a9c5f0757781ead4c9105e49acfe3d6a847714575e630d9c8c",
-  "books/bp-workflow-records.lisp": "c9ec7c65e2d669a02ce1f15487c246ce66ece8a73f8f118128222392ee4e7b12",
+  "books/bp-workflow-records-invariants.lisp": "4ff5ae54e9971c389e2ee6e053152e83e5b67ec8c86593eb6e6ce71cd74b0458",
+  "books/bp-workflow-records.lisp": "5e64bc1223b640e2038e55130fe0f5ed4e3b8a4793906a1b3d490d94a51c9a7d",
   "books/bp-workflow-transport-invariants.lisp": "81013dbf5b04e0b1bf31ab86b5717d9e7fc32b5686873a407c0bb9aed7c0895b",
   "books/bp-workflow.lisp": "af3515050f4daed0f2c2cc9b1155b453e51ee783ec54c365e54a0a31f403cc29",
   "books/byte-store-invariants.lisp": "a6337338ff68a049ee45edb3e694ca04e25953e5dfbc20339de39fa6ac53afff",
@@ -255,14 +617,14 @@
   "host/simulator.lisp": "e065655f69426a48731b5325f48a86ae3443f6fecaf7c58e60a5e06defa564cc",
   "host/store-host.lisp": "116bfdf2cf77c220b852716fab81bba0e52b157ba0e7345b5b31c9d1a7fa8b96",
   "host/store-node-host.lisp": "18cc576f7e2cffd264e21d29bc4830542e01466d5b5ac106a94d7db16cdca277",
-  "host/workflow-host.lisp": "51405867e436b98fa88e7e402b740efe1c8c68038e3a773b7ade4855cb623553",
+  "host/workflow-host.lisp": "921cf84797a7375f33e5f78d72cefb662d1c1ba7bf01be4deb19c205a82e3587",
   "tests/bp-dtn7/bp_fn_ingress_driver.py": "4007b45f39ac71e3311a6871703bddf93428ab130e6638f2d7d29b3e145da0f1",
   "tests/bp-dtn7/fn_sender_lab.py": "21c7ac0d7bbfa7abd5450d5bfc6fff743883ecd0dadc58b26d00884b53fd6221",
   "tests/bp-dtn7/lab_bpa.py": "8956a9febe9e718d1d08eab89079370f14d01f4512625b31ee5eecf2e8d037c4",
-  "tests/bp-dtn7/mock_bpa.py": "df5e51956d0811e9c23eeefacc6142f89a6bbe9801c6228982765bb3c448a9b4",
+  "tests/bp-dtn7/mock_bpa.py": "6c78d806d5db1d1b94d5e306fd1d4dcb416a70c6d52ef145503ee6114630d2e2",
   "tests/bp-dtn7/record_evidence.py": "1932594d8ca4a6bb21d2a84102a2fa1437ba90a8802ddfd646ce6bdab55dc040",
   "tests/bp-dtn7/run_fn_exchange_lab.py": "0359393a4535700246a6e907ff296f763802ffb31f359f4d357f6553ee726aa9",
-  "tests/bp-dtn7/run_four_node_lab.py": "70ad79f8839769f4b1870833897d4ccddcdb18fd1395e78ca2022fea08051978",
+  "tests/bp-dtn7/run_four_node_lab.py": "0af4cf31d7a7fc5b8f3880dcd3bd8f4e64e1b323f36d39b859950277b3537f97",
   "tools/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "tools/acl2_slots.py": "fd261aeabc349147d6393586da3ba459eb679c71c88addbf8dd0c624f7fe9c71",
   "tools/bpa_dtn7.py": "c170702e9d68ac2b496d36cdea0a19d4b3e5cc26c58fee32dce7ba267a2d67c9",
@@ -333,8 +695,8 @@
   "books/bp-workflow-binding-core.lisp": "1cd486ec0576da8256cb96b634ecac255dcfad5a5419a1e6e65c03f679580247",
   "books/bp-workflow-binding-invariants.lisp": "7a112519aa4500444eee423ab8a761a5361d0c9c79daa26b052a58d8853b8e43",
   "books/bp-workflow-invariants.lisp": "27d1c8352e45c059f6d1036e8bb501e2cbb24f2b45e682481c739de68298ff42",
-  "books/bp-workflow-records-invariants.lisp": "05c9f2ad719a13a9c5f0757781ead4c9105e49acfe3d6a847714575e630d9c8c",
-  "books/bp-workflow-records.lisp": "c9ec7c65e2d669a02ce1f15487c246ce66ece8a73f8f118128222392ee4e7b12",
+  "books/bp-workflow-records-invariants.lisp": "4ff5ae54e9971c389e2ee6e053152e83e5b67ec8c86593eb6e6ce71cd74b0458",
+  "books/bp-workflow-records.lisp": "5e64bc1223b640e2038e55130fe0f5ed4e3b8a4793906a1b3d490d94a51c9a7d",
   "books/bp-workflow-transport-invariants.lisp": "81013dbf5b04e0b1bf31ab86b5717d9e7fc32b5686873a407c0bb9aed7c0895b",
   "books/bp-workflow.lisp": "af3515050f4daed0f2c2cc9b1155b453e51ee783ec54c365e54a0a31f403cc29",
   "books/byte-store-invariants.lisp": "a6337338ff68a049ee45edb3e694ca04e25953e5dfbc20339de39fa6ac53afff",
@@ -450,14 +812,14 @@
   "host/simulator.lisp": "e065655f69426a48731b5325f48a86ae3443f6fecaf7c58e60a5e06defa564cc",
   "host/store-host.lisp": "116bfdf2cf77c220b852716fab81bba0e52b157ba0e7345b5b31c9d1a7fa8b96",
   "host/store-node-host.lisp": "18cc576f7e2cffd264e21d29bc4830542e01466d5b5ac106a94d7db16cdca277",
-  "host/workflow-host.lisp": "51405867e436b98fa88e7e402b740efe1c8c68038e3a773b7ade4855cb623553",
+  "host/workflow-host.lisp": "921cf84797a7375f33e5f78d72cefb662d1c1ba7bf01be4deb19c205a82e3587",
   "tests/bp-dtn7/bp_fn_ingress_driver.py": "4007b45f39ac71e3311a6871703bddf93428ab130e6638f2d7d29b3e145da0f1",
   "tests/bp-dtn7/fn_sender_lab.py": "21c7ac0d7bbfa7abd5450d5bfc6fff743883ecd0dadc58b26d00884b53fd6221",
   "tests/bp-dtn7/lab_bpa.py": "8956a9febe9e718d1d08eab89079370f14d01f4512625b31ee5eecf2e8d037c4",
-  "tests/bp-dtn7/mock_bpa.py": "df5e51956d0811e9c23eeefacc6142f89a6bbe9801c6228982765bb3c448a9b4",
+  "tests/bp-dtn7/mock_bpa.py": "6c78d806d5db1d1b94d5e306fd1d4dcb416a70c6d52ef145503ee6114630d2e2",
   "tests/bp-dtn7/record_evidence.py": "1932594d8ca4a6bb21d2a84102a2fa1437ba90a8802ddfd646ce6bdab55dc040",
   "tests/bp-dtn7/run_fn_exchange_lab.py": "0359393a4535700246a6e907ff296f763802ffb31f359f4d357f6553ee726aa9",
-  "tests/bp-dtn7/run_four_node_lab.py": "70ad79f8839769f4b1870833897d4ccddcdb18fd1395e78ca2022fea08051978",
+  "tests/bp-dtn7/run_four_node_lab.py": "0af4cf31d7a7fc5b8f3880dcd3bd8f4e64e1b323f36d39b859950277b3537f97",
   "tools/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "tools/acl2_slots.py": "fd261aeabc349147d6393586da3ba459eb679c71c88addbf8dd0c624f7fe9c71",
   "tools/bpa_dtn7.py": "c170702e9d68ac2b496d36cdea0a19d4b3e5cc26c58fee32dce7ba267a2d67c9",
@@ -486,7 +848,7 @@
   "tools/workflow_journal.py": "423ab8c69ff7e541cf3184af23f628b64b126298200895e0edbc6a79cad31db0"
  },
  "sources_unchanged": true,
- "status": "failed",
+ "status": "passed",
  "topology": "home -> relay-a -> relay-b -> destination",
  "transport": "mock_bpa",
  "versions": {

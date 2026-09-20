@@ -51,6 +51,25 @@ recorded resolution; the host discards replay effects in any case. A live
 recovery outcome is refused unless the image is already fenced, which after a
 process restart is what the trailing `:restart` establishes for a lone intent.
 
+A reopen keeps the works its history enqueued.
+`fn-bp-replay-preserves-works` says no step of the interpreter
+`fn-bp-replay-journal` calls (`fn-bp-replay-records`) drops a work id it was
+given, over arbitrary record lists and with no well-formedness hypothesis;
+`fn-bp-durable-enqueue-holds-the-work` says the `:ordinary :durable` outcome of
+a pending enqueue puts that work in the state. The host's read model for one
+work id is `fn-bp-work-status`, and ACL2 owns it: `:absent` means the installed
+image holds no such work, `:outstanding` means it holds one with no attempt yet
+-- the state a committed enqueue leaves and a reopen preserves -- and otherwise
+the answer is the work's attempt status, or `:receipted` once its receipt is
+committed. Reading the attempt status alone answered `:absent` for a work that
+was enqueued and not yet attempted, which is what made a reopened journal look
+empty to `tests/bp-dtn7/run_four_node_lab.py`.
+
+An attempt record's `bp-lifetime` must equal the configuration's:
+`fn-bp-record-contextp` refuses the record otherwise, in the live preflight and
+in the history preflight alike, so a submission cannot shorten its own expiry
+without a reconfiguration.
+
 The model's "durable intent before submission" theorems
 (`fn-bp-step-submit-requires-matching-durable-attempt-completion`,
 `fn-bp-apply-journal-record-submit-requires-ordinary-durable-attempt-outcome`)
