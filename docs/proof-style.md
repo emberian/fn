@@ -503,3 +503,61 @@ sub-recognizers into the clause and produced 1082 subgoals; closed, the same
 theorem took 0.30 s. The step function is not recursive, so no induction is
 wanted there; a fold over a chunk (`fn-tcl-drive`) inducts on the event
 list, named with `:induct`.
+
+### A wrapped record names its reach, and the depth is checked
+
+The served command chain is four session records deep: an auth session
+(`books/nntp-auth.lisp`) over a peer session (`books/peer-inbound.lisp`)
+over a POST session (`books/nntp-post.lisp`) over the reader session
+(`books/nntp-session.lisp`). Every wrapper's base accessor descends exactly
+one level, and all three of them read `car`. So a call that stops one level
+short is not a type error the prover sees; it is a plausible value the
+callee answers.
+
+Four such misses shipped on 2026-09-20 --- `fn-own-conn-boundedp` testing
+the POST shape on the whole connection session (ADVANCE became a silent
+no-op and every connection was dropped after one read), `books/served.lisp`
+reaching one wrapper short so POST emitted neither 240 nor 441, the same
+short reach in its test book, and `fn-served-transit-outcome` handing the
+whole session to `fn-peer-transit-outcome`. Five more were found by the
+check below, four of them in `books/owner-config.lisp`, where the
+reconfiguration guard read the PEER NAME where it meant the reader's
+selected group.
+
+Three rules follow, and the third is machinery.
+
+1. **Name the walk once, in the book that owns the outer wrapper.**
+   `fn-peer-reader-session` (peer to reader) and `fn-auth-post-session` /
+   `fn-auth-reader-session` (auth to post, auth to reader). No call site
+   spells a walk; adding a wrapper is one edit per book and not a sweep.
+2. **They are macros, not functions.** Each expands to exactly the term the
+   call sites already spell, so the name costs no theorem, no rule, no
+   export entry and no re-proof --- which is what let every site be
+   converted at once rather than book by book. A function would have been a
+   new definition to enable, disable and export in eight books.
+3. **A wrongly-shaped session is answered distinguishably, never benignly.**
+   `fn-nntp-post-outcome` used to answer a non-`fn-post-sessionp` argument
+   with NO EFFECTS, which is not accepted, refused or uncertain: it is a
+   fourth thing that reads as success, and it is why the POST miss was
+   invisible for a day. It now answers 403 (RFC 3977 §3.2.1), and
+   `fn-post-outcome-separates-a-malformed-session` states that the fourth
+   outcome differs from all three others whatever the store reported.
+
+`tools/session_depth.py` is the check, and it runs in `make check`. It reads
+the books with `tools/ledger.py`'s reader, infers the session level of every
+formal from the calls each definition makes --- no table of callees is
+maintained by hand --- and fails on a base accessor applied at the wrong
+level or an expression passed to a formal at another. A hand-spelled walk is
+drift: counted, and failed only under `--strict`. A deliberate wrong-level
+witness (a forged connection in a test book) says so with
+`; session-depth-ok: <reason>`, which is reported with its reason. A real
+defect in a book the lane may not edit goes in the tool's `OPEN_DEFECTS`
+with its owner and its fix, and an entry that stops matching fails the
+check, so the list cannot rot.
+
+What the check cannot see: a session that round-trips through
+`fn-post-make-result` / `fn-post-result-session`, because that result record
+is shared by all three wrappers and therefore carries no level; a session
+stored in and read back out of any other record field; a formal whose level
+no call constrains; and anything a macro other than the three projections
+builds. Those are the places to read by hand.

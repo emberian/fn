@@ -592,8 +592,7 @@
   (declare (xargs :guard t))
   (let ((as (fn-own-conn-session conn)))
     (and (fn-auth-sessionp as)
-         (let ((session (fn-post-session-base
-                         (fn-peer-session-base (fn-auth-session-base as)))))
+         (let ((session (fn-auth-reader-session as)))
            (and (or (null (fn-nntp-session-group session))
                     (fn-ag-member (fn-nntp-session-group session) groups))
                 (or (null (fn-nntp-session-current session))
