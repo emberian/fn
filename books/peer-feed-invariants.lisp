@@ -471,6 +471,36 @@
 (defthm fn-feed-give-up-preserves-feedp
   (implies (fn-feedp f) (fn-feedp (fn-feed-give-up f msgid reason))))
 
+; The -preserves-peer members of the same family.  Without them
+; fn-feed-apply-record-preserves-peer has one key checkpoint per arm,
+; because that proof keeps every arm closed and so needs each arm's own
+; rewrite -- exactly as -preserves-feedp does.  These three are the arms
+; fn-feed-apply-record calls as single-valued functions; the rest it
+; builds inline with (fn-feed-peer f) in the peer slot.
+(defthm fn-feed-give-up-preserves-peer
+  (equal (fn-feed-peer (fn-feed-give-up f msgid reason)) (fn-feed-peer f))
+  :hints (("Goal" :in-theory (e/d ((:d fn-feed-give-up)) ((:d fn-feedp))))))
+
+(defthm fn-feed-restart-preserves-peer
+  (equal (fn-feed-peer (fn-feed-restart f)) (fn-feed-peer f))
+  :hints (("Goal" :in-theory (e/d ((:d fn-feed-restart)) ((:d fn-feedp))))))
+
+(defthm fn-feed-enqueue-preserves-peer
+  (equal (fn-feed-peer (fn-feed-enqueue f msgid tick)) (fn-feed-peer f))
+  :hints (("Goal" :in-theory (e/d ((:d fn-feed-enqueue)) ((:d fn-feedp))))))
+
+(defthm fn-feed-done-preserves-peer
+  (equal (fn-feed-peer (fn-feed-done f msgid)) (fn-feed-peer f))
+  :hints (("Goal" :in-theory (e/d ((:d fn-feed-done)) ((:d fn-feedp))))))
+
+(defthm fn-feed-back-off-preserves-peer
+  (equal (fn-feed-peer (fn-feed-back-off f msgid obs)) (fn-feed-peer f))
+  :hints (("Goal" :in-theory (e/d ((:d fn-feed-back-off)) ((:d fn-feedp))))))
+
+(defthm fn-feed-lost-preserves-peer
+  (equal (fn-feed-peer (fn-feed-lost f obs)) (fn-feed-peer f))
+  :hints (("Goal" :in-theory (e/d ((:d fn-feed-lost)) ((:d fn-feedp))))))
+
 (defthm fn-feed-restart-preserves-feedp
   (implies (fn-feedp f) (fn-feedp (fn-feed-restart f))))
 
