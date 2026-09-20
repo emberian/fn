@@ -53,6 +53,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/identity \
 	books/identity-invariants \
 	tests/acl2/identity-tests \
+	books/provenance \
 	books/retention \
 	books/retention-invariants \
 	tests/acl2/retention-tests \
@@ -65,6 +66,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/records-canonicality \
 	tests/acl2/records-tests \
 	tests/acl2/records-teeth-tests \
+	books/provenance-codec \
+	tests/acl2/provenance-tests \
 	books/config \
 	books/config-invariants \
 	books/replay \

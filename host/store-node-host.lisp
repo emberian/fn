@@ -12,6 +12,7 @@
 (ld "store-host.lisp" :ld-error-action :error)
 
 (include-book "../books/peer-config")
+(include-book "../books/provenance-codec")
 
 ; This wrapper reuses the established decimal-octet boundary helpers from the
 ; store host. Python supplies only ordered filesystem observations.
@@ -502,3 +503,62 @@
   (value (fn-store-sn-join-octet-names
           (car (fn-sn-sweep-staging (f-get-global 'fn-store-sn state)
                                     observed held)))))
+
+; -----------------------------------------------------------------------------
+; Provenance (books/provenance, books/provenance-codec)
+;
+; ACL2 decides the provenance of a locally posted article.  Before this lane
+; `tools/run_store.py's `metadata' typed the constant b"unsigned-legacy-v0"
+; here, which is a decision Python owned and the model only compared
+; (AGENTS.md, one owner per decision).  These three wrappers hold no
+; provenance logic: they read the live configuration, call `fn-prov-*' and
+; marshal octets.
+
+(defun fn-store-prov-post (state)
+  ; The provenance of an article this node injected: the principal is the
+  ; node's configured <path-identity> (books/path.lisp syntax, the same slot
+  ; `fn-peer-local-identity' reads) and the generation is the configuration
+  ; generation the acceptance is made under.  ACL2 also decides which FORM
+  ; goes to the store: the canonical wire when the record fits the record
+  ; grammar's evidence field, and otherwise the legacy rendering, so the
+  ; host can never hand the store a value the grammar refuses.
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((cfg (f-get-global 'fn-store-cfg state))
+         (identity (fn-cfg-policy (fn-cfg-value cfg) "path-identity"))
+         ; An unset "path-identity" policy reads as the empty string; a
+         ; provenance never names an empty principal, so ACL2 substitutes
+         ; the one honest word for "this node, unidentified".
+         (principal (if (and (stringp identity) (not (equal identity "")))
+                        identity
+                      "local"))
+         (p (fn-prov-make-post principal (fn-cfg-generation cfg))))
+    (value (fn-record-string-octets
+            (if (fn-prov-durablep p) (fn-prov-wire p) (fn-prov-render p))))))
+
+(defun fn-store-prov-describe (evidence-octets state)
+  ; The lossless line the CLI prints for one stored evidence value.  A value
+  ; written before this lane decodes as the `:legacy' kind and prints as
+  ; itself; a wire form prints its fields.
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-record-string-octets
+          (fn-prov-describe
+           (fn-prov-of-wire (fn-record-octets-string evidence-octets))))))
+
+(defun fn-store-prov-for-msgid (msgid-octets state)
+  ; The provenance of the article with this Message-ID, from the LIVE node:
+  ; the binding gives the obligation id, the retention pin gives the evidence
+  ; the acceptance recorded.  NIL when the node holds no such binding or the
+  ; pin has been released.
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((node (fn-sn-node (f-get-global 'fn-store-sn state)))
+         (msgid (fn-store-octets->string msgid-octets))
+         (binding (and (not (equal msgid :bad))
+                       (fn-node-find-binding msgid (fn-node-bindings node))))
+         (pin (and binding
+                   (fn-retain-find-id (fn-node-binding-id binding)
+                                      (fn-retain-pins (fn-node-retention node))))))
+    (value (if pin
+               (let ((ev (fn-retain-obligation-evidence pin)))
+                 (fn-record-string-octets
+                  (fn-prov-describe (if (stringp ev) (fn-prov-of-wire ev) ev))))
+             nil))))
