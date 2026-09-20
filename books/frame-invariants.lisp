@@ -883,22 +883,40 @@
             (equal (len (fn-frame-field-octets :text bid)) (+ 2 (len bid))))
    :hints (("Goal" :in-theory (enable fn-frame-field-octets)))))
 
+; The blob field's length prefix is four octets where the text field's is two,
+; so the inbound head is `2 + (len bid) + 4 + (len ident)` and the theorem
+; below needs both lengths in closed form before `fn-frame-header-octets` can
+; discharge the declared length.  Without this the identity field's length
+; stays as an opaque `(len (fn-frame-field-octets :blob ident))` term and
+; Subgoal 8' asks whether the header is an octet list of an unknown length.
+(local
+ (defthm fn-frame-blob-field-octets-len
+   (implies (fn-frame-blobp ident)
+            (equal (len (fn-frame-field-octets :blob ident)) (+ 4 (len ident))))
+   :hints (("Goal" :in-theory (enable fn-frame-field-octets)))))
+
 (defthm fn-frame-inbound-open-of-prefix
   (implies (and (fn-frame-textp bid)
+                (fn-frame-blobp ident)
+                (<= (len ident) *fn-frame-max-identity*)
                 (natp bundle-length)
-                (<= (+ 2 (len bid) bundle-length)
+                (<= (+ 2 (len bid) 4 (len ident) bundle-length)
                     *fn-frame-max-inbound-payload*)
                 (fn-cbor-octet-listp tail)
                 (fn-cbor-at-mostp
-                 (append (fn-frame-inbound-prefix bid bundle-length) tail)
-                 (+ *fn-frame-header-octets* 2 *fn-frame-max-text*))
+                 (append (fn-frame-inbound-prefix bid ident bundle-length)
+                         tail)
+                 (+ *fn-frame-header-octets* 2 *fn-frame-max-text* 4
+                    *fn-frame-max-identity*))
                 (fn-frame-digestp digest))
            (equal (fn-frame-inbound-open
-                   (append (fn-frame-inbound-prefix bid bundle-length) tail)
-                   (+ *fn-frame-overhead-octets* 2 (len bid) bundle-length)
+                   (append (fn-frame-inbound-prefix bid ident bundle-length)
+                           tail)
+                   (+ *fn-frame-overhead-octets* 2 (len bid) 4 (len ident)
+                      bundle-length)
                    digest digest)
                   (fn-frame-ok *fn-frame-magic-inbound* *fn-frame-version*
-                               bid bundle-length)))
+                               (list bid ident) bundle-length)))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-frame-inbound-open fn-frame-inbound-prefix
                             fn-frame-magicp fn-frame-digestp fn-frame-item)

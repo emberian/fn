@@ -460,3 +460,135 @@
   (not (equal (fn-bpp-data-hop-count
                (fn-bpp-hop-count-data (fn-bpp-make-hop-count 0 0)))
               (fn-bpp-make-hop-count 0 0)))))
+
+; -----------------------------------------------------------------------------
+; The primary-block identity: witnesses that it separates, and that it is the
+; canonical CBOR of exactly the projection the book documents.
+;
+; `fn-bpp-primary-identity-determines-adu-key` proves one direction over all
+; blocks.  Separation is the other direction and is bitten here by instance:
+; each pair below differs in exactly one identity field and nothing else.
+
+(defconst *bpp-id-n1* (cons :dtn '(47 47 110 49 47)))
+(defconst *bpp-id-n2* (cons :dtn '(47 47 110 50 47)))
+
+(defun bpp-id-block (source time sequence)
+  (fn-bpp-make-block 0 0 *bpp-id-n1* source *bpp-id-n1* time sequence 1000 nil nil))
+
+(defun bpp-id-fragment (source time sequence offset total)
+  (fn-bpp-make-block 1 0 *bpp-id-n1* source *bpp-id-n1* time sequence 1000
+                     offset total))
+
+(assert-event (fn-bpp-blockp (bpp-id-block *bpp-id-n1* 100 1)))
+(assert-event (fn-bpp-blockp (bpp-id-fragment *bpp-id-n1* 100 1 0 8)))
+
+; A non-degenerate witness: the identity is a non-empty octet list and it is
+; not the identity of the block that differs only in its source.
+(assert-event (consp (fn-bpp-primary-identity (bpp-id-block *bpp-id-n1* 100 1))))
+(assert-event
+ (not (equal (fn-bpp-primary-identity (bpp-id-block *bpp-id-n1* 100 1))
+             (fn-bpp-primary-identity (bpp-id-block *bpp-id-n2* 100 1)))))
+
+; ... nor of the block that differs only in the creation time ...
+(assert-event
+ (not (equal (fn-bpp-primary-identity (bpp-id-block *bpp-id-n1* 100 1))
+             (fn-bpp-primary-identity (bpp-id-block *bpp-id-n1* 101 1)))))
+
+; ... nor only in the sequence number.
+(assert-event
+ (not (equal (fn-bpp-primary-identity (bpp-id-block *bpp-id-n1* 100 1))
+             (fn-bpp-primary-identity (bpp-id-block *bpp-id-n1* 100 2)))))
+
+; A fragment is never confused with the whole bundle of the same ADU key,
+; because the encoded array has five elements rather than three.
+(assert-event
+ (not (equal (fn-bpp-primary-identity (bpp-id-block *bpp-id-n1* 100 1))
+             (fn-bpp-primary-identity (bpp-id-fragment *bpp-id-n1* 100 1 0 8)))))
+
+; Two fragments of one ADU are not duplicates of each other.
+(assert-event
+ (not (equal (fn-bpp-primary-identity (bpp-id-fragment *bpp-id-n1* 100 1 0 8))
+             (fn-bpp-primary-identity (bpp-id-fragment *bpp-id-n1* 100 1 4 8)))))
+
+; The documented limit of the projection, stated as a ground fact rather than
+; as prose.  The identity of a fragment is exactly five values: the source,
+; the creation time, the sequence number, the fragment offset and the TOTAL
+; ADU length.  RFC 9171 section 4.3.1 identifies a fragment by THIS bundle's
+; payload length, which lives in the payload block and appears nowhere in the
+; list below, so two fragments of one ADU at one offset with different payload
+; lengths have equal identities here.
+(assert-event
+ (equal (fn-bpp-primary-identity-value (bpp-id-fragment *bpp-id-n1* 100 1 0 8))
+        (list :array (fn-bpp-eid-value *bpp-id-n1*)
+              (cons :uint 100) (cons :uint 1) (cons :uint 0) (cons :uint 8))))
+
+; The fifth value is the total ADU length and not a payload length: changing
+; it separates, which is what makes the assertion above a statement about
+; which field is absent rather than about a field that does nothing.
+(assert-event
+ (not (equal (fn-bpp-primary-identity (bpp-id-fragment *bpp-id-n1* 100 1 0 8))
+             (fn-bpp-primary-identity (bpp-id-fragment *bpp-id-n1* 100 1 0 9)))))
+
+; Routing, lifetime and CRC type are outside the projection, by witness as
+; well as by the general theorem.
+(assert-event
+ (equal (fn-bpp-primary-identity
+         (fn-bpp-with-destination (bpp-id-block *bpp-id-n1* 100 1) *bpp-id-n2*))
+        (fn-bpp-primary-identity (bpp-id-block *bpp-id-n1* 100 1))))
+
+; The identity octets are this profile's canonical CBOR: they decode back to
+; the projection with nothing trailing.
+(assert-event
+ (fn-cbor-result-okp
+  (fn-bpc-decode-exact (fn-bpp-primary-identity (bpp-id-block *bpp-id-n1* 100 1)))))
+(assert-event
+ (equal (fn-cbor-result-value
+         (fn-bpc-decode-exact
+          (fn-bpp-primary-identity (bpp-id-block *bpp-id-n1* 100 1))))
+        (fn-bpp-primary-identity-value (bpp-id-block *bpp-id-n1* 100 1))))
+
+; Teeth for the two hypothesis-carrying identity theorems.
+;
+; `fn-bpp-primary-identity-is-octets` has no hypothesis to bite: every branch
+; of `fn-bpc-enc` returns octets or nil, so no violating value exists and the
+; hypothesis was deleted rather than left unbitten (docs/proof-style.md
+; section 5).
+
+; `fn-bpp-primary-identity-value-is-shape`, hypothesis `(fn-bpp-blockp b)`: a
+; block whose creation time is not a natural encodes a `:uint` of a non-number,
+; and the conclusion fails on it.
+(defconst *bpp-id-bad-time* (bpp-id-block *bpp-id-n1* :not-a-time 1))
+
+(assert-event (not (fn-bpp-blockp *bpp-id-bad-time*)))
+(assert-event
+ (with-guard-checking :none
+  (not (fn-bpc-shapep :item
+                      (fn-bpp-primary-identity-value *bpp-id-bad-time*)))))
+
+; `fn-bpp-primary-identity-determines-adu-key`, hypothesis `(fn-bpp-blockp b)`:
+; `fn-bpp-eid-value` sends every endpoint that is not `dtn:none` and not `ipn`
+; to the same value as the `dtn` endpoint with that scheme-specific part, so a
+; forged source with an unknown scheme tag has the identity of the real one and
+; a different ADU key.  Only `fn-bpp-eidp` in the hypothesis rules it out.
+(defconst *bpp-id-forged*
+  (bpp-id-block (cons :other '(47 47 110 49 47)) 100 1))
+
+(assert-event (not (fn-bpp-blockp *bpp-id-forged*)))
+(assert-event (fn-bpp-blockp (bpp-id-block *bpp-id-n1* 100 1)))
+(assert-event
+ (with-guard-checking :none
+  (equal (fn-bpp-primary-identity-value *bpp-id-forged*)
+         (fn-bpp-primary-identity-value (bpp-id-block *bpp-id-n1* 100 1)))))
+(assert-event
+ (with-guard-checking :none
+  (not (equal (fn-bpp-adu-key *bpp-id-forged*)
+              (fn-bpp-adu-key (bpp-id-block *bpp-id-n1* 100 1))))))
+
+; ... and its equality hypothesis is not vacuous: two blocks that differ in the
+; sequence number have different identity values and different ADU keys.
+(assert-event
+ (not (equal (fn-bpp-primary-identity-value (bpp-id-block *bpp-id-n1* 100 1))
+             (fn-bpp-primary-identity-value (bpp-id-block *bpp-id-n1* 100 2)))))
+(assert-event
+ (not (equal (fn-bpp-adu-key (bpp-id-block *bpp-id-n1* 100 1))
+             (fn-bpp-adu-key (bpp-id-block *bpp-id-n1* 100 2)))))

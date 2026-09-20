@@ -93,6 +93,11 @@ def main() -> int:
                 raise RuntimeError("extracted ADU violates ingress bound")
             return value
 
+    def bundle(bid: str) -> bytes:
+        # The raw bundle, exactly as the agent holds it.  ACL2 decodes its
+        # primary block; the pinned extractor is not consulted about identity.
+        return client.download_bundle(bid)
+
     def delete(bid: str) -> None:
         client.delete(bid)
 
@@ -120,7 +125,7 @@ def main() -> int:
     result = ingress.ingest_bpa_adu(
         store_root=args.store, journal_root=args.journal,
         journal_module_path=args.workflow_journal, bid=args.bid,
-        inventory=inventory, download=download, delete=delete,
+        inventory=inventory, download=download, delete=delete, bundle=bundle,
         destination=args.destination, source_eid=args.source_eid, lifetime=args.lifetime)
     expected_outcome = "accepted" if args.phase == "accept" else "duplicate"
     if result.outcome != expected_outcome or args.bid in inventory():
