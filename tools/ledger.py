@@ -330,6 +330,12 @@ class Function:
     verify_guards_decl: str | None
     verified_by_event: bool = False
     local: bool = False
+    # `:mode :program`: no definitional axiom, so no rule and nothing to
+    # export.  Macro plumbing (`books/defrecord.lisp`) is written this way.
+    program: bool = False
+    # Emitted by `fn-defrecord`, not written in the file.  The hand-written
+    # record lint reads the source, so it must not see the macro's output.
+    generated: bool = False
 
     @property
     def guard_status(self) -> str:
@@ -418,6 +424,20 @@ def declared(rest: list) -> tuple[bool, str | None]:
     return has_guard, setting
 
 
+def program_mode(rest: list) -> bool:
+    """Is this defun `(declare (xargs :mode :program))`?"""
+    for item in rest:
+        if head(item) != "declare":
+            continue
+        for declaration in item[1:]:
+            if head(declaration) != "xargs":
+                continue
+            value = keyword_plist(declaration[1:]).get(":mode")
+            if isinstance(value, Sym) and str(value) == ":program":
+                return True
+    return False
+
+
 def analyze_book(path: Path, relative: str) -> Book:
     book = Book(path=relative)
     try:
@@ -436,14 +456,157 @@ def analyze_book(path: Path, relative: str) -> Book:
     return book
 
 
-def record(book: Book, form: object, line: int, *, local: bool, suppressed: bool) -> None:
+# --------------------------------------------------------------------------
+# fn-defrecord
+# --------------------------------------------------------------------------
+#
+# `books/defrecord.lisp` owns the record pattern; this reads its output, the
+# way `Reader` reads ACL2's syntax.  Without it a migrated book loses forty
+# names from `definitions` (the host-names lint then calls every one of them
+# undefined), its recognizers vanish from `disabled_rules` (the
+# include-hygiene lint then warns about every includer), and its guard and
+# theorem counts fall.  Keep the two in step: the macro is proved by
+# `tests/acl2/defrecord-tests.lisp`, and this side is pinned by
+# `tests/test_ledger.py`.
+
+
+def selector_term(index: int, car_fn: str, cdr_fn: str, var: str) -> object:
+    """``(car (cdr^index var))`` in the given primitives."""
+    term: object = Sym(var)
+    for _ in range(index):
+        term = [Sym(cdr_fn), term]
+    return [Sym(car_fn), term]
+
+
+def defrecord_fields(value: object) -> list[tuple[str, object]]:
+    fields: list[tuple[str, object]] = []
+    if not isinstance(value, list):
+        return fields
+    for entry in value:
+        if isinstance(entry, list) and entry and isinstance(entry[0], Sym):
+            fields.append((str(entry[0]), entry[1] if len(entry) > 1 else Sym("t")))
+    return fields
+
+
+def defrecord_expansion(form: list) -> list:
+    """The events ``(fn-defrecord ...)`` generates, as the ledger sees them."""
+    if not (len(form) >= 2 and isinstance(form[1], Sym)):
+        return []
+    name = str(form[1])
+    options = keyword_plist(form[2:])
+    constructor = options.get(":constructor")
+    if not (isinstance(constructor, list) and constructor
+            and isinstance(constructor[0], Sym)):
+        return []
+    ctor = str(constructor[0])
+    formals = [item for item in constructor[1:] if isinstance(item, Sym)]
+    fields = defrecord_fields(options.get(":fields"))
+    tag = options.get(":tag")
+    tagged = isinstance(tag, Sym) and str(tag) != "nil"
+    shape = str(options.get(":shape") or Sym(name + "-shapep"))
+    recognizer_option = options.get(":recognizer", Sym(name + "p"))
+    recognizer = (None if isinstance(recognizer_option, Sym)
+                  and str(recognizer_option) == "nil" else str(recognizer_option))
+    internals = str(options.get(":internals") or Sym(name + "-internals"))
+    car_fn = str(options.get(":car-fn") or Sym("fn-ag-car"))
+    cdr_fn = str(options.get(":cdr-fn") or Sym("fn-ag-cdr"))
+    offset = 1 if tagged else 0
+    width = offset + len(fields)
+    guard = [Sym("declare"), [Sym("xargs"), Sym(":guard"), Sym("t")]]
+    deferred = [Sym("declare"), [Sym("xargs"), Sym(":guard"), Sym("t"),
+                                 Sym(":verify-guards"), Sym("nil")]]
+    call: list = [Sym(ctor)] + list(formals)
+    shape_body = [Sym("and"), [Sym("true-listp"), Sym("x")],
+                  [Sym("equal"), [Sym("len"), Sym("x")], width]]
+    if tagged:
+        shape_body.append([Sym("equal"), [Sym("car"), Sym("x")], tag])
+    events: list = [
+        [Sym("defun"), Sym(shape), [Sym("x")], guard, shape_body],
+        [Sym("defun"), Sym(ctor), list(formals), guard,
+         [Sym("list")] + ([tag] if tagged else []) + list(formals)],
+    ]
+    for index, (accessor, _type) in enumerate(fields):
+        events.append([Sym("defun"), Sym(accessor), [Sym("x")], deferred,
+                       [Sym("mbe"), Sym(":logic"),
+                        selector_term(index + offset, "car", "cdr", "x"),
+                        Sym(":exec"),
+                        selector_term(index + offset, car_fn, cdr_fn, "x")]])
+        events.append([Sym("verify-guards"), Sym(accessor)])
+    events.append([Sym("defthm"), Sym(f"{shape}-of-{ctor}"), [Sym(shape)] + call])
+    for accessor, _type in fields:
+        events.append([Sym("defthm"), Sym(f"{accessor}-of-{ctor}"),
+                       [Sym("equal"), [Sym(accessor)] + call, Sym("field")]])
+    primed = [Sym(str(formal) + "-2") for formal in formals]
+    events.append([Sym("defthm"), Sym(f"{ctor}-injective"),
+                   [Sym("equal"),
+                    [Sym("equal"), call, [Sym(ctor)] + primed],
+                    [Sym("and")] + [[Sym("equal"), left, right]
+                                    for left, right in zip(formals, primed)]],
+                   Sym(":rule-classes"), Sym("nil")])
+    events.append([Sym("defthm"), Sym(f"{shape}-forward-shape"),
+                   [Sym("implies"), [Sym(shape), Sym("x")],
+                    [Sym("and"), [Sym("consp"), Sym("x")],
+                     [Sym("true-listp"), Sym("x")]]],
+                   Sym(":rule-classes"), Sym(":forward-chaining")])
+    events.append([Sym("defthm"), Sym(f"{name}-accessors-forward-consp"),
+                   [Sym("and")] + [[Sym("implies"), [Sym(accessor), Sym("x")],
+                                    [Sym("consp"), Sym("x")]]
+                                   for accessor, _type in fields],
+                   Sym(":rule-classes"), Sym(":forward-chaining")])
+    events.append([Sym("deftheory"), Sym(internals),
+                   [Sym("quote"), [[Sym(":d"), Sym(rune)]
+                                   for rune in [shape, ctor]
+                                   + [accessor for accessor, _ in fields]]]])
+    events.append([Sym("in-theory"), [Sym("disable"), Sym(internals)]])
+    if recognizer is not None:
+        conjuncts_ = [[Sym(shape), Sym("x")]]
+        for accessor, type_term in fields:
+            if isinstance(type_term, Sym):
+                if str(type_term) != "t":
+                    conjuncts_.append([type_term, [Sym(accessor), Sym("x")]])
+            else:
+                conjuncts_.append(type_term)
+        extra = options.get(":extra")
+        if isinstance(extra, list):
+            conjuncts_.extend(extra)
+        events.append([Sym("defun"), Sym(recognizer), [Sym("x")], guard,
+                       [Sym("and")] + conjuncts_])
+        events.append([Sym("defthm"), Sym(f"{recognizer}-forward-shape"),
+                       [Sym("implies"), [Sym(recognizer), Sym("x")],
+                        [Sym("and"), [Sym("consp"), Sym("x")],
+                         [Sym("true-listp"), Sym("x")]]],
+                       Sym(":rule-classes"), Sym(":forward-chaining")])
+    return events
+
+
+def defrecord_export_expansion(form: list) -> list:
+    """The ``deftheory`` and withdrawal ``(fn-defrecord-export ...)`` generates."""
+    if not (len(form) >= 2 and isinstance(form[1], Sym)):
+        return []
+    theory = str(form[1])
+    options = keyword_plist(form[2:])
+    names: list = []
+    records = options.get(":records")
+    if isinstance(records, list):
+        names += [Sym(str(item) + "p") for item in records if isinstance(item, Sym)]
+    for key in (":recognizers", ":also"):
+        value = options.get(key)
+        if isinstance(value, list):
+            names += [item for item in value if isinstance(item, Sym)]
+    return [[Sym("deftheory"), Sym(theory), [Sym("quote"), names]],
+            [Sym("in-theory"), [Sym("disable"), Sym(theory)]]]
+
+
+def record(book: Book, form: object, line: int, *, local: bool,
+           suppressed: bool, generated: bool = False) -> None:
     name = head(form)
     if name is None:
         return
     if name in TRANSPARENT:
         inner_local = local or name == "local"
         for item in form[1:]:
-            record(book, item, line, local=inner_local, suppressed=suppressed)
+            record(book, item, line, local=inner_local, suppressed=suppressed,
+                   generated=generated)
         return
     if name == "encapsulate":
         if not suppressed:
@@ -451,17 +614,26 @@ def record(book: Book, form: object, line: int, *, local: bool, suppressed: bool
             if len(form) >= 2:
                 book.definitions |= encapsulated_names(form[1])
         for item in form[2:]:
-            record(book, item, line, local=local, suppressed=suppressed)
+            record(book, item, line, local=local, suppressed=suppressed,
+                   generated=generated)
         return
     if name in SUPPRESSING:
         if name.startswith("must-fail") and not suppressed:
             book.must_fails += 1
             book.must_fail_forms.append((line, list(form[1:])))
         for item in form[1:]:
-            record(book, item, line, local=local, suppressed=True)
+            record(book, item, line, local=local, suppressed=True,
+                   generated=generated)
         return
     if name == "make-event":
         return  # not statically readable; reporting it as an event would be a guess
+    if name in ("fn-defrecord", "fn-defrecord-export"):
+        expansion = (defrecord_expansion(form) if name == "fn-defrecord"
+                     else defrecord_export_expansion(form))
+        for item in expansion:
+            record(book, item, line, local=local, suppressed=suppressed,
+                   generated=True)
+        return
     if suppressed:
         return
     if name in ("defthm", "defthmd") and len(form) >= 3 and isinstance(form[1], Sym):
@@ -479,7 +651,8 @@ def record(book: Book, form: object, line: int, *, local: bool, suppressed: bool
             name=str(form[1]), book=book.path, line=line,
             formals=form[2] if isinstance(form[2], list) else [],
             body=form[-1], declared_guard=has_guard,
-            verify_guards_decl=setting, local=local))
+            verify_guards_decl=setting, local=local, generated=generated,
+            program=program_mode(form[3:])))
         return
     if name == "verify-guards" and len(form) >= 2 and isinstance(form[1], Sym):
         book.verify_guards.append(str(form[1]))
@@ -815,10 +988,11 @@ def if_branches(form: object, found: list | None = None) -> list:
 # export and teeth lints
 # --------------------------------------------------------------------------
 #
-# Four WARN lints, all counted in the generated ledger.  None is a claim
+# Five WARN lints, all counted in the generated ledger.  None is a claim
 # that a theorem is wrong: the first three name the ways this tree has
-# repeatedly made later proofs expensive, and the fourth (below, over the
-# host files) names the way it has repeatedly made bridges fail to start.
+# repeatedly made later proofs expensive, the fourth (below, over the host
+# files) names the way it has repeatedly made bridges fail to start, and the
+# fifth counts the records still written out by hand.
 #
 # * Export hygiene.  A book's micro discipline (`planning/deputies/BRIEF.md`)
 #   is that accessor equalities and `len` backchaining rules stay inside the
@@ -1047,6 +1221,25 @@ def has_export_theory(book: Book) -> bool:
     return bool(book.disabled_rules)
 
 
+def exports_no_rule(book: Book) -> bool:
+    """Has this book no rule to export, whatever its theory events say?
+
+    A macro book (`books/defrecord.lisp`, `books/deftransition.lisp`) defines
+    macros and `:program`-mode plumbing.  `:program` mode has no definitional
+    axiom, so the book adds nothing to any theory and including it cannot
+    cost an includer a rule.  Withdrawing nothing is then the honest export
+    event, not a missing one.
+    """
+    return (bool(book.functions)
+            and all(function.program for function in book.functions)
+            and not book.theorems
+            and not book.encapsulates
+            # An include-only shim re-exports what it includes, whatever it
+            # does or does not define itself.
+            and not book.includes
+            and not book.system_includes)
+
+
 def included_path(book: Book, reference: str) -> str:
     """The repository path a book's ``include-book`` string names."""
     return resolve((Path(book.path).parent / reference).with_suffix(".lisp").as_posix())
@@ -1062,7 +1255,7 @@ def include_hygiene(tree: "Tree") -> list[dict]:
             # does not resolve) has no export theory to judge.
             if target is None or target.read_error is not None:
                 continue
-            if has_export_theory(target):
+            if has_export_theory(target) or exports_no_rule(target):
                 continue
             findings.append({
                 "book": book.path, "line": line, "include": reference,
@@ -1507,11 +1700,91 @@ def host_names(tree: "Tree") -> list[dict]:
     return findings
 
 
+# --------------------------------------------------------------------------
+# hand-written record lint
+# --------------------------------------------------------------------------
+#
+# The fifth lint, and the only one about a migration rather than a defect.
+# `books/defrecord.lisp` generates the pattern of docs/proof-style.md section
+# 1; a book that still writes it out has eleven events per three-field record
+# to keep in step by hand, and the tree has repeatedly lost one of the three
+# forward-chaining shape facts that way and paid for it in a rule fan.  WARN,
+# never an error: a hand-written record is correct, it is just not generated,
+# and the count is how the migration stays visible.
+
+SELECTOR_PRIMITIVES = {"car", "cdr", "fn-ag-car", "fn-ag-cdr"}
+
+
+def selector_over(form: object, variable: str) -> bool:
+    """Is this a total positional selector applied to `variable`?
+
+    Two shapes are in the tree: the `car`/`cdr` chain `books/acceptance.lisp`
+    writes under an `mbe`, and the `(fn-bp-nth 3 x)` call `books/scheduler.lisp`
+    and the bp books write.  Both are one field of a raw-list record.
+    """
+    if isinstance(form, Sym):
+        return str(form) == variable
+    if not isinstance(form, list) or not form or not isinstance(form[0], Sym):
+        return False
+    name = str(form[0])
+    if name in SELECTOR_PRIMITIVES and len(form) == 2:
+        return selector_over(form[1], variable)
+    if name.endswith("-nth") and len(form) == 3 and isinstance(form[1], int):
+        return selector_over(form[2], variable)
+    return False
+
+
+def accessor_body(body: object, variable: str) -> bool:
+    """The body of a one-field accessor, with an `mbe` wrapper stripped."""
+    if head(body) == "mbe":
+        logic = keyword_plist(body[1:]).get(":logic")
+        return logic is not None and selector_over(logic, variable)
+    return selector_over(body, variable)
+
+
+def hand_written_record(tree: "Tree") -> list[dict]:
+    """Books whose records are written out instead of generated.
+
+    One finding per book, at its first shape predicate: the pattern is a book
+    property, and reporting it per record would repeat the same accessor
+    count once per record in the book.
+    """
+    findings: list[dict] = []
+    for book in sorted(tree.books.values(), key=lambda b: b.path):
+        written = [f for f in book.functions if not f.generated
+                   and len(f.formals) == 1 and isinstance(f.formals[0], Sym)]
+        accessors: dict[str, int] = {}
+        shapes: dict[str, list[Function]] = {}
+        for function in written:
+            variable = str(function.formals[0])
+            if accessor_body(function.body, variable):
+                accessors[variable] = accessors.get(variable, 0) + 1
+            elif function.name.endswith("-shapep"):
+                shapes.setdefault(variable, []).append(function)
+        for variable, found in sorted(shapes.items()):
+            count = accessors.get(variable, 0)
+            if count < 3:
+                continue
+            names = ", ".join(sorted(f.name for f in found))
+            findings.append({
+                "book": book.path, "line": min(f.line for f in found),
+                "shape": sorted(f.name for f in found)[0], "shapes": len(found),
+                "accessors": count, "variable": variable,
+                "reason": (f"hand-written record: {len(found)} shape "
+                           f"predicate(s) ({names}) and {count} one-argument "
+                           f"selector accessors over `{variable}` are written "
+                           "out; books/defrecord.lisp generates this pattern "
+                           "with fn-defrecord"),
+            })
+    return findings
+
+
 def lint_findings(tree: "Tree") -> dict[str, list[dict]]:
     return {"export_hygiene": export_hygiene(tree),
             "teeth_form": teeth_form(tree),
             "include_hygiene": include_hygiene(tree),
-            "host_names": host_names(tree)}
+            "host_names": host_names(tree),
+            "hand_written_record": hand_written_record(tree)}
 
 
 def lint_warnings(tree: "Tree | None" = None) -> list[str]:
@@ -1530,6 +1803,9 @@ def lint_warnings(tree: "Tree | None" = None) -> list[str]:
     for entry in findings["host_names"]:
         lines.append(f"host names: {entry['host']}:{entry['line']}: "
                      f"{entry['name']}: {entry['reason']}")
+    for entry in findings["hand_written_record"]:
+        lines.append(f"hand-written record: {entry['book']}:{entry['line']}: "
+                     f"{entry['shape']}: {entry['reason']}")
     return lines
 
 
@@ -1647,6 +1923,7 @@ def build_ledger(tree: Tree) -> dict:
     totals["teeth_form_warnings"] = len(lints["teeth_form"])
     totals["include_hygiene_warnings"] = len(lints["include_hygiene"])
     totals["host_names_warnings"] = len(lints["host_names"])
+    totals["hand_written_record_warnings"] = len(lints["hand_written_record"])
     suspects = [{"theorem": name,
                  "book": tree.theorems[name].book,
                  "line": tree.theorems[name].line,
@@ -1698,10 +1975,12 @@ def ledger_markdown(ledger: dict) -> str:
         f"| Teeth-form warnings | {totals['teeth_form_warnings']} |",
         f"| Include-hygiene warnings | {totals['include_hygiene_warnings']} |",
         f"| Host-names warnings | {totals['host_names_warnings']} |",
+        f"| Hand-written-record warnings | "
+        f"{totals['hand_written_record_warnings']} |",
         "",
         "## Lints",
         "",
-        "Four WARN lints, counted above and listed in full under `lints` in",
+        "Five WARN lints, counted above and listed in full under `lints` in",
         "[`ledger.json`](ledger.json). *Export hygiene* counts theorems a book",
         "leaves enabled whose shape rewrites downstream goals out of accessor",
         "vocabulary: an equality between two one-argument applications, or a",
@@ -1721,8 +2000,15 @@ def ledger_markdown(ledger: dict) -> str:
         "reads -- that nothing those files include, `ld` or inherit from",
         "`tools/acl2-builtins.txt` defines: the shape of the",
         "`*fn-store-groups*` reference that survived the group table and broke",
-        "every `Acl2Store` start-up. No lint judges truth;",
-        "`python3 tools/ledger.py --check --strict` turns all four into errors.",
+        "every `Acl2Store` start-up. *Hand-written record* counts books",
+        "whose records are written out event by event instead of generated",
+        "by `fn-defrecord` (`books/defrecord.lisp`): a shape predicate and",
+        "three or more one-argument selector accessors over the same",
+        "variable. Writing the pattern by hand is correct and is how the",
+        "tree lost one of the three forward-chaining shape facts four times",
+        "in one cycle, each time for a rule fan; the count is how the",
+        "migration stays visible. No lint judges truth;",
+        "`python3 tools/ledger.py --check --strict` turns all five into errors.",
         "",
         "## Per book",
         "",
