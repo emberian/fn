@@ -41,6 +41,28 @@
                           fn-bs-fencedp fn-bs-dir-quietp)))
 
 ; -----------------------------------------------------------------------------
+; 0. The two list facts a certify-book world does not have.
+;
+; This is the certify/ld gap lane w9/storage-2 recorded, and it is not subtle
+; once named: an `ld' driver that includes several books inherits their
+; enabled rules, and this book's include-closure (byte-store-invariants,
+; store-files-invariants, arithmetic/top) carries neither of these.  Without
+; the first, fn-bs-crash-select-names-are-an-outcome recursed to the
+; induction-depth-limit at 33,381,159 prover steps
+; (build/acl2/certify-20260920T193919Z-1122107,
+; books--byte-store-scan.certify.log:16128); without the second,
+; fn-bs-txn-names-length failed at Subgoal *1/4'.  Both are local: nothing
+; below the book should acquire a global APPEND rule from it.
+(local
+ (defthm fn-bs-member-equal-of-append
+   (iff (member-equal x (append a b))
+        (or (member-equal x a) (member-equal x b)))))
+
+(local
+ (defthm fn-bs-len-of-append
+   (equal (len (append a b)) (+ (len a) (len b)))))
+
+; -----------------------------------------------------------------------------
 ; 1. The three seams.
 
 ; The frontier codec (design 3.1).  Today the frontier file is JSON with a
@@ -244,13 +266,14 @@
 ; The outcome enumeration, exactly as fn-bs-entry-outcomes does it for one
 ; entry's value: every name list a crash can leave, from the operations of
 ; this directory alone.
-(defun fn-bs-names-outcomes (ops old dir)
-  ; DIR is carried so the statement below reads beside fn-bs-names-after;
-  ; the enumeration itself only walks OPS, which is already this directory's.
-  (declare (xargs :guard t :verify-guards nil) (ignorable dir))
+; OPS is already one directory's operation list, so the enumeration takes no
+; directory argument: it mirrors fn-bs-entry-outcomes (byte-store-invariants)
+; exactly, formal for formal.
+(defun fn-bs-names-outcomes (ops old)
+  (declare (xargs :guard t :verify-guards nil))
   (if (consp ops)
-      (append (fn-bs-names-outcomes (cdr ops) old dir)
-              (fn-bs-names-outcomes (cdr ops) (fn-bs-name-step (car ops) old) dir))
+      (append (fn-bs-names-outcomes (cdr ops) old)
+              (fn-bs-names-outcomes (cdr ops) (fn-bs-name-step (car ops) old)))
     (list old)))
 
 (local
@@ -264,17 +287,26 @@
 
 (defthm fn-bs-crash-select-names-are-an-outcome
   (member-equal (fn-bs-names-after (fn-bs-crash-select ops choices unit) old dir)
-                (fn-bs-names-outcomes (fn-bs-ops-for-dir ops dir) old dir))
+                (fn-bs-names-outcomes (fn-bs-ops-for-dir ops dir) old))
   :hints (("Goal" :induct (fn-bs-names-induct ops choices old dir))))
 
 ; -----------------------------------------------------------------------------
 ; 3. The scan (design 3.1).
 
+; The record decoder is a function of the OCTETS, and section 6 needs exactly
+; that: two images that hold the same content at an inode read the same
+; record there.  With the decoder written only as (fn-bs-record-of s ino) the
+; two sides of that equality are two disabled terms over different states and
+; nothing connects them; split in two, the content equality in the hypothesis
+; substitutes and the two sides become the same term.
+(defun fn-bs-record-of-octets (octets)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-frame-store-decode octets
+                         (fn-frame-digest (fn-frame-protected-prefix octets))))
+
 (defun fn-bs-record-of (s ino)
   (declare (xargs :guard t :verify-guards nil))
-  (let ((octets (fn-bs-content s ino)))
-    (fn-frame-store-decode octets
-                           (fn-frame-digest (fn-frame-protected-prefix octets)))))
+  (fn-bs-record-of-octets (fn-bs-content s ino)))
 
 (defun fn-bs-txn-names (n)
   (declare (xargs :guard t :verify-guards nil :measure (nfix n)))
@@ -484,8 +516,12 @@
 (defthm fn-bs-assoc-value-is-in-strip-cdrs
   (implies (assoc-equal k alist)
            (member-equal (cdr (assoc-equal k alist)) (strip-cdrs alist))))
+; ALISTP is load-bearing, not decoration: without it (STRIP-CARS '(NIL)) is
+; (NIL), NAME = NIL is a member of it, and (ASSOC-EQUAL NIL '(NIL)) is NIL --
+; the same shape of falsehood fn-cpp-find-of-append had.  Every entry alist
+; this book applies it to is an alist by fn-bs-alistp-of-dir-entries.
 (defthm fn-bs-assoc-of-name-in-entries
-  (implies (member-equal name (strip-cars alist))
+  (implies (and (alistp alist) (member-equal name (strip-cars alist)))
            (assoc-equal name alist)))
 
 ; -----------------------------------------------------------------------------
@@ -510,7 +546,12 @@
            (equal (fn-bs-read-records a n count)
                   (fn-bs-read-records b n count)))
   :hints (("Goal" :induct (fn-bs-txn-prefix-agreesp a b n count)
-           :in-theory (disable fn-bs-lookup fn-bs-content fn-bs-record-of))))
+           ; fn-bs-record-of is OPEN here, and only here: it opens to
+           ; fn-bs-record-of-octets of the content, which the agreement
+           ; hypothesis then makes the same term on both sides.  The decoder
+           ; itself stays closed.
+           :in-theory (e/d (fn-bs-record-of)
+                           (fn-bs-lookup fn-bs-content fn-bs-record-of-octets)))))
 
 (defthm fn-bs-read-records-len
   (implies (and (natp n) (natp count)
@@ -540,10 +581,13 @@
 ; -----------------------------------------------------------------------------
 ; 7. The transaction namespace of a crash image.
 
+; No :in-theory disabling fn-bs-txn-name: it is a CONSTRAINED function, so
+; there is no definition rule of that name and a theory expression naming it
+; is a hard error under certify-book.  It is already closed; what does the
+; work is the injectivity constraint.
 (defthm fn-bs-txn-name-not-in-txn-names
   (implies (and (natp i) (natp n) (<= n i))
-           (not (member-equal (fn-bs-txn-name i) (fn-bs-txn-names n))))
-  :hints (("Goal" :in-theory (disable fn-bs-txn-name))))
+           (not (member-equal (fn-bs-txn-name i) (fn-bs-txn-names n)))))
 
 (defthm fn-bs-txn-names-of-1+
   (implies (natp n)
