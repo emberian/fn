@@ -63,6 +63,30 @@ way one line later. They now raise `unittest.SkipTest` when `rev-parse` fails,
 naming the reason: a gate that exports the tree cannot run from an export.
 In a real checkout the original path is unchanged.
 
+## What ran, on hbox, in `/tank/fn/lanes/w9-runtime`
+
+`python3 tools/certs.py --cache /tank/fn/certcache install` reported
+`installed 0, kept identical local 212, no cached pair 38`, then
+`FN_ACL2=/tank/fn/acl2-8.7/saved_acl2 swarm-build python3 -m unittest
+discover -s tests -p '<module>.py'`, one module per invocation -- exactly the
+modules the gate failed in these classes, and nothing else.
+
+| Module | Gate d50c392 | Now |
+| --- | --- | --- |
+| `test_checkpoint` | 11 errors | **OK**, ran 6, 184.3 s |
+| `test_bp_ingress_host` | 4 errors | **OK**, ran 4, 55.9 s |
+| `test_media` | 7 errors | **OK**, ran 20, 46.7 s |
+| `test_bp_receive_process_crash` | 5 errors | **OK**, ran 1 (5 subtests), 107.1 s |
+| `campaign.test_campaign` | 1 error | **OK**, ran 4, 691.0 s |
+| `test_host_boundary` | 7 errors | **OK**, ran 16 (3 skipped), 2.1 s |
+| `test_twonode_gate` | 2 `setUpClass` | **OK**, ran 2 (2 skipped) |
+| `test_inn_lab` | 1 `setUpClass` | **OK**, ran 5 (1 skipped) |
+| `test_scale_gate` | 3 `setUpClass` | **OK**, 3 skipped |
+
+The skips in the last three are the export-tree skip described above; the
+rsynced lane tree carries no `.git`, which is exactly the farm-gate condition.
+`test_host_boundary`'s 3 skips are pre-existing.
+
 ## Not touched: cascade from served
 
 The gate's two largest classes are a served-book admission failure another
