@@ -1217,6 +1217,104 @@
       ],
       "evidence": [],
       "note": "Design-review verification; no group crypto has been evaluated against disconnection and recovery."
+    },
+    {
+      "id": "SUB-001",
+      "title": "Statements travel as a canonical FN-Statement field",
+      "specification": "specs/substrate-transport.md#9-registered-requirements",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-019"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [],
+      "note": "The carrier and its encoding: the field is the base64 of the detached fn-stmt- octets and every accepted value has exactly one canonical form. No book exists at this revision; packet S1 of the design owns fn-stx-detached-encode, the base64 layer and fn-stx-field-decode. Registered by packet S0 of the v0.4 substrate-transport wave; specified only, with no ACL2 event behind it."
+    },
+    {
+      "id": "SUB-002",
+      "title": "The statement verdict is computed locally and is three-valued",
+      "specification": "specs/substrate-transport.md#9-registered-requirements",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-020"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [],
+      "note": "The verdict is a function of the received bytes and this node's keyring only, and reports :verified, :unverified or :absent. No book exists at this revision; packet S2 owns fn-stx-verdict and the (:statement ...) evidence value. Registered by packet S0 of the v0.4 substrate-transport wave; specified only, with no ACL2 event behind it."
+    },
+    {
+      "id": "SUB-003",
+      "title": "A peer cannot change a group's policy in force",
+      "specification": "specs/substrate-transport.md#9-registered-requirements",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-024"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [],
+      "note": "The transit authority gate is the policy function over this node's own lace and keyring. No book exists at this revision; packet S4 owns fn-stx-transit-authority-ok and the batch restatement. Registered by packet S0 of the v0.4 substrate-transport wave; specified only, with no ACL2 event behind it."
+    },
+    {
+      "id": "SUB-004",
+      "title": "Equivocation is detected at merge, recorded and never dropped",
+      "specification": "specs/substrate-transport.md#9-registered-requirements",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-021",
+        "PRF-022",
+        "PRF-023"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [],
+      "note": "Both forks of a reissued slot stay in the lace, the durable record is a proved twin of it, and the carried index keeps the linear projection off the served path. No book exists at this revision; packet S3 owns the bridge lemma, fn-stx-lace and fn-stx-index. Registered by packet S0 of the v0.4 substrate-transport wave; specified only, with no ACL2 event behind it."
+    },
+    {
+      "id": "SUB-005",
+      "title": "Merging a reconnected peer's commits never revises admissibility",
+      "specification": "specs/substrate-transport.md#9-registered-requirements",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-025"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [],
+      "note": "Reconnection carries commits and fork evidence, never a roster, and no earlier decision changes. No book exists at this revision; packet S5 owns fn-stx-commits-of-batch and its verified-and-well-formed theorem. Registered by packet S0 of the v0.4 substrate-transport wave; specified only, with no ACL2 event behind it."
+    },
+    {
+      "id": "SUB-006",
+      "title": "The reader exposes the statement bytes and the recorded verdict",
+      "specification": "specs/substrate-transport.md#9-registered-requirements",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-026"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [],
+      "note": "ARTICLE and HEAD return FN-Statement byte-identical and HDR :fn-verified renders the verdict acceptance recorded, with its keyring generation. No book exists at this revision; packet S6 owns fn-stx-render-verdict and the HDR metadata item, and decides the OVER extension. Registered by packet S0 of the v0.4 substrate-transport wave; specified only, with no ACL2 event behind it."
     }
   ]
 }

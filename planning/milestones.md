@@ -42,6 +42,20 @@ dependency order, each ending with an evidence record:
 | v0.5 reconfiguration and storage | Live reconfiguration as an owner event; the byte-level crash model ([K1 to K11](lanes/DESIGN-crash-model-v2-summary.md)); persisted checkpoints; index adoption | Every crash point in the cut table is a transition the model expresses |
 | v0.6 convergence and release | Identity and authority (D01, OBJ-003, OBJ-007), the include-hygiene backlog, one gate over every root on one machine | Every requirement either `implemented`/`validated` with keystones, or `deferred` with a reason |
 
+The v0.4 wave has two halves that share a name. The convergence layer is
+TCPCLv4 (C1 to C4). The statement layer is
+[substrate transport](../specs/substrate-transport.md), whose packets run in
+dependency order: **S0** prefixes and registry (the `fn-stx-` tag, SUB-001 to
+SUB-006, PRF-019 to PRF-026, SCN-019, the `FN-Statement` reservation); **S1**
+the field codec; **S2** the verdict and its evidence values; **S3** the lace
+projection, the bridge lemma and the carried index; **S4** policy on inbound
+transit; **S5** membership epochs across a partition; **S6** the reader's
+`:fn-verified` exposure. S1 and S2 can start now; S3 needs the peering transit
+path, S4 and S5 need S3, S6 needs S2 and the reader profile. Owners,
+deliverables and acceptance are
+[the design's packet table](../specs/substrate-transport.md#8-packets); no
+theorem in §6 of that design exists yet.
+
 **v1 is M6 and beyond**: additional convergence-layer and deployment profiles,
 long and asymmetric contacts, the human web interface, 9p projections, and the
 mission-profile work that needs its own hardware, security and reliability
