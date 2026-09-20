@@ -31,6 +31,10 @@
 (in-package "ACL2")
 (include-book "tcpcl-octets")
 (include-book "clock")
+; clock withdraws fn-clock-observationp under fn-clock-vocabulary and keeps
+; its accessors opaque; fn-tcl-tick reads fn-clock-monotonic under that
+; recognizer, so this book opens it locally (docs/proof-style.md section 2).
+(local (in-theory (enable fn-clock-observationp)))
 
 (local (in-theory (enable fn-tcl-has-is-len-bound)))
 

@@ -30,6 +30,9 @@
 (include-book "tcpcl-session")
 
 (local (in-theory (enable fn-tcl-session-vocabulary fn-tcl-has-is-len-bound)))
+; clock withdraws fn-clock-observationp under fn-clock-vocabulary; the tick
+; keystone reads fn-clock-monotonic under it, so it is opened here as well.
+(local (in-theory (enable fn-clock-observationp)))
 (local (in-theory (disable fn-tcl-sessionp fn-tcl-messagep)))
 
 (local (defthm fn-tcl-append-assoc
