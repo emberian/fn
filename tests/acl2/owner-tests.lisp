@@ -693,20 +693,33 @@
 (assert-event
  (not (fn-sf-record-has-pairp (car (last (fn-own-ledger *own-forged-post*)))
                               (fn-sf-records (fn-sn-files (fn-own-store *own-forged-post*))))))
-; Without (fn-own-find-conn id conns): an unknown connection is answered
-; nothing, the served outcome over the absent connection's fields is nothing
-; too, and nothing is in flight.
+; Without (fn-own-find-conn id conns): the owner answers an unknown
+; connection NOTHING and nothing is in flight.  Until `w10/session-depth'
+; this was also the witness that the theorem's equality hypothesis can hold
+; with no connection, because the served outcome over the absent
+; connection's fields was nothing too.  It is not any more:
+; `fn-nntp-post-outcome' now answers a malformed session with the FOURTH
+; outcome, 403 (`*fn-post-malformed-session-line*',
+; books/nntp-post.lisp), so the two sides DIFFER.  What is asserted is
+; therefore the separation: the owner's refusal is its own, taken before
+; the served path is entered, and it is not the served 403.
+; That settles the hypothesis: no connection-free state can satisfy the
+; equality any more, so `(fn-own-find-conn id (fn-own-conns o))' has no
+; violating value and is DELETED from
+; `fn-own-durable-reply-names-a-durable-record' (docs/proof-style.md
+; section 5).  The theorem is strictly stronger; this assertion is why.
 (assert-event
  (with-guard-checking :none
   (let ((conn (fn-own-find-conn 99 (fn-own-conns *own-after-post*))))
-    (and (equal (car (fn-own-outcome *own-after-post* 99 :durable))
-                (fn-served-result-effects
-                 (fn-served-post-outcome
-                  (fn-served-make-conn (fn-own-conn-wire conn) (fn-own-conn-session conn)
-                                       (fn-own-conn-archive conn) (fn-own-conn-config conn)
-                                       (fn-own-conn-observation conn)
-                                       (fn-own-clock *own-after-post*))
-                  :durable)))
+    (and (null (car (fn-own-outcome *own-after-post* 99 :durable)))
+         (not (equal (car (fn-own-outcome *own-after-post* 99 :durable))
+                     (fn-served-result-effects
+                      (fn-served-post-outcome
+                       (fn-served-make-conn (fn-own-conn-wire conn) (fn-own-conn-session conn)
+                                            (fn-own-conn-archive conn) (fn-own-conn-config conn)
+                                            (fn-own-conn-observation conn)
+                                            (fn-own-clock *own-after-post*))
+                       :durable))))
          (null (fn-own-inflight *own-after-post*))))))
 ; Without the 240 hypothesis: the reply on *own-taken* is the uncertain 441
 ; and nothing was consumed after the mark.

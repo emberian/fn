@@ -1538,9 +1538,17 @@
 ; record in the durable history.  240 from any other word, or from a host
 ; that claims :durable without a consumed completion, is impossible
 ; (fn-post-outcome-240-only-for-a-durable-observation).
+; `(fn-own-find-conn id (fn-own-conns o))' was a hypothesis here and is
+; DELETED (docs/proof-style.md section 5: a hypothesis with no violating
+; value is unnecessary).  Its teeth used to be an absent connection at which
+; the equality still held, because `fn-nntp-post-outcome' answered a
+; malformed session with NO effects and `fn-own-outcome' answers an unknown
+; connection with none either.  Since `w10/session-depth' a malformed
+; session is answered 403, the fourth outcome, so the two sides differ at
+; every connection-free state and the equality now carries the connection
+; itself.  The separation is asserted in `tests/acl2/owner-tests.lisp'.
 (defthm fn-own-durable-reply-names-a-durable-record
   (implies (and (fn-own-relation o)
-                (fn-own-find-conn id (fn-own-conns o))
                 (equal (car (fn-own-outcome o id word))
                        (let ((conn (fn-own-find-conn id (fn-own-conns o))))
                          (fn-served-result-effects
