@@ -690,7 +690,13 @@
 
 (defun fn-peer-command (ps keyword args)
   ; The peer connection's transit commands.  Anything else is nil: delegate.
-  (declare (xargs :guard (fn-peer-sessionp ps) :verify-guards nil))
+  ; The guard names the peer half explicitly.  fn-peer-sessionp pins the
+  ; node and the configuration only for a session that HAS a peer, and
+  ; the IHAVE, CHECK and TAKETHIS arms read both; fn-peer-step calls this
+  ; only on that branch, so the caller discharges it and no reader
+  ; connection can reach an arm that reads an unpinned node.
+  (declare (xargs :guard (and (fn-peer-sessionp ps) (fn-peer-session-peer ps))
+                  :verify-guards nil))
   (let ((node (fn-peer-session-node ps))
         (cfg (fn-peer-session-cfg ps))
         (peer (fn-peer-session-peer ps))
@@ -1065,6 +1071,127 @@
                                    fn-post-sessionp fn-node-statep fn-cfgp
                                    fn-post-open-session-is-consistent))
            :use ((:instance fn-post-open-session-is-consistent)))))
+
+; -----------------------------------------------------------------------------
+; Guards
+;
+; books/served.lisp's fold is executable: fn-served-dispatch has :guard t and
+; is guard verified at definition, so every function it calls must be too.
+; The chain below is what it reaches.  fn-peer-session-consistentp is NOT
+; here and must not be: it walks the pinned archive and is specification
+; vocabulary, exactly as fn-served-connp is (docs/proof-style.md section 4).
+
+; The two decision functions carry `(fn-node-statep node)' as their guard
+; and read the node's two sub-states through it; the recognizer is closed
+; everywhere else, so the fact is supplied once, by forward chaining, in the
+; shape books/bp-release-invariants.lisp already uses.
+(local (defthm fn-peer-node-statep-substates
+  (implies (fn-node-statep node)
+           (and (fn-statep (fn-node-acceptance node))
+                (fn-retain-statep (fn-node-retention node))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d (fn-node-statep)
+                                  (fn-statep fn-retain-statep
+                                   fn-node-binding-listp))))))
+
+; A found peer record IS a peer record: fn-cfg-peer-of-rows ends in
+; `(if (fn-cfg-peerp p) p nil)', so the fact is unconditional, and with it
+; the inbound half's two bounds are posp by fn-cfg-peer-inboundp.  Without
+; these the guard obligations below ask `rationalp' of a total accessor and
+; cannot get it; WITH them no guard has to be strengthened, so the peer
+; interface is unchanged.
+(local (defthm fn-peer-cfg-peer-of-rows-is-a-peer
+  (implies (fn-cfg-peer-of-rows name rows)
+           (fn-cfg-peerp (fn-cfg-peer-of-rows name rows)))
+  :hints (("Goal" :in-theory (e/d (fn-cfg-peer-of-rows)
+                                  (fn-cfg-peerp fn-cfg-peer-make
+                                   fn-cfg-peer-slot))))))
+
+(local (defthm fn-peer-cfg-peer-find-is-a-peer
+  (implies (fn-cfg-peer-find name peers)
+           (fn-cfg-peerp (fn-cfg-peer-find name peers)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d (fn-cfg-peer-find)
+                                  (fn-cfg-peer-of-rows fn-cfg-peerp
+                                   fn-cfg-rows-with-key))))))
+
+(local (defthm fn-peer-transferp-shape
+  (implies (and (fn-peer-transferp x) x)
+           (and (consp x) (consp (cdr x)) (true-listp x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d (fn-peer-transferp)
+                                  (fn-nntp-printable-tokenp
+                                   fn-af-message-idp))))))
+
+(local (defthm fn-peer-sessionp-peer-fields
+  (implies (and (fn-peer-sessionp x) (fn-peer-session-peer x))
+           (and (stringp (fn-peer-session-peer x))
+                (fn-node-statep (fn-peer-session-node x))
+                (fn-cfgp (fn-peer-session-cfg x))
+                (natp (fn-peer-session-inflight x))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d (fn-peer-sessionp)
+                                  (fn-post-sessionp fn-node-statep fn-cfgp
+                                   fn-peer-transferp))))))
+
+(local (defthm fn-peer-inbound-bounds-are-posp
+  (implies (and (fn-cfg-peerp p) (fn-cfg-peer-inbound p))
+           (and (posp (fn-cfg-peer-inbound-max-inflight p))
+                (posp (fn-cfg-peer-inbound-max-octets p))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d (fn-cfg-peerp fn-cfg-peer-inboundp
+                                   fn-cfg-peer-inbound-max-inflight
+                                   fn-cfg-peer-inbound-max-octets)
+                                  (fn-cfg-labelp fn-cfg-wildmatp
+                                   fn-cfg-peer-transportp
+                                   fn-cfg-peer-outboundp fn-cfg-peer-authp
+                                   fn-path-identityp
+                                   fn-record-string-octets))))))
+
+; The configuration vocabulary this book enables at its top is the fan these
+; two obligations pay for: with fn-cfg-peerp, fn-cfg-peer-of-rows and
+; fn-wildmat-parse open, fn-peer-decide-transfer's guard cost more than
+; 2,000,000 prover steps in 38 s and did not close.  Narrowed to the form,
+; which is what docs/proof-style.md's "Never enable a vocabulary book-wide"
+; says to do; the book-wide enable at the top is the defect and is left for
+; the cluster's owner to remove.
+(verify-guards fn-peer-sessionp)
+(verify-guards fn-peer-open-session)
+(verify-guards fn-peer-decide-offer
+  :hints (("Goal" :in-theory (disable fn-cfg-vocabulary fn-cfg-peer-vocabulary
+                                      fn-path-vocabulary fn-node-statep))))
+(verify-guards fn-peer-decide-transfer
+  :hints (("Goal" :in-theory (disable fn-cfg-vocabulary fn-cfg-peer-vocabulary
+                                      fn-path-vocabulary fn-node-statep
+                                      fn-article-parse fn-article-syntax-p
+                                      fn-af-proto-article-check
+                                      fn-peer-scope-groups))))
+(verify-guards fn-peer-injection-arguments)
+(verify-guards fn-peer-transfer
+  :hints (("Goal" :in-theory (disable fn-cfg-vocabulary fn-cfg-peer-vocabulary
+                                      fn-path-vocabulary fn-node-statep
+                                      fn-article-parse fn-article-syntax-p
+                                      fn-af-proto-article-check
+                                      fn-peer-decide-transfer
+                                      fn-peer-injection-arguments
+                                      fn-peer-scope-groups))))
+(verify-guards fn-peer-command
+  :hints (("Goal" :in-theory (disable fn-cfg-vocabulary fn-cfg-peer-vocabulary
+                                      fn-path-vocabulary fn-node-statep
+                                      fn-peer-sessionp fn-cfgp
+                                      fn-article-parse fn-article-syntax-p
+                                      fn-af-proto-article-check
+                                      fn-peer-decide-offer
+                                      fn-peer-scope-groups))))
+(verify-guards fn-peer-delegate)
+(verify-guards fn-peer-step
+  :hints (("Goal" :in-theory (disable fn-cfg-vocabulary fn-cfg-peer-vocabulary
+                                      fn-path-vocabulary fn-node-statep
+                                      fn-peer-sessionp fn-cfgp
+                                      fn-article-parse fn-article-syntax-p
+                                      fn-af-proto-article-check
+                                      fn-peer-command fn-peer-delegate
+                                      fn-peer-transfer fn-peer-scope-groups))))
 
 ; -----------------------------------------------------------------------------
 ; Export theory
