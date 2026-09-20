@@ -53,11 +53,12 @@
 ; books--byte-store-scan.certify.log:16128); without the second,
 ; fn-bs-txn-names-length failed at Subgoal *1/4'.  Both are local: nothing
 ; below the book should acquire a global APPEND rule from it.
-(local
- (defthm fn-bs-member-equal-of-append
-   (iff (member-equal x (append a b))
-        (or (member-equal x a) (member-equal x b)))))
+; fn-bs-member-of-append is byte-store-invariants' own rule, withdrawn with
+; the rest of fn-bs-invariants-vocabulary at that book's end; it is enabled
+; here rather than restated, so the tree keeps one APPEND membership rule.
+(local (in-theory (enable fn-bs-member-of-append)))
 
+; This one is local to byte-store-invariants, so there is nothing to enable.
 (local
  (defthm fn-bs-len-of-append
    (equal (len (append a b)) (+ (len a) (len b)))))
@@ -164,6 +165,12 @@
                           fn-bs-assoc-of-put-assoc-other
                           fn-bs-alistp-of-put-assoc
                           fn-bs-entriesp-implies-alistp
+                          ; the rewrite, so fn-bs-dir-tablep does not have to
+                          ; be OPENED to learn (alistp dirs): profiling the
+                          ; bridge below found 42,664 frames of
+                          ; (:DEFINITION FN-BS-DIR-TABLEP) with no useful
+                          ; application doing exactly that.
+                          fn-bs-dir-tablep-implies-alistp
                           fn-bs-dir-tablep-entries-are-entries
                           fn-bs-put-assoc-preserves-entriesp
                           fn-bs-del-assoc-preserves-entriesp
@@ -223,38 +230,43 @@
                        (strip-cars v)
                      (strip-cars (cdr (assoc-equal dir dirs))))))))
 
-; OPEN, with its exact obligation.  The bridge from fn-bs-apply-entries to
-; fn-bs-names-after:
+; The bridge from fn-bs-apply-entries to fn-bs-names-after.
+(defthm fn-bs-apply-entries-names-is-names-after
+  (implies (and dir (fn-bs-dir-tablep dirs) (fn-bs-op-listp ops))
+           (equal (strip-cars
+                   (cdr (assoc-equal dir (fn-bs-apply-entries dirs ops))))
+                  (fn-bs-names-after
+                   ops (strip-cars (cdr (assoc-equal dir dirs))) dir)))
+  :hints (("Goal" :induct (fn-bs-apply-entries dirs ops)
+           ; The recognizers stay CLOSED.  tools/proof_profile.py on this
+           ; form reported 13 runes with no useful application at all, and
+           ; the top four were the recognizers opening: DEFAULT-CAR 113,606
+           ; frames, FN-BS-ENTRIESP 47,712, FN-BS-DIR-TABLEP 42,664,
+           ; FN-BS-ENTRIESP-IMPLIES-ALISTP 27,456, ALISTP 16,224,
+           ; ASSOC-EQUAL 26,504, plus FN-SF-ADMISSIBLE-IMAGE-FACTS 8,379
+           ; from a book that has nothing to say here.  The two conditional
+           ; fn-bs-assoc-of-put-assoc rules are disabled in favour of the
+           ; IF-producing fn-bs-strip-cars-of-assoc-of-put-assoc above.
+           :in-theory (disable fn-bs-assoc-of-put-assoc-same
+                               fn-bs-assoc-of-put-assoc-other
+                               fn-bs-dir-tablep fn-bs-entriesp alistp
+                               assoc-equal fn-sf-admissible-image-facts))))
+
+; How it closed, recorded because the answer was not another hint.  Three
+; hints were tried by the previous lane and none of them was the cause: the
+; book-wide fn-bs-invariants-vocabulary enable narrowed to the alist rules
+; this section inducts through, fn-bs-strip-cars-of-assoc-of-put-assoc above
+; (one IF-producing rewrite in place of the two conditional ones), and
+; :do-not '(generalize fertilize).  The form still reached the
+; induction-depth-limit at 2,016,278 prover steps.
 ;
-;   (defthm fn-bs-apply-entries-names-is-names-after
-;     (implies (and dir (fn-bs-dir-tablep dirs) (fn-bs-op-listp ops))
-;              (equal (strip-cars
-;                      (cdr (assoc-equal dir (fn-bs-apply-entries dirs ops))))
-;                     (fn-bs-names-after
-;                      ops (strip-cars (cdr (assoc-equal dir dirs))) dir))))
-;
-; The induction scheme is right -- (fn-bs-apply-entries dirs ops), which
-; generalises DIRS, exactly as fn-bs-apply-entries-entry-is-entry-after does.
-; It exhausts a 2,000,000 and then a 40,000,000 prover-step limit in the
-; :set-entry branch; the checkpoint is Subgoal *1/1.4', where the induction
-; hypothesis is stated over
-;   (fn-bs-put-assoc (nth 1 (car ops))
-;                    (fn-bs-put-assoc (nth 2 (car ops)) (nth 3 (car ops))
-;                                     (cdr (assoc-equal (nth 1 (car ops)) dirs)))
-;                    dirs)
-; and the conclusion's accumulator has to be rewritten into that shape.  Three
-; things were tried and left in place so a successor does not retry them: the
-; book-wide fn-bs-invariants-vocabulary enable narrowed to the eight alist
-; rules this section inducts through (not the cause);
-; fn-bs-strip-cars-of-assoc-of-put-assoc above, which states the projection as
-; one IF-producing rewrite while the two conditional
-; fn-bs-assoc-of-put-assoc-{same,other} are disabled at the form; and
-; :do-not '(generalize fertilize).  The next step is
-; tools/proof_profile.py on this form, before a fourth hint.
-;
-; Blocked on it, and on nothing else: fn-bs-crash-names-is-names-after,
-; fn-bs-crash-image-names-are-an-outcome and
-; fn-bs-crash-image-transaction-names (section 7), and through them K1.
+; tools/proof_profile.py named the cause in one run: THIRTEEN runes with no
+; useful application at all, and the top of that list was the recognizers
+; being opened -- FN-BS-ENTRIESP 47,712 frames, FN-BS-DIR-TABLEP 42,664,
+; ALISTP 16,224, ASSOC-EQUAL 26,504, all of them re-deriving (alistp dirs)
+; in every branch.  Closing them, and enabling fn-bs-dir-tablep-implies-alistp
+; so the fact arrives as a rewrite instead, takes the form to 33,789 prover
+; steps and 0.05 seconds.
 
 (defthm fn-bs-names-after-of-tear-write
   (equal (fn-bs-names-after (fn-bs-tear-write op sels i unit) old dir) old))
@@ -373,33 +385,84 @@
   (fn-bs-read-records (fn-bs-durable bs) 0
                       (len (fn-bs-durable-names bs :transactions))))
 
+; The recovery window (design 3.2, decision D14-a): the phases a process is
+; in between replaying what it SCANNED and completing the five recovery
+; fences (tools/run_store.py:1179-1201).  A store reaches them with a
+; NON-EMPTY pending list whenever the previous process died between its link
+; or rename and that operation's directory fence -- process death is not
+; power loss, so the entry operation is still in the kernel's cache and the
+; next process's scan reads it (run_store.py:1100 scans the live directory,
+; 1164 replays what it read, host/store-node-host.lisp:39 builds the
+; :replaying image from it).
+(defun fn-bs-replay-visiblep (ks)
+  (declare (xargs :guard t :verify-guards nil))
+  (member-equal (fn-sf-phase ks) '(:replaying :recovering :fenced-recovery)))
+
+; The SHAPE of the pending half: at most one entry operation per authority
+; directory, at the name the DURABLE namespace fixes, pointing at a fenced
+; inode.  Which VALUE that inode holds is the window's question, below.
+;
+; The name is written from the durable namespace and not as
+; (fn-bs-txn-name (len (fn-sf-records ks))): in the publish window the two
+; are the same number, and in the recovery window the kernel's count is one
+; HIGHER, so only this form names the pending entry at every cut.  That is
+; decision D14-a, and the evidence is in planning/decisions.md.
+(defun fn-bs-pending-shape-okp (bs)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((root-ops (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
+        (txn-ops (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
+    (and (or (null root-ops)
+             (and (equal (len root-ops) 1)
+                  (equal (car (car root-ops)) :set-entry)
+                  (equal (nth 2 (car root-ops)) *fn-bs-scan-frontier-name*)
+                  (fn-bs-inop (nth 3 (car root-ops)))
+                  (fn-bs-fencedp bs (nth 3 (car root-ops)))))
+         (or (null txn-ops)
+             (and (equal (len txn-ops) 1)
+                  (equal (car (car txn-ops)) :set-entry)
+                  (equal (nth 2 (car txn-ops))
+                         (fn-bs-txn-name
+                          (len (fn-bs-durable-names bs :transactions))))
+                  (fn-bs-inop (nth 3 (car txn-ops)))
+                  (fn-bs-fencedp bs (nth 3 (car txn-ops))))))))
+
+; The publish window.  The kernel has not observed the directory barrier, so
+; its record list is still the DURABLE list and the pending entry names the
+; candidate.  The equality is on the record LIST, not on its length: that is
+; what excludes the image holding the candidate twice, because it forces the
+; durable namespace to be the pre-candidate one whenever a link is pending.
 (defun fn-bs-pending-matches-phase (bs ks)
   (declare (xargs :guard t :verify-guards nil))
   (let ((root-ops (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
         (txn-ops (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
-    (and (if (fn-sf-frontier-new-visiblep ks)
-             (or (null root-ops)
-                 (and (equal (len root-ops) 1)
-                      (equal (car (car root-ops)) :set-entry)
-                      (equal (nth 2 (car root-ops)) *fn-bs-scan-frontier-name*)
-                      (fn-bs-inop (nth 3 (car root-ops)))
-                      (fn-bs-fencedp bs (nth 3 (car root-ops)))
-                      (equal (fn-bs-frontier-decode
-                              (fn-bs-durable-content bs (nth 3 (car root-ops))))
-                             (fn-sf-frontier-candidate ks))))
-           (null root-ops))
-         (if (fn-sf-record-present-visiblep ks)
-             (or (null txn-ops)
-                 (and (equal (len txn-ops) 1)
-                      (equal (car (car txn-ops)) :set-entry)
-                      (equal (nth 2 (car txn-ops))
-                             (fn-bs-txn-name
-                              (len (fn-bs-durable-names bs :transactions))))
-                      (fn-bs-inop (nth 3 (car txn-ops)))
-                      (fn-bs-fencedp bs (nth 3 (car txn-ops)))
-                      (equal (fn-bs-record-of (fn-bs-durable bs) (nth 3 (car txn-ops)))
-                             (fn-sf-record-candidate ks))))
-           (null txn-ops)))))
+    (and (fn-bs-pending-shape-okp bs)
+         (if root-ops
+             (and (fn-sf-frontier-new-visiblep ks)
+                  (equal (fn-bs-frontier-decode
+                          (fn-bs-durable-content bs (nth 3 (car root-ops))))
+                         (fn-sf-frontier-candidate ks)))
+           t)
+         (if txn-ops
+             (and (fn-sf-record-present-visiblep ks)
+                  (equal (fn-bs-durable-records bs) (fn-sf-records ks))
+                  (equal (fn-bs-record-of (fn-bs-durable bs) (nth 3 (car txn-ops)))
+                         (fn-sf-record-candidate ks)))
+           t))))
+
+; The recovery window.  The kernel is exactly what THIS process's scan of the
+; view said, and it carries no success: fn-sn-initial starts with none and
+; Store.recover runs once per process, at open (run_store.py:1674,
+; run_owner.py:660, fn9p.py:428, run_reader.py:313, run_bp_ingress.py:132).
+; The last conjunct is K2r's content: a crash here loses no acknowledged
+; record even though fn-sf-crash-imagep does not admit its shorter image.
+(defun fn-bs-replay-matches-scan (bs ks)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((scan (fn-bs-scan-store bs)))
+    (and (fn-bs-pending-shape-okp bs)
+         (fn-bs-scan-okp scan)
+         (equal (fn-sf-frontier ks) (fn-bs-scan-frontier scan))
+         (equal (fn-sf-records ks) (fn-bs-scan-records scan))
+         (equal (fn-sf-successes ks) nil))))
 
 ; Every inode an authority entry names, durable or pending, is fenced: no
 ; pending write can reach it, so a crash keeps its content exactly (D1, D2).
@@ -441,8 +504,11 @@
        (fn-bs-contiguous-namesp (fn-bs-durable-names bs :transactions)
                                 (len (fn-bs-durable-names bs :transactions)))
        (not (equal (fn-bs-durable-records bs) :fault))
-       (fn-sf-crash-imagep ks (fn-bs-durable-frontier bs) (fn-bs-durable-records bs))
-       (fn-bs-pending-matches-phase bs ks)
+       (if (fn-bs-replay-visiblep ks)
+           (fn-bs-replay-matches-scan bs ks)
+         (and (fn-sf-crash-imagep ks (fn-bs-durable-frontier bs)
+                                  (fn-bs-durable-records bs))
+              (fn-bs-pending-matches-phase bs ks)))
        (fn-bs-authority-fencedp bs)))
 
 ; -----------------------------------------------------------------------------
@@ -594,26 +660,41 @@
            (equal (fn-bs-txn-names (1+ n))
                   (append (fn-bs-txn-names n) (list (fn-bs-txn-name n))))))
 
-; The namespace half of K1 -- OPEN, blocked only on the bridge above:
-;
-;   (defthm fn-bs-crash-names-is-names-after
-;     (implies (and (fn-bs-statep s) dir)
-;              (equal (fn-bs-durable-names (fn-bs-crash s choices) dir)
-;                     (fn-bs-names-after
-;                      (fn-bs-crash-select (fn-bs-pending s) choices (fn-bs-unit s))
-;                      (fn-bs-durable-names s dir) dir))))
-;   (defthm fn-bs-crash-image-names-are-an-outcome ...)   ; by fn-bs-crash-imagep
-;   (defthm fn-bs-crash-image-transaction-names           ; the K1 namespace half
-;     (implies (and (fn-bs-store-relation bs ks) (fn-bs-crash-imagep bs image))
-;              (let ((m (len (fn-bs-durable-names bs :transactions))))
-;                (or (equal (fn-bs-names image :transactions) (fn-bs-txn-names m))
-;                    (equal (fn-bs-names image :transactions)
-;                           (fn-bs-txn-names (1+ m)))))))
-;
-; The last is by fn-bs-crash-select-names-are-an-outcome (PROVED above) with
-; the relation's phase clause -- the transaction directory's pending
-; operations are NIL or one :set-entry at (fn-bs-txn-name m) -- and
-; fn-bs-txn-name-not-in-txn-names, which makes fn-bs-name-step append.
+; The namespace half of K1.  One directory's name list after a crash is that
+; directory's own operations applied to its durable name list -- the bridge
+; of section 2 at the selected operation list.
+(defthm fn-bs-crash-names-is-names-after
+  (implies (and dir (fn-bs-statep s)
+                (fn-bs-crash-choicesp choices (fn-bs-pending s) (fn-bs-unit s)))
+           (equal (fn-bs-durable-names (fn-bs-crash s choices) dir)
+                  (fn-bs-names-after
+                   (fn-bs-crash-select (fn-bs-pending s) choices (fn-bs-unit s))
+                   (fn-bs-durable-names s dir) dir)))
+  :hints (("Goal" :in-theory (e/d (fn-bs-crash)
+                                  (fn-bs-apply-entries-names-is-names-after))
+           :use ((:instance fn-bs-apply-entries-names-is-names-after
+                            (dirs (fn-bs-dirs s))
+                            (ops (fn-bs-crash-select (fn-bs-pending s) choices
+                                                     (fn-bs-unit s))))))))
+
+; And therefore it is one of the outcomes that directory's pending operations
+; enumerate, for every admissible image.
+(defthm fn-bs-crash-image-names-are-an-outcome
+  (implies (and dir (fn-bs-statep s) (fn-bs-crash-imagep s image))
+           (member-equal (fn-bs-durable-names image dir)
+                         (fn-bs-names-outcomes
+                          (fn-bs-ops-for-dir (fn-bs-pending s) dir)
+                          (fn-bs-durable-names s dir))))
+  :hints (("Goal" :in-theory (e/d (fn-bs-crash-imagep)
+                                  (fn-bs-crash-select-names-are-an-outcome
+                                   fn-bs-crash-names-is-names-after))
+           :use ((:instance fn-bs-crash-select-names-are-an-outcome
+                            (ops (fn-bs-pending s))
+                            (choices (fn-bs-crash-imagep-witness s image))
+                            (unit (fn-bs-unit s))
+                            (old (fn-bs-durable-names s dir)))
+                 (:instance fn-bs-crash-names-is-names-after
+                            (choices (fn-bs-crash-imagep-witness s image)))))))
 ;
 ; K1, K2 and K3 themselves stay OPEN.  K1 is the four scan clauses: the config
 ; and frontier entries (fn-bs-crash-keeps-untouched-entry, since the phase

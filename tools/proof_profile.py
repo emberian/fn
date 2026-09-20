@@ -216,6 +216,15 @@ def report(text: str, top: int = 10) -> str:
 
     facts = summary(text)
     lines.append("")
+    # A driver whose prefix did not build profiles nothing, and every listing
+    # above is then empty for the wrong reason.  Say so instead of letting
+    # "no useless runes" and "the form closed" read as a result.
+    if "ACL2 Error in ( INCLUDE-BOOK" in text:
+        lines.append("PREFIX DID NOT BUILD: an include-book in the driver "
+                     "failed, so the profiled form ran in an empty world and "
+                     "every listing above is meaningless. The driver must run "
+                     "in the BOOK's directory; see --dry-run.")
+        lines.append("")
     lines.append("SUMMARY  " + ("time " + facts["time"] if "time" in facts
                                 else "no Time line"))
     if "steps" in facts:
@@ -347,17 +356,26 @@ def main() -> int:
     host = args.host or quieter_host()
     remote_root = args.remote_root or f"{HOSTS[host]['root']}/{ROOT.name}"
     name = f"proof-profile-{args.form}.lsp"
-    command = remote_command(host, remote_root, name, args.timeout)
+    # The driver is the book's own source, so its include-book forms are
+    # relative to the BOOK's directory: run it there, not at the tree root.
+    # Placed at the root, every include-book failed with "the file does not
+    # exist", the prefix never built, and the tool reported "the form closed"
+    # over an empty world (found by lane w9/storage-3 on books/byte-store-scan,
+    # 2026-09-20; the report's own wording made the emptiness look like a
+    # result).
+    book_dir = book_source(args.book).parent.relative_to(ROOT).as_posix()
+    where = remote_root if book_dir in ("", ".") else f"{remote_root}/{book_dir}"
+    command = remote_command(host, where, name, args.timeout)
 
     if args.dry_run:
-        print(f"# {host}:{remote_root}/{name}")
+        print(f"# {host}:{where}/{name}")
         print(f"# {command}")
         print(text)
         return 0
 
     scratch = Path(os.environ.get("TMPDIR", "/tmp")) / name
     scratch.write_text(text, encoding="utf-8")
-    copy = RUN(["scp", "-q", str(scratch), f"{host}:{remote_root}/{name}"],
+    copy = RUN(["scp", "-q", str(scratch), f"{host}:{where}/{name}"],
                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                check=False)
     if copy.returncode != 0:
@@ -367,7 +385,7 @@ def main() -> int:
     log = answer.stdout or ""
     if args.save:
         Path(args.save).write_text(log, encoding="utf-8")
-    print(f"# {host}:{remote_root}/{name}, exit {answer.returncode}")
+    print(f"# {host}:{where}/{name}, exit {answer.returncode}")
     print(report(log, args.top))
     return 0
 
