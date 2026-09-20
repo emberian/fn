@@ -7,8 +7,6 @@ FN_CERTIFY_JOBS ?= 1
 FN_LD_TIMEOUT_SECONDS ?= 240
 ACL2_BOOKS ?= books/defrecord \
 	books/deftransition \
-	books/assumptions \
-	tests/acl2/assumptions-tests \
 	books/acceptance-alloc \
 	tests/acl2/defrecord-tests \
 	books/acceptance \
@@ -44,6 +42,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/article-fields \
 	tests/acl2/article-fields-tests \
 	books/store-config \
+	books/sha256 \
+	tests/acl2/sha256-tests \
 	books/frame-octets \
 	books/frame-fields \
 	books/frame-journal \
@@ -95,8 +95,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-observed-traces-tests \
 	books/byte-store \
 	books/byte-store-invariants \
+	books/byte-store-scan \
 	books/byte-store-programs \
 	tests/acl2/byte-store-tests \
+	books/assumptions \
+	tests/acl2/assumptions-tests \
 	tests/acl2/store-node-guards-tests \
 	tests/acl2/store-node-teeth-tests \
 	books/checkpoint \
@@ -240,6 +243,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/relay-tests \
 	books/crypto-seam \
 	tests/acl2/crypto-seam-tests \
+	books/crypto-attach \
+	books/auth-secret \
+	tests/acl2/auth-secret-tests \
 	books/statement \
 	books/statement-invariants \
 	tests/acl2/statement-tests \
@@ -272,6 +278,13 @@ check:
 # host-names lint.  Needs FN_ACL2 and installed certificates; without
 # FN_ACL2 it prints that it did not run and exits 0.
 	$(PYTHON) tools/host_check.py
+# specs/crash-model-v2.md section 2.3's check, in both directions: every cut
+# the campaign kills at is a :cut of the model program that transcribes its
+# host function, and every :cut of a model program is a host faults.at site.
+# It is mechanical and needs no ACL2, so it belongs in `check`.  It fails on a
+# fidelity defect; missing host cuts and syscall drift are reported and do not
+# fail (--strict fails on those too).
+	$(PYTHON) tools/transcribe_check.py
 
 certify:
 	$(PYTHON) tools/certify_books.py --jobs $(FN_CERTIFY_JOBS) $(ACL2_BOOKS)
