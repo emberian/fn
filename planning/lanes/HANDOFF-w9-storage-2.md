@@ -107,6 +107,25 @@ namespace theorem takes the kernel's record count as an input. **Decide this
 before proving K2**; it is the one place where the two models' bookkeeping can
 disagree, and it is not a proof convenience.
 
+## 2b. `books/byte-store-scan` does NOT certify -- start here
+
+Under `ld` on hbox with a 40,000,000 step limit every form in the book is
+admitted and proved (`build/probe-scan-9.out`). Under `certify-book` two
+things differ:
+
+1. `fn-bs-names-outcomes` is rejected for an unused third formal, which `ld`
+   accepted. Patched with `(ignorable dir)` in `05baa85`; the better fix is
+   to drop `dir` from that function entirely.
+2. With that patch, **`fn-bs-crash-select-names-are-an-outcome` fails under
+   `certify-book`** although it proves under `ld`. Evidence
+   `build/acl2/certify-20260920T192132Z-1110237`,
+   `books--byte-store-scan.certify.log:16128`. Check the `(ignorable dir)`
+   change first -- it can change the induction ACL2 suggests -- then whether
+   the probe's world carried a rule the book's include-closure does not.
+
+**Everything section 2 above calls proved is an `ld` result until this
+closes.** An `ld` probe is not a certification.
+
 ## 3. The A-* move
 
 `fn-bs-torn-variantp`, `fn-assume-physical-crash` (A-CRASH-IMAGE) and
