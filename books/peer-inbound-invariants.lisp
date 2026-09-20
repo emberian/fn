@@ -228,7 +228,7 @@
 ; configuration, exactly what `fn-peer-evidence' answers.  This is the
 ; subject-equating theorem of AGENTS.md's first assurance rule for the
 ; provenance row: `fn-peer-transit-provenance' is not a sibling API, it is
-; the same value the host line at `books/peer-inbound.lisp:341'
+; the same value the host line at `books/peer-inbound.lisp:323'
 ; (`fn-peer-injection-arguments', the seventh element it hands
 ; `fn-node-prepare') already carries, with the transit command, the Path
 ; diagnostic and the configuration generation still attached.
