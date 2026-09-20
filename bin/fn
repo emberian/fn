@@ -633,9 +633,6 @@ def build_parser():
                         help="configuration file (default: ./fn.toml)")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    principal.add_argument("--principal", help="the 32-octet principal id, 64 hex digits")
-    principal.add_argument("--posting", dest="posting", action="store_true", default=True)
-    principal.add_argument("--no-posting", dest="posting", action="store_false")
     init = sub.add_parser("init", help="initialize a store and write the configuration")
     init.add_argument("--store", help="store root (overrides [store] path)")
     init.add_argument("--group", action="append", help="a group the new store serves")
@@ -693,6 +690,9 @@ def build_parser():
     principal.add_argument("--seed", help="new: the 32-octet seed, hex")
     principal.add_argument("--token", default="fn")
     principal.add_argument("--store", help="store root (overrides [store] path)")
+    principal.add_argument("--principal", help="the 32-octet principal id, 64 hex digits")
+    principal.add_argument("--posting", dest="posting", action="store_true", default=True)
+    principal.add_argument("--no-posting", dest="posting", action="store_false")
 
     status = sub.add_parser("status", help="generation, articles, anchor, owner liveness")
     status.add_argument("--control", help="control socket path")
