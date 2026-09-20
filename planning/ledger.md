@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 266 |
 | Certification roots in the Makefile | 265 |
 | Books inside the root closure | 265 |
-| `defthm` and `defthmd` events | 5215 |
+| `defthm` and `defthmd` events | 5214 |
 | `defun` events | 3759 |
 | Functions with verified guards | 1385 |
 | Functions declared `:verify-guards nil` and never verified | 183 |
@@ -172,7 +172,7 @@ that `make certify` requests.
 | `books/node-traces.lisp` | root | 12 | 23 | 0/0/23/0 | 0 | 0 | 0 |
 | `books/node.lisp` | root | 34 | 33 | 27/0/6/0 | 0 | 0 | 2 |
 | `books/owner-config.lisp` | root | 19 | 34 | 0/4/30/0 | 0 | 0 | 1 |
-| `books/owner-feed.lisp` | root | 75 | 54 | 0/0/54/0 | 0 | 0 | 0 |
+| `books/owner-feed.lisp` | root | 74 | 54 | 0/0/54/0 | 0 | 0 | 0 |
 | `books/owner-invariants.lisp` | root | 95 | 7 | 0/0/0/7 | 0 | 0 | 0 |
 | `books/owner.lisp` | root | 46 | 95 | 0/3/92/0 | 0 | 0 | 0 |
 | `books/path.lisp` | root | 0 | 21 | 0/0/21/0 | 0 | 0 | 0 |
