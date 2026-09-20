@@ -402,7 +402,7 @@
 ; `expt' so that monotonicity is one induction and the value is bounded
 ; however the peer record is configured.
 (defun fn-feed-backoff-delay (base attempts)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :measure (nfix attempts)))
   (if (zp attempts)
       (if (<= *fn-feed-max-backoff* (nfix base)) *fn-feed-max-backoff*
           (nfix base))
