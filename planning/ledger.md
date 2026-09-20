@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 245 |
 | Certification roots in the Makefile | 244 |
 | Books inside the root closure | 244 |
-| `defthm` and `defthmd` events | 4627 |
+| `defthm` and `defthmd` events | 4628 |
 | `defun` events | 3349 |
 | Functions with verified guards | 1302 |
 | Functions declared `:verify-guards nil` and never verified | 152 |
@@ -195,7 +195,7 @@ that `make certify` requests.
 | `books/stx-authority.lisp` | root | 3 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/stx-carrier.lisp` | root | 49 | 26 | 1/0/25/0 | 0 | 0 | 0 |
 | `books/stx-epochs.lisp` | root | 12 | 12 | 0/1/11/0 | 0 | 0 | 0 |
-| `books/stx-index.lisp` | root | 49 | 26 | 8/0/18/0 | 0 | 0 | 1 |
+| `books/stx-index.lisp` | root | 50 | 26 | 8/0/18/0 | 0 | 0 | 1 |
 | `books/stx-invariants.lisp` | root | 24 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/stx-lace.lisp` | root | 19 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/stx-policy.lisp` | root | 16 | 3 | 0/0/3/0 | 0 | 0 | 1 |
@@ -347,6 +347,6 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-sn-open-observed-invalid-history-refuses` | `books/store-observed.lisp` | 408 | branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value |
 | `fn-sn-refuse-reservation-disabled-is-no-op` | `books/store-node-resolution.lisp` | 126 | branch-of-definition: the hypothesis negates a branch test of fn-sn-refuse-reservation and the conclusion is that branch's value |
 | `fn-stx-admission-is-peer-independent-by-definition` | `books/stx-policy.lisp` | 49 | definition-restated: the conclusion is the body of fn-stx-transit-authority-ok |
-| `fn-stx-index-query-is-store-free-by-definition` | `books/stx-index.lisp` | 582 | definition-restated: the conclusion is the body of fn-stx-index-lookup; reflexive-conclusion: a conjunct is (equal X X) |
+| `fn-stx-index-query-is-store-free-by-definition` | `books/stx-index.lisp` | 586 | definition-restated: the conclusion is the body of fn-stx-index-lookup; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-tcl-segment-never-exceeds-mru` | `books/tcpcl-octets.lisp` | 1044 | branch-of-definition: the hypothesis is a branch test of fn-tcl-decode-segment-data and the conclusion is that branch's value |
 | `fn-wire-feed-closed-noop` | `books/wire.lisp` | 778 | branch-of-definition: the hypothesis is a branch test of fn-wire-feed and the conclusion is that branch's value |
