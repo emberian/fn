@@ -3063,6 +3063,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "identity",
         "nntp-post",
         "node-config",
         "peer-config"
@@ -8180,7 +8181,7 @@
       },
       {
         "book": "books/peer-inbound.lisp",
-        "line": 60,
+        "line": 62,
         "shape": "fn-peer-decision-shapep",
         "shapes": 3,
         "accessors": 10,
