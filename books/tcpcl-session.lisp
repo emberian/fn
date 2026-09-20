@@ -69,27 +69,14 @@
       (and (fn-cbor-octet-listp (car x)) (fn-tcl-octet-listsp (cdr x)))
     (null x)))
 
+; Both are guard-total.  A caller that concatenates or measures the staged
+; segments must not first have to establish fn-tcl-octet-listsp of them:
+; that walk is the cost this book is removing from the served path.
 (defun fn-tcl-lists-len (x)
-  (declare (xargs :guard (fn-tcl-octet-listsp x)))
+  (declare (xargs :guard t))
   (if (consp x)
       (+ (len (car x)) (fn-tcl-lists-len (cdr x)))
     0))
-
-; The staged segments in arrival order, as one octet list.  Each segment is
-; copied once, so completing a transfer costs its length.
-(defun fn-tcl-concat-rev (x acc)
-  (declare (xargs :guard (and (fn-tcl-octet-listsp x) (true-listp acc))))
-  (if (consp x)
-      (fn-tcl-concat-rev (cdr x) (append (car x) acc))
-    acc))
-
-(defthm fn-tcl-len-concat-rev
-  (equal (len (fn-tcl-concat-rev x acc))
-         (+ (fn-tcl-lists-len x) (len acc))))
-
-(defthm fn-tcl-concat-rev-octet-listp
-  (implies (and (fn-tcl-octet-listsp x) (fn-cbor-octet-listp acc))
-           (fn-cbor-octet-listp (fn-tcl-concat-rev x acc))))
 
 ; append with a total guard: the same function in the logic, so every
 ; theorem below speaks of append.
@@ -99,6 +86,22 @@
 
 (defthm fn-tcl-app-is-append
   (equal (fn-tcl-app a b) (append a b)))
+
+; The staged segments in arrival order, as one octet list.  Each segment is
+; copied once, so completing a transfer costs its length.
+(defun fn-tcl-concat-rev (x acc)
+  (declare (xargs :guard t))
+  (if (consp x)
+      (fn-tcl-concat-rev (cdr x) (fn-tcl-app (car x) acc))
+    acc))
+
+(defthm fn-tcl-len-concat-rev
+  (equal (len (fn-tcl-concat-rev x acc))
+         (+ (fn-tcl-lists-len x) (len acc))))
+
+(defthm fn-tcl-concat-rev-octet-listp
+  (implies (and (fn-tcl-octet-listsp x) (fn-cbor-octet-listp acc))
+           (fn-cbor-octet-listp (fn-tcl-concat-rev x acc))))
 
 ; -----------------------------------------------------------------------------
 ; Recognizers.
@@ -163,6 +166,29 @@
            (and (natp (fn-tcl-inbound-total i))
                 (<= (fn-tcl-inbound-total i) *fn-tcl-max-u64*)
                 (<= (fn-tcl-inbound-received-len i) (fn-tcl-inbound-total i))))))
+
+; The same record with the two conjuncts that walk the staged segments
+; removed.  fn-tcl-inboundp is the specification: it says the carried sum is
+; the measurement of the staged list and that the list is octets.  This one
+; reads the carried sum and the shape only, so it costs the same whatever
+; has been staged.  The two are deliberately written out rather than layered,
+; so that no proof and no hint in this book or in tcpcl-invariants has to
+; open one recognizer to reach the other; fn-tcl-inboundp-is-cheap is the
+; only link between them, and it fails if they drift.
+(defun fn-tcl-inbound-cheapp (i limit)
+  (declare (xargs :guard (natp limit)))
+  (and (fn-tcl-inbound-shapep i)
+       (natp (fn-tcl-inbound-xfer-id i))
+       (<= (fn-tcl-inbound-xfer-id i) *fn-tcl-max-u64*)
+       (natp (fn-tcl-inbound-received-len i))
+       (<= (fn-tcl-inbound-received-len i) limit)
+       (or (null (fn-tcl-inbound-total i))
+           (and (natp (fn-tcl-inbound-total i))
+                (<= (fn-tcl-inbound-total i) *fn-tcl-max-u64*)
+                (<= (fn-tcl-inbound-received-len i) (fn-tcl-inbound-total i))))))
+
+(defthm fn-tcl-inboundp-is-cheap
+  (implies (fn-tcl-inboundp i limit) (fn-tcl-inbound-cheapp i limit)))
 
 (defun fn-tcl-outboundp (o)
   (declare (xargs :guard t))
@@ -234,6 +260,49 @@
        (implies (null (fn-tcl-session-negotiated s))
                 (and (null (fn-tcl-session-inbound s))
                      (null (fn-tcl-session-outbound s))))))
+
+; The carried invariant of the served path: fn-tcl-sessionp with the staged
+; walk removed.  Every executable entry point below is guarded by this one,
+; and fn-tcl-sessionp implies it, so a keystone stated over fn-tcl-sessionp
+; speaks of exactly the function the host calls.
+(defun fn-tcl-session-cheapp (s)
+  (declare (xargs :guard t))
+  (and (fn-tcl-session-shapep s)
+       (fn-tcl-rolep (fn-tcl-session-role s))
+       (fn-tcl-phasep (fn-tcl-session-phase s))
+       (fn-tcl-paramsp (fn-tcl-session-local s))
+       (booleanp (fn-tcl-session-tls s))
+       (or (null (fn-tcl-session-peer s))
+           (fn-tcl-peer-initp (fn-tcl-session-peer s)))
+       (or (null (fn-tcl-session-negotiated s))
+           (fn-tcl-negotiatedp (fn-tcl-session-negotiated s)))
+       (or (null (fn-tcl-session-inbound s))
+           (fn-tcl-inbound-cheapp (fn-tcl-session-inbound s)
+                                  (fn-tcl-params-transfer-mru (fn-tcl-session-local s))))
+       (or (null (fn-tcl-session-outbound s))
+           (fn-tcl-outboundp (fn-tcl-session-outbound s)))
+       (natp (fn-tcl-session-next-xfer-id s))
+       (fn-clock-timep (fn-tcl-session-last-rx s))
+       (fn-clock-timep (fn-tcl-session-last-tx s))
+       (fn-tcl-termp (fn-tcl-session-term s))
+       ; phase consistency
+       (implies (fn-tcl-pre-establishedp (fn-tcl-session-phase s))
+                (and (null (fn-tcl-session-negotiated s))
+                     (null (fn-tcl-session-term s))))
+       (implies (equal (fn-tcl-session-phase s) :established)
+                (and (fn-tcl-session-negotiated s)
+                     (null (fn-tcl-session-term s))))
+       (implies (equal (fn-tcl-session-phase s) :ending)
+                (fn-tcl-session-term s))
+       (implies (not (fn-tcl-transferringp (fn-tcl-session-phase s)))
+                (and (null (fn-tcl-session-inbound s))
+                     (null (fn-tcl-session-outbound s))))
+       (implies (null (fn-tcl-session-negotiated s))
+                (and (null (fn-tcl-session-inbound s))
+                     (null (fn-tcl-session-outbound s))))))
+
+(defthm fn-tcl-sessionp-is-cheap
+  (implies (fn-tcl-sessionp s) (fn-tcl-session-cheapp s)))
 
 (defun fn-tcl-initial-session (role local now)
   (declare (xargs :guard t))
@@ -526,7 +595,7 @@
    nil))
 
 (defun fn-tcl-recv-segment (s m now)
-  (declare (xargs :guard (and (fn-tcl-sessionp s)
+  (declare (xargs :guard (and (fn-tcl-session-cheapp s)
                               (fn-tcl-transferringp (fn-tcl-session-phase s))
                               (fn-tcl-session-negotiated s)
                               (fn-tcl-messagep m (fn-tcl-segment-mru s))
@@ -591,7 +660,7 @@
    nil))
 
 (defun fn-tcl-recv-ack (s m now)
-  (declare (xargs :guard (and (fn-tcl-sessionp s)
+  (declare (xargs :guard (and (fn-tcl-session-cheapp s)
                               (fn-tcl-transferringp (fn-tcl-session-phase s))
                               (fn-tcl-session-negotiated s)
                               (fn-tcl-messagep m (fn-tcl-segment-mru s))
@@ -625,7 +694,7 @@
          nil)))))
 
 (defun fn-tcl-recv-refuse (s m now)
-  (declare (xargs :guard (and (fn-tcl-sessionp s)
+  (declare (xargs :guard (and (fn-tcl-session-cheapp s)
                               (fn-tcl-transferringp (fn-tcl-session-phase s))
                               (fn-tcl-session-negotiated s)
                               (fn-tcl-messagep m (fn-tcl-segment-mru s))
@@ -729,7 +798,7 @@
                        (fn-tcl-session-last-tx s) nil))
 
 (defun fn-tcl-pump (s now)
-  (declare (xargs :guard (fn-tcl-sessionp s) :verify-guards nil))
+  (declare (xargs :guard (fn-tcl-session-cheapp s) :verify-guards nil))
   (let ((ob (fn-tcl-session-outbound s)))
     (if (or (null ob)
             (equal (fn-tcl-outbound-sent-len ob) (fn-tcl-outbound-total ob)))
@@ -760,7 +829,7 @@
          nil)))))
 
 (defun fn-tcl-send (s ref octets now)
-  (declare (xargs :guard (and (fn-tcl-sessionp s) (fn-cbor-octet-listp octets))
+  (declare (xargs :guard (and (fn-tcl-session-cheapp s) (fn-cbor-octet-listp octets))
                   :verify-guards nil))
   (cond ((not (equal (fn-tcl-session-phase s) :established))
          (fn-tcl-make-result s (list (list :send-refused ref :not-established)) nil))
@@ -785,7 +854,7 @@
 ; Keepalive and idle timeout (sections 5.1.1, 6.2) as clock observations.
 
 (defun fn-tcl-tick (s obs)
-  (declare (xargs :guard (and (fn-tcl-sessionp s) (fn-clock-observationp obs))
+  (declare (xargs :guard (and (fn-tcl-session-cheapp s) (fn-clock-observationp obs))
                   :verify-guards nil))
   (let ((now (fn-clock-monotonic obs))
         (n (fn-tcl-session-negotiated s)))
@@ -819,7 +888,7 @@
 ; One decoded message.
 
 (defun fn-tcl-step (s m now)
-  (declare (xargs :guard (and (fn-tcl-sessionp s)
+  (declare (xargs :guard (and (fn-tcl-session-cheapp s)
                               (fn-tcl-messagep m (fn-tcl-segment-mru s))
                               (fn-clock-timep now))
                   :verify-guards nil))
@@ -866,7 +935,7 @@
 ; so is the buffer when the session is closed or a decode error closed it.
 
 (defun fn-tcl-decode-for (s buf)
-  (declare (xargs :guard (and (fn-tcl-sessionp s) (fn-cbor-octet-listp buf))
+  (declare (xargs :guard (and (fn-tcl-session-cheapp s) (fn-cbor-octet-listp buf))
                   :verify-guards nil))
   (if (or (equal (fn-tcl-session-phase s) :tcp-connected)
           (equal (fn-tcl-session-phase s) :contact))
@@ -879,11 +948,15 @@
   :rule-classes (:rewrite :linear))
 
 (defun fn-tcl-drive (s buf now)
-  (declare (xargs :guard (and (fn-tcl-sessionp s) (fn-cbor-octet-listp buf)
+  (declare (xargs :guard (and (fn-tcl-session-cheapp s) (fn-cbor-octet-listp buf)
                               (fn-clock-timep now))
                   :verify-guards nil
                   :measure (len buf)))
-  (if (mbe :logic (not (and (fn-tcl-sessionp s) (fn-cbor-octet-listp buf)
+  ; The totality test names the carried invariant, not the specification
+  ; recognizer: on the served path this is what the executable counterpart
+  ; checks once per socket chunk, and it must not walk the staged octets.
+  ; fn-tcl-sessionp implies it, so every keystone below is unaffected.
+  (if (mbe :logic (not (and (fn-tcl-session-cheapp s) (fn-cbor-octet-listp buf)
                             (fn-clock-timep now)))
            :exec nil)
       (fn-tcl-make-result s nil buf)
@@ -1378,6 +1451,376 @@
                             fn-tcl-input-error fn-tcl-segment-mru)))))
 
 ; -----------------------------------------------------------------------------
+; The carried invariant of the served path, preserved by every transition.
+;
+; fn-tcl-sessionp is the specification recognizer, and two of its conjuncts
+; -- fn-tcl-inboundp's (fn-tcl-octet-listsp staged) and (equal received-len
+; (fn-tcl-lists-len staged)) -- walk every octet staged so far.  The native
+; host reaches this machine through the executable counterpart of a host
+; wrapper (host/native/io.lisp, `fnn-call'), which checks the callee's guard
+; on every call, so a guard naming fn-tcl-sessionp charged a transfer of n
+; octets one walk of the staged prefix per socket chunk: O(n^2/chunk) in
+; guard checking alone (planning/lanes/HANDOFF-w8-tcpcl-native.md, "Open";
+; the served-path rule in AGENTS.md, D3).
+;
+; fn-tcl-session-cheapp is that recognizer without those two conjuncts.  Its
+; cost is the session's own -- its params and the peer's SESS_INIT, both
+; fixed at negotiation -- and does not grow with the transfer.  It guards
+; every executable entry point.  fn-tcl-sessionp implies it
+; (fn-tcl-sessionp-is-cheap), so every keystone stated over fn-tcl-sessionp
+; still speaks of exactly the function the host calls; and the lemmas below
+; prove every transition preserves it, so the host establishes it once -- at
+; fn-tcl-initial-session, fn-tcl-initial-session-is-cheap -- and never
+; rederives it from the staged octets (docs/proof-style.md section 4).
+;
+; The staged conjuncts are still carried, still proved preserved, and still
+; what C2 and fn-tcl-received-len-is-staged-length-by-definition rest on:
+; nothing is weakened here, only moved off the per-chunk path.
+
+(defthm fn-tcl-initial-session-is-cheap
+  (implies (and (fn-tcl-rolep role) (fn-tcl-paramsp local) (fn-clock-timep now))
+           (fn-tcl-session-cheapp (fn-tcl-initial-session role local now))))
+
+(defthm fn-tcl-session-cheapp-facts
+  (implies (fn-tcl-session-cheapp s)
+           (and (fn-tcl-session-shapep s)
+                (fn-tcl-rolep (fn-tcl-session-role s))
+                (fn-tcl-phasep (fn-tcl-session-phase s))
+                (fn-tcl-paramsp (fn-tcl-session-local s))
+                (booleanp (fn-tcl-session-tls s))
+                (fn-tcl-termp (fn-tcl-session-term s))
+                (natp (fn-tcl-session-next-xfer-id s))
+                (fn-clock-timep (fn-tcl-session-last-rx s))
+                (fn-clock-timep (fn-tcl-session-last-tx s))
+                (implies (fn-tcl-session-peer s) (fn-tcl-peer-initp (fn-tcl-session-peer s)))
+                (implies (fn-tcl-session-negotiated s)
+                         (fn-tcl-negotiatedp (fn-tcl-session-negotiated s)))
+                (implies (fn-tcl-session-inbound s)
+                         (fn-tcl-inbound-cheapp
+                          (fn-tcl-session-inbound s)
+                          (fn-tcl-params-transfer-mru (fn-tcl-session-local s))))
+                (implies (fn-tcl-session-outbound s)
+                         (fn-tcl-outboundp (fn-tcl-session-outbound s)))
+                (implies (fn-tcl-pre-establishedp (fn-tcl-session-phase s))
+                         (and (not (fn-tcl-session-negotiated s))
+                              (not (fn-tcl-session-term s))))
+                (implies (equal (fn-tcl-session-phase s) :established)
+                         (and (fn-tcl-session-negotiated s)
+                              (not (fn-tcl-session-term s))))
+                (implies (equal (fn-tcl-session-phase s) :ending)
+                         (fn-tcl-session-term s))
+                (implies (not (fn-tcl-transferringp (fn-tcl-session-phase s)))
+                         (and (not (fn-tcl-session-inbound s))
+                              (not (fn-tcl-session-outbound s))))
+                (implies (not (fn-tcl-session-negotiated s))
+                         (and (not (fn-tcl-session-inbound s))
+                              (not (fn-tcl-session-outbound s)))))))
+
+(defthm fn-tcl-inbound-cheapp-forward-fields
+  (implies (fn-tcl-inbound-cheapp i limit)
+           (and (fn-tcl-inbound-shapep i)
+                (integerp (fn-tcl-inbound-xfer-id i))
+                (<= 0 (fn-tcl-inbound-xfer-id i))
+                (<= (fn-tcl-inbound-xfer-id i) *fn-tcl-max-u64*)
+                (integerp (fn-tcl-inbound-received-len i))
+                (<= 0 (fn-tcl-inbound-received-len i))
+                (<= (fn-tcl-inbound-received-len i) limit)))
+  :rule-classes :forward-chaining)
+
+(defthm fn-tcl-inbound-cheapp-forward-total
+  (implies (and (fn-tcl-inbound-cheapp i limit) (fn-tcl-inbound-total i))
+           (and (integerp (fn-tcl-inbound-total i))
+                (<= 0 (fn-tcl-inbound-total i))
+                (<= (fn-tcl-inbound-total i) *fn-tcl-max-u64*)
+                (<= (fn-tcl-inbound-received-len i) (fn-tcl-inbound-total i))))
+  :rule-classes ((:forward-chaining :trigger-terms ((fn-tcl-inbound-total i)))))
+
+(local (in-theory (disable fn-tcl-session-cheapp)))
+
+(defthm fn-tcl-session-cheapp-forward-fields
+  (implies (fn-tcl-session-cheapp s)
+           (and (fn-tcl-session-shapep s)
+                (fn-tcl-paramsp (fn-tcl-session-local s))
+                (booleanp (fn-tcl-session-tls s))
+                (integerp (fn-tcl-session-next-xfer-id s))
+                (<= 0 (fn-tcl-session-next-xfer-id s))
+                (fn-clock-timep (fn-tcl-session-last-rx s))
+                (fn-clock-timep (fn-tcl-session-last-tx s))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :use fn-tcl-session-cheapp-facts)))
+
+(defthm fn-tcl-session-cheapp-forward-peer
+  (implies (and (fn-tcl-session-cheapp s) (fn-tcl-session-peer s))
+           (fn-tcl-peer-initp (fn-tcl-session-peer s)))
+  :rule-classes ((:forward-chaining :trigger-terms ((fn-tcl-session-peer s))))
+  :hints (("Goal" :use fn-tcl-session-cheapp-facts)))
+
+(defthm fn-tcl-session-cheapp-forward-negotiated
+  (implies (and (fn-tcl-session-cheapp s) (fn-tcl-session-negotiated s))
+           (fn-tcl-negotiatedp (fn-tcl-session-negotiated s)))
+  :rule-classes ((:forward-chaining :trigger-terms ((fn-tcl-session-negotiated s))))
+  :hints (("Goal" :use fn-tcl-session-cheapp-facts)))
+
+(defthm fn-tcl-session-cheapp-forward-inbound
+  (implies (and (fn-tcl-session-cheapp s) (fn-tcl-session-inbound s))
+           (and (fn-tcl-inbound-cheapp (fn-tcl-session-inbound s)
+                                       (fn-tcl-params-transfer-mru (fn-tcl-session-local s)))
+                (fn-tcl-session-negotiated s)))
+  :rule-classes ((:forward-chaining :trigger-terms ((fn-tcl-session-inbound s))))
+  :hints (("Goal" :use fn-tcl-session-cheapp-facts)))
+
+(defthm fn-tcl-session-cheapp-forward-established
+  (implies (and (fn-tcl-session-cheapp s) (equal (fn-tcl-session-phase s) :established))
+           (fn-tcl-session-negotiated s))
+  :rule-classes ((:forward-chaining :trigger-terms ((fn-tcl-session-phase s))))
+  :hints (("Goal" :use fn-tcl-session-cheapp-facts)))
+
+(defthm fn-tcl-session-cheapp-forward-outbound
+  (implies (and (fn-tcl-session-cheapp s) (fn-tcl-session-outbound s))
+           (and (fn-tcl-outboundp (fn-tcl-session-outbound s))
+                (fn-tcl-session-negotiated s)))
+  :rule-classes ((:forward-chaining :trigger-terms ((fn-tcl-session-outbound s))))
+  :hints (("Goal" :use fn-tcl-session-cheapp-facts)))
+
+(defthm fn-tcl-session-cheapp-next-xfer-id-natp
+  (implies (fn-tcl-session-cheapp s) (natp (fn-tcl-session-next-xfer-id s)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :use fn-tcl-session-cheapp-facts)))
+
+(defthm fn-tcl-session-cheapp-mru-natp
+  (implies (fn-tcl-session-cheapp s)
+           (and (natp (fn-tcl-params-segment-mru (fn-tcl-session-local s)))
+                (natp (fn-tcl-params-transfer-mru (fn-tcl-session-local s)))))
+  :rule-classes ((:type-prescription
+                  :corollary
+                  (implies (fn-tcl-session-cheapp s)
+                           (natp (fn-tcl-params-segment-mru (fn-tcl-session-local s)))))
+                 (:type-prescription
+                  :corollary
+                  (implies (fn-tcl-session-cheapp s)
+                           (natp (fn-tcl-params-transfer-mru (fn-tcl-session-local s))))))
+  :hints (("Goal" :use fn-tcl-session-cheapp-facts)))
+
+(defthm fn-tcl-segment-mru-natp-cheap
+  (implies (fn-tcl-session-cheapp s) (natp (fn-tcl-segment-mru s)))
+  :rule-classes :type-prescription)
+
+(defthm fn-tcl-transfer-mru-natp-cheap
+  (implies (fn-tcl-session-cheapp s) (natp (fn-tcl-transfer-mru s)))
+  :rule-classes :type-prescription)
+
+(defthm fn-tcl-session-cheapp-mru-bounds
+  (implies (fn-tcl-session-cheapp s)
+           (and (<= (fn-tcl-params-segment-mru (fn-tcl-session-local s)) *fn-tcl-max-u64*)
+                (<= (fn-tcl-params-transfer-mru (fn-tcl-session-local s)) *fn-tcl-max-u64*)))
+  :rule-classes :linear
+  :hints (("Goal" :use fn-tcl-session-cheapp-facts)))
+
+; The rebuild lemmas, as for fn-tcl-sessionp: the five phase-consistency
+; hypotheses are case-split for the same reason.
+(local (in-theory (enable fn-tcl-session-cheapp fn-tcl-next fn-tcl-with-outbound)))
+
+(defthm fn-tcl-next-preserves-cheapp
+  (implies (and (fn-tcl-session-cheapp s)
+                (fn-tcl-phasep phase) (fn-tcl-termp term) (fn-clock-timep last-tx)
+                (or (not inbound)
+                    (fn-tcl-inbound-cheapp
+                     inbound (fn-tcl-params-transfer-mru (fn-tcl-session-local s))))
+                (or (not outbound) (fn-tcl-outboundp outbound))
+                (case-split
+                 (implies (fn-tcl-pre-establishedp phase)
+                          (and (not (fn-tcl-session-negotiated s)) (not term))))
+                (case-split
+                 (implies (equal phase :established)
+                          (and (fn-tcl-session-negotiated s) (not term))))
+                (case-split (implies (equal phase :ending) term))
+                (case-split
+                 (implies (not (fn-tcl-transferringp phase)) (and (not inbound) (not outbound))))
+                (case-split
+                 (implies (not (fn-tcl-session-negotiated s)) (and (not inbound) (not outbound)))))
+           (fn-tcl-session-cheapp (fn-tcl-next s phase inbound outbound term last-tx)))
+  :hints (("Goal" :in-theory (disable fn-tcl-inbound-cheapp fn-tcl-outboundp fn-tcl-paramsp
+                                      fn-tcl-negotiatedp fn-tcl-peer-initp))))
+
+(defthm fn-tcl-with-outbound-preserves-cheapp
+  (implies (and (fn-tcl-session-cheapp s)
+                (equal (fn-tcl-session-phase s) :established)
+                (fn-tcl-outboundp outbound)
+                (natp next-xfer-id))
+           (fn-tcl-session-cheapp (fn-tcl-with-outbound s outbound next-xfer-id)))
+  :hints (("Goal" :in-theory (disable fn-tcl-inbound-cheapp fn-tcl-outboundp fn-tcl-paramsp
+                                      fn-tcl-negotiatedp fn-tcl-peer-initp))))
+
+(local (in-theory (disable fn-tcl-session-cheapp fn-tcl-next fn-tcl-with-outbound)))
+
+(defthm fn-tcl-touch-rx-preserves-cheapp
+  (implies (and (fn-tcl-session-cheapp s) (fn-clock-timep now))
+           (fn-tcl-session-cheapp (fn-tcl-touch-rx s now)))
+  :hints (("Goal" :in-theory (enable fn-tcl-session-cheapp))))
+
+(defthm fn-tcl-settle-preserves-cheapp
+  (implies (fn-tcl-session-cheapp (fn-tcl-result-session r))
+           (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-settle r)))))
+
+(defthm fn-tcl-open-preserves-cheapp
+  (implies (and (fn-tcl-session-cheapp s) (fn-clock-timep now))
+           (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-open s now)))))
+
+(defthm fn-tcl-recv-contact-preserves-cheapp
+  (implies (and (fn-tcl-session-cheapp s) (fn-clock-timep now)
+                (fn-tcl-pre-establishedp (fn-tcl-session-phase s)))
+           (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-recv-contact s m now))))
+  :hints (("Goal" :in-theory (enable fn-tcl-session-cheapp))))
+
+(defthm fn-tcl-recv-init-preserves-cheapp
+  (implies (and (fn-tcl-session-cheapp s) (fn-clock-timep now)
+                (fn-tcl-peer-initp m)
+                (equal (fn-tcl-session-phase s) :messaging))
+           (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-recv-init s m now))))
+  :hints (("Goal" :in-theory (e/d (fn-tcl-session-cheapp)
+                                  (fn-tcl-negotiate fn-tcl-init-acceptablep)))))
+
+(defthm fn-tcl-refuse-preserves-cheapp
+  (implies (and (fn-tcl-session-cheapp s) (fn-clock-timep now))
+           (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-refuse s xfer-id reason now)))))
+
+(defthm fn-tcl-complete-preserves-cheapp
+  (implies (and (fn-tcl-session-cheapp s) (fn-clock-timep now))
+           (fn-tcl-session-cheapp (fn-tcl-result-session
+                                   (fn-tcl-complete s xfer-id flags len data now)))))
+
+(defthm fn-tcl-stage-preserves-cheapp
+  (implies (and (fn-tcl-session-cheapp s) (fn-clock-timep now)
+                (fn-tcl-transferringp (fn-tcl-session-phase s))
+                (fn-tcl-session-negotiated s)
+                (fn-tcl-inbound-cheapp inbound (fn-tcl-transfer-mru s)))
+           (fn-tcl-session-cheapp (fn-tcl-result-session
+                                   (fn-tcl-stage s inbound flags xfer-id len now)))))
+
+(defthm fn-tcl-broken-stream-preserves-cheapp
+  (implies (and (fn-tcl-session-cheapp s) (fn-clock-timep now)
+                (fn-tcl-transferringp (fn-tcl-session-phase s)))
+           (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-broken-stream s live-id now)))))
+
+(defthm fn-tcl-recv-segment-preserves-cheapp
+  (implies (and (fn-tcl-session-cheapp s) (fn-clock-timep now)
+                (fn-tcl-messagep m (fn-tcl-segment-mru s))
+                (equal (fn-tcl-msg-kind m) :xfer-segment)
+                (fn-tcl-transferringp (fn-tcl-session-phase s))
+                (fn-tcl-session-negotiated s))
+           (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-recv-segment s m now))))
+  :hints (("Goal" :in-theory (e/d (fn-tcl-recv-segment)
+                                  (fn-tcl-refuse fn-tcl-complete fn-tcl-stage
+                                   fn-tcl-broken-stream fn-tcl-ext-decision
+                                   fn-tcl-session-cheapp))
+           :use ((:instance fn-tcl-stage-preserves-cheapp
+                            (inbound (fn-tcl-make-inbound
+                                      (fn-tcl-xfer-segment-xfer-id m)
+                                      (list (fn-tcl-xfer-segment-data m))
+                                      (len (fn-tcl-xfer-segment-data m))
+                                      (cadr (fn-tcl-ext-decision (fn-tcl-xfer-segment-ext m)
+                                                                 (fn-tcl-transfer-mru s)))))
+                            (flags (fn-tcl-xfer-segment-flags m))
+                            (xfer-id (fn-tcl-xfer-segment-xfer-id m))
+                            (len (len (fn-tcl-xfer-segment-data m))))
+                 (:instance fn-tcl-stage-preserves-cheapp
+                            (inbound (fn-tcl-make-inbound
+                                      (fn-tcl-xfer-segment-xfer-id m)
+                                      (cons (fn-tcl-xfer-segment-data m)
+                                            (fn-tcl-inbound-staged (fn-tcl-session-inbound s)))
+                                      (+ (fn-tcl-inbound-received-len (fn-tcl-session-inbound s))
+                                         (len (fn-tcl-xfer-segment-data m)))
+                                      (fn-tcl-inbound-total (fn-tcl-session-inbound s))))
+                            (flags (fn-tcl-xfer-segment-flags m))
+                            (xfer-id (fn-tcl-xfer-segment-xfer-id m))
+                            (len (+ (fn-tcl-inbound-received-len (fn-tcl-session-inbound s))
+                                    (len (fn-tcl-xfer-segment-data m)))))))))
+
+(defthm fn-tcl-unexpected-preserves-cheapp
+  (implies (and (fn-tcl-session-cheapp s) (fn-clock-timep now))
+           (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-unexpected s header now)))))
+
+(defthm fn-tcl-recv-ack-preserves-cheapp
+  (implies (and (fn-tcl-session-cheapp s) (fn-clock-timep now)
+                (fn-tcl-messagep m (fn-tcl-segment-mru s))
+                (equal (fn-tcl-msg-kind m) :xfer-ack)
+                (fn-tcl-transferringp (fn-tcl-session-phase s))
+                (fn-tcl-session-negotiated s))
+           (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-recv-ack s m now))))
+  :hints (("Goal" :in-theory (disable fn-tcl-unexpected)
+           :use ((:instance fn-tcl-next-preserves-cheapp
+                            (phase (fn-tcl-session-phase s)) (inbound (fn-tcl-session-inbound s))
+                            (outbound (fn-tcl-make-outbound
+                                       (fn-tcl-xfer-ack-xfer-id m)
+                                       (fn-tcl-outbound-ref (fn-tcl-session-outbound s))
+                                       (fn-tcl-outbound-remaining (fn-tcl-session-outbound s))
+                                       (fn-tcl-outbound-total (fn-tcl-session-outbound s))
+                                       (fn-tcl-outbound-sent-len (fn-tcl-session-outbound s))
+                                       (fn-tcl-xfer-ack-acked-len m)))
+                            (term (fn-tcl-session-term s))
+                            (last-tx (fn-tcl-session-last-tx s)))))))
+
+(defthm fn-tcl-recv-refuse-preserves-cheapp
+  (implies (fn-tcl-session-cheapp s)
+           (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-recv-refuse s m now)))))
+
+(defthm fn-tcl-recv-term-preserves-cheapp
+  (implies (and (fn-tcl-session-cheapp s) (fn-clock-timep now)
+                (not (equal (fn-tcl-session-phase s) :closed)))
+           (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-recv-term s m now)))))
+
+(defthm fn-tcl-terminate-preserves-cheapp
+  (implies (and (fn-tcl-session-cheapp s) (fn-clock-timep now))
+           (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-terminate s reason now)))))
+
+(defthm fn-tcl-tcp-closed-preserves-cheapp
+  (implies (fn-tcl-session-cheapp s)
+           (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-tcp-closed s)))))
+
+(defthm fn-tcl-input-error-preserves-cheapp
+  (implies (and (fn-tcl-session-cheapp s) (fn-clock-timep now))
+           (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-input-error s header reason now)))))
+
+(defthm fn-tcl-pump-preserves-cheapp
+  (implies (and (fn-tcl-session-cheapp s) (fn-clock-timep now))
+           (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-pump s now)))))
+
+(defthm fn-tcl-send-preserves-cheapp
+  (implies (and (fn-tcl-session-cheapp s) (fn-clock-timep now) (fn-cbor-octet-listp octets))
+           (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-send s ref octets now))))
+  :hints (("Goal" :in-theory (disable fn-tcl-pump))))
+
+(defthm fn-tcl-tick-preserves-cheapp
+  (implies (and (fn-tcl-session-cheapp s) (fn-clock-observationp obs))
+           (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-tick s obs)))))
+
+(defthm fn-tcl-step-preserves-cheapp
+  (implies (and (fn-tcl-session-cheapp s) (fn-clock-timep now)
+                (fn-tcl-messagep m (fn-tcl-segment-mru s)))
+           (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-step s m now))))
+  :hints (("Goal" :in-theory (e/d (fn-tcl-step)
+                                  (fn-tcl-messagep fn-tcl-touch-rx fn-tcl-segment-mru
+                                   fn-tcl-settle fn-tcl-recv-contact fn-tcl-recv-init
+                                   fn-tcl-recv-segment fn-tcl-recv-ack fn-tcl-recv-refuse
+                                   fn-tcl-recv-term fn-tcl-unexpected))
+           :use ((:instance fn-tcl-touch-rx-preserves-cheapp)))))
+
+(defthm fn-tcl-decode-for-yields-message-cheap
+  (implies (and (fn-tcl-session-cheapp s) (fn-cbor-octet-listp buf)
+                (fn-tcl-parse-okp (fn-tcl-decode-for s buf)))
+           (fn-tcl-messagep (fn-tcl-parse-msg (fn-tcl-decode-for s buf))
+                            (fn-tcl-segment-mru s)))
+  :hints (("Goal" :in-theory (e/d (fn-tcl-session-cheapp) (fn-tcl-messagep)))))
+
+(defthm fn-tcl-drive-preserves-cheapp
+  (implies (fn-tcl-session-cheapp s)
+           (fn-tcl-session-cheapp (fn-tcl-result-session (fn-tcl-drive s buf now))))
+  :hints (("Goal" :induct (fn-tcl-drive s buf now)
+           :in-theory (e/d (fn-tcl-drive)
+                           (fn-tcl-session-cheapp fn-tcl-messagep fn-tcl-step
+                            fn-tcl-decode-for fn-tcl-input-error fn-tcl-segment-mru)))))
+
+; -----------------------------------------------------------------------------
 ; Executable guard closure.
 
 (local (in-theory (disable fn-tcl-messagep)))
@@ -1392,7 +1835,7 @@
   :hints (("Goal" :in-theory (enable fn-tcl-messagep))))
 (verify-guards fn-tcl-pump)
 (verify-guards fn-tcl-send
-  :hints (("Goal" :in-theory (disable fn-tcl-pump) :use fn-tcl-sessionp-facts)))
+  :hints (("Goal" :in-theory (disable fn-tcl-pump) :use fn-tcl-session-cheapp-facts)))
 (verify-guards fn-tcl-tick)
 (verify-guards fn-tcl-step
   :hints (("Goal" :in-theory (e/d (fn-tcl-messagep)
@@ -1400,7 +1843,7 @@
                                    fn-tcl-recv-ack fn-tcl-recv-refuse fn-tcl-recv-term
                                    fn-tcl-unexpected fn-tcl-settle
                                    fn-tcl-touch-rx fn-tcl-segment-mru))
-           :use ((:instance fn-tcl-touch-rx-preserves-sessionp)))))
+           :use ((:instance fn-tcl-touch-rx-preserves-cheapp)))))
 (verify-guards fn-tcl-decode-for)
 (verify-guards fn-tcl-drive
   :hints (("Goal" :in-theory (disable fn-tcl-step fn-tcl-decode-for fn-tcl-input-error
@@ -1414,7 +1857,8 @@
 (deftheory fn-tcl-session-vocabulary
   '(fn-tcl-paramsp fn-tcl-peer-initp fn-tcl-negotiatedp fn-tcl-inboundp fn-tcl-outboundp
     fn-tcl-rolep fn-tcl-phasep fn-tcl-pre-establishedp fn-tcl-transferringp fn-tcl-termp
-    fn-tcl-sessionp fn-tcl-initial-session fn-tcl-next fn-tcl-touch-rx
+    fn-tcl-sessionp fn-tcl-inbound-cheapp fn-tcl-session-cheapp
+    fn-tcl-initial-session fn-tcl-next fn-tcl-touch-rx
     fn-tcl-transfer-mru fn-tcl-segment-mru fn-tcl-send-event fn-tcl-fail-live
     fn-tcl-settle fn-tcl-own-contact fn-tcl-own-init fn-tcl-open fn-tcl-recv-contact
     fn-tcl-no-critical-items fn-tcl-negotiate fn-tcl-init-acceptablep fn-tcl-recv-init
