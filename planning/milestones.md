@@ -9,14 +9,25 @@ and the open list, is
 [wave-realignment-2026-09-19](evidence/wave-realignment-2026-09-19.md). No full
 implementation/proof milestone is complete.
 
-**Current task: make `books/owner` certify.** It is still the single blocker,
-and running the packaged service proved it in the plainest way available: on
-`52eb0db` `fn run` cannot start on either box because ACL2 refuses
-`(include-book "books/owner")`, so the live unit on persvati and hbox serves
-through `tools/run_reader.py` instead
-([live-52eb0db](evidence/live-52eb0db-2026-09-20.md)). It is also the whole of
-both gates' missing roots, the four `test_owner` errors, and the reason no gate
-has concurrent-session evidence. Behind it, in order: the owner's three
+**`books/owner` certifies** as of 2026-09-20 --- persvati
+`run-20260920T224103Z-7c59` (w10/owner-relation) and again in
+`run-20260920T234122Z-7687` (w11/snt-guards, 1.77 s), with
+`books/owner-invariants`, `books/served`, `books/nntp-auth`,
+`books/peer-inbound`, `books/provenance-codec` and `tests/acl2/owner-tests`
+(166 of 166 assertions) beside it. What that unblocks has not been re-measured
+against the packaged service: the claim that `fn run` cannot start because
+ACL2 refuses `(include-book "books/owner")`
+([live-52eb0db](evidence/live-52eb0db-2026-09-20.md)) was true at `52eb0db`
+and is no longer the reason, so **the current task is to re-run the live unit
+and both gates on current `dev` and say what is actually missing now.**
+
+The nearest known gap behind it is `books/owner-config`, the per-connection
+configuration pin: every definition in it admits and guard verifies as of
+w11/snt-guards --- the whole `fn-ocfg-statep` to `fn-snt-relation` guard chain
+is closed --- and the book still does not certify, at two keystones that are
+false as stated for a missing pin-table precondition
+([BOARD](deputies/BOARD.md), w11/snt-guards;
+[handoff](lanes/HANDOFF-w11-snt-guards.md) §4). Then, in order: the owner's three
 one-line `host/owner-host.lisp` edits from w5-config-groups; the one-durable-post-
 per-connection defect, which is the pinned clock observation and not the
 read-back re-pin ([BOARD](deputies/BOARD.md), w5/owner-followups, DIAGNOSED);
