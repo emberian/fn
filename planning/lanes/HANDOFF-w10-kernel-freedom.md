@@ -105,7 +105,7 @@ to each, which is the evidence for §2.
 | 1 | `fn-sf-crash-realizes-every-admissible-image` | `store-files-invariants:440` | unchanged, certified | would need `fn-sf-image-crash`; that version shipped as the `-recovery-` twin |
 | 2 | `fn-sf-crash-imagep-implies-state` | `store-files-invariants:468` | unchanged, certified | true; twin added |
 | 3 | `fn-sf-admissible-image-facts` | `store-files-invariants:491` | unchanged, certified | true; twin added (`-recovery-`), and it is K2r |
-| 4 | `fn-own-crash-image-extends-records` | `owner-invariants:336` | unchanged, certified | **FALSE** -- the image no longer extends the record list |
+| 4 | `fn-own-crash-image-extends-records` | `owner-invariants:336` | unchanged; NOT re-certified in this tree, because `books/owner-invariants` is open on `dev` at `fn-own-advanced-session-is-bounded` (§5), not at anything this lane touched | **FALSE** -- the image no longer extends the record list |
 | 5 | `fn-snt-admissible-crash-image-is-recoverable` | `store-node-traces:678` | unchanged, certified | **UNPROVED** -- needs prefix recoverability; measured failure in `run-20260920T211812Z-1f0a` |
 | 6 | `fn-sn-acknowledged-record-survives-observed-reopen` | `store-observed:625` | unchanged, certified | true (its `member-equal` hypothesis and the arm's gate are contradictory) |
 | 7 | `fn-snrt-acknowledged-record-retained-across-observed-reopen` | `store-observed:706` | unchanged, certified | true for the predicate; **FALSE** if `fn-sf-crash` gains the choice |
