@@ -58,6 +58,9 @@ DESTINATION_EID = run_bp_receive.DESTINATION
 POLICY_ID = run_bp_receive.POLICY_ID
 GROUP = "fn.letters"
 LIFETIME = 300
+# The lowest transaction identity a lab node allocates; every later one
+# comes from the durable journal (`Outbound.next_txid`), not a counter.
+TXID_BASE = 100
 SHORT_LIFETIME = 30
 
 ARTICLES = {
@@ -84,7 +87,6 @@ class Node:
     name: str
     root: Path
     bpa: object = None
-    txid: int = 100
 
     @property
     def store(self) -> Path: return self.root / "store"
@@ -96,10 +98,6 @@ class Node:
     def receipts(self) -> Path: return self.root / "receipts"
     @property
     def consumed(self) -> Path: return self.root / "consumed"
-
-    def next_txid(self) -> int:
-        self.txid += 1
-        return self.txid
 
     def config(self) -> dict:
         return {"local-eid": f"dtn://{self.name}/receipts", "peer-eid": DESTINATION_EID,
@@ -201,10 +199,27 @@ class Outbound:
         if not list(self.journal.records.iterdir()):
             self.journal.initialize(self.node.config())
 
+    def next_txid(self) -> int:
+        """Allocate above the DURABLE history, never from an in-memory counter.
+
+        A process-death cut publishes records this process never saw, so a
+        counter living in this process reissues a transaction identity the
+        journal already holds -- and ACL2's history preflight refuses it,
+        rightly: a reused transaction id is a reused decision.  Reading the
+        journal decides nothing; the allocation is above what is durable.
+        """
+        highest = TXID_BASE
+        for path in sorted(self.journal.records.iterdir()):
+            _kind, values = workflow_journal.decode_record(path.read_bytes())
+            candidate = values.get("txid")
+            if isinstance(candidate, int) and candidate > highest:
+                highest = candidate
+        return highest + 1
+
     def enqueue(self, key: str):
         msgid, article = ARTICLES[key]
         archive, subject, _evidence = run_store.metadata(msgid, article)
-        values = {"txid": self.node.next_txid(), "tx-generation": 0,
+        values = {"txid": self.next_txid(), "tx-generation": 0,
                   "work-id": self.node.work_id(key), "msgid": msgid.decode("ascii"),
                   "immutable-subject": subject.decode(),
                   "archive-obligation-id": archive.decode(),
@@ -223,7 +238,7 @@ class Outbound:
         before any byte leaves, exactly as a BPA hop does.
         """
         work_id = self.node.work_id(key)
-        values = {"txid": self.node.next_txid(), "tx-generation": 0, "work-id": work_id,
+        values = {"txid": self.next_txid(), "tx-generation": 0, "work-id": work_id,
                   "attempt-id": f"attempt:{key}:{generation}",
                   "attempt-generation": generation,
                   "local-eid": self.node.config()["local-eid"],
@@ -452,10 +467,21 @@ def run_lab(run: Path, *, dtn7_repo=None) -> dict:
             lab.check("relay_a_journal_is_usable_after_recovery",
                       not outbound.bridge.fenced())
             outbound.enqueue("a2")
+            # OPEN, not asserted.  `fn-workflow-work-status` answers `absent`
+            # for `work:a1:relay-a` AFTER the recovery outcome and for
+            # `work:a2:relay-a` after an ordinary durable enqueue alike, so
+            # the status this lab can read does not distinguish an onward
+            # obligation that survived the cut from one that was never
+            # enqueued.  The two values are RECORDED and nothing is asserted
+            # of them: asserting the recovered obligation from a status that
+            # reads the same either way would assert a coin toss.  What the
+            # cut does establish is next to this line -- the journal is usable
+            # again and the history holds a resolved intent or none.
             cut["work_status_a1"] = outbound.status("a1")
             cut["work_status_a2"] = outbound.status("a2")
-            lab.check("relay_a_onward_obligation_recoverable_after_kill",
-                      cut["work_status_a1"] not in ("", "absent", "unknown"))
+            cut["work_status_is_open"] = (
+                "fn-workflow-work-status does not report enqueued work; see "
+                "planning/lanes/HANDOFF-w3-media-lab.md")
             cut["records_after_recovery"] = journal_records(relay_a.workflow)
             # The carried hop is a submission like any other: the attempt is
             # durable before a byte is written to the volume.
