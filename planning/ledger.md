@@ -13,19 +13,19 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 222 |
 | Certification roots in the Makefile | 221 |
 | Books inside the root closure | 221 |
-| `defthm` and `defthmd` events | 4092 |
-| `defun` events | 2986 |
-| Functions with verified guards | 1239 |
+| `defthm` and `defthmd` events | 4099 |
+| `defun` events | 2990 |
+| Functions with verified guards | 1241 |
 | Functions declared `:verify-guards nil` and never verified | 141 |
 | Functions left at the default with an explicit guard | 1158 |
-| Functions left at the default with no guard | 448 |
-| `assert-event` checks | 3936 |
+| Functions left at the default with no guard | 450 |
+| `assert-event` checks | 3958 |
 | `must-fail` checks | 59 |
 | `encapsulate` events | 15 |
 | Theorems flagged SUSPECT by shape | 31 |
 | Export-hygiene warnings | 62 |
 | Teeth-form warnings | 0 |
-| Include-hygiene warnings | 87 |
+| Include-hygiene warnings | 84 |
 
 ## Lints
 
@@ -78,8 +78,8 @@ that `make certify` requests.
 | `books/bp-ingress.lisp` | root | 22 | 44 | 41/0/3/0 | 0 | 0 | 0 |
 | `books/bp-outbound.lisp` | root | 10 | 11 | 2/0/9/0 | 0 | 0 | 0 |
 | `books/bp-primary-cbor.lisp` | root | 86 | 16 | 12/0/3/1 | 0 | 0 | 1 |
-| `books/bp-primary-invariants.lisp` | root | 38 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/bp-primary.lisp` | root | 9 | 73 | 73/0/0/0 | 0 | 0 | 0 |
+| `books/bp-primary-invariants.lisp` | root | 44 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/bp-primary.lisp` | root | 9 | 75 | 75/0/0/0 | 0 | 0 | 0 |
 | `books/bp-receipt-records.lisp` | root | 0 | 10 | 0/9/1/0 | 0 | 0 | 0 |
 | `books/bp-receipt.lisp` | root | 35 | 45 | 0/0/4/41 | 0 | 0 | 0 |
 | `books/bp-receiver-context-invariants.lisp` | root | 20 | 4 | 0/0/0/4 | 0 | 0 | 0 |
@@ -118,7 +118,7 @@ that `make certify` requests.
 | `books/exchange-invariants.lisp` | root | 22 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/exchange.lisp` | root | 34 | 43 | 37/0/6/0 | 0 | 0 | 1 |
 | `books/frame-fields.lisp` | root | 23 | 38 | 13/0/25/0 | 0 | 0 | 0 |
-| `books/frame-invariants.lisp` | root | 79 | 0 | 0/0/0/0 | 0 | 0 | 1 |
+| `books/frame-invariants.lisp` | root | 80 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/frame-journal.lisp` | root | 2 | 10 | 7/0/3/0 | 0 | 0 | 0 |
 | `books/frame-octets.lisp` | root | 27 | 7 | 2/0/4/1 | 0 | 0 | 0 |
 | `books/frame.lisp` | root | 0 | 5 | 5/0/0/0 | 0 | 0 | 0 |
@@ -213,7 +213,7 @@ that `make certify` requests.
 | `tests/acl2/bp-ingress-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 21 | 0 | 0 |
 | `tests/acl2/bp-outbound-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 0 | 0 |
 | `tests/acl2/bp-outbound-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 29 | 0 | 0 |
-| `tests/acl2/bp-primary-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 103 | 0 | 0 |
+| `tests/acl2/bp-primary-tests.lisp` | root | 1 | 2 | 0/0/0/2 | 124 | 0 | 0 |
 | `tests/acl2/bp-receipt-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
 | `tests/acl2/bp-receipt-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 26 | 0 | 0 |
 | `tests/acl2/bp-receiver-evolving-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 70 | 12 | 0 |
@@ -234,7 +234,7 @@ that `make certify` requests.
 | `tests/acl2/container-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 62 | 0 | 0 |
 | `tests/acl2/crypto-seam-tests.lisp` | root | 11 | 7 | 0/0/7/0 | 18 | 0 | 0 |
 | `tests/acl2/exchange-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 162 | 0 | 0 |
-| `tests/acl2/frame-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 47 | 0 | 0 |
+| `tests/acl2/frame-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 48 | 0 | 0 |
 | `tests/acl2/identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 0 | 0 |
 | `tests/acl2/index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 0 | 0 |
 | `tests/acl2/injection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 35 | 0 | 0 |

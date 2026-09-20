@@ -470,6 +470,40 @@
                                       fn-bpp-crc-typep fn-bpc-enc
                                       fn-bpp-eid-value))))
 
+; Two local steps, so that the theorem below never opens `fn-bpp-blockp`.
+; Opening it splits on `fn-bpp-eidp`, `fn-bpp-timep`, `fn-bpp-crc-typep`,
+; `nth` and `floor` for both blocks at once: on persvati that ran 805 s and
+; 212M prover steps and still reverted to induction with the two `:use`
+; instances unmatched, because by then the goal was in `nth` vocabulary and
+; they were in accessor vocabulary (evidence
+; build/acl2/certify-20260920T041644Z-2380284).
+
+(local
+ (defthm fn-bpp-blockp-source-is-eid
+   (implies (fn-bpp-blockp b) (fn-bpp-eidp (fn-bpp-source b)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-bpp-blockp) (fn-bpp-eidp))))))
+
+; The first three elements of the encoded array are the endpoint value, the
+; creation time and the sequence number whether or not the fragment flag is
+; set; if it is set on one block and not the other, the two arrays have
+; different lengths and the hypothesis is false.
+(local
+ (defthm fn-bpp-identity-value-heads
+   (implies (equal (fn-bpp-primary-identity-value a)
+                   (fn-bpp-primary-identity-value b))
+            (and (equal (fn-bpp-eid-value (fn-bpp-source a))
+                        (fn-bpp-eid-value (fn-bpp-source b)))
+                 (equal (fn-bpp-creation-time a) (fn-bpp-creation-time b))
+                 (equal (fn-bpp-sequence a) (fn-bpp-sequence b))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-bpp-primary-identity-value)
+                                   (fn-bpp-eid-value fn-bpp-fragmentp
+                                    fn-bpp-flags fn-bpp-source
+                                    fn-bpp-creation-time fn-bpp-sequence
+                                    fn-bpp-fragment-offset
+                                    fn-bpp-total-adu-length))))))
+
 (defthm fn-bpp-primary-identity-determines-adu-key
   (implies (and (fn-bpp-blockp a) (fn-bpp-blockp b)
                 (equal (fn-bpp-primary-identity-value a)
@@ -480,8 +514,15 @@
            :use ((:instance fn-bpp-value-eid-of-eid-value
                             (e (fn-bpp-source a)))
                  (:instance fn-bpp-value-eid-of-eid-value
-                            (e (fn-bpp-source b))))
-           :in-theory (disable fn-bpp-eid-value fn-bpp-value-eid))))
+                            (e (fn-bpp-source b)))
+                 (:instance fn-bpp-blockp-source-is-eid (b a))
+                 (:instance fn-bpp-blockp-source-is-eid (b b))
+                 fn-bpp-identity-value-heads)
+           :in-theory (e/d (fn-bpp-adu-key)
+                           (fn-bpp-blockp fn-bpp-eidp fn-bpp-eid-value
+                            fn-bpp-value-eid fn-bpp-primary-identity-value
+                            fn-bpp-source fn-bpp-creation-time
+                            fn-bpp-sequence)))))
 
 ; -----------------------------------------------------------------------------
 ; Export theory.
