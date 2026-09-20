@@ -997,7 +997,7 @@
       "assumptions": [],
       "status": "in-progress",
       "evidence": [],
-      "progress_note": "books/config-stream certifies (ACL2 8.7, persvati, 2026-09-20); teeth in tests/acl2/config-stream-tests over a two-group value, with the served TABLE compared at two generations, not only the predicate. The owner-side consumer (books/owner-config, the per-connection pin and LIST ACTIVE at the pin) is written and claims no event: books/owner has no certificate on any box."
+      "progress_note": "books/config-stream certifies (ACL2 8.7, persvati, 2026-09-20); teeth in tests/acl2/config-stream-tests over a two-group value, with the served TABLE compared at two generations, not only the predicate. The owner-side consumer (books/owner-config, the per-connection pin and LIST ACTIVE at the pin) is written and claims no event. Status 2026-09-20 (w11/snt-guards): books/owner certifies (persvati run-20260920T224103Z-7c59) and every defun in books/owner-config now admits and guard verifies, the whole fn-ocfg-statep to fn-snt-relation chain having been closed; the book still does not certify, at two keystones that are false as stated for a missing pin-table precondition -- fn-ocfg-open-pins-the-live-configuration (freshness of fn-own-next-id in the pin table, which fn-own-relation does not carry) and fn-ocfg-advance-observes-the-live-configuration (the connection is already pinned, which fn-ocfg-statep does carry). Both are recorded OPEN at their defthm and in planning/lanes/HANDOFF-w11-snt-guards.md section 4. LIST ACTIVE at the pin (fn-ocfg-list-active-lists-the-pinned-served-table) does prove."
     },
     {
       "id": "PRF-029",
