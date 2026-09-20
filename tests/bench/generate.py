@@ -152,7 +152,12 @@ def build(root, count, groups, payload_bytes, seed, profile, fanout,
         # sessions.
         frame_bridge.adopt(bridge)
         store.recover(bridge)
-        codes = group_codes(names, store.config)
+        # `group_codes` takes the Store: it reads the allocation domain the
+        # core handed it at recover (`store.config_domain`), which a bare
+        # configuration dict does not carry.  Passing the dict raised
+        # AttributeError on every run after the configuration-history
+        # realignment, which is how this lane found it.
+        codes = group_codes(names, store)
         result["group_codes"] = list(codes)
         per_article = []
         post_form_bytes = []
