@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 253 |
-| Certification roots in the Makefile | 252 |
-| Books inside the root closure | 252 |
-| `defthm` and `defthmd` events | 4853 |
-| `defun` events | 3497 |
-| Functions with verified guards | 1368 |
+| Books read | 258 |
+| Certification roots in the Makefile | 257 |
+| Books inside the root closure | 257 |
+| `defthm` and `defthmd` events | 4927 |
+| `defun` events | 3573 |
+| Functions with verified guards | 1422 |
 | Functions declared `:verify-guards nil` and never verified | 166 |
-| Functions left at the default with an explicit guard | 1474 |
+| Functions left at the default with an explicit guard | 1496 |
 | Functions left at the default with no guard | 489 |
-| `assert-event` checks | 4706 |
+| `assert-event` checks | 4795 |
 | `must-fail` checks | 59 |
 | `encapsulate` events | 16 |
-| Theorems flagged SUSPECT by shape | 37 |
+| Theorems flagged SUSPECT by shape | 38 |
 | Export-hygiene warnings | 72 |
 | Teeth-form warnings | 0 |
 | Include-hygiene warnings | 88 |
-| Host-names warnings | 0 |
+| Host-names warnings | 33 |
 | Hand-written-record warnings | 27 |
 
 ## Lints
@@ -87,9 +87,12 @@ that `make certify` requests.
 | `books/article.lisp` | root | 24 | 45 | 45/0/0/0 | 0 | 0 | 0 |
 | `books/assumptions.lisp` | root | 12 | 8 | 0/0/0/8 | 0 | 0 | 0 |
 | `books/bp-adu.lisp` | root | 18 | 41 | 7/0/34/0 | 0 | 0 | 0 |
+| `books/bp-bundle-invariants.lisp` | root | 23 | 0 | 0/0/0/0 | 0 | 0 | 1 |
+| `books/bp-bundle.lisp` | root | 34 | 46 | 32/0/14/0 | 0 | 0 | 0 |
 | `books/bp-fragment-invariants.lisp` | root | 40 | 3 | 0/0/0/3 | 0 | 0 | 2 |
 | `books/bp-fragment.lisp` | root | 6 | 30 | 30/0/0/0 | 0 | 0 | 0 |
 | `books/bp-ingress.lisp` | root | 22 | 44 | 41/0/3/0 | 0 | 0 | 0 |
+| `books/bp-node.lisp` | root | 17 | 30 | 22/0/8/0 | 0 | 0 | 0 |
 | `books/bp-outbound.lisp` | root | 10 | 11 | 2/0/9/0 | 0 | 0 | 0 |
 | `books/bp-primary-cbor.lisp` | root | 86 | 16 | 12/0/3/1 | 0 | 0 | 1 |
 | `books/bp-primary-invariants.lisp` | root | 44 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -243,9 +246,11 @@ that `make certify` requests.
 | `tests/acl2/article-work-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 22 | 0 | 0 |
 | `tests/acl2/assumptions-tests.lisp` | root | 0 | 10 | 0/0/0/10 | 7 | 11 | 0 |
 | `tests/acl2/bp-adu-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 24 | 0 | 0 |
+| `tests/acl2/bp-bundle-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 45 | 0 | 0 |
 | `tests/acl2/bp-fragment-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 63 | 2 | 0 |
 | `tests/acl2/bp-ingress-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 108 | 0 | 0 |
 | `tests/acl2/bp-ingress-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 21 | 0 | 0 |
+| `tests/acl2/bp-node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 44 | 0 | 0 |
 | `tests/acl2/bp-outbound-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 0 | 0 |
 | `tests/acl2/bp-outbound-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 29 | 0 | 0 |
 | `tests/acl2/bp-primary-tests.lisp` | root | 1 | 2 | 0/0/0/2 | 124 | 0 | 0 |
@@ -336,6 +341,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-ag-less-is-less` | `books/acceptance-alloc.lisp` | 58 | definition-restated: the conclusion is the body of fn-ag-less; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-anchor-octets-of-lengthp-forward` | `books/anchor.lisp` | 106 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-anchor-octets-of-lengthp |
 | `fn-bp-effect-for-pending-attempt-unfolds` | `books/bp-workflow-invariants.lisp` | 884 | branch-of-definition: the hypothesis is a branch test of fn-bp-effect-for-pending and the conclusion is that branch's value |
+| `fn-bpb-decode-refuses-overlong-input` | `books/bp-bundle-invariants.lisp` | 264 | branch-of-definition: the hypothesis is a branch test of fn-bpb-decode and the conclusion is that branch's value |
 | `fn-bpc-decode-refuses-overlong-input` | `books/bp-primary-cbor.lisp` | 1175 | branch-of-definition: the hypothesis is a branch test of fn-bpc-decode and the conclusion is that branch's value |
 | `fn-bpf-cell-of-uncovered-is-gap` | `books/bp-fragment-invariants.lisp` | 129 | branch-of-definition: the hypothesis negates a branch test of fn-bpf-cell-of and the conclusion is that branch's value |
 | `fn-bpf-out-of-bounds-input-allocates-nothing` | `books/bp-fragment-invariants.lisp` | 390 | branch-of-definition: the hypothesis is a branch test of fn-bpf-reassemble and the conclusion is that branch's value |
