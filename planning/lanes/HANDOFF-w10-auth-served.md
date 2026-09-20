@@ -22,7 +22,24 @@ this lane's bridge), the clock seam's arity fixes in `books/owner.lisp`,
 the owner's thirteenth field and six feed step arms. The merge commit
 records every resolution and why.
 
-**The post-merge tree is NOT certified and the laptop cannot certify it.**
+**POST-MERGE VERDICT, farm run `run-20260920T210541Z-c42a` on persvati
+(`--jobs 6`, `--affected-by books/nntp-auth.lisp --closure`, installed 105
+kept 105 uncached 60): CERTIFIED `books/peer-inbound`,
+`books/nntp-auth`, `books/served`, `books/nntp-auth-invariants`,
+`books/ideal` and `tests/acl2/nntp-auth-tests` on the merged tree.**
+One failure was this lane's and is fixed after that run
+(`tests/acl2/served-tests` asserted `fn-post-session-awaiting` of the
+served session directly; the served session is now two wrappers deep).
+The rest are NOT this lane's: `books/peer-feed-invariants` fails at
+`fn-feed-apply-record-preserves-peer` -- checkpoint `fn-feed-give-up` on a
+record whose first value is the feed's own peer -- and `books/owner-feed`,
+`books/owner`, `books/owner-invariants`, `books/owner-config` and
+`tests/acl2/owner-tests` cascade off it, because `books/owner` includes
+`owner-feed` which includes `peer-feed-invariants`. `books/owner`
+certified in the PRE-merge run, so that root's own content is fine; what
+it waits on now is the feed lane's book.
+
+**The LAPTOP cannot certify this tree.**
 `tools/certs.py install` put pairs beside `books/node`, `books/config` and
 others whose `book-hash` no longer matches the merged source, so
 `certify-book` refuses at the first `include-book` with
