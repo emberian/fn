@@ -202,6 +202,8 @@
     "books/peer-inbound",
     "books/peer-inbound-invariants",
     "tests/acl2/peer-inbound-tests",
+    "books/nntp-auth",
+    "tests/acl2/nntp-auth-tests",
     "books/served",
     "tests/acl2/served-tests",
     "books/owner",
@@ -242,19 +244,19 @@
     "tests/acl2/stx-tests"
   ],
   "totals": {
-    "books": 239,
-    "books_in_root_closure": 238,
-    "roots": 238,
-    "theorems": 4522,
-    "functions": 3291,
-    "assert_events": 4416,
+    "books": 241,
+    "books_in_root_closure": 240,
+    "roots": 240,
+    "theorems": 4578,
+    "functions": 3347,
+    "assert_events": 4559,
     "must_fails": 59,
     "encapsulates": 15,
     "guards": {
-      "verified": 1294,
-      "declared-off": 151,
-      "default-guarded": 1381,
-      "default-unguarded": 465
+      "verified": 1329,
+      "declared-off": 152,
+      "default-guarded": 1394,
+      "default-unguarded": 472
     },
     "suspect_theorems": 32,
     "export_hygiene_warnings": 67,
@@ -2377,10 +2379,36 @@
       "read_error": null
     },
     {
+      "book": "books/nntp-auth.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 39,
+      "functions": 41,
+      "guards": {
+        "verified": 27,
+        "declared-off": 1,
+        "default-guarded": 13,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 27,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "peer-inbound",
+        "principal"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/nntp-effects.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 134,
+      "theorems": 139,
       "functions": 12,
       "guards": {
         "verified": 0,
@@ -2435,7 +2463,7 @@
       "book": "books/nntp-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 88,
+      "theorems": 91,
       "functions": 4,
       "guards": {
         "verified": 0,
@@ -2460,15 +2488,15 @@
       "book": "books/nntp-legacy.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 19,
-      "functions": 1,
+      "theorems": 23,
+      "functions": 2,
       "guards": {
-        "verified": 1,
+        "verified": 2,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 1,
+      "verify_guards_events": 2,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -2564,14 +2592,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 5,
-      "functions": 120,
+      "functions": 127,
       "guards": {
-        "verified": 120,
+        "verified": 127,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 120,
+      "verify_guards_events": 127,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 12,
@@ -3359,7 +3387,7 @@
       "book": "books/served.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 52,
+      "theorems": 57,
       "functions": 34,
       "guards": {
         "verified": 2,
@@ -5479,6 +5507,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/nntp-auth-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 7
+      },
+      "verify_guards_events": 0,
+      "assert_events": 102,
+      "must_fails": 0,
+      "defconsts": 28,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/nntp-auth"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/nntp-index-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -5518,7 +5571,7 @@
         "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 53,
+      "assert_events": 73,
       "must_fails": 0,
       "defconsts": 15,
       "defmacros": 1,
@@ -5932,9 +5985,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 58,
+      "assert_events": 79,
       "must_fails": 0,
-      "defconsts": 33,
+      "defconsts": 40,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [

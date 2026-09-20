@@ -1137,18 +1137,31 @@
                                    fn-nntp-group-range-numbers
                                    fn-nntp-parse-range fn-nntp-single)))))
 
+; The msgid form's block goes through the same clean-field-list route the
+; range form uses, NOT through fn-nntp-hdr-labelled-line-is-block-text: that
+; form is open on this tree (board, w5/owner-followups, nntp-effects FINAL)
+; and nothing new should be built on it.
+(defthm fn-nntp-xpat-msgid-block-is-block-text
+  (fn-nntp-block-textp
+   (fn-nntp-xpat-msgid-lines field patterns token article))
+  :hints (("Goal" :use (fn-nntp-xpat-msgid-lines-are-clean
+                        (:instance fn-nntp-hdr-clean-fields-are-clean-lines
+                                   (lines (fn-nntp-xpat-msgid-lines
+                                           field patterns token article))))
+           :in-theory (disable fn-nntp-xpat-msgid-lines-are-clean
+                               fn-nntp-hdr-clean-fields-are-clean-lines
+                               fn-nntp-xpat-msgid-lines))))
+
 (defthm fn-nntp-effects-xpat-msgid
   (fn-nntp-effectsp
    (fn-nntp-result-effects
     (fn-nntp-xpat-msgid session archive field patterns token)))
-  :hints (("Goal" :use ((:instance fn-nntp-hdr-labelled-line-is-block-text))
-           :in-theory (e/d (fn-nntp-xpat-range)
-                           (fn-nntp-hdr-labelled-line-is-block-text
-                            fn-nntp-hdr-content fn-nntp-hdr-line
-                            fn-nntp-hdr-octets fn-nov-scrub
-                            fn-nntp-xpat-matchesp
-                            fn-find-article fn-nntp-single))
-           :expand ((fn-nntp-xpat-msgid session archive field patterns token)))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-xpat-msgid)
+                                  (fn-nntp-xpat-msgid-lines
+                                   fn-nntp-hdr-content fn-nntp-hdr-okp
+                                   fn-nntp-hdr-initial
+                                   fn-find-article fn-nntp-token-string
+                                   fn-state-articles fn-nntp-single)))))
 
 (defthm fn-nntp-effects-xpat-response
   (fn-nntp-effectsp
@@ -1180,6 +1193,7 @@
                     fn-nntp-hdr-response fn-nntp-xhdr-response
                     fn-nntp-list-active-times
                     fn-nntp-xpat-range fn-nntp-xpat-msgid
+                    fn-nntp-xpat-msgid-lines
                     fn-nntp-xpat-response))
 
 (defthm fn-nntp-effects-list-command
