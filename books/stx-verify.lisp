@@ -211,8 +211,8 @@
     (null octets)))
 
 (defthm fn-stx-printablep-of-append
-  (equal (fn-stx-printablep (append a b))
-         (and (fn-stx-printablep a) (fn-stx-printablep b))))
+  (implies (and (fn-stx-printablep a) (fn-stx-printablep b))
+           (fn-stx-printablep (append a b))))
 
 (defthm fn-stx-hex-octets-are-printable
   (fn-stx-printablep (fn-stx-hex-octets octets))

@@ -222,27 +222,31 @@
     "tests/acl2/lace-tests",
     "books/policy",
     "books/policy-invariants",
-    "tests/acl2/policy-tests"
+    "tests/acl2/policy-tests",
+    "books/stx-carrier",
+    "books/stx-verify",
+    "books/stx-invariants",
+    "tests/acl2/stx-tests"
   ],
   "totals": {
-    "books": 222,
-    "books_in_root_closure": 221,
-    "roots": 221,
-    "theorems": 4092,
-    "functions": 2986,
-    "assert_events": 3936,
+    "books": 226,
+    "books_in_root_closure": 225,
+    "roots": 225,
+    "theorems": 4174,
+    "functions": 3030,
+    "assert_events": 3978,
     "must_fails": 59,
     "encapsulates": 15,
     "guards": {
-      "verified": 1239,
+      "verified": 1240,
       "declared-off": 141,
-      "default-guarded": 1158,
+      "default-guarded": 1201,
       "default-unguarded": 448
     },
     "suspect_theorems": 31,
-    "export_hygiene_warnings": 62,
+    "export_hygiene_warnings": 66,
     "teeth_form_warnings": 0,
-    "include_hygiene_warnings": 87
+    "include_hygiene_warnings": 88
   },
   "books": [
     {
@@ -3492,6 +3496,87 @@
       "read_error": null
     },
     {
+      "book": "books/stx-carrier.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 50,
+      "functions": 26,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 25,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 10,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "article",
+        "statement-invariants"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/stx-invariants.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 19,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "stx-verify"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/stx-verify.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 13,
+      "functions": 15,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 15,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 10,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "principal",
+        "stx-carrier"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/tcpcl-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -5859,6 +5944,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/stx-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 42,
+      "must_fails": 0,
+      "defconsts": 15,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/stx-invariants",
+        "crypto-seam-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/tcpcl-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -6541,6 +6652,30 @@
         "theorem": "fn-sf-completed-frontier-barrier-removes-old-choice",
         "book": "books/store-files-invariants.lisp",
         "line": 262,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-stx-b64-round-trip",
+        "book": "books/stx-carrier.lisp",
+        "line": 352,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-stx-strip-wsp-of-b64-encode",
+        "book": "books/stx-carrier.lisp",
+        "line": 457,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-stx-detached-round-trip",
+        "book": "books/stx-invariants.lisp",
+        "line": 114,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-stx-field-round-trip",
+        "book": "books/stx-invariants.lisp",
+        "line": 188,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -7250,6 +7385,13 @@
       {
         "book": "tests/acl2/statement-tests.lisp",
         "line": 3,
+        "include": "crypto-seam-tests",
+        "included": "tests/acl2/crypto-seam-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/stx-tests.lisp",
+        "line": 14,
         "include": "crypto-seam-tests",
         "included": "tests/acl2/crypto-seam-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
