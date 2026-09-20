@@ -220,4 +220,52 @@
                                    fn-peer-injection-arguments
                                    fn-node-find-binding fn-acceptedp)))))
 
+; -----------------------------------------------------------------------------
+; The provenance of a transit acceptance
+;
+; The typed record and the string the transit path writes today are the same
+; provenance: the record's LEGACY rendering is, for every peer name and every
+; configuration, exactly what `fn-peer-evidence' answers.  This is the
+; subject-equating theorem of AGENTS.md's first assurance rule for the
+; provenance row: `fn-peer-transit-provenance' is not a sibling API, it is
+; the same value the host line at `books/peer-inbound.lisp:341'
+; (`fn-peer-injection-arguments', the seventh element it hands
+; `fn-node-prepare') already carries, with the transit command, the Path
+; diagnostic and the configuration generation still attached.
+;
+; What the equation does NOT say: that the STORE holds the record.  It holds
+; the rendering, because the transit command is not in scope at
+; `fn-peer-decide-transfer' (no `kind' formal) --- the open item recorded in
+; planning/lanes/HANDOFF-w10-provenance.md.
+
+(defthm fn-peer-evidence-is-the-legacy-rendering
+  (equal (fn-prov-render (fn-peer-transit-provenance peer cfg kind diagnostic))
+         (fn-peer-evidence peer cfg))
+  :hints (("Goal" :in-theory (enable fn-peer-transit-provenance
+                                     fn-peer-evidence))))
+
+(defthm fn-peer-transit-provenance-is-a-provenance
+  (fn-provp (fn-peer-transit-provenance peer cfg kind diagnostic))
+  :hints (("Goal" :in-theory (enable fn-peer-transit-provenance))))
+
+(defthm fn-peer-transit-provenance-names-the-peer
+  (implies (stringp peer)
+           (and (equal (fn-prov-kind
+                        (fn-peer-transit-provenance peer cfg kind diagnostic))
+                       :peer-transit)
+                (equal (fn-prov-transit-peer
+                        (fn-peer-transit-provenance peer cfg kind diagnostic))
+                       peer)))
+  :hints (("Goal" :in-theory (enable fn-peer-transit-provenance))))
+
+; The wire form the store may hold, and the record it reads back as.
+(defthm fn-peer-transit-evidence-round-trips
+  (implies (fn-prov-durablep
+            (fn-peer-transit-provenance peer cfg kind diagnostic))
+           (equal (fn-prov-of-wire
+                   (fn-peer-transit-evidence peer cfg kind diagnostic))
+                  (fn-peer-transit-provenance peer cfg kind diagnostic)))
+  :hints (("Goal" :in-theory (e/d (fn-peer-transit-evidence)
+                                  (fn-peer-transit-provenance)))))
+
 (in-theory (disable fn-peer-refused-transfer-leaves-the-node))

@@ -27,8 +27,19 @@
 ;
 ; The LEGACY kind is not encoded at all: its octets are the string's own
 ; octets, so an evidence value that was a string before this lane occupies
-; exactly the bytes it occupied before, and `fn-prov-wire' of it is `eq' to
-; it.  Nothing in an existing store or journal changes.
+; exactly the bytes it occupied before, and `fn-prov-wire' of it is that
+; string.  Nothing in an existing store or journal changes.
+;
+; The WIRE form is those octets in lowercase hexadecimal behind the eight
+; octets "fnprov1:", and it is printable ASCII on purpose: the host boundary
+; guard `fn-store-text-octetsp' (host/store-host.lisp) admits an evidence
+; octet only in 33 to 126, and the record grammar bounds the field at
+; `*fn-record-max-metadata*' = 256 octets.  So the octet codec above is the
+; canonical form and the hexadecimal is the transport, exactly as
+; `books/identity.lisp' does for a content identity --- and it is that
+; book's `fn-id-hex-octets'/`fn-id-unhex' and their two round trips, not a
+; second hexadecimal.  `*fn-prov-max-field*' is 32 because 8 + 2*(the
+; longest encoding those fields allow) must stay under 256.
 ;
 ; What the tree calls this codec for: `fn-prov-wire' is the projection a
 ; durable writer takes of a typed provenance to put it in the record's
@@ -39,29 +50,53 @@
 (in-package "ACL2")
 (include-book "provenance")
 (include-book "records-canonicality")
+(include-book "identity-invariants")
 
 (local (in-theory (enable fn-cbor-invariants-vocabulary)))
 
 ; -----------------------------------------------------------------------------
 ; Field domains
 
-(defconst *fn-prov-max-field* 64)
+(defconst *fn-prov-max-field* 32)
+
+; "fnprov1:", the wire prefix.  A legacy evidence string that begins with
+; these eight octets is the one value this codec cannot carry and read back;
+; `fn-prov-plain-stringp' says so and the test book exhibits one.
+(defconst *fn-prov-wire-prefix* '(102 110 112 114 111 118 49 58))
 
 (defun fn-prov-textp (text)
   (declare (xargs :guard t))
   (and (fn-record-octet-stringp text)
        (<= (len (fn-record-string-octets text)) *fn-prov-max-field*)))
 
-; The one disambiguation.  A string whose first octet is 0 is still a
+; Total prefix test and total drop: no `take'/`nthcdr' guard obligation on a
+; value that may be anything (the decoder's input is untrusted).
+(defun fn-prov-prefixp (prefix octets)
+  (declare (xargs :guard t))
+  (if (consp prefix)
+      (and (consp octets)
+           (equal (car prefix) (car octets))
+           (fn-prov-prefixp (cdr prefix) (cdr octets)))
+    t))
+
+(defun fn-prov-drop (n xs)
+  (declare (xargs :guard (natp n) :measure (nfix n)))
+  (if (zp n) xs (fn-prov-drop (- (nfix n) 1) (fn-ag-cdr xs))))
+
+(defun fn-prov-wire-prefixedp (octets)
+  (declare (xargs :guard t))
+  (fn-prov-prefixp *fn-prov-wire-prefix* octets))
+
+; The one disambiguation.  A string that begins "fnprov1:" is still a
 ; `fn-provp' --- the recognizer accepts every string, which is what makes the
 ; widening free --- but it is not a string this codec can write and read
-; back, because a structured encoding starts with that octet.  No writer in
-; the tree produces one; `tests/acl2/provenance-tests.lisp' exhibits the
-; excluded value rather than asserting that none exists.
+; back, because a wire form begins with those octets.  No writer in the tree
+; produces one; `tests/acl2/provenance-tests.lisp' exhibits the excluded
+; value rather than asserting that none exists.
 (defun fn-prov-plain-stringp (text)
   (declare (xargs :guard t))
   (and (stringp text)
-       (not (equal (car (fn-record-string-octets text)) 0))))
+       (not (fn-prov-wire-prefixedp (fn-record-string-octets text)))))
 
 (defun fn-prov-diagnostic-identity (d)
   (declare (xargs :guard t))
@@ -178,9 +213,14 @@
       (fn-record-string-octets p)
     (fn-prov-structured-octets p)))
 
+(defun fn-prov-wire-octets (p)
+  (declare (xargs :guard t))
+  (append *fn-prov-wire-prefix*
+          (fn-id-hex-octets (fn-prov-structured-octets p))))
+
 (defun fn-prov-wire (p)
   (declare (xargs :guard t))
-  (if (stringp p) p (fn-record-octets-string (fn-prov-structured-octets p))))
+  (if (stringp p) p (fn-record-octets-string (fn-prov-wire-octets p))))
 
 ; -----------------------------------------------------------------------------
 ; Decoder
@@ -288,7 +328,17 @@
 
 (defun fn-prov-of-wire (text)
   (declare (xargs :guard t))
-  (fn-prov-of-octets (fn-record-string-octets text)))
+  (let ((octets (fn-record-string-octets text)))
+    (if (not (fn-prov-wire-prefixedp octets))
+        (if (stringp text) text "")
+      (let* ((body (fn-prov-drop 8 octets))
+             (raw (if (fn-id-hex-listp body) (fn-id-unhex body) nil))
+             (decoded (if (fn-cbor-octet-listp raw)
+                          (fn-prov-parse-octets raw)
+                        nil)))
+        (if (fn-provp decoded)
+            decoded
+          (if (stringp text) text ""))))))
 
 ; The sentinel does its job: a CBOR uint whose value is 0 is the single
 ; octet 0 (the canonical argument form), so a stream whose first octet is
@@ -463,7 +513,25 @@
 
 (defthm fn-prov-of-wire-is-a-prov
   (fn-provp (fn-prov-of-wire text))
-  :hints (("Goal" :in-theory (disable fn-prov-of-octets))))
+  :hints (("Goal" :in-theory (disable fn-prov-parse-octets))))
+
+; The transport layer: the prefix is exactly the first eight octets and the
+; hexadecimal is exactly the rest.
+(local
+ (defthm fn-prov-prefixp-of-prefixed
+   (fn-prov-wire-prefixedp (append *fn-prov-wire-prefix* xs))
+   :hints (("Goal" :in-theory (enable fn-prov-wire-prefixedp
+                                      fn-prov-prefixp)))))
+
+(local
+ (defthm fn-prov-drop-8-of-prefixed
+   (equal (fn-prov-drop 8 (append *fn-prov-wire-prefix* xs)) xs)
+   :hints (("Goal" :in-theory (enable fn-prov-drop)))))
+
+(local
+ (defthm fn-prov-wire-octets-are-octets
+   (fn-cbor-octet-listp (fn-prov-wire-octets p))
+   :hints (("Goal" :in-theory (enable fn-prov-wire-octets)))))
 
 ; K-PROV-1.  A legacy evidence value occupies exactly the bytes it occupied
 ; before this lane: the wire form of a string IS the string.
@@ -473,17 +541,15 @@
 
 ; K-PROV-2.  A legacy evidence value read back is itself, as the `:legacy'
 ; kind.  This is the theorem that says no store or journal written before
-; this lane changes meaning.
+; this lane changes meaning.  -by-definition: `fn-prov-of-wire' branches on
+; the prefix and `fn-prov-plain-stringp' is the negation of that test; the
+; content is that the branch is the only one a plain string can take.
 (defthm fn-prov-of-wire-of-a-plain-string
   (implies (fn-prov-plain-stringp text)
            (equal (fn-prov-of-wire text) text))
-  :hints (("Goal" :in-theory (e/d (fn-prov-of-wire fn-prov-of-octets
-                                   fn-prov-plain-stringp)
+  :hints (("Goal" :in-theory (e/d (fn-prov-of-wire fn-prov-plain-stringp)
                                   (fn-prov-parse-octets
-                                   fn-record-string-octets
-                                   fn-record-octets-string
-                                   fn-record-octet-stringp))
-           :use ((:instance fn-record-string-round-trip)))))
+                                   fn-prov-wire-prefixedp)))))
 
 (defthm fn-prov-kind-of-a-decoded-plain-string
   (implies (fn-prov-plain-stringp text)
@@ -499,12 +565,17 @@
   :hints (("Goal"
            :cases ((stringp p))
            :use ((:instance fn-record-string-octets-of-octets-string
+                            (octets (fn-prov-wire-octets p)))
+                 (:instance fn-record-string-round-trip (text p))
+                 (:instance fn-id-unhex-of-hex-octets
                             (octets (fn-prov-structured-octets p)))
-                 (:instance fn-record-string-round-trip (text p)))
-           :in-theory (e/d (fn-prov-of-wire fn-prov-of-octets fn-prov-wire
-                            fn-prov-encodablep)
+                 (:instance fn-id-hex-octets-are-hex
+                            (octets (fn-prov-structured-octets p))))
+           :in-theory (e/d (fn-prov-of-wire fn-prov-wire fn-prov-wire-octets
+                            fn-prov-encodablep fn-prov-plain-stringp)
                            (fn-prov-parse-octets fn-prov-structured-octets
                             fn-record-string-octets fn-record-octets-string
+                            fn-id-hex-octets fn-id-unhex fn-id-hex-listp
                             fn-prov-rebuild fn-prov-kind-code
                             fn-prov-field-a fn-prov-field-b fn-prov-field-c
                             fn-prov-field-m fn-prov-field-n
@@ -535,6 +606,8 @@
   :hints (("Goal" :in-theory (disable fn-prov-wire fn-prov-of-wire))))
 
 (in-theory (disable fn-prov-durablep fn-prov-textp fn-prov-plain-stringp
+                    fn-prov-wire-prefixedp fn-prov-wire-octets
+                    fn-prov-prefixp fn-prov-drop
                     fn-prov-encodablep
                     fn-prov-octets fn-prov-structured-octets fn-prov-wire
                     fn-prov-parse-octets fn-prov-of-octets fn-prov-of-wire
