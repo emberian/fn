@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 214 |
 | Certification roots in the Makefile | 213 |
 | Books inside the root closure | 213 |
-| `defthm` and `defthmd` events | 3581 |
+| `defthm` and `defthmd` events | 3586 |
 | `defun` events | 2689 |
 | Functions with verified guards | 1152 |
 | Functions declared `:verify-guards nil` and never verified | 138 |
@@ -23,9 +23,9 @@ stale. Counts describe artifacts, not coverage; see
 | `must-fail` checks | 59 |
 | `encapsulate` events | 14 |
 | Theorems flagged SUSPECT by shape | 30 |
-| Export-hygiene warnings | 63 |
+| Export-hygiene warnings | 62 |
 | Teeth-form warnings | 0 |
-| Include-hygiene warnings | 93 |
+| Include-hygiene warnings | 84 |
 
 ## Lints
 
@@ -70,7 +70,7 @@ that `make certify` requests.
 | `books/article-work-primitives.lisp` | root | 25 | 14 | 0/0/0/14 | 0 | 0 | 0 |
 | `books/article-work-scanners.lisp` | root | 12 | 3 | 0/0/0/3 | 0 | 0 | 0 |
 | `books/article-work.lisp` | root | 23 | 6 | 0/0/0/6 | 0 | 0 | 0 |
-| `books/article.lisp` | root | 21 | 45 | 45/0/0/0 | 0 | 0 | 0 |
+| `books/article.lisp` | root | 24 | 45 | 45/0/0/0 | 0 | 0 | 0 |
 | `books/assumptions.lisp` | root | 12 | 8 | 0/0/0/8 | 0 | 0 | 0 |
 | `books/bp-adu.lisp` | root | 18 | 41 | 7/0/34/0 | 0 | 0 | 0 |
 | `books/bp-fragment-invariants.lisp` | root | 40 | 3 | 0/0/0/3 | 0 | 0 | 2 |
@@ -190,7 +190,7 @@ that `make certify` requests.
 | `books/wildmat-parser-invariants.lisp` | root | 9 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/wildmat-utf8-invariants.lisp` | root | 29 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/wildmat-work.lisp` | root | 52 | 17 | 0/0/0/17 | 0 | 0 | 0 |
-| `books/wildmat.lisp` | root | 11 | 54 | 54/0/0/0 | 0 | 0 | 0 |
+| `books/wildmat.lisp` | root | 13 | 54 | 54/0/0/0 | 0 | 0 | 0 |
 | `books/wire-invariants.lisp` | root | 40 | 2 | 1/0/0/1 | 0 | 0 | 0 |
 | `books/wire.lisp` | root | 44 | 49 | 31/0/18/0 | 0 | 0 | 1 |
 | `tests/acl2/acceptance-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 246 | 0 | 0 |
@@ -293,7 +293,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-frame-decode-refuses-oversize-before-validation` | `books/frame-invariants.lisp` | 653 | branch-of-definition: the hypothesis is a branch test of fn-frame-decode and the conclusion is that branch's value |
 | `fn-inj-instantp-opens` | `books/injection-invariants.lisp` | 207 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-inj-instantp |
 | `fn-lace-cross-canonical-self` | `books/lace-invariants.lisp` | 289 | definition-restated: the conclusion is the body of fn-lace-canonicalp; reflexive-conclusion: a conjunct is (equal X X) |
-| `fn-nntp-block-scan-start-without-a-dot` | `books/nntp-effects.lisp` | 453 | branch-of-definition: the hypothesis negates a branch test of fn-nntp-block-scan and the conclusion is that branch's value |
+| `fn-nntp-block-scan-start-without-a-dot` | `books/nntp-effects.lisp` | 447 | branch-of-definition: the hypothesis negates a branch test of fn-nntp-block-scan and the conclusion is that branch's value |
 | `fn-node-capacity-refusal-is-no-op` | `books/node.lisp` | 537 | branch-of-definition: the hypothesis is a branch test of fn-node-prepare and the conclusion is that branch's value |
 | `fn-node-complete-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 159 | closed-theory-corollary: proved only by fn-node-complete-preserves-state, fn-node-state-has-committed-archive-pins |
 | `fn-node-prepare-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 141 | closed-theory-corollary: proved only by fn-node-prepare-preserves-state, fn-node-state-has-committed-archive-pins |
