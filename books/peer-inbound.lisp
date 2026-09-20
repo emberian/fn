@@ -39,6 +39,8 @@
 (in-package "ACL2")
 (include-book "node-config")
 (include-book "nntp-post")
+; fn-charge-for-payload: the retention charge a transit probe offers.
+(include-book "identity")
 (include-book "peer-config")
 
 (local (in-theory (enable fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
@@ -605,16 +607,20 @@
 ; -----------------------------------------------------------------------------
 ; The composed step
 
-(defun fn-peer-capability-lines (record)
+(defun fn-peer-capability-lines (record postingp)
   ; RFC 3977 section 3.3.2: a label is advertised only for what is served.
   ; IHAVE and STREAMING are promised to a peer whose record has an inbound
-  ; half; a feed-only peer sees the reader's list.
+  ; half; a feed-only peer sees the reader's list.  postingp is the pinned
+  ; configuration's posting bit, which fn-nntp-capability-lines gates the
+  ; POST label on; a transit connection carries no injection configuration
+  ; (fn-peer-command reads only the session), so it passes nil and does not
+  ; promise POST.
   (declare (xargs :guard t))
   (if (and record (fn-cfg-peer-inbound record))
-      (append (fn-nntp-capability-lines)
+      (append (fn-nntp-capability-lines postingp)
               (list (fn-nntp-string-octets "IHAVE")
                     (fn-nntp-string-octets "STREAMING")))
-    (fn-nntp-capability-lines)))
+    (fn-nntp-capability-lines postingp)))
 
 (defun fn-peer-delegate (ps archive config observation injection wire-event)
   (declare (xargs :guard t :verify-guards nil))
@@ -685,7 +691,8 @@
         (fn-nntp-multi (fn-post-session-base (fn-peer-session-base ps))
                        "101 capability list follows"
                        (fn-peer-capability-lines
-                        (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg))))))
+                        (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg)))
+                        nil)))
        nil))
      (t nil))))
 
