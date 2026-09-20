@@ -9,16 +9,23 @@ and the open list, is
 [wave-realignment-2026-09-19](evidence/wave-realignment-2026-09-19.md). No full
 implementation/proof milestone is complete.
 
-**Current task: make `books/owner` certify.** It is the single blocker named by
-three independent lanes — `fn-own-open` calls `fn-served-open` with three
-arguments where `books/served.lisp` declares five, and `fn-own-read-step` calls
-`fn-nntp-step` with three where it takes four. It is the whole of both gates'
-missing roots, the four `test_owner` errors, the reason `fn run` does not start,
-and the reason the deploy gate has no concurrent-session evidence. Behind it,
-in order: the owner's three one-line `host/owner-host.lisp` edits from
-w5-config-groups, the POST read-back re-pin, the `NNT-001` capability/dispatch
-mismatch, and `tcpcl-invariants` at C2. See
-[the board](deputies/BOARD.md) for each item's exact form.
+**Current task: make `books/owner` certify.** It is still the single blocker,
+and running the packaged service proved it in the plainest way available: on
+`52eb0db` `fn run` cannot start on either box because ACL2 refuses
+`(include-book "books/owner")`, so the live unit on persvati and hbox serves
+through `tools/run_reader.py` instead
+([live-52eb0db](evidence/live-52eb0db-2026-09-20.md)). It is also the whole of
+both gates' missing roots, the four `test_owner` errors, and the reason no gate
+has concurrent-session evidence. Behind it, in order: the owner's three
+one-line `host/owner-host.lisp` edits from w5-config-groups; the one-durable-post-
+per-connection defect, which is the pinned clock observation and not the
+read-back re-pin ([BOARD](deputies/BOARD.md), w5/owner-followups, DIAGNOSED);
+`books/nntp-effects`, open at `FN-NNTP-HDR-LABELLED-LINE-IS-BLOCK-TEXT` after
+2598.79 s and 1.47e9 prover steps; the `NNT-001` capability/dispatch mismatch;
+`books/stx-verify` at one printability lemma; and `tcpcl-invariants` at C2. See
+[the board](deputies/BOARD.md) for each item's exact form, and the [v0
+checklist](#v0-checklist-every-item-its-status-its-evidence) below for where
+each sits.
 
 The [three-cycle work plan](swarm-cycles.md) maps 34 planned packets to
 dependencies, owners, stable IDs and finite exits. [Current work](now.md)
@@ -55,6 +62,87 @@ path, S4 and S5 need S3, S6 needs S2 and the reader profile. Owners,
 deliverables and acceptance are
 [the design's packet table](../specs/substrate-transport.md#8-packets); no
 theorem in §6 of that design exists yet.
+
+## v0 checklist: every item, its status, its evidence
+
+Generated-from-evidence, not from intent. A row is `done` only where a named
+keystone certified in a farm gate this table cites, or a harness run in the
+cited evidence file exercised it. `open` and `blocked` rows name what stops
+them. The per-wave record is `planning/evidence/fiber-<wave>-2026-09-20.md`;
+the whole-tree run behind these statuses is
+[verdict-52eb0db](evidence/verdict-52eb0db-2026-09-20.md).
+
+### v0.1 server -- fiber record: [fiber-server](evidence/fiber-server-2026-09-20.md)
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| The owner certifies | **blocked** | `books/owner` has no certificate; ACL2 refuses `(include-book "books/owner")`, which is why `fn run` cannot start at all ([live-52eb0db](evidence/live-52eb0db-2026-09-20.md)) |
+| The owner runs as a service | **blocked** | the installed unit falls back to `tools/run_reader.py`, the same second choice `tools/deploy_gate.py` makes ([live-52eb0db](evidence/live-52eb0db-2026-09-20.md)) |
+| POST is durable end to end | **partial** | one durable post per connection works and rereads byte-for-byte after a kill ([deploy-cce4b11](evidence/deploy-cce4b11-2026-09-20.md) rows 23 to 28); a **second** post on the same connection is always refused 441, diagnosed to the one clock observation pinned at accept ([BOARD](deputies/BOARD.md), w5/owner-followups) |
+| Capabilities match dispatch | **open** | refuted by counterexample: POST answers 340 while CAPABILITIES omits POST, against RFC 3977 5.2.2 (NNT-001 note, `planning/requirements.json`) |
+| Concurrent sessions | **open** | `tools/run_reader.py` is `listen(1)` and serves one connection to completion; the owner is the only concurrent server ([BOARD](deputies/BOARD.md), w5-deploy-gate) |
+| Three outcomes distinct at the CLI | **done** | accepted 0, refused 1, uncertain 3 ([deploy-cce4b11](evidence/deploy-cce4b11-2026-09-20.md) rows 11 to 13) |
+
+### v0.2 peering -- fiber record: [fiber-peering](evidence/fiber-peering-2026-09-20.md)
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| K1 transit refines acceptance | **done** | `fn-peer-transfer-is-the-post-path`, `fn-peer-transfer-stages-only-scope-groups` ([BOARD](deputies/BOARD.md), w6/peering-inbound) |
+| K2 loop freedom | **partial** | `fn-peer-loop-is-refused` (inbound); outbound and RFC 5537 3.6 step 2 open for want of a certified RFC 5322 date reader |
+| K3 duplicate suppression | **done** | `fn-peer-history-is-refused-at-offer`/`-at-transfer`, `fn-peer-history-grows-under-transfer` |
+| K4 restart | **open** | recorded open in `specs/peering.md` status |
+| Peer records are configuration | **done** | `:set-peer` (9) and `:remove-peer` (10) in `books/config.lisp`; `books/peer-config.lisp` |
+| Two nodes exchange both ways | **done (one host)** | [twonode-dfd8758](evidence/twonode-dfd8758-2026-09-20.md), 63 steps, 0 failed |
+| Two nodes exchange across boxes | **blocked** | `fn run` refuses a non-loopback listener, so the live peer records name addresses neither node can reach ([live-52eb0db](evidence/live-52eb0db-2026-09-20.md)) |
+| Real INN on the other end | **done** | INN 2.7.4, [inn-lab-f4e8272](evidence/inn-lab-f4e8272-2026-09-20.md), 75 steps, 0 failed |
+| The owner carries the transit port | **open** | exact forms are the PROPOSAL in the w6/peering-inbound board entry |
+
+### v0.3 DTN -- fiber record: [fiber-dtn](evidence/fiber-dtn-2026-09-20.md)
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| BP step and trace preserve the node | **done** | `fn-bp-step-preserves-node`, `fn-bp-trace-preserves-node` (REP-006 note) |
+| Receipts distinguish the three kinds | **done** | RET-003 `implemented` |
+| Durable scheduling with fairness | **done, with a caution** | REP-005 `implemented`; `fn-sched-conditional-progress-under-a-fairness` is conditional on a constrained assumption |
+| The scheduler host writes valid records | **open** | `fn-sched-host-decision-octets` builds a `:bad` record ([BOARD](deputies/BOARD.md), w3-scheduler) |
+| Interrupted contact-plan run | **open** | no evidence file exists; the w9/dtn-e2e lane owns it |
+| LTP | **open** | `planning/ltp-feasibility.md` is a study; REP-006 stays `specified` for that half |
+
+### v0.4 substrate transport -- fiber record: [fiber-substrate-transport](evidence/fiber-substrate-transport-2026-09-20.md)
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| TCPCLv4 C1 to C4 certified | **partial** | the three tcpcl books certified inside a 60-of-63 closure, `run-20260920T051453Z-c9a2` ([BOARD](deputies/BOARD.md), w8/tcpcl-native) |
+| TCPCLv4 hosted, no Lisp-computed protocol value | **done in code, untested** | `host/tcpcl-host.lisp`, `host/native/tcpcl.lisp`; the image did not build and none of the five scenarios ran ([tcpcl-9cbf301](evidence/tcpcl-9cbf301-2026-09-20.md)) |
+| A two-node transfer over fn's own CL | **open** | the v0.4 gate condition; no run |
+| S1 statement field codec | **partial** | `books/stx-carrier` certified; `books/stx-verify` open at `fn-stx-decimal-octets-are-printable` |
+| S2 verdict | **open** | cascades off `stx-verify`; PRF-020's subject rule needs K1's transit path |
+| S3 to S6 | **open** | no book exists; SUB-003 to SUB-006 `specified` |
+| The LTP question decided | **open** | no decision recorded |
+
+### v0.5 reconfiguration and storage -- fiber record: [fiber-reconfiguration-storage](evidence/fiber-reconfiguration-storage-2026-09-20.md)
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| Configuration is a replayed durable record | **done** | `books/config.lisp` ten delta kinds, `books/config-records.lisp`, `books/node-config.lisp` |
+| Live reconfiguration as an owner event | **open** | `fn group create|retire` refuses while a service is live ([BOARD](deputies/BOARD.md), w5-fn-cli) |
+| Crash model K1 to K11 | **partial** | STO-004, STO-005, FLR-001, FLR-002 `implemented`; K11 (truncation and resize never validate) is a design |
+| Every cut-table crash point is a transition | **open** | the deploy gate exercises one kill point and says so; `tests/campaign/cuts.py` is the table |
+| Persisted checkpoints | **done** | STO-006 `implemented`, `books/checkpoint.lisp` |
+| Index adoption | **partial** | STO-001 `implemented`; `books/index` certifies |
+| The staging orphan has an owner | **open** | `recover` reports and leaves `staging-orphans=1` across two recoveries and a kill; no registry row ([deploy-cce4b11](evidence/deploy-cce4b11-2026-09-20.md)) |
+| Compaction and reclamation | **open** | STO-007, RET-005, RET-006; PRF-009 planned, no events |
+
+### v0.6 convergence and release -- fiber record: [fiber-convergence-release](evidence/fiber-convergence-release-2026-09-20.md)
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| One gate over every root on one machine | **done** | `tools/verdict.py <commit> --host persvati`, one command, host-locked; [verdict-52eb0db](evidence/verdict-52eb0db-2026-09-20.md) |
+| One evidence record per fiber | **done** | the six `planning/evidence/fiber-*-2026-09-20.md` |
+| fn runs as a service on two boxes | **partial** | installed, enabled and serving on both; the server is the reader, not the owner ([live-52eb0db](evidence/live-52eb0db-2026-09-20.md)) |
+| Identity and authority (D01, OBJ-003, OBJ-007) | **open** | `books/crypto-seam` and `books/statement` certify but are an abstract seam |
+| The include-hygiene backlog | **open** | 47 names across eight host files resolve only by bridge load order ([BOARD](deputies/BOARD.md), w5/host-lint) |
+| Every requirement `implemented`/`validated` or `deferred` | **open** | 35 of 56 are still `specified`; no proof target is `certified` |
 
 **v1 is M6 and beyond**: additional convergence-layer and deployment profiles,
 long and asymmetric contacts, the human web interface, 9p projections, and the
