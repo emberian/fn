@@ -56,10 +56,16 @@
   (declare (xargs :guard t))
   (append (fn-record-string-octets (if (stringp str) str "")) '(13 10)))
 
+; A defconst may not call an attached function (see :DOC ignored-attachment),
+; and the toy realiser reaches every value below through fn-digest and
+; fn-sig-public-key.  The three constants that call one directly are built by
+; make-event, whose expansion is recorded in the certificate; everything
+; downstream of them is a pure function of a literal and stays a defconst.
 (defconst *stx-sk* (make-list 32 :initial-element 7))
-(defconst *stx-pk* (fn-sig-public-key *stx-sk*))
+(make-event (list 'defconst '*stx-pk* (list 'quote (fn-sig-public-key *stx-sk*))))
 (defconst *stx-token* '(1 2 3))
-(defconst *stx-creator* (fn-prin-id *stx-pk* *stx-token*))
+(make-event (list 'defconst '*stx-creator*
+                  (list 'quote (fn-prin-id *stx-pk* *stx-token*))))
 (defconst *stx-keyring* (list (cons *stx-creator* *stx-pk*)))
 
 (assert-event (fn-prin-keyringp *stx-keyring*))
@@ -80,13 +86,14 @@
                                   (append '(13 10)
                                           (fn-record-string-octets "body lone")))))))
 
-(defconst *stx-statement*
-  (fn-stmt-sign *stx-sk* *stx-creator* 1 1 nil :article *stx-authored*))
+(make-event (list 'defconst '*stx-statement*
+                  (list 'quote (fn-stmt-sign *stx-sk* *stx-creator* 1 1 nil
+                                             :article *stx-authored*))))
 
 (assert-event (fn-stmt-p *stx-statement*))
 (assert-event (fn-prin-verifiedp *stx-statement* *stx-keyring*))
 
-(defconst *stx-field* (fn-stx-header-value *stx-statement*))
+(make-event (list 'defconst '*stx-field* (list 'quote (fn-stx-header-value *stx-statement*))))
 
 (defun fn-stx-test-received (field authored)
   (declare (xargs :guard t))
@@ -101,8 +108,7 @@
         (fn-article-result-article parsed)
       nil)))
 
-(defconst *stx-article*
-  (fn-stx-test-article (fn-stx-test-received *stx-field* *stx-authored*)))
+(make-event (list 'defconst '*stx-article* (list 'quote (fn-stx-test-article (fn-stx-test-received *stx-field* *stx-authored*)))))
 
 (assert-event (fn-article-syntax-p *stx-article*))
 
@@ -144,11 +150,9 @@
 
 ; A folded field (RFC 5536 section 2.2) still verifies: folding is legal and
 ; the parser strips the continuation WSP before decoding.
-(defconst *stx-folded-field*
-  (append (take 40 *stx-field*)
-          (append '(13 10 32) (nthcdr 40 *stx-field*))))
-(defconst *stx-folded-article*
-  (fn-stx-test-article (fn-stx-test-received *stx-folded-field* *stx-authored*)))
+(make-event (list 'defconst '*stx-folded-field* (list 'quote (append (take 40 *stx-field*)
+          (append '(13 10 32) (nthcdr 40 *stx-field*))))))
+(make-event (list 'defconst '*stx-folded-article* (list 'quote (fn-stx-test-article (fn-stx-test-received *stx-folded-field* *stx-authored*)))))
 (assert-event (equal (fn-stx-verdict-token
                       (fn-stx-verdict *stx-folded-article* *stx-keyring* 7))
                      :verified))
@@ -159,8 +163,7 @@
 ; A modified payload never verifies: the ref is recomputed from the
 ; receiver's own projection, so a rewritten body is :ref-mismatch and not a
 ; forged :verified.
-(defconst *stx-tampered-article*
-  (fn-stx-test-article (fn-stx-test-received *stx-field* *stx-tampered-authored*)))
+(make-event (list 'defconst '*stx-tampered-article* (list 'quote (fn-stx-test-article (fn-stx-test-received *stx-field* *stx-tampered-authored*)))))
 (assert-event (equal (fn-stx-verdict-token
                       (fn-stx-verdict *stx-tampered-article* *stx-keyring* 7))
                      :unverified))
@@ -175,9 +178,8 @@
                      :signature))
 
 ; A malformed field loses authority and nothing else.
-(defconst *stx-malformed-article*
-  (fn-stx-test-article
-   (fn-stx-test-received (fn-record-string-octets "!!!!") *stx-authored*)))
+(make-event (list 'defconst '*stx-malformed-article* (list 'quote (fn-stx-test-article
+   (fn-stx-test-received (fn-record-string-octets "!!!!") *stx-authored*)))))
 (assert-event (equal (fn-stx-verdict-token
                       (fn-stx-verdict *stx-malformed-article* *stx-keyring* 7))
                      :unverified))
@@ -187,7 +189,7 @@
 
 ; No field at all is :absent, and :absent is rendered differently from every
 ; :unverified outcome (D13: three outcomes stay distinct all the way out).
-(defconst *stx-bare-article* (fn-stx-test-article *stx-authored*))
+(make-event (list 'defconst '*stx-bare-article* (list 'quote (fn-stx-test-article *stx-authored*))))
 (assert-event (equal (fn-stx-verdict-token
                       (fn-stx-verdict *stx-bare-article* *stx-keyring* 7))
                      :absent))
