@@ -161,14 +161,14 @@ at a time, after `make certs-install`):
 | `books/nntp-projection` | certified (unchanged; installed cert kept) | `make certs-install` |
 | `books/nntp-responses` | **certified** | `build/acl2/certify-20260919T215419Z-641` |
 | `books/nntp` | **certified** | `build/acl2/certify-20260919T215430Z-1272` |
-| `books/nntp-overview` | **open** | `build/acl2/certify-20260919T215431Z-1323` |
-| `books/nntp-invariants` | not reached | - |
-| `books/nntp-effects` | not reached | - |
-| `tests/acl2/nntp-reader-profile-tests` | not reached | - |
-| `tests/acl2/nntp-tests` | not reached | - |
-| `tests/acl2/nntp-teeth-tests` | not reached | - |
+| `books/nntp-overview` | **certified** (parser, syntax recognizer, splitter and trimmer closed for the whole book; 6 s prove) | `build/acl2/certify-20260919T233722Z-90655` |
+| `books/nntp-invariants` | **certified** (43 s; six article/wildmat backchaining rules withdrawn locally, seven reader-profile theorems given closed-vocabulary hints, two local `-unfolds` bridges; statements unchanged) | `build/acl2/certify-20260920T010648Z-92769` |
+| `books/nntp-effects` | **certified** (three `rev` twins for the `-reverse` lemmas, same six-rule withdrawal, `fn-nntp-effects-list-overview-fmt` moved above its consumer) | `build/acl2/certify-20260920T014459Z-95715` |
+| `tests/acl2/nntp-reader-profile-tests` | not reached (behind `nntp-tests`) | - |
+| `tests/acl2/nntp-tests` | **open**: `assert-event` `(equal (fn-nntp-result-effects *fn-nntp-caps*) '((:reply (49 48 49 32 99 97 112 ...))))` fails; dev's capabilities pin predates the advertised `READER`, `OVER MSGID` and `LIST ACTIVE NEWSGROUPS OVERVIEW.FMT` lines and must be re-pinned to the lane's list (a transcript expectation, not a theorem) | `build/acl2/certify-20260920T014624Z-7807` |
+| `tests/acl2/nntp-teeth-tests` | not reached (behind `nntp-tests`); likewise `books/served`, `tests/acl2/served-tests`, `books/ideal`, `books/nntp-index`, `tests/acl2/nntp-index-tests` | - |
 
-**The open root.** `books/nntp-overview.lisp` does not certify: the shape lemma
+**The open root, closed 2026-09-20.** `books/nntp-overview.lisp` failed to certify on 2026-09-19: the shape lemma
 `fn-nov-overview-is-an-overview`
 
 ```lisp
@@ -191,6 +191,27 @@ proving it in accessor vocabulary, or remove it and repair whatever in
 this lane's theorems are statements of what the books say, not of what ACL2 has
 checked. The clause matrix rows that cite `nntp-reader-profile-tests.lisp` are
 therefore **unverified** in this tree.
+
+**Finisher pass, 2026-09-20 (branch `w3/reader-profile`, merged with dev `d83dea5`).**
+The three model books certify; the test roots do not yet, so every clause
+matrix row that cites a test book is still **unverified** and no row moved.
+Open, in order: (1) re-pin `*fn-nntp-caps*` in `tests/acl2/nntp-tests.lisp`
+and certify the seven remaining roots; (2) `python3 -m unittest tests.test_reader
+tests.test_reader_partitions tests.test_served_differential` ran 11 tests,
+2 failures and 11 errors, all because the host cannot load the uncertified
+`books/served`; no `ACL2 prompt timeout` (the anchor-host `(logic)` fix is on
+dev, not yet merged here); (3) the nntplib probe was not run: it needs a port
+from a separately started `tools/run_reader.py`; (4) dev has since merged
+`w4/post` and `w2/mutable-owner`: its `fn-served-step` is a byte fold over a
+five-field conn `(fn-served-make-conn wire session archive config observation)`
+and its `fn-nntp-step` is still `(session archive wire-event)`, so the merge of
+this branch builds `(fn-nntp-env observation facts)` from the conn at dispatch
+and passes it as `fn-nntp-step`'s third argument; `fn-served-nntp-run` and the
+`env` argument this branch threads through `fn-served-step`/`fn-served-run` are
+gone on dev. Cross-cluster proposal: `books/article.lisp` and `books/wildmat.lisp`
+export `fn-article-nonempty-true-list-is-consp` and five `*-true-listp`
+backchaining rules enabled; two books here withdraw them locally with the
+accumulated-persistence figures; their exports should (proof-style section 8).
 
 The clause matrix in `specs/nntp-audit.md` is unchanged by the rebase: eleven
 rows, four **proved** plus one **proved by construction**, six **tested**, one
