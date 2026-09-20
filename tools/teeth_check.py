@@ -93,11 +93,19 @@ VACUOUS_OVER_EMPTY = {
     "intersectp-equal": 0, "intersectp": 0,
 }
 # Values a witness evaluates to when the thing it meant to exercise did not
-# happen.  `(:tag)` -- a record with no members -- is checked separately.
-DEGENERATE = {"NIL", "0", '""', "()"}
+# happen.  NOT `0`, and NOT a tag-only record: measured on this corpus, `0` is
+# a real minimum time (`*anchor-mint*`), a real shared txid and a real
+# `fn-nntp-group-low`, and `(:RESTART)` is a real nullary event -- treating
+# either as empty produced eight false flags and no true one.
+DEGENERATE = {"NIL", '""', "()"}
 
 MARK = re.compile(r"<FNT ([^>]+)>\n?(.*?)</FNT>", re.S)
 INCLUDE_FAILED = re.compile(r"ACL2 Error in \( INCLUDE-BOOK")
+# `ACL2 Error [Translate] in ( DEFCONST *FF2* ...)`: the form did not run at
+# all, which is a different defect from an assertion that ran and did not
+# bite.  The survey counts them separately and the report keeps them apart.
+ACL2_ERROR = re.compile(
+    r"^ACL2 Error(?: \[(\w+)\])? in (?:\( ?([A-Z0-9!*-]+)[^)]*\)|([A-Z-]+)):", re.M)
 
 
 # --------------------------------------------------------------------------
@@ -189,6 +197,10 @@ class Assertion:
     top: int                    # which top-level form of the book holds it
     body: object
     audit: bool                 # a guard-world audit, not a witness
+    # `assert-event` or `defconst`: a defconst body is translated for
+    # evaluation too, so it is read for the multi-valued check, but it
+    # asserts nothing and is neither counted nor probed.
+    kind: str = "assert-event"
     claims: list[Claim] = field(default_factory=list)
 
 
@@ -290,6 +302,13 @@ def read_book(path: Path) -> tuple[list[Assertion], list[str], str | None]:
         name = head(form)
         if name == "defconst" and len(form) > 1 and isinstance(form[1], Sym):
             constants.append(str(form[1]))
+            # A defconst body is translated for evaluation too, so it is
+            # subject to the multi-valued check; it is not a witness, so it
+            # is recorded as an audit and no probe is built for it.
+            if len(form) > 2:
+                assertions.append(Assertion(
+                    book=book, line=line, index=len(assertions), top=top,
+                    body=form[2], audit=True, kind="defconst"))
             return
         if name == "assert-event" and len(form) > 1:
             body = form[1]
@@ -323,7 +342,7 @@ def probes_for(assertions: list[Assertion]) -> list[Probe]:
     """The ground terms to evaluate for one book."""
     out: list[Probe] = []
     for record in assertions:
-        if record.audit:
+        if record.audit or record.kind != "assert-event":
             continue
         text = renderable(record.body)
         if text is not None:
@@ -429,7 +448,10 @@ def evaluate(book: Path, probe_list: list[Probe], timeout: int,
         keep.parent.mkdir(parents=True, exist_ok=True)
         keep.write_text(log, encoding="utf-8")
     values = parse_log(log)
+    errors = [{"kind": m.group(1) or "", "form": m.group(2) or m.group(3) or ""}
+              for m in ACL2_ERROR.finditer(log)]
     return {
+        "errors": errors,
         "book": book.relative_to(ROOT).as_posix(),
         "exit": answer.returncode,
         "prefix": "ok" if "<FNT-PREFIX-DONE>" in log else "failed",
@@ -445,17 +467,24 @@ def evaluate(book: Path, probe_list: list[Probe], timeout: int,
 
 
 def degenerate(value: str | None) -> str | None:
-    """Why this printed value is degenerate, or None."""
+    """Why this printed value is degenerate, or None.
+
+    Only emptiness counts.  A record whose fields are all `NIL` is still a
+    record and its equality still separates its tag, so `(:WANT NIL)` is not
+    degenerate: calling it so flagged five of `peer-inbound-tests`'s
+    transfer decisions, every one of them a real claim.
+    """
     if value is None:
         return None
     text = value.strip()
     if text in DEGENERATE:
         return "nil" if text in ("NIL", "()") else "empty"
-    if re.fullmatch(r"\(:[A-Z0-9-]+\)", text):
-        return "tag-only"  # a record with no members
-    if re.fullmatch(r"\(:[A-Z0-9-]+ NIL\)", text):
-        return "tag-and-nil"
     return None
+
+
+def tag_only(value: str | None) -> bool:
+    """A record with a tag and no members: reported, never called empty."""
+    return bool(value) and bool(re.fullmatch(r"\(:[A-Z0-9-]+\)", value.strip()))
 
 
 def literal(text: str) -> bool:
@@ -514,6 +543,19 @@ def static_findings(books: dict[str, list[Assertion]],
             f"and never asserted TRUE anywhere, so a definition that is "
             f"constantly false satisfies every one of them ({where})"))
 
+    # A form that cannot even be translated: the book does not run.
+    names = mv_functions()
+    for book, records in sorted(books.items()):
+        for record in records:
+            calls = multi_valued_calls(record.body, names)
+            if calls:
+                out.append(Finding(
+                    "multi-valued-in-evaluation", book, record.line,
+                    f"the body calls {', '.join(sorted(set(calls)))}, which "
+                    f"returns an `mv`, outside `mv-list`; an assert-event "
+                    f"body is translated for evaluation, so this form does "
+                    f"NOT RUN.  Write `(nth n (mv-list k ...))`"))
+
     # An assertion that mentions nothing the tree defines is not a witness.
     defined = defined_names()
     for book, assertions in sorted(books.items()):
@@ -535,6 +577,102 @@ def static_findings(books: dict[str, list[Assertion]],
                 f"assertion does not use it, so it exercises ACL2 and not "
                 f"fn: {text[:100]}"))
     return out
+
+
+_MV: set[str] | None = None
+
+
+# Forms that legally receive several values, and the tail positions a
+# multi-valued body can return from.
+MV_CONTEXT = {"mv-list", "mv-let", "mv?-let", "mv-let*", "b*", "mv", "er-let*"}
+TAIL = {"if": (2, 3), "prog2$": (2,), "the": (2,)}
+
+
+def returns_mv(body: object) -> bool:
+    """Can this body return several values?  Tail positions only.
+
+    Anything looser flags a function that merely CONTAINS an `mv-let`:
+    `fn-bs-fsync-file` binds two values inside and returns two, but
+    `fn-bs-fence-file` binds two and returns one."""
+    if not isinstance(body, list) or not body:
+        return False
+    name = head(body)
+    if name == "mv":
+        return True
+    if name == "if":
+        return any(returns_mv(item) for item in body[2:4])
+    if name in ("let", "let*") and len(body) > 2:
+        return returns_mv(body[-1])
+    if name == "mv-let" and len(body) > 3:
+        return returns_mv(body[-1])
+    if name == "cond":
+        return any(returns_mv(clause[-1]) for clause in body[1:]
+                   if isinstance(clause, list) and clause)
+    if name in ("case", "prog2$", "the"):
+        return returns_mv(body[-1])
+    return False
+
+
+def mv_functions() -> set[str]:
+    """Every `defun` in the tree whose body can return an `mv`, cached."""
+    global _MV
+    if _MV is None:
+        names: set[str] = set()
+        for directory in ("books", "tests/acl2"):
+            for path in sorted((ROOT / directory).glob("*.lisp")):
+                for form in ledger.read_forms(path.read_text(encoding="utf-8")):
+                    if head(form) not in ("defun", "defund", "defun-nx"):
+                        continue
+                    if len(form) > 3 and isinstance(form[1], Sym) \
+                            and any(returns_mv(item) for item in form[3:]):
+                        names.add(str(form[1]))
+        _MV = names
+    return _MV
+
+
+def multi_valued_calls(form: object, names: set[str],
+                       parent: object = None) -> list[str]:
+    """Calls of a multi-valued function that are not wrapped in `mv-list`.
+
+    A `defconst` or an `assert-event` body is TRANSLATED FOR EVALUATION,
+    which is single-valued, so a multi-valued call there is a signature
+    mismatch and the form does not run at all.  `tests/acl2/peer-feed-tests`
+    carried fifteen `(mv-nth n (fn-feed-...))` of exactly this shape and the
+    book had never certified, so nothing had ever reported them (found by
+    the feed lane, 2026-09-20).  The idiom that works is
+    `(nth n (mv-list 2 ...))`.
+    """
+    found: list[str] = []
+    if not isinstance(form, list) or not form:
+        return found
+    name = head(form)
+    outer = head(parent)
+    # A macro expands to something this reader cannot see, and the corpus
+    # wraps these calls in one (`bst-res`, `bst-state` in byte-store-tests):
+    # only a call whose parent is a FUNCTION is certainly single-valued.
+    if (name in names and outer not in MV_CONTEXT
+            and outer is not None and outer not in macro_names()
+            and (outer == "mv-nth" or outer in defined_names()
+                 or outer in ("equal", "not", "null", "car", "cdr", "nth",
+                              "len", "append", "list", "consp", "member-equal"))):
+        found.append(name)
+    for item in form[1:] if name else form:
+        found.extend(multi_valued_calls(item, names, form))
+    return found
+
+
+_MACROS: set[str] | None = None
+
+
+def macro_names() -> set[str]:
+    """Every `defmacro` name in the tree, cached: a macro hides its shape."""
+    global _MACROS
+    if _MACROS is None:
+        found: set[str] = set()
+        for book in ledger.load_tree().books.values():
+            found |= book.macros
+        _MACROS = found
+    return _MACROS
 
 
 _LITERALS: set[str] | None = None
@@ -609,6 +747,18 @@ def evaluated_findings(books: dict[str, list[Assertion]],
         run = saved.get(book)
         if run is None:
             continue
+        errors = run.get("errors", [])
+        if errors:
+            first = errors[0]
+            kinds = collections.Counter(e["form"] for e in errors)
+            out.append(Finding(
+                "book-does-not-run", book, 0,
+                f"the survey saw ACL2 refuse {len(errors)} form(s); the "
+                f"first is {first['kind'] or 'an error'} in "
+                f"{first['form'] or '?'}. Everything a refused form defines "
+                f"is MISSING below it, so the assertions after it are not "
+                f"weak, they are INERT ("
+                + ", ".join(f"{n}x {f}" for f, n in kinds.most_common(4)) + ")"))
         if run["prefix"] != "ok" or run["include_failed"]:
             out.append(Finding(
                 "prefix-failed", book, 0,
@@ -847,7 +997,8 @@ def top_of(key: str, assertions: list[Assertion]) -> int:
 
 
 def counts(assertions: dict[str, list[Assertion]]) -> dict[str, int]:
-    every = [record for records in assertions.values() for record in records]
+    every = [record for records in assertions.values() for record in records
+             if record.kind == "assert-event"]
     return {
         "books": len(assertions),
         "assertions": len(every),

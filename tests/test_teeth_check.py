@@ -71,7 +71,10 @@ class ReadingABook(unittest.TestCase):
 '''
 
     def setUp(self):
-        self.assertions, self.constants, self.error = read(self.SOURCE)
+        self.all, self.constants, self.error = read(self.SOURCE)
+        # A `defconst` body is read for the multi-valued check and is not an
+        # assertion; the counts and the probes see only the assertions.
+        self.assertions = [a for a in self.all if a.kind == "assert-event"]
 
     def test_no_read_error(self):
         self.assertIsNone(self.error)
@@ -94,15 +97,26 @@ class ReadingABook(unittest.TestCase):
 
     def test_each_assertion_knows_its_top_level_form(self):
         self.assertEqual([a.top for a in self.assertions], [3, 4, 5])
+        self.assertEqual([a.kind for a in self.all][0], "defconst")
 
 
 class Degeneracy(unittest.TestCase):
     def test_the_empty_values(self):
-        for value in ["NIL", "0", '""', "()"]:
+        for value in ["NIL", '""', "()"]:
             self.assertIsNotNone(teeth_check.degenerate(value), value)
 
-    def test_a_record_with_no_members(self):
-        self.assertEqual(teeth_check.degenerate("(:FN-DELTA)"), "tag-only")
+    def test_zero_is_a_number_and_not_an_absence(self):
+        # `*anchor-mint*` is 0, two staged records really do share txid 0,
+        # and `fn-nntp-group-low` of an empty group is 0.  Calling 0 empty
+        # flagged all three and found nothing.
+        self.assertIsNone(teeth_check.degenerate("0"))
+
+    def test_a_record_with_no_members_is_reported_not_called_empty(self):
+        self.assertTrue(teeth_check.tag_only("(:FN-DELTA)"))
+        self.assertIsNone(teeth_check.degenerate("(:FN-DELTA)"))
+
+    def test_a_record_whose_field_is_nil_is_still_a_record(self):
+        self.assertIsNone(teeth_check.degenerate("(:WANT NIL)"))
 
     def test_a_real_value_is_not_degenerate(self):
         self.assertIsNone(teeth_check.degenerate("(:OK (1 2 3))"))
@@ -200,7 +214,7 @@ class Findings(unittest.TestCase):
     def test_a_claim_over_an_empty_collection(self):
         record = self.claim("(member-equal *x* (fn-held *s*))")
         found = self.run_findings(record, {"a0": "T", "a0c0t": "T",
-                                           "a0c0s0": "(:X)", "a0c0s1": "NIL"})
+                                           "a0c0s0": "(1 2)", "a0c0s1": "NIL"})
         self.assertIn("empty-collection", found)
 
     def test_a_real_value_raises_nothing(self):
@@ -238,3 +252,49 @@ class TheCorpus(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MultiValued(unittest.TestCase):
+    """`(mv-nth n (f ...))` in an evaluation context: the form does not run.
+
+    Fifteen of these sat in `tests/acl2/peer-feed-tests.lisp` until
+    2026-09-20 and nothing reported them, because the book had never
+    certified.  This is the "the book never ran" class, not the "the
+    assertion did not bite" class.
+    """
+
+    def flagged(self, text: str):
+        form = teeth_check.ledger.read_forms(text)[0]
+        return teeth_check.multi_valued_calls(form, teeth_check.mv_functions())
+
+    def test_the_illegal_shape(self):
+        self.assertEqual(self.flagged("(mv-nth 0 (fn-feed-tick-step f obs))"),
+                         ["fn-feed-tick-step"])
+
+    def test_the_repair_is_clean(self):
+        self.assertEqual(
+            self.flagged("(nth 0 (mv-list 2 (fn-feed-tick-step f obs)))"), [])
+
+    def test_a_real_multi_value_context_is_clean(self):
+        self.assertEqual(
+            self.flagged("(mv-let (g fx) (fn-feed-observe a b) (list g fx))"),
+            [])
+
+    def test_a_macro_wrapper_is_not_flagged(self):
+        # `bst-res` in byte-store-tests expands to an `mv-let`; a static
+        # reader cannot see through a macro, so it does not guess.
+        self.assertEqual(self.flagged("(bst-res (fn-bs-fsync-file s 2 :ok))"),
+                         [])
+
+    def test_a_single_valued_function_is_not_multi_valued(self):
+        self.assertNotIn("fn-bs-fence-file", teeth_check.mv_functions())
+        self.assertIn("fn-bs-fsync-file", teeth_check.mv_functions())
+
+
+class Acl2Errors(unittest.TestCase):
+    def test_a_translate_error_names_its_form(self):
+        log = ("ACL2 Error [Translate] in ( DEFCONST *FF2* ...):  It is\n"
+               "ACL2 Error in ( DEFTHEORY FN-OWN-INVARIANTS-VOCABULARY ...): \n")
+        found = teeth_check.ACL2_ERROR.findall(log)
+        self.assertEqual([m[1] for m in found], ["DEFCONST", "DEFTHEORY"])
+        self.assertEqual(found[0][0], "Translate")
