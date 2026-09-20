@@ -262,10 +262,13 @@ class ReaderSocketTests(unittest.TestCase):
         self.reader.assert_bytes(sock, headers)
 
         # Section 7.6.6: name, TAB, description.  fn's group table carries no
-        # description, so the description is empty rather than invented.
+        # description, so every group gets the same fixed marker rather than
+        # an invented sentence; an EMPTY field would make nntplib drop the
+        # group from descriptions() entirely (measured 2026-09-20).
         sock.sendall(b"LIST NEWSGROUPS\r\nLIST NEWSGROUPS fn.*\r\n"
                      b"LIST NEWSGROUPS other.*\r\n")
-        newsgroups = b"215 list of newsgroups follows\r\nfn.letters\t\r\n.\r\n"
+        newsgroups = (b"215 list of newsgroups follows\r\n"
+                      b"fn.letters\t(no description)\r\n.\r\n")
         self.reader.assert_bytes(sock, newsgroups)
         self.reader.assert_bytes(sock, newsgroups)
         self.reader.assert_bytes(sock, b"215 list of newsgroups follows\r\n.\r\n")
@@ -283,9 +286,13 @@ class ReaderSocketTests(unittest.TestCase):
         # unavailable.  The served connection carries no persisted creation
         # facts yet, so the block is empty rather than a date fn invented.
         sock.sendall(b"LIST ACTIVE.TIMES\r\nLIST ACTIVE.TIMES fn.*\r\n"
-                     b"LIST DISTRIBUTIONS\r\nLIST SUBSCRIPTIONS\r\n")
+                     b"LIST DISTRIBUTIONS\r\nLIST SUBSCRIPTIONS\r\n"
+                     b"LIST NOSUCHVARIANT\r\n")
         self.reader.assert_bytes(sock, b"215 information follows\r\n.\r\n")
         self.reader.assert_bytes(sock, b"215 information follows\r\n.\r\n")
+        self.reader.assert_bytes(sock, b"503 data item not stored\r\n")
+        # RFC 2980 section 2.1.8's own response list is 215 or 503; slrn 1.0.3
+        # sends LIST SUBSCRIPTIONS on every connection.
         self.reader.assert_bytes(sock, b"503 data item not stored\r\n")
         self.reader.assert_bytes(sock, b"501 unsupported LIST variant\r\n")
 

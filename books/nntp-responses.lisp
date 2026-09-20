@@ -160,13 +160,20 @@
   ; RFC 3977 section 7.6.6: the group name, one or more space or TAB (the
   ; usual practice is a single TAB), then a short description.  fn's
   ; configuration carries no description for a group -- the group table holds
-  ; names, policy ids and created/retired stamps only -- so the description is
-  ; EMPTY rather than an invented per-group sentence.  Section 7.6.6 lets the
-  ; server pass the description on as it holds it; it does not let the server
-  ; make one up.  See the LIST NEWSGROUPS row of specs/nntp-audit.md.
+  ; names, policy ids and created/retired stamps only -- so the second field
+  ; is the fixed marker "(no description)", identical for every group.  That
+  ; fabricates nothing about any group: it is a statement about the server.
+  ;
+  ; The field is NOT empty, and that is a measured decision.  A bare
+  ; "name TAB" line is what section 7.6.6 permits, but Python nntplib strips
+  ; the line and then requires name + white space + text, so an empty
+  ; description makes the group VANISH from its descriptions() result rather
+  ; than appear with no text (measured against tests/interop_nntplib.py,
+  ; 2026-09-20).  See the LIST NEWSGROUPS row of specs/nntp-audit.md.
   (if (consp groups)
       (cons (fn-nntp-append-pieces
-             (list (fn-nntp-string-octets (car groups)) (list 9)))
+             (list (fn-nntp-string-octets (car groups)) (list 9)
+                   (fn-nntp-string-octets "(no description)")))
             (fn-nntp-newsgroup-lines (cdr groups)))
     nil))
 ; `patterns` is an internal successful `fn-wildmat-parse` result, never an
@@ -273,7 +280,12 @@
       (if (null args)
           (fn-nntp-single session "503 data item not stored")
         (fn-nntp-single session "501 syntax error"))
-    (if (fn-nntp-keywordp keyword "DISTRIBUTIONS")
+    (if (or (fn-nntp-keywordp keyword "DISTRIBUTIONS")
+            ; RFC 2980 section 2.1.8's own response list for LIST
+            ; SUBSCRIPTIONS is 215 or 503, so a server that maintains no
+            ; default subscription list answers 503, not 501.  slrn 1.0.3
+            ; sends this on every connection (measured 2026-09-20).
+            (fn-nntp-keywordp keyword "SUBSCRIPTIONS"))
         (if (null args)
             (fn-nntp-single session "503 data item not stored")
           (fn-nntp-single session "501 syntax error"))
