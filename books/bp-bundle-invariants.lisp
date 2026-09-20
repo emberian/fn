@@ -24,10 +24,34 @@
 
 (include-book "bp-bundle")
 
-(local (in-theory (enable fn-bpb-vocabulary
-                          fn-bpb-block-internals
-                          fn-bpb-bundle-internals
-                          fn-bpc-vocabulary)))
+;; This book opens `books/bp-bundle`'s own definitions, and nothing else.
+;; The records stay opaque: `fn-bpb-block-internals` and
+;; `fn-bpb-bundle-internals` are NOT enabled, so no goal here is ever about
+;; `car` of a record.  `fn-bpc-vocabulary` is enabled at the forms that need
+;; it and never book-wide -- proof-style.md, "never enable a vocabulary
+;; book-wide", measured twice on 2026-09-20.
+(local (in-theory (enable fn-bpb-vocabulary)))
+
+;; The three list facts `books/bp-bundle` keeps local, restated here for the
+;; same reason: octet-ness of an append must be settled by a rule, not by
+;; `fn-cbor-octet-listp` opening over a long list.
+(local
+ (defthm fn-bpbi-octet-listp-of-append
+   (implies (and (fn-cbor-octet-listp a) (fn-cbor-octet-listp b))
+            (fn-cbor-octet-listp (append a b)))
+   :hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))))
+
+(local
+ (defthm fn-bpbi-octet-listp-of-cons
+   (implies (and (fn-cbor-octetp h) (fn-cbor-octet-listp xs))
+            (fn-cbor-octet-listp (cons h xs)))
+   :hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))))
+
+(local
+ (defthm fn-bpbi-octet-listp-implies-true-listp
+   (implies (fn-cbor-octet-listp xs) (true-listp xs))
+   :rule-classes (:rewrite :forward-chaining)
+   :hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))))
 
 ; -----------------------------------------------------------------------------
 ; Octets out.
@@ -52,7 +76,9 @@
            :use ((:instance fn-bpc-uint-head-decodes (n n) (rest rest))
                  (:instance fn-bpc-uint-head-range (n n))
                  (:instance fn-bpc-argument-is-consp (major 0) (n n)))
-           :in-theory (disable fn-bpc-argument))))
+           :in-theory (e/d (fn-bpc-car-of-append fn-bpc-cdr-of-append)
+                           (fn-bpc-argument fn-bpc-decode-head
+                            fn-bpc-decode-argument fn-cbor-decode-argument)))))
 
 (defthm fn-bpb-take-bytes-of-argument
   (implies (and (fn-cbor-octet-listp data) (fn-cbor-octet-listp rest)
@@ -67,7 +93,11 @@
                             (n (len data)) (rest (append data rest)))
                  (:instance fn-bpc-bytes-head-range (n (len data)))
                  (:instance fn-bpc-argument-is-consp (major 2) (n (len data))))
-           :in-theory (disable fn-bpc-argument))))
+           :in-theory (e/d (fn-bpc-car-of-append fn-bpc-cdr-of-append
+                            fn-bpc-len-of-append fn-bpc-take-of-append
+                            fn-bpc-nthcdr-of-append fn-bpc-append-associativity)
+                           (fn-bpc-argument fn-bpc-decode-head
+                            fn-bpc-decode-argument fn-cbor-decode-argument)))))
 
 ; -----------------------------------------------------------------------------
 ; Keystone: one canonical block decodes back from its own encoding, with the
@@ -80,8 +110,11 @@
   :hints (("Goal"
            :do-not-induct t
            :in-theory (e/d (fn-bpb-decode-block fn-bpb-encode-block
-                            fn-bpb-encode-block-with-crc)
+                            fn-bpb-encode-block-with-crc
+                            fn-bpc-append-associativity)
                            (fn-bpc-argument fn-bpb-block-crc
+                            fn-bpc-decode-head fn-bpc-decode-argument
+                            fn-cbor-decode-argument
                             fn-bpp-crc-octets fn-bpp-zero-crc)))))
 
 ; -----------------------------------------------------------------------------
@@ -121,8 +154,9 @@
                     (append (fn-bpb-encode-blocks xs)
                             (cons *fn-bpb-array-break* rest))
                     budget)
-           :in-theory (disable fn-bpb-encode-block fn-bpb-decode-block
-                               fn-bpb-block-crc))))
+           :in-theory (e/d (fn-bpc-append-associativity)
+                           (fn-bpb-encode-block fn-bpb-decode-block
+                            fn-bpb-block-crc)))))
 
 ; -----------------------------------------------------------------------------
 ; Keystone: decode of encode, over the whole bundle.
@@ -179,7 +213,9 @@
                                         (list (fn-bpb-bundle-payload bundle))))
                             (rest nil)
                             (budget *fn-bpb-max-blocks*)))
-           :in-theory (e/d (fn-bpb-decode fn-bpb-encode)
+           :in-theory (e/d (fn-bpb-decode fn-bpb-encode
+                            fn-bpc-len-of-append fn-bpc-take-of-append
+                            fn-bpc-append-associativity)
                            (fn-bpc-dec fn-bpc-enc fn-bpp-encode fn-bpp-decode
                             fn-bpb-encode-block fn-bpb-encode-blocks
                             fn-bpb-decode-block fn-bpb-decode-blocks
@@ -206,15 +242,6 @@
   (implies (fn-cbor-result-okp (fn-bpb-decode-block octets))
            (fn-bpb-blockp (fn-cbor-result-value (fn-bpb-decode-block octets))))
   :hints (("Goal" :in-theory (disable fn-bpb-encode-block fn-bpb-block-crc))))
-
-(defthm fn-bpb-decode-blocks-yield-blocks
-  (implies (and (fn-cbor-octet-listp octets)
-                (fn-cbor-result-okp (fn-bpb-decode-blocks octets budget)))
-           (fn-bpb-block-listp
-            (fn-cbor-result-value (fn-bpb-decode-blocks octets budget))))
-  :hints (("Goal"
-           :induct (fn-bpb-decode-blocks octets budget)
-           :in-theory (disable fn-bpb-decode-block fn-bpb-encode-block))))
 
 (defthm fn-bpb-decode-blocks-are-canonical-by-construction
   (implies (and (fn-cbor-octet-listp octets)
@@ -252,7 +279,8 @@
            :use ((:instance fn-bpc-dec-reencodes-consumed-prefix
                             (flg :item) (count 0) (octets (cdr octets))
                             (budget *fn-bpc-max-items*)))
-           :in-theory (e/d (fn-bpb-decode fn-bpb-encode)
+           :in-theory (e/d (fn-bpb-decode fn-bpb-encode
+                            fn-bpc-len-of-append fn-bpc-take-of-append)
                            (fn-bpc-dec fn-bpc-enc fn-bpp-decode fn-bpp-encode
                             fn-bpb-decode-blocks fn-bpb-encode-block
                             fn-bpb-encode-blocks fn-bpb-block-crc

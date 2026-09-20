@@ -174,7 +174,14 @@ dominates an acceptance: a run that saw one of each did not succeed."
            (setq socket (fnn-tcl-connect host port))
            (let ((conn (fnn-tcl-session
                         (fnn-socket-fd socket) :active
-                        (fnn-tcl-params node-id peer-eid +fnn-tcl-keepalive+
+                        ;; The convergence layer's expected peer is a
+                        ;; SESSION identity (RFC 9174 section 4.2), not the
+                        ;; bundle's destination: a bundle for
+                        ;; dtn://x/demux may travel over a session with any
+                        ;; node.  Passing the destination here would refuse
+                        ;; every correct session whose peer is not also the
+                        ;; final destination.
+                        (fnn-tcl-params node-id nil +fnn-tcl-keepalive+
                                         +fnn-tcl-segment-mru+ transfer-mru)
                         "active" journal
                         :bundle bundle :expect expect)))
