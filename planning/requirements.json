@@ -525,7 +525,7 @@
         "fn-sn-open-observed-not-ready-before-five-barriers",
         "fn-sn-open-observed-five-barriers-open-ready"
       ],
-      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). The crash relation realizes every admissible image, stable records are a prefix of any crash image, and the five barriers are what open a reopened store. Open, and named by review finding D4: the images are record-granular. Byte-level torn writes are planning/lanes/DESIGN-crash-model-v2-summary.md (K1 to K11), a design, so 'every crash point' is not claimed for the byte layer."
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). The crash relation realizes every admissible image, stable records are a prefix of any crash image, and the five barriers are what open a reopened store. Open, and named by review finding D4: the images are record-granular. Byte-level torn writes are planning/lanes/DESIGN-crash-model-v2-summary.md (K1 to K11), a design, so 'every crash point' is not claimed for the byte layer. Open and newly named (decision D14-a, 2026-09-20): the kernel's crash-image predicate has no freedom for a record that recovery replayed from the view and has not yet re-fenced, so a crash in the recovery window (run_store.py:1179-1200, before fsync_dir(self.transactions) at 1187) produces an image fn-sf-crash-imagep does not admit. Nothing acknowledged is at risk there -- that state carries no success -- but the obligation is recorded as K2r of specs/crash-model-v2.md and is not proved."
     },
     {
       "id": "FLR-002",
