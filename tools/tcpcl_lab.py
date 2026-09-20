@@ -20,6 +20,11 @@ Scenarios, each printing one JSON object and each independent of the others:
 `crash`      SIGKILL the listener inside a transfer, then start a fresh one.
              The bundle it acknowledged before the kill is still in the spool,
              byte for byte; the one that was in flight is not there at all.
+`adu`        the BP node, not the convergence layer: A authors a whole BPv7
+             bundle with `bp send' and B decodes it with `bp receive'.  The
+             ADU B journals must be A's ADU byte for byte, and B's reply
+             bundle must arrive at A the same way.  Nothing in this scenario
+             hands either side octets it did not author.
 `replay`     the trace the listener wrote, folded back through `fn-tcl-drive'
              by the image's own `tcpcl replay' verb.  The two event streams
              must be equal: the socket loop decided nothing the fold did not.
@@ -41,7 +46,10 @@ import subprocess
 import sys
 import time
 
-LISTENING = re.compile(rb"TCPCL LISTENING (\d+)")
+LISTENING = re.compile(rb"(?:TCPCL|BP) LISTENING (\d+)")
+BP_ACCEPTED = re.compile(r"^BP accepted xfer=(\d+) adu=(\d+) path=(.*)$")
+BP_AUTHORED = re.compile(r"^BP authored creation=(\d+) sequence=(\d+) "
+                         r"lifetime=(\d+) payload=(\d+) octets=(\d+)$")
 EVENT = re.compile(r"^TCPCL (\S+) (event|aux) (.*)$")
 OUTCOME = re.compile(r"^TCPCL (\S+) (accepted|refused|uncertain) (.*)$")
 
@@ -396,6 +404,72 @@ class Lab:
               and ratio is not None and ratio < 8.0)
         self.record("profile", ok, **facts)
 
+    def scenario_adu(self):
+        """A fn-authored BPv7 bundle each way, and the ADU out equals the ADU in.
+
+        The distinction the scenario exists to hold: neither side is given a
+        file of bundle octets.  Each is given an ADU, and the image builds the
+        bundle around it by calling `fn-bpn-send'; each decodes what arrives by
+        calling `fn-bpn-receive', which is the only thing that recovers an ADU.
+        A `bp send' that wrapped `tcpcl send' would fail here at the first
+        assertion, because there would be no ADU in either journal.
+        """
+        root = self.fresh("adu")
+        b_journal, a_journal = root / "b-journal", root / "a-journal"
+        adu_a, adu_b = root / "adu-a.bin", root / "adu-b.bin"
+        adu_a.write_bytes(bundle(1500, 3))
+        adu_b.write_bytes(bundle(700, 4))
+        listener = self.spawn(
+            ["bp", "receive", 0, 1, b_journal, "dtn://fn-b/", "-", 3600000, 2, 32,
+             1048576, adu_b, "dtn://fn-a/", 1],
+            root / "receive.log")
+        try:
+            port = self.port_of(listener)
+            sender = subprocess.run(
+                [self.image, "--fn", "bp", "send", "127.0.0.1", str(port),
+                 str(adu_a), str(a_journal), "dtn://fn-a/", "dtn://fn-b/",
+                 "3600000", "2", "32", "1", "1048576", "1"],
+                capture_output=True, timeout=120)
+            send_log = root / "send.log"
+            send_log.write_bytes(sender.stdout + sender.stderr)
+            listener.wait(timeout=60)
+        finally:
+            if listener.poll() is None:
+                listener.kill()
+            listener.handle.close()
+
+        recv_text = (root / "receive.log").read_text(errors="replace")
+        send_text = send_log.read_text(errors="replace")
+        b_got = b_journal / "passive-0.adu"
+        a_got = a_journal / "active-0.adu"
+        authored = [BP_AUTHORED.match(l) for l in send_text.splitlines()]
+        authored = [m for m in authored if m]
+        facts = dict(
+            listener_rc=listener.returncode, sender_rc=sender.returncode,
+            a_authored=bool(authored),
+            a_bundle_octets=int(authored[0].group(5)) if authored else 0,
+            a_payload_octets=int(authored[0].group(4)) if authored else 0,
+            b_accepted=len([l for l in recv_text.splitlines()
+                            if BP_ACCEPTED.match(l)]),
+            a_accepted=len([l for l in send_text.splitlines()
+                            if BP_ACCEPTED.match(l)]),
+            b_adu_is_a_adu=b_got.exists() and b_got.read_bytes() == adu_a.read_bytes(),
+            a_adu_is_b_adu=a_got.exists() and a_got.read_bytes() == adu_b.read_bytes(),
+            refusals=len([l for l in (recv_text + send_text).splitlines()
+                          if l.startswith("BP refused")]),
+            uncertain=len([l for l in (recv_text + send_text).splitlines()
+                           if l.startswith("BP uncertain")]))
+        # The bundle on the wire is strictly larger than the ADU inside it:
+        # a `bp send' that forwarded the ADU unwrapped would show equality.
+        facts["bundle_wraps_adu"] = (facts["a_bundle_octets"]
+                                     > facts["a_payload_octets"] > 0)
+        ok = (facts["listener_rc"] == EXIT_OK and facts["sender_rc"] == EXIT_OK
+              and facts["a_authored"] and facts["bundle_wraps_adu"]
+              and facts["b_accepted"] == 1 and facts["a_accepted"] == 1
+              and facts["b_adu_is_a_adu"] and facts["a_adu_is_b_adu"]
+              and facts["refusals"] == 0 and facts["uncertain"] == 0)
+        self.record("adu", ok, **facts)
+
     def scenario_replay(self):
         """The listener's octets, folded back through `fn-tcl-drive' alone.
 
@@ -472,6 +546,8 @@ class Lab:
             self.scenario_crash()
         if which in ("all", "profile"):
             self.scenario_profile()
+        if which in ("all", "adu"):
+            self.scenario_adu()
         if which in ("all", "replay"):
             self.scenario_replay()
         summary = dict(scenario="summary",
@@ -488,7 +564,7 @@ def main(argv=None) -> int:
     parser.add_argument("--work", default="/tmp/tcpcl-lab")
     parser.add_argument("--scenario", default="all",
                         choices=["all", "exchange", "refused", "keepalive",
-                                 "crash", "profile", "replay"])
+                                 "crash", "profile", "adu", "replay"])
     args = parser.parse_args(argv)
     if not Path(args.image).exists():
         print(json.dumps({"scenario": "summary", "ok": False,
