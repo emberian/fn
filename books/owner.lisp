@@ -647,9 +647,17 @@
                              (posp (fn-cfg-peer-inbound-max-octets record)))
                         (fn-cfg-peer-inbound-max-octets record)
                       *fn-own-body-limit*))
+             ; The reader pin and the injection reading, in that order, as
+             ; fn-own-open passes them: `fn-served-open-peer' gained the
+             ; injection argument with the per-submission injection clock
+             ; (w5/clock-seam) and this caller still passed eight, so
+             ; books/owner did not admit at all against the merged
+             ; books/served.  A transit connection takes the owner's current
+             ; observation for both, exactly as a reader connection does.
              (opened (fn-served-open-peer archive
                                           *fn-nntp-max-initial-line-octets*
                                           limit (fn-own-config o) (fn-own-clock o)
+                                          (fn-own-clock o)
                                           peer (fn-sn-node (fn-own-store o)) cfg))
              (sconn (fn-served-result-conn opened))
              (conn (fn-own-conn-make id (fn-own-view-version view)
@@ -903,157 +911,6 @@
     o))
 
 ; -----------------------------------------------------------------------------
-; The served POST path: configuration, the writer step and the outcome.
-
-; The posting configuration new connections pin.  Open connections keep the
-; configuration they were opened with.
-(defun fn-own-configure (o config)
-  (declare (xargs :guard t))
-  (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
-               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
-               (fn-own-clock o) (fn-own-facts o) config (fn-own-queue o)
-               (fn-own-inflight o) (fn-own-feeds o)))
-
-; The writer step takes the oldest queued submission into the durable path:
-; only when nothing is in flight, no transaction is pending and the store is
-; :ready, so at most one submission is in the durable path at a time and it
-; owns the transaction (pending) exactly as a control-channel post would.
-; The mark is the ledger length now; fn-own-outcome reads it.
-(defun fn-own-take-submission (o)
-  (declare (xargs :guard t))
-  (if (and (null (fn-own-inflight o))
-           (consp (fn-own-queue o))
-           (null (fn-own-pending o))
-           (equal (fn-sf-phase (fn-sn-files (fn-own-store o))) :ready))
-      (let ((sub (car (fn-own-queue o))))
-        (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
-                     (fn-own-next-id o) (fn-own-max-conns o) (fn-own-sub-id sub)
-                     (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
-                     (fn-own-config o) (cdr (fn-own-queue o))
-                     (fn-own-sub-make (fn-own-sub-id sub) (fn-own-sub-version sub)
-                                      (len (fn-own-ledger o))
-                                      (fn-own-sub-decision sub)) (fn-own-feeds o)))
-    o))
-
-; The completion the owner reports for the submission in flight, from the
-; word the host observed.  :durable needs a completion consumed into the
-; ledger after the take (fn-own-complete is the only ledger writer, and it
-; consumes the actual fn-sn-finish, fn-own-completion-consumed-once); a host
-; word of :durable without one is :uncertain, never 240.  :refused is the
-; host's typed refusal (nothing was staged, or the reservation was consumed
-; by a refusal); everything else is :uncertain.
-(defun fn-own-outcome-completion (o word)
-  (declare (xargs :guard t))
-  (let ((sub (fn-own-inflight o)))
-    (cond ((and (equal word :durable)
-                sub
-                (natp (fn-own-sub-mark sub))
-                (< (fn-own-sub-mark sub) (len (fn-own-ledger o))))
-           :durable)
-          ((equal word :refused) :refused)
-          (t :uncertain))))
-
-; The outcome reaches exactly the connection whose submission is in flight:
-; the reply is fn-served-post-outcome over that connection's served state
-; (fn-nntp-post-outcome's line, the only place 240 exists), the reply leaves
-; the served state as it was (fn-served-post-outcome returns it), and no
-; other connection is touched at all.  The result is (effects . owner);
-; with nothing in flight for `id`, or an unknown connection, it is (nil . o).
-;
-; Read-back.  A 240 is a promise the poster can act on, so the poster's own
-; pin moves: when the rendered completion is :durable the poster's
-; connection is re-pinned to the committed view by one fn-own-advance, which
-; is the same event the host's (:advance id) runs, on that connection alone.
-; Its next GROUP or ARTICLE therefore reads the prefix that contains its own
-; article (fn-own-read-is-served-step-on-pinned-prefix over the new pin;
-; fn-own-durable-outcome-repins-the-poster, owner-invariants.lisp).  Every
-; other connection keeps the pin it had: a reader open before the post still
-; sees its own version, which is what K3 and the concurrency case in
-; tests/test_post.py require.  A :refused or :uncertain outcome moves no
-; pin.  The reply itself is rendered over the connection as it was when the
-; submission was taken, so the rendered octets do not depend on the advance.
-(defun fn-own-outcome (o id word)
-  (declare (xargs :guard t))
-  (let ((conn (fn-own-find-conn id (fn-own-conns o)))
-        (sub (fn-own-inflight o)))
-    (if (and conn sub (equal (fn-own-sub-id sub) id))
-        (let ((completion (fn-own-outcome-completion o word))
-              (next (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
-                                 (fn-own-next-id o) (fn-own-max-conns o)
-                                 (if (equal (fn-own-pending o) id) nil (fn-own-pending o))
-                                 (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
-                                 (fn-own-config o) (fn-own-queue o) nil
-                                 (if (equal completion :durable)
-                                     (fn-own-feed-durable o sub)
-                                   (fn-own-feeds o)))))
-          (cons (fn-served-result-effects
-                 (fn-served-post-outcome
-                  (fn-served-make-conn (fn-own-conn-wire conn)
-                                       (fn-own-conn-session conn)
-                                       (fn-own-conn-archive conn)
-                                       (fn-own-conn-config conn)
-                                       (fn-own-conn-observation conn)
-                                       (fn-own-clock o))
-                  completion))
-                (if (equal completion :durable)
-                    (fn-own-advance next id)
-                  next)))
-      (cons nil o))))
-
-; A transit submission is the one the served path carried from a peer
-; connection (books/peer-inbound, `(:transit peer kind msgid octets)`); an
-; injected one is books/injection's.  The writer step does not look at which:
-; fn-own-take-submission installs whichever is at the head of the one queue
-; (fn-own-take-installs-the-queued-submission-whatever-it-carries,
-; owner-invariants.lisp), so transit and POST share one durable path and one
-; pending slot.
-(defun fn-own-transit-subp (sub)
-  (declare (xargs :guard t))
-  (and (consp sub) (fn-peer-submissionp (fn-own-sub-decision sub))))
-
-(defun fn-own-transit-inflightp (o)
-  (declare (xargs :guard t))
-  (fn-own-transit-subp (fn-own-inflight o)))
-
-; The transit reply, after the durable attempt.  `kind' and `reason' are
-; ACL2's own transfer decision, relayed back by the host exactly as the
-; store's word is for POST (fn-owner-transit-decide, host/owner-host.lisp);
-; the host names no code and no reason text.  A decision that is not `:want'
-; means no attempt ran, so the completion the reply is rendered with is nil
-; and fn-peer-transit-code takes the refusal or the deferral from the
-; decision.  Three outcomes stay distinct: :durable is the only 2xx,
-; :uncertain is 436 and a close, a refusal is 437/439.
-(defun fn-own-transit-outcome (o id kind reason word)
-  (declare (xargs :guard t))
-  (let ((conn (fn-own-find-conn id (fn-own-conns o)))
-        (sub (fn-own-inflight o)))
-    (if (and conn sub (equal (fn-own-sub-id sub) id) (fn-own-transit-subp sub))
-        (let* ((d (fn-peer-decision kind reason))
-               (completion (if (equal kind :want)
-                               (fn-own-outcome-completion o word)
-                             nil))
-               (next (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
-                                  (fn-own-next-id o) (fn-own-max-conns o)
-                                  (if (equal (fn-own-pending o) id) nil (fn-own-pending o))
-                                  (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
-                                  (fn-own-config o) (fn-own-queue o) nil
-                                  (if (equal completion :durable)
-                                      (fn-own-feed-durable o sub)
-                                    (fn-own-feeds o)))))
-          (cons (fn-served-result-effects
-                 (fn-served-transit-outcome
-                  (fn-served-make-conn (fn-own-conn-wire conn)
-                                       (fn-own-conn-session conn)
-                                       (fn-own-conn-archive conn)
-                                       (fn-own-conn-config conn)
-                                       (fn-own-conn-observation conn))
-                  (fn-own-sub-decision sub) d completion))
-                (if (equal completion :durable)
-                    (fn-own-advance next id)
-                  next)))
-      (cons nil o))))
-
-; -----------------------------------------------------------------------------
 ; The outbound feed (books/owner-feed.lisp; specs/peering.md sec. 3)
 ;
 ; The owner drives one feed per configured outbound peer.  Four things reach
@@ -1118,13 +975,13 @@
 ; it.  The host appends the records to <journal>/feed/<peer>.fnfd and only
 ; then may the offer they enable be emitted.
 (defun fn-own-feed-durable (o sub)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (fn-own-feed-accept (fn-own-feeds o) (fn-own-sub-origin sub)
                       (fn-own-sub-msgid sub) (fn-own-sub-octets sub)
                       (fn-own-feed-stamp o)))
 
 (defun fn-own-feed-durable-records (o sub)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (fn-own-feed-accept-records (fn-own-feeds o) (fn-own-sub-origin sub)
                               (fn-own-sub-msgid sub) (fn-own-sub-octets sub)
                               (fn-own-feed-stamp o)))
@@ -1239,6 +1096,162 @@
        o (fn-own-feed-put peer (fn-own-feed-entry-record e)
                           (fn-feed-replay (fn-own-feed-entry-feed e) entries)
                           (fn-own-feeds o))))))
+
+; -----------------------------------------------------------------------------
+; The served POST path: configuration, the writer step and the outcome.
+
+; The posting configuration new connections pin.  Open connections keep the
+; configuration they were opened with.
+(defun fn-own-configure (o config)
+  (declare (xargs :guard t))
+  (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
+               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
+               (fn-own-clock o) (fn-own-facts o) config (fn-own-queue o)
+               (fn-own-inflight o) (fn-own-feeds o)))
+
+; The writer step takes the oldest queued submission into the durable path:
+; only when nothing is in flight, no transaction is pending and the store is
+; :ready, so at most one submission is in the durable path at a time and it
+; owns the transaction (pending) exactly as a control-channel post would.
+; The mark is the ledger length now; fn-own-outcome reads it.
+(defun fn-own-take-submission (o)
+  (declare (xargs :guard t))
+  (if (and (null (fn-own-inflight o))
+           (consp (fn-own-queue o))
+           (null (fn-own-pending o))
+           (equal (fn-sf-phase (fn-sn-files (fn-own-store o))) :ready))
+      (let ((sub (car (fn-own-queue o))))
+        (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
+                     (fn-own-next-id o) (fn-own-max-conns o) (fn-own-sub-id sub)
+                     (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                     (fn-own-config o) (cdr (fn-own-queue o))
+                     (fn-own-sub-make (fn-own-sub-id sub) (fn-own-sub-version sub)
+                                      (len (fn-own-ledger o))
+                                      (fn-own-sub-decision sub)) (fn-own-feeds o)))
+    o))
+
+; The completion the owner reports for the submission in flight, from the
+; word the host observed.  :durable needs a completion consumed into the
+; ledger after the take (fn-own-complete is the only ledger writer, and it
+; consumes the actual fn-sn-finish, fn-own-completion-consumed-once); a host
+; word of :durable without one is :uncertain, never 240.  :refused is the
+; host's typed refusal (nothing was staged, or the reservation was consumed
+; by a refusal); everything else is :uncertain.
+(defun fn-own-outcome-completion (o word)
+  (declare (xargs :guard t))
+  (let ((sub (fn-own-inflight o)))
+    (cond ((and (equal word :durable)
+                sub
+                (natp (fn-own-sub-mark sub))
+                (< (fn-own-sub-mark sub) (len (fn-own-ledger o))))
+           :durable)
+          ((equal word :refused) :refused)
+          (t :uncertain))))
+
+; The outcome reaches exactly the connection whose submission is in flight:
+; the reply is fn-served-post-outcome over that connection's served state
+; (fn-nntp-post-outcome's line, the only place 240 exists), the reply leaves
+; the served state as it was (fn-served-post-outcome returns it), and no
+; other connection is touched at all.  The result is (effects . owner);
+; with nothing in flight for `id`, or an unknown connection, it is (nil . o).
+;
+; Read-back.  A 240 is a promise the poster can act on, so the poster's own
+; pin moves: when the rendered completion is :durable the poster's
+; connection is re-pinned to the committed view by one fn-own-advance, which
+; is the same event the host's (:advance id) runs, on that connection alone.
+; Its next GROUP or ARTICLE therefore reads the prefix that contains its own
+; article (fn-own-read-is-served-step-on-pinned-prefix over the new pin;
+; fn-own-durable-outcome-repins-the-poster, owner-invariants.lisp).  Every
+; other connection keeps the pin it had: a reader open before the post still
+; sees its own version, which is what K3 and the concurrency case in
+; tests/test_post.py require.  A :refused or :uncertain outcome moves no
+; pin.  The reply itself is rendered over the connection as it was when the
+; submission was taken, so the rendered octets do not depend on the advance.
+(defun fn-own-outcome (o id word)
+  (declare (xargs :guard t))
+  (let ((conn (fn-own-find-conn id (fn-own-conns o)))
+        (sub (fn-own-inflight o)))
+    (if (and conn sub (equal (fn-own-sub-id sub) id))
+        (let* ((completion (fn-own-outcome-completion o word))
+               (next (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
+                                 (fn-own-next-id o) (fn-own-max-conns o)
+                                 (if (equal (fn-own-pending o) id) nil (fn-own-pending o))
+                                 (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                                 (fn-own-config o) (fn-own-queue o) nil
+                                 (if (equal completion :durable)
+                                     (fn-own-feed-durable o sub)
+                                   (fn-own-feeds o)))))
+          (cons (fn-served-result-effects
+                 (fn-served-post-outcome
+                  (fn-served-make-conn (fn-own-conn-wire conn)
+                                       (fn-own-conn-session conn)
+                                       (fn-own-conn-archive conn)
+                                       (fn-own-conn-config conn)
+                                       (fn-own-conn-observation conn)
+                                       (fn-own-clock o))
+                  completion))
+                (if (equal completion :durable)
+                    (fn-own-advance next id)
+                  next)))
+      (cons nil o))))
+
+; A transit submission is the one the served path carried from a peer
+; connection (books/peer-inbound, `(:transit peer kind msgid octets)`); an
+; injected one is books/injection's.  The writer step does not look at which:
+; fn-own-take-submission installs whichever is at the head of the one queue
+; (fn-own-take-installs-the-queued-submission-whatever-it-carries,
+; owner-invariants.lisp), so transit and POST share one durable path and one
+; pending slot.
+(defun fn-own-transit-subp (sub)
+  (declare (xargs :guard t))
+  (and (consp sub) (fn-peer-submissionp (fn-own-sub-decision sub))))
+
+(defun fn-own-transit-inflightp (o)
+  (declare (xargs :guard t))
+  (fn-own-transit-subp (fn-own-inflight o)))
+
+; The transit reply, after the durable attempt.  `kind' and `reason' are
+; ACL2's own transfer decision, relayed back by the host exactly as the
+; store's word is for POST (fn-owner-transit-decide, host/owner-host.lisp);
+; the host names no code and no reason text.  A decision that is not `:want'
+; means no attempt ran, so the completion the reply is rendered with is nil
+; and fn-peer-transit-code takes the refusal or the deferral from the
+; decision.  Three outcomes stay distinct: :durable is the only 2xx,
+; :uncertain is 436 and a close, a refusal is 437/439.
+(defun fn-own-transit-outcome (o id kind reason word)
+  (declare (xargs :guard t))
+  (let ((conn (fn-own-find-conn id (fn-own-conns o)))
+        (sub (fn-own-inflight o)))
+    (if (and conn sub (equal (fn-own-sub-id sub) id) (fn-own-transit-subp sub))
+        (let* ((d (fn-peer-decision kind reason))
+               (completion (if (equal kind :want)
+                               (fn-own-outcome-completion o word)
+                             nil))
+               (next (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
+                                  (fn-own-next-id o) (fn-own-max-conns o)
+                                  (if (equal (fn-own-pending o) id) nil (fn-own-pending o))
+                                  (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                                  (fn-own-config o) (fn-own-queue o) nil
+                                  (if (equal completion :durable)
+                                      (fn-own-feed-durable o sub)
+                                    (fn-own-feeds o)))))
+          (cons (fn-served-result-effects
+                 (fn-served-transit-outcome
+                  ; Six fields since the clock seam: the connection's
+                  ; pinned reader observation and the owner's current
+                  ; reading, as fn-own-outcome passes them.  This caller
+                  ; still passed five, so books/owner did not admit.
+                  (fn-served-make-conn (fn-own-conn-wire conn)
+                                       (fn-own-conn-session conn)
+                                       (fn-own-conn-archive conn)
+                                       (fn-own-conn-config conn)
+                                       (fn-own-conn-observation conn)
+                                       (fn-own-clock o))
+                  (fn-own-sub-decision sub) d completion))
+                (if (equal completion :durable)
+                    (fn-own-advance next id)
+                  next)))
+      (cons nil o))))
 
 ; -----------------------------------------------------------------------------
 ; The owner event machine.  (:octets id octets) is the served port; (:read id

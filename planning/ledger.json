@@ -279,8 +279,8 @@
     "encapsulates": 19,
     "guards": {
       "verified": 1385,
-      "declared-off": 189,
-      "default-guarded": 1691,
+      "declared-off": 183,
+      "default-guarded": 1697,
       "default-unguarded": 494
     },
     "suspect_theorems": 38,
@@ -3027,8 +3027,8 @@
       "functions": 54,
       "guards": {
         "verified": 0,
-        "declared-off": 4,
-        "default-guarded": 50,
+        "declared-off": 0,
+        "default-guarded": 54,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -3081,8 +3081,8 @@
       "functions": 95,
       "guards": {
         "verified": 0,
-        "declared-off": 5,
-        "default-guarded": 90,
+        "declared-off": 3,
+        "default-guarded": 92,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,

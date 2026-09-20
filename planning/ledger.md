@@ -16,8 +16,8 @@ stale. Counts describe artifacts, not coverage; see
 | `defthm` and `defthmd` events | 5215 |
 | `defun` events | 3759 |
 | Functions with verified guards | 1385 |
-| Functions declared `:verify-guards nil` and never verified | 189 |
-| Functions left at the default with an explicit guard | 1691 |
+| Functions declared `:verify-guards nil` and never verified | 183 |
+| Functions left at the default with an explicit guard | 1697 |
 | Functions left at the default with no guard | 494 |
 | `assert-event` checks | 4977 |
 | `must-fail` checks | 59 |
@@ -172,9 +172,9 @@ that `make certify` requests.
 | `books/node-traces.lisp` | root | 12 | 23 | 0/0/23/0 | 0 | 0 | 0 |
 | `books/node.lisp` | root | 34 | 33 | 27/0/6/0 | 0 | 0 | 2 |
 | `books/owner-config.lisp` | root | 19 | 34 | 0/4/30/0 | 0 | 0 | 1 |
-| `books/owner-feed.lisp` | root | 75 | 54 | 0/4/50/0 | 0 | 0 | 0 |
+| `books/owner-feed.lisp` | root | 75 | 54 | 0/0/54/0 | 0 | 0 | 0 |
 | `books/owner-invariants.lisp` | root | 95 | 7 | 0/0/0/7 | 0 | 0 | 0 |
-| `books/owner.lisp` | root | 46 | 95 | 0/5/90/0 | 0 | 0 | 0 |
+| `books/owner.lisp` | root | 46 | 95 | 0/3/92/0 | 0 | 0 | 0 |
 | `books/path.lisp` | root | 0 | 21 | 0/0/21/0 | 0 | 0 | 0 |
 | `books/peer-config.lisp` | root | 26 | 27 | 0/0/27/0 | 0 | 0 | 0 |
 | `books/peer-feed-invariants.lisp` | root | 99 | 0 | 0/0/0/0 | 0 | 0 | 0 |
