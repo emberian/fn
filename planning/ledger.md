@@ -13,10 +13,10 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 264 |
 | Certification roots in the Makefile | 263 |
 | Books inside the root closure | 263 |
-| `defthm` and `defthmd` events | 5117 |
-| `defun` events | 3685 |
+| `defthm` and `defthmd` events | 5119 |
+| `defun` events | 3686 |
 | Functions with verified guards | 1379 |
-| Functions declared `:verify-guards nil` and never verified | 189 |
+| Functions declared `:verify-guards nil` and never verified | 190 |
 | Functions left at the default with an explicit guard | 1623 |
 | Functions left at the default with no guard | 494 |
 | `assert-event` checks | 4877 |
@@ -118,7 +118,7 @@ that `make certify` requests.
 | `books/bp-workflow.lisp` | root | 0 | 111 | 0/0/111/0 | 0 | 0 | 0 |
 | `books/byte-store-invariants.lisp` | root | 127 | 8 | 0/7/0/1 | 0 | 0 | 0 |
 | `books/byte-store-programs.lisp` | root | 1 | 29 | 0/29/0/0 | 32 | 0 | 0 |
-| `books/byte-store-scan.lisp` | root | 38 | 28 | 0/23/0/5 | 0 | 0 | 0 |
+| `books/byte-store-scan.lisp` | root | 40 | 29 | 0/24/0/5 | 0 | 0 | 0 |
 | `books/byte-store.lisp` | root | 10 | 58 | 5/40/13/0 | 0 | 0 | 0 |
 | `books/cbor-invariants.lisp` | root | 36 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/cbor.lisp` | root | 12 | 24 | 24/0/0/0 | 0 | 0 | 0 |
