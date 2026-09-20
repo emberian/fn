@@ -121,10 +121,15 @@
 ; with the begin-article marker; whether the offer is made is decided above
 ; this dispatcher by fn-nntp-post-step (books/nntp-post.lisp), and the wire
 ; switches into article mode on the marker (books/served.lisp).
-(assert-event
- (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (73 72 65 86 69))))
-        '((:reply (53 48 48 32 99 111 109 109 97 110 100 32 110 111 116 32 114 101 99 111 103 110 105 122 101 100 13 10)))))
+; A reader connection: IHAVE is recognized (RFC 3977 section 6.3.2) and not
+; permitted here (section 3.2.1's 502), never 500; the peer connection's
+; transit is books/peer-inbound.lisp (w6/peering-inbound).
+(assert-event (equal (fn-nntp-result-effects
+                      (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
+                                    '(:command (73 72 65 86 69))))
+                     (list (fn-nntp-reply-effect
+                            (fn-nntp-crlf (fn-nntp-string-octets
+                                           "502 transit is not permitted on this connection"))))))
 (assert-event
  (equal (fn-nntp-result-effects
          (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (80 79 83 84))))

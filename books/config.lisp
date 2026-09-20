@@ -175,6 +175,34 @@
         (cons (car rows) (fn-cfg-row-upsert (cdr rows) row)))
     (list row)))
 
+; The peer table is the peers row list keyed by row-a (the peer name); one
+; peer is the group of rows sharing that key (specs/peering.md section 1.2,
+; books/peer-config.lisp decodes the group into the typed record).  Three total
+; helpers over a keyed row group: select, remove, and the recognizer that
+; every row of a delta names the peer the delta names.
+(defun fn-cfg-rows-with-key (rows a)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (equal (fn-cfg-row-a (car rows)) a)
+          (cons (car rows) (fn-cfg-rows-with-key (cdr rows) a))
+        (fn-cfg-rows-with-key (cdr rows) a))
+    nil))
+
+(defun fn-cfg-rows-without-key (rows a)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (equal (fn-cfg-row-a (car rows)) a)
+          (fn-cfg-rows-without-key (cdr rows) a)
+        (cons (car rows) (fn-cfg-rows-without-key (cdr rows) a)))
+    nil))
+
+(defun fn-cfg-rows-keyed-p (rows a)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (and (equal (fn-cfg-row-a (car rows)) a)
+           (fn-cfg-rows-keyed-p (cdr rows) a))
+    t))
+
 ; -----------------------------------------------------------------------------
 ; A group-table entry: a history entry, not a membership flag.
 
@@ -542,7 +570,7 @@
 
 (defconst *fn-cfg-delta-kinds*
   '(:create-group :remove-group :set-capacity :set-quota :set-policy
-    :set-listeners :set-peers :set-limit))
+    :set-listeners :set-peers :set-limit :set-peer :remove-peer))
 
 (defun fn-cfg-kind-code (kind)
   (declare (xargs :guard t))
@@ -554,6 +582,8 @@
         ((equal kind :set-listeners) 6)
         ((equal kind :set-peers) 7)
         ((equal kind :set-limit) 8)
+        ((equal kind :set-peer) 9)
+        ((equal kind :remove-peer) 10)
         (t 0)))
 
 (defun fn-cfg-code-kind (code)
@@ -566,6 +596,8 @@
         ((equal code 6) :set-listeners)
         ((equal code 7) :set-peers)
         ((equal code 8) :set-limit)
+        ((equal code 9) :set-peer)
+        ((equal code 10) :remove-peer)
         (t nil)))
 
 (defun fn-cfg-deltap (d)
@@ -609,6 +641,14 @@
 (defun fn-cfg-set-limit (slot n)
   (declare (xargs :guard t))
   (fn-cfg-delta-make :set-limit slot "" n nil))
+; (:set-peer name rows) upserts the peer's row group by name; (:remove-peer
+; name) drops it.  books/peer-config.lisp builds the rows from the typed record.
+(defun fn-cfg-set-peer (name rows)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :set-peer name "" 0 rows))
+(defun fn-cfg-remove-peer (name)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :remove-peer name "" 0 nil))
 
 ; -----------------------------------------------------------------------------
 ; Applying a delta.  Total, and never a deletion.
@@ -687,6 +727,19 @@
                          (fn-cfg-listeners v) (fn-cfg-peers v)
                          (fn-cfg-row-upsert (fn-cfg-limits v)
                                             (fn-cfg-row-make a "" "" n))))
+     ((equal kind :set-peer)
+      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+                         (fn-cfg-quotas v) (fn-cfg-policies v)
+                         (fn-cfg-listeners v)
+                         (append (fn-cfg-rows-without-key (fn-cfg-peers v) a)
+                                 rows)
+                         (fn-cfg-limits v)))
+     ((equal kind :remove-peer)
+      (fn-cfg-value-make (fn-cfg-groups v) (fn-cfg-capacity v)
+                         (fn-cfg-quotas v) (fn-cfg-policies v)
+                         (fn-cfg-listeners v)
+                         (fn-cfg-rows-without-key (fn-cfg-peers v) a)
+                         (fn-cfg-limits v)))
      (t v))))
 
 (defun fn-cfg-apply (v gen stamp deltas)
@@ -735,6 +788,20 @@
       (if (< n (nfix reserved)) :capacity-below-reserved nil))
      ((equal kind :set-limit)
       (if (<= n (fn-cfg-limit-ceiling a)) nil :limit-above-ceiling))
+     ; A peer delta names its peer in a; every row of a :set-peer carries
+     ; that name as its key, so no row can land under another peer.  The
+     ; typed shape of the row group (specs/peering.md section 1.2) is
+     ; books/peer-config.lisp's fn-cfg-peer-set-admissiblep; the owner-side
+     ; condition on :remove-peer (no outstanding feed entry) is the feed
+     ; lane's and never enters a durable record, as for reader pins.
+     ((equal kind :set-peer)
+      (cond ((not (consp (fn-cfg-delta-rows d))) :peer-rows-empty)
+            ((not (fn-cfg-rows-keyed-p (fn-cfg-delta-rows d) a))
+             :peer-rows-unkeyed)
+            (t nil)))
+     ((equal kind :remove-peer)
+      (if (consp (fn-cfg-rows-with-key (fn-cfg-peers v) a)) nil
+        :no-such-peer))
      (t nil))))
 
 (defun fn-cfg-admissible-reason (v gen stamp reserved ceiling deltas)
@@ -1276,7 +1343,9 @@
     (:d fn-cfg-endpoint-address) (:d fn-cfg-peer-eid)
     (:d fn-cfg-peer-endpoint) (:d fn-cfg-peer-contact-plan)
     (:d fn-cfg-limit-slot) (:d fn-cfg-limit-value) (:d fn-cfg-row-lookup)
-    (:d fn-cfg-row-upsert) (:d fn-cfg-group-entryp) (:d fn-cfg-group-listp)
+    (:d fn-cfg-row-upsert) (:d fn-cfg-rows-with-key)
+    (:d fn-cfg-rows-without-key) (:d fn-cfg-rows-keyed-p)
+    (:d fn-cfg-group-entryp) (:d fn-cfg-group-listp)
     (:d fn-cfg-group-all-names) (:d fn-cfg-group-find) (:d fn-cfg-entry-livep)
     (:d fn-cfg-live-names) (:d fn-cfg-member-namep)
     (:d fn-cfg-no-duplicate-namesp) (:d fn-cfg-limit-ceiling)
@@ -1286,7 +1355,8 @@
     (:d fn-cfg-delta-listp) (:d fn-cfg-kind-code) (:d fn-cfg-code-kind)
     (:d fn-cfg-create-group) (:d fn-cfg-remove-group) (:d fn-cfg-set-capacity)
     (:d fn-cfg-set-quota) (:d fn-cfg-set-policy) (:d fn-cfg-set-listeners)
-    (:d fn-cfg-set-peers) (:d fn-cfg-set-limit) (:d fn-cfg-groups-create)
+    (:d fn-cfg-set-peers) (:d fn-cfg-set-limit) (:d fn-cfg-set-peer)
+    (:d fn-cfg-remove-peer) (:d fn-cfg-groups-create)
     (:d fn-cfg-groups-retire) (:d fn-cfg-set-groups) (:d fn-cfg-apply-delta)
     (:d fn-cfg-apply) (:d fn-cfg-name-line-octets) (:d fn-cfg-delta-reason)
     (:d fn-cfg-admissible-reason) (:d fn-cfg-admissiblep)
