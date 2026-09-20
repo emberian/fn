@@ -23,6 +23,14 @@ cross-cluster steps you could not take alone.
   the Bash tool's `run_in_background: true` and you wait for its notification.
   Never a polling loop; never `pgrep -f` on other lanes' processes; never
   `pkill`, `killall` or any pattern kill.
+- A wide certification goes to the farm, never to the laptop:
+  `python3 tools/farm.py submit persvati --jobs 12 --remote-root
+  /home/ember/fn-lanes/<lane> --affected-by <book>.lisp --closure`, then
+  `wait <run-id>`. `--remote-root` is absolute (a `~` is resolved against the
+  host's `$HOME`, but write the path out); `--affected-by` selects over every
+  Makefile root; `--closure` certifies their dependencies too, which is what
+  a box holding no usable certificate needs. Add `--dry-run` to
+  `tools/certify_books.py` locally to see the exact list first.
 - Never `git stash`; never `git add -A`; commit named files with
   `git commit -F <msgfile>` where `<msgfile>` is named after your lane
   (e.g. `commit-<cluster>-<n>.txt` in the scratchpad: two lanes sharing
