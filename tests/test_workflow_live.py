@@ -1,4 +1,4 @@
-import hashlib, tempfile, unittest
+import tempfile, unittest
 from pathlib import Path
 from types import SimpleNamespace
 from tools import run_store
@@ -20,8 +20,10 @@ class WorkflowLiveTests(unittest.TestCase):
    try:
     bridge=Acl2WorkflowReplay(acl2); journal=WorkflowJournal(Path(d)/"workflow",bridge)
     journal.open(); journal.initialize(CONFIG)
-    subject="sha256:"+hashlib.sha256(b"article").hexdigest()
-    archive="archive:"+hashlib.sha256(b"<a@example.invalid>\0"+subject.encode()).hexdigest()
+    # The bridge is the single owner of the derivation; the fixture asks it
+    # rather than re-deriving the v1 preimages in Python.
+    archive_id,subject_id,_evidence=run_store.metadata(b"<a@example.invalid>",b"article")
+    subject=subject_id.decode("ascii"); archive=archive_id.decode("ascii")
     enqueue={"txid":10,"tx-generation":0,"work-id":"work:a","msgid":"<a@example.invalid>",
      "immutable-subject":subject,"archive-obligation-id":archive,
      "forward-obligation-id":"forward:a","peer-eid":"dtn://peer/",

@@ -55,6 +55,26 @@ Behavior-changing batches use the [assurance scope rules](../docs/proofs.md#assu
 and update the [closure inventory](../planning/assurance-closure.md). Avoid a
 single coverage percentage combining proofs, tests and platform assumptions.
 
+## Contact scheduling
+
+`tests/acl2/scheduler-tests.lisp` carries the evidence for C2-06. Its
+starvation counterexample is one trace run under two policies: under the
+stated unfair policy (`fn-sched-unfair-step`, deterministic priority with the
+promotion queue removed) the large article receives no submit, and under the
+aging policy the same trace submits it on the third contact tick. The rest of
+the book is the reachable witness for each keystone in
+`books/scheduler-invariants.lisp` and one `must-fail` per hypothesis.
+
+`tests/test_scheduler.py` tests only what the host owns: the bounded contact
+plan reader, the durable decision log's trailer and sequencing, and the order
+the driver calls the `:program` wrappers in -- select, durable decision,
+durable attempt, commit -- with a fake host, so that no test here re-implements
+a decision `books/scheduler.lisp` makes. `tests/bp-dtn7/fn_sender_lab.py`
+runs the same driver against a two-window contact plan with an expiry, using
+`MockBpa` when the pinned dtn7-rs build is unavailable; that mock transmits no
+bundle and has no peer, and a report using it says so rather than claiming an
+exchange.
+
 ## Crash campaign
 
 `tests/campaign/` replaces hand-enumerated process-death cuts with a table
@@ -104,6 +124,26 @@ filesystem losing cached metadata across a mount. The journals' cuts are
 expressed by analogy with `fn-journal-crash`: no theorem binds an FNWF or FNRJ
 record file to a journal slot, so those cuts are checked against the host
 contract and the model's shape, not against a proved correspondence.
+
+## Tooling unit tests
+
+The tools that decide what gets certified are themselves tested, with no ACL2
+and no network: `python3 -m unittest tests.test_certify_runner tests.test_ledger
+tests.test_certs tests.test_farm`. `tests/test_certify_runner.py` drives the
+real runner against a fake ACL2 in a throwaway repository (`FakeRepository`):
+the parallel schedule, `--affected-by` selection and `--dry-run` listing
+(`AffectedByTests`), the machine-wide process cap with one slot serialising
+four jobs (`SlotTests`), and the certificate cache hook, including that a
+failing run publishes nothing (`CachePublishTests`). `tests/test_certs.py`
+holds the cache to its narrow promise: publish keys on book content, refuses a
+certificate older than its book, install matches across worktrees, never
+overwrites a newer matching local pair, and keeps two same-byte books apart.
+`tests/test_farm.py` reads the exact commands `tools/farm.py` would issue --
+the mirror that excludes `build/`, the detached runner, a bounded wait that
+sleeps rather than spins, the fetch of evidence and pairs -- without running
+ssh. `tests/test_ledger.py` covers the reader, the suspect detector and both
+export lints. None of this is evidence about ACL2; it is evidence that the
+harness reports what ACL2 did.
 
 ## Evidence record
 

@@ -161,6 +161,141 @@ Its limits, stated so nobody reads a clean report as a clean bill of health:
   `tests/acl2/assumptions-tests.lisp` are for.
 - The absence of a flag is not evidence of strength. Teeth are.
 
+### The three shape lints
+
+Besides the suspect detector, `tools/ledger.py` reports three WARN lints,
+counted in the generated ledger and listed in full under `lints` in
+`ledger.json`. None judges truth; each names a cost this tree has already paid.
+*Export hygiene* flags a theorem a book leaves enabled whose conclusion is an
+equality between two *different* one-argument applications, or a `consp`/`len`
+conclusion backchained to a `len` hypothesis. The same accessor on both sides
+is a preservation lemma, which is the shape the export policy asks for, and is
+not flagged; `local`, `defthmd`, `:rule-classes nil` and a non-local closing
+`in-theory (disable ...)` each exempt a rule, because none of them leaves it
+enabled downstream. A book that withdraws its helpers by naming them --
+`(deftheory fn-x-vocabulary '(...))` and then disabling that name, including
+through `(:d name)`/`(:e name)` runes, `set-difference-theories` or
+`union-theories` over names the book defines -- is read the same way: the
+theory is resolved to its rules, and each counts as withdrawn. What cannot be
+read literally, such as a computed theory over `current-theory`, contributes
+nothing, so an unresolvable withdrawal warns rather than going quiet. *Teeth form* flags a `must-fail` whose body is a bare
+`thm`/`defthm` whose statement mentions no constant -- no keyword, literal,
+string or `defconst` -- so it refutes a general claim rather than a specific
+violating value. *Include hygiene* flags a non-local `(include-book "x")`
+whose target is a local book of this tree that ends with no theory withdrawal
+at all -- the same computation export hygiene uses to exempt a rule, applied
+to the whole book. Such an include is not an interface: it enables every rule
+`x` leaves enabled in the includer and in everything that includes the
+includer. The measured case is `books/bp-ingress.lisp`, which took a non-local
+include of `article-properties` for a single guard hint and turned a
+six-minute proof into an 1800 s timeout, 1.92M backchain frames of which none
+contributed; making that include `local` is what the lint asks for, and a
+`local` include is never flagged. A `:dir :system` include, and a reference
+this tree does not read as a book, are not judged, because there is no export
+theory here to read. `make check` prints all three as `WARN`;
+`python3 tools/ledger.py --check --strict` fails on them, which is how a book
+or a cluster that has been cleaned keeps its state.
+
+### Certificates, the cache, and the farm
+
+Every fn tool that starts ACL2 sets `ACL2_BOOK_HASH_ALISTP=NIL`, so ACL2 8.7
+hashes book *contents* rather than write dates and absolute paths: a
+`.cert`/`.port` pair is valid in any worktree and on any host whose book
+content matches. [`tools/certs.py`](../tools/certs.py) is the consequence.
+Two rules, each paid for by a poisoned cache. First, **a pair is published
+only against a certification manifest**: a `.cert` lying beside a book proves
+nothing, since after a merge it can be the previous source's certificate, so
+`publish` reads the manifests `tools/certify_books.py` writes
+(`--manifest PATH`, or every `build/acl2/certify-*/manifest.json` under the
+worktree) and caches a book only when the source beside it still hashes to
+that run's `source_digests_sha256` (and `source_digests_sha256_after` when the
+run recorded one) and the certificate beside it still hashes to that run's
+`certificate_digests_sha256`. There is no other publish path, and a manifest
+that did not pass vouches for nothing. Second, **the key is the closure**: a
+certificate is valid only for a book *and every book it includes*, so the key
+is the SHA-256 of the sorted `<path>:<sha256>` listing of the book and its
+whole local include closure, resolved as ACL2 resolves `include-book` and
+ignoring `:dir :system`. Same book bytes over a changed dependency is a
+different key, not a hit ACL2 would then refuse; the listing is recorded in
+the entry's metadata. A third rule decides *where* a pair may be installed. An ACL2
+certificate's post-alist names every sub-book by its **absolute**
+full-book-name, so a pair made in worktree X and installed in worktree Y on
+one machine makes Y include X's books -- X's paths still resolve -- and Y's
+own later certificates then conflict with them (`its certificate requires
+.../X/books/acceptance.lisp, but .../Y/books/acceptance.lisp has been
+included`). Each entry therefore records the `origin_root` it was produced in,
+taken from its manifest's evidence path, and `install` takes this worktree's
+own entry, else one whose origin does not exist on this machine, and otherwise
+refuses and reports `foreign-local`. A pair whose bytes match a refused entry
+is removed, so a worktree an earlier origin-blind install poisoned recovers.
+Farm runs are the reusable case: `farm.py submit --remote-root` runs under a
+path that does not exist here, and `wait` publishes with that path as the
+origin, so those pairs install into any local worktree. `install` computes the
+same closure key per book and copies in each matching pair, keeping a
+byte-identical local certificate; `status` prints coverage, counting
+foreign-local entries separately. `tools/certify_books.py` publishes against its own manifest
+after a passing run, which `--no-publish` suppresses, and `make certs-install`
+/ `make certs-publish` are the manual ends. What this does not establish:
+nothing here proves a book certifies. That is the runner's fresh success
+marker per book, and ACL2 checks the installed pair again at include time.
+
+Two further controls on ACL2 processes. `--affected-by BOOK` keeps only the
+roots that are, or transitively include, a named book, in Makefile order, so a
+change certifies what it can have invalidated and nothing else. It searches
+the roots it was given, and with none named that is every root of the
+Makefile's `ACL2_BOOKS`, read by `tools/ledger.py`'s `makefile_roots`: the
+runner used to carry its own list, which held 71 of the Makefile's 216 roots,
+so the same command answered a question about a third of the tree and looked
+identical doing it. `--closure` adds the selected roots' own local
+dependencies, in dependency order, for the run that cannot assume a valid
+certificate exists for them -- a fresh box, or one whose pairs were made under
+another worktree's absolute paths; without it such a run dies on `There is no
+certificate on file`. `--dry-run` prints the final ordered list, and the
+manifest's `requested_books` is that same list, so the evidence names what was
+certified rather than what was asked for. Every ACL2 this project starts
+first takes a slot from a machine-wide pool of `flock` files
+([`tools/acl2_slots.py`](../tools/acl2_slots.py), `FN_ACL2_SLOTS`, default 4 on
+darwin and 16 on linux), waits rather than starting when the pool is full,
+reports the wait once a minute, and records each wait in the run manifest. The
+lock lives on the open file description, so a killed run leaks no slot.
+Iterative `ld` work is the other way ACL2 starts here, and it does not go
+through the runner: on 2026-09-19 six ACL2 processes were live on a laptop
+whose pool is four, because lanes' scratch drivers invoked `acl2` directly.
+[`tools/acl2`](../tools/acl2) is that path's entry to the same pool. It takes
+one slot with the same lock directory and the same once-a-minute wait line,
+sets `ACL2_CUSTOMIZATION=NONE` and `ACL2_BOOK_HASH_ALISTP=NIL` so an `ld`
+session iterates against the world certification will see, and runs `$FN_ACL2`
+(default `acl2`) with this process's stdin, stdout and stderr passed through;
+`tools/acl2 --timeout 240 < driver.lsp`, also `make acl2-ld`, terminates the
+child at that many seconds and exits 124, which makes the brief's
+three-minute rule mechanical rather than a PID a lane has to remember to kill.
+The slot is released when ACL2 exits, when it is killed by the timeout, and
+when the wrapper itself dies.
+[`tools/farm.py`](../tools/farm.py) moves a wide run to persvati or hbox:
+`submit` mirrors the worktree and starts the runner detached with its own log
+and status file, `wait` blocks with a bounded sleep-and-report loop and then
+rsyncs back the evidence directory and the new pairs and publishes them
+locally, and `status` lists the runs on a host. On hbox the runner is wrapped
+in `swarm-build`, which is where that box's memory cap is enforced. The
+invocation for a lane is
+
+    python3 tools/farm.py submit persvati --jobs 12 \
+        --remote-root /home/ember/fn-lanes/<lane> \
+        --affected-by books/article.lisp --closure
+
+and three things in it were each paid for by a run that produced nothing.
+`--remote-root` takes an **absolute** path: a leading `~` is resolved against
+the host's own `$HOME` in one `ssh host 'echo $HOME'` before anything uses it,
+because the recorded path is also the origin the returning pairs are published
+under and a certificate's post-alist names its sub-books absolutely --
+`shlex.quote` had been making the tilde literal, so the remote `cd` landed
+nowhere. rsync creates the last component of its destination and no more, so
+`submit` makes the path first. And `cd X && ... &` backgrounds the whole list,
+which meant ssh exited 0 whatever happened; each step of the submit script now
+exits on its own (9 no directory, 10 no runner in the tree, 11 no writable
+`build/farm`, 12 the runner did not start), `submit` raises on any of them and
+`main` returns 2, so a run id is printed only for a run that exists.
+
 ### Qualifying a platform against A-DURABILITY
 
 [`books/assumptions.lisp`](../books/assumptions.lisp) introduces each named

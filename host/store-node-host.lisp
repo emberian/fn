@@ -2,14 +2,16 @@
 (in-package "ACL2")
 (include-book "../books/store-observed")
 (include-book "../books/store-node-resolution")
+(include-book "../books/node-config")
 
 ; This wrapper reuses the established decimal-octet boundary helpers from the
 ; store host. Python supplies only ordered filesystem observations.
 (defun fn-store-sn-reset (state)
   (declare (xargs :stobjs state :mode :program))
   (let ((state (f-put-global 'fn-store-sn
-                             (fn-sn-initial *fn-store-groups*
-                                            *fn-store-capacity*) state)))
+                             ; No compiled group table: the domain is empty
+                             ; until the configuration history is replayed.
+                             (fn-sn-initial nil *fn-store-capacity*) state)))
     (value :ready)))
 
 (defun fn-store-sn-state (state)
@@ -19,21 +21,133 @@
 ; The bounded observed-image entry validates the decoded record list and
 ; frontier, constructs its own replaying kernel image, and invokes actual
 ; fn-sn-recover.  This wrapper installs only its tagged successful result.
-(defun fn-store-sn-recover (octet-records frontier state)
+(defun fn-store-cfg-decode-records (octet-records)
+  ; Each durable configuration record decodes exactly, or the list is :bad.
+  (declare (xargs :mode :program))
+  (if (consp octet-records)
+      (let ((parsed (fn-cfg-decode-exact (car octet-records))))
+        (if (not (fn-record-parse-okp parsed))
+            :bad
+          (let ((rest (fn-store-cfg-decode-records (cdr octet-records))))
+            (if (equal rest :bad) :bad (cons (fn-record-parse-value parsed) rest)))))
+    (if (null octet-records) nil :bad)))
+
+; The configuration history is replayed first (`fn-cnode-config-replay',
+; books/node-config), and the node the article history is replayed into takes
+; its allocation domain and its capacity from that configured node.  The
+; configuration is then held beside the store state for admission and for
+; the operator's reconfiguration requests.  Fail closed: an undecodable,
+; out-of-order or inadmissible configuration record is a :fault at open.
+(defun fn-store-sn-recover (octet-records frontier config-octet-records state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((records (fn-store-decode-records octet-records)))
-    (if (equal records :bad)
+  (let ((records (fn-store-decode-records octet-records))
+        (config-records (fn-store-cfg-decode-records config-octet-records)))
+    (if (or (equal records :bad) (equal config-records :bad)
+            (null config-records))
         (value :fault)
-      (let ((opened (fn-sn-open-observed *fn-store-groups*
-                                         *fn-store-capacity* frontier records)))
-        ; No barrier is fabricated here: Python must report each of five real
-        ; fsync observations via fn-store-sn-io before this state is :ready.
-        (if (and (fn-sn-open-okp opened)
-                 (equal (fn-sf-phase (fn-sn-files (fn-sn-open-state opened)))
-                        :recovering))
-            (let ((state (f-put-global 'fn-store-sn (fn-sn-open-state opened) state)))
-              (value :recovering))
-          (value :fault))))))
+      (let ((replayed (fn-cnode-config-replay config-records)))
+        (if (not (equal (fn-replay-result-kind replayed) :ok))
+            (value :fault)
+          (let* ((cn (fn-replay-result-node replayed))
+                 (cfg (fn-cnode-config cn))
+                 (opened (fn-sn-open-observed (fn-cnode-domain cn)
+                                              (fn-cfg-capacity (fn-cfg-value cfg))
+                                              frontier records)))
+            ; No barrier is fabricated here: Python must report each of five
+            ; real fsync observations via fn-store-sn-io before this state is
+            ; :ready.
+            (if (and (fn-sn-open-okp opened)
+                     (equal (fn-sf-phase (fn-sn-files (fn-sn-open-state opened)))
+                            :recovering))
+                (let* ((state (f-put-global 'fn-store-sn (fn-sn-open-state opened)
+                                            state))
+                       (state (f-put-global 'fn-store-cfg cfg state)))
+                  (value :recovering))
+              (value :fault))))))))
+
+(defun fn-store-sn-domain (state)
+  ; The allocation domain the live node carries: every name ever created.
+  (declare (xargs :stobjs state :mode :program))
+  (fn-state-groups (fn-node-acceptance (fn-sn-node (f-get-global 'fn-store-sn state)))))
+
+(defun fn-store-cfg-generation (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-cfg-generation (f-get-global 'fn-store-cfg state))))
+
+(defun fn-store-cfg-join-names (names)
+  ; Names as one octet list separated by LF, which no group name contains.
+  (declare (xargs :mode :program))
+  (if (consp names)
+      (append (fn-record-string-octets (car names))
+              (if (consp (cdr names)) (cons 10 (fn-store-cfg-join-names (cdr names))) nil))
+    nil))
+
+(defun fn-store-cfg-served (state)
+  ; The served table at the live generation.
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-store-cfg-join-names
+          (fn-cnode-served-of (f-get-global 'fn-store-cfg state)))))
+
+(defun fn-store-cfg-domain (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-store-cfg-join-names (fn-store-sn-domain state))))
+
+; One operator reconfiguration: a single create or retire, stamped with the
+; host's clock observation, admitted by exactly the predicate replay applies
+; (`fn-cnode-record-acceptablep' against the live node's reservation total,
+; the RFC 3977 section 3.1 ceiling and an idle node).  The answer is :ok with
+; the record octets left in `fn-store-cfg-last-octets', or :refused with the
+; reason in `fn-store-cfg-last-reason'.  Nothing here mutates the store: the
+; record becomes durable in Python and is replayed at the next open.
+(defun fn-store-cfg-reconfigure (kind name-octets monotonic wall state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((s (f-get-global 'fn-store-sn state))
+         (cfg (f-get-global 'fn-store-cfg state))
+         (node (fn-sn-node s))
+         (cn (fn-cnode-make node cfg))
+         (state (f-put-global 'fn-store-cfg-last-octets nil state)))
+    (if (not (equal (fn-sf-phase (fn-sn-files s)) :ready))
+        (let ((state (f-put-global 'fn-store-cfg-last-reason :not-ready state)))
+          (value :refused))
+      (if (not (fn-cbor-octet-listp name-octets))
+          (let ((state (f-put-global 'fn-store-cfg-last-reason :group-name state)))
+            (value :refused))
+        (let* ((name (fn-store-octets->string name-octets))
+               (generation (+ 1 (fn-cfg-generation cfg)))
+               (deltas (cond ((equal kind :create-group)
+                              (list (fn-cfg-create-group name *fn-cfg-default-policy-id*)))
+                             ((equal kind :remove-group)
+                              (list (fn-cfg-remove-group name)))
+                             (t nil)))
+               (stamp (fn-clock-observation (nfix monotonic) (nfix wall) 0 t))
+               (record (fn-cfg-record-make (fn-cfg-generation cfg)
+                                           (fn-state-next-txid (fn-node-acceptance node))
+                                           generation deltas stamp)))
+          (if (null deltas)
+              (let ((state (f-put-global 'fn-store-cfg-last-reason :delta-kind state)))
+                (value :refused))
+            (if (fn-cnode-record-acceptablep cn record (fn-cnode-line-ceiling))
+                (let* ((state (f-put-global 'fn-store-cfg-last-octets
+                                            (fn-cfg-encode record) state))
+                       (state (f-put-global 'fn-store-cfg-last-reason nil state)))
+                  (value :ok))
+              (let ((state (f-put-global
+                            'fn-store-cfg-last-reason
+                            (or (fn-cfg-admissible-reason
+                                 (fn-cfg-value cfg) generation stamp
+                                 (fn-retain-reserved (fn-node-retention node))
+                                 (fn-cnode-line-ceiling) deltas)
+                                (if (consp (fn-node-stage node)) :group-staged :record))
+                            state)))
+                (value :refused)))))))))
+
+(defun fn-store-cfg-last-octets (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (f-get-global 'fn-store-cfg-last-octets state)))
+
+(defun fn-store-cfg-last-reason (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (f-get-global 'fn-store-cfg-last-reason state)))
 
 (defun fn-store-sn-io (operation result state)
   (declare (xargs :stobjs state :mode :program))
@@ -44,8 +158,8 @@
 (defun fn-store-sn-prepare (msgid-octets payload group-codes id-octets
                              subject-octets evidence-octets charge state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((groups (fn-store-groups-from-codes group-codes))
-        (s (f-get-global 'fn-store-sn state)))
+  (let* ((s (f-get-global 'fn-store-sn state))
+         (groups (fn-store-groups-from-codes group-codes (fn-store-sn-domain state))))
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
             (not (fn-octet-listp payload)) (> (len payload) *fn-store-max-payload*)
             (equal groups :bad) (null groups)
@@ -53,6 +167,11 @@
             (not (fn-store-text-octetsp subject-octets))
             (not (fn-store-text-octetsp evidence-octets)) (not (posp charge)))
         (value :invalid)
+      ; A name in the domain but not served at the live generation (a retired
+      ; group) is a refusal, decided by the same predicate fn-cnode-prepare
+      ; applies (books/node-config).
+      (if (not (fn-cnode-selection-servedp (f-get-global 'fn-store-cfg state) groups))
+          (value :refused)
       (let* ((node (fn-sn-node s))
              (msgid (fn-store-octets->string msgid-octets))
              (existing (fn-store-article-match msgid payload groups node)))
@@ -70,7 +189,7 @@
             (if (equal next s)
                 (value :refused)
                 (let ((state (f-put-global 'fn-store-sn next state)))
-                  (value :prepared)))))))))
+                  (value :prepared))))))))))
 
 ; A semantic refusal consumes the already durable allocator reservation using
 ; the proved composition transition, which advances the same live node to the
@@ -139,7 +258,7 @@
 
 (defun fn-store-sn-existing-action (msgid-octets payload group-codes state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((groups (fn-store-groups-from-codes group-codes)))
+  (let ((groups (fn-store-groups-from-codes group-codes (fn-store-sn-domain state))))
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
             (not (fn-octet-listp payload)) (equal groups :bad) (null groups))
         (value :absent)
@@ -150,7 +269,7 @@
 
 (defun fn-store-sn-group-next (code state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((group (fn-store-group-code code)))
+  (let ((group (if (natp code) (fn-store-group-name code (fn-store-sn-domain state)) nil)))
     (value (if group
                (fn-next-number group
                                (fn-state-nexts
