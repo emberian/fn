@@ -11,6 +11,7 @@ puts the fake entry points in `tests/deploy_gate_fake/` over the deployed
 tree.  A green run here says the harness works; it says nothing about fn.
 """
 import contextlib
+import io
 import json
 import os
 from pathlib import Path
@@ -224,12 +225,36 @@ class RepoRootTests(unittest.TestCase):
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def test_a_secondary_worktree_is_the_root_not_the_checkout_it_came_from(self):
-        self.assertEqual(deploy_gate.repo_root(self.lane), self.lane)
-        self.assertEqual(deploy_gate.repo_root(self.main), self.main)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(deploy_gate.repo_root(self.lane), self.lane)
+            self.assertEqual(deploy_gate.repo_root(self.main), self.main)
         # The same answer with no argument, which is how the harnesses call
         # it: the process's working directory decides, not this file's path.
-        with contextlib.chdir(self.lane / "books"):
+        with contextlib.chdir(self.lane / "books"), \
+                contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(deploy_gate.repo_root(), self.lane)
+
+    def test_two_fn_trees_in_play_are_announced_on_every_run(self):
+        """Three blocked merges came from an ambiguity nothing printed.
+
+        The lane's tree and the harness file's tree hold the same file
+        names, so a record written to the wrong one looks right until git
+        refuses the merge. Saying which was chosen makes the next occurrence
+        readable in the log.
+        """
+        printed = io.StringIO()
+        with contextlib.redirect_stdout(printed):
+            chosen = deploy_gate.repo_root(self.lane)
+        self.assertEqual(chosen, self.lane)
+        said = printed.getvalue()
+        self.assertIn(str(self.lane), said)
+        self.assertIn(str(deploy_gate.ROOT), said)
+        self.assertIn("INVOKED from", said)
+        # Nothing to announce when the two are the same tree.
+        quiet = io.StringIO()
+        with contextlib.redirect_stdout(quiet):
+            deploy_gate.repo_root(deploy_gate.ROOT)
+        self.assertEqual(quiet.getvalue(), "")
 
     def test_a_directory_outside_any_fn_tree_falls_back_to_this_file_s_tree(self):
         outside = Path(self.directory.name).resolve() / "elsewhere"

@@ -982,7 +982,21 @@ def repo_root(start: Path | None = None) -> Path:
     if found.returncode != 0:
         return ROOT
     candidate = Path(found.stdout.decode("utf-8", "replace").strip() or ".")
-    return candidate.resolve() if is_fn_tree(candidate) else ROOT
+    if not is_fn_tree(candidate):
+        return ROOT
+    chosen = candidate.resolve()
+    if chosen != ROOT and is_fn_tree(ROOT):
+        # Two fn worktrees in play: the one this command was run in and the
+        # one the harness file lives in.  That is exactly the ambiguity that
+        # put `planning/evidence/twonode-*.md` into the main checkout three
+        # times, each time untracked and blocking a merge -- and it is
+        # invisible, because the two trees hold the same file names.  Say
+        # which was chosen, every run, so the next occurrence diagnoses
+        # itself from the log instead of from a blocked merge.
+        print("repo: {} (this command's tools/ live in {}; evidence and logs "
+              "go to the tree it was INVOKED from -- pass --repo to override)"
+              .format(chosen, ROOT), flush=True)
+    return chosen
 
 
 def evidence_path(given: str | None, repo: Path, default_name: str) -> Path:
