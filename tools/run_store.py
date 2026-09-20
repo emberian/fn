@@ -1104,9 +1104,6 @@ class Store:
             self.config_generation = acl2.config_generation()
             self.config_served = acl2.config_served()
             self.config_domain = acl2.config_domain()
-            # Recovery holds no publication, so every staging name the book
-            # recognizes is collectable; `self.orphans' is what survives.
-            self.sweep_staging(acl2)
         except (StoreFault, StoreIndeterminate):
             self.fenced = True
             raise
@@ -1145,6 +1142,11 @@ class Store:
             self.fenced = True
             raise StoreIndeterminate("cannot establish recovered namespace frontier") from error
         self.fenced = False
+        # The barriers are done, so the file kernel is :ready and holds no
+        # record candidate: books/store-sweep.lisp's gate is open and the
+        # recovered process holds no staging name of its own.  What survives
+        # the sweep is what `self.orphans' reports.
+        self.sweep_staging(acl2)
         return records
 
     def advance_frontier(self, acl2, current_txid):

@@ -118,14 +118,17 @@ class StagingSweepTests(unittest.TestCase):
     def test_an_uncertain_publication_leaves_no_staging_orphan_after_recovery(self):
         with tempfile.TemporaryDirectory(prefix="fn-sweep-") as temporary:
             store = Path(temporary) / "store"
+            payload = Path(temporary) / "payload"
+            payload.write_bytes(b"From: a <a@fn.example.invalid>\r\n"
+                                b"Subject: first\r\n\r\nHello, news.\r\n")
             self.store_command(store, "init", "--group", "fn.letters")
             self.store_command(store, "post", "--message-id", "<a@fn.example.invalid>",
-                               "--payload", "Hello, news.", "--group", "fn.letters")
+                               "--payload", str(payload), "--group", "fn.letters")
             # An indeterminate failure after the final publication attempt:
             # the staged name may or may not have been linked, so the host
             # reports uncertainty and leaves the staging file behind.
             self.store_command(store, "post", "--message-id", "<b@fn.example.invalid>",
-                               "--payload", "Second.", "--group", "fn.letters",
+                               "--payload", str(payload), "--group", "fn.letters",
                                "--inject-fault", "postpublish",
                                expected=run_store.EXIT_UNCERTAIN)
             staged = sorted(p.name for p in (store / "staging").iterdir())
