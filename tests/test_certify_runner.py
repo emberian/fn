@@ -90,6 +90,7 @@ class FakeRepository:
         }
         argv = ["certify_books.py", "--jobs", str(jobs), *extra, *books]
         with mock.patch.object(runner, "ROOT", self.root), \
+                mock.patch.object(runner.ledger, "ROOT", self.root), \
                 mock.patch.object(runner, "BUILD_ROOT", build), \
                 mock.patch.dict(os.environ, environment, clear=True), \
                 mock.patch.object(runner.sys, "argv", argv), \
@@ -99,13 +100,20 @@ class FakeRepository:
         run_dir = next(build.iterdir())
         return code, json.loads((run_dir / "manifest.json").read_text())
 
-    def dry_run(self, books: list[str], affected: list[str]) -> tuple[int, list[str]]:
-        argv = ["certify_books.py", "--dry-run"]
+    def write_makefile(self, roots: list[str]) -> None:
+        body = " \\\n  ".join(roots)
+        (self.root / "Makefile").write_text(
+            f"ACL2_BOOKS ?= {body}\n\ncertify:\n\techo $(ACL2_BOOKS)\n")
+
+    def dry_run(self, books: list[str], affected: list[str],
+                extra: list[str] | None = None) -> tuple[int, list[str]]:
+        argv = ["certify_books.py", "--dry-run", *(extra or [])]
         for target in affected:
             argv.extend(["--affected-by", target])
         argv.extend(books)
         buffer = io.StringIO()
         with mock.patch.object(runner, "ROOT", self.root), \
+                mock.patch.object(runner.ledger, "ROOT", self.root), \
                 mock.patch.object(runner, "BUILD_ROOT", self.root / "build" / "dry"), \
                 mock.patch.dict(os.environ, {"PATH": os.environ.get("PATH", "/bin")},
                                 clear=True), \
@@ -280,6 +288,65 @@ class AffectedByTests(unittest.TestCase):
             with self.assertRaises(SystemExit) as refused:
                 repository.dry_run(ParallelScheduleTests.ORDER, ["books/typo"])
             self.assertEqual(refused.exception.code, 2)
+
+
+class MakefileRootsTests(unittest.TestCase):
+    """One list of roots, and the Makefile owns it."""
+
+    def test_the_default_roots_are_the_makefile_roots(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
+            repository.write_makefile(ParallelScheduleTests.ORDER)
+            with mock.patch.object(runner.ledger, "ROOT", repository.root):
+                self.assertEqual(runner.default_books(),
+                                 ParallelScheduleTests.ORDER)
+
+    def test_affected_by_with_no_roots_named_searches_every_makefile_root(self):
+        # The defect this closes: the runner carried its own list of roots,
+        # which held 71 of the Makefile's 216, so `--affected-by` over the
+        # default set silently answered a question about a third of the tree.
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
+            repository.write_makefile(ParallelScheduleTests.ORDER)
+            code, listed = repository.dry_run([], ["books/base"])
+            self.assertEqual(code, 0)
+            self.assertEqual(listed, ["books/base", "books/mid", "books/leaf-a",
+                                      "books/leaf-b", "books/leaf-c"])
+            stale = ["books/base", "books/mid", "books/leaf-a"]
+            self.assertEqual(repository.dry_run(stale, ["books/base"])[1], stale,
+                             "a named subset still bounds the search")
+
+
+class ClosureTests(unittest.TestCase):
+    """`--closure`: a run that assumes the box holds no certificate at all."""
+
+    def test_closure_adds_the_dependencies_in_dependency_order(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
+            code, listed = repository.dry_run(["books/leaf-c", "books/leaf-a"],
+                                              [], extra=["--closure"])
+            self.assertEqual(code, 0)
+            self.assertEqual(listed, ["books/base", "books/mid", "books/leaf-c",
+                                      "books/leaf-a"])
+
+    def test_closure_certifies_the_dependencies_and_the_manifest_says_so(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)
+            repository.write_makefile(ParallelScheduleTests.ORDER)
+            code, manifest = repository.certify(
+                [], jobs=4,
+                extra=["--closure", "--affected-by", "books/leaf-a.lisp"])
+            self.assertEqual((code, manifest["status"]), (0, "passed"))
+            # requested_books is the list actually certified, dependencies
+            # first; leaf-a is the only affected root and it needs two.
+            self.assertEqual(manifest["requested_books"],
+                             ["books/base", "books/mid", "books/leaf-a"])
+            self.assertTrue(manifest["closure"])
+            self.assertEqual(manifest["requested_before_filter"],
+                             ParallelScheduleTests.ORDER)
+            self.assertEqual(sorted(set(repository.event_log())),
+                             ["books/base", "books/leaf-a", "books/mid",
+                              "end", "start"])
 
 
 class SlotTests(unittest.TestCase):
