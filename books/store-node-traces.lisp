@@ -135,6 +135,7 @@
                         fn-node-pending-matchesp))))
 
 (defun fn-snt-idle-phasep (phase)
+  (declare (xargs :guard t))
   (member-equal phase '(:ready :frontier-staged :frontier-data-durable
                        :frontier-attempted :fenced-frontier
                        :recovering :fenced-recovery)))
@@ -142,7 +143,18 @@
 ; This is a proof relation, never an executable transition guard.  Before
 ; publication the actual proposal's two resolutions match current/extended
 ; replay.  After publication only its durable resolution matches history.
+;
+; It is nevertheless guard verified (below, once fn-snt-typed-store-components
+; is available), because fn-own-relation (books/owner-invariants.lisp:155)
+; conjoins fn-snt-relation and fn-ocfg-statep (books/owner-config.lisp:191)
+; declares :guard t over fn-own-relation, so the whole chain owes its guards.
+; The two hypotheses are the ones the callees ask for and nothing more:
+; fn-node-complete and fn-sn-record-bindsp are guarded by (fn-node-statep
+; node), and the two `append's owe (true-listp (fn-sf-records files)), which
+; is fn-sf-state-records-are-true-list of (fn-sf-statep files).
 (defun fn-snt-pending-linkp (groups capacity files node)
+  (declare (xargs :guard (and (fn-node-statep node) (fn-sf-statep files))
+                  :verify-guards nil))
   (let ((record (fn-sf-record-candidate files)))
     (and (fn-sn-record-bindsp node record)
          (equal (fn-node-complete node (fn-record-txid record)
@@ -157,6 +169,7 @@
            (append (fn-sf-records files) (list record)) (fn-sf-frontier files)))))
 
 (defun fn-snt-relation (s)
+  (declare (xargs :guard t :verify-guards nil))
   (let* ((groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))
          (files (fn-sn-files s)) (node (fn-sn-node s))
          (history (fn-sf-records files)) (frontier (fn-sf-frontier files))
@@ -228,6 +241,25 @@
                 (fn-node-statep (fn-sn-node s))))
   :rule-classes :forward-chaining
   :hints (("Goal" :in-theory (disable fn-node-statep fn-sf-statep))))
+
+; The guards of the relation and its pending link.  Both are deferred to
+; here because fn-snt-typed-store-components is what carries (fn-sn-statep s)
+; --- the relation's own first conjunct, so the hypothesis is present in every
+; guard obligation the `and' generates --- down to the two typed components
+; the callees are guarded by.  Nothing is revalidated per operation: neither
+; function is a transition guard and neither is on a served path (no caller
+; outside proof vocabulary; grep fn-snt-relation over host/).
+(verify-guards fn-snt-pending-linkp
+  :hints (("Goal" :in-theory (disable fn-node-statep fn-sf-statep fn-sn-record-bindsp
+                                      fn-node-complete fn-sf-replay-node
+                                      fn-sf-history-recoverablep
+                                      fn-sf-record-candidate))))
+
+(verify-guards fn-snt-relation
+  :hints (("Goal" :in-theory (disable fn-sn-statep fn-sf-statep fn-node-statep
+                                      fn-sf-history-recoverablep fn-sf-replay-node
+                                      fn-node-complete fn-sn-completion-enabledp
+                                      fn-snt-pending-linkp fn-sf-record-phasep))))
 
 (defthm fn-snt-typed-frontier-phase
   (implies (and (fn-sf-statep files)

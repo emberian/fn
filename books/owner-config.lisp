@@ -94,9 +94,19 @@
 ; The pin table.
 ;
 ; `fn-ocfg-pin-add' NEVER overwrites: opening a connection adds a pin for a
-; new identifier and provably leaves every existing pin alone, with no
-; freshness hypothesis to discharge.  Only `fn-ocfg-pin-set' replaces, and
-; only `(:advance id)' calls it.
+; new identifier and provably leaves every existing pin alone
+; (`fn-ocfg-open-keeps-every-existing-pin').  Only `fn-ocfg-pin-set'
+; replaces, and only `(:advance id)' calls it.
+;
+; The sentence that used to end the paragraph above --- "with no freshness
+; hypothesis to discharge" --- is FALSE, and is withdrawn (w11/snt-guards,
+; 2026-09-20).  Not overwriting is exactly what makes a freshness hypothesis
+; necessary: a STALE pin at the identifier about to be allocated survives the
+; add, and the new connection then serves the stale configuration.  The claim
+; had never been checked because this book had never been admitted.  See the
+; two OPEN notes at the keystones below; `fn-ocfg-pin-set' has the mirror of
+; it (it returns nil on an empty table, so it only replaces a pin that is
+; already there).
 
 (defun fn-ocfg-pin-find (id pins)
   (declare (xargs :guard t))
@@ -188,6 +198,18 @@
            (fn-ocfg-pins-pin-conns-only (cdr pins) conns))
     t))
 
+; `fn-cfgp' types the live generation (books/config.lisp:504-508, through
+; `fn-record-uint32p'), and books/config withdraws both definitions at export.
+; Every `(+ 1 (fn-cfg-generation (fn-ocfg-config oc)))' in this book --- the
+; staged clause below, `fn-ocfg-reconfig-record', `fn-ocfg-reconfig-refusal'
+; --- owes `acl2-numberp' of that generation, so the fact is named once here
+; and forward chained.  Guard vocabulary only, hence local.
+(local
+ (defthm fn-ocfg-configured-generation-is-natural
+   (implies (fn-cfgp c) (natp (fn-cfg-generation c)))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-cfgp fn-record-uint32p)))))
+
 (defun fn-ocfg-statep (oc)
   (declare (xargs :guard t))
   (let ((o (fn-ocfg-owner oc)))
@@ -221,7 +243,7 @@
 ; existing outcome path and never inferred here.
 
 (defun fn-ocfg-reconfig-record (oc deltas)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-cfgp (fn-ocfg-config oc))))
   (let* ((o (fn-ocfg-owner oc))
          (s (fn-own-store o))
          (node (fn-sn-node s)))
@@ -272,7 +294,7 @@
     nil))
 
 (defun fn-ocfg-reconfig-okp (oc id deltas)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-cfgp (fn-ocfg-config oc))))
   (let* ((o (fn-ocfg-owner oc))
          (s (fn-own-store o)))
     (and (fn-own-find-conn id (fn-own-conns o))
@@ -293,7 +315,7 @@
 
 (defun fn-ocfg-reconfig-refusal (oc id deltas)
   ; A named reason, never nil when `fn-ocfg-reconfig-okp' is false.
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-cfgp (fn-ocfg-config oc))))
   (let* ((o (fn-ocfg-owner oc))
          (s (fn-own-store o)))
     (cond ((not (fn-own-find-conn id (fn-own-conns o))) :no-such-connection)
@@ -321,7 +343,7 @@
   ; THE OWNER EVENT.  `(:reconfigure id deltas)': stage a configuration
   ; record in the one pending-transaction slot, exactly as `(:begin id)'
   ; stages a post.  Nothing becomes live here; `fn-ocfg-complete' publishes.
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-cfgp (fn-ocfg-config oc))))
   (if (fn-ocfg-reconfig-okp oc id deltas)
       (fn-ocfg-make (fn-own-begin (fn-ocfg-owner oc) id)
                     (fn-ocfg-config oc)
@@ -436,6 +458,34 @@
 ; KEYSTONES
 
 ; A new connection pins the latest configuration.
+;
+; OPEN (w11/snt-guards, 2026-09-20).  FALSE AS STATED, and left here unproved
+; rather than weakened.  With the guard chain below `fn-ocfg-statep' closed
+; this book admits every definition; this is the first of its two remaining
+; failures.  Key checkpoint, from `ld' of this file:
+;
+;   Subgoal 1'
+;   (IMPLIES (AND (FN-OCFG-PIN-FIND (FN-OWN-NEXT-ID (FN-OCFG-OWNER OC))
+;                                   (FN-OCFG-PINS OC))
+;                 (FN-OWN-FIND-CONN (FN-OWN-NEXT-ID (FN-OCFG-OWNER OC))
+;                                   (FN-OWN-CONNS (CDR (FN-OWN-OPEN ...)))))
+;            (EQUAL (CDR (FN-OCFG-PIN-FIND (FN-OWN-NEXT-ID (FN-OCFG-OWNER OC))
+;                                          (FN-OCFG-PINS OC)))
+;                   (FN-OCFG-CONFIG OC)))
+;
+; The missing hypothesis is freshness of the identifier in the PIN TABLE:
+; (not (fn-ocfg-pin-find (fn-own-next-id (fn-ocfg-owner oc))
+;                        (fn-ocfg-pins oc))).
+; It does not follow from `fn-ocfg-statep': that recognizer's
+; `fn-ocfg-pins-pin-conns-only' turns a pin at `next-id' into an OPEN
+; CONNECTION at `next-id', and `fn-own-relation'
+; (books/owner-invariants.lisp:155) carries no bound tying a connection's id
+; to `fn-own-next-id' --- `fn-own-conn-okp' asks only for `(natp
+; (fn-own-conn-id conn))'.  So the repair is a cross-cluster packet: add the
+; freshness conjunct to `fn-own-relation', prove it preserved by every owner
+; transition, then discharge this keystone from `fn-ocfg-statep' and ship its
+; teeth.  Do not add the bare hypothesis instead: that states a property of
+; states the owner is not known to reach.
 (defthm fn-ocfg-open-pins-the-live-configuration
   (let ((oc2 (cdr (fn-ocfg-open oc acfg))))
     (implies (fn-own-find-conn (fn-own-next-id (fn-ocfg-owner oc))
@@ -466,11 +516,20 @@
 ; The pin moves only at `(:advance id)' -- and at `(:close id)', which
 ; removes it.  Across any other event list the connection keeps the
 ; configuration it opened at.
+; `(car (car events))' and `(car (cdr (car events)))' under `:guard t' owe
+; `(implies (not (consp x)) (equal x nil))' of the EVENT, which is false at
+; `(list 3)'; the same defect the four accessors had.  The `mbe' leaves the
+; :logic term unchanged, so `fn-ocfg-pin-is-stable-without-advance' below
+; still unfolds to the same body.
 (defun fn-ocfg-repins-forp (id events)
   (declare (xargs :guard t))
   (if (consp events)
-      (or (and (member-equal (car (car events)) '(:advance :close))
-               (equal (car (cdr (car events))) id))
+      (or (and (member-equal (mbe :logic (car (car events))
+                                  :exec (fn-ag-car (fn-ag-car events)))
+                             '(:advance :close))
+               (equal (mbe :logic (car (cdr (car events)))
+                           :exec (fn-ag-car (fn-ag-cdr (fn-ag-car events))))
+                      id))
           (fn-ocfg-repins-forp id (cdr events)))
     nil))
 
@@ -500,6 +559,30 @@
 ; KEYSTONE.  Advancing observes the live configuration, and nothing else is
 ; required of a connection: this is application liveness under the owner's
 ; own scheduling, not a timing claim.
+;
+; OPEN (w11/snt-guards, 2026-09-20).  FALSE AS STATED, and left here unproved
+; rather than weakened; the second of this book's two remaining failures.
+; Key checkpoint, from `ld' of this file:
+;
+;   Goal''
+;   (IMPLIES (FN-OWN-FIND-CONN ID (FN-OWN-CONNS (FN-OWN-ADVANCE ... ID)))
+;            (EQUAL (CDR (FN-OCFG-PIN-FIND
+;                          ID (FN-OCFG-PIN-SET ID (FN-OCFG-CONFIG OC)
+;                                              (FN-OCFG-PINS OC))))
+;                   (FN-OCFG-CONFIG OC)))
+;
+; `fn-ocfg-pin-set' REPLACES and never adds --- it returns nil on an empty
+; table --- so `fn-ocfg-pin-find-of-pin-set-same' (above) needs
+; `(fn-ocfg-pin-find id (fn-ocfg-pins oc))', and the theorem as written
+; supplies nothing.  Unlike the keystone above, this one IS carried by
+; `fn-ocfg-statep': `fn-ocfg-conns-pinnedp' says every open connection has a
+; pin.  The packet is one local induction --- (implies (and
+; (fn-ocfg-conns-pinnedp conns pins) (fn-own-find-conn id conns))
+; (fn-ocfg-pin-find id pins)) --- the hypothesis `(fn-ocfg-statep oc)' on
+; this theorem, and its teeth, which need a `tests/acl2/owner-config-tests'
+; book this tree does not have yet.  Left to that packet so the statement
+; change and its witnesses land together (AGENTS.md, teeth ship with the
+; theorem).
 (defthm fn-ocfg-advance-observes-the-live-configuration
   (implies (fn-own-find-conn id (fn-own-conns (fn-own-advance (fn-ocfg-owner oc) id)))
            (equal (fn-ocfg-conn-config (fn-ocfg-advance oc id) id)
