@@ -10,20 +10,20 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 256 |
+| Books read | 258 |
 | Certification roots in the Makefile | 255 |
 | Books inside the root closure | 255 |
-| `defthm` and `defthmd` events | 4976 |
-| `defun` events | 3597 |
+| `defthm` and `defthmd` events | 5000 |
+| `defun` events | 3629 |
 | Functions with verified guards | 1371 |
 | Functions declared `:verify-guards nil` and never verified | 166 |
-| Functions left at the default with an explicit guard | 1571 |
+| Functions left at the default with an explicit guard | 1603 |
 | Functions left at the default with no guard | 489 |
-| `assert-event` checks | 4802 |
+| `assert-event` checks | 4823 |
 | `must-fail` checks | 59 |
 | `encapsulate` events | 16 |
 | Theorems flagged SUSPECT by shape | 37 |
-| Export-hygiene warnings | 72 |
+| Export-hygiene warnings | 75 |
 | Teeth-form warnings | 0 |
 | Include-hygiene warnings | 88 |
 | Host-names warnings | 0 |
@@ -194,6 +194,7 @@ that `make certify` requests.
 | `books/scheduler-invariants.lisp` | root | 59 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/scheduler.lisp` | root | 59 | 104 | 27/0/77/0 | 0 | 0 | 0 |
 | `books/served.lisp` | root | 58 | 35 | 2/4/29/0 | 0 | 0 | 0 |
+| `books/sha256.lisp` | - | 24 | 30 | 0/0/30/0 | 0 | 0 | 0 |
 | `books/statement-invariants.lisp` | root | 59 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/statement.lisp` | root | 30 | 65 | 0/0/65/0 | 0 | 0 | 0 |
 | `books/store-config.lisp` | root | 7 | 4 | 0/0/4/0 | 0 | 0 | 0 |
@@ -302,6 +303,7 @@ that `make certify` requests.
 | `tests/acl2/retention-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 49 | 0 | 0 |
 | `tests/acl2/scheduler-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 103 | 0 | 0 |
 | `tests/acl2/served-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 79 | 0 | 0 |
+| `tests/acl2/sha256-tests.lisp` | - | 0 | 2 | 0/0/2/0 | 21 | 0 | 0 |
 | `tests/acl2/statement-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 40 | 0 | 0 |
 | `tests/acl2/store-files-exploration-tests.lisp` | root | 0 | 29 | 0/0/0/29 | 58 | 0 | 0 |
 | `tests/acl2/store-files-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 63 | 0 | 0 |
