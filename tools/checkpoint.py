@@ -135,6 +135,9 @@ def publish(store, bridge, records, faults=NO_FAULTS):
             os.unlink(stage)
         except OSError:
             pass
+    # Only on the success path: the model's program ends the publication here,
+    # and a cut on the error path would mask the exception being raised.
+    faults.at("checkpoint:candidate-stage-unlinked")
     return generation
 
 

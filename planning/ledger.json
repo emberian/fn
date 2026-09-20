@@ -275,23 +275,23 @@
     "books": 269,
     "books_in_root_closure": 268,
     "roots": 268,
-    "theorems": 5317,
-    "functions": 3822,
+    "theorems": 5328,
+    "functions": 3826,
     "assert_events": 5077,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
       "verified": 1398,
-      "declared-off": 183,
+      "declared-off": 187,
       "default-guarded": 1747,
       "default-unguarded": 494
     },
-    "suspect_theorems": 40,
+    "suspect_theorems": 41,
     "export_hygiene_warnings": 72,
     "teeth_form_warnings": 0,
     "include_hygiene_warnings": 87,
     "host_names_warnings": 0,
-    "hand_written_record_warnings": 19
+    "hand_written_record_warnings": 18
   },
   "books": [
     {
@@ -1589,11 +1589,11 @@
       "book": "books/byte-store-scan.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 38,
-      "functions": 28,
+      "theorems": 45,
+      "functions": 32,
       "guards": {
         "verified": 0,
-        "declared-off": 23,
+        "declared-off": 27,
         "default-guarded": 0,
         "default-unguarded": 5
       },
@@ -1610,7 +1610,9 @@
       "system_includes": [
         "arithmetic/top"
       ],
-      "suspects": [],
+      "suspects": [
+        "fn-bs-names-outcomes-of-no-ops"
+      ],
       "read_error": null
     },
     {
@@ -1727,7 +1729,7 @@
       "book": "books/checkpoint-publish.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 53,
+      "theorems": 57,
       "functions": 49,
       "guards": {
         "verified": 13,
@@ -1742,7 +1744,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "checkpoint-codec"
+        "checkpoint-codec",
+        "defrecord"
       ],
       "system_includes": [],
       "suspects": [],
@@ -7407,6 +7410,14 @@
       ]
     },
     {
+      "theorem": "fn-bs-names-outcomes-of-no-ops",
+      "book": "books/byte-store-scan.lisp",
+      "line": 295,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-bs-names-outcomes and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-clock-drop-permission-is-exactly-expired-by-definition",
       "book": "books/clock-invariants.lisp",
       "line": 164,
@@ -7841,7 +7852,7 @@
       {
         "theorem": "fn-cpp-crash-marker-is-authority-before-selection-attempted",
         "book": "books/checkpoint-publish.lisp",
-        "line": 704,
+        "line": 529,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -8743,15 +8754,6 @@
         "accessors": 4,
         "variable": "x",
         "reason": "hand-written record: 1 shape predicate(s) (fn-cbor-result-shapep) and 4 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
-      },
-      {
-        "book": "books/checkpoint-publish.lisp",
-        "line": 42,
-        "shape": "fn-cpp-entry-shapep",
-        "shapes": 3,
-        "accessors": 13,
-        "variable": "x",
-        "reason": "hand-written record: 3 shape predicate(s) (fn-cpp-entry-shapep, fn-cpp-image-shapep, fn-cpp-shapep) and 13 one-argument selector accessors over `x` are written out; books/defrecord.lisp generates this pattern with fn-defrecord"
       },
       {
         "book": "books/checkpoint.lisp",
