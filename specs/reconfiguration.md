@@ -948,7 +948,9 @@ D11's portable group authority is M4 work.
 
 ## 8. Status
 
-Packets R1 and R2 landed on lane `w4/config-records`; R3 to R6 remain design.
+Packets R1 and R2 landed on lane `w4/config-records`; R3 (model) and R4
+(store host) on lane `w5/config-groups`; the owner half of R3, R5 and R6
+remain design.
 Everything above this section is still a *proposal* except what this section
 names. The landed books do not follow the design's shapes exactly, and the
 differences are deliberate:
@@ -1003,12 +1005,72 @@ differences are deliberate:
   arguments, so `books/retention` and `books/nntp-syntax` stay their only
   owners. `host/config-host.lisp` currently repeats the number 510 at the one
   call site; that is an open twin, closed by R5.
-- **Not landed, and not claimed.** The node's fifth slot, the two
-  `fn-node-statep` coherence conjuncts, `fn-initial-state` losing its groups
-  argument, `fn-sf-replay-node`/`fn-sn-open-observed`/`fn-sn-make` losing their
-  configuration parameters, the owner event `(:reconfigure id deltas)`, the
-  per-connection pinned generation, the per-generation projection verdict and
-  NEWGROUPS. `*fn-store-groups*` and every `defconst` of section 1.7 are still
-  in place; R4 deletes them. The schema-0 stamp fields are uint32, so a clock
-  time beyond 2^32 is outside the codec; the 64-bit stamp is an open item for
-  the next codec schema.
+- **Packets R3 (model) and R4 (store host) landed on lane `w5/config-groups`
+  (2026-09-20).** [`books/node-config.lisp`](../books/node-config.lisp) is
+  the configured node: `fn-cnode` pairs a `fn-node` state with its
+  `(generation value)` configuration as an opaque record, and
+  `fn-cnode-statep` carries the coherence of section 1.6 as two equalities.
+  The shape differs from section 1.6 in one deliberate way: the acceptance
+  state's group list is the allocation **domain** (`fn-cfg-group-all-names`,
+  every name the history ever created) rather than the served table, because
+  `fn-nexts-for-p` keys the watermarks on exactly that list and `fn-articlep`
+  binds every article's groups inside it -- a retired name that left the list
+  would lose its watermark and unbind its articles. The served table
+  (`fn-cfg-group-names` at the generation) is derived, and admission checks
+  it in `fn-cnode-selection-servedp`, the predicate `fn-cnode-prepare` and
+  the store host both call. This is what makes NNT-006 structural: retirement
+  never touches the acceptance state's watermarks or articles (keystone
+  `fn-cnode-apply-config-keeps-watermarks-and-articles`, with the separating
+  witness in `tests/acl2/config-tests.lisp`: after retiring `fn.test` the
+  served table lacks it, the domain and its watermark 3 stay, both articles
+  stay bound, a post into it is refused by the configured node while the
+  plain node would still stage it, and revival resumes at local number 3).
+  Also proved: `fn-cnode-prepare-stages-only-served-groups` (a staged article
+  names the offered groups, every one served at the caller's pin, which is
+  the node's generation), `fn-cnode-replay-loop-splits-at-any-prefix` (the
+  two-kind replay is a fold), `fn-cnode-recovered-generation-is-at-most-the-
+  live-generation` (STO-004, `<=` only), the four `-preserves-state`
+  theorems, and the ground equality `fn-cnode-initial-of-the-default-record-
+  is-fn-initial-state-of-its-groups`. `books/acceptance`, `books/node` and
+  `books/replay` are untouched; `fn-initial-state` keeps its groups argument
+  (a core-cluster signature change with whole-tree blast radius, recorded
+  open below), and the compatibility statement is the ground equality above.
+  The RFC 3977 section 3.1 ceiling is cited once, `fn-cnode-line-ceiling` =
+  `*fn-nntp-max-initial-line-octets*`; `fn-cfg-host-line-ceiling` and its
+  `510` are gone.
+- **Store host (R4).** `*fn-store-groups*`, `*fn-store-group-table-id*`,
+  `fn-store-group-code`, `fn-store-group-of-name`, `fn-store-group-names`,
+  `fn-cfg-host-default-octets`, `fn-cfg-host-replay-octets` and
+  `DEFAULT_CONFIG["group_table"]` are deleted. A store's group table is its
+  configuration record history under `config/NNNNNNNN.cfg` (one record per
+  generation); `run_store.py init --group <name>...` writes generation 1 from
+  its arguments (default: the two experimental groups, so every existing test
+  is unchanged), `group create <name>` and `group retire <name>` obtain an
+  admitted record from `fn-store-cfg-reconfigure` (the same
+  `fn-cnode-record-acceptablep` replay applies, against the live node's
+  reservation total) and make it durable, with refused (1), uncertain (3)
+  and accepted (0) distinct; `config` prints the generation, served table
+  and domain. At open, `fn-store-sn-recover` replays the configuration
+  history through `fn-cnode-config-replay` and the article history into a
+  node whose domain and capacity come from the configured node; codes are
+  positions in the domain, stable across retirement and revival.
+- **Still open, recorded rather than claimed.** (1) The two-kind stream on
+  disk: configuration records live beside the transaction journal, not
+  interleaved in it, so a capacity decrease cannot be replayed against the
+  reservation total that was live when it was admitted; `set-capacity` is
+  therefore not offered by the CLI until the store cluster interleaves the
+  kinds (`books/store-files`). (2) The owner event `(:reconfigure id
+  deltas)` and the per-connection pin: the standalone reader pins the
+  generation it opened at (its `LISTENING` line says so) and holds the
+  shared lock, so a reconfiguration while it is open is refused at the lock;
+  the two-connections-across-a-reconfiguration witness needs the owner
+  (proposal on the board). (3) The plain node's `LIST ACTIVE` lists the
+  domain, retired names included, until R5's per-generation projection takes
+  the configuration. (4) `fn-initial-state (groups)` keeps its signature.
+  (5) `*fn-store-capacity*` survives only in `fn-store-sn-reset`, the state
+  before any open. (6) The `true-listp` hypothesis of
+  `fn-cnode-recovered-generation-is-at-most-the-live-generation` has no
+  known violating value (the `<=` also holds for an improper prefix); it is
+  inherited from the split lemma the proof goes through. The schema-0 stamp
+  fields are uint32, so a clock time beyond 2^32 is outside the codec; the
+  64-bit stamp is an open item for the next codec schema.

@@ -68,6 +68,7 @@ ACL2_BOOKS ?= books/assumptions \
 	books/replay-invariants \
 	tests/acl2/replay-tests \
 	books/config-records \
+	books/node-config \
 	tests/acl2/config-tests \
 	books/store-files \
 	books/store-files-invariants \
@@ -177,6 +178,7 @@ ACL2_BOOKS ?= books/assumptions \
 	books/nntp-projection \
 	books/nntp-responses \
 	books/nntp \
+	books/nntp-overview \
 	books/nntp-invariants \
 	books/nntp-effects \
 	tests/acl2/nntp-tests \
@@ -194,6 +196,7 @@ ACL2_BOOKS ?= books/assumptions \
 	books/ideal \
 	books/nntp-index \
 	tests/acl2/nntp-index-tests \
+	tests/acl2/nntp-reader-profile-tests \
 	books/bp-release \
 	books/bp-release-invariants \
 	tests/acl2/bp-release-tests \

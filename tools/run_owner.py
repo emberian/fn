@@ -99,9 +99,11 @@ class Acl2Owner(Acl2Store):
         return acl2_nat(self.call(form))
 
     # Store path (the same observations run_store.Store reports)
-    def recover(self, records, frontier):
+    def recover(self, records, frontier, config_records=()):
         literal = "(" + " ".join(self.literal(record) for record in records) + ")"
-        form = "(fn-owner-recover '{} {} {} state)".format(literal, frontier, self.max_conns)
+        config = "(" + " ".join(self.literal(record) for record in config_records) + ")"
+        form = "(fn-owner-recover '{} {} '{} {} state)".format(
+            literal, frontier, config, self.max_conns)
         timeout = max(ACL2_RECOVER_BASE_SECONDS + ACL2_RECOVER_PER_RECORD_SECONDS * len(records),
                       self.form_timeout(form))
         return self._symbol(form, timeout=timeout)
@@ -356,7 +358,7 @@ class Owner:
         """
         try:
             names = [group.decode("ascii") for group in groups]
-            codes = group_codes(names, self.store.config)
+            codes = group_codes(names, self.store)
             charge = conservative_charge(payload)
             validate_post_boundary(msgid, payload, codes, charge, self.store.config)
             existing = self.bridge.existing_action(msgid, payload, codes)

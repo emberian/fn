@@ -65,6 +65,7 @@
     "books/replay-invariants",
     "tests/acl2/replay-tests",
     "books/config-records",
+    "books/node-config",
     "tests/acl2/config-tests",
     "books/store-files",
     "books/store-files-invariants",
@@ -174,6 +175,7 @@
     "books/nntp-projection",
     "books/nntp-responses",
     "books/nntp",
+    "books/nntp-overview",
     "books/nntp-invariants",
     "books/nntp-effects",
     "tests/acl2/nntp-tests",
@@ -191,6 +193,7 @@
     "books/ideal",
     "books/nntp-index",
     "tests/acl2/nntp-index-tests",
+    "tests/acl2/nntp-reader-profile-tests",
     "books/bp-release",
     "books/bp-release-invariants",
     "tests/acl2/bp-release-tests",
@@ -214,24 +217,24 @@
     "tests/acl2/policy-tests"
   ],
   "totals": {
-    "books": 211,
-    "books_in_root_closure": 210,
-    "roots": 210,
-    "theorems": 3505,
-    "functions": 2604,
-    "assert_events": 3651,
+    "books": 214,
+    "books_in_root_closure": 213,
+    "roots": 213,
+    "theorems": 3581,
+    "functions": 2689,
+    "assert_events": 3736,
     "must_fails": 59,
     "encapsulates": 14,
     "guards": {
-      "verified": 1064,
+      "verified": 1152,
       "declared-off": 138,
-      "default-guarded": 957,
-      "default-unguarded": 445
+      "default-guarded": 951,
+      "default-unguarded": 448
     },
-    "suspect_theorems": 28,
-    "export_hygiene_warnings": 62,
+    "suspect_theorems": 30,
+    "export_hygiene_warnings": 63,
     "teeth_form_warnings": 0,
-    "include_hygiene_warnings": 94
+    "include_hygiene_warnings": 93
   },
   "books": [
     {
@@ -2295,7 +2298,7 @@
       "book": "books/nntp-effects.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 97,
+      "theorems": 119,
       "functions": 12,
       "guards": {
         "verified": 0,
@@ -2310,7 +2313,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "nntp-invariants"
+        "nntp-invariants",
+        "nntp-overview"
       ],
       "system_includes": [],
       "suspects": [
@@ -2348,7 +2352,7 @@
       "book": "books/nntp-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 67,
+      "theorems": 77,
       "functions": 4,
       "guards": {
         "verified": 0,
@@ -2363,10 +2367,37 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "nntp"
+        "nntp-overview"
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/nntp-overview.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 18,
+      "functions": 6,
+      "guards": {
+        "verified": 6,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 6,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "nntp"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-nov-missing-header-is-empty"
+      ],
       "read_error": null
     },
     {
@@ -2424,21 +2455,23 @@
       "book": "books/nntp-responses.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 1,
-      "functions": 23,
+      "theorems": 5,
+      "functions": 95,
       "guards": {
-        "verified": 23,
+        "verified": 95,
         "declared-off": 0,
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 23,
+      "verify_guards_events": 95,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 0,
+      "defconsts": 10,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "article-fields",
+        "clock",
         "nntp-projection"
       ],
       "system_includes": [],
@@ -2520,6 +2553,36 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/node-config.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 48,
+      "functions": 23,
+      "guards": {
+        "verified": 10,
+        "declared-off": 0,
+        "default-guarded": 13,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 10,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-invariants",
+        "config-records",
+        "nntp-syntax",
+        "node-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-cnode-inadmissible-config-changes-nothing"
+      ],
       "read_error": null
     },
     {
@@ -2610,7 +2673,7 @@
       "book": "books/owner-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 87,
+      "theorems": 74,
       "functions": 7,
       "guards": {
         "verified": 0,
@@ -2637,12 +2700,12 @@
       "book": "books/owner.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 45,
-      "functions": 73,
+      "theorems": 33,
+      "functions": 56,
       "guards": {
         "verified": 0,
         "declared-off": 3,
-        "default-guarded": 70,
+        "default-guarded": 53,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -3106,18 +3169,18 @@
       "book": "books/store-config.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 8,
-      "functions": 6,
+      "theorems": 7,
+      "functions": 4,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 6,
+        "default-guarded": 4,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
-      "defconsts": 3,
+      "defconsts": 1,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -4612,22 +4675,23 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 0,
+      "functions": 3,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 0
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 54,
+      "assert_events": 95,
       "must_fails": 0,
-      "defconsts": 16,
+      "defconsts": 29,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/config-invariants",
         "../../books/config-records",
+        "../../books/node-config",
         "../../books/store-config"
       ],
       "system_includes": [],
@@ -4938,6 +5002,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/nntp-reader-profile-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 95,
+      "must_fails": 0,
+      "defconsts": 18,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/nntp-effects"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/nntp-teeth-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -4950,9 +5041,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 15,
+      "assert_events": 17,
       "must_fails": 2,
-      "defconsts": 8,
+      "defconsts": 13,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -4977,9 +5068,9 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 156,
+      "assert_events": 159,
       "must_fails": 0,
-      "defconsts": 58,
+      "defconsts": 63,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -5029,9 +5120,9 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 151,
+      "assert_events": 95,
       "must_fails": 0,
-      "defconsts": 56,
+      "defconsts": 35,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -5803,6 +5894,14 @@
       ]
     },
     {
+      "theorem": "fn-cnode-inadmissible-config-changes-nothing",
+      "book": "books/node-config.lisp",
+      "line": 423,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-cnode-apply-config and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-exchange-ingest-refusal-is-no-op",
       "book": "books/exchange.lisp",
       "line": 529,
@@ -5838,7 +5937,7 @@
     {
       "theorem": "fn-nntp-block-scan-start-without-a-dot",
       "book": "books/nntp-effects.lisp",
-      "line": 410,
+      "line": 453,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-nntp-block-scan and the conclusion is that branch's value"
       ]
@@ -5881,6 +5980,14 @@
       "line": 561,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-node-complete and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-nov-missing-header-is-empty",
+      "book": "books/nntp-overview.lisp",
+      "line": 99,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-nov-header-content and the conclusion is that branch's value"
       ]
     },
     {
@@ -6161,6 +6268,12 @@
         "book": "books/identity-invariants.lisp",
         "line": 256,
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
+      },
+      {
+        "theorem": "fn-nov-lines-counts-the-retained-body-lines",
+        "book": "books/nntp-overview.lisp",
+        "line": 147,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-ng-reverse-is-reverse",
@@ -6614,10 +6727,10 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/nntp-effects.lisp",
-        "line": 12,
-        "include": "nntp-invariants",
-        "included": "books/nntp-invariants.lisp",
+        "book": "books/nntp-responses.lisp",
+        "line": 7,
+        "include": "article-fields",
+        "included": "books/article-fields.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -6926,13 +7039,6 @@
         "line": 5,
         "include": "crypto-seam-tests",
         "included": "tests/acl2/crypto-seam-tests.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/nntp-teeth-tests.lisp",
-        "line": 12,
-        "include": "../../books/nntp-invariants",
-        "included": "books/nntp-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
