@@ -248,7 +248,8 @@
     "suspect_theorems": 32,
     "export_hygiene_warnings": 63,
     "teeth_form_warnings": 0,
-    "include_hygiene_warnings": 84
+    "include_hygiene_warnings": 84,
+    "host_names_warnings": 47
   },
   "books": [
     {
@@ -7432,6 +7433,337 @@
         "include": "../../books/wildmat-matcher-invariants",
         "included": "books/wildmat-matcher-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      }
+    ],
+    "host_names": [
+      {
+        "host": "host/bp-ingress-host.lisp",
+        "line": 17,
+        "name": "fn-store-text-octetsp",
+        "source": "host/store-host.lisp",
+        "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/bp-ingress-host.lisp",
+        "line": 30,
+        "name": "fn-store-octets->string",
+        "source": "host/store-host.lisp",
+        "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/bp-ingress-host.lisp",
+        "line": 56,
+        "name": "fn-store-sn-reset",
+        "source": "host/store-node-host.lisp",
+        "reason": "defined in host/store-node-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/checkpoint-host.lisp",
+        "line": 16,
+        "name": "fn-store-decode-records",
+        "source": "host/store-host.lisp",
+        "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/checkpoint-host.lisp",
+        "line": 16,
+        "name": "fn-store-sn-domain",
+        "source": "host/store-node-host.lisp",
+        "reason": "defined in host/store-node-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/checkpoint-host.lisp",
+        "line": 16,
+        "name": "*fn-store-capacity*",
+        "source": "host/store-host.lisp",
+        "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/config-host.lisp",
+        "line": 33,
+        "name": "fn-store-octet-lists->strings",
+        "source": "host/store-host.lisp",
+        "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/reader-model-host.lisp",
+        "line": 17,
+        "name": "fn-reader-post-config",
+        "source": "host/reader-host.lisp",
+        "reason": "defined in host/reader-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/reader-model-host.lisp",
+        "line": 17,
+        "name": "fn-served-open",
+        "source": "books/served.lisp",
+        "reason": "defined in books/served.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/reader-model-host.lisp",
+        "line": 17,
+        "name": "fn-served-run",
+        "source": "books/served.lisp",
+        "reason": "defined in books/served.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/reader-model-host.lisp",
+        "line": 17,
+        "name": "fn-served-result-conn",
+        "source": "books/served.lisp",
+        "reason": "defined in books/served.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/reader-model-host.lisp",
+        "line": 17,
+        "name": "fn-served-reply-octets",
+        "source": "books/served.lisp",
+        "reason": "defined in books/served.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/reader-model-host.lisp",
+        "line": 17,
+        "name": "fn-served-result-effects",
+        "source": "books/served.lisp",
+        "reason": "defined in books/served.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 43,
+        "name": "fn-cnode-served-of",
+        "source": "books/node-config.lisp",
+        "reason": "defined in books/node-config.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 43,
+        "name": "*fn-store-max-payload*",
+        "source": "host/store-host.lisp",
+        "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 74,
+        "name": "fn-store-decode-records",
+        "source": "host/store-host.lisp",
+        "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 74,
+        "name": "fn-store-cfg-decode-records",
+        "source": "host/store-node-host.lisp",
+        "reason": "defined in host/store-node-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 74,
+        "name": "fn-cnode-config-replay",
+        "source": "books/node-config.lisp",
+        "reason": "defined in books/node-config.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 74,
+        "name": "fn-cnode-config",
+        "source": "books/node-config.lisp",
+        "reason": "defined in books/node-config.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 74,
+        "name": "fn-cnode-domain",
+        "source": "books/node-config.lisp",
+        "reason": "defined in books/node-config.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 74,
+        "name": "fn-cfg-capacity",
+        "source": "books/config.lisp",
+        "reason": "defined in books/config.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 74,
+        "name": "fn-cfg-value",
+        "source": "books/config.lisp",
+        "reason": "defined in books/config.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 126,
+        "name": "fn-store-groups-from-codes",
+        "source": "books/store-config.lisp",
+        "reason": "defined in books/store-config.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 126,
+        "name": "fn-store-msgid-octetsp",
+        "source": "host/store-host.lisp",
+        "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 126,
+        "name": "fn-store-text-octetsp",
+        "source": "host/store-host.lisp",
+        "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 126,
+        "name": "fn-cnode-selection-servedp",
+        "source": "books/node-config.lisp",
+        "reason": "defined in books/node-config.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 126,
+        "name": "fn-store-octets->string",
+        "source": "host/store-host.lisp",
+        "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 126,
+        "name": "fn-store-article-match",
+        "source": "host/store-host.lisp",
+        "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 254,
+        "name": "fn-store-cfg-join-names",
+        "source": "host/store-node-host.lisp",
+        "reason": "defined in host/store-node-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/simulator.lisp",
+        "line": 12,
+        "name": "fn-initial-state",
+        "source": "books/acceptance.lisp",
+        "reason": "defined in books/acceptance.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/simulator.lisp",
+        "line": 15,
+        "name": "fn-accept-prepare",
+        "source": "books/acceptance.lisp",
+        "reason": "defined in books/acceptance.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/simulator.lisp",
+        "line": 22,
+        "name": "fn-accept-complete",
+        "source": "books/acceptance.lisp",
+        "reason": "defined in books/acceptance.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/simulator.lisp",
+        "line": 25,
+        "name": "fn-statep",
+        "source": "books/acceptance.lisp",
+        "reason": "defined in books/acceptance.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/simulator.lisp",
+        "line": 25,
+        "name": "fn-state-articles",
+        "source": "books/acceptance.lisp",
+        "reason": "defined in books/acceptance.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/simulator.lisp",
+        "line": 25,
+        "name": "fn-state-next-txid",
+        "source": "books/acceptance.lisp",
+        "reason": "defined in books/acceptance.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/simulator.lisp",
+        "line": 25,
+        "name": "fn-state-fenced",
+        "source": "books/acceptance.lisp",
+        "reason": "defined in books/acceptance.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/simulator.lisp",
+        "line": 25,
+        "name": "fn-acceptedp",
+        "source": "books/acceptance.lisp",
+        "reason": "defined in books/acceptance.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 9,
+        "name": "*fn-store-capacity*",
+        "source": "host/store-host.lisp",
+        "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 41,
+        "name": "fn-store-decode-records",
+        "source": "host/store-host.lisp",
+        "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 102,
+        "name": "fn-store-octets->string",
+        "source": "host/store-host.lisp",
+        "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 158,
+        "name": "fn-store-groups-from-codes",
+        "source": "books/store-config.lisp",
+        "reason": "defined in books/store-config.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 158,
+        "name": "fn-store-msgid-octetsp",
+        "source": "host/store-host.lisp",
+        "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 158,
+        "name": "*fn-store-max-payload*",
+        "source": "host/store-host.lisp",
+        "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 158,
+        "name": "fn-store-text-octetsp",
+        "source": "host/store-host.lisp",
+        "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 158,
+        "name": "fn-store-article-match",
+        "source": "host/store-host.lisp",
+        "reason": "defined in host/store-host.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 270,
+        "name": "fn-store-group-name",
+        "source": "books/store-config.lisp",
+        "reason": "defined in books/store-config.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/workflow-host.lisp",
+        "line": 5,
+        "name": "fn-sn-node",
+        "source": "books/store-node.lisp",
+        "reason": "defined in books/store-node.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       }
     ]
   }
