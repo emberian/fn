@@ -428,6 +428,38 @@
 
 (local (in-theory (disable fn-stx-delta)))
 
+(local (defthm fn-stx-equivocatorp-of-nil
+         (not (fn-lace-equivocatorp nil p i))
+         :hints (("Goal" :in-theory (enable (:d fn-lace-equivocatorp))))))
+
+(local (defthm fn-stx-lace-car-is-consp
+         (implies (and (fn-lace-p x) (consp x))
+                  (consp (car x)))
+         :hints (("Goal" :in-theory (enable fn-lace-p)))))
+
+(local (defthm fn-stx-ids-of-short-list
+         (implies (not (consp (cdr delta)))
+                  (equal (fn-lace-ids delta)
+                         (if (consp delta)
+                             (list (fn-stmt-id (car delta)))
+                           nil)))))
+
+(local (defthm fn-stx-lookup-of-short-list
+         (implies (not (consp (cdr delta)))
+                  (equal (fn-lace-lookup delta id)
+                         (if (and (consp delta)
+                                  (equal (fn-stmt-id (car delta)) id))
+                             (car delta)
+                           nil)))))
+
+(local (defthm fn-stx-slot-first-of-short-list
+         (implies (not (consp (cdr delta)))
+                  (equal (fn-stx-lace-slot-first delta k)
+                         (if (and (consp delta)
+                                  (equal (fn-stx-slot-key (car delta)) k))
+                             (car delta)
+                           nil)))))
+
 (defthm fn-stx-index-bindings-agree
   (and (equal (fn-stx-index-lookup (fn-stx-index-of-store articles keyring) id)
               (fn-lace-lookup (fn-stx-lace-of-store articles keyring) id))

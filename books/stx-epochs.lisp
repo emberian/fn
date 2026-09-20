@@ -70,7 +70,10 @@
     nil))
 
 (defun fn-stx-commit-of-items (items)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory
+                                 (enable fn-stmt-uint-item-p
+                                         fn-stmt-bytes-item-p)))))
   (if (not (and (consp items) (fn-stmt-bytes-item-p (car items))))
       (fn-stmt-error :id)
     (let ((i1 (cdr items)))
@@ -106,7 +109,12 @@
 (defthm fn-stx-commit-decode-is-a-commit
   (implies (fn-stmt-okp (fn-stx-commit-decode-exact octets))
            (fn-me-commitp (fn-stmt-value (fn-stx-commit-decode-exact octets))))
-  :hints (("Goal" :in-theory (disable fn-stmt-decode-items fn-cbor-at-mostp))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-me-commitp fn-me-commit fn-stmt-uint-item-p
+                            fn-record-uint32p fn-me-opp
+                            (:d fn-stx-commit-of-items)
+                            (:d fn-stx-commit-decode-exact))
+                           (fn-stmt-decode-items fn-cbor-at-mostp)))))
 
 (in-theory (disable (:d fn-stx-commit-of-items)
                     (:d fn-stx-commit-decode-exact)
