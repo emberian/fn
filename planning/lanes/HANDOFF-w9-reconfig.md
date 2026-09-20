@@ -134,8 +134,14 @@ has capacity 0 — §1.6's fail-closed floor. It survives only in
   so the scenario needs `(:reconfigure ...)` wired into
   `host/owner-host.lisp` first — the R5 host step this lane did not take.
 - **The Python suite was not run.** It needs a local ACL2 bridge and this
-  lane runs no local ACL2 by its box rule. `tests/test_store_config.py` is
-  the file a successor should extend with the `capacity` command and run.
+  lane runs no local ACL2 by its box rule.
+  `tests/test_store_config.py::test_capacity_is_a_configuration_record_with_three_outcomes`
+  is written and UNRUN: it is the first thing a successor should run
+  (`python3 -m unittest tests.test_store_config`), and it is where a defect
+  in the `capacity` command will surface. It checks that a raise moves the
+  generation, that a capacity below the live reservation total is refused
+  with the core's reason and writes nothing, and that an accepted value
+  survives a reopen.
 
 ## Registries
 
