@@ -207,7 +207,27 @@ cd {tree} || exit 9
         return step
 
     # -- the unit ---------------------------------------------------------
-    def unit_text(self, home: str) -> str:
+    OWNER_EXEC = "{tree}/bin/fn --config {config} run"
+    READER_EXEC = ("/usr/bin/env python3 {tree}/tools/run_reader.py "
+                   "--store {store} --port {port} --post")
+
+    def exec_start(self, kind: str, home: str) -> str:
+        """The command the supervisor runs: the owner, or the reader.
+
+        `fn run` is the owner and is the service this project means. On a tree
+        where `books/owner` has no certificate it cannot start at all -- ACL2
+        refuses the `include-book` and the process exits -- so the fallback is
+        `tools/run_reader.py`, the same second choice `tools/deploy_gate.py`
+        makes. A reader is NOT the owner: it serves one connection at a time
+        and holds no writer lock, so nothing about concurrency or posting
+        durability follows from a reader that stays up.
+        """
+        live = "{}/fn-live".format(home)
+        template = self.OWNER_EXEC if kind == "owner" else self.READER_EXEC
+        return template.format(tree="{}/fn".format(live), config="{}/fn.toml".format(live),
+                               store="{}/store".format(live), port=self.port)
+
+    def unit_text(self, home: str, server: str = "owner") -> str:
         """`packaging/fn.service`, relocated, with the system-only lines gone."""
         source = (self.repo / "packaging/fn.service").read_text()
         keep = []
@@ -228,6 +248,10 @@ cd {tree} || exit 9
         text = text.replace("ReadWritePaths=/var/lib/fn /var/log/fn",
                             "ReadWritePaths={}".format(live))
         text = text.replace("[Install]", "[Install]\nWantedBy=default.target")
+        for line in text.splitlines():
+            if line.startswith("ExecStart="):
+                text = text.replace(line, "ExecStart=" + self.exec_start(server, home))
+                break
         # systemd does not expand `$HOME` in an `Environment=` value, so the
         # ACL2 path is written out against this user's real home.
         acl2 = self.acl2.replace("$HOME", home).replace("~", home)
@@ -249,7 +273,7 @@ start)
     echo "already running pid=$(cat "$live/fn.pid")"; exit 0; fi
   cd "$live/fn"
   FN_ACL2={acl2} ACL2_BOOK_HASH_ALISTP=NIL PYTHONUNBUFFERED=1 \\
-    setsid nohup ./bin/fn --config "$live/fn.toml" run \\
+    setsid nohup {exec} \\
     >> "$live/service.out" 2>&1 < /dev/null &
   echo $! > "$live/fn.pid"
   echo "started pid=$(cat "$live/fn.pid")" ;;
@@ -285,25 +309,36 @@ else echo SETSID; fi
                 "service for as long as a session exists.".format(self.host))
         return kind
 
-    def install_unit(self, kind: str) -> Step:
+    def install_unit(self, kind: str, server: str = "owner") -> Step:
         home = self.sh("home", "echo $HOME").first_line
+        self.home = home
         if kind == "systemd":
-            self.push("write the user unit", self.unit_text(home),
+            self.push("write the user unit ({})".format(server),
+                      self.unit_text(home, server),
                       "$HOME/.config/systemd/user/{}".format(UNIT_NAME))
             return self.sh("enable the unit", """
 systemctl --user daemon-reload
 systemctl --user enable {unit} 2>&1 | tail -2
 systemctl --user is-enabled {unit}
 """.format(unit=UNIT_NAME))
-        self.push("write the setsid wrapper",
-                  self.WRAPPER.format(live="$HOME/fn-live", acl2=self.acl2),
+        self.push("write the setsid wrapper ({})".format(server),
+                  self.WRAPPER.format(live="$HOME/fn-live", acl2=self.acl2,
+                                      exec=self.exec_start(server, home)),
                   "{}/run.sh".format(LIVE), mode="755")
         return self.sh("wrapper is executable", "ls -l {}/run.sh".format(LIVE))
 
     def start(self, kind: str, ready_seconds: int = 900) -> Step:
         if kind == "systemd":
-            self.sh("start the unit", "systemctl --user restart {}".format(UNIT_NAME),
-                    timeout=ready_seconds)
+            # `StartLimitBurst` latches: once a unit has exceeded it, every
+            # later `restart` is refused with "Start request repeated too
+            # quickly" and exits 0 having done nothing, which reads exactly
+            # like a successful start. `reset-failed` clears the counter, so
+            # it runs before every start rather than only after a failure.
+            self.sh("start the unit", """
+systemctl --user reset-failed {unit} 2>/dev/null || true
+systemctl --user restart {unit}
+systemctl --user show {unit} -p ActiveState -p SubState -p NRestarts | tr '\n' ' '
+""".format(unit=UNIT_NAME), timeout=ready_seconds)
         else:
             self.sh("start the wrapper", "{}/run.sh start".format(LIVE),
                     timeout=ready_seconds)
@@ -315,8 +350,10 @@ for i in $(seq 1 {n}); do
 done
 echo "NOT-LISTENING {port} after {n} probes"
 tail -20 {log} 2>/dev/null
+systemctl --user --no-pager -l status {unit} 2>/dev/null | tail -8
 exit 1
-""".format(n=max(6, ready_seconds // 5), port=self.port, log=self.log),
+""".format(n=max(6, ready_seconds // 5), port=self.port, log=self.log,
+           unit=UNIT_NAME),
             timeout=ready_seconds + 120)
 
     def greet(self) -> Step:
@@ -357,14 +394,14 @@ def render(path: Path, hosts: list[Live], started: str, elapsed: float,
         "",
         "## Each node",
         "",
-        "| node | host | commit | store | listener | groups | supervisor | certificates |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- |",
+        "| node | host | commit | store | listener | groups | supervisor | server | certificates |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for live in hosts:
         lines.append("| {} | `{}` | `{}` | `{}` | {} | {} | {} | {} |".format(
             live.node, live.host, live.rev, live.store,
             live.facts.get("listener", "-"), live.facts.get("groups", "-"),
-            live.facts.get("supervisor", "-"),
+            live.facts.get("supervisor", "-"), live.facts.get("server", "-"),
             live.facts.get("certificates on disk", "-")))
     for live in hosts:
         lines += ["", "## {} on {}: every command".format(live.node, live.host), "",
@@ -471,10 +508,24 @@ def main(argv=None) -> int:
                   if j != index]
         for peer, peer_host, peer_port in others:
             live.peer_record(peer, peer_host, peer_port)
+        server = "owner"
+        live.install_unit(kind, server)
+        if live.start(kind, ready_seconds=420).failed:
+            server = "reader"
+            live.notes.append(
+                "`fn run` -- the owner, the service this project means -- did "
+                "not reach a listener on this tree. ACL2 refuses "
+                "`(include-book \"books/owner\")` because that book has no "
+                "certificate here, so the unit runs `tools/run_reader.py` "
+                "instead: one connection at a time, no writer lock, and no "
+                "claim about posting durability or concurrency follows from "
+                "it. This is the same second choice tools/deploy_gate.py "
+                "makes, and it is the v0.1 blocker, not a deployment detail.")
+            live.install_unit(kind, server)
+            live.start(kind, ready_seconds=420)
+        live.facts["server"] = server
         if kind == "systemd" and not unit_sample:
-            unit_sample = live.unit_text("$HOME")
-        live.install_unit(kind)
-        live.start(kind)
+            unit_sample = live.unit_text(getattr(live, "home", "$HOME"), server)
         live.greet()
         live.status(kind)
 
