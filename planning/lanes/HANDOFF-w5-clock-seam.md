@@ -111,21 +111,41 @@ observation shown not to enter the identity.
   wire-event)`, `fn-peer-delegate` likewise; `tests/acl2/peer-inbound-tests`
   threaded. Also fixed: `fn-own-durable-reply-names-a-durable-record` had the
   five-field connection.
-- ACL2, farm run `run-20260920T180438Z-8815` on **hbox**
-  (`--remote-root /tank/fn/lanes/w5-clock-seam --closure` over injection,
-  injection-invariants, nntp-post, served, owner, owner-invariants and the
-  four test books; cache: installed 184, kept 0, uncached 53). The earlier
-  persvati run `run-20260920T175602Z-51f8` is superseded — it predates the
-  merge and its closure held the then-red `books/nntp-effects`.
-  **Still running when this lane's budget ran out — NO VERDICT.** Harvest:
-  `python3 tools/farm.py wait hbox --remote-root /tank/fn/lanes/w5-clock-seam
-  run-20260920T180438Z-8815`.
-- Python on hbox in that root, after the certificates land:
+- **ACL2, hbox `run-20260920T182024Z-cbf6`, evidence
+  `build/acl2/certify-20260920T182027Z-1036127`.** Per root:
+  - `books/injection` **certified**
+  - `books/injection-invariants` **certified** — this is
+    `fn-inj-generated-identity-separates-different-clock-readings`
+  - `books/nntp-post` **certified** — this is
+    `fn-post-distinct-injection-clocks-give-distinct-identities`
+  - `tests/acl2/injection-tests` **certified**
+  - `tests/acl2/nntp-post-tests` **certified** — the four teeth
+  - `books/peer-config` **certified** (see below)
+  - `books/peer-inbound` **OPEN** at `(DEFUN FN-PEER-DECIDE-OFFER ...)`
+  - `books/served`, `books/owner`, `books/owner-invariants`,
+    `tests/acl2/served-tests`, `tests/acl2/owner-tests`: **no verdict**,
+    each blocked behind `books/peer-inbound` with
+    `There is no certificate on file`, not a failure of their own.
+- **Two dev-side blockers found, one fixed.** `books/peer-config.lisp` was
+  byte-identical to dev and failed at `fn-cfg-set-peer-delta-is-admissible`
+  on **both** boxes (hbox `run-20260920T180438Z-8815`, persvati
+  `run-20260920T181137Z-5b93`): the admissibility obligation wanted three
+  facts about `fn-cfg-peerp` that no rule supplied. Fixed here with three
+  `local` supports — `fn-cfg-peer-name-is-an-ascii-string`,
+  `fn-cfg-peer-rows-are-few`, `fn-cfg-peer-name-octets-are-bounded` — and
+  `fn-record-string-octets` added to the theorem's disable list. **No
+  statement in that book changed.** The second blocker,
+  `fn-peer-decide-offer`, is w6's and is left OPEN: this lane's one
+  authorised fix was spent on peer-config, and `fn-peer-decide-offer` is a
+  definition (termination or guards), untouched by the `injection`
+  threading, which only reaches `fn-peer-step` and `fn-peer-delegate`.
+- Python on hbox: **NOT RUN.** It needs `books/owner`'s certificate, which
+  is behind `books/peer-inbound`. Once a w6 lane closes
+  `fn-peer-decide-offer`, resubmit the same closure and then run
   `FN_ACL2=/tank/fn/acl2-8.7/saved_acl2 python3 -m unittest tests.test_post
-  tests.test_owner tests.test_reader -v`. **NOT RUN.**
-  `test_a_reader_pinned_before_a_post_keeps_its_view` and
-  `test_post_reaches_240_and_the_article_can_be_read_back` are the two cases
-  this lane exists for and both must pass.
+  tests.test_owner tests.test_reader -v` in
+  `/tank/fn/lanes/w5-clock-seam`. `test_a_reader_pinned_before_a_post_keeps_its_view`
+  is the case this lane exists for.
 - `tests/test_post.py` was not edited. The design says the second post is a
   new article, not a retry: the two bodies differ, neither supplies a
   `Message-ID`, and the readings differ. If
