@@ -244,9 +244,11 @@ transiently beyond it.
   already evaluated it to (measured, `certify-20260920T050746Z` prelude run).
 - `tests/acl2/tcpcl-tests` is still uncertified: its `certify-book` FAILED in 0.2 s
   in the run below (the manifest records exit 0 for that root, which is
-  wrong), before any form of the book: it was started while the
-  `books/tcpcl-invariants` certificate it includes was still being written
-  by the same run. The two new witnesses `*t-b-term*` and `*t-b-inter-both*`
+  wrong) at `(assert-event (equal (fn-tcl-encode *t-seg-1*) ...))`, one of
+  the wave-4 golden XFER_SEGMENT vectors -- so the encoder and that vector
+  disagree, and the disagreement is older than C4 and unrelated to it. The
+  root has never certified; the failure is between `fn-tcl-encode` and the
+  vector, and whichever is wrong is the next lane's first question. The two new witnesses `*t-b-term*` and `*t-b-inter-both*`
   are therefore written and unrun; certify that root first next lane.
 - `fn-tcl-retained-input-is-bounded`, the last form of the book, needed the
   two decoder need bounds of `books/tcpcl-octets` restated locally against
