@@ -42,9 +42,9 @@ fn decides by peer identity, never by `MODE`.)
 | --- | --- | --- | --- |
 | `CAPABILITIES` | 3977 §5.2, §3.3.2 | adds `IHAVE` and `STREAMING` | unchanged (`VERSION 2`, `IMPLEMENTATION`) |
 | `MODE STREAM` | 4644 §2.3 | `203`; stateless, MUST be accepted for legacy clients | `501` |
-| `IHAVE msgid` | 3977 §6.3.2 | `335` / `435` / `436`, then article, then `235` / `436` / `437` | `501` |
-| `CHECK msgid` | 4644 §2.4 | `238` / `431` / `438`, with the offered msgid echoed | `501` |
-| `TAKETHIS msgid` + article | 4644 §2.5 | `239` / `439`, msgid echoed; the article always follows | `501` |
+| `IHAVE msgid` | 3977 §6.3.2 | `335` / `435` / `436`, then article, then `235` / `436` / `437` | `502` (3977 §3.2.1: recognized, not permitted; K1 corrected this from `501`) |
+| `CHECK msgid` | 4644 §2.4 | `238` / `431` / `438`, with the offered msgid echoed | `502` |
+| `TAKETHIS msgid` + article | 4644 §2.5 | `239` / `439`, msgid echoed; the article always follows | `502` |
 
 Legacy peers (INN's `innfeed`) speak exactly this. fn-to-fn peering uses the
 same five commands and no private extension; the fn-specific content travels
@@ -371,7 +371,7 @@ Responses, exactly per RFC, as a function of `(command, decision, outcome)`:
 | Command | accepted (durable) | refused (`:refuse` or `:have`) | deferred at transfer | uncertain (indeterminate commit) |
 | --- | --- | --- | --- | --- |
 | `IHAVE` (after article) | `235` | `437` | `436` | `436` then `fn-wire-close`: no further command is served on a fenced node |
-| `TAKETHIS` | `239 <msgid>` | `439 <msgid>` | `400` and close (local policy, RFC 3977 §3.2.1 generic) | `400` and close |
+| `TAKETHIS` | `239 <msgid>` | `439 <msgid>` | `436 <msgid>` (local policy, K1: see status) | `436 <msgid>` then close |
 
 Three outcomes stay distinct all the way out (assurance rule D13): `accepted`
 is only ever answered after the store's `:durable` completion (never on
@@ -1019,3 +1019,107 @@ not a mechanism); Distribution header matching; control messages (RFC 5537
 (RFC 3977 §7.4, not needed for push peering); TLS and compression
 extensions; and any multi-node configuration agreement (a peer record is
 local, as reconfiguration says of every generation).
+
+## Status (wave 6, `w6/peering-inbound`, packets K0 to K2 of the inbound half)
+
+Books: `books/path.lisp`, `books/peer-config.lisp`, `books/peer-inbound.lisp`,
+`books/peer-inbound-invariants.lisp`, `tests/acl2/peer-inbound-tests.lisp`;
+edits to `books/config.lisp` (kinds `:set-peer` 9, `:remove-peer` 10),
+`books/config-invariants.lisp` (two local row-list lemmas), `books/nntp.lisp`
+(the reader-side `502` branch), `books/served.lisp` (the session is
+`fn-peer-sessionp`, dispatch calls `fn-peer-step`, `fn-served-open-peer`,
+`fn-served-transit-outcome`, the `:submit` effect carries an injected or a
+transit submission). Certification evidence is listed in
+`planning/lanes/HANDOFF-w6-peering-inbound.md`; counts are the ledger's.
+
+What differs from the design above, and why:
+
+- **The peer record is rows.** `fn-cfg-peerp` is the six-field opaque record
+  of §1.2, but its durable form is a group of configuration rows keyed by the
+  peer name in the existing `peers` slot (`fn-cfg-peer-rows` /
+  `fn-cfg-peer-of-rows`, `books/peer-config.lisp`), so the record codec of
+  `books/config.lisp` carries it with no new item type. `(:set-peers rows)`
+  is not retired: it is still a typed kind and the ledger keeps its
+  statements. Round trip: `fn-cfg-peer-of-rows-of-peer-rows` over every
+  well-formed record: **open** (below); canonicality is by construction
+  (one encoder) and witnessed on ground records;
+  `fn-cfg-set-peer-delta-is-admissible`, `fn-cfg-peer-rows-after-set-peer`,
+  `fn-cfg-peer-find-after-remove-peer`, `fn-cfg-peer-deltas-change-only-peers`
+  (the §1.2.1 sentence at the value level); the CBOR round trip of a record
+  carrying both deltas is a ground witness in the test book, which is the
+  coverage `books/config.lisp` has for its own codec (its general
+  decode-of-encode is still open there).
+- **`:remove-peer`'s feed condition is owner-side.** `fn-feed-peer-idlep` is
+  the feed lane's; config admits `:remove-peer` for any configured peer
+  (`:no-such-peer` otherwise), as reader pins never enter a durable record.
+- **Signatures.** `fn-peer-decide-transfer` and `fn-peer-transfer` take the
+  obligation id and subject strings (and `fn-peer-transfer` the transaction
+  generation) as arguments: `fn-frame-digest` is constrained and unattached,
+  so ACL2 cannot evaluate `fn-id-obligation-of`; the host computes them as it
+  does for POST. `fn-peer-injection-arguments` bundles them; the `cfg-gen`
+  leading argument waits for the owner's `fn-cnode-prepare` port.
+- **Offer decisions read a pinned snapshot.** The served path has no node;
+  `fn-served-open-peer` pins the node and configuration once under their
+  recognizers, `fn-peer-decide-offer` answers from that snapshot (RFC 4644
+  §2.4.2 makes CHECK advisory), and `fn-peer-transfer` decides again over the
+  live node in the owner. The owner's port is on the board.
+- **Reader connections answer `502`, not `501`.** RFC 3977 §3.2.1 assigns
+  `502` to a recognized command the client may not use; `501` is a syntax
+  error. Table in §1.1 corrected.
+- **"Not now" is 431 or 436, never 400-and-close; refusal after the bytes is
+  437 or 439.** Measured against INN 2.7.4 on hbox
+  (`planning/evidence/inn-lab-f4e8272-2026-09-20.md`): innfeed retries on
+  431, 436, 400, 480, 503 and any unknown code and drops for good on 437 and
+  439. `fn-peer-transit-code` and `fn-peer-offer-code`
+  (`books/peer-inbound.lisp`) are the explicit mapping, and
+  `fn-peer-not-now-is-a-retry-code` states it: `:defer` at transfer and an
+  uncertain outcome are 436 for IHAVE and for TAKETHIS (the uncertain one
+  also closes: the node is fenced); `:defer` at offer is 431 (CHECK) / 436
+  (IHAVE); `:refuse` and `:have` after the bytes are 437 / 439; 2xx only on
+  `:durable`. RFC 4644 §2.5 gives TAKETHIS only 239/439 and names 400 for a
+  temporary error; 436 on TAKETHIS is fn's local policy so a pipelined
+  deferral does not cost the peer a reconnect and its backoff, and it sits
+  in the retry class of RFC 3977 §6.3.2.2. The table in §2.2 is corrected
+  above. INN's own inbound loop check is its `ME` exclusion sub-field (§5);
+  fn's is the RFC 5537 §3.6 scan, and a Path naming INN gets INN's
+  `437 Unwanted site <pathhost> in path`, which fn's `437 transfer rejected;
+  path loop` mirrors in class.
+- **The general rows-to-record round trip is open.**
+  `fn-cfg-peer-of-rows-of-peer-rows` over every `fn-cfg-peerp` (sixteen
+  shapes through ten slot lookups) did not close in budget; it and the
+  injectivity it gives are recorded open, witnessed on two ground records in
+  the test book, and `fn-cfg-peer-rows-after-set-peer` (the peers slot holds
+  exactly the record's rows after `:set-peer`) is the certified form of the
+  find-after-set statement.
+- **The evidence slot is a string.** `fn-retain-admissiblep` requires
+  `stringp evidence`; the provenance is rendered as `"peer-transit:<peer>"`
+  (`fn-peer-evidence`) and the structured `(:transit peer kind msgid octets)`
+  submission is what the served path carries. The diagnostic and generation
+  of `(:peer-transit peer diag generation)` are not yet in the string: open
+  for the feed lane's renderer.
+
+Keystones, as certified (statements in `books/peer-inbound-invariants.lisp`):
+
+| Keystone | Theorem | Hypotheses | Teeth (`tests/acl2/peer-inbound-tests.lisp`) |
+| --- | --- | --- | --- |
+| K1 transit node = post-path node | `fn-peer-transfer-is-the-post-path` | the transfer decision is `:want` (the branch), nothing else: `fn-node-statep` and `fn-cfgp` were unnecessary and are dropped | the IHAVE transcript: two Newsgroups, one membership, `equal` to the `fn-node-prepare` call; `fn-state-articles` unchanged until `:durable` |
+| K1 memberships are the scope groups | `fn-peer-transfer-stages-only-scope-groups`, `fn-peer-scope-groups-are-live` | as above plus the prepare staged | `alt.test` not staged; the narrowed peer record flips the same article to `:out-of-scope` |
+| K1 refused transfer leaves the node | `fn-peer-refused-transfer-leaves-the-node` (`-by-definition`, `:rule-classes nil`) | | loop, duplicate and out-of-scope transfers return the node `equal` |
+| K1 "accepted through transit satisfies every acceptance premise" (`fn-peer-accepted-article-is-acceptance-accepted`) | **open** | | not attempted this wave: it is a theorem over `fn-node-complete` after `fn-node-prepare` and needs `fn-node-complete-preserves-state`'s article projection |
+| K2 loop refused at transfer | `fn-peer-loop-is-refused` | the Path names the local identity; `fn-node-statep`, `fn-cfgp` and the parse hypothesis were unnecessary and are dropped | identity second of three: refused `:loop`; tail-entry, `.POSTED` and `.POSTED.<src>` variants accepted; `fnA.hbox.test.old` not a match; unparsable octets are `:proto-article`, not `:loop` |
+| K2 outbound half (`fn-feed-never-offers-a-loop`, `fn-peer-render-prepends-path`) | **open**, feed lane | | |
+| K2 general loop-test lemma over an arbitrary identity | **open** (`fn-path-names-p-ignores-the-tail-entry` was attempted and removed; the split/reverse induction did not close in budget) | | witnessed on concrete Paths |
+| K3 (K4 offer/transfer half) duplicate refused at offer and transfer | `fn-peer-history-is-refused-at-offer`, `fn-peer-history-is-have-at-offer`, `fn-peer-history-is-refused-at-transfer`, `fn-peer-history-grows-under-transfer` | history membership; for `-is-have-` also the peer record with an inbound half and a syntactic Message-ID; for `-grows-` `fn-node-statep` | `435`/`438` transcripts after the durable completion; a fresh Message-ID on the same node is `:want`; the binding is a tombstone (`fn-node-find-binding` consp after completion) |
+| K3 after replay (`fn-peer-history-survives-reopen`) | **open**, needs the store-node trace books | | |
+| Code classes | `fn-peer-not-now-is-a-retry-code` | none | every transit and offer code on ground decisions and completions |
+| Served-path keystones | `fn-peer-step-effects-well-formed`, `fn-peer-step-preserves-consistent-session`, `fn-peer-step-submission-is-typed`, `fn-peer-transit-outcome-effects-well-formed`; `fn-served-*` keystones recertified with statements unchanged, `fn-nntp-step-effects-well-formed` and `fn-nntp-step-preserves-consistent-session` recertified with statements unchanged | `fn-peer-session-consistentp` | every cell of both response tables has a transcript in the test book |
+
+Open items (reasons reserved, no arm emits them): `:date-future` and
+`:no-clock` (RFC 5537 §3.6 step 2 needs a certified RFC 5322 date-time
+reader; `fn-inj-date-decode` reads only the injector's rendering);
+`:date-cutoff` (D13); `:unknown-group`. Guard verification of the decision
+functions and the step is deferred (`:verify-guards nil`): they are
+`:guard (fn-node-statep node)` / `:guard t` as the design writes them, and
+the `verify-guards` events are the next packet's first task (the callees
+are verified; the obligations are the node-statep-to-retain-statep bridge).
+
