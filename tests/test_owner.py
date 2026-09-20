@@ -42,13 +42,14 @@ class OwnerProcess:
                     return self
             if self.proc.poll() is not None:
                 break
+        error = self.stderr()
         self.stop()
-        raise RuntimeError("owner did not start: " + self.stderr())
+        raise RuntimeError("owner did not start: " + error)
 
     def stderr(self):
         try:
             return self.proc.stderr.read().decode("utf-8", "replace")
-        except (OSError, ValueError):
+        except (OSError, ValueError, AttributeError):
             return ""
 
     def stop(self):

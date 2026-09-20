@@ -11,8 +11,40 @@
 ; the reply stream and the close verdict are the book's two projections of an
 ; effect list (fn-served-reply-octets, fn-served-closingp), installed in the
 ; globals `fn-owner-output` and `fn-owner-closep`.
+; The served POST path: a read that injected an article leaves its
+; submission queued inside the owner (fn-own-read); fn-owner-take is the
+; writer step (fn-own-take-submission) and exposes the submission in flight
+; (its connection, Message-ID, octets and groups, all produced by
+; books/injection.lisp); the host carries it through the same store events
+; tools/run_store.py `post' reports and feeds the word it observed to
+; fn-owner-outcome (fn-own-outcome), which renders the 240 or 441 for that
+; connection alone.  The submission flag is the third projection of an
+; effect list, `fn-owner-submittedp' (fn-served-submission).  The host never
+; writes a reply octet.
 (in-package "ACL2")
 (include-book "../books/owner")
+
+; The injecting-agent identity this owner uses (books/injection.lisp reads
+; it for Path, Injection-Info and any generated Message-ID).  Configuration,
+; not a decision.
+(defconst *fn-owner-agent*
+  '(102 110 46 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100))
+
+(defun fn-owner-group-octets (names)
+  (declare (xargs :mode :program))
+  (if (consp names)
+      (cons (fn-nntp-string-octets (car names))
+            (fn-owner-group-octets (cdr names)))
+    nil))
+
+; The posting configuration: the groups served at the live configuration
+; generation (books/node-config, fn-cnode-served-of), the store's payload
+; bound.  Derived from the replayed configuration by ACL2.
+(defun fn-owner-post-config (cfg)
+  (declare (xargs :mode :program))
+  (fn-inj-make-config t *fn-owner-agent*
+                      (fn-owner-group-octets (fn-cnode-served-of cfg))
+                      *fn-store-max-payload*))
 
 (defun fn-owner-state (state)
   (declare (xargs :stobjs state :mode :program))
@@ -22,7 +54,9 @@
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-owner-effects effects state))
          (state (f-put-global 'fn-owner-output (fn-served-reply-octets effects) state))
-         (state (f-put-global 'fn-owner-closep (fn-served-closingp effects) state)))
+         (state (f-put-global 'fn-owner-closep (fn-served-closingp effects) state))
+         (state (f-put-global 'fn-owner-submittedp
+                              (if (fn-served-submission effects) t nil) state)))
     state))
 
 ; The process root.  A decoded observed image opens through
@@ -32,22 +66,38 @@
 ; would run the whole-state recognizer once more per recovery: a result of
 ; kind :ok is fn-sn-open-okp by fn-own-open-kind-ok-is-okp
 ; (books/owner-invariants.lisp, under fn-sn-open-observed-result-is-typed).
-(defun fn-owner-recover (octet-records frontier max-conns state)
+; The configuration history is replayed first (fn-cnode-config-replay,
+; books/node-config), exactly as host/store-node-host.lisp fn-store-sn-recover
+; does; the node opens over the allocation domain and the configured capacity
+; and the live configuration is kept in the same global the store bridge's
+; fn-store-cfg-* entries read.
+(defun fn-owner-recover (octet-records frontier config-octet-records max-conns state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((records (fn-store-decode-records octet-records)))
-    (if (or (equal records :bad) (not (natp max-conns)))
+  (let ((records (fn-store-decode-records octet-records))
+        (config-records (fn-store-cfg-decode-records config-octet-records)))
+    (if (or (equal records :bad) (equal config-records :bad)
+            (null config-records) (not (natp max-conns)))
         (value :fault)
-      (let ((opened (fn-sn-open-observed *fn-store-groups*
-                                         *fn-store-capacity* frontier records)))
-        (if (and (equal (fn-sn-open-kind opened) :ok)
-                 (equal (fn-sf-phase (fn-sn-files (fn-sn-open-state opened)))
-                        :recovering))
-            (let ((state (f-put-global 'fn-owner
-                                       (fn-own-start (fn-sn-open-state opened)
-                                                     max-conns)
-                                       state)))
-              (value :recovering))
-          (value :fault))))))
+      (let ((replayed (fn-cnode-config-replay config-records)))
+        (if (not (equal (fn-replay-result-kind replayed) :ok))
+            (value :fault)
+          (let* ((cn (fn-replay-result-node replayed))
+                 (cfg (fn-cnode-config cn))
+                 (opened (fn-sn-open-observed (fn-cnode-domain cn)
+                                              (fn-cfg-capacity (fn-cfg-value cfg))
+                                              frontier records)))
+            (if (and (equal (fn-sn-open-kind opened) :ok)
+                     (equal (fn-sf-phase (fn-sn-files (fn-sn-open-state opened)))
+                            :recovering))
+                (let* ((state (f-put-global 'fn-store-cfg cfg state))
+                       (state (f-put-global 'fn-owner
+                                            (fn-own-configure
+                                             (fn-own-start (fn-sn-open-state opened)
+                                                           max-conns)
+                                             (fn-owner-post-config cfg))
+                                            state)))
+                  (value :recovering))
+              (value :fault))))))))
 
 (defun fn-owner-store (state)
   (declare (xargs :stobjs state :mode :program))
@@ -76,8 +126,9 @@
 (defun fn-owner-prepare (msgid-octets payload group-codes id-octets
                           subject-octets evidence-octets charge state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((groups (fn-store-groups-from-codes group-codes))
-        (s (fn-owner-store state)))
+  (let* ((s (fn-owner-store state))
+         (groups (fn-store-groups-from-codes
+                  group-codes (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
             (not (fn-octet-listp payload)) (> (len payload) *fn-store-max-payload*)
             (equal groups :bad) (null groups)
@@ -85,6 +136,10 @@
             (not (fn-store-text-octetsp subject-octets))
             (not (fn-store-text-octetsp evidence-octets)) (not (posp charge)))
         (value :invalid)
+      ; A name in the domain but not served at the live generation (a retired
+      ; group) is refused by the predicate fn-cnode-prepare applies.
+      (if (not (fn-cnode-selection-servedp (f-get-global 'fn-store-cfg state) groups))
+          (value :refused)
       (let* ((node (fn-sn-node s))
              (msgid (fn-store-octets->string msgid-octets))
              (existing (fn-store-article-match msgid payload groups node)))
@@ -101,7 +156,7 @@
                  (state (fn-owner-step (list :store (list :prepare record)) state)))
             (if (equal (fn-owner-store state) s)
                 (value :refused)
-              (value :prepared))))))))
+              (value :prepared)))))))))
 
 (defun fn-owner-refuse-reservation (state)
   (declare (xargs :stobjs state :mode :program))
@@ -157,13 +212,39 @@
          (state (fn-owner-step (list :begin id) state)))
     (value (if (equal (f-get-global 'fn-owner state) before) :refused :begun))))
 
-; The durable outcome of a submission a connection made through the served
-; path (w4/post's POST fold) is fed back through the owner as one event.  The
-; book treats (:outcome ...) as a no-op until that lane lands; the shape of
-; the call is fixed here so the fold has a port to fill.
-(defun fn-owner-outcome (id outcome state)
+; The writer step: fn-own-take-submission moves the oldest queued submission
+; into the durable path when nothing is in flight, no transaction is pending
+; and the store is :ready.  The submission in flight is exposed to the host
+; through four globals read off the injection decision; the host passes them
+; back through fn-owner-prepare exactly as the CLI passes its own.
+(defun fn-owner-take (state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((state (fn-owner-step (list :outcome id outcome) state)))
+  (let* ((before (f-get-global 'fn-owner state))
+         (state (fn-owner-step (list :take) state))
+         (after (f-get-global 'fn-owner state))
+         (sub (fn-own-inflight after)))
+    (if (or (equal after before) (null sub))
+        (value :idle)
+      (let* ((decision (fn-own-sub-decision sub))
+             (state (f-put-global 'fn-owner-submit-id (fn-own-sub-id sub) state))
+             (state (f-put-global 'fn-owner-submit-msgid
+                                  (fn-inj-decision-msgid decision) state))
+             (state (f-put-global 'fn-owner-submit-octets
+                                  (fn-inj-decision-octets decision) state))
+             (state (f-put-global 'fn-owner-submit-groups
+                                  (fn-inj-decision-groups decision) state)))
+        (value :taken)))))
+
+; The word the host observed for the submission in flight (:durable,
+; :refused, :uncertain or anything else) is fed back as one owner event;
+; fn-own-outcome renders the reply (240 only when a completion was consumed
+; after the take, fn-own-durable-reply-names-a-durable-record) for that
+; connection and installs it in fn-owner-output.
+(defun fn-owner-outcome (id word state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((result (fn-own-outcome (f-get-global 'fn-owner state) id word))
+         (state (f-put-global 'fn-owner (cdr result) state))
+         (state (fn-owner-install-effects (car result) state)))
     (value :fed)))
 
 (defun fn-owner-next-txid (state)
@@ -176,7 +257,9 @@
 
 (defun fn-owner-existing-action (msgid-octets payload group-codes state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((groups (fn-store-groups-from-codes group-codes)))
+  (let ((groups (fn-store-groups-from-codes
+                 group-codes
+                 (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
     (if (or (not (fn-store-msgid-octetsp msgid-octets))
             (not (fn-octet-listp payload)) (equal groups :bad) (null groups))
         (value :absent)
