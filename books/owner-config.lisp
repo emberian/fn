@@ -380,7 +380,8 @@
           (fn-cnode-apply-config (fn-ocfg-live-cnode oc) record
                                  (fn-cnode-line-ceiling)))
          (fn-ocfg-pins oc) nil)
-      (fn-ocfg-with-owner oc (fn-own-complete (fn-ocfg-owner oc))))))
+      (fn-ocfg-make (fn-own-complete (fn-ocfg-owner oc))
+                    (fn-ocfg-config oc) (fn-ocfg-pins oc) nil))))
 
 ; -----------------------------------------------------------------------------
 ; The connection events that write a pin: open, advance, close.
