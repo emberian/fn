@@ -104,3 +104,11 @@ the two retained pre-fix diagnostics are in
 * The owner's pre-existing orderly SIGTERM shutdown gap is unchanged; the auth
   startup hook has no asynchronous handler or retained resource.
 * No D09 cryptosuite or key-policy decision is made.
+
+## Parser correction follow-up
+
+Revision `dfdcabc4` (landed as `593ab3ad`) makes the table-name grammar match
+the canonical writer by excluding quote and backslash and corrects the
+newline-terminated 1,024-line boundary.  Both owned ACL2 roots passed in clean
+run `certify-20260921T104530Z-10362`; its exact scope and source digests are in
+[`native-auth-parser-fix-2026-09-21`](../evidence/native-auth-parser-fix-2026-09-21.md).
