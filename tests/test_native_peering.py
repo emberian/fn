@@ -11,7 +11,6 @@ from pathlib import Path
 import select
 import socket
 import subprocess
-import sys
 import tempfile
 import time
 import unittest
@@ -98,12 +97,10 @@ class NativePeeringTests(unittest.TestCase):
 
     def configure_peer(self, source, target):
         self.command([
-            sys.executable, "tools/run_store.py", "--store", source["store"],
-            "peer", "add", target["name"], "--path-identity",
-            "{}.example.invalid".format(target["name"]),
-            "--nntp", "127.0.0.1:{}".format(target["port"]),
-            "--inbound-groups", "fn.*", "--outbound-groups", "fn.*",
-            "--streaming", "--source-address", "127.0.0.1",
+            IMAGE, "--fn", "operator", source["config"], "peer", "add",
+            target["name"], "{}.example.invalid".format(target["name"]),
+            "127.0.0.1", str(target["port"]), "fn.*", "fn.*",
+            "127.0.0.1", "true",
         ])
 
     def start(self, node):

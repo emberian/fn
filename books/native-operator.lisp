@@ -108,7 +108,7 @@
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "run" "post" "status" "recover" "group" "capacity")))
+  (member-equal subject '("help" "run" "post" "status" "recover" "group" "capacity" "peer")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -120,8 +120,10 @@
         ((equal subject "recover") "usage: fn operator CONFIG recover")
         ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME")
         ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
+        ((equal subject "peer")
+         "usage: fn operator CONFIG peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- SOURCE true|false | peer remove NAME")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|run|post|status|recover|group|capacity}")))
+        (t "usage: fn operator CONFIG {help|run|post|status|recover|group|capacity|peer}")))
 
 (defun fn-nop-parse-administration (command argv config)
   "Delegate the exact bounded argv vector to the ACL2 durable-admin grammar."
@@ -159,7 +161,8 @@
              (if (null rest)
                  (fn-nop-result :accepted :plan "recover" config (list :recover))
                (fn-nop-usage :unexpected-arguments "recover" config rest)))
-            ((or (equal command "group") (equal command "capacity"))
+            ((or (equal command "group") (equal command "capacity")
+                 (equal command "peer"))
              (fn-nop-parse-administration command argv config))
             (t (fn-nop-usage :unsupported-command command config rest))))))
 

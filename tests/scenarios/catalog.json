@@ -747,7 +747,7 @@
         "tests/test_native_owner.py",
         "tests/test_native_peering.py"
       ],
-      "execution_scope": "Native source now maps an accepted loopback socket through the ACL2 peer lookup/open transition, and a focused developer-image witness specifies the advertised transit surface. The two-node native harness is implemented but not run. Both nodes run on one host over loopback, so a future pass will not exercise a partition, latency or clock disagreement, and two articles crossing once is not the merge property of specs/peering.md section 4."
+      "execution_scope": "Native source now maps an accepted loopback socket through the ACL2 peer lookup/open transition, and the public native operator builds and publishes peer records through an ACL2 administrative plan. A focused developer-image witness specifies the advertised transit surface. The two-node native harness is implemented but not run. Both nodes run on one host over loopback, so a future pass will not exercise a partition, latency or clock disagreement, and two articles crossing once is not the merge property of specs/peering.md section 4."
     },
     {
       "id": "SCN-024",
