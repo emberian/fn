@@ -322,7 +322,7 @@
     "enabled_projection_warnings": 21,
     "teeth_form_warnings": 3,
     "include_hygiene_warnings": 102,
-    "host_names_warnings": 44,
+    "host_names_warnings": 46,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -10249,6 +10249,20 @@
         "host": "host/native/crypto.lisp",
         "line": 140,
         "name": "elt",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
+      },
+      {
+        "host": "host/native/io.lisp",
+        "line": 878,
+        "name": "intern",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
+      },
+      {
+        "host": "host/native/io.lisp",
+        "line": 878,
+        "name": "string-upcase",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
       },
