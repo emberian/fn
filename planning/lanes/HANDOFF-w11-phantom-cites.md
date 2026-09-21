@@ -1,6 +1,6 @@
 # w11/phantom-cites — the paths this tree cites and no file answers
 
-Branch `w11/phantom-cites` from `dev` `1d2d49a`. Documentation-integrity lane:
+Branch `w11/phantom-cites` from `dev` `1d2d49a`, `dev` `1e29d82` merged. Documentation-integrity lane:
 no theorem, claim or assertion was weakened, deleted or proved. Nothing here
 needed ACL2 and nothing here ran it.
 
@@ -56,10 +56,16 @@ has been written about the tree's number. The control: the tree's number is
 
 **Counts on this tree after the repairs below** (`python3 tools/cite_check.py`):
 
-    74 citations of 46 absent paths (48 phantom, 26 drift); by citer:
-    0 load-bearing, 35 spec, 0 tool, 39 planning; 25 annotated, 117
-    catalogue, 235 placeholder, 1 wrapped, 31 prose, 14 system, 233
+    67 citations of 43 absent paths (52 phantom, 15 drift); by citer:
+    0 load-bearing, 35 spec, 1 tool, 31 planning; 32 annotated, 115
+    catalogue, 245 placeholder, 1 wrapped, 33 prose, 14 system, 234
     fixture, 115 record not raised.
+
+(On `dev` `1d2d49a` alone it was 74 of 46, with 26 drift and 0 tool. Merging
+`dev` `1e29d82` landed `tools/v0_matrix.py` and `planning/v0-matrix.json`, so
+eleven of the board's drift citations resolved; the one tool-tier line left is
+`tools/run_owner.py:282` citing `planning/evidence/v0-matrix-2026-09-20.md`,
+which is DRIFT on the unmerged `w10/v0-matrix` and is not this lane's.)
 
 `make check` runs `--summary --strict`, so a NEW undisclosed load-bearing
 phantom fails it. The other three tiers are reported and do not.
