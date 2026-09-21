@@ -8,6 +8,7 @@
 
 (defun fn-jpub-state (phase authorityp outcome)
   (list phase (if authorityp t nil) outcome))
+(verify-guards fn-jpub-state)
 
 (defun fn-jpub-phase (s) (if (consp s) (car s) nil))
 (defun fn-jpub-authorityp (s) (if (consp (cdr s)) (car (cdr s)) nil))
@@ -39,8 +40,9 @@
   ; next final name was absent before this publication. Only under that
   ; premise can EEXIST prove that this operation did not publish anything.
   (if authorityp
-      (fn-jpub-state :staging t nil)
+    (fn-jpub-state :staging t nil)
     (fn-jpub-state :fenced nil :uncertain)))
+(verify-guards fn-jpub-initial)
 
 (defun fn-jpub-terminalp (s)
   (member-equal (fn-jpub-phase s) '(:durable :refused :fenced)))
