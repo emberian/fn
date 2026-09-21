@@ -1,9 +1,15 @@
 # Development milestones
 
-Current task (2026-09-21): integrate the [W12 operational repair lanes](swarm-cycles.md)
-from `8b474e2`, then compose the remaining v0 services and expand assurance toward
-v1/M6. Feed and transit are merged; their combined certification does not
-replace a merged live-service measurement. See [current work](now.md).
+Current task (2026-09-21): converge the integrated native owner, workflow/receipt
+journals, anchor acquisition and operator components into one frozen saved-image
+batch. Close the shared-owner fencing race and safe FNFD filename adoption before
+claiming native configured-peer readiness, then run source-pinned combined
+certification/build and actual service tests on the farm. Parallel work continues
+on observed-file BP proofs, wire/feed caller correspondence, checkpoint adoption,
+recovery and measured native cost. The packaged Python service remains development
+infrastructure; no full native service or v0 milestone is complete. See
+[current work](now.md), [assignments](swarm-cycles.md), and the
+[consolidation audit](duplication-audit-2026-09-21.md).
 
 The following dated landing notes preserve their original evidence and gaps;
 their phrases “current task” and “nearest gaps” refer to those earlier batches.

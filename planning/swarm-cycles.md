@@ -26,17 +26,17 @@ No component test closes the full native service or v0 contract.
 | Active lane / worker | Next complete result |
 | --- | --- |
 | `owner-convergence` / Sol | Native multiplexed owner, control, live configuration and physical feed replay/append; shared submission preserves feed intent and uncertain persistence fences the service. Unify configured article bounds and measure the frozen service. |
-| `submission-path` / Sol | Native BP lifecycle/spool convergence: actual EIO after namespace publication must remain uncertain; mixed duplex outcomes use ACL2's policy; land the frozen repair evidence. |
+| `submission-path` / Sol | Carrier repair landed; preserve distinct core faults, stop mutation after journal uncertainty, and prevent cross-session evidence overwrite through durable ACL2-owned identity. |
 | `bp-fidelity-convergence` / Sol | BP sequence recovery/reservation on observed files, with returned-allocation non-reuse across admissible physical crash traces. |
 | `artifact-set` / Sol | Native workflow/receipt journals over the same store state, with a shared ACL2-owned persistence operation and raw I/O interpreter. |
 | `native-storage-codec` / Sol | Native checkpoint capture, selection and recovery adoption; coordinate the shared persistence operation and retain explicit checkpoint/corruption authority. Codec adoption and artifact handoff are landed. |
 | `native-config-impl` / Terra | ACL2-owned safe FNFD peer filenames and explicit legacy handling, adopted by both native and development callers. Config parsing/default normalization is landed. |
-| `storage-codecs` / Terra | Native I/O progress and error taxonomy: zero-progress, partial operations, EINTR, deadlines, core faults and semantic refusals remain distinguishable. |
+| `storage-codecs` / Terra | I/O outcome and nonblocking progress packets landed; now measure actual saved-image store costs and identify growing-history walks without disabling invariant obligations. |
 | `storage-initializer` / Terra | Actual native initialization failure/death/restart tests and cut fidelity; propagate enumeration errors and investigate staging recovery differences. |
 | `feed-correspondence-terra` / Terra | Adopt the certified total feed output boundary in the actual owner, preserving durable intent when encoding is refused. |
-| `wire-block` / Terra | Outbound source-byte reconstruction, rendered-size and actual wire-driver composition over the host-called renderer. |
+| `wire-composition-sol` / Sol | Finish actual wire-driver composition from the certified reconstruction and rendered-bound helper packet. |
 | `recover-user-direction` / Sol | Native freshness-anchor wire parsing/acquisition over ACL2-owned subjects and isolated cryptographic primitives; preserve D22's unsupported-tree outcome. |
-| `integrated-runtime` / Terra | Operator/native duplication audit, then frozen native runtime measurements. Direct-image benchmark evidence is landed; it is not concurrent-owner throughput. |
+| `integrated-runtime` / Terra | Native operator grammar/status/recover component landed; install the common entry, standalone help and shared owner callbacks with one result contract. |
 
 Terra and Luna handle bounded implementation/mechanical work; Sol handles
 substantial implementation, proof debugging and integration. Root Astra reviews
