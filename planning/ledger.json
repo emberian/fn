@@ -282,15 +282,15 @@
     "books": 276,
     "books_in_root_closure": 275,
     "roots": 275,
-    "theorems": 5558,
+    "theorems": 5559,
     "functions": 3929,
-    "assert_events": 5398,
+    "assert_events": 5400,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
-      "verified": 1460,
+      "verified": 1461,
       "declared-off": 190,
-      "default-guarded": 1790,
+      "default-guarded": 1789,
       "default-unguarded": 489
     },
     "suspect_theorems": 46,
@@ -811,7 +811,7 @@
       "book": "books/bp-bundle-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 32,
+      "theorems": 30,
       "functions": 1,
       "guards": {
         "verified": 0,
@@ -950,15 +950,15 @@
       "book": "books/bp-node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 18,
+      "theorems": 21,
       "functions": 30,
       "guards": {
-        "verified": 22,
+        "verified": 23,
         "declared-off": 0,
-        "default-guarded": 8,
+        "default-guarded": 7,
         "default-unguarded": 0
       },
-      "verify_guards_events": 22,
+      "verify_guards_events": 23,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 2,
@@ -5321,7 +5321,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 50,
+      "assert_events": 52,
       "must_fails": 0,
       "defconsts": 14,
       "defmacros": 0,
@@ -7591,7 +7591,7 @@
     {
       "theorem": "fn-bpb-decode-refuses-overlong-input",
       "book": "books/bp-bundle-invariants.lisp",
-      "line": 472,
+      "line": 530,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-bpb-decode and the conclusion is that branch's value"
       ]
@@ -7599,7 +7599,7 @@
     {
       "theorem": "fn-bpbi-bpp-encode-unfolds",
       "book": "books/bp-bundle-invariants.lisp",
-      "line": 272,
+      "line": 277,
       "reasons": [
         "definition-restated: the conclusion is the body of fn-bpp-encode"
       ]
@@ -8501,9 +8501,10 @@
         "line": 394,
         "stated_in": [
           "books/bp-fragment-invariants.lisp",
+          "books/bp-node.lisp",
           "books/bp-primary-invariants.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 2 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 3 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-bpp-crc-type",
