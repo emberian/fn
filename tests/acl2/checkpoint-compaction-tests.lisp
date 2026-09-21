@@ -31,6 +31,14 @@
          (list *cc-b4*) 6)
         (list :ok (list *cc-b0* *cc-b1* *cc-b2* *cc-b3* *cc-b4*) 6)))
 (assert-event
+ (fn-cc-observation-agrees
+  (list (list 1 *cc-b1*) (list 2 *cc-b2*) (list 3 *cc-b3*) (list 4 *cc-b4*))
+  (list *cc-b0* *cc-b1* *cc-b2* *cc-b3*) 4))
+(assert-event
+ (not (fn-cc-observation-agrees
+       (list (list 1 *cc-b0*) (list 4 *cc-b4*))
+       (list *cc-b0* *cc-b1* *cc-b2* *cc-b3*) 4)))
+(assert-event
  (equal (fn-cc-decode-exact
          (fn-cc-encode (fn-cc-make 2 2 (list *cc-b0* *cc-b1*))))
         (list :ok (fn-cc-make 2 2 (list *cc-b0* *cc-b1*)))))

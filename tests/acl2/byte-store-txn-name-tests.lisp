@@ -20,7 +20,7 @@
 (assert-event
  (equal (fn-bs-txn-observation-selected
          (list (fn-bs-txn-name 0) (fn-bs-txn-name 1)) 1)
-        (list :ok 0 (list (list 0 (fn-bs-txn-name 0))
+        (list :ok 1 (list (list 0 (fn-bs-txn-name 0))
                           (list 1 (fn-bs-txn-name 1))))))
 (assert-event
  (equal (fn-bs-txn-observation-selected
@@ -31,6 +31,12 @@
  (equal (fn-bs-txn-observation-selected
          (list (fn-bs-txn-name 1) (fn-bs-txn-name 3)) 1)
         :invalid))
+(assert-event
+ (equal (fn-bs-txn-observation-selected
+         (list (fn-bs-txn-name 1) (fn-bs-txn-name 2) (fn-bs-txn-name 3)) 3)
+        (list :ok 3 (list (list 1 (fn-bs-txn-name 1))
+                          (list 2 (fn-bs-txn-name 2))
+                          (list 3 (fn-bs-txn-name 3))))))
 
 ; Each hypothesis of fn-bs-txn-name-impl-injective has teeth.  NFIX makes a
 ; non-natural share zero's name, while dropping the name equality would claim

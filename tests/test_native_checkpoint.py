@@ -273,6 +273,19 @@ class NativeCheckpointTests(unittest.TestCase):
                                       expected=run_store.EXIT_FAULT)
                 self.assertNotIn("articles=", refused.stdout)
 
+    def test_surviving_covered_transaction_conflict_fails_closed(self):
+        store = self.initialized("pack-conflict")
+        other = self.initialized("pack-conflict-other", article=False)
+        self.native("store", other, "post", "<other@example.invalid>",
+                    self.payload, "-", "-", "fn.letters")
+        self.native("checkpoint", "pack", store, "select")
+        source = other / "transactions" / "00000000000000000000.txn"
+        target = store / "transactions" / "00000000000000000000.txn"
+        target.write_bytes(source.read_bytes())
+        refused = self.native("store", store, "recover",
+                              expected=run_store.EXIT_FAULT)
+        self.assertNotIn("articles=", refused.stdout)
+
     def test_selected_pack_reclaims_physical_prefix_and_replays_suffix(self):
         store = self.initialized("pack-reclaim")
         self.native("checkpoint", "pack", store, "select")
@@ -294,7 +307,7 @@ class NativeCheckpointTests(unittest.TestCase):
                 recovered = self.native("store", store, "recover")
                 self.assertIn("transactions=1 articles=1", recovered.stdout)
 
-    def test_partial_multi_file_prefix_reclaim_fails_closed(self):
+    def test_partial_multi_file_prefix_reclaim_resumes_from_selected_pack(self):
         store = self.initialized("pack-partial")
         self.native("store", store, "post", "<prefix-two@example.invalid>",
                     self.payload, "-", "-", "fn.letters")
@@ -303,9 +316,11 @@ class NativeCheckpointTests(unittest.TestCase):
                     self.payload, "-", "-", "fn.letters")
         self.stopped_then_killed(("checkpoint", "pack-reclaim", store),
                                  "pack-reclaim-unlink")
-        refused = self.native("store", store, "recover",
-                              expected=run_store.EXIT_FAULT)
-        self.assertNotIn("articles=", refused.stdout)
+        recovered = self.native("store", store, "recover")
+        self.assertIn("transactions=3 articles=3", recovered.stdout)
+        self.native("checkpoint", "pack-reclaim", store)
+        self.assertEqual(sorted((store / "transactions").glob("*.txn")),
+                         [store / "transactions" / "00000000000000000002.txn"])
 
         selection_expectations = {
             "selection-file": "checkpoint=none",

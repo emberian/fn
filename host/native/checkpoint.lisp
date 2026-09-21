@@ -164,15 +164,16 @@
                            (mapcar (lambda (name)
                                      (fnn-octet-list (fnn-string-octets name))) observed)
                            limit lower)))
-      (unless (and (listp plan) (= (length plan) lower)
-                   (every #'stringp plan))
+      (unless (and (listp plan) (<= (length plan) lower)
+                   (every (lambda (name)
+                            (and (stringp name)
+                                 (member name observed :test #'string=)))
+                          plan))
         (fnn-fault "ACL2 refused transaction prefix reclaim plan"))
       (setf (fnn-store-fenced store) t)
       (handler-case
           (progn
             (dolist (name plan)
-              (unless (member name observed :test #'string=)
-                (fnn-fault "ACL2 reclaim plan escaped transaction observation"))
               (fnn-unlink (fnn-join (fnn-transactions store) name))
               (fnn-checkpoint-test-stop "pack-reclaim-unlink"))
             (fnn-fsync-dir (fnn-transactions store))
@@ -196,8 +197,12 @@
     (let ((path (fnn-pack-generation-path store generation)))
       (unless (fnn-check-regular path)
         (fnn-checkpoint-corrupt "selected pack generation ~d is missing" generation))
-      (let* ((raw (fnn-read-regular-bounded
-                   path (+ (fnn-constant :trailer) 4194304)))
+      (let* ((payload-bound
+               (fnn-core 'fn-store-checkpoint-compaction-max-octets))
+             (_ (unless (and (integerp payload-bound) (> payload-bound 0))
+                  (fnn-fault "ACL2 returned invalid compaction read bound")))
+             (raw (fnn-read-regular-bounded
+                   path (+ (fnn-constant :trailer) payload-bound)))
              (coverage (fnn-core 'fn-store-checkpoint-compaction-coverage
                                  (fnn-octet-list raw) (fnn-digest-of raw)
                                  (fnn-config-max-transactions store)
@@ -212,17 +217,19 @@
     (declare (ignore raw))
     (if coverage (second coverage) 0)))
 
-(defun fnn-pack-recover-records (store records actual-lower)
+(defun fnn-pack-recover-records (store records sequences actual-lower)
   (multiple-value-bind (raw coverage) (fnn-pack-selected-raw-and-coverage store)
     (unless coverage (return-from fnn-pack-recover-records records))
     (let* ((sequence (second coverage))
-           (suffix (cond ((= actual-lower sequence) records)
-                         ((= actual-lower 0) (nthcdr sequence records))
-                         (t (fnn-checkpoint-corrupt
-                             "ACL2 namespace lower bound disagrees with selected pack"))))
-           (answer (fnn-core 'fn-store-checkpoint-compaction-open
+           (_ (unless (= actual-lower sequence)
+                (fnn-checkpoint-corrupt
+                 "ACL2 namespace lower bound disagrees with selected pack")))
+           (observed (mapcar (lambda (number record)
+                               (list number (fnn-octet-list record)))
+                             sequences records))
+           (answer (fnn-core 'fn-store-checkpoint-compaction-observe
                              (fnn-octet-list raw) (fnn-digest-of raw)
-                             (mapcar #'fnn-octet-list suffix)
+                             observed
                              (fnn-store-frontier store))))
       (unless (and (listp answer) (eq (first answer) :ok))
         (fnn-checkpoint-corrupt "selected pack does not reconstruct observed history"))

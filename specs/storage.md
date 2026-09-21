@@ -89,6 +89,17 @@ objects under the stated crash assumptions.
 
 ## Checkpointing and compaction
 
+The current compaction tranche publishes an immutable selected transaction
+prefix pack containing the exact canonical bytes of every covered Store event.
+Recovery validates each surviving covered transaction byte-for-byte against
+that pack, permits covered files to be absent after an interrupted reclaim,
+and requires a complete contiguous suffix from the coverage boundary.  An
+unknown gap or conflicting surviving record is corruption.  Reclaim resumes
+by unlinking only the ACL2-issued surviving covered names under the writer
+lease and fencing until the transaction-directory barrier succeeds.  The pack
+does not summarize or discard semantic history: generic replay still consumes
+the reconstructed full event stream, including retention and identity events.
+
 STO-006: replacing history with a checkpoint preserves the full logical state
 needed for future behavior, including allocation watermarks, duplicate history,
 outstanding obligations, relevant policy context, and receipt/release evidence.

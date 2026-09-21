@@ -289,17 +289,29 @@
 (defattach (fn-bs-txn-name fn-bs-txn-name-impl)
   :hints (("Goal" :use fn-bs-txn-name-impl-injective)))
 
+; Bind any surviving covered files and require the uncovered suffix to be
+; complete.  Missing names are permitted only below SELECTED-LOWER: recovery
+; subsequently compares every returned covered file with the selected pack.
+(defun fn-bs-txn-observation-covered (names sequence selected-lower)
+  (declare (xargs :guard t :verify-guards nil
+                  :measure (nfix (- (nfix selected-lower) (nfix sequence)))))
+  (if (and (natp sequence) (natp selected-lower) (< sequence selected-lower))
+      (if (and (consp names) (equal (car names) (fn-bs-txn-name sequence)))
+          (let ((rest (fn-bs-txn-observation-covered
+                       (cdr names) (1+ sequence) selected-lower)))
+            (if (equal rest :invalid) :invalid
+              (cons (list sequence (car names)) rest)))
+        (fn-bs-txn-observation-covered names (1+ sequence) selected-lower))
+    (fn-bs-txn-observation-pairs names selected-lower)))
+
 ; Preserve the zero-start scan as the default.  A caller may supply a nonzero
-; lower bound only after validating a selected pack; this function owns the
-; choice between a still-complete namespace and its exact retained suffix.
+; lower bound only after validating a selected pack.
 (defun fn-bs-txn-observation-selected (names selected-lower)
   (declare (xargs :guard t :verify-guards nil))
   (if (not (natp selected-lower)) :invalid
-    (let ((full (fn-bs-txn-observation-pairs names 0)))
-      (if (not (equal full :invalid)) (list :ok 0 full)
-        (let ((suffix (fn-bs-txn-observation-pairs names selected-lower)))
-          (if (equal suffix :invalid) :invalid
-            (list :ok selected-lower suffix)))))))
+    (let ((pairs (fn-bs-txn-observation-covered names 0 selected-lower)))
+      (if (equal pairs :invalid) :invalid
+        (list :ok selected-lower pairs)))))
 
 (defthm fn-bs-txn-observation-selected-zero-is-default
   (equal (fn-bs-txn-observation-selected names 0)
