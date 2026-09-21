@@ -692,6 +692,14 @@ here.  The host supplies octets and decides nothing about them."
 (defun fnn-bridge-refuse-reservation ()
   (fnn-action (fnn-core-state 'fn-store-sn-refuse-reservation)))
 (defun fnn-bridge-finish () (fnn-action (fnn-core-state 'fn-store-sn-finish)))
+
+;; The standalone store binds neither variable.  A composed native owner may
+;; dynamically bind these two delivery callbacks to its own state machine so
+;; it reuses the exact file/barrier program without calling the store-node
+;; completion subject a second time.
+(defvar *fnn-observe-callback* #'fnn-bridge-io)
+(defvar *fnn-finish-callback* #'fnn-bridge-finish)
+
 (defun fnn-bridge-article-count () (fnn-nat (fnn-core-state 'fn-store-sn-article-count)))
 (defun fnn-bridge-next-txid () (fnn-nat (fnn-core-state 'fn-store-sn-next-txid)))
 (defun fnn-bridge-group-next (code) (fnn-nat (fnn-core-state 'fn-store-sn-group-next code)))
@@ -1110,7 +1118,7 @@ The core decides whether the records replay."
 
 (defun fnn-observe (store operation &optional (result :ok))
   "Submit one already-observed filesystem result and keep failure fenced."
-  (handler-case (fnn-bridge-io operation result)
+  (handler-case (funcall *fnn-observe-callback* operation result)
     ((or fnn-store-error fnn-os-error) ()
       (setf (fnn-store-fenced store) t (fnn-store-completion-pending store) nil)
       (fnn-indeterminate "ACL2 could not record ~(~a~) observation" operation))))
@@ -1265,7 +1273,7 @@ The core decides whether the records replay."
     (fnn-indeterminate "durable completion was not pending"))
   (setf (fnn-store-completion-pending store) nil)
   (fnn-at store :finish-consumed)
-  (let ((completion (handler-case (fnn-bridge-finish)
+  (let ((completion (handler-case (funcall *fnn-finish-callback*)
                       ((or fnn-store-error fnn-os-error) ()
                         (setf (fnn-store-fenced store) t)
                         (fnn-indeterminate "ACL2 completion failed after publication")))))
