@@ -52,6 +52,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/frame-tests \
 	books/frame-trailer \
 	tests/acl2/frame-trailer-tests \
+	books/tcpcl-spool \
+	tests/acl2/tcpcl-spool-tests \
 	books/identity \
 	books/identity-invariants \
 	tests/acl2/identity-tests \
