@@ -549,3 +549,24 @@ Shutdown wakes the worker; final close belongs after that worker's last I/O.
 Shutdown followed immediately by close does not eliminate descriptor reuse.
 This is source-level concurrency analysis pending the lane's controlled witness,
 not a claimed stress-test failure.
+
+
+### U15: new BP join and feed input revalidate all retained state
+
+At main `749dbf5b`, `fn-bpaj-apply-record` and `fn-bpaj-request-status`
+call `fn-bpaj-statep` over every retained intent, context fact and receiver
+entry. Intent validation decodes previous request ADUs again. These calls are
+on the native request path, not just recovery. They violate the no-whole-state-
+validation served-path rule and add work proportional to retained history to
+each step. The native BP application successor owns replay establishment,
+transition preservation and justified fast caller adoption. Lookup/index costs
+are separate from removing redundant invariant checks.
+
+Pending feed packet `3ecbc4cb` similarly calls `fn-fc-tablep` over every peer
+and retained input in its dial/read/loss wrappers. Its uniqueness recognizer
+repeats tail traversals. A separate pure table invariant packet will establish
+initialization, put/remove preservation and selected lookup validity; the host
+will validate only the selected bounded connection state. Runtime activation
+also waits for bounded socket reads and worker-owned descriptor cleanup.
+Neither work item is closed by an opaque host flag, an unchecked executable
+branch, or a theorem assuming its own output is already well formed.
