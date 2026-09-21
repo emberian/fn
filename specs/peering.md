@@ -1517,3 +1517,58 @@ unreachable in composition either way. Whoever takes it re-certifies the
 closure of `books/nntp-auth` and updates
 `tests/test_owner.py::test_the_capability_block_does_not_yet_name_the_transit_commands`,
 which exists to say the day this changes.
+
+## Status (wave 12, FNFD physical prefix recovery)
+
+The per-peer file remains `u32-be(frame length) || FNFD frame`, preserving
+previously written bytes. `books/feed-journal.lisp` owns the outer prefix,
+its read bound, integrity verification, the repair offset and the durability
+phase machine. `Journal` in `tools/feed_wire.py` performs only file I/O and
+uses the same platform barriers as the store (`run_store.fsync_file` and
+`fsync_dir`). This is fn's local persistence policy, not an NNTP requirement.
+
+At open, ACL2 accepts a complete frame only if its envelope length is between
+the frame header-plus-trailer size and that size plus the FNFD payload cap,
+its FNFD codec accepts its integrity/schema, and its peer equals the journal's
+peer. A zero-length prefix is clean EOF. One to three prefix octets at EOF,
+or a valid complete prefix followed by too few frame octets at EOF, is a torn
+suffix. An out-of-range complete prefix or a complete rejected frame is
+invalid evidence: startup fails, the file remains unchanged, and no later
+frame is skipped to. Short host reads are accumulated before reporting EOF.
+
+The scanner returns the last accepted offset. A torn suffix is truncated
+exactly there, followed by a content barrier, a feed-directory barrier and a
+store-directory barrier. Clean EOF and newly created files require those same
+barriers. Only then is the journal appendable; the restart record is appended
+and made durable before the feed can offer. Reads retain at most a bounded
+prefix and one bounded FNFD frame, rather than reading the whole file into
+memory. The total journal length and replay work are not bounded by this
+repair, and the logical replay queue has its existing limits and costs.
+
+Any ambiguous append or recovery I/O result requires a new owner process.
+An append failure closes the journal's I/O handle, places its logical phase
+in `:uncertain` when the bridge can still answer, and fences the entire owner
+with exit code 3. A later feed drop closes its socket without applying
+`fn-own-feed-lost` or writing another record. Poll, dial, receive, command
+write and flush stop at that fence. It is unsafe to recover only the socket:
+the logical feed may have advanced before the failed append.
+
+The book proves bounded strict offset progress for an accepted scanner step
+and that an arbitrary later observation trace cannot clear an uncertain
+journal phase. The crash/phase theorem is a control and fence property, not
+a physical byte-image survival theorem; physical K0 composition remains open. Its test book has a real enqueue frame, malformed and torn
+controls, hypothesis teeth and crash traces. `tests/test_feed_journal_live.py`
+drives the actual scanner and existing feed replay fold through byte cuts,
+repair/append/reopen, invalid complete evidence, short reads, failed barriers
+and process death at the named host phases. The test bridge omits the full
+owner/NNTP composition; those tests do not establish K5's general live/replay
+equation or acceptance-to-feed atomicity.
+
+The physical guarantee assumes the accepted prefix was not damaged by the
+later append/truncate (`A-WRITE-ISOLATION`) and that successful barriers retain
+bytes and namespace (`A-DURABILITY`). A torn final suffix is not evidence that
+all crashes produce prefixes: damage to a complete frame fails closed, while
+loss of an entire previously durable suffix cannot be detected without an
+independent durable anchor. The scanner retains existing
+`fn-feed-apply-record` semantics for valid records; it does not retroactively
+enforce `fn-feed-drivenp` against configuration changes or historical no-ops.

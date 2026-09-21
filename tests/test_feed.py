@@ -107,11 +107,13 @@ class JournalTests(unittest.TestCase):
 
     def test_failed_append_carries_uncertain_phase(self):
         journal = self.open()
+        self.bridge.feed_journal_step.side_effect = ["write", "sync", "uncertain"]
         with mock.patch.object(feed_wire, "fsync_file", side_effect=OSError("sync")):
             with self.assertRaises(feed_wire.StoreIndeterminate):
                 journal.append(b"frame")
         self.assertEqual(journal.phase, "uncertain")
         # It is the book that refuses the next phase, not a Python policy.
+        self.bridge.feed_journal_step.side_effect = None
         self.bridge.feed_journal_step.return_value = "uncertain"
         with mock.patch.object(feed_wire, "write_all") as write:
             with self.assertRaises(feed_wire.StoreIndeterminate):
