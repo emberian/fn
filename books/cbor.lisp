@@ -52,6 +52,15 @@
 
 (verify-guards fn-cbor-at-mostp)
 
+; Whether XS contains at least N cons cells.  Unlike (<= N (len XS)), this
+; stops after the declared item length and never scans the untouched suffix.
+(defun fn-cbor-at-leastp (xs n)
+  (declare (xargs :guard (natp n) :measure (nfix n)))
+  (if (zp n) t
+    (and (consp xs) (fn-cbor-at-leastp (cdr xs) (1- n)))))
+
+(verify-guards fn-cbor-at-leastp)
+
 (defun fn-cbor-valuep-bounded (x max-bytes)
   (declare (xargs :guard (natp max-bytes)))
   (or (and (consp x)
@@ -308,7 +317,7 @@
           ; supplies *fn-cbor-max-bytes* and therefore keeps its exact domain.
           (if (< max-bytes length)
               (fn-cbor-error :limit)
-            (if (<= length (len content))
+            (if (fn-cbor-at-leastp content length)
                 (fn-cbor-ok (cons :bytes (take length content))
                             (nthcdr length content))
               (fn-cbor-error :truncated))))))))

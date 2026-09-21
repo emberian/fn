@@ -82,6 +82,12 @@
            (fn-cbor-at-mostp xs bound))
   :hints (("Goal" :induct (fn-cbor-at-mostp xs bound))))
 
+(defthm fn-cbor-at-leastp-is-length-lower-bound
+  (implies (natp n)
+           (equal (fn-cbor-at-leastp xs n)
+                  (<= n (len xs))))
+  :hints (("Goal" :induct (fn-cbor-at-leastp xs n))))
+
 (defthm fn-cbor-at-mostp-append
   (implies (and (true-listp xs)
                 (true-listp ys)
