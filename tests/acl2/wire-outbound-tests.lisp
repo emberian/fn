@@ -63,3 +63,78 @@
         :overlimit))
 (must-fail
  (assert-event (fn-wire-outbound-okp (fn-wire-render-block '(120 13 10) 2))))
+
+; Exact conclusion of the host-renderer / served-profile composition theorem.
+; This macro only keeps the ground witness and hypothesis teeth readable.
+(defmacro fn-wire-host-render-roundtripp
+  (article command-limit article-limit body-limit)
+  `(let ((lines (fn-wire-outbound-octets
+                 (fn-wire-outbound-lines ,article ,article-limit))))
+     (and
+      (equal
+       (fn-wire-drive
+        (fn-wire-result-state
+         (fn-wire-begin-article-with-line-limit
+          (fn-wire-initial-state ,command-limit ,body-limit)
+          (fn-wire-article-line-limit
+           (fn-wire-initial-state ,command-limit ,body-limit))))
+        (fn-wire-outbound-octets
+         (fn-wire-render-feed-command
+          ,article ,command-limit ,article-limit)))
+       (fn-wire-make-result
+        (fn-wire-make-state :command nil 0 nil nil 0
+                            (+ 1 (nfix ,body-limit))
+                            (nfix ,body-limit))
+        (list (fn-wire-article-event lines))))
+      (equal (fn-wire-source-lines lines) ,article))))
+
+; Reachable, non-degenerate witness for the host-called renderer theorem.  It
+; exercises ordinary, empty, dot-leading, dot-only and trailing-empty source
+; lines through fn-wire-render-feed-command and the actual fn-wire-drive loop.
+(assert-event
+ (fn-wire-host-render-roundtripp
+  *fn-wire-outbound-proof-witness* 32 64 64))
+
+; Every premise of fn-wire-drive-of-host-rendered-article-preserves-source has
+; a ground counterexample.  In each case all other premises hold.
+
+; Without a positive command limit, the served initial state is inadmissible.
+(must-fail
+ (assert-event
+  (fn-wire-host-render-roundtripp
+   *fn-wire-outbound-proof-witness* 0 64 64)))
+
+; Without nonempty article input, the host's NIL no-command arm emits no block.
+(must-fail
+ (assert-event (fn-wire-host-render-roundtripp nil 32 0 64)))
+
+; Without exclusion of CHECK, the host emits an offer line without a block
+; terminator, so an article-mode receiver cannot produce the claimed event.
+(must-fail
+ (assert-event
+  (fn-wire-host-render-roundtripp
+   '(67 72 69 67 75 32 60 105 64 110 62 13 10) 32 64 64)))
+
+; IHAVE has the same command-only framing, independently exercising its branch
+; exclusion while CHECK and TAKETHIS remain excluded.
+(must-fail
+ (assert-event
+  (fn-wire-host-render-roundtripp
+   '(73 72 65 86 69 32 60 105 64 110 62 13 10) 32 64 64)))
+
+; A TAKETHIS command can succeed with an empty body under ARTICLE-LIMIT zero;
+; starting its command line in article mode exceeds the independent body cap.
+(must-fail
+ (assert-event
+  (fn-wire-host-render-roundtripp
+   '(84 65 75 69 84 72 73 83 32 60 105 64 110 62 13 10) 32 0 1)))
+
+; Without renderer success, a bare LF is refused and cannot reconstruct the
+; claimed source or produce its article event.
+(must-fail
+ (assert-event (fn-wire-host-render-roundtripp '(120 10) 32 8 64)))
+
+; Without ARTICLE-LIMIT <= BODY-LIMIT, rendering succeeds but the receiver
+; closes on its cumulative decoded-body bound before producing an article.
+(must-fail
+ (assert-event (fn-wire-host-render-roundtripp '(120 13 10) 32 3 2)))
