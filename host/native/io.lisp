@@ -29,9 +29,10 @@
 ;;;   (fnn-accept-loop listener handler once) -> one handler call per client
 ;;;   (fnn-socket-fd socket)                -> a nonblocking descriptor the three below take
 ;;;   (fnn-socket-shut socket)              -> close, errors swallowed
-;;;   (fnn-recv fd seconds)                 -> octets, an empty vector at end
+;;;   (fnn-recv fd seconds &optional maximum) -> octets, an empty vector at end
 ;;;                                            of input, or :timeout; at most
-;;;                                            +fnn-max-read+ octets per call
+;;;                                            MAXIMUM (default +fnn-max-read+)
+;;;                                            octets per call
 ;;;   (fnn-send-all fd octets seconds)      -> t, partial writes resumed
 ;;;   (fnn-graceful-close fd)               -> FIN, then a bounded input drain
 ;;;
@@ -1820,15 +1821,19 @@ this host obeys it."
   (fnn-core-state 'fn-reader-outcome completion)
   (fnn-octets (fnn-reader-octets 'fn-reader-output)))
 
-(defun fnn-recv (fd seconds)
-  "Up to +fnn-max-read+ octets, an empty vector at end of input, :timeout.
+(defun fnn-recv (fd seconds &optional (maximum +fnn-max-read+))
+  "Read at most MAXIMUM octets, an empty vector at end of input, or :timeout.
 
 SECONDS bounds every readiness wait and interrupted/nonblocking retry as one
-absolute deadline.  FD must have passed through FNN-SOCKET-FD, which makes it
-nonblocking: a readiness race therefore returns EAGAIN and waits again rather
-than starting an unbounded blocking read.  A zero-second call performs one
-zero-time poll; it never spins after an EAGAIN race."
+absolute deadline.  MAXIMUM is a caller-supplied ACL2 projection when a
+protocol admits a tighter retained-input bound; it is validated before the
+buffer allocation and syscall.  FD must have passed through FNN-SOCKET-FD,
+which makes it nonblocking: a readiness race therefore returns EAGAIN and
+waits again rather than starting an unbounded blocking read.  A zero-second
+call performs one zero-time poll; it never spins after an EAGAIN race."
   (when (< seconds 0) (fnn-fault "negative socket receive timeout"))
+  (unless (and (integerp maximum) (<= 1 maximum) (<= maximum +fnn-max-read+))
+    (fnn-fault "invalid socket receive maximum: ~s" maximum))
   (let ((deadline (+ (fnn-now) (* seconds internal-time-units-per-second)))
         (zero-poll-p (zerop seconds)))
     (loop
@@ -1838,7 +1843,7 @@ zero-time poll; it never spins after an EAGAIN race."
         (unless (funcall *fnn-fd-waiter* fd :input remaining)
           (return :timeout))
         (setq zero-poll-p nil)
-        (let* ((buffer (fnn-make-octets +fnn-max-read+))
+        (let* ((buffer (fnn-make-octets maximum))
                (count (fnn-read-fd fd buffer deadline t)))
           (cond ((eq count :would-block)
                  ;; The descriptor is nonblocking.  Go back through the
@@ -1896,6 +1901,14 @@ output side, then drain the peer's input for at most one second."
 (defun fnn-socket-fd (socket)
   "The nonblocking descriptor used by the deadline-aware socket helpers."
   (fnn-set-nonblocking (sb-bsd-sockets:socket-file-descriptor socket)))
+
+(defun fnn-socket-shutdown (socket)
+  "Wake socket I/O without closing its descriptor.
+
+The worker that owns SOCKET performs the later close, so a stop hook cannot
+close a descriptor that another worker has cached and the kernel may reuse."
+  (ignore-errors (sb-bsd-sockets:socket-shutdown socket :direction :io))
+  nil)
 
 (defun fnn-socket-shut (socket)
   (ignore-errors (sb-bsd-sockets:socket-close socket))

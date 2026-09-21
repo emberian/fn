@@ -80,7 +80,7 @@
    service nil
    (lambda ()
      (let ((limit (fnn-owner-core 'fn-owner-feed-read-limit)))
-       (unless (and (integerp limit) (<= 0 limit)
+       (unless (and (integerp limit) (<= 1 limit)
                     (<= limit +fnn-max-read+))
          (fnn-fault "invalid ACL2 feed reply limit: ~s" limit))
        limit))))
@@ -104,34 +104,14 @@
          (fnn-fault "feed core returned malformed peer backoff"))
        (values queued (fnn-octets-string (fnn-octets host)) port backoff)))))
 
-(defun fnn-feed-connect-core (service link)
+(defun fnn-feed-connect-core (service peer-octets fd)
   "Start ACL2's greeting/MODE phase; this does not make a feed live."
   (fnn-owner-serialized
    service nil
    (lambda ()
      (fnn-feed-checked-word
-      (fnn-owner-action 'fn-owner-feed-dial-open
-                        (fnn-feed-link-peer-octets link)
-                        (fnn-feed-link-fd link))
+      (fnn-owner-action 'fn-owner-feed-dial-open peer-octets fd)
       '(:await-greeting) 'fn-owner-feed-dial-open))))
-
-(defun fnn-feed-copy-command (service word)
-  "Persist the current FNFD batch while serialized, then copy its bytes.
-
-WORD is returned by a port wrapper which has just installed the matching
-records/effects projection.  No caller can write the returned bytes until
-this function's durable append has completed."
-  (fnn-owner-serialized
-   service nil
-   (lambda ()
-     (fnn-owner-feed-flush service)
-     (values word
-             (if (member word '(:offer :send))
-                 (let ((command (fnn-owner-octets-global 'fn-owner-feed-command)))
-                   (when (zerop (length command))
-                     (fnn-fault "feed core authorized an empty command"))
-                   command)
-               (fnn-make-octets 0))))))
 
 (defun fnn-feed-tick (service link now)
   "One ACL2 tick.  Its command, if any, is copied only after FNFD append."
@@ -160,7 +140,7 @@ this function's durable append has completed."
                   (fnn-owner-action 'fn-owner-feed-reply-chunk
                                     (fnn-feed-link-peer-octets link)
                                     (fnn-octet-list octets) now)
-                  '(:mode :ready :send :quiet :refused :need-input :closed :invalid :fault)
+                  '(:mode :ready :send :quiet :refused :connection-refused :need-input :closed :invalid :fault)
                   'fn-owner-feed-reply-chunk)))
        (when (eq word :fault)
          (fnn-fault "feed reply framer state is malformed"))
@@ -189,20 +169,40 @@ this function's durable append has completed."
        (fnn-owner-feed-flush service)
        word))))
 
-(defun fnn-feed-close-link (link)
-  (let ((socket (fnn-feed-link-socket link)))
-    (when socket
-      (setf (fnn-feed-link-socket link) nil
-            (fnn-feed-link-fd link) nil
+(defun fnn-feed-publish-socket (runtime link socket fd)
+  "Publish an established descriptor unless the stop boundary already won.
+
+The runtime lock makes a dial that finishes during stop close its private
+socket rather than publishing a descriptor the stop hook cannot wake."
+  (sb-thread:with-mutex ((fnn-feed-runtime-lock runtime))
+    (unless (fnn-feed-runtime-stopping runtime)
+      (setf (fnn-feed-link-socket link) socket
+            (fnn-feed-link-fd link) fd
             (fnn-feed-link-ready link) nil)
-      (ignore-errors (fnn-socket-shut socket)))))
+      t)))
+
+(defun fnn-feed-close-link (runtime link)
+  "Clear one published link under the runtime lock, then close it once.
+
+The worker is the only closer.  The stop hook may only shutdown a live socket
+while holding this same lock, so it can never act on a descriptor after close
+has made the kernel free to reuse it."
+  (let ((socket nil))
+    (sb-thread:with-mutex ((fnn-feed-runtime-lock runtime))
+      (setq socket (fnn-feed-link-socket link))
+      (when socket
+        (setf (fnn-feed-link-socket link) nil
+              (fnn-feed-link-fd link) nil
+              (fnn-feed-link-ready link) nil)))
+    (when socket (ignore-errors (fnn-socket-shut socket)))))
 
 (defun fnn-feed-drop-link (runtime link now backoff)
   "A peer socket failed.  The core records the loss before the next retry."
   ;; A failed dial is still a named loss: it advances the ACL2-owned retry
   ;; state even though no descriptor was established to close.
-  (fnn-feed-lost (fnn-feed-runtime-service runtime) link now)
-  (fnn-feed-close-link link)
+  (unless (fnn-feed-stoppingp runtime)
+    (fnn-feed-lost (fnn-feed-runtime-service runtime) link now))
+  (fnn-feed-close-link runtime link)
   (setf (fnn-feed-link-next-dial link) (+ now backoff)))
 
 (defun fnn-feed-dial (runtime link now)
@@ -210,23 +210,33 @@ this function's durable append has completed."
 
 DNS resolution and connect(2) retain FNN-CONNECT's separately documented
 availability limit; after an established socket is made nonblocking, all
-read/write waits use the bounded FNN-RECV/FNN-SEND-ALL contract."
-  (when (and (null (fnn-feed-link-socket link))
+read/write waits use the bounded FNN-RECV/FNN-SEND-ALL contract.  ACL2 gets a
+connection-phase state before the descriptor is published; a concurrent stop
+therefore makes the worker close its private socket instead of leaking it into
+the shared link table."
+  (when (and (not (fnn-feed-stoppingp runtime))
+             (null (fnn-feed-link-socket link))
              (<= (fnn-feed-link-next-dial link) now))
     (multiple-value-bind (queued host port backoff)
         (fnn-feed-dial-plan (fnn-feed-runtime-service runtime)
                             (fnn-feed-link-peer-octets link))
       (when queued
-        (handler-case
-            (let ((socket (fnn-connect host port)))
-              (setf (fnn-feed-link-socket link) socket
-                    (fnn-feed-link-fd link) (fnn-socket-fd socket)
-                    (fnn-feed-link-ready link) nil)
-              (fnn-feed-connect-core (fnn-feed-runtime-service runtime) link))
-          ((or fnn-os-error sb-bsd-sockets:socket-error) ()
-            ;; A failed open has no outgoing bytes, but it is still the
-            ;; named peer-loss observation that advances the ACL2 backoff.
-            (fnn-feed-drop-link runtime link now backoff)))))))
+        (let ((socket nil) (published nil))
+          (handler-case
+              (progn
+                (setq socket (fnn-connect host port))
+                (let ((fd (fnn-socket-fd socket)))
+                  (fnn-feed-connect-core (fnn-feed-runtime-service runtime)
+                                         (fnn-feed-link-peer-octets link) fd)
+                  (setq published (fnn-feed-publish-socket runtime link socket fd))
+                  (unless published
+                    (fnn-socket-shut socket))))
+            ((or fnn-os-error sb-bsd-sockets:socket-error) ()
+              (when (and socket (not published)) (fnn-socket-shut socket))
+              ;; A failed open has no outgoing bytes, but it is still the
+              ;; named peer-loss observation that advances the ACL2 backoff.
+              (unless (fnn-feed-stoppingp runtime)
+                (fnn-feed-drop-link runtime link now backoff)))))))))
 
 (defun fnn-feed-consume (runtime link octets eofp now)
   "Drain a received chunk through one ACL2 event at a time.
@@ -240,6 +250,7 @@ ACL2 framer."
           (fnn-feed-reply-step service link input now)
         (when (> (length command) 0)
           (fnn-send-all (fnn-feed-link-fd link) command 10))
+        (when (fnn-feed-stoppingp runtime) (return))
         (case word
           (:need-input
            (when eofp
@@ -248,7 +259,7 @@ ACL2 framer."
                (declare (ignore ignored host port))
                (fnn-feed-drop-link runtime link now backoff)))
            (return))
-          ((:closed :invalid :refused)
+          ((:closed :invalid :connection-refused)
            (multiple-value-bind (ignored host port backoff)
                (fnn-feed-dial-plan service (fnn-feed-link-peer-octets link))
              (declare (ignore ignored host port))
@@ -263,7 +274,7 @@ ACL2 framer."
            (setq input nil)))))))
 
 (defun fnn-feed-pump-link (runtime link now)
-  (when (fnn-feed-link-socket link)
+  (when (and (not (fnn-feed-stoppingp runtime)) (fnn-feed-link-socket link))
     (handler-case
         (progn
           (when (fnn-feed-link-ready link)
@@ -272,30 +283,39 @@ ACL2 framer."
               (declare (ignore word))
               (when (> (length command) 0)
                 (fnn-send-all (fnn-feed-link-fd link) command 10))))
-          (let ((incoming (fnn-recv (fnn-feed-link-fd link) 0)))
-            (cond ((eq incoming :timeout) nil)
-                  ((zerop (length incoming))
-                   (fnn-feed-consume runtime link nil t now))
-                  ((> (length incoming) (fnn-feed-runtime-limit runtime))
-                   (fnn-fault "socket returned more than ACL2 feed input bound"))
-                  (t (fnn-feed-consume runtime link incoming nil now)))))
+          (unless (fnn-feed-stoppingp runtime)
+            ;; The ACL2-projected limit sizes this buffer before read(2); a
+            ;; peer cannot make the host allocate a larger coalesced batch.
+            (let ((incoming (fnn-recv (fnn-feed-link-fd link) 0
+                                      (fnn-feed-runtime-limit runtime))))
+              (cond ((eq incoming :timeout) nil)
+                    ((zerop (length incoming))
+                     (fnn-feed-consume runtime link nil t now))
+                    (t (fnn-feed-consume runtime link incoming nil now))))))
       ((or fnn-os-error sb-bsd-sockets:socket-error) ()
-        (multiple-value-bind (ignored host port backoff)
-            (fnn-feed-dial-plan (fnn-feed-runtime-service runtime)
-                                (fnn-feed-link-peer-octets link))
-          (declare (ignore ignored host port))
-          (fnn-feed-drop-link runtime link now backoff))))))
+        (if (fnn-feed-stoppingp runtime)
+            (fnn-feed-close-link runtime link)
+          (multiple-value-bind (ignored host port backoff)
+              (fnn-feed-dial-plan (fnn-feed-runtime-service runtime)
+                                  (fnn-feed-link-peer-octets link))
+            (declare (ignore ignored host port))
+            (fnn-feed-drop-link runtime link now backoff)))))))
 
 (defun fnn-feed-worker (runtime)
-  (loop until (fnn-feed-stoppingp runtime) do
-    (let ((now (fnn-feed-now)))
-      (dolist (link (fnn-feed-links runtime))
-        (unless (fnn-feed-stoppingp runtime)
-          (fnn-feed-dial runtime link now)
-          (fnn-feed-pump-link runtime link now))))
-    ;; The worker's cadence is availability-only.  ACL2 gates actual offers
-    ;; with its monotonic observation and peer backoff state.
-    (sleep +fnn-feed-poll-seconds+)))
+  (unwind-protect
+       (loop until (fnn-feed-stoppingp runtime) do
+         (let ((now (fnn-feed-now)))
+           (dolist (link (fnn-feed-links runtime))
+             (unless (fnn-feed-stoppingp runtime)
+               (fnn-feed-dial runtime link now)
+               (unless (fnn-feed-stoppingp runtime)
+                 (fnn-feed-pump-link runtime link now)))))
+         ;; The worker's cadence is availability-only.  ACL2 gates actual
+         ;; offers with its monotonic observation and peer backoff state.
+         (sleep +fnn-feed-poll-seconds+))
+    ;; Stop only shutdowns; this worker is the sole final closer.
+    (dolist (link (fnn-feed-links runtime))
+      (fnn-feed-close-link runtime link))))
 
 (defun fnn-feed-worker-guarded (runtime)
   "Contain an adapter defect without turning a peer disconnect into a fence."
@@ -316,8 +336,9 @@ ACL2 framer."
         (fnn-owner-fault-service (fnn-feed-runtime-service runtime) nil e)))))
 
 ;;; These are registered through the owner's composable resource lifecycle
-;;; hooks by the owner convergence lane.  They are idempotent: stop closes
-;;; sockets to wake nonblocking waits, then close joins before FNFD/Store close.
+;;; hooks by the owner convergence lane.  They are idempotent: stop only
+;;; shutdowns live sockets to wake I/O, then this worker closes and close joins
+;;; before FNFD/Store close.
 (defun fnn-feed-service-start (service)
   (unless (fnn-feed-runtime-get service)
     (let* ((names (fnn-feed-peer-list service))
@@ -338,14 +359,18 @@ ACL2 framer."
   nil)
 
 (defun fnn-feed-service-wake (service)
-  "Owner stop hook: no core call, no wait, and safe to invoke more than once."
+  "Owner stop hook: shutdown only, no core call/wait, safe to repeat.
+
+The socket shutdowns occur while the runtime lock still excludes final close.
+That leaves the worker as the only closer and prevents a cached descriptor
+from being closed then reused before this stop hook touches it."
   (let ((runtime (fnn-feed-runtime-get service)))
     (when runtime
-      (let ((links nil))
-        (sb-thread:with-mutex ((fnn-feed-runtime-lock runtime))
-          (setf (fnn-feed-runtime-stopping runtime) t
-                links (copy-list (fnn-feed-runtime-links runtime))))
-        (dolist (link links) (fnn-feed-close-link link)))))
+      (sb-thread:with-mutex ((fnn-feed-runtime-lock runtime))
+        (setf (fnn-feed-runtime-stopping runtime) t)
+        (dolist (link (fnn-feed-runtime-links runtime))
+          (let ((socket (fnn-feed-link-socket link)))
+            (when socket (ignore-errors (fnn-socket-shutdown socket))))))))
   nil)
 
 (defun fnn-feed-service-close (service)

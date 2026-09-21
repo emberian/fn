@@ -113,6 +113,24 @@
       (nio-check (= waits 1) "zero-time EAGAIN receive busy-spun readiness waits")
       (nio-check (= calls 1) "zero-time EAGAIN receive busy-spun syscalls"))))
 
+(defun nio-recv-honors-caller-bound-before-read ()
+  (let ((seen nil))
+    (let ((*fnn-fd-waiter* (lambda (&rest ignored) (declare (ignore ignored)) t))
+          (*fnn-read-syscall*
+            (lambda (fd target)
+              (declare (ignore fd))
+              (setq seen (length target))
+              (setf (aref target 0) 9)
+              (values 1 nil))))
+      (nio-check (equalp (fnn-recv 9 1 7) (fnn-octets '(9)))
+                 "bounded receive did not return injected data")
+      (nio-check (= seen 7) "receive allocated/read beyond caller bound")
+      (nio-check (nio-expects 'fnn-store-fault (lambda () (fnn-recv 9 0 0)))
+                 "zero receive maximum was accepted")
+      (nio-check (nio-expects 'fnn-store-fault
+                              (lambda () (fnn-recv 9 0 (+ +fnn-max-read+ 1))))
+                 "oversized receive maximum was accepted"))))
+
 (defun nio-store-write-progress ()
   (let ((answers '(1 2 1)) (seen nil))
     (let ((*fnn-write-syscall*
@@ -499,6 +517,7 @@
 (nio-read-eagain-waits-again)
 (nio-zero-recv-polls-once)
 (nio-zero-recv-eagain-does-not-spin)
+(nio-recv-honors-caller-bound-before-read)
 (nio-wrong-condition-is-rejected)
 (nio-store-write-progress)
 (nio-transaction-enumeration-bound-is-exact)
