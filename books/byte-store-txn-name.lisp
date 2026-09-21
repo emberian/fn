@@ -293,7 +293,7 @@
 ; complete.  Missing names are permitted only below SELECTED-LOWER: recovery
 ; subsequently compares every returned covered file with the selected pack.
 (defun fn-bs-txn-observation-covered (names sequence selected-lower)
-  (declare (xargs :guard t :verify-guards nil
+  (declare (xargs :guard t
                   :measure (nfix (- (nfix selected-lower) (nfix sequence)))))
   (if (and (natp sequence) (natp selected-lower) (< sequence selected-lower))
       (if (and (consp names) (equal (car names) (fn-bs-txn-name sequence)))
@@ -307,7 +307,7 @@
 ; Preserve the zero-start scan as the default.  A caller may supply a nonzero
 ; lower bound only after validating a selected pack.
 (defun fn-bs-txn-observation-selected (names selected-lower)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (if (not (natp selected-lower)) :invalid
     (let ((pairs (fn-bs-txn-observation-covered names 0 selected-lower)))
       (if (equal pairs :invalid) :invalid
