@@ -1,5 +1,8 @@
 # Current work: native service composition and consolidation
 
+**Paused at user request, 2026-09-21.** See the [quiescence checkpoint](quiescence-2026-09-21.md)
+for preserved lane tips, stopped jobs and restart order. No autonomous work is active.
+
 Updated 2026-09-21. The goal remains the full selected two-peer v0 and v1/M6
 scope in [milestones](milestones.md#release-shape-v0-and-v1). Component tests
 and certificates do not establish that release. D07 requires a Python-free
