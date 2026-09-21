@@ -132,6 +132,12 @@
          (equal (fn-bs-durable-content image ino)
                 (fn-bs-content before ino)))))
 
+(defun fn-bs-reclaim-cut-ready-p (before at-cut name)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-bs-exact-name-payloadp before at-cut name)
+       (fn-bs-pending-reclaim-safe-p (fn-bs-pending at-cut) name)
+       (fn-bs-fencedp at-cut (fn-bs-lookup before :transactions name))))
+
 (local
  (defthm assoc-equal-of-fn-bs-del-assoc-other
    (implies (not (equal a b))
@@ -260,6 +266,14 @@
                                fn-bs-ops-for-ino)))))
 
 (local
+ (defthm fn-bs-reclaim-safe-has-no-protected-name-ops
+   (implies (fn-bs-pending-reclaim-safe-p ops name)
+            (equal (fn-bs-ops-for-name ops :transactions name) nil))
+   :hints (("Goal" :induct (fn-bs-pending-reclaim-safe-p ops name)
+            :in-theory (enable fn-bs-pending-reclaim-safe-p
+                               fn-bs-ops-for-name)))))
+
+(local
  (defthm fn-bs-fsync-dir-preserves-fencedp
    (implies (fn-bs-pending-reclaim-safe-p (fn-bs-pending bs) protected)
             (equal (fn-bs-fencedp
@@ -280,6 +294,22 @@
            :in-theory (enable fn-bs-prefix-state
                               fn-bs-reclaim-program-shapep
                               fn-bs-reclaim-steps-avoid-namep
+                              fn-bs-exact-name-payloadp
+                              fn-bs-step))))
+
+(defthm fn-bs-prefix-of-reclaim-maintains-cut-readiness
+  (implies (and (fn-bs-reclaim-program-shapep steps)
+                (fn-bs-reclaim-steps-avoid-namep steps name)
+                (fn-bs-pending-reclaim-safe-p (fn-bs-pending bs) name)
+                (fn-bs-fencedp bs (fn-bs-lookup bs :transactions name))
+                (fn-bs-inop (fn-bs-lookup bs :transactions name)))
+           (fn-bs-reclaim-cut-ready-p
+            bs (fn-bs-prefix-state bs ks steps limit groups capacity) name))
+  :hints (("Goal" :induct (fn-bs-prefix-state bs ks steps limit groups capacity)
+           :in-theory (enable fn-bs-prefix-state
+                              fn-bs-reclaim-program-shapep
+                              fn-bs-reclaim-steps-avoid-namep
+                              fn-bs-reclaim-cut-ready-p
                               fn-bs-exact-name-payloadp
                               fn-bs-step))))
 
@@ -317,4 +347,57 @@
            :use ((:instance fn-bs-prefix-of-reclaim-preserves-unmentioned-name
                             (steps (fn-bs-pack-reclaim-program
                                     names maximum selected-lower))))
-           :in-theory (enable fn-bs-pack-reclaim-program))))
+           :in-theory (enable fn-bs-pack-reclaim-program fn-bs-fencedp))))
+
+(defthm fn-bs-reclaim-cut-crash-preserves-exact-payload
+  (implies (and (stringp name)
+                (fn-bs-reclaim-cut-ready-p before at-cut name)
+                (fn-bs-crash-imagep at-cut image))
+           (fn-bs-crash-preserves-name-payloadp before at-cut image name))
+  :hints (("Goal"
+           :use ((:instance fn-bs-crash-keeps-untouched-entry
+                            (s at-cut) (dir :transactions))
+                 (:instance fn-bs-lookup-of-an-untouched-name
+                            (s at-cut) (dir :transactions))
+                 (:instance fn-bs-content-of-a-fenced-inode
+                            (s at-cut)
+                            (ino (fn-bs-lookup before :transactions name)))
+                 (:instance fn-bs-crash-keeps-fenced-content
+                            (s at-cut)
+                            (ino (fn-bs-lookup before :transactions name))))
+           :in-theory (enable fn-bs-reclaim-cut-ready-p
+                              fn-bs-exact-name-payloadp
+                              fn-bs-crash-preserves-name-payloadp))))
+
+(defthm fn-bs-pack-reclaim-program-crash-preserves-uncovered-sequence
+  (let* ((plan (fn-bs-pack-reclaim-plan names maximum selected-lower))
+         (name (fn-bs-txn-name sequence))
+         (at-cut (fn-bs-prefix-state
+                  bs ks (fn-bs-pack-reclaim-program names maximum selected-lower)
+                  limit groups capacity)))
+    (implies (and (not (member-equal name plan))
+                  (fn-bs-pending-reclaim-safe-p (fn-bs-pending bs) name)
+                  (fn-bs-inop (fn-bs-lookup bs :transactions name))
+                  (fn-bs-crash-imagep at-cut image))
+             (fn-bs-crash-preserves-name-payloadp bs at-cut image name)))
+  :hints (("Goal"
+           :use ((:instance fn-bs-prefix-of-reclaim-maintains-cut-readiness
+                            (steps (fn-bs-pack-reclaim-program
+                                    names maximum selected-lower))
+                            (name (fn-bs-txn-name sequence)))
+                 (:instance fn-bs-pack-reclaim-steps-have-reclaim-shape
+                            (names (fn-bs-pack-reclaim-plan
+                                    names maximum selected-lower)))
+                 (:instance fn-bs-pack-reclaim-steps-avoid-an-unplanned-name
+                            (names (fn-bs-pack-reclaim-plan
+                                    names maximum selected-lower))
+                            (name (fn-bs-txn-name sequence)))
+                 (:instance fn-bs-reclaim-cut-crash-preserves-exact-payload
+                            (before bs)
+                            (name (fn-bs-txn-name sequence))
+                            (at-cut (fn-bs-prefix-state
+                                     bs ks
+                                     (fn-bs-pack-reclaim-program
+                                      names maximum selected-lower)
+                                     limit groups capacity))))
+           :in-theory (enable fn-bs-pack-reclaim-program fn-bs-fencedp))))

@@ -83,3 +83,65 @@
   (equal (fn-bs-pack-reclaim-plan
           (list "00000000000000000001.txn" "00000000000000000005.txn") 8 4)
          (list "00000000000000000001.txn"))))
+
+; A nonempty actual-plan prefix has issued the unlink of covered sequence 1.
+; Both losing that unlink and applying it preserve uncovered sequence 4's
+; inode and exact octets through the modeled crash.
+(defun fn-bs-test-reclaim-cut (limit)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-bs-prefix-state
+   *bscc-store* (fn-sf-initial-state)
+   (fn-bs-pack-reclaim-program *bscc-names* 8 4)
+   limit nil nil))
+
+(assert-event
+ (let* ((before *bscc-store*)
+        (cut (fn-bs-test-reclaim-cut 2))
+        (ino (fn-bs-lookup before :transactions
+                           "00000000000000000004.txn"))
+        (drop (fn-bs-crash cut '(:drop)))
+        (apply (fn-bs-crash cut '(:apply))))
+   (and (equal (fn-bs-durable-entry drop :transactions
+                                    "00000000000000000004.txn") ino)
+        (equal (fn-bs-durable-entry apply :transactions
+                                    "00000000000000000004.txn") ino)
+        (equal (fn-bs-durable-content drop ino) (fn-bs-content before ino))
+        (equal (fn-bs-durable-content apply ino) (fn-bs-content before ino)))))
+
+; The unplanned-name premise has teeth: applying the issued unlink destroys
+; covered sequence 1, so the same conclusion is false for that planned name.
+(must-fail
+ (assert-event
+  (let* ((before *bscc-store*)
+         (cut (fn-bs-test-reclaim-cut 2))
+         (image (fn-bs-crash cut '(:apply))))
+    (equal (fn-bs-durable-entry image :transactions
+                                "00000000000000000001.txn")
+           (fn-bs-lookup before :transactions
+                         "00000000000000000001.txn")))))
+
+; Writer ownership is essential.  With a pre-existing pending replacement of
+; suffix 4, the process view names inode 13 while the drop crash restores the
+; durable inode 14; reclaim itself did not target suffix 4.
+(defconst *bscc-foreign-writer-store*
+  (fn-bs-make 4
+              (list (cons 13 '(13)) (cons 14 '(14)))
+              (list (cons :transactions
+                          (list (cons "00000000000000000004.txn" 14))))
+              (list (list :set-entry :transactions
+                          "00000000000000000004.txn" 13))
+              15))
+
+(must-fail
+ (assert-event
+  (let* ((before *bscc-foreign-writer-store*)
+         (cut (fn-bs-prefix-state
+               before (fn-sf-initial-state)
+               (fn-bs-pack-reclaim-program
+                (list "00000000000000000004.txn") 8 4)
+               0 nil nil))
+         (image (fn-bs-crash cut '(:drop))))
+    (equal (fn-bs-durable-entry image :transactions
+                                "00000000000000000004.txn")
+           (fn-bs-lookup before :transactions
+                         "00000000000000000004.txn")))))
