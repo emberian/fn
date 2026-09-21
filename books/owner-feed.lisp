@@ -1246,6 +1246,121 @@
          (list (fn-own-feed-outcome-record peer msgid attempt code)))
         (t (list (fn-own-feed-outcome-record peer msgid attempt 400)))))
 
+; -----------------------------------------------------------------------------
+; The connection to ONE peer is gone (K5, specs/peering.md sec. 3.2)
+;
+; The host reports the event -- the socket is closed, the read returned
+; nothing, the dial failed after an offer went out -- and `fn-feed-lost'
+; decides what it means: every in-flight entry for THAT PEER returns to
+; :queued with one more attempt and a backoff, and the connection is
+; forgotten.  Nothing is dropped.
+;
+; PER PEER, never `fn-own-feed-restart-all'.  Settling another peer's
+; genuinely in-flight entry is exactly the second transfer K5 forbids: that
+; peer may have received the article and be about to answer 235.
+;
+; The record this authorizes is `(:feed-outcome peer msgid attempt 400)',
+; which is the SAME record a 400 on the wire writes and which
+; `fn-feed-apply-record' replays as `fn-feed-queue-requeue-inflight' -- so
+; the journal's enumeration stays closed and a replay of it reaches the
+; queue the live machine reached.  A `(:feed-restart peer)' record would
+; not: `fn-feed-restart' retires the attempt where `fn-feed-lost' counts it.
+
+(defun fn-own-feed-lost-one (peer tbl obs)
+  (declare (xargs :guard t))
+  (let ((e (fn-own-feed-entry-of peer tbl)))
+    (if (null e)
+        tbl
+      (fn-own-feed-put peer (fn-own-feed-entry-record e)
+                       (fn-feed-lost (fn-own-feed-entry-feed e) obs)
+                       tbl))))
+
+(defun fn-own-feed-lost-records-of (peer tbl)
+  (declare (xargs :guard t))
+  (let* ((e (fn-own-feed-entry-of peer tbl))
+         (f (fn-own-feed-entry-feed e))
+         (msgid (and e (fn-own-feed-inflight-msgid (fn-feed-queue f)))))
+    (if (null msgid)
+        nil
+      (list (fn-own-feed-outcome-record
+             peer msgid
+             (fn-feed-state-attempt (fn-feed-state-of msgid (fn-feed-queue f)))
+             400)))))
+
+(local (defthm fn-feed-lost-keeps-peer-and-contact
+  (and (equal (fn-feed-peer (fn-feed-lost f obs)) (fn-feed-peer f))
+       (equal (fn-feed-contact (fn-feed-lost f obs)) (fn-feed-contact f)))
+  :hints (("Goal" :in-theory (e/d (fn-feed-lost fn-feed-with-conn
+                                   fn-feed-with-queue fn-feed-with-backoff)
+                                  (fn-feedp))))))
+
+(local (defthm fn-own-feed-lost-keeps-the-feed-half
+  (implies (fn-own-feed-feed-okp name f)
+           (fn-own-feed-feed-okp name (fn-feed-lost f obs)))
+  :hints (("Goal" :use (fn-feed-lost-preserves-feedp
+                        fn-feed-lost-keeps-peer-and-contact)
+           :in-theory (e/d (fn-own-feed-feed-okp)
+                           (fn-feedp fn-feed-lost
+                            fn-feed-lost-preserves-feedp
+                            fn-feed-lost-keeps-peer-and-contact
+                            fn-record-string-octets))))))
+
+(local (defthm fn-own-feed-lost-keeps-the-entry
+  (implies (fn-own-feed-entry-okp e)
+           (fn-own-feed-entry-okp
+            (fn-own-feed-entry (fn-own-feed-entry-name e)
+                               (fn-own-feed-entry-record e)
+                               (fn-feed-lost (fn-own-feed-entry-feed e) obs))))
+  :hints (("Goal" :in-theory (e/d (fn-own-feed-entry-okp)
+                                  (fn-own-feed-feed-okp fn-feedp
+                                   fn-record-string-octets
+                                   fn-feed-restart fn-feed-enqueue
+                                   fn-feed-lost
+                                   fn-feed-tick-step fn-feed-offer mv-nth
+                                   fn-own-feed-record-okp))))))
+
+(local (defthm fn-own-feed-entry-okp-of-lost-at
+  (implies (and (fn-own-feed-tablep tbl) (fn-own-feed-entry-of peer tbl))
+           (fn-own-feed-entry-okp
+            (fn-own-feed-entry
+             peer
+             (fn-own-feed-entry-record (fn-own-feed-entry-of peer tbl))
+             (fn-feed-lost
+              (fn-own-feed-entry-feed (fn-own-feed-entry-of peer tbl)) obs))))
+  :hints (("Goal" :use ((:instance fn-own-feed-lost-keeps-the-entry
+                                   (e (fn-own-feed-entry-of peer tbl)))
+                        fn-own-feed-entry-of-is-okp)
+           :in-theory (disable fn-own-feed-lost-keeps-the-entry
+                               fn-own-feed-entry-of-is-okp
+                               fn-own-feed-entry-okp fn-own-feed-entry-of
+                               fn-own-feed-tablep fn-feed-lost)))))
+
+(defthm fn-own-feed-tablep-of-lost-one
+  (implies (fn-own-feed-tablep tbl)
+           (fn-own-feed-tablep (fn-own-feed-lost-one peer tbl obs)))
+  :hints (("Goal" :in-theory (disable fn-feed-lost fn-own-feed-entry-okp
+                                      fn-feedp fn-record-string-octets))))
+
+; KEYSTONE.  One peer's loss is that peer's own `fn-feed-lost' and touches no
+; other peer's feed: the subject rule that makes the per-peer requeue the
+; transition K5 is stated over, and the reason this is not
+; `fn-own-feed-restart-all'.
+(defthm fn-own-feed-lost-one-is-the-feed-loss
+  (implies (fn-own-feed-entry-of peer tbl)
+           (equal (fn-own-feed-find peer (fn-own-feed-lost-one peer tbl obs))
+                  (fn-feed-lost (fn-own-feed-find peer tbl) obs)))
+  :hints (("Goal" :in-theory (e/d (fn-own-feed-find)
+                                  (fn-feed-lost fn-feedp
+                                   fn-own-feed-entry-okp)))))
+
+(defthm fn-own-feed-lost-one-touches-no-other-peer
+  (implies (not (equal other peer))
+           (equal (fn-own-feed-find other (fn-own-feed-lost-one peer tbl obs))
+                  (fn-own-feed-find other tbl)))
+  :hints (("Goal" :in-theory (e/d (fn-own-feed-find)
+                                  (fn-feed-lost fn-feedp
+                                   fn-own-feed-entry-okp)))))
+
 (defun fn-own-feed-tick-peer-records (peer tbl obs)
   (declare (xargs :guard t))
   (let* ((e (fn-own-feed-entry-of peer tbl))
@@ -1301,6 +1416,7 @@
     fn-own-feed-effect-peer fn-own-feed-effect-octets
     fn-own-feed-accept-records fn-own-feed-response-code
     fn-own-feed-parse-response fn-own-feed-reply-records-of
+    fn-own-feed-lost-one fn-own-feed-lost-records-of
     fn-own-feed-tick-peer-records fn-own-feed-tick-records))
 
 (in-theory (disable fn-own-feed-vocabulary))

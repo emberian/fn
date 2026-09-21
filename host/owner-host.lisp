@@ -779,6 +779,31 @@
              (state (fn-owner-feed-install-feed records (car result) state)))
         (value (if (car result) :send :quiet))))))
 
+; The connection to ONE peer is gone.  The host reports the event and the
+; time it happened; ACL2 decides what it means.  `fn-own-feed-lost-records'
+; is read off the state BEFORE it moves and `fn-own-feed-lost' moves it, so
+; the frame the host then appends is the one the transition authorized.
+; There are no bytes: a lost connection emits no command, which is why the
+; effects argument is nil.
+;
+; Before this entry point existed the host told the owner only
+; `(:feed-conn peer nil)' and the in-flight entry stayed :sent until the
+; PROCESS restarted -- the blocker in front of K5's restart-by-offer
+; (planning/lanes/HANDOFF-w11-twonode-feed.md).  The requeue decision is
+; `fn-feed-lost''s; the host decides only when to hand the model the event.
+(defun fn-owner-feed-lost (peer-octets monotonic state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((peer (fn-store-octets->string peer-octets)))
+    (if (equal peer :bad)
+        (value nil)
+      (let* ((owner (f-get-global 'fn-owner state))
+             (obs (fn-clock-observation monotonic 0 0 nil))
+             (records (fn-own-feed-lost-records owner peer))
+             (state (f-put-global 'fn-owner (fn-own-feed-lost owner peer obs)
+                                  state))
+             (state (fn-owner-feed-install-feed records nil state)))
+        (value :ok)))))
+
 ; Which peer's journal each pending frame belongs in, in the same order as
 ; the frames: the record's own field 0, read by ACL2.
 (defun fn-owner-feed-record-peer-names (records)

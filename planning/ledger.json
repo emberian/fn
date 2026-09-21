@@ -283,15 +283,15 @@
     "books": 277,
     "books_in_root_closure": 276,
     "roots": 276,
-    "theorems": 5617,
-    "functions": 3946,
-    "assert_events": 5598,
+    "theorems": 5624,
+    "functions": 3950,
+    "assert_events": 5622,
     "must_fails": 63,
     "encapsulates": 19,
     "guards": {
       "verified": 1475,
       "declared-off": 191,
-      "default-guarded": 1791,
+      "default-guarded": 1795,
       "default-unguarded": 489
     },
     "suspect_theorems": 46,
@@ -3173,12 +3173,12 @@
       "book": "books/owner-feed.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 74,
-      "functions": 54,
+      "theorems": 81,
+      "functions": 56,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 54,
+        "default-guarded": 56,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -3228,11 +3228,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 46,
-      "functions": 96,
+      "functions": 98,
       "guards": {
         "verified": 0,
         "declared-off": 3,
-        "default-guarded": 93,
+        "default-guarded": 95,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -6588,9 +6588,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 98,
+      "assert_events": 122,
       "must_fails": 0,
-      "defconsts": 23,
+      "defconsts": 28,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [

@@ -1155,9 +1155,14 @@
            code))))))
 
 ; The connection one peer's feed writes to.  The host opens the socket and
-; reports its identifier here; a close reports nil, which returns every
-; in-flight entry to :queued through fn-feed-lost at the next observation
-; and stops selection at once (fn-feed-selection wants a natp conn).
+; reports its identifier here; nil stops selection at once
+; (fn-feed-selection wants a natp conn).  It does NOT resolve the entry that
+; was in flight: this comment used to say the next observation would, and
+; there is no next observation once the socket is gone, so the entry sat at
+; :sent until the process restarted (measured on gate a5c6792: node A
+; reconnected every 5 s and offered nothing, seven times over).
+; `fn-own-feed-lost' below is the transition for a lost connection and is
+; what the host calls now.
 (defun fn-own-feed-connect (o peer conn)
   (declare (xargs :guard t))
   (let ((e (fn-own-feed-entry-of peer (fn-own-feeds o))))
@@ -1167,6 +1172,25 @@
        o (fn-own-feed-put peer (fn-own-feed-entry-record e)
                           (fn-feed-with-conn (fn-own-feed-entry-feed e) conn)
                           (fn-own-feeds o))))))
+
+; The connection to one peer is gone.  The host reports the EVENT -- the
+; socket closed, the read returned nothing, a write failed -- and the model
+; decides what it means: `fn-feed-lost' returns that peer's in-flight entry
+; to :queued with one more attempt and a backoff and forgets the connection,
+; so the next command for it is an offer (K5's restart-by-offer, and the
+; reason the entry no longer waits for `fn-own-reopen').  PER PEER: settling
+; another peer's genuinely in-flight entry would be the second transfer K5
+; forbids, which is why this is not `fn-own-feed-restart-all'.
+(defun fn-own-feed-lost (o peer obs)
+  (declare (xargs :guard t))
+  (fn-own-with-feeds o (fn-own-feed-lost-one peer (fn-own-feeds o) obs)))
+
+; The FNFD record that authorizes it, read off the state BEFORE it moves:
+; `(:feed-outcome peer msgid attempt 400)' for the entry in flight, and
+; nothing at all when none is.
+(defun fn-own-feed-lost-records (o peer)
+  (declare (xargs :guard t))
+  (fn-own-feed-lost-records-of peer (fn-own-feeds o)))
 
 ; Replay: the peer's FNFD journal, folded through the feed machine, before
 ; any command may be emitted.  The host reads the file and decodes each frame
@@ -1366,6 +1390,7 @@
                                                    (car (cddddr event)))))
     (:feeds (fn-own-feeds-reconfigure o (cadr event)))
     (:feed-conn (fn-own-feed-connect o (cadr event) (caddr event)))
+    (:feed-lost (fn-own-feed-lost o (cadr event) (caddr event)))
     (:feed-replay (fn-own-feed-recover o (cadr event) (caddr event)))
     (:tick (cdr (fn-own-tick o (cadr event))))
     (:tick-peer (cdr (fn-own-tick-peer o (cadr event) (caddr event))))
@@ -1419,6 +1444,7 @@
     fn-own-feeds-reconfigure fn-own-tick fn-own-tick-records
     fn-own-tick-peer fn-own-tick-peer-records
     fn-own-feed-article fn-own-feed-reply fn-own-feed-reply-records
-    fn-own-feed-connect fn-own-feed-recover))
+    fn-own-feed-connect fn-own-feed-lost fn-own-feed-lost-records
+    fn-own-feed-recover))
 
 (in-theory (disable fn-own-vocabulary))
