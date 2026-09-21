@@ -66,9 +66,16 @@ indistinguishable from the two sides disagreeing, which is the one thing it
 exists to detect; the bridge host and `books/served` had no divergence check
 running from `d484e9a` (2026-09-20) until now.
 
-### 1.3 The native differential is a loud skip, and `books/bp-node` is not why
+### 1.3 The native differential RUNS: 7/7, and `books/bp-node` was not why
 
-`tests/test_native_served_differential.py` does **not** error. It skips in
+**Outcome: it runs.** `tests.test_native_served_differential` is 7/7 in
+**1.7 s** against a `build/fn-host` built in this worktree — the native host's
+production listener and `fn-served-run` agree byte for byte on all seven
+transcripts, including the bytewise partition and the UTF-8 split, and
+`test_whole_transcript_agrees` sees `211 1 1 1 fn.letters`. This is the first
+run of that module on this tree; it had been skipping.
+
+Before the image existed it did **not** error either. It skipped in
 `setUpClass`, naming the image and the script:
 `native host image missing: <root>/build/fn-host (tools/build_native_host.sh)`.
 
@@ -80,23 +87,39 @@ nothing in `tools/`, `tests/`, `bin/` or the Makefile selects that variant
 `w11/bp-node`'s open guard conjecture blocks `build/fn-host-dtn` and not
 `build/fn-host`.
 
-What actually blocks it is certificates. Of `host/native/build.lisp`'s 16
-`include-book` roots, 13 install from the cache and **`books/nntp`,
-`books/served`, `books/nntp-effects` do not** — the `w10/auth-served` change
+What blocked it was certificates. Of `host/native/build.lisp`'s 16
+`include-book` roots, 13 installed from the cache and **`books/nntp`,
+`books/served`, `books/nntp-effects` did not** — the `w10/auth-served` change
 rebuilt their closure keys. Certifying just those three fails at their own
-dependencies (`nntp-responses`, `nntp-invariants`, `nntp-post` have no
-certificate either): `build/acl2/certify-20260921T015314Z-72542`. The whole
-uncached closure is 88 books, submitted to persvati as
-`run-20260921T020155Z-a78d` (`--remote-root /home/ember/fn-lanes/w11-fault-tests`,
-which does not exist locally, so the pairs come home installable).
+dependencies (`nntp-responses`, `nntp-invariants`, `nntp-post` had no
+certificate either): `build/acl2/certify-20260921T015314Z-72542`, the failed
+attempt, manifest filed.
 
-**The next lane's recipe**, once that cache is warm:
+**The recipe, which is what this lane then did** (30 minutes end to end, of
+which the laptop did about ten):
 
 ```sh
-python3 tools/certs.py install
-tools/build_native_host.sh                       # ~ host/native/build.lisp
-python3 -m unittest tests.test_native_served_differential -v
+python3 tools/farm.py submit persvati --jobs 6 \
+    --remote-root /home/ember/fn-lanes/w11-fault-tests --closure \
+    books/nntp books/served books/nntp-effects
+    # -> run-20260921T020155Z-a78d: installed 121, kept 68, uncached 88
+python3 tools/farm.py wait persvati run-20260921T020155Z-a78d   # exit 0
+python3 tools/certs.py install        # the three land; --remote-root does not
+                                      # exist on the laptop, so they install
+python3 tools/certify_books.py books/frame-trailer   # new from w11/one-owner,
+                                      # reached through host/*-host.lisp, not
+                                      # through build.lisp's include list
+tools/build_native_host.sh                           # 279 M core
+python3 -m unittest tests.test_native_served_differential -v   # 7/7, 1.7 s
 ```
+
+`books/frame-trailer` is the trap to remember: `tools/build_native_host.sh`
+refuses on an uncertified book, and the host files it `ld`s pull in books that
+appear in **no** `include-book` line of `build.lisp` — `frame-trailer`,
+`anchor-invariants`, `crypto-attach`, `peer-config`, `provenance-codec`,
+`store-sweep`. Certify by `grep -h include-book host/*.lisp host/native/*.lisp`,
+not by the build script's own list. (The BOARD's `w9/dtn-e2e` note says the
+same thing about the anchor books; this is the general form.)
 
 ## 2. Two findings handed to owners, not patched here
 
@@ -152,7 +175,12 @@ confused. Neither the budget nor the path is wrong.
 | --- | --- | --- |
 | `tests.test_workflow_faults` | this worktree | 10/10, 18.1 s |
 | `tests.test_served_differential` | this worktree | 7/7, 6.4 s |
-| `tests.test_native_served_differential` | this worktree | skipped 1, image absent |
+| both of the above, after merging `dev` `664711e` | this worktree | 17/17, 12.1 s |
+| `tests.test_native_served_differential` | before the image | skipped 1, loudly |
+| `tests.test_native_served_differential` | against `build/fn-host` | **7/7, 1.7 s** |
+| `books/frame-trailer` certify | this worktree | passed, `certify-20260921T020920Z-2417` |
+| `tools/build_native_host.sh` | this worktree | `built build/fn-host (279M core)` |
+| farm closure, 88 uncached books | persvati | `run-20260921T020155Z-a78d`, exit 0 |
 | `tests.test_deploy_gate` | this worktree | 17/17, 33.7 s |
 | `tests.test_deploy_gate` | `git archive` extract | 10 ran, DryRunTests skipped loudly |
 | `tests.test_four_node_lab` | this worktree | 9/9, 152.3 s (1 optional skip) |
@@ -161,8 +189,9 @@ confused. Neither the budget nor the path is wrong.
 | `make check` | this worktree | exit 0 |
 | `tools/ledger.py --write` | this worktree | no count changed |
 
-Nothing in this lane certified a book and nothing needed to: the four files
-changed are Python tests.
+The four files this lane changed are Python tests. The one book it certified,
+`books/frame-trailer`, it certified to build an image and not to close a
+proof; nothing here changed a definition or a theorem.
 
 ## 4. One measurement worth carrying
 
