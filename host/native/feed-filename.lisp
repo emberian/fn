@@ -40,6 +40,18 @@
   "The ACL2-owned depth bound used before raw directory recursion."
   (fnn-nat (fnn-core 'fn-feed-filename-host-max-v1-chunks)))
 
+(defun fnn-feed-filename-observation-limit ()
+  "The ACL2-owned total FNFD recovery observation budget."
+  (fnn-nat (fnn-core 'fn-feed-filename-host-observation-limit)))
+
+(defun fnn-feed-filename-observation-remaining (remaining observed)
+  "Return ACL2's one shared recovery budget after this directory observation."
+  (let ((next (fnn-core 'fn-feed-filename-host-observation-remaining
+                        remaining observed)))
+    (if (eq next :bad)
+        (fnn-fault "ACL2 refused FNFD directory observation")
+      (fnn-nat next))))
+
 (defun fnn-feed-filename-decode-components (components)
   "Return PEER and T only for an ACL2-canonical component vector.
 

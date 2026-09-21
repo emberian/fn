@@ -45,6 +45,13 @@
 (defconst *ff-deep* (ff-repeat 256 65))
 (assert-event (equal *fn-ff-max-v1-chunks* 5))
 (assert-event (equal *fn-ff-max-components* 7))
+(assert-event (equal (fn-feed-filename-observation-limit) 8192))
+; The budget is one total counter, so an empty directory may be observed at
+; zero but the next retained name cannot be assigned a fresh local allowance.
+(assert-event (equal (fn-feed-filename-observation-remaining 4 1) 3))
+(assert-event (equal (fn-feed-filename-observation-remaining 0 0) 0))
+(assert-event (equal (fn-feed-filename-observation-remaining 0 1) :bad))
+(assert-event (equal (fn-feed-filename-observation-remaining 4 5) :bad))
 (assert-event (equal (len (fn-feed-filename-components *ff-deep*)) 7))
 (assert-event (equal (fn-feed-filename-from-components
                       (fn-feed-filename-components *ff-deep*))
