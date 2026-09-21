@@ -104,7 +104,10 @@
     (:link-eexist
      (mv-let (r bs1) (fn-bs-link bs (nth 1 step) (nth 2 step)
                                     (nth 3 step) (nth 4 step) outcome)
-       (mv (if (equal r :eexist) :ok r) bs1 ks)))
+       (mv (cond ((equal r :eexist) :ok)
+                 ((equal r :ok) :unexpected-link-success)
+                 (t r))
+           bs1 ks)))
     (:rename (mv-let (r bs1) (fn-bs-rename bs (nth 1 step) (nth 2 step)
                                            (nth 3 step) (nth 4 step) outcome)
                (mv r bs1 ks)))
