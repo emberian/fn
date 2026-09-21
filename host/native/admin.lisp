@@ -66,10 +66,11 @@ set, exact record, candidate replay/open result and generated final name."
                   (fnn-core 'fn-native-admin-host-publication-reason result)))))
 
 (defun fnn-admin-stage-path (store)
-  ; A stage is not a durable namespace.  The final name comes only from the
-  ; ACL2 codec above and the shared publisher provides every durable barrier.
+  ; Reuse the admitted `.stage-' ephemeral namespace.  Recovery's ACL2-owned
+  ; sweep recognizes this exact prefix; administrative publication has no
+  ; separate residue grammar.  The final name remains ACL2's config codec.
   (fnn-join (fnn-staging store)
-            (format nil ".admin-~d-~a" (sb-posix:getpid) (fnn-random-hex 12))))
+            (format nil ".stage-~d-~a" (sb-posix:getpid) (fnn-random-hex 12))))
 
 (defun fnn-admin-publish (store record authorization)
   (let* ((generation (fnn-core 'fn-native-admin-host-publication-generation authorization))
@@ -89,15 +90,25 @@ set, exact record, candidate replay/open result and generated final name."
                   (fnn-indeterminate "configuration record publication is uncertain"))
       (otherwise (fnn-fault "ACL2 returned invalid configuration publication outcome")))))
 
-(defun fnn-admin-reopen (root expected-generation)
-  "A durable outcome is accepted only after a fresh ordinary open sees it."
-  (multiple-value-bind (reopened records) (fnn-open-live-store root nil)
-    (declare (ignore records))
-    (unwind-protect
-         (if (= (fnn-store-config-generation reopened) expected-generation)
-             t
-           (fnn-fault "reopened configuration generation differs from publication"))
-      (fnn-store-close reopened))))
+(defun fnn-admin-verify-under-lock (store expected-generation)
+  "Reconstruct the just-published configuration while this command still owns
+the writer lock.  A later administrator cannot advance the generation between
+publication and this observation.  The immutable publisher's :DURABLE result
+is already this command's accepted persistence outcome, so an independent
+diagnostic failure is reported without retroactively recasting that durable
+result as a refusal or uncertainty."
+  (handler-case
+      (progn
+        (fnn-bridge-reset)
+        (fnn-recover store)
+        (if (= (fnn-store-config-generation store) expected-generation)
+            :verified
+          (progn
+            (setf (fnn-store-fenced store) t)
+            :generation-mismatch)))
+    (error ()
+      (setf (fnn-store-fenced store) t)
+      :unavailable)))
 
 (defun fnn-admin-execute (root plan)
   "Private callback for the one public native operator entry.
@@ -121,13 +132,14 @@ turning a refusal into a physical mutation."
                       (config-records (fnn-config-records-from-names store names))
                       (authorization (fnn-admin-authorize store records config-records record names)))
                  (multiple-value-bind (generation name) (fnn-admin-publish store record authorization)
-                 ; Close the exclusive descriptor before the independent
-                 ; recovery open; it makes the reopen evidence a real new lock
-                 ; acquisition rather than an in-process replay shortcut.
-                 (fnn-store-close store)
-                 (setq store nil)
-                 (fnn-admin-reopen root generation)
-                 (fnn-out "configured generation=~d record=~a" generation name)
+                 ; The durable publisher is the acceptance boundary.  Verify
+                 ; its candidate under the retained exclusive lock: releasing
+                 ; it before an exact-generation reopen would let a later
+                 ; administrator make this already durable command appear to
+                 ; fail merely by advancing the history.
+                 (fnn-out "configured generation=~d record=~a verification=~a"
+                          generation name
+                          (fnn-admin-verify-under-lock store generation))
                  +fnn-exit-ok+))))
         (when store (fnn-store-close store)))))
 
