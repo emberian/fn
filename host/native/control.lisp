@@ -191,14 +191,20 @@
 
 (defun fnn-control-stop (control service)
   (declare (ignore service))
-  (let ((listener nil))
+  (let ((listener nil) (clients nil) (first nil))
     (fnn-with-control (control)
-      (setf (fnn-control-state-stopping control) t
-            listener (fnn-control-state-listener control)))
-    (when listener
-      (ignore-errors
-        (sb-bsd-sockets:socket-shutdown listener :direction :io))
-      (fnn-socket-shut listener))))
+      (unless (fnn-control-state-stopping control)
+        (setf (fnn-control-state-stopping control) t
+              listener (fnn-control-state-listener control)
+              clients (copy-list (fnn-control-state-clients control))
+              first t)))
+    (when first
+      (when listener
+        (ignore-errors
+          (sb-bsd-sockets:socket-shutdown listener :direction :io))
+        (fnn-socket-shut listener))
+      (dolist (socket clients)
+        (fnn-socket-shut socket)))))
 
 (defun fnn-control-close (control service)
   (declare (ignore service))
