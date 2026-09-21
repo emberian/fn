@@ -72,6 +72,17 @@ class JournalTests(unittest.TestCase):
                               mock.call("ready", "directory-durable"),
                               mock.call("ready", "parent-durable")])
 
+    def test_non_ancestor_directory_walk_stops_at_root(self):
+        # Regression for the 2026-09-21 test-loop incident: dirname('/') is
+        # '/', so a stop directory outside the ancestor chain must fail before
+        # attempting to re-visit root rather than loop and retain mock calls.
+        with mock.patch.object(feed_wire, "fsync_dir") as directory:
+            with self.assertRaisesRegex(feed_wire.StoreFault,
+                                        "not an ancestor"):
+                feed_wire.fsync_ancestor_directories("/unrelated/child",
+                                                      "/expected/feed")
+        self.assertEqual(directory.call_args_list, [mock.call("/unrelated")])
+
     def test_append_writes_exact_acl2_envelope(self):
         journal = self.open()
         journal.append(b"frame")

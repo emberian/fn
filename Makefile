@@ -488,9 +488,9 @@ model-test: certify
 	$(PYTHON) tools/run_simulator.py
 
 tooling-test:
-	$(PYTHON) -m unittest tests.test_certify_runner tests.test_acl2_wrapper \
+	$(PYTHON) tools/run_command.py --timeout 120 -- $(PYTHON) -m unittest tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check \
-	    tests.test_evidence_manifests -v
+	    tests.test_evidence_manifests tests.test_process_supervisor -v
 
 test: check certify
 	$(PYTHON) tools/run_simulator.py
