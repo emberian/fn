@@ -53,7 +53,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import deploy_gate                                             # noqa: E402
 from deploy_gate import (DEFAULT_HOST, GROUPS, GateError, Host,  # noqa: E402
-                         evidence_path, repo_root,
+                         evidence_path, repo_root, report,
                          LocalHost, SshHost, resolve)
 
 # The pre-realignment measurement, quoted from its own handoff so the
@@ -257,6 +257,29 @@ class ScaleGate(deploy_gate.DeployGate):
         "it is a proof, a bound, or a guarantee about another machine.")
     FACT_KEYS = ("os", "kernel", "python3", "acl2version", "certificates", "server",
                  "ceiling", "largest store")
+    # The measurement's own assertions.  A series that stops at a ceiling is
+    # the measurement working, not a violation: what this gate can violate is
+    # a recover that fails, a connection that does not complete, and a series
+    # that produced no measurement at all.  The `payloads` are the instances,
+    # and they are set per run, so the inventory is completed in __init__.
+    ASSERTIONS = dict(deploy_gate.DeployGate.ASSERTIONS)
+    ASSERTIONS.update({
+        "series-measured": (
+            "the doubling series produced a measurement at this payload size",
+            ("",)),
+        "cli-recover": (
+            "`run_store.py recover` succeeds at the largest store the series "
+            "reached", ("",)),
+        "reader-measured": (
+            "the reader driver produced a measurement at the largest store",
+            ("",)),
+        "reader-connections": (
+            "every sequential reader connection completed", ("",)),
+        "over-served": ("OVER is served, so the range figure is OVER's", ("",)),
+        "previous-method": (
+            "the pre-realignment method re-ran at its own grid point, so the "
+            "comparison is between two runs of one method", ("",)),
+    })
     STANDING_GAPS = (
         "A wall time is not a complexity bound. The exponents quoted below are fits\n"
         "  over a handful of doublings on one host, not theorems about the books.",
@@ -291,6 +314,17 @@ class ScaleGate(deploy_gate.DeployGate):
         self.rss_ceiling_kib = rss_ceiling_kib
         self.reuse = reuse
         self.adopted = dict(adopted or {})
+        # One instance per payload size and per previous-method point: a
+        # series that is never reached is `not-exercised` under its own name
+        # rather than absent from the record.
+        self.ASSERTIONS = dict(self.ASSERTIONS)
+        payload_keys = tuple(str(one) for one in self.payloads)
+        for key in ("series-measured",):
+            self.ASSERTIONS[key] = (self.ASSERTIONS[key][0], payload_keys)
+        if not self.skip_previous:
+            self.ASSERTIONS["previous-method"] = (
+                self.ASSERTIONS["previous-method"][0],
+                tuple(str(one) for one in self.previous_points))
         self.extra_overlays = [Path(one) for one in extra_overlays]
         self.series: dict[int, dict] = {}
         self.reader: dict = {}
@@ -322,17 +356,26 @@ class ScaleGate(deploy_gate.DeployGate):
             timeout=int(self.budget_seconds) + 1800, expect=None)
         data = extract(step.output, "SCALE-SERIES")
         if data is None:
-            self.gaps.append(
+            self.inconclusive(
+                "series-measured",
                 "the {} octet series produced no JSON line; its store is at {} on the "
                 "host and its last output was: {}".format(payload, root,
-                                                          step.first_line or "(nothing)"))
+                                                          step.first_line or "(nothing)"),
+                "the series printed no SCALE-SERIES line",
+                instance=str(payload), observed=step.first_line or "nothing")
             return None
+        self.check("series-measured", True, "", instance=str(payload),
+                   observed="largest_passing={} stopped_by={}".format(
+                       data.get("largest_passing"), data.get("stopped_by")))
         self.series[payload] = data
         if data.get("stopped_by"):
             self.facts.setdefault("ceiling", "{} octets: {} articles, stopped by {}".format(
                 payload, data.get("largest_passing"), data["stopped_by"]))
         if step.rc not in (0, None):
-            self.gaps.append(
+            # A series that stops is the measurement doing its job; what is
+            # undecided is the curve past the last point it reached.
+            self.limitation(
+                "series-stopped-{}".format(payload),
                 "the {} octet series exited {}: {}. The points it did measure are "
                 "below; the curve past them is not measured, not absent."
                 .format(payload, step.rc, data.get("error", "no error recorded")))
@@ -363,7 +406,10 @@ class ScaleGate(deploy_gate.DeployGate):
                        "parsed".format(path))
             return None
         self.series[payload] = data
-        self.gaps.append(
+        self.check("series-measured", True, "", instance=str(payload),
+                   observed="adopted from {}".format(path))
+        self.limitation(
+            "series-adopted-{}".format(payload),
             "the {} octet series was measured by an earlier invocation of this gate "
             "against the same host, tree and store, and its JSON was adopted here "
             "from {}. Its per-step record is that run's, not this one's; the numbers "
@@ -399,9 +445,10 @@ class ScaleGate(deploy_gate.DeployGate):
             timeout=int(max(1800, self.recover_ceiling * 20)), expect=None)
         self.cli_recover = {"seconds": step.seconds, "rc": step.rc,
                             "first_line": step.first_line, "payload": payload}
-        if step.rc not in (0, None):
-            self.gaps.append("`run_store.py recover` exited {} at the largest store: {}"
-                             .format(step.rc, step.first_line))
+        self.check("cli-recover", step.rc in (0, None),
+                   "`run_store.py recover` exited {} at the largest store: {}"
+                   .format(step.rc, step.first_line),
+                   observed="rc={} {:.1f}s".format(step.rc, step.seconds))
         return step
 
     def read_at_scale(self, payload: int):
@@ -412,10 +459,12 @@ class ScaleGate(deploy_gate.DeployGate):
         if not self.start_server(kind, command, "scale"):
             fallback = self.nice(
                 "python3 tools/run_reader.py --store {} --port 0".format(root))
-            self.gaps.append(
+            self.check(
+                "entry-point-listening", False,
                 "the {} entry point did not reach LISTENING over this store; the gate "
                 "fell back to a read-only tools/run_reader.py. Every reader figure "
-                "below is the reader's, not the {}'s.".format(kind, kind))
+                "below is the reader's, not the {}'s.".format(kind, kind),
+                observed="selected={}".format(kind))
             kind = "reader (read-only)"
             if not self.start_server(kind, fallback, "scale"):
                 # Both entry points were tried on a store this gate built
@@ -437,22 +486,36 @@ class ScaleGate(deploy_gate.DeployGate):
         data = extract(step.output, "SCALE-READER")
         self.stop_server("scale")
         if data is None:
-            self.gaps.append("the reader driver printed no JSON: "
-                             + (step.first_line or "nothing"))
+            self.inconclusive(
+                "reader-measured",
+                "the reader driver printed no JSON: " + (step.first_line or "nothing"),
+                "the reader driver printed no SCALE-READER line",
+                observed=step.first_line or "nothing")
             return None
+        self.check("reader-measured", True, "",
+                   observed="server={}".format(kind))
         data["server"] = kind
         data["payload_bytes"] = payload
         self.reader = data
-        if not data.get("over", {}).get("served"):
-            self.gaps.append(
+        if data.get("over", {}).get("served"):
+            self.check("over-served", True, "", observed="OVER served")
+        else:
+            self.not_built(
+                "over-served",
                 "OVER is not served on this commit (it answered '{}'), so the range "
                 "figure below is the LISTGROUP+HEAD enumeration a client must do "
                 "instead, under its own name. books/nntp admits GROUP, LISTGROUP, "
                 "LAST, NEXT, ARTICLE, HEAD, BODY and STAT.".format(
-                    data.get("over", {}).get("status", "?")))
-        if data.get("connections", {}).get("failed"):
-            self.gaps.append("{} of {} sequential connections did not complete".format(
-                data["connections"]["failed"], data["connections"]["asked"]))
+                    data.get("over", {}).get("status", "?")),
+                "this commit's served path admits no OVER")
+        self.check(
+            "reader-connections", not data.get("connections", {}).get("failed"),
+            "{} of {} sequential connections did not complete".format(
+                data.get("connections", {}).get("failed"),
+                data.get("connections", {}).get("asked")),
+            observed="failed={} asked={}".format(
+                data.get("connections", {}).get("failed"),
+                data.get("connections", {}).get("asked")))
         return data
 
     def previous_method(self):
@@ -465,9 +528,12 @@ class ScaleGate(deploy_gate.DeployGate):
                 "--json {run}/prev-gen-{n}.json".format(root=root, n=count, run=self.run))),
                 timeout=7200, expect=None)
             if build.rc not in (0, None):
-                self.gaps.append(
+                self.inconclusive(
+                    "previous-method",
                     "the previous method did not build its N={} point ({}); the "
-                    "comparison stops there".format(count, build.first_line))
+                    "comparison stops there".format(count, build.first_line),
+                    "the generator exited {}".format(build.rc),
+                    instance=str(count), observed=build.first_line or "nothing")
                 break
             read = self.sh("previous method: measure {}".format(count), self.cd(self.nice(
                 "python3 tests/bench/measure.py --root {root} --articles {n} --runs {r} "
@@ -477,13 +543,23 @@ class ScaleGate(deploy_gate.DeployGate):
                 timeout=7200, expect=None)
             line = [one for one in read.output.splitlines() if one.startswith("{")]
             if read.rc not in (0, None) or not line:
-                self.gaps.append("the previous method measured no N={} point: {}".format(
-                    count, read.first_line))
+                self.inconclusive(
+                    "previous-method",
+                    "the previous method measured no N={} point: {}".format(
+                        count, read.first_line),
+                    "the measurement exited {} or printed no JSON".format(read.rc),
+                    instance=str(count), observed=read.first_line or "nothing")
                 continue
             try:
                 self.previous[count] = json.loads(line[-1])
+                self.check("previous-method", True, "", instance=str(count),
+                           observed=line[-1][:120])
             except ValueError:
-                self.gaps.append("the previous method's N={} JSON did not parse".format(count))
+                self.inconclusive(
+                    "previous-method",
+                    "the previous method's N={} JSON did not parse".format(count),
+                    "the measurement's last JSON line did not parse",
+                    instance=str(count), observed=line[-1][:120])
             self.sh("drop the previous method's N={} store".format(count),
                     "rm -rf {}".format(root))
 
@@ -531,7 +607,8 @@ class ScaleGate(deploy_gate.DeployGate):
         self.read_at_scale(largest)
         if self.skip_previous:
             self.skip("previous method", "tests/bench/generate.py + measure.py",
-                      "--skip-previous: the like-for-like comparison was not run")
+                      "--skip-previous: the like-for-like comparison was not run",
+                      key="previous-method")
         else:
             self.previous_method()
 
@@ -860,31 +937,29 @@ def main(argv=None) -> int:
         gate.execute()
     except GateError as error:
         failure = str(error)
-        gate.gaps.append("the gate stopped early: {}".format(error))
+        gate.limitation("gate-stopped-early",
+                        "the gate stopped early: {}".format(error))
     finally:
         try:
             gate.cleanup()
         except Exception as error:      # cleanup must never hide the result
-            gate.gaps.append("cleanup did not finish: {}: {}".format(
-                type(error).__name__, error))
+            gate.limitation("cleanup-unfinished",
+                            "cleanup did not finish: {}: {}".format(
+                                type(error).__name__, error))
     elapsed = time.monotonic() - clock
+    gate.finalize_findings()
     date = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
     target = evidence_path(args.evidence, repo,
                            "scale-{}-{}.md".format(rev, date))
     gate.evidence(target, started, elapsed)
     print("evidence: {}".format(target))
-    bad = [s for s in gate.steps if s.failed]
-    print("steps={} failed={} not-exercised={}".format(
-        len(gate.steps), len(bad), sum(1 for s in gate.steps if s.rc is None)))
-    for step in bad:
-        print("  FAILED rc={} {}: {}".format(step.rc, step.name, step.first_line))
+    report(gate)
     for payload, data in sorted(gate.series.items()):
         print("  series {} octets: largest passing {} articles, stopped by {}".format(
             payload, data.get("largest_passing"), data.get("stopped_by")))
     if failure:
         print("gate error: {}".format(failure))
-        return 2
-    return 1 if bad else 0
+    return gate.exit_code(failure)
 
 
 if __name__ == "__main__":
