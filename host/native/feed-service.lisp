@@ -59,6 +59,31 @@
   (sb-thread:with-mutex ((fnn-feed-runtime-lock runtime))
     (copy-list (fnn-feed-runtime-links runtime))))
 
+(defun fnn-feed-link-for-peer (peer)
+  (%make-fnn-feed-link
+   :peer peer :peer-octets (fnn-octets (fnn-string-octets peer))))
+
+(defun fnn-feed-refresh-links (runtime)
+  "Make the socket workers follow ACL2's current live feed table.
+
+This runs in the sole feed worker.  ACL2 owns membership; the runtime lock
+only publishes the corresponding socket resources.  Removed links are
+closed by this worker, preserving the one-closer rule."
+  (let* ((service (fnn-feed-runtime-service runtime))
+         (names (fnn-feed-peer-list service))
+         (removed nil))
+    (sb-thread:with-mutex ((fnn-feed-runtime-lock runtime))
+      (let ((old (fnn-feed-runtime-links runtime)) (next nil))
+        (dolist (name names)
+          (let ((link (find name old :key #'fnn-feed-link-peer :test #'string=)))
+            (push (or link (fnn-feed-link-for-peer name)) next)))
+        (setq removed
+              (remove-if (lambda (link)
+                           (member (fnn-feed-link-peer link) names :test #'string=))
+                         old))
+        (setf (fnn-feed-runtime-links runtime) (nreverse next))))
+    (dolist (link removed) (fnn-feed-close-link runtime link))))
+
 (defun fnn-feed-checked-word (word allowed where)
   (unless (member word allowed)
     (fnn-fault "feed core returned ~s from ~a" word where))
@@ -310,6 +335,7 @@ ACL2 framer."
 (defun fnn-feed-worker (runtime)
   (unwind-protect
        (loop until (fnn-feed-stoppingp runtime) do
+         (fnn-feed-refresh-links runtime)
          (let ((now (fnn-feed-now)))
            (dolist (link (fnn-feed-links runtime))
              (unless (fnn-feed-stoppingp runtime)
@@ -351,11 +377,7 @@ ACL2 framer."
            (runtime
              (%make-fnn-feed-runtime
               :service service
-              :links (mapcar (lambda (peer)
-                               (%make-fnn-feed-link
-                                :peer peer
-                                :peer-octets (fnn-octets (fnn-string-octets peer))))
-                             names)
+              :links (mapcar #'fnn-feed-link-for-peer names)
               :lock (sb-thread:make-mutex :name "fn outbound feed runtime")
               :limit (fnn-feed-read-limit service))))
       (fnn-feed-runtime-put service runtime)

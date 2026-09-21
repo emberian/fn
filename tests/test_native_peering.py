@@ -187,9 +187,14 @@ class NativePeeringTests(unittest.TestCase):
             while True:
                 line = stream.readline()
                 if line == b".\r\n":
-                    return lines
+                    break
                 self.assertNotEqual(line, b"")
                 lines.append(line.rstrip(b"\r\n"))
+            # Keep this on one connection: it detects a worker that returns
+            # after every successful read instead of only after QUIT/close.
+            stream.write(b"QUIT\r\n")
+            self.assertTrue(stream.readline().startswith(b"205 "))
+            return lines
 
     def test_public_native_nodes_exchange_both_ways_and_suppress_duplicate(self):
         a = self.initialize("a", free_port())
