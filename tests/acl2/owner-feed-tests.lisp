@@ -375,3 +375,108 @@
                     (list (fn-own-feed-entry "nodeB" *oft-b* :not-a-feed)))))
 ; A table that is not a true list.
 (assert-event (not (fn-own-feed-tablep (cons (car *oft-tbl*) :tail))))
+
+; -----------------------------------------------------------------------------
+; A LOST CONNECTION, per peer (K5's first blocker)
+;
+; `fn-own-feed-lost-one' is what the host calls when a peer's socket is
+; gone. `*oft-sent*' is the feed with the article in flight: the CHECK went
+; out, the peer answered 238 and the article was written. Everything below
+; is over THAT state, because an entry that is not in flight is the case the
+; transition must leave alone.
+
+(defconst *oft-in-flight*
+  (fn-own-feed-put "nodeB" (fn-own-feed-record-of "nodeB" *oft-connected*)
+                   (car *oft-sent*) *oft-connected*))
+(assert-event (fn-own-feed-tablep *oft-in-flight*))
+(assert-event (fn-feed-sentp
+               (fn-feed-state-of *oft-msgid*
+                                 (fn-feed-queue (fn-own-feed-find "nodeB"
+                                                                  *oft-in-flight*)))))
+(assert-event (equal (fn-feed-conn (fn-own-feed-find "nodeB" *oft-in-flight*)) 3))
+
+(defconst *oft-lost* (fn-own-feed-lost-one "nodeB" *oft-in-flight* *oft-obs*))
+(assert-event (fn-own-feed-tablep *oft-lost*))
+; The entry is QUEUED again, its attempt counted, and the connection gone --
+; so the next command for it is an offer and never a blind TAKETHIS.
+(assert-event (equal (fn-feed-state-of *oft-msgid*
+                                       (fn-feed-queue (fn-own-feed-find "nodeB" *oft-lost*)))
+                     :queued))
+(assert-event (equal (fn-feed-entry-attempts
+                      (fn-feed-find *oft-msgid*
+                                    (fn-feed-queue (fn-own-feed-find "nodeB" *oft-lost*))))
+                     1))
+(assert-event (null (fn-feed-conn (fn-own-feed-find "nodeB" *oft-lost*))))
+; Nothing left the queue.
+(assert-event (equal (len (fn-feed-queue (fn-own-feed-find "nodeB" *oft-lost*)))
+                     (len (fn-feed-queue (fn-own-feed-find "nodeB" *oft-in-flight*)))))
+; PER PEER: nodeC's feed is the one it was. This is the conjunct that keeps
+; the transition from being fn-own-feed-restart-all, whose settle of another
+; peer's genuinely in-flight entry is the second transfer K5 forbids.
+(assert-event (equal (fn-own-feed-find "nodeC" *oft-lost*)
+                     (fn-own-feed-find "nodeC" *oft-in-flight*)))
+
+; The record it authorizes: one (:feed-outcome peer msgid attempt 400), the
+; same record a 400 on the wire writes.
+(defconst *oft-lost-records* (fn-own-feed-lost-records-of "nodeB" *oft-in-flight*))
+(assert-event (equal (len *oft-lost-records*) 1))
+(assert-event (equal (fn-feed-journal-kind (car *oft-lost-records*)) :feed-outcome))
+(assert-event (equal (fn-feed-record-msgid (fn-feed-journal-values (car *oft-lost-records*)))
+                     *oft-msgid*))
+(assert-event (equal (fn-feed-record-nat 3 (fn-feed-journal-values (car *oft-lost-records*)))
+                     400))
+(assert-event (fn-feed-record-okp (fn-feed-journal-kind (car *oft-lost-records*))
+                                  (fn-feed-journal-values (car *oft-lost-records*))))
+(assert-event (equal *oft-lost-records*
+                     (fn-own-feed-reply-records-of "nodeB" *oft-msgid* 1 400)))
+
+; Replay reaches the same entry. `fn-feed-apply-record' requeues with tick 0
+; where the live transition records the observation's own tick, and the tick
+; is provenance that no decision reads (`fn-feed-entry-tick' is read by
+; nothing but the two requeue builders), so the Message-ID, the state and the
+; attempt count are what is compared.
+(defconst *oft-lost-replayed*
+  (fn-feed-apply-record (fn-own-feed-find "nodeB" *oft-in-flight*)
+                        (fn-feed-journal-kind (car *oft-lost-records*))
+                        (fn-feed-journal-values (car *oft-lost-records*))))
+(assert-event (equal (fn-feed-state-of *oft-msgid* (fn-feed-queue *oft-lost-replayed*))
+                     :queued))
+(assert-event (equal (fn-feed-entry-attempts
+                      (fn-feed-find *oft-msgid* (fn-feed-queue *oft-lost-replayed*)))
+                     1))
+
+; TEETH.  One concrete violating value per hypothesis of the transition.
+; No entry in flight: no record at all, and nothing to requeue.
+(assert-event (null (fn-own-feed-lost-records-of "nodeB" *oft-accepted*)))
+(assert-event (equal (fn-feed-state-of *oft-msgid*
+                                       (fn-feed-queue
+                                        (fn-own-feed-find
+                                         "nodeB" (fn-own-feed-lost-one
+                                                  "nodeB" *oft-accepted* *oft-obs*))))
+                     :queued))
+; A peer with no entry in the table: the table is the table.
+(assert-event (equal (fn-own-feed-lost-one "nodeD" *oft-in-flight* *oft-obs*)
+                     *oft-in-flight*))
+(assert-event (null (fn-own-feed-lost-records-of "nodeD" *oft-in-flight*)))
+; A :done entry is NOT requeued by a loss -- the peer answered and the
+; outcome is settled; requeueing it would be the second transfer K5 forbids.
+(defconst *oft-done*
+  (fn-own-feed-put "nodeB" (fn-own-feed-record-of "nodeB" *oft-in-flight*)
+                   (mv-let (g effects)
+                     (fn-feed-observe (fn-own-feed-find "nodeB" *oft-in-flight*)
+                                      (fn-own-feed-parse-response
+                                       (oft-o "239 <1@a.fn.test>") *oft-msgid*)
+                                      *oft-article* *oft-obs*)
+                     (declare (ignore effects))
+                     g)
+                   *oft-in-flight*))
+(assert-event (equal (fn-feed-state-of *oft-msgid*
+                                       (fn-feed-queue (fn-own-feed-find "nodeB" *oft-done*)))
+                     :done))
+(assert-event (null (fn-own-feed-lost-records-of "nodeB" *oft-done*)))
+(assert-event (equal (fn-feed-state-of *oft-msgid*
+                                       (fn-feed-queue
+                                        (fn-own-feed-find
+                                         "nodeB" (fn-own-feed-lost-one
+                                                  "nodeB" *oft-done* *oft-obs*))))
+                     :done))
