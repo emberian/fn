@@ -1,0 +1,13 @@
+test_append_uses_recovered_frontier_without_namespace_rescan (tests.test_bp_service_native.NativeBpServiceTests.test_append_uses_recovered_frontier_without_namespace_rescan) ... ok
+test_hidden_stage_is_bounded_recovery_evidence (tests.test_bp_service_native.NativeBpServiceTests.test_hidden_stage_is_bounded_recovery_evidence) ... ok
+test_namespace_bound_is_applied_during_directory_enumeration (tests.test_bp_service_native.NativeBpServiceTests.test_namespace_bound_is_applied_during_directory_enumeration) ... ok
+test_outage_restart_duplicate_and_conflict (tests.test_bp_service_native.NativeBpServiceTests.test_outage_restart_duplicate_and_conflict) ... ok
+test_recovery_rejects_corrupt_name_gap_and_token_binding (tests.test_bp_service_native.NativeBpServiceTests.test_recovery_rejects_corrupt_name_gap_and_token_binding) ... ok
+test_shared_spool_owner_precedes_lifecycle_mutation (tests.test_bp_service_native.NativeBpServiceTests.test_shared_spool_owner_precedes_lifecycle_mutation) ... ok
+test_transport_uncertain_dominates_refused_article (tests.test_bp_service_native.NativeBpServiceTests.test_transport_uncertain_dominates_refused_article) ... ok
+test_visible_final_never_converts_failed_barrier_to_durable (tests.test_bp_service_native.NativeBpServiceTests.test_visible_final_never_converts_failed_barrier_to_durable) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 11.393s
+
+OK
