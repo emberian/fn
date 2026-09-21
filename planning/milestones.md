@@ -33,7 +33,7 @@ per-connection defect, which is the pinned clock observation and not the
 read-back re-pin ([BOARD](deputies/BOARD.md), w5/owner-followups, DIAGNOSED);
 `books/nntp-effects`, open at `FN-NNTP-HDR-LABELLED-LINE-IS-BLOCK-TEXT` after
 2598.79 s and 1.47e9 prover steps; the `NNT-001` capability/dispatch mismatch;
-`books/stx-verify` at one printability lemma; and `tcpcl-invariants` at C2. See
+and `books/stx-verify` at one printability lemma. See
 [the board](deputies/BOARD.md) for each item's exact form, and the [v0
 checklist](#v0-checklist-every-item-its-status-its-evidence) below for where
 each sits.
@@ -123,7 +123,7 @@ the whole-tree run behind these statuses is
 
 | Item | Status | Evidence |
 | --- | --- | --- |
-| TCPCLv4 C1 to C4 certified | **partial** | the three tcpcl books certified inside a 60-of-63 closure, `run-20260920T051453Z-c9a2` ([BOARD](deputies/BOARD.md), w8/tcpcl-native) |
+| TCPCLv4 C1 to C4 certified | **done** | `books/tcpcl-session`, `books/tcpcl-invariants` and `tests/acl2/tcpcl-tests` certified together on hbox with the served-path guard, no prover step limit: 62.76 s, 7.25 s, 0.46 s, `certify-20260921T000317Z-1324995` ([handoff](lanes/HANDOFF-w11-tcpcl-theory.md), w11/tcpcl-theory). The invariants book took 609.69 s before that lane |
 | TCPCLv4 hosted, no Lisp-computed protocol value | **done in code, untested** | `host/tcpcl-host.lisp`, `host/native/tcpcl.lisp`; the image did not build and none of the five scenarios ran ([tcpcl-9cbf301](evidence/tcpcl-9cbf301-2026-09-20.md)) |
 | A two-node transfer over fn's own CL | **open** | the v0.4 gate condition; no run |
 | S1 statement field codec | **partial** | `books/stx-carrier` certified; `books/stx-verify` open at `fn-stx-decimal-octets-are-printable` |
@@ -366,7 +366,12 @@ loopback and one each way with dtn7-rs 0.21.0 over RFC 9174. That closes v0.4's
 gate, "a two-node transfer over fn's own convergence layer", and nothing more:
 the image is the DTN-only build list, there is no BP node behind the layer, and
 `books/tcpcl-invariants` had no verdict against the new text when this was
-written. See [the evidence](evidence/tcpcl-dtn-w9-2026-09-20.md) and
+written. It has one now: `w9/dtn-e2e` reverted that guard rather than leave
+the invariants book timing out, and `w11/tcpcl-theory` re-landed it together
+with the theory work the book needed to survive it, all three roots certified
+together (`certify-20260921T000317Z-1324995`, the invariants book 609.69 s to
+7.25 s). See [the evidence](evidence/tcpcl-dtn-w9-2026-09-20.md),
+[w11's](evidence/tcpcl-theory-w11-2026-09-20.md) and
 [the wave record](evidence/wave-realignment-2026-09-19.md) §1.
 
 ## M5: bounded long-lived operation

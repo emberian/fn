@@ -282,15 +282,15 @@
     "books": 276,
     "books_in_root_closure": 275,
     "roots": 275,
-    "theorems": 5516,
-    "functions": 3927,
-    "assert_events": 5385,
+    "theorems": 5558,
+    "functions": 3929,
+    "assert_events": 5398,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
       "verified": 1460,
       "declared-off": 190,
-      "default-guarded": 1788,
+      "default-guarded": 1790,
       "default-unguarded": 489
     },
     "suspect_theorems": 46,
@@ -4590,12 +4590,12 @@
       "book": "books/tcpcl-session.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 54,
-      "functions": 54,
+      "theorems": 96,
+      "functions": 56,
       "guards": {
         "verified": 9,
         "declared-off": 0,
-        "default-guarded": 45,
+        "default-guarded": 47,
         "default-unguarded": 0
       },
       "verify_guards_events": 9,
@@ -7373,9 +7373,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 104,
+      "assert_events": 117,
       "must_fails": 0,
-      "defconsts": 53,
+      "defconsts": 56,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
