@@ -14,9 +14,10 @@ drives the whole surface between them -- init and configuration, principals
 and AUTHINFO, POST and the reader profile on both nodes, groups, capacity and
 live reconfiguration, transit in both directions, the outbound feed,
 checkpoint and recovery, the process-death cut table, TCPCLv4, statements,
-carried media, scale, INN and independent clients.  It writes
-`planning/v0-matrix.json` (machine readable, indexed by requirement id and
-scenario id) and `planning/evidence/v0-matrix-<date>.md`.
+carried media, scale, INN and independent clients. Each run writes its own
+`planning/evidence/v0-runs/<run-id>/matrix.json` and `report.md`. Use
+`--publish-current` to select a non-overlaid, non-simulated HEAD measurement
+as `planning/v0-matrix.json`; ordinary lane runs do not replace that dashboard.
 
 **Five verdicts, never collapsed into pass/fail.**  `accepted`, `refused` and
 `uncertain` are the three outcomes of D13 and each is a real observation: a
@@ -67,11 +68,15 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import fcntl
 import hashlib
 import json
+import os
 from pathlib import Path
 import sys
+import tempfile
 import time
+import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -3391,7 +3396,8 @@ else echo NONE; fi
                 total=summary["total"], accepted=summary[ACCEPTED],
                 refused=summary[REFUSED], uncertain=summary[UNCERTAIN],
                 not_exercised=summary[NOT_EXERCISED], not_built=summary[NOT_BUILT],
-                disagreed=summary["disagreed"], tool=self.TOOL, json=MATRIX_JSON),
+                disagreed=summary["disagreed"], tool=self.TOOL,
+                json=getattr(self, "_matrix_name", MATRIX_JSON)),
             "",
             "",
             "**Who saw it.** {ind} of the {outcomes} outcome rows were observed by "
@@ -3609,6 +3615,77 @@ def check_file(path: Path) -> list:
     return validate(doc)
 
 
+def new_run_directory(repo: Path, revision: str) -> Path:
+    """Allocate an immutable report namespace, including for concurrent runs."""
+    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
+    directory = repo / "planning/evidence/v0-runs" / (
+        "{}-{}-{}".format(stamp, revision, uuid.uuid4().hex[:12]))
+    directory.mkdir(parents=True, exist_ok=False)
+    return directory
+
+
+def write_report_once(path: Path, content: str) -> None:
+    """Publish a complete report without replacing a concurrent writer's file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    name = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=path.parent,
+                                         prefix=".matrix-report-", delete=False) as out:
+            name = out.name
+            out.write(content)
+            out.flush()
+            os.fsync(out.fileno())
+        os.link(name, path)  # Exclusive, atomic publication in the same directory.
+    finally:
+        if name is not None:
+            os.unlink(name)
+
+
+def publish_current(repo: Path, doc: dict, *, overlay: bool = False,
+                    simulated: bool = False) -> None:
+    """Advance the dashboard only for an explicit, current-source measurement.
+
+    The immutable run is already written. Publication is not a passing verdict:
+    failed and incomplete measurements remain useful when attributed correctly.
+    The local lock serializes publishers; atomic replacement avoids partial JSON.
+    """
+    problems = validate(doc)
+    if problems:
+        raise GateError("cannot publish inconsistent matrix: " + "; ".join(problems))
+    if overlay:
+        raise GateError("overlaid measurements cannot replace the current matrix")
+    if simulated:
+        raise GateError("dry-run measurements cannot replace the current matrix")
+    target = repo / MATRIX_JSON
+    target.parent.mkdir(parents=True, exist_ok=True)
+    # Keep the advisory lock out of the tracked planning tree.
+    lockdir = repo / "build"
+    lockdir.mkdir(exist_ok=True)
+    with (lockdir / "v0-matrix-publish.lock").open("a") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        current_commit, _ = resolve(repo, "HEAD")
+        if doc.get("commit") != current_commit:
+            raise GateError("measurement source is not this checkout's HEAD; "
+                            "the immutable report remains available")
+        if target.exists():
+            previous = json.loads(target.read_text())
+            if previous.get("generated_at", "") > doc.get("generated_at", ""):
+                raise GateError("a newer matrix is already selected")
+        name = None
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", dir=target.parent,
+                                             prefix=".v0-matrix-", delete=False) as out:
+                name = out.name
+                json.dump(doc, out, indent=2)
+                out.write("\n")
+                out.flush()
+                os.fsync(out.fileno())
+            os.replace(name, target)
+        finally:
+            if name is not None and os.path.exists(name):
+                os.unlink(name)
+
+
 # --------------------------------------------------------------------------
 
 
@@ -3626,6 +3703,9 @@ def main(argv=None) -> int:
     parser.add_argument("--jobs", type=int, default=6)
     parser.add_argument("--evidence", default=None)
     parser.add_argument("--json", default=None, help="where the matrix JSON is written")
+    parser.add_argument("--publish-current", action="store_true",
+                        help="explicitly select this non-overlaid HEAD measurement "
+                             "as planning/v0-matrix.json")
     parser.add_argument("--keep", action="store_true",
                         help="leave the deploy tree on the host")
     parser.add_argument("--dry-run", action="store_true",
@@ -3668,10 +3748,17 @@ def main(argv=None) -> int:
     else:
         host = SshHost(args.host)
     overlays = [Path(one).resolve() for one in args.overlay]
-    date = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
+    run_directory = new_run_directory(repo, rev)
     target = Path(args.evidence) if args.evidence else (
-        repo / "planning/evidence/v0-matrix-{}.md".format(date))
-    json_target = Path(args.json) if args.json else repo / MATRIX_JSON
+        run_directory / "report.md")
+    json_target = Path(args.json) if args.json else run_directory / "matrix.json"
+    # Custom outputs must not defeat the immutable-history rule or bypass the
+    # explicit current-source publication check.
+    for output in (target, json_target):
+        if output.resolve() == (repo / MATRIX_JSON).resolve() or output.exists():
+            parser.error("output already exists or is the current matrix: {}".format(output))
+    if target.resolve() == json_target.resolve():
+        parser.error("--evidence and --json must name different files")
 
     gate = V0Matrix(host, repo, commit, rev, args.tree,
                     overlay=overlays[0] if overlays else None,
@@ -3685,6 +3772,10 @@ def main(argv=None) -> int:
         gate._evidence_name = str(target.resolve().relative_to(repo))
     except ValueError:
         gate._evidence_name = str(target)
+    try:
+        gate._matrix_name = str(json_target.resolve().relative_to(repo))
+    except ValueError:
+        gate._matrix_name = str(json_target)
 
     started = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     clock = time.monotonic()
@@ -3705,14 +3796,22 @@ def main(argv=None) -> int:
             gate.limitation(None, "cleanup did not finish: {}: {}".format(
                 type(error).__name__, error))
     elapsed = time.monotonic() - clock
-    gate.evidence(target, started, elapsed)
+    rendered = run_directory / ".rendered-report.md"
+    gate.evidence(rendered, started, elapsed)
+    write_report_once(target, rendered.read_text())
+    rendered.unlink()
     doc = gate.doc
-    json_target.parent.mkdir(parents=True, exist_ok=True)
-    json_target.write_text(json.dumps(doc, indent=2, sort_keys=False) + "\n")
+    write_report_once(json_target, json.dumps(doc, indent=2, sort_keys=False) + "\n")
     problems = validate(doc)
     for problem in problems:
         print("ERROR: the matrix it just wrote is not consistent: {}".format(problem),
               file=sys.stderr)
+    if args.publish_current and not problems:
+        try:
+            publish_current(repo, doc, overlay=bool(overlays), simulated=args.dry_run)
+        except GateError as error:
+            problems.append(str(error))
+            print("ERROR: matrix publication: {}".format(error), file=sys.stderr)
 
     summary = doc["summary"]
     not_run = summary[NOT_EXERCISED] + summary[NOT_BUILT]
