@@ -239,6 +239,69 @@
                      (append (fn-nntp-string-octets "438 <one@example>")
                              (list 13 10))))
 
+; A contextual reader must be re-pinned before the byte fold starts, too.
+; Connection A opens before connection B durably posts the article.  One read
+; then authenticates A and immediately issues CHECK in the same socket chunk.
+; The promotion therefore consumes the node installed at the start of this
+; read, rather than A's accept-time snapshot.
+(defconst *own-auth-principal* (make-list 32 :initial-element 7))
+(defconst *own-auth-salt* (make-list 16 :initial-element 3))
+(defconst *own-auth-digest*
+  '(60 237 250 71 154 204 168 180 72 224 241 93 232 185 72 59
+    73 5 240 237 54 116 175 93 127 219 39 238 113 83 63 194))
+(defconst *own-auth-cred*
+  (fn-auth-make-cred
+   (fn-nntp-string-octets "reader") *own-auth-principal*
+   (fn-authsec-verifier *own-auth-salt* *own-auth-digest*) t))
+(defconst *own-auth-config*
+  (fn-auth-make-config t nil t (list *own-auth-cred*)))
+(defconst *own-principal-peer-record*
+  (fn-cfg-peer-make
+   "principal-peer" "principal.example" '(:nntp "127.0.0.1" 1119)
+   '("fn.*" 32768 16) nil
+   (list :principal (fn-digest-hex *own-auth-principal*))))
+(defconst *own-principal-peer-cfg*
+  (fn-config-replay
+   0 510
+   (list (fn-cfg-record-make
+          0 0 1
+          (append *fn-cfg-default-change*
+                  (list (fn-cfg-set-peer-delta *own-principal-peer-record*)))
+          *fn-cfg-default-stamp*))))
+(assert-event (fn-auth-configp *own-auth-config*))
+(assert-event (fn-cfgp *own-principal-peer-cfg*))
+
+(defconst *own-principal-open*
+  (fn-own-open *own-0* *own-auth-config*))
+(defconst *own-principal-a*
+  (fn-own-reader-context (cdr *own-principal-open*) 0
+                         *own-principal-peer-cfg*))
+(defconst *own-principal-b* (fn-own-step *own-principal-a* '(:open)))
+(defconst *own-principal-begun* (fn-own-step *own-principal-b* '(:begin 1)))
+(defconst *own-principal-posted*
+  (fn-own-run *own-principal-begun*
+              (own-post-events (own-record 0 0 "<one@example>"))))
+(defconst *own-auth-check-chunk*
+  (append (fn-nntp-string-octets "AUTHINFO USER reader") '(13 10)
+          (fn-nntp-string-octets "AUTHINFO PASS correct-horse") '(13 10)
+          (fn-nntp-string-octets "CHECK <one@example>") '(13 10)))
+(assert-event
+ (let ((result (fn-own-read *own-principal-posted* 0
+                            *own-auth-check-chunk*)))
+   (equal (fn-served-reply-octets (car result))
+          (append (fn-nntp-string-octets "381 password required") '(13 10)
+                  (fn-nntp-string-octets "281 authentication accepted") '(13 10)
+                  (fn-nntp-string-octets "438 <one@example>") '(13 10)))))
+(assert-event
+ (let ((result (fn-own-read *own-principal-posted* 0
+                            *own-auth-check-chunk*)))
+   (and (equal (fn-peer-session-peer
+                (fn-auth-session-base
+                 (fn-own-conn-session
+                  (fn-own-find-conn 0 (fn-own-conns (cdr result))))))
+               "principal-peer")
+        (fn-own-relation (cdr result)))))
+
 (defconst *own-reply-a* (car (fn-own-read-step *own-c* 0 *own-group-command*)))
 (defconst *own-reply-c* (car (fn-own-read-step *own-c* 2 *own-group-command*)))
 (assert-event (not (equal *own-reply-a* *own-reply-c*)))

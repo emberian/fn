@@ -136,7 +136,7 @@
   (fn-cfg-peer-make
    "principal-peer" "principal.example.invalid" '(:nntp "127.0.0.1" 119)
    '("fn.*" 32768 16) nil
-   (list :principal (coerce (fn-id-hex-octets *au-principal*) 'string))))
+   (list :principal (fn-digest-hex *au-principal*))))
 (defconst *au-principal-peer-cfg*
   (fn-config-replay
    0 510
@@ -314,7 +314,7 @@
   (fn-cfg-peer-make
    "principal-peer-2" "principal2.example.invalid" '(:nntp "127.0.0.1" 120)
    '("fn.*" 32768 16) nil
-   (list :principal (coerce (fn-id-hex-octets *au-principal*) 'string))))
+   (list :principal (fn-digest-hex *au-principal*))))
 (defconst *au-principal-duplicate-cfg*
   (fn-config-replay
    0 510
