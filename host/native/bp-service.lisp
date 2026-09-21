@@ -128,30 +128,36 @@
                                       (sb-posix:getpid) (fnn-random-hex 12)))))
     (unless frame
       (fnn-fault "bp-service: ACL2 refused its pending lifecycle record"))
-    (handler-case
-        (progn
-          (fnn-write-staged stage frame)
-          ;; Link is no-replace.  Token reuse cannot overwrite contrary bytes.
-          (fnn-link stage final)
-          (when (string= (or (sb-ext:posix-getenv
-                              "FN_BP_SERVICE_TEST_FAIL_FIRST_DIR_BARRIER") "")
-                         "1")
-            (fnn-os-fail sb-posix:eio dir))
-          (fnn-fsync-dir dir)
-          (fnn-unlink stage)
-          (when (string= (or (sb-ext:posix-getenv
-                              "FN_BP_SERVICE_TEST_FAIL_SECOND_DIR_BARRIER") "")
-                         "1")
-            (fnn-os-fail sb-posix:eio dir))
-          (fnn-fsync-dir dir)
-          :durable)
-      (fnn-os-error ()
-        (ignore-errors (fnn-unlink stage))
-        ;; A visible byte-identical final name is still only evidence that the
-        ;; link happened.  It cannot turn a failed publication or cleanup
-        ;; barrier into a durable result.  Recovery repeats the directory
-        ;; barrier before it consumes any visible final records.
-        :uncertain))))
+    (let* ((final-absent (if (fnn-lstat final) nil t))
+           (operation
+             (fnn-core 'fn-bpn-host-lifecycle-publication-authorize
+                       (fnn-bps-state service) token record
+                       (if (fnn-bps-lock-fd service) t nil)
+                       final-absent)))
+      (unless (eq (fnn-core
+                   'fn-bpn-host-lifecycle-publication-operationp operation) t)
+        (if final-absent
+            (fnn-fault "bp-service: ACL2 rejected pending publication echo")
+          (fnn-indeterminate
+           "bp-service: canonical next lifecycle name is already occupied")))
+      (unless (and
+               (equal token
+                      (fnn-core
+                       'fn-bpn-host-lifecycle-publication-operation-token
+                       operation))
+               (equal record
+                      (fnn-core
+                       'fn-bpn-host-lifecycle-publication-operation-record
+                       operation)))
+        (fnn-fault "bp-service: ACL2 publication operation changed its echo"))
+      ; The authority directory barrier makes FINAL durable.  Stage unlink and
+      ; its same-directory cleanup barrier are best effort: bounded recovery
+      ; retains hidden stages explicitly, so their survival cannot weaken the
+      ; durable lifecycle record or require an uncertain application result.
+      (fnn-immutable-publish-effect
+       (fnn-core
+        'fn-bpn-host-lifecycle-publication-operation-publication operation)
+       stage final dir frame :cleanup-directory dir))))
 
 (defun fnn-bps-route-host (route) (fnn-octets-string (fnn-octets (second route))))
 (defun fnn-bps-route-port (route) (third route))

@@ -108,28 +108,45 @@ class NativeBpServiceTests(unittest.TestCase):
             owner.wait(timeout=10)
             owner.stdout.close()
 
-    def test_visible_final_never_converts_failed_barrier_to_durable(self):
-        for variable in (
-            "FN_BP_SERVICE_TEST_FAIL_FIRST_DIR_BARRIER",
-            "FN_BP_SERVICE_TEST_FAIL_SECOND_DIR_BARRIER",
-        ):
-            with self.subTest(variable=variable):
-                shutil.rmtree(self.journal, ignore_errors=True)
-                injected_env = dict(self.env)
-                injected_env[variable] = "1"
-                cut = self.run_outage(env=injected_env)
-                self.assertEqual(cut.returncode, 3, cut.stderr)
-                self.assertIn("BP queue uncertain reason=persistence", cut.stdout)
-                self.assertNotIn("BP queue accepted", cut.stdout)
-                self.assertEqual(
-                    len(self.records()), 1,
-                    "the uncertain persist must fence before attempting/forwarding records",
-                )
+    def test_visible_final_never_converts_failed_authority_barrier_to_durable(self):
+        injected_env = dict(self.env)
+        injected_env["FN_IMMUTABLE_PUBLISH_TEST_FAIL"] = "namespace"
+        cut = self.run_outage(env=injected_env)
+        self.assertEqual(cut.returncode, 3, cut.stderr)
+        self.assertIn("BP queue uncertain reason=persistence", cut.stdout)
+        self.assertNotIn("BP queue accepted", cut.stdout)
+        self.assertEqual(
+            len(self.records()), 1,
+            "the uncertain persist must fence before attempting/forwarding records",
+        )
 
-                recovered = self.resume()
-                self.assertEqual(recovered.returncode, 3, recovered.stderr)
-                self.assertIn("BP queue recovered jobs=1", recovered.stdout)
-                self.assertNotIn("restart fenced", recovered.stderr)
+        recovered = self.resume()
+        self.assertEqual(recovered.returncode, 3, recovered.stderr)
+        self.assertIn("BP queue recovered jobs=1", recovered.stdout)
+        self.assertNotIn("restart fenced", recovered.stderr)
+
+    def test_cleanup_barrier_failure_does_not_retract_durable_record(self):
+        injected_env = dict(self.env)
+        injected_env["FN_IMMUTABLE_PUBLISH_TEST_FAIL"] = "cleanup"
+        cut = self.run_outage(env=injected_env)
+        self.assertEqual(cut.returncode, 3, cut.stderr)
+        self.assertIn("BP queue accepted", cut.stdout)
+        self.assertNotIn("BP queue uncertain reason=persistence", cut.stdout)
+        self.assertEqual(len(self.records()), 3)
+
+        recovered = self.resume()
+        self.assertEqual(recovered.returncode, 3, recovered.stderr)
+        self.assertIn("BP queue recovered jobs=1", recovered.stdout)
+        self.assertNotIn("restart fenced", recovered.stderr)
+
+    def test_prelink_publication_failure_is_refused(self):
+        injected_env = dict(self.env)
+        injected_env["FN_IMMUTABLE_PUBLISH_TEST_FAIL"] = "stage"
+        refused = self.run_outage(env=injected_env)
+        self.assertEqual(refused.returncode, 1, refused.stderr)
+        self.assertIn("BP queue refused reason=persistence-refused", refused.stdout)
+        self.assertNotIn("BP queue uncertain", refused.stdout)
+        self.assertEqual(len(self.records()), 0)
 
     def test_send_core_fault_remains_exit_four(self):
         fault_env = dict(self.env)

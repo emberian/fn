@@ -92,5 +92,11 @@ executor does not assert the premise itself and returns fn-jpub's classification
         ; prevents clean runs from accumulating names after a process death.
         (ignore-errors
           (fnn-unlink stage)
-          (when cleanup-directory (fnn-fsync-dir cleanup-directory)))))
+          (when cleanup-directory
+            ; Cleanup is explicitly post-authority.  Its fault hook proves
+            ; consumers do not turn a durable final-name barrier into an
+            ; uncertain publication merely because stage removal was not
+            ; durably observed.
+            (fnn-immutable-test-fault "cleanup" cleanup-directory)
+            (fnn-fsync-dir cleanup-directory)))))
     (fnn-core 'fn-jpub-host-outcome publication)))
