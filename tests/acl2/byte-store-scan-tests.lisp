@@ -1,21 +1,14 @@
 ; Teeth for K1 to K4 (crash model v2, section 3.3).
 ;
-; WHAT IS HERE AND WHAT IS NOT, stated before the first form because the
-; gap is a property of the model and not an omission.  A positive ground
-; witness for K1 -- a concrete related store, a concrete crash image of it,
-; and (fn-bs-scan-okp (fn-bs-scan-store image)) asserted TRUE -- is not
-; available in this tree, and no rearrangement of this book produces one.
-; An assert-event EVALUATES, and three of the scan's tests are calls of
-; CONSTRAINED functions with nothing to evaluate: fn-bs-config-okp and
-; fn-bs-frontier-decode (the config and frontier codecs, which
-; tools/run_store.py owns today and packet P4 moves into ACL2 as fn-frame
-; frames) and fn-bs-txn-name (the host's "{:020d}.txn", its own packet).
-; fn-bs-store-relation is unevaluable for the same reason at its config
-; clause.  So the positive direction of K1 and K2 is carried by the
-; theorems and by the composed ground runs of
-; tests/acl2/byte-store-tests.lisp, and what this book adds is one concrete
-; violating value per hypothesis -- for which the scan's FIRST test, the
-; config entry, is reached before any constrained function and evaluates.
+; This book retains the original K1/K2 negative witnesses. The concrete
+; metadata attachments now supply a reachable positive witness in
+; tests/acl2/byte-store-relation-tests.lisp: a complete first allocation
+; reaches a related rename window, and legal old/new crash choices produce
+; distinct, successfully scanned frontier images. A local constructor lemma
+; connects its executable choice checks to the existential crash predicate.
+; Nonempty-history executable witnesses still need the transaction-name
+; attachment. The tests below use the early config-entry check and therefore
+; do not require concrete codec attachments.
 ;
 ; The two hypotheses are (fn-bs-store-relation bs ks) and
 ; (fn-bs-crash-imagep bs image).  Each tooth below drops exactly one.
