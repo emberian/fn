@@ -1,0 +1,74 @@
+test_durable_feed_requeues_after_source_process_death (tests.test_native_peering.NativePeeringTests.test_durable_feed_requeues_after_source_process_death) ... FAIL
+test_public_native_nodes_exchange_both_ways_and_suppress_duplicate (tests.test_native_peering.NativePeeringTests.test_public_native_nodes_exchange_both_ways_and_suppress_duplicate) ... FAIL
+
+======================================================================
+FAIL: test_durable_feed_requeues_after_source_process_death (tests.test_native_peering.NativePeeringTests.test_durable_feed_requeues_after_source_process_death)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ember/fn-gates/freeze-f7190d69/tests/test_native_peering.py", line 228, in test_durable_feed_requeues_after_source_process_death
+    self.configure_peer(a, b)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/ember/fn-gates/freeze-f7190d69/tests/test_native_peering.py", line 100, in configure_peer
+    self.command([
+    ~~~~~~~~~~~~^^
+        IMAGE, "--fn", "operator", source["config"], "peer", "add",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        "127.0.0.1", "true",
+        ^^^^^^^^^^^^^^^^^^^^
+    ])
+    ^^
+  File "/home/ember/fn-gates/freeze-f7190d69/tests/test_native_peering.py", line 78, in command
+    self.assertEqual(result.returncode, expected,
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     "command {} returned {}\nstdout={}\nstderr={}".format(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                         arguments, result.returncode,
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                         result.stdout.decode("utf-8", "replace"),
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                         result.stderr.decode("utf-8", "replace")))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 5 != 0 : command [PosixPath('/home/ember/fn-gates/freeze-f7190d69/build/fn-host'), '--fn', 'operator', PosixPath('/tmp/fn-native-peering-86hdwpdg/restart-a/fn.toml'), 'peer', 'add', 'restart-b', 'restart-b.example.invalid', '127.0.0.1', '36463', 'fn.*', 'fn.*', '127.0.0.1', 'true'] returned 5
+stdout=
+stderr=usage operator action requires native owner callback
+
+
+======================================================================
+FAIL: test_public_native_nodes_exchange_both_ways_and_suppress_duplicate (tests.test_native_peering.NativePeeringTests.test_public_native_nodes_exchange_both_ways_and_suppress_duplicate)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ember/fn-gates/freeze-f7190d69/tests/test_native_peering.py", line 203, in test_public_native_nodes_exchange_both_ways_and_suppress_duplicate
+    self.configure_peer(a, b)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/ember/fn-gates/freeze-f7190d69/tests/test_native_peering.py", line 100, in configure_peer
+    self.command([
+    ~~~~~~~~~~~~^^
+        IMAGE, "--fn", "operator", source["config"], "peer", "add",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        "127.0.0.1", "true",
+        ^^^^^^^^^^^^^^^^^^^^
+    ])
+    ^^
+  File "/home/ember/fn-gates/freeze-f7190d69/tests/test_native_peering.py", line 78, in command
+    self.assertEqual(result.returncode, expected,
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     "command {} returned {}\nstdout={}\nstderr={}".format(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                         arguments, result.returncode,
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                         result.stdout.decode("utf-8", "replace"),
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                         result.stderr.decode("utf-8", "replace")))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 5 != 0 : command [PosixPath('/home/ember/fn-gates/freeze-f7190d69/build/fn-host'), '--fn', 'operator', PosixPath('/tmp/fn-native-peering-k_hcqq3e/a/fn.toml'), 'peer', 'add', 'b', 'b.example.invalid', '127.0.0.1', '42937', 'fn.*', 'fn.*', '127.0.0.1', 'true'] returned 5
+stdout=
+stderr=usage operator action requires native owner callback
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.687s
+
+FAILED (failures=2)
+native-peering launcher-sha256=6855eba7d15424b1db8f039d1dff777f3bb675eb014662f7394f04ddb2818dd0 core-sha256=3364a22c75699e7d55161ab06608120e1831a5d0ccc8d4ef4222baa495e7e5ad declared-source=8c231978
