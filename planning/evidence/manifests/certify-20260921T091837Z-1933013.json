@@ -1,0 +1,341 @@
+{
+  "acl2_executable": "/tank/fn/acl2-8.7/saved_acl2",
+  "acl2_executable_sha256": "64030dda0b03bbb6cf50984889f5ce1e2ba867b6ce3c9a65403afc44f9b4fdb5",
+  "acl2_exit_codes": {
+    "books/cbor": 0,
+    "books/cbor-invariants": 0,
+    "books/defrecord": 0,
+    "books/feed-filename": 0,
+    "books/frame": 0,
+    "books/frame-fields": 0,
+    "books/frame-invariants": 0,
+    "books/frame-journal": 0,
+    "books/frame-octets": 0,
+    "books/identity": 0,
+    "books/identity-invariants": 0,
+    "books/records": 0,
+    "books/wildmat": 0,
+    "tests/acl2/feed-filename-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/acl2/certify-20260921T091837Z-1933013",
+  "book_failures": {},
+  "book_results": {
+    "books/cbor": "passed",
+    "books/cbor-invariants": "passed",
+    "books/defrecord": "passed",
+    "books/feed-filename": "passed",
+    "books/frame": "passed",
+    "books/frame-fields": "passed",
+    "books/frame-invariants": "passed",
+    "books/frame-journal": "passed",
+    "books/frame-octets": "passed",
+    "books/identity": "passed",
+    "books/identity-invariants": "passed",
+    "books/records": "passed",
+    "books/wildmat": "passed",
+    "tests/acl2/feed-filename-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/cbor": 0.161,
+    "books/cbor-invariants": 0.674,
+    "books/defrecord": 0.097,
+    "books/feed-filename": 0.725,
+    "books/frame": 51.085,
+    "books/frame-fields": 1.584,
+    "books/frame-invariants": 8.34,
+    "books/frame-journal": 27.01,
+    "books/frame-octets": 0.341,
+    "books/identity": 0.331,
+    "books/identity-invariants": 12.306,
+    "books/records": 3.927,
+    "books/wildmat": 2.052,
+    "tests/acl2/feed-filename-tests": 0.62
+  },
+  "cert_cache": {
+    "already_cached": 14,
+    "directory": "/tank/fn/certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/defrecord",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/cbor",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/cbor-invariants",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/frame-octets",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/wildmat",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/frame-fields",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/records",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/frame-journal",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/frame",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/identity",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/frame-invariants",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/identity-invariants",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/feed-filename",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/feed-filename-tests",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 14,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/cbor": "a1faab7f82ff1798c70f2563a8a97f24765e28d4eaaf158642a54d8566a8c2df",
+    "books/cbor-invariants": "ed904a59934ded38010b080b1c9e7d9cc92be3c32f4f56462a4cfacb64384f1c",
+    "books/defrecord": "b50f3602efd0ed5761f83aae16181d24476775d3cd7a2d4c99c440c8d0041d2a",
+    "books/feed-filename": "3be58c57d17a88a4cdd124e9f16bc367eceed0e0511ec67f063de8a0ee18fc3d",
+    "books/frame": "28ef82131baaa9beb115a0a975ec2b5db238bc928ccc7d425161076910358896",
+    "books/frame-fields": "8407020ca1c60096c5f10fed072a8bfb9104a89cf182e903d7427b2f677ecbf3",
+    "books/frame-invariants": "db0ea79a11efd4dfd5b174c9e9746e2417227e82bdad41cceb658236efa46e13",
+    "books/frame-journal": "3cd79711552cf19111c70fb819195d126f7ac94c7ccddcd669a7f6a0ae79eae9",
+    "books/frame-octets": "8ec75491bf8c76210c479104580e27e0b5dfcea38f37101dc1b277a97b8368da",
+    "books/identity": "bfc380a2680a85217f29ee155f00eec1be342c7687a8b2063f850f716e78815b",
+    "books/identity-invariants": "c3245d9a9769370704323db7e89743c63900ae74d6bc2d74ed25be9a0c8d7382",
+    "books/records": "b9c00380a0368fed6596ac027301915262cd4a20a2adb72b69400a1356078d8f",
+    "books/wildmat": "96db3e59f34688c0050342e2037dd92883b8a06df3347cdf766f39b2b44da39e",
+    "tests/acl2/feed-filename-tests": "bd7f1bb07ff63ecdb0590dd3629f6e9b5668f5f91d670adf7c766f9fc05b2a57"
+  },
+  "certify_wall_seconds": 103.948,
+  "closure": true,
+  "command": [
+    "/tank/fn/acl2-8.7/saved_acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/cbor": "eb189e8fb7b9491f0ce9713da775c594199d0f172ee81ad9fafbc81d3a1a8307",
+    "books/cbor-invariants": "56a548dca61f9fbc5f949630dd0a4824558379c936ca5dc4bbdf00aac3c2399d",
+    "books/defrecord": "2cf18290a1ff5c7fa096a16aec028a53167cd462b67b8de222757ca17600878a",
+    "books/feed-filename": "b82f8d04030e59686016bfd8d06c1c966b6e0a49b3144f8069c774e2a4006be3",
+    "books/frame": "46d3818ec32dc390d05c425e4692e110f19c98b63b995160787ee460f94858fd",
+    "books/frame-fields": "c95fbd2fc8125ce7b1c08bc33996c32da0137656b5cb0961dacb715738057cc8",
+    "books/frame-invariants": "a59efc6f2588db03246eeb162b9dcb13853149d43aa051d693ceddac3c50f553",
+    "books/frame-journal": "9391937fefbf5c029d2fe2d909cd8713108722300d0b83b9a4af1f759b6fb82d",
+    "books/frame-octets": "18faa1f85bb3a6167dc2b22edb5b0ede46be367824a502f2cb605a343ab32b85",
+    "books/identity": "46b77b09e38b65317e8f71099caa11d1059823f63351514ae8fe4f4e591619c4",
+    "books/identity-invariants": "87c3378cd624b8df01ad644522742ac812ac7b433f643f791de89dbfcec27ce6",
+    "books/records": "3cf41c7de75b0ae06406e242d9ba1bf8d4ce316877034c3856e7d0430a5ed4fd",
+    "books/wildmat": "7044e640ad17648bbe10163110e28914e3f464686160bedc5deedaed9293d49f",
+    "tests/acl2/feed-filename-tests": "2063d53a21ea90261502ad1ba091c3c72742c600e96c00bf07ddfdb88f711a25"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b 949ba7ded144",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b bf0ee880713d",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b 37a48d829c89",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b a5cc2c23e528",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b f2f38a6e47ea",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b 40edeea7aa8f",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b c908c6685496",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b e5da9c96aa92",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b ca82a33bc26d",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b 771478088edd",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b d45992d8befd",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b 66477b790103",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b 5f5a6123a5f0"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-21T09:20:21+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "hbox",
+  "jobs": 4,
+  "jobs_effective": 4,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b 949ba7ded144",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b bf0ee880713d",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b 37a48d829c89",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b a5cc2c23e528",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b f2f38a6e47ea",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b 40edeea7aa8f",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b c908c6685496",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b e5da9c96aa92",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b ca82a33bc26d",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b 771478088edd",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b d45992d8befd",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b 66477b790103",
+    "FN_CERTIFY_SUCCESS 481c4bd56a740e1af5590767f294cc4b 5f5a6123a5f0"
+  ],
+  "platform": "Linux-6.11.0-29-generic-x86_64-with-glibc2.40",
+  "python": "3.12.7",
+  "reader_sha256": "8eae3751596a72bd0c404afaf643b5d28331f5b7017670dcfee53022f4b121f4",
+  "requested_before_filter": [
+    "books/feed-filename",
+    "tests/acl2/feed-filename-tests"
+  ],
+  "requested_books": [
+    "books/cbor",
+    "books/cbor-invariants",
+    "books/wildmat",
+    "books/frame-octets",
+    "books/frame-fields",
+    "books/frame-journal",
+    "books/frame",
+    "books/frame-invariants",
+    "books/identity",
+    "books/identity-invariants",
+    "books/defrecord",
+    "books/records",
+    "books/feed-filename",
+    "tests/acl2/feed-filename-tests"
+  ],
+  "run_id": "certify-20260921T091837Z-1933013",
+  "runner_sha256": "3c39d51224f9125782c30bc81c30ad6a0878283adba8215df5bd50a4eb36ba35",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/cbor": 0.0,
+    "books/cbor-invariants": 0.0,
+    "books/defrecord": 0.0,
+    "books/feed-filename": 0.0,
+    "books/frame": 0.0,
+    "books/frame-fields": 0.0,
+    "books/frame-invariants": 0.0,
+    "books/frame-journal": 0.0,
+    "books/frame-octets": 0.0,
+    "books/identity": 0.0,
+    "books/identity-invariants": 0.0,
+    "books/records": 0.0,
+    "books/wildmat": 0.0,
+    "tests/acl2/feed-filename-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/feed-filename.lisp": "43fbd566ac3ec4b3cd6dbf825959f5015de317ad4ead233742dcad9d74c4d43f",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "b95fa1730fe0074f92bdd45cc136f7b6fbb8f069c2f35ec25ceea067cf6d60ea",
+    "books/frame-journal.lisp": "a67624c2c8390faec404253353765075e7a66f707c6ef3341ea8ab4a99a3c1b8",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/identity-invariants.lisp": "eed5f37029e66221612d79a52e156a5fe222c4154bc2d65298d5bfefd6c1f64b",
+    "books/identity.lisp": "b34e54f718e4f45e512491d9020296e198f189a2fc856c2651d4ae45f1294ade",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/feed-filename-tests.lisp": "14544f89b1836bd433b199ace52a53d849609a1de6332b47bb7f31b08e585460"
+  },
+  "source_digests_sha256_after": {
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/feed-filename.lisp": "43fbd566ac3ec4b3cd6dbf825959f5015de317ad4ead233742dcad9d74c4d43f",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "b95fa1730fe0074f92bdd45cc136f7b6fbb8f069c2f35ec25ceea067cf6d60ea",
+    "books/frame-journal.lisp": "a67624c2c8390faec404253353765075e7a66f707c6ef3341ea8ab4a99a3c1b8",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/identity-invariants.lisp": "eed5f37029e66221612d79a52e156a5fe222c4154bc2d65298d5bfefd6c1f64b",
+    "books/identity.lisp": "b34e54f718e4f45e512491d9020296e198f189a2fc856c2651d4ae45f1294ade",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/feed-filename-tests.lisp": "14544f89b1836bd433b199ace52a53d849609a1de6332b47bb7f31b08e585460"
+  },
+  "start_order": [
+    "books/defrecord",
+    "books/cbor",
+    "books/wildmat",
+    "books/cbor-invariants",
+    "books/records",
+    "books/frame-octets",
+    "books/frame-fields",
+    "books/frame-journal",
+    "books/frame",
+    "books/identity",
+    "books/frame-invariants",
+    "books/identity-invariants",
+    "books/feed-filename",
+    "tests/acl2/feed-filename-tests"
+  ],
+  "started_utc": "2026-09-21T09:18:37+00:00",
+  "status": "passed",
+  "timeout_seconds": 1800,
+  "tree": "/tank/fn/lanes/w14-fnfd-testfix"
+}

@@ -12,9 +12,12 @@ resolution persistence, safe FNFD names and a total observation budget,
 cross-session BP receive evidence, application journals, checkpoint/anchor
 persistence, and selected initializer retry paths. The standalone store wrapper
 calls a proved prepare refinement that omits per-prepare history replay;
-shared-owner adoption is still being implemented. BP lifecycle append uses an
+the shared owner now calls the corresponding proved owner projection. BP lifecycle append uses an
 ACL2-owned namespace and carried frontier instead of rescanning retained files.
 The listener's admitted loopback addresses now come from an ACL2 projection.
+Native AUTHINFO loads the bounded ACL2 credential profile before bind; its
+scoped login and reader-versus-peer runtime evidence is archived. BP lifecycle
+publication now uses the shared immutable publication machine.
 
 The frozen combined source is `03eb3ba3`, with retained persvati job
 `run-20260921T095031Z-5cf4`. Certification, both same-origin image builds, scoped runtime suites and the
@@ -29,16 +32,16 @@ remain recorded and are not reclassified by component certificates.
 [Active lane assignments](swarm-cycles.md#current-staffing-and-integration-checkpoint)
 own these complete paths and their source-pinned evidence:
 
-- Native local control/posting, authentication, outbound NNTP feed I/O and
+- Native local control/posting, credential administration, outbound NNTP feed I/O and
   group/capacity administration, through the existing ACL2 policy and shared
   serialized owner. Control and BP submission share completion machinery;
   lifecycle hooks and orderly SIGTERM must compose without deadlocks.
 - Native BP request intent through article acceptance, durable receipt decision
   and restart/lost-reply idempotence; carrier ACKs are not application acceptance.
-- Actual BP lifecycle invariant/effects, shared immutable publication, checkpoint
-  namespace/mismatch/fencing and initializer syscall/model correspondence.
-- Shared-owner adoption of the prepare correspondence, followed by measured
-  native service cost. Standalone measurements do not qualify concurrent service.
+- Actual BP lifecycle invariant/effects, transaction/configuration namespace
+  bounds, and wider syscall/model correspondence.
+- Measured native shared-owner service cost after prepare correspondence adoption.
+  Standalone measurements do not qualify concurrent service.
 
 Root integrates coherent packets and uses both hbox and persvati with owned
 closures and a frozen combined batch. Terra handles bounded implementation,

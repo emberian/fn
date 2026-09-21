@@ -29,14 +29,14 @@ operator coverage and the selected two-peer release gate are complete.
 | `owner-convergence` / Sol | Native connection-local fault isolation without weakening shared uncertainty fencing (HST-005). Frozen `03eb3ba3` certification/build/runtime gate is archived; control lane owns orderly SIGTERM. |
 | `submission-path` / Sol | Native BP inbound request intent, actual owner acceptance, durable receipt decision and lost-receipt/restart idempotence. |
 | `bp-fidelity-convergence` / Sol | Native local control/submission through the serialized owner, bounded framing and ambiguous-reply outcomes; shared lifecycle hooks and orderly SIGTERM. Coordinate the same completion helper with BP application submission. |
-| `artifact-set` / Sol | Consolidate actual BP lifecycle immutable publication onto the shared ACL2 phase interpreter. Namespace recovery and no-rescan admission are integrated. |
+| `artifact-set` / Sol | Refresh the consolidation audit against landed callers; BP lifecycle now uses the shared ACL2 publication interpreter. |
 | `native-storage-codec` / Sol | Native STARTTLS using a mature OpenSSL backend and ACL2-owned consumed-prefix handling; coordinate authentication and owner lifecycle. Checkpoint namespace/mismatch/fencing packet is integrated. |
 | `native-config-impl` / Terra | Native group/capacity administration through ACL2 plans and the shared durable configuration path. Safe FNFD codec and total traversal budget are integrated. |
 | `storage-codecs` / Terra | Native outbound NNTP feed socket/timer interpreter over ACL2 effects, with durable FNFD records before transmission and actual two-node tests. |
 | `storage-initializer` / Terra | Consolidate transaction namespace recovery and bound collection before allocation. Initializer EEXIST/retry and error-origin/effect-classifier corrections are integrated. |
-| `store-prepare-correspondence-sol` / Sol | Adopt fast prepare through the actual configured owner with an outer equality and maintained relation. Standalone wrapper, component certification/runtime and cost probe are integrated. |
+| `store-prepare-correspondence-sol` / Sol | Bounded native AUTHINFO source review. Actual configured-owner fast prepare, outer equality and scoped native runtime evidence are integrated. |
 | `wire-composition-sol` / Sol | Actual BP lifecycle step invariant, fenced-state behavior and application obligation confinement. Wire composition proof is integrated. |
-| `recover-user-direction` / Sol | Native authentication/configuration vertical slice over existing ACL2 policy; protected transport stays a real prerequisite, not a forged host observation. |
+| `recover-user-direction` / Sol | Native principal list/set-password using existing ACL2 verifier and shared replacement semantics. Receiver startup/login slice is integrated; protected transport remains separate. |
 | `integrated-runtime` / Terra | Native operator administration join with the configuration lane. Raw-load lint/preflight and fixed loopback projection are integrated; current endpoint runtime tests await a matching image. |
 
 Terra and Luna handle bounded implementation/mechanical work; Sol handles
