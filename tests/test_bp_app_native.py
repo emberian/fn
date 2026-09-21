@@ -123,6 +123,15 @@ class NativeBpApplicationTests(unittest.TestCase):
             bridge.close()
             store.close()
 
+    def recovered_provenance(self):
+        store, bridge, _records = run_bp_ingress.open_live_bp_store(
+            self.store, False)
+        try:
+            return bridge.prov_for_msgid(self.msgid)
+        finally:
+            bridge.close()
+            store.close()
+
     def test_lost_receipt_restart_replays_without_second_acceptance(self):
         receiver, port = self.start_receiver(pause=True)
         sender = self.start_sender(port)
@@ -186,13 +195,9 @@ class NativeBpApplicationTests(unittest.TestCase):
                                 self.msgid.decode("ascii"))
         self.assertEqual(inspected.returncode, 0, inspected.stderr.decode())
         self.assertEqual(inspected.stdout, self.article)
-        provenance = self.invoke(
-            "store", self.store, "inspect", self.msgid.decode("ascii"),
-            "--provenance",
-        )
-        self.assertEqual(provenance.returncode, 0, provenance.stderr.decode())
-        self.assertIn(b"kind=bp", provenance.stdout.lower())
-        self.assertIn(b"node=dtn://receiver/", provenance.stdout)
+        provenance = self.recovered_provenance()
+        self.assertIn(b"bp-receive node=dtn://receiver/", provenance)
+        self.assertIn(b" label=native-policy", provenance)
 
         result_files = sorted(
             (self.sender_spool / "receive-evidence").glob("*.accepted")
