@@ -307,7 +307,7 @@
         (:fsync-file
          (fn-bs-links-only-fenced-aux
           (cdr steps) (cons (cons (nth 1 step) (nth 2 step)) fenced)))
-        ((:link :rename)
+        ((:link :link-eexist :rename)
          (and (member-equal (cons (nth 1 step) (nth 2 step)) fenced)
               (fn-bs-links-only-fenced-aux (cdr steps) fenced)))
         (otherwise (fn-bs-links-only-fenced-aux (cdr steps) fenced))))))
@@ -559,6 +559,13 @@
  (not (fn-bs-links-only-fencedp
        (list '(:create :staging "s") '(:write-all :staging "s" (1))
              '(:link :staging "s" :transactions "t") '(:fsync-file :staging "s")))))
+(assert-event
+ ;; An expected EEXIST still performs link(2); it needs the same staged-file
+ ;; fence as a successful immutable link.
+ (not (fn-bs-links-only-fencedp
+       (list '(:create :staging "s") '(:write-all :staging "s" (1))
+             '(:link-eexist :staging "s" :transactions "t")
+             '(:fsync-file :staging "s")))))
 (assert-event
  (not (fn-bs-never-overwrites-authorityp
        (list (list :write-all :root *fn-bs-frontier-name* '(1))))))
