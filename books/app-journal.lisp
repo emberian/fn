@@ -162,4 +162,3 @@
     fn-aj-kind-allowedp fn-aj-advance fn-aj-fits-p fn-aj-recover-record
     fn-aj-authorize fn-aj-operationp fn-aj-operation-name
     fn-aj-operation-publication fn-aj-operation-successor))
-
