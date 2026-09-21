@@ -127,16 +127,23 @@ Use explicit result events rather than an event called simply `commit`:
    abort consumes the reservation. Recovery returns ready without restoring it;
    another preparation requires a fresh durable allocator advance.
 
-   The standalone live store wrapper calls `fn-spc-prepare` for this step.
-   It retains the exact record, candidate-counter and pending-node binding
-   checks but does not replay `append(stable-records, [record])` per prepare.
-   `fn-spc-prepare-equals-specification-under-relation` equates it to
-   `fn-sn-prepare` under `fn-snt-relation`. Successful `fn-sn-open-observed`
-   establishes that relation by authoritative replay; `fn-spc-run` preserves
-   it through the modeled prepare, I/O, finish, refusal, known abort, keyring
-   and staging-sweep transitions. The relation is not a runtime flag or
-   per-command recognizer. Shared-owner adoption remains a separate obligation.
-
+   The standalone native store host calls `fn-spc-prepare` for step 9. The shared
+   native owner calls `fn-opc-prepare`, which lifts the same transition through
+   the live owner and configured-owner records. Both retain the exact record,
+   candidate-counter and pending-node binding checks but do not replay
+   `append(stable-records, [record])` on each prepare. The theorem
+   `fn-spc-prepare-equals-specification-under-relation` equates it to the original
+   `fn-sn-prepare` under `fn-snt-relation`.
+   `fn-opc-prepare-equals-owner-event-under-relation` equates the actual owner
+   subject to the former `fn-ocfg-step` prepare event under `fn-own-relation`.
+   Successful `fn-sn-open-observed`, `fn-own-start`, and `fn-own-configure`
+   establish that owner premise; `fn-opc-configured-step-preserves-owner-relation`
+   and `fn-opc-configured-run-preserves-owner-relation` carry it through the
+   configured owner's post-open events. The executable projection preserves the
+   live configuration, connection pins, staged configuration record, owner
+   allocation counter, pending submission and feed state. The relations are proof
+   state, not executable host flags or per-command recognizers. Recovery continues
+   to replay the complete observed history and does not use the projection.
 10. `record-write(result)` creates an exclusive staging file. Write/create/file
     barrier failures before a final-name operation are known aborts. After a
     successful file barrier the candidate is `data-durable`.

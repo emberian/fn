@@ -473,7 +473,7 @@
         "No deployed entry point, helper or recovery path requires Python or silently falls back to the Python owner; missing native features remain open.",
         "The native owner calls the same ACL2 semantic subjects or named justified refinements and preserves accepted, refused, uncertain and fault outcomes.",
         "The uncertainty fence is established before releasing the shared mutex; no connected or newly arriving client mutates the stopped owner, workers finish before shared resources close, and the process reports uncertainty distinctly from a core fault.",
-        "A live store prepare may omit repeated history replay only through a named equality to fn-sn-prepare whose invariant is established at observed open and preserved by every post-open mutator."
+        "A live store prepare may omit repeated history replay only through a named equality to fn-sn-prepare whose invariant is established at observed open and preserved by every post-open mutator; the shared owner additionally requires a named equality to its actual configured-owner event and exact preservation of owner/configuration context."
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",

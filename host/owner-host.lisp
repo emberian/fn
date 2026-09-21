@@ -1,7 +1,8 @@
 ; Experimental owner bridge: :program wrappers over the proved fn-own machine.
 ;
 ; tools/run_owner.py drives one owner per store through these entry points.
-; Every wrapper is one fn-own-step, one fn-own-read (the served port: one
+; Every wrapper is one proved owner transition: fn-own-step, fn-opc-prepare,
+; or fn-own-read (the served port: one
 ; socket read is one fn-served-step over the connection's pinned archive,
 ; fn-own-read-is-served-step-on-pinned-prefix) or one fn-own-open, over the
 ; global `fn-owner`; the host never rebuilds owner, store, wire or session
@@ -28,6 +29,7 @@
 ; exception in the serve loop ended the process for every connection.
 (include-book "../books/owner-config")
 (include-book "../books/owner-feed-port")
+(include-book "../books/owner-prepare-correspondence")
 ; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
 ; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
 ; ACL2 session does not load `host/store-host.lisp', so the one owner has to
@@ -300,7 +302,12 @@
                                          (fn-store-octets->string subject-octets)
                                          (fn-store-octets->string evidence-octets)
                                          charge))
-                 (state (fn-owner-step (list :store (list :prepare record)) state)))
+                 ; fn-opc-prepare is equal to the former fn-ocfg-step event
+                 ; under fn-own-relation, established by observed recovery
+                 ; and preserved by every live owner transition.
+                 (state (fn-owner-install-ocfg
+                         (fn-opc-prepare (fn-owner-ocfg state) record)
+                         state)))
             (if (equal (fn-owner-store state) s)
                 (value :refused)
               (value :prepared)))))))))
@@ -334,8 +341,7 @@
 
 (defun fn-owner-pending-octets (state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((record (fn-sf-record-candidate (fn-sn-files (fn-owner-store state)))))
-    (value (if record (fn-record-encode record) nil))))
+  (value (fn-opc-pending-octets (fn-owner-ocfg state))))
 
 ; Completion is the owner's (:complete) event: fn-sn-finish consumed once,
 ; its pair appended to the ledger once (fn-own-completion-consumed-once).

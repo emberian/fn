@@ -606,7 +606,9 @@
         "fn-cbor-decode-exact",
         "fn-record-encode",
         "fn-record-decode-exact",
-        "fn-sn-extended-history-equals-live-completion"
+        "fn-sn-extended-history-equals-live-completion",
+        "fn-spc-prepare-equals-specification-under-relation",
+        "fn-opc-prepare-equals-owner-event-under-relation"
       ],
       "evidence": [
         "books/cbor.lisp",
@@ -639,9 +641,11 @@
         "planning/evidence/deploy-cce4b11-2026-09-20.md",
         "books/store-prepare-correspondence.lisp",
         "tests/acl2/store-prepare-correspondence-tests.lisp",
+        "books/owner-prepare-correspondence.lisp",
+        "tests/acl2/owner-prepare-correspondence-tests.lisp",
         "planning/evidence/store-prepare-correspondence-w18-2026-09-21.md"
       ],
-      "progress_note": "Composed storage host adoption passed the 75-root/67-test batch. The native store wrapper now calls fn-spc-prepare; fn-spc-prepare-equals-specification-under-relation equates that projection to fn-sn-prepare under the relation established by observed recovery and preserved by every modeled post-open store mutator. The projection retains exact candidate and pending binding checks while omitting the appended-history replay. Seventeen existing base graphs now have 678 guarded functions, adding NNTP115 and semantic fields30 with unchanged existing logic; the derived index separately has 20 guarded functions. NNTP retains one explicit EC-CALL for total wildcard behavior. Full physical byte/effect correspondence and platform qualification remain open. The complete 41-function BP ADU codec now has verified guards after closing five streaming decoder functions without logical changes. An actual seven-book BP inventory records 97 functions still awaiting guard verification outside that codec; those remain a separate execution gap. The host's :program-mode chunk loop and its duplicate reply framing are gone: books/served owns both, in logic mode with guards verified. Native owner adoption of this store projection still requires the integrated owner join and saved-image gate."
+      "progress_note": "The standalone native store wrapper calls fn-spc-prepare, and the shared native owner now calls fn-opc-prepare from fn-owner-prepare. The two registered equality keystones connect those exact host-called subjects to fn-sn-prepare and to the former configured-owner prepare event under the maintained store and owner relations. Observed recovery establishes the owner premise through fn-own-start and fn-own-configure; configured-owner steps and direct socket entries preserve it. The executable path retains candidate and pending binding checks while omitting appended-history replay and all relation/whole-state recognizers. Exact owner/configuration context and pending bytes are preserved. Full physical byte/effect correspondence, a saved-image native-owner gate for this revision, and platform qualification remain open."
     },
     {
       "id": "PRF-015",
