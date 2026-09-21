@@ -183,7 +183,13 @@
   (st token record lock-owned final-absent)
   (declare (xargs :guard t))
   (let ((pending (fn-bpn-machine-state-pending st)))
-    (if (and (fn-bpn-machine-statep st)
+    (if (and (mbe :logic (fn-bpn-machine-statep st)
+                  ; The native service installs only the initial/restart state
+                  ; and answer states returned by fn-bpn-step.  Rechecking its
+                  ; retained jobs here would add a whole-state scan to every
+                  ; publication; raw execution consumes that maintained
+                  ; invariant and checks only the pending operation below.
+                  :exec t)
              (not (fn-bpn-machine-state-fenced st))
              pending
              (equal token (fn-bpn-machine-state-next-token st))
