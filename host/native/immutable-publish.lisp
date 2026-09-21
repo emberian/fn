@@ -34,10 +34,11 @@ executor does not assert the premise itself and returns fn-jpub's classification
                ; cannot alter the publication classification.
                (when observer (funcall observer point publication)))
              (observe (ok-event error-event point thunk)
-               (handler-case (progn (funcall thunk)
-                                    (advance ok-event)
-                                    (when point (observed point)))
-                 (fnn-os-error () (advance error-event)))))
+               (let ((ok
+                       (handler-case (progn (funcall thunk) t)
+                         (fnn-os-error () nil))))
+                 (advance (if ok ok-event error-event))
+                 (when (and ok point) (observed point)))))
       (unwind-protect
            (loop until (eq (fnn-core 'fn-jpub-host-terminalp publication) t) do
              (case (fnn-core 'fn-jpub-host-action publication)
@@ -65,16 +66,17 @@ executor does not assert the premise itself and returns fn-jpub's classification
                              (fnn-close handle)))))
                (:begin-link (advance '(:link-begin)))
                (:link
-                (handler-case
-                    (progn (fnn-immutable-test-fault "link" final)
-                           (fnn-link stage final)
-                           (advance '(:link-result :ok))
-                           (observed :link-result))
-                  (fnn-os-error (e)
-                    (advance (if (= (fnn-os-errno e) sb-posix:eexist)
-                                 '(:link-result :exists)
-                               '(:link-result :error)))
-                    (observed :link-result))))
+                (let ((event
+                        (handler-case
+                            (progn (fnn-immutable-test-fault "link" final)
+                                   (fnn-link stage final)
+                                   '(:link-result :ok))
+                          (fnn-os-error (e)
+                            (if (= (fnn-os-errno e) sb-posix:eexist)
+                                '(:link-result :exists)
+                              '(:link-result :error))))))
+                  (advance event)
+                  (observed :link-result)))
                (:directory-barrier
                 (observe '(:directory-barrier-result :ok)
                          '(:directory-barrier-result :error)
