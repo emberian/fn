@@ -7,12 +7,11 @@
 (defconst *fn-nctrl-host-groups*
   (list (fn-record-string-octets "fn.test")))
 (defconst *fn-nctrl-host-article* '(65 13 10))
-(defconst *fn-nctrl-host-request*
-  (fn-native-control-host-request-encode
-   *fn-nctrl-host-msgid* *fn-nctrl-host-groups* *fn-nctrl-host-article*))
-
 (assert-event
- (equal (fn-native-control-host-request-decode *fn-nctrl-host-request*)
+ (equal (fn-native-control-host-request-decode
+         (fn-native-control-host-request-encode
+          *fn-nctrl-host-msgid* *fn-nctrl-host-groups*
+          *fn-nctrl-host-article*))
         (list :request *fn-nctrl-host-msgid* *fn-nctrl-host-groups*
               *fn-nctrl-host-article*)))
 (assert-event

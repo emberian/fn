@@ -10,21 +10,32 @@
 (defconst *fn-nctrl-test-article*
   (fn-record-string-octets
    "From: author@example.invalid\r\nSubject: exact\r\n\r\nbody\r\n"))
-(defconst *fn-nctrl-test-request*
-  (fn-native-control-request-encode
-   *fn-nctrl-test-msgid* *fn-nctrl-test-groups* *fn-nctrl-test-article*))
-
-(assert-event (fn-cbor-octet-listp *fn-nctrl-test-request*))
-(assert-event (<= (len *fn-nctrl-test-request*) *fn-nctrl-max-frame*))
+; A defconst cannot call an attached function (:DOC ignored-attachment).
+; Assertions evaluate the ground encoder with fn-frame-digest's attachment.
 (assert-event
- (equal (fn-native-control-request-decode *fn-nctrl-test-request*)
+ (fn-cbor-octet-listp
+  (fn-native-control-request-encode
+   *fn-nctrl-test-msgid* *fn-nctrl-test-groups* *fn-nctrl-test-article*)))
+(assert-event
+ (<= (len (fn-native-control-request-encode
+            *fn-nctrl-test-msgid* *fn-nctrl-test-groups*
+            *fn-nctrl-test-article*))
+     *fn-nctrl-max-frame*))
+(assert-event
+ (equal (fn-native-control-request-decode
+         (fn-native-control-request-encode
+          *fn-nctrl-test-msgid* *fn-nctrl-test-groups*
+          *fn-nctrl-test-article*))
         (list :request *fn-nctrl-test-msgid* *fn-nctrl-test-groups*
               *fn-nctrl-test-article*)))
 
 ; A byte change and a missing required group are both rejected.
 (assert-event
  (equal (car (fn-native-control-request-decode
-              (cons 0 (cdr *fn-nctrl-test-request*))))
+              (cons 0
+                    (cdr (fn-native-control-request-encode
+                          *fn-nctrl-test-msgid* *fn-nctrl-test-groups*
+                          *fn-nctrl-test-article*)))))
         :refused))
 (assert-event
  (equal (fn-native-control-request-encode
