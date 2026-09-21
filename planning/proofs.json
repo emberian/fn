@@ -1393,10 +1393,13 @@
         "planning/lanes/HANDOFF-w13-storage-initializer.md",
         "planning/evidence/claude-storage-initializer-response.md",
         "planning/evidence/manifests/certify-20260921T074336Z-1779617.json",
-        "planning/evidence/manifests/certify-20260921T074637Z-1785855.json"
+        "planning/evidence/manifests/certify-20260921T074637Z-1785855.json",
+        "planning/evidence/native-storage-codec-w13-2026-09-21.md",
+        "tests/test_native_storage_codec.py",
+        "planning/evidence/manifests/certify-20260921T074821Z-1788915.json"
       ],
       "pending_subject": "The fresh initializer transcription has source-reviewed correspondence to the fresh Python Store.initialize path, not a theorem equating the host execution to fn-bs-run; its cut checker explicitly cannot inline helpers. Existing/retry initialization, native initializer correspondence, Store.advance_frontier composition and recovery remain open. The naming wrapper invokes the attached ACL2 renderer directly; this does not close those program correspondence gaps.",
-      "progress_note": "The metadata-only initial image/frontier results and conditional fn-bs-step observations remain scoped as above. W13 adds a source-reviewed fresh initializer and exact-image theorem; the configuration-directory fence separating witness leaves the old root/transactions relation true while falsifying that image. Unique model cut names do not make uninstrumented host cuts covered. Transaction naming has a guard-verified executable injective realization, including above-20-digit witnesses and hypothesis teeth, adopted by the Python Store.publish call path. Native metadata/naming adoption is in a separate active packet. General K0, existing/retry branches, native host correspondence, recovery composition and platform durability remain open.",
+      "progress_note": "The metadata-only initial image/frontier results and conditional fn-bs-step observations remain scoped as above. W13 adds a source-reviewed fresh initializer and exact-image theorem; the configuration-directory fence separating witness leaves the old root/transactions relation true while falsifying that image. Unique model cut names do not make uninstrumented host cuts covered. Transaction naming has a guard-verified executable injective realization, including above-20-digit witnesses and hypothesis teeth, adopted by both Python Store.publish and native fnn-transaction-name through ACL2 wrappers. Native metadata/frontier serialization and posting provenance also use the ACL2 subjects; source-pinned cross-open and byte-identical committed-frame tests passed. Remaining staging-orphan and missing-staging-directory differences prevent a full adapter-equivalence claim. General K0, existing/retry branches, native host correspondence, recovery composition and platform durability remain open.",
       "events": [
         "fn-bs-related-allocation-is-fresh",
         "fn-bs-frontier-noncommit-observation-preserves-relation",

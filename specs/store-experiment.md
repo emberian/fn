@@ -38,7 +38,11 @@ ACL2 decimal renderer in `books/byte-store-txn-name.lisp`: minimum width twenty,
 followed by `.txn`. Its injectivity theorem covers every natural sequence;
 the concrete allocation frontier is separately uint32-bounded. The Python
 development adapter now consumes `fn-store-txn-name-octets` instead of formatting
-the name. Native call-site adoption has its own integration packet. This naming
+the name. The native adapter now calls the same ACL2 naming subject and uses
+ACL2 FNSM metadata/frontier frames and post provenance, with byte-identical
+committed-frame and cross-open evidence in the
+[native codec packet](../planning/evidence/native-storage-codec-w13-2026-09-21.md).
+Staging-orphan handling and missing-staging-directory recovery still differ. This naming
 result does not establish crash recovery, durable allocation or filesystem
 publication correctness; see PRF-044 and the transaction-name handoff.
 
