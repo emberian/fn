@@ -24,6 +24,13 @@ retain their explicit gateway provenance. The standard primitive is
 [OpenSSL 3.5's ML-DSA interface](https://docs.openssl.org/3.5/man7/EVP_SIGNATURE-ML-DSA/)
 is the native implementation boundary, not a proved primitive.
 
+The production image exposes `fn hybrid-sign PRINCIPAL ED-PUBLIC ED-SECRET
+ML-PUBLIC-PEM ML-PRIVATE-PEM SOURCE`. The first three binary files have exact
+widths 32, 32 and 64 octets; the source is read byte-exact up to the article
+limit. The command prints separate algorithm-tagged hexadecimal components
+only after verifying the newly produced pair through the ACL2 profile. It
+stores no keys and defines no custody or recovery authority.
+
 Books: `books/crypto-seam.lisp`, `books/hybrid-signature.lisp`, `books/principal.lisp`,
 `books/principal-invariants.lisp`; tests `tests/acl2/crypto-seam-tests.lisp`,
 `tests/acl2/principal-tests.lisp`. The [decision packet](../planning/decision-packet-d09-d11.md)
