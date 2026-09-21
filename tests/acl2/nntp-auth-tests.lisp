@@ -252,6 +252,42 @@
 (assert-event
  (equal (fn-peer-session-peer (fn-auth-session-base (au-principal-authed)))
         "principal-peer"))
+; RFC 4643 rejects every later AUTHINFO command as already authenticated.
+; The principal and its derived peer therefore remain paired: neither a new
+; USER nor a failing PASS can install another credential under stale peer A.
+(assert-event
+ (equal (fn-post-result-effects
+         (fn-auth-authinfo
+          (au-principal-authed)
+          (list (fn-nntp-string-octets "USER")
+                (fn-nntp-string-octets "guest"))))
+        (au-single "502 already authenticated")))
+(assert-event
+ (equal (fn-peer-session-peer
+         (fn-auth-session-base
+          (fn-post-result-session
+           (fn-auth-authinfo
+            (au-principal-authed)
+            (list (fn-nntp-string-octets "USER")
+                  (fn-nntp-string-octets "guest"))))))
+        "principal-peer"))
+(assert-event
+ (equal (fn-peer-session-peer
+         (fn-auth-session-base
+          (fn-post-result-session
+           (fn-auth-authinfo
+            (au-principal-authed)
+            (list (fn-nntp-string-octets "PASS")
+                  (fn-nntp-string-octets "wrong"))))))
+        "principal-peer"))
+(assert-event
+ (equal (fn-auth-session-subject
+         (fn-post-result-session
+          (fn-auth-authinfo
+           (au-principal-authed)
+           (list (fn-nntp-string-octets "PASS")
+                 (fn-nntp-string-octets "wrong")))))
+        *au-principal*))
 ; Reconnect begins with no role even after an earlier connection authenticated.
 (assert-event
  (null
