@@ -571,7 +571,7 @@
                                               fault)))
            (multiple-value-bind (bound bound-port)
                (fnn-listen (parse-integer (second args)))
-             (setq listener bound
+             (setf listener bound
                    (fnn-owner-service-listener service) bound)
              (fnn-out "LISTENING ~d" bound-port))
            (fnn-owner-accept service listener (string= (third args) "1"))
