@@ -136,6 +136,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-node-resolution \
 	tests/acl2/store-node-resolution-tests \
 	tests/acl2/store-node-resolution-traces-tests \
+	tests/acl2/store-identity-traces-tests \
 	books/store-sweep \
 	tests/acl2/store-sweep-tests \
 	books/store-observed \
