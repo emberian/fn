@@ -163,27 +163,66 @@ nonreuse claim remains open."
                      (fnn-write-staged stage (fnn-octets frame))
                      (fnn-replace stage frontier)
                      (fnn-fsync-dir dir)
-                     (fnn-core 'fn-bpn-host-sequence-reservation-sequence reservation))
+                     (values
+                      (fnn-core 'fn-bpn-host-sequence-reservation-sequence reservation)
+                      reservation))
                  (fnn-os-error (e)
                    (ignore-errors (fnn-unlink stage))
                    (fnn-indeterminate "bp: sequence reservation did not complete: ~a" e))))))
         (ignore-errors (fnn-flock lock +fnn-lock-un+))
         (fnn-close lock)))))
 
-(defun fnn-bp-record (tally name octets)
-  "Write one journal record: data durable, then the name durable."
+(defun fnn-bp-authored-wire-publish (tally config peer adu reservation obs)
+  "Publish the exact ACL2-authored bundle under its reserved immutable name."
   (let* ((dir (fnn-bp-tally-journal tally))
-         (final (fnn-join dir name))
-         (stage (fnn-join dir (format nil ".incoming-~d-~a"
-                                      (sb-posix:getpid) (fnn-random-hex 12)))))
-    (handler-case
-        (progn (fnn-write-staged stage (fnn-octets octets))
-               (fnn-replace stage final)
-               (fnn-fsync-dir dir)
-               final)
-      (fnn-os-error (e)
-        (ignore-errors (fnn-unlink stage))
-        (fnn-indeterminate "bp: journal record ~a did not complete: ~a" name e)))))
+         ;; ACL2 derives this preview from the reservation token.  It exists
+         ;; solely so the host can observe that exact pathname while holding
+         ;; the shared spool lock; the operation below must return it unchanged.
+         (preview (fnn-core 'fn-bpn-host-authored-wire-name reservation)))
+    (unless (and (stringp preview) (> (length preview) 0)
+                 (null (position #\/ preview)))
+      (fnn-fault "bp: ACL2 returned an invalid authored-wire name"))
+    (let* ((final (fnn-join dir preview))
+           (final-absent (if (fnn-lstat final) nil t))
+           (operation
+            (fnn-core 'fn-bpn-host-authored-wire-authorize
+                      config peer adu reservation obs
+                      (if (fnn-bp-tally-spool-lock tally) t nil)
+                      final-absent)))
+      (unless (eq (fnn-core 'fn-bpn-host-authored-wire-operationp operation) t)
+        (if final-absent
+            (fnn-fault "bp: ACL2 refused its authored-wire reservation")
+          ;; A durable sequence is never reused.  Any pre-existing exact next
+          ;; name is conflicting recovery evidence, including equal bytes; it
+          ;; is never replaced or silently accepted as this operation's write.
+          (fnn-indeterminate
+           "bp: reserved authored-wire name is already occupied: ~a" preview)))
+      (let* ((name
+              (fnn-core 'fn-bpn-host-authored-wire-operation-name operation))
+             (wire
+              (fnn-core 'fn-bpn-host-authored-wire-operation-wire operation))
+             (publication
+              (fnn-core
+               'fn-bpn-host-authored-wire-operation-publication operation))
+             (label
+              (fnn-core 'fn-bpn-host-authored-wire-operation-label operation)))
+        (unless (and (stringp name) (string= name preview)
+                     (fnn-octet-list-p wire))
+          (fnn-fault "bp: ACL2 changed its authored-wire publication echo"))
+        (let* ((stage
+                (fnn-join dir (format nil ".authored-~d-~a"
+                                      (sb-posix:getpid) (fnn-random-hex 12))))
+               (outcome
+                (fnn-immutable-publish-effect
+                 publication stage final dir (fnn-octets wire)
+                 :cleanup-directory dir :operation-label label)))
+          (case outcome
+            (:durable (values final wire))
+            (:refused
+             (fnn-refuse "bp: authored-wire publication refused before link"))
+            (otherwise
+             (fnn-indeterminate
+              "bp: authored-wire publication outcome is uncertain"))))))))
 
 (defun fnn-bp-evidence-entry-kind (path)
   (let ((st (fnn-lstat path)))
@@ -388,43 +427,45 @@ dominates an acceptance: a run that saw one of each did not succeed."
                         (make-fnn-bp-tally
                          :config config :wall wall :wall-error wall-error
                          :journal journal-root :spool-lock spool-lock)))
-                (sequence (fnn-bp-reserve-sequence tally))
-                (bundle (fnn-core 'fn-bpn-host-send config peer adu sequence obs))
-                (summary (fnn-core 'fn-bpn-host-sent-summary config peer adu sequence obs))
                 (socket nil))
-           (unless bundle
-             (fnn-refuse "bp: this ADU and configuration are not a bundle this node can author"))
-           (fnn-out "BP authored creation=~d sequence=~d lifetime=~d payload=~d octets=~d"
-                    (first summary) (second summary) (third summary) (fourth summary)
-                    (length bundle))
-           ;; The bundle this node authored, kept before it is put on a socket, for
-           ;; the same reason the receive path keeps what arrives: an octet string
-           ;; another implementation accepted is only a vector if it was recorded.
-           (fnn-out "BP wire authored path=~a"
-                    (fnn-bp-record tally (format nil "authored-~d.wire" sequence)
-                                   bundle))
-           (unwind-protect
-                (let ((*fnn-tcl-deliver*
-                        (lambda (conn xfer-id octets)
-                          (fnn-bp-deliver tally conn xfer-id octets))))
-                  (setq socket (fnn-tcl-connect host port))
-                  (let ((conn (fnn-tcl-session
-                               (fnn-socket-fd socket) :active
-                               ;; The convergence layer's expected peer is a
-                               ;; SESSION identity (RFC 9174 section 4.2), not the
-                               ;; bundle's destination: a bundle for
-                               ;; dtn://x/demux may travel over a session with any
-                               ;; node.  Passing the destination here would refuse
-                               ;; every correct session whose peer is not also the
-                               ;; final destination.
-                               (fnn-tcl-params node-id nil +fnn-tcl-keepalive+
-                                               +fnn-tcl-segment-mru+ transfer-mru)
-                               "active" journal-root
-                               :bundle bundle :expect expect)))
-                    (fnn-tcl-summary conn)
-                    (fnn-bp-summary tally)
-                    (fnn-bp-exit-code tally conn)))
-             (when socket (fnn-socket-shut socket))))
+           (multiple-value-bind (sequence reservation)
+               (fnn-bp-reserve-sequence tally)
+             (multiple-value-bind (path bundle)
+                 (fnn-bp-authored-wire-publish
+                  tally config peer adu reservation obs)
+               (let ((summary
+                      (fnn-core 'fn-bpn-host-sent-summary
+                                config peer adu sequence obs)))
+                 (fnn-out
+                  "BP authored creation=~d sequence=~d lifetime=~d payload=~d octets=~d"
+                  (first summary) (second summary) (third summary) (fourth summary)
+                  (length bundle))
+                 ;; The exact ACL2-authored bytes become durable evidence before
+                 ;; the first socket operation.  A retry allocates a new sequence;
+                 ;; it never treats this immutable name as a retransmit slot.
+                 (fnn-out "BP wire authored path=~a" path)
+                 (unwind-protect
+                      (let ((*fnn-tcl-deliver*
+                              (lambda (conn xfer-id octets)
+                                (fnn-bp-deliver tally conn xfer-id octets))))
+                        (setq socket (fnn-tcl-connect host port))
+                        (let ((conn (fnn-tcl-session
+                                     (fnn-socket-fd socket) :active
+                                     ;; The convergence layer's expected peer is a
+                                     ;; SESSION identity (RFC 9174 section 4.2), not the
+                                     ;; bundle's destination: a bundle for
+                                     ;; dtn://x/demux may travel over a session with any
+                                     ;; node.  Passing the destination here would refuse
+                                     ;; every correct session whose peer is not also the
+                                     ;; final destination.
+                                     (fnn-tcl-params node-id nil +fnn-tcl-keepalive+
+                                                     +fnn-tcl-segment-mru+ transfer-mru)
+                                     "active" journal-root
+                                     :bundle bundle :expect expect)))
+                          (fnn-tcl-summary conn)
+                          (fnn-bp-summary tally)
+                          (fnn-bp-exit-code tally conn)))
+                   (when socket (fnn-socket-shut socket)))))))
       (fnn-tcl-spool-release spool-lock))))
 
 ;;; ---------------------------------------------------------------------------
