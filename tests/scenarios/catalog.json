@@ -144,9 +144,12 @@
         "tests/acl2/checkpoint-tests.lisp",
         "books/index.lisp",
         "tests/acl2/index-tests.lisp",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "host/native/checkpoint.lisp",
+        "tests/test_native_checkpoint.py",
+        "planning/evidence/native-checkpoint-w15-2026-09-21.md"
       ],
-      "execution_scope": " The logical half is certified (capture plus suffix equals full replay; index rebuild and range-query correspondence). No persisted checkpoint codec, publication or host index adoption exists, so the reconstruction step of this scenario cannot run."
+      "execution_scope": "Partial: logical checkpoint/suffix equivalence and index reconstruction are certified. W15 native tests exercise concrete capture/select/reopen, selected corruption without rollback, unselected corruption isolation, cross-open bytes and selected crash cuts. Native recovery still replays the full journal and compares a private checkpoint restore; full owner/index integration, mismatch policy and every-cut physical correspondence are not established."
     },
     {
       "id": "SCN-005",
@@ -780,9 +783,12 @@
         "tests/test_bp_service_native.py",
         "tests/bp-dtn7/run_fn_bp_sequence_durability.py",
         "tests/bp-dtn7/run_fn_tcpcl_spool_recovery.py",
-        "planning/evidence/bp-sequence-fidelity-2026-09-21.md"
+        "planning/evidence/bp-sequence-fidelity-2026-09-21.md",
+        "books/bp-receive-evidence.lisp",
+        "tests/test_bp_receive_integrity_native.py",
+        "planning/evidence/bp-receive-integrity-w15-2026-09-21.md"
       ],
-      "execution_scope": "Partial: native BP codec/node and durable outbound lifecycle execute behind TCPCL. The frozen certified-image packet covers sequence allocation, spool recovery, selected process-death cuts, lifecycle publication/restart and mixed transport/article outcomes. Full native application journal/receipt composition, cross-session evidence preservation, receive-loop persistence fencing and universal observed-file/lifecycle proofs remain open (PRF-045/046). W14 adds conditional returned-allocation non-reuse under confirmed-frontier admissibility and one native post-return SIGKILL/restart witness. It does not establish the raw-host refinement or physical power-loss behavior."
+      "execution_scope": "Partial: native BP codec/node and durable outbound lifecycle execute behind TCPCL. Source-pinned packets cover sequence allocation, spool recovery, selected process-death cuts and lifecycle publication/restart. W15 adds actual cross-session transfer-ID reuse with both wires retained, receive-loop exit after uncertain publication, and wire-only evidence identity consumption after recovery barriers. The allocation theorem is conditional on confirmed-frontier admissibility. Full native application journal/receipt composition and universal actual-host lifecycle/physical refinement remain open (PRF-045/046). Receive evidence enumeration needs its bound enforced during collection; correction is assigned."
     },
     {
       "id": "SCN-026",

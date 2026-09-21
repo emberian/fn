@@ -1,4 +1,18 @@
-# Current work: W12 operational repair and composition
+# Current work: native service composition and consolidation
+
+Integration update (2026-09-21, `a65b86c`): native recovery now performs bounded
+staging observation and executes ACL2's cleanup plan; native BP receive evidence
+uses durable identities across sessions; native checkpoint capture, selection and
+validation are integrated. Their source-pinned component tests do not establish
+the combined service. The frozen `76901c1` owner image gate remains independent
+of these later changes. Observed-file allocation and outbound wire composition
+proofs are integrated with their explicit hypotheses. The next convergence batch
+joins safe feed filenames, logical feed restart, operator callbacks, corrected
+anchor persistence and the newly integrated components. Active successors remove
+remaining filename/admission twins, fix enumeration before allocation, and derive
+incremental store preparation from the maintained relation. Native BP application
+acceptance/receipt composition is still implementation work, not carrier evidence.
+
 
 Priority correction (2026-09-21): the user reaffirmed D07, **no Python in a
 running/deployed fn node or its operator CLI**. Sol's owner-convergence checkpoint is integrated in the native Lisp service;

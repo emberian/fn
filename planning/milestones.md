@@ -1,14 +1,14 @@
 # Development milestones
 
-Current task (2026-09-21): converge the integrated native owner, workflow/receipt
-journals, anchor acquisition and operator components into one frozen saved-image
-batch. Close the shared-owner fencing race and safe FNFD filename adoption before
-claiming native configured-peer readiness, then run source-pinned combined
-certification/build and actual service tests on the farm. Parallel work continues
-on observed-file BP proofs, wire/feed caller correspondence, checkpoint adoption,
-recovery and measured native cost. The packaged Python service remains development
-infrastructure; no full native service or v0 milestone is complete. See
-[current work](now.md), [assignments](swarm-cycles.md), and the
+Current task (2026-09-21): finish the frozen native owner runtime gate and
+converge the next batch of safe feed filenames, feed restart, operator callbacks,
+anchor persistence, recovery, BP receive evidence and checkpoints. Component
+packets have source-pinned tests; the combined native two-peer service remains
+unqualified. Parallel successors close application/receipt composition, namespace
+and resource-bound twins, measured prepare-path cost, and physical recovery gaps.
+The packaged Python service remains development infrastructure; no full native
+service or v0 milestone is complete. See [current work](now.md),
+[assignments](swarm-cycles.md), and the
 [consolidation audit](duplication-audit-2026-09-21.md).
 
 The following dated landing notes preserve their original evidence and gaps;
