@@ -116,8 +116,9 @@ Repair: derive the ordinary framing/control limit from the same ACL2 injection
 configuration. Preserve an explicitly configured peer inbound override, and
 keep any pre-configuration fallback out of the configured served path. The
 wire line-capacity repair alone does not fix this separate total-article bound.
-Owner convergence owns the projection and called-path tests; this remains open
-until its packet and evidence land.
+The correction is integrated in `e9e1da6`, including configured-limit model
+tests. Frozen saved-image owner execution remains pending; the source change
+and component certificates do not establish live native parity.
 
 ### U06: peer labels double as filesystem paths
 
@@ -192,8 +193,9 @@ Native I/O outcome/progress repair `3312778` is integrated. Raw deterministic
 tests exercise the actual reader handler, preserve fault/uncertain subtypes and
 ordinary refusal, and check EINTR, partial progress and zero writes. Root review
 also corrected the original test helper's accidental catch of every condition.
-Absolute deadlines bound readiness/retry loops; blocking syscall duration remains
-open and has a separate nonblocking-I/O implementation lane.
+Follow-on `28c5b90` sets nonblocking socket descriptors and returns readiness
+races to the same absolute deadline. Actual socketpair backpressure/EOF tests
+pass. DNS and connection establishment remain outside that deadline contract.
 
 Initializer enumeration repair `6e1f18d` is also integrated. Its regression makes
 the real directory listing return EACCES; an error merely raised before the
@@ -211,8 +213,37 @@ reused across connections. The BP receive successor must demonstrate and repair
 cross-session evidence overwrite using one ACL2-owned durable identity and
 publication contract. The source-pinned BP handoff records these limits.
 
-The new FNWF/FNRJ candidate has a shared ACL2 publication machine, but its raw
-journal adapter still computes admission headroom and namespace sequences and
-rescans retained history on append. Root returned these concrete semantic-owner
-and cost defects to its lane before claiming native application adoption. Shared
-I/O alone does not make raw-host policy an ACL2 decision.
+FNWF/FNRJ packet `0e26c3d`, integrated through `624f16b`, moves namespace,
+record bounds, admission headroom and successor accounting to `books/app-journal`.
+The native adapter carries the frontier rather than rescanning on append.
+`books/journal-publish` owns the shared immutable publication phases; replacement
+and append/prefix-repair contracts remain distinct. Native owner/TCPCL callback
+joins and store-fence checks remain pending. Root also found that two test
+observers run before their successful barrier observation reaches the model;
+the lane is correcting that cut-fidelity contract. A plain ACL2 authorization
+record still relies on a trusted caller reporting ownership and absence honestly.
+
+
+### U08: listener shutdown does not fence connected writers
+
+The native owner checkpoint `02f82a1` closes its listener after uncertainty,
+but `fnn-owner-handle-chunk` and connection opening do not check the stop flag
+under the service mutex. An exception handler outside that mutex can also leave
+a window before fencing, and main cleanup can close shared journals while
+workers remain active. This is a source-confirmed concurrency defect; the
+reachable two-client injected witness is assigned to owner convergence.
+
+Repair: establish the fence inside the serialized operation's error boundary,
+reject subsequent shared mutations, and drain workers before closing shared
+resources. Fault and uncertainty remain different terminal outcomes. The owner
+checkpoint is integrated for composition, not claimed safe for deployment.
+
+### U09: operator plans and effects need one public result contract
+
+Native operator packet `658cfa3` removes the diagnostic payload grammar from
+public posting and normalizes malformed configuration to usage rather than
+refusal. Its status/recover execution is a component; installed run/post wiring
+remains pending. Root found that help still requires valid configuration and
+routes to an unavailable owner callback, and outcome words are rendered by
+repeated maps. The operator lane owns standalone help and one rendering path.
+An accepted command plan must never be printed as accepted durable work.

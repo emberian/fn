@@ -1,9 +1,8 @@
 # Current work: W12 operational repair and composition
 
 Priority correction (2026-09-21): the user reaffirmed D07, **no Python in a
-running/deployed fn node or its operator CLI**. Sol's owner-convergence lane
-finishes its coherent ACL2 integration checkpoint, then adopts that machine in
-the native Lisp service. Sol's native-storage lane supplies shared I/O and
+running/deployed fn node or its operator CLI**. Sol's owner-convergence checkpoint is integrated in the native Lisp service;
+the frozen combined build and actual service evidence remain pending. Sol's native-storage lane supplies shared I/O and
 concrete codecs; Terra inventories and implements independent native CLI/config
 and packaging work. BP remains native. Python service measurements are diagnostic
 baselines; production claims require native two-node evidence. Preserve the full
@@ -88,5 +87,16 @@ persvati image and source-pinned allocation/spool/queue/crash tests. The
 [evidence record](evidence/bp-convergence-native-2026-09-21.md) retains the open
 receive fencing, fault classification and session evidence overwrite findings.
 PRF-045/046 now name the universal allocation/lifecycle obligations without
-promoting helper lemmas to whole-path proofs. Native FNWF/FNRJ composition is
-being repaired for remaining host admission/naming decisions before landing.
+promoting helper lemmas to whole-path proofs. Native FNWF/FNRJ packet `0e26c3d` is integrated: ACL2 owns journal naming,
+admission and the carried accounting frontier. Its actual owner/TCPCL callback
+joins, fenced-store guard and observer cut fidelity remain open.
+
+
+The current integrated native batch includes owner/feed intent composition
+(`e9e1da6`), guarded anchor parser/acquisition (`86e6a7a`), application journals
+(`624f16b`) and operator grammar/status/recover (`1b571be`). Required repairs
+before native configured-peer readiness are the owner's connected-writer fence
+and worker cleanup, plus safe FNFD path encoding/recovery. The operator is still
+a component awaiting common-image/public callback integration; anchor acquisition
+is an observation, not durable acceptance. These are implemented-surface gaps,
+not reasons to shrink v0. The next frozen farm build measures their composition.
