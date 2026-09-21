@@ -74,7 +74,8 @@
 
 (defmacro fn-naa-test-set ()
   '(fn-native-auth-admin-set-password
-    nil nil *fn-naa-test-name* *fn-naa-test-secret* *fn-naa-test-salt*
+    nil nil *fn-naa-test-name* *fn-naa-test-secret* *fn-naa-test-secret*
+    *fn-naa-test-salt*
     nil nil t))
 
 (assert-event (equal (fn-native-auth-admin-result-status (fn-naa-test-set))
@@ -134,13 +135,22 @@
  (equal
   (fn-native-auth-admin-result-status
    (fn-native-auth-admin-set-password
-    nil nil *fn-naa-test-name* *fn-naa-test-secret* '(0 1) nil nil t))
+    nil nil *fn-naa-test-name* *fn-naa-test-secret* *fn-naa-test-secret*
+    '(0 1) nil nil t))
   :fault))
 (assert-event
  (equal
   (fn-native-auth-admin-result-reason
    (fn-native-auth-admin-set-password
-    nil nil '(34) *fn-naa-test-secret* *fn-naa-test-salt* nil nil t))
+    nil nil *fn-naa-test-name* *fn-naa-test-secret* *fn-naa-test-other-secret*
+    *fn-naa-test-salt* nil nil t))
+  :secret-confirmation))
+(assert-event
+ (equal
+  (fn-native-auth-admin-result-reason
+   (fn-native-auth-admin-set-password
+    nil nil '(34) *fn-naa-test-secret* *fn-naa-test-secret*
+    *fn-naa-test-salt* nil nil t))
   :name))
 (assert-event
  (equal
@@ -148,7 +158,8 @@
    (fn-native-auth-admin-set-password
     (append (fn-record-string-octets "[login.\"old\"]") (list 10)
             (fn-record-string-octets "secret = \"do-not-read\"") (list 10))
-    t *fn-naa-test-name* *fn-naa-test-secret* *fn-naa-test-salt*
+    t *fn-naa-test-name* *fn-naa-test-secret* *fn-naa-test-secret*
+    *fn-naa-test-salt*
     nil nil t))
   :cleartext-credential))
 
@@ -217,6 +228,9 @@
          *fn-naa-test-cleanup-trace*)
         '(:replace-recovery :recover-file)))
 (assert-event
+ (fn-native-auth-admin-recovery-has-cleanup-directory-okp
+  *fn-naa-test-cleanup-trace*))
+(assert-event
  (equal (fn-native-auth-admin-recovery-trace
          (fn-native-auth-admin-recovery-start t t)
          (append *fn-naa-test-cleanup-trace*
@@ -239,6 +253,9 @@
                (fn-native-auth-admin-recovery-start t t)
                *fn-naa-test-cleanup-prefix*))
          :replace-recovery)))
+(assert-event
+ (not (fn-native-auth-admin-recovery-has-cleanup-directory-okp
+       *fn-naa-test-cleanup-prefix*)))
 
 ; When no stage survives, the same invocation begins directly with the
 ; observed final-name recovery state.  Missing final is still followed by the

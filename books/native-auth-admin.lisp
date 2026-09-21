@@ -113,6 +113,30 @@
       (fn-ncfg-first (fn-native-auth-admin-plan-action plan-result))
     :none))
 
+(defun fn-native-auth-admin-action-name (plan-result)
+  (declare (xargs :guard t))
+  (if (equal (fn-native-auth-admin-action-kind plan-result) :set-password)
+      (fn-ncfg-second (fn-native-auth-admin-plan-action plan-result))
+    nil))
+
+(defun fn-native-auth-admin-action-principal-text (plan-result)
+  (declare (xargs :guard t))
+  (if (equal (fn-native-auth-admin-action-kind plan-result) :set-password)
+      (fn-ncfg-third (fn-native-auth-admin-plan-action plan-result))
+    nil))
+
+(defun fn-native-auth-admin-action-principal-presentp (plan-result)
+  (declare (xargs :guard t))
+  (and (equal (fn-native-auth-admin-action-kind plan-result) :set-password)
+       (fn-ncfg-nth 3 (fn-native-auth-admin-plan-action plan-result))
+       t))
+
+(defun fn-native-auth-admin-action-postingp (plan-result)
+  (declare (xargs :guard t))
+  (and (equal (fn-native-auth-admin-action-kind plan-result) :set-password)
+       (fn-ncfg-nth 4 (fn-native-auth-admin-plan-action plan-result))
+       t))
+
 (defun fn-native-auth-admin-secretp (secret)
   (declare (xargs :guard t))
   (and (consp secret)
@@ -216,7 +240,8 @@
               (fn-native-auth-result-config loaded)))))))
 
 (defun fn-native-auth-admin-set-password
-  (octets presentp name secret salt principal-text principal-presentp postingp)
+  (octets presentp name secret confirmation salt
+          principal-text principal-presentp postingp)
   ; Host-called mutation subject.  SALT is an observation, not an ACL2 claim
   ; about OS entropy.  The output contains the derived verifier, never SECRET.
   (declare (xargs :guard t))
@@ -225,6 +250,8 @@
     (list :refused :name))
    ((not (fn-native-auth-admin-secretp secret))
     (list :refused :secret))
+   ((not (equal secret confirmation))
+    (list :refused :secret-confirmation))
    ((not (fn-authsec-saltp salt))
     (list :fault :salt-observation))
    (t
@@ -428,6 +455,17 @@
        (cdr events))
     phase))
 
+(defun fn-native-auth-admin-recovery-has-cleanup-directory-okp (events)
+  (declare (xargs :guard t))
+  (if (atom events)
+      nil
+    (or (and (consp (car events))
+             (equal (car (car events)) :cleanup-directory-result)
+             (equal (fn-native-auth-admin-recovery-event-value
+                     (car events)) :ok))
+        (fn-native-auth-admin-recovery-has-cleanup-directory-okp
+         (cdr events)))))
+
 (defthm fn-native-auth-admin-recovery-step-enters-final-recovery-after-cleanup-barrier
   (implies
    (and (not (and (consp phase) (equal (car phase) :replace-recovery)))
@@ -441,6 +479,35 @@
         (equal (fn-native-auth-admin-recovery-event-value event) :ok)))
   :rule-classes nil)
 
+(local
+ (defthm fn-native-auth-admin-recovery-trace-introduces-final-recovery
+   (implies
+    (and (not (and (consp phase)
+                   (equal (car phase) :replace-recovery)))
+         (consp (fn-native-auth-admin-recovery-trace phase events))
+         (equal (car (fn-native-auth-admin-recovery-trace phase events))
+                :replace-recovery))
+    (fn-native-auth-admin-recovery-has-cleanup-directory-okp events))))
+
+; KEYSTONE for the exact recovery step/trace the native administrator calls:
+; if a stage was observed at invocation start, finite execution cannot begin
+; final-name recovery without a successful cleanup directory barrier.
+(defthm fn-native-auth-admin-recovery-trace-cleans-stage-before-final-recovery
+  (implies
+   (and (consp (fn-native-auth-admin-recovery-trace
+                (fn-native-auth-admin-recovery-start t final-presentp)
+                events))
+        (equal (car (fn-native-auth-admin-recovery-trace
+                     (fn-native-auth-admin-recovery-start t final-presentp)
+                     events))
+               :replace-recovery))
+   (fn-native-auth-admin-recovery-has-cleanup-directory-okp events))
+  :hints
+  (("Goal"
+    :use ((:instance
+           fn-native-auth-admin-recovery-trace-introduces-final-recovery
+           (phase (fn-native-auth-admin-recovery-start t final-presentp)))))))
+
 (in-theory
  (disable (:d fn-native-auth-admin-plan-result)
           (:d fn-native-auth-admin-plan-status)
@@ -449,6 +516,10 @@
           (:d fn-native-auth-admin-parse-set-options)
           (:d fn-native-auth-admin-parse-argv)
           (:d fn-native-auth-admin-action-kind)
+          (:d fn-native-auth-admin-action-name)
+          (:d fn-native-auth-admin-action-principal-text)
+          (:d fn-native-auth-admin-action-principal-presentp)
+          (:d fn-native-auth-admin-action-postingp)
           (:d fn-native-auth-admin-secretp)
           (:d fn-native-auth-admin-principal)
           (:d fn-native-auth-admin-upsert)
@@ -471,4 +542,5 @@
           (:d fn-native-auth-admin-recovery-event-value)
           (:d fn-native-auth-admin-recovery-step)
           (:d fn-native-auth-admin-recovery-outcome)
-          (:d fn-native-auth-admin-recovery-trace)))
+          (:d fn-native-auth-admin-recovery-trace)
+          (:d fn-native-auth-admin-recovery-has-cleanup-directory-okp)))
