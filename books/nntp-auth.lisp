@@ -441,6 +441,54 @@
                         (fn-auth-session-tlsp as)
                         (fn-auth-session-handshakingp as)))
 
+(defun fn-auth-principal-peer-count (hex rows)
+  "How many configured peer records bind HEX as their AUTHINFO principal."
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (+ (if (and (equal (fn-cfg-row-b (car rows)) "auth-principal")
+                  (equal (fn-cfg-row-c (car rows)) hex)) 1 0)
+         (fn-auth-principal-peer-count hex (cdr rows)))
+    0))
+
+(defun fn-auth-principal-peer-name (hex rows)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (and (equal (fn-cfg-row-b (car rows)) "auth-principal")
+               (equal (fn-cfg-row-c (car rows)) hex))
+          (fn-cfg-row-a (car rows))
+        (fn-auth-principal-peer-name hex (cdr rows)))
+    nil))
+
+(defun fn-auth-bind-principal-peer (as principal)
+  "Promote a contextual reader only for one unambiguous configured principal."
+  (declare (xargs :guard t))
+  (let* ((ps (fn-auth-session-base as))
+         (cfg (fn-peer-session-cfg ps))
+         (hex (coerce (fn-id-hex-octets principal) 'string))
+         (rows (and (fn-cfgp cfg) (fn-cfg-peers (fn-cfg-value cfg))))
+         (count (fn-auth-principal-peer-count hex rows))
+         (peer (and (equal count 1) (fn-auth-principal-peer-name hex rows))))
+    (if (and (null (fn-peer-session-peer ps)) peer
+             (fn-node-statep (fn-peer-session-node ps)))
+        (fn-auth-with-base
+         as (fn-peer-make-session (fn-peer-session-base ps) peer nil 0
+                                  (fn-peer-session-node ps) cfg))
+      as)))
+
+(defun fn-auth-clear-principal-peer (as)
+  "Drop only a role derived from (:principal ...); legacy source peers stay peers."
+  (declare (xargs :guard t))
+  (let* ((ps (fn-auth-session-base as))
+         (peer (fn-peer-session-peer ps))
+         (cfg (fn-peer-session-cfg ps))
+         (record (and peer (fn-cfgp cfg)
+                      (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg))))))
+    (if (and record (equal (car (fn-cfg-peer-auth record)) :principal))
+        (fn-auth-with-base
+         as (fn-peer-make-session (fn-peer-session-base ps) nil nil 0
+                                  (fn-peer-session-node ps) cfg))
+      as)))
+
 ; -----------------------------------------------------------------------------
 ; Replies and effects
 
@@ -708,14 +756,18 @@
           (let ((cred (fn-auth-find-cred (fn-auth-session-pending as)
                                          (fn-auth-config-creds acfg))))
             (if (fn-auth-checkp cred (car (cdr args)))
+                (let* ((authenticated
+                         (fn-auth-make-session (fn-auth-session-base as) acfg
+                                               (fn-auth-session-pending as)
+                                               (fn-auth-cred-principal cred)
+                                               (fn-auth-session-tlsp as)
+                                               (fn-auth-session-handshakingp as)))
+                       (bound (fn-auth-bind-principal-peer
+                               authenticated (fn-auth-cred-principal cred))))
                 (fn-post-make-result
-                 (fn-auth-make-session (fn-auth-session-base as) acfg
-                                       (fn-auth-session-pending as)
-                                       (fn-auth-cred-principal cred)
-                                       (fn-auth-session-tlsp as)
-                                       (fn-auth-session-handshakingp as))
+                 bound
                  (fn-auth-single as "281 authentication accepted")
-                 nil)
+                 nil))
               ; The cached name is cleared on failure, so a failed PASS
               ; cannot be retried without a fresh USER.
               (fn-post-make-result
@@ -765,12 +817,13 @@
     ; sets `tlsp'.  Section 2.2.2 also requires the protocol state to be
     ; reset, which is why the cached name and the subject are dropped here:
     ; nothing learned before the handshake is carried across it.
+    (let ((cleared (fn-auth-clear-principal-peer as)))
     (fn-post-make-result
-     (fn-auth-make-session (fn-auth-session-base as)
+     (fn-auth-make-session (fn-auth-session-base cleared)
                            (fn-auth-session-config as) nil nil nil t)
      (append (fn-auth-single as "382 continue with TLS negotiation")
              (list (fn-auth-starttls-effect)))
-     nil))))
+     nil)))))
 
 ; The host's re-entry after the handshake (RFC 4642 section 2.2.2).  It is a
 ; wire event and not a command: no client octet produces it, and it emits no
@@ -893,6 +946,10 @@
 (verify-guards fn-auth-sessionp)
 (verify-guards fn-auth-open-session)
 (verify-guards fn-auth-with-base)
+(verify-guards fn-auth-principal-peer-count)
+(verify-guards fn-auth-principal-peer-name)
+(verify-guards fn-auth-bind-principal-peer)
+(verify-guards fn-auth-clear-principal-peer)
 (verify-guards fn-auth-single)
 (verify-guards fn-auth-starttls-effect)
 (verify-guards fn-auth-access-capability-lines)

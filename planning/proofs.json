@@ -1597,6 +1597,27 @@
       ],
       "pending_subject": "Add and certify named keystones for TLS phase ordering and loss-to-requeue composition over the host-called owner functions; OpenSSL chain/hostname behavior remains trusted integration evidence, not an ACL2 proof.",
       "progress_note": "Ground witnesses cover accepted 382, refusal, authenticated client success, wrong anchor and wrong hostname. Focused integrated batch certification is pending."
+    },
+    {
+      "id": "PRF-048",
+      "title": "Principal-bound inbound peer role selection",
+      "statement": "A connection opened through the host-called fn-ocfg-open remains a reader until AUTHINFO succeeds for a credential whose principal has exactly one configured (:principal ...) peer match; mismatch and duplicate bindings remain readers, protected-only refuses the cleartext exchange, STARTTLS clears a principal-derived role, and each reconnect begins unbound.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-004"
+      ],
+      "depends_on": [
+        "PRF-039"
+      ],
+      "assumptions": [],
+      "status": "in-progress",
+      "evidence": [
+        "books/nntp-auth.lisp",
+        "books/owner-config.lisp",
+        "tests/acl2/nntp-auth-tests.lisp"
+      ],
+      "pending_subject": "Name and certify keystones over the host-called owner open/read composition; current ground witnesses exercise the ACL2 dispatcher and role reset but do not prove raw password-verifier correctness or host transport behavior.",
+      "progress_note": "Source implementation and focused logical witnesses are present; integrated certification and native reconnect evidence remain pending."
     }
   ]
 }
