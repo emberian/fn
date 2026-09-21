@@ -350,7 +350,8 @@
        (t (fn-replay-identity-advance ctx))))))
 
 (defun fn-replay-identity-loop (records ctx)
-  (declare (xargs :guard t :measure (len records) :verify-guards nil))
+  (declare (xargs :guard t :measure (len records) :verify-guards nil
+                  :hints (("Goal" :in-theory (disable fn-store-event-p)))))
   (if (consp records)
       (if (not (fn-store-event-p (car records)))
           (fn-stxk-fault ctx :invalid-record)
