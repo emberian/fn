@@ -463,6 +463,16 @@
       (f-get-global 'fn-owner-auth state)
     (fn-auth-open-config)))
 
+; Install a complete ACL2-built authentication configuration.  The native
+; auth profile parser calls this after owner recovery and before the listener
+; opens.  Raw Lisp cannot rebuild a credential row or change one policy bit.
+(defun fn-owner-set-auth-config (acfg state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (not (fn-auth-configp acfg))
+      (value :rejected)
+    (let ((state (f-put-global 'fn-owner-auth acfg state)))
+      (value :ok))))
+
 ; -----------------------------------------------------------------------------
 ; The transit port (specs/peering.md 2.2).
 ;

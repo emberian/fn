@@ -78,3 +78,15 @@
 (defun fn-native-operator-host-result-run-max-connections (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-run-max-connections result))
+
+(defun fn-native-operator-host-result-run-auth-path-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-run-auth-path-octets result))
+
+(defun fn-native-operator-host-result-run-auth-requiredp (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-run-auth-requiredp result))
+
+(defun fn-native-operator-host-result-run-auth-protected-onlyp (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-run-auth-protected-onlyp result))

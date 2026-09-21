@@ -28,6 +28,26 @@
           (fn-native-config-listener-host *fn-ncfg-minimal-config*)))
         '(:inet (127 0 0 1))))
 
+; The native owner consumes the ACL2-selected credential path and policy.
+; Required auth and a custom path are live; protected-only remains unavailable
+; until the native host has a real TLS facility.
+(defconst *fn-ncfg-native-auth*
+  (fn-native-config-load
+   (fn-ncfg-test-lines
+    '("[store]" "path = \"/srv/fn\""
+      "[auth]" "required = true" "path = \"/run/fn/credentials.toml\""))))
+(assert-event (equal (car *fn-ncfg-native-auth*) :accepted))
+(assert-event
+ (fn-native-config-operator-availablep (car (cdr *fn-ncfg-native-auth*))))
+(defconst *fn-ncfg-native-protected-auth*
+  (fn-native-config-load
+   (fn-ncfg-test-lines
+    '("[store]" "path = \"/srv/fn\""
+      "[auth]" "required = true" "protected_only = true"))))
+(assert-event
+ (not (fn-native-config-operator-availablep
+       (car (cdr *fn-ncfg-native-protected-auth*)))))
+
 ; A 512-octet store path is legal itself, but its two derived defaults would
 ; exceed the same path bound.  Supplying bounded auth/control paths explicitly
 ; is the non-degenerate accepted alternative.

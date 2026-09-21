@@ -61,16 +61,30 @@
 (defun fnn-operator-execute-run (result)
   "Invoke the one owner entry only with ACL2-normalized plan projections."
   (handler-case
-      (let ((code
-              (fnn-owner-run-normalized
-               (fnn-octets (fnn-core
-                            'fn-native-operator-host-result-run-store-octets result))
-               (fnn-octets (fnn-core
-                            'fn-native-operator-host-result-run-listener-host-octets result))
-               (fnn-core 'fn-native-operator-host-result-run-listener-port result)
-               (fnn-core 'fn-native-operator-host-result-run-oncep result)
+      (let* ((auth-path
+               (fnn-octets-string
+                (fnn-octets
+                 (fnn-core
+                  'fn-native-operator-host-result-run-auth-path-octets result))))
+             (auth-required
                (fnn-core
-                'fn-native-operator-host-result-run-max-connections result))))
+                'fn-native-operator-host-result-run-auth-requiredp result))
+             (auth-protected
+               (fnn-core
+                'fn-native-operator-host-result-run-auth-protected-onlyp result))
+             (*fnn-owner-startup-hooks*
+               (list (fnn-native-auth-startup-hook
+                      auth-path auth-required auth-protected)))
+             (code
+               (fnn-owner-run-normalized
+                (fnn-octets (fnn-core
+                             'fn-native-operator-host-result-run-store-octets result))
+                (fnn-octets (fnn-core
+                             'fn-native-operator-host-result-run-listener-host-octets result))
+                (fnn-core 'fn-native-operator-host-result-run-listener-port result)
+                (fnn-core 'fn-native-operator-host-result-run-oncep result)
+                (fnn-core
+                 'fn-native-operator-host-result-run-max-connections result))))
         (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "run")
         code)
     (error (condition)
