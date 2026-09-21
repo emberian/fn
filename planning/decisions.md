@@ -51,7 +51,7 @@ backlog; detailed byte profiles and key lifecycle still need design. The
 | D06 | How far down should we implement indexes initially? | Journal/checkpoint authority with rebuildable in-memory indexes; add disk indexes when scale demands. | Disk-resident indexes immediately; earlier scale, larger recovery/refinement proof surface. | M2 |
 | D07 — decided | What execution host should we target? | **Selected:** native Lisp deployment, executing ACL2 definitions directly; no Python in the deployed node, CLI, launchers or runtime helpers. Continue the existing ACL2/SBCL integration with pinned versions. Python remains development/test tooling. | Python service/bridge retained only as a development oracle; it cannot satisfy the production v0 gate. | v0 across all waves |
 | D08 | What portable encoding and evolution policy? | Restricted deterministic CBOR, exact schema versions, bounded parsing; unknown objects may be carried opaquely but not interpreted as authority. | A custom binary grammar, or textual encoding; different tooling, size, and canonicalization costs. | M2 |
-| D09 | How do keys, algorithms, and signatures evolve? | Algorithm-tagged containers and explicit signing profiles; stable principals with recorded authorized key succession. Choose concrete suites after the threat/longevity discussion. | A fixed key-is-identity scheme; simpler v1, harder rotation and long-lived migration. | M2 |
+| D09 — suite selected; custody/succession details open | How do keys, algorithms, and signatures evolve? | **Selected 2026-09-21:** native signatures require Ed25519 **and** ML-DSA-65 from the first release, for long-lived authenticity. Both must verify against the enrolled key set; no classical-only fallback. Algorithm-tagged containers bind the required profile. Custody and recovery authority remain separate design work. | Ed25519-first with later hybrid upgrade was declined. | M2 |
 | D10 | How do we handle time, old backups, and forks? | Local counters plus explicit origin incarnations; causal references; restore/clone procedure creates or validates a fresh sequence namespace. | Depend on a central identity/sequence service; reduces offline autonomy. | M1 model, M4 restore tooling |
 | D11 | Who controls group identity and policy? | Local aliases over an explicit group authority/configuration identity; initially simple owner/admin succession. | Globally shared mutable names or general multi-party governance from v1; more conflict and authorization rules. | M1 local, M4 portable |
 | D12 | When may a forwarding node release responsibility? | Only after committed, matching application evidence satisfies named terms; start with cooperative trusted peers and explicit archive pins. | Require multiple independent retainers before release; stronger failure tolerance, more capacity and failure-domain policy. | M1 model, M4 |
@@ -96,9 +96,13 @@ part. Acceptance must still handle ordinary NNTP clients without fn extensions.
 Native author-signature support does not require every post to be signed. It
 requires honest distinctions among an author's signature, a host signing on an
 authorized principal's behalf, and a gateway attesting only to submission.
-Decide key custody on agent hosts, human signing workflow, rotation/recovery,
-offline revocation semantics, and whether post-quantum or hybrid signatures are
-an initial requirement or a future profile. No suite has been selected here.
+The user selected mandatory Ed25519 plus ML-DSA-65 from the first release on
+2026-09-21 and reaffirmed post-quantum support. Both component signatures must
+verify; unknown/absent components do not downgrade the requirement. This is a
+suite decision, not a claim that its implementation or security is proved.
+Key custody on agent hosts, human signing workflow, rotation/recovery authority
+and offline revocation semantics remain to be specified. Private-group encryption
+is a separate decision and is not selected by this signature choice.
 
 ### D03 and D13: keeping a letter versus keeping a promise
 

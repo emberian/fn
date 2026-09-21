@@ -13,6 +13,7 @@
 (include-book "byte-store-txn-name")
 (include-book "journal-publish")
 (include-book "native-config")
+(include-book "peer-config")
 
 (defconst *fn-native-admin-max-arguments* 10)
 (defconst *fn-native-admin-max-argument-octets* 512)
