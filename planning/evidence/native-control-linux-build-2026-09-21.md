@@ -1,7 +1,10 @@
 # Native control Linux build and runtime evidence
 
-The final source packet is `b0dfdf55`; `4ef765a6` adds only evidence. The
-source was copied to `persvati` and its relevant digests matched the worktree:
+The final source packet is `b0dfdf55`; later commits add only evidence. This is
+the exact-source control gate for that packet, not a build claim about later
+whole-main U13/admin changes. The source was copied to `persvati` at the
+absolute origin `/home/ember/fn-lanes/w22-native-control`, and its relevant
+digests matched the worktree:
 
 ```text
 c5c420b2e67573b69e8c43ce966b45a27a013c6b6d119415b3f54668d75ad93d  books/native-control.lisp
@@ -27,15 +30,31 @@ packet. The second recertified the changed control model and tests. The third
 closed newer auth, Store correspondence, anchor, owner configuration and feed
 journal roots found by the first image build attempt.
 
+The exact manifests are retained at:
+
+```text
+planning/evidence/manifests/certify-20260921T104857Z-2884731.json
+planning/evidence/manifests/certify-20260921T111546Z-3157398.json
+planning/evidence/manifests/certify-20260921T111821Z-3183148.json
+```
+
 The exact build command was:
 
 ```text
 FN_ACL2=$HOME/fn-tools/acl2-8.7/saved_acl2 sh tools/build_native_host.sh
 ```
 
-It exited zero and reported `built build/fn-host (282M core)`. The build log
-SHA-256 was
-`55aa453a0c969cf6221e38c5093cc75e9fe1603e70a23ae63648fdeae5bddbfd`.
+It exited zero and reported `built build/fn-host (282M core)`. The resulting
+launcher SHA-256 was
+`1532e3dac37298ac64c0555dacca9405efcb9363087709bee61f2923fcff1f7c`,
+and the `build/fn-host.core` SHA-256 was
+`8c8eb547a346e1aad5e60b9879e1224ea355735b369c2c7dca89c4b90653f237`.
+The build log SHA-256 was
+`55aa453a0c969cf6221e38c5093cc75e9fe1603e70a23ae63648fdeae5bddbfd`;
+its retained gzip is
+`planning/evidence/native-control-native-host-build-20260921.log.gz`
+(compressed SHA-256
+`2ff7fcbc9bbe5dfc43da62698c79b7f4dbe80cc018fd741cdbe2df4aca342f1e`).
 It contained `FN_NATIVE_BUILD_LOADED` and no uncertified-book or ACL2 error
 marker. ACL2 could not load a compiled object for the already certified
 `owner-feed-port` book and loaded its source instead; this is a build-time
