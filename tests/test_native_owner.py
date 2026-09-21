@@ -36,10 +36,10 @@ class NativeOwnerTests(unittest.TestCase):
             env=environment(), timeout=180, check=False)
         self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
 
-    def start_owner(self):
+    def start_owner(self, once=True):
         process = subprocess.Popen(
             [str(IMAGE), "--fn", "owner", "run", str(self.store),
-             "0", "1", "8"], cwd=ROOT, stdout=subprocess.PIPE,
+             "0", "1" if once else "0", "8"], cwd=ROOT, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, env=environment())
         ready = select.select([process.stdout], [], [], 180)[0]
         self.assertTrue(ready, "native owner did not announce its port")
@@ -49,6 +49,35 @@ class NativeOwnerTests(unittest.TestCase):
                 line, process.stderr.read().decode("utf-8", "replace")))
         return process, int(line.split()[1])
 
+    def test_client_disconnect_is_not_a_global_owner_fault(self):
+        process, port = self.start_owner(once=False)
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
+                self.assertTrue(client.makefile("rb", buffering=0).readline().startswith(b"200 "))
+            with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
+                stream = client.makefile("rwb", buffering=0)
+                self.assertTrue(stream.readline().startswith(b"200 "))
+                stream.write(b"QUIT\r\n")
+                self.assertTrue(stream.readline().startswith(b"205 "))
+            self.assertIsNone(process.poll(), "owner stopped after an ordinary disconnect")
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                process.wait(timeout=10)
+            process.stdout.close()
+            process.stderr.close()
+
+    def test_invalid_complete_feed_evidence_is_process_fault(self):
+        feed = self.store / "feed"
+        feed.mkdir()
+        (feed / "bad.fnfd").write_bytes(b"not-a-valid-complete-feed-frame")
+        result = subprocess.run(
+            [str(IMAGE), "--fn", "owner", "run", str(self.store),
+             "0", "1", "8"], cwd=ROOT, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, env=environment(), timeout=180, check=False)
+        self.assertEqual(result.returncode, 4, result.stderr.decode())
+        self.assertIn(b"invalid complete FNFD evidence", result.stderr)
+
     def test_post_is_committed_and_readable_after_owner_exit(self):
         process, port = self.start_owner()
         article = (b"From: sender@example.invalid\r\n"
@@ -56,7 +85,11 @@ class NativeOwnerTests(unittest.TestCase):
                    b"Subject: native owner\r\n"
                    b"Date: Mon, 21 Sep 2026 08:00:00 +0000\r\n"
                    b"Message-ID: <native-owner@example.invalid>\r\n"
-                   b"\r\nbody\r\n")
+                   b"\r\n" +
+                   (b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\r\n"
+                    * 145))
+        self.assertGreater(len(article), 8192)
+        self.assertLessEqual(len(article), 32768)
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
                 stream = client.makefile("rwb", buffering=0)

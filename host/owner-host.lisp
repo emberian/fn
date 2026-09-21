@@ -636,6 +636,7 @@
   (let* ((owner (fn-owner-core state))
          (result (fn-own-submission-intent-result owner evidence generation txid))
          (records (fn-own-submission-intent-records owner evidence generation txid))
+         (state (f-put-global 'fn-owner-shared-resolution-id nil state))
          (state (fn-owner-feed-install-feed records nil state)))
     (value result)))
 
@@ -648,6 +649,9 @@
   (let* ((owner (fn-owner-core state))
          (records (fn-own-submission-resolution-records
                    owner word evidence generation txid))
+         (sub (fn-own-inflight owner))
+         (state (f-put-global 'fn-owner-shared-resolution-id
+                              (and sub (fn-own-sub-id sub)) state))
          (state (fn-owner-feed-install-feed records nil state)))
     (value (cond ((consp records)
                   (fn-feed-journal-kind (car records)))
@@ -695,6 +699,19 @@
   (declare (xargs :stobjs state :mode :program))
   (value (if (fn-feed-namep peer-octets) t nil)))
 
+(defun fn-owner-feed-journal-begin (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (f-put-global 'fn-owner-feed-safe-offset 0 state)))
+    (value :ok)))
+
+(defun fn-owner-feed-journal-prefix-size (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value *fn-feed-journal-prefix-size*))
+
+(defun fn-owner-feed-journal-offset (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (f-get-global 'fn-owner-feed-safe-offset state)))
+
 ; A transit transfer that became durable owes the feed journal the same
 ; `(:feed-enqueue ...)` records a POST does: a relayed article is fed
 ; onward (RFC 5537 sec. 3.6) and the entry must survive the process that
@@ -735,10 +752,13 @@
 (defun fn-owner-outcome (id word state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (fn-owner-core state))
-         (records (fn-own-outcome-records owner id word))
+         (records (fn-own-outcome-journal-records
+                   owner id word
+                   (f-get-global 'fn-owner-shared-resolution-id state)))
          (result (fn-own-outcome owner id word))
          (state (fn-owner-replace-core (cdr result) state))
          (state (fn-owner-install-effects (car result) state))
+         (state (f-put-global 'fn-owner-shared-resolution-id nil state))
          (state (fn-owner-feed-install-feed records nil state)))
     (value :fed)))
 

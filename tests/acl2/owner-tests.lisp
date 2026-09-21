@@ -543,6 +543,43 @@
                       32768))
 (defconst *own-post-obs* (fn-clock-observation 2000000 1600000010000 500 t))
 (defconst *own-post-command* (append (fn-nntp-string-octets "POST") '(13 10)))
+
+; One 9 KiB CRLF article is inside the Store profile and outside the stale
+; 8192-byte owner prototype limit.  Both live NNTP and the same-node control
+; port must take their bound from *own-config*, so neither path narrows what
+; direct Store acceptance admits.
+(defun own-large-crlf-body (n)
+  (declare (xargs :guard (natp n) :measure (nfix n)))
+  (if (zp n) nil
+    (append (fn-nntp-string-octets
+             "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+            '(13 10) (own-large-crlf-body (1- n)))))
+(defconst *own-large-source*
+  (append (fn-nntp-string-octets "From: large@example.invalid") '(13 10)
+          (fn-nntp-string-octets "Subject: configured owner capacity") '(13 10)
+          (fn-nntp-string-octets "Newsgroups: fn.letters") '(13 10)
+          (fn-nntp-string-octets "Message-ID: <large-owner@example.invalid>") '(13 10)
+          '(13 10) (own-large-crlf-body 145)))
+(defconst *own-large-article* (append *own-large-source* '(46 13 10)))
+(assert-event (< *fn-own-body-limit* (len *own-large-source*)))
+(assert-event (<= (len *own-large-source*)
+                  (fn-inj-config-max-octets *own-config*)))
+(assert-event (fn-inj-injectedp
+               (fn-own-control-decision
+                *own-config* (fn-nntp-string-octets
+                              "<large-owner@example.invalid>")
+                (list (fn-nntp-string-octets "fn.letters"))
+                *own-large-source*)))
+(defun own-large-served-submission ()
+  (let* ((base (fn-own-run *own-closed*
+                           (list (list :configure *own-config*)
+                                 (list :observe *own-post-obs*))))
+         (id (fn-own-next-id base))
+         (opened (cdr (fn-own-open base nil)))
+         (offered (cdr (fn-own-read opened id *own-post-command*))))
+    (fn-served-submission
+     (car (fn-own-read offered id *own-large-article*)))))
+(assert-event (fn-inj-injectedp (own-large-served-submission)))
 (defconst *own-article*
   (append (fn-nntp-string-octets "From: poster@example.invalid") '(13 10)
           (fn-nntp-string-octets "Subject: hello") '(13 10)
@@ -783,6 +820,45 @@
 (assert-event (null (fn-own-submission-resolution-records
                      *own-control-fed-taken* :uncertain
                      *own-control-evidence* 1 3)))
+
+; The shared commit is the one durable obligation for a local submission.
+; The following owner outcome still moves the live feed, but the host-facing
+; journal projection suppresses its older standalone enqueue.  Without the
+; exact resolution id the legacy projection remains reachable.
+(defun own-with-inflight (o sub)
+  (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
+               (fn-own-next-id o) (fn-own-max-conns o) (fn-own-pending o)
+               (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+               (fn-own-config o) (fn-own-queue o) sub (fn-own-feeds o)))
+(defun own-fed-local-on-connection ()
+  (let ((sub (fn-own-inflight *own-control-fed-done*)))
+    (own-with-inflight
+     *own-control-fed-done*
+     (fn-own-sub-make 4 (fn-own-sub-version sub) (fn-own-sub-mark sub)
+                      (fn-own-sub-decision sub)))))
+(assert-event (equal (len (own-control-commits)) 1))
+(assert-event (equal (len (fn-own-outcome-records
+                           (own-fed-local-on-connection) 4 :durable)) 1))
+(assert-event (null (fn-own-outcome-journal-records
+                     (own-fed-local-on-connection) 4 :durable 4)))
+(assert-event (equal (len (fn-own-outcome-journal-records
+                           (own-fed-local-on-connection) 4 :durable nil)) 1))
+
+; Transit keeps its standalone enqueue route: it does not pass through the
+; local fn-owner-outcome wrapper or its one-shot shared-resolution id.
+(defun own-fed-transit-on-connection ()
+  (let ((sub (fn-own-inflight *own-control-fed-done*)))
+    (own-with-inflight
+     *own-control-fed-done*
+     (fn-own-sub-make
+      4 (fn-own-sub-version sub) (fn-own-sub-mark sub)
+      (fn-peer-make-submission "p" :ihave *own-control-msgid*
+                               *own-control-source*)))))
+(assert-event (fn-own-transit-subp
+               (fn-own-inflight (own-fed-transit-on-connection))))
+(assert-event (equal (len (fn-own-transit-outcome-records
+                           (own-fed-transit-on-connection)
+                           4 :want :durable)) 1))
 
 ; Isolation tooth: changing only the transaction id makes another retry.
 ; Resolving this attempt cannot consume that earlier key.
