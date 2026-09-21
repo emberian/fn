@@ -41,6 +41,16 @@ cross-cluster steps you could not take alone.
   for the next lane. If your `installed` count is near zero, say so in your
   report: it means the box's cache has nothing for your books, not that the
   run was wasted.
+- **READING `free` ON hbox IS WRONG.** hbox is a ZFS box, and the ZFS ARC is
+  counted in `used` and in unreclaimable slab, never in `buff/cache`, so
+  `free`'s `available` column badly under-reports. Measured 2026-09-21:
+  `free -g` said 98 G used and 25 G available, while `/proc/meminfo` showed
+  Slab 87.0 G with SUnreclaim 82.3 G, AnonPages just 1.2 G, and the ARC at
+  45.1 G of which 43.8 G is metadata, dnode, dbuf and bonus caches. The sum
+  of every process's RSS on the box was **2.7 G across 988 processes**, and
+  no HOL process was resident at all. So hbox had ~29 G free outright plus
+  ~45 G the ARC gives back under pressure, and 24 near-idle CPUs. To judge
+  hbox, read `AnonPages` and the RSS sum, not `free`'s `used`.
 - Box facts, measured 2026-09-20. persvati's ACL2 is
   `$HOME/fn-tools/acl2-8.7/saved_acl2`; hbox's is
   `/tank/fn/acl2-8.7/saved_acl2`, and `tools/certify_books.py` on hbox needs
