@@ -40,6 +40,17 @@ exec "$tmp/host-runtime" --core "$tmp/fn-host.core" "\$@"
 EOF
 chmod 755 "$tmp/fn-host"
 printf core > "$tmp/fn-host.core"
+printf different-core > "$tmp/mismatched.core"
+set +e
+PREFIX="$tmp/rejected/opt/fn" FN_NATIVE_HOST="$tmp/fn-host" \
+  FN_NATIVE_SOURCE_REVISION=0123456789abcdef \
+  FN_NATIVE_CORE="$tmp/mismatched.core" sh "$root/packaging/install-native.sh" \
+  > "$tmp/mismatch.out" 2> "$tmp/mismatch.err"
+mismatch_rc=$?
+set -e
+test "$mismatch_rc" -eq 4
+grep -q 'FN_NATIVE_CORE does not match the generated launcher core' "$tmp/mismatch.err"
+test ! -e "$tmp/rejected"
 PREFIX="$tmp/root/opt/fn" FN_NATIVE_HOST="$tmp/fn-host" \
   FN_NATIVE_SOURCE_REVISION=0123456789abcdef \
   FN_NATIVE_CORE="$tmp/fn-host.core" sh "$root/packaging/install-native.sh"
