@@ -250,6 +250,34 @@ class NativeCheckpointTests(unittest.TestCase):
                 status = self.native("checkpoint", "status", store)
                 self.assertIn(expected, status.stdout)
 
+    def test_selected_lossless_pack_splices_before_generic_replay(self):
+        store = self.initialized("pack")
+        packed = self.native("checkpoint", "pack", store, "select")
+        self.assertIn("packed generation=0 records=1 selected=yes", packed.stdout)
+        recovered = self.native("store", store, "recover")
+        self.assertIn("transactions=1 articles=1", recovered.stdout)
+
+    def test_selected_pack_reclaims_physical_prefix_and_replays_suffix(self):
+        store = self.initialized("pack-reclaim")
+        self.native("checkpoint", "pack", store, "select")
+        self.native("store", store, "post", "<suffix@example.invalid>",
+                    self.payload, "-", "-", "fn.letters")
+        reclaimed = self.native("checkpoint", "pack-reclaim", store)
+        self.assertIn("reclaimed transaction-prefix=1", reclaimed.stdout)
+        self.assertEqual([p.name for p in (store / "transactions").iterdir()],
+                         ["00000000000000000001.txn"])
+        recovered = self.native("store", store, "recover")
+        self.assertIn("transactions=2 articles=2", recovered.stdout)
+
+    def test_pack_prefix_reclaim_process_death_recovers_from_selected_pack(self):
+        for point in ("pack-reclaim-unlink", "pack-reclaim-directory"):
+            with self.subTest(point=point):
+                store = self.initialized(point)
+                self.native("checkpoint", "pack", store, "select")
+                self.stopped_then_killed(("checkpoint", "pack-reclaim", store), point)
+                recovered = self.native("store", store, "recover")
+                self.assertIn("transactions=1 articles=1", recovered.stdout)
+
         selection_expectations = {
             "selection-file": "checkpoint=none",
             "selection-replace": "checkpoint=ok generation=0",

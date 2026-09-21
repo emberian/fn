@@ -692,19 +692,22 @@ returned representation; it is not a second filename policy."
               (cons (first entry) (fnn-octets (second entry))))
             (third value))))
 
-(defun fnn-bridge-transaction-observation (observed limit)
+(defun fnn-bridge-transaction-observation (observed limit selected-lower)
   "Return ACL2-issued (sequence . filename) pairs for one bounded scan.
 
 The host passes observed names as octets and receives their canonical sequence
 binding.  It performs no filename parser, decimal conversion, or gap policy."
-  (let ((value (fnn-core 'fn-store-txn-observation
+  (let ((value (fnn-core 'fn-store-txn-observation-selected
                          (mapcar (lambda (name)
                                    (fnn-octet-list (fnn-string-octets name)))
                                  observed)
-                         limit)))
-    (unless (listp value)
+                         limit selected-lower)))
+    (unless (and (listp value) (eq (first value) :ok)
+                 (integerp (second value)) (>= (second value) 0)
+                 (listp (third value)))
       (fnn-fault "ACL2 refused transaction namespace observation"))
-    (mapcar (lambda (pair)
+    (values
+     (mapcar (lambda (pair)
               (unless (and (true-listp pair) (= (length pair) 2)
                            (integerp (first pair)) (>= (first pair) 0)
                            (stringp (second pair)))
@@ -712,7 +715,8 @@ binding.  It performs no filename parser, decimal conversion, or gap policy."
               ;; fn-store-txn-observation has already decoded the observed
               ;; UTF-8 octets and compared this string to fn-bs-txn-name.
               (cons (first pair) (second pair)))
-            value)))
+             (third value))
+     (second value))))
 
 (defun fnn-bridge-staging-observation-limit ()
   "The ACL2-owned maximum number of staging names recovery may observe."
@@ -770,7 +774,10 @@ not repeat the staging-prefix, held-name, or phase policy."
 ; generic decoder/replay call.  Without the optional pack layer this is the
 ; identity function.
 (defvar *fnn-pack-recover-callback*
-  (lambda (store records) (declare (ignore store)) records))
+  (lambda (store records actual-lower)
+    (declare (ignore store actual-lower)) records))
+(defvar *fnn-pack-lower-bound-callback*
+  (lambda (store) (declare (ignore store)) 0))
 
 (defun fnn-bridge-article-count () (fnn-nat (fnn-core-state 'fn-store-sn-article-count)))
 (defun fnn-bridge-next-txid () (fnn-nat (fnn-core-state 'fn-store-sn-next-txid)))
@@ -1108,7 +1115,7 @@ kernel may have issued the namespace operation even when it reports failure."
       ;; deliberately outside that handler so its selected outcome is visible.
       (when initializer-prefix (fnn-init-cut store (fnn-concat initializer-prefix "stage-unlinked"))))))
 
-(defun fnn-transaction-files (store)
+(defun fnn-transaction-files (store &optional (selected-lower 0))
   "ACL2-bound final namespace pairs, each path verified regular by the host."
   (let* ((limit (fnn-config-max-transactions store))
          ;; This is the physical resource boundary: readdir stops before an
@@ -1119,8 +1126,10 @@ kernel may have issued the namespace operation even when it reports failure."
                                                          limit "transaction namespace")
                              #'string<)
                      (fnn-os-error () (fnn-fault "cannot enumerate transactions"))))
-         (pairs (fnn-bridge-transaction-observation observed limit)))
-    (mapcar (lambda (pair)
+         (answer (multiple-value-list
+                  (fnn-bridge-transaction-observation observed limit selected-lower)))
+         (pairs (first answer)) (actual-lower (second answer)))
+    (values (mapcar (lambda (pair)
               (let* ((sequence (car pair))
                      (name (cdr pair))
                      (path (fnn-join (fnn-transactions store) name))
@@ -1131,7 +1140,8 @@ kernel may have issued the namespace operation even when it reports failure."
                 ;; filename comparison is the byte-store codec.  Durable
                 ;; record decoding below binds this value again before replay.
                 (cons sequence path)))
-            pairs)))
+                    pairs)
+            actual-lower)))
 
 (defun fnn-staging-observation (store)
   "The bounded physical observation supplied to the ACL2 staging policy."
@@ -1271,19 +1281,21 @@ because the name may or may not still be present after the syscall."
       (unwind-protect (fnn-flock fd +fnn-lock-un+)
         (fnn-close fd)))))
 
-(defun fnn-durable-records (store)
+(defun fnn-durable-records (store &optional (selected-lower 0))
   (let ((records nil) (aggregate 0)
         (bound (+ (fnn-constant :overhead) (fnn-constant :max-store))))
-    (loop for (sequence . path) in (fnn-transaction-files store) do
-      (fnn-check-regular path)
-      (let ((record (fnn-unframe (fnn-read-regular-bounded path bound))))
-        (incf aggregate (length record))
-        (when (> aggregate (fnn-config-max-recovery store))
-          (fnn-fault "transaction recovery input exceeds configured bound"))
-        (unless (= (fnn-bridge-record-sequence record) sequence)
-          (fnn-fault "record sequence does not match immutable filename"))
-        (push record records)))
-    (nreverse records)))
+    (multiple-value-bind (files actual-lower)
+        (fnn-transaction-files store selected-lower)
+      (loop for (sequence . path) in files do
+        (fnn-check-regular path)
+        (let ((record (fnn-unframe (fnn-read-regular-bounded path bound))))
+          (incf aggregate (length record))
+          (when (> aggregate (fnn-config-max-recovery store))
+            (fnn-fault "transaction recovery input exceeds configured bound"))
+          (unless (= (fnn-bridge-record-sequence record) sequence)
+            (fnn-fault "record sequence does not match immutable filename"))
+          (push record records)))
+      (values (nreverse records) actual-lower))))
 
 (defun fnn-observe (store operation &optional (result :ok))
   "Submit one already-observed filesystem result and keep failure fenced."
@@ -1299,8 +1311,11 @@ because the name may or may not still be present after the syscall."
         (progn
           (fnn-load-frontier store)
           (let ((config-records (fnn-config-records store)))
-            (setq records (fnn-durable-records store))
-            (setq records (funcall *fnn-pack-recover-callback* store records))
+            (multiple-value-bind (physical-records actual-lower)
+                (fnn-durable-records
+                 store (funcall *fnn-pack-lower-bound-callback* store))
+              (setq records (funcall *fnn-pack-recover-callback*
+                                     store physical-records actual-lower)))
             (unless (eq (fnn-bridge-recover records (fnn-store-frontier store) config-records)
                         :recovering)
               (fnn-fault "ACL2 replay rejected committed transaction history or configuration history")))
