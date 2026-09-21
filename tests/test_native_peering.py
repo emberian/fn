@@ -224,12 +224,22 @@ class NativePeeringTests(unittest.TestCase):
             return lines
 
     def test_public_native_nodes_exchange_both_ways_and_suppress_duplicate(self):
+        self.exchange_both_ways(live_configuration=False)
+
+    def test_live_peer_configuration_activates_both_directions(self):
+        self.exchange_both_ways(live_configuration=True)
+
+    def exchange_both_ways(self, live_configuration):
         a = self.initialize("a", free_port())
         b = self.initialize("b", free_port())
-        self.configure_peer(a, b)
-        self.configure_peer(b, a)
+        if not live_configuration:
+            self.configure_peer(a, b)
+            self.configure_peer(b, a)
         self.start(a)
         self.start(b)
+        if live_configuration:
+            self.configure_peer(a, b)
+            self.configure_peer(b, a)
         self.assertIn(b"IHAVE", self.capabilities(a))
         self.assertIn(b"STREAMING", self.capabilities(a))
         self.assertIn(b"IHAVE", self.capabilities(b))

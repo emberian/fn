@@ -19,6 +19,9 @@ The source manifest contains SHA-256 identities for all 287 tracked files
 under `books/` and `host/`, plus `Makefile` and the native build script. It
 was checked against the remote origin and is stored beside the image as
 `build-source.sha256`. The launcher names the revision-specific core path.
+Root independently compared every manifest entry against Git revision
+`915d5c72`; all match and the manifest covers every tracked `books/` and
+`host/` source in that revision.
 
 `tests.test_native_peering` passed three cases: public operator configuration
 and byte-identical A-to-B and B-to-A transfers with duplicate suppression;
@@ -28,6 +31,10 @@ client reset the connection before reading the reply. In the last case the
 target still served the accepted article and continued accepting commands.
 The full command and five-test output, including two source-structure checks,
 are in `native-peering-915d5c72-2026-09-21/runtime.log`.
+The measured harness is the lane version at `ac96d67d`. Main additionally
+retains a distinct test that starts both nodes before configuring peers;
+that live-reconfiguration case is not covered by this run and belongs to
+the current combined-image gate.
 
 The earlier broken pipe was secondary. `fnn-owner-drain-one` treated the
 ordinary `:taken-transit` tag as a global fault before a Store attempt, stopped
