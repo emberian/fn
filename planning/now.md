@@ -75,5 +75,8 @@ they are not new release scope.
 Design discussion should now settle deployment resource targets, human/agent
 principal and delegation semantics, and offline policy/restore/release behavior.
 Existing D09/D11 proposals are inputs, not selected requirements. The performance
-baseline needs a fresh run on the converged owner/native paths: the historical
-scale measurements and placeholder native comparison do not qualify this head.
+baseline now includes a [source-pinned direct native sample](evidence/performance/native-image-direct-20260921T0414-final.md):
+one 1 KiB store post, initialization, reopen and reader startup. It does not
+measure the concurrent native owner, scaling or the two-peer release workload.
+The historical scale measurements and placeholder native comparison do not
+qualify this head; the converged owner still needs its own measurement.
