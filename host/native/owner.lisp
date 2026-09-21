@@ -865,11 +865,17 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                       service :send-greeting
                       (lambda () (fnn-owner-send fd channel greeting 10))))))
                (loop
+                 ;; ONCE serves this client on the accept thread itself.  It
+                 ;; must consume the signal flag here too, or an idle/partial
+                 ;; command prevents that thread from reaching service stop.
+                 (when (or *fnn-sigterm-requested*
+                           (fnn-owner-service-stopping service))
+                   (return))
                  (let ((incoming
                          (fnn-owner-connection-call
                           service :receive
                           (lambda ()
-                            (let ((value (fnn-owner-receive service fd channel 10)))
+                            (let ((value (fnn-owner-receive service fd channel 1)))
                               (unless (or (eq value :timeout)
                                           (typep value 'fnn-octets))
                                 (error "malformed connection receive result"))
