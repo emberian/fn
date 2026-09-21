@@ -20,10 +20,12 @@
                          principal keys))
 
 (defun fn-hsig-host-authorized-article-event
-    (sequence txid generation keyring-generation msgid content-subject
+    (sequence txid generation keyring-generation enrolled-snapshot
+              msgid content-subject
               article-record principal keys source signatures observed-ml-key
               ed ml)
   (declare (xargs :mode :program))
   (fn-hsig-authorized-article-event
-   sequence txid generation keyring-generation msgid content-subject
+   sequence txid generation keyring-generation enrolled-snapshot
+   msgid content-subject
    article-record principal keys source signatures observed-ml-key ed ml))
