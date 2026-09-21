@@ -129,7 +129,8 @@ zero of RFC 9171 section 4.2.6 rather than a monotonic counter."
 
 The exclusive lock covers recovery, reservation and the durable replace.  It
 is released before socket I/O: a crash after this returns can leave an unused
-sequence, but cannot reuse it."
+sequence.  The ACL2 persistence-cut trace proof required to make an all-crash
+nonreuse claim remains open."
   (multiple-value-bind (dir freshp) (fnn-bp-sequence-dir tally)
     (let* ((frontier (fnn-join dir "frontier.fnb"))
            (lock (fnn-bp-sequence-lock dir)))
