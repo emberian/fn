@@ -636,7 +636,7 @@
                              fn-wire-feed-proper-completes-clean-article-line))
            :do-not-induct t)))
 
-; Keystone fold: every clean source line and the final dot terminator are
+; Cumulative induction lemma: every clean source line and final dot terminator are
 ; delivered through the real byte feeder, in order, under the same cumulative
 ; body counter and physical-line ceiling the served path carries.  The result
 ; is one article event containing the exact source-line sequence.
