@@ -175,7 +175,11 @@
         (fn-stxk-context :ok (1+ (fn-stxk-context-next ctx))
                          (fn-stxk-context-snapshots ctx)
                          (fn-stxk-context-verdicts ctx)
-                         (fn-stxk-keyring-generation e) nil))
+                         (fn-stxk-context-current-generation ctx) nil))
+       ((and (natp (fn-stxk-context-current-generation ctx))
+             (not (equal (fn-stxk-keyring-generation e)
+                         (1+ (fn-stxk-context-current-generation ctx)))))
+        (fn-stxk-fault ctx :keyring-generation-order))
        (t
         (fn-stxk-context :ok (1+ (fn-stxk-context-next ctx))
                          (cons e (fn-stxk-context-snapshots ctx))
@@ -189,14 +193,34 @@
    ((not (fn-stxe-p e)) (fn-stxk-fault ctx :malformed-verdict))
    ((not (equal (fn-stxe-sequence e) (fn-stxk-context-next ctx)))
     (fn-stxk-fault ctx :sequence))
-   ((not (fn-stxk-find (fn-stxe-keyring-generation e)
-                       (fn-stxk-context-snapshots ctx)))
-    (fn-stxk-fault ctx :missing-keyring-generation))
    (t
-    (fn-stxk-context :ok (1+ (fn-stxk-context-next ctx))
-                     (fn-stxk-context-snapshots ctx)
-                     (cons e (fn-stxk-context-verdicts ctx))
-                     (fn-stxk-context-current-generation ctx) nil))))
+    (let ((snapshot
+           (fn-stxk-find (fn-stxe-keyring-generation e)
+                         (fn-stxk-context-snapshots ctx))))
+      (cond
+       ((not snapshot)
+        (fn-stxk-fault ctx :missing-keyring-generation))
+       ((not (equal (fn-stxe-profile e) (fn-stxk-profile snapshot)))
+        (fn-stxk-fault ctx :keyring-profile-mismatch))
+       (t
+        (fn-stxk-context :ok (1+ (fn-stxk-context-next ctx))
+                         (fn-stxk-context-snapshots ctx)
+                         (cons e (fn-stxk-context-verdicts ctx))
+                         (fn-stxk-context-current-generation ctx) nil)))))))
+
+; Keystone for rotation order.  A successful snapshot step either repeats
+; exact bytes and preserves the current generation, or installs its immediate
+; successor.  The theorem's hypotheses are the carried replay context shape;
+; tests remove each material condition with reachable counterexamples.
+(defthm fn-stxk-apply-snapshot-does-not-regress-current-generation
+  (implies (natp (fn-stxk-context-current-generation ctx))
+           (<= (fn-stxk-context-current-generation ctx)
+               (fn-stxk-context-current-generation
+                (fn-stxk-apply-snapshot ctx e))))
+  :hints (("Goal" :in-theory (enable fn-stxk-apply-snapshot
+                                      fn-stxk-fault
+                                      fn-stxk-context
+                                      fn-stxk-same-snapshotp))))
 
 (defun fn-stxk-current-trust (ctx)
   (declare (xargs :guard t) (ignore ctx))
