@@ -51,11 +51,11 @@ python3 tools/farm.py --jobs 4 --closure \
   --remote-root /tank/fn/lanes/w14-wire-roundtrip \
   submit hbox tests/acl2/wire-outbound-tests
 python3 tools/farm.py --wait-seconds 60 \
-  wait hbox run-20260921T090359Z-cb57
+  wait hbox run-20260921T090835Z-5c47
 ```
 
-Manifest `certify-20260921T090412Z-1906989` reports `status: passed`, no book
-failures, ACL2 8.7/SBCL 2.6.8 on hbox, four effective jobs, and 45.787 seconds
+Manifest `certify-20260921T090841Z-1914841` reports `status: passed`, no book
+failures, ACL2 8.7/SBCL 2.6.8 on hbox, four effective jobs, and 39.967 seconds
 wall time.  Its requested closure contains `books/wire`,
 `books/wire-invariants`, `books/wire-outbound-invariants`, and
 `tests/acl2/wire-outbound-tests`; all four passed.  The local-source audit
@@ -66,13 +66,13 @@ found none of `defaxiom`, `defttag`, `include-raw`, `set-raw-mode`, or
 | --- | --- |
 | `books/wire.lisp` | `69faa44d2125fbf005a2e8bb0287fc779cd14d5b5ef4881fc2b78fb11ae23ef2` |
 | `books/wire-invariants.lisp` | `f80efbfba1d072d73036348ceab355e35376ef0310430eb5af0b99aa69013aba` |
-| `books/wire-outbound-invariants.lisp` | `1139d5dadf0fe494a989d2e6058b274631495c1f297dbdb97c18e896de068ea7` |
+| `books/wire-outbound-invariants.lisp` | `1f3f8bdb5140a97020adaa9bb0fd6be159d8d2030168f96a7744f8d428152f46` |
 | `tests/acl2/wire-outbound-tests.lisp` | `77a9639f4d0ea606d76c678d4553d5976c5f12b08a33e52e671c54f05853e088` |
 
 The archive runner did not preserve Git revision/dirty fields, so the source
 digests above are the content pin.  Local ACL2 8.7 also passed the theorem
 book (`certify-20260921T085913Z-16081`) and teeth book
-(`certify-20260921T090339Z-19709`).
+(`certify-20260921T090828Z-25232`).
 
 ## Scope boundary
 
@@ -82,4 +82,3 @@ profile.  The production reader host calls `fn-served-step`, which dispatches
 the resulting article event into authentication and injection state.  This
 lane does not claim a new theorem about that later dispatch or durable
 submission; those remain covered by the served, POST, and injection books.
-
