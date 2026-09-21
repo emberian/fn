@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import fcntl
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -28,12 +29,12 @@ MODEL_CUTS = {
     "init-staging-mkdir", "init-staging-parent-fenced",
     "init-config-dir-mkdir", "init-config-dir-parent-fenced",
     "init-config-created", "init-config-written", "init-config-file-fenced",
-    "init-config-linked", "init-config-root-fenced", "init-config-stage-unlinked",
+    "init-config-linked", "init-config-link-eexist", "init-config-root-fenced", "init-config-stage-unlinked",
     "init-history-created", "init-history-written", "init-history-file-fenced",
-    "init-history-linked", "init-history-root-fenced", "init-history-stage-unlinked",
+    "init-history-linked", "init-history-link-eexist", "init-history-root-fenced", "init-history-stage-unlinked",
     "init-config-history-fenced",
     "init-frontier-created", "init-frontier-written", "init-frontier-file-fenced",
-    "init-frontier-linked", "init-frontier-root-fenced", "init-frontier-stage-unlinked",
+    "init-frontier-linked", "init-frontier-link-eexist", "init-frontier-root-fenced", "init-frontier-stage-unlinked",
     "init-final-config-file-fenced", "init-final-config-record-file-fenced",
     "init-final-frontier-file-fenced", "init-transactions-fenced",
     "init-root-fenced", "init-parent-fenced",
@@ -55,6 +56,7 @@ class NativeInitializerSourceMapTests(unittest.TestCase):
                        "(fnn-publish-initial-file store (fnn-config-path store) config \"init-config-\")",
                        "(fnn-publish-initial-file store (fnn-config-record-path store 1)",
                        "(fnn-publish-initial-file store (fnn-frontier-path store)",
+                       '(fnn-init-cut store (fnn-concat initializer-prefix "link-eexist"))',
                        "(fnn-init-cut store \"init-parent-fenced\")"):
             self.assertIn(anchor, source)
         config_names = re.search(r"\(defun fnn-config-record-names.*?\n\n\(defun fnn-config-records",
@@ -94,6 +96,51 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         recovered = self.invoke(store, "recover")
         self.assertEqual(recovered.returncode, run_store.EXIT_OK, recovered.stderr)
         self.assertIn(b"recovered transactions=0 articles=0", recovered.stdout)
+
+    def test_existing_valid_init_takes_actual_eexist_links_then_reopens(self):
+        store = self.base / "existing"
+        self.assertEqual(self.invoke(store, "init").returncode, run_store.EXIT_OK)
+        # config.json and allocation-frontier.json are immutable link targets.
+        # The second init stages/fences a candidate, receives real EEXIST at
+        # both links, and retains the existing bytes for the later recover.
+        repeated = self.invoke(store, "init")
+        self.assertEqual(repeated.returncode, run_store.EXIT_OK, repeated.stderr)
+        recovered = self.invoke(store, "recover")
+        self.assertEqual(recovered.returncode, run_store.EXIT_OK, recovered.stderr)
+
+    def test_history_fenced_process_death_retries_through_config_eexist(self):
+        store = self.base / "history-retry"
+        killed = self.invoke(store, "init", "init-config-history-fenced:kill")
+        self.assertEqual(killed.returncode, -9, killed.stderr)
+        self.assertTrue((store / "config.json").is_file())
+        self.assertTrue((store / "config" / "00000001.cfg").is_file())
+        self.assertFalse((store / "allocation-frontier.json").exists())
+        retried = self.invoke(store, "init")
+        self.assertEqual(retried.returncode, run_store.EXIT_OK, retried.stderr)
+        self.assertEqual(self.invoke(store, "recover").returncode, run_store.EXIT_OK)
+
+    def test_sigkill_after_actual_config_eexist_leaves_existing_store_openable(self):
+        store = self.base / "eexist-cut"
+        self.assertEqual(self.invoke(store, "init").returncode, run_store.EXIT_OK)
+        # The model cut is inside the EEXIST handler, after fnn-link returned.
+        killed = self.invoke(store, "init", "init-config-link-eexist:kill")
+        self.assertEqual(killed.returncode, -9, killed.stderr)
+        recovered = self.invoke(store, "recover")
+        self.assertEqual(recovered.returncode, run_store.EXIT_OK, recovered.stderr)
+
+    def test_live_initializer_lock_refuses_second_initializer_before_metadata(self):
+        store = self.base / "contended"
+        store.mkdir(mode=0o700)
+        lock_path = store / "writer.lock"
+        with lock_path.open("wb") as lock:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            blocked = self.invoke(store, "init")
+            self.assertEqual(blocked.returncode, run_store.EXIT_REFUSED, blocked.stderr)
+            self.assertFalse((store / "config.json").exists())
+        # The losing initializer created neither metadata nor a replacement
+        # lock and a later owner can initialize the same namespace.
+        initialized = self.invoke(store, "init")
+        self.assertEqual(initialized.returncode, run_store.EXIT_OK, initialized.stderr)
 
     def test_post_history_fence_eio_stops_before_frontier_publication(self):
         store = self.base / "eio"

@@ -42,6 +42,7 @@
 ;   (:fsync-file dir name)                fsync_file / durable_barrier(fd)
 ;   (:fsync-dir dir)                      fsync_dir
 ;   (:link sdir sname ddir dname)         os.link
+;   (:link-eexist sdir sname ddir dname)  os.link expected to find final
 ;   (:rename sdir sname ddir dname)       os.replace
 ;   (:unlink dir name)                    os.unlink (best-effort cleanup)
 ;   (:mkdir parent name id)               os.mkdir
@@ -60,7 +61,7 @@
          (:fsync-file (and (equal (len x) 3) (fn-bs-dir-idp (nth 1 x))
                            (fn-bs-namep (nth 2 x))))
          (:fsync-dir (and (equal (len x) 2) (fn-bs-dir-idp (nth 1 x))))
-         ((:link :rename)
+         ((:link :link-eexist :rename)
           (and (equal (len x) 5) (fn-bs-dir-idp (nth 1 x))
                (fn-bs-namep (nth 2 x)) (fn-bs-dir-idp (nth 3 x))
                (fn-bs-namep (nth 4 x))))
@@ -96,6 +97,14 @@
     (:link (mv-let (r bs1) (fn-bs-link bs (nth 1 step) (nth 2 step)
                                        (nth 3 step) (nth 4 step) outcome)
              (mv r bs1 ks)))
+    ;; Initialization's immutable-link retry observes EEXIST after the
+    ;; actual link(2) call and then cleans up its newly fenced staging file.
+    ;; This is deliberately a separate step rather than treating arbitrary
+    ;; errors as success: only an already-present destination continues.
+    (:link-eexist
+     (mv-let (r bs1) (fn-bs-link bs (nth 1 step) (nth 2 step)
+                                    (nth 3 step) (nth 4 step) outcome)
+       (mv (if (equal r :eexist) :ok r) bs1 ks)))
     (:rename (mv-let (r bs1) (fn-bs-rename bs (nth 1 step) (nth 2 step)
                                            (nth 3 step) (nth 4 step) outcome)
                (mv r bs1 ks)))

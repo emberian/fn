@@ -35,6 +35,16 @@
         (fn-bsi-test-cut-names (cdr program)))
     nil))
 
+(defun fn-bsi-test-through-cut (label program)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp program)
+      (cons (car program)
+            (if (and (equal (car (car program)) :cut)
+                     (equal (nth 1 (car program)) label))
+                nil
+              (fn-bsi-test-through-cut label (cdr program))))
+    nil))
+
 (defun fn-bsi-test-no-duplicatesp (xs)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp xs)
@@ -170,3 +180,63 @@
                         (fn-bsi-test-frontier) *fn-bsi-test-config-stage*
                         *fn-bsi-test-record-stage*
                         *fn-bsi-test-frontier-stage*))))))
+
+; The expected-EEXIST step is live only when the immutable destination is
+; already present.  A normal link error remains a stopping run; it is not
+; silently reclassified as a retry.
+(assert-event
+ (let* ((program (fn-bsi-existing-init-program
+                  (fn-bsi-test-config) (fn-bsi-test-frontier)
+                  ".retry-config" ".retry-frontier"))
+        (run (fn-bs-run (fn-bsi-current-initial-image
+                         (fn-bsi-test-config) (fn-bsi-test-record)
+                         (fn-bsi-test-frontier)
+                         *fn-bsi-test-config-stage*
+                         *fn-bsi-test-record-stage*
+                         *fn-bsi-test-frontier-stage*)
+                        (fn-sf-initial-state) program nil nil nil))
+        (bs (car (car (last run)))))
+   (and (fn-bs-step-listp program)
+        (equal (len run) (len program))
+        (member-equal '(:link-eexist :staging ".retry-config" :root "config.json")
+                      program)
+        (member-equal '(:link-eexist :staging ".retry-frontier" :root
+                        "allocation-frontier.json") program)
+        (equal (fn-bs-durable-content bs
+                                      (fn-bs-durable-entry bs :root "config.json"))
+               (fn-bsi-test-config))
+        (equal (fn-bs-durable-content bs
+                                      (fn-bs-durable-entry bs :root
+                                                           "allocation-frontier.json"))
+               (fn-bsi-test-frontier))
+        (equal (fn-bs-durable-content bs
+                                      (fn-bs-durable-entry bs :config "00000001.cfg"))
+               (fn-bsi-test-record)))))
+
+(assert-event
+ (let* ((prefix (fn-bsi-test-through-cut "init-config-history-fenced"
+                                         (fn-bsi-test-program)))
+        (partial-run (fn-bs-run *fn-bs-empty-store* (fn-sf-initial-state)
+                                prefix nil nil nil))
+        (partial (car (car (last partial-run))))
+        (retry (fn-bsi-history-retry-program
+                (fn-bsi-test-config) (fn-bsi-test-frontier)
+                ".history-retry-config" ".history-retry-frontier"))
+        (run (fn-bs-run partial (fn-sf-initial-state) retry nil nil nil))
+        (bs (car (car (last run)))))
+   (and (equal (len partial-run) (len prefix))
+        (equal (len run) (len retry))
+        (fn-bs-step-listp retry)
+        (equal (fn-bs-durable-entry partial :root "allocation-frontier.json") nil)
+        (equal (fn-bs-durable-content
+                bs (fn-bs-durable-entry bs :root "allocation-frontier.json"))
+               (fn-bsi-test-frontier)))))
+
+(must-fail
+ (assert-event
+  (let* ((program (fn-bsi-existing-init-program
+                   (fn-bsi-test-config) (fn-bsi-test-frontier)
+                   ".absent-config" ".absent-frontier"))
+         (run (fn-bs-run *fn-bs-empty-store* (fn-sf-initial-state)
+                         program nil nil nil)))
+    (equal (len run) (len program)))))
