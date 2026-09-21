@@ -13,6 +13,7 @@
 
 (in-package "ACL2")
 (include-book "../books/bp-node")
+(include-book "../books/bp-node-records")
 
 ; -----------------------------------------------------------------------------
 ; Endpoint IDs from the command line.
@@ -80,6 +81,46 @@
     nil))
 
 ; -----------------------------------------------------------------------------
+; Durable creation-sequence frontier.  These are the only sequence operations
+; host/native/bp.lisp may call.  In particular it does not parse an FNBS frame,
+; increment a counter, or choose a fallback after an uncertain write.
+
+(defun fn-bpn-host-sequence-recover (octets presentp freshp)
+  (if (fn-cbor-octet-listp octets)
+      (fn-bpn-sequence-recover octets (if presentp t nil) (if freshp t nil))
+    (list :fault :host-arguments)))
+
+(defun fn-bpn-host-sequence-ready-p (answer)
+  (and (fn-bpn-sequence-recovery-readyp answer) t))
+
+(defun fn-bpn-host-sequence-frontier (answer)
+  (if (fn-bpn-sequence-recovery-readyp answer)
+      (fn-bpn-sequence-recovery-frontier answer)
+    nil))
+
+(defun fn-bpn-host-sequence-reserve (frontier)
+  (if (fn-bpn-sequence-frontierp frontier)
+      (fn-bpn-sequence-reserve frontier)
+    (list :refused :host-arguments)))
+
+(defun fn-bpn-host-sequence-reservationp (reservation)
+  (and (fn-bpn-sequence-reservationp reservation) t))
+
+(defun fn-bpn-host-sequence-reservation-sequence (reservation)
+  (if (fn-bpn-sequence-reservationp reservation)
+      (fn-bpn-sequence-reservation-sequence reservation)
+    nil))
+
+(defun fn-bpn-host-sequence-reservation-frame (reservation)
+  (if (fn-bpn-sequence-reservationp reservation)
+      (fn-bpn-sequence-record-frame
+       (fn-bpn-sequence-reservation-record reservation))
+    nil))
+
+(defun fn-bpn-host-sequence-frame-limit ()
+  (fn-bpn-sequence-frame-limit))
+
+; -----------------------------------------------------------------------------
 ; Receiving.  The flat result is
 ;
 ;   (outcome reason adu payload-length)
@@ -104,3 +145,27 @@
 (defun fn-bpn-host-receive-reason (r) (nth 1 r))
 (defun fn-bpn-host-receive-adu (r) (nth 2 r))
 (defun fn-bpn-host-receive-length (r) (nth 3 r))
+
+; -----------------------------------------------------------------------------
+; One process result from two different kinds of evidence.
+;
+; ARTICLE-* counts are verdicts about complete inbound BP bundles.  OPERATIONAL
+; is the convergence session's result.  An uncertain socket/session result is
+; therefore not overwritten by a refused article: uncertainty dominates across
+; both domains, then refusal, then acceptance.  host/native/bp.lisp calls this
+; function directly before mapping the returned keyword to its public exit code.
+
+(defun fn-bpn-host-run-outcome (article-accepted article-refused
+                                                 article-uncertain operational)
+  (if (not (and (natp article-accepted)
+                (natp article-refused)
+                (natp article-uncertain)
+                (member-equal operational '(nil :accepted :refused :uncertain))))
+      :uncertain
+    (cond ((or (< 0 article-uncertain)
+               (equal operational :uncertain))
+           :uncertain)
+          ((or (< 0 article-refused)
+               (equal operational :refused))
+           :refused)
+          (t :accepted))))

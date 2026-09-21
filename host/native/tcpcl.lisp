@@ -101,10 +101,102 @@ host/native/bp.lisp installs `fn-bpn-receive' here, which is what makes the
 bundle, its lifetime and hop count are decided, and its ADU is what lands in
 the journal.  Nothing else binds this.")
 
-(defun fnn-tcl-spool-dir (root)
-  (handler-case (fnn-mkdir root #o700)
-    (fnn-os-error (e) (unless (eql (fnn-os-errno e) sb-posix:eexist) (error e))))
-  root)
+(defconstant +fnn-tcl-spool-lock+ ".spool.lock")
+
+(defun fnn-tcl-spool-entry-kind (path)
+  (let ((st (fnn-lstat path)))
+    (if (and st (fnn-regular-p st) (not (fnn-symlink-p st))) :regular :other)))
+
+(defun fnn-tcl-spool-recover (root)
+  "Remove only ACL2-selected private staging files, then barrier the removal.
+
+The complete plan is obtained before the first unlink.  A symlink, directory,
+or malformed name in the reserved namespace therefore preserves all evidence
+and faults without following or deleting anything."
+  (let* ((names (handler-case (fnn-list-directory root)
+                  (fnn-os-error (e)
+                    (fnn-indeterminate "tcpcl: spool cannot be enumerated: ~a" e))))
+         (entries (mapcar (lambda (name)
+                            (cons (fnn-octet-list (fnn-string-octets name))
+                                  (fnn-tcl-spool-entry-kind (fnn-join root name))))
+                          names))
+         (plan (fnn-core 'fn-tcl-host-spool-recovery-plan entries))
+         (status (and (consp plan) (first plan)))
+         (actions (and (consp (cdr plan)) (second plan))))
+    (unless (and (member status '(:ok :fault))
+                 (or (eq status :fault)
+                     (and (listp actions) (= (length actions) (length names)))))
+      (fnn-fault "tcpcl: ACL2 returned an invalid spool recovery plan"))
+    (when (eq status :fault)
+      (fnn-fault "tcpcl: unexplained entry in the private staging namespace"))
+    (let ((removed nil))
+      (loop for name in names for action in actions do
+        (case action
+          (:keep nil)
+          (:remove
+           (when (string= (or (sb-ext:posix-getenv
+                               "FN_TCPCL_TEST_FAIL_STAGING_UNLINK") "") "1")
+             (fnn-indeterminate "tcpcl: injected staging cleanup unlink failure"))
+           (handler-case (fnn-unlink (fnn-join root name))
+             (fnn-os-error (e)
+               (fnn-indeterminate "tcpcl: staging cleanup is uncertain: ~a" e)))
+           (setq removed t))
+          (t (fnn-fault "tcpcl: ACL2 returned an invalid spool recovery action"))))
+      (when removed
+        (when (string= (or (sb-ext:posix-getenv
+                            "FN_TCPCL_TEST_FAIL_STAGING_BARRIER") "") "1")
+          (fnn-indeterminate "tcpcl: injected staging cleanup barrier failure"))
+        (handler-case (fnn-fsync-dir root)
+          (fnn-os-error (e)
+            (fnn-indeterminate "tcpcl: staging cleanup barrier is uncertain: ~a" e)))))))
+
+(defun fnn-tcl-spool-acquire (root)
+  "Establish one process as ROOT's owner, then recover its private staging."
+  (handler-case
+      (progn
+        (fnn-safe-directory root t)
+        ; Repeat the parent barrier on every recovery.  An earlier mkdir may
+        ; have returned before its parent publication became authoritative.
+        (fnn-fsync-dir (fnn-parent root)))
+    (fnn-os-error (e)
+      (fnn-indeterminate "tcpcl: spool namespace recovery is uncertain: ~a" e)))
+  (let ((lock nil) (owned nil))
+    (unwind-protect
+         (progn
+           (handler-case
+               (setq lock (fnn-open (fnn-join root +fnn-tcl-spool-lock+)
+                                    (logior sb-posix:o-rdwr sb-posix:o-creat
+                                            +fnn-o-nofollow+)
+                                    #o600))
+             (fnn-os-error (e)
+               (fnn-fault "tcpcl: cannot open spool ownership lock: ~a" e)))
+           (unless (fnn-regular-p (fnn-fstat lock))
+             (fnn-fault "tcpcl: refusing non-regular spool ownership lock"))
+           (handler-case (fnn-flock lock (logior +fnn-lock-ex+ +fnn-lock-nb+))
+             (fnn-os-error (e)
+               (if (= (fnn-os-errno e) sb-posix:eagain)
+                   (fnn-refuse "tcpcl: spool is already owned")
+                 (fnn-fault "tcpcl: cannot establish spool ownership: ~a" e))))
+           (fnn-tcl-spool-recover root)
+           (setq owned t)
+           lock)
+      (unless owned
+        (when lock
+          (ignore-errors (fnn-flock lock +fnn-lock-un+))
+          (ignore-errors (fnn-close lock)))))))
+
+(defun fnn-tcl-spool-release (lock)
+  (when lock
+    (ignore-errors (fnn-flock lock +fnn-lock-un+))
+    (ignore-errors (fnn-close lock))))
+
+(defun fnn-tcl-test-pause-after-stage-data (stage)
+  ; An explicit native process-death cut for the recovery regression.  It is
+  ; disabled unless the test-only environment variable is exactly "1".
+  (when (string= (or (sb-ext:posix-getenv "FN_TCPCL_TEST_PAUSE_AFTER_STAGE_DATA") "")
+                 "1")
+    (fnn-out "TCPCL TEST STAGE-DATA ~a" stage)
+    (sleep 60)))
 
 (defun fnn-tcl-stage (conn xfer-id octets)
   (let* ((dir (fnn-tclc-spool conn))
@@ -114,6 +206,7 @@ the journal.  Nothing else binds this.")
     (handler-case
         (progn
           (fnn-write-staged stage (fnn-octets octets))
+          (fnn-tcl-test-pause-after-stage-data stage)
           (fnn-replace stage final)
           (fnn-fsync-dir dir)
           final)
@@ -332,8 +425,8 @@ failure rather than a refusal."
 
 (defun fnn-command-tcpcl-listen (port once spool node-id peer keepalive segment-mru
                                  transfer-mru reply trace-path)
-  (let ((listener nil) (code +fnn-exit-ok+) (trace (fnn-tcl-trace-stream trace-path)))
-    (fnn-tcl-spool-dir spool)
+  (let ((listener nil) (code +fnn-exit-ok+) (trace (fnn-tcl-trace-stream trace-path))
+        (spool-lock (fnn-tcl-spool-acquire spool)))
     (unwind-protect
          (let ((params (fnn-tcl-params node-id peer keepalive segment-mru transfer-mru))
                (bundle (fnn-tcl-bundle reply)))
@@ -363,12 +456,13 @@ failure rather than a refusal."
             once)
            code)
       (when listener (fnn-socket-shut listener))
+      (fnn-tcl-spool-release spool-lock)
       (when trace (close trace)))))
 
 (defun fnn-command-tcpcl-send (host port bundle-path spool node-id peer keepalive
                                segment-mru transfer-mru expect trace-path)
-  (let ((socket nil) (trace (fnn-tcl-trace-stream trace-path)))
-    (fnn-tcl-spool-dir spool)
+  (let ((socket nil) (trace (fnn-tcl-trace-stream trace-path))
+        (spool-lock (fnn-tcl-spool-acquire spool)))
     (unwind-protect
          (let ((params (fnn-tcl-params node-id peer keepalive segment-mru transfer-mru))
                (bundle (fnn-tcl-bundle bundle-path)))
@@ -378,6 +472,7 @@ failure rather than a refusal."
              (fnn-tcl-summary conn)
              (fnn-tcl-exit-code conn)))
       (when socket (fnn-socket-shut socket))
+      (fnn-tcl-spool-release spool-lock)
       (when trace (close trace)))))
 
 ;;; ---------------------------------------------------------------------------

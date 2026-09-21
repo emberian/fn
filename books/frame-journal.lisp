@@ -22,6 +22,7 @@
 (defconst *fn-frame-magic-workflow* '(70 78 87 70)) ; FNWF
 (defconst *fn-frame-magic-receipt* '(70 78 82 74))  ; FNRJ
 (defconst *fn-frame-magic-inbound* '(70 78 66 73))  ; FNBI
+(defconst *fn-frame-magic-bundle-store* '(70 78 66 83)) ; FNBS
 
 (defconst *fn-frame-version* 1)
 
@@ -32,6 +33,7 @@
 (defconst *fn-frame-max-workflow-payload* 16342)
 (defconst *fn-frame-max-receipt-payload* 269958)
 (defconst *fn-frame-max-inbound-payload* 4194304)
+(defconst *fn-frame-max-bundle-store-payload* 8)
 
 (defconst *fn-frame-transport-statuses*
   '(:intent :bpa-submit-replied :bpa-accepted :attempted :forwarded
@@ -73,6 +75,12 @@
    (cons :receipt-decision
          (list :text :text (cons :enum *fn-frame-receipt-outcomes*)))))
 
+; FNBS is deliberately narrow in this packet.  It carries the durable creation
+; sequence frontier and no bundle lifecycle record: the latter belongs to the
+; still-open fn-bpn-step machine in specs/bp-design.md section 1.5.
+(defconst *fn-frame-bundle-store-kinds* '(:sequence))
+(defconst *fn-frame-bundle-store-specs* (list (cons :sequence '(:nat))))
+
 (defun fn-frame-spec-for (kind table)
   (declare (xargs :guard t))
   (if (consp table)
@@ -90,6 +98,11 @@
   (implies (not (equal (fn-frame-spec-for kind *fn-frame-receipt-specs*) :none))
            (fn-frame-spec-listp
             (fn-frame-spec-for kind *fn-frame-receipt-specs*))))
+
+(defthm fn-frame-spec-for-bundle-store-is-spec-list
+  (implies (not (equal (fn-frame-spec-for kind *fn-frame-bundle-store-specs*) :none))
+           (fn-frame-spec-listp
+            (fn-frame-spec-for kind *fn-frame-bundle-store-specs*))))
 
 ; The outcome record's phase and result are not independent: an ordinary
 ; outcome is durable or aborted and a recovery outcome is committed or absent.
@@ -120,6 +133,29 @@
          (fn-frame-values-okp spec values))))
 
 (verify-guards fn-frame-receipt-record-okp)
+
+(defun fn-frame-bundle-store-record-okp (kind values)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((spec (fn-frame-spec-for kind *fn-frame-bundle-store-specs*)))
+    (and (not (equal spec :none))
+         (fn-frame-values-okp spec values))))
+
+(verify-guards fn-frame-bundle-store-record-okp)
+
+(defun fn-frame-bundle-store-protected (kind values)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (not (fn-frame-bundle-store-record-okp kind values))
+      :bad
+    (let ((code (fn-frame-enum-index kind *fn-frame-bundle-store-kinds*))
+          (payload (fn-frame-fields-octets
+                    (fn-frame-spec-for kind *fn-frame-bundle-store-specs*) values)))
+      (if (or (equal code 0)
+              (not (fn-cbor-at-mostp payload *fn-frame-max-bundle-store-payload*)))
+          :bad
+        (fn-frame-protected *fn-frame-magic-bundle-store* *fn-frame-version* code
+                            payload)))))
+
+(verify-guards fn-frame-bundle-store-protected)
 
 ; -----------------------------------------------------------------------------
 ; The concrete entry points the host wrappers call
@@ -237,13 +273,59 @@
 
 (verify-guards fn-frame-receipt-decode)
 
+(defun fn-frame-bundle-store-encode (kind values digest)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (not (and (fn-frame-bundle-store-record-okp kind values)
+                (fn-frame-digestp digest)))
+      :bad
+    (let ((code (fn-frame-enum-index kind *fn-frame-bundle-store-kinds*)))
+      (if (equal code 0)
+          :bad
+        (fn-frame-encode *fn-frame-magic-bundle-store* *fn-frame-version* code
+                         (fn-frame-fields-octets
+                          (fn-frame-spec-for kind *fn-frame-bundle-store-specs*)
+                          values)
+                         digest)))))
+
+(verify-guards fn-frame-bundle-store-encode)
+
+(defun fn-frame-bundle-store-decode (octets digest)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((frame (fn-frame-decode octets digest
+                                *fn-frame-max-bundle-store-payload*)))
+    (if (not (fn-frame-result-okp frame))
+        frame
+      (if (not (and (equal (fn-frame-result-magic frame)
+                           *fn-frame-magic-bundle-store*)
+                    (equal (fn-frame-result-version frame) *fn-frame-version*)))
+          (fn-frame-error :magic)
+        (let ((code (fn-frame-result-kind frame)))
+          (if (or (not (posp code)) (< (len *fn-frame-bundle-store-kinds*) code))
+              (fn-frame-error :kind)
+            (let* ((kind (fn-frame-item (- code 1)
+                                        *fn-frame-bundle-store-kinds*))
+                   (spec (fn-frame-spec-for kind *fn-frame-bundle-store-specs*)))
+              (if (equal spec :none)
+                  (fn-frame-error :kind)
+                (let ((parsed (fn-frame-fields-parse
+                               spec (fn-frame-result-payload frame))))
+                  (if (not (fn-frame-parse-okp parsed))
+                      (fn-frame-error (fn-frame-parse-value parsed))
+                    (fn-frame-ok *fn-frame-magic-bundle-store*
+                                 *fn-frame-version* kind
+                                 (fn-frame-parse-value parsed))))))))))))
+
+(verify-guards fn-frame-bundle-store-decode)
+
 ; -----------------------------------------------------------------------------
 ; Export theory.  Both facts are about the two constant specification tables
 ; and exist for the guard proofs below them.
 
 (deftheory fn-frame-journal-vocabulary
   '(    fn-frame-spec-for-workflow-is-spec-list
-    fn-frame-spec-for-receipt-is-spec-list))
+    fn-frame-spec-for-receipt-is-spec-list
+    fn-frame-spec-for-bundle-store-is-spec-list))
 
 (in-theory (disable fn-frame-spec-for-workflow-is-spec-list
-             fn-frame-spec-for-receipt-is-spec-list))
+             fn-frame-spec-for-receipt-is-spec-list
+             fn-frame-spec-for-bundle-store-is-spec-list))
