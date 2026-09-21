@@ -1,6 +1,6 @@
 # Keyring snapshot and ordered identity replay — 2026-09-21
 
-Source revision `51def2363381d84d0df62fe2e3d05d6989fcf7fa`, branch
+Source revision `b0f1afa13f184ddd10bec6fb10ba0709c10d5ac9`, branch
 `w25/identity-authority-statement`, clean tree. The bounded invocation was:
 
 ```text
@@ -12,15 +12,19 @@ Both requested roots passed on `nextop.local` using ACL2 8.7 at
 `36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324`)
 and SBCL 2.6.8. Exact source and certificate digests, per-root results,
 runner digest, timestamps, and environment are archived in
-`planning/evidence/manifests/certify-20260921T161712Z-37175.json`.
+`planning/evidence/manifests/certify-20260921T162533Z-41050.json`.
 
-Covered scope: the bounded `fn-e` version-0 kind-3 codec round-trips an opaque
-keyring snapshot byte-exact; identity-local replay orders kind-3 snapshots and
-kind-2 verdicts by their common Store sequence; a snapshot generation must
-precede a verdict that names it; an identical generation/profile/payload repeat
-is idempotent; a differing repeat faults; and later rotation leaves recorded
-historical verdicts unchanged. Unknown profile bytes survive replay, while the
-current-trust projection remains empty because D09 has not selected a profile.
+Covered scope: the codec and replay definitions admit with verified guards.
+`fn-stxk-apply-snapshot-does-not-regress-current-generation` is a certified
+general theorem for contexts carrying a natural current generation, with an
+evaluated counterexample when that hypothesis is removed. Named `assert-event`
+witnesses evaluate exact kind-3 encode/decode equality, snapshot-before-verdict,
+strict sequence, profile binding, conflicting bytes, immediate generation
+succession, G7 to G8 followed by duplicate G7 without rollback, fresh older-G6
+refusal, and preservation of one historical verdict across rotation. These
+witness evaluations are tests, not general codec or replay theorems. Unknown
+profile bytes are retained in the witness, while the current-trust projection
+remains empty because D09 has not selected a profile.
 
 Limitations: this run does not establish integration of kinds 2 and 3 into the
 shared Store dispatcher, file recovery, checkpoint compaction, or the native
