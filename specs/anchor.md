@@ -67,6 +67,12 @@ PATH/INDX shape.  Before returning a record it compares the received nested
 DELE and SREP byte strings with the canonical byte strings rebuilt from that
 record.  `host/anchor-wire-host.lisp` returns those ACL2-produced signature
 subjects to a native crypto caller; it does not reconstruct them in raw Lisp.
+The same book produces the deployed 1024-octet NONC/PAD request from an exact
+32-octet nonce.  `host/native/anchor.lisp` obtains that nonce from the OS
+CSPRNG, sends ACL2's request as one connected UDP datagram, caps the response
+at 4096 octets, calls the ACL2 parser, and applies libsodium only to the two
+subjects in its `:parsed` result.  Its output is an observation for the anchor
+machine; only the existing ACL2 accept/restore/advance entry can accept it.
 
 `root` is a **field, not a derivation**, and that is what makes the
 reconstruction the message that was verified. Until 2026-09-20 `fn-anchor-root`
@@ -238,6 +244,7 @@ evidence and proves what follows from it. It does not discharge A-IDENTITY:
 `books/anchor-wire.lisp` (bounded response parser and canonical signed-message
 binding), `host/anchor-wire-host.lisp` (program-mode parser bridge),
 `host/native/crypto.lisp` (native Ed25519/SHA-512 primitive observations),
+`host/native/anchor.lisp` (bounded OS-CSPRNG/UDP acquisition and composition),
 `tools/roughtime.py` (current prototype client and Merkle path),
 `tools/roughtime_servers.json` (pinned keys), `tools/crypto_host.py` (the only
 importer of `cryptography` in the tree; absent, it raises rather than

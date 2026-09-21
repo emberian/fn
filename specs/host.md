@@ -206,6 +206,21 @@ one ACL2-visible symbol whose raw definition that file replaces.
 | Sockets | `fnn-listen` (`sb-bsd-sockets` `inet-socket`/`inet6-socket`, loopback unless an address is passed), `fnn-connect`, `fnn-accept-loop`, `fnn-socket-fd`, `fnn-socket-shut`; `fnn-recv`, `fnn-send-all` (`sb-sys:wait-until-fd-usable` with the 10 s timeouts), `fnn-graceful-close` (alien `shutdown(fd, SHUT_WR)` then a one-second drain), `fnn-serve-client` | `tools/run_reader.py`'s loop: 512-octet reads, **one `fn-served-step` per read** and no retained suffix, the reply octets from `fn-served-reply-octets`, close after a framing rejection. These eight are the whole socket surface, and the surface `host/native/tcpcl.lisp` is to build on (planning/lanes/HANDOFF-w4-tcpcl.md) |
 | Entry | `fnn-main`, `fnn-dispatch`, `fn-native-entry` | The fixed positional protocol behind `--fn`, the outcome-to-exit-code map (the reader's pre-listen failures exit 1, as an uncaught Python exception does) |
 
+The native anchor follow-on is implemented as two additional raw component
+files, not yet loaded by the common saved-image build:
+
+| Surface | Functions | What it does |
+| --- | --- | --- |
+| Roughtime primitives | `fnn-crypto-startup`, `fnn-crypto-ed25519-observe`, `fnn-crypto-anchor-leaf` in `host/native/crypto.lisp` | Reinitializes libsodium after every saved-image restart; returns primitive observations only over ACL2-produced subjects |
+| Roughtime acquisition | `fnn-anchor-csprng-nonce`, `fnn-anchor-udp-exchange`, `fnn-anchor-acquire` in `host/native/anchor.lisp` | Reads 32 octets from `/dev/urandom`, sends ACL2's 1024-octet request in one connected IPv4 UDP datagram, receives at most 4096 octets, calls the ACL2 parser and crypto seam, and preserves observed/refused/uncertain/fault |
+
+The caller must inject an endpoint and pinned 32-octet key selected by a
+bounded pinned-server manifest; these files contain neither.  The common image
+must load `host/native/crypto.lisp` before `host/native/anchor.lisp` and call
+`fnn-crypto-startup` from its process entry.  Until the image, native FNAN
+store and CLI call this surface, it is component evidence rather than a
+no-Python anchor deployment claim.
+
 Remaining Python-only: the BP hosts (`run_bp_ingress.py`, `run_bp_receive.py`,
 `workflow_journal.py`, `receipt_journal.py`), the in-process `Acl2Store`,
 `Store` and `Acl2Reader` classes that the fault-matrix, process-crash and
