@@ -86,6 +86,26 @@ class NativeBpServiceTests(unittest.TestCase):
         self.assertEqual(conflict.returncode, 3, conflict.stderr)
         self.assertIn("BP queue refused reason=enqueue-conflict", conflict.stdout)
 
+    def test_expiry_after_interrupted_contact_retains_work_without_release(self):
+        first = self.invoke(
+            "run", "127.0.0.1", "1", self.adu, self.journal,
+            "dtn://fn-a/", "dtn://fn-b/", "work-expiry", "attempt-expiry",
+            "0", "1", "2", "32", "1048576", "0", "0",
+        )
+        self.assertEqual(first.returncode, 3, first.stderr)
+        self.assertIn("BP queue accepted", first.stdout)
+        before = tuple((p.name, p.read_bytes()) for p in self.records())
+
+        expired = self.invoke(
+            "resume", self.journal, "dtn://fn-a/", "1", "2", "32",
+            "1048576", "100", "0",
+        )
+        self.assertEqual(expired.returncode, 3, expired.stderr)
+        self.assertIn("BP queue recovered jobs=1", expired.stdout)
+        self.assertNotIn("release", expired.stdout.lower())
+        after = tuple((p.name, p.read_bytes()) for p in self.records())
+        self.assertGreater(len(after), len(before))
+
     def test_shared_spool_owner_precedes_lifecycle_mutation(self):
         owner = subprocess.Popen(
             [str(self.image), "--fn", "tcpcl", "listen", "0", "1",

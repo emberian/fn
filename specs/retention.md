@@ -94,7 +94,7 @@ receipt, no release, and nothing for `fn-assume-peer-retainsp` to hold of);
 evidence shapes `fn-assume-policy-authorizedp` consumes; binding the verdict
 to that signature is D09).
 
-Journal: `fn-bprl-apply-journal-record` extends the host-called
+Workflow journal: `fn-bprl-apply-journal-record` extends the host-called
 `fn-bp-apply-journal-record` (`host/workflow-host.lisp:27`, `:40`) with two
 proposed FNWF records, `(:undertake work-id charge)` and
 `(:release receipt-id work-id subject issuer policy-id terms-id incarnation)`;
@@ -102,10 +102,28 @@ proposed FNWF records, `(:undertake work-id charge)` and
 the host-called function on every record that function accepts, and a release
 record whose evidence fields differ from the decision ACL2 recomputes is
 refused (`fn-bprl-release-record-replays-decision-by-definition`). The host
-switch to the wrapper, the byte grammar of the two records, and propagating
-the released pin to the Store's node (the workflow holds a node image) are
-open; so is replacing the ledger's string comparison with the typed structure
-(C2-10, retention books).
+wrapper. These records remain workflow history and are not Store release
+authority.
+
+The authoritative retention mutation is a variant of the Store's single
+immutable transaction history (`books/store-events.lisp`). Existing article
+transactions retain their exact `fn-r` schema-0 encoding. A disjoint `fn-e`
+version-0 envelope carries `:undertake` and `:release` events with the same
+contiguous sequence, transaction-id allocation, link-and-directory durability
+barrier, completion gate, and recovery order as article transactions. Ordinary
+Store and configured-owner recovery decode that event sum and replay retention
+events between articles in filename order. A later article transaction
+therefore starts from the released ledger; reopening without a workflow option
+cannot resurrect the pin.
+
+The native `bp-obligation` owner path publishes the canonical Store event and
+then synchronizes the workflow node image from that owner. A committed receipt
+outcome precedes release publication. Process death in that interval retains
+the forwarding pin, rather than treating a transport acknowledgement or an
+unsigned receipt as authority. Automatic reconciliation of that retained,
+committed receipt after such a cut remains open, as do D09 signature authority,
+certification of the widened Store proof cluster, and replacing the ledger's
+string comparison with the typed structure (C2-10).
 
 ## Reclamation roots
 
