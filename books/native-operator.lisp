@@ -179,3 +179,16 @@ until owner convergence exposes one ACL2 posting projection to served/control."
                    (fn-nop-parse-command (fn-nop-argument-texts argv-octets) config))))))))
 
 (in-theory (disable fn-native-operator-run))
+
+(defun fn-native-operator-result-native-action (result)
+  "The only commands the current raw native module may execute by itself.
+
+`run' and `post' retain their normalized plans for owner convergence.  They
+are not translated into direct host calls, which would create another owner of
+submission or lifecycle semantics."
+  (declare (xargs :guard t))
+  (if (not (equal (fn-native-operator-result-status result) :accepted))
+      :none
+    (cond ((equal (fn-native-operator-result-command result) "status") :status)
+          ((equal (fn-native-operator-result-command result) "recover") :recover)
+          (t :owner-required))))
