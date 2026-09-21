@@ -13,11 +13,23 @@
 (defconst *cc-b0* (fn-store-event-encode *cc-a0*))
 (defconst *cc-b1* (fn-store-event-encode *cc-e1*))
 (defconst *cc-b2* (fn-store-event-encode *cc-e2*))
+(defconst *cc-i3*
+  (fn-stxe-make 3 3 3 "<compact@example.invalid>" :unverified
+                '(117 110 118 101 114 105 102 105 101 100) 7 '(116 101 115 116)))
+(defconst *cc-k4*
+  (fn-stxk-make 4 4 4 7 '(116 101 115 116) '(1 2 3 4)))
+(defconst *cc-b3* (fn-store-event-encode *cc-i3*))
+(defconst *cc-b4* (fn-store-event-encode *cc-k4*))
 
 (assert-event
  (equal (fn-cc-expand (fn-cc-make 2 2 (list *cc-b0* *cc-b1*))
                       (list *cc-b2*) 4)
         (list :ok (list *cc-b0* *cc-b1* *cc-b2*) 4)))
+(assert-event
+ (equal (fn-cc-expand
+         (fn-cc-make 4 4 (list *cc-b0* *cc-b1* *cc-b2* *cc-b3*))
+         (list *cc-b4*) 6)
+        (list :ok (list *cc-b0* *cc-b1* *cc-b2* *cc-b3* *cc-b4*) 6)))
 (assert-event
  (equal (fn-cc-decode-exact
          (fn-cc-encode (fn-cc-make 2 2 (list *cc-b0* *cc-b1*))))

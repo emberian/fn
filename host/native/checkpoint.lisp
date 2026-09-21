@@ -183,6 +183,14 @@
           (fnn-indeterminate "transaction prefix reclamation is uncertain: ~a" e))))))
 
 (defun fnn-pack-selected-raw-and-coverage (store)
+  ; Resolve any prior process-death window in generation/marker publication
+  ; before consulting selected authority.  A barrier error cannot authorize a
+  ; zero-start fallback or prefix deletion.
+  (when (fnn-lstat (fnn-pack-directory store))
+    (fnn-safe-directory (fnn-pack-directory store))
+    (handler-case (fnn-fsync-dir (fnn-pack-directory store))
+      (fnn-os-error (e)
+        (fnn-indeterminate "cannot resolve selected pack namespace: ~a" e))))
   (let ((generation (fnn-pack-selected-generation store)))
     (unless generation (return-from fnn-pack-selected-raw-and-coverage (values nil nil)))
     (let ((path (fnn-pack-generation-path store generation)))
