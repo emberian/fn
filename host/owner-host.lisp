@@ -375,6 +375,18 @@
              (state (fn-owner-step (list :store (list :prepare-retention event)) state)))
         (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
 
+; The caller supplies an ACL2-constructed kind-3 or kind-4 event.  This
+; boundary deliberately accepts no separate profile, key, article, or verdict
+; fields that host code could recombine differently.
+(defun fn-owner-prepare-identity (event state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((s (fn-owner-store state)))
+    (if (not (or (fn-stxk-p event) (fn-stxa-p event)))
+        (value :invalid)
+      (let ((state (fn-owner-step
+                    (list :store (list :prepare-identity event)) state)))
+        (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
+
 (defun fn-owner-known-abort (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((before (fn-owner-store state))

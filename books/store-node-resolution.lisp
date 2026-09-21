@@ -377,6 +377,7 @@
     (:refuse-reservation (fn-sn-refuse-reservation s (cadr event)))
     (:known-abort (fn-sn-known-abort s))
     (:prepare-retention (fn-sn-prepare-retention s (cadr event)))
+    (:prepare-identity (fn-sn-prepare-identity s (cadr event)))
     (otherwise (fn-snt-step s event))))
 
 (defun fn-snrt-run (s events)
