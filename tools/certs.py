@@ -74,6 +74,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+from typing import Iterable
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -116,6 +117,10 @@ class Certified:
     # the closure, so this is what says the key describes the source the
     # certificate was produced from.
     closure_sources: dict[str, str] = field(default_factory=dict)
+    # The ACL2 executable and environment are part of a reusable proof
+    # artifact's identity.  Source bytes alone do not say which prover wrote
+    # the certificate.
+    toolchain: dict[str, object] = field(default_factory=dict)
 
 
 @dataclass
@@ -141,6 +146,11 @@ class Report:
     certified_locally: int = 0
     manifests: int = 0
     mirrored: str | None = None
+    artifact_set: str | None = None
+    artifact_origin: str | None = None
+    source_identity: str | None = None
+    toolchain_identity: str | None = None
+    rejected_sets: list[str] = field(default_factory=list)
 
     def lines(self) -> list[str]:
         out = [f"{self.action}: {self.books} books, cache {self.cache}"]
@@ -154,6 +164,13 @@ class Report:
                        f"{self.kept}, no cached pair {len(self.uncached)}, "
                        f"foreign-local {len(self.foreign_local)}, "
                        f"removed foreign {self.removed_foreign}")
+        elif self.action == "install-set":
+            out.append(
+                "  artifact-set {} origin {} source {} toolchain {}; "
+                "installed {}, kept {}, missing {}".format(
+                    self.artifact_set or "NONE", self.artifact_origin or "NONE",
+                    self.source_identity or "NONE", self.toolchain_identity or "NONE",
+                    self.installed, self.kept, len(self.uncached)))
         else:
             out.append(f"  certified here {self.certified_locally}, "
                        f"usable from the cache "
@@ -301,6 +318,23 @@ def origin_token(origin: str) -> str:
     return hashlib.sha256(origin.encode("utf-8")).hexdigest()[:16]
 
 
+def stable_identity(value: object) -> str:
+    """A short printable identity for structured cache metadata."""
+    encoded = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def manifest_toolchain(manifest: dict) -> dict[str, object]:
+    """The certification inputs that are neither fn source nor a certificate."""
+    return {
+        "acl2_version": manifest.get("acl2_version"),
+        "acl2_executable_sha256": manifest.get("acl2_executable_sha256"),
+        "environment": manifest.get("environment"),
+        "runner_sha256": manifest.get("runner_sha256"),
+        "reader_sha256": manifest.get("reader_sha256"),
+    }
+
+
 def entry_directory(cache: Path, key: str, origin: str) -> Path:
     return cache / key / origin_token(origin)
 
@@ -352,6 +386,153 @@ def choose_entry(entries: list[tuple[Path, dict]],
                 if entry[1].get("origin_root")
                 and entry[1].get("origin_kind", LIVE_ORIGIN) != LIVE_ORIGIN]
     return snapshot[0] if snapshot else None
+
+
+@dataclass
+class ArtifactSet:
+    """One origin/toolchain's current certificates for a requested closure.
+
+    The old installer chose one entry per book.  That can make a parent from
+    origin A load a child from origin B, even when every source hash matches.
+    An ArtifactSet is the indivisible choice: every selected pair has the same
+    absolute origin and toolchain identity.
+    """
+
+    identity: str
+    origin_root: str
+    origin_kind: str
+    origin_host: str
+    toolchain: dict[str, object]
+    entries: dict[str, tuple[Path, dict]] = field(default_factory=dict)
+    required: tuple[str, ...] = ()
+    source_identity: str = ""
+
+    @property
+    def missing(self) -> tuple[str, ...]:
+        return tuple(name for name in self.required if name not in self.entries)
+
+    @property
+    def complete(self) -> bool:
+        return not self.missing
+
+
+def required_closure(root: Path, roots: Iterable[str]) -> dict[str, str]:
+    """The union of the local include closures needed by ``roots``."""
+    required: dict[str, str] = {}
+    for name in roots:
+        required.update(closure(root, name))
+    return required
+
+
+def source_set_identity(required: dict[str, str]) -> str:
+    """Identity of the exact fn source set an artifact set must cover."""
+    return stable_identity(closure_listing(required))
+
+
+def usable_origin(meta: dict, target: str) -> bool:
+    """Whether following this entry's absolute names is allowed here."""
+    origin = meta.get("origin_root")
+    if not origin:
+        return False
+    if origin == target or not Path(origin).exists():
+        return True
+    return meta.get("origin_kind", LIVE_ORIGIN) != LIVE_ORIGIN
+
+
+def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
+                  toolchain_sha256: str | None = None) -> list[ArtifactSet]:
+    """Candidate whole sets for ``roots``, ordered by usable coverage.
+
+    Grouping is by origin *and* toolchain.  Closure keys already bind every
+    entry to the target source bytes.  Missing toolchain metadata is kept
+    visible as a candidate only when no toolchain was requested; deployment
+    passes the hash of the ACL2 executable it is about to run.
+    """
+    needed = required_closure(root, roots)
+    required = tuple(sorted(needed))
+    source_id = source_set_identity(needed)
+    target = str(root.resolve())
+    grouped: dict[tuple[str, str], ArtifactSet] = {}
+    for name in required:
+        key, _ = closure_key(root, name)
+        for directory, meta in cached_entries(cache, key):
+            if not usable_origin(meta, target):
+                continue
+            toolchain = meta.get("toolchain") or {}
+            found_sha = toolchain.get("acl2_executable_sha256")
+            if toolchain_sha256 and found_sha != toolchain_sha256:
+                continue
+            origin = str(meta.get("origin_root", ""))
+            toolchain_id = stable_identity(toolchain)
+            group_key = (origin, toolchain_id)
+            if group_key not in grouped:
+                identity = stable_identity({
+                    "origin_root": origin,
+                    "toolchain": toolchain,
+                    "source_identity": source_id,
+                })
+                grouped[group_key] = ArtifactSet(
+                    identity=identity,
+                    origin_root=origin,
+                    origin_kind=str(meta.get("origin_kind", LIVE_ORIGIN)),
+                    origin_host=str(meta.get("origin_host", "")),
+                    toolchain=toolchain,
+                    required=required,
+                    source_identity=source_id)
+            grouped[group_key].entries.setdefault(name, (directory, meta))
+
+    def order(candidate: ArtifactSet) -> tuple[int, int, int, str]:
+        # Complete first, then the set that covers most of the requested
+        # closure.  Ties prefer this tree, then an immutable snapshot.
+        own = candidate.origin_root == target
+        snapshot = candidate.origin_kind != LIVE_ORIGIN
+        return (int(candidate.complete), len(candidate.entries),
+                int(own) * 2 + int(snapshot), candidate.identity)
+
+    return sorted(grouped.values(), key=order, reverse=True)
+
+
+def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
+                         toolchain_sha256: str | None = None,
+                         reject: Iterable[str] = ()) -> Report:
+    """Install one complete origin/toolchain set, never a per-book mixture."""
+    rejected = set(reject)
+    report = Report(action="install-set", cache=str(cache))
+    candidates = [one for one in artifact_sets(root, cache, roots, toolchain_sha256)
+                  if one.identity not in rejected]
+    chosen = next((one for one in candidates if one.complete), None)
+    if chosen is None:
+        required = required_closure(root, roots)
+        report.books = len(required)
+        best = candidates[0] if candidates else None
+        report.uncached = list(best.missing if best else sorted(required))
+        return report
+    report.books = len(chosen.required)
+    report.artifact_set = chosen.identity
+    report.artifact_origin = chosen.origin_root
+    report.source_identity = chosen.source_identity
+    report.toolchain_identity = stable_identity(chosen.toolchain)
+    report.rejected_sets = sorted(rejected)
+
+    # Once a set is chosen, every local pair in its closure comes from that
+    # set.  Leaving a pair from a previous attempt is exactly how the
+    # mixed-absolute-origin failure is reproduced.
+    for name in chosen.required:
+        source = root / f"{name}.lisp"
+        directory, _ = chosen.entries[name]
+        cached = directory / "book.cert"
+        cert = source.with_suffix(".cert")
+        if cert.is_file() and content_hash(cert) == content_hash(cached):
+            report.kept += 1
+        else:
+            place(cached, cert)
+            report.installed += 1
+        port = source.with_suffix(".port")
+        if (directory / "book.port").is_file():
+            place(directory / "book.port", port)
+        else:
+            port.unlink(missing_ok=True)
+    return report
 
 
 def read_meta(directory: Path) -> dict:
@@ -435,7 +616,8 @@ def certified_books(manifests: list[dict],
                 # that exists and does not name this book recorded a closure
                 # error, so it must not verify anything.
                 after=after.get(f"{book}.lisp", None if not after else ""),
-                cert=certificate, evidence=evidence, origin=origin))
+                cert=certificate, evidence=evidence, origin=origin,
+                toolchain=manifest_toolchain(manifest)))
     return found
 
 
@@ -527,10 +709,13 @@ def publish(root: Path, cache: Path, manifests: list[dict] | None = None,
         port = port if port.is_file() else None
         if cached.is_file() and content_hash(cached) == content_hash(cert):
             report.already += 1
-            if read_meta(directory).get("origin_kind", LIVE_ORIGIN) != kind:
+            old_meta = read_meta(directory)
+            if (old_meta.get("origin_kind", LIVE_ORIGIN) != kind
+                    or old_meta.get("toolchain") != record.toolchain):
                 # The same bytes, published again by a run that knows what its
-                # origin tree is: the kind is metadata about the tree, not
-                # about the pair, so it is corrected in place.
+                # origin tree and toolchain are: these fields are metadata
+                # about the artifact, not its certificate bytes, so refresh
+                # them in place.
                 write_entry(directory, name, key, listing, cert, port, record,
                             where, origin_host, kind)
                 report.relabelled += 1
@@ -568,6 +753,7 @@ def write_entry(directory: Path, name: str, key: str, listing: list[str],
         # snapshots, installable wherever the cache reaches.
         "origin_kind": origin_kind,
         "origin_host": origin_host or os.uname().nodename,
+        "toolchain": record.toolchain,
         "has_port": port is not None,
         "published_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "published_from": str(cert.parent),
@@ -678,7 +864,8 @@ def mirror(cache: Path, remote: str,
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("action", choices=("publish", "install", "status"))
+    parser.add_argument("action", choices=("publish", "install", "install-set",
+                                           "status"))
     parser.add_argument("books", nargs="*", default=None,
                         help="repository-relative book names without .lisp "
                              "(default: every book under books/ and tests/acl2/)")
@@ -696,6 +883,9 @@ def main(argv: list[str] | None = None) -> int:
                              "live worktree (default, or FN_CERT_ORIGIN_KIND), a "
                              "gate directory or a farm run root.  A snapshot's "
                              "pairs install on the machine that holds it too")
+    parser.add_argument("--toolchain-sha256", default=None,
+                        help="for install-set, require certificates produced by "
+                             "this ACL2 executable digest")
     arguments = parser.parse_args(argv)
     root = Path(arguments.root).resolve()
     cache = Path(arguments.cache).expanduser() if arguments.cache else cache_directory()
@@ -709,11 +899,16 @@ def main(argv: list[str] | None = None) -> int:
             report.mirrored = remote_target(arguments.remote)
     elif arguments.action == "install":
         report = install(root, cache, names)
+    elif arguments.action == "install-set":
+        if not names:
+            parser.error("install-set needs one or more root books")
+        report = install_artifact_set(
+            root, cache, names, toolchain_sha256=arguments.toolchain_sha256)
     else:
         report = status(root, cache)
     for line in report.lines():
         print(line)
-    return 0
+    return 1 if arguments.action == "install-set" and report.artifact_set is None else 0
 
 
 if __name__ == "__main__":

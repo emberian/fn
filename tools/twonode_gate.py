@@ -2157,9 +2157,10 @@ fi
 echo stopped
 """.format(dir=node.dir), expect=None)
         self.sh("stray fn processes", "pgrep -f 'fn-deploy/{}' >/dev/null 2>&1 "
-                "&& echo STRAY || echo CLEAN".format(self.rev), expect=None)
+                "&& echo STRAY || echo CLEAN".format(self.deploy_id), expect=None)
         if not self.keep:
             self.sh("remove the deploy tree", "rm -rf {}".format(self.deploy))
+        self.release_deploy_lock()
 
 
 def main(argv=None) -> int:

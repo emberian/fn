@@ -46,36 +46,53 @@ class Recorder(deploy_gate.Host):
 
 
 class CertificateChoiceTests(unittest.TestCase):
-    """The host's own gate is preferred; its absence is a certification run."""
+    """A load-checked set is used; its bounded fallback stays explicit."""
 
     def gate(self, host, tree="dev"):
         return deploy_gate.DeployGate(host, ROOT, "a" * 40, "abc1234", tree)
 
-    def test_a_host_gate_supplies_the_certificates(self):
-        host = Recorder({"if [ -d": (0, "GATE /home/x/fn-gates/dev-abc1234\n"),
-                         "certpick.py": (0, "matched=171 mismatched=0 absent=3\n")})
+    def test_a_coherent_cache_set_supplies_the_certificates(self):
+        summary = ("profile=default image=build/fn-host artifact-set=set-a "
+                   "origin=/farm/run-a books=83 source=src toolchain=acl2 rejected=0\n")
+        host = Recorder({"proof_artifacts.py acquire": (0, summary)})
         gate = self.gate(host)
         gate.certificates()
-        self.assertIn("certpick.py /home/x/fn-gates/dev-abc1234", host.scripts[-1])
-        self.assertIn("matched=171", gate.facts["certificates"])
-        self.assertTrue(any("foreign-local" in gap for gap in gate.gaps),
-                        "the origin-root hazard of a copied pair must be recorded")
+        self.assertIn("proof_artifacts.py acquire", host.scripts[-1])
+        self.assertIn("artifact-set=set-a", gate.facts["certificates"])
+        self.assertEqual(gate.facts["native artifact profile"], "default")
+        self.assertFalse(any("NEIGHBOUR" in script for script in host.scripts))
 
-    def test_a_neighbouring_gate_is_used_only_for_the_books_that_match(self):
-        host = Recorder({"if [ -d": (0, "NEIGHBOUR /home/x/fn-gates/dev-9999999\n"),
-                         "certpick.py": (0, "matched=160 mismatched=4 absent=1\n")})
+    def test_a_rejected_cache_set_falls_back_to_the_declared_closure(self):
+        host = Recorder({
+            "proof_artifacts.py acquire": (1, "attempt bad absolute sub-book name\n"),
+            "certify_books.py": (0, "83 books passed\n"),
+            "proof_artifacts.py validate": (0, "profile=default result=loaded\n"),
+        })
         gate = self.gate(host)
         gate.certificates()
-        self.assertIn("neighbour", gate.facts["certificates"])
-        self.assertTrue(any("did not hash to this revision" in gap for gap in gate.gaps),
-                        "a book whose pair was left behind must be named as a gap")
+        self.assertTrue(any("--closure $(python3 tools/proof_artifacts.py roots "
+                            "--profile default)" in script for script in host.scripts))
+        self.assertTrue(gate.certificates_ok)
 
-    def test_no_host_gate_certifies_on_the_host(self):
-        host = Recorder({"if [ -d": (0, "NOGATE\n")})
+    def test_an_uncertified_fallback_stops_the_gate(self):
+        host = Recorder({
+            "proof_artifacts.py acquire": (1, "no coherent set\n"),
+            "certify_books.py": (1, "failed\n"),
+            "proof_artifacts.py validate": (1, "Uncertified\n"),
+        })
         gate = self.gate(host)
-        gate.certificates()
-        self.assertIn("make certify FN_CERTIFY_JOBS=16", host.scripts[-1])
-        self.assertIn("make certify", gate.facts["certificates"])
+        with self.assertRaises(deploy_gate.GateError):
+            gate.certificates()
+        self.assertFalse(gate.certificates_ok)
+
+    def test_tree_and_revision_name_both_the_directory_and_lock(self):
+        first = self.gate(Recorder(), "dev")
+        second = self.gate(Recorder(), "release")
+        self.assertEqual(first.deploy, "$HOME/fn-deploy/dev-abc1234")
+        self.assertEqual(first.deploy_lock,
+                         "$HOME/fn-deploy/.locks/dev-abc1234.lock")
+        self.assertNotEqual(first.deploy, second.deploy)
+        self.assertNotEqual(first.deploy_lock, second.deploy_lock)
 
 
 class StepAccountingTests(unittest.TestCase):
@@ -156,14 +173,14 @@ class DryRunTests(unittest.TestCase):
         self.assertIn("accepted=0 refused=1 uncertain=3", self.text)
 
     def test_every_phase_ran(self):
-        for phase in ("ship archive", "install certificates", "store init",
+        for phase in ("ship archive", "acquire certificate artifact set", "store init",
                       "outcome accepted", "outcome refused", "outcome uncertain",
                       "drive transcript", "drive concurrent", "kill -9 mid-session",
                       "recover after the kill", "reread after recovery"):
             self.assertTrue(self.named(phase), "{} is missing from the evidence".format(phase))
 
     def test_the_reader_survived_the_post_and_the_reread_found_everything(self):
-        store = self.home / "fn-deploy/{}/gate-run/store/store.json".format(self.rev)
+        store = self.home / "fn-deploy/dev-{}/gate-run/store/store.json".format(self.rev)
         state = json.loads(store.read_text())
         ids = {article["msgid"] for article in state["articles"]}
         self.assertIn(deploy_gate.SEED_ID, ids)

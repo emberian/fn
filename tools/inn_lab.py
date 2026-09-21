@@ -546,61 +546,8 @@ class InnLab(deploy_gate.DeployGate):
 
     # -- certificates -----------------------------------------------------
     def certificates(self):
-        """The host's own gate of this tree, else the farm with --closure.
-
-        The deploy gate looks in ``$HOME/fn-gates``; hbox keeps its gates on
-        the tank, so the root is a parameter here.  When no gate on the box
-        holds this tree, a six-hour ``make certify`` on a co-tenant box is the
-        wrong answer: the farm is asked instead, with ``--closure``, and what
-        it cost is recorded beside the certificates it produced."""
-        exact = "{}/{}-{}".format(self.gate_root, self.tree, self.rev)
-        probe = self.sh("certificate source", """
-if [ -d {exact}/books ]; then echo "GATE {exact}"; else
-  newest=$(ls -dt {root}/{tree}-* 2>/dev/null | head -1)
-  if [ -n "$newest" ] && [ -d "$newest/books" ]; then echo "NEIGHBOUR $newest"; else echo NOGATE; fi
-fi
-""".format(exact=exact, root=self.gate_root, tree=self.tree))
-        first = probe.output.strip().splitlines()[-1] if probe.output.strip() else "NOGATE"
-        if first.startswith(("GATE", "NEIGHBOUR")):
-            kind, gate = first.split(None, 1)
-            step = self.sh("install certificates",
-                           "python3 {}/certpick.py {} {}".format(
-                               self.run, gate, self.deploy),
-                           timeout=600,
-                           note=("the host's own gate for this revision" if kind == "GATE"
-                                 else "the host's newest gate of this tree; only the "
-                                      "pairs whose book content matches this revision "
-                                      "were copied"))
-            self.facts["certificates"] = "{} {} -> {}".format(
-                kind.lower(), gate, step.first_line)
-            self.limitation(
-                "certificates-copied",
-                "certificates were copied from {}, a live origin root on the same host. "
-                "tools/certs.py calls that foreign-local and refuses it for a worktree "
-                "that will itself certify; this deploy tree never certifies, so ACL2 "
-                "only reads them. Nothing in this lab re-establishes any certificate, "
-                "and a book whose pair did not come across is included uncertified."
-                .format(gate))
-            if "mismatched=0" in step.output:
-                self.check("certificates-match", True, "",
-                           observed=step.first_line)
-            else:
-                # This gate never claims the books are PROVED -- only that the
-                # certificates named here are the ones ACL2 read.  A pair that
-                # did not come across therefore does not falsify an assertion;
-                # it means the tree that served is not the certified tree, and
-                # the run cannot stand behind a claim that says it is.
-                self.inconclusive(
-                    "certificates-match",
-                    "some books in the gate did not hash to this revision's sources, "
-                    "so their pairs were not copied and ACL2 read them uncertified: "
-                    "{}. Nothing in this run is evidence about those books, and no "
-                    "claim of the form \"this certified commit serves\" follows from "
-                    "it.".format(step.first_line),
-                    "a certificate pair did not match this revision's source",
-                    observed=step.first_line)
-            return step
-        return self.farm_closure()
+        """Use the same coherent, load-checked set as every deployment gate."""
+        return super().certificates()
 
     def farm_closure(self) -> Step:
         """No gate on the box: ask the farm for the closure, and price it."""
@@ -1224,9 +1171,10 @@ echo INND-TIMEOUT; tail -20 $P/log/innd-stdout.log; exit 1
         self.stop_server("fn node", run=self.node_dir)
         self.inn_stop()
         self.sh("stray lab processes", "pgrep -f 'fn-deploy/{}' >/dev/null 2>&1 "
-                "&& echo STRAY || echo CLEAN".format(self.rev), expect=None)
+                "&& echo STRAY || echo CLEAN".format(self.deploy_id), expect=None)
         if not self.keep:
             self.sh("remove the deploy tree", "rm -rf {}".format(self.deploy))
+        self.release_deploy_lock()
         self.sh("the INN install is left in place",
                 "ls -d {} && echo INN-KEPT".format(self.inn_prefix), expect=None)
 
