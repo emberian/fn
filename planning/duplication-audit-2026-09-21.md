@@ -175,3 +175,17 @@ enumeration errors, outcome subtype collapse and I/O progress differences. The
 fresh-data-loss claim is narrower after checking the earlier staging barrier;
 the owner uncertainty handler has already changed in its active successor.
 Concrete repairs are assigned without another serial review gate.
+
+The [operator surface audit](evidence/operator-surface-audit-2026-09-21.md)
+records disabled-posting divergence between the CLI and served path, agent-label
+ambiguity, inconsistent invalid-option results and port/type validation drift.
+It separates executed malformed-input witnesses from source-traced policy
+findings. The native operator lane consumes these as contract tests; no Python
+repair alone closes D07.
+
+Native I/O outcome/progress repair `3312778` is integrated. Raw deterministic
+tests exercise the actual reader handler, preserve fault/uncertain subtypes and
+ordinary refusal, and check EINTR, partial progress and zero writes. Root review
+also corrected the original test helper's accidental catch of every condition.
+Absolute deadlines bound readiness/retry loops; blocking syscall duration remains
+open and has a separate nonblocking-I/O implementation lane.
