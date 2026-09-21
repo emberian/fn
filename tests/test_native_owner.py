@@ -181,7 +181,11 @@ class NativeOwnerTests(unittest.TestCase):
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             env=environment(), timeout=180, check=False)
         self.assertEqual(inspected.returncode, 0, inspected.stderr.decode())
-        self.assertEqual(inspected.stdout, article)
+        # The injection transition prepends the ACL2-produced Path field.  The
+        # accepted source article, including the 9 KiB body, remains exact.
+        self.assertTrue(inspected.stdout.startswith(
+            b"Path: fn.example.invalid!not-for-mail\r\n"), inspected.stdout[:80])
+        self.assertTrue(inspected.stdout.endswith(article), inspected.stdout[-80:])
 
 
 if __name__ == "__main__":
