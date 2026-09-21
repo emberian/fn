@@ -283,9 +283,9 @@
     "books": 277,
     "books_in_root_closure": 276,
     "roots": 276,
-    "theorems": 5638,
+    "theorems": 5641,
     "functions": 3949,
-    "assert_events": 5634,
+    "assert_events": 5644,
     "must_fails": 63,
     "encapsulates": 19,
     "guards": {
@@ -1813,7 +1813,7 @@
       "book": "books/checkpoint-codec.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 105,
+      "theorems": 108,
       "functions": 32,
       "guards": {
         "verified": 13,
@@ -5918,9 +5918,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 68,
+      "assert_events": 78,
       "must_fails": 0,
-      "defconsts": 14,
+      "defconsts": 15,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
