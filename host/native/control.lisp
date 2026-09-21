@@ -8,6 +8,7 @@
 (in-package "ACL2")
 
 (defconstant +fnn-control-io-seconds+ 10)
+(defvar *fnn-hybrid-control-handler* nil)
 
 (defstruct (fnn-control-state (:constructor %make-fnn-control-state))
   path listener accept-thread service
@@ -137,7 +138,9 @@
 
 (defun fnn-control-handle-client (control socket)
   (let* ((service (fnn-control-state-service control))
-         (maximum (fnn-core 'fn-native-control-host-max-frame))
+         (maximum (if (fboundp 'fn-native-hybrid-control-host-max-frame)
+                      (fnn-core 'fn-native-hybrid-control-host-max-frame)
+                    (fnn-core 'fn-native-control-host-max-frame)))
          (status
            (handler-case
                (let* ((frame (fnn-control-read-frame socket maximum))
@@ -150,6 +153,8 @@
                              (fnn-core 'fn-native-control-host-admin-decode
                                        (fnn-octet-list frame)))))
                  (cond
+                   ((and *fnn-hybrid-control-handler*
+                         (funcall *fnn-hybrid-control-handler* service frame)))
                    ((and (consp request) (eq (car request) :request))
                     (let ((msgid (second request))
                          (groups (third request))
