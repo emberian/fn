@@ -23,6 +23,11 @@
 ; writes a reply octet.
 (in-package "ACL2")
 (include-book "../books/owner")
+; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
+; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
+; ACL2 session does not load `host/store-host.lisp', so the one owner has to
+; be a book both sessions include.  See books/frame-trailer.lisp.
+(include-book "../books/frame-trailer")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -278,13 +283,58 @@
         (value (if transitp :taken-transit :taken))))))
 
 ; -----------------------------------------------------------------------------
+; The AUTHINFO policy (RFC 4643), set once at start-up and pinned per
+; connection.
+;
+; It is defined HERE, above the transit port, because `fn-owner-open-peer'
+; now reads it: a peer connection carries the operator's policy exactly as a
+; reader connection does.
+;
+; The host reads the operator's credential file and passes the FIELDS; ACL2
+; builds the record, the verifier and the configuration.  Nothing here
+; derives a digest, compares a secret or decides a permission: the rows are
+; transport (AGENTS.md's one-owner rule).  A row is
+; (name-octets principal-octets salt-octets digest-octets postingp).
+
+(defun fn-owner-auth-cred-of (row)
+  (declare (xargs :mode :program))
+  (fn-auth-make-cred (nth 0 row) (nth 1 row)
+                     (fn-authsec-verifier (nth 2 row) (nth 3 row))
+                     (and (nth 4 row) t)))
+
+(defun fn-owner-auth-creds-of (rows)
+  (declare (xargs :mode :program))
+  (if (consp rows)
+      (cons (fn-owner-auth-cred-of (car rows))
+            (fn-owner-auth-creds-of (cdr rows)))
+    nil))
+
+(defun fn-owner-set-auth (requiredp protected-onlyp tls-availablep rows state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((acfg (fn-auth-make-config (and requiredp t) (and protected-onlyp t)
+                                   (and tls-availablep t)
+                                   (fn-owner-auth-creds-of rows))))
+    (if (not (fn-auth-configp acfg))
+        (value :rejected)
+      (let ((state (f-put-global 'fn-owner-auth acfg state)))
+        (value :ok)))))
+
+(defun fn-owner-auth (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-auth state)
+      (f-get-global 'fn-owner-auth state)
+    (fn-auth-open-config)))
+
+; -----------------------------------------------------------------------------
 ; The transit port (specs/peering.md 2.2).
 ;
 ; Accept: the host resolves the connecting address to a configured peer name
 ; with fn-owner-peer-for-address (the record's auth slot decides, not the
 ; client) and opens the connection with fn-own-open-peer, which pins the
-; node and the live configuration into the session.  A reader opens with
-; fn-owner-open as before, on the same listener.
+; node, the live configuration AND the operator's AUTHINFO policy into the
+; session.  A reader opens with fn-owner-open as before, on the same
+; listener, under the same policy: `fn-served-peer-and-reader-open-under-
+; the-same-policy' (books/served.lisp) is the statement of that.
 
 (defun fn-owner-peer-name-for (rows address)
   ; The first configured peer whose auth slot is this source address.
@@ -313,7 +363,15 @@
         (value nil)
       (let* ((before (f-get-global 'fn-owner state))
              (id (fn-own-next-id before))
-             (opened (fn-own-open-peer before peer (f-get-global 'fn-store-cfg state)))
+             ; The owner's AUTHINFO policy, the same value fn-owner-open
+             ; pins into a reader.  A peer connection was opened with no
+             ; policy at all, and the owner resolves a connection to a peer
+             ; by source address alone (fn-owner-peer-name-for below), so on
+             ; a box where a configured peer is on loopback that was every
+             ; client: the operator's credential reached nothing.
+             (opened (fn-own-open-peer before peer
+                                       (f-get-global 'fn-store-cfg state)
+                                       (fn-owner-auth state)))
              (state (f-put-global 'fn-owner (cdr opened) state))
              (state (fn-owner-install-effects (car opened) state)))
         (if (fn-own-find-conn id (fn-own-conns (f-get-global 'fn-owner state)))
@@ -478,49 +536,6 @@
   (value (fn-owner-connection-versions
           (fn-own-conns (f-get-global 'fn-owner state)))))
 
-; Open pins the committed view and opens one served connection over it
-; (fn-own-open); the greeting is the effect list it returns.  A refused open
-; (bound reached) installs no connection and returns NIL so the host closes
-; the socket without a reply.
-; -----------------------------------------------------------------------------
-; The AUTHINFO policy (RFC 4643), set once at start-up and pinned per
-; connection.
-;
-; The host reads the operator's credential file and passes the FIELDS; ACL2
-; builds the record, the verifier and the configuration.  Nothing here
-; derives a digest, compares a secret or decides a permission: the rows are
-; transport (AGENTS.md's one-owner rule).  A row is
-; (name-octets principal-octets salt-octets digest-octets postingp).
-
-(defun fn-owner-auth-cred-of (row)
-  (declare (xargs :mode :program))
-  (fn-auth-make-cred (nth 0 row) (nth 1 row)
-                     (fn-authsec-verifier (nth 2 row) (nth 3 row))
-                     (and (nth 4 row) t)))
-
-(defun fn-owner-auth-creds-of (rows)
-  (declare (xargs :mode :program))
-  (if (consp rows)
-      (cons (fn-owner-auth-cred-of (car rows))
-            (fn-owner-auth-creds-of (cdr rows)))
-    nil))
-
-(defun fn-owner-set-auth (requiredp protected-onlyp tls-availablep rows state)
-  (declare (xargs :stobjs state :mode :program))
-  (let ((acfg (fn-auth-make-config (and requiredp t) (and protected-onlyp t)
-                                   (and tls-availablep t)
-                                   (fn-owner-auth-creds-of rows))))
-    (if (not (fn-auth-configp acfg))
-        (value :rejected)
-      (let ((state (f-put-global 'fn-owner-auth acfg state)))
-        (value :ok)))))
-
-(defun fn-owner-auth (state)
-  (declare (xargs :stobjs state :mode :program))
-  (if (boundp-global 'fn-owner-auth state)
-      (f-get-global 'fn-owner-auth state)
-    (fn-auth-open-config)))
-
 ; The host's re-entry after the TLS handshake (RFC 4642 section 2.2.2).  It
 ; is a wire event, not octets: no client input produces it, and
 ; fn-auth-step is the only thing that reads it.
@@ -534,6 +549,10 @@
              (state (fn-owner-install-effects (car result) state)))
         (value :ok)))))
 
+; Open pins the committed view and opens one served connection over it
+; (fn-own-open); the greeting is the effect list it returns.  A refused open
+; (bound reached) installs no connection and returns NIL so the host closes
+; the socket without a reply.
 (defun fn-owner-open (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((before (f-get-global 'fn-owner state))
@@ -725,7 +744,7 @@
 ; the constrained trailer (A-CRYPTO); the host writes them length-prefixed.
 ; `fn-feed-encode' takes the trailer as an argument, so these frames carry a
 ; ZERO trailer: tools/run_owner.py hashes the protected prefix and appends the
-; real one (A-CRYPTO), exactly as tools/run_feed.py does.  The header, the
+; real one (A-CRYPTO).  The header, the
 ; field encoding and every bound stay ACL2's; the host slices at a constant it
 ; did not choose.
 (defconst *fn-owner-feed-zero-trailer*

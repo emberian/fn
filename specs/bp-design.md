@@ -210,6 +210,22 @@ wants a capture from the dtn7 interop, and until one is recorded in
 `tests/bp-dtn7/` the canonical-block CRC is exercised only against fn's own
 encoder.
 
+#### 1.4.2 Status, 2026-09-21 (lane w11/bp-node): a foreign vector exists
+
+`tests/bp-dtn7/golden/` exists now and holds two captured wire images with
+their digests, one authored by each side, and the dtn7-authored one is
+inlined in `tests/acl2/bp-bundle-tests.lisp` as `*bpb-dtn7-0-21-0*`. That
+book certifies asserting that `fn-bpb-decode` accepts those 132 octets, that
+the fields it recovers are the ones dtn7-rs 0.21.0 sent, and that
+`fn-bpb-encode` **reproduces them byte for byte** — so the deterministic
+spelling of §4.1 that fn's decoder insists on is the spelling dtn7-rs
+emits. Evidence: `planning/evidence/bp-dtn7-w11-2026-09-21.md`.
+
+**The CRC point above SURVIVES.** The bundle dtn7-rs authored carries no CRC
+at all (CRC type 0), so the canonical-block CRC is still exercised only
+against fn's own encoder. A capture from a peer configured to write CRC32C
+is what closes it.
+
 ### 1.5 The processing machine: `books/bp-node.lisp`
 
 State:
@@ -416,7 +432,14 @@ where `fn-bp-observe-transport` cannot close a work
 requirement in bp-workflow.md). That is the whole force of REP-006 and
 RET-003 at the bundle layer.
 
-#### 1.5.1 Status, 2026-09-20 (lane w9/dtn-2)
+#### 1.5.1 Status, 2026-09-20 (lane w9/dtn-2), amended 2026-09-21 (w11/bp-node)
+
+**2026-09-21: `books/bp-node` and `tests/acl2/bp-node-tests` CERTIFY**, the
+first certificates either has ever had (hbox `run-20260921T021131Z-1eb0`,
+1.083 s and 0.759 s), the DTN image builds with the node in it, and fn has
+exchanged a bundle with dtn7-rs 0.21.0 with **one side authoring each way**.
+Everything below is still true: certifying the two ends did not make them
+the machine, and the absences listed here are unchanged.
 
 `books/bp-node.lisp` exists and is **two ends of this machine, not the
 machine**. What it has: `fn-bpn-send`, `fn-bpn-receive` with the three
@@ -947,6 +970,16 @@ Each packet names its owner lane, what it deletes, and what must be true
 before it is merged. "Certifies" means the Makefile target list grows and
 `make certify` is green on a clean tree; every theorem named is stated as in
 this document or the packet's spec says why it changed.
+
+**Three names in this table do not resolve, and it is better to say which
+than to leave a reader hunting** (recorded 2026-09-21, lane w11/bp-node,
+answering w11/phantom-cites). `specs/bp-bundle.md` and `specs/bp-node.md`
+were never written and should not be: §1.4 and §1.5 of THIS document are
+the frame and the machine, and their status sections (§1.4.1, §1.4.2,
+§1.5.1) are where those two specs' content lives. `books/bp-node-records`
+in packet 1 is an unbuilt deliverable rather than a misnamed one — packet 1
+has not been started, and the FNBS record family it names does not exist.
+Packet 4's `books/tcpcl.lisp` was repaired to the four books that did land.
 
 | # | Packet | Owner | Deliverables | Acceptance |
 | --- | --- | --- | --- | --- |
