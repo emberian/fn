@@ -38,6 +38,7 @@
 ; This book owns the prefix `fn-ocfg-' (docs/prefixes.md).
 
 (in-package "ACL2")
+(include-book "owner-fault")
 (include-book "owner-invariants")
 (include-book "config-stream")
 
@@ -416,13 +417,70 @@
                     nil
                   (fn-ocfg-staged oc))))
 
+; -----------------------------------------------------------------------------
+; Owner operations which are not ordinary `fn-own-step' events still have to
+; carry the configuration owner.  This is the single bridge used by the host:
+; it retains a pin for every surviving connection, removes pins for a close or
+; fault, and gives a newly opened connection the current live configuration.
+; It is deliberately in ACL2, rather than a host-side mirror of the pin table.
+
+(defun fn-ocfg-pins-for-conns (pins conns)
+  (declare (xargs :guard t))
+  (if (consp conns)
+      (let* ((id (fn-own-conn-id (car conns)))
+             (old (fn-ocfg-pin-find id pins)))
+        (cons (cons id (if old (cdr old) nil))
+              (fn-ocfg-pins-for-conns pins (cdr conns))))
+    nil))
+
+(defun fn-ocfg-fill-new-pins (pins conns cfg)
+  (declare (xargs :guard t))
+  (if (consp conns)
+      (let ((id (fn-own-conn-id (car conns))))
+        (fn-ocfg-pin-set id
+                         (if (fn-ocfg-pin-find id pins)
+                             (fn-ocfg-conn-config
+                              (fn-ocfg-make nil nil pins nil) id)
+                           cfg)
+                         (fn-ocfg-fill-new-pins pins (cdr conns) cfg)))
+    nil))
+
+(defun fn-ocfg-with-owner (oc owner)
+  (declare (xargs :guard t))
+  (let ((kept (fn-ocfg-pins-for-conns (fn-ocfg-pins oc)
+                                      (fn-own-conns owner))))
+    (fn-ocfg-make owner (fn-ocfg-config oc)
+                  (fn-ocfg-fill-new-pins kept (fn-own-conns owner)
+                                         (fn-ocfg-config oc))
+                  (fn-ocfg-staged oc))))
+
+(defun fn-ocfg-read (oc id octets)
+  (declare (xargs :guard t))
+  (let ((result (fn-own-read (fn-ocfg-owner oc) id octets)))
+    (cons (car result) (fn-ocfg-with-owner oc (cdr result)))))
+
+(defun fn-ocfg-read-step (oc id event)
+  (declare (xargs :guard t))
+  (let ((result (fn-own-read-step (fn-ocfg-owner oc) id event)))
+    (cons (car result) (fn-ocfg-with-owner oc (cdr result)))))
+
+(defun fn-ocfg-open-peer (oc peer acfg)
+  (declare (xargs :guard t))
+  (let ((result (fn-own-open-peer (fn-ocfg-owner oc) peer
+                                  (fn-ocfg-config oc) acfg)))
+    (cons (car result) (fn-ocfg-with-owner oc (cdr result)))))
+
+(defun fn-ocfg-fault (oc id)
+  (declare (xargs :guard t))
+  (let ((result (fn-own-fault (fn-ocfg-owner oc) id)))
+    (cons (car result) (fn-ocfg-with-owner oc (cdr result)))))
+
 (defun fn-ocfg-pass (oc event)
   ; Every owner event that touches no pin: the served port, the writer step,
   ; the store events, the clock.  The table goes through untouched.
   (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
                   :verify-guards nil))
-  (fn-ocfg-make (fn-own-step (fn-ocfg-owner oc) event)
-                (fn-ocfg-config oc) (fn-ocfg-pins oc) (fn-ocfg-staged oc)))
+  (fn-ocfg-with-owner oc (fn-own-step (fn-ocfg-owner oc) event)))
 
 (defun fn-ocfg-step (oc event)
   (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
@@ -431,6 +489,11 @@
     (:open (cdr (fn-ocfg-open oc (cadr event))))
     (:advance (fn-ocfg-advance oc (car (cdr event))))
     (:close (fn-ocfg-close oc (car (cdr event))))
+    (:octets (cdr (fn-ocfg-read oc (car (cdr event)) (car (cdr (cdr event))))))
+    (:read (cdr (fn-ocfg-read-step oc (car (cdr event)) (car (cdr (cdr event))))))
+    (:open-peer (cdr (fn-ocfg-open-peer oc (car (cdr event))
+                                         (car (cdr (cdr (cdr event)))))))
+    (:fault (cdr (fn-ocfg-fault oc (car (cdr event)))))
     (:reconfigure (fn-ocfg-reconfigure oc (car (cdr event)) (car (cdr (cdr event)))))
     (:complete (fn-ocfg-complete oc))
     (otherwise (fn-ocfg-pass oc event))))

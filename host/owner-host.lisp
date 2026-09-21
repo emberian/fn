@@ -26,7 +26,7 @@
 ; `fn-own-fault'.  The host needs it: `fn-owner-fault' below is the only way
 ; tools/run_owner.py can abandon ONE connection, and before it existed an
 ; exception in the serve loop ended the process for every connection.
-(include-book "../books/owner-fault")
+(include-book "../books/owner-config")
 ; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
 ; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
 ; ACL2 session does not load `host/store-host.lisp', so the one owner has to
@@ -76,9 +76,30 @@
                       (fn-owner-group-octets (fn-cnode-served-of cfg))
                       *fn-store-max-payload*))
 
-(defun fn-owner-state (state)
+(defun fn-owner-ocfg-state (state)
   (declare (xargs :stobjs state :mode :program))
   (value (f-get-global 'fn-owner state)))
+
+; `fn-owner' has one canonical value: the configured owner.  These are the
+; only host accessors for its raw owner component.  A wrapper that changes
+; connection membership must use fn-owner-step's fn-ocfg transition; a core
+; operation which preserves membership may use fn-owner-replace-core.
+(defun fn-owner-core (state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-ocfg-owner (f-get-global 'fn-owner state)))
+
+(defun fn-owner-install-ocfg (oc state)
+  (declare (xargs :stobjs state :mode :program))
+  (f-put-global 'fn-owner oc state))
+
+(defun fn-owner-replace-core (owner state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((oc (f-get-global 'fn-owner state)))
+    (fn-owner-install-ocfg (fn-ocfg-with-owner oc owner) state)))
+
+(defun fn-owner-state (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-owner-core state)))
 
 (defun fn-owner-install-effects (effects state)
   (declare (xargs :stobjs state :mode :program))
@@ -125,18 +146,19 @@
                      (equal (fn-sf-phase (fn-sn-files (fn-sn-open-state opened)))
                             :recovering))
                 (let* ((state (f-put-global 'fn-store-cfg cfg state))
-                       (state (f-put-global 'fn-owner
-                                            (fn-own-configure
-                                             (fn-own-start (fn-sn-open-state opened)
-                                                           max-conns)
-                                             (fn-owner-post-config cfg))
-                                            state)))
+                       (state (fn-owner-install-ocfg
+                               (fn-ocfg-make
+                                (fn-own-configure
+                                 (fn-own-start (fn-sn-open-state opened) max-conns)
+                                 (fn-owner-post-config cfg))
+                                cfg nil nil)
+                               state)))
                   (value :recovering))
               (value :fault))))))))
 
 (defun fn-owner-store (state)
   (declare (xargs :stobjs state :mode :program))
-  (fn-own-store (f-get-global 'fn-owner state)))
+  (fn-own-store (fn-owner-core state)))
 
 (defun fn-owner-node (state)
   (declare (xargs :stobjs state :mode :program))
@@ -144,9 +166,8 @@
 
 (defun fn-owner-step (event state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((state (f-put-global 'fn-owner
-                             (fn-own-step (f-get-global 'fn-owner state) event)
-                             state)))
+  (let ((state (fn-owner-install-ocfg
+                (fn-ocfg-step (fn-owner-ocfg-state state) event) state)))
     state))
 
 ; -----------------------------------------------------------------------------
@@ -229,10 +250,10 @@
 ; its pair appended to the ledger once (fn-own-completion-consumed-once).
 (defun fn-owner-finish (state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((before (f-get-global 'fn-owner state))
+  (let* ((before (fn-owner-core state))
          (before-files (fn-sn-files (fn-own-store before)))
          (state (fn-owner-step (list :complete) state))
-         (after (f-get-global 'fn-owner state))
+         (after (fn-owner-core state))
          (after-files (fn-sn-files (fn-own-store after))))
     (if (and (equal (fn-sf-phase before-files) :completing)
              (equal (fn-sf-phase after-files) :ready)
@@ -243,9 +264,9 @@
 
 (defun fn-owner-begin (id state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((before (f-get-global 'fn-owner state))
+  (let* ((before (fn-owner-core state))
          (state (fn-owner-step (list :begin id) state)))
-    (value (if (equal (f-get-global 'fn-owner state) before) :refused :begun))))
+    (value (if (equal (fn-owner-core state) before) :refused :begun))))
 
 ; The writer step: fn-own-take-submission moves the oldest queued submission
 ; into the durable path when nothing is in flight, no transaction is pending
@@ -254,9 +275,9 @@
 ; back through fn-owner-prepare exactly as the CLI passes its own.
 (defun fn-owner-take (state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((before (f-get-global 'fn-owner state))
+  (let* ((before (fn-owner-core state))
          (state (fn-owner-step (list :take) state))
-         (after (f-get-global 'fn-owner state))
+         (after (fn-owner-core state))
          (sub (fn-own-inflight after)))
     (if (or (equal after before) (null sub))
         (value :idle)
@@ -365,7 +386,7 @@
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (equal peer :bad)
         (value nil)
-      (let* ((before (f-get-global 'fn-owner state))
+      (let* ((before (fn-owner-core state))
              (id (fn-own-next-id before))
              ; The owner's AUTHINFO policy, the same value fn-owner-open
              ; pins into a reader.  A peer connection was opened with no
@@ -376,9 +397,9 @@
              (opened (fn-own-open-peer before peer
                                        (f-get-global 'fn-store-cfg state)
                                        (fn-owner-auth state)))
-             (state (f-put-global 'fn-owner (cdr opened) state))
+             (state (fn-owner-replace-core (cdr opened) state))
              (state (fn-owner-install-effects (car opened) state)))
-        (if (fn-own-find-conn id (fn-own-conns (f-get-global 'fn-owner state)))
+        (if (fn-own-find-conn id (fn-own-conns (fn-owner-core state)))
             (value id)
           (value nil))))))
 
@@ -391,7 +412,7 @@
 ; constrained and unattached).
 (defun fn-owner-transit-decide (id-octets subject-octets state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((owner (f-get-global 'fn-owner state))
+  (let* ((owner (fn-owner-core state))
          (sub (fn-own-inflight owner)))
     (if (not (fn-own-transit-subp sub))
         (value :not-transit)
@@ -505,10 +526,10 @@
 ; accepted it.  Read before the outcome moves the owner, as for POST.
 (defun fn-owner-transit-outcome (id kind reason word state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((owner (f-get-global 'fn-owner state))
+  (let* ((owner (fn-owner-core state))
          (records (fn-own-transit-outcome-records owner id kind word))
          (result (fn-own-transit-outcome owner id kind reason word))
-         (state (f-put-global 'fn-owner (cdr result) state))
+         (state (fn-owner-replace-core (cdr result) state))
          (state (fn-owner-install-effects (car result) state))
          (state (fn-owner-feed-install-feed records nil state)))
     (value :fed)))
@@ -538,10 +559,10 @@
 ; unreachable did not survive the process that accepted it.
 (defun fn-owner-outcome (id word state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((owner (f-get-global 'fn-owner state))
+  (let* ((owner (fn-owner-core state))
          (records (fn-own-outcome-records owner id word))
          (result (fn-own-outcome owner id word))
-         (state (f-put-global 'fn-owner (cdr result) state))
+         (state (fn-owner-replace-core (cdr result) state))
          (state (fn-owner-install-effects (car result) state))
          (state (fn-owner-feed-install-feed records nil state)))
     (value :fed)))
@@ -581,11 +602,11 @@
 
 (defun fn-owner-version (state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-own-view-version (fn-own-view (f-get-global 'fn-owner state)))))
+  (value (fn-own-view-version (fn-own-view (fn-owner-core state)))))
 
 (defun fn-owner-conn-version (id state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((conn (fn-own-find-conn id (fn-own-conns (f-get-global 'fn-owner state)))))
+  (let ((conn (fn-own-find-conn id (fn-own-conns (fn-owner-core state)))))
     (value (if conn (fn-own-conn-version conn) nil))))
 
 (defun fn-owner-connection-versions (conns)
@@ -599,18 +620,18 @@
 (defun fn-owner-connections (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-owner-connection-versions
-          (fn-own-conns (f-get-global 'fn-owner state)))))
+          (fn-own-conns (fn-owner-core state)))))
 
 ; The host's re-entry after the TLS handshake (RFC 4642 section 2.2.2).  It
 ; is a wire event, not octets: no client input produces it, and
 ; fn-auth-step is the only thing that reads it.
 (defun fn-owner-tls-established (id state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((owner (f-get-global 'fn-owner state)))
+  (let ((owner (fn-owner-core state)))
     (if (not (fn-own-find-conn id (fn-own-conns owner)))
         (value :unknown)
       (let* ((result (fn-own-read-step owner id (list :tls-established)))
-             (state (f-put-global 'fn-owner (cdr result) state))
+             (state (fn-owner-replace-core (cdr result) state))
              (state (fn-owner-install-effects (car result) state)))
         (value :ok)))))
 
@@ -620,12 +641,12 @@
 ; the socket without a reply.
 (defun fn-owner-open (state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((before (f-get-global 'fn-owner state))
+  (let* ((before (fn-owner-core state))
          (id (fn-own-next-id before))
          (opened (fn-own-open before (fn-owner-auth state)))
-         (state (f-put-global 'fn-owner (cdr opened) state))
+         (state (fn-owner-replace-core (cdr opened) state))
          (state (fn-owner-install-effects (car opened) state)))
-    (if (fn-own-find-conn id (fn-own-conns (f-get-global 'fn-owner state)))
+    (if (fn-own-find-conn id (fn-own-conns (fn-owner-core state)))
         (value id)
       (value nil))))
 
@@ -635,11 +656,11 @@
 ; consumed; there is no suffix and no loop in Python.
 (defun fn-owner-chunk (id octets state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((owner (f-get-global 'fn-owner state)))
+  (let ((owner (fn-owner-core state)))
     (if (not (fn-own-find-conn id (fn-own-conns owner)))
         (value :unknown)
       (let* ((result (fn-own-read owner id octets))
-             (state (f-put-global 'fn-owner (cdr result) state))
+             (state (fn-owner-replace-core (cdr result) state))
              (state (fn-owner-install-effects (car result) state)))
         (value :ok)))))
 
@@ -664,10 +685,10 @@
 ; defect and not a served event.
 (defun fn-owner-fault (id state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((owner (f-get-global 'fn-owner state))
+  (let* ((owner (fn-owner-core state))
          (knownp (if (fn-own-find-conn id (fn-own-conns owner)) t nil))
          (result (fn-own-fault owner id))
-         (state (f-put-global 'fn-owner (cdr result) state))
+         (state (fn-owner-replace-core (cdr result) state))
          (state (fn-owner-install-effects (car result) state)))
     (value (if knownp :faulted :unknown))))
 
@@ -687,7 +708,7 @@
 (defun fn-owner-observe (monotonic wall wall-error has-wall state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((obs (fn-clock-observation monotonic wall wall-error has-wall))
-         (outcome (fn-own-observe-outcome (f-get-global 'fn-owner state) obs))
+         (outcome (fn-own-observe-outcome (fn-owner-core state) obs))
          (state (fn-owner-step (list :observe obs) state)))
     (value outcome)))
 
@@ -695,15 +716,15 @@
   (declare (xargs :stobjs state :mode :program))
   (if (not (fn-store-text-octetsp name-octets))
       (value :invalid)
-    (let* ((before (f-get-global 'fn-owner state))
+    (let* ((before (fn-owner-core state))
            (state (fn-owner-step
                    (list :declare-group (fn-store-octets->string name-octets))
                    state)))
-      (value (if (equal (f-get-global 'fn-owner state) before) :refused :declared)))))
+      (value (if (equal (fn-owner-core state) before) :refused :declared)))))
 
 (defun fn-owner-group-facts (state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-own-replay-facts (fn-own-facts (f-get-global 'fn-owner state)))))
+  (value (fn-own-replay-facts (fn-own-facts (fn-owner-core state)))))
 
 ; -----------------------------------------------------------------------------
 ; The outbound feed (books/owner-feed.lisp; specs/peering.md 3, milestone 3)
@@ -728,19 +749,19 @@
   (let ((state (fn-owner-step (list :feeds (f-get-global 'fn-store-cfg state))
                               state)))
     (value (fn-store-cfg-join-names
-            (fn-own-feed-names (fn-own-feeds (f-get-global 'fn-owner state)))))))
+            (fn-own-feed-names (fn-own-feeds (fn-owner-core state)))))))
 
 (defun fn-owner-feed-peers (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-store-cfg-join-names
-          (fn-own-feed-names (fn-own-feeds (f-get-global 'fn-owner state))))))
+          (fn-own-feed-names (fn-own-feeds (fn-owner-core state))))))
 
 (defun fn-owner-feed-record (peer-octets state)
   (declare (xargs :stobjs state :mode :program))
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (equal peer :bad)
         nil
-      (fn-own-feed-record-of peer (fn-own-feeds (f-get-global 'fn-owner state))))))
+      (fn-own-feed-record-of peer (fn-own-feeds (fn-owner-core state))))))
 
 ; Where to dial: the peer record's transport row, read by ACL2.  The host
 ; does not parse the configuration.
@@ -803,7 +824,7 @@
       (value (if (fn-feed-head-queued
                   (fn-feed-queue
                    (fn-own-feed-find peer (fn-own-feeds
-                                           (f-get-global 'fn-owner state)))))
+                                           (fn-owner-core state)))))
                  t
                nil)))))
 
@@ -814,7 +835,7 @@
         (value 0)
       (value (len (fn-feed-queue
                    (fn-own-feed-find peer (fn-own-feeds
-                                           (f-get-global 'fn-owner state)))))))))
+                                           (fn-owner-core state)))))))))
 
 ; The host's socket identifier for one peer's outbound connection; nil when
 ; the socket is gone, which stops selection at once (fn-feed-selection wants
@@ -833,11 +854,11 @@
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (equal peer :bad)
         (value nil)
-      (let* ((owner (f-get-global 'fn-owner state))
+      (let* ((owner (fn-owner-core state))
              (obs (fn-clock-observation monotonic 0 0 nil))
              (records (fn-own-tick-peer-records owner peer obs))
              (result (fn-own-tick-peer owner peer obs))
-             (state (f-put-global 'fn-owner (cdr result) state))
+             (state (fn-owner-replace-core (cdr result) state))
              (state (fn-owner-feed-install-feed records (car result) state)))
         (value (if (car result) :offer :idle))))))
 
@@ -847,11 +868,11 @@
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (equal peer :bad)
         (value nil)
-      (let* ((owner (f-get-global 'fn-owner state))
+      (let* ((owner (fn-owner-core state))
              (obs (fn-clock-observation monotonic 0 0 nil))
              (records (fn-own-feed-reply-records owner peer line))
              (result (fn-own-feed-reply owner peer line obs))
-             (state (f-put-global 'fn-owner (cdr result) state))
+             (state (fn-owner-replace-core (cdr result) state))
              (state (fn-owner-feed-install-feed records (car result) state)))
         (value (if (car result) :send :quiet))))))
 
@@ -872,11 +893,10 @@
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (equal peer :bad)
         (value nil)
-      (let* ((owner (f-get-global 'fn-owner state))
+      (let* ((owner (fn-owner-core state))
              (obs (fn-clock-observation monotonic 0 0 nil))
              (records (fn-own-feed-lost-records owner peer))
-             (state (f-put-global 'fn-owner (fn-own-feed-lost owner peer obs)
-                                  state))
+             (state (fn-owner-replace-core (fn-own-feed-lost owner peer obs) state))
              (state (fn-owner-feed-install-feed records nil state)))
         (value :ok)))))
 
@@ -939,11 +959,10 @@
 ; calls once, after the replay and before any command.
 (defun fn-owner-feed-restart (state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((owner (f-get-global 'fn-owner state))
+  (let* ((owner (fn-owner-core state))
          (records (fn-own-feed-restart-records (fn-own-feeds owner)))
-         (state (f-put-global 'fn-owner
-                              (fn-own-with-feeds
-                               owner (fn-own-feed-restart-all (fn-own-feeds owner)))
-                              state))
+         (state (fn-owner-replace-core
+                 (fn-own-with-feeds owner (fn-own-feed-restart-all (fn-own-feeds owner)))
+                 state))
          (state (fn-owner-feed-install-feed records nil state)))
     (value (len records))))
