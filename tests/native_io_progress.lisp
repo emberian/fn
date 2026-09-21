@@ -12,6 +12,19 @@
   nil)
 (load "host/native/io.lisp")
 
+;; Native socketpair(2), used only to exercise the production descriptor and
+;; readiness path without a Python process or a network listener.
+(sb-alien:define-alien-routine ("socketpair" nio-%socketpair) sb-alien:int
+  (domain sb-alien:int) (type sb-alien:int) (protocol sb-alien:int)
+  (fds (* sb-alien:int)))
+
+(defun nio-socketpair ()
+  ;; AF_UNIX and SOCK_STREAM are both 1 on the supported POSIX targets.
+  (sb-alien:with-alien ((fds (array sb-alien:int 2)))
+    (when (< (nio-%socketpair 1 1 0 (sb-alien:cast fds (* sb-alien:int))) 0)
+      (error "socketpair failed: errno ~d" (sb-alien:get-errno)))
+    (values (sb-alien:deref fds 0) (sb-alien:deref fds 1))))
+
 (defun nio-check (test control &rest args)
   (unless test (error (apply #'format nil control args))))
 
@@ -51,6 +64,54 @@
                                (values 0 nil))))
     (nio-check (zerop (fnn-read-fd 9 (fnn-make-octets 2)))
                "EOF read was not preserved as zero")))
+
+(defun nio-read-eagain-waits-again ()
+  (let ((calls 0) (waits 0) (buffer (fnn-make-octets 2)))
+    (let ((*fnn-fd-waiter* (lambda (&rest ignored)
+                              (declare (ignore ignored))
+                              (incf waits) t))
+          (*fnn-read-syscall*
+            (lambda (fd target)
+              (declare (ignore fd))
+              (incf calls)
+              (if (= calls 1)
+                  (values nil sb-posix:eagain)
+                  (progn (setf (aref target 0) 7) (values 1 nil))))))
+      (nio-check (equalp (fnn-recv 9 1) (fnn-octets '(7)))
+                 "receive did not return data after EAGAIN")
+      (nio-check (= waits 2) "receive retried EAGAIN without a second readiness wait")
+      (nio-check (= calls 2) "receive did not retry EAGAIN"))))
+
+(defun nio-zero-recv-polls-once ()
+  (let ((waits nil) (calls 0))
+    (let ((*fnn-monotonic-ticks* (lambda () 0))
+          (*fnn-fd-waiter* (lambda (fd direction seconds)
+                              (declare (ignore fd direction))
+                              (push seconds waits) t))
+          (*fnn-read-syscall* (lambda (fd target)
+                                (declare (ignore fd))
+                                (incf calls)
+                                (setf (aref target 0) 8)
+                                (values 1 nil))))
+      (nio-check (equalp (fnn-recv 9 0) (fnn-octets '(8)))
+                 "zero-time receive did not perform its readiness poll")
+      (nio-check (equal waits '(0)) "zero-time receive used a nonzero or repeated poll")
+      (nio-check (= calls 1) "zero-time receive did not issue one read"))))
+
+(defun nio-zero-recv-eagain-does-not-spin ()
+  (let ((waits 0) (calls 0))
+    (let ((*fnn-monotonic-ticks* (lambda () 0))
+          (*fnn-fd-waiter* (lambda (&rest ignored)
+                              (declare (ignore ignored))
+                              (incf waits) t))
+          (*fnn-read-syscall* (lambda (&rest ignored)
+                                (declare (ignore ignored))
+                                (incf calls)
+                                (values nil sb-posix:eagain))))
+      (nio-check (eq (fnn-recv 9 0) :timeout)
+                 "zero-time EAGAIN receive was not a timeout")
+      (nio-check (= waits 1) "zero-time EAGAIN receive busy-spun readiness waits")
+      (nio-check (= calls 1) "zero-time EAGAIN receive busy-spun syscalls"))))
 
 (defun nio-store-write-progress ()
   (let ((answers '(1 2 1)) (seen nil))
@@ -106,6 +167,72 @@
     (nio-check (nio-expects 'fnn-store-fault
                             (lambda () (fnn-send-all 9 (fnn-octets '(1)) 1)))
                "zero socket write did not fault")))
+
+(defun nio-send-eagain-waits-again ()
+  (let ((calls 0) (waits 0))
+    (let ((*fnn-fd-waiter* (lambda (&rest ignored)
+                              (declare (ignore ignored))
+                              (incf waits) t))
+          (*fnn-write-syscall* (lambda (&rest ignored)
+                                 (declare (ignore ignored))
+                                 (incf calls)
+                                 (if (= calls 1)
+                                     (values nil sb-posix:eagain)
+                                     (values 1 nil)))))
+      (fnn-send-all 9 (fnn-octets '(1)) 1)
+      (nio-check (= waits 2) "send retried EAGAIN without a second readiness wait")
+      (nio-check (= calls 2) "send did not retry EAGAIN"))))
+
+(defun nio-zero-send-eagain-does-not-spin ()
+  (let ((waits 0) (calls 0))
+    (let ((*fnn-monotonic-ticks* (lambda () 0))
+          (*fnn-fd-waiter* (lambda (&rest ignored)
+                              (declare (ignore ignored))
+                              (incf waits) t))
+          (*fnn-write-syscall* (lambda (&rest ignored)
+                                 (declare (ignore ignored))
+                                 (incf calls)
+                                 (values nil sb-posix:eagain))))
+      (nio-check (nio-expects 'fnn-os-error
+                              (lambda () (fnn-send-all 9 (fnn-octets '(1)) 0)))
+                 "zero-time EAGAIN send was not a timeout")
+      (nio-check (= waits 1) "zero-time EAGAIN send busy-spun readiness waits")
+      (nio-check (= calls 1) "zero-time EAGAIN send busy-spun syscalls"))))
+
+(defun nio-actual-socketpair-peer-close-and-backpressure ()
+  (multiple-value-bind (sender receiver) (nio-socketpair)
+    (unwind-protect
+         (progn
+           (fnn-set-nonblocking sender)
+           (fnn-set-nonblocking receiver)
+           (let ((flags (sb-posix:fcntl sender sb-posix:f-getfl)))
+             (nio-check (not (zerop (logand flags sb-posix:o-nonblock)))
+                        "socket descriptor was not made nonblocking"))
+           ;; A peer that has already closed is a real EOF, not a timeout or
+           ;; refusal.  This uses the production unix-read and waiter seams.
+           (fnn-close receiver)
+           (setq receiver nil)
+           (let ((received (fnn-recv sender 0.1)))
+             (nio-check (and (typep received 'fnn-octets) (zerop (length received)))
+                        "closed socketpair peer did not produce EOF")))
+      (when sender (ignore-errors (fnn-close sender)))
+      (when receiver (ignore-errors (fnn-close receiver)))))
+  ;; A separate pair leaves its peer unread.  The production nonblocking
+  ;; write eventually reaches EAGAIN and the readiness wait honors the single
+  ;; deadline instead of blocking inside unix-write.
+  (multiple-value-bind (sender receiver) (nio-socketpair)
+    (unwind-protect
+         (progn
+           (fnn-set-nonblocking sender)
+           (fnn-set-nonblocking receiver)
+           (nio-check (nio-expects 'fnn-os-error
+                                   (lambda ()
+                                     (fnn-send-all sender
+                                                   (fnn-make-octets (* 8 1024 1024))
+                                                   0.1)))
+                      "unread socketpair peer did not time out under backpressure"))
+      (ignore-errors (fnn-close sender))
+      (ignore-errors (fnn-close receiver)))))
 
 (defun nio-send-eintr-obeys-deadline ()
   (let ((ticks 0))
@@ -207,14 +334,20 @@
 
 (nio-read-eintr-then-data)
 (nio-read-eof-remains-zero)
+(nio-read-eagain-waits-again)
+(nio-zero-recv-polls-once)
+(nio-zero-recv-eagain-does-not-spin)
 (nio-wrong-condition-is-rejected)
 (nio-store-write-progress)
 (nio-zero-writes-fault)
 (nio-send-retries-with-one-deadline)
 (nio-zero-send-faults)
+(nio-send-eagain-waits-again)
+(nio-zero-send-eagain-does-not-spin)
 (nio-send-eintr-obeys-deadline)
 (nio-recv-eintr-obeys-deadline)
 (nio-core-boundary-faults)
 (nio-outcome-taxonomy)
 (nio-reader-preserves-subtypes)
+(nio-actual-socketpair-peer-close-and-backpressure)
 (format t "native-io-progress: ok~%")
