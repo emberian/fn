@@ -45,6 +45,33 @@
 ; The bounded observed-image entry validates the decoded record list and
 ; frontier, constructs its own replaying kernel image, and invokes actual
 ; fn-sn-recover.  This wrapper installs only its tagged successful result.
+(defun fn-store-config-observation-limit ()
+  ; The bounded physical scan uses the same ACL2-owned limit as its plan.
+  *fn-nco-max-config-observations*)
+
+(defun fn-store-config-observation-entries (entries)
+  "Convert only octet representation; decoding/name policy stays in fn-nco-observe."
+  (declare (xargs :mode :program))
+  (if (consp entries)
+      (let ((entry (car entries)))
+        (if (and (true-listp entry) (equal (len entry) 2)
+                 (fn-cbor-octet-listp (car entry))
+                 (fn-cbor-octet-listp (cadr entry)))
+            (let ((rest (fn-store-config-observation-entries (cdr entries))))
+              (if (equal rest :bad)
+                  :bad
+                (cons (list (fn-store-octets->string (car entry)) (cadr entry)) rest)))
+          :bad))
+    (if (null entries) nil :bad)))
+
+(defun fn-store-config-observation (entries)
+  "The recovery subject for one bounded physical config directory observation."
+  (declare (xargs :mode :program))
+  (let ((converted (fn-store-config-observation-entries entries)))
+    (if (equal converted :bad)
+        (fn-nco-result :fault :input nil)
+      (fn-nco-observe converted))))
+
 (defun fn-store-cfg-decode-records (octet-records)
   ; Each durable configuration record decodes exactly, or the list is :bad.
   (declare (xargs :mode :program))
