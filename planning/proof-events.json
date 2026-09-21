@@ -896,7 +896,7 @@
         {
           "name": "fn-stx-index-equivocators-agree",
           "kind": "theorem",
-          "pending_subject": "No host line calls fn-stx-index-lookup or fn-stx-index-equivocatorp yet: the node record has no index slot. The agreement is proved of the served-path query, and the served path does not carry it. Review section 4, index row."
+          "pending_subject": "No host line calls fn-stx-index-lookup or fn-stx-index-equivocatorp: nothing in host/, bin/ or tools/ calls any fn-stx- query, and no book outside the stx cluster includes books/stx-index. The agreement is proved of the served-path query and the served path does not carry it. w11/node-index measured that a fifth slot on fn-node-statep is a dependency cycle and would not close this; the carrier belongs in fn-sn-statep (books/store-node.lisp). Review section 4, index row; planning/lanes/HANDOFF-w11-node-index.md."
         },
         {
           "name": "fn-stx-index-invariant-preserved-by-accept",
@@ -914,7 +914,7 @@
         {
           "name": "fn-stx-commits-of-batch-are-verified-and-well-formed",
           "kind": "theorem",
-          "pending_subject": "fn-stx-commits-of-batch has no caller outside books/stx-epochs: nothing on the host's reconnection path calls it yet. Review section 4."
+          "pending_subject": "fn-stx-commits-of-batch has no caller outside books/stx-epochs, and no book outside the stx cluster includes books/stx-epochs at all: there is no reconnection path in the tree to wire it to. Future feature work, not missing evidence for implemented behaviour. Review section 4."
         }
       ]
     },
