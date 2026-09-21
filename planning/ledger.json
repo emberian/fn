@@ -284,8 +284,8 @@
     "roots": 275,
     "theorems": 5578,
     "functions": 3937,
-    "assert_events": 5400,
-    "must_fails": 59,
+    "assert_events": 5459,
+    "must_fails": 63,
     "encapsulates": 19,
     "guards": {
       "verified": 1469,
@@ -297,7 +297,7 @@
     "export_hygiene_warnings": 72,
     "enabled_projection_warnings": 27,
     "teeth_form_warnings": 0,
-    "include_hygiene_warnings": 87,
+    "include_hygiene_warnings": 88,
     "host_names_warnings": 33,
     "hand_written_record_warnings": 18
   },
@@ -6379,10 +6379,10 @@
         "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 82,
+      "assert_events": 92,
       "must_fails": 0,
-      "defconsts": 15,
-      "defmacros": 1,
+      "defconsts": 19,
+      "defmacros": 2,
       "encapsulates": 0,
       "includes": [
         "../../books/nntp-effects"
@@ -7473,13 +7473,14 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 13,
-      "must_fails": 1,
-      "defconsts": 5,
+      "assert_events": 40,
+      "must_fails": 5,
+      "defconsts": 6,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/wildmat-matcher-invariants"
+        "../../books/wildmat-matcher-invariants",
+        "../../books/wildmat-parser-invariants"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -7500,9 +7501,9 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 35,
+      "assert_events": 57,
       "must_fails": 0,
-      "defconsts": 3,
+      "defconsts": 4,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -9226,6 +9227,13 @@
         "line": 12,
         "include": "../../books/wildmat-matcher-invariants",
         "included": "books/wildmat-matcher-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/wildmat-teeth-tests.lisp",
+        "line": 95,
+        "include": "../../books/wildmat-parser-invariants",
+        "included": "books/wildmat-parser-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       }
     ],
