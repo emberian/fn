@@ -16,6 +16,7 @@
 (in-package "ACL2")
 (include-book "../../books/byte-store-keystones")
 (include-book "../../books/byte-store-programs")
+(include-book "../../books/byte-store-txn-name")
 
 ; -----------------------------------------------------------------------------
 ; The anchor: the clause each tooth violates is TRUE of the store the
