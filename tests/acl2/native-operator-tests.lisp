@@ -119,6 +119,26 @@
                                               (fn-nop-test-argv '("capacity" "01"))))
                      5))
 
+(defconst *fn-nop-principal-list*
+  (fn-native-operator-run *fn-nop-minimal-config*
+                          (fn-nop-test-argv '("principal" "list"))))
+(assert-event
+ (equal (fn-native-operator-result-native-action *fn-nop-principal-list*)
+        :principal))
+(assert-event
+ (equal (fn-native-auth-admin-action-kind
+         (fn-native-operator-result-principal-plan *fn-nop-principal-list*))
+        :list))
+(assert-event
+ (equal (fn-native-operator-result-principal-auth-path-octets
+         *fn-nop-principal-list*)
+        (fn-record-string-octets "/srv/fn/auth.toml")))
+(assert-event
+ (equal (fn-native-operator-result-status
+         (fn-native-operator-run *fn-nop-minimal-config*
+                                 (fn-nop-test-argv '("principal" "set-password"))))
+        :usage))
+
 ; Native-config owns type/range/repetition refusal before a command plan.
 (assert-event (equal (fn-native-operator-result-status
                       (fn-native-operator-run

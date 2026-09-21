@@ -109,3 +109,19 @@
 (assert-event (equal (fn-native-admin-result-kind
                       (fn-native-operator-host-result-admin-plan *fn-nop-host-admin-result*))
                      :create-group))
+(defconst *fn-nop-host-principal-result*
+  (fn-native-operator-host-run
+   *fn-nop-host-auth-config*
+   (list (fn-record-string-octets "principal")
+         (fn-record-string-octets "list"))))
+(assert-event
+ (equal (fn-native-operator-host-result-native-action
+         *fn-nop-host-principal-result*) :principal))
+(assert-event
+ (equal (fn-native-auth-admin-action-kind
+         (fn-native-operator-host-result-principal-plan
+          *fn-nop-host-principal-result*)) :list))
+(assert-event
+ (equal (fn-native-operator-host-result-principal-auth-path-octets
+         *fn-nop-host-principal-result*)
+        (fn-record-string-octets "/run/fn/auth.toml")))

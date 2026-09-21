@@ -9,6 +9,7 @@
 (in-package "ACL2")
 (include-book "native-config")
 (include-book "native-admin")
+(include-book "native-auth-admin")
 
 (defconst *fn-nop-max-arguments* 32)
 (defconst *fn-nop-max-argument-octets* 512)
@@ -108,7 +109,7 @@
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "run" "post" "status" "recover" "group" "capacity" "peer")))
+  (member-equal subject '("help" "run" "post" "status" "recover" "group" "capacity" "peer" "principal")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -122,8 +123,19 @@
         ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
         ((equal subject "peer")
          "usage: fn operator CONFIG peer add NAME PATH HOST PORT INBOUND|- OUTBOUND|- SOURCE true|false | peer remove NAME")
+        ((equal subject "principal")
+         "usage: fn operator CONFIG principal {list|set-password NAME [--principal HEX] [--posting|--no-posting]}")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|run|post|status|recover|group|capacity|peer}")))
+        (t "usage: fn operator CONFIG {help|run|post|status|recover|group|capacity|peer|principal}")))
+
+(defun fn-nop-parse-principal (argv config)
+  "Compose the existing ACL2 credential plan under the public operator."
+  (declare (xargs :guard t))
+  (let ((plan (fn-native-auth-admin-parse-argv (cdr argv))))
+    (if (equal (fn-native-auth-admin-plan-status plan) :accepted)
+        (fn-nop-result :accepted :plan "principal" config (list plan))
+      (fn-nop-usage (list :principal (fn-native-auth-admin-plan-reason plan))
+                    "principal" config (cdr argv)))))
 
 (defun fn-nop-parse-administration (command argv config)
   "Delegate the exact bounded argv vector to the ACL2 durable-admin grammar."
@@ -164,6 +176,8 @@
             ((or (equal command "group") (equal command "capacity")
                  (equal command "peer"))
              (fn-nop-parse-administration command argv config))
+            ((equal command "principal")
+             (fn-nop-parse-principal argv config))
             (t (fn-nop-usage :unsupported-command command config rest))))))
 
 (defun fn-native-operator-command-preflight (argv-octets)
@@ -367,6 +381,24 @@ is installed into the owner for both served and control submission."
       (cadr (fn-native-operator-result-arguments result))
     nil))
 
+(defun fn-native-operator-result-principal-planp (result)
+  (declare (xargs :guard t))
+  (and (equal (fn-native-operator-result-status result) :accepted)
+       (equal (fn-native-operator-result-command result) "principal")))
+
+(defun fn-native-operator-result-principal-plan (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-principal-planp result)
+      (car (fn-native-operator-result-arguments result))
+    nil))
+
+(defun fn-native-operator-result-principal-auth-path-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-principal-planp result)
+      (fn-record-string-octets
+       (fn-native-config-auth-path (fn-native-operator-result-config result)))
+    nil))
+
 (defun fn-native-operator-result-native-action (result)
   "The only commands the current raw native module may execute by itself.
 
@@ -383,4 +415,5 @@ callbacks.  Neither is translated into a direct Store call."
           ((or (equal (fn-native-operator-result-command result) "group")
                (equal (fn-native-operator-result-command result) "capacity")
                (equal (fn-native-operator-result-command result) "peer")) :admin)
+          ((equal (fn-native-operator-result-command result) "principal") :principal)
           (t :owner-required))))

@@ -15,6 +15,15 @@ ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
 
 
+class NativeOperatorPrincipalCompositionTests(unittest.TestCase):
+    def test_operator_calls_existing_acl2_credential_plan_and_executor(self):
+        model = (ROOT / "books" / "native-operator.lisp").read_text(encoding="ascii")
+        host = (ROOT / "host" / "native" / "operator.lisp").read_text(encoding="ascii")
+        self.assertIn("(fn-native-auth-admin-parse-argv (cdr argv))", model)
+        self.assertIn("'fn-native-operator-host-result-principal-plan result", host)
+        self.assertIn("(fnn-native-auth-admin-execute", host)
+
+
 def invoke(config, *words):
     return subprocess.run(
         [str(IMAGE), "--fn", "operator", str(config), *words],

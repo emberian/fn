@@ -200,6 +200,14 @@
                                     action condition)
           code)))))
 
+(defun fnn-operator-execute-principal (result)
+  "Execute only the credential plan and credential path projected by ACL2."
+  (fnn-native-auth-admin-execute
+   (fnn-core 'fn-native-operator-host-result-principal-plan result)
+   (fnn-octets-string
+    (fnn-core 'fn-native-operator-host-result-principal-auth-path-octets
+              result))))
+
 (defun fnn-operator-read-config (path maximum)
   "Classify only ordinary configuration-file defects as usage before reading.
 
@@ -227,6 +235,7 @@ configuration usage result."
           (:post (fnn-operator-execute-post result))
           ((:status :recover) (fnn-operator-execute-store-action result action))
           (:admin (fnn-operator-execute-admin result))
+          (:principal (fnn-operator-execute-principal result))
           (:owner-required
            (fnn-operator-emit-status :usage "action" "requires native owner callback")
            +fnn-exit-usage+)

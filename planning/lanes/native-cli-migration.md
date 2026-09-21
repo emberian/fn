@@ -79,7 +79,7 @@ are not `bin/fn` subcommands.
 | `status` | TOML; `run_store`; optional local owner probe | `operator CONFIG status` | Native configuration-derived store status implemented; full liveness-report parity remains. |
 | `recover` | TOML; `run_store`; Roughtime client/verification | `operator CONFIG recover` | Native store recovery is implemented; external pinned-anchor selection and UDP verification remain separate. |
 | `anchor` | TOML; Roughtime JSON server table; UDP; crypto bridge | none | Native anchor client, pinned-key manifest reader, and ACL2 anchor-record boundary. |
-| `principal` | TOML; credential TOML; terminal password prompt; ACL2 secret/signing helpers | none | Native credential parser/writer, secret boundary, principal derivation/listing. |
+| `principal` | TOML; credential TOML; terminal password prompt; ACL2 secret/signing helpers | `operator CONFIG principal ...` | Native ACL2 grammar, bounded secret prompt, principal/verifier derivation, durable credential replacement and listing are composed; live enrollment still requires owner restart. |
 | `statement` | `tools/stx`; ACL2 subprocess; optional real Ed25519 | none | Native statement parser, keyring boundary, and verified Ed25519 implementation. |
 
 The native image also has `reader`, `model`, `tcpcl`, and (in the DTN profile)
@@ -135,16 +135,16 @@ Lisp, or silently supplied by host code.
 | Table and key | Native profile rule | Current availability |
 | --- | --- | --- |
 | `[store].path` | Required bounded path value. ACL2 validates its presence and canonical configuration use; raw host applies accepted path to bounded filesystem calls. | Needed for every store verb; direct raw `store ROOT` diagnostics already take a positional root. |
-| `[listener].host` | Optional; ACL2 defaults to `127.0.0.1` and accepts only the documented loopback identities. | Requires native owner configuration handoff. |
-| `[listener].port` | Optional natural; ACL2 defaults to 1119 and enforces its service bound before the host converts it for a socket. | Requires native owner configuration handoff. |
-| `[listener].tls_cert`, `[listener].tls_key` | Optional bounded paths; ACL2 enforces the pair-or-neither policy. | Unsupported until native TLS startup exists; refuse the profile rather than drop either path. |
-| `[posting].enabled` | Optional boolean; ACL2 defaults true and owns posting policy. | Unsupported for the native operator surface until owner/post control applies it. |
-| `[posting].agent` | Optional bounded identity; ACL2 defaults the documented operator identity and validates it. | Unsupported until native post/control owns injection attribution. |
+| `[listener].host` | Optional; ACL2 defaults to `127.0.0.1` and accepts only the documented loopback identities. | Projected into native owner listener startup. |
+| `[listener].port` | Optional natural; ACL2 defaults to 1119 and enforces its service bound before the host converts it for a socket. | Projected into native owner listener startup. |
+| `[listener].tls_cert`, `[listener].tls_key` | Optional bounded paths; ACL2 enforces the pair-or-neither policy. | Projected into matched native OpenSSL server context startup. |
+| `[posting].enabled` | Optional boolean; ACL2 defaults true and owns posting policy. | Applied to every native owner connection and native operator post plan. |
+| `[posting].agent` | Optional bounded identity; ACL2 defaults the documented operator identity and validates it. | Default agent is supported; non-default values remain refused by the operator availability gate. |
 | `[anchor].server` | Optional bounded server identifier; ACL2 selects/validates pinned server policy. | Unsupported until the native pinned-anchor client and verifier land; refuse when present. |
-| `[auth].required`, `[auth].protected_only` | Optional booleans; ACL2 defaults false and owns the connection policy. | Unsupported until native owner/auth configuration applies them. |
-| `[auth].path` | Optional bounded credential-file path; ACL2 owns the reference policy. | Unsupported until the inert credential parser and native verifier path land. |
+| `[auth].required`, `[auth].protected_only` | Optional booleans; ACL2 defaults false and owns the connection policy. | Applied to every native owner connection; protected-only requires configured TLS. |
+| `[auth].path` | Optional bounded credential-file path; ACL2 owns the reference policy. | Used by owner authentication and the native `principal` operator workflow. |
 | `[log].path` | Optional bounded host-output path. ACL2 decides whether logging is enabled; host opens only an accepted path. | Unsupported until native owner logging is wired. |
-| `[control].path` | Optional bounded Unix-socket path. ACL2 owns its default/reference; host owns socket creation after acceptance. | Unsupported until native owner control lifecycle is wired. |
+| `[control].path` | Optional bounded Unix-socket path. ACL2 owns its default/reference; host owns socket creation after acceptance. | Used by owner control lifecycle and live post/admin routes. |
 | `[acl2].path`, `[acl2].slots` | Python development-process controls, not settings a saved image can honor. | Explicitly refused by the native profile. They must be removed from a configuration migrated to the direct image; they are not ignored. |
 
 The native parser also refuses duplicate tables/keys, non-table values where a
@@ -185,19 +185,19 @@ ACL2.
 
 ## Largest missing dependency surfaces
 
-1. **Configuration and CLI ownership.**  There is no native inert TOML
-   parser, no ACL2-owned operator configuration decision, and no native
-   full-command parser.  Existing `tools/fn_native.py` deliberately uses the
-   Python parsers for test compatibility and therefore cannot be deployed.
+1. **Remaining CLI workflows.** The bounded native TOML parser and ACL2-owned
+   operator grammar now serve run, post, status, recovery, group, capacity,
+   peer and principal commands. Native init/config writing, policy mutation,
+   anchor selection and statement workflows remain outside that grammar.
 2. **Owner/service controls.**  The native operator now supplies the
    configuration-to-owner path, and the production/developer image split
    removes raw owner/reader alternatives from the production entry surface.
    Full service-supervisor lifecycle and remaining operator parity still need
    the ACL2/native path.
-3. **TLS and authentication.**  Python `ssl`, credential TOML, password
-   prompting, and auth-file policy currently serve `run`/`principal`.  Native
-   TLS trust and credential handling need bounded raw I/O plus ACL2-owned
-   policy.
+3. **TLS and authentication.** Native server TLS, AUTHINFO verification and
+   credential administration are composed under ACL2 policy. Live credential
+   reload is not implemented, so a principal change requires owner restart;
+   outbound peer TLS/auth profiles remain a separate transport surface.
 4. **Anchor cryptography.**  `recover` currently calls a Python Roughtime UDP
    client, reads `roughtime_servers.json`, and uses crypto helpers to verify
    pinned signatures.  The native image's current `recover` reports only its

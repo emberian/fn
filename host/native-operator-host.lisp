@@ -136,3 +136,12 @@
       (fn-record-string-octets
        (fn-native-config-control-path (fn-native-operator-result-config result)))
     nil))
+
+(defun fn-native-operator-host-result-principal-plan (result)
+  "Exact accepted ACL2 credential administration plan."
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-principal-plan result))
+
+(defun fn-native-operator-host-result-principal-auth-path-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-principal-auth-path-octets result))
