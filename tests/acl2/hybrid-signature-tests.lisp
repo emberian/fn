@@ -15,6 +15,14 @@
 (defconst *hs-signatures* (list (cons :ed25519 *hs-ed-sig*)
                                 (cons :ml-dsa-65 *hs-ml-sig*)))
 
+; The exact maximum-source preimage is the native bound exercised by the
+; component interoperability test; it is derived here by the actual ACL2
+; framing function rather than duplicated in host arithmetic.
+(assert-event
+ (equal (len (fn-hsig-signed-preimage
+              *hs-principal* *hs-keys* (make-list 32768 :initial-element 42)))
+        34820))
+
 ; Reachable, non-degenerate witness for the host-called decision.
 (assert-event (fn-hsig-authorize *hs-principal* *hs-keys* *hs-source*
                                  *hs-signatures* *hs-ml-key*
