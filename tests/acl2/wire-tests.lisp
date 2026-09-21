@@ -313,6 +313,46 @@
           46 46 108 105 116 101 114 97 108 13 10 46 46 13 10
           98 111 100 121 13 10 13 10 13 10 46 13 10)))
 
+; This is the complete, bounded receiver composition for the output of the
+; actual renderer above.  It calls fn-wire-drive, which is the reader-host
+; framing loop, after the normal article-mode transition.  The yielded article
+; has exactly the retained source lines: two final empty lines, a literal
+; dot-leading line, and a dot-only line all survive the physical round trip.
+(defconst *fn-wire-outbound-roundtrip*
+  (fn-wire-drive *fn-wire-article-start*
+                (fn-wire-outbound-octets *fn-wire-outbound-rendered*)))
+(assert-event
+ (equal (fn-wire-result-events *fn-wire-outbound-roundtrip*)
+        '((:article ((83 117 98 106 101 99 116 58 32 116)
+                     nil
+                     (46 108 105 116 101 114 97 108)
+                     (46)
+                     (98 111 100 121)
+                     nil
+                     nil)))))
+(assert-event
+ (equal (fn-wire-state-mode
+         (fn-wire-result-state *fn-wire-outbound-roundtrip*))
+        :command))
+
+; Teeth for fn-wire-after-line-unstuffs-rendered-source-line.  A dot-only
+; source becomes two dots on the wire and is retained as one literal dot;
+; removing the body-bound hypothesis instead reaches the real close branch.
+(assert-event
+ (equal (fn-wire-after-line *fn-wire-article-start* '(46 46))
+        (fn-wire-make-result
+         (fn-wire-make-state :article nil 0 '((46)) nil 3 32 64)
+         nil)))
+(assert-event
+ (not (equal
+       (fn-wire-after-line
+        (fn-wire-result-state
+         (fn-wire-begin-article (fn-wire-initial-state 32 2)))
+        '(97))
+       (fn-wire-make-result
+        (fn-wire-make-state :article nil 0 '((97)) nil 3 32 2)
+        nil))))
+
 ; Empty source is a valid empty NNTP block, and is distinct from malformed
 ; source.  It is the zero-line article accepted by the inbound wire machine.
 (assert-event

@@ -116,7 +116,39 @@
            :use ((:instance fn-wire-feed-byte-event-is-not-nil))
            :in-theory (e/d (fn-wire-result-events)
                            (fn-wire-feed-byte
-                            fn-wire-feed-byte-event-is-not-nil)))))
+                           fn-wire-feed-byte-event-is-not-nil)))))
+
+; The receive transition that consumes one complete outbound-rendered line.
+; `fn-wire-after-line' is below fn-wire-next and fn-wire-drive, the framing
+; path the reader host calls.  The theorem says the only data transformation
+; on a nonterminating outbound line is the inverse of fn-wire-stuff-line:
+; its exact source octets become the next retained source line.  The bound is
+; necessary: without room for this line and its CRLF the real transition
+; closes with :body-overlimit instead.
+(defthm fn-wire-after-line-unstuffs-rendered-source-line
+  (implies (and (fn-wire-statep wire-state)
+                (equal (fn-wire-state-mode wire-state) :article)
+                (fn-wire-octet-listp source)
+                (<= (+ (fn-wire-state-body-size wire-state)
+                       (fn-wire-line-cost source))
+                    (fn-wire-state-body-limit wire-state)))
+           (equal (fn-wire-after-line wire-state (fn-wire-stuff-line source))
+                  (fn-wire-make-result
+                   (fn-wire-make-state
+                    :article nil 0
+                    (cons source (fn-wire-state-body-rev wire-state)) nil
+                    (+ (fn-wire-state-body-size wire-state)
+                       (fn-wire-line-cost source))
+                    (fn-wire-state-line-limit wire-state)
+                    (fn-wire-state-body-limit wire-state))
+                   nil)))
+  :hints (("Goal"
+           :in-theory (enable fn-wire-after-line
+                              fn-wire-statep
+                              fn-wire-result-state
+                              fn-wire-result-events
+                              fn-wire-make-result
+                              fn-wire-make-state))))
 
 (defthm fn-wire-feed-byte-silent-step-stays-open
   (implies (and (fn-wire-statep wire-state)
