@@ -788,7 +788,7 @@
         "tests/test_bp_receive_integrity_native.py",
         "planning/evidence/bp-receive-integrity-w15-2026-09-21.md"
       ],
-      "execution_scope": "Partial: native BP codec/node and durable outbound lifecycle execute behind TCPCL. Source-pinned packets cover sequence allocation, spool recovery, selected process-death cuts and lifecycle publication/restart. W15 adds actual cross-session transfer-ID reuse with both wires retained, receive-loop exit after uncertain publication, and wire-only evidence identity consumption after recovery barriers. The allocation theorem is conditional on confirmed-frontier admissibility. Full native application journal/receipt composition and universal actual-host lifecycle/physical refinement remain open (PRF-045/046). Receive evidence enumeration needs its bound enforced during collection; correction is assigned."
+      "execution_scope": "Partial: native BP codec/node and durable outbound lifecycle execute behind TCPCL. Source-pinned packets cover sequence allocation, spool recovery, selected process-death cuts and lifecycle publication/restart. W15 adds actual cross-session transfer-ID reuse with both wires retained, receive-loop exit after uncertain publication, and wire-only evidence identity consumption after recovery barriers. The allocation theorem is conditional on confirmed-frontier admissibility. Full native application journal/receipt composition and universal actual-host lifecycle/physical refinement remain open (PRF-045/046). Receive evidence enumeration now enforces the ACL2 bound during collection; its actual raw directory regression passed on integrated 7a0b96f. This is not a newly built combined image test."
     },
     {
       "id": "SCN-026",
