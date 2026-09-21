@@ -177,6 +177,20 @@ class NativePeeringTests(unittest.TestCase):
             stream.write(b"IHAVE " + message_id.encode("ascii") + b"\r\n")
             return stream.readline()
 
+    def capabilities(self, node):
+        with socket.create_connection(("127.0.0.1", node["port"]), timeout=10) as client:
+            stream = client.makefile("rwb", buffering=0)
+            self.assertTrue(stream.readline().startswith(b"200 "))
+            stream.write(b"CAPABILITIES\r\n")
+            self.assertTrue(stream.readline().startswith(b"101 "))
+            lines = []
+            while True:
+                line = stream.readline()
+                if line == b".\r\n":
+                    return lines
+                self.assertNotEqual(line, b"")
+                lines.append(line.rstrip(b"\r\n"))
+
     def test_public_native_nodes_exchange_both_ways_and_suppress_duplicate(self):
         a = self.initialize("a", free_port())
         b = self.initialize("b", free_port())
@@ -184,6 +198,10 @@ class NativePeeringTests(unittest.TestCase):
         self.configure_peer(b, a)
         self.start(a)
         self.start(b)
+        self.assertIn(b"IHAVE", self.capabilities(a))
+        self.assertIn(b"STREAMING", self.capabilities(a))
+        self.assertIn(b"IHAVE", self.capabilities(b))
+        self.assertIn(b"STREAMING", self.capabilities(b))
 
         a_id = "<native-a-to-b@example.invalid>"
         b_id = "<native-b-to-a@example.invalid>"
