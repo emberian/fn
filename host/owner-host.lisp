@@ -771,6 +771,22 @@
   (declare (xargs :stobjs state :mode :program))
   (value (len (fn-state-articles (fn-node-acceptance (fn-owner-node state))))))
 
+; The local-post provenance from the owner's canonical live configuration.
+; The native service cannot call fn-store-prov-post: that wrapper reads the
+; standalone store bridge's shadow configuration and would stay stale after
+; an owner reconfiguration.  This is the same ACL2 construction over the
+; configuration that owns the acceptance decision.
+(defun fn-owner-prov-post (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((cfg (fn-owner-config state))
+         (identity (fn-cfg-policy (fn-cfg-value cfg) "path-identity"))
+         (principal (if (and (stringp identity) (not (equal identity "")))
+                        identity
+                      "local"))
+         (p (fn-prov-make-post principal (fn-cfg-generation cfg))))
+    (value (fn-record-string-octets
+            (if (fn-prov-durablep p) (fn-prov-wire p) (fn-prov-render p))))))
+
 (defun fn-owner-existing-action (msgid-octets payload group-codes state)
   (declare (xargs :stobjs state :mode :program))
   (let ((groups (fn-store-groups-from-codes
