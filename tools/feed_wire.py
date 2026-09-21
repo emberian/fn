@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import os
 import socket
+import stat
 
 from run_store import (StoreFault, StoreIndeterminate, fsync_dir, fsync_file,
                        write_all, NO_FAULTS)
@@ -34,6 +35,85 @@ MAX_LINE = 4096
 
 class FeedError(RuntimeError):
     pass
+
+
+def _filename_component(component):
+    """Filesystem output guard for an ACL2-selected component, not peer parsing."""
+    return (component and component not in (".", "..") and
+            "/" not in component and "\\" not in component and "\x00" not in component)
+
+
+def _regular(path):
+    try:
+        return stat.S_ISREG(os.lstat(path).st_mode)
+    except OSError:
+        return False
+
+
+def _directory(path):
+    try:
+        mode = os.lstat(path).st_mode
+        return stat.S_ISDIR(mode) and not stat.S_ISLNK(mode)
+    except OSError:
+        return False
+
+
+def discover_journal_peers(root: str, bridge):
+    """ACL2-decode every retained FNFD pathname, refusing conflicting evidence.
+
+    The host walks the fixed namespace only.  It neither strips a peer name
+    from a filename nor decodes hex: `feed_filename_decode` accepts only an
+    ACL2-canonical component vector and returns its peer octets.
+    """
+    feed_dir = os.path.join(root, "feed")
+    if not os.path.lexists(feed_dir):
+        return ()
+    if not _directory(feed_dir):
+        raise StoreFault("invalid FNFD feed namespace: " + feed_dir)
+    max_chunks = bridge.feed_filename_max_v1_chunks()
+    peers = []
+
+    def decoded(components, path):
+        try:
+            octets = bridge.feed_filename_decode(
+                tuple(component.encode("ascii") for component in components))
+            peer = octets.decode("ascii")
+        except (AttributeError, UnicodeError) as error:
+            raise StoreFault("conflicting FNFD filename evidence: " + path) from error
+        if not peer or peer in peers:
+            raise StoreFault("conflicting FNFD filename evidence: " + path)
+        peers.append(peer)
+
+    def v1(directory, components, depth):
+        entries = sorted(os.listdir(directory))
+        if not entries:
+            raise StoreFault("empty FNFD v1 namespace: " + directory)
+        before = len(peers)
+        for name in entries:
+            path = os.path.join(directory, name)
+            if name == "journal.fnfd":
+                if not _regular(path):
+                    raise StoreFault("invalid FNFD v1 namespace entry: " + path)
+                decoded(components + (name,), path)
+            elif (_directory(path) and depth < max_chunks and
+                  _filename_component(name)):
+                v1(path, components + (name,), depth + 1)
+            else:
+                raise StoreFault("invalid FNFD v1 namespace entry: " + path)
+        if len(peers) == before:
+            raise StoreFault("empty FNFD v1 namespace: " + directory)
+
+    for name in sorted(os.listdir(feed_dir)):
+        path = os.path.join(feed_dir, name)
+        if name == "v1":
+            if not _directory(path):
+                raise StoreFault("invalid FNFD v1 namespace: " + path)
+            v1(path, (name,), 0)
+        elif name.endswith(".fnfd") and _regular(path):
+            decoded((name,), path)
+        else:
+            raise StoreFault("conflicting FNFD namespace entry: " + path)
+    return tuple(peers)
 
 
 class Journal:
@@ -61,10 +141,8 @@ class Journal:
         # This is an output boundary guard, not a second peer-name policy: the
         # ACL2 codec alone chooses components.  Do not give a malformed bridge
         # result path semantics on the way to the filesystem.
-        if (not text_components or
-                any(not component or component in (".", "..") or
-                    "/" in component or "\\" in component or "\x00" in component
-                    for component in text_components)):
+        if not text_components or any(not _filename_component(component)
+                                      for component in text_components):
             raise StoreFault("ACL2 returned unsafe FNFD filename component")
         self.dir = os.path.join(self.feed_dir, *text_components[:-1])
         self.path = os.path.join(self.dir, text_components[-1])
