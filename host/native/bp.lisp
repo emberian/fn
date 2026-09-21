@@ -248,45 +248,49 @@ dominates an acceptance: a run that saw one of each did not succeed."
          (peer (fnn-bp-eid peer-eid))
          (adu (fnn-octet-list (fnn-read-regular-bounded adu-path transfer-mru)))
          (obs (fnn-bp-observation wall wall-error))
-         (tally (make-fnn-bp-tally :config config :wall wall :wall-error wall-error
-                                   :journal (fnn-bp-journal-dir journal)))
-         (sequence (fnn-bp-reserve-sequence tally))
-         (bundle (fnn-core 'fn-bpn-host-send config peer adu sequence obs))
-         (summary (fnn-core 'fn-bpn-host-sent-summary config peer adu sequence obs))
-         (socket nil))
-    (unless bundle
-      (fnn-refuse "bp: this ADU and configuration are not a bundle this node can author"))
-    (fnn-out "BP authored creation=~d sequence=~d lifetime=~d payload=~d octets=~d"
-             (first summary) (second summary) (third summary) (fourth summary)
-             (length bundle))
-    ;; The bundle this node authored, kept before it is put on a socket, for
-    ;; the same reason the receive path keeps what arrives: an octet string
-    ;; another implementation accepted is only a vector if it was recorded.
-    (fnn-out "BP wire authored path=~a"
-             (fnn-bp-record tally (format nil "authored-~d.wire" sequence)
-                            bundle))
+         (journal-root (fnn-bp-journal-dir journal))
+         (spool-lock (fnn-tcl-spool-acquire journal-root)))
     (unwind-protect
-         (let ((*fnn-tcl-deliver*
-                 (lambda (conn xfer-id octets)
-                   (fnn-bp-deliver tally conn xfer-id octets))))
-           (setq socket (fnn-tcl-connect host port))
-           (let ((conn (fnn-tcl-session
-                        (fnn-socket-fd socket) :active
-                        ;; The convergence layer's expected peer is a
-                        ;; SESSION identity (RFC 9174 section 4.2), not the
-                        ;; bundle's destination: a bundle for
-                        ;; dtn://x/demux may travel over a session with any
-                        ;; node.  Passing the destination here would refuse
-                        ;; every correct session whose peer is not also the
-                        ;; final destination.
-                        (fnn-tcl-params node-id nil +fnn-tcl-keepalive+
-                                        +fnn-tcl-segment-mru+ transfer-mru)
-                        "active" journal
-                        :bundle bundle :expect expect)))
-             (fnn-tcl-summary conn)
-             (fnn-bp-summary tally)
-             (fnn-bp-exit-code tally conn)))
-      (when socket (fnn-socket-shut socket)))))
+         (let* ((tally (make-fnn-bp-tally :config config :wall wall :wall-error wall-error
+                                          :journal journal-root))
+                (sequence (fnn-bp-reserve-sequence tally))
+                (bundle (fnn-core 'fn-bpn-host-send config peer adu sequence obs))
+                (summary (fnn-core 'fn-bpn-host-sent-summary config peer adu sequence obs))
+                (socket nil))
+           (unless bundle
+             (fnn-refuse "bp: this ADU and configuration are not a bundle this node can author"))
+           (fnn-out "BP authored creation=~d sequence=~d lifetime=~d payload=~d octets=~d"
+                    (first summary) (second summary) (third summary) (fourth summary)
+                    (length bundle))
+           ;; The bundle this node authored, kept before it is put on a socket, for
+           ;; the same reason the receive path keeps what arrives: an octet string
+           ;; another implementation accepted is only a vector if it was recorded.
+           (fnn-out "BP wire authored path=~a"
+                    (fnn-bp-record tally (format nil "authored-~d.wire" sequence)
+                                   bundle))
+           (unwind-protect
+                (let ((*fnn-tcl-deliver*
+                        (lambda (conn xfer-id octets)
+                          (fnn-bp-deliver tally conn xfer-id octets))))
+                  (setq socket (fnn-tcl-connect host port))
+                  (let ((conn (fnn-tcl-session
+                               (fnn-socket-fd socket) :active
+                               ;; The convergence layer's expected peer is a
+                               ;; SESSION identity (RFC 9174 section 4.2), not the
+                               ;; bundle's destination: a bundle for
+                               ;; dtn://x/demux may travel over a session with any
+                               ;; node.  Passing the destination here would refuse
+                               ;; every correct session whose peer is not also the
+                               ;; final destination.
+                               (fnn-tcl-params node-id nil +fnn-tcl-keepalive+
+                                               +fnn-tcl-segment-mru+ transfer-mru)
+                               "active" journal-root
+                               :bundle bundle :expect expect)))
+                    (fnn-tcl-summary conn)
+                    (fnn-bp-summary tally)
+                    (fnn-bp-exit-code tally conn)))
+             (when socket (fnn-socket-shut socket))))
+      (fnn-tcl-spool-release spool-lock))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; `bp receive'
@@ -295,56 +299,60 @@ dominates an acceptance: a run that saw one of each did not succeed."
                                crc-type hop-limit transfer-mru reply-adu
                                reply-peer wall wall-error)
   (let* ((config (fnn-bp-config node-id lifetime crc-type hop-limit transfer-mru))
-         (tally (make-fnn-bp-tally :config config :wall wall :wall-error wall-error
-                                   :journal (fnn-bp-journal-dir journal)))
-         (reply (when reply-adu
-                  (let* ((peer (fnn-bp-eid (or reply-peer node-id)))
-                         (adu (fnn-octet-list
-                               (fnn-read-regular-bounded reply-adu transfer-mru)))
-                         (obs (fnn-bp-observation wall wall-error))
-                         (sequence (fnn-bp-reserve-sequence tally))
-                         (octets (fnn-core 'fn-bpn-host-send config peer adu sequence obs)))
-                    (unless octets
-                      (fnn-refuse "bp: the reply ADU is not a bundle this node can author"))
-                    octets)))
-         (listener nil)
-         (code +fnn-exit-ok+))
+         (journal-root (fnn-bp-journal-dir journal))
+         (spool-lock (fnn-tcl-spool-acquire journal-root)))
     (unwind-protect
-         (let ((*fnn-tcl-deliver*
-                 (lambda (conn xfer-id octets)
-                   (fnn-bp-deliver tally conn xfer-id octets))))
-           (multiple-value-bind (bound bound-port) (fnn-tcl-listen port)
-             (setq listener bound)
-             (fnn-out "BP LISTENING ~d" bound-port))
-           (fnn-accept-loop
-            listener
-            (lambda (socket)
-              (let ((fd (fnn-socket-fd socket)))
-                (unwind-protect
-                     (handler-case
-                         (let ((conn (fnn-tcl-session
-                                      fd :passive
-                                      (fnn-tcl-params node-id peer-eid
-                                                      +fnn-tcl-keepalive+
-                                                      +fnn-tcl-segment-mru+
-                                                      transfer-mru)
-                                      "passive" journal :bundle reply)))
-                           (fnn-tcl-summary conn)
-                           (setq code (fnn-bp-exit-code tally conn)))
-                       (fnn-store-indeterminate (e)
-                         (fnn-err "bp: ~a" e)
-                         (setq code +fnn-exit-uncertain+))
-                       (fnn-store-error (e)
-                         (fnn-err "bp: ~a" e)
-                         (setq code +fnn-exit-refused+))
-                       ((or fnn-os-error sb-bsd-sockets:socket-error) (e)
-                         (fnn-err "bp: ~a" e)
-                         (setq code +fnn-exit-uncertain+)))
-                  (fnn-socket-shut socket))))
-            once)
-           (fnn-bp-summary tally)
-           code)
-      (when listener (fnn-socket-shut listener)))))
+         (let* ((tally (make-fnn-bp-tally :config config :wall wall :wall-error wall-error
+                                          :journal journal-root))
+                (reply (when reply-adu
+                         (let* ((peer (fnn-bp-eid (or reply-peer node-id)))
+                                (adu (fnn-octet-list
+                                      (fnn-read-regular-bounded reply-adu transfer-mru)))
+                                (obs (fnn-bp-observation wall wall-error))
+                                (sequence (fnn-bp-reserve-sequence tally))
+                                (octets (fnn-core 'fn-bpn-host-send config peer adu sequence obs)))
+                           (unless octets
+                             (fnn-refuse "bp: the reply ADU is not a bundle this node can author"))
+                           octets)))
+                (listener nil)
+                (code +fnn-exit-ok+))
+           (unwind-protect
+                (let ((*fnn-tcl-deliver*
+                        (lambda (conn xfer-id octets)
+                          (fnn-bp-deliver tally conn xfer-id octets))))
+                  (multiple-value-bind (bound bound-port) (fnn-tcl-listen port)
+                    (setq listener bound)
+                    (fnn-out "BP LISTENING ~d" bound-port))
+                  (fnn-accept-loop
+                   listener
+                   (lambda (socket)
+                     (let ((fd (fnn-socket-fd socket)))
+                       (unwind-protect
+                            (handler-case
+                                (let ((conn (fnn-tcl-session
+                                             fd :passive
+                                             (fnn-tcl-params node-id peer-eid
+                                                             +fnn-tcl-keepalive+
+                                                             +fnn-tcl-segment-mru+
+                                                             transfer-mru)
+                                             "passive" journal-root :bundle reply)))
+                                  (fnn-tcl-summary conn)
+                                  (setq code (fnn-bp-exit-code tally conn)))
+                              (fnn-store-indeterminate (e)
+                                (fnn-err "bp: ~a" e)
+                                (setq code +fnn-exit-uncertain+))
+                              (fnn-store-error (e)
+                                (fnn-err "bp: ~a" e)
+                                (setq code +fnn-exit-refused+))
+                              ((or fnn-os-error sb-bsd-sockets:socket-error) (e)
+                                (fnn-err "bp: ~a" e)
+                                (setq code +fnn-exit-uncertain+)))
+                         (fnn-socket-shut socket))))
+                   once)
+                  (fnn-bp-summary tally)
+                  code)
+             (when listener (fnn-socket-shut listener))))
+      (fnn-tcl-spool-release spool-lock))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; `bp decode' -- a file of octets in, the node's verdict out, no socket.
