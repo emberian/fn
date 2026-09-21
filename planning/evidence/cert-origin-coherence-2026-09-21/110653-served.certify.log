@@ -1,0 +1,382 @@
+This is SBCL 2.6.8, an implementation of ANSI Common Lisp.
+More information about SBCL is available at <http://www.sbcl.org/>.
+
+SBCL is free software, provided as is, with absolutely no warranty.
+It is mostly in the public domain; some portions are provided under
+BSD-style licenses.  See the CREDITS and COPYING files in the
+distribution for more information.
+
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ + ACL2 Version 8.7                                                     +
+ +   built September 19, 2026  03:13:23.                                +
+ + Copyright (C) 2026, Regents of the University of Texas.              +
+ + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and   +
+ + you are welcome to redistribute it under certain conditions.  For    +
+ + details, see the LICENSE file distributed with ACL2.                 +
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>
+Project-dir-alist:
+((:SYSTEM . "/home/ember/fn-tools/acl2-8.7/books/")).
+Type :help for help.
+Type (quit) to quit completely out of ACL2.
+
+ACL2 !>>
+Note: Writing .port file, /home/ember/fn-lanes/w13-owner-integrated-
+gate/books/served.port.
+
+CERTIFICATION ATTEMPT FOR 
+"/home/ember/fn-lanes/w13-owner-integrated-gate/books/served.lisp"
+ACL2 Version 8.7
+
+* Step 1: Read 
+"/home/ember/fn-lanes/w13-owner-integrated-gate/books/served.lisp"
+and compute its book-hash.
+
+* Step 2:  There were 118 forms in the file.  We now attempt to establish
+that each form, whether local or non-local, is indeed an admissible
+embedded event form in the context of the previously admitted ones.
+
+
+ACL2 !>>>(INCLUDE-BOOK "wire-invariants")
+
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "wire" ...):  Unable
+to load compiled file for book
+  /home/ember/fn-lanes/w13-owner-integrated-gate/books/wire.lisp
+because the compiled file does not exist.  See :DOC include-book. 
+Here is the sequence of books with loads of compiled or expansion files
+that have led down to the printing of this message, where the load
+for each is halted during the load for the next:
+
+  /home/ember/fn-lanes/w13-owner-integrated-gate/books/wire-invariants.lisp
+
+
+Summary
+Form:  ( INCLUDE-BOOK "wire-invariants" ...)
+Rules: NIL
+Warnings:  Compiled file
+Time:  0.06 seconds (prove: 0.00, print: 0.00, other: 0.06)
+"/home/ember/fn-lanes/w13-owner-integrated-gate/books/wire-invariants.lisp"
+
+
+ACL2 !>>>(INCLUDE-BOOK "nntp-post")
+
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "nntp-post" ...):  Unable
+to load compiled file for book
+  /home/ember/fn-lanes/w13-owner-integrated-gate/books/nntp-post.lisp
+because the compiled file does not exist.  See :DOC include-book. 
+No load was in progress for any parent book.
+
+
+Summary
+Form:  ( INCLUDE-BOOK "nntp-post" ...)
+Rules: NIL
+Warnings:  Compiled file
+Time:  0.79 seconds (prove: 0.00, print: 0.00, other: 0.78)
+"/home/ember/fn-lanes/w13-owner-integrated-gate/books/nntp-post.lisp"
+
+
+ACL2 !>>>(INCLUDE-BOOK "nntp-auth")
+
+ACL2 Warning [Compiled file] in ( INCLUDE-BOOK "nntp-auth" ...):  Unable
+to load compiled file for book
+  /home/ember/fn-lanes/w13-owner-integrated-gate/books/nntp-auth.lisp
+because the compiled file does not exist.  See :DOC include-book. 
+No load was in progress for any parent book.
+
+
+
+ACL2 Error in ( INCLUDE-BOOK "peer-inbound" ...):  After processing
+the events in the book 
+"/home/ember/fn-lanes/w13-owner-integrated-gate/books/peer-inbound.lisp":
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/frame-invariants.lisp", but that book has not been
+included although the book "/home/ember/fn-lanes/w19-bp-authored-wire/books/fr\
+ame-invariants.lisp" -- which has the same familiar name as that required
+book (but with a different full-book-name; see :DOC full-book-name)
+-- has been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/records-canonicality.lisp", but that book has not
+been included although the book "/home/ember/fn-lanes/w13-owner-integrated-
+gate/books/records-canonicality.lisp" -- which has the same familiar
+name as that required book (but with a different full-book-name; see
+:DOC full-book-name) -- has been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/peer-config.lisp", but that book has not been included
+although the book "/home/ember/fn-lanes/w13-owner-integrated-gate/books/peer-
+config.lisp" -- which has the same familiar name as that required book
+(but with a different full-book-name; see :DOC full-book-name) -- has
+been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/path.lisp", but that book has not been included
+although the book "/home/ember/fn-lanes/w13-owner-integrated-gate/books/path.l\
+isp" -- which has the same familiar name as that required book (but
+with a different full-book-name; see :DOC full-book-name) -- has been
+included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/frame.lisp", but that book has not been included
+although the book "/home/ember/fn-lanes/w19-bp-authored-wire/books/frame.lisp"
+-- which has the same familiar name as that required book (but with
+a different full-book-name; see :DOC full-book-name) -- has been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/frame-journal.lisp", but that book has not been
+included although the book "/home/ember/fn-lanes/w19-bp-authored-wire/books/fr\
+ame-journal.lisp" -- which has the same familiar name as that required
+book (but with a different full-book-name; see :DOC full-book-name)
+-- has been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/frame-fields.lisp", but that book has not been
+included although the book "/home/ember/fn-lanes/w13-owner-integrated-
+gate/books/frame-fields.lisp" -- which has the same familiar name as
+that required book (but with a different full-book-name; see :DOC full-
+book-name) -- has been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/frame-octets.lisp", but that book has not been
+included although the book "/home/ember/fn-lanes/w13-owner-integrated-
+gate/books/frame-octets.lisp" -- which has the same familiar name as
+that required book (but with a different full-book-name; see :DOC full-
+book-name) -- has been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/nntp-post.lisp", but that book has not been included
+although the book "/home/ember/fn-lanes/w13-owner-integrated-gate/books/nntp-
+post.lisp" -- which has the same familiar name as that required book
+(but with a different full-book-name; see :DOC full-book-name) -- has
+been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/injection.lisp", but that book has not been included
+although the book "/home/ember/fn-lanes/w13-owner-integrated-gate/books/inject\
+ion.lisp" -- which has the same familiar name as that required book
+(but with a different full-book-name; see :DOC full-book-name) -- has
+been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/nntp-effects.lisp", but that book has not been
+included although the book "/home/ember/fn-lanes/w13-owner-integrated-
+gate/books/nntp-effects.lisp" -- which has the same familiar name as
+that required book (but with a different full-book-name; see :DOC full-
+book-name) -- has been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/nntp-legacy.lisp", but that book has not been included
+although the book "/home/ember/fn-lanes/w13-owner-integrated-gate/books/nntp-
+legacy.lisp" -- which has the same familiar name as that required book
+(but with a different full-book-name; see :DOC full-book-name) -- has
+been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/nntp-invariants.lisp", but that book has not been
+included although the book "/home/ember/fn-lanes/w13-owner-integrated-
+gate/books/nntp-invariants.lisp" -- which has the same familiar name
+as that required book (but with a different full-book-name; see :DOC
+full-book-name) -- has been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/nntp-overview.lisp", but that book has not been
+included although the book "/home/ember/fn-lanes/w13-owner-integrated-
+gate/books/nntp-overview.lisp" -- which has the same familiar name
+as that required book (but with a different full-book-name; see :DOC
+full-book-name) -- has been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/nntp.lisp", but that book has not been included
+although the book "/home/ember/fn-lanes/w13-owner-integrated-gate/books/nntp.l\
+isp" -- which has the same familiar name as that required book (but
+with a different full-book-name; see :DOC full-book-name) -- has been
+included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/nntp-responses.lisp", but that book has not been
+included although the book "/home/ember/fn-lanes/w13-owner-integrated-
+gate/books/nntp-responses.lisp" -- which has the same familiar name
+as that required book (but with a different full-book-name; see :DOC
+full-book-name) -- has been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/article-fields.lisp", but that book has not been
+included although the book "/home/ember/fn-lanes/w13-owner-integrated-
+gate/books/article-fields.lisp" -- which has the same familiar name
+as that required book (but with a different full-book-name; see :DOC
+full-book-name) -- has been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/article.lisp", but that book has not been included
+although the book "/home/ember/fn-lanes/w13-owner-integrated-gate/books/articl\
+e.lisp" -- which has the same familiar name as that required book (but
+with a different full-book-name; see :DOC full-book-name) -- has been
+included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/nntp-projection.lisp", but that book has not been
+included although the book "/home/ember/fn-lanes/w13-owner-integrated-
+gate/books/nntp-projection.lisp" -- which has the same familiar name
+as that required book (but with a different full-book-name; see :DOC
+full-book-name) -- has been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/nntp-session.lisp", but that book has not been
+included although the book "/home/ember/fn-lanes/w13-owner-integrated-
+gate/books/nntp-session.lisp" -- which has the same familiar name as
+that required book (but with a different full-book-name; see :DOC full-
+book-name) -- has been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/node-config.lisp", but that book has not been included
+although the book "/home/ember/fn-lanes/w13-owner-integrated-gate/books/node-
+config.lisp" -- which has the same familiar name as that required book
+(but with a different full-book-name; see :DOC full-book-name) -- has
+been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/nntp-syntax.lisp", but that book has not been included
+although the book "/home/ember/fn-lanes/w13-owner-integrated-gate/books/nntp-
+syntax.lisp" -- which has the same familiar name as that required book
+(but with a different full-book-name; see :DOC full-book-name) -- has
+been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/wildmat.lisp", but that book has not been included
+although the book "/home/ember/fn-lanes/w13-owner-integrated-gate/books/wildma\
+t.lisp" -- which has the same familiar name as that required book (but
+with a different full-book-name; see :DOC full-book-name) -- has been
+included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/wire.lisp", but that book has not been included
+although the book "/home/ember/fn-lanes/w13-owner-integrated-gate/books/wire.l\
+isp" -- which has the same familiar name as that required book (but
+with a different full-book-name; see :DOC full-book-name) -- has been
+included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/config-records.lisp", but that book has not been
+included although the book "/home/ember/fn-lanes/w13-owner-integrated-
+gate/books/config-records.lisp" -- which has the same familiar name
+as that required book (but with a different full-book-name; see :DOC
+full-book-name) -- has been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/replay.lisp", but that book has not been included
+although the book "/home/ember/fn-lanes/w13-owner-integrated-gate/books/replay\
+.lisp" -- which has the same familiar name as that required book (but
+with a different full-book-name; see :DOC full-book-name) -- has been
+included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/config-invariants.lisp", but that book has not
+been included although the book "/home/ember/fn-lanes/w13-owner-integrated-
+gate/books/config-invariants.lisp" -- which has the same familiar name
+as that required book (but with a different full-book-name; see :DOC
+full-book-name) -- has been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/config.lisp", but that book has not been included
+although the book "/home/ember/fn-lanes/w13-owner-integrated-gate/books/config\
+.lisp" -- which has the same familiar name as that required book (but
+with a different full-book-name; see :DOC full-book-name) -- has been
+included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/clock.lisp", but that book has not been included
+although the book "/home/ember/fn-lanes/w13-owner-integrated-gate/books/clock.\
+lisp" -- which has the same familiar name as that required book (but
+with a different full-book-name; see :DOC full-book-name) -- has been
+included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/records-invariants.lisp", but that book has not
+been included although the book "/home/ember/fn-lanes/w13-owner-integrated-
+gate/books/records-invariants.lisp" -- which has the same familiar
+name as that required book (but with a different full-book-name; see
+:DOC full-book-name) -- has been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/cbor-invariants.lisp", but that book has not been
+included although the book "/home/ember/fn-lanes/w13-owner-integrated-
+gate/books/cbor-invariants.lisp" -- which has the same familiar name
+as that required book (but with a different full-book-name; see :DOC
+full-book-name) -- has been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/records.lisp", but that book has not been included
+although the book "/home/ember/fn-lanes/w13-owner-integrated-gate/books/record\
+s.lisp" -- which has the same familiar name as that required book (but
+with a different full-book-name; see :DOC full-book-name) -- has been
+included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/node-invariants.lisp", but that book has not been
+included although the book "/home/ember/fn-lanes/w13-owner-integrated-
+gate/books/node-invariants.lisp" -- which has the same familiar name
+as that required book (but with a different full-book-name; see :DOC
+full-book-name) -- has been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/acceptance-invariants.lisp", but that book has
+not been included although the book "/home/ember/fn-lanes/w13-owner-
+integrated-gate/books/acceptance-invariants.lisp" -- which has the
+same familiar name as that required book (but with a different full-
+book-name; see :DOC full-book-name) -- has been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/node.lisp", but that book has not been included
+although the book "/home/ember/fn-lanes/w13-owner-integrated-gate/books/node.l\
+isp" -- which has the same familiar name as that required book (but
+with a different full-book-name; see :DOC full-book-name) -- has been
+included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/retention.lisp", but that book has not been included
+although the book "/home/ember/fn-lanes/w13-owner-integrated-gate/books/retent\
+ion.lisp" -- which has the same familiar name as that required book
+(but with a different full-book-name; see :DOC full-book-name) -- has
+been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/provenance.lisp", but that book has not been included
+although the book "/home/ember/fn-lanes/w13-owner-integrated-gate/books/proven\
+ance.lisp" -- which has the same familiar name as that required book
+(but with a different full-book-name; see :DOC full-book-name) -- has
+been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/cbor.lisp", but that book has not been included
+although the book "/home/ember/fn-lanes/w13-owner-integrated-gate/books/cbor.l\
+isp" -- which has the same familiar name as that required book (but
+with a different full-book-name; see :DOC full-book-name) -- has been
+included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/acceptance.lisp", but that book has not been included
+although the book "/home/ember/fn-lanes/w13-owner-integrated-gate/books/accept\
+ance.lisp" -- which has the same familiar name as that required book
+(but with a different full-book-name; see :DOC full-book-name) -- has
+been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/defrecord.lisp", but that book has not been included
+although the book "/home/ember/fn-lanes/w13-owner-integrated-gate/books/defrec\
+ord.lisp" -- which has the same familiar name as that required book
+(but with a different full-book-name; see :DOC full-book-name) -- has
+been included;
+-- its certificate requires the book "/Users/ember/dev/fn/build/lanes/w18-
+native-bp-app/books/acceptance-alloc.lisp", but that book has not been
+included although the book "/home/ember/fn-lanes/w13-owner-integrated-
+gate/books/acceptance-alloc.lisp" -- which has the same familiar name
+as that required book (but with a different full-book-name; see :DOC
+full-book-name) -- has been included.  This is illegal because we are
+currently attempting certify-book; see :DOC certify-book.
+
+
+ACL2 Error [Failure] in ( INCLUDE-BOOK "peer-inbound" ...):  See :DOC
+failure.
+
+******** FAILED ********
+
+ACL2 Warning in ( INCLUDE-BOOK "nntp-auth" ...):  The error reported
+above indicates that this book is incompatible with the current logical
+world.  The attempted INCLUDE-BOOK has failed.
+
+
+Summary
+Form:  ( INCLUDE-BOOK "nntp-auth" ...)
+Rules: NIL
+Warnings:  Compiled file
+Time:  0.88 seconds (prove: 0.00, print: 0.00, other: 0.87)
+
+ACL2 Error [Failure] in ( INCLUDE-BOOK "nntp-auth" ...):  See :DOC
+failure.
+
+******** FAILED ********
+
+ACL2 Warning in CERTIFY-BOOK:  The attempted CERTIFY-BOOK has failed
+while trying to establish the admissibility of one of the (local or
+non-local) forms in the book to be certified.
+
+
+Summary
+Form:  (CERTIFY-BOOK "books/served" ...)
+Rules: NIL
+Warnings:  Compiled file
+Time:  1.74 seconds (prove: 0.00, print: 0.00, other: 1.73)
+
+ACL2 Error [Failure] in (CERTIFY-BOOK "books/served" ...):  See :DOC
+failure.
+
+******** FAILED ********
+ :ERROR
+ACL2 !>
