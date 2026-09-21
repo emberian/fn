@@ -12,6 +12,12 @@
   (list (cons :ed25519 *hsigi-ed-a*) (cons :ml-dsa-65 *hsigi-ml-a*)))
 (defconst *hsigi-keys-b*
   (list (cons :ed25519 *hsigi-ed-b*) (cons :ml-dsa-65 *hsigi-ml-b*)))
+(defconst *hsigi-keys-ed-only*
+  (list (cons :ed25519 *hsigi-ed-b*) (cons :ml-dsa-65 *hsigi-ml-a*)))
+(defconst *hsigi-keys-ml-only*
+  (list (cons :ed25519 *hsigi-ed-a*) (cons :ml-dsa-65 *hsigi-ml-b*)))
+(defconst *hsigi-keys-bad-tag*
+  (list (cons :not-ed25519 *hsigi-ed-a*) (cons :ml-dsa-65 *hsigi-ml-a*)))
 (defconst *hsigi-source-a* '(70 114 111 109 58 32 97 13 10 13 10 120 13 10))
 (defconst *hsigi-source-b* '(70 114 111 109 58 32 98 13 10 13 10 121 13 10))
 
@@ -46,10 +52,44 @@
                                         *hsigi-source-a*)
                   (fn-hsig-subject-body *hsigi-principal-a* *hsigi-keys-b*
                                         *hsigi-source-a*)))
+      (not (equal (fn-hsig-subject-body *hsigi-principal-a* *hsigi-keys-a*
+                                        *hsigi-source-a*)
+                  (fn-hsig-subject-body *hsigi-principal-a*
+                                        *hsigi-keys-ed-only*
+                                        *hsigi-source-a*)))
+      (not (equal (fn-hsig-subject-body *hsigi-principal-a* *hsigi-keys-a*
+                                        *hsigi-source-a*)
+                  (fn-hsig-subject-body *hsigi-principal-a*
+                                        *hsigi-keys-ml-only*
+                                        *hsigi-source-a*)))
       (not (equal (fn-hsig-signed-preimage *hsigi-principal-a* *hsigi-keys-a*
                                            *hsigi-source-a*)
                   (fn-hsig-signed-preimage *hsigi-principal-a* *hsigi-keys-a*
                                            *hsigi-source-b*)))))
+
+; Concrete counterexamples for the theorem hypotheses.  The body writes fixed
+; algorithm identifiers and selects key bytes from the pairs, so a malformed
+; input tag can share bytes with the valid tuple.  Subject recognition is what
+; excludes that alias on either side.
+(assert-event
+ (with-guard-checking
+  :none
+  (and (not (fn-hsig-subject-p *hsigi-principal-a* *hsigi-keys-bad-tag*
+                               *hsigi-source-a*))
+       (equal (fn-hsig-subject-body *hsigi-principal-a* *hsigi-keys-bad-tag*
+                                    *hsigi-source-a*)
+              (fn-hsig-subject-body *hsigi-principal-a* *hsigi-keys-a*
+                                    *hsigi-source-a*))
+       (not (equal *hsigi-keys-bad-tag* *hsigi-keys-a*)))))
+(assert-event
+ (and (fn-hsig-subject-p *hsigi-principal-a* *hsigi-keys-a* *hsigi-source-a*)
+      (not (equal (fn-hsig-subject-body *hsigi-principal-a* *hsigi-keys-a*
+                                        *hsigi-source-a*)
+                  (fn-hsig-subject-body *hsigi-principal-b* *hsigi-keys-b*
+                                        *hsigi-source-b*)))
+      (not (and (equal *hsigi-principal-a* *hsigi-principal-b*)
+                (equal *hsigi-keys-a* *hsigi-keys-b*)
+                (equal *hsigi-source-a* *hsigi-source-b*)))))
 
 ; Every hypothesis of both keystones is load-bearing.
 (must-fail
@@ -86,4 +126,3 @@
    (implies (and (fn-hsig-subject-p pa ka sa)
                  (fn-hsig-subject-p pb kb sb))
             (and (equal pa pb) (equal ka kb) (equal sa sb)))))
-
