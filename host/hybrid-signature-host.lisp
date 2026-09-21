@@ -8,6 +8,10 @@
       (fn-hsig-signed-preimage principal keys source)
     nil))
 
+(defun fn-hsig-host-max-source-octets ()
+  (declare (xargs :mode :program))
+  *fn-article-max-octets*)
+
 (defun fn-hsig-host-authorize
     (principal keys source signatures observed-ml-key ed ml)
   (declare (xargs :mode :program))
