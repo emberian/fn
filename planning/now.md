@@ -142,6 +142,15 @@ injectivity books and concrete counterexamples now have
 [source-matched certification](evidence/hybrid-injectivity-certification-2026-09-21.md)
 on hbox; root checked every selected closure source digest against main. The
 initial failed attempt used older CBOR source and remains separately recorded.
+The shared native publication helper now has a dynamic raw-source witness for
+refusal followed by a valid commit, and distinct indeterminate/fault fencing;
+PRF-050 and SCN-027 record its narrower scope. Combined-image preflight found
+obsolete BP reverse-retention join includes. Those have been removed, with a
+literal build-input existence regression; the current workflow projects the
+authoritative Store into workflow state. The frozen gate is taking that repair
+and the independently certified node-config capacity-preservation proof fix.
+A read-only Claude review in tmux `fn-w29-recovery-review` examines the sequence,
+recovery and publication batch at `31f49d78`; its findings remain pending.
 
 ## Parallel paths to the next service batch
 
