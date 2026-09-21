@@ -65,6 +65,17 @@
  (equal (fn-cfg-peer-auth
          (fn-native-admin-result-peer *fn-na-peer-principal*))
         (list :principal *fn-na-principal-hex*)))
+(defconst *fn-na-peer-principal-out-auth*
+  (fn-native-admin-plan
+   (fn-na-test-argv
+    (list "peer" "add" "principal-peer" "principal.example"
+          "192.0.2.45" "1119" "fn.*" "fn.*" "principal"
+          *fn-na-principal-hex* "/etc/fn/outbound.auth" "false" "true"
+          "starttls" "news.example" "/etc/fn/peer-ca.pem"))))
+(assert-event
+ (equal (fn-cfg-peer-outbound-auth
+         (fn-native-admin-result-peer *fn-na-peer-principal-out-auth*))
+        '(:authinfo "/etc/fn/outbound.auth" nil)))
 ; Principal ids are the canonical 32-octet lowercase hex projection.
 (assert-event
  (equal (fn-native-admin-result-status
