@@ -1,0 +1,332 @@
+{
+  "acl2_executable": "/home/ember/fn-tools/acl2-8.7/saved_acl2",
+  "acl2_executable_sha256": "c8a7a804d9cc80e2025a8ab0e1d9325f2a0c4a027a5dcdcb2c1093e9cd5c8163",
+  "acl2_exit_codes": {
+    "books/bp-bundle": 0,
+    "books/bp-bundle-invariants": "timed out after 1800 seconds",
+    "books/bp-ingress": 0,
+    "books/bp-node": 0,
+    "books/bp-receipt": 0,
+    "books/bp-receipt-records": 0,
+    "books/bp-workflow-records": 0,
+    "books/store-observed-traces": 0,
+    "books/tcpcl-session": 0
+  },
+  "acl2_slots": 16,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "persvati:/home/ember/fn-lanes/w11-tcpcl-theory/build/acl2/certify-20260920T234241Z-591616",
+  "book_failures": {
+    "books/bp-bundle-invariants": [
+      "ACL2 exited timed out after 1800 seconds",
+      "no fresh success marker in this book's log",
+      "no certificate on disk"
+    ],
+    "books/bp-node": [
+      "no fresh success marker in this book's log",
+      "failure marker in this book's log: ACL2 Error",
+      "no certificate on disk"
+    ]
+  },
+  "book_results": {
+    "books/bp-bundle": "passed",
+    "books/bp-bundle-invariants": "failed",
+    "books/bp-ingress": "passed",
+    "books/bp-node": "failed",
+    "books/bp-receipt": "passed",
+    "books/bp-receipt-records": "passed",
+    "books/bp-workflow-records": "passed",
+    "books/store-observed-traces": "passed",
+    "books/tcpcl-session": "passed"
+  },
+  "book_wall_seconds": {
+    "books/bp-bundle": 11.476,
+    "books/bp-bundle-invariants": 1800.311,
+    "books/bp-ingress": 1.879,
+    "books/bp-node": 0.048,
+    "books/bp-receipt": 1.788,
+    "books/bp-receipt-records": 1.868,
+    "books/bp-workflow-records": 0.824,
+    "books/store-observed-traces": 0.908,
+    "books/tcpcl-session": 102.972
+  },
+  "cert_cache": {
+    "already_cached": 7,
+    "directory": "/home/ember/fn-certcache",
+    "not_published": [
+      "books/bp-bundle-invariants",
+      "books/bp-node"
+    ],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/bp-workflow-records",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/store-observed-traces",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/bp-ingress",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/bp-receipt",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/bp-receipt-records",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/bp-bundle",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/tcpcl-session",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "book": "books/bp-bundle-invariants",
+        "published": false,
+        "verdict": "failed",
+        "why": "this book did not pass"
+      },
+      {
+        "book": "books/bp-node",
+        "published": false,
+        "verdict": "failed",
+        "why": "this book did not pass"
+      }
+    ],
+    "per_book_published": 7,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/bp-bundle": "bcf2a96e206bab29c42406c839a9e1180f50c4dd5f1e2d43f9a6783880b5e1bb",
+    "books/bp-ingress": "164f857572a567eea7963553833a444b039fe2aa3d1e5e8b38ea8f9714c77535",
+    "books/bp-receipt": "692e0ab520ab720c849b49b43a240db1f123ffb88185491f53000187ed61c50d",
+    "books/bp-receipt-records": "9373d8b2b69852610d21be244cd642f36aa57f9c008313256bfd3dd8d93864ae",
+    "books/bp-workflow-records": "e639df80f52c57d25a5eb0cdf32dca7438d53a43a4008e27cdc166fc7597b913",
+    "books/store-observed-traces": "0cf60589dd12f2d46979600d57532ddf232046fb5da76aa514d1a690d4e2b0d1",
+    "books/tcpcl-session": "ceb22e18a4b9c6dd41ffa887b95a325c4cf3f157a2baa3d26b1dcd80230c1fe7"
+  },
+  "certify_wall_seconds": 1812.821,
+  "closure": false,
+  "command": [
+    "/home/ember/fn-tools/acl2-8.7/saved_acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/bp-bundle": "8a8dfe8d0c3f2389b0ffb2d8f23e452ed3ad614945ff06c7bfd11ea0c3d3c004",
+    "books/bp-bundle-invariants": "7490206701a7bfe32b96e57a99378c54bd6294a95e48f76f95e0a7ec4ff7c021",
+    "books/bp-ingress": "60ea63f4db30db77e9eb84a2188e333f6824f5b7720cb710614064234a73a850",
+    "books/bp-node": "92b4431203f936d848c0a66ebb7808f89f944b72b8db09d95e26119c26956b4f",
+    "books/bp-receipt": "7713278b9b81850ff7dbc499ec8cc76278f728d0ac68fc8a547e9d7462f0493d",
+    "books/bp-receipt-records": "240696d64539f43c1f926df4b0e7fecb90bc0672763b355c54ef3501376cbe5b",
+    "books/bp-workflow-records": "3a9210cb01ead24092274f41d5c43b8eede37d66afbc81349e058c9c2da880f4",
+    "books/store-observed-traces": "4576bbbec3c1de10803ab2f68350eceae6331e358760c90264fff181fc469307",
+    "books/tcpcl-session": "a514cfa8595805fd58d69ac9c1a46dc682387c36809cbc487667bfd50bae3926"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS d7c57cfe123a8346d842cbec76645875 fb946c68bf14",
+    "FN_CERTIFY_SUCCESS d7c57cfe123a8346d842cbec76645875 9bd8d3cf04c3",
+    "FN_CERTIFY_SUCCESS d7c57cfe123a8346d842cbec76645875 5051756327ba",
+    "FN_CERTIFY_SUCCESS d7c57cfe123a8346d842cbec76645875 07e76025021c",
+    "FN_CERTIFY_SUCCESS d7c57cfe123a8346d842cbec76645875 c6bb60e0deee",
+    "FN_CERTIFY_SUCCESS d7c57cfe123a8346d842cbec76645875 3562b4109636",
+    "FN_CERTIFY_SUCCESS d7c57cfe123a8346d842cbec76645875 ea60a8068966",
+    "FN_CERTIFY_SUCCESS d7c57cfe123a8346d842cbec76645875 c7a40e1635af",
+    "FN_CERTIFY_SUCCESS d7c57cfe123a8346d842cbec76645875 b5c445ea50ce"
+  ],
+  "failure": "ACL2 did not produce complete clean certification evidence. See certify.log. Books that failed: books/bp-bundle-invariants, books/bp-node",
+  "failure_markers": [
+    "ACL2 Error"
+  ],
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "jobs": 4,
+  "jobs_effective": 4,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS d7c57cfe123a8346d842cbec76645875 fb946c68bf14",
+    "FN_CERTIFY_SUCCESS d7c57cfe123a8346d842cbec76645875 9bd8d3cf04c3",
+    "FN_CERTIFY_SUCCESS d7c57cfe123a8346d842cbec76645875 5051756327ba",
+    "FN_CERTIFY_SUCCESS d7c57cfe123a8346d842cbec76645875 07e76025021c",
+    "FN_CERTIFY_SUCCESS d7c57cfe123a8346d842cbec76645875 c6bb60e0deee",
+    "FN_CERTIFY_SUCCESS d7c57cfe123a8346d842cbec76645875 3562b4109636",
+    "FN_CERTIFY_SUCCESS d7c57cfe123a8346d842cbec76645875 ea60a8068966"
+  ],
+  "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.42",
+  "python": "3.13.7",
+  "reader_sha256": "de84702b19bfe30f132291dcb8ac7b3d3ad10b16a4134dcb0c1d6239187a839d",
+  "requested_before_filter": [
+    "books/store-observed-traces",
+    "books/bp-ingress",
+    "books/bp-receipt",
+    "books/bp-receipt-records",
+    "books/bp-workflow-records",
+    "books/tcpcl-session",
+    "books/bp-bundle",
+    "books/bp-bundle-invariants",
+    "books/bp-node"
+  ],
+  "requested_books": [
+    "books/store-observed-traces",
+    "books/bp-ingress",
+    "books/bp-receipt",
+    "books/bp-receipt-records",
+    "books/bp-workflow-records",
+    "books/tcpcl-session",
+    "books/bp-bundle",
+    "books/bp-bundle-invariants",
+    "books/bp-node"
+  ],
+  "run_id": "certify-20260920T234241Z-591616",
+  "runner_sha256": "b1693353f9618f5eba6a5e2eebbc6f6275b71d753ff4c81c94a99c5a1795b3c4",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/bp-bundle": 0.0,
+    "books/bp-bundle-invariants": 0.0,
+    "books/bp-ingress": 0.001,
+    "books/bp-node": 0.0,
+    "books/bp-receipt": 0.0,
+    "books/bp-receipt-records": 0.0,
+    "books/bp-workflow-records": 0.001,
+    "books/store-observed-traces": 0.001,
+    "books/tcpcl-session": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "d9837d7cf602953989ce0539562e1b03471d2f76da5579efd3397bd66e4440c8",
+    "books/acceptance.lisp": "06906656064b8683808c11e2ad7b292f6b24aade8a4c17ab7301833a677f6c7b",
+    "books/article-fields.lisp": "14dfa236bcac52e0b4dea86d105c701f3e74fcb554b912964f6b08d4cd430f85",
+    "books/article-invariants.lisp": "44eb5669b5de3d159a78591a89d6942198ee6bf4aecc07f64a796a898f4b5a27",
+    "books/article-properties.lisp": "b92a7443e840565325e39f463894b3928c72ebc78e82611b75ec30fcbf92e81f",
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/bp-adu.lisp": "8d327def51c404bcdd1c2082413ab8cc3e48f7f80b2b4705904cc131b65cef1c",
+    "books/bp-bundle-invariants.lisp": "bdf975402dd7f8b3aff62cf2d213ac1debe84864fb31828c72829fd5f9e6f768",
+    "books/bp-bundle.lisp": "79015605cc463de8d3068963d70912b77df25e4669568855afc17d5539f88c54",
+    "books/bp-ingress.lisp": "281e5ff36adb0b613a067c3363e937f74c9fe8c791c4c7e395eff1df66b3f308",
+    "books/bp-node.lisp": "ac28e1819843b23a84c62a26c1d35bab01770e73a976e12c83685fdb864f0b8e",
+    "books/bp-primary-cbor.lisp": "7b14fd94ddcc80919a128ab7f43f27aed9a47bf14d380a8e8b2f95bef0174a67",
+    "books/bp-primary-invariants.lisp": "36933e36b615ce9cd76e6416e71aadab1fc4e1323b1b566f7888591b91be9a3e",
+    "books/bp-primary.lisp": "f32acb51a3490fb1a0886f4e12d85c6f5d8297de4fde36e560b100d9f29e0a35",
+    "books/bp-receipt-records.lisp": "42e45837d091ed293fef99e899aa2a41518f18e163eba1a52df0e9cb5a4604d7",
+    "books/bp-receipt.lisp": "bb601bf952dedf4615d41b4004a6567400f261aa5669323812931c07effde3cc",
+    "books/bp-workflow-records.lisp": "5e64bc1223b640e2038e55130fe0f5ed4e3b8a4793906a1b3d490d94a51c9a7d",
+    "books/bp-workflow.lisp": "af3515050f4daed0f2c2cc9b1155b453e51ee783ec54c365e54a0a31f403cc29",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/deftransition.lisp": "daf77eff163662a24cbd5e66bc728ab507b1934804ffb5c2675c6a9ffa1f4f00",
+    "books/node-invariants.lisp": "39c89601e6f14703a3958cd8ee32ae2de0cbd0acafda9be5bb782969c3de2c62",
+    "books/node.lisp": "fa0e368bdbbb99aba595fb5fbbb962f525011499ba81d35861f3e857f54792cd",
+    "books/provenance.lisp": "39899088b28462bbb04f555ec74c05da1adbc0b8fbc4a1c4db179e39529cf3aa",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "books/replay.lisp": "9e3310d1bebd408a513b6447a5653afe1aaa945becba82dfc898f55f6480c868",
+    "books/retention.lisp": "2052593f1013b1cb24c40a6926970232b275f198cd89fc5f88a8d577c74ee9d1",
+    "books/store-files-invariants.lisp": "90f94e3f7fb2ada71a47c1187a648757ab8df962174794e1b78f659b6f8f9cab",
+    "books/store-files-traces.lisp": "5511c743a25d9adb8357f4e2b13aa397b7722fd41f9055fe38aeb7e88b20689c",
+    "books/store-files.lisp": "c7646c3bd9b4cff995e80898bbe1d2189774e5ce75438483fe2dfa0d8d853f47",
+    "books/store-node-invariants.lisp": "70f391a9ca9132c0f1488c612a4bd3c45809a5e701869354368aaa1654fc3074",
+    "books/store-node-resolution.lisp": "eb228f7a02e2fbdbd08331b3e564be73174694f70eb7efb2a4eed0fcfb3d479b",
+    "books/store-node-traces.lisp": "6a90881ea72bb4588d9f6a69ab4546b9b431858b90e95c16684ccb6dae2794e2",
+    "books/store-node.lisp": "1a41b73119d0fb7a7c5807ea55d728d0538efb8064538a9c12fc09efad013eb6",
+    "books/store-observed-traces.lisp": "b88c98c2314621d6681eef4a14ea70b9a9decf8e070f0b9335b25592841523bb",
+    "books/store-observed.lisp": "7e645aeaf98ea6c8694af34d6b33f497697c975109679666cf1a81a46ae2bde4",
+    "books/tcpcl-octets.lisp": "77754db435cb029deddd382bd286732a3ea6831059a180f7e1fdc9a800bfe0d5",
+    "books/tcpcl-records.lisp": "b2cdde11d1269f63e334525b61393ef30cc4157377b16a6b10b00864c064a215",
+    "books/tcpcl-session.lisp": "f7d1694bd1597ae36d25a9e3a21762cd8e2e4ba67a3b1eb80063175535c42c04"
+  },
+  "source_digests_sha256_after": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "d9837d7cf602953989ce0539562e1b03471d2f76da5579efd3397bd66e4440c8",
+    "books/acceptance.lisp": "06906656064b8683808c11e2ad7b292f6b24aade8a4c17ab7301833a677f6c7b",
+    "books/article-fields.lisp": "14dfa236bcac52e0b4dea86d105c701f3e74fcb554b912964f6b08d4cd430f85",
+    "books/article-invariants.lisp": "44eb5669b5de3d159a78591a89d6942198ee6bf4aecc07f64a796a898f4b5a27",
+    "books/article-properties.lisp": "b92a7443e840565325e39f463894b3928c72ebc78e82611b75ec30fcbf92e81f",
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/bp-adu.lisp": "8d327def51c404bcdd1c2082413ab8cc3e48f7f80b2b4705904cc131b65cef1c",
+    "books/bp-bundle-invariants.lisp": "bdf975402dd7f8b3aff62cf2d213ac1debe84864fb31828c72829fd5f9e6f768",
+    "books/bp-bundle.lisp": "79015605cc463de8d3068963d70912b77df25e4669568855afc17d5539f88c54",
+    "books/bp-ingress.lisp": "281e5ff36adb0b613a067c3363e937f74c9fe8c791c4c7e395eff1df66b3f308",
+    "books/bp-node.lisp": "ac28e1819843b23a84c62a26c1d35bab01770e73a976e12c83685fdb864f0b8e",
+    "books/bp-primary-cbor.lisp": "7b14fd94ddcc80919a128ab7f43f27aed9a47bf14d380a8e8b2f95bef0174a67",
+    "books/bp-primary-invariants.lisp": "36933e36b615ce9cd76e6416e71aadab1fc4e1323b1b566f7888591b91be9a3e",
+    "books/bp-primary.lisp": "f32acb51a3490fb1a0886f4e12d85c6f5d8297de4fde36e560b100d9f29e0a35",
+    "books/bp-receipt-records.lisp": "42e45837d091ed293fef99e899aa2a41518f18e163eba1a52df0e9cb5a4604d7",
+    "books/bp-receipt.lisp": "bb601bf952dedf4615d41b4004a6567400f261aa5669323812931c07effde3cc",
+    "books/bp-workflow-records.lisp": "5e64bc1223b640e2038e55130fe0f5ed4e3b8a4793906a1b3d490d94a51c9a7d",
+    "books/bp-workflow.lisp": "af3515050f4daed0f2c2cc9b1155b453e51ee783ec54c365e54a0a31f403cc29",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/deftransition.lisp": "daf77eff163662a24cbd5e66bc728ab507b1934804ffb5c2675c6a9ffa1f4f00",
+    "books/node-invariants.lisp": "39c89601e6f14703a3958cd8ee32ae2de0cbd0acafda9be5bb782969c3de2c62",
+    "books/node.lisp": "fa0e368bdbbb99aba595fb5fbbb962f525011499ba81d35861f3e857f54792cd",
+    "books/provenance.lisp": "39899088b28462bbb04f555ec74c05da1adbc0b8fbc4a1c4db179e39529cf3aa",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "books/replay.lisp": "9e3310d1bebd408a513b6447a5653afe1aaa945becba82dfc898f55f6480c868",
+    "books/retention.lisp": "2052593f1013b1cb24c40a6926970232b275f198cd89fc5f88a8d577c74ee9d1",
+    "books/store-files-invariants.lisp": "90f94e3f7fb2ada71a47c1187a648757ab8df962174794e1b78f659b6f8f9cab",
+    "books/store-files-traces.lisp": "5511c743a25d9adb8357f4e2b13aa397b7722fd41f9055fe38aeb7e88b20689c",
+    "books/store-files.lisp": "c7646c3bd9b4cff995e80898bbe1d2189774e5ce75438483fe2dfa0d8d853f47",
+    "books/store-node-invariants.lisp": "70f391a9ca9132c0f1488c612a4bd3c45809a5e701869354368aaa1654fc3074",
+    "books/store-node-resolution.lisp": "eb228f7a02e2fbdbd08331b3e564be73174694f70eb7efb2a4eed0fcfb3d479b",
+    "books/store-node-traces.lisp": "6a90881ea72bb4588d9f6a69ab4546b9b431858b90e95c16684ccb6dae2794e2",
+    "books/store-node.lisp": "1a41b73119d0fb7a7c5807ea55d728d0538efb8064538a9c12fc09efad013eb6",
+    "books/store-observed-traces.lisp": "b88c98c2314621d6681eef4a14ea70b9a9decf8e070f0b9335b25592841523bb",
+    "books/store-observed.lisp": "7e645aeaf98ea6c8694af34d6b33f497697c975109679666cf1a81a46ae2bde4",
+    "books/tcpcl-octets.lisp": "77754db435cb029deddd382bd286732a3ea6831059a180f7e1fdc9a800bfe0d5",
+    "books/tcpcl-records.lisp": "b2cdde11d1269f63e334525b61393ef30cc4157377b16a6b10b00864c064a215",
+    "books/tcpcl-session.lisp": "f7d1694bd1597ae36d25a9e3a21762cd8e2e4ba67a3b1eb80063175535c42c04"
+  },
+  "start_order": [
+    "books/tcpcl-session",
+    "books/store-observed-traces",
+    "books/bp-workflow-records",
+    "books/bp-ingress",
+    "books/bp-bundle",
+    "books/bp-receipt",
+    "books/bp-receipt-records",
+    "books/bp-bundle-invariants",
+    "books/bp-node"
+  ],
+  "status": "failed",
+  "timeout_seconds": 1800
+}

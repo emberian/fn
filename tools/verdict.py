@@ -54,6 +54,7 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import evidence_manifests  # noqa: E402
 from deploy_gate import (GATE_ROOT, evidence_path,       # noqa: E402
                          repo_root, resolve)
 from farm import HOSTS as FARM_HOSTS                      # noqa: E402
@@ -369,7 +370,7 @@ def certify_gate(fiber: Fiber, repo: Path, commit: str, rev: str, tree: str,
         missing = sorted(name for name, tail in found["artefacts"].items()
                          if tail is None)
         facts["missing_artefacts"] = missing
-        harvested = facts | harvest(fiber, gate)
+        harvested = facts | harvest(fiber, gate, repo)
         if missing:
             fiber.summary += "; absent from this gate: " + ", ".join(missing)
         return harvested
@@ -420,7 +421,7 @@ def certify_gate(fiber: Fiber, repo: Path, commit: str, rev: str, tree: str,
             fiber.seconds = time.monotonic() - started
             return facts
     fiber.seconds = time.monotonic() - started
-    return facts | harvest(fiber, gate)
+    return facts | harvest(fiber, gate, repo)
 
 
 HARVEST = r"""
@@ -432,6 +433,11 @@ runs = sorted(glob.glob(os.path.join(gate, "build/acl2/certify-*/manifest.json")
 if runs:
     m = json.load(open(runs[-1]))
     out["manifest"] = os.path.relpath(runs[-1], gate)
+    # The gate directory is the most perishable evidence this project keeps:
+    # a gate reaper deletes stale gates, and the verdict record cites
+    # this path.  Carry the manifest itself home, not only a path to it.
+    out["manifest_json"] = m
+    out["manifest_dir"] = os.path.dirname(runs[-1])
     out["status"] = m.get("status")
     out["acl2_version"] = m.get("acl2_version")
     out["platform"] = m.get("platform")
@@ -460,13 +466,23 @@ VERDICT_HARVEST
 """
 
 
-def harvest(fiber: Fiber, gate: str) -> dict:
+def harvest(fiber: Fiber, gate: str, repo: Path) -> dict:
     code, output = ssh(fiber.host, "set -- {}\n".format(gate) + HARVEST, timeout=300)
     try:
         data = json.loads(output.strip().splitlines()[-1])
     except (ValueError, IndexError):
         fiber.rc, fiber.summary = 2, "could not read the gate: " + output[:300]
         return {}
+    # File the gate's manifest where a reader of the repository can see it.
+    # `manifest_json` is not returned to the caller: the evidence table takes
+    # the fields it renders from the keys below.
+    body = data.pop("manifest_json", None)
+    where = data.pop("manifest_dir", "")
+    if isinstance(body, dict):
+        run_id = evidence_manifests.run_id_of(Path(where) / "manifest.json")
+        if run_id:
+            evidence_manifests.write_manifest(
+                run_id, json.dumps(body), "{}:{}".format(fiber.host, where), repo)
     certify_rc = exit_line(data.get("certify", ""))
     pytest_rc = exit_line(data.get("pytests", ""))
     publish_rc = exit_line(data.get("publish", ""))
