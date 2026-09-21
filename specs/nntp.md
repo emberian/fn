@@ -247,7 +247,19 @@ owner's current observation on every `fn-own-read`; `tools/run_owner.py` takes
 that reading before each socket chunk. Two submissions on one connection whose
 injection clocks differ in either number receive distinct identities
 (`fn-post-distinct-injection-clocks-give-distinct-identities`, over
-`fn-inj-generated-identity-separates-different-clock-readings`). Under the
+`fn-inj-generated-identity-separates-different-clock-readings`).
+
+**When the server has no reading.** The owner holds no clock exactly when its
+host reported a reading contradicting the one it held, or has reported none
+since it started ([D10-a](../planning/decisions.md); `specs/owner.md`). The
+injection reading is then not an observation, and the article is refused with
+`441 posting failed; this server has no usable clock reading` and no
+submission (`fn-post-without-a-clock-refuses-with-the-clock-line`). That is a
+different constant from every article verdict the step can give, which is the
+point: a clock fault must not reach a posting agent as a judgement about its
+article. Before D10-a the owner kept the contradicted reading, minted the
+previous identity again, and the duplicate reached the poster as `441 posting
+failed; the article was refused`. Under the
 *same* reading the retry rule still holds: the same proto-article injected
 twice is the same article, and — because the generator's only inputs are the
 clock and the configured agent — two different bodies under one reading do

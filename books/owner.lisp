@@ -924,17 +924,60 @@
 ; -----------------------------------------------------------------------------
 ; Clock observations and clock-stamped group-configuration facts
 
+; Three answers, and they are the owner's, not the host's (decision D10-a).
+;
+;   :invalid   the host supplied no clock observation at all.  A malformed
+;              message changes nothing, including the clock.
+;   :refused   the reading is not a LATER observation of the same clock
+;              (fn-clock-later-observationp): the monotonic counter went
+;              backwards, has-wall changed, or a widened error bound moved
+;              the earliest admissible true time back.  The host has
+;              contradicted the clock it was reporting.
+;   :observed  the reading is admitted and becomes the owner's.  A reading
+;              EQUAL to the one already held is :observed, not refused: it is
+;              admitted, and nothing moved because nothing had to.
+;
+; host/owner-host.lisp used to infer the word by comparing the owner before
+; and after the event, which spelled the equal-reading case exactly like a
+; contradiction and put the decision in the host.  The word is this
+; function's; the host reports it.
+(defun fn-own-observe-outcome (o obs)
+  (declare (xargs :guard t))
+  (if (not (fn-clock-observationp obs))
+      :invalid
+    (if (or (null (fn-own-clock o))
+            (and (fn-clock-observationp (fn-own-clock o))
+                 (fn-clock-later-observationp (fn-own-clock o) obs)))
+        :observed
+      :refused)))
+
+; A refusal COSTS the owner its clock.  specs/time.md: a node that discovers
+; its clock was wrong is allowed to stop being sure.  Keeping the
+; contradicted reading -- what this function used to do -- leaves the node
+; deciding under a clock the host has just withdrawn: books/injection derives
+; a generated Message-ID from the reading alone, so every POST after the
+; first in that window mints the identity of the first, the durable path
+; refuses it as a duplicate, and the poster is told `the article was
+; refused'.  That is an article verdict for a clock fault.
+;
+; With no clock the owner injects nothing (fn-inj-decide answers
+; :clock-unusable, whose 441 line is `this server has no usable clock
+; reading'), declares no group (fn-own-declare-group) and answers DATE with
+; 503 (fn-nntp-date-response) -- until the host supplies a reading it
+; accepts, which, the clock being absent, is the very next one.  A nil clock
+; is not a new state: fn-own-start and fn-own-reopen both leave one, and
+; fn-own-relation admits it.
 (defun fn-own-observe (o obs)
   (declare (xargs :guard t))
-  (if (and (fn-clock-observationp obs)
-           (or (null (fn-own-clock o))
-               (and (fn-clock-observationp (fn-own-clock o))
-                    (fn-clock-later-observationp (fn-own-clock o) obs))))
+  (let ((outcome (fn-own-observe-outcome o obs)))
+    (if (equal outcome :invalid)
+        o
       (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                    (fn-own-next-id o) (fn-own-max-conns o) (fn-own-pending o)
-                   (fn-own-ledger o) obs (fn-own-facts o) (fn-own-config o)
-                   (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o))
-    o))
+                   (fn-own-ledger o)
+                   (if (equal outcome :observed) obs nil)
+                   (fn-own-facts o) (fn-own-config o)
+                   (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)))))
 
 ; No fact without a clock observation: creation is refused until the host
 ; has supplied one.
@@ -1365,7 +1408,8 @@
   '(fn-own-group-factp fn-own-prefix-archive fn-own-store-idlep fn-own-refresh
     fn-own-start fn-own-conn-boundedp fn-own-set-conns fn-own-open fn-own-enqueue
     fn-own-read fn-own-read-step fn-own-advance fn-own-close fn-own-begin
-    fn-own-store-step fn-own-complete fn-own-reopen fn-own-observe
+    fn-own-store-step fn-own-complete fn-own-reopen
+    fn-own-observe-outcome fn-own-observe
     fn-own-declare-group fn-own-configure fn-own-take-submission fn-own-outcome-completion
     fn-own-outcome fn-own-step fn-own-run fn-own-reclaim-floor
     fn-own-open-peer fn-own-transit-subp fn-own-transit-inflightp

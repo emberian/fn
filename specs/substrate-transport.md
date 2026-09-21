@@ -231,19 +231,33 @@ fn does not keep a lace next to the article store. The lace *is* the store,
 projected:
 
 ```lisp
-;; books/statement-transit.lisp (packet S3)
-(defun fn-stx-lace (node) ...)   ; the fn-stmt-p of every accepted article whose verdict is :verified,
-                                 ; in acceptance order; fn-lace-p by construction
+;; books/stx-lace.lisp (packet S3); the design text above said
+;; books/statement-transit.lisp, which has never existed
+(defun fn-stx-lace (node keyring) ...)  ; the fn-stmt-p of every accepted article whose verdict is
+                                        ; :verified, in acceptance order; fn-lace-p by construction
 ```
 
 There is exactly one durable copy of every statement — the article that carries
 it — so there is no second source of truth to reconcile, no lace journal, and
 no way for the lace and the store to disagree after a crash. `fn-stx-lace` is a
 *proof-level* projection: it is linear in the store and must never run on a
-served path (the no-whole-state-revalidation rule, D3). The executable node
-carries an incrementally maintained index, `fn-stx-index`, in the pattern of
-`fn-nntp-index-` and [peering](peering.md) K5's history index, with the
-agreement theorem `fn-stx-index-agrees-with-lace` as its licence (§6, S3).
+served path (the no-whole-state-revalidation rule, D3).
+
+**The executable node does not carry the index, and this paragraph used to say
+it did.** Walked back 2026-09-21 (lane `w11/node-index`); D3 itself is
+untouched, and so is the intent that the index, not the projection, is what a
+served query must walk. What is false at this revision is the present tense.
+`fn-node-statep` is `(acceptance retention stage bindings)`; `fn-stx-index` is
+a design-level twin with a proved agreement
+(`fn-stx-index-agrees-with-lace`, `books/stx-index.lisp`) and **no carrier and
+no caller**. Adding the carrier to `fn-node-statep` is not the fix and was
+measured not to be implementable: `books/stx-index.lisp` includes `stx-lace`
+includes `node`, and `fn-stx-store` *is* `(fn-state-articles
+(fn-node-acceptance node))`, so the index sits above the node by construction
+and the slot is a dependency cycle; the conjunct also needs a keyring, and the
+token occurs in no state or configuration record in the tree. The correct
+carrier, the cost, and the owner are in
+[`planning/lanes/HANDOFF-w11-node-index.md`](../planning/lanes/HANDOFF-w11-node-index.md).
 
 ### 2.2 The bridge lemma: merge happens at inbound transit
 
@@ -867,6 +881,17 @@ the changed books (the red-umbrella rule).
 | S5 | epochs across a partition | substrate lane, Opus | `fn-stx-commits-of-batch` and its verified-and-well-formed theorem; S5-1's three rows; the `fn.principals` group name reserved in `books/store-config.lisp` | whole-tree certify green; a partition scenario in `tests/scenarios/` where two sites remove different members, reconnect, and both see the fork with no decision revised; `must-fail` that an unverified article contributes a commit and that a merge extends the chain | S3 |
 | S6 | reader exposure | reader lane, Opus | `:fn-verified` HDR metadata item with the three-token rendering, `fn-stx-render-verdict`, S6-1; the `fn` CLI surfacing all three outcomes with distinct exit codes; the OVER/`LIST OVERVIEW.FMT` extension **or** a written decision declining it with its cost | whole-tree certify green; one transcript per verdict against the RFC 3977 §8.5 grammar; `HEAD` returns `FN-Statement` byte-identical after transit; a second agent on the second node verifies the article with its own keyring and no fn code; `must-fail` on any rendering that collapses two outcomes | S2, w3/reader-profile |
 
+**The Deliverable column names two books that have never existed.**
+`books/statement-field.lisp` (S1) and `books/statement-transit.lisp` (S2, S3)
+are this design's names; no ref of this repository has ever held either, and
+the substrate cluster landed as `books/stx-carrier.lisp`,
+`books/stx-verify.lisp`, `books/stx-authority.lisp`, `books/stx-epochs.lisp`,
+`books/stx-lace.lisp`, `books/stx-policy.lisp`, `books/stx-index.lisp` and
+`books/stx-invariants.lisp`.  Section 2.1 already records the S3 half of that:
+`fn-stx-lace` is in `books/stx-lace.lisp`.  Which landed book answers which
+packet row is a question for the substrate cluster, not a rename this lane
+could make (w11/phantom-cites, 2026-09-21).
+
 S1 and S2 can start against `72279c8` immediately; S3 needs K1's transit path;
 S4 needs S3; S5 and S6 are independent of each other.
 
@@ -979,10 +1004,10 @@ open rather than weakened: no §6 statement was edited to make it provable.
 | S3-2 `fn-stx-transit-equivocation-is-detected` | closed, with both membership conjuncts | — |
 | S3-2 `fn-stx-reissue-detected-after-peering` | **open, not attempted** | The statement names `fn-sys-run`, `fn-sys-node` and `fn-stx-complete-exchangep`; no two-node system model exists on this tree. Either the peering cluster lands one or the row is withdrawn in favour of the single-node fork witness in `tests/acl2/stx-transit-tests.lisp`, which exhibits both forks at one node but says nothing about two. |
 | S3-2 `fn-stx-equivocation-record-agrees-with-lace` | closed as `fn-stx-recorded-equivocation-agrees-with-lace` | renamed only; the statement is the one in §6. |
-| S3-3 `fn-stx-index-agrees-with-lace` | **proved, `books/stx-index` certified** (w10/substrate-2). The keystones are the three agreements `fn-stx-index-bindings-agree`, `fn-stx-index-slots-agree` and `fn-stx-index-equivocators-agree`; the named row is their `:rule-classes nil` corollary and is cited as one. The equivocator step is `fn-stx-index-equivocatorp-of-add1` over one more statement, with two one-literal bridges: a slot whose first statement differs from `s` is a fork of `s`, and a slot whose first statement IS `s` while the lace forks it anyway was already an equivocator, so no new record is owed. **Still open**: the theorem subject. Nothing on the served path calls `fn-stx-index-lookup` -- `fn-node-statep` has no index slot -- so the D3 claim is about a query the host does not yet carry. | The cost shadow is `fn-stx-index-lookup-cost-is-index-bounded` (now the instance of a walk lemma; as stated over `(fn-stx-index-bindings index)` it suggested no induction scheme and had never been admitted) and `fn-stx-index-grows-by-at-most-one-binding`; `fn-stx-index-query-is-store-free-by-definition` is named for what it is. |
+| S3-3 `fn-stx-index-agrees-with-lace` | **proved, `books/stx-index` certified** (w10/substrate-2). The keystones are the three agreements `fn-stx-index-bindings-agree`, `fn-stx-index-slots-agree` and `fn-stx-index-equivocators-agree`; the named row is their `:rule-classes nil` corollary and is cited as one. The equivocator step is `fn-stx-index-equivocatorp-of-add1` over one more statement, with two one-literal bridges: a slot whose first statement differs from `s` is a fork of `s`, and a slot whose first statement IS `s` while the lace forks it anyway was already an equivocator, so no new record is owed. **Still open**: the theorem subject, and `w11/node-index` measured why the proposed cure is not one. Nothing anywhere calls `fn-stx-index-lookup` or `fn-stx-index-equivocatorp`: `grep -rn fn-stx host/ bin/ tools/` is five hits, all `tools/stx.py` on ONE article, and no book outside the stx cluster includes `books/stx-index`. A fifth slot on `fn-node-statep` is a dependency cycle (`stx-index` -> `stx-lace` -> `node`), is not statable with one recognizer formal (the index needs a keyring and no state or configuration record in the tree holds one), and would touch the 26 theorems that CONCLUDE `fn-node-statep` across 13 books. The carrier belongs in the record the host actually holds, `fn-sn-statep` (`books/store-node.lisp`), which is not in `stx-index`'s closure. What IS now closed is the observation the preservation theorem hypothesises: `fn-stx-durable-completion-is-an-acceptance` (`books/stx-lace.lisp`) proves `fn-stx-acceptedp` of the durable branch of `fn-node-complete`, the only node step of `fn-sn-finish`, the only node step of the host's `fn-store-sn-finish`. | The cost shadow is `fn-stx-index-lookup-cost-is-index-bounded` (now the instance of a walk lemma; as stated over `(fn-stx-index-bindings index)` it suggested no induction scheme and had never been admitted) and `fn-stx-index-grows-by-at-most-one-binding`; `fn-stx-index-query-is-store-free-by-definition` is named for what it is. |
 | S4-1 `fn-stx-transit-admit-is-fn-pol-admitp` | **renamed** `fn-stx-transit-admit-is-fn-pol-admitp-by-definition` | It is the unfolding of the gate's definition, and the assurance rule "cite keystones, never corollaries" forbids offering it as the proof event. The theorem-subject obligation it stands in for is the same host-line equation the S2-1 companion needs, and is open with it. |
 | S4-1 `fn-stx-peer-batch-cannot-change-policy` | closed (`books/stx-policy` certified), over `fn-stx-accept-batch` and `fn-stx-batch-delta`, with the named-offender theorem. `fn-stx-authority-outcome` moved to `books/stx-authority`, which is **certified** since w10/substrate-2. **The S4-1 witnesses in `tests/acl2/stx-transit-tests` were VACUOUS until that lane**: the hostile batch's delta was empty, because a `:policy` statement's carrier article carried a prose body where `fn-stx-payload-for` projects base64 from the body, so the reconstructed statement's payload was wrong and no signature verified. The carriers are repaired and the two deltas are pinned by their own assertions. | — |
-| S5-1 carrier obligation | **proved, `books/stx-epochs` certified** (w10/substrate-2). `fn-stx-commit-decode-is-a-commit` needed the result algebra of `books/statement-invariants` (`fn-stmt-okp-of-ok`, `fn-stmt-value-of-ok`) enabled at the form, not a shape fact about `fn-stmt-decode-items`: every field the conclusion constrains is constrained by `fn-stx-commit-of-items`' own branch tests, so the decoder stays disabled. **Still open**: nothing on the host's reconnection path calls `fn-stx-commits-of-batch`. | Its local witness lemma was FALSE as written (`fn-lace-p` of the delta does not give `fn-prin-verifiedp` of its members) and was repaired with the hypothesis that holds on every reachable delta, not weakened. |
+| S5-1 carrier obligation | **proved, `books/stx-epochs` certified** (w10/substrate-2). `fn-stx-commit-decode-is-a-commit` needed the result algebra of `books/statement-invariants` (`fn-stmt-okp-of-ok`, `fn-stmt-value-of-ok`) enabled at the form, not a shape fact about `fn-stmt-decode-items`: every field the conclusion constrains is constrained by `fn-stx-commit-of-items`' own branch tests, so the decoder stays disabled. **Still open**: nothing on the host's reconnection path calls `fn-stx-commits-of-batch`, and `w11/node-index` found the gap is wider than "no caller" -- **no book outside the stx cluster includes `books/stx-epochs` at all**, and there is no reconnection path in the tree to wire it to. PRF-025 stays `in-progress` with both events `pending_subject`; this is future feature work, not missing evidence for implemented behaviour (`docs/proofs.md`, assurance scope). | Its local witness lemma was FALSE as written (`fn-lace-p` of the delta does not give `fn-prin-verifiedp` of its members) and was repaired with the hypothesis that holds on every reachable delta, not weakened. |
 | S5-1 the two corollaries | **reached and certified** as labelled corollaries of the `books/membership-epochs-invariants` keystones they name | — |
 | S6-1 `fn-stx-reader-verdict-is-the-recorded-verdict` | **open, and the wiring is not half-done** | There is no slot in which acceptance records a verdict: `fn-node-statep` is `(acceptance retention stage bindings)` and the article record is `(msgid payload groups memberships pin)`, so `fn-nntp-hdr-content (field article)` at `books/nntp-responses.lisp:1375` cannot reach one. Closing it means (a) a verdict log carried beside the node in the `fn-stx-index` pattern, (b) threading it through `fn-nntp-hdr-content` and its four callers, and (c) `(fn-nntp-keywordp token ":FN-VERIFIED")` at `books/nntp-responses.lisp:1322`. That is a red-umbrella change to a chain that is independently red at `books/nntp-effects.lisp:971`. Recomputing the verdict per HDR query was rejected: it needs a keyring on the reader path and contradicts "the reader reports what acceptance recorded". |
 

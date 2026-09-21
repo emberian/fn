@@ -240,7 +240,8 @@
         "fn-served-step-partition-independence",
         "fn-served-reply-stream-is-partition-independent",
         "fn-served-feed-of-append",
-        "fn-served-run-is-the-concatenated-step"
+        "fn-served-run-is-the-concatenated-step",
+        "fn-wildmat-item-character-matchp-is-rfc3977-on-rfc3977-items"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -711,6 +712,8 @@
         "fn-wildmat-utf8-next-success-strict-progress",
         "fn-wildmat-successful-decode-length-bounded-by-input",
         "fn-wildmat-successful-parse-parsedp",
+        "fn-wildmat-parse-yields-rfc3977-patterns",
+        "fn-wildmat-successful-parse-text-parsedp",
         "fn-transfer-entry-candidate-work-value",
         "fn-transfer-entry-candidate-work-cost-bound",
         "fn-transfer-missing-work-cost-bound",
@@ -902,12 +905,13 @@
       "status": "in-progress",
       "evidence": [],
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
-      "note": "`books/stx-index` CERTIFIES (w10/substrate-2). The three agreements `fn-stx-index-bindings-agree`, `fn-stx-index-slots-agree` and `fn-stx-index-equivocators-agree` are the keystones; `fn-stx-index-agrees-with-lace` is their `:rule-classes nil` corollary and is cited as such, and `fn-stx-recorded-equivocation-agrees-with-lace` is a corollary of that. Not closed: no host line calls `fn-stx-index-lookup` or `fn-stx-index-equivocatorp` -- `fn-node-statep` has no index slot -- so the theorem-subject rule is not met and the D3 claim is about a query the served path does not yet carry.",
+      "note": "`books/stx-index` CERTIFIES (w10/substrate-2). The three agreements `fn-stx-index-bindings-agree`, `fn-stx-index-slots-agree` and `fn-stx-index-equivocators-agree` are the keystones; `fn-stx-index-agrees-with-lace` is their `:rule-classes nil` corollary and is cited as such, and `fn-stx-recorded-equivocation-agrees-with-lace` is a corollary of that. Not closed: no host line calls `fn-stx-index-lookup` or `fn-stx-index-equivocatorp`, so the theorem-subject rule is not met for the query half. w11/node-index measured why the proposed cure -- a fifth slot on `fn-node-statep` -- is not one: `books/stx-index` includes `stx-lace` includes `node` and `fn-stx-store` IS `(fn-state-articles (fn-node-acceptance node))`, so the slot is a dependency cycle; the conjunct needs a keyring and no state or configuration record in the tree holds one; and it would touch the 26 theorems that CONCLUDE `fn-node-statep` across 13 books while still leaving the query uncalled. The carrier belongs in `fn-sn-statep` (books/store-node.lisp), which the host holds and which is not in stx-index's closure. The PRESERVATION half did gain its subject: `fn-stx-index-invariant-preserved-by-accept` hypothesises `fn-stx-acceptedp`, which `fn-stx-durable-completion-is-an-acceptance` (books/stx-lace.lisp) now proves of the durable branch of `fn-node-complete` -- the only node step of `fn-sn-finish`, the only node step of the host's `fn-store-sn-finish` (host/store-node-host.lisp:402). Before that theorem the hypothesis was an assumption attributed to `books/stx-transit.lisp`, which has never existed. Route: planning/lanes/HANDOFF-w11-node-index.md.",
       "events": [
         "fn-stx-index-bindings-agree",
         "fn-stx-index-slots-agree",
         "fn-stx-index-equivocators-agree",
-        "fn-stx-index-invariant-preserved-by-accept"
+        "fn-stx-index-invariant-preserved-by-accept",
+        "fn-stx-durable-completion-is-an-acceptance"
       ]
     },
     {
@@ -947,7 +951,7 @@
       "status": "in-progress",
       "evidence": [],
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
-      "note": "`books/stx-epochs` CERTIFIES (w10/substrate-2), so the carrier obligation `fn-stx-commits-of-batch-are-verified-and-well-formed` is proved and the three reconnection rows follow it as labelled corollaries of the `books/membership-epochs-invariants` keystones. Its local witness lemma needed a repair, not a weakening: `fn-stx-commits-of-lace-have-witnesses` asked only `fn-lace-p` of the delta and was false; it now asks that every statement of the delta verifies, which `fn-stx-batch-delta` satisfies by construction. Not closed: nothing on the host's reconnection path calls `fn-stx-commits-of-batch`, and A-CRYPTO stands behind every verification here.",
+      "note": "`books/stx-epochs` CERTIFIES (w10/substrate-2), so the carrier obligation `fn-stx-commits-of-batch-are-verified-and-well-formed` is proved and the three reconnection rows follow it as labelled corollaries of the `books/membership-epochs-invariants` keystones. Its local witness lemma needed a repair, not a weakening: `fn-stx-commits-of-lace-have-witnesses` asked only `fn-lace-p` of the delta and was false; it now asks that every statement of the delta verifies, which `fn-stx-batch-delta` satisfies by construction. Not closed, and w11/node-index found the gap is wider than `no caller`: NO BOOK OUTSIDE THE STX CLUSTER INCLUDES `books/stx-epochs`, and there is no reconnection path in the tree to wire `fn-stx-commits-of-batch` to. That is future feature work, not missing evidence for implemented behaviour (docs/proofs.md, assurance scope). A-CRYPTO stands behind every verification here.",
       "events": [
         "fn-stx-commit-decode-is-a-commit",
         "fn-stx-commits-of-batch-are-verified-and-well-formed"
@@ -1104,6 +1108,52 @@
     },
     {
       "id": "PRF-033",
+      "title": "A clock the host contradicts is dropped, and the refusal is not an article verdict",
+      "statement": "fn-own-observe answers exactly one of :observed, :refused and :invalid, and the host reports that word rather than inferring one from a state comparison. On a related owner a :refused reading names a host contradiction -- the monotonic counter went backwards, has-wall changed, or a widened error bound moved the earliest admissible true time back -- and never merely a reading that did not move, because a reading equal to the one held is admitted. A refusal leaves the owner with no clock, and with no usable injection reading fn-nntp-post-step emits no submission and answers `441 posting failed; this server has no usable clock reading', which is a different constant from every article verdict the step can give.",
+      "milestone": "M3",
+      "requirements": [
+        "FLR-004",
+        "NNT-004",
+        "NNT-005"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "note": "Decision D10-a, lane w11/clock-seam. Keystones fn-own-observe-refusal-names-a-contradiction (books/owner-invariants.lisp) and fn-post-without-a-clock-refuses-with-the-clock-line (books/nntp-post.lisp), with fn-own-observe-outcome-is-one-of-three and fn-own-observe-outcome-decides-the-clock-by-definition named for what they are and cited by :use. Teeth are evaluated in tests/acl2/owner-tests.lisp (the served-path second post on one connection, the same-reading collision, the clock 441 with an empty queue, DATE 503, and one-event recovery) and tests/acl2/nntp-post-tests.lisp (one must-fail per hypothesis). OPEN under this target: two submissions inside one millisecond still share a generated Message-ID, because fn-clock-later-observationp is non-strict; separating them needs the owner to remember the reading it last minted under and is not done here."
+    },
+    {
+      "id": "PRF-034",
+      "title": "A reopened journal answers for a work what the pre-crash machine would have, and says which works it recovered",
+      "statement": "fn-bp-work-status-of-restart: under fn-bp-statep, the :restart transition a reopen runs changes the boundary answer for one work id by fn-bp-work-status-after-restart and by nothing else -- an attempt that was in flight is marked :restart-observed, while :absent, :outstanding, :receipted, a retryable status and :delivered are fixed points. fn-bp-replay-work-status-is-the-pre-crash-status-restarted lifts that to fn-bp-replay-journal, the function host/workflow-host.lisp:8 calls on open: when the replay succeeds, fn-bp-work-status of the installed image is fn-bp-work-status-after-restart of fn-bp-work-status of the trace of the initial state over fn-bp-durable-events, the journal's denotation without that trailing restart. Provenance is separate and also ACL2's: fn-bp-work-origin-at-open-is-recovered-or-absent says that against the id list fn-bp-work-ids records at open, every work the image holds reads :recovered and every other id reads :absent; fn-bp-durable-enqueue-after-open-reads-enqueued says this session's durable enqueue of an id that list does not name reads :enqueued. So a work recovered from a cut and a work enqueued after the reopen, which share the status :outstanding, are distinct at the boundary.",
+      "milestone": "M3",
+      "requirements": [
+        "STO-005",
+        "FLR-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "certified",
+      "note": "Lane w11/workflow-replay, book books/bp-workflow-replay-status.lisp, teeth in tests/acl2/bp-workflow-records-tests.lisp. The subject of the first two keystones is what host/workflow-host.lisp:63 (fn-workflow-work-status) calls; of the last two, what host/workflow-host.lisp:73 (fn-workflow-work-origin) calls on the list host/workflow-host.lisp:8 records. Certified on hbox, run-20260921T005523Z-05dc, build/acl2/certify-20260921T005528Z-1361353. The :enqueue kind hypothesis of fn-bp-durable-enqueue-after-open-reads-enqueued has a constructed rather than a reached tooth, and the test book says so: fn-bp-prepare-attempt only prepares an attempt for a work the image holds, so the composed machine reaches no :attempt pending over an image that holds none.",
+      "evidence": [
+        "books/bp-workflow-replay-status.lisp",
+        "books/bp-workflow-records.lisp",
+        "tests/acl2/bp-workflow-records-tests.lisp",
+        "tests/evidence/2026-09-21-four-node-lab.md",
+        "tests/evidence/2026-09-21-four-node-lab.json",
+        "planning/lanes/HANDOFF-w11-workflow-replay.md"
+      ],
+      "events": [
+        "fn-bp-work-status-of-restart",
+        "fn-bp-replay-work-status-is-the-pre-crash-status-restarted",
+        "fn-bp-work-origin-at-open-is-recovered-or-absent",
+        "fn-bp-durable-enqueue-after-open-reads-enqueued",
+        "fn-bp-journal-events-is-durable-events-then-restart",
+        "fn-bp-work-status",
+        "fn-bp-work-origin"
+      ]
+    },
+    {
+      "id": "PRF-036",
       "title": "Prefix and lower-frontier recoverability of a replayed history",
       "statement": "A history that replays successfully leaves an IDLE node whose next txid only moves forward, so dropping its last record leaves a history recoverable at the same frontier, and a history whose txids are all below a bound is recoverable AT that bound. Those are the two facts fn-sf-history-recoverablep needs beyond a successful replay -- together they are fn-replay-advance-okp -- and on them every image the platform may leave in the recovery window is replayable at its own frontier and the host's reopen entry succeeds on it.",
       "milestone": "M5",
@@ -1117,7 +1167,7 @@
       ],
       "assumptions": [],
       "status": "certified",
-      "note": "Lane w11/bytestore-k2, packet 2. fn-sn-replay-loop-append already gave ok(whole) implies ok(prefix); what was missing, and what blocked lane w10/kernel-freedom's first widening at fn-snt-admissible-crash-image-is-recoverable, is that the prefix node is idle with next-txid at most the frontier. The acknowledged-record half of crash-model-v2 K4 is NOT restated over the wider predicate: on both rollback arms the arm's own (null (fn-sf-successes s)) and a member-equal success hypothesis are contradictory, so the restatement would be fn-sn-acknowledged-record-survives-observed-reopen with two vacuous arms. fn-sf-recovery-admissible-image-facts carries that guarantee over every arm instead.",
+      "note": "Lane w11/bytestore-k2, packet 2. fn-sn-replay-loop-append already gave ok(whole) implies ok(prefix); what was missing, and what blocked lane w10/kernel-freedom's first widening at fn-snt-admissible-crash-image-is-recoverable, is that the prefix node is idle with next-txid at most the frontier. The acknowledged-record half of crash-model-v2 K4 is NOT restated over the wider predicate: on both rollback arms the arm's own (null (fn-sf-successes s)) and a member-equal success hypothesis are contradictory, so the restatement would be fn-sn-acknowledged-record-survives-observed-reopen with two vacuous arms. fn-sf-recovery-admissible-image-facts carries that guarantee over every arm instead. Claimed as PRF-033 before merging dev at 81ae082 and RENUMBERED: w11/clock-seam and w11/workflow-replay had taken 033 and 034, and w11/one-owner 035, while this lane held an older dev.",
       "evidence": [
         "books/store-node-invariants.lisp",
         "books/store-node-traces.lisp",

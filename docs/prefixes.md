@@ -47,7 +47,7 @@ Counts are not maintained here; `tools/ledger.py` reports them.
 | `fn-frame-` | `frame-octets`, `frame-fields`, `frame-journal`, `frame`, `frame-invariants` | The one durable frame grammar (magic, version, kind, bounded length, payload, 32-octet trailer), its journal field grammar, and the constrained trailer function A-CRYPTO |
 | `fn-id-`, `fn-charge-` | `identity`, `identity-invariants` | Content-identity derivation (subject and archive obligation), the hexadecimal projection, and the per-payload charge policy |
 | `fn-store-` | `store-config` | The configured group table and the name/code mapping shared by every adapter |
-| `fn-bp-` | `bp-workflow`, `bp-workflow-invariants`, `bp-workflow-transport-invariants`, `bp-workflow-binding-core`, `bp-workflow-binding-invariants`, `bp-workflow-records` | Sender workflow: work, attempts, intents, transport observations, journal replay |
+| `fn-bp-` | `bp-workflow`, `bp-workflow-invariants`, `bp-workflow-transport-invariants`, `bp-workflow-binding-core`, `bp-workflow-binding-invariants`, `bp-workflow-records`, `bp-workflow-replay-status` | Sender workflow: work, attempts, intents, transport observations, journal replay, and the reopened image's read model (status across a restart, and whether a work was recovered or enqueued this session) |
 | `fn-bpa-` | `bp-adu` | Canonical CBOR application data units: request and receipt |
 | `fn-bpi-` | `bp-ingress` | Legacy article ADU ingress, routing and composed-store admission |
 | `fn-bpr-` | `bp-receipt` | Receiver state: request context, receipt intent and decision, receipt ADU emission |

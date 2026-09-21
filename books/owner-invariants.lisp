@@ -727,6 +727,59 @@
            (fn-own-relation (fn-own-observe o obs)))
   :hints (("Goal" :in-theory (enable fn-own-relation))))
 
+; -----------------------------------------------------------------------------
+; The clock seam (decision D10-a).  The owner answers a reading with one of
+; three words and a refusal costs it the clock it held.
+
+; Definitional, cited by :use and never a registry event: which word leaves
+; which state.  Named for what it is.
+(defthm fn-own-observe-outcome-decides-the-clock-by-definition
+  (and (implies (equal (fn-own-observe-outcome o obs) :observed)
+                (equal (fn-own-clock (fn-own-observe o obs)) obs))
+       (implies (equal (fn-own-observe-outcome o obs) :refused)
+                (equal (fn-own-clock (fn-own-observe o obs)) nil))
+       (implies (equal (fn-own-observe-outcome o obs) :invalid)
+                (equal (fn-own-observe o obs) o)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-own-observe fn-own-observe-outcome))))
+
+; The outcome is exactly one of three, and it is the word the host reports
+; (host/owner-host.lisp fn-owner-observe).  The host used to compute the
+; word by comparing the owner before and after the event, which spelled an
+; ADMITTED reading equal to the one held with the same `rejected' as a
+; contradicted clock; the three-outcome rule says that distinction matters.
+(defthm fn-own-observe-outcome-is-one-of-three
+  (member-equal (fn-own-observe-outcome o obs) '(:observed :refused :invalid))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-own-observe-outcome))))
+
+; KEYSTONE.  A refusal NAMES a host contradiction: on a related owner that
+; holds a clock, `:refused' says the monotonic counter went backwards, or
+; `has-wall' changed, or a widened error bound moved the earliest admissible
+; true time back (specs/time.md: that is not a later observation of the same
+; clock).  It is never merely a reading that did not move -- an admitted
+; reading EQUAL to the one held is `:observed', which is the case the host
+; used to spell as a refusal.  What the refusal then costs is the clock
+; itself: fn-own-observe leaves none, so the injection reading fn-own-read
+; supplies is not an observation (the sixth field of the served connection
+; in fn-own-reader-sees-pinned-prefix-replay is (fn-own-clock o)),
+; fn-nntp-post-step answers the CLOCK line and emits no submission
+; (fn-post-without-a-clock-refuses-with-the-clock-line, books/nntp-post.lisp),
+; fn-own-declare-group refuses and DATE answers 503.
+(defthm fn-own-observe-refusal-names-a-contradiction
+  (implies (and (fn-own-relation o)
+                (fn-own-clock o)
+                (equal (fn-own-observe-outcome o obs) :refused))
+           (or (< (fn-clock-monotonic obs) (fn-clock-monotonic (fn-own-clock o)))
+               (not (equal (fn-clock-has-wall obs)
+                           (fn-clock-has-wall (fn-own-clock o))))
+               (< (fn-clock-earliest-true obs)
+                  (fn-clock-earliest-true (fn-own-clock o)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-own-relation fn-own-observe-outcome
+                                   fn-clock-later-observationp)
+                                  (fn-own-conn-boundedp)))))
+
 (defthm fn-own-group-fact-make-is-fact
   (implies (and (stringp name) (fn-clock-observationp obs))
            (fn-own-group-factp (fn-own-group-fact-make name obs))))

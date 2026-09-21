@@ -1,7 +1,10 @@
 # Handoff: lane `w11/bytestore-k2` (K2f, and prefix recoverability)
 
 Branch `w11/bytestore-k2` in `build/lanes/w11-bytestore-k2`, from `dev` at
-`38460cf`, merged `dev` at `e67b6cb`. Both packets the kernel lane named,
+`38460cf`, merged `dev` at `e67b6cb` and again at `81ae082`. The registry id
+is **PRF-036**: it was claimed as PRF-033 against the earlier `dev` and
+renumbered at the second merge, because `w11/clock-seam`, `w11/workflow-replay`
+and `w11/one-owner` had taken 033, 034 and 035 meanwhile. Both packets the kernel lane named,
 in its order. Nothing in D14-a or D14-b is reopened: `fn-sf-crash-imagep` is
 unchanged byte for byte, so `fn-own-reopen`'s gate and the eleven theorems
 that take it as a premise are untouched and `*own-reopened*` still says why.
