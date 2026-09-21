@@ -14,6 +14,7 @@ import hashlib
 import json
 import os
 import platform
+import resource
 from pathlib import Path
 import signal
 import socket
@@ -95,8 +96,9 @@ def command(argv, *, cwd, environment, timeout=1800):
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                               timeout=timeout, check=False)
         return {"argv": argv, "seconds": time.monotonic() - before,
-                "returncode": done.returncode, "stdout": done.stdout[-1000:],
-                "stderr": done.stderr[-1000:]}
+                "returncode": done.returncode,
+                "children_maxrss_kib": resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss,
+                "stdout": done.stdout[-1000:], "stderr": done.stderr[-1000:]}
     except subprocess.TimeoutExpired as error:
         return {"argv": argv, "seconds": time.monotonic() - before,
                 "returncode": 124, "stdout": (error.stdout or "")[-1000:],
@@ -344,10 +346,17 @@ def report_text(result):
     if owner.get("folded_stress"):
         lines.append("- Folded-header stress: {} in {:.6f}s, separate from ordinary samples.".format(
             owner["folded_stress"]["outcome"], owner["folded_stress"]["seconds"]))
+    native = result["native_direct"]
     lines.extend(["", "## Recovery and native direct", "",
                   "- Owner recovery: {} (exit {}).".format(owner.get("recover", {}).get("outcome", OUTCOMES.get(owner.get("recover", {}).get("returncode"), "not-run")), owner.get("recover", {}).get("returncode", "not-run")),
-                  "- Native direct: {}.".format(result["native_direct"].get("not_measured", "source {} image-sha256 {}; detailed timings in machine JSON".format(result["native_direct"].get("source_revision", "unspecified"), result["native_direct"].get("image_sha256", "unavailable")))),
-                  "", "Commands and full per-invocation outcomes, source hashes, exact input sizes, RSS, tool versions, and logs are in the adjacent JSON artifact."])
+                  "- Native direct: {}.".format(native.get("not_measured", "source {} image-sha256 {}".format(native.get("source_revision", "unspecified"), native.get("image_sha256", "unavailable"))))])
+    if native.get("store_post"):
+        lines.append("- Native direct init {:.6f}s, one accepted 1024-byte post {:.6f}s, recovery {:.6f}s; cumulative child peak RSS {} KiB.".format(
+            native["store_init"]["seconds"], native["store_post"]["seconds"], native["store_recover"]["seconds"], native["store_recover"].get("children_maxrss_kib", "unavailable")))
+    if native.get("reader"):
+        lines.append("- Native reader startup {:.6f}s; first greeting {:.6f}s.".format(
+            native["reader"].get("startup_seconds", 0), native["reader"].get("first_connection_seconds", 0)))
+    lines.extend(["", "Commands and full per-invocation outcomes, source hashes, exact input sizes, RSS, tool versions, and logs are in the adjacent JSON artifact."])
     return "\n".join(lines) + "\n"
 
 def main(argv=None):
