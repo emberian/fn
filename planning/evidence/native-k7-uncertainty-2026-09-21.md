@@ -9,14 +9,18 @@ the composed ACL2 machine through `fn-sn-io`.  The bridge theorem
 `fn-bs-native-io-is-byte-observation` equates that called subject's file
 projection with `fn-sf-dispatch` for the corresponding byte-program event.
 
-The K7 candidate keystones are:
+The K7 supporting facts are:
 
 - `fn-bs-issued-record-link-error-needs-recovery-fence`
 - `fn-bs-issued-frontier-rename-error-needs-recovery-fence`
 - `fn-bs-record-directory-error-resolves-choice-and-fences`
 - `fn-bs-frontier-directory-error-resolves-choice-and-fences`
 
-The exact composed-subject companions are
+They are not registered keystones in this packet.  Their test book now carries
+a reachable full-premise theorem witness and one concrete conclusion-breaking
+case for each remaining essential hypothesis, after replacing the stronger
+store-relation premise with the kernel state invariant actually used.  The
+exact composed-subject companions are
 `fn-bs-native-record-link-error-fences-composed-subject`,
 `fn-bs-native-frontier-rename-error-fences-composed-subject`,
 `fn-bs-native-record-directory-error-fences-composed-subject`, and
@@ -31,7 +35,7 @@ or selected authority directory.
 | --- | --- |
 | command | `python3 tools/certify_books.py --jobs 2 books/byte-store-fault-keystones tests/acl2/byte-store-fault-keystones-tests` |
 | result | both requested roots passed |
-| evidence | `planning/evidence/manifests/certify-20260921T163427Z-46060.json` |
+| evidence | `planning/evidence/manifests/certify-20260921T164406Z-53682.json` |
 | tool versions and source digests | recorded in that generated manifest |
 
 This proves logical behavior of the byte syscall transitions and the exact
