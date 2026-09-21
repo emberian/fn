@@ -184,6 +184,12 @@ local branch projections.  A trace invariant connecting every FNRJ replayed
 intent/context/decision to the evolving canonical owner Store, plus actual host
 correspondence at the remaining cuts, is still open assurance work.
 
+An absent FNRJ is represented by exactly `nil` after `fn-bprj-reset`.
+The host-called configuration projection must report `:absent` for that state
+so configuration can be published. Its checked/fast correspondence covers both
+this startup sentinel and a valid joined state; arbitrary malformed nonempty
+states are outside that contract and must not be installed by recovery.
+
 Successful FNRJ replay establishes the joined receiver invariant once.  Every
 successful live journal transition preserves it, and the served host calls the
 ACL2 fast projections proved equal to the checked receiver transitions under

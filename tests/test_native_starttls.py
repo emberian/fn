@@ -236,7 +236,13 @@ class NativeStartTlsTests(unittest.TestCase):
                 self.assertEqual(remainder, b"")
                 bad.sendall(b"not a TLS ClientHello\r\n")
                 bad.shutdown(socket.SHUT_WR)
-                self.assertEqual(bad.recv(1024), b"")
+                try:
+                    closed = bad.recv(1024)
+                except ConnectionResetError:
+                    # Linux may reset a close with unread malformed TLS bytes.
+                    # Only EOF/reset counts; timeout or surviving data fails.
+                    closed = b""
+                self.assertEqual(closed, b"")
 
             with socket.create_connection(("127.0.0.1", self.port), timeout=15) as peer:
                 peer.settimeout(15)
