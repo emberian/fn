@@ -1,8 +1,18 @@
 # Handoff: w11/owner-survival
 
-Branch `w11/owner-survival` from dev `4732ace`, worktree
-`build/lanes/w11-owner-survival`. Evidence:
+Branch `w11/owner-survival` from dev `4732ace`, merged with dev at `85e08db`,
+worktree `build/lanes/w11-owner-survival`. Evidence:
 [`planning/evidence/owner-survival-2026-09-21.md`](../evidence/owner-survival-2026-09-21.md).
+
+**State: complete and NOT merged into dev.** `make check` is green,
+`books/owner-fault` and `tests/acl2/owner-tests` certify on the merged tree,
+and the narrow tests pass (`test_owner` 12/12, `test_post` + `test_fn_cli`
+15/15, `test_auth` + `test_feed` 20/20, `test_v0_matrix` + `test_certs` +
+`test_reader` 81/81). One thing for whoever merges: this branch rewrites
+`planning/v0-matrix.json`, and `w11/auth-live` has a run of its own at
+`6fb30ca` on its branch. The file is generated with a digest `make check`
+recomputes, so the second lane to land must RE-RUN rather than hand-merge
+it; mine is at `2a7562e`, which contains dev.
 
 ## What this lane is
 
