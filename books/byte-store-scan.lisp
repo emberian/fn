@@ -1262,6 +1262,7 @@
                        (fn-bs-scan-frontier (fn-bs-scan-store bs)))
                 (equal (fn-sf-records ks)
                        (fn-bs-scan-records (fn-bs-scan-store bs)))
+                (equal (fn-sf-successes ks) nil)
                 (implies (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
                          (and (not (consp (fn-bs-ops-for-dir (fn-bs-pending bs)
                                                              :transactions)))
@@ -2060,3 +2061,636 @@
                             fn-bs-replay-visiblep fn-bs-replay-matches-scan
                             fn-bs-pending-matches-phase
                             fn-sf-crash-imagep fn-bs-crash-imagep)))))
+
+; -----------------------------------------------------------------------------
+; 10. K2 (specs/crash-model-v2.md section 3.3): what the scan reads is an
+; image the kernel admits.
+;
+; The conclusion is fn-sf-recovery-crash-imagep, what the PLATFORM may
+; leave (D14-b), and not fn-sf-crash-imagep, what a consumer may rely on:
+; widening the reliance predicate is false for the composition and the
+; counterexample is in tests/acl2/owner-tests.lisp.  K1 supplies the scan's
+; success; what is left is to name, for each of the two windows and each
+; of the two entry operations, which arm of the predicate the read lands in.
+
+(local
+ (defthm fn-bs-but-last-of-an-append-of-one
+   (implies (true-listp xs)
+            (equal (fn-sf-but-last (append xs (list y))) xs))))
+
+(local
+ (defthm fn-bs-durable-transaction-inode-is-fenced
+   (implies (and (fn-bs-statep bs)
+                 (fn-bs-all-fencedp
+                  bs (strip-cdrs (cdr (assoc-equal :transactions (fn-bs-dirs bs)))))
+                 (equal (fn-bs-durable-names bs :transactions)
+                        (fn-bs-txn-names
+                         (len (fn-bs-durable-names bs :transactions))))
+                 (natp i) (< i (len (fn-bs-durable-names bs :transactions))))
+            (fn-bs-fencedp bs (fn-bs-durable-entry bs :transactions
+                                                   (fn-bs-txn-name i))))
+   :hints (("Goal"
+            :use ((:instance fn-bs-txn-name-in-txn-names
+                             (n (len (fn-bs-durable-names bs :transactions))))
+                  (:instance fn-bs-all-fencedp-member
+                             (inos (strip-cdrs
+                                    (cdr (assoc-equal :transactions (fn-bs-dirs bs)))))
+                             (ino (fn-bs-durable-entry bs :transactions
+                                                       (fn-bs-txn-name i))))
+                  (:instance fn-bs-assoc-value-is-in-strip-cdrs
+                             (k (fn-bs-txn-name i))
+                             (alist (cdr (assoc-equal :transactions (fn-bs-dirs bs)))))
+                  (:instance fn-bs-assoc-of-name-in-entries
+                             (name (fn-bs-txn-name i))
+                             (alist (cdr (assoc-equal :transactions
+                                                      (fn-bs-dirs bs))))))
+            :in-theory (e/d (fn-bs-durable-entry fn-bs-durable-names)
+                            (fn-bs-statep fn-bs-txn-names
+                             fn-bs-txn-name-in-txn-names
+                             fn-bs-all-fencedp-member
+                             fn-bs-assoc-value-is-in-strip-cdrs
+                             fn-bs-assoc-of-name-in-entries))))))
+
+(local
+ (defthm fn-bs-view-reads-a-durable-transaction-entry
+   (implies (and (fn-bs-pending-shape-okp bs) (natp i)
+                 (< i (len (fn-bs-durable-names bs :transactions))))
+            (equal (fn-bs-lookup bs :transactions (fn-bs-txn-name i))
+                   (fn-bs-durable-entry bs :transactions (fn-bs-txn-name i))))
+   :hints (("Goal"
+            :use ((:instance fn-bs-shape-leaves-earlier-transaction-names-quiet)
+                  (:instance fn-bs-lookup-of-an-untouched-name
+                             (s bs) (dir :transactions)
+                             (name (fn-bs-txn-name i))))
+            :in-theory (e/d (fn-bs-dir-idp fn-bs-namep)
+                            (fn-bs-pending-shape-okp fn-bs-txn-names
+                             fn-bs-shape-leaves-earlier-transaction-names-quiet
+                             fn-bs-lookup-of-an-untouched-name))))))
+
+(local
+ (defthm fn-bs-view-agrees-with-the-durable-prefix
+   (implies (and (fn-bs-statep bs) (fn-bs-pending-shape-okp bs)
+                 (fn-bs-all-fencedp
+                  bs (strip-cdrs (cdr (assoc-equal :transactions (fn-bs-dirs bs)))))
+                 (equal (fn-bs-durable-names bs :transactions)
+                        (fn-bs-txn-names
+                         (len (fn-bs-durable-names bs :transactions))))
+                 (natp n))
+            (fn-bs-txn-prefix-agreesp
+             bs (fn-bs-durable bs) n
+             (len (fn-bs-durable-names bs :transactions))))
+   :hints (("Goal"
+            :induct (fn-bs-txn-prefix-agreesp
+                     bs (fn-bs-durable bs) n
+                     (len (fn-bs-durable-names bs :transactions)))
+            :in-theory (disable fn-bs-statep fn-bs-txn-names
+                                fn-bs-pending-shape-okp)))))
+
+; The running process reads the durable record list at the durable indices,
+; for the same reason a crash image does: the one pending link is at a name
+; outside them and every inode they name is fenced.
+(defthm fn-bs-view-reads-the-durable-records
+  (implies (fn-bs-store-relation bs ks)
+           (equal (fn-bs-read-records
+                   bs 0 (len (fn-bs-durable-names bs :transactions)))
+                  (fn-bs-durable-records bs)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-store-relation-implies-the-pending-shape
+                 (:instance fn-bs-read-records-under-agreement
+                            (a bs) (b (fn-bs-durable bs)) (n 0)
+                            (count (len (fn-bs-durable-names bs :transactions))))
+                 (:instance fn-bs-view-agrees-with-the-durable-prefix (n 0)))
+           :in-theory (e/d (fn-bs-durable-records)
+                           (fn-bs-store-relation fn-bs-statep fn-bs-txn-names
+                            fn-bs-read-records fn-bs-pending-shape-okp
+                            fn-bs-read-records-under-agreement)))))
+
+; The view's namespace without a pending link is the durable one.
+(defthm fn-bs-store-relation-view-namespace-without-a-pending-link
+  (implies (and (fn-bs-store-relation bs ks)
+                (not (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))))
+           (equal (fn-bs-names bs :transactions)
+                  (fn-bs-durable-names bs :transactions)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-unfolds
+                 (:instance fn-bs-names-is-names-after-the-pending-list
+                            (s bs) (dir :transactions))
+                 (:instance fn-bs-names-after-through-ops-for-dir
+                            (ops (fn-bs-pending bs))
+                            (old (fn-bs-durable-names bs :transactions))
+                            (dir :transactions)))
+           :in-theory (disable fn-bs-store-relation fn-bs-statep fn-bs-txn-names
+                               fn-bs-names-is-names-after-the-pending-list))))
+
+; The publish window's index-m read, as a VALUE and not only as a non-fault:
+; it is the kernel's record candidate, which is the arm of
+; fn-sf-recovery-crash-imagep the image lands in.
+(defthm fn-bs-publish-window-crash-image-reads-the-candidate-record
+  (implies (and (fn-bs-store-relation bs ks) (fn-bs-crash-imagep bs image)
+                (not (fn-bs-replay-visiblep ks))
+                (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))
+                (equal (fn-bs-lookup
+                        image :transactions
+                        (fn-bs-txn-name (len (fn-bs-durable-names bs :transactions))))
+                       (nth 3 (car (fn-bs-ops-for-dir (fn-bs-pending bs)
+                                                      :transactions)))))
+           (equal (fn-bs-read-records
+                   image (len (fn-bs-durable-names bs :transactions))
+                   (1+ (len (fn-bs-durable-names bs :transactions))))
+                  (list (fn-sf-record-candidate ks))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-publish-window-crash-image-reads-the-candidate-octets
+                 (:instance fn-bs-read-records-one-step
+                            (s image)
+                            (n (len (fn-bs-durable-names bs :transactions)))
+                            (count (1+ (len (fn-bs-durable-names bs
+                                                                 :transactions))))))
+           :in-theory (disable fn-bs-store-relation fn-bs-statep fn-sf-statep
+                               fn-bs-txn-names fn-bs-record-of
+                               fn-bs-record-of-octets fn-bs-durable-records
+                               fn-bs-durable-frontier fn-bs-authority-fencedp
+                               fn-bs-authority-inode-list fn-bs-all-fencedp
+                               fn-bs-pending-shape-okp fn-bs-replay-visiblep
+                               fn-bs-replay-matches-scan
+                               fn-bs-pending-matches-phase
+                               fn-sf-crash-imagep fn-sf-admissible-image-facts
+                               fn-bs-crash-imagep))))
+
+; The octets the crash image's frontier name points at: the durable ones, or
+; the pending rename's target's.
+(defthm fn-bs-crash-image-frontier-content
+  (implies (and (fn-bs-store-relation bs ks) (fn-bs-crash-imagep bs image))
+           (or (equal (fn-bs-content image
+                                     (fn-bs-lookup image :root
+                                                   *fn-bs-scan-frontier-name*))
+                      (fn-bs-durable-content
+                       bs (fn-bs-durable-entry bs :root
+                                               *fn-bs-scan-frontier-name*)))
+               (and (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
+                    (equal (fn-bs-content image
+                                          (fn-bs-lookup image :root
+                                                        *fn-bs-scan-frontier-name*))
+                           (fn-bs-durable-content
+                            bs (nth 3 (car (fn-bs-ops-for-dir (fn-bs-pending bs)
+                                                              :root))))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-store-relation-fences-the-root-inodes
+                 fn-bs-store-relation-implies-the-pending-shape
+                 (:instance fn-bs-shape-at-the-frontier-name)
+                 (:instance fn-bs-crash-entry-is-the-durable-one-or-the-pending-target
+                            (s bs) (dir :root) (name *fn-bs-scan-frontier-name*)))
+           :in-theory (e/d (fn-bs-pending-shape-okp fn-bs-dir-idp fn-bs-namep)
+                           (fn-bs-store-relation fn-bs-statep fn-bs-txn-names
+                            fn-bs-durable-frontier fn-bs-authority-fencedp
+                            fn-bs-authority-inode-list fn-bs-all-fencedp
+                            fn-bs-shape-at-the-frontier-name
+                            fn-bs-shape-leaves-the-config-name-quiet
+                            fn-bs-shape-at-the-pending-link-name
+                            fn-bs-shape-leaves-earlier-transaction-names-quiet)))))
+
+(local
+ (defthm fn-bs-but-last-of-an-append-of-one-element
+   (implies (and (true-listp xs) (true-listp ys) (equal (len ys) 1))
+            (equal (fn-sf-but-last (append xs ys)) xs))))
+
+; What the crash image's scan READS, as a value: the durable record list, or
+; that list followed by the one record under the link's target.
+(defthm fn-bs-crash-image-scan-records
+  (implies (and (fn-bs-store-relation bs ks) (fn-bs-crash-imagep bs image))
+           (or (equal (fn-bs-scan-records (fn-bs-scan-store image))
+                      (fn-bs-durable-records bs))
+               (and (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))
+                    (equal (fn-bs-lookup
+                            image :transactions
+                            (fn-bs-txn-name
+                             (len (fn-bs-durable-names bs :transactions))))
+                           (nth 3 (car (fn-bs-ops-for-dir (fn-bs-pending bs)
+                                                          :transactions))))
+                    (equal (fn-bs-scan-records (fn-bs-scan-store image))
+                           (append (fn-bs-durable-records bs)
+                                   (fn-bs-read-records
+                                    image
+                                    (len (fn-bs-durable-names bs :transactions))
+                                    (1+ (len (fn-bs-durable-names
+                                              bs :transactions)))))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-store-crash-image-scans
+                 (:instance fn-bs-scan-okp-unfolds (s image))
+                 fn-bs-crash-image-transaction-names
+                 fn-bs-crash-image-reads-the-durable-records
+                 fn-bs-crash-image-reads-the-linked-record
+                 fn-bs-crash-image-namespace-grows-only-with-a-pending-link
+                 fn-bs-crash-image-that-kept-the-link-reads-its-target
+                 (:instance fn-bs-txn-names-length
+                            (n (len (fn-bs-durable-names bs :transactions))))
+                 (:instance fn-bs-txn-names-length
+                            (n (1+ (len (fn-bs-durable-names bs :transactions)))))
+                 (:instance fn-bs-txn-name-in-txn-names
+                            (i (len (fn-bs-durable-names bs :transactions)))
+                            (n (1+ (len (fn-bs-durable-names bs :transactions)))))
+                 (:instance fn-bs-read-records-of-one-more
+                            (s image) (n 0)
+                            (count (len (fn-bs-durable-names bs :transactions)))))
+           :in-theory (disable fn-bs-store-relation fn-bs-statep fn-sf-statep
+                               fn-bs-txn-names fn-bs-txn-names-length
+                               fn-bs-txn-name-in-txn-names
+                               fn-bs-read-records fn-bs-read-records-of-one-more
+                               fn-bs-record-of fn-bs-durable-records
+                               fn-bs-durable-frontier fn-bs-authority-fencedp
+                               fn-bs-authority-inode-list fn-bs-all-fencedp
+                               fn-bs-pending-shape-okp fn-bs-replay-visiblep
+                               fn-bs-replay-matches-scan
+                               fn-bs-pending-matches-phase
+                               fn-bs-scan-store fn-bs-scan-okp
+                               fn-bs-scan-records fn-bs-scan-frontier
+                               fn-sf-crash-imagep fn-bs-crash-imagep))))
+
+; In the recovery window the kernel IS this process's scan of the view, so
+; both of its components are byte-store values.
+(defthm fn-bs-recovery-window-kernel-records
+  (implies (and (fn-bs-store-relation bs ks) (fn-bs-replay-visiblep ks))
+           (if (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))
+               (and (equal (fn-sf-records ks)
+                           (append (fn-bs-durable-records bs)
+                                   (fn-bs-read-records
+                                    bs (len (fn-bs-durable-names bs :transactions))
+                                    (1+ (len (fn-bs-durable-names
+                                              bs :transactions))))))
+                    (equal (len (fn-bs-read-records
+                                 bs (len (fn-bs-durable-names bs :transactions))
+                                 (1+ (len (fn-bs-durable-names
+                                           bs :transactions)))))
+                           1))
+             (equal (fn-sf-records ks) (fn-bs-durable-records bs))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-store-relation-window-unfolds
+                 fn-bs-replay-matches-scan-unfolds
+                 fn-bs-view-reads-the-durable-records
+                 fn-bs-store-relation-view-namespace-with-a-pending-link
+                 fn-bs-store-relation-view-namespace-without-a-pending-link
+                 (:instance fn-bs-scan-okp-unfolds (s bs))
+                 (:instance fn-bs-txn-names-length
+                            (n (1+ (len (fn-bs-durable-names bs :transactions)))))
+                 (:instance fn-bs-read-records-tail-not-fault
+                            (s bs) (n 0)
+                            (count (len (fn-bs-durable-names bs :transactions))))
+                 (:instance fn-bs-read-records-of-one-more
+                            (s bs) (n 0)
+                            (count (len (fn-bs-durable-names bs :transactions))))
+                 (:instance fn-bs-read-records-len
+                            (s bs) (n (len (fn-bs-durable-names bs :transactions)))
+                            (count (1+ (len (fn-bs-durable-names
+                                             bs :transactions))))))
+           :in-theory (disable fn-bs-store-relation fn-bs-statep fn-sf-statep
+                               fn-bs-txn-names fn-bs-txn-names-length
+                               fn-bs-read-records fn-bs-read-records-len
+                               fn-bs-read-records-of-one-more
+                               fn-bs-read-records-tail-not-fault
+                               fn-bs-record-of fn-bs-durable-records
+                               fn-bs-durable-frontier fn-bs-authority-fencedp
+                               fn-bs-authority-inode-list fn-bs-all-fencedp
+                               fn-bs-pending-shape-okp fn-bs-replay-visiblep
+                               fn-bs-replay-matches-scan
+                               fn-bs-pending-matches-phase
+                               fn-bs-scan-store fn-bs-scan-okp
+                               fn-bs-scan-records fn-bs-scan-frontier
+                               fn-sf-crash-imagep))))
+
+(defthm fn-bs-recovery-window-kernel-frontier
+  (implies (and (fn-bs-store-relation bs ks) (fn-bs-replay-visiblep ks))
+           (and (implies (not (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :root)))
+                         (equal (fn-sf-frontier ks) (fn-bs-durable-frontier bs)))
+                (implies (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
+                         (and (equal (fn-sf-frontier ks)
+                                     (fn-bs-frontier-decode
+                                      (fn-bs-durable-content
+                                       bs (nth 3 (car (fn-bs-ops-for-dir
+                                                       (fn-bs-pending bs) :root))))))
+                              (equal (fn-bs-durable-frontier bs)
+                                     (1- (fn-sf-frontier ks)))
+                              (fn-sf-frontier-rollback-visiblep ks)
+                              (not (consp (fn-bs-ops-for-dir (fn-bs-pending bs)
+                                                             :transactions)))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-window-unfolds
+                 fn-bs-replay-matches-scan-unfolds
+                 fn-bs-store-relation-view-frontier-content
+                 (:instance fn-bs-scan-okp-unfolds (s bs)))
+           :in-theory (e/d (fn-bs-durable-frontier)
+                           (fn-bs-store-relation fn-bs-statep fn-sf-statep
+                            fn-bs-txn-names fn-bs-read-records fn-bs-record-of
+                            fn-bs-durable-records fn-bs-authority-fencedp
+                            fn-bs-authority-inode-list fn-bs-all-fencedp
+                            fn-bs-pending-shape-okp fn-bs-replay-visiblep
+                            fn-bs-replay-matches-scan
+                            fn-bs-pending-matches-phase
+                            fn-bs-scan-store fn-bs-scan-okp
+                            fn-bs-scan-records fn-bs-scan-frontier
+                            fn-sf-crash-imagep
+                            fn-sf-frontier-rollback-visiblep)))))
+
+; Outside the recovery window the image the scan reads is one the RELIANCE
+; predicate already admits -- old-or-new at the frontier, absent-or-present
+; at the record -- so K2's conclusion there is
+; fn-sf-crash-imagep-implies-recovery-crash-imagep applied.  The two
+; disjuncts are proved apart and joined: with both in one goal the rewriter
+; reached its call-depth limit of 1000 on the nesting alone, with no loop
+; and no checkpoint to read.
+(defthm fn-bs-publish-window-scan-frontier-is-admissible
+  (implies (and (fn-bs-store-relation bs ks) (fn-bs-crash-imagep bs image)
+                (not (fn-bs-replay-visiblep ks)))
+           (or (equal (fn-bs-scan-frontier (fn-bs-scan-store image))
+                      (fn-sf-frontier ks))
+               (and (fn-sf-frontier-new-visiblep ks)
+                    (equal (fn-bs-scan-frontier (fn-bs-scan-store image))
+                           (fn-sf-frontier-candidate ks)))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-store-relation-window-unfolds
+                 fn-bs-pending-matches-phase-unfolds
+                 fn-bs-store-crash-image-scans
+                 fn-bs-crash-image-frontier-content
+                 (:instance fn-bs-scan-okp-unfolds (s image)))
+           :in-theory (e/d (fn-sf-crash-imagep fn-bs-durable-frontier)
+                           (fn-bs-store-relation fn-bs-statep fn-sf-statep
+                            fn-bs-names-after
+                            fn-bs-names-is-names-after-the-pending-list
+                            fn-bs-crash-keeps-a-quiet-name
+                            fn-bs-lookup-of-an-untouched-name
+                            fn-bs-lookup-of-a-pending-target
+                            fn-bs-crash-image-is-quiet
+                            fn-bs-quiet-lookup-is-durable-entry
+                            fn-bs-quiet-content-is-durable-content
+                            fn-bs-quiet-names-are-durable-names
+                            fn-bs-shape-at-the-frontier-name
+                            fn-bs-shape-leaves-the-config-name-quiet
+                            fn-bs-shape-at-the-pending-link-name
+                            fn-bs-shape-leaves-earlier-transaction-names-quiet
+                            fn-bs-txn-names fn-bs-read-records fn-bs-record-of
+                            fn-bs-durable-records fn-bs-authority-fencedp
+                            fn-bs-authority-inode-list fn-bs-all-fencedp
+                            fn-bs-pending-shape-okp fn-bs-replay-visiblep
+                            fn-bs-replay-matches-scan
+                            fn-bs-pending-matches-phase
+                            fn-bs-scan-store fn-bs-scan-okp
+                            fn-bs-scan-records fn-bs-scan-frontier
+                            fn-sf-frontier-new-visiblep
+                            fn-sf-record-present-visiblep
+                            fn-bs-crash-imagep)))))
+
+; The reliance predicate read once, so that the record clause below never
+; has to open it: opened in the same goal as the two candidate values it
+; splits eight ways and the rewriter reaches its call-depth limit.
+(defthm fn-sf-crash-imagep-unfolds
+  (implies (fn-sf-crash-imagep s frontier records)
+           (and (or (equal frontier (fn-sf-frontier s))
+                    (and (fn-sf-frontier-new-visiblep s)
+                         (equal frontier (fn-sf-frontier-candidate s))))
+                (or (equal records (fn-sf-records s))
+                    (and (fn-sf-record-present-visiblep s)
+                         (equal records
+                                (append (fn-sf-records s)
+                                        (list (fn-sf-record-candidate s))))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-sf-crash-imagep)
+                                  (fn-sf-statep fn-sf-frontier-new-visiblep
+                                   fn-sf-record-present-visiblep)))))
+
+(defthm fn-bs-publish-window-scan-records-are-admissible
+  (implies (and (fn-bs-store-relation bs ks) (fn-bs-crash-imagep bs image)
+                (not (fn-bs-replay-visiblep ks)))
+           (or (equal (fn-bs-scan-records (fn-bs-scan-store image))
+                      (fn-sf-records ks))
+               (and (fn-sf-record-present-visiblep ks)
+                    (equal (fn-bs-scan-records (fn-bs-scan-store image))
+                           (append (fn-sf-records ks)
+                                   (list (fn-sf-record-candidate ks)))))))
+  :rule-classes nil
+  ; Under the minimal theory: every fact this needs is cited, and in the
+  ; ambient theory the rewriter reaches its call-depth limit of 1000 with no
+  ; loop, no useful rule in its Rules list and no checkpoint to read.
+  :hints (("Goal"
+           :use (fn-bs-store-relation-window-unfolds
+                 fn-bs-pending-matches-phase-unfolds
+                 fn-bs-crash-image-scan-records
+                 fn-bs-publish-window-crash-image-reads-the-candidate-record
+                 (:instance fn-sf-crash-imagep-unfolds
+                            (s ks) (frontier (fn-bs-durable-frontier bs))
+                            (records (fn-bs-durable-records bs))))
+           :in-theory (theory 'minimal-theory))))
+
+(defthm fn-bs-publish-window-crash-image-is-kernel-admissible
+  (implies (and (fn-bs-store-relation bs ks) (fn-bs-crash-imagep bs image)
+                (not (fn-bs-replay-visiblep ks)))
+           (fn-sf-crash-imagep ks
+                               (fn-bs-scan-frontier (fn-bs-scan-store image))
+                               (fn-bs-scan-records (fn-bs-scan-store image))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-publish-window-scan-frontier-is-admissible
+                 fn-bs-publish-window-scan-records-are-admissible)
+           :in-theory (e/d (fn-sf-crash-imagep)
+                           (fn-bs-store-relation fn-bs-statep fn-sf-statep
+                            fn-bs-scan-store fn-bs-scan-okp
+                            fn-bs-scan-records fn-bs-scan-frontier
+                            fn-bs-durable-records fn-bs-durable-frontier
+                            fn-bs-authority-fencedp fn-bs-txn-names
+                            fn-sf-frontier-new-visiblep
+                            fn-sf-record-present-visiblep
+                            fn-bs-crash-imagep fn-bs-replay-visiblep)))))
+
+(local
+ (defthm fn-bs-a-one-element-list-is-a-cons
+   (implies (equal (len x) 1) (consp x))
+   :rule-classes nil))
+(local
+ (defthm fn-bs-append-onto-a-cons-is-a-cons
+   (implies (consp b) (consp (append a b)))))
+
+; In the recovery window the scan's one extra read is one record long, and
+; both halves of the kernel's record list are true lists -- what
+; fn-sf-but-last needs to give the durable list back.
+(defthm fn-bs-recovery-window-linked-read-is-one-record
+  (implies (and (fn-bs-store-relation bs ks) (fn-bs-replay-visiblep ks)
+                (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
+           (and (true-listp (fn-bs-durable-records bs))
+                (true-listp (fn-bs-read-records
+                             bs (len (fn-bs-durable-names bs :transactions))
+                             (1+ (len (fn-bs-durable-names bs :transactions)))))
+                (equal (len (fn-bs-read-records
+                             bs (len (fn-bs-durable-names bs :transactions))
+                             (1+ (len (fn-bs-durable-names bs :transactions)))))
+                       1)
+                (consp (fn-sf-records ks))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-store-relation-window-unfolds
+                 fn-bs-recovery-window-kernel-records
+                 fn-bs-replay-matches-scan-unfolds
+                 fn-bs-store-relation-view-namespace-with-a-pending-link
+                 (:instance fn-bs-scan-okp-unfolds (s bs))
+                 (:instance fn-bs-txn-names-length
+                            (n (1+ (len (fn-bs-durable-names bs :transactions)))))
+                 (:instance fn-bs-read-records-tail-not-fault
+                            (s bs) (n 0)
+                            (count (len (fn-bs-durable-names bs :transactions))))
+                 (:instance fn-bs-read-records-len
+                            (s bs) (n (len (fn-bs-durable-names bs :transactions)))
+                            (count (1+ (len (fn-bs-durable-names
+                                             bs :transactions)))))
+                 (:instance fn-bs-read-records-is-a-true-list
+                            (s bs) (n (len (fn-bs-durable-names bs :transactions)))
+                            (count (1+ (len (fn-bs-durable-names
+                                             bs :transactions)))))
+                 (:instance fn-bs-read-records-is-a-true-list
+                            (s (fn-bs-durable bs)) (n 0)
+                            (count (len (fn-bs-durable-names bs :transactions))))
+                 (:instance fn-bs-a-one-element-list-is-a-cons
+                            (x (fn-bs-read-records
+                                bs (len (fn-bs-durable-names bs :transactions))
+                                (1+ (len (fn-bs-durable-names
+                                          bs :transactions)))))))
+           :in-theory (e/d (fn-bs-durable-records)
+                           (fn-bs-store-relation fn-bs-statep fn-sf-statep
+                            fn-bs-names-after
+                            fn-bs-names-is-names-after-the-pending-list
+                            fn-bs-txn-names fn-bs-txn-names-length
+                            fn-bs-read-records fn-bs-read-records-len
+                            fn-bs-read-records-is-a-true-list
+                            fn-bs-read-records-tail-not-fault
+                            fn-bs-record-of fn-bs-durable-frontier
+                            fn-bs-authority-fencedp fn-bs-authority-inode-list
+                            fn-bs-all-fencedp fn-bs-pending-shape-okp
+                            fn-bs-replay-visiblep fn-bs-replay-matches-scan
+                            fn-bs-pending-matches-phase
+                            fn-bs-scan-store fn-bs-scan-okp
+                            fn-bs-scan-records fn-bs-scan-frontier
+                            fn-sf-crash-imagep fn-bs-crash-imagep)))))
+
+(defthm fn-bs-recovery-window-scan-records-are-admissible
+  (implies (and (fn-bs-store-relation bs ks) (fn-bs-crash-imagep bs image)
+                (fn-bs-replay-visiblep ks))
+           (or (equal (fn-bs-scan-records (fn-bs-scan-store image))
+                      (fn-sf-records ks))
+               (and (fn-sf-record-rollback-visiblep ks)
+                    (equal (fn-bs-scan-records (fn-bs-scan-store image))
+                           (fn-sf-but-last (fn-sf-records ks))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-window-unfolds
+                 fn-bs-replay-matches-scan-unfolds
+                 fn-bs-crash-image-scan-records
+                 fn-bs-recovery-window-kernel-records
+                 fn-bs-recovery-window-linked-read-is-one-record
+                 fn-bs-crash-image-agrees-with-the-view-at-the-link
+                 (:instance fn-bs-read-records-under-agreement
+                            (a image) (b bs)
+                            (n (len (fn-bs-durable-names bs :transactions)))
+                            (count (1+ (len (fn-bs-durable-names
+                                             bs :transactions)))))
+                 (:instance fn-bs-but-last-of-an-append-of-one-element
+                            (xs (fn-bs-durable-records bs))
+                            (ys (fn-bs-read-records
+                                 bs (len (fn-bs-durable-names bs :transactions))
+                                 (1+ (len (fn-bs-durable-names
+                                           bs :transactions)))))))
+           :in-theory (union-theories '(fn-sf-record-rollback-visiblep
+                                        fn-sf-recovery-visiblep
+                                        fn-bs-replay-visiblep)
+                                      (theory 'minimal-theory)))))
+
+(defthm fn-bs-recovery-window-scan-frontier-is-admissible
+  (implies (and (fn-bs-store-relation bs ks) (fn-bs-crash-imagep bs image)
+                (fn-bs-replay-visiblep ks))
+           (or (equal (fn-bs-scan-frontier (fn-bs-scan-store image))
+                      (fn-sf-frontier ks))
+               (and (fn-sf-frontier-rollback-visiblep ks)
+                    (equal (fn-bs-scan-frontier (fn-bs-scan-store image))
+                           (1- (fn-sf-frontier ks)))
+                    (equal (fn-bs-scan-records (fn-bs-scan-store image))
+                           (fn-sf-records ks)))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-crash-image-scans
+                 fn-bs-crash-image-frontier-content
+                 fn-bs-crash-image-scan-records
+                 fn-bs-recovery-window-kernel-frontier
+                 fn-bs-recovery-window-kernel-records
+                 (:instance fn-bs-scan-okp-unfolds (s image)))
+           :in-theory (e/d (fn-bs-durable-frontier)
+                           (fn-bs-store-relation fn-bs-statep fn-sf-statep
+                            fn-bs-names-after
+                            fn-bs-names-is-names-after-the-pending-list
+                            fn-bs-crash-keeps-a-quiet-name
+                            fn-bs-lookup-of-an-untouched-name
+                            fn-bs-lookup-of-a-pending-target
+                            fn-bs-crash-image-is-quiet
+                            fn-bs-quiet-lookup-is-durable-entry
+                            fn-bs-quiet-content-is-durable-content
+                            fn-bs-quiet-names-are-durable-names
+                            fn-bs-shape-at-the-frontier-name
+                            fn-bs-shape-leaves-the-config-name-quiet
+                            fn-bs-shape-at-the-pending-link-name
+                            fn-bs-shape-leaves-earlier-transaction-names-quiet
+                            fn-bs-txn-names fn-bs-read-records fn-bs-record-of
+                            fn-bs-durable-records fn-bs-authority-fencedp
+                            fn-bs-authority-inode-list fn-bs-all-fencedp
+                            fn-bs-pending-shape-okp fn-bs-replay-visiblep
+                            fn-bs-replay-matches-scan
+                            fn-bs-pending-matches-phase
+                            fn-bs-scan-store fn-bs-scan-okp
+                            fn-bs-scan-records fn-bs-scan-frontier
+                            fn-sf-frontier-rollback-visiblep
+                            fn-sf-crash-imagep fn-bs-crash-imagep)))))
+
+(defthm fn-bs-recovery-window-crash-image-is-kernel-admissible
+  (implies (and (fn-bs-store-relation bs ks) (fn-bs-crash-imagep bs image)
+                (fn-bs-replay-visiblep ks))
+           (fn-sf-recovery-crash-imagep
+            ks
+            (fn-bs-scan-frontier (fn-bs-scan-store image))
+            (fn-bs-scan-records (fn-bs-scan-store image))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-recovery-window-scan-frontier-is-admissible
+                 fn-bs-recovery-window-scan-records-are-admissible)
+           :in-theory (union-theories '(fn-sf-recovery-crash-imagep)
+                                      (theory 'minimal-theory)))))
+
+; K2.  Old-or-new and absent-or-present as a THEOREM: every byte-level crash
+; image of a related state scans to an image the file kernel admits.  The
+; conclusion is the PLATFORM predicate (D14-b, D14-c), which in the recovery
+; window is strictly wider than what a consumer may rely on -- and it is the
+; rollback arms, both of them, that the window needs.
+(defthm fn-bs-store-crash-image-is-kernel-admissible
+  (implies (and (fn-bs-store-relation bs ks) (fn-bs-crash-imagep bs image))
+           (fn-sf-recovery-crash-imagep
+            ks
+            (fn-bs-scan-frontier (fn-bs-scan-store image))
+            (fn-bs-scan-records (fn-bs-scan-store image))))
+  :hints (("Goal"
+           :use (fn-bs-recovery-window-crash-image-is-kernel-admissible
+                 fn-bs-publish-window-crash-image-is-kernel-admissible
+                 (:instance fn-sf-crash-imagep-implies-recovery-crash-imagep
+                            (s ks)
+                            (frontier (fn-bs-scan-frontier
+                                       (fn-bs-scan-store image)))
+                            (records (fn-bs-scan-records
+                                      (fn-bs-scan-store image)))))
+           :in-theory (union-theories '(fn-bs-replay-visiblep)
+                                      (theory 'minimal-theory)))))
