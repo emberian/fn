@@ -70,10 +70,18 @@ new-process recovery smoke passed; the runtime batch then exposed an incorrectly
 Frozen repair `0626d428` restored handler and unwind structure; its production
 batch passed storage/recovery, authentication, operator/control and TLS tests,
 while BP startup and one platform-specific socket-close expectation failed.
-Repair `7b23b6a5` preserves the actual absent-journal startup state in the fast
-ACL2 configuration projection and accepts Linux connection reset as a closed
-malformed TLS connection. Its certification and runtime checks are pending.
-These steps do not establish a complete service qualification. See the [gate record](evidence/wide-native-gate-2026-09-21.md).
+Repair `7b23b6a5` preserves the absent-journal startup state in the fast
+ACL2 configuration projection and accepts Linux reset as closure of a malformed
+TLS connection. Those failed cases passed after repair. Final `8c231978` built
+production, developer and DTN images and passed the focused transit-EOF and
+incomplete-POST SIGTERM regressions. The [archived repair gate](evidence/native-freeze-gate-2026-09-21.md)
+distinguishes every source, certification, runtime batch and final image hash;
+it does not imply all cases ran against the final byte-identical image.
+A subsequent [two-node attempt](evidence/native-peering-8c231978-2026-09-21.md)
+found that the old frozen operator did not dispatch public peer administration.
+That dispatch is already present on main; the older qualification lane is
+porting it narrowly before retrying real peering. No two-node release claim
+follows from the repaired service tests.
 The remote origin is `/home/ember/fn-gates/freeze-f7190d69`; exact source
 revisions and manifest digests, rather than that directory name, identify each
 input. Later main integrations are outside this frozen gate.
@@ -94,6 +102,17 @@ are not part of that frozen source and must receive their own integration gate.
 The earlier `76901c1` closure/build passed; its live listener wakeup defect was
 repaired in the current frozen batch. Historical Python matrix disagreements
 remain recorded and are not reclassified by component certificates.
+
+The next wide source batch also includes outbound AUTHINFO with ACL2-rendered
+commands, exact opened-descriptor credential checks, large Store-event codecs,
+a new explicit physical profile preserving legacy reads, ordered durable identity
+context, and compaction reclaim crash programs. Native author submission still
+needs its live-owner control join. Profile admission and expected-refusal cleanup
+must compose before the next image is frozen. Large-event and partial-deletion
+witnesses are source/component evidence; full caller guards and native fault
+execution remain open. The [crypto review](review-2026-09-21-hybrid-cross-model.md)
+identified and prompted repair of the Ed25519 observation-size mismatch; general
+subject injectivity remains a separate proof obligation.
 
 ## Parallel paths to the next service batch
 
