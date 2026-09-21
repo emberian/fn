@@ -881,6 +881,17 @@ the changed books (the red-umbrella rule).
 | S5 | epochs across a partition | substrate lane, Opus | `fn-stx-commits-of-batch` and its verified-and-well-formed theorem; S5-1's three rows; the `fn.principals` group name reserved in `books/store-config.lisp` | whole-tree certify green; a partition scenario in `tests/scenarios/` where two sites remove different members, reconnect, and both see the fork with no decision revised; `must-fail` that an unverified article contributes a commit and that a merge extends the chain | S3 |
 | S6 | reader exposure | reader lane, Opus | `:fn-verified` HDR metadata item with the three-token rendering, `fn-stx-render-verdict`, S6-1; the `fn` CLI surfacing all three outcomes with distinct exit codes; the OVER/`LIST OVERVIEW.FMT` extension **or** a written decision declining it with its cost | whole-tree certify green; one transcript per verdict against the RFC 3977 §8.5 grammar; `HEAD` returns `FN-Statement` byte-identical after transit; a second agent on the second node verifies the article with its own keyring and no fn code; `must-fail` on any rendering that collapses two outcomes | S2, w3/reader-profile |
 
+**The Deliverable column names two books that have never existed.**
+`books/statement-field.lisp` (S1) and `books/statement-transit.lisp` (S2, S3)
+are this design's names; no ref of this repository has ever held either, and
+the substrate cluster landed as `books/stx-carrier.lisp`,
+`books/stx-verify.lisp`, `books/stx-authority.lisp`, `books/stx-epochs.lisp`,
+`books/stx-lace.lisp`, `books/stx-policy.lisp`, `books/stx-index.lisp` and
+`books/stx-invariants.lisp`.  Section 2.1 already records the S3 half of that:
+`fn-stx-lace` is in `books/stx-lace.lisp`.  Which landed book answers which
+packet row is a question for the substrate cluster, not a rename this lane
+could make (w11/phantom-cites, 2026-09-21).
+
 S1 and S2 can start against `72279c8` immediately; S3 needs K1's transit path;
 S4 needs S3; S5 and S6 are independent of each other.
 

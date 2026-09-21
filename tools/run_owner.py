@@ -649,8 +649,12 @@ class Owner:
         """The TLS handshake, and the whole of it (RFC 4642 section 2.2).
 
         This is the trust boundary: Python's `ssl` performs the handshake and
-        no theorem in this tree says anything about it
-        (docs/trust-boundary.md, specs/nntp.md).  What ACL2 decided is
+        no theorem in this tree says anything about it (specs/nntp.md,
+        "Transport security, and what is trusted"; the audit row is
+        specs/nntp-audit.md section 2.3).  This line named
+        docs/trust-boundary.md until 2026-09-21; no such file has ever
+        existed, and the boundary it pointed at is the section named here.
+        What ACL2 decided is
         already decided -- that a handshake is owed, that the 382 was the
         right answer, that the connection served nothing behind it -- and
         what ACL2 is told afterwards is one wire event.  The socket goes
