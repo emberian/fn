@@ -387,7 +387,7 @@
    (<= (len (fn-cbor-encode (cons :uint n))) 5)
    :rule-classes :linear
    :hints (("Goal" :in-theory (enable fn-cbor-encode fn-cbor-encode-argument
-                                      fn-cbor-valuep
+                                      fn-cbor-valuep fn-cbor-valuep-bounded
                                       fn-cbor-u16-bytes fn-cbor-u32-bytes)))))
 
 (local
@@ -395,7 +395,7 @@
    (<= (len (fn-cbor-encode (cons :bytes xs))) (+ 3 (len xs)))
    :rule-classes :linear
    :hints (("Goal" :in-theory (enable fn-cbor-encode fn-cbor-encode-argument
-                                      fn-cbor-valuep
+                                      fn-cbor-valuep fn-cbor-valuep-bounded
                                       fn-cbor-u16-bytes fn-cbor-u32-bytes)))))
 
 (local
