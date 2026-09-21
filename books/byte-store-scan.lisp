@@ -811,3 +811,618 @@
 ; fn-bs-replay-matches-scan above carries the matching clause.  What is not
 ; proved is the same thing K2 as a whole is not proved: that the relation
 ; IMPLIES the conclusion.  The clause is an obligation on K0, not a theorem.
+
+; -----------------------------------------------------------------------------
+; 8. K1: the scan of a crash image of a related state never faults.
+;
+; The four clauses in fn-bs-scan-store's own order: the config entry and its
+; content, the frontier entry and its decode, the transaction namespace
+; (section 7, closed), and the record list.  Section 7's discipline holds
+; throughout -- the projections stay CLOSED, because fn-bs-lookup and
+; fn-bs-durable-entry are two unrelated alist reads once opened and what
+; connects them is the image's quietness, which is a rewrite over the closed
+; terms.
+
+(local (in-theory (disable fn-bs-view fn-bs-lookup fn-bs-content fn-bs-names
+                           fn-bs-durable-content fn-bs-durable-entry
+                           fn-bs-durable-names fn-bs-record-of
+                           fn-bs-read-records fn-bs-scan-store)))
+
+; 8.1 Namespace and alist vocabulary.
+
+; The other way round from section 7's fn-bs-txn-name-not-in-txn-names: every
+; EARLIER name is in the namespace, which is what puts each durable
+; transaction inode in the relation's authority list.
+(defthm fn-bs-txn-name-in-txn-names
+  (implies (and (natp i) (natp n) (< i n))
+           (member-equal (fn-bs-txn-name i) (fn-bs-txn-names n))))
+
+; A name the alist does not hold reads NIL.  This is what makes the durable
+; entry at the pending link's name NIL, and so what tells the two namespace
+; outcomes of section 7 apart.
+(local
+ (defthm fn-bs-assoc-of-a-name-not-in-strip-cars
+   (implies (not (member-equal name (strip-cars alist)))
+            (equal (assoc-equal name alist) nil))))
+
+; And the converse for the value: fn-bs-entry-valuep is natp or keywordp and
+; NIL is neither, so a name the namespace DOES hold reads a non-NIL value.
+; Without this the image whose namespace grew by the link's name could still
+; read NIL there, and clause 4 would be false for a reason no crash produces.
+(local
+ (defthm fn-bs-entriesp-value-of-a-present-name-is-not-nil
+   (implies (and (fn-bs-entriesp x) (member-equal name (strip-cars x)))
+            (not (equal (cdr (assoc-equal name x)) nil)))))
+
+; One entry's value depends only on that name's operations, and one
+; directory's name list only on that directory's.  Both right sides match
+; their own left sides, so both are cited and never left to match -- section
+; 5's fn-bs-ops-for-name-through-ops-for-dir is the third of the family.
+(defthm fn-bs-entry-after-through-ops-for-name
+  (equal (fn-bs-entry-after ops old dir name)
+         (fn-bs-entry-after (fn-bs-ops-for-name ops dir name) old dir name))
+  :rule-classes nil)
+
+(defthm fn-bs-names-after-through-ops-for-dir
+  (equal (fn-bs-names-after ops old dir)
+         (fn-bs-names-after (fn-bs-ops-for-dir ops dir) old dir))
+  :rule-classes nil)
+
+; 8.2 What the VIEW reads, from the pending list alone.
+;
+; fn-bs-entry-after joins the closed projections here, for section 5's
+; reason: opened, it recurses on a variable pending list in every branch,
+; and the two sides of every equality below become unrelated alist reads.
+
+(local (in-theory (disable fn-bs-entry-after)))
+
+(local
+ (defthm fn-bs-ops-for-name-is-a-true-list
+   (true-listp (fn-bs-ops-for-name ops dir name))))
+
+(local
+ (defthm fn-bs-ops-for-dir-is-a-true-list
+   (true-listp (fn-bs-ops-for-dir ops dir))))
+
+; The filter's head matches the filter, which is what lets a "there is
+; exactly one operation at this name" hypothesis be USED rather than
+; re-derived at each of the three places it is needed.
+(local
+ (defthm fn-bs-ops-for-name-head-matches
+   (implies (consp (fn-bs-ops-for-name ops dir name))
+            (and (equal (nth 1 (car (fn-bs-ops-for-name ops dir name))) dir)
+                 (equal (nth 2 (car (fn-bs-ops-for-name ops dir name))) name)))))
+
+(local
+ (defthm fn-bs-entry-after-of-nil
+   (equal (fn-bs-entry-after nil old dir name) old)
+   :hints (("Goal" :in-theory (enable fn-bs-entry-after)))))
+
+(local
+ (defthm fn-bs-ops-for-dir-head-matches
+   (implies (consp (fn-bs-ops-for-dir ops dir))
+            (equal (nth 1 (car (fn-bs-ops-for-dir ops dir))) dir))))
+
+; A name no pending operation touches reads its durable value in the VIEW,
+; exactly as fn-bs-crash-keeps-untouched-entry says it does in every crash
+; image.
+(defthm fn-bs-lookup-of-an-untouched-name
+  (implies (and dir name
+                (equal (fn-bs-ops-for-name (fn-bs-pending s) dir name) nil))
+           (equal (fn-bs-lookup s dir name) (fn-bs-durable-entry s dir name)))
+  :hints (("Goal"
+           :use ((:instance fn-bs-entry-after-through-ops-for-name
+                            (ops (fn-bs-pending s))
+                            (old (fn-bs-durable-entry s dir name))))
+           :in-theory (enable fn-bs-lookup fn-bs-view fn-bs-durable-entry))))
+
+; And a name with exactly one pending :set-entry reads that entry's target.
+(defthm fn-bs-lookup-of-a-pending-target
+  (implies (and dir name
+                (consp (fn-bs-ops-for-name (fn-bs-pending s) dir name))
+                (not (consp (cdr (fn-bs-ops-for-name (fn-bs-pending s) dir name))))
+                (equal (car (car (fn-bs-ops-for-name (fn-bs-pending s) dir name)))
+                       :set-entry))
+           (equal (fn-bs-lookup s dir name)
+                  (nth 3 (car (fn-bs-ops-for-name (fn-bs-pending s) dir name)))))
+  :hints (("Goal"
+           :use ((:instance fn-bs-entry-after-through-ops-for-name
+                            (ops (fn-bs-pending s))
+                            (old (fn-bs-durable-entry s dir name))))
+           :in-theory (e/d (fn-bs-lookup fn-bs-view fn-bs-durable-entry
+                            fn-bs-entry-after)
+                           (fn-bs-ops-for-name)))))
+
+; A fenced inode reads the same octets in the view as durably: fn-bs-fencedp
+; is exactly "no pending write names it", and a write to another inode never
+; lands in this one.
+(defthm fn-bs-content-of-a-fenced-inode
+  (implies (fn-bs-fencedp s ino)
+           (equal (fn-bs-content s ino) (fn-bs-durable-content s ino)))
+  :hints (("Goal" :in-theory (enable fn-bs-content fn-bs-view
+                                     fn-bs-durable-content))))
+
+; The view's name list of one directory, as section 2's projection.
+(defthm fn-bs-names-is-names-after-the-pending-list
+  (implies (and dir (fn-bs-dir-tablep (fn-bs-dirs s))
+                (fn-bs-op-listp (fn-bs-pending s)))
+           (equal (fn-bs-names s dir)
+                  (fn-bs-names-after (fn-bs-pending s)
+                                     (fn-bs-durable-names s dir) dir)))
+  :hints (("Goal" :in-theory (enable fn-bs-names fn-bs-view
+                                     fn-bs-durable-names))))
+
+; 8.3 What the relation's shape clause says at each authority name.
+;
+; Three names matter, and the relation bounds the pending operations at each:
+; the config name, which no pending operation ever touches; the frontier
+; name, which at most the one pending :root rename touches; and
+; (fn-bs-txn-name m) for m the size of the DURABLE transaction namespace,
+; which at most the one pending link touches (D14-a).  fn-bs-fencedp joins
+; the closed vocabulary here so the shape clause's fencing conjuncts arrive
+; as the hypothesis fn-bs-crash-keeps-fenced-content wants.
+
+(local (in-theory (disable fn-bs-fencedp)))
+
+(defthm fn-bs-store-relation-implies-the-pending-shape
+  (implies (fn-bs-store-relation bs ks) (fn-bs-pending-shape-okp bs))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-bs-store-relation
+                                   fn-bs-pending-matches-phase
+                                   fn-bs-replay-matches-scan)
+                                  (fn-bs-pending-shape-okp)))))
+
+; The config name is touched by nothing: the one :root operation the shape
+; clause allows is at the frontier name, and the two constants differ.
+(defthm fn-bs-shape-leaves-the-config-name-quiet
+  (implies (fn-bs-pending-shape-okp bs)
+           (equal (fn-bs-ops-for-name (fn-bs-pending bs) :root
+                                      *fn-bs-scan-config-name*)
+                  nil))
+  :hints (("Goal"
+           :use ((:instance fn-bs-ops-for-name-through-ops-for-dir
+                            (ops (fn-bs-pending bs)) (dir :root)
+                            (name *fn-bs-scan-config-name*)))
+           :in-theory (enable fn-bs-pending-shape-okp))))
+
+; At the frontier name and at the pending link's name the two filters
+; COINCIDE: the shape clause bounds each directory's operations by its
+; SPINE, so one operation at the directory is one operation at the name.
+(defthm fn-bs-shape-at-the-frontier-name
+  (implies (fn-bs-pending-shape-okp bs)
+           (equal (fn-bs-ops-for-name (fn-bs-pending bs) :root
+                                      *fn-bs-scan-frontier-name*)
+                  (fn-bs-ops-for-dir (fn-bs-pending bs) :root)))
+  :hints (("Goal"
+           :use ((:instance fn-bs-ops-for-name-through-ops-for-dir
+                            (ops (fn-bs-pending bs)) (dir :root)
+                            (name *fn-bs-scan-frontier-name*)))
+           :in-theory (enable fn-bs-pending-shape-okp))))
+
+(defthm fn-bs-shape-at-the-pending-link-name
+  (implies (fn-bs-pending-shape-okp bs)
+           (equal (fn-bs-ops-for-name
+                   (fn-bs-pending bs) :transactions
+                   (fn-bs-txn-name (len (fn-bs-durable-names bs :transactions))))
+                  (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
+  :hints (("Goal"
+           :use ((:instance fn-bs-ops-for-name-through-ops-for-dir
+                            (ops (fn-bs-pending bs)) (dir :transactions)
+                            (name (fn-bs-txn-name
+                                   (len (fn-bs-durable-names bs :transactions))))))
+           :in-theory (enable fn-bs-pending-shape-okp))))
+
+; And every EARLIER transaction name is quiet, by the injectivity constraint
+; on the name seam.
+(defthm fn-bs-shape-leaves-earlier-transaction-names-quiet
+  (implies (and (fn-bs-pending-shape-okp bs) (natp i)
+                (< i (len (fn-bs-durable-names bs :transactions))))
+           (equal (fn-bs-ops-for-name (fn-bs-pending bs) :transactions
+                                      (fn-bs-txn-name i))
+                  nil))
+  :hints (("Goal"
+           :use ((:instance fn-bs-ops-for-name-through-ops-for-dir
+                            (ops (fn-bs-pending bs)) (dir :transactions)
+                            (name (fn-bs-txn-name i)))
+                 (:instance fn-bs-txn-name-is-injective
+                            (i (len (fn-bs-durable-names bs :transactions)))
+                            (j i)))
+           :in-theory (e/d (fn-bs-pending-shape-okp)
+                           (fn-bs-txn-name-is-injective)))))
+
+; A name outside a directory's namespace reads NIL, and a name inside it
+; does not.
+(local
+ (defthm fn-bs-durable-entry-outside-the-namespace-is-nil
+   (implies (not (member-equal name (fn-bs-durable-names bs dir)))
+            (equal (fn-bs-durable-entry bs dir name) nil))
+   :hints (("Goal" :in-theory (enable fn-bs-durable-entry fn-bs-durable-names)))))
+
+(local
+ (defthm fn-bs-durable-entry-inside-the-namespace-is-not-nil
+   (implies (and (fn-bs-dir-tablep (fn-bs-dirs bs))
+                 (member-equal name (fn-bs-durable-names bs dir)))
+            (not (equal (fn-bs-durable-entry bs dir name) nil)))
+   :hints (("Goal"
+            :use ((:instance fn-bs-entriesp-value-of-a-present-name-is-not-nil
+                             (x (cdr (assoc-equal dir (fn-bs-dirs bs))))))
+            :in-theory (enable fn-bs-durable-entry fn-bs-durable-names)))))
+
+; 8.4 The relation and the scan, each read once.
+;
+; Both of these restate a definition under a hypothesis and neither is a
+; proof event; they are named for what they are (docs/proof-style.md, and
+; the assurance rule "cite keystones, never corollaries").  They exist so
+; that the clause proofs below cite one fact each instead of opening a
+; whole-state recognizer, which is the most expensive mistake available in
+; this cluster.
+
+(defthm fn-bs-store-relation-unfolds
+  (implies (fn-bs-store-relation bs ks)
+           (and (fn-bs-statep bs)
+                (fn-sf-statep ks)
+                (fn-bs-inop (fn-bs-durable-entry bs :root *fn-bs-scan-config-name*))
+                (fn-bs-config-okp
+                 (fn-bs-durable-content
+                  bs (fn-bs-durable-entry bs :root *fn-bs-scan-config-name*)))
+                (fn-bs-inop (fn-bs-durable-entry bs :root *fn-bs-scan-frontier-name*))
+                (equal (fn-bs-durable-names bs :transactions)
+                       (fn-bs-txn-names
+                        (len (fn-bs-durable-names bs :transactions))))
+                (not (equal (fn-bs-durable-records bs) :fault))
+                (fn-bs-authority-fencedp bs)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-bs-store-relation fn-bs-contiguous-namesp)
+                                  (fn-bs-statep fn-sf-statep
+                                   fn-bs-authority-fencedp
+                                   fn-bs-durable-records
+                                   fn-bs-replay-matches-scan
+                                   fn-bs-pending-matches-phase
+                                   fn-sf-crash-imagep)))))
+
+(defthm fn-bs-scan-okp-unfolds
+  (implies (fn-bs-scan-okp (fn-bs-scan-store s))
+           (and (fn-bs-inop (fn-bs-lookup s :root *fn-bs-scan-config-name*))
+                (fn-bs-inop (fn-bs-lookup s :root *fn-bs-scan-frontier-name*))
+                (natp (fn-bs-frontier-decode
+                       (fn-bs-content s (fn-bs-lookup s :root
+                                                      *fn-bs-scan-frontier-name*))))
+                (equal (fn-bs-names s :transactions)
+                       (fn-bs-txn-names (len (fn-bs-names s :transactions))))
+                (not (equal (fn-bs-read-records s 0 (len (fn-bs-names s :transactions)))
+                            :fault))
+                (equal (fn-bs-scan-frontier (fn-bs-scan-store s))
+                       (fn-bs-frontier-decode
+                        (fn-bs-content s (fn-bs-lookup s :root
+                                                       *fn-bs-scan-frontier-name*))))
+                (equal (fn-bs-scan-records (fn-bs-scan-store s))
+                       (fn-bs-read-records s 0 (len (fn-bs-names s :transactions))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-bs-scan-store fn-bs-contiguous-namesp))))
+
+; The relation's authority clause, at the three inode positions the scan
+; reads.  fn-bs-all-fencedp distributes over the append that builds the
+; list, so each is one membership away.
+(defthm fn-bs-store-relation-fences-the-root-inodes
+  (implies (fn-bs-store-relation bs ks)
+           (and (fn-bs-fencedp bs (fn-bs-durable-entry bs :root
+                                                       *fn-bs-scan-config-name*))
+                (fn-bs-fencedp bs (fn-bs-durable-entry bs :root
+                                                       *fn-bs-scan-frontier-name*))))
+  :rule-classes nil
+  :hints (("Goal" :use (fn-bs-store-relation-unfolds)
+           :in-theory (e/d (fn-bs-authority-fencedp fn-bs-authority-inode-list)
+                           (fn-bs-store-relation)))))
+
+(defthm fn-bs-store-relation-fences-the-transaction-inodes
+  (implies (and (fn-bs-store-relation bs ks)
+                (member-equal name (fn-bs-durable-names bs :transactions)))
+           (fn-bs-fencedp bs (fn-bs-durable-entry bs :transactions name)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-unfolds
+                 (:instance fn-bs-all-fencedp-member
+                            (inos (strip-cdrs
+                                   (cdr (assoc-equal :transactions (fn-bs-dirs bs)))))
+                            (ino (fn-bs-durable-entry bs :transactions name)))
+                 (:instance fn-bs-assoc-value-is-in-strip-cdrs
+                            (k name)
+                            (alist (cdr (assoc-equal :transactions (fn-bs-dirs bs)))))
+                 (:instance fn-bs-assoc-of-name-in-entries
+                            (alist (cdr (assoc-equal :transactions (fn-bs-dirs bs))))))
+           :in-theory (e/d (fn-bs-authority-fencedp fn-bs-authority-inode-list
+                            fn-bs-durable-entry fn-bs-durable-names)
+                           (fn-bs-store-relation fn-bs-all-fencedp-member
+                            fn-bs-assoc-value-is-in-strip-cdrs
+                            fn-bs-assoc-of-name-in-entries)))))
+
+; The two crash facts of section 5, restated over fn-bs-ops-for-name of the
+; whole pending list -- which is the form section 8.3 delivers.
+(defthm fn-bs-crash-keeps-a-quiet-name
+  (implies (and (fn-bs-dir-idp dir) (fn-bs-namep name)
+                (fn-bs-crash-imagep s image)
+                (equal (fn-bs-ops-for-name (fn-bs-pending s) dir name) nil))
+           (equal (fn-bs-durable-entry image dir name)
+                  (fn-bs-durable-entry s dir name)))
+  :hints (("Goal"
+           :use ((:instance fn-bs-crash-keeps-untouched-entry)
+                 (:instance fn-bs-ops-for-name-through-ops-for-dir
+                            (ops (fn-bs-pending s))))
+           :in-theory (disable fn-bs-crash-keeps-untouched-entry))))
+
+(defthm fn-bs-crash-entry-is-the-durable-one-or-the-pending-target
+  (implies (and (fn-bs-dir-idp dir) (fn-bs-namep name)
+                (fn-bs-crash-imagep s image)
+                (consp (fn-bs-ops-for-name (fn-bs-pending s) dir name))
+                (not (consp (cdr (fn-bs-ops-for-name (fn-bs-pending s) dir name))))
+                (equal (car (car (fn-bs-ops-for-name (fn-bs-pending s) dir name)))
+                       :set-entry))
+           (or (equal (fn-bs-durable-entry image dir name)
+                      (fn-bs-durable-entry s dir name))
+               (equal (fn-bs-durable-entry image dir name)
+                      (nth 3 (car (fn-bs-ops-for-name (fn-bs-pending s) dir name))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-bs-crash-entry-is-old-or-a-pending-target))
+           :in-theory (disable fn-bs-crash-entry-is-old-or-a-pending-target))))
+
+; What the kernel says about the two candidate values, which is what makes
+; the frontier decode a natural and the pending link's record a record.
+(defthm fn-bs-kernel-candidates-are-typed
+  (implies (fn-sf-statep ks)
+           (and (natp (fn-sf-frontier ks))
+                (implies (fn-sf-frontier-new-visiblep ks)
+                         (natp (fn-sf-frontier-candidate ks)))
+                (implies (fn-sf-record-present-visiblep ks)
+                         (and (fn-record-p (fn-sf-record-candidate ks))
+                              (equal (fn-record-sequence (fn-sf-record-candidate ks))
+                                     (len (fn-sf-records ks)))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-sf-statep fn-sf-phase-shapep
+                                     fn-sf-record-phasep fn-sf-frontier-phasep
+                                     fn-sf-completion-phasep
+                                     fn-sf-record-present-visiblep
+                                     fn-sf-frontier-new-visiblep
+                                     fn-sf-candidatep))))
+
+; 8.5 Clause 1: the config entry and its content.
+;
+; No pending operation names the config file at all -- the host writes it
+; once, at initialize -- so the crash image reads the durable inode and, the
+; inode being an authority inode and therefore fenced, the durable octets.
+; fn-bs-config-okp is a function of those octets and nothing else.
+(defthm fn-bs-crash-image-reads-the-config
+  (implies (and (fn-bs-store-relation bs ks) (fn-bs-crash-imagep bs image))
+           (and (equal (fn-bs-lookup image :root *fn-bs-scan-config-name*)
+                       (fn-bs-durable-entry bs :root *fn-bs-scan-config-name*))
+                (equal (fn-bs-content image
+                                      (fn-bs-lookup image :root
+                                                    *fn-bs-scan-config-name*))
+                       (fn-bs-durable-content
+                        bs (fn-bs-durable-entry bs :root
+                                                *fn-bs-scan-config-name*)))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-store-relation-fences-the-root-inodes
+                 fn-bs-store-relation-implies-the-pending-shape
+                 (:instance fn-bs-shape-leaves-the-config-name-quiet))
+           :in-theory (e/d (fn-bs-inop fn-bs-dir-idp fn-bs-namep)
+                           (fn-bs-store-relation fn-bs-pending-shape-okp
+                            fn-bs-statep)))))
+
+; 8.6 Clause 2: the frontier entry, and that it decodes to a natural.
+;
+; The frontier name is the ONE authority name a pending :root operation may
+; sit at (the os.replace of advance_frontier, tools/run_store.py:1305), so a
+; crash image reads either the durable inode or the rename's target -- and
+; both are fenced authority inodes, so each reads its own durable octets.
+(defthm fn-bs-crash-image-reads-a-frontier-inode
+  (implies (and (fn-bs-store-relation bs ks) (fn-bs-crash-imagep bs image))
+           (fn-bs-inop (fn-bs-lookup image :root *fn-bs-scan-frontier-name*)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-unfolds
+                 fn-bs-store-relation-implies-the-pending-shape
+                 (:instance fn-bs-shape-at-the-frontier-name)
+                 (:instance fn-bs-crash-entry-is-the-durable-one-or-the-pending-target
+                            (s bs) (dir :root) (name *fn-bs-scan-frontier-name*)))
+           :in-theory (e/d (fn-bs-pending-shape-okp fn-bs-inop fn-bs-dir-idp
+                            fn-bs-namep)
+                           (fn-bs-store-relation fn-bs-statep)))))
+
+
+; The relation's window clause, read once.  Below this point
+; fn-bs-store-relation is never opened again: each clause cites this and
+; enables at most the one window it is about, which is what keeps a
+; whole-state recognizer out of every goal that follows.
+(defthm fn-bs-store-relation-window-unfolds
+  (implies (fn-bs-store-relation bs ks)
+           (if (fn-bs-replay-visiblep ks)
+               (fn-bs-replay-matches-scan bs ks)
+             (and (fn-sf-crash-imagep ks (fn-bs-durable-frontier bs)
+                                      (fn-bs-durable-records bs))
+                  (fn-bs-pending-matches-phase bs ks))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-bs-store-relation)
+                                  (fn-bs-statep fn-sf-statep
+                                   fn-bs-durable-records fn-bs-durable-frontier
+                                   fn-bs-authority-fencedp
+                                   fn-bs-replay-matches-scan
+                                   fn-bs-pending-matches-phase
+                                   fn-bs-replay-visiblep
+                                   fn-bs-contiguous-namesp fn-bs-txn-names
+                                   fn-sf-crash-imagep)))))
+
+(defthm fn-bs-replay-matches-scan-unfolds
+  (implies (fn-bs-replay-matches-scan bs ks)
+           (and (fn-bs-pending-shape-okp bs)
+                (fn-bs-scan-okp (fn-bs-scan-store bs))
+                (equal (fn-sf-frontier ks)
+                       (fn-bs-scan-frontier (fn-bs-scan-store bs)))
+                (equal (fn-sf-records ks)
+                       (fn-bs-scan-records (fn-bs-scan-store bs)))
+                (implies (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
+                         (and (not (consp (fn-bs-ops-for-dir (fn-bs-pending bs)
+                                                             :transactions)))
+                              (fn-sf-frontier-rollback-visiblep ks)
+                              (equal (fn-bs-durable-frontier bs)
+                                     (1- (fn-sf-frontier ks)))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-bs-replay-matches-scan)
+                                  (fn-bs-pending-shape-okp fn-bs-scan-store
+                                   fn-bs-scan-okp fn-bs-scan-frontier
+                                   fn-bs-scan-records fn-bs-durable-frontier
+                                   fn-sf-frontier-rollback-visiblep)))))
+
+(defthm fn-bs-pending-matches-phase-unfolds
+  (implies (fn-bs-pending-matches-phase bs ks)
+           (and (fn-bs-pending-shape-okp bs)
+                (implies (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
+                         (and (fn-sf-frontier-new-visiblep ks)
+                              (equal (fn-bs-frontier-decode
+                                      (fn-bs-durable-content
+                                       bs (nth 3 (car (fn-bs-ops-for-dir
+                                                       (fn-bs-pending bs) :root)))))
+                                     (fn-sf-frontier-candidate ks))))
+                (implies (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))
+                         (and (fn-sf-record-present-visiblep ks)
+                              (equal (fn-bs-durable-records bs) (fn-sf-records ks))
+                              (equal (fn-bs-record-of
+                                      (fn-bs-durable bs)
+                                      (nth 3 (car (fn-bs-ops-for-dir
+                                                   (fn-bs-pending bs) :transactions))))
+                                     (fn-sf-record-candidate ks))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-bs-pending-matches-phase)
+                                  (fn-bs-pending-shape-okp fn-bs-durable-records
+                                   fn-bs-record-of fn-bs-durable
+                                   fn-sf-frontier-new-visiblep
+                                   fn-sf-record-present-visiblep)))))
+
+; What the RUNNING process's frontier file holds: the rename's target while
+; one is pending, the durable inode otherwise.  Both are fenced -- the
+; target by the shape clause, the durable inode by the authority clause --
+; so in both cases the view reads durable octets, which is what lets the
+; recovery window's scan hypothesis speak about a durable value.
+(defthm fn-bs-store-relation-view-frontier-content
+  (implies (fn-bs-store-relation bs ks)
+           (equal (fn-bs-content bs (fn-bs-lookup bs :root
+                                                  *fn-bs-scan-frontier-name*))
+                  (if (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
+                      (fn-bs-durable-content
+                       bs (nth 3 (car (fn-bs-ops-for-dir (fn-bs-pending bs) :root))))
+                    (fn-bs-durable-content
+                     bs (fn-bs-durable-entry bs :root
+                                             *fn-bs-scan-frontier-name*)))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-fences-the-root-inodes
+                 fn-bs-store-relation-implies-the-pending-shape
+                 (:instance fn-bs-shape-at-the-frontier-name)
+                 (:instance fn-bs-lookup-of-an-untouched-name
+                            (s bs) (dir :root) (name *fn-bs-scan-frontier-name*))
+                 (:instance fn-bs-lookup-of-a-pending-target
+                            (s bs) (dir :root) (name *fn-bs-scan-frontier-name*)))
+           :in-theory (e/d (fn-bs-pending-shape-okp fn-bs-dir-idp fn-bs-namep)
+                           (fn-bs-store-relation fn-bs-statep
+                            fn-bs-txn-names
+                            fn-bs-shape-at-the-frontier-name
+                            fn-bs-shape-leaves-the-config-name-quiet
+                            fn-bs-shape-at-the-pending-link-name
+                            fn-bs-shape-leaves-earlier-transaction-names-quiet
+                            fn-bs-lookup-of-an-untouched-name
+                            fn-bs-lookup-of-a-pending-target)))))
+
+; Both values the frontier file may hold after a crash decode to naturals,
+; which is the scan's second test.  Four cases, one per window and per
+; "is a rename pending", each citing one window and nothing else.
+
+; Publish window, durable value: the kernel admits the image the durable
+; half already is, and an admissible image's frontier is a uint32.
+(defthm fn-bs-publish-window-durable-frontier-is-a-natural
+  (implies (and (fn-bs-store-relation bs ks) (not (fn-bs-replay-visiblep ks)))
+           (natp (fn-bs-durable-frontier bs)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-window-unfolds
+                 (:instance fn-sf-admissible-image-facts
+                            (s ks) (frontier (fn-bs-durable-frontier bs))
+                            (records (fn-bs-durable-records bs)) (pair nil)))
+           :in-theory (e/d (fn-record-uint32p)
+                           (fn-bs-store-relation fn-bs-statep fn-sf-statep
+                            fn-bs-durable-frontier fn-bs-durable-records
+                            fn-bs-replay-matches-scan fn-bs-pending-matches-phase
+                            fn-sf-crash-imagep fn-sf-admissible-image-facts
+                            fn-sf-record-listp fn-sf-record-has-pairp)))))
+
+; Publish window, the rename's target: fn-bs-pending-matches-phase says it
+; holds the kernel's frontier candidate, which fn-sf-phase-shapep types.
+(defthm fn-bs-publish-window-pending-frontier-is-a-natural
+  (implies (and (fn-bs-store-relation bs ks) (not (fn-bs-replay-visiblep ks))
+                (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :root)))
+           (natp (fn-bs-frontier-decode
+                  (fn-bs-durable-content
+                   bs (nth 3 (car (fn-bs-ops-for-dir (fn-bs-pending bs) :root)))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-window-unfolds
+                 fn-bs-store-relation-unfolds
+                 fn-bs-pending-matches-phase-unfolds
+                 fn-bs-kernel-candidates-are-typed)
+           :in-theory (disable fn-bs-store-relation fn-bs-statep fn-sf-statep
+                               fn-bs-txn-names fn-bs-durable-records
+                               fn-bs-authority-fencedp fn-bs-durable-frontier
+                               fn-bs-replay-matches-scan
+                               fn-bs-pending-matches-phase
+                               fn-sf-crash-imagep
+                               fn-sf-frontier-new-visiblep))))
+
+; Recovery window: THIS process's scan of the view succeeded, and the view's
+; frontier file is whichever inode is live -- so the live value is a natural
+; outright.  Under a pending rename the durable value is the scanned one
+; minus one (advance_frontier writes old+1, tools/run_store.py:1281), a
+; natural because K2f's gate carries (posp (fn-sf-frontier ks)).
+(defthm fn-bs-recovery-window-frontier-values-are-naturals
+  (implies (and (fn-bs-store-relation bs ks) (fn-bs-replay-visiblep ks))
+           (and (natp (fn-bs-durable-frontier bs))
+                (implies (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
+                         (natp (fn-bs-frontier-decode
+                                (fn-bs-durable-content
+                                 bs (nth 3 (car (fn-bs-ops-for-dir
+                                                 (fn-bs-pending bs) :root)))))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-store-relation-window-unfolds
+                 fn-bs-replay-matches-scan-unfolds
+                 fn-bs-store-relation-view-frontier-content
+                 (:instance fn-bs-scan-okp-unfolds (s bs))
+                 (:instance fn-sf-frontier-rollback-visiblep-unfolds (s ks)))
+           :in-theory (e/d (fn-bs-durable-frontier)
+                           (fn-bs-store-relation fn-bs-statep fn-sf-statep
+                            fn-bs-txn-names fn-bs-durable-records
+                            fn-bs-authority-fencedp
+                            fn-bs-replay-matches-scan
+                            fn-bs-pending-matches-phase
+                            fn-bs-scan-store fn-bs-scan-okp
+                            fn-bs-scan-frontier fn-bs-scan-records
+                            fn-sf-crash-imagep
+                            fn-sf-frontier-rollback-visiblep
+                            fn-sf-frontier-rollback-visiblep-unfolds)))))
+
+; The two together, which is what clause 2 cites.
+(defthm fn-bs-store-relation-frontier-values-are-naturals
+  (implies (fn-bs-store-relation bs ks)
+           (and (natp (fn-bs-durable-frontier bs))
+                (implies (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
+                         (natp (fn-bs-frontier-decode
+                                (fn-bs-durable-content
+                                 bs (nth 3 (car (fn-bs-ops-for-dir
+                                                 (fn-bs-pending bs) :root)))))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-bs-publish-window-durable-frontier-is-a-natural
+                 fn-bs-publish-window-pending-frontier-is-a-natural
+                 fn-bs-recovery-window-frontier-values-are-naturals)
+           :in-theory (disable fn-bs-store-relation fn-bs-statep
+                               fn-bs-durable-frontier fn-bs-replay-visiblep))))
