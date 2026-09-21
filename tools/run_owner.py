@@ -316,6 +316,15 @@ class Acl2Owner(Acl2Store):
         return self._nat("(fn-owner-feed-queue-length '{} state)".format(
             self.literal(peer.encode("utf-8"))))
 
+    def feed_has_queued(self, peer):
+        """Is there an entry the feed could OFFER: `fn-feed-head-queued`.
+
+        Not the queue length: an entry in flight is in the queue, and
+        dialling for one the feed cannot offer is what filled a peer's
+        connection table after a lost reply."""
+        return acl2_boolean(self.call("(fn-owner-feed-has-queued '{} state)".format(
+            self.literal(peer.encode("utf-8")))))
+
     def feed_backoff_ms(self, peer):
         """The peer record's outbound backoff, which ACL2 reads, not Python."""
         return self._nat("(fn-owner-feed-backoff-ms '{} state)".format(
@@ -918,7 +927,7 @@ class Owner:
             try:
                 if feed.session is None:
                     if (now >= feed.next_dial
-                            and self.bridge.feed_queue_length(feed.peer) > 0):
+                            and self.bridge.feed_has_queued(feed.peer)):
                         if not self.feed_dial(feed):
                             feed.next_dial = now + self.bridge.feed_backoff_ms(
                                 feed.peer)

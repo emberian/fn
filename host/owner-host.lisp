@@ -669,6 +669,32 @@
                (fn-cfg-peer-backoff record)
              0))))
 
+; Is there an entry this feed could OFFER if it had a connection: a
+; `:queued` one, which is what `fn-feed-selection` picks.  Queue length is
+; not that question -- an entry in flight is in the queue -- and answering
+; the wrong one is what made a peer that lost a reply a denial of service:
+; the entry stayed `:sent`, the host re-dialled on queue length alone every
+; few seconds, each dial took a connection on the peer that the peer did not
+; release, and the peer reached its `--max-connections` bound and began
+; refusing EVERY client at accept.  Measured on two-node gate `a5c6792`:
+; seven tap sessions, `MODE STREAM` and nothing else in each, and node B
+; closing the harness's reader probes for the next 90 s.
+;
+; This does not resolve the in-flight entry -- only a restart does today,
+; and the packet that fixes it is in the lane handoff.  It stops the host
+; opening a socket it has nothing to send on.
+(defun fn-owner-feed-has-queued (peer-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((peer (fn-store-octets->string peer-octets)))
+    (if (equal peer :bad)
+        (value nil)
+      (value (if (fn-feed-head-queued
+                  (fn-feed-queue
+                   (fn-own-feed-find peer (fn-own-feeds
+                                           (f-get-global 'fn-owner state)))))
+                 t
+               nil)))))
+
 (defun fn-owner-feed-queue-length (peer-octets state)
   (declare (xargs :stobjs state :mode :program))
   (let ((peer (fn-store-octets->string peer-octets)))
