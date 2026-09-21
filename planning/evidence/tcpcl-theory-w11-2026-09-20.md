@@ -123,10 +123,17 @@ box; persvati `run-20260920T234237Z-8081` (`--jobs 4`, 1800 s cap, remote
 root `/home/ember/fn-lanes/w11-tcpcl-theory`) certified seven of its nine
 roots in its first two minutes — `store-observed-traces`, `bp-ingress`,
 `bp-receipt`, `bp-receipt-records`, `bp-workflow-records`, `tcpcl-session`,
-`bp-bundle` — and then spent the rest on `books/bp-bundle-invariants`, still
-running at 27:48 with its ACL2 child at 99.9% CPU when this lane closed, so
-computing rather than queued behind another lane's slot (persvati carried
-twelve ACL2 processes at the time, three of them idle for 18 hours).
-`books/bp-node` never started. The seven passing pairs are in persvati's
+`bp-bundle` — and then spent the rest on `books/bp-bundle-invariants`, cut
+at **1800.3 s** at `fn-bpb-decode-block-is-canonical-by-construction`
+(`Subgoal 51.18.18.19.12.8.10`), after which `books/bp-node` failed with "no
+certificate" and the run exited 1. Its ACL2 child was at 99.9% CPU
+throughout, so it was computing rather than queued behind another lane's
+slot, though persvati carried twelve ACL2 processes at the time, three of
+them idle for 18 hours. Per-root wall seconds from that manifest:
+`store-observed-traces` 0.9, `bp-workflow-records` 0.8, `bp-receipt` 1.8,
+`bp-receipt-records` 1.9, `bp-ingress` 1.9, `bp-bundle` 11.5,
+`tcpcl-session` **103.0** (against 62.76 s on hbox — the two boxes are not
+interchangeable for a timing), `bp-bundle-invariants` 1800.3, `bp-node` 0.0.
+The seven passing pairs are in persvati's
 cache for the next lane, which is what `--closure` runs leave behind whether
 or not they finish.

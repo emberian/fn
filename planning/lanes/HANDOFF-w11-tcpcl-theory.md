@@ -231,11 +231,14 @@ closure certified on a box. persvati `run-20260920T234237Z-8081`
 seven of its nine roots in the first two minutes — `store-observed-traces`,
 `bp-ingress`, `bp-receipt`, `bp-receipt-records`, `bp-workflow-records`,
 `tcpcl-session`, `bp-bundle` — and then spent the rest of its budget on
-`books/bp-bundle-invariants`, which was still going at 27:48 with its ACL2
-child at 99.9% CPU when this lane closed, so it was computing and not queued
-behind another lane's slot. `books/bp-node` never started. hbox was the
-wrong box for this: it lacked 23 of the closure's 60 books where persvati
-lacked 9. Nothing above
+`books/bp-bundle-invariants`, which was **cut at 1800.3 s** at
+`fn-bpb-decode-block-is-canonical-by-construction`, `Subgoal
+51.18.18.19.12.8.10`; `books/bp-node` then failed with "no certificate" and
+the run exited 1. Its ACL2 child was at 99.9% CPU throughout, so it was
+computing and not queued behind another lane's slot. That book is not this
+lane's and the finding is on the board for the BP cluster, with the profile
+to run on it. hbox was the wrong box for this closure: it lacked 23 of its
+60 books where persvati lacked 9. Nothing above
 depends on it: the direct measurement is of the certified book itself, and
 the lab run is of a cheap-guard image. The remaining claim it would settle is
 end-to-end throughput on this exact tree, which no number in this record
