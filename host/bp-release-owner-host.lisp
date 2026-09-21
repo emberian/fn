@@ -14,7 +14,7 @@
                (state (f-put-global 'fn-workflow-recovered
                                     (fn-bp-work-ids
                                      (fn-bp-state-works workflow)) state)))
-      (value :ready))))
+      (value :ready)))))
 
 (defun fn-owner-workflow-reset (state)
  (declare (xargs :stobjs state :mode :program))
