@@ -845,12 +845,15 @@
 ; re-read, so `fn-peer-session-cfg' is still the value `fn-own-open-peer'
 ; took at `:open'.  The transfer decision does read the live configuration,
 ; because the host passes it (host/owner-host.lisp `fn-owner-transit-decide').
-; A reader connection is returned unchanged.
+; An ordinary reader connection is returned unchanged.  A contextual reader
+; (one with a pinned peer configuration but no peer name yet) is refreshed as
+; well: AUTHINFO may promote it and dispatch a following CHECK from the same
+; socket read, before fn-own-read has another opportunity to refresh it.
 (defun fn-own-conn-live-session (o conn)
   (declare (xargs :guard t))
   (let* ((as (fn-own-conn-session conn))
          (ps (fn-auth-session-base as)))
-    (if (fn-peer-session-peer ps)
+    (if (fn-peer-session-cfg ps)
         (fn-auth-with-base as (fn-peer-with-node ps (fn-sn-node (fn-own-store o))))
       as)))
 

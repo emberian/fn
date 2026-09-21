@@ -584,8 +584,8 @@
                                   (fn-peer-sessionp fn-auth-configp
                                    fn-nntp-printable-tokenp fn-prin-idp))))))
 
-(defthm fn-own-conn-live-session-of-a-reader-is-the-session
-  (implies (not (fn-peer-session-peer
+(defthm fn-own-conn-live-session-of-an-unconfigured-reader-is-the-session
+  (implies (not (fn-peer-session-cfg
                  (fn-auth-session-base (fn-own-conn-session conn))))
            (equal (fn-own-conn-live-session o conn) (fn-own-conn-session conn)))
   :hints (("Goal" :in-theory (enable (:d fn-own-conn-live-session)))))

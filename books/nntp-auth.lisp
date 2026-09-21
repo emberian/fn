@@ -464,7 +464,7 @@
   (declare (xargs :guard t))
   (let* ((ps (fn-auth-session-base as))
          (cfg (fn-peer-session-cfg ps))
-         (hex (coerce (fn-id-hex-octets principal) 'string))
+         (hex (fn-digest-hex principal))
          (rows (and (fn-cfgp cfg) (fn-cfg-peers (fn-cfg-value cfg))))
          (count (fn-auth-principal-peer-count hex rows))
          (peer (and (equal count 1) (fn-auth-principal-peer-name hex rows))))
