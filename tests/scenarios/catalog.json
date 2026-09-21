@@ -6,7 +6,7 @@
       "id": "SCN-001",
       "title": "Letter through two relays and carried media",
       "milestone": "M4",
-      "status": "in-progress",
+      "status": "specified",
       "requirements": [
         "OBJ-003",
         "OBJ-005",

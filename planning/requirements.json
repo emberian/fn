@@ -7,7 +7,7 @@
       "title": "Immutable content and explicit digest conflicts",
       "specification": "specs/objects.md#logical-records",
       "milestone": "M1",
-      "status": "in-progress",
+      "status": "specified",
       "proof_targets": [
         "PRF-001",
         "PRF-003"
@@ -21,7 +21,7 @@
         "tests/evidence/2026-09-18-integrated.json"
       ],
       "implementation_note": "Logical payload bindings are immutable; real digest binding/collision handling remains open.",
-      "note": "The immutability half is covered by OBJ-002's keystones; the digest half is not implemented at all -- no content digest is derived, bound or compared anywhere in the books, so there is no explicit digest conflict to certify. Stays specified until a digest exists."
+      "note": "The immutable payload binding has scoped keystones under OBJ-002. SHA-256 and content-identity derivation now exist in executable ACL2; their existence does not establish complete conflict handling across native signatures, projections, transit and recovery. This requirement remains specified pending that composed evidence."
     },
     {
       "id": "OBJ-002",
