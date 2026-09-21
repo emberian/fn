@@ -11,6 +11,15 @@ service or v0 milestone is complete. See [current work](now.md),
 [assignments](swarm-cycles.md), and the
 [consolidation audit](duplication-audit-2026-09-21.md).
 
+The W18 live-store prepare packet now gives the actual native store wrapper a
+certified projection of `fn-sn-prepare`: successful observed open establishes
+the store/node relation, every modeled post-open store mutator preserves it,
+and exact equality under that relation removes the repeated appended-history
+replay from prepare. A saved-image 50/400-record probe and current-main join
+certification are recorded in
+[the W18 evidence](evidence/store-prepare-correspondence-w18-2026-09-21.md).
+Native owner adoption and complete physical correspondence remain open.
+
 The following dated landing notes preserve their original evidence and gaps;
 their phrases “current task” and “nearest gaps” refer to those earlier batches.
 
