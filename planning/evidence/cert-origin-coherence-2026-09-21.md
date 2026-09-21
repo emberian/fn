@@ -148,3 +148,8 @@ After that tightening, the same contained focused command ran 98 tests in
 14.371 seconds: all 98 passed.  A contained `describe` probe of the Homebrew
 launcher exited 2 and identified the exact `${SBCL_USER_ARGS}` line as the
 unqualified expansion, without executing it.
+
+The final conservative literal check also refuses tilde, brace and glob syntax
+in assignments and executable/core paths, since quote information is no longer
+available after tokenization.  Its contained parser suite ran 7 tests in 0.011
+seconds, all passing.
