@@ -132,6 +132,21 @@ class NativeBpReceiveIntegrityTests(unittest.TestCase):
             len(list((self.journal / "receive-evidence").glob("*.wire"))), 1
         )
 
+        # Reopen barriers and ACL2 recovery consume the visible wire-only
+        # identity.  The next process must not reuse or replace it.
+        restarted, restarted_port = self.spawn_receive("after-restart", once="1")
+        after_restart = b"new transfer after authoritative recovery"
+        sent = self.send(restarted_port, after_restart, "after-restart-input")
+        restarted.wait(timeout=20)
+        self.assertEqual(sent.returncode, 0, sent.stdout + sent.stderr)
+        self.assertIn(restarted.returncode, (0, 1))
+        wires = self.wait_for_wire_count(2)
+        self.assertEqual(
+            [path.name for path in wires],
+            ["00000000000000000000.wire", "00000000000000000001.wire"],
+        )
+        self.assertEqual({path.read_bytes() for path in wires}, {first, after_restart})
+
 
 if __name__ == "__main__":
     unittest.main()
