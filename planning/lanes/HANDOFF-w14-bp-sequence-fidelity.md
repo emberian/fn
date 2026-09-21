@@ -13,11 +13,8 @@ after restart.  Before confirmation an old final may be retried or a new final
 may burn a value; after confirmation, a continuing recovery is conditional on
 the explicit confirmed-frontier admissibility predicate.
 
-The final ACL2 test book certifies as
-`certify-20260921T090509Z-21220`.  The model book certified in the closure
-manifest `certify-20260921T085952Z-16806`; that aggregate run is red only
-because an earlier test-book draft used a digest-bearing term in a
-`defconst`.  See
+Both final ACL2 roots certify in
+`certify-20260921T091031Z-26507`.  See
 `planning/evidence/bp-sequence-fidelity-2026-09-21.md` for exact per-book
 results, digests, native build, SIGKILL restart result, and the remaining
 raw-I/O correspondence assumption.

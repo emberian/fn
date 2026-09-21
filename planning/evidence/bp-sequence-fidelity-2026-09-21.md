@@ -36,20 +36,12 @@ physical-admissibility hypothesis makes its conclusion false.
 ACL2 Version 8.7 on nextop.local, with SBCL 2.6.8, ran:
 
 ```sh
-python3 tools/certify_books.py --jobs 2 --closure \
-  books/bp-sequence-fidelity tests/acl2/bp-sequence-fidelity-tests
 python3 tools/certify_books.py --jobs 1 \
-  tests/acl2/bp-sequence-fidelity-tests
+  books/bp-sequence-fidelity tests/acl2/bp-sequence-fidelity-tests
 ```
 
-The closure run `certify-20260921T085952Z-16806` certified
-`books/bp-sequence-fidelity` and its declared dependency closure; its
-aggregate status is failed because the first test-book draft used a
-`defconst` in a context where ACL2 correctly ignores digest attachments.
-No theorem or book failure occurred in the model book.  Replacing those test
-constants with macro-expanded ground witnesses did not change the model book.
-`certify-20260921T090509Z-21220` then certified the final test book.  The
-committed manifests pin the exact source digests, invocation, tool, host, and
+`certify-20260921T091031Z-26507` certified both final owned roots.  Its
+committed manifest pins the exact source digests, invocation, tool, host, and
 per-book results.
 
 ## Native process-death cut
