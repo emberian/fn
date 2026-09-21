@@ -138,7 +138,10 @@ incomplete normalization contract, not a host twin.
 
 Repair: apply the same path bound to supplied and generated values. Test the
 maximum store path with derived defaults and with shorter explicit overrides.
-The native configuration lane owns this repair before its packet lands.
+The correction is integrated through `c322da5`: both supplied and derived
+paths receive the same bound, and line count is checked before parsing. The
+[component handoff](lanes/HANDOFF-w14-native-config.md) records certification
+and the boundary cases. Native owner/config wiring remains separate.
 
 ## Landed consolidation and its limits
 
