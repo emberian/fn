@@ -4,6 +4,11 @@
 Example:
   python3 tools/run_command.py --timeout 120 -- python3 -m unittest tests.test_feed -v
 
+The child receives /dev/null on stdin. For a tool that reads a saved driver,
+open that file inside the child (for example, `sh -c 'exec acl2 < driver.lsp'`),
+not by redirecting into this supervisor. Require the driver's success marker;
+an interpreter that reads no commands can exit successfully without doing work.
+
 Timeout, TERM, and INT stop the child shell and descendants in its inherited
 process group.  This cannot clean descendants that intentionally call setsid
 or otherwise escape that group, and SIGKILL of this supervisor prevents its
