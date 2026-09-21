@@ -24,6 +24,21 @@
 ; (CHANGE bundle-identity on the board); this book proves the theorems about
 ; it, so it opens it here and nowhere else.
 (local (in-theory (enable fn-bpp-identity-vocabulary)))
+; The block projections are withdrawn at the end of `books/bp-primary.lisp`
+; too (`fn-bpp-projection-vocabulary`, w11/bp-node).  THIS book is the one
+; place where they have to be open: it proves the two directions of the
+; codec, and both directions take a block apart field by field and rebuild
+; it, so a goal there mixes `(fn-bpp-flags b)` with `(nth 8 b)` and the
+; elementwise comparison then leaves `(equal (fn-bpp-flags b) (nth 1 b))`
+; with nothing to close it.  Measured 2026-09-21: with the projections
+; closed and this line absent, `fn-bpp-value-block-of-block-value` fails at
+; `Subgoal 106.104.53` on exactly that literal.
+;
+; Opening them here costs the books above nothing.  ACL2 stores a theorem as
+; it is written, so every statement this book EXPORTS is still in projection
+; vocabulary, and `books/bp-bundle`, `books/bp-node` and the rest see the
+; projections closed -- which is the whole point of the withdrawal.
+(local (in-theory (enable fn-bpp-projection-vocabulary)))
 
 ; -----------------------------------------------------------------------------
 ; Endpoint IDs
