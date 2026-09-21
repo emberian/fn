@@ -130,6 +130,18 @@
  (equal (fn-native-auth-admin-public-report (list (fn-naa-test-cred-a)))
         (fn-native-auth-admin-public-report (list (fn-naa-test-cred-b)))))
 
+; The native writer retains the existing canonical writer's lexical table
+; order even when the observed input file used another valid order.
+(defconst *fn-naa-test-later-name* (fn-record-string-octets "z-reader"))
+(defmacro fn-naa-test-later-cred ()
+  '(fn-auth-make-cred *fn-naa-test-later-name* *fn-naa-test-principal*
+                      (fn-authsec-enrol *fn-naa-test-salt*
+                                        *fn-naa-test-secret*) nil))
+(assert-event
+ (equal (fn-native-auth-admin-sort-credentials
+         (list (fn-naa-test-later-cred) (fn-naa-test-cred-a)))
+        (list (fn-naa-test-cred-a) (fn-naa-test-later-cred))))
+
 ; Boundary refusals/faults remain distinct.
 (assert-event
  (equal

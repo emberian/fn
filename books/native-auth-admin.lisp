@@ -19,14 +19,19 @@
    (fn-record-string-octets
     "# fn AUTHINFO credentials (RFC 4643), format v2.  Written by") (list 10)
    (fn-record-string-octets
-    "# fn native principal set-password.  Each entry is the verifier of")
+    "# `fn principal set-password`.  Each entry is the verifier of")
    (list 10)
    (fn-record-string-octets
     "# books/auth-secret.lisp: a 16-octet salt and the tagged SHA-256")
    (list 10)
    (fn-record-string-octets
     "# of salt || secret.  The secret is NOT here and cannot be") (list 10)
-   (fn-record-string-octets "# recovered from here.") (list 10 10)))
+   (fn-record-string-octets
+    "# recovered from here.  It still crosses an unprotected") (list 10)
+   (fn-record-string-octets
+    "# connection in the clear, so set [listener] tls_cert/tls_key") (list 10)
+   (fn-record-string-octets
+    "# with [auth] protected_only = true.") (list 10 10)))
 
 ; The public operator owns the outer `principal' command.  This parser owns
 ; its bounded argument tail and produces the only action shape raw Lisp may
@@ -163,6 +168,34 @@
               (fn-native-auth-admin-upsert name credential (cdr credentials))))
     (list credential)))
 
+(defun fn-native-auth-admin-octets-lessp (left right)
+  (declare (xargs :guard t))
+  (cond ((atom left) (consp right))
+        ((atom right) nil)
+        ((< (ifix (car left)) (ifix (car right))) t)
+        ((< (ifix (car right)) (ifix (car left))) nil)
+        (t (fn-native-auth-admin-octets-lessp (cdr left) (cdr right)))))
+
+(defun fn-native-auth-admin-insert-credential (credential credentials)
+  (declare (xargs :guard t))
+  (if (atom credentials)
+      (list credential)
+    (if (fn-native-auth-admin-octets-lessp
+         (fn-auth-cred-name credential)
+         (fn-auth-cred-name (car credentials)))
+        (cons credential credentials)
+      (cons (car credentials)
+            (fn-native-auth-admin-insert-credential
+             credential (cdr credentials))))))
+
+(defun fn-native-auth-admin-sort-credentials (credentials)
+  (declare (xargs :guard t))
+  (if (consp credentials)
+      (fn-native-auth-admin-insert-credential
+       (car credentials)
+       (fn-native-auth-admin-sort-credentials (cdr credentials)))
+    nil))
+
 (defun fn-native-auth-admin-quoted (octets)
   (declare (xargs :guard t))
   (append (list 34) (fn-authsec-octets octets) (list 34)))
@@ -236,8 +269,9 @@
         (list :refused (fn-native-auth-result-reason loaded))
       (list :accepted
             (fn-native-auth-admin-public-report
-             (fn-auth-config-creds
-              (fn-native-auth-result-config loaded)))))))
+             (fn-native-auth-admin-sort-credentials
+              (fn-auth-config-creds
+               (fn-native-auth-result-config loaded))))))))
 
 (defun fn-native-auth-admin-set-password
   (octets presentp name secret confirmation salt
@@ -273,7 +307,8 @@
                                        (fn-authsec-enrol salt secret)
                                        (and postingp t)))
                    (credentials
-                    (fn-native-auth-admin-upsert name credential old))
+                    (fn-native-auth-admin-sort-credentials
+                     (fn-native-auth-admin-upsert name credential old)))
                    (serialized (fn-native-auth-admin-serialize credentials)))
               (if (or (not (fn-auth-credp credential))
                       (not (fn-ncfg-ascii-octetsp serialized))
@@ -523,6 +558,9 @@
           (:d fn-native-auth-admin-secretp)
           (:d fn-native-auth-admin-principal)
           (:d fn-native-auth-admin-upsert)
+          (:d fn-native-auth-admin-octets-lessp)
+          (:d fn-native-auth-admin-insert-credential)
+          (:d fn-native-auth-admin-sort-credentials)
           (:d fn-native-auth-admin-quoted)
           (:d fn-native-auth-admin-field)
           (:d fn-native-auth-admin-serialize-cred)
