@@ -119,6 +119,7 @@
 ; The owner relation (proof vocabulary; never executed)
 
 (defun fn-own-conn-okp (conn groups capacity records)
+  (declare (xargs :guard t))
   (and (fn-own-conn-shapep conn)
        (natp (fn-own-conn-id conn))
        (natp (fn-own-conn-version conn))
@@ -131,12 +132,14 @@
        (fn-own-conn-boundedp conn groups)))
 
 (defun fn-own-conns-okp (conns groups capacity records)
+  (declare (xargs :guard t))
   (if (consp conns)
       (and (fn-own-conn-okp (car conns) groups capacity records)
            (fn-own-conns-okp (cdr conns) groups capacity records))
     (null conns)))
 
 (defun fn-own-view-okp (view groups capacity records)
+  (declare (xargs :guard t))
   (and (fn-own-view-shapep view)
        (natp (fn-own-view-version view))
        (<= (fn-own-view-version view) (len records))
@@ -147,12 +150,19 @@
                                      (fn-own-view-frontier view)))))
 
 (defun fn-own-ledger-durablep (ledger records)
+  (declare (xargs :guard t))
   (if (consp ledger)
       (and (fn-sf-record-has-pairp (car ledger) records)
            (fn-own-ledger-durablep (cdr ledger) records))
     (null ledger)))
 
+; Guard verified, with fn-snt-relation below it (books/store-node-traces.lisp):
+; fn-ocfg-statep (books/owner-config.lisp:191) declares :guard t and calls
+; this, so the whole chain owes its guards.  Nothing here runs per operation:
+; the relation is proof vocabulary, no transition is guarded by it, and
+; fn-served-dispatch does not reach it.
 (defun fn-own-relation (o)
+  (declare (xargs :guard t))
   (let* ((s (fn-own-store o))
          (groups (fn-sn-groups s))
          (capacity (fn-sn-capacity s))
