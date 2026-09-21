@@ -176,14 +176,15 @@ def current_owner(work, counts, payload, folded_bytes, seed, acl2):
     if init["returncode"] != 0:
         result["stopped_by"] = "init returned {}".format(init["returncode"])
         return result
+    owner_argv = [sys.executable, "bin/fn", "--config", str(config), "run",
+                  "--control", str(control), "--max-connections", "32"]
     before_owner = time.monotonic()
     with log.open("w") as output:
-        owner = subprocess.Popen([sys.executable, "bin/fn", "--config", str(config), "run",
-                                  "--control", str(control), "--max-connections", "32"],
-                                 cwd=ROOT, env=env, stdout=output, stderr=subprocess.STDOUT,
-                                 text=True)
+        owner = subprocess.Popen(owner_argv, cwd=ROOT, env=env, stdout=output,
+                                 stderr=subprocess.STDOUT, text=True)
     port, listening = wait_listening(owner, log)
-    result["owner"] = {"pid": owner.pid, "listen_port": port,
+    result["owner"] = {"argv": owner_argv, "pid": owner.pid, "listen_port": port,
+                       "environment": {"FN_ACL2": env.get("FN_ACL2", "default")},
                        "log_before_posts": listening[-1000:]}
     if port is None:
         result["stopped_by"] = "owner did not reach LISTENING"
@@ -286,12 +287,14 @@ def native_direct(work, payload, seed, native_image, native_source_revision, nat
                                         str(root), "recover"], cwd=ROOT, environment=env)
     log = work / "native-reader.log"
     before_reader = time.monotonic()
+    reader_argv = [sys.executable, "tools/run_reader.py", "--store", str(root),
+                   "--port", "0", "--once"]
     with log.open("w") as output:
-        reader = subprocess.Popen([sys.executable, "tools/run_reader.py", "--store", str(root),
-                                   "--port", "0", "--once"], cwd=ROOT, env=env,
-                                  stdout=output, stderr=subprocess.STDOUT, text=True)
+        reader = subprocess.Popen(reader_argv, cwd=ROOT, env=env, stdout=output,
+                                  stderr=subprocess.STDOUT, text=True)
     port, _ = wait_listening(reader, log)
-    reader_result = {"startup_seconds": time.monotonic() - before_reader, "port": port}
+    reader_result = {"argv": reader_argv, "environment": {"FN_HOST": "native", "FN_NATIVE_HOST": native_image},
+                     "startup_seconds": time.monotonic() - before_reader, "port": port}
     if port is not None:
         before = time.monotonic()
         try:
