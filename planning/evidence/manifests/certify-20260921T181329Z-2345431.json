@@ -1,0 +1,345 @@
+{
+  "acl2_compatibility": {
+    "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+    "launcher_chain_sha256": [
+      "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8"
+    ],
+    "launcher_environment": [
+      {
+        "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+      }
+    ],
+    "proof_environment": {
+      "ACL2_BOOK_HASH_ALISTP": "NIL",
+      "ACL2_CUSTOMIZATION": "NONE",
+      "ACL2_SYSTEM_BOOKS": null
+    },
+    "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+    "schema": "fn-acl2-toolchain-v1"
+  },
+  "acl2_executable": "/tank/fn/toolchains/w28/acl2-literal-4g",
+  "acl2_executable_sha256": "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8",
+  "acl2_exit_codes": {
+    "books/article": 0,
+    "books/cbor": 0,
+    "books/cbor-invariants": 0,
+    "books/crypto-seam": 0,
+    "books/defrecord": 0,
+    "books/hybrid-profile": 0,
+    "books/hybrid-signature": 0,
+    "books/hybrid-signature-invariants": 0,
+    "books/records": 0,
+    "books/records-invariants": 0,
+    "tests/acl2/hybrid-signature-invariants-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_toolchain": {
+    "compatibility": {
+      "core_sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+      "launcher_chain_sha256": [
+        "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8"
+      ],
+      "launcher_environment": [
+        {
+          "SBCL_HOME": "/tank/fn/sbcl/lib/sbcl/"
+        }
+      ],
+      "proof_environment": {
+        "ACL2_BOOK_HASH_ALISTP": "NIL",
+        "ACL2_CUSTOMIZATION": "NONE",
+        "ACL2_SYSTEM_BOOKS": null
+      },
+      "runtime_sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "schema": "fn-acl2-toolchain-v1"
+    },
+    "core": {
+      "path": "/tank/fn/acl2-8.7/saved_acl2.core",
+      "sha256": "3f5b101bb9437d66366dc2a299b7f9cb98fdaf40d1add5caf8baef9e451dd07d",
+      "size": 233686912
+    },
+    "launchers": [
+      {
+        "path": "/tank/fn/toolchains/w28/acl2-literal-4g",
+        "sha256": "9f73da2a84d664516033fb6e944c55b55d1f7206e9599cac46ca2b208de26aa8",
+        "size": 279
+      }
+    ],
+    "runtime": {
+      "path": "/tank/fn/sbcl/bin/sbcl",
+      "sha256": "b115fe956aadee603459fac401e1ff2cc39321e14848544a0fe438788a2fc6d5",
+      "size": 2149704
+    },
+    "schema": "fn-acl2-toolchain-v1",
+    "status": "qualified"
+  },
+  "acl2_toolchain_identity": "d5f2b9f0d2cf68c6074ea7046f4bd2e560d2984fe22d7e03f93045975ac889f0",
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "hbox:/Users/ember/dev/fn/build/lanes/w28-hybrid-injectivity-cert/build/acl2/certify-20260921T181329Z-2345431",
+  "book_failures": {},
+  "book_results": {
+    "books/article": "passed",
+    "books/cbor": "passed",
+    "books/cbor-invariants": "passed",
+    "books/crypto-seam": "passed",
+    "books/defrecord": "passed",
+    "books/hybrid-profile": "passed",
+    "books/hybrid-signature": "passed",
+    "books/hybrid-signature-invariants": "passed",
+    "books/records": "passed",
+    "books/records-invariants": "passed",
+    "tests/acl2/hybrid-signature-invariants-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/article": 0.728,
+    "books/cbor": 0.135,
+    "books/cbor-invariants": 0.644,
+    "books/crypto-seam": 2.773,
+    "books/defrecord": 0.085,
+    "books/hybrid-profile": 0.038,
+    "books/hybrid-signature": 0.319,
+    "books/hybrid-signature-invariants": 4.906,
+    "books/records": 4.141,
+    "books/records-invariants": 31.966,
+    "tests/acl2/hybrid-signature-invariants-tests": 0.728
+  },
+  "cert_cache": {
+    "already_cached": 11,
+    "directory": "/tank/fn/certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/hybrid-profile",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/cbor",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/article",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/cbor-invariants",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/defrecord",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/records",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/records-invariants",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/crypto-seam",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/hybrid-signature",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/hybrid-signature-invariants",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/hybrid-signature-invariants-tests",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 11,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/article": "bd0efab760334cefebdf7d5e84cd508a3df603a27968477c906c83bfd1e70c8d",
+    "books/cbor": "730395a98ecf9661a6bdb87ba2e716179022eb50bcadfe9599157852fe444916",
+    "books/cbor-invariants": "1451c699e3be11a77d6e8784f23ca50e87e63447264e9beb4e15358f23fc85d3",
+    "books/crypto-seam": "ab616441ec45769092f191162a13edb831ff18da2a5166c68c127706ece1bd78",
+    "books/defrecord": "072c7a04d7732ada2d19ef57aa88de539c306530277a1bdeceea09dc5a5b9b60",
+    "books/hybrid-profile": "eba349b94e77b69c6c9239bb86c9d6d3b82ed5fd9f441d15fa2f42fe4d1490fb",
+    "books/hybrid-signature": "c3f2a8594369c7e76ee2cc4478a6b0e7eec2ec223705eca57aa47e173d9b7021",
+    "books/hybrid-signature-invariants": "73eba19c6a60cc4c428114631fab4d91586c0587d444dc15910d75b5dd2eac92",
+    "books/records": "268a364ee6fc524e477cd7199cfb308d9ac34470f83eee9e8eb474b3769cddea",
+    "books/records-invariants": "26a4a0a65d7d48d1267c28524eddcf6f2f1e763be16cefd6c0c8f541e0a1a821",
+    "tests/acl2/hybrid-signature-invariants-tests": "ad4287a3fe796970185c528a6435302db4138718fda8166861ab6b299ac82fc8"
+  },
+  "certify_wall_seconds": 46.567,
+  "closure": true,
+  "command": [
+    "/tank/fn/toolchains/w28/acl2-literal-4g"
+  ],
+  "driver_digests_sha256": {
+    "books/article": "570498ab2f2303402dda6c17fa2afccbfb659c80aeb75ab0a90d2fa1f4f90f23",
+    "books/cbor": "9ac58e5187cd4c3d8de2b0c4f1db27d69f838095aff2e871ed49a68439ff1c56",
+    "books/cbor-invariants": "8399245fb07327024c6fccb28fbee117825a618361f44a721773296fdd7f7439",
+    "books/crypto-seam": "8ed478a766a5fce16639aa622905756fc0f97de8c1e79e75a7b2d3b45ec55a8f",
+    "books/defrecord": "9e899abf48d028328df3aaa37cf78ae5acde6322b94e36c80aa3b72d076e766c",
+    "books/hybrid-profile": "0f141bd50d85b4e7b1a07c0c002b0c9bd9fc22dfe908a267127b329920f85c24",
+    "books/hybrid-signature": "49b10e56cc4fca7017e3337e09a6dbb9e93b3bcf560e8a66a49ea43a22510266",
+    "books/hybrid-signature-invariants": "5b3caa2753d71f01fb8e024f20b8d4103ea4d0c0d8d6a5d4267c679548f48735",
+    "books/records": "f296287e9f2579cdb4a0b28fd6f2ca841cef1daceee28c375588a175679dc665",
+    "books/records-invariants": "dda73d639ea0c64246f51439293cc29aedcbe7773df348aefc0b016077ed981e",
+    "tests/acl2/hybrid-signature-invariants-tests": "342f36e7d6655f09ab36e9e24043127c6eed44023f95603579da247701dee27e"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 1b30aab64ec96c6ca0c62400de4a417b e20faf85ba6a",
+    "FN_CERTIFY_SUCCESS 1b30aab64ec96c6ca0c62400de4a417b 949ba7ded144",
+    "FN_CERTIFY_SUCCESS 1b30aab64ec96c6ca0c62400de4a417b 855ea5d810a2",
+    "FN_CERTIFY_SUCCESS 1b30aab64ec96c6ca0c62400de4a417b bf0ee880713d",
+    "FN_CERTIFY_SUCCESS 1b30aab64ec96c6ca0c62400de4a417b 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS 1b30aab64ec96c6ca0c62400de4a417b d45992d8befd",
+    "FN_CERTIFY_SUCCESS 1b30aab64ec96c6ca0c62400de4a417b c995de05ead1",
+    "FN_CERTIFY_SUCCESS 1b30aab64ec96c6ca0c62400de4a417b 593ea745a8c4",
+    "FN_CERTIFY_SUCCESS 1b30aab64ec96c6ca0c62400de4a417b da7bff86d266",
+    "FN_CERTIFY_SUCCESS 1b30aab64ec96c6ca0c62400de4a417b 03abd9f2907a",
+    "FN_CERTIFY_SUCCESS 1b30aab64ec96c6ca0c62400de4a417b 78c108f649e5"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-21T18:14:16+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "hbox",
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 1b30aab64ec96c6ca0c62400de4a417b e20faf85ba6a",
+    "FN_CERTIFY_SUCCESS 1b30aab64ec96c6ca0c62400de4a417b 949ba7ded144",
+    "FN_CERTIFY_SUCCESS 1b30aab64ec96c6ca0c62400de4a417b 855ea5d810a2",
+    "FN_CERTIFY_SUCCESS 1b30aab64ec96c6ca0c62400de4a417b bf0ee880713d",
+    "FN_CERTIFY_SUCCESS 1b30aab64ec96c6ca0c62400de4a417b 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS 1b30aab64ec96c6ca0c62400de4a417b d45992d8befd",
+    "FN_CERTIFY_SUCCESS 1b30aab64ec96c6ca0c62400de4a417b c995de05ead1",
+    "FN_CERTIFY_SUCCESS 1b30aab64ec96c6ca0c62400de4a417b 593ea745a8c4",
+    "FN_CERTIFY_SUCCESS 1b30aab64ec96c6ca0c62400de4a417b da7bff86d266",
+    "FN_CERTIFY_SUCCESS 1b30aab64ec96c6ca0c62400de4a417b 03abd9f2907a",
+    "FN_CERTIFY_SUCCESS 1b30aab64ec96c6ca0c62400de4a417b 78c108f649e5"
+  ],
+  "platform": "Linux-6.11.0-29-generic-x86_64-with-glibc2.40",
+  "python": "3.12.7",
+  "reader_sha256": "662e8ef911ffe2cef222a48b8a279a01f86a4557dcf1fc00bc8002c8d8dfacb4",
+  "requested_before_filter": [
+    "books/hybrid-signature-invariants",
+    "tests/acl2/hybrid-signature-invariants-tests"
+  ],
+  "requested_books": [
+    "books/hybrid-profile",
+    "books/cbor",
+    "books/article",
+    "books/cbor-invariants",
+    "books/defrecord",
+    "books/records",
+    "books/records-invariants",
+    "books/crypto-seam",
+    "books/hybrid-signature",
+    "books/hybrid-signature-invariants",
+    "tests/acl2/hybrid-signature-invariants-tests"
+  ],
+  "run_id": "certify-20260921T181329Z-2345431",
+  "runner_sha256": "cb79d3bea9e5a531e33e44c882f8f615d4c0258db2c4f7361746ff1e2416c7d6",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/article": 0.0,
+    "books/cbor": 0.0,
+    "books/cbor-invariants": 0.0,
+    "books/crypto-seam": 0.0,
+    "books/defrecord": 0.0,
+    "books/hybrid-profile": 0.0,
+    "books/hybrid-signature": 0.0,
+    "books/hybrid-signature-invariants": 0.0,
+    "books/records": 0.0,
+    "books/records-invariants": 0.0,
+    "tests/acl2/hybrid-signature-invariants-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/cbor-invariants.lisp": "999c4e6d08f6cb6ade7ca6b80da1564c4ecd26727a0c5e1c382d7aa7e3a36f64",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/hybrid-profile.lisp": "7e2f6086ee92ac982c1ecbca907c8dfb0d5d1381b2cd2edca43fbbd74ad9d9c3",
+    "books/hybrid-signature-invariants.lisp": "8355ac1ca0a5aeacbf78722eb393f6d7d7923af646cea46be2fb9bee64fc3ac8",
+    "books/hybrid-signature.lisp": "3754723a986d0363e58c7f0a0ce47a035733424be6c49a7e152790882cc4c8ff",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "tests/acl2/hybrid-signature-invariants-tests.lisp": "9f9b5afe2fcc47d9133d8f563240ca018033375bd4ede782493f23149d825019"
+  },
+  "source_digests_sha256_after": {
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/cbor-invariants.lisp": "999c4e6d08f6cb6ade7ca6b80da1564c4ecd26727a0c5e1c382d7aa7e3a36f64",
+    "books/cbor.lisp": "210c1103953ee93fdc97bfae0e16ca02d1ab020908d771fee711e8061268e330",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/hybrid-profile.lisp": "7e2f6086ee92ac982c1ecbca907c8dfb0d5d1381b2cd2edca43fbbd74ad9d9c3",
+    "books/hybrid-signature-invariants.lisp": "8355ac1ca0a5aeacbf78722eb393f6d7d7923af646cea46be2fb9bee64fc3ac8",
+    "books/hybrid-signature.lisp": "3754723a986d0363e58c7f0a0ce47a035733424be6c49a7e152790882cc4c8ff",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "tests/acl2/hybrid-signature-invariants-tests.lisp": "9f9b5afe2fcc47d9133d8f563240ca018033375bd4ede782493f23149d825019"
+  },
+  "start_order": [
+    "books/hybrid-profile",
+    "books/cbor",
+    "books/article",
+    "books/cbor-invariants",
+    "books/defrecord",
+    "books/records",
+    "books/records-invariants",
+    "books/crypto-seam",
+    "books/hybrid-signature",
+    "books/hybrid-signature-invariants",
+    "tests/acl2/hybrid-signature-invariants-tests"
+  ],
+  "started_utc": "2026-09-21T18:13:29+00:00",
+  "status": "passed",
+  "timeout_seconds": 1200,
+  "tree": "/Users/ember/dev/fn/build/lanes/w28-hybrid-injectivity-cert"
+}
