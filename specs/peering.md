@@ -1560,6 +1560,12 @@ component at its filesystem boundary and does no label parsing or normalization.
 Nested v1 creation currently has extra directory barriers that are compressed
 into the existing journal phase events; the physical crash correspondence for
 those intermediate barriers remains open and is not claimed by the phase book.
+In particular, a crash after creating a v1 directory and before its journal
+leaf can leave an empty v1 tree. Recovery treats that tree as conflicting
+evidence and exits with a fault; it never deletes it or assumes no obligation
+was present. An operator must preserve and inspect that namespace before any
+manual cleanup, so this is fail-closed recovery rather than a general
+crash-survival claim.
 
 At open, ACL2 accepts a complete frame only if its envelope length is between
 the frame header-plus-trailer size and that size plus the FNFD payload cap,
