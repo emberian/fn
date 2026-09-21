@@ -205,6 +205,31 @@
        (natp (fn-tcl-outbound-acked-len o))
        (<= (fn-tcl-outbound-acked-len o) (fn-tcl-outbound-sent-len o))))
 
+; The same record with the two conjuncts that walk the unsent suffix
+; removed.  fn-tcl-outboundp is the specification: it says the suffix is
+; octets and that the carried sent length plus the suffix's measured length
+; is the total, so the unsent data is exactly what has not gone out.  This
+; one reads the carried scalars and the shape only, so it costs the same
+; whatever is left to send; the ordering (<= sent-len total) that the length
+; equation used to imply is carried here as its own conjunct, because
+; fn-tcl-pump needs it to know its chunk is a natural.  As for the inbound
+; pair, the two are deliberately written out rather than layered, and
+; fn-tcl-outboundp-is-cheap is the only link between them.
+(defun fn-tcl-outbound-cheapp (o)
+  (declare (xargs :guard t))
+  (and (fn-tcl-outbound-shapep o)
+       (natp (fn-tcl-outbound-xfer-id o))
+       (<= (fn-tcl-outbound-xfer-id o) *fn-tcl-max-u64*)
+       (natp (fn-tcl-outbound-total o))
+       (<= (fn-tcl-outbound-total o) *fn-tcl-max-u64*)
+       (natp (fn-tcl-outbound-sent-len o))
+       (<= (fn-tcl-outbound-sent-len o) (fn-tcl-outbound-total o))
+       (natp (fn-tcl-outbound-acked-len o))
+       (<= (fn-tcl-outbound-acked-len o) (fn-tcl-outbound-sent-len o))))
+
+(defthm fn-tcl-outboundp-is-cheap
+  (implies (fn-tcl-outboundp o) (fn-tcl-outbound-cheapp o)))
+
 (defun fn-tcl-rolep (r)
   (declare (xargs :guard t))
   (or (equal r :active) (equal r :passive)))
@@ -281,7 +306,7 @@
            (fn-tcl-inbound-cheapp (fn-tcl-session-inbound s)
                                   (fn-tcl-params-transfer-mru (fn-tcl-session-local s))))
        (or (null (fn-tcl-session-outbound s))
-           (fn-tcl-outboundp (fn-tcl-session-outbound s)))
+           (fn-tcl-outbound-cheapp (fn-tcl-session-outbound s)))
        (natp (fn-tcl-session-next-xfer-id s))
        (fn-clock-timep (fn-tcl-session-last-rx s))
        (fn-clock-timep (fn-tcl-session-last-tx s))
@@ -1470,29 +1495,39 @@
 ; -----------------------------------------------------------------------------
 ; The carried invariant of the served path, preserved by every transition.
 ;
-; fn-tcl-sessionp is the specification recognizer, and two of its conjuncts
-; -- fn-tcl-inboundp's (fn-tcl-octet-listsp staged) and (equal received-len
-; (fn-tcl-lists-len staged)) -- walk every octet staged so far.  The native
-; host reaches this machine through the executable counterpart of a host
-; wrapper (host/native/io.lisp, `fnn-call'), which checks the callee's guard
-; on every call, so a guard naming fn-tcl-sessionp charged a transfer of n
-; octets one walk of the staged prefix per socket chunk: O(n^2/chunk) in
-; guard checking alone (planning/lanes/HANDOFF-w8-tcpcl-native.md, "Open";
-; the served-path rule in AGENTS.md, D3).
+; fn-tcl-sessionp is the specification recognizer, and FOUR of its conjuncts
+; walk a list that grows with a transfer: fn-tcl-inboundp's
+; (fn-tcl-octet-listsp staged) and (equal received-len (fn-tcl-lists-len
+; staged)) walk every octet staged so far, and fn-tcl-outboundp's
+; (fn-cbor-octet-listp remaining) and (equal (+ sent-len (len remaining))
+; total) walk every octet not yet sent.  The native host reaches this machine
+; through the executable counterpart of a host wrapper (host/native/io.lisp,
+; `fnn-call'), which checks the callee's guard on every call, so a guard
+; naming fn-tcl-sessionp charged a transfer of n octets one walk per socket
+; chunk in each direction: O(n^2/chunk) in guard checking alone
+; (planning/lanes/HANDOFF-w8-tcpcl-native.md, "Open"; the served-path rule in
+; AGENTS.md, D3).  The receive half was cured in w11/tcpcl-theory and the
+; send half here, in w11/tcpcl-outbound (planning/decisions.md D20).
 ;
-; fn-tcl-session-cheapp is that recognizer without those two conjuncts.  Its
+; fn-tcl-session-cheapp is that recognizer without those four conjuncts.  Its
 ; cost is the session's own -- its params and the peer's SESS_INIT, both
-; fixed at negotiation -- and does not grow with the transfer.  It guards
-; every executable entry point.  fn-tcl-sessionp implies it
-; (fn-tcl-sessionp-is-cheap), so every keystone stated over fn-tcl-sessionp
-; still speaks of exactly the function the host calls; and the lemmas below
-; prove every transition preserves it, so the host establishes it once -- at
-; fn-tcl-initial-session, fn-tcl-initial-session-is-cheap -- and never
-; rederives it from the staged octets (docs/proof-style.md section 4).
+; fixed at negotiation -- and does not grow with the transfer in either
+; direction.  It guards every executable entry point.  fn-tcl-sessionp
+; implies it (fn-tcl-sessionp-is-cheap), so every keystone stated over
+; fn-tcl-sessionp still speaks of exactly the function the host calls; and
+; the lemmas below prove every transition preserves it, so the host
+; establishes it once -- at fn-tcl-initial-session,
+; fn-tcl-initial-session-is-cheap -- and never rederives it from the staged
+; or the unsent octets (docs/proof-style.md section 4).
 ;
-; The staged conjuncts are still carried, still proved preserved, and still
-; what C2 and fn-tcl-received-len-is-staged-length-by-definition rest on:
-; nothing is weakened here, only moved off the per-chunk path.
+; The four dropped conjuncts are still carried, still proved preserved, and
+; still what C2 and fn-tcl-received-len-is-staged-length-by-definition rest
+; on: nothing is weakened here, only moved off the per-chunk path.  What made
+; the outbound half possible is that fn-tcl-take and fn-tcl-drop are now
+; guard-total (books/tcpcl-octets.lisp): the length equation was the only
+; fact that discharged fn-tcl-pump's take and drop of the next chunk, so
+; until that guard was relaxed the equation could not leave the cheap
+; recognizer.
 
 (defthm fn-tcl-initial-session-is-cheap
   (implies (and (fn-tcl-rolep role) (fn-tcl-paramsp local) (fn-clock-timep now))
@@ -1517,7 +1552,7 @@
                           (fn-tcl-session-inbound s)
                           (fn-tcl-params-transfer-mru (fn-tcl-session-local s))))
                 (implies (fn-tcl-session-outbound s)
-                         (fn-tcl-outboundp (fn-tcl-session-outbound s)))
+                         (fn-tcl-outbound-cheapp (fn-tcl-session-outbound s)))
                 (implies (fn-tcl-pre-establishedp (fn-tcl-session-phase s))
                          (and (not (fn-tcl-session-negotiated s))
                               (not (fn-tcl-session-term s))))
@@ -1551,6 +1586,23 @@
                 (<= (fn-tcl-inbound-total i) *fn-tcl-max-u64*)
                 (<= (fn-tcl-inbound-received-len i) (fn-tcl-inbound-total i))))
   :rule-classes ((:forward-chaining :trigger-terms ((fn-tcl-inbound-total i)))))
+
+(defthm fn-tcl-outbound-cheapp-forward-fields
+  (implies (fn-tcl-outbound-cheapp o)
+           (and (fn-tcl-outbound-shapep o)
+                (integerp (fn-tcl-outbound-xfer-id o))
+                (<= 0 (fn-tcl-outbound-xfer-id o))
+                (<= (fn-tcl-outbound-xfer-id o) *fn-tcl-max-u64*)
+                (integerp (fn-tcl-outbound-total o))
+                (<= 0 (fn-tcl-outbound-total o))
+                (<= (fn-tcl-outbound-total o) *fn-tcl-max-u64*)
+                (integerp (fn-tcl-outbound-sent-len o))
+                (<= 0 (fn-tcl-outbound-sent-len o))
+                (<= (fn-tcl-outbound-sent-len o) (fn-tcl-outbound-total o))
+                (integerp (fn-tcl-outbound-acked-len o))
+                (<= 0 (fn-tcl-outbound-acked-len o))
+                (<= (fn-tcl-outbound-acked-len o) (fn-tcl-outbound-sent-len o))))
+  :rule-classes :forward-chaining)
 
 (local (in-theory (disable fn-tcl-session-cheapp)))
 
@@ -1594,7 +1646,7 @@
 
 (defthm fn-tcl-session-cheapp-forward-outbound
   (implies (and (fn-tcl-session-cheapp s) (fn-tcl-session-outbound s))
-           (and (fn-tcl-outboundp (fn-tcl-session-outbound s))
+           (and (fn-tcl-outbound-cheapp (fn-tcl-session-outbound s))
                 (fn-tcl-session-negotiated s)))
   :rule-classes ((:forward-chaining :trigger-terms ((fn-tcl-session-outbound s))))
   :hints (("Goal" :use fn-tcl-session-cheapp-facts)))
@@ -1643,7 +1695,7 @@
                 (or (not inbound)
                     (fn-tcl-inbound-cheapp
                      inbound (fn-tcl-params-transfer-mru (fn-tcl-session-local s))))
-                (or (not outbound) (fn-tcl-outboundp outbound))
+                (or (not outbound) (fn-tcl-outbound-cheapp outbound))
                 (case-split
                  (implies (fn-tcl-pre-establishedp phase)
                           (and (not (fn-tcl-session-negotiated s)) (not term))))
@@ -1656,16 +1708,18 @@
                 (case-split
                  (implies (not (fn-tcl-session-negotiated s)) (and (not inbound) (not outbound)))))
            (fn-tcl-session-cheapp (fn-tcl-next s phase inbound outbound term last-tx)))
-  :hints (("Goal" :in-theory (disable fn-tcl-inbound-cheapp fn-tcl-outboundp fn-tcl-paramsp
+  :hints (("Goal" :in-theory (disable fn-tcl-inbound-cheapp fn-tcl-outbound-cheapp
+                                      fn-tcl-paramsp
                                       fn-tcl-negotiatedp fn-tcl-peer-initp))))
 
 (defthm fn-tcl-with-outbound-preserves-cheapp
   (implies (and (fn-tcl-session-cheapp s)
                 (equal (fn-tcl-session-phase s) :established)
-                (fn-tcl-outboundp outbound)
+                (fn-tcl-outbound-cheapp outbound)
                 (natp next-xfer-id))
            (fn-tcl-session-cheapp (fn-tcl-with-outbound s outbound next-xfer-id)))
-  :hints (("Goal" :in-theory (disable fn-tcl-inbound-cheapp fn-tcl-outboundp fn-tcl-paramsp
+  :hints (("Goal" :in-theory (disable fn-tcl-inbound-cheapp fn-tcl-outbound-cheapp
+                                      fn-tcl-paramsp
                                       fn-tcl-negotiatedp fn-tcl-peer-initp))))
 
 (local (in-theory (disable fn-tcl-session-cheapp fn-tcl-next fn-tcl-with-outbound)))
@@ -1856,10 +1910,12 @@
 ; bridge an includer keeps.
 (deftheory fn-tcl-cheap-rules
   '(fn-tcl-inboundp-is-cheap
+    fn-tcl-outboundp-is-cheap
     fn-tcl-initial-session-is-cheap
     fn-tcl-session-cheapp-facts
     fn-tcl-inbound-cheapp-forward-fields
     fn-tcl-inbound-cheapp-forward-total
+    fn-tcl-outbound-cheapp-forward-fields
     fn-tcl-session-cheapp-forward-fields
     fn-tcl-session-cheapp-forward-peer
     fn-tcl-session-cheapp-forward-negotiated
@@ -1939,7 +1995,7 @@
 (deftheory fn-tcl-session-vocabulary
   '(fn-tcl-paramsp fn-tcl-peer-initp fn-tcl-negotiatedp fn-tcl-inboundp fn-tcl-outboundp
     fn-tcl-rolep fn-tcl-phasep fn-tcl-pre-establishedp fn-tcl-transferringp fn-tcl-termp
-    fn-tcl-sessionp fn-tcl-inbound-cheapp fn-tcl-session-cheapp
+    fn-tcl-sessionp fn-tcl-inbound-cheapp fn-tcl-outbound-cheapp fn-tcl-session-cheapp
     fn-tcl-initial-session fn-tcl-next fn-tcl-touch-rx
     fn-tcl-transfer-mru fn-tcl-segment-mru fn-tcl-send-event fn-tcl-fail-live
     fn-tcl-settle fn-tcl-own-contact fn-tcl-own-init fn-tcl-open fn-tcl-recv-contact

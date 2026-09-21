@@ -90,6 +90,10 @@ cross-cluster steps you could not take alone.
   it are unattempted" instead, and expect a tail when X closes: one book's
   keystone closed on 2026-09-20 and ten of the eleven events behind it were
   then open, including four of the five keystones the book exists for.
+- `python3 tools/next_id.py` prints the next free identifier in every
+  registry. Run it, claim what it prints on the board with a one-line CLAIM,
+  then write the row. The CLAIM line is what has actually been catching
+  collisions: it caught D19 within the hour when two lanes reached for it.
 - A new registry id is allocated by merging dev FIRST and taking the next free
   number, and it is claimed in one board line the moment you take it. Two
   lanes assigned PRF-029 on the same afternoon and one target had to be

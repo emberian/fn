@@ -143,16 +143,51 @@
 ;
 ; fn-stx-acceptedp is the OBSERVATION that the transaction completed durably:
 ; the store of the next node is the store of this one with the accepted
-; article at its head.  It is not a second acceptance path -- the host reaches
-; it only through fn-peer-transfer and fn-node-complete, and
-; books/stx-transit.lisp names that composition and proves it satisfies this
-; predicate.  tests/acl2/stx-lace-tests.lisp exhibits a run where it holds.
+; article at its head.  It is not a second acceptance path.
+;
+; Until 2026-09-21 this comment said that `books/stx-transit.lisp' names the
+; composition and proves it satisfies this predicate, and that
+; `tests/acl2/stx-lace-tests.lisp' exhibits a run.  NEITHER FILE HAS EVER
+; EXISTED.  So the observation was assumed, and every keystone below that
+; hypothesises it -- fn-stx-lace-of-accept-is-merge, fn-stx-transit-ids-are-
+; union, fn-stx-transit-equivocation-survives-later-merges, and
+; fn-stx-index-invariant-preserved-by-accept in books/stx-index.lisp -- was
+; preservation under a hypothesis nothing established.  The theorem after the
+; definition establishes it, at the transition the host actually calls.
 
 (defun fn-stx-acceptedp (node next article)
   (declare (xargs :guard t))
   (and (consp article)
        (equal (fn-stx-store next)
               (cons article (fn-stx-store node)))))
+
+; THE SUBJECT OF THE OBSERVATION (AGENTS.md, "the theorem subject is the
+; function the host calls").  The host line is
+; `host/store-node-host.lisp' `fn-store-sn-finish' (line 402), whose only node
+; step is `fn-sn-finish' (books/store-node.lisp line 200), whose only node step
+; is `(fn-node-complete (fn-sn-node s) txid generation :durable)' (line 204);
+; `fn-snrt-new-success-is-actual-matching-durable-completion'
+; (books/store-node-resolution.lisp line 414) already proves that no other step
+; adds an acknowledgement.  Those books sit ABOVE this one in the include order
+; -- books/stx-lace.lisp includes books/node.lisp -- so they are named here and
+; the theorem is stated about `fn-node-complete' itself.
+;
+; The accepted article is named, not existentially claimed: it is the one
+; `fn-install-pending' (books/acceptance.lisp line 236) conses onto the store.
+; So the S3 keystones' hypothesis is discharged by the durable branch of the
+; node transition, with the article that branch publishes.
+(defthm fn-stx-durable-completion-is-an-acceptance
+  (implies (fn-node-pending-matchesp s txid generation)
+           (fn-stx-acceptedp
+            s
+            (fn-node-complete s txid generation :durable)
+            (fn-article-from-pending
+             (fn-state-pending (fn-node-acceptance s)))))
+  :hints (("Goal"
+           :in-theory (enable fn-stx-acceptedp fn-stx-store
+                              fn-node-complete fn-node-pending-matchesp
+                              fn-accept-complete fn-install-pending
+                              fn-node-statep))))
 
 ; A delta is fresh when the lace does not already hold its content id.  The
 ; hypothesis is not decoration: two articles with different Message-IDs can

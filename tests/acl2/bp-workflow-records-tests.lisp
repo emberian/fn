@@ -1,5 +1,5 @@
 (in-package "ACL2")
-(include-book "../../books/bp-workflow-records-invariants")
+(include-book "../../books/bp-workflow-replay-status")
 (include-book "std/testing/must-fail" :dir :system)
 (defconst *bpr-groups* '("fn.test"))
 (defconst *bpr-prepared* (fn-node-prepare (fn-node-initial-state *bpr-groups* 8)
@@ -403,3 +403,182 @@
 (assert-event (equal (fn-bp-work-status "work:a"
                                         (fn-bp-state-works *bpr-all-kinds-image*))
                      :receipted))
+
+; ---------------------------------------------------------------------------
+; The reopened image's answers: fn-bp-work-status across a restart, and
+; provenance beside it (books/bp-workflow-replay-status.lisp).
+
+; The machine that never died, for one journal: the trace over the durable
+; events, without the restart fn-bp-replay-records appends.
+(defconst *bpr-inflight*
+  (list *bpr-config* *bpr-enqueue* '(:outcome 10 0 :ordinary :durable)
+        *bpr-attempt* '(:outcome 11 0 :ordinary :durable)))
+(defconst *bpr-inflight-pre*
+  (fn-bp-trace *bpr-s0* (fn-bp-durable-events (cdr *bpr-inflight*))))
+(defconst *bpr-inflight-post*
+  (fn-bp-journal-nth 1 (fn-bp-replay-journal *bpr-node* *bpr-inflight*)))
+
+; WITNESS for fn-bp-work-status-of-restart and for
+; fn-bp-replay-work-status-is-the-pre-crash-status-restarted.  The two sides
+; are DIFFERENT words on this journal: the attempt was in flight when the
+; process died, so the reopened image marks it and the pre-crash machine does
+; not.  An equality witness on which both sides read the same word would
+; separate nothing.
+(assert-event (fn-bp-statep *bpr-inflight-pre*))
+(assert-event (equal (fn-bp-work-status "work:a"
+                                        (fn-bp-state-works *bpr-inflight-pre*))
+                     :intent))
+(assert-event (equal (fn-bp-work-status "work:a"
+                                        (fn-bp-state-works *bpr-inflight-post*))
+                     :restart-observed))
+(assert-event (equal (fn-bp-work-status "work:a"
+                                        (fn-bp-state-works *bpr-inflight-post*))
+                     (fn-bp-work-status-after-restart
+                      (fn-bp-work-status "work:a"
+                                         (fn-bp-state-works *bpr-inflight-pre*)))))
+
+; The three answers that are not an attempt status are fixed points of the
+; reopen, which is what makes :absent mean "no such work" and nothing else.
+(assert-event (equal (fn-bp-work-status "work:none"
+                                        (fn-bp-state-works *bpr-inflight-pre*))
+                     :absent))
+(assert-event (equal (fn-bp-work-status "work:none"
+                                        (fn-bp-state-works *bpr-inflight-post*))
+                     :absent))
+(defconst *bpr-receipted-journal*
+  (list *bpr-config* *bpr-enqueue* '(:outcome 10 0 :ordinary :durable)
+        *bpr-receipt-intent-14* '(:outcome 14 0 :ordinary :durable)))
+(assert-event (car (fn-bp-replay-journal *bpr-node* *bpr-receipted-journal*)))
+(assert-event
+ (equal (fn-bp-work-status
+         "work:a" (fn-bp-state-works
+                   (fn-bp-trace *bpr-s0* (fn-bp-durable-events
+                                          (cdr *bpr-receipted-journal*)))))
+        :receipted))
+(assert-event
+ (equal (fn-bp-work-status
+         "work:a" (fn-bp-state-works
+                   (fn-bp-journal-nth
+                    1 (fn-bp-replay-journal *bpr-node* *bpr-receipted-journal*))))
+        :receipted))
+; A retryable attempt status is a fixed point too: :expired survives the reopen.
+(assert-event (equal (fn-bp-work-status
+                      "work:a"
+                      (fn-bp-state-works (fn-bp-journal-nth 1 *bpr-image*)))
+                     (fn-bp-work-status-after-restart :expired)))
+
+; TOOTH for the fn-bp-statep hypothesis of fn-bp-work-status-of-restart.  On a
+; value that is not a state, fn-bp-restart is the identity, so the in-flight
+; attempt is NOT marked and the two sides part.
+(defconst *bpr-inflight-work*
+  (fn-bp-find-work "work:a" (fn-bp-state-works *bpr-inflight-pre*)))
+(defconst *bpr-not-a-state* (list 0 1 (list *bpr-inflight-work*) 3 4 5 6))
+(assert-event (not (fn-bp-statep *bpr-not-a-state*)))
+(assert-event (not (equal (fn-bp-work-status
+                           "work:a"
+                           (fn-bp-state-works (fn-bp-restart *bpr-not-a-state*)))
+                          (fn-bp-work-status-after-restart
+                           (fn-bp-work-status
+                            "work:a"
+                            (fn-bp-state-works *bpr-not-a-state*))))))
+
+; TOOTH for the success hypothesis of
+; fn-bp-replay-work-status-is-the-pre-crash-status-restarted.  An attempt
+; record before any enqueue is refused, and a refusal leaves the image at the
+; prefix it had reached -- which is not what the same events denote.
+(defconst *bpr-attempt-before-enqueue*
+  (list *bpr-config* *bpr-attempt* *bpr-enqueue*
+        '(:outcome 10 0 :ordinary :durable)))
+(assert-event (not (car (fn-bp-replay-journal *bpr-node*
+                                              *bpr-attempt-before-enqueue*))))
+(assert-event
+ (not (equal (fn-bp-work-status
+              "work:a"
+              (fn-bp-state-works
+               (fn-bp-journal-nth
+                1 (fn-bp-replay-journal *bpr-node* *bpr-attempt-before-enqueue*))))
+             (fn-bp-work-status-after-restart
+              (fn-bp-work-status
+               "work:a"
+               (fn-bp-state-works
+                (fn-bp-trace *bpr-s0*
+                             (fn-bp-durable-events
+                              (cdr *bpr-attempt-before-enqueue*)))))))))
+
+; WITNESS for fn-bp-work-origin-at-open-is-recovered-or-absent: at open the
+; recorded id list is the image's own works, so a work the cut left behind
+; reads :recovered and an id the image does not hold reads :absent.
+(defconst *bpr-open-ids*
+  (fn-bp-work-ids (fn-bp-state-works *bpr-inflight-post*)))
+(assert-event (equal *bpr-open-ids* '("work:a")))
+(assert-event (equal (fn-bp-work-origin "work:a" *bpr-open-ids*
+                                        (fn-bp-state-works *bpr-inflight-post*))
+                     :recovered))
+(assert-event (equal (fn-bp-work-origin "work:none" *bpr-open-ids*
+                                        (fn-bp-state-works *bpr-inflight-post*))
+                     :absent))
+
+; WITNESS for fn-bp-durable-enqueue-after-open-reads-enqueued: the same work
+; id, the same :outstanding status, and the answer the lab's assertion needs
+; -- this one the session enqueued, so it reads :enqueued and not :recovered.
+(defconst *bpr-enqueued-after-open*
+  (fn-bp-state-works
+   (fn-bp-result-state (fn-bp-complete *bpr-prepared-enqueue* 10 0 :durable))))
+(assert-event (equal (fn-bp-work-status "work:a" *bpr-enqueued-after-open*)
+                     :outstanding))
+(assert-event (equal (fn-bp-work-origin "work:a" nil *bpr-enqueued-after-open*)
+                     :enqueued))
+; TOOTH for the not-already-recovered hypothesis: with that id in the recorded
+; list the same works read :recovered, so the hypothesis is what separates them.
+(assert-event (equal (fn-bp-work-origin "work:a" '("work:a")
+                                        *bpr-enqueued-after-open*)
+                     :recovered))
+; TOOTH for fn-bp-pending-matchesp: another transaction pair commits nothing.
+(assert-event (equal (fn-bp-work-origin
+                      "work:a" nil
+                      (fn-bp-state-works
+                       (fn-bp-result-state
+                        (fn-bp-complete *bpr-prepared-enqueue* 99 0 :durable))))
+                     :absent))
+; TOOTH for the not-fenced hypothesis: the fenced pending commits nothing.
+(assert-event (equal (fn-bp-work-origin
+                      "work:a" nil
+                      (fn-bp-state-works
+                       (fn-bp-result-state
+                        (fn-bp-complete *bpr-fenced-enqueue* 10 0 :durable))))
+                     :absent))
+; TOOTH for the :enqueue kind hypothesis.  This state is CONSTRUCTED, not
+; reached: fn-bp-prepare-attempt only prepares an attempt for a work the image
+; already holds, so the composed machine has no :attempt pending over an image
+; that holds none.  It is a legal state all the same, and the theorem
+; quantifies over states, so the hypothesis is required: completing this
+; pending replaces a work that is not there and the answer is :absent.
+(defconst *bpr-attempt-pending*
+  (fn-bp-journal-nth
+   1 (fn-bp-apply-journal-record
+      (fn-bp-journal-nth
+       1 (fn-bp-replay-journal
+          *bpr-node*
+          (list *bpr-config* *bpr-enqueue* '(:outcome 10 0 :ordinary :durable))))
+      *bpr-attempt*)))
+(defconst *bpr-attempt-pending-no-work*
+  (fn-bp-make-state (fn-bp-state-node *bpr-attempt-pending*)
+                    (fn-bp-state-config *bpr-attempt-pending*)
+                    nil
+                    (fn-bp-state-receipts *bpr-attempt-pending*)
+                    (fn-bp-state-pending *bpr-attempt-pending*)
+                    nil
+                    (fn-bp-state-used-txs *bpr-attempt-pending*)))
+(assert-event (fn-bp-statep *bpr-attempt-pending-no-work*))
+(assert-event (fn-bp-pending-matchesp *bpr-attempt-pending-no-work* 11 0))
+(assert-event (not (fn-bp-state-fenced *bpr-attempt-pending-no-work*)))
+(assert-event (equal (fn-bp-pending-kind
+                      (fn-bp-state-pending *bpr-attempt-pending-no-work*))
+                     :attempt))
+(assert-event (equal (fn-bp-work-origin
+                      "work:a" nil
+                      (fn-bp-state-works
+                       (fn-bp-result-state
+                        (fn-bp-complete *bpr-attempt-pending-no-work* 11 0
+                                        :durable))))
+                     :absent))

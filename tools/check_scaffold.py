@@ -11,6 +11,8 @@ from urllib.parse import unquote, urlsplit
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from tools import ledger  # noqa: E402  (after ROOT is on the path)
+sys.path.insert(0, str(ROOT / "tools"))
+import v0_matrix  # noqa: E402  (the v0 release gate's own validator)
 ERRORS: list[str] = []
 IGNORED = {".git", ".venv", ".cache", "build", "var", "__pycache__"}
 
@@ -186,6 +188,14 @@ def main() -> int:
     for warning in warnings:
         print(f"WARN: ledger: {warning}", file=sys.stderr)
 
+    # The v0 release gate. `planning/v0-matrix.json` carries a per-feature
+    # verdict, and its counts, its indexes and its digest are `tools/v0_matrix.py`'s
+    # over the rows it ran. A verdict word typed into the file by hand does not
+    # survive the digest, so this is where "counts come from tools, not typing"
+    # is enforced for the matrix.
+    for problem in v0_matrix.check_file(ROOT / v0_matrix.MATRIX_JSON):
+        fail(f"v0 matrix: {problem}")
+
     covered = set()
     for ident, entry in scenarios.items():
         references(entry.get("requirements", []), requirements, ident)
@@ -206,6 +216,15 @@ def main() -> int:
     print(f"Ledger lints: {len(warnings)} warnings (export hygiene, teeth form, "
           "hand-written record, "
           f"include hygiene, host names); see planning/ledger.json.")
+    matrix = json.loads((ROOT / v0_matrix.MATRIX_JSON).read_text())
+    print("v0 matrix OK: {total} rows at {rev}, {a} accepted, {r} refused, "
+          "{u} uncertain, {n} not exercised, {b} not built, {d} disagreed; "
+          "the rows match their digest.".format(
+              total=matrix["summary"]["total"], rev=matrix["revision"],
+              a=matrix["summary"]["accepted"], r=matrix["summary"]["refused"],
+              u=matrix["summary"]["uncertain"],
+              n=matrix["summary"]["not-exercised"], b=matrix["summary"]["not-built"],
+              d=matrix["summary"]["disagreed"]))
     print("Structural checks only; no ACL2 certification or scenario execution performed.")
     return 0
 
