@@ -76,6 +76,11 @@
  (equal (fn-cfg-peer-outbound-auth
          (fn-native-admin-result-peer *fn-na-peer-principal-out-auth*))
         '(:authinfo "/etc/fn/outbound.auth" nil)))
+(assert-event
+ (let ((peer (fn-native-admin-result-peer *fn-na-peer-principal-out-auth*)))
+   (equal (fn-cfg-peer-of-rows (fn-cfg-peer-name peer)
+                               (fn-cfg-peer-rows peer))
+          peer)))
 ; Principal ids are the canonical 32-octet lowercase hex projection.
 (assert-event
  (equal (fn-native-admin-result-status
