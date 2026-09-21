@@ -70,6 +70,30 @@
   (if (fn-feedp f)
       (list (fn-feed-journal-entry :feed-restart (list (fn-feed-peer f)))) nil))
 
+; The logical feed has mathematical-natural counters, while the FNFD port has
+; eight-octet naturals and a bounded payload.  This predicate is the one ACL2
+; decision at that boundary: it retains neither a truncated number nor a
+; partially representable record.
+(defconst *fn-feed-port-digest* (make-list 32 :initial-element 0))
+
+(defun fn-feed-record-portp (entry)
+  (declare (xargs :guard t))
+  (and (fn-feed-journal-entryp entry)
+       ; Call the real encoder with a fixed valid-shaped trailer.  `:bad'
+       ; therefore covers both the u64 field domain and the actual FNFD
+       ; payload ceiling in the same path the host will seal later.
+       (not (equal (fn-feed-encode (fn-feed-journal-kind entry)
+                                   (fn-feed-journal-values entry)
+                                   *fn-feed-port-digest*)
+                   :bad))))
+
+(defun fn-feed-records-portp (records)
+  (declare (xargs :guard t :measure (acl2-count records)))
+  (if (atom records)
+      (null records)
+    (and (fn-feed-record-portp (car records))
+         (fn-feed-records-portp (cdr records)))))
+
 ; This driver merely selects the existing live entry; the correspondence
 ; theorem below is not about executing the replay transition twice.
 (defun fn-feed-live-next (f event)
@@ -98,6 +122,46 @@
     (:lost (fn-feed-lost-records f (fn-frame-item 1 event)))
     (:restart (fn-feed-restart-records f))
     (otherwise nil)))
+
+; Effects are read from the same transition calls the live driver uses.  The
+; port step below releases them only with an accepted, representable record
+; batch; it never manufactures command octets in a second state machine.
+(defun fn-feed-live-effects (f event)
+  (declare (xargs :guard t))
+  (case (fn-frame-item 0 event)
+    (:tick (mv-let (next effects) (fn-feed-tick-step f (fn-frame-item 1 event))
+             (declare (ignore next)) effects))
+    (:reply (mv-let (next effects)
+              (fn-feed-observe f (fn-frame-item 1 event)
+                               (fn-frame-item 2 event) (fn-frame-item 3 event))
+              (declare (ignore next)) effects))
+    (otherwise nil)))
+
+(defun fn-feed-port-step-status (result)
+  (declare (xargs :guard t))
+  (fn-frame-item 0 result))
+(defun fn-feed-port-step-feed (result)
+  (declare (xargs :guard t))
+  (fn-frame-item 1 result))
+(defun fn-feed-port-step-records (result)
+  (declare (xargs :guard t))
+  (fn-frame-item 2 result))
+(defun fn-feed-port-step-effects (result)
+  (declare (xargs :guard t))
+  (fn-frame-item 3 result))
+
+; This is the ACL2 boundary contract a host adapter must call before it sends
+; an effect or publishes a record.  A refusal preserves every unit of queued
+; work and exposes neither a record nor an effect.  It is deliberately a
+; separate bounded-port profile: `fn-feed-live-next' remains total over the
+; abstract natural-number feed model.
+(defun fn-feed-live-port-step (f event)
+  (declare (xargs :guard t))
+  (let ((records (fn-feed-live-records f event)))
+    (if (and (fn-feedp f) (fn-feed-records-portp records))
+        (list :accepted (fn-feed-live-next f event) records
+              (fn-feed-live-effects f event))
+      (list :refused f nil nil))))
 
 (defun fn-feed-live-run (f events)
   (declare (xargs :guard t :measure (acl2-count events)))
