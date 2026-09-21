@@ -1270,6 +1270,35 @@
       ]
     },
     {
+      "id": "PRF-044",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bs-related-allocation-is-fresh"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-frontier-noncommit-observation-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-frontier-directory-commit-observation-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-program-establishes-initial-image"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-initial-image-establishes-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-first-frontier-program-preserves-relation"
+        }
+      ]
+    },
+    {
       "id": "PRF-043",
       "events": [
         {
