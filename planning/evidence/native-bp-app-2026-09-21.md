@@ -83,6 +83,9 @@ e1a6efc2f2b15509138d7ed2647cf5d071687fe565d1b3851f76b8f65328aa98  tests/test_bp_
 
 The SHA-256 over those ordered `sha256  path` lines is
 `4a86db3728bc309230708fb7a59526cc6258c32dd2cc5b7bde935eb11c40c254`.
+Exact copies of the build and native test transcripts are archived under
+`planning/evidence/native-bp-app-w18-2026-09-21/`; their digests equal the two
+corresponding `build/` entries above.
 
 ## Scope
 
