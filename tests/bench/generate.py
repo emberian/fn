@@ -61,17 +61,28 @@ def message_id(seed, index, octets=0):
 
 
 def body_lines(seed, index, octets):
-    """Hex body lines inside `*fn-article-max-line-octets*` (998)."""
-    text = filler(seed, index, max(0, octets // 2 + 2)).hex().encode("ascii")
+    """Hex body lines of exactly `octets`, each terminated by CRLF.
+
+    A benchmark source must be valid wire article bytes before its timing is
+    useful.  The older slicer reached the requested byte count by cutting a
+    final CRLF (or, for one remaining octet, appending a dot).  Those samples
+    measure a parser refusal rather than the owner/control posting path.
+    """
+    if octets == 0:
+        return b""
+    if octets < 2:
+        raise ValueError("a CRLF-terminated body needs zero or at least two octets")
+    text = filler(seed, index, max(32, octets)).hex().encode("ascii")
     out = bytearray()
     while len(out) < octets:
-        take = min(72, octets - len(out) - 2)
-        if take <= 0:
-            out += b".."[:octets - len(out)]
-            break
+        remaining = octets - len(out)
+        take = min(72, remaining - 2)
+        # Do not leave a one-octet remainder: the final line needs its CRLF.
+        if remaining - (take + 2) == 1:
+            take -= 1
         out += text[:take] + b"\r\n"
-        text = text[take:] or filler(seed, index + 7919, octets).hex().encode("ascii")
-    return bytes(out[:octets])
+        text = text[take:] or filler(seed, index + 7919 + len(out), octets).hex().encode("ascii")
+    return bytes(out)
 
 
 def article_octets(seed, index, size, msgid, groups, kind="random"):
@@ -96,10 +107,19 @@ def article_octets(seed, index, size, msgid, groups, kind="random"):
             headers.append(b" " + b"f" * 60)
             used += 64
     head = b"\r\n".join(headers) + b"\r\n\r\n"
-    if len(head) >= size:
+    if len(head) > size:
         raise ValueError("payload %d octets is smaller than its header block %d"
                          % (size, len(head)))
-    return head + body_lines(seed, index, size - len(head))
+    # Every requested size at or above the header block is representable as
+    # CRLF-delimited source.  If one byte would remain for the body, extend a
+    # harmless header field by that byte and leave an empty body.
+    if size - len(head) == 1:
+        headers[-1] += b" "
+        head = b"\r\n".join(headers) + b"\r\n\r\n"
+    article = head + body_lines(seed, index, size - len(head))
+    assert len(article) == size
+    assert article.endswith(b"\r\n")
+    return article
 
 
 def rss_kib(pid):
