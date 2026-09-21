@@ -1,5 +1,14 @@
 # Current work: W12 operational repair and composition
 
+Priority correction (2026-09-21): the user reaffirmed D07, **no Python in a
+running/deployed fn node or its operator CLI**. Sol's owner-convergence lane
+finishes its coherent ACL2 integration checkpoint, then adopts that machine in
+the native Lisp service. Sol's native-storage lane supplies shared I/O and
+concrete codecs; Terra inventories and implements independent native CLI/config
+and packaging work. BP remains native. Python service measurements are diagnostic
+baselines; production claims require native two-node evidence. Preserve the full
+selected feature set and its assurance obligations during this migration.
+
 Development has resumed from `8b474e2`. Both outbound feed and transit repair
 branches are merged. Their [combined book certification](evidence/manifests/certify-20260921T051833Z-3941584.json)
 does not establish the behavior of the merged packaged service; the selected
