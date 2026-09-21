@@ -26,8 +26,8 @@
   (multiple-value-bind (octets presentp)
       (fnn-native-auth-read path (fnn-core 'fn-native-auth-host-max-octets))
     (let* ((result
-             (fnn-core-state 'fn-native-auth-host-load octets presentp
-                             requiredp protected-onlyp nil))
+             (fnn-core 'fn-native-auth-host-load octets presentp
+                       requiredp protected-onlyp nil))
            (status (fnn-core 'fn-native-auth-host-status result)))
       (unless (eq status :accepted)
         (fnn-refuse "AUTHINFO profile refused: ~a"
@@ -42,4 +42,3 @@
   (lambda (service)
     (declare (ignore service))
     (fnn-native-auth-install path requiredp protected-onlyp)))
-
