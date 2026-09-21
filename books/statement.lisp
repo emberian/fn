@@ -188,10 +188,8 @@
   ; One bounded preflight and octet validation occur before recursive parsing.
   (if (not (fn-cbor-at-mostp octets outer-budget))
       (fn-stmt-error :limit)
-    (if (atom octets)
-        (if (null octets)
-            (fn-stmt-ok nil)
-          (fn-stmt-error :malformed))
+    (if (not (fn-cbor-octet-listp octets))
+        (fn-stmt-error :malformed)
       (fn-stmt-decode-items-prechecked fuel octets item-budget))))
 
 (defun fn-stmt-decode-items (fuel octets)
