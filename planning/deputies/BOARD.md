@@ -1210,7 +1210,11 @@ of 130.** hbox `run-20260921T013133Z-f968` (`--jobs 8`, `--remote-root
 --closure`, ACL2 8.7 `/tank/fn/acl2-8.7/saved_acl2` sha256
 `64030dda0b03bbb6cf50984889f5ce1e2ba867b6ce3c9a65403afc44f9b4fdb5` through
 `swarm-build`), evidence `build/acl2/certify-20260921T013143Z-1403371`, 721.1 s
-of book wall time, `installed 74, kept 44, uncached 158`. The single failure
+of book wall time, `installed 74, kept 44, uncached 158`. **Re-run on the
+MERGED tree** after `dev` `81ae082` moved `books/owner-invariants` and
+`books/owner.lisp`: `run-20260921T014510Z-c57d`, evidence
+`build/acl2/certify-20260921T014516Z-1413130`, **129 of 130 again**, 702.6 s,
+`installed 70, kept 87, uncached 120`, same single failure. The single failure
 is `tests/acl2/checkpoint-codec-tests` at its `fn-cpc-validp` bad-generation
 assertion, which `w10/kernel-freedom` measured failing under a different
 kernel in a different tree. **Its reason for that verdict is wrong and is
