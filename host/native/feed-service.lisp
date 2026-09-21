@@ -123,7 +123,8 @@ closed by this worker, preserving the one-closer rule."
            (host (fnn-owner-core 'fn-owner-feed-host peer-octets))
            (port (fnn-owner-core 'fn-owner-feed-port peer-octets))
            (backoff (fnn-owner-core 'fn-owner-feed-backoff-ms peer-octets))
-           (security (fnn-owner-core 'fn-owner-feed-security peer-octets)))
+           (security (fnn-owner-core 'fn-owner-feed-security peer-octets))
+           (auth (fnn-owner-core 'fn-owner-feed-auth-policy peer-octets)))
        (unless (member queued '(t nil))
          (fnn-fault "feed core returned malformed queued predicate"))
        (unless (fnn-octet-list-p host)
@@ -135,17 +136,38 @@ closed by this worker, preserving the one-closer rule."
        (unless (and (consp security)
                     (member (car security) '(:clear :tls)))
          (fnn-fault "feed core returned malformed security policy"))
+       (unless (or (null auth)
+                   (and (consp auth) (eq (car auth) :authinfo)
+                        (= (length auth) 3) (stringp (second auth))
+                        (member (third auth) '(t nil))))
+         (fnn-fault "feed core returned malformed auth policy"))
        (values queued (fnn-octets-string (fnn-octets host)) port backoff
                (fnn-feed-checked-connect-timeout
-                (fnn-core 'fn-owner-feed-connect-timeout)) security)))))
+                (fnn-core 'fn-owner-feed-connect-timeout)) security auth)))))
 
-(defun fnn-feed-connect-core (service peer-octets fd)
+(defun fnn-feed-auth-profile (policy)
+  "Read a private regular profile and let ACL2 decode its bounded bytes."
+  (if (null policy) (values nil nil nil)
+    (let* ((path (second policy)) (info (fnn-lstat path)))
+      (unless (and info (fnn-regular-p info) (not (fnn-symlink-p info))
+                   (= (sb-posix:stat-uid info) (sb-posix:getuid))
+                   (zerop (logand (sb-posix:stat-mode info) #o077)))
+        (fnn-refuse "outbound AUTHINFO profile must be owner-only regular file"))
+      (let* ((maximum (fnn-core 'fn-owner-feed-profile-max-octets))
+             (raw (fnn-octet-list (fnn-read-regular-bounded path maximum)))
+             (decoded (fnn-core 'fn-owner-feed-profile-decode raw)))
+        (unless (and (consp decoded) (eq (car decoded) :ok)
+                     (= (length decoded) 3))
+          (fnn-refuse "outbound AUTHINFO profile refused by ACL2"))
+        (values (second decoded) (third decoded) (third policy))))))
+
+(defun fnn-feed-connect-core (service peer-octets fd user pass allow-clear)
   "Start ACL2's greeting/MODE phase; this does not make a feed live."
   (fnn-owner-serialized
    service nil
    (lambda ()
      (fnn-feed-checked-word
-      (fnn-owner-action 'fn-owner-feed-dial-open peer-octets fd)
+      (fnn-owner-action 'fn-owner-feed-dial-open peer-octets fd user pass allow-clear)
       '(:await-greeting :await-tls) 'fn-owner-feed-dial-open))))
 
 (defun fnn-feed-tls-established-core (service link)
@@ -155,8 +177,8 @@ closed by this worker, preserving the one-closer rule."
      (let ((word (fnn-feed-checked-word
                   (fnn-owner-action 'fn-owner-feed-tls-established
                                     (fnn-feed-link-peer-octets link))
-                  '(:mode :ready :need-input) 'fn-owner-feed-tls-established)))
-       (values word (if (eq word :mode)
+                  '(:auth-user :mode :ready :need-input) 'fn-owner-feed-tls-established)))
+       (values word (if (member word '(:auth-user :mode))
                         (fnn-owner-octets-global 'fn-owner-feed-command)
                       (fnn-make-octets 0)))))))
 
@@ -218,7 +240,7 @@ closed by this worker, preserving the one-closer rule."
                   (fnn-owner-action 'fn-owner-feed-reply-chunk
                                     (fnn-feed-link-peer-octets link)
                                     (fnn-octet-list octets) now)
-                  '(:starttls :tls :mode :ready :send :quiet :refused :connection-refused :need-input :closed :invalid :fault)
+                  '(:starttls :tls :auth-user :auth-pass :mode :ready :send :quiet :refused :connection-refused :need-input :closed :invalid :fault)
                   'fn-owner-feed-reply-chunk)))
        (when (eq word :fault)
          (fnn-fault "feed reply framer state is malformed"))
@@ -228,7 +250,7 @@ closed by this worker, preserving the one-closer rule."
        (when (member word '(:send :quiet :refused))
          (fnn-owner-feed-flush service))
        (values word
-               (if (member word '(:starttls :mode :send))
+               (if (member word '(:starttls :auth-user :auth-pass :mode :send))
                    (let ((command (fnn-owner-octets-global 'fn-owner-feed-command)))
                      (when (zerop (length command))
                        (fnn-fault "feed connection/reply authorized an empty command"))
@@ -301,7 +323,7 @@ the shared link table."
   (when (and (not (fnn-feed-stoppingp runtime))
              (null (fnn-feed-link-socket link))
              (<= (fnn-feed-link-next-dial link) now))
-    (multiple-value-bind (queued host port backoff timeout security)
+    (multiple-value-bind (queued host port backoff timeout security auth)
         (fnn-feed-dial-plan (fnn-feed-runtime-service runtime)
                             (fnn-feed-link-peer-octets link))
       (when queued
@@ -310,8 +332,11 @@ the shared link table."
               (progn
                 (setq socket (fnn-connect host port :timeout timeout))
                 (let ((fd (fnn-socket-fd socket)))
-                  (fnn-feed-connect-core (fnn-feed-runtime-service runtime)
-                                         (fnn-feed-link-peer-octets link) fd)
+                  (multiple-value-bind (user pass allow-clear)
+                      (fnn-feed-auth-profile auth)
+                    (fnn-feed-connect-core (fnn-feed-runtime-service runtime)
+                                           (fnn-feed-link-peer-octets link) fd
+                                           user pass allow-clear))
                   (setq published (fnn-feed-publish-socket runtime link socket fd))
                   (when (and published (equal (car security) :tls)
                              (equal (cadr security) :implicit))
@@ -341,27 +366,27 @@ ACL2 framer."
         (case word
           (:need-input
            (when eofp
-             (multiple-value-bind (ignored host port backoff timeout security)
+             (multiple-value-bind (ignored host port backoff timeout security auth)
                  (fnn-feed-dial-plan service (fnn-feed-link-peer-octets link))
-               (declare (ignore ignored host port timeout security))
+               (declare (ignore ignored host port timeout security auth))
                (fnn-feed-drop-link runtime link now backoff)))
            (return))
           ((:closed :invalid :connection-refused)
-           (multiple-value-bind (ignored host port backoff timeout security)
+           (multiple-value-bind (ignored host port backoff timeout security auth)
                (fnn-feed-dial-plan service (fnn-feed-link-peer-octets link))
-             (declare (ignore ignored host port timeout security))
+             (declare (ignore ignored host port timeout security auth))
              (fnn-feed-drop-link runtime link now backoff))
            (return))
           (:ready
            (setf (fnn-feed-link-ready link) t)
            (setq input nil))
           (:tls
-           (multiple-value-bind (ignored host port backoff timeout security)
+           (multiple-value-bind (ignored host port backoff timeout security auth)
                (fnn-feed-dial-plan service (fnn-feed-link-peer-octets link))
-             (declare (ignore ignored host port backoff timeout))
+             (declare (ignore ignored host port backoff timeout auth))
              (fnn-feed-enable-tls runtime link security))
            (setq input nil))
-          ((:starttls :mode :send :quiet)
+          ((:starttls :auth-user :auth-pass :mode :send :quiet)
            ;; The next call receives the framer's already-retained suffix,
            ;; not a concatenation constructed in raw Lisp.
            (setq input nil)))))))
@@ -387,10 +412,10 @@ ACL2 framer."
       ((or fnn-os-error sb-bsd-sockets:socket-error fnn-tls-error) ()
         (if (fnn-feed-stoppingp runtime)
             (fnn-feed-close-link runtime link)
-          (multiple-value-bind (ignored host port backoff timeout security)
+          (multiple-value-bind (ignored host port backoff timeout security auth)
               (fnn-feed-dial-plan (fnn-feed-runtime-service runtime)
                                   (fnn-feed-link-peer-octets link))
-            (declare (ignore ignored host port timeout security))
+            (declare (ignore ignored host port timeout security auth))
             (fnn-feed-drop-link runtime link now backoff)))))))
 
 (defun fnn-feed-worker (runtime)
