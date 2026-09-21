@@ -11,7 +11,7 @@ the host call `fnn-command-init` -> `fnn-initialize` -> `fnn-acquire`, not a
 sibling model.  `planning/lanes/DESIGN-w14-native-initializer.md` records the
 complete source-to-`fn-bsi-current-init-program` map and its scope.
 
-`FN_NATIVE_INIT_FAULT=MODEL-CUT:eio|kill` is a developer-only environment seam,
+`FN_NATIVE_INIT_FAULT=MODEL-CUT:eio|kill|eacces` is a developer-only environment seam,
 not command-line/operator configuration.  `kill` sends SIGKILL after the named
 call returned; `tests/test_native_initializer_fidelity.py` restarts using a new
 native process.  The test includes a normal fresh init/recover, post-history
@@ -20,11 +20,11 @@ second configuration-directory enumeration fault.  The static test proves the
 full model-label table is attached to the actual helper calls.
 
 The same packet fixes a real error/empty conflation: `fnn-config-record-names`
-no longer catches every `fnn-os-error` as NIL.  A non-model test control before
-the final enumeration demonstrates that init faults instead of continuing as
-though history were absent.  This does not claim that an injected post-call EIO
-models all platform EIO outcomes; the published staging content was already
-file-fenced before its link.
+no longer catches every `fnn-os-error` as NIL.  The non-model `eacces` control
+chmods `config/` immediately before the second real `fnn-list-directory` call;
+the resulting EACCES faults init rather than becoming empty history.  This does
+not claim that an injected post-call EIO models all platform EIO outcomes; the
+published staging content was already file-fenced before its link.
 
 Runtime closure and exact results are in
 `planning/evidence/native-initializer-fidelity-w14-2026-09-21.md`.  The W14
