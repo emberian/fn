@@ -46,6 +46,7 @@
 
 (defvar *fnn-tls-state* :uninitialized)
 (defvar *fnn-tls-libraries* nil)
+(defvar *fnn-tls-pinned-libraries* nil)
 (defvar *fnn-tls-version* nil)
 (defvar *fnn-tls-initialize-lock*
   (sb-thread:make-mutex :name "fn native TLS initialization"))
@@ -190,20 +191,33 @@
       "OpenSSL reported no queued detail")))
 
 (defun fnn-tls-load-libraries ()
-  (let ((last-error nil))
-    (dolist (pair (fnn-tls-library-candidates))
-      (handler-case
-          (progn
-            ;; libssl depends on libcrypto.  Loading the dependency first is
-            ;; required on platforms whose loader does not make it global.
-            (sb-alien:load-shared-object (first pair))
-            (sb-alien:load-shared-object (second pair))
-            (return-from fnn-tls-load-libraries pair))
-        (error (condition) (setq last-error condition))))
-    (error 'fnn-tls-unavailable
-           :detail (if last-error
-                       (format nil "OpenSSL 3 cannot be loaded: ~a" last-error)
-                     "OpenSSL 3 has no loader candidate on this platform"))))
+  "Select one complete pair before loading either member; never mix fallback."
+  (let* ((candidates (fnn-tls-library-candidates))
+         (pair (or *fnn-tls-pinned-libraries*
+                   (find-if (lambda (candidate)
+                              (and (probe-file (first candidate))
+                                   (probe-file (second candidate))))
+                            candidates)
+                   (find-if (lambda (candidate)
+                              (and (not (char= (char (first candidate) 0) #\/))
+                                   (not (char= (char (second candidate) 0) #\/))))
+                            candidates))))
+    (unless pair
+      (error 'fnn-tls-unavailable
+             :detail "no complete OpenSSL libcrypto/libssl pair exists"))
+    ;; Preserve this identity across saved-image restart.  Reset revalidates
+    ;; readiness and ABI, but an environment change cannot replace a library
+    ;; whose symbols may already be resident in this process/image.
+    (setq *fnn-tls-pinned-libraries* pair)
+    (handler-case
+        (progn
+          (sb-alien:load-shared-object (first pair))
+          (sb-alien:load-shared-object (second pair))
+          pair)
+      (error (condition)
+        (error 'fnn-tls-unavailable
+               :detail (format nil "pinned OpenSSL pair cannot be loaded: ~a"
+                               condition))))))
 
 (defun fnn-tls-initialize ()
   "Load OpenSSL 3 once.  This establishes facility availability, not a

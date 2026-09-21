@@ -97,6 +97,13 @@
               (concatenate 'string public (string (code-char 0)) "suffix"))
              (error "NUL key path was accepted"))
     (fnn-hsig-fault () nil))
+  (let ((pinned (copy-tree *fnn-tls-pinned-libraries*)))
+    (fnn-tls-reset)
+    (fnn-hsig-check (equal pinned *fnn-tls-pinned-libraries*)
+                    "TLS reset preserves the selected library identity")
+    (fnn-tls-initialize)
+    (fnn-hsig-check (equal pinned *fnn-tls-libraries*)
+                    "TLS restart revalidates the same library pair"))
   )
 
 (format t "FN_NATIVE_HYBRID_SIGNATURE_TEST passed openssl=~s~%"
