@@ -44,8 +44,10 @@ as PRF-044; the conditional scope and missing host correspondence remain explici
 The overnight goal remains active. Luna handles bounded mechanical work, Terra
 implementation, and Sol substantial implementation/proof debugging and combined
 owner-service integration. Astra handles periodic cross-project review and
-difficult residual problems. Sol is also taking native metadata codec adoption
-and transaction-name proof completion.
+difficult residual problems. Native metadata, frontier, transaction naming and
+posting provenance now use ACL2 definitions in the integrated native adapter;
+the [codec packet](evidence/native-storage-codec-w13-2026-09-21.md) records
+byte-identical committed frames and the remaining staging recovery differences.
 
 The principal composition obligations are explicit: durable article acceptance
 must preserve feed intent; uncertain persistence must fence all mutations;

@@ -98,8 +98,6 @@ Next design packet: inventory the actual callers and their guarantees, select
 one called operation to consolidate, and prove/test that operation before moving
 the others. The immediate U01 repair must not wait for this broader factoring.
 
-## Pleasantness criteria for the native migration
-
 ### U05: a stale owner article bound disagrees with the posting configuration
 
 `books/owner.lisp` still uses the prototype `*fn-own-body-limit*` value 8192
@@ -115,6 +113,41 @@ keep any pre-configuration fallback out of the configured served path. The
 wire line-capacity repair alone does not fix this separate total-article bound.
 Owner convergence owns the projection and called-path tests; this remains open
 until its packet and evidence land.
+
+### U06: peer labels double as filesystem paths
+
+Owner convergence found both development and native FNFD adapters constructing
+`feed/<peer>.fnfd` directly from the configured label. The ACL2 label predicate
+does not exclude separators or traversal components. Thus a valid logical peer
+name can escape or collide with the intended directory; merely validating the
+native caller differently would create another identity disagreement.
+
+Repair: one ACL2-owned injective filename codec, adopted by both callers, with
+explicit legacy journal handling. Preserve existing evidence and refuse ambiguous
+migration rather than moving or dropping a journal by guesswork. The native
+configuration lane owns the codec and coordinates actual owner adoption. This
+is a confirmed code defect; traversal/collision and migration tests are pending.
+
+### U07: normalized default paths bypass their own bounds
+
+At native configuration candidate `b8d760f`, `fn-ncfg-string-value` validates an
+explicit value but returns a missing field's default unchecked. A permitted
+512-octet store path therefore generates an auth/control path beyond the claimed
+512-octet limit. The semantic authority is already ACL2 here; the defect is an
+incomplete normalization contract, not a host twin.
+
+Repair: apply the same path bound to supplied and generated values. Test the
+maximum store path with derived defaults and with shorter explicit overrides.
+The native configuration lane owns this repair before its packet lands.
+
+## Landed consolidation and its limits
+
+Native storage candidate `7ae568b` is integrated: metadata and frontier frames,
+transaction names and posting provenance now use ACL2 instead of native copies.
+The [source-pinned packet](evidence/native-storage-codec-w13-2026-09-21.md)
+records byte-identical committed frames and cross-open tests. It also records
+staging-orphan retention and missing-staging-directory differences: removing
+serialization twins has not yet established complete recovery correspondence.
 
 ## Operator and implementation criteria
 
