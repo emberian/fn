@@ -386,6 +386,16 @@ credential file in the old format is refused by name
 read a stored password to re-derive it. The live evidence is
 `planning/evidence/auth-w10-2026-09-20.md`.
 
+**Native startup slice 2026-09-21**: `books/native-auth-profile.lisp` parses
+the bounded credential file and constructs the same `fn-auth-config` the
+served owner already pins at connection open. `host/native/auth.lisp` only
+reads the ACL2-selected path and transports octets; it neither parses a
+credential nor hashes or compares a secret. The native operator admits
+`auth.required` on its ACL2-restricted loopback listeners. It still refuses
+`auth.protected_only` and TLS paths before listening because the saved image
+does not yet have a TLS handshake facility. Credentials are startup-pinned;
+live reload/generation switching remains open.
+
 **Closed 2026-09-20**: RFC 4642 §2.2 says STARTTLS MUST NOT be pipelined,
 and the handshake begins with the first octet after the 382's CRLF, so any
 octets that arrived in the same read after the `STARTTLS` command line are
