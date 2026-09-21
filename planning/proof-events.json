@@ -1,1143 +1,1158 @@
 {
- "description": "Curated map from proof target to the ACL2 events that support it. This file is edited by hand and is the only hand-edited half of the ledger; tools/ledger.py checks every name against the books and regenerates the events arrays of planning/proofs.json from it. A name here must exist, must not be flagged SUSPECT by the shape detector, and must live in a book the Makefile certification roots reach. A pending_subject note records that the theorem is about a function the host does not call, so the citation does not yet meet the \"theorem subject is the function the host calls\" rule.",
- "schema_version": 1,
- "targets": [
-  {
-   "events": [
+  "description": "Curated map from proof target to the ACL2 events that support it. This file is edited by hand and is the only hand-edited half of the ledger; tools/ledger.py checks every name against the books and regenerates the events arrays of planning/proofs.json from it. A name here must exist, must not be flagged SUSPECT by the shape detector, and must live in a book the Makefile certification roots reach. A pending_subject note records that the theorem is about a function the host does not call, so the citation does not yet meet the \"theorem subject is the function the host calls\" rule.",
+  "schema_version": 1,
+  "targets": [
     {
-     "kind": "theorem",
-     "name": "fn-prepare-preserves-state"
+      "id": "PRF-001",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-prepare-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-complete-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-recover-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-node-prepare-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-node-complete-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-node-recover-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-replay-advance-preserves-node-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-replay-loop-result-is-typed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-replay-result-is-typed-from-valid-configuration"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-initial-state-is-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-start-frontier-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-run-events-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-prepare-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-finish-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-recover-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-node-trace-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-node-trace-preserves-old-bindings"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snrt-mixed-trace-preserves-live-history-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bp-initial-state-is-binding-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bp-step-preserves-binding-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bp-trace-preserves-binding-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-initial-invariant"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-actual-record-preserves-invariant"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-actual-finite-replay-preserves-invariant"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-successful-replay-has-invariant"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-store-step-preserves-evolving-invariant"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-apply-record-preserves-evolving-invariant"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-system-run-preserves-invariant"
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-complete-preserves-state"
+      "id": "PRF-002",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-install-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-watermark-does-not-conflict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-allocate-at-watermark"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-state-has-fresh-local-numbers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-durable-completion-installs-exact-pending-article"
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-recover-preserves-state"
+      "id": "PRF-003",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-duplicate-accepted-prepare-is-no-op"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-complete-preserves-existing-message-id-binding"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-recover-preserves-existing-message-id-binding"
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-node-prepare-preserves-state"
+      "id": "PRF-004",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-retain-exact-release-records-its-evidence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-retain-admit-preserves-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-retain-known-obligation-id-is-not-reused"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-retain-release-preserves-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-retain-release-preserves-independent-pin"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-retain-release-preserves-known-identity"
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-node-complete-preserves-state"
+      "id": "PRF-005",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cbor-uint32-round-trip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbor-byte-encoding-fits-input-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbor-byte-encoding-are-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbor-byte-string-round-trip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbor-value-round-trip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbor-decode-reencode-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbor-accepted-input-is-canonical"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-record-round-trip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-successful-parse-preserves-source"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-record-accepted-input-is-canonical"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpa-round-trip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpa-success-is-canonical"
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-node-recover-preserves-state"
+      "id": "PRF-006",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-wire-unstuff-stuff-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-feed-proper-append",
+          "pending_subject": "Subject is fn-wire-feed-proper; the host calls fn-wire-next (host/reader-host.lisp:91) and no theorem equates them. Review section 4, wire row."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-feed-byte-preserves-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-next-closed-noop"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-next-preserves-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-next-consumed-prefix-reconstructs-input"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wildmat-pattern-matchp-is-anchored-reference"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wildmat-rightmost-match-is-last-reference-match"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-step-partition-independence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-reply-stream-is-partition-independent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-feed-of-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-run-is-the-concatenated-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wildmat-item-character-matchp-is-rfc3977-on-rfc3977-items"
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-replay-advance-preserves-node-statep"
+      "id": "PRF-007",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-replay-advance-preserves-node-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-replay-apply-record-non-nil-is-node-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-replay-loop-result-is-typed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-fenced-rejects-frontier-start"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-fenced-rejects-record-prepare"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-success-requires-matching-completion"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-incomplete-recovery-barrier-is-not-ready"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-fenced-rejects-success"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-frontier-replace-error-fences"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-crash-realizes-every-admissible-image"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-open-observed-success-has-live-history-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-acknowledged-record-survives-observed-reopen"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-crash-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-stable-records-prefix-of-crash"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-surviving-candidate-is-exact-and-dominated"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-prior-success-has-record-after-one-crash"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-frontier-dir-result-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-record-dir-result-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-core-completion-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-emit-success-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-recover-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-recovery-barrier-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-run-events-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-stable-records-prefix-of-run-events"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-prior-emitted-success-retained-by-run-trace"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-new-success-requires-actual-matching-durable-node-completion"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-extended-history-equals-live-completion"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snrt-mixed-trace-ready-node-is-exact-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snrt-acknowledged-history-retained-through-mixed-trace"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snrt-new-success-is-actual-matching-durable-completion"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-open-observed-success-exact-history"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-open-observed-not-ready-before-five-barriers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-open-observed-five-barriers-open-ready"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-successful-replay-has-invariant"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-replay-no-receipt-before-committed-decision"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-replayed-receipt-is-grounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-replay-rest-preserves-receipt-adu"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-history-record-is-node-committed-when-idle"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-evolving-invariant-survives-observed-reopen"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpr-live-receipt-regenerated-after-restart"
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-replay-loop-result-is-typed"
+      "id": "PRF-008",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-checkpoint-plus-suffix-equals-full-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-checkpoint-admissible-capture-is-exact"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-checkpoint-admissible-capture-value-is-valid"
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-replay-result-is-typed-from-valid-configuration"
+      "id": "PRF-010",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-index-rebuild-correspondence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-index-range-query-correct"
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-sf-initial-state-is-state"
+      "id": "PRF-011",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-exchange-merge-idempotent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exchange-merge-commutative-member"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exchange-admitted-order-member"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-exact-duplicate-no-overwrite"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-reserve-preserves-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-add-chunk-preserves-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-complete-entry-candidate-correct"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-complete-entry-candidate-byte-agreement"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-missing-ranges-is-correct",
+          "pending_subject": "fn-transfer-missing-ranges has no caller outside the transfer books; no host line calls the subject. Review section 4, transfer row."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exchange-policy-ingest-trace-preserves-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exchange-policy-ingest-trace-preserves-facts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-exchange-admitted-ingest-retains-conflicting-evidence"
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-sf-start-frontier-preserves-state"
+      "id": "PRF-012",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bp-step-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bp-trace-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bp-step-preserves-node"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bp-trace-preserves-node"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bp-transport-step-preserves-receipt"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bp-transport-trace-preserves-receipt"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bp-unchecked-receipt-is-no-op"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpo-receipt-success-requires-local-policy"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpo-receipt-success-is-actual-journal-preparation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bp-initial-state-is-binding-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bp-step-preserves-binding-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bp-trace-preserves-binding-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-initial-invariant"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-actual-record-preserves-invariant"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-actual-finite-replay-preserves-invariant"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-successful-replay-has-invariant"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-replay-no-receipt-before-committed-decision"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-replayed-receipt-is-grounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-replay-rest-preserves-receipt-adu"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-acceptable-implies-grounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-evolving-output-is-history-grounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-evolving-output-is-node-grounded-when-idle"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bprv-apply-record-agrees-at-ready-extension"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpr-live-state-is-replay-of-journal"
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-sf-run-events-preserves-state"
+      "id": "PRF-014",
+      "events": [
+        {
+          "kind": "guarded-function",
+          "name": "fn-cbor-encode"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-cbor-decode-exact"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-record-encode"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-record-decode-exact"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-extended-history-equals-live-completion"
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-sn-prepare-preserves-state"
+      "id": "PRF-015",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-unknown-group-preserves-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-msgid-preserves-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-listgroup-unknown-preserves-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-step-preserves-consistent-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-finite-trace-preserves-consistent-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-opened-finite-trace-is-consistent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-step-preserves-carried-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-command-effects-well-formed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-step-effects-well-formed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-closed-step-has-no-effects"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-step-preserves-connp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-run-preserves-connp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-step-effects-are-typed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-run-effects-are-typed"
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-sn-finish-preserves-state"
+      "id": "PRF-016",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-wire-initial-state-is-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-feed-byte-preserves-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbor-byte-encoding-fits-input-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-record-cbor-byte-encoding-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-record-group-encoding-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-successful-parse-preserves-source"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-initial-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-invalid-chunk-no-overwrite"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-successful-parse-syntax-p"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-successful-parse-component-bounds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wildmat-utf8-next-success-scalar"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wildmat-utf8-next-success-strict-progress"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wildmat-successful-decode-length-bounded-by-input"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wildmat-successful-parse-parsedp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wildmat-parse-yields-rfc3977-patterns"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wildmat-successful-parse-text-parsedp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-entry-candidate-work-value"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-entry-candidate-work-cost-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-missing-work-cost-bound",
+          "pending_subject": "Costs a function with no caller outside the transfer books. Review section 4, transfer row."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wm-pattern-match-work-cost"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wm-match-codepoints-work-cost-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-transfer-missing-ranges-work-public-bound",
+          "pending_subject": "Costs a function with no caller outside the transfer books, and the closed form is far above the measured cost. Review section 4, transfer row."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-parse-work-value"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-parse-work-input-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-article-parse-work-profile-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-feed-steps-bounded-by-chunk-length"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-step-nntp-steps-is-bounded"
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-sn-recover-preserves-state"
+      "id": "PRF-019",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-stx-detached-round-trip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-detached-accepted-input-is-canonical"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-field-round-trip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-field-accepted-input-is-canonical"
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-node-trace-preserves-state"
+      "id": "PRF-020",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-stx-verified-implies-signature-over-own-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-verified-is-the-statement-the-article-carries"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-verdict-is-typed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-verdict-records-its-keyring-generation"
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-node-trace-preserves-old-bindings"
+      "id": "PRF-023",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-stx-index-bindings-agree"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-index-slots-agree"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-index-equivocators-agree"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-index-invariant-preserved-by-accept"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-durable-completion-is-an-acceptance",
+          "note": "The subject-equating theorem AGENTS.md rule 1 asks for, for the preservation half of this target: fn-stx-index-invariant-preserved-by-accept hypothesises fn-stx-acceptedp, and this proves fn-stx-acceptedp of the durable branch of fn-node-complete with the accepted article named. The host line is host/store-node-host.lisp fn-store-sn-finish -> fn-sn-finish (books/store-node.lisp) -> that call."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-finish-preserves-indexedp",
+          "note": "The carrier obligation, and the one preservation row that does work: the store grows at fn-sn-finish by the one article fn-install-pending conses and the carried index grows by that article's delta, at most one cons. Its keystone is fn-stx-index-invariant-preserved-by-accept and its hypothesis is discharged by fn-stx-durable-completion-is-an-acceptance. 11,118 prover steps. Decision D21."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-statement-lookup-is-the-lace-lookup",
+          "note": "The subject-equating theorem AGENTS.md rule 1 asks for, for the QUERY half. Subject: fn-sn-statement-lookup (books/store-node.lisp), which host/store-node-host.lisp fn-store-sn-statement calls on the 'fn-store-sn global, reachable from outside as run_store.py statement --id. Its hypothesis fn-sn-indexedp holds of that global by a reachability chain: fn-sn-initial-is-indexed and the preservation theorems for prepare, io, finish, crash, recover and set-keyring (books/store-node-invariants), refuse-reservation and known-abort (books/store-node-resolution), open-observed (books/store-observed) and the sweep, which returns the store unchanged. The one site not covered is host/bp-ingress-host.lisp, whose fn-bpi-ingress-prepare has no such theorem; it is recorded open. :rule-classes nil so it cannot rewrite the cheap query back into the linear projection."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-equivocatorp-is-the-lace-equivocator",
+          "note": "The same bridge for the equivocation query. Subject: fn-sn-equivocatorp, called by host/store-node-host.lisp fn-store-sn-equivocator."
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-snrt-mixed-trace-preserves-live-history-relation"
+      "id": "PRF-025",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-stx-commit-decode-is-a-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-commits-of-batch-are-verified-and-well-formed",
+          "pending_subject": "fn-stx-commits-of-batch has no caller outside books/stx-epochs, and no book outside the stx cluster includes books/stx-epochs at all: there is no reconnection path in the tree to wire it to. Future feature work, not missing evidence for implemented behaviour. Review section 4."
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-bp-initial-state-is-binding-state"
+      "id": "PRF-028",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocfg-open-pins-the-live-configuration",
+          "pending_subject": "No host line calls any fn-ocfg- function: host/owner-host.lisp drives fn-own-open / fn-own-advance / fn-own-read and books/owner-config pairs that owner with the configuration and the pin TABLE beside it. The equating theorem the rule asks for is fn-ocfg-served-port-answers-list-active-at-the-pin, which is FALSE today and is recorded, not stated, at the end of books/owner-config.lisp: fn-nntp-dispatch supplies the allocation domain (fn-state-groups archive) where the pin's served table belongs. That is the R5 wire seam."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocfg-advance-observes-the-live-configuration",
+          "pending_subject": "No host line calls any fn-ocfg- function: host/owner-host.lisp drives fn-own-open / fn-own-advance / fn-own-read and books/owner-config pairs that owner with the configuration and the pin TABLE beside it. The equating theorem the rule asks for is fn-ocfg-served-port-answers-list-active-at-the-pin, which is FALSE today and is recorded, not stated, at the end of books/owner-config.lisp: fn-nntp-dispatch supplies the allocation domain (fn-state-groups archive) where the pin's served table belongs. That is the R5 wire seam."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocfg-pin-is-stable-without-advance",
+          "pending_subject": "No host line calls any fn-ocfg- function: host/owner-host.lisp drives fn-own-open / fn-own-advance / fn-own-read and books/owner-config pairs that owner with the configuration and the pin TABLE beside it. The equating theorem the rule asks for is fn-ocfg-served-port-answers-list-active-at-the-pin, which is FALSE today and is recorded, not stated, at the end of books/owner-config.lisp: fn-nntp-dispatch supplies the allocation domain (fn-state-groups archive) where the pin's served table belongs. That is the R5 wire seam."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocfg-list-active-lists-the-pinned-served-table",
+          "pending_subject": "No host line calls any fn-ocfg- function: host/owner-host.lisp drives fn-own-open / fn-own-advance / fn-own-read and books/owner-config pairs that owner with the configuration and the pin TABLE beside it. The equating theorem the rule asks for is fn-ocfg-served-port-answers-list-active-at-the-pin, which is FALSE today and is recorded, not stated, at the end of books/owner-config.lisp: fn-nntp-dispatch supplies the allocation domain (fn-state-groups archive) where the pin's served table belongs. That is the R5 wire seam."
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-bp-step-preserves-binding-state"
+      "id": "PRF-030",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-provp-of-string"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prov-render-of-post"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prov-render-of-transit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prov-render-of-bp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prov-render-of-local"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prov-render-of-legacy"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prov-of-wire-of-a-plain-string"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prov-of-wire-of-wire"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prov-of-wire-of-a-durable-wire"
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-bp-trace-preserves-binding-state"
+      "id": "PRF-032",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sf-recovery-crash-realizes-every-admissible-image"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-recovery-admissible-image-facts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-recovery-crash-image-extends-stable-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-crash-rollback-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-crash-rollback-image-is-recovery-admissible"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-crash-imagep-implies-recovery-crash-imagep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-image-crash-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-crash-frontier-rollback-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sf-crash-frontier-rollback-image-is-recovery-admissible"
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-bprv-initial-invariant"
+      "id": "PRF-034",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bp-work-status-of-restart"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bp-replay-work-status-is-the-pre-crash-status-restarted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bp-work-origin-at-open-is-recovered-or-absent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bp-durable-enqueue-after-open-reads-enqueued"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bp-journal-events-is-durable-events-then-restart"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-bp-work-status"
+        },
+        {
+          "kind": "guarded-function",
+          "name": "fn-bp-work-origin"
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-bprv-actual-record-preserves-invariant"
+      "id": "PRF-035",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-frame-protected-plus-trailer-is-seal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frame-decode-of-host-framing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frame-store-protected-plus-trailer-is-seal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-frame-store-decode-of-host-framing"
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-bprv-actual-finite-replay-preserves-invariant"
+      "id": "PRF-036",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-snt-replayed-history-node-is-idle"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snt-history-recoverable-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snt-history-recoverable-of-but-last"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snt-history-recoverable-under-record-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-snt-recovery-admissible-crash-image-is-recoverable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-recovery-admissible-image-reopens"
+        }
+      ]
     },
     {
-     "kind": "theorem",
-     "name": "fn-bprv-successful-replay-has-invariant"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bprv-store-step-preserves-evolving-invariant"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bprv-apply-record-preserves-evolving-invariant"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bprv-system-run-preserves-invariant"
+      "id": "PRF-037",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cpc-valid-is-capture-value",
+          "pending_subject": "fn-cpc-validp has no caller in host/, tools/ or any other book; the served restore path is host/checkpoint-host.lisp -> fn-checkpoint-restore (which tests the same journal-interval condition as its :suffix clause) and no theorem equates the two. Review section 4, the theorem-subject rule."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cpc-valid-refuses-generation-mismatch",
+          "pending_subject": "fn-cpc-validp has no caller in host/, tools/ or any other book; the served restore path is host/checkpoint-host.lisp -> fn-checkpoint-restore (which tests the same journal-interval condition as its :suffix clause) and no theorem equates the two. Review section 4, the theorem-subject rule."
+        }
+      ]
     }
-   ],
-   "id": "PRF-001"
-  },
-  {
-   "events": [
-    {
-     "kind": "theorem",
-     "name": "fn-install-preserves-state"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-watermark-does-not-conflict"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-allocate-at-watermark"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-state-has-fresh-local-numbers"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-durable-completion-installs-exact-pending-article"
-    }
-   ],
-   "id": "PRF-002"
-  },
-  {
-   "events": [
-    {
-     "kind": "theorem",
-     "name": "fn-duplicate-accepted-prepare-is-no-op"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-complete-preserves-existing-message-id-binding"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-recover-preserves-existing-message-id-binding"
-    }
-   ],
-   "id": "PRF-003"
-  },
-  {
-   "events": [
-    {
-     "kind": "theorem",
-     "name": "fn-retain-exact-release-records-its-evidence"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-retain-admit-preserves-statep"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-retain-known-obligation-id-is-not-reused"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-retain-release-preserves-statep"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-retain-release-preserves-independent-pin"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-retain-release-preserves-known-identity"
-    }
-   ],
-   "id": "PRF-004"
-  },
-  {
-   "events": [
-    {
-     "kind": "theorem",
-     "name": "fn-cbor-uint32-round-trip"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-cbor-byte-encoding-fits-input-bound"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-cbor-byte-encoding-are-octets"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-cbor-byte-string-round-trip"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-cbor-value-round-trip"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-cbor-decode-reencode-prefix"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-cbor-accepted-input-is-canonical"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-record-round-trip"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-article-successful-parse-preserves-source"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-record-accepted-input-is-canonical"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bpa-round-trip"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bpa-success-is-canonical"
-    }
-   ],
-   "id": "PRF-005"
-  },
-  {
-   "events": [
-    {
-     "kind": "theorem",
-     "name": "fn-wire-unstuff-stuff-line"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-wire-feed-proper-append",
-     "pending_subject": "Subject is fn-wire-feed-proper; the host calls fn-wire-next (host/reader-host.lisp:91) and no theorem equates them. Review section 4, wire row."
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-wire-feed-byte-preserves-statep"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-wire-next-closed-noop"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-wire-next-preserves-statep"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-wire-next-consumed-prefix-reconstructs-input"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-wildmat-pattern-matchp-is-anchored-reference"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-wildmat-rightmost-match-is-last-reference-match"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-served-step-partition-independence"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-served-reply-stream-is-partition-independent"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-served-feed-of-append"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-served-run-is-the-concatenated-step"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-wildmat-item-character-matchp-is-rfc3977-on-rfc3977-items"
-    }
-   ],
-   "id": "PRF-006"
-  },
-  {
-   "events": [
-    {
-     "kind": "theorem",
-     "name": "fn-replay-advance-preserves-node-statep"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-replay-apply-record-non-nil-is-node-state"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-replay-loop-result-is-typed"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-fenced-rejects-frontier-start"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-fenced-rejects-record-prepare"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-success-requires-matching-completion"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-incomplete-recovery-barrier-is-not-ready"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-fenced-rejects-success"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-frontier-replace-error-fences"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-crash-realizes-every-admissible-image"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sn-open-observed-success-has-live-history-relation"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sn-acknowledged-record-survives-observed-reopen"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-crash-preserves-state"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-stable-records-prefix-of-crash"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-surviving-candidate-is-exact-and-dominated"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-prior-success-has-record-after-one-crash"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-frontier-dir-result-preserves-state"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-record-dir-result-preserves-state"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-core-completion-preserves-state"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-emit-success-preserves-state"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-recover-preserves-state"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-recovery-barrier-preserves-state"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-run-events-preserves-state"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-stable-records-prefix-of-run-events"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-prior-emitted-success-retained-by-run-trace"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sn-new-success-requires-actual-matching-durable-node-completion"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sn-extended-history-equals-live-completion"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-snrt-mixed-trace-ready-node-is-exact-replay"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-snrt-acknowledged-history-retained-through-mixed-trace"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-snrt-new-success-is-actual-matching-durable-completion"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sn-open-observed-success-exact-history"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sn-open-observed-not-ready-before-five-barriers"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sn-open-observed-five-barriers-open-ready"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bprv-successful-replay-has-invariant"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bprv-replay-no-receipt-before-committed-decision"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bprv-replayed-receipt-is-grounded"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bprv-replay-rest-preserves-receipt-adu"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bprv-history-record-is-node-committed-when-idle"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bprv-evolving-invariant-survives-observed-reopen"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bpr-live-receipt-regenerated-after-restart"
-    }
-   ],
-   "id": "PRF-007"
-  },
-  {
-   "events": [
-    {
-     "kind": "theorem",
-     "name": "fn-checkpoint-plus-suffix-equals-full-replay"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-checkpoint-admissible-capture-is-exact"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-checkpoint-admissible-capture-value-is-valid"
-    }
-   ],
-   "id": "PRF-008"
-  },
-  {
-   "events": [
-    {
-     "kind": "theorem",
-     "name": "fn-index-rebuild-correspondence"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-index-range-query-correct"
-    }
-   ],
-   "id": "PRF-010"
-  },
-  {
-   "events": [
-    {
-     "kind": "theorem",
-     "name": "fn-exchange-merge-idempotent"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-exchange-merge-commutative-member"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-exchange-admitted-order-member"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-transfer-exact-duplicate-no-overwrite"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-transfer-reserve-preserves-statep"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-transfer-add-chunk-preserves-statep"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-transfer-complete-entry-candidate-correct"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-transfer-complete-entry-candidate-byte-agreement"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-transfer-missing-ranges-is-correct",
-     "pending_subject": "fn-transfer-missing-ranges has no caller outside the transfer books; no host line calls the subject. Review section 4, transfer row."
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-exchange-policy-ingest-trace-preserves-statep"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-exchange-policy-ingest-trace-preserves-facts"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-exchange-admitted-ingest-retains-conflicting-evidence"
-    }
-   ],
-   "id": "PRF-011"
-  },
-  {
-   "events": [
-    {
-     "kind": "theorem",
-     "name": "fn-bp-step-preserves-state"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bp-trace-preserves-state"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bp-step-preserves-node"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bp-trace-preserves-node"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bp-transport-step-preserves-receipt"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bp-transport-trace-preserves-receipt"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bp-unchecked-receipt-is-no-op"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bpo-receipt-success-requires-local-policy"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bpo-receipt-success-is-actual-journal-preparation"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bp-initial-state-is-binding-state"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bp-step-preserves-binding-state"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bp-trace-preserves-binding-state"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bprv-initial-invariant"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bprv-actual-record-preserves-invariant"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bprv-actual-finite-replay-preserves-invariant"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bprv-successful-replay-has-invariant"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bprv-replay-no-receipt-before-committed-decision"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bprv-replayed-receipt-is-grounded"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bprv-replay-rest-preserves-receipt-adu"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bprv-acceptable-implies-grounded"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bprv-evolving-output-is-history-grounded"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bprv-evolving-output-is-node-grounded-when-idle"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bprv-apply-record-agrees-at-ready-extension"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bpr-live-state-is-replay-of-journal"
-    }
-   ],
-   "id": "PRF-012"
-  },
-  {
-   "events": [
-    {
-     "kind": "guarded-function",
-     "name": "fn-cbor-encode"
-    },
-    {
-     "kind": "guarded-function",
-     "name": "fn-cbor-decode-exact"
-    },
-    {
-     "kind": "guarded-function",
-     "name": "fn-record-encode"
-    },
-    {
-     "kind": "guarded-function",
-     "name": "fn-record-decode-exact"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sn-extended-history-equals-live-completion"
-    }
-   ],
-   "id": "PRF-014"
-  },
-  {
-   "events": [
-    {
-     "kind": "theorem",
-     "name": "fn-nntp-unknown-group-preserves-session"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-nntp-msgid-preserves-session"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-nntp-listgroup-unknown-preserves-session"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-nntp-step-preserves-consistent-session"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-nntp-finite-trace-preserves-consistent-session"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-nntp-opened-finite-trace-is-consistent"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-nntp-step-preserves-carried-projection"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-nntp-command-effects-well-formed"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-nntp-step-effects-well-formed"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-nntp-closed-step-has-no-effects"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-served-step-preserves-connp"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-served-run-preserves-connp"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-served-step-effects-are-typed"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-served-run-effects-are-typed"
-    }
-   ],
-   "id": "PRF-015"
-  },
-  {
-   "events": [
-    {
-     "kind": "theorem",
-     "name": "fn-wire-initial-state-is-state"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-wire-feed-byte-preserves-statep"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-cbor-byte-encoding-fits-input-bound"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-record-cbor-byte-encoding-bound"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-record-group-encoding-bound"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-article-successful-parse-preserves-source"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-transfer-initial-statep"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-transfer-invalid-chunk-no-overwrite"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-article-successful-parse-syntax-p"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-article-successful-parse-component-bounds"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-wildmat-utf8-next-success-scalar"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-wildmat-utf8-next-success-strict-progress"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-wildmat-successful-decode-length-bounded-by-input"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-wildmat-successful-parse-parsedp"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-wildmat-parse-yields-rfc3977-patterns"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-wildmat-successful-parse-text-parsedp"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-transfer-entry-candidate-work-value"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-transfer-entry-candidate-work-cost-bound"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-transfer-missing-work-cost-bound",
-     "pending_subject": "Costs a function with no caller outside the transfer books. Review section 4, transfer row."
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-wm-pattern-match-work-cost"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-wm-match-codepoints-work-cost-bound"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-transfer-missing-ranges-work-public-bound",
-     "pending_subject": "Costs a function with no caller outside the transfer books, and the closed form is far above the measured cost. Review section 4, transfer row."
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-article-parse-work-value"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-article-parse-work-input-bound"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-article-parse-work-profile-bound"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-served-feed-steps-bounded-by-chunk-length"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-served-step-nntp-steps-is-bounded"
-    }
-   ],
-   "id": "PRF-016"
-  },
-  {
-   "events": [
-    {
-     "kind": "theorem",
-     "name": "fn-stx-detached-round-trip"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-stx-detached-accepted-input-is-canonical"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-stx-field-round-trip"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-stx-field-accepted-input-is-canonical"
-    }
-   ],
-   "id": "PRF-019"
-  },
-  {
-   "events": [
-    {
-     "kind": "theorem",
-     "name": "fn-stx-verified-implies-signature-over-own-octets"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-stx-verified-is-the-statement-the-article-carries"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-stx-verdict-is-typed"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-stx-verdict-records-its-keyring-generation"
-    }
-   ],
-   "id": "PRF-020"
-  },
-  {
-   "events": [
-    {
-     "kind": "theorem",
-     "name": "fn-stx-index-bindings-agree"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-stx-index-slots-agree"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-stx-index-equivocators-agree"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-stx-index-invariant-preserved-by-accept"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-stx-durable-completion-is-an-acceptance",
-     "note": "The subject-equating theorem AGENTS.md rule 1 asks for, for the preservation half of this target: fn-stx-index-invariant-preserved-by-accept hypothesises fn-stx-acceptedp, and this proves fn-stx-acceptedp of the durable branch of fn-node-complete with the accepted article named. The host line is host/store-node-host.lisp fn-store-sn-finish -> fn-sn-finish (books/store-node.lisp) -> that call."
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sn-finish-preserves-indexedp",
-     "note": "The carrier obligation, and the one preservation row that does work: the store grows at fn-sn-finish by the one article fn-install-pending conses and the carried index grows by that article's delta, at most one cons. Its keystone is fn-stx-index-invariant-preserved-by-accept and its hypothesis is discharged by fn-stx-durable-completion-is-an-acceptance. 11,118 prover steps. Decision D21."
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sn-statement-lookup-is-the-lace-lookup",
-     "note": "The subject-equating theorem AGENTS.md rule 1 asks for, for the QUERY half. Subject: fn-sn-statement-lookup (books/store-node.lisp), which host/store-node-host.lisp fn-store-sn-statement calls on the 'fn-store-sn global, reachable from outside as run_store.py statement --id. Its hypothesis fn-sn-indexedp holds of that global by a reachability chain: fn-sn-initial-is-indexed and the preservation theorems for prepare, io, finish, crash, recover and set-keyring (books/store-node-invariants), refuse-reservation and known-abort (books/store-node-resolution), open-observed (books/store-observed) and the sweep, which returns the store unchanged. The one site not covered is host/bp-ingress-host.lisp, whose fn-bpi-ingress-prepare has no such theorem; it is recorded open. :rule-classes nil so it cannot rewrite the cheap query back into the linear projection."
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sn-equivocatorp-is-the-lace-equivocator",
-     "note": "The same bridge for the equivocation query. Subject: fn-sn-equivocatorp, called by host/store-node-host.lisp fn-store-sn-equivocator."
-    }
-   ],
-   "id": "PRF-023"
-  },
-  {
-   "events": [
-    {
-     "kind": "theorem",
-     "name": "fn-stx-commit-decode-is-a-commit"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-stx-commits-of-batch-are-verified-and-well-formed",
-     "pending_subject": "fn-stx-commits-of-batch has no caller outside books/stx-epochs, and no book outside the stx cluster includes books/stx-epochs at all: there is no reconnection path in the tree to wire it to. Future feature work, not missing evidence for implemented behaviour. Review section 4."
-    }
-   ],
-   "id": "PRF-025"
-  },
-  {
-   "events": [
-    {
-     "kind": "theorem",
-     "name": "fn-ocfg-open-pins-the-live-configuration",
-     "pending_subject": "No host line calls any fn-ocfg- function: host/owner-host.lisp drives fn-own-open / fn-own-advance / fn-own-read and books/owner-config pairs that owner with the configuration and the pin TABLE beside it. The equating theorem the rule asks for is fn-ocfg-served-port-answers-list-active-at-the-pin, which is FALSE today and is recorded, not stated, at the end of books/owner-config.lisp: fn-nntp-dispatch supplies the allocation domain (fn-state-groups archive) where the pin's served table belongs. That is the R5 wire seam."
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-ocfg-advance-observes-the-live-configuration",
-     "pending_subject": "No host line calls any fn-ocfg- function: host/owner-host.lisp drives fn-own-open / fn-own-advance / fn-own-read and books/owner-config pairs that owner with the configuration and the pin TABLE beside it. The equating theorem the rule asks for is fn-ocfg-served-port-answers-list-active-at-the-pin, which is FALSE today and is recorded, not stated, at the end of books/owner-config.lisp: fn-nntp-dispatch supplies the allocation domain (fn-state-groups archive) where the pin's served table belongs. That is the R5 wire seam."
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-ocfg-pin-is-stable-without-advance",
-     "pending_subject": "No host line calls any fn-ocfg- function: host/owner-host.lisp drives fn-own-open / fn-own-advance / fn-own-read and books/owner-config pairs that owner with the configuration and the pin TABLE beside it. The equating theorem the rule asks for is fn-ocfg-served-port-answers-list-active-at-the-pin, which is FALSE today and is recorded, not stated, at the end of books/owner-config.lisp: fn-nntp-dispatch supplies the allocation domain (fn-state-groups archive) where the pin's served table belongs. That is the R5 wire seam."
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-ocfg-list-active-lists-the-pinned-served-table",
-     "pending_subject": "No host line calls any fn-ocfg- function: host/owner-host.lisp drives fn-own-open / fn-own-advance / fn-own-read and books/owner-config pairs that owner with the configuration and the pin TABLE beside it. The equating theorem the rule asks for is fn-ocfg-served-port-answers-list-active-at-the-pin, which is FALSE today and is recorded, not stated, at the end of books/owner-config.lisp: fn-nntp-dispatch supplies the allocation domain (fn-state-groups archive) where the pin's served table belongs. That is the R5 wire seam."
-    }
-   ],
-   "id": "PRF-028"
-  },
-  {
-   "events": [
-    {
-     "kind": "theorem",
-     "name": "fn-provp-of-string"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-prov-render-of-post"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-prov-render-of-transit"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-prov-render-of-bp"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-prov-render-of-local"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-prov-render-of-legacy"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-prov-of-wire-of-a-plain-string"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-prov-of-wire-of-wire"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-prov-of-wire-of-a-durable-wire"
-    }
-   ],
-   "id": "PRF-030"
-  },
-  {
-   "events": [
-    {
-     "kind": "theorem",
-     "name": "fn-sf-recovery-crash-realizes-every-admissible-image"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-recovery-admissible-image-facts"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-recovery-crash-image-extends-stable-records"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-crash-rollback-preserves-state"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-crash-rollback-image-is-recovery-admissible"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-crash-imagep-implies-recovery-crash-imagep"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-image-crash-preserves-state"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-crash-frontier-rollback-preserves-state"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sf-crash-frontier-rollback-image-is-recovery-admissible"
-    }
-   ],
-   "id": "PRF-032"
-  },
-  {
-   "events": [
-    {
-     "kind": "theorem",
-     "name": "fn-bp-work-status-of-restart"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bp-replay-work-status-is-the-pre-crash-status-restarted"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bp-work-origin-at-open-is-recovered-or-absent"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bp-durable-enqueue-after-open-reads-enqueued"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-bp-journal-events-is-durable-events-then-restart"
-    },
-    {
-     "kind": "guarded-function",
-     "name": "fn-bp-work-status"
-    },
-    {
-     "kind": "guarded-function",
-     "name": "fn-bp-work-origin"
-    }
-   ],
-   "id": "PRF-034"
-  },
-  {
-   "events": [
-    {
-     "kind": "theorem",
-     "name": "fn-frame-protected-plus-trailer-is-seal"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-frame-decode-of-host-framing"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-frame-store-protected-plus-trailer-is-seal"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-frame-store-decode-of-host-framing"
-    }
-   ],
-   "id": "PRF-035"
-  },
-  {
-   "events": [
-    {
-     "kind": "theorem",
-     "name": "fn-snt-replayed-history-node-is-idle"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-snt-history-recoverable-prefix"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-snt-history-recoverable-of-but-last"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-snt-history-recoverable-under-record-bound"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-snt-recovery-admissible-crash-image-is-recoverable"
-    },
-    {
-     "kind": "theorem",
-     "name": "fn-sn-recovery-admissible-image-reopens"
-    }
-   ],
-   "id": "PRF-036"
-  }
- ]
+  ]
 }

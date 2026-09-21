@@ -69,11 +69,24 @@ whole-stream preflight: the frame bounds the payload once (4 MiB).
   the same refusal (`:configuration`, `:frontier`, `:sequence`) results for
   every octet tail in place of the node item, so the node is never parsed.
 - `fn-cpc-valid-is-capture-value` (exact binding): a checkpoint that
-  validates against a record prefix (`fn-cpc-validp`: recognizer, matching
-  groups and capacity, and the actual replay of the prefix yields its
-  sequence and node) is `fn-checkpoint-capture-value` of that prefix at the
-  checkpoint's frontier, given the prefix is an ordered journal interval
-  below that frontier. Every field is fixed by the prefix.
+  validates against a record prefix is `fn-checkpoint-capture-value` of that
+  prefix at the checkpoint's frontier. Only hypothesis: `fn-cpc-validp`,
+  which is the recognizer, matching groups and capacity, the prefix being an
+  ordered journal interval below the checkpoint's frontier
+  (`fn-sf-record-listp`), and the actual replay of the prefix yielding the
+  checkpoint's sequence and node. Every field is fixed by the prefix.
+- `fn-cpc-valid-refuses-generation-mismatch` (refusal): if any record of the
+  prefix binds a generation other than its own transaction id, `fn-cpc-validp`
+  is false, for every checkpoint and configuration offered with it.
+  Hypotheses: membership and the mismatch; `:rule-classes nil`, since as a
+  rewrite it would be a free-variable rule concluding `nil` on a recognizer.
+  The journal-interval clause it rests on is load-bearing and was absent
+  until 2026-09-21: `fn-replay` carries a record's generation into the node
+  transitions without ever comparing it with the txid, so the replay of a
+  prefix whose generation is corrupt is *equal* to the replay of the sound
+  prefix, and validation accepted a prefix that `fn-checkpoint-capture`
+  refuses as `:history`. Validation is the third member of the family that
+  tests this condition, beside capture's `:history` and restore's `:suffix`.
 - The frame: `fn-cpc-frame-{encode,decode}` carry the payload in the generic
   `fn-frame` grammar under this book's magic `FNCP` and kind table
   `(:checkpoint :selection)`; `fn-cpc-frame-decode-of-encode`,
