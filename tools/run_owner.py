@@ -27,7 +27,8 @@ import sys
 import time
 
 from run_store import (ACL2_RECOVER_BASE_SECONDS, ACL2_RECOVER_PER_RECORD_SECONDS,
-                       Acl2Store, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, Store,
+                       Acl2Store, EXIT_FAULT, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN,
+                       NO_FAULTS, ScriptedFaults, Store,
                        StoreError, StoreFault, StoreIndeterminate, UsageParser,
                        acl2_nat, acl2_octets, acl2_result, acl2_symbol, conservative_charge,
                        durable_post, exit_code_for, group_codes, metadata,
@@ -39,6 +40,15 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAX_READ = 512
 MAX_OUTPUT_BACKLOG = 64 * 1024
 MAX_CONTROL_LINE = 4096
+# A fault the host cannot attribute -- one in `accept', or one raised by the
+# fault handling itself -- abandons nothing, so it can repeat on every turn
+# of the loop.  This many in a row and the owner stops, distinctly, instead
+# of spinning.  An ATTRIBUTABLE fault is not counted: it costs its cause a
+# connection or a feed, and the number of those is already bounded by
+# --max-connections, so counting them would hand a peer a way to stop the
+# service by faulting that many times -- which is the defect this whole
+# boundary exists to remove.
+MAX_UNATTRIBUTED_FAULTS = 16
 DTN_EPOCH_NS = 946684800 * 1_000_000_000  # 2000-01-01T00:00:00Z
 
 
@@ -50,7 +60,10 @@ DTN_EPOCH_NS = 946684800 * 1_000_000_000  # 2000-01-01T00:00:00Z
 # and the owner has dropped it) or `invalid`.  The old `rejected` spelled
 # the first and the second the same way and was computed here.
 OWNER_WORDS = {b":OBSERVED", b":REFUSED", b":INVALID", b":DECLARED", b":BEGUN",
-               b":CLOSED", b":OK", b":UNKNOWN", b":FED", b":TAKEN", b":IDLE"}
+               b":CLOSED", b":OK", b":UNKNOWN", b":FED", b":TAKEN", b":IDLE",
+               # The fourth outcome (books/owner-fault.lisp): a host fault,
+               # answered distinctly from accepted, refused and uncertain.
+               b":FAULTED"}
 
 
 def acl2_owner_symbol(output):
@@ -97,7 +110,9 @@ class Acl2Owner(Acl2Store):
     def __init__(self, max_conns):
         super().__init__()
         self.max_conns = max_conns
-        self.call('(include-book "books/owner")')
+        # books/owner-fault includes books/owner; `fn-own-fault' is what the
+        # host-fault boundary in `Owner.guard' below calls.
+        self.call('(include-book "books/owner-fault")')
         self.call('(ld "host/owner-host.lisp" :ld-error-action :return :ld-error-triples t)')
 
     def _symbol(self, form, timeout=None):
@@ -231,22 +246,51 @@ class Acl2Owner(Acl2Store):
         """The writer step: `taken', `taken-transit' or `idle'."""
         return self._symbol_any("(fn-owner-take state)")
 
+    def submit_id(self):
+        """The connection the submission in flight belongs to.
+
+        Read on its own, before anything else about the submission, so that
+        the fault boundary in `Owner.drain' always knows WHOSE fault it is:
+        the rest of `inflight' is exactly where the 2026-09-20 crash was.
+        """
+        return self._nat("(@ fn-owner-submit-id)")
+
     def inflight(self):
         """The submission in flight: (cid, msgid, octets, groups), all ACL2's."""
-        cid = self._nat("(@ fn-owner-submit-id)")
+        cid = self.submit_id()
         msgid = bytes(acl2_octet_list(self.call("(@ fn-owner-submit-msgid)")))
         octets = bytes(acl2_octet_list(self.call("(@ fn-owner-submit-octets)")))
         return cid, msgid, octets, self.submit_groups()
 
     def submit_groups(self):
         """The memberships ACL2 staged: the injection decision's for a POST,
-        fn-peer-scope-groups' for a transit transfer, never Python's."""
+        fn-peer-scope-groups' for a transit transfer, never Python's.
+
+        ONE SHAPE: octets per group, on both paths.  The transit path staged
+        strings here until 2026-09-21 and this call raised RuntimeError on
+        the first transfer, inside `Owner.drain', which had no boundary --
+        the owner process died.  host/owner-host.lisp `fn-owner-transit-decide`
+        now renders them, and `Owner.guard` below means a shape this does not
+        expect costs one connection instead of the service.
+        """
         count = self._nat("(len (@ fn-owner-submit-groups))")
         if count > 64:
             raise StoreError("ACL2 reported an implausible group count")
         return [bytes(acl2_octet_list(self.call(
             "(fn-inj-nth {} (@ fn-owner-submit-groups))".format(index))))
             for index in range(count)]
+
+    def fault(self, cid):
+        """The host-fault boundary: `fn-own-fault' (books/owner-fault.lisp).
+
+        The host has caught something it did not expect while serving `cid'.
+        It decides nothing here: the reply line, the close and what the owner
+        forgets are all the model's, and this reads them back the way every
+        served read is read.  The word is `faulted' when there was a
+        connection to answer and `unknown' when there was not.
+        """
+        word = self._symbol("(fn-owner-fault {} state)".format(cid))
+        return word, bytes(acl2_octet_list(self.call("(@ fn-owner-output)")))
 
     def peer_for_address(self, address):
         """The configured peer this address is, or None: ACL2 reads the record."""
@@ -529,12 +573,20 @@ class Feed:
 
 
 class Owner:
-    def __init__(self, store, bridge, records, clock, tls=None):
+    def __init__(self, store, bridge, records, clock, tls=None, faults=NO_FAULTS):
         self.store = store
         self.bridge = bridge
         self.records = len(records)
         self.clock = clock
         self.tls = tls
+        # The documented test-only injector (tools/run_store.py FaultPoints).
+        # Production passes NO_FAULTS and no served path holds a branch.
+        self.faults = faults
+        # A fault the host could not attribute to a connection or a feed is
+        # the only one that costs its cause nothing, so it is the only one
+        # counted; see `take_fault'.
+        self.unattributed_faults = 0
+        self.exit_code = EXIT_OK
         # NNTPS: wrap before the greeting.  Off by default, so a configured
         # certificate is offered through RFC 4642 STARTTLS instead.
         self.implicit_tls = False
@@ -618,6 +670,11 @@ class Owner:
                 # may carry an article, so two posts on one connection get
                 # two identities.
                 self.clock.observe(self.bridge)
+                # The documented test-only injection point for the served
+                # read.  Production passes NO_FAULTS, so there is no branch
+                # here at all; tests/test_owner.py uses it to show that a
+                # fault on one connection costs only that connection.
+                self.faults.at("owner:served-read")
                 # One read, one certified step: fn-own-read consumes the
                 # whole chunk (books/served.lisp owns the framing loop and
                 # fn-served-run-is-the-concatenated-step says the cut points
@@ -635,6 +692,12 @@ class Owner:
                     conn.reading = False
                 if submitted:
                     self.drain()
+                    # `drain' may have faulted THIS connection (the
+                    # submission it carried was this connection's), in which
+                    # case the socket is closed and the owner has forgotten
+                    # it; there is nothing left of it to write to or rearm.
+                    if conn.sock not in self.connections:
+                        return
         if mask & selectors.EVENT_WRITE and conn.outbuf:
             try:
                 sent = conn.sock.send(conn.outbuf)
@@ -698,6 +761,146 @@ class Owner:
                                selectors.EVENT_READ | selectors.EVENT_WRITE, conn)
         return True
 
+    # -- the host-fault boundary --------------------------------------------
+    #
+    # THE DEFECT.  Every exception raised anywhere under the serve loop used
+    # to unwind through `serve' and `run' and out of `main': ONE PEER'S INPUT
+    # ENDED THE SERVICE FOR EVERY CONNECTION.  It was not hypothetical.
+    # tools/v0_matrix.py hit it twice on persvati on 2026-09-20, both inside
+    # `drain', and node B's death is the single cause behind 22 transit rows,
+    # 4 feed rows, 6 crash rows and 1 concurrency row of the 190-row matrix.
+    #
+    # WHERE THE BOUNDARY IS, AND WHY.  Per EVENT, in `run's dispatch, with a
+    # second one per SUBMISSION inside `drain'.
+    #
+    #   * Per event and not per connection, because an accept, a feed read
+    #     and a feed poll have no connection at all and a fault in one of
+    #     them ended the process exactly as surely.  One selector event is
+    #     also the granularity at which resuming is sound: between events the
+    #     owner is quiescent, and each transition it just ran is proved to
+    #     touch one connection (fn-own-read-touches-only-its-connection,
+    #     fn-own-outcome's "no other connection is touched at all").
+    #   * Per submission inside `drain', because the submission `drain' is
+    #     carrying belongs to a DIFFERENT connection than the one whose read
+    #     called it.  Faulting the reader for the poster's failure would
+    #     close the wrong socket AND leave the poster's submission in flight,
+    #     and `fn-own-take-submission' takes nothing while one is in flight
+    #     -- so every OTHER connection would lose the post path too.
+    #
+    # WHAT THE HOST DECIDES HERE: whether it still trusts this socket.  That
+    # is all.  The reply code, the fact that it is a fourth outcome and not a
+    # refusal, and everything the owner forgets are `fn-own-fault'
+    # (books/owner-fault.lisp), reached through `fn-owner-fault'.
+    def guard(self, site, work, conn=None, feed=None):
+        """Run one unit of the loop; a fault in it costs at most `conn'/`feed'."""
+        try:
+            work()
+        except (SystemExit, KeyboardInterrupt):
+            raise
+        except BaseException as error:   # noqa: BLE001 -- the whole point
+            self.take_fault(site, error, conn=conn, feed=feed)
+        else:
+            self.unattributed_faults = 0
+
+    def take_fault(self, site, error, conn=None, feed=None, cid=None):
+        """Record one fault distinctly and abandon exactly what caused it."""
+        named = "cid={}".format(conn.cid if conn is not None else cid) \
+            if (conn is not None or cid is not None) \
+            else ("feed={}".format(feed.peer) if feed is not None else "-")
+        # FAULT, never `refused' and never `uncertain': the three outcomes are
+        # answers about an ARTICLE and this is not one.  A log reader, like the
+        # wire, can tell the four apart.
+        print("FAULT {} {} {}: {}".format(
+            site, named, type(error).__name__, error), file=sys.stderr, flush=True)
+        if self.bridge.poisoned:
+            # The ACL2 image IS the server: every decision the owner makes is
+            # a call into it.  With the bridge lost there is nothing left to
+            # serve with, so the owner stops -- distinctly, with the fault
+            # code -- rather than answering anything out of Python.
+            print("owner: the ACL2 bridge is unusable; stopping", file=sys.stderr)
+            self.stopping = True
+            self.exit_code = EXIT_FAULT
+            return
+        if conn is None and cid is not None:
+            conn = next((c for c in self.connections.values() if c.cid == cid), None)
+        if conn is not None:
+            self.fault_connection(conn)
+            self.unattributed_faults = 0
+            return
+        if cid is not None:
+            # The poster has already gone, but the owner must still forget
+            # the submission or the writer is wedged for everyone.
+            self.ask_for_fault(cid)
+            self.unattributed_faults = 0
+            return
+        if feed is not None:
+            self.guard_drop_feed(feed)
+            self.unattributed_faults = 0
+            return
+        self.unattributed_faults += 1
+        if self.unattributed_faults >= MAX_UNATTRIBUTED_FAULTS:
+            print("owner: {} faults with nothing to abandon; stopping".format(
+                self.unattributed_faults), file=sys.stderr)
+            self.stopping = True
+            self.exit_code = EXIT_FAULT
+
+    def ask_for_fault(self, cid):
+        """`fn-own-fault' for one connection id; the reply octets, or none."""
+        try:
+            word, reply = self.bridge.fault(cid)
+        except (SystemExit, KeyboardInterrupt):
+            raise
+        except BaseException as error:   # noqa: BLE001
+            print("owner: no fault reply for cid={}: {}".format(cid, error),
+                  file=sys.stderr, flush=True)
+            return None
+        return reply if word == "faulted" else b""
+
+    def fault_connection(self, conn):
+        """Abandon one connection on ACL2's terms; keep serving every other.
+
+        One send attempt, not a flush loop: the reply is one short line, a
+        socket that cannot take it is one whose reader has stopped, and a
+        loop here would be unbounded work driven by the peer that faulted.
+        """
+        reply = self.ask_for_fault(conn.cid)
+        if reply:
+            try:
+                conn.sock.send(reply)
+            except OSError:
+                pass
+        self.discard(conn, closed_by_model=reply is not None)
+
+    def discard(self, conn, closed_by_model):
+        """Forget the socket.  `fn-own-fault' has already closed the
+        connection in the owner, so the bridge is NOT asked to close it
+        again; it is asked only when the fault reply could not be obtained
+        and the owner may therefore still be holding it."""
+        try:
+            self.selector.unregister(conn.sock)
+        except (KeyError, ValueError):
+            pass
+        self.connections.pop(conn.sock, None)
+        try:
+            conn.sock.close()
+        except OSError:
+            pass
+        if not closed_by_model:
+            try:
+                self.bridge.close_connection(conn.cid)
+            except (StoreError, OSError, RuntimeError):
+                pass
+
+    def guard_drop_feed(self, feed):
+        """A feed that faulted is disconnected; its journal and its queue are
+        untouched, so the next dial replays them (specs/peering.md 3.3)."""
+        try:
+            self.feed_drop(feed)
+        except (SystemExit, KeyboardInterrupt):
+            raise
+        except BaseException:   # noqa: BLE001
+            self.feeds.pop(feed.peer, None)
+
     def drain(self):
         """The served POST path: one submission at a time through the durable path.
 
@@ -715,12 +918,31 @@ class Owner:
             taken = self.bridge.take()
             if taken not in ("taken", "taken-transit"):
                 break
-            cid, msgid, payload, groups = self.bridge.inflight()
-            if taken == "taken-transit":
-                reply = self.transit(cid, msgid, payload)
-            else:
-                word = self.attempt(msgid, payload, groups)
-                reply = self.bridge.outcome(cid, word)
+            # WHOSE submission, first and on its own: the rest of `inflight'
+            # is exactly where the transit crash was, and a fault boundary
+            # that does not know the connection cannot name one.
+            cid = self.bridge.submit_id()
+            try:
+                self.faults.at("owner:drain")
+                _, msgid, payload, groups = self.bridge.inflight()
+                if taken == "taken-transit":
+                    reply = self.transit(cid, msgid, payload)
+                else:
+                    word = self.attempt(msgid, payload, groups)
+                    reply = self.bridge.outcome(cid, word)
+            except (SystemExit, KeyboardInterrupt):
+                raise
+            except BaseException as error:   # noqa: BLE001 -- the whole point
+                # This connection's submission ends here, with the fourth
+                # outcome.  `fn-own-fault' clears the in-flight slot, so the
+                # next turn of this loop takes the NEXT connection's
+                # submission: one peer's fault does not cost the others the
+                # post path.  Bounded: each fault also closes a connection
+                # and a closed connection's queued submissions go with it.
+                self.take_fault("drain", error, cid=cid)
+                if self.stopping:
+                    return
+                continue
             for conn in self.connections.values():
                 if conn.cid == cid:
                     conn.outbuf += reply
@@ -877,17 +1099,24 @@ class Owner:
 
     def feed_poll(self):
         now = self.clock.milliseconds()
+        # One guarded unit per feed, not one for the sweep: a fault while
+        # talking to one peer costs that peer's session and no other's.
         for feed in list(self.feeds.values()):
-            if feed.session is None:
-                if self.bridge.feed_queue_length(feed.peer) > 0:
-                    self.feed_dial(feed)
-                continue
-            try:
-                if self.bridge.feed_tick(feed.peer, now) == "offer":
-                    self.feed_flush()
-                    self.feed_write(feed, self.bridge.feed_command())
-            except OSError:
-                self.feed_drop(feed)
+            self.guard("feed-poll", lambda: self.feed_tick_one(feed, now), feed=feed)
+            if self.stopping:
+                return
+
+    def feed_tick_one(self, feed, now):
+        if feed.session is None:
+            if self.bridge.feed_queue_length(feed.peer) > 0:
+                self.feed_dial(feed)
+            return
+        try:
+            if self.bridge.feed_tick(feed.peer, now) == "offer":
+                self.feed_flush()
+                self.feed_write(feed, self.bridge.feed_command())
+        except OSError:
+            self.feed_drop(feed)
 
     def feed_read(self, peer):
         feed = self.feeds.get(peer)
@@ -1015,19 +1244,62 @@ class Owner:
         self.feed_start()
         while not self.stopping:
             for key, mask in self.selector.select(timeout=0.2):
+                # Every branch below is one event under the host-fault
+                # boundary, named by what a fault in it costs.
                 if key.data == "nntp":
-                    self.accept_nntp(nntp_listener)
+                    self.guard("accept", lambda: self.accept_nntp(nntp_listener))
                 elif key.data == "control":
-                    self.accept_control(control_listener)
+                    self.guard("control", lambda: self.accept_control(control_listener))
                 elif isinstance(key.data, tuple) and key.data[0] == "feed":
-                    self.feed_read(key.data[1])
+                    peer = key.data[1]
+                    self.guard("feed-read", lambda: self.feed_read(peer),
+                               feed=self.feeds.get(peer))
                 else:
                     if key.fileobj in self.connections:
-                        self.serve(key.data, mask)
-            self.feed_poll()
+                        conn = key.data
+                        self.guard("served-read", lambda: self.serve(conn, mask),
+                                   conn=conn)
+                if self.stopping:
+                    break
+            if not self.stopping:
+                self.guard("feed-poll", self.feed_poll)
         for feed in list(self.feeds.values()):
             feed.close()
-        return EXIT_OK
+        return self.exit_code
+
+
+def fault_once(error):
+    """An injector action that raises `error` the FIRST time only.
+
+    A host fault is meant to cost one connection, so a test that asserts the
+    OTHER connection is still served needs the point to fire once and then
+    stop -- otherwise the surviving connection would fault too and the test
+    would pass for the wrong reason.
+    """
+    fired = []
+
+    def action():
+        if fired:
+            return None
+        fired.append(True)
+        raise error
+    return action
+
+
+# Documented test-only hooks, the owner's own, beside tools/run_store.py's
+# CLI_FAULTS.  Each names one point in the serve loop; production passes
+# NO_FAULTS and the paths hold no injection branch.  The errors are
+# deliberately NOT StoreError: the class of defect this boundary exists for
+# is the UNEXPECTED exception, and the one that killed the owner twice was a
+# RuntimeError out of the ACL2 result parser.
+OWNER_FAULTS = {
+    "served-read": lambda: ScriptedFaults(
+        "owner:served-read",
+        action=fault_once(RuntimeError("injected host fault in the served read"))),
+    "drain": lambda: ScriptedFaults(
+        "owner:drain",
+        action=fault_once(RuntimeError("injected host fault carrying a submission"))),
+}
 
 
 def terminate_on_signal(signum, unused_frame):
@@ -1057,6 +1329,9 @@ def main(argv=None):
                              "a TLS layer is active")
     parser.add_argument("--max-connections", type=int, default=8)
     parser.add_argument("--clock-error-ms", type=int, default=1000)
+    parser.add_argument("--inject-fault", choices=tuple(OWNER_FAULTS),
+                        help="TEST ONLY: raise one unexpected exception at the "
+                             "named point in the serve loop, once")
     args = parser.parse_args(argv)
     if not 0 <= args.port <= 65535:
         parser.error("--port must be from 0 through 65535")
@@ -1068,6 +1343,7 @@ def main(argv=None):
     store = None
     bridge = None
     control = None
+    faults = NO_FAULTS if args.inject_fault is None else OWNER_FAULTS[args.inject_fault]()
     try:
         store = Store(args.store, writable=True)
         store.acquire()
@@ -1101,7 +1377,7 @@ def main(argv=None):
             bridge.set_auth(args.auth_required, args.auth_protected_only,
                             bool(args.tls_cert) and not args.implicit_tls,
                             load_credentials(args.auth_file))
-            owner = Owner(store, bridge, records, clock, tls)
+            owner = Owner(store, bridge, records, clock, tls, faults=faults)
             owner.implicit_tls = bool(args.implicit_tls)
             return owner.run(listener, control)
     except (StoreError, OSError) as error:

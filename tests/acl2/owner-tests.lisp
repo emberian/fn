@@ -13,6 +13,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/owner-invariants")
+(include-book "../../books/owner-fault")
 
 ; -----------------------------------------------------------------------------
 ; Guard-world audit: the served port and the connection events are total in
@@ -921,3 +922,92 @@
 ; fn-own-outcome-touches-only-its-connection without (not (equal (sub-id
 ; inflight) id)): the connection in flight is answered.
 (assert-event (consp (car *own-240*)))
+
+; -----------------------------------------------------------------------------
+; The host-fault boundary (books/owner-fault.lisp), on the same witness.
+;
+; `*own-taken*' is the state the 2026-09-20 crash was in when the owner
+; process died: connection 4's submission is in flight, it owns the pending
+; transaction, and reader R (3) is open at its own pin.  An exception inside
+; `Owner.drain' at that point ended the process, so R died with P.  These
+; assertions are what "the owner survives it" means, evaluated.
+
+(defconst *own-faulted* (fn-own-fault *own-taken* 4))
+
+; The reply P receives: the fourth outcome, and the host is told to close.
+(assert-event (equal (fn-served-reply-octets (car *own-faulted*))
+                     (append (fn-nntp-string-octets *fn-own-fault-line*) '(13 10))))
+(assert-event (fn-served-closingp (car *own-faulted*)))
+(assert-event (null (fn-served-submission (car *own-faulted*))))
+
+; K-FAULT-1 on the witness: connection 4 is gone.
+(assert-event (null (fn-own-find-conn 4 (fn-own-conns (cdr *own-faulted*)))))
+
+; K-FAULT-2 on the witness, and this is the lane's claim: reader R is
+; EXACTLY what it was -- same record, so same pin, same wire, same session --
+; and it still reads the version it was pinned to, with the same octets it
+; would have read had connection 4 never faulted.
+(assert-event (equal (fn-own-find-conn 3 (fn-own-conns (cdr *own-faulted*)))
+                     (fn-own-find-conn 3 (fn-own-conns *own-taken*))))
+(assert-event (equal (fn-served-reply-octets
+                      (car (fn-own-read (cdr *own-faulted*) 3 *own-group-octets*)))
+                     (fn-served-reply-octets
+                      (car (fn-own-read *own-taken* 3 *own-group-octets*)))))
+
+; K-FAULT-3 on the witness: the writer is free again.  Nothing is in flight,
+; no transaction is pending, and a submission queued by ANOTHER connection is
+; taken by the very next writer step -- which is the property a process death
+; cannot have and a wedged in-flight slot would not have either.
+(assert-event (null (fn-own-inflight (cdr *own-faulted*))))
+(assert-event (null (fn-own-pending (cdr *own-faulted*))))
+(assert-event
+ (equal (fn-own-sub-id
+         (fn-own-inflight
+          (fn-own-step (fn-own-enqueue (cdr *own-faulted*)
+                                       (fn-own-sub-make 3 2 nil nil))
+                       '(:take))))
+        3))
+
+; K-FAULT-4 on the witness: nothing durable moved.
+(assert-event (equal (fn-own-store (cdr *own-faulted*)) (fn-own-store *own-taken*)))
+(assert-event (equal (fn-own-ledger (cdr *own-faulted*)) (fn-own-ledger *own-taken*)))
+
+; The owner is still the owner: the whole-state relation holds after a fault,
+; so every later step's hypotheses are met.  Without this a fault would be a
+; way out of the invariant and the theorems above it would say nothing about
+; a server that had ever faulted.
+(assert-event (fn-own-relation (cdr *own-faulted*)))
+
+; TEETH.
+;
+; K-FAULT-2 without (not (equal other id)): the faulted connection itself is
+; NOT preserved -- it is the one thing the transition removes.
+(assert-event (not (equal (fn-own-find-conn 4 (fn-own-conns (cdr *own-faulted*)))
+                          (fn-own-find-conn 4 (fn-own-conns *own-taken*)))))
+
+; K-FAULT-3 without (equal (fn-own-sub-id (fn-own-inflight o)) id): faulting
+; a DIFFERENT connection leaves the submission in flight, which is
+; `fn-own-fault-keeps-another-connections-submission' as a value.  A fault is
+; not a licence to forget someone else's article.
+(assert-event (equal (fn-own-inflight (cdr (fn-own-fault *own-taken* 3)))
+                     (fn-own-inflight *own-taken*)))
+
+; K-FAULT-5 as three concrete inequalities: the fault reply is not the 240,
+; not either 441, and not the OTHER 403 (books/nntp-post.lisp's malformed
+; session).  A client cannot read a fault as any posting outcome.
+(assert-event
+ (let ((fault (fn-served-reply-octets (car *own-faulted*))))
+   (and (not (equal fault (fn-served-reply-octets (car *own-240*))))
+        (not (equal fault (fn-served-reply-octets (car *own-early*))))
+        (not (equal fault (fn-served-reply-octets
+                           (car (fn-own-outcome *own-p-done* 4 :refused)))))
+        (not (equal fault (append (fn-nntp-string-octets
+                                   *fn-post-malformed-session-line*)
+                                  '(13 10)))))))
+
+; Totality, not a reachable case: an id with no open connection draws no
+; reply at all (the branch the book marks unreachable-in-composition, since
+; the host faults only a connection it is serving), and the state the owner
+; is left in is still one the relation holds on.
+(assert-event (null (car (fn-own-fault *own-taken* 99))))
+(assert-event (fn-own-relation (cdr (fn-own-fault *own-taken* 99))))

@@ -1149,6 +1149,20 @@
         "fn-bp-work-status",
         "fn-bp-work-origin"
       ]
+    },
+    {
+      "id": "PRF-035",
+      "title": "A host fault costs one connection, and the fourth outcome says so",
+      "statement": "fn-own-fault (books/owner-fault.lisp) is the owner's host-fault transition. For any owner and any connection id: the faulted connection is no longer found; every connection with a different id is EQUAL to what it was, so every later step over it has the same input it would have had; a submission in flight for the faulted id, and a pending transaction held by it, are cleared, with no hypothesis that the connection was still open, while a submission in flight for a DIFFERENT id is untouched; the store, the committed view and the completion ledger are unchanged; and the octets the faulted connection receives are RFC 3977 section 3.2.1's 403 and are not the reply octets of fn-nntp-post-outcome for any session and any completion, including that function's own malformed-session 403 -- so the fault is a fourth outcome, distinguishable on the wire from accepted, refused and uncertain.",
+      "milestone": "M3",
+      "requirements": [
+        "HST-005",
+        "NNT-002"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "note": "Lane w11/owner-survival. Keystones fn-own-fault-keeps-every-other-connection, fn-own-fault-clears-the-faulted-submission and fn-own-fault-reply-is-not-a-post-outcome (books/owner-fault.lisp), with fn-own-fault-closes-the-faulted-connection, fn-own-fault-keeps-another-connections-submission, fn-own-fault-releases-the-faulted-transaction and fn-own-fault-is-not-a-store-event beside them. Teeth are evaluated in tests/acl2/owner-tests.lisp on the same witness the served POST scenario builds (*own-taken*: connection 4's submission in flight, reader 3 open), including one violating value per hypothesis and the relation holding after a fault. The host side is tests/test_owner.py OwnerSurvivesAFaultTests, which injects an unexpected exception on one connection and asserts the other is still served. OPEN under this target: nothing states that the HOST calls fn-own-fault at every point where it can fault -- the boundary's coverage is a code property, not a theorem -- and tools/run_reader.py has no such boundary at all."
     }
   ]
 }
