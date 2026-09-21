@@ -54,6 +54,40 @@
 (assert-event (and (null (fn-cpp-authority *cpp-s1*)) (null (fn-cpp-authority *cpp-s7*))))
 (assert-event (equal (fn-cpp-authority *cpp-s8*) 0))
 
+; The exact decision surface the native marker adapter calls.  Its actions,
+; terminal outcomes, and every successful phase agree with the full machine.
+(assert-event
+ (equal (list (fn-cpp-marker-driver-action :marker-staged)
+              (fn-cpp-marker-driver-action :marker-data-durable)
+              (fn-cpp-marker-driver-action :marker-attempted))
+        '(:stage-and-file-barrier :replace :directory-barrier)))
+(assert-event
+ (equal (fn-cpp-marker-driver-step
+         (fn-cpp-marker-driver-step
+          (fn-cpp-marker-driver-step :marker-staged :ok) :ok) :ok)
+        :idle))
+(assert-event (equal (fn-cpp-marker-driver-outcome :idle) :durable))
+(assert-event (equal (fn-cpp-marker-driver-outcome :candidate-published) :refused))
+(assert-event (equal (fn-cpp-marker-driver-outcome :fenced-marker) :uncertain))
+(assert-event
+ (equal (fn-cpp-marker-driver-step (fn-cpp-phase *cpp-s5*) :ok)
+        (fn-cpp-phase (fn-cpp-marker-step *cpp-s5* :ok))))
+; Teeth for the correspondence hypotheses: outside a marker phase there is no
+; native marker step to correspond to, and without statep a forged state can
+; carry a non-phase value whose accessor projection is not a driver phase.
+(assert-event (not (member-equal (fn-cpp-phase *cpp-s4*)
+                                 '(:marker-staged :marker-data-durable
+                                   :marker-attempted))))
+(defconst *cpp-bad-driver-state* '(:fn-cpp nil 10 :marker-staged nil nil nil))
+(assert-event (not (fn-cpp-statep *cpp-bad-driver-state*)))
+
+; Namespace parsing is a host boundary; ACL2 alone decides contiguous next,
+; malformed/gapped, and exhausted outcomes.
+(assert-event (equal (fn-cpp-next-generation nil) 0))
+(assert-event (equal (fn-cpp-next-generation '(0 1 2)) 3))
+(assert-event (equal (fn-cpp-next-generation '(0 2)) :bad))
+(assert-event (equal (fn-cpp-next-generation-from nil 4294967296) :exhausted))
+
 ; A second generation over the longer prefix, selected over the first.
 (defconst *cpp-t1* (fn-cpp-stage *cpp-s8* *cpp-prefix-1* 6 *cpp-digest*))
 (defconst *cpp-t2* (fn-cpp-candidate-file-result *cpp-t1* :ok))
