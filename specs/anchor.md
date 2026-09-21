@@ -7,11 +7,13 @@ store image whose durable records stand under an anchor that the presented
 anchor does not outdate, and advances an incarnation only under an anchor
 strictly newer than the one it already holds; two images of one incarnation
 that stand under different anchors are both refused and both preserved as fork
-evidence. Covered scope: the anchor statement, its ordering, the acceptance,
-restore, advance and pair decisions in `books/anchor.lisp`, and the host
-entries `python3 tools/run_store.py anchor` and `recover` call. Not covered:
-that a signature cannot be forged, that a Roughtime server is honest, or that
-any physical medium retained what it acknowledged.
+evidence; and it accepts only a response whose Merkle tree it can state,
+reporting any other as uncertain. Covered scope: the anchor statement, its
+ordering, the acceptance, restore, advance and pair decisions in
+`books/anchor.lisp`, and the host entries `python3 tools/run_store.py anchor`
+and `recover` call. Not covered: that a signature cannot be forged, that a
+Roughtime server is honest, that a Merkle path binds a nonce to a root, or
+that any physical medium retained what it acknowledged.
 
 ## Why an anchor at all
 
@@ -33,7 +35,7 @@ evidence a second party can check.
 
 ## The statement
 
-Nine fields reach the logic (`fn-anchor`, `books/anchor.lisp`):
+Ten fields reach the logic (`fn-anchor`, `books/anchor.lisp`):
 
 | field | width | what it is |
 | --- | --- | --- |
@@ -45,6 +47,7 @@ Nine fields reach the logic (`fn-anchor`, `books/anchor.lisp`):
 | `radius` | uint64 µs | RADI, half-width of the asserted interval |
 | `nonce` | 32 octets | the octets this node chose |
 | `signature` | 64 octets | `delegate` over the SREP message |
+| `root` | 64 octets | ROOT as the SREP carried it |
 
 ACL2 owns what each signature covers. `fn-anchor-dele-octets` rebuilds the
 72-octet DELE message and `fn-anchor-srep-from-root` the 100-octet SREP
@@ -56,9 +59,32 @@ exactly them, and passes back a verdict.
 real server sent, and `tests/test_anchor.py` re-checks that equality through
 the live bridge.
 
-The nonce is load-bearing rather than decorative: the SREP carries the Merkle
-root, the root is the digest of the nonce, so a different nonce is a different
-signed message.
+`root` is a **field, not a derivation**, and that is what makes the
+reconstruction the message that was verified. Until 2026-09-20 `fn-anchor-root`
+was defined as `(fn-anchor-leaf-digest (fn-anchor-nonce a))`, so every theorem
+about the signed octets described a one-nonce tree while the host verified
+whatever root arrived on the wire; for a batched response the two came apart
+and nothing noticed — **including on one of the three captured vectors**,
+`tests/vectors/roughtime-int08h-2026-09-19-later2.json`, whose `PATH` is one
+node deep and whose `INDX` is 1. int08h batches. The earlier claim that every
+captured vector was single-nonce, in this file and in two handoffs, was wrong,
+and the divergence was live in fn's own test suite on every run.
+
+The root now travels on the record, and `fn-anchor-one-nonce-p` — `(equal
+(fn-anchor-root a) (fn-anchor-leaf-digest (fn-anchor-nonce a)))` — is a branch
+of every transition: a response whose tree this model cannot fold is
+**`:uncertain`, with the reason `:unmodelled-tree`**. Uncertain and not
+refused, because every signature in such a response is good and fn simply
+cannot tell whether it covers this node's nonce; a refusal would claim
+knowledge the node does not have, which is the same rule that makes an
+unreachable server uncertain.
+
+The nonce stays load-bearing rather than decorative: for a one-nonce response
+the signed root is the digest of the nonce, so a different nonce is a
+different signed message. That sentence now carries its hypothesis —
+`fn-anchor-one-nonce-signed-octets-determine-the-leaf-digest`, a corollary of
+the keystone `fn-anchor-signed-octets-determine-the-root`, which itself holds
+for a response of any batch size.
 
 ## Strictly newer
 
@@ -74,12 +100,25 @@ enough against a five-second radius.
 
 Every keystone in `books/anchor-invariants.lisp` is conditional on:
 
-- **The host's verdict is the seam's value for this anchor.**
-  `fn-anchor-sig-verify` is a constrained function (32-octet key, 64-octet
-  signature, boolean out; nothing more). `fn-anchor-restore-observed-is-restore`
-  and `fn-anchor-node-accept-observed-is-node-accept` are the named theorems
-  that make the entries the host calls the same functions the keystones are
-  about, under exactly that hypothesis.
+- **The host supplies one value per A-CRYPTO seam, and nothing else.**
+  `verdict` is `fn-anchor-signatures-okp`, the two constrained
+  `fn-anchor-sig-verify` calls (32-octet key, 64-octet signature, boolean out;
+  nothing more). `one-nonce` is `fn-anchor-one-nonce-p`, which runs through
+  the constrained `fn-anchor-leaf-digest`. They are separate arguments because
+  they have different answers: a failed signature is `:refused :unverified`,
+  an unfoldable tree is `:uncertain :unmodelled-tree`.
+  `fn-anchor-verifiedp-observed-is-verifiedp` discharges the Ed25519 half once
+  and `fn-anchor-restore-observed-is-restore`,
+  `fn-anchor-node-accept-observed-is-node-accept` and
+  `fn-anchor-node-advance-observed-is-node-advance` are the equalities at the
+  three entries the host calls, each under both hypotheses.
+  **The delegation window is not part of it.** `mint <= midpoint <= maxt` is
+  arithmetic on fields the record carries, so ACL2 owns it:
+  `fn-anchor-verifiedp-observed` applies `fn-anchor-window-okp` inside the
+  entry. Before 2026-09-20 that conjunct was half the discharge of this
+  hypothesis and lived in `tools/roughtime.py:258`, with `anchor_verdict`
+  supplying the other half from a different file; `roughtime.py:258` is now a
+  preflight that nothing in the logic depends on.
 - **The key is pinned.** `fn-anchor-pinnedp` checks membership in the node's
   list; `tools/roughtime_servers.json` is that list on disk.
 - **The image really refers to the anchor it names.** The restore keystone is
@@ -99,48 +138,70 @@ Every keystone in `books/anchor-invariants.lisp` is conditional on:
   `tools/crypto_host.py`. `books/anchor.lisp` constrains the verifier to refuse
   a wrong-width key or signature and constrains the leaf digest to 64 octets;
   it claims no unforgeability and no collision resistance, and
-  `tests/acl2/anchor-teeth-tests.lisp` contains the `must-fail` case that shows
-  unforgeability is *not* available.
+  `tests/acl2/anchor-teeth-tests.lisp` ends with the concrete witness that
+  shows unforgeability is *not* available: under a realiser satisfying every
+  constraint of the encapsulate, two anchors with different signed messages
+  verify under the same signature octets. (That book is explicit that it is a
+  witness and not a `must-fail`, which proves only that the prover found no
+  proof; this line used to say `must-fail` and was wrong.)
 - **The pinned keys themselves.** Taken from the published Roughtime ecosystem
   list. Replacing that file replaces the trust.
-- **The Merkle fold, which is Python's alone, and the one-nonce model.**
-  `tools/roughtime.py:124,128,132` (`_leaf`, `_node`, `merkle_root`) is the
-  only thing in this tree that decides whether a response covers *this
-  client's nonce*. `books/anchor.lisp` has no node digest, no path fold and
-  no `fn-anchor-in-treep`; `fn-anchor-leaf-digest` is a constrained function
+- **The leaf digest, which is Python's alone.** `tools/roughtime.py:124`
+  (`_leaf`) computes SHA-512 of the single octet 0 followed by the nonce, and
+  it is the only thing in this tree that decides whether a response covers
+  *this client's nonce*. `fn-anchor-leaf-digest` is a constrained function
   whose only constraints are "64 octets", and no book attaches a realiser to
-  it (the sole `defattach` is a toy in `tests/acl2/anchor-teeth-tests.lisp`).
-  The tree holds **no SHA-512 at all**: `books/sha256.lisp` is the only hash
-  in logic, and Roughtime's fold is SHA-512. So the tag order, the sibling
-  order, the index bit order, the path depth bound and the `INDX`-fits-`PATH`
-  check are all unowned host decisions, and a fold that walked the tree the
-  wrong way would be refused by nothing.
-- **And the model is one-nonce, while the host is not.** `fn-anchor-root`
-  (`books/anchor.lisp:259`) *is* `(fn-anchor-leaf-digest (fn-anchor-nonce a))`,
-  so every keystone about the signed octets --
-  `fn-anchor-signed-octets-determine-the-root` above all -- describes a
-  response with an empty `PATH` and `INDX` 0. The host does not restrict
-  itself that way: `tools/roughtime.py:137` admits a `PATH` up to 32 nodes
-  deep, and `anchor_verdict` (`tools/run_store.py:1964`) verifies the
-  signature over `fn-anchor-signed-from-root` applied to the root **from the
-  wire**, not to `fn-anchor-root`. The nine fields the durable record carries
-  (`Anchor.fields`, `tools/roughtime.py:211`) do not include the root at all.
-  For a single-nonce response -- which every captured vector in
-  `tests/vectors/` is -- the two coincide and the keystones apply. For a
-  batched response they do not, and the record ACL2 admits then describes a
-  different signed message from the one that was verified. Closing this is
-  either a SHA-512 book with the fold above it, or a root field on the
-  record with `fn-anchor-in-treep` as a hypothesis of
-  `fn-anchor-verifiedp`; it is written up in
-  `planning/lanes/HANDOFF-w11-one-owner.md`.
+  it (the sole `defattach` is a test-only one in
+  `tests/acl2/anchor-teeth-tests.lisp`). The tree holds **no SHA-512 at all**:
+  `books/sha256.lisp` is the only hash in logic, and Roughtime's fold is
+  SHA-512. So "the host's `_leaf` is `fn-anchor-leaf-digest`" is a named
+  trusted correspondence and not a proved one, exactly as "the host's Ed25519
+  is `fn-anchor-sig-verify`" is; it is the reading under which
+  `Anchor.one_nonce` discharges `fn-anchor-one-nonce-p`.
+
+  **What that trust no longer covers.** The node digest, the path fold, the
+  sibling order, the index bit order, the path depth bound and the
+  `INDX`-fits-`PATH` check are unowned host decisions in
+  `tools/roughtime.py:128,132` (`_node`, `merkle_root`), and a fold that
+  walked the tree the wrong way is still checked by nothing in the logic —
+  but **fn no longer accepts an anchor that needs them**. A response with a
+  non-empty `PATH` fails `fn-anchor-one-nonce-p`, so every transition answers
+  `:uncertain :unmodelled-tree`; `merkle_root` is then load-bearing only on
+  the path where it returns `_leaf(nonce)` and folds nothing. The trusted
+  surface is one hash of 33 octets, not a tree walk of arbitrary depth.
+
+  **The cost, stated plainly and measured.** fn cannot use a batched
+  Roughtime response, and int08h batches: one of the three captures in
+  `tests/vectors/` has a one-node `PATH`. Against a batching answer `fn
+  anchor` reports `anchor uncertain: unmodelled-tree` and exits 3, the node
+  keeps the anchor it had, and the operator retries. That is availability
+  traded for honesty, and the honest reading of D13 puts it under
+  `:uncertain` rather than `:refused`. Using batched responses is
+  `books/sha512.lisp`, the fold above it and its attachment, designed in
+  [HANDOFF-w11-one-owner](../planning/lanes/HANDOFF-w11-one-owner.md) §3
+  steps 1 to 3 and not done — and it is now a **feature** item, not only an
+  assurance one.
+- **The model and the host now describe the same message.** This bullet used
+  to record the opposite, and it is what lane `w11/anchor-root` closed. The
+  root is a record field, so `fn-anchor-signed-octets` is the octets the host
+  ran Ed25519 over, for a response of any batch size; and
+  `fn-anchor-one-nonce-p` is a branch of every transition, so the responses
+  this model cannot describe are reported uncertain instead of admitted.
+  `Anchor.fields` (`tools/roughtime.py`) carries ten fields including the
+  root, `fn-anchor-host-fields` takes ten, and the FNAN durable record has a
+  tenth `:blob`. **An `anchor.fnan` written before 2026-09-20 has nine fields
+  and no longer decodes**: `tools/run_store.py` raises rather than continuing,
+  because a store that once held a freshness anchor and can no longer read it
+  is not a store with no anchor. Re-run `fn anchor`.
 
 ## Three outcomes
 
 `:accepted`, `:refused` and `:uncertain` stay distinct to the exit code.
 `anchor` and `recover` exit `0`, `1` and `3` respectively. Not reaching a
-server, and `cryptography` being absent, are both `:uncertain`: the node does
-not know whether the image is stale, and a refusal would claim knowledge it
-does not have. A store that never recorded an anchor reports `anchor=none` and
+server, `cryptography` being absent, and **a Merkle tree this model cannot
+fold** (`:unmodelled-tree`) are all `:uncertain`: the node does not know
+whether the image is stale, and a refusal would claim knowledge it does not
+have. A store that never recorded an anchor reports `anchor=none` and
 recovers as before — it has nothing to be stale against.
 
 ## What remains A-IDENTITY
