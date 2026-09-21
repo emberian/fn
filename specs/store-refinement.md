@@ -326,6 +326,28 @@ The completion-gate regression also covers rejection, a failed reply before core
 completion, and a lost reply after actual core completion: each leaves the host
 fenced and emits no success, while reopening retains the published article/pin.
 
+### Native existing-store recovery (W15)
+
+The native adapter's `fnn-acquire` checks the root, transaction, and staging
+directories before taking its lock.  A missing `staging/` directory is therefore
+a storage fault, rather than an empty staging observation.  After `fnn-recover`
+has replayed the durable configuration and transactions and completed its five
+existing recovery barriers, writable recovery supplies a bounded observation of
+the staging namespace to ACL2 `fn-sn-sweep-staging`, through
+`fn-store-sn-sweep-staging-list`.  It unlinks only names returned by that ACL2
+subject; observed names outside the `.stage-` policy remain reported.  A
+read-only open reports the bounded observation but does not mutate it.  More
+than the ACL2-supplied limit of 64 entries faults before a larger host list is
+built, so recovery does not turn an unbounded directory into a logical input.
+
+The recovery cleanup is nonauthoritative: it does not alter the replayed
+configuration, transaction history, or frontier.  Runtime evidence exercises a
+selected process-death cut after one successful unlink and a separate injected
+post-unlink error; each requires a new process to observe the remaining
+namespace.  These tests establish the named adapter/model boundary and selected
+restart behavior, not a claim about arbitrary filesystem races, power loss, or
+every existing/retry opening path.
+
 The [fault matrix](store-fault-matrix.md) covers before/after-effect
 filesystem/completion rows, including partial/zero writes and all recovery
 barriers, and tabulates the six process-death cuts against their model crash
