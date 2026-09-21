@@ -23,7 +23,7 @@
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr counted))))
 
 (defun fn-served-feed-counted (conn octets)
-  (declare (xargs :guard (fn-wire-statep (fn-served-conn-wire conn))
+  (declare (xargs :guard (fn-wire-fast-statep (fn-served-conn-wire conn))
                   :verify-guards nil
                   :measure (len octets)))
   (if (or (not (consp octets))

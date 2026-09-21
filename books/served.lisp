@@ -562,7 +562,7 @@
 ; dispatch here prevents a counted transport fold from becoming a sibling
 ; implementation of served semantics.
 (defun fn-served-feed-byte (conn byte)
-  (declare (xargs :guard (fn-wire-statep (fn-served-conn-wire conn))))
+  (declare (xargs :guard (fn-wire-fast-statep (fn-served-conn-wire conn))))
   (let ((fed (fn-wire-feed-byte (fn-served-conn-wire conn) byte)))
     (fn-served-dispatch-events
      (fn-served-make-conn (fn-wire-result-state fed)
@@ -598,6 +598,12 @@
                              (fn-wire-result-events
                               (fn-wire-feed-byte
                                (fn-served-conn-wire conn) byte))))))))
+
+(defthm fn-served-feed-byte-preserves-fast-statep
+  (implies (fn-wire-fast-statep (fn-served-conn-wire conn))
+           (fn-wire-fast-statep
+            (fn-served-conn-wire
+             (fn-served-result-conn (fn-served-feed-byte conn byte))))))
 
 (defun fn-served-feed (conn octets)
   (declare (xargs :guard (fn-wire-statep (fn-served-conn-wire conn))
