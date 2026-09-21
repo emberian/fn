@@ -958,7 +958,11 @@ pre-enumeration control; normal callers pass NIL."
 A store with no configuration record is a refused store -- a distinct outcome
 from an uncertain persistence observation, and never a compiled-in default.
 The core decides whether the records replay."
-  (let ((names (fnn-config-record-names store)))
+  (fnn-config-records-from-names store (fnn-config-record-names store)))
+
+(defun fnn-config-records-from-names (store names)
+  "Decode the one bounded directory observation supplied by the caller."
+  (let ((names names))
     (when (null names)
       (fnn-fault "refusing store with no durable configuration record"))
     (mapcar (lambda (name)

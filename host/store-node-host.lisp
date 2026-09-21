@@ -69,6 +69,23 @@ the same configuration replay and observed-node open definitions startup uses."
         nil
       (if (fn-native-admin-candidate-openp records frontier config-records) t nil))))
 
+(defun fn-store-cfg-native-admin-authorize
+    (octet-records frontier config-octet-records record-octets lock-owned observed-name-octets)
+  "The existing exact byte decoders feed one logical publication authorization.
+The result binds the core's record generation, the ACL2 filename, candidate
+reopen predicate, writer-lock observation and observed final namespace."
+  (declare (xargs :mode :program))
+  (let ((records (fn-store-decode-records octet-records))
+        (config-records (fn-store-cfg-decode-records config-octet-records))
+        (parsed (fn-cfg-decode-exact record-octets))
+        (names (fn-store-octet-lists->strings observed-name-octets)))
+    (if (or (equal records :bad) (equal config-records :bad) (null config-records)
+            (equal names :bad) (not (fn-record-parse-okp parsed)))
+        (fn-native-admin-publication-result :refused :decode nil nil nil)
+      (fn-native-admin-publication-authorize
+       records frontier config-records (fn-record-parse-value parsed)
+       lock-owned names))))
+
 ; The configuration history is replayed first (`fn-cnode-config-replay',
 ; books/node-config), and the node the article history is replayed into takes
 ; its allocation domain and its capacity from that configured node.  The

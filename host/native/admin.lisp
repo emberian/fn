@@ -22,22 +22,18 @@ or syntactically unsupported requests in `fn-native-admin-plan'."
 (defun fnn-admin-plan-reason (plan)
   (fnn-core 'fn-native-admin-host-reason plan))
 
-(defun fnn-admin-config-record-name (generation)
-  (let ((name (fnn-core 'fn-native-admin-host-config-name generation)))
-    (unless (and (stringp name) (= (length name) 12)
-                 (null (position #\/ name)))
-      (fnn-fault "ACL2 returned an invalid configuration record name"))
-    name))
+(defun fnn-admin-clock-plan ()
+  "Raw Lisp observes clock values but does not coerce or wrap them.  ACL2
+builds the record stamp and refuses values that its durable schema cannot
+represent."
+  (let ((result (fnn-core 'fn-native-admin-host-clock-observation
+                          (floor (fnn-now) internal-time-units-per-second)
+                          (get-universal-time))))
+    (unless (eq (fnn-core 'fn-native-admin-host-clock-status result) :accepted)
+      (fnn-refuse "ACL2 refused an unrepresentable clock observation"))
+    (fnn-core 'fn-native-admin-host-clock-stamp result)))
 
-(defun fnn-admin-clock-monotonic ()
-  ; Clock readings are host observations; the record codec owns their uint32
-  ; admissibility.  This projection keeps the raw clock within that wire field.
-  (mod (floor (fnn-now) internal-time-units-per-second) 4294967296))
-
-(defun fnn-admin-clock-wall ()
-  (mod (get-universal-time) 4294967296))
-
-(defun fnn-admin-reconfigure (plan)
+(defun fnn-admin-reconfigure (plan stamp)
   "Invoke the existing ACL2 configuration transaction constructor.
 On :ok it returns the exact record octets the core admitted; on refusal it
 returns NIL and the core's named reason."
@@ -46,8 +42,8 @@ returns NIL and the core's named reason."
          (capacity (fnn-core 'fn-native-admin-host-capacity plan))
          (status (fnn-core-state 'fn-store-cfg-reconfigure
                                  kind (or name nil) capacity
-                                 (fnn-admin-clock-monotonic)
-                                 (fnn-admin-clock-wall))))
+                                 (fnn-core 'fn-native-admin-host-clock-monotonic stamp)
+                                 (fnn-core 'fn-native-admin-host-clock-wall stamp))))
     (if (eq status :ok)
         (let ((octets (fnn-core-state 'fn-store-cfg-last-octets)))
           (unless (fnn-octet-list-p octets)
@@ -55,13 +51,19 @@ returns NIL and the core's named reason."
           octets)
       (values nil (fnn-core-state 'fn-store-cfg-last-reason)))))
 
-(defun fnn-admin-candidate-openp (records frontier config-records)
-  "The byte decoders are the existing host/store-node boundary; candidate
-validity itself is the ACL2 logical fn-native-admin-candidate-openp function."
-  (eq (fnn-core-state 'fn-store-cfg-candidate-openp
-                      (mapcar #'fnn-octet-list records) frontier
-                      (mapcar #'fnn-octet-list config-records))
-      t))
+(defun fnn-admin-authorize (store records config-records record observed-names)
+  "The one ACL2 publication operation binds the observed lock, occupied-name
+set, exact record, candidate replay/open result and generated final name."
+  (let ((result (fnn-core-state
+                 'fn-store-cfg-native-admin-authorize
+                 (mapcar #'fnn-octet-list records) (fnn-store-frontier store)
+                 (mapcar #'fnn-octet-list config-records) (fnn-octet-list record)
+                 t (mapcar (lambda (name) (fnn-octet-list (fnn-string-octets name)))
+                           observed-names))))
+    (if (eq (fnn-core 'fn-native-admin-host-publication-status result) :accepted)
+        result
+      (fnn-refuse "ACL2 refused administrative publication: ~a"
+                  (fnn-core 'fn-native-admin-host-publication-reason result)))))
 
 (defun fnn-admin-stage-path (store)
   ; A stage is not a durable namespace.  The final name comes only from the
@@ -69,28 +71,22 @@ validity itself is the ACL2 logical fn-native-admin-candidate-openp function."
   (fnn-join (fnn-staging store)
             (format nil ".admin-~d-~a" (sb-posix:getpid) (fnn-random-hex 12))))
 
-(defun fnn-admin-publish (store records record generation)
-  (let* ((name (fnn-admin-config-record-name generation))
+(defun fnn-admin-publish (store record authorization)
+  (let* ((generation (fnn-core 'fn-native-admin-host-publication-generation authorization))
+         (name (fnn-core 'fn-native-admin-host-publication-name authorization))
          (directory (fnn-config-dir store))
-         (final (fnn-join directory name))
-         (candidate-config-records (append (fnn-config-records store)
-                                           (list (fnn-octets record)))))
-    ; `config/' is created and parent-fenced by initialization.  Standalone
-    ; administration never creates it, so fn-jpub's final-directory barrier is
-    ; exactly the committed config namespace barrier, without a second raw
-    ; publication sequence.
-    (when (fnn-lstat final)
-      (fnn-fault "configuration generation is already occupied: ~a" name))
-    (unless (fnn-admin-candidate-openp records (fnn-store-frontier store)
-                                       candidate-config-records)
-      (fnn-refuse "ACL2 refused candidate configuration history"))
+         (final (fnn-join directory name)))
+    (unless (and (integerp generation) (>= generation 0)
+                 (stringp name) (= (length name) 12) (null (position #\/ name)))
+      (fnn-fault "ACL2 returned an invalid administrative publication plan"))
     (case (fnn-immutable-publish-effect
-           (fnn-core 'fn-jpub-host-initial t)
+           (fnn-core 'fn-native-admin-host-publication-jpub authorization)
            (fnn-admin-stage-path store) final directory (fnn-octets record)
            :cleanup-directory (fnn-staging store))
-      (:durable name)
+      (:durable (values generation name))
       (:refused (fnn-refuse "configuration record publication refused"))
-      (:uncertain (fnn-indeterminate "configuration record publication is uncertain"))
+      (:uncertain (setf (fnn-store-fenced store) t)
+                  (fnn-indeterminate "configuration record publication is uncertain"))
       (otherwise (fnn-fault "ACL2 returned invalid configuration publication outcome")))))
 
 (defun fnn-admin-reopen (root expected-generation)
@@ -118,11 +114,13 @@ turning a refusal into a physical mutation."
            (multiple-value-bind (opened records) (fnn-open-live-store root t)
              (setq store opened)
              (fnn-require-writer store)
-             (multiple-value-bind (record reason) (fnn-admin-reconfigure plan)
+             (multiple-value-bind (record reason) (fnn-admin-reconfigure plan (fnn-admin-clock-plan))
                (unless record
                  (fnn-refuse "administrative configuration refused: ~a" reason))
-               (let* ((generation (+ 1 (fnn-store-config-generation store))
-                      (name (fnn-admin-publish store records record generation)))
+               (let* ((names (fnn-config-record-names store))
+                      (config-records (fnn-config-records-from-names store names))
+                      (authorization (fnn-admin-authorize store records config-records record names)))
+                 (multiple-value-bind (generation name) (fnn-admin-publish store record authorization)
                  ; Close the exclusive descriptor before the independent
                  ; recovery open; it makes the reopen evidence a real new lock
                  ; acquisition rather than an in-process replay shortcut.
@@ -130,7 +128,7 @@ turning a refusal into a physical mutation."
                  (setq store nil)
                  (fnn-admin-reopen root generation)
                  (fnn-out "configured generation=~d record=~a" generation name)
-                 +fnn-exit-ok+)))
+                 +fnn-exit-ok+))))
         (when store (fnn-store-close store)))))
 
 (defun fnn-command-admin (root arguments)
