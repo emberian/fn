@@ -55,3 +55,17 @@
 (assert-event (fn-native-admin-candidate-openp nil 0 (list *fn-cfg-default-record*)))
 (assert-event (not (fn-native-admin-candidate-openp nil 4294967296
                                                  (list *fn-cfg-default-record*))))
+
+; Raw clocks are observations only.  ACL2 accepts a schema-representable pair
+; and refuses an out-of-domain value without wrapping it.
+(assert-event (equal (fn-native-admin-clock-status
+                      (fn-native-admin-clock-observation 7 9)) :accepted))
+(assert-event (equal (fn-native-admin-clock-status
+                      (fn-native-admin-clock-observation -1 9)) :refused))
+
+; Publication authorization cannot be reached without the observed exclusive
+; lock.  This separates the raw lock observation from the ACL2 authority it
+; must satisfy before a fn-jpub state is returned.
+(assert-event (equal (fn-native-admin-publication-status
+                      (fn-native-admin-publication-authorize nil 0 nil nil nil nil))
+                     :refused))

@@ -92,6 +92,7 @@ ACL2_BOOKS ?= books/defrecord \
 	host/native-auth-admin-host \
 	tests/acl2/native-auth-admin-tests \
 	tests/acl2/native-auth-admin-host-tests \
+	books/journal-publish \
 	books/native-admin \
 	tests/acl2/native-admin-tests \
 	books/native-operator \
@@ -221,7 +222,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-workflow-tests \
 	tests/acl2/bp-workflow-teeth-tests \
 	books/app-journal \
-	books/journal-publish \
 	tests/acl2/journal-publish-tests \
 	books/bp-workflow-records \
 	books/bp-workflow-records-invariants \
