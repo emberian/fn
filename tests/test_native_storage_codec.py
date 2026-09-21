@@ -27,6 +27,24 @@ def host_env(native):
     return env
 
 
+class NativeConfigNamespaceSourceTests(unittest.TestCase):
+    def test_native_config_scan_is_bounded_and_acl2_bound(self):
+        source = (ROOT / "host" / "native" / "io.lisp").read_text()
+        block = source[source.index("(defun fnn-config-record-observation"):
+                       source.index("(defun fnn-open-lock")]
+        self.assertIn("fnn-list-directory-bounded", block)
+        self.assertIn("fnn-bridge-config-observation-limit", block)
+        self.assertIn("fnn-bridge-config-observation", block)
+        self.assertIn("fnn-check-regular", block)
+        self.assertNotIn("remove-if-not", block)
+        self.assertNotIn("fnn-list-directory (fnn-config-dir", block)
+        model = (ROOT / "books" / "native-config-observation.lisp").read_text()
+        self.assertIn("fn-cfg-decode-exact", model)
+        self.assertIn("fn-cfg-record-generation", model)
+        self.assertIn("fn-native-admin-config-name", model)
+        self.assertIn("fn-nco-canonical-contiguousp", model)
+
+
 class NativeTransactionNamespaceSourceTests(unittest.TestCase):
     def test_native_scan_uses_bounded_acl2_transaction_observation(self):
         source = (ROOT / "host" / "native" / "io.lisp").read_text()
@@ -121,6 +139,26 @@ class NativeStorageCodecTests(unittest.TestCase):
         run_store.Store(scale_store, writable=True, profile="scale").initialize()
         scale_status = self.invoke(True, scale_store, "status")
         self.assertIn(b"transactions=0 articles=0", scale_status.stdout)
+
+    def test_native_config_namespace_refuses_mismatched_name_and_symlink(self):
+        store = self.base / "config-namespace"
+        self.invoke(True, store, "init")
+        config_dir = store / "config"
+        generation_one = config_dir / "00000001.cfg"
+
+        # The bytes decode to generation 1 but their observed basename claims
+        # generation 2.  Recovery must fault rather than ignore or replay a
+        # shorter configuration prefix.
+        mismatch = config_dir / "00000002.cfg"
+        mismatch.write_bytes(generation_one.read_bytes())
+        self.invoke(True, store, "recover", expected=run_store.EXIT_FAULT)
+        mismatch.unlink()
+
+        # A selected canonical-looking name that is a symlink is a physical
+        # observation fault before the ACL2 plan receives its bytes.
+        alias = config_dir / "00000002.cfg"
+        alias.symlink_to(generation_one.name)
+        self.invoke(True, store, "recover", expected=run_store.EXIT_FAULT)
 
     def test_native_refuses_truncated_or_malformed_metadata(self):
         original = self.base / "original"
