@@ -9,6 +9,7 @@
 (in-package "ACL2")
 
 (include-book "frame-trailer")
+(include-book "frame-invariants")
 (include-book "bp-primary")
 
 ; A frontier is the NEXT value to allocate.  It is a u64 because the FNBS
@@ -101,6 +102,43 @@
 
 (verify-guards fn-bpn-sequence-record-frame)
 (verify-guards fn-bpn-sequence-record-unframe)
+
+(defthm fn-bpn-sequence-protected-octet-listp
+  (implies (and (fn-frame-magicp magic) (fn-cbor-octetp version)
+                (fn-cbor-octetp kind) (fn-cbor-octet-listp payload)
+                (<= (len payload) *fn-cbor-max-uint*))
+           (fn-cbor-octet-listp (fn-frame-protected magic version kind payload)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-frame-protected fn-frame-header-octets)
+                (fn-frame-header)))))
+
+; Public host-boundary bridge: a caller that obtains a frame from ACL2 may
+; supply those octets directly to the recovery decoder without a second codec.
+(defthm fn-bpn-sequence-record-frame-octet-listp
+  (implies (fn-bpn-sequence-recordp record)
+           (fn-cbor-octet-listp (fn-bpn-sequence-record-frame record)))
+  :hints (("Goal" :use
+           ((:instance fn-bpn-sequence-protected-octet-listp
+                       (magic *fn-frame-magic-bundle-store*) (version 1)
+                       (kind 1)
+                       (payload (fn-frame-fields-octets '(:nat)
+                                                        (list (cadr record)))))
+            (:instance fn-frame-fields-octets-are-octets
+                       (specs '(:nat)) (values (list (cadr record))))
+            (:instance fn-frame-u64-bytes-len (n (cadr record)))
+            (:instance fn-cbor-at-mostp-from-length
+                       (xs (fn-frame-u64-bytes (cadr record))) (bound 8)))
+           :in-theory
+           (enable fn-bpn-sequence-record-frame
+                   fn-frame-bundle-store-encode
+                   fn-frame-bundle-store-record-okp
+                   fn-frame-encode
+                   fn-frame-fields-octets
+                   fn-frame-field-octets
+                   fn-frame-values-okp
+                   fn-frame-field-okp
+                   fn-cbor-at-mostp
+                   fn-frame-trailer))))
 
 ; Recovery is intentionally conservative: an absent frontier is fresh only
 ; while the host is establishing a newly durable sequence namespace.  Once the
