@@ -65,11 +65,45 @@
            (fn-sn-statep (fn-sn-io s operation result)))
   :hints (("Goal" :in-theory (disable fn-sn-file-step ))))
 
+(local (defthm fn-sn-record-p-implies-string-msgid
+         (implies (fn-record-p record)
+                  (stringp (fn-record-msgid record)))
+         :hints (("Goal" :in-theory (enable fn-record-p)))))
+
 (defthm fn-sn-finish-preserves-state
   (implies (fn-sn-statep s)
            (fn-sn-statep (fn-sn-finish s)))
-  :hints (("Goal" :in-theory (disable fn-sf-core-completion
-                                      fn-sf-emit-success))))
+  :hints (("Goal"
+           :use ((:instance fn-sn-record-p-implies-string-msgid
+                            (record (fn-sn-completion-record s))))
+           :in-theory (disable fn-sf-core-completion
+                               fn-sf-emit-success))))
+
+; Keystone for the host-called acceptance subject.  host/store-node-host.lisp
+; `fn-store-sn-finish' calls fn-sn-finish; on its enabled durable branch the
+; cheap retrieval query returns exactly the verdict computed over the
+; accepted record under the then-current keyring generation.
+(defthm fn-sn-finish-records-the-acceptance-verdict
+  (implies (fn-sn-completion-enabledp s)
+           (equal
+            (fn-sn-verdict-lookup
+             (fn-sn-finish s)
+             (fn-record-msgid (fn-sn-completion-record s)))
+            (fn-stx-verdict-of-octets
+             (fn-record-payload (fn-sn-completion-record s))
+             (fn-sn-keyring s)
+             (fn-sn-keyring-generation s))))
+  :hints (("Goal"
+           :in-theory (enable fn-sn-verdict-lookup
+                              fn-sn-verdict-lookup-list))))
+
+; Key rotation changes current trust and its generation, but it cannot
+; rewrite the acceptance observation that the retrieval path exposes.
+(defthm fn-sn-set-keyring-preserves-recorded-verdict
+  (equal (fn-sn-verdict-lookup (fn-sn-set-keyring s keyring) msgid)
+         (fn-sn-verdict-lookup s msgid))
+  :hints (("Goal" :in-theory (enable fn-sn-verdict-lookup
+                                      fn-sn-set-keyring))))
 
 (defthm fn-sn-crash-preserves-state
   (implies (fn-sn-statep s)

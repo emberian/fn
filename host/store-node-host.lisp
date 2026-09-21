@@ -676,6 +676,24 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :stobjs state :mode :program))
   (value (len (fn-sn-keyring (f-get-global 'fn-store-sn state)))))
 
+(defun fn-store-sn-keyring-generation (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-sn-keyring-generation (f-get-global 'fn-store-sn state))))
+
+; Historical acceptance evidence.  The ACL2 state recorded this verdict at
+; fn-sn-finish; this host wrapper performs only Message-ID conversion and a
+; carried-index lookup.  It neither parses article bytes nor verifies a
+; signature.  Present results are the reader-safe :fn-verified item octets.
+(defun fn-store-sn-verdict (msgid-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (not (fn-store-msgid-octetsp msgid-octets))
+      (value nil)
+    (let ((verdict
+           (fn-sn-verdict-lookup
+            (f-get-global 'fn-store-sn state)
+            (fn-store-octets->string msgid-octets))))
+      (value (if verdict (fn-stx-verified-item verdict) nil)))))
+
 ; The query.  Absent is nil; present is the statement's canonical octets.
 (defun fn-store-sn-statement (id-octets state)
   (declare (xargs :stobjs state :mode :program))

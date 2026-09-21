@@ -103,6 +103,8 @@
 (assert-event (fn-sn-indexedp *sni-initial*))
 (assert-event (equal (fn-sn-keyring *sni-initial*) nil))
 (assert-event (equal (fn-sn-index *sni-initial*) (fn-stx-index-empty)))
+(assert-event (equal (fn-sn-keyring-generation *sni-initial*) 0))
+(assert-event (equal (fn-sn-verdicts *sni-initial*) nil))
 
 ; Reconfiguration installs the verification context.
 (make-event (list 'defconst '*sni-keyed*
@@ -110,6 +112,7 @@
 (assert-event (fn-sn-indexedp *sni-keyed*))
 (assert-event (equal (fn-sn-keyring *sni-keyed*) *sni-keyring*))
 (assert-event (equal (fn-sn-index *sni-keyed*) (fn-stx-index-empty)))
+(assert-event (equal (fn-sn-keyring-generation *sni-keyed*) 1))
 
 ; TOOTH on fn-sn-set-keyring's fn-prin-keyringp test: a malformed keyring is
 ; refused, the state is unchanged, and the old context still stands.
@@ -150,6 +153,20 @@
 ; THE CARRIED INVARIANT, on a reached state: the index fn-sn-finish consed
 ; equals the index recomputed over the grown store.
 (assert-event (fn-sn-indexedp *sni-finished*))
+
+; Acceptance records the verdict once, with the verification context in
+; force at that boundary.  Retrieval is by Message-ID and does not parse the
+; article or consult the current keyring.
+(assert-event
+ (equal (fn-stx-verdict-token
+         (fn-sn-verdict-lookup *sni-finished* "<sni@example>"))
+        :verified))
+(assert-event
+ (equal (fn-stx-verdict-generation
+         (fn-sn-verdict-lookup *sni-finished* "<sni@example>"))
+        1))
+(assert-event
+ (equal (fn-sn-verdict-lookup *sni-finished* "<missing@example>") nil))
 
 ; It grew by exactly one binding, which is the D3 property the index exists
 ; for: no walk of the store happened at the transition.
@@ -237,6 +254,14 @@
 (assert-event (equal (fn-sn-statement-lookup *sni-unkeyed-finished*
                                              (fn-stmt-id *sni-stmt*))
                      nil))
+(assert-event
+ (equal (fn-stx-verdict-token
+         (fn-sn-verdict-lookup *sni-unkeyed-finished* "<sni@example>"))
+        :unverified))
+(assert-event
+ (equal (fn-stx-verdict-generation
+         (fn-sn-verdict-lookup *sni-unkeyed-finished* "<sni@example>"))
+        0))
 
 ; The two runs are separated by the keyring field and by nothing else: the
 ; same id, the same store, two different answers.  (The keystone instance on
@@ -265,6 +290,15 @@
 (assert-event (equal (fn-sn-statement-lookup *sni-rekeyed*
                                              (fn-stmt-id *sni-stmt*))
                      *sni-stmt*))
+; Current trust changed, historical acceptance evidence did not.
+(assert-event (equal (fn-sn-keyring-generation *sni-rekeyed*) 1))
+(assert-event
+ (equal (fn-sn-verdict-lookup *sni-rekeyed* "<sni@example>")
+        (fn-sn-verdict-lookup *sni-unkeyed-finished* "<sni@example>")))
+(assert-event
+ (equal (fn-stx-verdict-generation
+         (fn-sn-verdict-lookup *sni-rekeyed* "<sni@example>"))
+        0))
 
 ; -----------------------------------------------------------------------------
 ; -----------------------------------------------------------------------------
