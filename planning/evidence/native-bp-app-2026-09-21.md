@@ -8,10 +8,10 @@ saved native `fn-host` image.
 ## Source and certification
 
 - Branch: `w18/native-bp-app`
-- Final source revision: `190c023dfe2812d891cccea054a5651668fa4c90`
-- Deployable native source was last changed by `33159f2`; the three later
-  commits change only the focused Python test.  The native source hashes below
-  match the final revision.
+- Implementation revision: `fc78031` (the following commit archives this
+  evidence).  This revision also moves the shared bound-submission completion
+  helper into `host/native/owner.lisp`, where native control and BP consume one
+  implementation.
 - Persvati run `run-20260921T100110Z-cac3`, archived as
   `planning/evidence/manifests/certify-20260921T100118Z-2424932.json`: ACL2
   8.7/SBCL 2.6.8, jobs 4/effective 4, 88/88 closure books passed in 258.888s.
@@ -42,7 +42,7 @@ FN_NATIVE_HOST=build/fn-host \
 python3 -m unittest tests.test_bp_app_native -v
 ```
 
-Result: 1 test passed in 6.305s.  The first native receiver durably commits the
+Result: 1 test passed in 8.691s.  The first native receiver durably commits the
 owner Store record and FNRJ receipt decision, then is killed before authoring
 the receipt bundle.  A second native receiver replays the decision and returns
 the receipt when the native sender retransmits the request in a new bundle.
@@ -53,17 +53,18 @@ sender's received receipt bytes equal the FNRJ replay projection.
 ## Artifact digests
 
 ```text
-891a6cb27a615f2d3cce21be621dfcd3c0b73ffac7d829f89e50bc88f7b53ec3  build/fn-host
-fe8a1a7fec169910c33981a79ee56c71a05e8ab897a9001153548ea47497a6ca  build/fn-host.core
-cf3f4fb871989e3ee187c9eb664a602876e4df37e9390670144511e26bf5ce61  build/native-host-build.log
-31aeadfcab1afedb32a708ad0d792fd7b025c00dde0360dbba108dd53a7ba823  host/native/bp-app.lisp
+b8cf7de8f74fd1f4080fdc54af8e70199a439a44f01b4f963bbaf7747c8e8bd0  build/fn-host
+d5a7257637b6d0e40831ed026d133308a4a4e483211ef21f94ead28c6827220b  build/fn-host.core
+6ca5d7b19bbb3c1ff8725da9f6857f8adb567d1ac4e00fa4ad6eeba9802812c9  build/native-host-build.log
+741c3c4d504a8483a13c5899a5d4a80b2cbe11c453aba182cb1acbf4cf7d9830  host/native/owner.lisp
+79eabbd565ca93228b7bac4f999fa56787b29bdd3cc9bd8a004c3e4251132102  host/native/bp-app.lisp
 543dc4467c559204d47bac8a988dbd1aa006628aea6ec25d097af6f1aec245b6  books/bp-native-app.lisp
 a9e321b40034b0cb4d6de421b09cc82cd10d551abb9d6dc8755591d9c13424e1  tests/test_bp_app_native.py
-0ec85a22dc54851110ecc4eda25f72793001d7387dcea1599bfd918f022e9de1  build/bp-app-native-test.log
+fb1e9bd765353fa93047bf019093efefbff7abbb82d1fdb8cfcc636c21fbd256  build/bp-app-native-test.log
 ```
 
 The SHA-256 over those ordered `sha256  path` lines is
-`f35a963f45d5d763243b4b4528e96bcbe82cc2d2b8c5853a43418be5763273e4`.
+`b5be81b52827820750d237bfa4397071a27af530d0bf58eb3c989ec591bc5453`.
 
 ## Scope
 
