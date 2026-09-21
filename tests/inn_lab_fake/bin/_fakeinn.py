@@ -220,16 +220,15 @@ def innd(argv):
 
 
 def nnrpd(argv):
-    # Real nnrpd -D writes run/nnrpd-<port>.pid and the lab reads that file,
-    # because killing the shell child it forked from left a stray reader
-    # daemon on the box on 2026-09-20.  The fake wrote only run/nnrpd.pid, so
-    # the lab read an empty pid and died with an IndexError -- which is how
-    # tools/inn_lab.py's own dry run came to be red on dev with nothing
-    # running it.  The fake writes both names.
     port = int(argv[argv.index("-p") + 1]) if "-p" in argv else 11120
-    with open(path("run", "nnrpd-{}.pid".format(port)), "w") as handle:
-        handle.write(str(os.getpid()))
-    serve(port, True, path("run", "nnrpd.pid"))
+    # Real nnrpd -D writes run/nnrpd-<port>.pid on any port but 119, and
+    # run/nnrpd.pid on 119.  This fake wrote run/nnrpd.pid whatever the port,
+    # so the lab's `cat $P/run/nnrpd-<port>.pid` read nothing and the pid
+    # parse raised -- the setUpClass error of 2026-09-20.  The box is the
+    # authority: planning/evidence/inn-lab-f4e8272-2026-09-20.md step 38 is
+    # `NNRPD-UP pid=629447` out of `cat $P/run/nnrpd-11120.pid`.
+    name = "nnrpd.pid" if port == 119 else "nnrpd-{}.pid".format(port)
+    serve(port, True, path("run", name))
     return 0
 
 
