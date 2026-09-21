@@ -664,7 +664,7 @@ here.  The host supplies octets and decides nothing about them."
   "The config reader consumes an ACL2-owned bound before readdir retains names."
   (fnn-nat (fnn-core 'fn-store-config-observation-limit)))
 
-(defun fnn-bridge-config-observation (observed)
+(defun fnn-bridge-config-observation (observed &optional initializing)
   "Return ACL2-issued (canonical basename . octets) config history entries.
 
 OBSERVED is a bounded physical list.  The core decodes each octet record,
@@ -672,7 +672,8 @@ derives its generation, checks the writer codec's exact basename, and returns
 only the sorted contiguous plan.  The membership check below validates the
 returned representation; it is not a second filename policy."
   (let ((value
-          (fnn-core 'fn-store-config-observation
+          (fnn-core (if initializing 'fn-store-config-initial-observation
+                        'fn-store-config-observation)
                     (mapcar (lambda (entry)
                               (list (fnn-octet-list (fnn-string-octets (car entry)))
                                     (fnn-octet-list (cdr entry))))
@@ -972,7 +973,7 @@ this function never formats a generation in raw Lisp."
 (defun fnn-config-record-path (s generation)
   (fnn-join (fnn-config-dir s) (fnn-config-record-name generation)))
 
-(defun fnn-config-record-observation (store &optional test-fault-point)
+(defun fnn-config-record-observation (store &optional test-fault-point initializing)
   "One bounded physical config history observation, ordered by ACL2's plan.
 
 Every observed name is checked as a regular non-symlink and read under the
@@ -995,11 +996,11 @@ filter turns it into an absent or shorter history."
                        (cons name
                              (fnn-read-regular-bounded path +fnn-config-record-bytes+))))
                    names)))
-    (fnn-bridge-config-observation observed)))
+    (fnn-bridge-config-observation observed initializing)))
 
-(defun fnn-config-record-names (store &optional test-fault-point)
+(defun fnn-config-record-names (store &optional test-fault-point initializing)
   "Canonical config basenames from one bounded ACL2-bound observation."
-  (mapcar #'car (fnn-config-record-observation store test-fault-point)))
+  (mapcar #'car (fnn-config-record-observation store test-fault-point initializing)))
 
 (defun fnn-config-records-from-observation (observation)
   (unless observation
@@ -1207,7 +1208,7 @@ because the name may or may not still be present after the syscall."
                      :published)
                  (setf (fnn-store-config store) (fnn-metadata-config-decode config))
                  (fnn-load-config store)))
-           (when (null (fnn-config-record-names store :init-config-records-first-enumerate))
+           (when (null (fnn-config-record-names store :init-config-records-first-enumerate t))
              (when (eq (fnn-publish-initial-file store (fnn-config-record-path store 1)
                                               (fnn-bridge-config-initial groups) "init-history-")
                        :existing)

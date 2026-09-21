@@ -75,6 +75,14 @@
         (fn-nco-result :fault :input nil)
       (fn-nco-observe converted))))
 
+(defun fn-store-config-initial-observation (entries)
+  "Initialization-only observation; an empty directory may receive genesis."
+  (declare (xargs :mode :program))
+  (let ((converted (fn-store-config-observation-entries entries)))
+    (if (equal converted :bad)
+        (fn-nco-result :fault :input nil)
+      (fn-nco-observe-initial converted))))
+
 (defun fn-store-cfg-decode-records (octet-records)
   ; Each durable configuration record decodes exactly, or the list is :bad.
   (declare (xargs :mode :program))

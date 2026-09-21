@@ -152,3 +152,10 @@ program-mode caller supplies a malformed logical entry."
                    (fn-nco-canonical-contiguousp ordered 1))
             (fn-nco-result :ok nil (fn-nco-output-entries ordered))
             (fn-nco-result :fault :namespace nil)))))))
+
+; Initialization has not published generation 1 yet.  Only this entry accepts
+; an exactly empty namespace; recovery continues to require a durable history.
+(defun fn-nco-observe-initial (entries)
+  (declare (xargs :guard t))
+  (if (null entries) (fn-nco-result :ok nil nil)
+    (fn-nco-observe entries)))
