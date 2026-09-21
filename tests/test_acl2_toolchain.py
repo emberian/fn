@@ -62,7 +62,42 @@ class FingerprintTests(unittest.TestCase):
             self.assertFalse(found.qualified)
             self.assertIsNone(found.identity)
             self.assertEqual(found.provenance["status"], "unqualified")
-            self.assertIn("no absolute exec", found.reason)
+            self.assertIn("unknown ACL2 launcher command", found.reason)
+
+    def test_launcher_source_is_bounded_and_never_executed_to_infer_identity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            marker = root / "must-not-exist"
+            launcher = root / "acl2"
+            launcher.write_text(
+                '#!/bin/sh\nprintf owned > "{}"\n'.format(marker))
+            launcher.chmod(0o755)
+            found = acl2_toolchain.fingerprint(launcher)
+            self.assertFalse(found.qualified)
+            self.assertFalse(marker.exists())
+
+            launcher.write_bytes(b"#!/bin/sh\n#" +
+                                 b"x" * acl2_toolchain.MAX_LAUNCHER_BYTES)
+            found = acl2_toolchain.fingerprint(launcher)
+            self.assertFalse(found.qualified)
+            self.assertIn("parse bound", found.reason)
+
+    def test_comment_or_echo_cannot_disguise_an_exec(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            runtime = root / "sbcl"
+            runtime.write_bytes(b"runtime")
+            core = root / "core"
+            core.write_bytes(b"core")
+            for command in (
+                    '# exec "{}" --core "{}"'.format(runtime, core),
+                    'echo exec "{}" --core "{}"'.format(runtime, core),
+                    'exec "{}" --core "{}"; touch elsewhere'.format(
+                        runtime, core)):
+                launcher = root / "acl2"
+                launcher.write_text("#!/bin/sh\n" + command + "\n")
+                found = acl2_toolchain.fingerprint(launcher)
+                self.assertFalse(found.qualified)
 
 
 if __name__ == "__main__":

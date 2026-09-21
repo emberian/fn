@@ -1,7 +1,8 @@
 # ACL2 certificate origin-coherence repair, 2026-09-21
 
-Status: tooling regression fixed and locally tested.  No ACL2 closure was
-re-certified and no shared cache or toolchain was modified for this packet.
+Status: tooling regression fixed and locally tested, including the post-reboot
+launcher/core/runtime recovery.  No ACL2 closure was re-certified and no shared
+cache, system ACL2 installation or toolchain was modified for this packet.
 
 ## Observed failures
 
@@ -55,6 +56,22 @@ This matters when a run is killed before its final cache sweep: its passing
 books remain selectable by the same coherent-set rules rather than being
 present with an all-null toolchain identity.
 
+The follow-up identity is the SHA-256 of a compatibility record containing the
+recognized launcher chain, saved core, Lisp runtime and the proof environment.
+The runner and certificate-reader hashes remain attached as audit provenance;
+changing those development tools alone does not claim that ACL2 wrote an
+incompatible certificate and therefore does not force an endless recertification
+cycle.  Launcher-only legacy manifests are not reusable.
+
+Launcher recognition is finite and non-evaluating.  The tool reads no more than
+64 KiB of each launcher, follows at most one outer wrapper, and accepts only a
+shell shebang, comments/blank lines, literal `export` assignments, and one
+absolute `exec` with a literal absolute `--core` path.  Other commands, control
+operators, relative or dynamic paths, oversized/non-text inputs, recursion and
+unknown shapes are unqualified.  The content hashes themselves are streamed.
+This is a narrow recognizer for the two observed generated-launcher layers, not
+a general shell parser and not a proof-trust improvement.
+
 ## Regression evidence
 
 Command, from source commit `16176d65` atop baseline
@@ -81,3 +98,35 @@ canonical `/home/ember/fn-lanes/w13-owner-integrated-gate` origin and preserve
 its cache-preflight identity in the farm record.  A miss must be handled by an
 explicit `--closure` run; the tool does not combine partial origins or suppress
 ACL2's full-book-name checks.
+
+## Post-reboot recovery validation
+
+The dirty source was first preserved unchanged in unsigned checkpoint
+`8758c4c5`.  After the bounded recognizer review, focused tests ran under the
+new process-group containment runner from the sibling `w24/process-containment`
+lane:
+
+```text
+python3 ../w24-process-containment/tools/run_command.py --timeout 60 -- \
+  python3 -m unittest tests.test_acl2_toolchain tests.test_certs \
+  tests.test_farm tests.test_certify_runner \
+  tests.test_proof_artifacts.AcquisitionTests -v
+```
+
+Result: 96 tests passed in 15.950 seconds on Darwin arm64.  The containment
+runner provides TERM, bounded grace, KILL and direct-child reaping for its task
+process group; it does not claim cleanup for `setsid`-escaped descendants or a
+supervisor killed with SIGKILL.
+
+The broader first invocation ran 98 tests in 14.558 seconds: 97 passed and the
+unrelated `ProfileTests.test_default_and_dtn_are_distinct_declared_images`
+failed because current `IMAGE_PROFILES["default"]` contains `books/bp-node`
+while the older assertion says it must not.  The narrowed acquisition suite
+above excludes that stale profile-policy assertion without hiding a changed
+toolchain test.
+
+A read-only, non-executing probe of the installed Homebrew ACL2 launcher also
+qualified its two literal launcher layers, 235,047,944-byte saved core and SBCL
+runtime under the new identity in 0.072 seconds.  No ACL2 process, certification,
+farm run or build was started.  Remote-origin qualification remains the next
+integration check after this packet lands.
