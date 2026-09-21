@@ -118,7 +118,7 @@ answers exactly as before. The two K1 served-port statements
 (`fn-own-read-is-served-step-on-pinned-prefix` and its `-after-any-trace`)
 now name the re-pinned session, which is what `fn-own-read` passes.
 
-**PRF-040** is the target these belong to. PRF-029 is the outbound half and
+**PRF-042** is the target these belong to (claimed as PRF-040; `w11/k1-scan` and `w11/owner-survival` had both taken that number by their own merges, exactly as the brief predicted). PRF-029 is the outbound half and
 PRF-024 is the substrate policy gate (`fn-pol-admitp`, SUB-003), a different
 subject; the inbound half had no target and no curated events at all.
 

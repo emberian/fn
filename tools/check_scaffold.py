@@ -3,8 +3,9 @@
 
 import json
 import re
+import subprocess
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlsplit
 
 
@@ -98,7 +99,35 @@ def evidence(entry: dict, advanced: set[str]) -> None:
                 fail(f"{entry['id']}: evidence is not a file: {path}")
 
 
+def conflict_markers() -> None:
+    """Refuse a tracked file that still carries a merge conflict marker.
+
+    Committed three times in one evening -- twice in planning/BOARD.md and
+    once across ~300 lines of planning/decisions.md, each time putting every
+    entry after the hunk inside it.  Nothing validated those files, so the
+    tree read as clean and two lanes each rediscovered the same wreckage.
+    Git's own markers are the check: a line that is exactly seven `<`, `=` or
+    `>` followed by a space or end of line.
+    """
+    pattern = re.compile(r"(?m)^(?:<{7} |>{7} |={7}$)")
+    listed = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, check=False,
+                            capture_output=True, text=True).stdout.split("\0")
+    for name in listed:
+        if not name or set(PurePosixPath(name).parts) & IGNORED:
+            continue
+        path = ROOT / name
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        hit = pattern.search(text)
+        if hit:
+            line = text[:hit.start()].count("\n") + 1
+            fail(f"{name}:{line}: a merge conflict marker is committed here")
+
+
 def main() -> int:
+    conflict_markers()
     markdown = sorted(p for p in ROOT.rglob("*.md")
                       if not (set(p.relative_to(ROOT).parts) & IGNORED))
     for path in markdown:

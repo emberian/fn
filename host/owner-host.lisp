@@ -22,7 +22,11 @@
 ; effect list, `fn-owner-submittedp' (fn-served-submission).  The host never
 ; writes a reply octet.
 (in-package "ACL2")
-(include-book "../books/owner")
+; books/owner-fault includes books/owner and adds the host-fault transition
+; `fn-own-fault'.  The host needs it: `fn-owner-fault' below is the only way
+; tools/run_owner.py can abandon ONE connection, and before it existed an
+; exception in the serve loop ended the process for every connection.
+(include-book "../books/owner-fault")
 ; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
 ; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
 ; ACL2 session does not load `host/store-host.lisp', so the one owner has to
@@ -385,15 +389,6 @@
 ; derives, and leaves them where the bridge can read them.  The obligation id
 ; and the subject are the host's digests, as for POST (fn-frame-digest is
 ; constrained and unattached).
-(defun fn-owner-group-octet-list (names)
-  ; Group NAMES as octets, so `fn-owner-submit-groups' holds one
-  ; representation whatever path filled it.
-  (declare (xargs :mode :program))
-  (if (consp names)
-      (cons (fn-record-string-octets (car names))
-            (fn-owner-group-octet-list (cdr names)))
-    nil))
-
 (defun fn-owner-transit-decide (id-octets subject-octets state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (f-get-global 'fn-owner state))
@@ -424,20 +419,30 @@
                  ; subject, evidence, charge).  The generation passed here is
                  ; 0 because no element read from this list depends on it.
                  ;
-                 ; It answers with STRINGS (`fn-record-octets-string', see
-                 ; books/peer-inbound.lisp fn-peer-scope-groups) where the
-                 ; POST path's `fn-inj-decision-groups' answers with octets,
-                 ; and the host reads ONE global for both.  Reading a string
-                 ; as an octet list raised `unexpected ACL2 octet-list
-                 ; result' inside `Owner.drain', which does not catch, so the
-                 ; OWNER PROCESS DIED on the first article a peer transferred
-                 ; -- the second half of the w10/v0-matrix board ASK.  The
-                 ; conversion is ACL2's own and happens here, so the two
-                 ; paths agree on a representation without Python choosing
-                 ; one.
+                 ; It answers with STRINGS ("Strings, as fn-node-prepare
+                 ; takes", books/peer-inbound.lisp fn-peer-scope-groups, which
+                 ; ends in `fn-record-octets-string') where the POST path's
+                 ; `fn-inj-decision-groups' answers with OCTETS -- its
+                 ; elements are `fn-cbor-octet-listp' by
+                 ; `fn-inj-group-namesp' -- and the host reads ONE global for
+                 ; both.  Reading a string as an octet list raised
+                 ; `unexpected ACL2 octet-list result' inside `Owner.drain',
+                 ; which did not catch, so the OWNER PROCESS DIED on the
+                 ; first article a peer transferred: the second half of the
+                 ; w10/v0-matrix board ASK, and the death that took 22
+                 ; transit rows, the feed rows and the crash rows of the
+                 ; matrix with it.  The conversion is ACL2's own and happens
+                 ; here, where the global is written, so the two paths agree
+                 ; on a representation without Python choosing one.
+                 ;
+                 ; `w11/twonode-feed' and `w11/owner-survival' diagnosed and
+                 ; fixed this independently on the same evening, and the two
+                 ; fixes differed only in which of two identical helpers they
+                 ; called.  The duplicate is folded: `fn-owner-group-octets'
+                 ; above is the one, and `fn-owner-group-octet-list' is gone.
                  (state (f-put-global 'fn-owner-submit-groups
                                       (if (equal (fn-peer-decision-kind d) :want)
-                                          (fn-owner-group-octet-list (nth 3 args))
+                                          (fn-owner-group-octets (nth 3 args))
                                         nil)
                                       state))
                  (state (f-put-global 'fn-owner-transit-evidence
@@ -582,6 +587,29 @@
   (declare (xargs :stobjs state :mode :program))
   (let ((state (fn-owner-step (list :close id) state)))
     (value :closed)))
+
+; The host-fault boundary (books/owner-fault.lisp).
+;
+; tools/run_owner.py calls this when it has caught an exception it did not
+; expect while serving connection `id': the model decides the reply line, the
+; close and everything that happens to the owner (`fn-own-fault'), and the
+; host's only remaining decision is that it will not use that socket again.
+; The result is installed through the same `fn-owner-install-effects' every
+; other entry uses, so the host reads the reply out of `fn-owner-output' and
+; the close out of `fn-owner-closep' exactly as it does for a served read.
+;
+; `:faulted' is answered when there was a connection to answer, `:unknown'
+; when there was not; the owner has forgotten `id' either way.  The host
+; reports the two differently because a fault naming no connection is a host
+; defect and not a served event.
+(defun fn-owner-fault (id state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((owner (f-get-global 'fn-owner state))
+         (knownp (if (fn-own-find-conn id (fn-own-conns owner)) t nil))
+         (result (fn-own-fault owner id))
+         (state (f-put-global 'fn-owner (cdr result) state))
+         (state (fn-owner-install-effects (car result) state)))
+    (value (if knownp :faulted :unknown))))
 
 (defun fn-owner-advance (id state)
   (declare (xargs :stobjs state :mode :program))

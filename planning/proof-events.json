@@ -1172,7 +1172,48 @@
       ]
     },
     {
-      "id": "PRF-040",
+      "id": "PRF-041",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bs-store-crash-image-scans"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-store-crash-image-is-kernel-admissible"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-store-recovery-is-a-kernel-crash"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-crash-image-reopens"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-acknowledged-record-survives-byte-crash"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-crash-image-reads-the-config"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-crash-image-frontier-decodes-to-a-natural"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-crash-image-namespace-is-contiguous"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-crash-image-records-do-not-fault"
+        }
+      ]
+    },
+    {
+      "id": "PRF-042",
       "events": [
         {
           "kind": "theorem",

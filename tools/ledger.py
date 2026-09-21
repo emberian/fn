@@ -300,12 +300,41 @@ def substitute(form: object, bindings: dict[str, object]) -> object:
     return form
 
 
+def normalise_null(form: object) -> object:
+    """Rewrite every ``(null x)`` to ``(equal x nil)``.
+
+    The two are the same proposition and the shape detectors below must not
+    depend on which one a lemma spells, because the spelling is FORCED: a
+    ``(null x)`` conclusion generates no rewrite rule at all -- ACL2 answers
+    that its own NULL rule subsumes the proposed one and declines to store
+    it -- so a ``-unfolds`` lemma has to write ``(equal x nil)`` where the
+    definition it restates writes ``(null x)``.  Measured 2026-09-20 (lane
+    w11/bytestore-k2): fn-sf-frontier-rollback-visiblep-unfolds WAS flagged
+    recognizer-body-conclusion while its emptiness conjunct read ``(null
+    (fn-sf-successes s))``, and stopped being flagged the moment that
+    conjunct had to change.  The SUSPECT count held at 46 across that
+    change and the stability was an artefact.
+    """
+    if isinstance(form, list):
+        parts = [normalise_null(part) for part in form]
+        if head(form) == "null" and len(parts) == 2:
+            return [Sym("equal"), parts[1], Sym("nil")]
+        return parts
+    return form
+
+
 def same(left: object, right: object) -> bool:
+    """Structural equality up to ``(null x)`` / ``(equal x nil)``."""
+    return same_exact(normalise_null(left), normalise_null(right))
+
+
+def same_exact(left: object, right: object) -> bool:
     """Structural equality that keeps symbols and string literals distinct."""
     if isinstance(left, Sym) != isinstance(right, Sym):
         return False
     if isinstance(left, list) and isinstance(right, list):
-        return len(left) == len(right) and all(same(a, b) for a, b in zip(left, right))
+        return (len(left) == len(right)
+                and all(same_exact(a, b) for a, b in zip(left, right)))
     if isinstance(left, list) or isinstance(right, list):
         return False
     return type(left) is type(right) and left == right
