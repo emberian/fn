@@ -57,6 +57,7 @@
   (prog2$ (cw "fn-native: raw entry not installed~%") (value :missing)))
 (progn! (set-raw-mode t)
         (load "host/native/io.lisp")
+        (load "host/native/immutable-publish.lisp")
         (load "host/native/workflow.lisp")
         ; The convergence layer, over io.lisp's socket surface and nothing else.
         (load "host/native/tcpcl.lisp")

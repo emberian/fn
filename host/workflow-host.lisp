@@ -37,6 +37,25 @@
   ; after the native publication machine reports :durable.
   (if (fn-bp-config-recordp record) t nil))
 
+(defun fn-workflow-enqueue-record
+  (txid generation work-id msgid forward-obligation-id peer-eid policy-id
+        terms-id state)
+  ; Derive the immutable subject and archive obligation from the one recovered
+  ; Store image.  Raw Lisp supplies identities and routing policy but never
+  ; copies the Store binding decision.
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((sn (f-get-global 'fn-store-sn state))
+         (node (and sn (fn-sn-node sn)))
+         (binding (and node
+                       (fn-node-find-binding msgid (fn-node-bindings node))))
+         (record
+          (and binding
+               (list :enqueue txid generation work-id msgid
+                     (fn-node-binding-subject binding)
+                     (fn-node-binding-id binding)
+                     forward-obligation-id peer-eid policy-id terms-id))))
+    (value (if (and record (fn-bp-journal-recordp record)) record nil))))
+
 (defun fn-workflow-preflight-record (record state)
  (declare (xargs :stobjs state :mode :program))
  (let ((answer (fn-bp-apply-journal-record
