@@ -27,6 +27,7 @@ There is no certificate`, which is what that looks like.
 | `certify-20260920T233937Z-1307933` | + the guard change (`9784cdc`) | passed; 65.30 / 7.40 / 0.48 s, wall 73.749 s, `jobs_effective` 3 |
 | `certify-20260920T234831Z-1314032` | + the cheap recognizer's separating witnesses | passed; 64.27 / 7.31 / 0.47 s, wall 72.453 s |
 | `certify-20260920T235524Z-1317872` | branch head `540dd78` | passed; 64.33 / 7.35 / 0.47 s, wall 72.561 s |
+| `certify-20260921T000317Z-1324995` | branch head with dev `2e99538` merged in | passed; 62.76 / 7.25 / 0.46 s, wall 70.849 s |
 
 The first run is used as this lane's baseline **without re-running it**,
 because its manifest's `source_digests_sha256` equals this worktree's for

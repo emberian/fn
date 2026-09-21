@@ -20,23 +20,24 @@ Per root, `certify-book`'s own `Time:` line, hbox, `--jobs 4`:
 
 | root | dev `19f3302` | +theory (`164f964`) | +guard (`9784cdc`) |
 | --- | --- | --- | --- |
-| `books/tcpcl-session` | 25.259 s | 25.59 s | **64.33 s** |
-| `books/tcpcl-invariants` | **609.687 s** | **6.61 s** | **7.35 s** |
-| `tests/acl2/tcpcl-tests` | 0.312 s | 0.46 s | **0.47 s** |
+| `books/tcpcl-session` | 25.259 s | 25.59 s | **62.76 s** |
+| `books/tcpcl-invariants` | **609.687 s** | **6.61 s** | **7.25 s** |
+| `tests/acl2/tcpcl-tests` | 0.312 s | 0.46 s | **0.46 s** |
 
 Evidence: dev is w9/dtn-e2e's `certify-20260920T230902Z-1283742`
 (`/tank/fn/lanes/w9-dtn-e2e-fix`), and it is a baseline for *exactly* these
 bytes — its manifest's `source_digests_sha256` for all eight books in the
 closure equal this worktree's at `19f3302`, so it was not re-run. +theory is
 `certify-20260920T233326Z-1303168`; +guard is
-`certify-20260920T235524Z-1317872`, the branch head at `540dd78`; the same
-tree before the teeth of §5 was `certify-20260920T233937Z-1307933` at
-65.30 / 7.40 / 0.48 s and with them but before the §9.3 comment was
-`certify-20260920T234831Z-1314032` at 64.27 / 7.31 / 0.47 s. All in
+`certify-20260921T000317Z-1324995`, the branch head with dev merged in. The
+same packet was certified three times before it as it grew — 65.30 / 7.40 /
+0.48 s at `certify-20260920T233937Z-1307933` (before §5's teeth), 64.27 /
+7.31 / 0.47 s at `certify-20260920T234831Z-1314032` (with them), 64.33 /
+7.35 / 0.47 s at `certify-20260920T235524Z-1317872` (`540dd78`) — and the
+four differ by under two seconds on the session book and under a tenth on
+the other two, which is the noise on this box. All in
 `/tank/fn/lanes/w11-tcpcl-theory`, all `ACL2 certification passed`, zero
-`ACL2 Error` in every log, 72.561 s wall for the three roots at `--jobs 4`.
-The three +guard runs differ by well under a second per root, which is the
-scale of the noise on this box.
+`ACL2 Error` in every log, 70.849 s wall for the three roots at `--jobs 4`.
 
 The 39.7 s `books/tcpcl-session` gains is the cheap recognizer family proving
 itself once, at certification, against a walk of the staged prefix removed
@@ -126,6 +127,7 @@ No step limit anywhere; the cap is wall clock.
 | T4 | the same, as a real `certify-book` over three roots | 1800 s | **green**: 65.30 / 7.40 / 0.48 s |
 | T4+teeth | T4 + the separating witnesses of §5 | 1800 s | **green**: 64.27 / 7.31 / 0.47 s (`certify-20260920T234831Z-1314032`) |
 | head | the branch head `540dd78` | 1800 s | **green**: 64.33 / 7.35 / 0.47 s (`certify-20260920T235524Z-1317872`) |
+| merged | the branch head with dev `2e99538` merged in | 1800 s | **green**: 62.76 / 7.25 / 0.46 s (`certify-20260921T000317Z-1324995`) |
 
 The T2/T3 failure is the packet in miniature and is recorded rather than
 patched over: while `fn-tcl-drive`'s totality test was the literal
@@ -158,8 +160,18 @@ configurations.
 ## 6. What did not change
 
 No keystone statement moved. C1 to C4 are the same theorems with the same
-hypotheses; the diff in `books/tcpcl-invariants.lisp` is two `in-theory`
-events, nine `:hints` lists and one added subgoal hint.
+hypotheses; the diff in `books/tcpcl-invariants.lisp` is three `in-theory`
+events (the two of commit 1 and `fn-tcl-cheap-rules` in commit 2), nine
+`:hints` lists edited and one subgoal hint added. Eight of the nine are
+commit 1's — `fn-tcl-recv-segment-final-ack-means-every-segment`,
+`fn-tcl-inbound-is-created-only-by-start`,
+`fn-tcl-step-emits-at-most-one-inbound-outcome`,
+`fn-tcl-live-inbound-ends-in-exactly-one-outcome`,
+`fn-tcl-settle-of-broken-stream`, `fn-tcl-ending-refuses-new-transfers`,
+`fn-tcl-refused-transfer-sends-no-more-segments`,
+`fn-tcl-step-keeps-local` — and the ninth is C1's `Subgoal *1/2`, in
+commit 2. (Commit 1's own message says "nine hint lists" for a commit that
+edited eight; this list is the exact one.)
 `tools/ledger.py --write` after commit 1 changed nothing at all — no proof
 event added, removed or renamed — and after commit 2 it adds exactly the
 cheap family's 42 `defthm` and 2 `defun` in `books/tcpcl-session.lisp`.
@@ -191,10 +203,11 @@ significant figures, across four orders of magnitude of staged data. At
 20,000 staged segments the guard the host used to pay per socket chunk cost
 **about 360× the one it pays now**, and since the staged list grows with the
 transfer, that per-chunk cost is exactly the O(n²/chunk) w8 found. The driver
-is nine forms over the certified book (a `defconst` session the machine
-accepts — `assert-event` confirms `fn-tcl-sessionp` holds of all three, so
-both recognizers traverse to completion and return T — and two counting
-loops); it is scratch, not tree code, and is reproduced in
+is a dozen forms over the certified book: three `defconst` sessions the
+machine accepts — six `assert-event`s confirm that both recognizers hold of
+all three, so each traverses to completion and returns T and neither is
+timed on an early exit — and two counting loops. It is scratch, not tree
+code, and is reproduced in
 `planning/evidence/tcpcl-theory-w11-2026-09-20.md`.
 
 **`tools/tcpcl_lab.py --scenario profile`, and a caveat about it.** Its
@@ -220,24 +233,27 @@ the lab run is of a cheap-guard image. The remaining claim it would settle is
 end-to-end throughput on this exact tree, which no number in this record
 asserts.
 
-## 8. Two things the next lane inherits rather than fixes
+## 8. The merge
 
-**Not merged.** The branch is three commits on `w11/tcpcl-theory` and `dev`
-is untouched at `19f3302`. It is not merged because the main checkout
-`/Users/ember/dev/fn` held another lane's STAGED work when this one finished
-(`w11/snt-guards`: `books/owner-config.lisp`, `books/store-node-traces.lisp`,
-`planning/deputies/BOARD.md`, `planning/lanes/HANDOFF-w11-snt-guards.md`),
-and merging into a shared checkout across another lane's index is not this
-lane's to do.
+`w11/snt-guards` landed on dev (`2e99538`) while this lane was measuring, so
+dev was merged in here rather than the other way round. Three conflicts, all
+in shared registries and none in a book: `planning/deputies/BOARD.md`, where
+both lanes appended a dated section and both are kept in merge order with no
+line of either edited, and `planning/ledger.json`/`.md`, regenerated with
+`tools/ledger.py --write` over the merged tree because that is the only way
+those two are ever written.
 
-**`planning/ledger.md` on dev is stale against dev's own sources**, and
-regenerating it here makes that visible in this lane's diff: `defthm` 5507 →
-5548 and `defun` 3926 → 3928 are this lane's cheap family, but "functions
-with verified guards" 1460 → 1458 and the `books/owner-config.lisp` row are
-not — they are dev's committed ledger disagreeing with dev's committed
-sources before this branch existed. `tools/ledger.py --write` in this
-worktree reads dev's sources plus this lane's three files and nothing else.
-Whoever merges second regenerates.
+Against the merged dev the ledger delta is exactly this lane and nothing
+else: `defthm` 5507 → 5549 and `defun` 3926 → 3928 (the cheap family),
+"functions left at the default with an explicit guard" 1787 → 1789, and
+`assert-event` checks 5310 → 5323 (the separating witnesses of §5). The
+other lane's rows are untouched.
+
+The tcpcl closure does not intersect that work — `books/tcpcl-session`
+includes `cbor`, `clock`, `defrecord`, `deftransition`, `tcpcl-records` and
+`tcpcl-octets`, none of which dev touched — so the certificates stayed
+content-valid across the merge; the three roots were re-run against the
+merged tree anyway.
 
 ## 9. Open, in the order I would take them
 
