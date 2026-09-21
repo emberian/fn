@@ -162,6 +162,64 @@
 (defun fn-store-frame-receipt-kinds ()
   *fn-frame-receipt-kinds*)
 
+; Native application journals hold the logical record values used by
+; bp-workflow-records and bp-receipt-records: text fields are ACL2 strings.
+; The durable frame grammar holds text octets.  Keep that representation
+; conversion here, beside the schema ACL2 owns, instead of copying field
+; positions or types into raw Lisp.
+(defun fn-store-frame-logical-to-wire-values (spec values)
+  (declare (xargs :mode :program))
+  (if (and (consp spec) (consp values))
+      (cons (if (equal (car spec) :text)
+                (if (stringp (car values))
+                    (fn-record-string-octets (car values))
+                  (car values))
+              (if (and (consp (car spec))
+                       (equal (cdr (car spec)) *fn-frame-authorized*)
+                       (equal (car values) t))
+                  :authorized
+                (car values)))
+            (fn-store-frame-logical-to-wire-values (cdr spec) (cdr values)))
+    (if (and (null spec) (null values)) nil :bad)))
+
+(defun fn-store-frame-wire-to-logical-values (spec values)
+  (declare (xargs :mode :program))
+  (if (and (consp spec) (consp values))
+      (cons (if (equal (car spec) :text)
+                (fn-record-octets-string (car values))
+              (if (and (consp (car spec))
+                       (equal (cdr (car spec)) *fn-frame-authorized*)
+                       (equal (car values) :authorized))
+                  t
+                (car values)))
+            (fn-store-frame-wire-to-logical-values (cdr spec) (cdr values)))
+    (if (and (null spec) (null values)) nil :bad)))
+
+(defun fn-store-frame-workflow-logical-protected (kind values)
+  (declare (xargs :mode :program))
+  (let ((spec (fn-frame-spec-for kind *fn-frame-workflow-specs*)))
+    (if (equal spec :none) :bad
+      (fn-frame-workflow-protected
+       kind (fn-store-frame-logical-to-wire-values spec values)))))
+
+(defun fn-store-frame-receipt-logical-protected (kind values)
+  (declare (xargs :mode :program))
+  (let ((spec (fn-frame-spec-for kind *fn-frame-receipt-specs*)))
+    (if (equal spec :none) :bad
+      (fn-frame-receipt-protected
+       kind (fn-store-frame-logical-to-wire-values spec values)))))
+
+(defun fn-store-frame-logical-result (answer table)
+  (declare (xargs :mode :program))
+  (if (and (consp answer) (equal (car answer) :ok))
+      (let* ((kind (car (cdr answer)))
+             (values (car (cdr (cdr answer))))
+             (spec (fn-frame-spec-for kind table)))
+        (if (equal spec :none) (list :error :kind)
+          (list :ok kind
+                (fn-store-frame-wire-to-logical-values spec values))))
+    answer))
+
 (defun fn-store-frame-store-encode (record digest)
   (fn-frame-store-encode record digest))
 
@@ -174,11 +232,23 @@
 (defun fn-store-frame-workflow-decode (octets digest)
   (fn-store-frame-record-result (fn-frame-workflow-decode octets digest)))
 
+(defun fn-store-frame-workflow-logical-decode (octets digest)
+  (declare (xargs :mode :program))
+  (fn-store-frame-logical-result
+   (fn-store-frame-workflow-decode octets digest)
+   *fn-frame-workflow-specs*))
+
 (defun fn-store-frame-receipt-encode (kind values digest)
   (fn-frame-receipt-encode kind values digest))
 
 (defun fn-store-frame-receipt-decode (octets digest)
   (fn-store-frame-record-result (fn-frame-receipt-decode octets digest)))
+
+(defun fn-store-frame-receipt-logical-decode (octets digest)
+  (declare (xargs :mode :program))
+  (fn-store-frame-logical-result
+   (fn-store-frame-receipt-decode octets digest)
+   *fn-frame-receipt-specs*))
 
 (defun fn-store-frame-inbound-prefix (bid identity bundle-length)
   (fn-frame-inbound-prefix bid identity bundle-length))

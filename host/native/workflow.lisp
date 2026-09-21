@@ -73,8 +73,8 @@
 
 (defun fnn-app-frame (journal record)
   (let* ((wrapper (if (eq (fnn-app-journal-domain journal) :workflow)
-                      'fn-store-frame-workflow-protected
-                    'fn-store-frame-receipt-protected))
+                      'fn-store-frame-workflow-logical-protected
+                    'fn-store-frame-receipt-logical-protected))
          (prefix (fnn-core wrapper (first record) (rest record))))
     (when (or (keywordp prefix) (not (fnn-octet-list-p prefix)))
       (fnn-refuse "ACL2 refused application journal record"))
@@ -82,8 +82,8 @@
 
 (defun fnn-app-unframe (journal raw)
   (let* ((wrapper (if (eq (fnn-app-journal-domain journal) :workflow)
-                      'fn-store-frame-workflow-decode
-                    'fn-store-frame-receipt-decode))
+                      'fn-store-frame-workflow-logical-decode
+                    'fn-store-frame-receipt-logical-decode))
          (answer (fnn-core wrapper (fnn-octet-list raw)
                            (fnn-digest-of raw))))
     (unless (and (consp answer) (eq (first answer) :ok)
@@ -179,67 +179,17 @@
             (append (fnn-app-journal-records-image journal) (list record)))
       :ready)))
 
-(defun fnn-app-test-fault (point path)
-  ; Injection is reached only from the production handler action loop.
-  (let ((chosen (or (sb-ext:posix-getenv "FN_APP_JOURNAL_TEST_FAIL") "")))
-    (when (string= chosen point) (fnn-os-fail sb-posix:eio path))))
-
 (defun fnn-app-publish-effect (journal sequence frame)
-  "Run one ACL2-directed immutable publication; return its ACL2 outcome."
+  "Bind a journal sequence to the shared immutable publication effect."
   (let* ((stage (fnn-join (fnn-app-journal-staging journal)
                           (format nil "~16,'0x.~d.~a.tmp" sequence
                                   (sb-posix:getpid) (fnn-random-hex 8))))
          (final (fnn-join (fnn-app-journal-records journal)
-                          (fnn-app-record-name journal sequence)))
-         (publication (fnn-core 'fn-jpub-host-initial t))
-         (fd nil))
-    (labels ((advance (event)
-               (setq publication (fnn-core 'fn-jpub-host-step publication event)))
-             (observe (ok-event error-event thunk)
-               (handler-case (progn (funcall thunk) (advance ok-event))
-                 (fnn-os-error () (advance error-event)))))
-      (unwind-protect
-           (loop until (eq (fnn-core 'fn-jpub-host-terminalp publication) t) do
-             (case (fnn-core 'fn-jpub-host-action publication)
-               (:stage
-                (observe '(:stage-result :ok) '(:stage-result :error)
-                         (lambda ()
-                           (fnn-app-test-fault "stage" stage)
-                           (setq fd (fnn-open stage
-                                              (logior sb-posix:o-wronly
-                                                      sb-posix:o-creat
-                                                      sb-posix:o-excl)
-                                              #o600))
-                           (fnn-write-all fd frame))))
-               (:file-barrier
-                (observe '(:file-barrier-result :ok)
-                         '(:file-barrier-result :error)
-                         (lambda ()
-                           (fnn-app-test-fault "file-barrier" stage)
-                           (fnn-fsync-file fd)
-                           (fnn-close fd)
-                           (setq fd nil))))
-               (:begin-link (advance '(:link-begin)))
-               (:link
-                (handler-case
-                    (progn (fnn-app-test-fault "link" final)
-                           (fnn-link stage final)
-                           (advance '(:link-result :ok)))
-                  (fnn-os-error (e)
-                    (advance (if (= (fnn-os-errno e) sb-posix:eexist)
-                                 '(:link-result :exists)
-                               '(:link-result :error))))))
-               (:directory-barrier
-                (observe '(:directory-barrier-result :ok)
-                         '(:directory-barrier-result :error)
-                         (lambda ()
-                           (fnn-app-test-fault "namespace" final)
-                           (fnn-fsync-dir (fnn-app-journal-records journal)))))
-               (otherwise
-                (fnn-fault "ACL2 returned no application publication action"))))
-        (when fd (ignore-errors (fnn-close fd)))
-        (ignore-errors (fnn-unlink stage))))
-    (let ((outcome (fnn-core 'fn-jpub-host-outcome publication)))
+                          (fnn-app-record-name journal sequence))))
+    (let ((outcome
+            (fnn-immutable-publish-effect
+             stage final (fnn-app-journal-records journal) frame
+             :cleanup-directory (fnn-app-journal-staging journal))))
       (when (eq outcome :uncertain)
         (setf (fnn-app-journal-fenced journal) t))
       outcome)))
@@ -249,7 +199,8 @@
   (when (fnn-app-journal-fenced journal)
     (fnn-indeterminate "application journal is fenced"))
   (unless (fnn-app-preflight journal record)
-    (fnn-refuse "ACL2 rejected application journal record before publication"))
+    (fnn-refuse "ACL2 rejected application journal ~(~a~) before publication"
+                (first record)))
   (let* ((names (fnn-app-record-names journal))
          (sequence (length names))
          (frame (fnn-app-frame journal record))
@@ -293,6 +244,16 @@
     (fnn-app-publish journal
                      (list :outcome (second intent) (third intent)
                            :ordinary :durable))))
+
+(defun fnn-workflow-enqueue-for-article
+  (journal txid generation work-id msgid forward-obligation-id peer-eid
+           policy-id terms-id)
+  (let ((record (fnn-core-state
+                 'fn-workflow-enqueue-record txid generation work-id msgid
+                 forward-obligation-id peer-eid policy-id terms-id)))
+    (unless (and (consp record) (eq (first record) :enqueue))
+      (fnn-refuse "workflow enqueue has no durable Store binding"))
+    (fnn-workflow-enqueue journal (rest record))))
 
 (defun fnn-workflow-status (journal work-id)
   (declare (ignore journal))
@@ -356,13 +317,17 @@
      (fnn-out "workflow durable records=1")
      +fnn-exit-ok+)))
 
-(defun fnn-command-workflow-enqueue (store-root journal-root values)
+(defun fnn-command-workflow-enqueue (store-root journal-root txid generation
+                                     work-id msgid forward-obligation-id
+                                     peer-eid policy-id terms-id)
   (fnn-app-call-with-journal
    store-root journal-root :workflow
    (lambda (journal)
-     (fnn-workflow-enqueue journal values)
+     (fnn-workflow-enqueue-for-article
+      journal txid generation work-id msgid forward-obligation-id peer-eid
+      policy-id terms-id)
      (fnn-out "workflow durable work=~a status=~(~a~)"
-              (third values) (fnn-workflow-status journal (third values)))
+              work-id (fnn-workflow-status journal work-id))
      +fnn-exit-ok+)))
 
 (defun fnn-command-workflow-status (store-root journal-root work-id)
@@ -421,12 +386,11 @@
         (list (third args) (fourth args) (fifth args) (sixth args)
               (parse-integer (seventh args)) (eighth args) (ninth args))))
       ((string= command "workflow-enqueue")
-       (need 12)
+       (need 10)
        (fnn-command-workflow-enqueue
-        (first args) (second args)
-        (list (parse-integer (third args)) (parse-integer (fourth args))
-              (fifth args) (sixth args) (seventh args) (eighth args)
-              (ninth args) (tenth args) (nth 10 args) (nth 11 args))))
+        (first args) (second args) (parse-integer (third args))
+        (parse-integer (fourth args)) (fifth args) (sixth args)
+        (seventh args) (eighth args) (ninth args) (tenth args)))
       ((string= command "workflow-status")
        (need 3)
        (fnn-command-workflow-status (first args) (second args) (third args)))
