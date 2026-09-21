@@ -302,9 +302,9 @@
     },
     "suspect_theorems": 47,
     "export_hygiene_warnings": 73,
-    "enabled_projection_warnings": 23,
+    "enabled_projection_warnings": 21,
     "teeth_form_warnings": 0,
-    "include_hygiene_warnings": 91,
+    "include_hygiene_warnings": 90,
     "host_names_warnings": 33,
     "hand_written_record_warnings": 18
   },
@@ -8676,24 +8676,6 @@
         "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
-        "function": "fn-bs-scan-frontier",
-        "book": "books/byte-store-scan.lisp",
-        "line": 379,
-        "stated_in": [
-          "books/byte-store-keystones.lisp"
-        ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
-      },
-      {
-        "function": "fn-bs-scan-records",
-        "book": "books/byte-store-scan.lisp",
-        "line": 380,
-        "stated_in": [
-          "books/byte-store-keystones.lisp"
-        ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
-      },
-      {
         "function": "fn-transfer-work-value",
         "book": "books/transfer-work.lisp",
         "line": 13,
@@ -8976,13 +8958,6 @@
         "line": 2,
         "include": "bp-workflow-invariants",
         "included": "books/bp-workflow-invariants.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "books/byte-store-keystones.lisp",
-        "line": 20,
-        "include": "byte-store-scan",
-        "included": "books/byte-store-scan.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

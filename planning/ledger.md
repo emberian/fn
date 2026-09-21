@@ -24,9 +24,9 @@ stale. Counts describe artifacts, not coverage; see
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 47 |
 | Export-hygiene warnings | 73 |
-| Enabled-projection warnings | 23 |
+| Enabled-projection warnings | 21 |
 | Teeth-form warnings | 0 |
-| Include-hygiene warnings | 91 |
+| Include-hygiene warnings | 90 |
 | Host-names warnings | 33 |
 | Hand-written-record warnings | 18 |
 

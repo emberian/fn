@@ -2686,3 +2686,59 @@
                                       (fn-bs-scan-store image)))))
            :in-theory (union-theories '(fn-bs-replay-visiblep)
                                       (theory 'minimal-theory)))))
+
+; -----------------------------------------------------------------------------
+; 11. Export theory (docs/proof-style.md section 2).
+;
+; Enabled on include: the keystones (K1, K2 and the four clause theorems
+; under K1), fn-bs-crash-imagep-preserves-statep, the seams' constraints and
+; the two namespace facts about fn-bs-txn-names.  Withdrawn: every
+; definition the keystones are STATED over, because one downstream unfold of
+; fn-bs-scan-frontier or fn-bs-scan-records stops them matching (the ledger's
+; enabled-projection warning, and the reason sections 8 to 10 keep them
+; closed at every step); and the per-name, per-window and shape vocabulary,
+; which is proof machinery for this book and nothing above it.
+;
+; The -unfolds lemmas are absent from this theory on purpose and not by
+; omission: each is :rule-classes nil, so it designates no rule, and a
+; :rule-classes nil theorem named in a theory expression is a HARD ACL2
+; ERROR under certify-book rather than a no-op.
+
+(deftheory fn-bs-scan-vocabulary
+  '(fn-bs-strip-cars-of-put-assoc fn-bs-strip-cars-of-del-assoc
+    fn-bs-alistp-of-del-assoc fn-bs-alistp-of-dir-entries
+    fn-bs-apply-entries-preserves-alistp-of-entries
+    fn-bs-apply-entries-names-is-names-after
+    fn-bs-names-after-of-tear-write fn-bs-names-after-of-append
+    fn-bs-names-outcomes-of-no-ops fn-bs-names-outcomes-of-one-op
+    fn-bs-crash-select-names-are-an-outcome
+    fn-bs-crash-pending-is-nil fn-bs-crash-image-is-quiet
+    fn-bs-quiet-lookup-is-durable-entry fn-bs-quiet-content-is-durable-content
+    fn-bs-quiet-names-are-durable-names fn-bs-durable-is-quiet
+    fn-bs-entry-outcomes-of-nil fn-bs-crash-keeps-untouched-entry
+    fn-bs-all-fencedp-of-append fn-bs-all-fencedp-member
+    fn-bs-assoc-value-is-in-strip-cdrs fn-bs-assoc-of-name-in-entries
+    fn-bs-read-records-under-agreement fn-bs-read-records-len
+    fn-bs-read-records-is-a-true-list fn-bs-read-records-of-one-more
+    fn-bs-txn-names-length
+    fn-bs-crash-names-is-names-after fn-bs-crash-image-names-are-an-outcome
+    fn-bs-shape-leaves-the-config-name-quiet fn-bs-shape-at-the-frontier-name
+    fn-bs-shape-at-the-pending-link-name
+    fn-bs-shape-leaves-earlier-transaction-names-quiet
+    fn-bs-lookup-of-an-untouched-name fn-bs-lookup-of-a-pending-target
+    fn-bs-content-of-a-fenced-inode fn-bs-names-is-names-after-the-pending-list
+    fn-bs-crash-keeps-a-quiet-name))
+
+(in-theory (disable fn-bs-scan-vocabulary
+                    fn-bs-record-of-octets fn-bs-record-of fn-bs-txn-names
+                    fn-bs-contiguous-namesp fn-bs-read-records
+                    fn-bs-scan-store fn-bs-scan-okp fn-bs-scan-frontier
+                    fn-bs-scan-records
+                    fn-bs-durable fn-bs-durable-names fn-bs-durable-frontier
+                    fn-bs-durable-records fn-bs-replay-visiblep
+                    fn-bs-pending-shape-okp fn-bs-pending-matches-phase
+                    fn-bs-replay-matches-scan fn-bs-pending-entry-targets
+                    fn-bs-authority-inode-list fn-bs-all-fencedp
+                    fn-bs-authority-fencedp fn-bs-store-relation
+                    fn-bs-name-step fn-bs-names-after fn-bs-names-outcomes
+                    fn-bs-txn-prefix-agreesp))
