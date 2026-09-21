@@ -102,6 +102,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-node-tests \
 	books/store-node-traces \
 	tests/acl2/store-node-traces-tests \
+	books/store-prepare-correspondence \
+	tests/acl2/store-prepare-correspondence-tests \
 	books/store-node-resolution \
 	tests/acl2/store-node-resolution-tests \
 	tests/acl2/store-node-resolution-traces-tests \

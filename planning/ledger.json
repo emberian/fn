@@ -99,6 +99,8 @@
     "tests/acl2/store-node-tests",
     "books/store-node-traces",
     "tests/acl2/store-node-traces-tests",
+    "books/store-prepare-correspondence",
+    "tests/acl2/store-prepare-correspondence-tests",
     "books/store-node-resolution",
     "tests/acl2/store-node-resolution-tests",
     "tests/acl2/store-node-resolution-traces-tests",
@@ -337,26 +339,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 334,
-    "books_in_root_closure": 333,
-    "roots": 333,
-    "theorems": 6155,
-    "functions": 4589,
-    "assert_events": 6388,
-    "must_fails": 127,
+    "books": 336,
+    "books_in_root_closure": 335,
+    "roots": 335,
+    "theorems": 6170,
+    "functions": 4594,
+    "assert_events": 6405,
+    "must_fails": 128,
     "encapsulates": 19,
     "guards": {
-      "verified": 1564,
+      "verified": 1566,
       "declared-off": 228,
       "default-guarded": 2211,
-      "default-unguarded": 586
+      "default-unguarded": 589
     },
     "suspect_theorems": 56,
     "export_hygiene_warnings": 76,
     "enabled_projection_warnings": 24,
     "teeth_form_warnings": 4,
     "include_hygiene_warnings": 115,
-    "host_names_warnings": 359,
+    "host_names_warnings": 322,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -5074,6 +5076,32 @@
       "read_error": null
     },
     {
+      "book": "books/store-prepare-correspondence.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 15,
+      "functions": 4,
+      "guards": {
+        "verified": 2,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 2,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-observed",
+        "store-sweep"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/store-sweep.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -8827,6 +8855,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/store-prepare-correspondence-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 17,
+      "must_fails": 1,
+      "defconsts": 15,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-prepare-correspondence"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/store-sweep-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -11365,13 +11420,6 @@
       {
         "host": "host/native/anchor.lisp",
         "line": 49,
-        "name": "realp",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/anchor.lisp",
-        "line": 49,
         "name": "fnn-socket-fd",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -11386,37 +11434,9 @@
       {
         "host": "host/native/anchor.lisp",
         "line": 95,
-        "name": "fifth",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/anchor.lisp",
-        "line": 95,
-        "name": "sixth",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/anchor.lisp",
-        "line": 95,
-        "name": "seventh",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/anchor.lisp",
-        "line": 95,
         "name": "fnn-crypto-ed25519-observe",
         "source": "host/native/crypto.lisp",
         "reason": "defined in host/native/crypto.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/anchor.lisp",
-        "line": 95,
-        "name": "ninth",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
       },
       {
         "host": "host/native/anchor.lisp",
@@ -11434,24 +11454,10 @@
       },
       {
         "host": "host/native/anchor.lisp",
-        "line": 95,
-        "name": "tenth",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/anchor.lisp",
         "line": 130,
         "name": "fnn-string-octets",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/anchor.lisp",
-        "line": 146,
-        "name": "eighth",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
       },
       {
         "host": "host/native/anchor.lisp",
@@ -11539,13 +11545,6 @@
       },
       {
         "host": "host/native/anchor.lisp",
-        "line": 259,
-        "name": "rest",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/anchor.lisp",
         "line": 284,
         "name": "fnn-seal",
         "source": "host/native/io.lisp",
@@ -11599,13 +11598,6 @@
         "name": "fnn-replace",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/anchor.lisp",
-        "line": 365,
-        "name": "string-downcase",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
       },
       {
         "host": "host/native/anchor.lisp",
@@ -11854,27 +11846,6 @@
       },
       {
         "host": "host/native/bp-service.lisp",
-        "line": 159,
-        "name": "fifth",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/bp-service.lisp",
-        "line": 160,
-        "name": "sixth",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/bp-service.lisp",
-        "line": 161,
-        "name": "seventh",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/bp-service.lisp",
         "line": 163,
         "name": "fnn-tcl-connect",
         "source": "host/native/tcpcl.lisp",
@@ -11921,13 +11892,6 @@
         "name": "fnn-out",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/bp-service.lisp",
-        "line": 201,
-        "name": "last",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
       },
       {
         "host": "host/native/bp-service.lisp",
@@ -12012,20 +11976,6 @@
         "name": "fnn-tcl-number",
         "source": "host/native/tcpcl.lisp",
         "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/bp-service.lisp",
-        "line": 361,
-        "name": "eighth",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/bp-service.lisp",
-        "line": 361,
-        "name": "ninth",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
       },
       {
         "host": "host/native/bp-service.lisp",
@@ -12232,24 +12182,10 @@
       },
       {
         "host": "host/native/bp.lisp",
-        "line": 200,
-        "name": "copy-list",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/bp.lisp",
         "line": 244,
         "name": "fnn-immutable-publish-effect",
         "source": "host/native/immutable-publish.lisp",
         "reason": "defined in host/native/immutable-publish.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/bp.lisp",
-        "line": 305,
-        "name": "ecase",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
       },
       {
         "host": "host/native/bp.lisp",
@@ -12651,34 +12587,6 @@
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
-        "host": "host/native/crypto.lisp",
-        "line": 36,
-        "name": "*features*",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/crypto.lisp",
-        "line": 140,
-        "name": "elt",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/feed-filename.lisp",
-        "line": 10,
-        "name": "find",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/feed-filename.lisp",
-        "line": 10,
-        "name": "code-char",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
         "host": "host/native/feed-filename.lisp",
         "line": 18,
         "name": "fnn-octet-list",
@@ -12775,20 +12683,6 @@
         "name": "fnn-fsync-dir",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/io.lisp",
-        "line": 962,
-        "name": "intern",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/io.lisp",
-        "line": 962,
-        "name": "string-upcase",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
       },
       {
         "host": "host/native/operator.lisp",
@@ -12967,20 +12861,6 @@
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 68,
-        "name": "butlast",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/owner.lisp",
-        "line": 68,
-        "name": "last",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/owner.lisp",
         "line": 78,
         "name": "fnn-fsync-dir",
         "source": "host/native/io.lisp",
@@ -13142,13 +13022,6 @@
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 283,
-        "name": "remove-duplicates",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/owner.lisp",
         "line": 333,
         "name": "fnn-open-live-store",
         "source": "host/native/io.lisp",
@@ -13195,20 +13068,6 @@
         "name": "fnn-transactions",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/owner.lisp",
-        "line": 333,
-        "name": "encode-universal-time",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/owner.lisp",
-        "line": 333,
-        "name": "get-universal-time",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
       },
       {
         "host": "host/native/owner.lisp",
@@ -13331,24 +13190,10 @@
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 698,
-        "name": "fifth",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/owner.lisp",
         "line": 714,
         "name": "fnn-register-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/tcpcl.lisp",
-        "line": 193,
-        "name": "sleep",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
       },
       {
         "host": "host/native/workflow.lisp",
@@ -13447,13 +13292,6 @@
         "name": "fnn-core",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/workflow.lisp",
-        "line": 62,
-        "name": "rest",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
       },
       {
         "host": "host/native/workflow.lisp",
@@ -13590,48 +13428,6 @@
       },
       {
         "host": "host/native/workflow.lisp",
-        "line": 399,
-        "name": "fifth",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/workflow.lisp",
-        "line": 399,
-        "name": "sixth",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/workflow.lisp",
-        "line": 399,
-        "name": "seventh",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/workflow.lisp",
-        "line": 399,
-        "name": "eighth",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/workflow.lisp",
-        "line": 399,
-        "name": "ninth",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/workflow.lisp",
-        "line": 399,
-        "name": "tenth",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
-      },
-      {
-        "host": "host/native/workflow.lisp",
         "line": 435,
         "name": "fnn-register-verb",
         "source": "host/native/io.lisp",
@@ -13642,7 +13438,7 @@
         "line": 633,
         "name": "mv",
         "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       }
     ],
     "hand_written_record": [

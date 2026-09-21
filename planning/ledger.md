@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 334 |
-| Certification roots in the Makefile | 333 |
-| Books inside the root closure | 333 |
-| `defthm` and `defthmd` events | 6155 |
-| `defun` events | 4589 |
-| Functions with verified guards | 1564 |
+| Books read | 336 |
+| Certification roots in the Makefile | 335 |
+| Books inside the root closure | 335 |
+| `defthm` and `defthmd` events | 6170 |
+| `defun` events | 4594 |
+| Functions with verified guards | 1566 |
 | Functions declared `:verify-guards nil` and never verified | 228 |
 | Functions left at the default with an explicit guard | 2211 |
-| Functions left at the default with no guard | 586 |
-| `assert-event` checks | 6388 |
-| `must-fail` checks | 127 |
+| Functions left at the default with no guard | 589 |
+| `assert-event` checks | 6405 |
+| `must-fail` checks | 128 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 56 |
 | Export-hygiene warnings | 76 |
 | Enabled-projection warnings | 24 |
 | Teeth-form warnings | 4 |
 | Include-hygiene warnings | 115 |
-| Host-names warnings | 359 |
+| Host-names warnings | 322 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -58,11 +58,15 @@ nothing in particular is refuted. *Include hygiene* counts non-local
 theory withdrawal: such an include enables every rule of that book in
 the includer and in everything above it. `books/bp-ingress.lisp` took
 one for a single guard hint and turned a six-minute proof into an
-1800 s timeout. *Host names* counts symbols used in `host/*.lisp` and
-`host/native/*.lisp` -- files the bridges `ld` and no certification
-reads -- that nothing those files include, `ld` or inherit from
-`tools/acl2-builtins.txt` defines: the shape of the
-`*fn-store-groups*` reference that survived the group table and broke
+1800 s timeout. *Host names* counts symbols used in ACL2 `ld` wrappers
+and native raw-load adapters -- files no certification reads -- that
+nothing those files include, `ld`, or inherit from
+`tools/acl2-builtins.txt` defines. A module named by an explicit
+`(load ...)` after `(set-raw-mode t)` sees the separate, reviewed
+`tools/raw-common-lisp-builtins.txt` vocabulary. That raw mode is
+inside the native build's trust boundary; the tag does not grant raw
+visibility to ACL2 wrappers or silence an unknown raw name: the shape
+of the `*fn-store-groups*` reference that survived the group table and broke
 every `Acl2Store` start-up. *Hand-written record* counts books
 whose records are written out event by event instead of generated
 by `fn-defrecord` (`books/defrecord.lisp`): a shape predicate and
@@ -258,6 +262,7 @@ that `make certify` requests.
 | `books/store-node.lisp` | root | 12 | 31 | 27/0/4/0 | 0 | 0 | 0 |
 | `books/store-observed-traces.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/store-observed.lisp` | root | 39 | 13 | 12/0/1/0 | 0 | 0 | 1 |
+| `books/store-prepare-correspondence.lisp` | root | 15 | 4 | 2/0/0/2 | 0 | 0 | 0 |
 | `books/store-sweep.lisp` | root | 9 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/stx-authority.lisp` | root | 3 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/stx-carrier.lisp` | root | 49 | 26 | 1/0/25/0 | 0 | 0 | 0 |
@@ -403,6 +408,7 @@ that `make certify` requests.
 | `tests/acl2/store-node-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
 | `tests/acl2/store-observed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
 | `tests/acl2/store-observed-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 137 | 0 | 0 |
+| `tests/acl2/store-prepare-correspondence-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 17 | 1 | 0 |
 | `tests/acl2/store-sweep-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 16 | 0 | 0 |
 | `tests/acl2/stx-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 42 | 0 | 0 |
 | `tests/acl2/stx-transit-tests.lisp` | root | 0 | 7 | 0/0/7/0 | 84 | 0 | 0 |
