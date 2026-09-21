@@ -106,3 +106,4 @@
           (if (fn-nco-canonical-contiguousp ordered 1)
               (fn-nco-result :ok nil (fn-nco-output-entries ordered))
             (fn-nco-result :fault :namespace nil))))))
+)
