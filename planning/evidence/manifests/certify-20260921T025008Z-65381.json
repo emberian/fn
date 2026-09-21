@@ -1,0 +1,202 @@
+{
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/anchor": 0,
+    "books/anchor-invariants": 0,
+    "books/anchor-record": 0,
+    "tests/acl2/anchor-teeth-tests": 0,
+    "tests/acl2/anchor-tests": 0
+  },
+  "acl2_slots": 4,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/lanes/w11-anchor-root/build/acl2/certify-20260921T025008Z-65381",
+  "book_failures": {},
+  "book_results": {
+    "books/anchor": "passed",
+    "books/anchor-invariants": "passed",
+    "books/anchor-record": "passed",
+    "tests/acl2/anchor-teeth-tests": "passed",
+    "tests/acl2/anchor-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/anchor": 5.068,
+    "books/anchor-invariants": 367.412,
+    "books/anchor-record": 2.979,
+    "tests/acl2/anchor-teeth-tests": 2.789,
+    "tests/acl2/anchor-tests": 3.867
+  },
+  "cert_cache": {
+    "already_cached": 5,
+    "directory": "/Users/ember/.cache/fn-certs",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/anchor",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/anchor-record",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "books/anchor-invariants",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/anchor-tests",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/anchor-teeth-tests",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 5,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/anchor": "08a9dec83f3ccfb9dab09f99b111080342d39293495c2ff64545489d320268d0",
+    "books/anchor-invariants": "473b745ea3b46f649f54a03ba854b6de69f51a29c35a10248229f8e4ad0d19a7",
+    "books/anchor-record": "e6cc4a389176277b5ec20e3cf08269a0ef7984a0761f495396c815b8eea1c06a",
+    "tests/acl2/anchor-teeth-tests": "25f2d9b3e60b7950b088bbc1ca22e1dee02a7bb63d16f3615d9df77cf0da82ed",
+    "tests/acl2/anchor-tests": "001ee34b57ff61023f5a96ce3e81ec542fb88b27a8171e9a93c840417ea3918b"
+  },
+  "certify_wall_seconds": 382.395,
+  "closure": false,
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/anchor": "1dc7adb590efb714be81cf26abf00295efb78827efb0318e394aca080c5fc1a2",
+    "books/anchor-invariants": "877202921d2ea44ec6a344dc1904f85b97b354a129187fd8d0c45d4463415920",
+    "books/anchor-record": "02d1ea52783c0dcd99ed0518902ab912783ca3ca6ddb2d3b5c2e58f7457ac0a5",
+    "tests/acl2/anchor-teeth-tests": "d26b5fedcdf039afd72394994ae40a2fa91da9a999868b398eaa7bee03af08dd",
+    "tests/acl2/anchor-tests": "8f2632bf4a415ad42761b67d93a6c0816268f9c727e39f1e15117d3bf3c925d8"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS fdf6ab0cd22c4f3be4163d52e32521b5 1a230313f949",
+    "FN_CERTIFY_SUCCESS fdf6ab0cd22c4f3be4163d52e32521b5 41c6ea3e3a62",
+    "FN_CERTIFY_SUCCESS fdf6ab0cd22c4f3be4163d52e32521b5 eac8d7441306",
+    "FN_CERTIFY_SUCCESS fdf6ab0cd22c4f3be4163d52e32521b5 f22fb33d534e",
+    "FN_CERTIFY_SUCCESS fdf6ab0cd22c4f3be4163d52e32521b5 ae55fd1dcfb8"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-21T02:56:32+00:00",
+  "git_branch": "w11/anchor-root",
+  "git_dirty": true,
+  "git_revision": "d763e1c44c6344dbfb6874c91ef191ffe8145873",
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "nextop.local",
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS fdf6ab0cd22c4f3be4163d52e32521b5 1a230313f949",
+    "FN_CERTIFY_SUCCESS fdf6ab0cd22c4f3be4163d52e32521b5 41c6ea3e3a62",
+    "FN_CERTIFY_SUCCESS fdf6ab0cd22c4f3be4163d52e32521b5 eac8d7441306",
+    "FN_CERTIFY_SUCCESS fdf6ab0cd22c4f3be4163d52e32521b5 f22fb33d534e",
+    "FN_CERTIFY_SUCCESS fdf6ab0cd22c4f3be4163d52e32521b5 ae55fd1dcfb8"
+  ],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "de84702b19bfe30f132291dcb8ac7b3d3ad10b16a4134dcb0c1d6239187a839d",
+  "requested_before_filter": [
+    "books/anchor",
+    "books/anchor-record",
+    "books/anchor-invariants",
+    "tests/acl2/anchor-tests",
+    "tests/acl2/anchor-teeth-tests"
+  ],
+  "requested_books": [
+    "books/anchor",
+    "books/anchor-record",
+    "books/anchor-invariants",
+    "tests/acl2/anchor-tests",
+    "tests/acl2/anchor-teeth-tests"
+  ],
+  "run_id": "certify-20260921T025008Z-65381",
+  "runner_sha256": "3c39d51224f9125782c30bc81c30ad6a0878283adba8215df5bd50a4eb36ba35",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/anchor": 0.0,
+    "books/anchor-invariants": 0.0,
+    "books/anchor-record": 0.001,
+    "tests/acl2/anchor-teeth-tests": 0.0,
+    "tests/acl2/anchor-tests": 0.001,
+    "version-probe": 0.001
+  },
+  "source_digests_sha256": {
+    "books/anchor-invariants.lisp": "2f2863b55522ed3dc76a4f54716507f6790bdf106da72c7f78a0c888804e8257",
+    "books/anchor-record.lisp": "01742fd23b83d8d09518cb4c3e20df28d21783dce060f2511c38535ef6a6aed6",
+    "books/anchor.lisp": "c98bdf2cf0ebfe02c1a54c7c385b8dc43921eb2bc706fc08092669a1015475c9",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "b95fa1730fe0074f92bdd45cc136f7b6fbb8f069c2f35ec25ceea067cf6d60ea",
+    "books/frame-journal.lisp": "512201c2299a6ac6760a03f8416fa98f5f6a0191af902fe53792450d2a6b2255",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/anchor-teeth-tests.lisp": "d919a9e05a142d2a0c56cc85a467b93f20a71e65b912f7042a0c3047e11fc569",
+    "tests/acl2/anchor-tests.lisp": "fac2d8ff62882ab23a2753f61eb522942810e88db7100e39258481a4fbeba1df"
+  },
+  "source_digests_sha256_after": {
+    "books/anchor-invariants.lisp": "2f2863b55522ed3dc76a4f54716507f6790bdf106da72c7f78a0c888804e8257",
+    "books/anchor-record.lisp": "01742fd23b83d8d09518cb4c3e20df28d21783dce060f2511c38535ef6a6aed6",
+    "books/anchor.lisp": "c98bdf2cf0ebfe02c1a54c7c385b8dc43921eb2bc706fc08092669a1015475c9",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "b95fa1730fe0074f92bdd45cc136f7b6fbb8f069c2f35ec25ceea067cf6d60ea",
+    "books/frame-journal.lisp": "512201c2299a6ac6760a03f8416fa98f5f6a0191af902fe53792450d2a6b2255",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/anchor-teeth-tests.lisp": "d919a9e05a142d2a0c56cc85a467b93f20a71e65b912f7042a0c3047e11fc569",
+    "tests/acl2/anchor-tests.lisp": "fac2d8ff62882ab23a2753f61eb522942810e88db7100e39258481a4fbeba1df"
+  },
+  "start_order": [
+    "books/anchor",
+    "books/anchor-record",
+    "books/anchor-invariants",
+    "tests/acl2/anchor-tests",
+    "tests/acl2/anchor-teeth-tests"
+  ],
+  "started_utc": "2026-09-21T02:50:08+00:00",
+  "status": "passed",
+  "timeout_seconds": 1800,
+  "tree": "/Users/ember/dev/fn/build/lanes/w11-anchor-root"
+}

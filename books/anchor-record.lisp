@@ -4,6 +4,13 @@
 ; an observed anchor, kind 2 is an incarnation advance and the anchor it
 ; advanced under.
 ;
+; FORMAT CHANGE, 2026-09-20 (lane w11/anchor-root): both kinds gained a tenth
+; anchor field, ROOT.  An `anchor.fnan' written before that has nine and no
+; longer satisfies `fn-anchor-record-okp', so `fn-anchor-decode' answers
+; `:anchor-field' and `tools/run_store.py' raises rather than continuing: a
+; store that once held a freshness anchor and can no longer read it is not a
+; store with no anchor.  Re-run `fn anchor' to record one in the new shape.
+;
 ; This book exists so that `books/anchor.lisp' does not include `frame' at
 ; all.  Opening frame's field grammar (`fn-frame-values-okp',
 ; `fn-frame-field-okp') over a nine-field spec is an unbounded case split --
@@ -46,11 +53,14 @@
 
 (defconst *fn-anchor-kinds* '(:observed :incarnation))
 
+; Ten anchor fields, and the tenth is ROOT: the Merkle root the SREP carried,
+; durable because `books/anchor.lisp' reads the signed octets off the record
+; rather than recomputing them from the nonce.
 (defconst *fn-anchor-specs*
   (list (cons :observed
-              '(:blob :blob :nat :nat :blob :nat :nat :blob :blob))
+              '(:blob :blob :nat :nat :blob :nat :nat :blob :blob :blob))
         (cons :incarnation
-              '(:nat :blob :blob :nat :nat :blob :nat :nat :blob :blob))))
+              '(:nat :blob :blob :nat :nat :blob :nat :nat :blob :blob :blob))))
 
 (defthm fn-anchor-spec-for-is-spec-list
   (implies (not (equal (fn-frame-spec-for kind *fn-anchor-specs*) :none))
@@ -67,7 +77,8 @@
                (fn-frame-item (+ base 5) values)
                (fn-frame-item (+ base 6) values)
                (fn-frame-item (+ base 7) values)
-               (fn-frame-item (+ base 8) values))))
+               (fn-frame-item (+ base 8) values)
+               (fn-frame-item (+ base 9) values))))
 
 (verify-guards fn-anchor-record-anchor)
 
