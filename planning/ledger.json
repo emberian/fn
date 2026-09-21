@@ -11126,14 +11126,14 @@
       },
       {
         "host": "host/native/io.lisp",
-        "line": 878,
+        "line": 907,
         "name": "intern",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 878,
+        "line": 907,
         "name": "string-upcase",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"

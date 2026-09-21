@@ -1,4 +1,9 @@
 ; Experimental store bridge: physical observations drive the proved fn-sn core.
+; These program-mode wrappers are inside the adapter trust boundary. Callee
+; guard verification is conditional on valid inputs/state; it does not prove
+; that this wrapper establishes each precondition. Keep actual host/model
+; correspondence and growing-history execution cost explicit when changing
+; these entries. Do not add whole-store recognition per served operation.
 (in-package "ACL2")
 (include-book "../books/store-observed")
 (include-book "../books/store-sweep")

@@ -3,19 +3,21 @@
 ;;; TRUST BOUNDARY.  Every form in this file is raw Common Lisp, loaded into
 ;;; the ACL2 world under the trust tag :fn-native-host by host/native/build.lisp
 ;;; (progn! (set-raw-mode t) (load "host/native/io.lisp")).  Nothing here is
-;;; proved.  This file is the whole raw surface of the native host: SBCL's
+;;; proved.  This file is part of the raw surface of the native host: SBCL's
 ;;; sb-posix, sb-unix, sb-alien and sb-bsd-sockets contribs, the diagnostic
 ;;; SHA-256 CLI below, and the socket loop.  specs/host.md lists the surface
 ;;; function by function.
 ;;;
-;;; Calls into the certified core go through `fnn-call`, which applies the
-;;; executable counterpart (the ACL2_*1*_ACL2 function) of the named host
-;;; wrapper.  That is the raw-Lisp spelling of `ec-call`: the same evaluation
-;;; the interpreted bridge performs when Python types the form at the ACL2
-;;; prompt, under the same `guard-checking-on` policy.  No book function is
-;;; called by its raw symbol, so no unverified guard is bypassed here; the
-;;; wrappers it reaches are the `:program` functions in host/*-host.lisp that
-;;; tools/run_store.py and tools/run_reader.py drive today.
+;;; Calls into ACL2 go through `fnn-call`, which applies the executable
+;;; counterpart (ACL2_*1*_ACL2) of the selected wrapper or logical function.
+;;; This does not prove that every inner call rechecks its guards. In particular,
+;;; :program host wrappers are not guard-verified caller proofs; their raw
+;;; execution can rely on arguments/global state satisfying a callee's guards.
+;;; The adapter must establish external-input bounds and maintain the state
+;;; invariant required by the called transition's preservation theorem. That
+;;; host/model correspondence is an assurance obligation, not a consequence of
+;;; the saved image having guard-checking-on = t. See specs/host.md and the
+;;; native store guard review/disposition in planning/evidence/.
 ;;;
 ;;; SOCKET SURFACE.  host/native/tcpcl.lisp (the DTN wave, planning/lanes/
 ;;; HANDOFF-w4-tcpcl.md "Proposed host surface") builds its convergence layer
