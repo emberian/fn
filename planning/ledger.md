@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 285 |
 | Certification roots in the Makefile | 285 |
 | Books inside the root closure | 285 |
-| `defthm` and `defthmd` events | 5826 |
-| `defun` events | 3994 |
-| Functions with verified guards | 1497 |
+| `defthm` and `defthmd` events | 5827 |
+| `defun` events | 4010 |
+| Functions with verified guards | 1513 |
 | Functions declared `:verify-guards nil` and never verified | 192 |
 | Functions left at the default with an explicit guard | 1807 |
 | Functions left at the default with no guard | 498 |
-| `assert-event` checks | 5950 |
+| `assert-event` checks | 5965 |
 | `must-fail` checks | 65 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 48 |
@@ -263,8 +263,8 @@ that `make certify` requests.
 | `books/wildmat-utf8-invariants.lisp` | root | 31 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/wildmat-work.lisp` | root | 52 | 17 | 0/0/0/17 | 0 | 0 | 0 |
 | `books/wildmat.lisp` | root | 22 | 62 | 62/0/0/0 | 0 | 0 | 0 |
-| `books/wire-invariants.lisp` | root | 40 | 2 | 1/0/0/1 | 0 | 0 | 0 |
-| `books/wire.lisp` | root | 44 | 49 | 31/0/18/0 | 0 | 0 | 1 |
+| `books/wire-invariants.lisp` | root | 41 | 2 | 1/0/0/1 | 0 | 0 | 0 |
+| `books/wire.lisp` | root | 44 | 65 | 47/0/18/0 | 0 | 0 | 1 |
 | `tests/acl2/acceptance-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 246 | 0 | 0 |
 | `tests/acl2/anchor-teeth-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 57 | 0 | 0 |
 | `tests/acl2/anchor-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 53 | 0 | 0 |
@@ -365,7 +365,7 @@ that `make certify` requests.
 | `tests/acl2/wildmat-parser-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
 | `tests/acl2/wildmat-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 5 | 0 |
 | `tests/acl2/wildmat-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 61 | 0 | 0 |
-| `tests/acl2/wire-tests.lisp` | root | 4 | 0 | 0/0/0/0 | 49 | 0 | 0 |
+| `tests/acl2/wire-tests.lisp` | root | 4 | 0 | 0/0/0/0 | 64 | 0 | 0 |
 
 ## Theorems flagged SUSPECT by shape
 
@@ -423,4 +423,4 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-stx-index-lookup-cost-is-index-bounded` | `books/stx-index.lisp` | 784 | instance-corollary: the statement is fn-stx-alist-steps-is-len-bounded instantiated, discharging nothing |
 | `fn-stx-index-query-is-store-free-by-definition` | `books/stx-index.lisp` | 801 | definition-restated: the conclusion is the body of fn-stx-index-lookup; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-tcl-segment-never-exceeds-mru` | `books/tcpcl-octets.lisp` | 1065 | branch-of-definition: the hypothesis is a branch test of fn-tcl-decode-segment-data and the conclusion is that branch's value |
-| `fn-wire-feed-closed-noop` | `books/wire.lisp` | 778 | branch-of-definition: the hypothesis is a branch test of fn-wire-feed and the conclusion is that branch's value |
+| `fn-wire-feed-closed-noop` | `books/wire.lisp` | 956 | branch-of-definition: the hypothesis is a branch test of fn-wire-feed and the conclusion is that branch's value |
