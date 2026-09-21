@@ -54,10 +54,10 @@
 
 (verify-guards fn-served-feed-counted
   :hints (("Goal"
-           :in-theory (disable fn-served-feed-byte fn-wire-statep
+           :in-theory (disable fn-served-feed-byte fn-wire-fast-statep
                                fn-served-counted-consumed
-                               fn-served-feed-byte-preserves-wire-statep)
-           :use ((:instance fn-served-feed-byte-preserves-wire-statep
+                               fn-served-feed-byte-preserves-fast-statep)
+           :use ((:instance fn-served-feed-byte-preserves-fast-statep
                             (byte (car octets)))))))
 
 (defthm fn-served-feed-counted-result-is-feed
@@ -82,33 +82,55 @@
                               fn-served-counted-make
                               fn-served-counted-consumed))))
 
-; Apply fn-served-step's entry guard and close-effect edge once around the
-; counted fold.  This is the native owner's actual logical subject.
+; Common transition under the fixed-spine/scalar execution invariant.
+(defun fn-served-step-counted-core (conn octets)
+  (declare (xargs :guard
+                  (fn-wire-fast-statep (fn-served-conn-wire conn))))
+  (let* ((wire (fn-served-conn-wire conn))
+         (fed (fn-served-feed-counted conn octets))
+         (result (fn-served-counted-result fed))
+         (wire2 (fn-served-conn-wire (fn-served-result-conn result))))
+    (fn-served-counted-make
+     (fn-served-counted-consumed fed)
+     (fn-served-make-result
+      (fn-served-result-conn result)
+      (mbe :logic
+           (append (fn-served-result-effects result)
+                   (if (and (not (fn-served-closed-wirep wire))
+                            (fn-served-closed-wirep wire2))
+                       (list (fn-nntp-close-effect))
+                     nil))
+           :exec
+           (fn-ag-append
+            (fn-served-result-effects result)
+            (if (and (not (fn-served-closed-wirep wire))
+                     (fn-served-closed-wirep wire2))
+                (list (fn-nntp-close-effect))
+              nil)))))))
+
+; Total checked reference, retaining the historical malformed-wire no-op.
 (defun fn-served-step-counted (conn octets)
   (declare (xargs :guard t))
-  (let ((wire (fn-served-conn-wire conn)))
-    (if (not (fn-wire-statep wire))
-        (fn-served-counted-make 0 (fn-served-make-result conn nil))
-      (let* ((fed (fn-served-feed-counted conn octets))
-             (result (fn-served-counted-result fed))
-             (wire2 (fn-served-conn-wire (fn-served-result-conn result))))
-        (fn-served-counted-make
-         (fn-served-counted-consumed fed)
-         (fn-served-make-result
-          (fn-served-result-conn result)
-          (mbe :logic
-               (append (fn-served-result-effects result)
-                       (if (and (not (fn-served-closed-wirep wire))
-                                (fn-served-closed-wirep wire2))
-                           (list (fn-nntp-close-effect))
-                         nil))
-               :exec
-               (fn-ag-append
-                (fn-served-result-effects result)
-                (if (and (not (fn-served-closed-wirep wire))
-                         (fn-served-closed-wirep wire2))
-                    (list (fn-nntp-close-effect))
-                  nil)))))))))
+  (if (not (fn-wire-statep (fn-served-conn-wire conn)))
+      (fn-served-counted-make 0 (fn-served-make-result conn nil))
+    (fn-served-step-counted-core conn octets)))
+
+; Production entry: only the fixed spine and scalars are checked per read.
+(defun fn-served-step-counted-fast (conn octets)
+  (declare (xargs :guard t))
+  (if (not (fn-wire-fast-statep (fn-served-conn-wire conn)))
+      (fn-served-counted-make 0 (fn-served-make-result conn nil))
+    (fn-served-step-counted-core conn octets)))
+
+(defthm fn-served-step-counted-fast-is-reference
+  (implies (fn-wire-statep (fn-served-conn-wire conn))
+           (equal (fn-served-step-counted-fast conn octets)
+                  (fn-served-step-counted conn octets)))
+  :hints (("Goal"
+           :in-theory (enable fn-served-step-counted-fast
+                              fn-served-step-counted)
+           :use ((:instance fn-wire-statep-implies-fast-statep
+                            (x (fn-served-conn-wire conn)))))))
 
 ; The called counted transition returns the exact ordinary served result.
 (defthm fn-served-step-counted-result-is-step
@@ -117,6 +139,7 @@
          (fn-served-step conn octets))
   :hints (("Goal"
            :in-theory (enable fn-served-step-counted
+                              fn-served-step-counted-core
                               fn-served-counted-make
                               fn-served-counted-result
                               fn-served-counted-consumed
@@ -174,4 +197,6 @@
                     fn-served-counted-consumed
                     fn-served-counted-result
                     fn-served-feed-counted
+                    fn-served-step-counted-core
+                    fn-served-step-counted-fast
                     fn-served-step-counted))

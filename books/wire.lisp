@@ -668,6 +668,17 @@
                               fn-wire-begin-article-admissiblep
                               fn-wire-statep))))
 
+(defthm fn-wire-begin-article-with-line-limit-preserves-fast-statep
+  (implies (fn-wire-fast-statep wire-state)
+           (fn-wire-fast-statep
+            (fn-wire-result-state
+             (fn-wire-begin-article-with-line-limit
+              wire-state article-line-limit))))
+  :hints (("Goal"
+           :in-theory (enable fn-wire-begin-article-with-line-limit
+                              fn-wire-begin-article-admissiblep
+                              fn-wire-fast-statep))))
+
 (defthm fn-wire-article-line-limit-is-positive
   (implies (fn-wire-statep wire-state)
            (posp (fn-wire-article-line-limit wire-state)))
@@ -768,6 +779,15 @@
                                       fn-wire-after-line
                                       fn-wire-close
                                       fn-wire-statep))))
+
+(defthm fn-wire-feed-byte-preserves-fast-statep
+  (implies (fn-wire-fast-statep wire-state)
+           (fn-wire-fast-statep
+            (fn-wire-result-state (fn-wire-feed-byte wire-state byte))))
+  :hints (("Goal" :in-theory (enable fn-wire-feed-byte
+                                      fn-wire-after-line
+                                      fn-wire-close
+                                      fn-wire-fast-statep))))
 
 ; The retained-input bound is carried, not recomputed: the two counters the
 ; step maintains are exactly the measurements of the lists they bound, so the

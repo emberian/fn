@@ -425,6 +425,23 @@
                             (wire-state (fn-served-conn-wire conn))
                             (article-line-limit
                              (fn-wire-article-line-limit
+                             (fn-served-conn-wire conn))))))))
+
+(defthm fn-served-dispatch-preserves-fast-statep
+  (implies (fn-wire-fast-statep (fn-served-conn-wire conn))
+           (fn-wire-fast-statep
+            (fn-served-conn-wire
+             (fn-served-result-conn (fn-served-dispatch conn event)))))
+  :hints (("Goal"
+           :in-theory (disable fn-wire-fast-statep
+                               fn-wire-begin-article-with-line-limit
+                               fn-wire-article-line-limit
+                               fn-auth-step fn-post-offeredp
+                               fn-wire-begin-article-with-line-limit-preserves-fast-statep)
+           :use ((:instance fn-wire-begin-article-with-line-limit-preserves-fast-statep
+                            (wire-state (fn-served-conn-wire conn))
+                            (article-line-limit
+                             (fn-wire-article-line-limit
                               (fn-served-conn-wire conn))))))))
 
 (defthm fn-served-dispatch-preserves-connp
@@ -511,6 +528,14 @@
              (fn-served-result-conn (fn-served-dispatch-events conn events)))))
   :hints (("Goal" :induct (fn-served-dispatch-events conn events)
            :in-theory (disable fn-served-dispatch fn-wire-statep))))
+
+(defthm fn-served-dispatch-events-preserves-fast-statep
+  (implies (fn-wire-fast-statep (fn-served-conn-wire conn))
+           (fn-wire-fast-statep
+            (fn-served-conn-wire
+             (fn-served-result-conn (fn-served-dispatch-events conn events)))))
+  :hints (("Goal" :induct (fn-served-dispatch-events conn events)
+           :in-theory (disable fn-served-dispatch fn-wire-fast-statep))))
 
 (defthm fn-served-dispatch-events-preserves-connp
   (implies (fn-served-connp conn)
@@ -603,7 +628,27 @@
   (implies (fn-wire-fast-statep (fn-served-conn-wire conn))
            (fn-wire-fast-statep
             (fn-served-conn-wire
-             (fn-served-result-conn (fn-served-feed-byte conn byte))))))
+             (fn-served-result-conn (fn-served-feed-byte conn byte)))))
+  :hints (("Goal"
+           :in-theory (disable fn-served-dispatch-events fn-wire-feed-byte
+                               fn-wire-fast-statep)
+           :use ((:instance fn-wire-feed-byte-preserves-fast-statep
+                            (wire-state (fn-served-conn-wire conn)))
+                 (:instance fn-served-dispatch-events-preserves-fast-statep
+                            (conn
+                             (fn-served-make-conn
+                              (fn-wire-result-state
+                               (fn-wire-feed-byte
+                                (fn-served-conn-wire conn) byte))
+                              (fn-served-conn-session conn)
+                              (fn-served-conn-archive conn)
+                              (fn-served-conn-config conn)
+                              (fn-served-conn-observation conn)
+                              (fn-served-conn-injection conn)))
+                            (events
+                             (fn-wire-result-events
+                              (fn-wire-feed-byte
+                               (fn-served-conn-wire conn) byte))))))))
 
 (defun fn-served-feed (conn octets)
   (declare (xargs :guard (fn-wire-statep (fn-served-conn-wire conn))

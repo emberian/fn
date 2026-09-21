@@ -40,7 +40,7 @@
   (let ((conn (fn-own-find-conn id (fn-own-conns o))))
     (if conn
         (let* ((counted
-                 (fn-served-step-counted
+                 (fn-served-step-counted-fast
                   (fn-own-tls-served-conn o conn) octets))
                (result
                  (fn-own-finish-read
