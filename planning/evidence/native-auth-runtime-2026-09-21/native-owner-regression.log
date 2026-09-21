@@ -1,0 +1,14 @@
+test_help_does_not_open_missing_config (tests.test_native_operator_cli.NativeOperatorCliTests.test_help_does_not_open_missing_config) ... ok
+test_missing_directory_and_oversize_config_are_usage (tests.test_native_operator_cli.NativeOperatorCliTests.test_missing_directory_and_oversize_config_are_usage) ... ok
+test_unreadable_config_is_fault (tests.test_native_operator_cli.NativeOperatorCliTests.test_unreadable_config_is_fault) ... ok
+test_client_disconnect_is_not_a_global_owner_fault (tests.test_native_owner.NativeOwnerTests.test_client_disconnect_is_not_a_global_owner_fault) ... ok
+test_empty_v1_feed_namespace_is_preserved_as_conflicting_evidence (tests.test_native_owner.NativeOwnerTests.test_empty_v1_feed_namespace_is_preserved_as_conflicting_evidence) ... ok
+test_invalid_complete_feed_evidence_is_process_fault (tests.test_native_owner.NativeOwnerTests.test_invalid_complete_feed_evidence_is_process_fault) ... ok
+test_post_is_committed_and_readable_after_owner_exit (tests.test_native_owner.NativeOwnerTests.test_post_is_committed_and_readable_after_owner_exit) ... ok
+test_two_client_uncertainty_fences_before_later_mutation (tests.test_native_owner.NativeOwnerTests.test_two_client_uncertainty_fences_before_later_mutation) ... ok
+test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart (tests.test_native_owner.NativeOwnerTests.test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 24.678s
+
+OK

@@ -1,0 +1,55 @@
+test_generated_credential_gates_reader_and_does_not_grant_transit (tests.test_native_auth.NativeAuthTests.test_generated_credential_gates_reader_and_does_not_grant_transit) ... FAIL
+test_legacy_cleartext_registry_is_refused_before_listener (tests.test_native_auth.NativeAuthTests.test_legacy_cleartext_registry_is_refused_before_listener) ... FAIL
+test_protected_only_is_refused_before_listener (tests.test_native_auth.NativeAuthTests.test_protected_only_is_refused_before_listener) ... ok
+
+======================================================================
+FAIL: test_generated_credential_gates_reader_and_does_not_grant_transit (tests.test_native_auth.NativeAuthTests.test_generated_credential_gates_reader_and_does_not_grant_transit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ember/fn-lanes/w13-owner-integrated-gate/tests/test_native_auth.py", line 81, in test_generated_credential_gates_reader_and_does_not_grant_transit
+    process = self.start()
+  File "/home/ember/fn-lanes/w13-owner-integrated-gate/tests/test_native_auth.py", line 76, in start
+    self.fail("native authenticated owner failed: {} {}".format(
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        line, diagnostic))
+        ^^^^^^^^^^^^^^^^^^
+AssertionError: native authenticated owner failed: b'' fault operator run Error while parsing arguments to DESTRUCTURING-BIND:
+                     too few elements in
+                       ((:ACCEPTED
+                         (:FN-AUTH-CONFIG T NIL NIL
+                          ((:FN-AUTH-CRED
+                            (110 97 116 105 118 101 45 114 101 97 100 101 114)
+                            (16 129 70 254 168 121 236 32 104 113 210 94 143 63
+                             122 5 234 57 192 216 222 12 66 115 140 219 102 202
+                             246 5 177 246)
+                            (:FN-AUTHSEC-V1
+                             (248 45 195 243 168 141 64 123 219 203 179 149 230
+                              100 160 10)
+                             (73 211 107 89 151 134 46 229 213 167 219 86 234
+                              10 206 63 65 166 252 47 139 212 100 85 180 171
+                              192 241 43 130 197 4))
+                            T)))))
+                     to satisfy lambda list
+                       (ERP VAL &REST IGNORED):
+                     at least 2 expected, but got 1
+
+
+======================================================================
+FAIL: test_legacy_cleartext_registry_is_refused_before_listener (tests.test_native_auth.NativeAuthTests.test_legacy_cleartext_registry_is_refused_before_listener)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ember/fn-lanes/w13-owner-integrated-gate/tests/test_native_auth.py", line 139, in test_legacy_cleartext_registry_is_refused_before_listener
+    self.assertEqual(result.returncode, 1, result.stderr.decode())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 4 != 1 : fault operator run Error while parsing arguments to DESTRUCTURING-BIND:
+                     too few elements in
+                       ((:REFUSED :CLEARTEXT-CREDENTIAL))
+                     to satisfy lambda list
+                       (ERP VAL &REST IGNORED):
+                     at least 2 expected, but got 1
+
+
+----------------------------------------------------------------------
+Ran 3 tests in 1.247s
+
+FAILED (failures=2)

@@ -1,0 +1,38 @@
+test_generated_credential_gates_reader_and_does_not_grant_transit (tests.test_native_auth.NativeAuthTests.test_generated_credential_gates_reader_and_does_not_grant_transit) ... FAIL
+test_legacy_cleartext_registry_is_refused_before_listener (tests.test_native_auth.NativeAuthTests.test_legacy_cleartext_registry_is_refused_before_listener) ... FAIL
+test_protected_only_is_refused_before_listener (tests.test_native_auth.NativeAuthTests.test_protected_only_is_refused_before_listener) ... FAIL
+
+======================================================================
+FAIL: test_generated_credential_gates_reader_and_does_not_grant_transit (tests.test_native_auth.NativeAuthTests.test_generated_credential_gates_reader_and_does_not_grant_transit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ember/fn-lanes/w13-owner-integrated-gate/tests/test_native_auth.py", line 59, in setUp
+    self.assertEqual(enrolled.returncode, 0, enrolled.stderr.decode())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 4 != 0 : fault set-password needs an ACL2 session to derive the verifier (books/auth-secret): [Errno 2] No such file or directory: 'acl2'
+
+
+======================================================================
+FAIL: test_legacy_cleartext_registry_is_refused_before_listener (tests.test_native_auth.NativeAuthTests.test_legacy_cleartext_registry_is_refused_before_listener)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ember/fn-lanes/w13-owner-integrated-gate/tests/test_native_auth.py", line 59, in setUp
+    self.assertEqual(enrolled.returncode, 0, enrolled.stderr.decode())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 4 != 0 : fault set-password needs an ACL2 session to derive the verifier (books/auth-secret): [Errno 2] No such file or directory: 'acl2'
+
+
+======================================================================
+FAIL: test_protected_only_is_refused_before_listener (tests.test_native_auth.NativeAuthTests.test_protected_only_is_refused_before_listener)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ember/fn-lanes/w13-owner-integrated-gate/tests/test_native_auth.py", line 59, in setUp
+    self.assertEqual(enrolled.returncode, 0, enrolled.stderr.decode())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 4 != 0 : fault set-password needs an ACL2 session to derive the verifier (books/auth-secret): [Errno 2] No such file or directory: 'acl2'
+
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.337s
+
+FAILED (failures=3)

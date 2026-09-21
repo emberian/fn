@@ -1,0 +1,8 @@
+test_generated_credential_gates_reader_and_does_not_grant_transit (tests.test_native_auth.NativeAuthTests.test_generated_credential_gates_reader_and_does_not_grant_transit) ... ok
+test_legacy_cleartext_registry_is_refused_before_listener (tests.test_native_auth.NativeAuthTests.test_legacy_cleartext_registry_is_refused_before_listener) ... ok
+test_protected_only_is_refused_before_listener (tests.test_native_auth.NativeAuthTests.test_protected_only_is_refused_before_listener) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 2.336s
+
+OK
