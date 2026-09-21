@@ -16,9 +16,10 @@ records authentication and BP crash disagreements, not a passing release gate.
 
 D07 requires the eventual deployed node and CLI to run without Python. That
 native service migration is active, and the Python service described below does
-not meet its production gate. `packaging/fn-native` directly launches a saved
-Lisp image, but currently exposes its component interface; it is not yet a
-drop-in replacement for this operator CLI. See the
+not meet its production gate. `packaging/fn-native` directly launches the
+production saved Lisp image. That image exposes the ACL2-planned operator and
+the existing public BP operations, but it is not yet a drop-in replacement for
+this operator CLI. See the
 [native migration plan](../planning/lanes/native-cli-migration.md) for the command
 parity work and [host contract](../specs/host.md#selected-production-runtime) for
 the runtime boundary.
@@ -49,9 +50,24 @@ batch is still under validation. Native `post`, control, authentication and
 outbound feed operation are active implementation work; unsupported profiles
 produce an explicit usage error. The entry above does not yet replace the complete
 operator workflow below, and the low-level `store` diagnostic is not a second
-public posting interface. Native SIGTERM still aborts the process directly;
+public posting interface. The production image does not register raw
+`--fn owner run` and refuses raw `--fn reader`; `operator CONFIG run` is its one
+owner-service start and therefore always passes through the ACL2 native
+configuration plan and authentication startup. Native SIGTERM still aborts the process directly;
 orderly native worker shutdown is pending, distinct from the development
 service stop procedure below.
+
+Native owner and reader component tests use a distinct saved image. Building it
+is an explicit evidence action and does not replace `build/fn-host`:
+
+```sh
+FN_NATIVE_PROFILE=developer tools/build_native_host.sh
+# writes build/fn-host-developer
+```
+
+`FN_NATIVE_DEVELOPER_HOST` may point those tests at another developer-profile
+image. Changing `FN_NATIVE_PROFILE` when an existing saved image starts has no
+effect; the profile is selected during image construction and serialized.
 
 ## Install
 

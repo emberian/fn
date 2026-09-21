@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Launch the native host image with the Python hosts' command-line surface.
 
-`build/fn-host` (tools/build_native_host.sh) is one SBCL image holding ACL2,
-the certified books and host/native/io.lisp.  This launcher validates the
-command line with exactly the parsers tools/run_store.py and tools/run_reader.py
-use, then replaces itself with the image, so exit codes and usage errors are the
-image's or the shared parser's, never a second table.
+The saved native images hold ACL2, the certified books and host/native/io.lisp.
+This launcher validates the command line with exactly the parsers
+tools/run_store.py and tools/run_reader.py use, then replaces itself with the
+selected image, so exit codes and usage errors are the image's or the shared
+parser's, never a second table.
 
     python3 tools/fn_native.py store --store DIR init|post|recover|status|config|inspect ...
     python3 tools/fn_native.py reader --port N [--once] [--store DIR]
@@ -14,6 +14,10 @@ image's or the shared parser's, never a second table.
 With `FN_HOST=native` in the environment, `tools/run_store.py` and
 `tools/run_reader.py` delegate here after parsing, so the existing tests run
 against either host without edits.  `FN_NATIVE_HOST` overrides the image path.
+The default production image supports the store diagnostic but refuses raw
+reader startup.  Reader component tests set it to the explicitly built
+`build/fn-host-developer`; the public production reader starts through
+`packaging/fn-native operator CONFIG run`.
 """
 import hashlib
 import os

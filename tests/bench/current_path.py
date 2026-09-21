@@ -265,8 +265,8 @@ def current_owner(work, counts, payload, folded_bytes, seed, acl2):
 
 
 def native_direct(work, payload, seed, native_image, native_source_revision, native_image_digest):
-    """Direct native store/reader startup and recovery, explicitly not owner POST."""
-    result = {"path": "native image --fn store/reader positional ABI; no Python child in command tree and no served owner/control claim",
+    """Developer-image store/reader diagnostics, explicitly not owner POST."""
+    result = {"path": "developer native image --fn store/reader diagnostics; no Python child in command tree and no served owner/control claim",
               "image": native_image, "source_revision": native_source_revision or "unspecified",
               "image_sha256": native_image_digest or (file_sha256(native_image) if native_image and Path(native_image).is_file() else "unavailable")}
     if not native_image or not Path(native_image).is_file():
@@ -327,7 +327,7 @@ def report_text(result):
              "- Harness revision: `{}`; harness SHA-256 `{}`.".format(result["harness_revision"], result["harness_sha256"]),
              "- Host: `{}`; load at start `{}`.".format(result["host"]["platform"], result["loadavg_at_start"]),
              "- Owner scope: development-oracle evidence only: `bin/fn post` through the live `bin/fn run` control socket; each accepted post reports `path=control`. This Python bridge path is not a production endpoint.",
-             "- Native scope: direct native-image `--fn store` / `--fn reader` calls with no Python child; it does not measure served owner/control behavior.", "",
+             "- Native scope: explicit developer-image `--fn store` / `--fn reader` diagnostics with no Python child; it does not measure the production operator/owner path.", "",
              "## Owner results", ""]
     if owner.get("not_measured"):
         lines.append("- Owner path: {}.".format(owner["not_measured"]))
@@ -368,7 +368,8 @@ def main(argv=None):
     parser.add_argument("--folded-bytes", type=int, default=12000)
     parser.add_argument("--seed", type=int, default=13)
     parser.add_argument("--acl2", default=os.environ.get("FN_ACL2", ""))
-    parser.add_argument("--native-image", default="")
+    parser.add_argument("--native-image", default="",
+                        help="explicit developer-profile image for raw store/reader diagnostics")
     parser.add_argument("--native-source-revision", default="")
     parser.add_argument("--native-image-digest", default="")
     parser.add_argument("--harness-revision", default="")

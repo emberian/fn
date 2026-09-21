@@ -1,4 +1,4 @@
-"""Executable native owner slice: writable NNTP POST with no Python process."""
+"""Developer-image owner diagnostic: writable NNTP POST with no Python peer."""
 import os
 from pathlib import Path
 import select
@@ -9,7 +9,8 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
+IMAGE = Path(os.environ.get(
+    "FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
 
 
 def environment():
@@ -25,7 +26,8 @@ class NativeOwnerTests(unittest.TestCase):
     def setUpClass(cls):
         if not os.access(IMAGE, os.X_OK):
             raise unittest.SkipTest(
-                "native host image missing: {} (tools/build_native_host.sh)".format(IMAGE))
+                "developer native image missing: {} "
+                "(FN_NATIVE_PROFILE=developer tools/build_native_host.sh)".format(IMAGE))
 
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-owner-")

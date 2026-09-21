@@ -1,10 +1,12 @@
 #!/bin/sh
-# Direct entry to the saved native host image.
+# Direct entry to the production saved native host image.
 #
 # This intentionally does not parse configuration or command options.  The
 # native image owns its positional protocol and outcome code; this wrapper
 # only finds the image and replaces itself with it.  `bin/fn` remains the
 # development CLI until the migration plan's full command matrix lands.
+# The default image does not expose the raw owner/reader service diagnostics;
+# tests that need those build the explicit `developer` image profile.
 set -eu
 
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)

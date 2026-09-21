@@ -862,4 +862,4 @@ and control-outcome sequence."
                    (string= (third args) "1") (parse-integer (fourth args))
                    fault nil)))
 
-(fnn-register-verb "owner" #'fnn-command-owner)
+(fnn-register-developer-verb "owner" #'fnn-command-owner)

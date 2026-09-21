@@ -101,6 +101,12 @@
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
         (load "host/native/io.lisp")
+        ; Build-time entry profile.  tools/build_native_host.sh always supplies
+        ; one of these two values.  It is serialized into the image: the
+        ; restarted process cannot expose diagnostics by changing its
+        ; environment.
+        (fnn-select-image-profile
+         (or (sb-ext:posix-getenv "FN_NATIVE_PROFILE") "production"))
         (defun fn-native-entry (st)
           (declare (ignore st))
           (fnn-crypto-startup)
@@ -148,7 +154,8 @@
 (value-triple (prog2$ (cw "FN_NATIVE_BUILD_LOADED~%") :loaded))
 
 :q
-(save-exec "build/fn-host" "fn native host"
+(save-exec (or (sb-ext:posix-getenv "FN_NATIVE_IMAGE") "build/fn-host")
+           "fn native host"
            :return-from-lp '(fn-native-entry state)
            :inert-args t
            :host-lisp-args "--noinform"
