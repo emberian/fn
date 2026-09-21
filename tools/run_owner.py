@@ -757,6 +757,8 @@ class Owner:
             self.bridge.close_connection(conn.cid)
 
     def serve(self, conn, mask):
+        if self.feed_uncertain:
+            return
         if mask & selectors.EVENT_READ and conn.reading and not conn.closing:
             try:
                 incoming = conn.sock.recv(MAX_READ)
@@ -799,6 +801,8 @@ class Owner:
                     conn.reading = False
                 if submitted:
                     self.drain()
+                    if self.feed_uncertain:
+                        return
                     # `drain' may have faulted THIS connection (the
                     # submission it carried was this connection's), in which
                     # case the socket is closed and the owner has forgotten
@@ -1426,6 +1430,8 @@ class Owner:
         return data
 
     def control(self, sock):
+        if self.feed_uncertain:
+            raise StoreIndeterminate("FNFD journal requires owner restart")
         words = self.read_line(sock).split()
         if not words:
             raise StoreError("empty control line")
