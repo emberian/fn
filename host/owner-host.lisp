@@ -641,7 +641,7 @@
 ; the constrained trailer (A-CRYPTO); the host writes them length-prefixed.
 ; `fn-feed-encode' takes the trailer as an argument, so these frames carry a
 ; ZERO trailer: tools/run_owner.py hashes the protected prefix and appends the
-; real one (A-CRYPTO), exactly as tools/run_feed.py does.  The header, the
+; real one (A-CRYPTO).  The header, the
 ; field encoding and every bound stay ACL2's; the host slices at a constant it
 ; did not choose.
 (defconst *fn-owner-feed-zero-trailer*
