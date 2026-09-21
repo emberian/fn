@@ -22,7 +22,11 @@
 ; effect list, `fn-owner-submittedp' (fn-served-submission).  The host never
 ; writes a reply octet.
 (in-package "ACL2")
-(include-book "../books/owner")
+; books/owner-fault includes books/owner and adds the host-fault transition
+; `fn-own-fault'.  The host needs it: `fn-owner-fault' below is the only way
+; tools/run_owner.py can abandon ONE connection, and before it existed an
+; exception in the serve loop ended the process for every connection.
+(include-book "../books/owner-fault")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -341,9 +345,26 @@
                  ; memberships (generation, msgid, octets, GROUPS, id,
                  ; subject, evidence, charge).  The generation passed here is
                  ; 0 because no element read from this list depends on it.
+                 ;
+                 ; RENDERED TO OCTETS, as the global's contract has always
+                 ; been (the POST path stages fn-inj-decision-groups, whose
+                 ; elements are fn-cbor-octet-listp by fn-inj-group-namesp)
+                 ; and as the line below already does for the evidence.
+                 ; fn-peer-scope-groups answers STRINGS -- "Strings, as
+                 ; fn-node-prepare takes", books/peer-inbound.lisp:139 -- so
+                 ; this global held two different shapes depending on which
+                 ; path filled it, and the bridge reads one:
+                 ; `Acl2Owner.submit_groups' (tools/run_owner.py) decodes
+                 ; each element with acl2_octet_list.  On the first transit
+                 ; transfer it met "fn.letters" where it required a list of
+                 ; naturals, raised RuntimeError inside `Owner.drain', and
+                 ; THE OWNER PROCESS DIED -- the second of the two crashes
+                 ; tools/v0_matrix.py found on persvati on 2026-09-20, and
+                 ; the one that took 22 transit rows, the feed rows and the
+                 ; crash rows of the matrix with it.  One shape per global.
                  (state (f-put-global 'fn-owner-submit-groups
                                       (if (equal (fn-peer-decision-kind d) :want)
-                                          (nth 3 args)
+                                          (fn-owner-group-octets (nth 3 args))
                                         nil)
                                       state))
                  (state (f-put-global 'fn-owner-transit-evidence
@@ -527,6 +548,29 @@
   (declare (xargs :stobjs state :mode :program))
   (let ((state (fn-owner-step (list :close id) state)))
     (value :closed)))
+
+; The host-fault boundary (books/owner-fault.lisp).
+;
+; tools/run_owner.py calls this when it has caught an exception it did not
+; expect while serving connection `id': the model decides the reply line, the
+; close and everything that happens to the owner (`fn-own-fault'), and the
+; host's only remaining decision is that it will not use that socket again.
+; The result is installed through the same `fn-owner-install-effects' every
+; other entry uses, so the host reads the reply out of `fn-owner-output' and
+; the close out of `fn-owner-closep' exactly as it does for a served read.
+;
+; `:faulted' is answered when there was a connection to answer, `:unknown'
+; when there was not; the owner has forgotten `id' either way.  The host
+; reports the two differently because a fault naming no connection is a host
+; defect and not a served event.
+(defun fn-owner-fault (id state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((owner (f-get-global 'fn-owner state))
+         (knownp (if (fn-own-find-conn id (fn-own-conns owner)) t nil))
+         (result (fn-own-fault owner id))
+         (state (f-put-global 'fn-owner (cdr result) state))
+         (state (fn-owner-install-effects (car result) state)))
+    (value (if knownp :faulted :unknown))))
 
 (defun fn-owner-advance (id state)
   (declare (xargs :stobjs state :mode :program))
