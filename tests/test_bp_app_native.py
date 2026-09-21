@@ -82,10 +82,12 @@ class NativeBpApplicationTests(unittest.TestCase):
             stderr=subprocess.PIPE, timeout=timeout, check=False,
         )
 
-    def start_receiver(self, pause=False):
+    def start_receiver(self, pause=False, fail_decision_namespace=False):
         env = dict(self.env)
         if pause:
             env["FN_BP_APP_TEST_PAUSE_AFTER_DECISION"] = "1"
+        if fail_decision_namespace:
+            env["FN_APP_JOURNAL_TEST_FAIL_RECEIPT_DECISION_NAMESPACE"] = "1"
         process = subprocess.Popen(
             [str(IMAGE), "--fn", "bp-app", "receive", "0",
              str(self.receiver_spool), str(self.store), str(self.receipts),
@@ -199,6 +201,76 @@ class NativeBpApplicationTests(unittest.TestCase):
         self.assertIn(b"bp-receive node=dtn://receiver/", provenance)
         self.assertIn(b" label=native-policy", provenance)
 
+        result_files = sorted(
+            (self.sender_spool / "receive-evidence").glob("*.adu")
+        )
+        self.assertEqual(len(result_files), 1)
+        replay = self.invoke(
+            "app-journal", "receipt-replay", self.store, self.receipts,
+            self.request_path,
+        )
+        self.assertEqual(replay.returncode, 0, replay.stderr.decode())
+        receipt = result_files[0].read_bytes()
+        self.assertIn(("hex=" + receipt.hex()).encode("ascii"), replay.stdout)
+
+    def test_visible_decision_namespace_eio_fences_before_receipt(self):
+        receiver, port = self.start_receiver(fail_decision_namespace=True)
+        sender = self.start_sender(port)
+        try:
+            sender_out, sender_err = sender.communicate(timeout=180)
+            receiver_out, receiver_err = receiver.communicate(timeout=180)
+            self.assertEqual(receiver.returncode, 3, receiver_err.decode())
+            self.assertEqual(sender.returncode, 3, sender_err.decode())
+            self.assertNotIn(b"BP application accepted", receiver_out)
+        finally:
+            if receiver.poll() is None:
+                receiver.kill()
+                receiver.wait(timeout=10)
+            if sender.poll() is None:
+                sender.kill()
+                sender.wait(timeout=10)
+            receiver.stdout.close()
+            receiver.stderr.close()
+            sender.stdout.close()
+            sender.stderr.close()
+
+        # link(2) succeeded before the injected directory barrier EIO, so the
+        # exact decision is visible even though this process cannot call it
+        # durable or author a receipt.
+        records = sorted((self.receipts / "records").glob("*.rj"))
+        self.assertEqual(len(records), 5)
+        self.assertGreater(records[-1].stat().st_size, 0)
+        self.assertEqual(
+            list((self.sender_spool / "receive-evidence").glob("*.adu")), []
+        )
+        before = self.recovered_counts()
+        self.assertEqual(before, (1, 1, 1))
+
+        # Opening the second native receiver repeats the journal namespace
+        # barriers, replays the visible valid decision, and returns its receipt
+        # without a second Store acceptance or retention pin.
+        receiver2, port2 = self.start_receiver()
+        sender2 = self.start_sender(port2)
+        try:
+            sender_out, sender_err = sender2.communicate(timeout=180)
+            receiver_out, receiver_err = receiver2.communicate(timeout=180)
+            self.assertEqual(sender2.returncode, 0, sender_err.decode())
+            self.assertEqual(receiver2.returncode, 0, receiver_err.decode())
+            self.assertIn(b"BP application accepted", receiver_out)
+            self.assertIn(b"BP summary accepted=1", sender_out)
+        finally:
+            if receiver2.poll() is None:
+                receiver2.kill()
+                receiver2.wait(timeout=10)
+            if sender2.poll() is None:
+                sender2.kill()
+                sender2.wait(timeout=10)
+            receiver2.stdout.close()
+            receiver2.stderr.close()
+            sender2.stdout.close()
+            sender2.stderr.close()
+
+        self.assertEqual(self.recovered_counts(), before)
         result_files = sorted(
             (self.sender_spool / "receive-evidence").glob("*.adu")
         )
