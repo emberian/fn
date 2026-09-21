@@ -42,6 +42,97 @@
   (fnn-join (fnn-checkpoints store)
             (fnn-checkpoint-generation-name generation)))
 
+; Lossless transaction packs use a separate durable namespace but the same
+; ACL2-owned canonical generation and selection component names.
+(defun fnn-pack-directory (store) (fnn-join (fnn-store-root store) "packs"))
+(defun fnn-pack-generation-path (store generation)
+  (fnn-join (fnn-pack-directory store) (fnn-checkpoint-generation-name generation)))
+(defun fnn-pack-selection-path (store)
+  (fnn-join (fnn-pack-directory store) (fnn-checkpoint-selection-name)))
+
+(defun fnn-pack-generations (store)
+  (let ((directory (fnn-pack-directory store)))
+    (unless (fnn-lstat directory) (return-from fnn-pack-generations nil))
+    (fnn-safe-directory directory)
+    (let* ((names (fnn-list-directory-bounded
+                   directory (fnn-checkpoint-namespace-observation-limit) "pack namespace"))
+           (plan (fnn-core 'fn-store-checkpoint-namespace-plan
+                           (mapcar (lambda (name)
+                                     (fnn-octet-list (fnn-string-octets name))) names))))
+      (unless (and (listp plan) (eq (first plan) :ok))
+        (fnn-fault "ACL2 rejected pack namespace: ~s" plan))
+      (second plan))))
+
+(defun fnn-pack-selected-generation (store)
+  (let ((path (fnn-pack-selection-path store)))
+    (unless (fnn-check-regular path) (return-from fnn-pack-selected-generation nil))
+    (let* ((raw (fnn-read-regular-bounded path (fnn-checkpoint-selection-read-bound)))
+           (answer (fnn-core 'fn-store-checkpoint-selection-decode
+                             (fnn-octet-list raw) (fnn-digest-of raw))))
+      (unless (and (listp answer) (eq (first answer) :ok))
+        (fnn-checkpoint-corrupt "pack selection marker does not decode"))
+      (second answer))))
+
+(defun fnn-pack-publish (store records selectp)
+  (fnn-checkpoint-require-mutation-ready store)
+  (let ((directory (fnn-pack-directory store)))
+    (fnn-safe-directory directory t)
+    (let* ((generations (fnn-pack-generations store))
+           (generation (fnn-core 'fn-store-checkpoint-next-generation generations))
+           (captured (fnn-core 'fn-store-checkpoint-compaction-capture
+                               (mapcar #'fnn-octet-list records) (fnn-store-frontier store))))
+      (unless (and (integerp generation) (>= generation 0)
+                   (listp captured) (eq (first captured) :ok)
+                   (fnn-octet-list-p (second captured)))
+        (fnn-refuse "ACL2 refused pack capture/publication"))
+      (let* ((stage (fnn-join (fnn-staging store)
+                              (format nil ".pack-~d-~a" (sb-posix:getpid)
+                                      (fnn-random-hex 12))))
+             (final (fnn-pack-generation-path store generation))
+             (frame (fnn-seal (fnn-octets (second captured)))))
+        (setf (fnn-store-fenced store) t)
+        (fnn-write-staged stage frame)
+        (fnn-link stage final)
+        (fnn-fsync-dir directory)
+        (ignore-errors (fnn-unlink stage) (fnn-fsync-dir (fnn-staging store)))
+        (when selectp
+          (let* ((marker-value (fnn-core 'fn-store-checkpoint-selection-protected generation))
+                 (marker (fnn-seal (fnn-octets marker-value)))
+                 (marker-stage (fnn-join (fnn-staging store)
+                                         (format nil ".pack-selection-~d-~a"
+                                                 (sb-posix:getpid) (fnn-random-hex 12)))))
+            (fnn-write-staged marker-stage marker)
+            (fnn-replace marker-stage (fnn-pack-selection-path store))
+            (fnn-fsync-dir directory)))
+        (setf (fnn-store-fenced store) nil)
+        generation))))
+
+(defun fnn-pack-recover-records (store records)
+  (let ((generation (fnn-pack-selected-generation store)))
+    (unless generation (return-from fnn-pack-recover-records records))
+    (let ((path (fnn-pack-generation-path store generation)))
+      (unless (fnn-check-regular path)
+        (fnn-checkpoint-corrupt "selected pack generation ~d is missing" generation))
+      (let* ((raw (fnn-read-regular-bounded
+                   path (+ (fnn-constant :trailer) 4194304)))
+             ; Sequence equals the compacted prefix length.  Until transaction
+             ; unlink is enabled, discover it by asking ACL2 to open against
+             ; each possible suffix; only one can satisfy sequence continuity.
+             (answer (loop for n from 0 to (length records)
+                           for candidate = (fnn-core
+                                            'fn-store-checkpoint-compaction-open
+                                            (fnn-octet-list raw) (fnn-digest-of raw)
+                                            (mapcar #'fnn-octet-list (nthcdr n records))
+                                            (fnn-store-frontier store))
+                           when (and (listp candidate) (eq (first candidate) :ok))
+                             return candidate)))
+        (unless (and answer (equal (second answer)
+                                   (mapcar #'fnn-octet-list records)))
+          (fnn-checkpoint-corrupt "selected pack does not reconstruct observed history"))
+        (mapcar #'fnn-as-octets (second answer))))))
+
+(setq *fnn-pack-recover-callback* #'fnn-pack-recover-records)
+
 (defun fnn-checkpoint-namespace-observation-limit ()
   (let ((limit (fnn-core 'fn-store-checkpoint-namespace-observation-limit)))
     (unless (and (integerp limit) (>= limit 0))
@@ -316,6 +407,14 @@
            (if (eq (first outcome) :corrupt) +fnn-exit-fault+ +fnn-exit-ok+))
       (fnn-store-close store))))
 
+(defun fnn-checkpoint-command-pack (root selectp)
+  (multiple-value-bind (store records) (fnn-open-live-store root t)
+    (unwind-protect
+         (let ((generation (fnn-pack-publish store records selectp)))
+           (fnn-out "packed generation=~d records=~d selected=~a"
+                    generation (length records) (if selectp "yes" "no"))
+           +fnn-exit-ok+)
+      (fnn-store-close store))))
 (defun fnn-checkpoint-command (command args)
   (cond ((string= command "publish")
          (unless (or (= (length args) 1)
@@ -330,6 +429,11 @@
          (unless (= (length args) 1)
            (error 'fnn-usage-error :message "checkpoint status ROOT"))
          (fnn-checkpoint-command-status (first args)))
+        ((string= command "pack")
+         (unless (or (= (length args) 1)
+                     (and (= (length args) 2) (string= (second args) "select")))
+           (error 'fnn-usage-error :message "checkpoint pack ROOT [select]"))
+         (fnn-checkpoint-command-pack (first args) (= (length args) 2)))
         (t (error 'fnn-usage-error :message
                   (format nil "unknown checkpoint command ~a" command)))))
 
