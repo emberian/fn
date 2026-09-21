@@ -1,0 +1,153 @@
+test_a_filesystem_that_rejects_full_fsync_falls_back_to_fsync (tests.test_host_boundary.DurabilityBarrierTests.test_a_filesystem_that_rejects_full_fsync_falls_back_to_fsync) ... ok
+test_an_unrelated_barrier_error_is_not_swallowed (tests.test_host_boundary.DurabilityBarrierTests.test_an_unrelated_barrier_error_is_not_swallowed) ... ok
+test_darwin_barrier_asks_the_device_to_flush_its_cache (tests.test_host_boundary.DurabilityBarrierTests.test_darwin_barrier_asks_the_device_to_flush_its_cache) ... ok
+test_every_journal_barrier_goes_through_the_one_helper (tests.test_host_boundary.DurabilityBarrierTests.test_every_journal_barrier_goes_through_the_one_helper) ... ok
+test_documented_table (tests.test_host_boundary.ExitCodeTests.test_documented_table) ... ok
+test_ingress_refusal_and_fault_stay_distinct (tests.test_host_boundary.ExitCodeTests.test_ingress_refusal_and_fault_stay_distinct) ... ok
+test_pending_bpa_delete_is_reported_as_acceptance_not_failure (tests.test_host_boundary.ExitCodeTests.test_pending_bpa_delete_is_reported_as_acceptance_not_failure)
+A durable acceptance awaiting a delete keeps the accepted code. ... ok
+test_store_cli_maps_each_outcome_to_its_own_code (tests.test_host_boundary.ExitCodeTests.test_store_cli_maps_each_outcome_to_its_own_code) ... ok
+test_store_cli_usage_error_is_its_own_code (tests.test_host_boundary.ExitCodeTests.test_store_cli_usage_error_is_its_own_code) ... ok
+test_a_contended_lock_is_still_a_clean_refusal (tests.test_host_boundary.OwnershipAndOrphanTests.test_a_contended_lock_is_still_a_clean_refusal) ... ok
+test_absent_lock_pathname_is_a_fault_not_a_held_lock (tests.test_host_boundary.OwnershipAndOrphanTests.test_absent_lock_pathname_is_a_fault_not_a_held_lock)
+An uninitialised store is an invalid state, never `already locked`. ... ok
+test_initialization_publishes_metadata_through_staging (tests.test_host_boundary.OwnershipAndOrphanTests.test_initialization_publishes_metadata_through_staging) ... ok
+test_orphan_report_stays_bounded (tests.test_host_boundary.OwnershipAndOrphanTests.test_orphan_report_stays_bounded) ... ok
+test_recovery_reports_staging_orphans_without_deleting_them (tests.test_host_boundary.OwnershipAndOrphanTests.test_recovery_reports_staging_orphans_without_deleting_them) ... ok
+test_non_ascii_bid_is_refused_rather_than_raising_an_encoding_error (tests.test_host_boundary.ReceiverBoundaryTests.test_non_ascii_bid_is_refused_rather_than_raising_an_encoding_error) ... ok
+test_over_long_and_empty_bids_refuse_the_same_way (tests.test_host_boundary.ReceiverBoundaryTests.test_over_long_and_empty_bids_refuse_the_same_way) ... ok
+test_a_level_travels_through_let_star (tests.test_session_depth.Bindings.test_a_level_travels_through_let_star) ... ok
+test_a_shadowed_binding_does_not_carry_a_level (tests.test_session_depth.Bindings.test_a_shadowed_binding_does_not_carry_a_level) ... ok
+test_a_hand_spelled_walk_is_drift_and_fails_only_under_strict (tests.test_session_depth.Drift.test_a_hand_spelled_walk_is_drift_and_fails_only_under_strict) ... ok
+test_a_correct_walk_one_level_down_is_not_a_defect (tests.test_session_depth.LadderInference.test_a_correct_walk_one_level_down_is_not_a_defect) ... ok
+test_a_projection_definition_is_not_drift (tests.test_session_depth.LadderInference.test_a_projection_definition_is_not_drift) ... ok
+test_the_formals_are_inferred_from_the_calls (tests.test_session_depth.LadderInference.test_the_formals_are_inferred_from_the_calls) ... ok
+test_the_ladder_alone_is_clean (tests.test_session_depth.LadderInference.test_the_ladder_alone_is_clean) ... ok
+test_own_conn_boundedp_tested_the_post_shape_on_the_whole_session (tests.test_session_depth.TheFourThatShipped.test_own_conn_boundedp_tested_the_post_shape_on_the_whole_session) ... ok
+test_served_post_outcome_reached_one_wrapper_short (tests.test_session_depth.TheFourThatShipped.test_served_post_outcome_reached_one_wrapper_short) ... ok
+test_served_transit_outcome_passed_the_whole_session (tests.test_session_depth.TheFourThatShipped.test_served_transit_outcome_passed_the_whole_session) ... ok
+test_the_corrected_spellings_are_clean (tests.test_session_depth.TheFourThatShipped.test_the_corrected_spellings_are_clean) ... ok
+test_the_test_side_had_the_same_short_reach (tests.test_session_depth.TheFourThatShipped.test_the_test_side_had_the_same_short_reach) ... ok
+test_a_waiver_covers_only_the_form_it_precedes (tests.test_session_depth.Waivers.test_a_waiver_covers_only_the_form_it_precedes) ... ok
+test_a_waiver_with_a_reason_suppresses_and_is_reported (tests.test_session_depth.Waivers.test_a_waiver_with_a_reason_suppresses_and_is_reported) ... ok
+test_a_waiver_without_a_reason_is_not_a_waiver (tests.test_session_depth.Waivers.test_a_waiver_without_a_reason_is_not_a_waiver) ... ok
+test_a_run_directory_with_no_manifest_is_skipped_not_fatal (tests.test_evidence_manifests.ArchiveTests.test_a_run_directory_with_no_manifest_is_skipped_not_fatal) ... ok
+test_the_archived_copy_keeps_the_claim_and_says_where_the_log_is (tests.test_evidence_manifests.ArchiveTests.test_the_archived_copy_keeps_the_claim_and_says_where_the_log_is) ... ok
+test_the_same_run_archived_twice_keeps_the_first_copy (tests.test_evidence_manifests.ArchiveTests.test_the_same_run_archived_twice_keeps_the_first_copy)
+A farm run is produced on a box and later swept off it. ... ok
+test_two_different_runs_under_one_id_are_reported_not_merged (tests.test_evidence_manifests.ArchiveTests.test_two_different_runs_under_one_id_are_reported_not_merged) ... ok
+test_an_archived_but_uncommitted_manifest_does_not_resolve_a_citation (tests.test_evidence_manifests.CheckTests.test_an_archived_but_uncommitted_manifest_does_not_resolve_a_citation) ... ok
+test_committing_the_manifest_resolves_the_citation (tests.test_evidence_manifests.CheckTests.test_committing_the_manifest_resolves_the_citation) ... ok
+test_the_command_line_reports_the_four_counts_for_this_tree (tests.test_evidence_manifests.CheckTests.test_the_command_line_reports_the_four_counts_for_this_tree) ... ok
+test_a_run_id_in_a_tracked_file_is_cited_and_its_line_is_named (tests.test_evidence_manifests.CitationTests.test_a_run_id_in_a_tracked_file_is_cited_and_its_line_is_named) ... ok
+test_an_untracked_claim_is_not_a_citation (tests.test_evidence_manifests.CitationTests.test_an_untracked_claim_is_not_a_citation)
+What a reader of the repository sees is what is committed. ... ok
+test_the_archive_does_not_cite_itself (tests.test_evidence_manifests.CitationTests.test_the_archive_does_not_cite_itself)
+A manifest records its own run id; that must not look like a claim. ... ok
+test_a_book_citing_a_file_that_never_existed_is_a_load_bearing_phantom (tests.test_cite_check.ScanTests.test_a_book_citing_a_file_that_never_existed_is_a_load_bearing_phantom) ... ok
+test_a_catalogue_of_absent_paths_does_not_count_itself (tests.test_cite_check.ScanTests.test_a_catalogue_of_absent_paths_does_not_count_itself) ... ok
+test_a_citation_with_history_is_drift_not_phantom (tests.test_cite_check.ScanTests.test_a_citation_with_history_is_drift_not_phantom) ... ok
+test_a_delimited_extensionless_citation_is_still_read (tests.test_cite_check.ScanTests.test_a_delimited_extensionless_citation_is_still_read) ... ok
+test_a_directory_citation_keeps_its_own_name (tests.test_cite_check.ScanTests.test_a_directory_citation_keeps_its_own_name) ... ok
+test_a_disclosed_drift_names_where_the_file_went (tests.test_cite_check.ScanTests.test_a_disclosed_drift_names_where_the_file_went) ... ok
+test_a_disclosed_phantom_is_annotated_and_not_raised (tests.test_cite_check.ScanTests.test_a_disclosed_phantom_is_annotated_and_not_raised) ... ok
+test_a_hyphenated_line_wrap_is_not_a_citation (tests.test_cite_check.ScanTests.test_a_hyphenated_line_wrap_is_not_a_citation) ... ok
+test_a_module_attribute_resolves_against_the_module (tests.test_cite_check.ScanTests.test_a_module_attribute_resolves_against_the_module) ... ok
+test_a_placeholder_in_a_prose_example_is_not_a_citation (tests.test_cite_check.ScanTests.test_a_placeholder_in_a_prose_example_is_not_a_citation) ... ok
+test_a_produced_file_resolves_against_the_source_that_produces_it (tests.test_cite_check.ScanTests.test_a_produced_file_resolves_against_the_source_that_produces_it) ... ok
+test_a_spec_and_a_planning_file_are_separated_from_a_source (tests.test_cite_check.ScanTests.test_a_spec_and_a_planning_file_are_separated_from_a_source) ... ok
+test_a_system_include_book_is_not_a_repository_path (tests.test_cite_check.ScanTests.test_a_system_include_book_is_not_a_repository_path) ... ok
+test_a_test_book_is_load_bearing_too (tests.test_cite_check.ScanTests.test_a_test_book_is_load_bearing_too) ... ok
+test_an_evidence_record_names_what_was_certified_then (tests.test_cite_check.ScanTests.test_an_evidence_record_names_what_was_certified_then) ... ok
+test_an_extensionless_book_root_resolves_against_the_lisp_file (tests.test_cite_check.ScanTests.test_an_extensionless_book_root_resolves_against_the_lisp_file) ... ok
+test_an_undelimited_slash_in_running_prose_is_not_a_citation (tests.test_cite_check.ScanTests.test_an_undelimited_slash_in_running_prose_is_not_a_citation) ... ok
+test_disclosure_does_not_reach_an_unrelated_citation (tests.test_cite_check.ScanTests.test_disclosure_does_not_reach_an_unrelated_citation) ... ok
+test_history_of_the_book_root_counts_as_history_of_the_source (tests.test_cite_check.ScanTests.test_history_of_the_book_root_counts_as_history_of_the_source) ... ok
+test_our_books_directory_is_flat_so_a_nested_books_path_is_acl2s (tests.test_cite_check.ScanTests.test_our_books_directory_is_flat_so_a_nested_books_path_is_acl2s) ... ok
+test_the_forward_hint_is_set_by_the_line_not_the_tier (tests.test_cite_check.ScanTests.test_the_forward_hint_is_set_by_the_line_not_the_tier) ... ok
+test_unit_test_fixture_data_is_classed_apart_from_its_comments (tests.test_cite_check.ScanTests.test_unit_test_fixture_data_is_classed_apart_from_its_comments) ... ok
+test_the_real_tree_reports_and_does_not_fail (tests.test_cite_check.StrictTests.test_the_real_tree_reports_and_does_not_fail) ... ok
+test_the_committed_matrix_validates (tests.test_v0_matrix.CommittedMatrixTests.test_the_committed_matrix_validates) ... ok
+test_the_document_indexes_by_requirement_and_scenario (tests.test_v0_matrix.DryRunRowTests.test_the_document_indexes_by_requirement_and_scenario) ... ok
+test_the_document_validates (tests.test_v0_matrix.DryRunRowTests.test_the_document_validates) ... ok
+test_the_row_is_a_refusal_and_agrees (tests.test_v0_matrix.DryRunRowTests.test_the_row_is_a_refusal_and_agrees) ... ok
+test_the_row_names_its_invocation_its_revision_and_its_log (tests.test_v0_matrix.DryRunRowTests.test_the_row_names_its_invocation_its_revision_and_its_log) ... ok
+test_the_summary_is_over_the_rows (tests.test_v0_matrix.DryRunRowTests.test_the_summary_is_over_the_rows) ... ok
+test_a_foreign_client_is_marked_independent (tests.test_v0_matrix.EmitTests.test_a_foreign_client_is_marked_independent) ... ok
+test_a_refusal_row_that_draws_its_refusal_agrees (tests.test_v0_matrix.EmitTests.test_a_refusal_row_that_draws_its_refusal_agrees) ... ok
+test_a_row_is_emitted_once (tests.test_v0_matrix.EmitTests.test_a_row_is_emitted_once) ... ok
+test_a_row_that_did_not_run_has_no_client (tests.test_v0_matrix.EmitTests.test_a_row_that_did_not_run_has_no_client) ... ok
+test_a_row_that_did_not_run_must_name_its_blocker (tests.test_v0_matrix.EmitTests.test_a_row_that_did_not_run_must_name_its_blocker) ... ok
+test_a_verdict_outside_the_vocabulary_is_refused (tests.test_v0_matrix.EmitTests.test_a_verdict_outside_the_vocabulary_is_refused) ... ok
+test_agrees_is_null_for_a_row_that_is_not_an_outcome (tests.test_v0_matrix.EmitTests.test_agrees_is_null_for_a_row_that_is_not_an_outcome) ... ok
+test_an_outcome_row_names_the_client_that_saw_it (tests.test_v0_matrix.EmitTests.test_an_outcome_row_names_the_client_that_saw_it) ... ok
+test_backfill_leaves_no_planned_row_silent (tests.test_v0_matrix.EmitTests.test_backfill_leaves_no_planned_row_silent) ... ok
+test_a_probe_row_says_why_it_has_no_expectation (tests.test_v0_matrix.InventoryTests.test_a_probe_row_says_why_it_has_no_expectation) ... ok
+test_an_expectation_is_an_outcome_or_nothing (tests.test_v0_matrix.InventoryTests.test_an_expectation_is_an_outcome_or_nothing) ... ok
+test_every_declared_feature_has_at_least_one_row (tests.test_v0_matrix.InventoryTests.test_every_declared_feature_has_at_least_one_row) ... ok
+test_every_requirement_id_is_in_the_registry (tests.test_v0_matrix.InventoryTests.test_every_requirement_id_is_in_the_registry) ... ok
+test_every_row_id_is_unique (tests.test_v0_matrix.InventoryTests.test_every_row_id_is_unique) ... ok
+test_every_scenario_id_is_in_the_catalog (tests.test_v0_matrix.InventoryTests.test_every_scenario_id_is_in_the_catalog) ... ok
+test_every_spec_belongs_to_a_declared_feature (tests.test_v0_matrix.InventoryTests.test_every_spec_belongs_to_a_declared_feature) ... ok
+test_the_listing_runs_and_names_every_row (tests.test_v0_matrix.InventoryTests.test_the_listing_runs_and_names_every_row) ... ok
+test_a_client_rewritten_by_hand_is_refused (tests.test_v0_matrix.ValidateRefusesTypingTests.test_a_client_rewritten_by_hand_is_refused) ... ok
+test_a_document_written_by_something_else_is_refused (tests.test_v0_matrix.ValidateRefusesTypingTests.test_a_document_written_by_something_else_is_refused) ... ok
+test_a_forged_digest_still_fails_on_the_summary (tests.test_v0_matrix.ValidateRefusesTypingTests.test_a_forged_digest_still_fails_on_the_summary) ... ok
+test_a_hand_edited_verdict_breaks_the_digest (tests.test_v0_matrix.ValidateRefusesTypingTests.test_a_hand_edited_verdict_breaks_the_digest) ... ok
+test_a_missing_planned_row_is_refused (tests.test_v0_matrix.ValidateRefusesTypingTests.test_a_missing_planned_row_is_refused) ... ok
+test_a_row_that_is_not_in_the_plan_is_refused (tests.test_v0_matrix.ValidateRefusesTypingTests.test_a_row_that_is_not_in_the_plan_is_refused) ... ok
+test_the_generated_document_is_accepted (tests.test_v0_matrix.ValidateRefusesTypingTests.test_the_generated_document_is_accepted) ... ok
+test_a_missing_verb_is_recognised_apart_from_a_refusal (tests.test_v0_matrix.VocabularyTests.test_a_missing_verb_is_recognised_apart_from_a_refusal) ... ok
+test_a_permission_answer_is_not_a_missing_verb (tests.test_v0_matrix.VocabularyTests.test_a_permission_answer_is_not_a_missing_verb) ... ok
+test_a_reply_becomes_exactly_one_outcome (tests.test_v0_matrix.VocabularyTests.test_a_reply_becomes_exactly_one_outcome) ... ok
+test_the_statement_vocabulary_is_read_as_its_own (tests.test_v0_matrix.VocabularyTests.test_the_statement_vocabulary_is_read_as_its_own) ... ok
+test_the_three_exit_codes_stay_distinct (tests.test_v0_matrix.VocabularyTests.test_the_three_exit_codes_stay_distinct) ... ok
+test_the_vocabulary_is_the_three_outcomes_and_two_non_outcomes (tests.test_v0_matrix.VocabularyTests.test_the_vocabulary_is_the_three_outcomes_and_two_non_outcomes) ... ok
+
+----------------------------------------------------------------------
+Ran 100 tests in 10.480s
+
+OK
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmpn5ux14fd/ladder.lisp:22: CHAIN: fn-peer-single: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmpn5ux14fd/site.lisp:4: DEPTH: fn-own-conn-boundedp: fn-post-session-base wants a post session, as is auth: (fn-post-session-base as)
+session_depth: 2 books, 25 typed formals, 1 defects, 1 hand-spelled walks, 0 open elsewhere, 0 waived, 0 conflicting formals
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmpvxy5db43/ladder.lisp:22: CHAIN: fn-peer-single: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
+session_depth: 2 books, 25 typed formals, 0 defects, 1 hand-spelled walks, 0 open elsewhere, 0 waived, 0 conflicting formals
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmpkwrf7ab4/ladder.lisp:22: CHAIN: fn-peer-single: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmpkwrf7ab4/site.lisp:4: CHAIN: fn-served-post-outcome: a hand-spelled walk fn-auth-session-base then fn-peer-session-base: say fn-auth-post-session instead
+session_depth: 2 books, 25 typed formals, 0 defects, 2 hand-spelled walks, 0 open elsewhere, 0 waived, 0 conflicting formals
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmprxepm_bq/ladder.lisp:22: CHAIN: fn-peer-single: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmprxepm_bq/site.lisp:4: CHAIN: fn-served-post-outcome: a hand-spelled walk fn-auth-session-base then fn-peer-session-base: say fn-auth-post-session instead
+session_depth: 2 books, 25 typed formals, 0 defects, 2 hand-spelled walks, 0 open elsewhere, 0 waived, 0 conflicting formals
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmp9u15b8oy/ladder.lisp:22: CHAIN: fn-peer-single: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
+session_depth: 1 books, 25 typed formals, 0 defects, 1 hand-spelled walks, 0 open elsewhere, 0 waived, 0 conflicting formals
+session_depth: 1 books, 25 typed formals, 0 defects, 0 hand-spelled walks, 0 open elsewhere, 0 waived, 0 conflicting formals
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmpmzij88rd/ladder.lisp:22: CHAIN: fn-peer-single: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
+session_depth: 1 books, 25 typed formals, 0 defects, 1 hand-spelled walks, 0 open elsewhere, 0 waived, 0 conflicting formals
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmpa4qgyae5/ladder.lisp:22: CHAIN: fn-peer-single: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmpa4qgyae5/site.lisp:3: ARGUMENT: fn-own-conn-boundedp: fn-post-sessionp argument 0 wants a post session, (fn-own-conn-session conn) is auth
+session_depth: 2 books, 25 typed formals, 1 defects, 1 hand-spelled walks, 0 open elsewhere, 0 waived, 0 conflicting formals
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmpggi5eq52/ladder.lisp:22: CHAIN: fn-peer-single: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmpggi5eq52/site.lisp:4: DEPTH: fn-served-post-outcome: fn-peer-session-base wants a peer session, (fn-served-conn-session conn) is auth: (fn-peer-session-base (fn-served-conn-session conn))
+session_depth: 2 books, 25 typed formals, 1 defects, 1 hand-spelled walks, 0 open elsewhere, 0 waived, 0 conflicting formals
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmp2y3kx0ac/ladder.lisp:22: CHAIN: fn-peer-single: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmp2y3kx0ac/site.lisp:3: ARGUMENT: fn-served-transit-outcome: fn-peer-transit-outcome argument 0 wants a peer session, (fn-served-conn-session conn) is auth
+session_depth: 2 books, 25 typed formals, 1 defects, 1 hand-spelled walks, 0 open elsewhere, 0 waived, 0 conflicting formals
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmp3wh07q0q/ladder.lisp:22: CHAIN: fn-peer-single: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
+session_depth: 2 books, 25 typed formals, 0 defects, 1 hand-spelled walks, 0 open elsewhere, 0 waived, 0 conflicting formals
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmpplpo05yr/ladder.lisp:22: CHAIN: fn-peer-single: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmpplpo05yr/site.lisp:3: ARGUMENT: assert-event: fn-post-session-awaiting argument 0 wants a post session, (fn-post-session-base (fn-peer-session-base (fn-served-conn-session *conn*))) is reader
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmpplpo05yr/site.lisp:4: CHAIN: assert-event: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmpplpo05yr/site.lisp:5: DEPTH: assert-event: fn-peer-session-base wants a peer session, (fn-served-conn-session *conn*) is auth: (fn-peer-session-base (fn-served-conn-session *conn*))
+session_depth: 2 books, 25 typed formals, 2 defects, 2 hand-spelled walks, 0 open elsewhere, 0 waived, 0 conflicting formals
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmp3_uheydp/ladder.lisp:22: CHAIN: fn-peer-single: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmp3_uheydp/site.lisp:3: ARGUMENT: assert-event: fn-post-sessionp argument 0 wants a post session, (fn-served-conn-session *a*) is auth [waived: only the next form.]
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmp3_uheydp/site.lisp:4: ARGUMENT: assert-event: fn-post-sessionp argument 0 wants a post session, (fn-served-conn-session *b*) is auth
+session_depth: 2 books, 25 typed formals, 1 defects, 1 hand-spelled walks, 0 open elsewhere, 1 waived, 0 conflicting formals
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmp2uw_t8as/ladder.lisp:22: CHAIN: fn-peer-single: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmp2uw_t8as/site.lisp:3: ARGUMENT: assert-event: fn-post-sessionp argument 0 wants a post session, (fn-served-conn-session *forged*) is auth [waived: a deliberate wrong-level witness.]
+session_depth: 2 books, 25 typed formals, 0 defects, 1 hand-spelled walks, 0 open elsewhere, 1 waived, 0 conflicting formals
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmpvkz2vlxa/ladder.lisp:22: CHAIN: fn-peer-single: a hand-spelled walk fn-peer-session-base then fn-post-session-base: say fn-peer-reader-session instead
+/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/tmpvkz2vlxa/site.lisp:3: ARGUMENT: assert-event: fn-post-sessionp argument 0 wants a post session, (fn-served-conn-session *forged*) is auth
+session_depth: 2 books, 25 typed formals, 1 defects, 1 hand-spelled walks, 0 open elsewhere, 0 waived, 0 conflicting formals
+cite_check: 72 citations of 46 absent paths (54 phantom, 18 drift); by citer: 0 load-bearing, 35 spec, 1 tool, 36 planning; 32 annotated, 116 catalogue, 268 placeholder, 1 wrapped, 33 prose, 14 system, 239 fixture, 211 record not raised.

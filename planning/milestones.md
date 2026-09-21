@@ -33,6 +33,22 @@ the WIRE, not the model: no host line calls any `fn-ocfg-` function, so the
 served port still answers LIST ACTIVE from the allocation domain and every
 PRF-028 owner-side event carries a `pending_subject`.
 
+**The checkpoint validator refused nothing about its prefix.** The one root
+of the 2026-09-21 persvati gate of `dev` `e4fb8bc` (272 of 275) that no lane
+owned, `tests/acl2/checkpoint-codec-tests`, failed a true assertion:
+`fn-cpc-validp` accepted a record prefix whose recorded generation is not its
+transaction id, which `fn-checkpoint-capture` refuses as `:history`.
+`fn-replay` never compares those two fields, so the replay of the corrupt
+prefix is EQUAL to the replay of the sound one and a validator comparing only
+replay results could not see it. The recognizer carries the journal-interval
+clause now and the refusal is PRF-037, with teeth
+([handoff](lanes/HANDOFF-w11-checkpoint-validator.md),
+[evidence](evidence/checkpoint-validator-2026-09-21.md)). The four roots that
+transitively include `books/checkpoint-codec` all certify. The other two
+failures of that gate are `books/bp-node` and its test book, owned by
+`w11/bp-node`. Still open at that seam: no host line calls `fn-cpc-validp`,
+so its keystones carry a `pending_subject` and cover no served path.
+
 **A connection posts repeatedly.** The one-durable-post-per-connection defect
 was fixed by `w5/clock-seam` (merge `7d8eff8`, the per-submission injection
 clock) and the board line was never closed; measured live on persvati at

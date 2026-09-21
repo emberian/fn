@@ -1,0 +1,256 @@
+{
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/nntp": 0,
+    "books/nntp-effects": 0,
+    "books/served": 0
+  },
+  "acl2_slots": 4,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/lanes/w11-fault-tests/build/acl2/certify-20260921T015314Z-72542",
+  "book_failures": {
+    "books/nntp": [
+      "no fresh success marker in this book's log",
+      "failure marker in this book's log: ACL2 Error",
+      "no certificate on disk"
+    ],
+    "books/nntp-effects": [
+      "no fresh success marker in this book's log",
+      "failure marker in this book's log: ACL2 Error",
+      "no certificate on disk"
+    ],
+    "books/served": [
+      "no fresh success marker in this book's log",
+      "failure marker in this book's log: ACL2 Error",
+      "no certificate on disk"
+    ]
+  },
+  "book_results": {
+    "books/nntp": "failed",
+    "books/nntp-effects": "failed",
+    "books/served": "failed"
+  },
+  "book_wall_seconds": {
+    "books/nntp": 0.214,
+    "books/nntp-effects": 0.282,
+    "books/served": 0.363
+  },
+  "cert_cache": {
+    "already_cached": 0,
+    "directory": "/Users/ember/.cache/fn-certs",
+    "not_published": [
+      "books/nntp",
+      "books/nntp-effects",
+      "books/served"
+    ],
+    "per_book": [
+      {
+        "book": "books/nntp",
+        "published": false,
+        "verdict": "failed",
+        "why": "this book did not pass"
+      },
+      {
+        "book": "books/nntp-effects",
+        "published": false,
+        "verdict": "failed",
+        "why": "this book did not pass"
+      },
+      {
+        "book": "books/served",
+        "published": false,
+        "verdict": "failed",
+        "why": "this book did not pass"
+      }
+    ],
+    "per_book_published": 0,
+    "published": 0
+  },
+  "certificate_digests_sha256": {},
+  "certify_wall_seconds": 0.876,
+  "closure": false,
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/nntp": "ac572ae88c390a7d8befdc1a6e36bb54b3b85ba69676545d23b2d4f6b59e63aa",
+    "books/nntp-effects": "91ce8bacbc6486a3560f7e55a381f68daf6ecdca5c991427ef69d6a139d18bb0",
+    "books/served": "62deefe4553d6a7b4b4362a53982ba0630b50fa77f9e43230a25f7607de57f18"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS d77ad5ce07ffc06f20c1e165e0a51d13 767bb6d790c8",
+    "FN_CERTIFY_SUCCESS d77ad5ce07ffc06f20c1e165e0a51d13 fb63e5e3be3e",
+    "FN_CERTIFY_SUCCESS d77ad5ce07ffc06f20c1e165e0a51d13 7b97c36f8bec"
+  ],
+  "failure": "ACL2 did not produce complete clean certification evidence. See certify.log. Books that failed: books/nntp, books/served, books/nntp-effects",
+  "failure_markers": [
+    "ACL2 Error"
+  ],
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "de84702b19bfe30f132291dcb8ac7b3d3ad10b16a4134dcb0c1d6239187a839d",
+  "requested_before_filter": [
+    "books/nntp",
+    "books/served",
+    "books/nntp-effects"
+  ],
+  "requested_books": [
+    "books/nntp",
+    "books/served",
+    "books/nntp-effects"
+  ],
+  "run_id": "certify-20260921T015314Z-72542",
+  "runner_sha256": "b1693353f9618f5eba6a5e2eebbc6f6275b71d753ff4c81c94a99c5a1795b3c4",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/nntp": 0.0,
+    "books/nntp-effects": 0.0,
+    "books/served": 0.0,
+    "version-probe": 0.001
+  },
+  "source_digests_sha256": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "d9837d7cf602953989ce0539562e1b03471d2f76da5579efd3397bd66e4440c8",
+    "books/acceptance.lisp": "06906656064b8683808c11e2ad7b292f6b24aade8a4c17ab7301833a677f6c7b",
+    "books/article-fields.lisp": "99e7cf20e18f181bd2b3dcf35d7c1aabaed80a15329aa850c5fed44469dc98d6",
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/auth-secret.lisp": "06ddb0e27a08818ee5b66ea2545879d5983f362bf21008128b940225cc4057bf",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/config-invariants.lisp": "aca5a5f6a49d7330c33c5db5b3ae2557afc5baf961dd540c953f8499b7d181a0",
+    "books/config-records.lisp": "b3294f88d082723d3bed30cde7a603a432370fe4804fa894032ab0bcad3bce2f",
+    "books/config.lisp": "fa3a908676012cc232a93f2cdd0baebf972fc74ac8a6197d42d8b44aab5d9ff4",
+    "books/crypto-attach.lisp": "54a655456b13ce20957d519608c284d3f1ec81c3a364d274373dd632547e945e",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "b95fa1730fe0074f92bdd45cc136f7b6fbb8f069c2f35ec25ceea067cf6d60ea",
+    "books/frame-journal.lisp": "512201c2299a6ac6760a03f8416fa98f5f6a0191af902fe53792450d2a6b2255",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/identity-invariants.lisp": "eed5f37029e66221612d79a52e156a5fe222c4154bc2d65298d5bfefd6c1f64b",
+    "books/identity.lisp": "b34e54f718e4f45e512491d9020296e198f189a2fc856c2651d4ae45f1294ade",
+    "books/injection-invariants.lisp": "9c3fde73dbefc58126b44750c9b454ba009fb1a1b4d265f629ec4be37a8f6c74",
+    "books/injection.lisp": "d2c65fb131cf93c75ce7bb0510fc029f1498daaffba2f1875e4cd31212d4e16e",
+    "books/nntp-auth.lisp": "3607bee31216c75bcad751512735720630a07d58cacbc486dc6784272be19f78",
+    "books/nntp-effects.lisp": "799227a665efdee6029a4a872c98964aa5b011f2b66275ce43a5861f64f265ce",
+    "books/nntp-invariants.lisp": "5c8823b7adef2fdf7fa89e7551ca3c0da73f29f30c98c35abfd0fe5e5a08c4c1",
+    "books/nntp-legacy.lisp": "1ec86432fdc4df96e249f4ae7ac1cf6e96e29c8a7e839bf935afa186ea373311",
+    "books/nntp-overview.lisp": "e7e672279e01656c79d79383ee28170c1c402e9eba50f12a946362fe97f756c6",
+    "books/nntp-post.lisp": "5efde9d8ec0f991304b245427d3cd5dfe1dd541730a8cd581e4fc330593a24bb",
+    "books/nntp-projection.lisp": "0709955607510e4e8c4f4404a15af737cf8db91be21352a92403b1260861eb0b",
+    "books/nntp-responses.lisp": "824e621c2976d3813aad88beec6143d065fcbce92aab8ce8e92a3c5752c4fda1",
+    "books/nntp-session.lisp": "ed364496944b77118cdd826272802fafb961911fcc6ed85961d8b2f940c4ca51",
+    "books/nntp-syntax.lisp": "86abc0d9e4be8068cbdee6822fe316c75b5cb1907febd1a11bcb3d4d61864f95",
+    "books/nntp.lisp": "461941cb07f5a172ce33574c80346df36a29de15c83c3b15b59bfac6706d8278",
+    "books/node-config.lisp": "a4aee75dd324a178f69d1df0b09ae7180a4529c18741067136bb3192378457f2",
+    "books/node-invariants.lisp": "39c89601e6f14703a3958cd8ee32ae2de0cbd0acafda9be5bb782969c3de2c62",
+    "books/node.lisp": "fa0e368bdbbb99aba595fb5fbbb962f525011499ba81d35861f3e857f54792cd",
+    "books/path.lisp": "cc2b8333cdcdbad11922293fbeddd5e8a9310a9dffc3c93e95f609b088f0269b",
+    "books/peer-config.lisp": "fd2f79649538b709bd6a237cb5a23b500989fb139e449b5d9e0c3304d2f7d86b",
+    "books/peer-inbound.lisp": "f75a72db69cc62a34fa9d8682634f7bb5fdd9bb4e65fbc4ddb680b15d94bfd8a",
+    "books/principal.lisp": "ba1d7595b49b1bfc06e47c758cc6a1847372bbe2b869ed7438077f7b67dd49b1",
+    "books/provenance-codec.lisp": "4f48b60d43748c6a24d8d22b2c58aa3a046dfd9e9bc778528f6102224664d752",
+    "books/provenance.lisp": "39899088b28462bbb04f555ec74c05da1adbc0b8fbc4a1c4db179e39529cf3aa",
+    "books/records-canonicality.lisp": "0d422cee8d68addede861e3cdee43b5be4dbd043c5e1f628818c5469e037ec23",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "books/replay.lisp": "9e3310d1bebd408a513b6447a5653afe1aaa945becba82dfc898f55f6480c868",
+    "books/retention.lisp": "2052593f1013b1cb24c40a6926970232b275f198cd89fc5f88a8d577c74ee9d1",
+    "books/served.lisp": "eb0a1bb1ac777de89dcbb52d982ebd5b26e359c333875fe433352fa219908acd",
+    "books/sha256.lisp": "dce8222e1b95ff23df78a6c8c67ea980aa6e7da115d5c9ad16426e6714307dd7",
+    "books/statement.lisp": "0e2c23c6131d42838a95192249b7b42f4282a830743a4626d98272b89381c924",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "books/wire-invariants.lisp": "02998d02d2a84ea4b30e3a45b230da3b3bf13d7ab153786e5d1f86b81d92f6a5",
+    "books/wire.lisp": "1e2e7492a82bcd6c0f5bf2864b96fd45aa1241164e65dd574034e83c66f84dfa"
+  },
+  "source_digests_sha256_after": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "d9837d7cf602953989ce0539562e1b03471d2f76da5579efd3397bd66e4440c8",
+    "books/acceptance.lisp": "06906656064b8683808c11e2ad7b292f6b24aade8a4c17ab7301833a677f6c7b",
+    "books/article-fields.lisp": "99e7cf20e18f181bd2b3dcf35d7c1aabaed80a15329aa850c5fed44469dc98d6",
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/auth-secret.lisp": "06ddb0e27a08818ee5b66ea2545879d5983f362bf21008128b940225cc4057bf",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/config-invariants.lisp": "aca5a5f6a49d7330c33c5db5b3ae2557afc5baf961dd540c953f8499b7d181a0",
+    "books/config-records.lisp": "b3294f88d082723d3bed30cde7a603a432370fe4804fa894032ab0bcad3bce2f",
+    "books/config.lisp": "fa3a908676012cc232a93f2cdd0baebf972fc74ac8a6197d42d8b44aab5d9ff4",
+    "books/crypto-attach.lisp": "54a655456b13ce20957d519608c284d3f1ec81c3a364d274373dd632547e945e",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "b95fa1730fe0074f92bdd45cc136f7b6fbb8f069c2f35ec25ceea067cf6d60ea",
+    "books/frame-journal.lisp": "512201c2299a6ac6760a03f8416fa98f5f6a0191af902fe53792450d2a6b2255",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/identity-invariants.lisp": "eed5f37029e66221612d79a52e156a5fe222c4154bc2d65298d5bfefd6c1f64b",
+    "books/identity.lisp": "b34e54f718e4f45e512491d9020296e198f189a2fc856c2651d4ae45f1294ade",
+    "books/injection-invariants.lisp": "9c3fde73dbefc58126b44750c9b454ba009fb1a1b4d265f629ec4be37a8f6c74",
+    "books/injection.lisp": "d2c65fb131cf93c75ce7bb0510fc029f1498daaffba2f1875e4cd31212d4e16e",
+    "books/nntp-auth.lisp": "3607bee31216c75bcad751512735720630a07d58cacbc486dc6784272be19f78",
+    "books/nntp-effects.lisp": "799227a665efdee6029a4a872c98964aa5b011f2b66275ce43a5861f64f265ce",
+    "books/nntp-invariants.lisp": "5c8823b7adef2fdf7fa89e7551ca3c0da73f29f30c98c35abfd0fe5e5a08c4c1",
+    "books/nntp-legacy.lisp": "1ec86432fdc4df96e249f4ae7ac1cf6e96e29c8a7e839bf935afa186ea373311",
+    "books/nntp-overview.lisp": "e7e672279e01656c79d79383ee28170c1c402e9eba50f12a946362fe97f756c6",
+    "books/nntp-post.lisp": "5efde9d8ec0f991304b245427d3cd5dfe1dd541730a8cd581e4fc330593a24bb",
+    "books/nntp-projection.lisp": "0709955607510e4e8c4f4404a15af737cf8db91be21352a92403b1260861eb0b",
+    "books/nntp-responses.lisp": "824e621c2976d3813aad88beec6143d065fcbce92aab8ce8e92a3c5752c4fda1",
+    "books/nntp-session.lisp": "ed364496944b77118cdd826272802fafb961911fcc6ed85961d8b2f940c4ca51",
+    "books/nntp-syntax.lisp": "86abc0d9e4be8068cbdee6822fe316c75b5cb1907febd1a11bcb3d4d61864f95",
+    "books/nntp.lisp": "461941cb07f5a172ce33574c80346df36a29de15c83c3b15b59bfac6706d8278",
+    "books/node-config.lisp": "a4aee75dd324a178f69d1df0b09ae7180a4529c18741067136bb3192378457f2",
+    "books/node-invariants.lisp": "39c89601e6f14703a3958cd8ee32ae2de0cbd0acafda9be5bb782969c3de2c62",
+    "books/node.lisp": "fa0e368bdbbb99aba595fb5fbbb962f525011499ba81d35861f3e857f54792cd",
+    "books/path.lisp": "cc2b8333cdcdbad11922293fbeddd5e8a9310a9dffc3c93e95f609b088f0269b",
+    "books/peer-config.lisp": "fd2f79649538b709bd6a237cb5a23b500989fb139e449b5d9e0c3304d2f7d86b",
+    "books/peer-inbound.lisp": "f75a72db69cc62a34fa9d8682634f7bb5fdd9bb4e65fbc4ddb680b15d94bfd8a",
+    "books/principal.lisp": "ba1d7595b49b1bfc06e47c758cc6a1847372bbe2b869ed7438077f7b67dd49b1",
+    "books/provenance-codec.lisp": "4f48b60d43748c6a24d8d22b2c58aa3a046dfd9e9bc778528f6102224664d752",
+    "books/provenance.lisp": "39899088b28462bbb04f555ec74c05da1adbc0b8fbc4a1c4db179e39529cf3aa",
+    "books/records-canonicality.lisp": "0d422cee8d68addede861e3cdee43b5be4dbd043c5e1f628818c5469e037ec23",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "books/replay.lisp": "9e3310d1bebd408a513b6447a5653afe1aaa945becba82dfc898f55f6480c868",
+    "books/retention.lisp": "2052593f1013b1cb24c40a6926970232b275f198cd89fc5f88a8d577c74ee9d1",
+    "books/served.lisp": "eb0a1bb1ac777de89dcbb52d982ebd5b26e359c333875fe433352fa219908acd",
+    "books/sha256.lisp": "dce8222e1b95ff23df78a6c8c67ea980aa6e7da115d5c9ad16426e6714307dd7",
+    "books/statement.lisp": "0e2c23c6131d42838a95192249b7b42f4282a830743a4626d98272b89381c924",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "books/wire-invariants.lisp": "02998d02d2a84ea4b30e3a45b230da3b3bf13d7ab153786e5d1f86b81d92f6a5",
+    "books/wire.lisp": "1e2e7492a82bcd6c0f5bf2864b96fd45aa1241164e65dd574034e83c66f84dfa"
+  },
+  "start_order": [
+    "books/nntp",
+    "books/nntp-effects",
+    "books/served"
+  ],
+  "status": "failed",
+  "timeout_seconds": 1800
+}

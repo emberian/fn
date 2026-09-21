@@ -242,7 +242,8 @@
       "milestone": "M2",
       "status": "specified",
       "proof_targets": [
-        "PRF-005"
+        "PRF-005",
+        "PRF-035"
       ],
       "verification": [
         "proof",
@@ -413,7 +414,8 @@
       "proof_targets": [
         "PRF-007",
         "PRF-032",
-        "PRF-034"
+        "PRF-034",
+        "PRF-036"
       ],
       "verification": [
         "proof",
@@ -453,7 +455,8 @@
       "milestone": "M2",
       "status": "implemented",
       "proof_targets": [
-        "PRF-008"
+        "PRF-008",
+        "PRF-037"
       ],
       "verification": [
         "proof",
@@ -463,7 +466,8 @@
         "books/checkpoint.lisp",
         "tests/acl2/checkpoint-tests.lisp",
         "specs/checkpoint.md",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "planning/evidence/checkpoint-validator-2026-09-21.md"
       ],
       "implementation_note": "Logical checkpoint plus suffix replay equivalence is implemented; persisted checkpoint bytes, generation publication, crash selection and freshness remain open.",
       "keystones": [
@@ -495,7 +499,9 @@
       "specification": "specs/storage.md#checkpointing-and-compaction",
       "milestone": "M5",
       "status": "specified",
-      "proof_targets": [],
+      "proof_targets": [
+        "PRF-035"
+      ],
       "verification": [
         "integration",
         "scenario"
@@ -516,7 +522,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-007",
-        "PRF-032"
+        "PRF-032",
+        "PRF-036"
       ],
       "verification": [
         "proof",
@@ -610,7 +617,7 @@
       "evidence": [
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "note": "PRF-017 and PRF-018 have no events. books/clock and books/anchor certify and books/assumptions holds the constrained A-* functions, but docs/proofs.md records that no theorem in the tree takes one of those constraints as a hypothesis yet, so the delay and liveness assumptions are declared, not applied."
+      "note": "PRF-017 and PRF-018 have no events. books/clock and books/anchor certify and books/assumptions holds the constrained A-* functions, but docs/proofs.md records that no theorem in the tree takes one of those constraints as a hypothesis yet, so the delay and liveness assumptions are declared, not applied. w11/one-owner: the freshness anchor's Merkle fold has no owner in ACL2 at all. tools/roughtime.py:124,128,132 alone decides whether a Roughtime response covers this client's nonce; books/anchor.lisp has no node digest and no path fold, fn-anchor-leaf-digest is constrained with no realiser attached outside a test book, and there is no SHA-512 in the tree. fn-anchor-root is (fn-anchor-leaf-digest (fn-anchor-nonce a)), so every keystone about the signed octets covers the empty-PATH case only, while the host admits a PATH up to 32 nodes and verifies against the root from the wire (tools/run_store.py:1964). Recorded in specs/anchor.md's trust section and designed in planning/lanes/HANDOFF-w11-one-owner.md; not closed."
     },
     {
       "id": "RET-001",
@@ -1205,7 +1212,8 @@
       "milestone": "M1",
       "status": "specified",
       "proof_targets": [
-        "PRF-014"
+        "PRF-014",
+        "PRF-035"
       ],
       "verification": [
         "proof",
