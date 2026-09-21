@@ -35,6 +35,20 @@
   (declare (xargs :guard t :verify-guards nil))
   (coerce (fn-bpn-lifecycle-record-name-chars token) 'string))
 
+(defthm fn-bpn-lifecycle-record-name-chars-character-listp
+  (character-listp (fn-bpn-lifecycle-record-name-chars token))
+  :hints (("Goal"
+           :in-theory (enable fn-bpn-lifecycle-record-name-chars
+                              fn-bs-txn-digits
+                              fn-bs-txn-natural-digits))))
+
+; This renderer is on every persist path.  Its executable guard is checked
+; here rather than relying on the recovery-only functions' guard T contracts.
+(verify-guards fn-bpn-lifecycle-record-name
+  :hints (("Goal"
+           :use ((:instance
+                  fn-bpn-lifecycle-record-name-chars-character-listp)))))
+
 (defun fn-bpn-lifecycle-hidden-stage-namep (name)
   (declare (xargs :guard t))
   (and (stringp name)
