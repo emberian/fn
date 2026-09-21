@@ -612,8 +612,18 @@
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)))
 
 ; The wire limits of one connection.  RFC 3977 section 3.1's 512 octets
-; include the CRLF (books/nntp-syntax.lisp); the body limit is the reader's.
+; include the CRLF (books/nntp-syntax.lisp).  A configured owner takes the
+; article/body capacity from its pinned injection configuration, which the
+; host builds from the same replayed Store profile used by direct acceptance.
+; The positive fallback exists only for the pre-configuration model states
+; that correctly refuse POST; it is not a production configuration default.
 (defconst *fn-own-body-limit* 8192)
+(defun fn-own-body-limit (o)
+  (declare (xargs :guard t))
+  (let ((limit (fn-inj-config-max-octets (fn-own-config o))))
+    (if (posp limit)
+        limit
+      *fn-own-body-limit*)))
 
 ; Open pins the current committed view and opens one served connection over
 ; it (fn-served-open: the one place the whole-archive projection recognizer
@@ -643,7 +653,7 @@
              (archive (fn-own-view-archive view))
              (id (fn-own-next-id o))
              (opened (fn-served-open archive *fn-nntp-max-initial-line-octets*
-                                     *fn-own-body-limit* (fn-own-config o)
+                                     (fn-own-body-limit o) (fn-own-config o)
                                      (fn-own-clock o) (fn-own-clock o) acfg))
              (sconn (fn-served-result-conn opened))
              (conn (fn-own-conn-make id (fn-own-view-version view)
@@ -683,7 +693,7 @@
              (limit (if (and record (fn-cfg-peer-inbound record)
                              (posp (fn-cfg-peer-inbound-max-octets record)))
                         (fn-cfg-peer-inbound-max-octets record)
-                      *fn-own-body-limit*))
+                      (fn-own-body-limit o)))
              ; The reader pin and the injection reading, in that order, as
              ; fn-own-open passes them: `fn-served-open-peer' gained the
              ; injection argument with the per-submission injection clock
@@ -739,6 +749,56 @@
                (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                (fn-ag-append (fn-own-queue o) (list sub)) (fn-own-inflight o) (fn-own-feeds o)))
+
+; The local control channel is a submission port, not a second store writer.
+; Its identifier is outside the natural-number connection namespace, so it
+; cannot alias a socket and no control request consumes a connection slot.
+(defconst *fn-own-control-id* :control)
+
+(defun fn-own-control-decision (cfg msgid groups octets)
+  (declare (xargs :guard t))
+  (if (and (fn-af-message-idp msgid)
+           (fn-inj-group-namesp groups)
+           (consp groups)
+           (fn-octet-listp octets)
+           (posp (fn-inj-config-max-octets cfg))
+           (<= (len octets) (fn-inj-config-max-octets cfg)))
+      ; The CLI supplies an already-authored article object.  Preserve those
+      ; octets exactly; NNTP POST separately calls fn-inj-decide because it
+      ; receives a proto-article.  Both become the same owner submission
+      ; record after that interface-specific boundary.
+      (fn-inj-make-decision :injected nil msgid groups octets)
+    (fn-inj-refuse :control-invalid)))
+
+(defun fn-own-control-submit-result (o msgid groups octets)
+  (declare (xargs :guard t))
+  (let ((decision (fn-own-control-decision (fn-own-config o)
+                                           msgid groups octets)))
+    (cond ((not (fn-inj-injectedp decision)) :refused)
+          ; A control request is synchronous.  The host drains after every
+          ; served read, so a non-idle writer here is a bounded busy refusal,
+          ; never a second queue whose completion Python would have to match.
+          ((or (consp (fn-own-queue o))
+               (fn-own-inflight o)
+               (fn-own-pending o)
+               (not (equal (fn-sf-phase (fn-sn-files (fn-own-store o)))
+                           :ready)))
+           :busy)
+          (t :submitted))))
+
+(defun fn-own-control-submit (o msgid groups octets)
+  (declare (xargs :guard t))
+  (if (equal (fn-own-control-submit-result o msgid groups octets) :submitted)
+      (fn-own-enqueue
+       o (fn-own-sub-make *fn-own-control-id*
+                          (fn-own-view-version (fn-own-view o)) nil
+                          (fn-own-control-decision (fn-own-config o)
+                                                   msgid groups octets)))
+    o))
+
+(defun fn-own-control-submissionp (sub)
+  (declare (xargs :guard t))
+  (and (consp sub) (equal (fn-own-sub-id sub) *fn-own-control-id*)))
 
 ; The node a peer connection's OFFER decision reads.
 ;
@@ -1106,20 +1166,83 @@
   (declare (xargs :guard t))
   (nfix (fn-clock-monotonic (fn-own-clock o))))
 
+; The acceptance-intent half of the same path.  It is projected while the
+; submission is in flight, before the store transaction begins.  The targets
+; are fixed by the owner's current feed table and exact accepted article;
+; peers that already hold this Message-ID in their durable feed need no new
+; obligation.  Every remaining target must have room before any article
+; commit is attempted, so a full feed cannot turn a durable acceptance into
+; a silently lost obligation.
+(defun fn-own-sub-feed-groups (sub)
+  (declare (xargs :guard t))
+  (let ((d (fn-own-sub-decision sub)))
+    (if (fn-peer-submissionp d)
+        ; Transit is validated as a relayed article and its scope comes from
+        ; that article.  A local/control submission already carries the
+        ; injection decision's groups; using them preserves the exact
+        ; authored bytes, including legacy articles with no Injection-Info.
+        (fn-own-feed-groups-of (fn-own-sub-octets sub))
+      (fn-inj-decision-groups d))))
+
+(defun fn-own-submission-targets (o)
+  (declare (xargs :guard t))
+  (let ((sub (fn-own-inflight o)))
+    (if (null sub)
+        nil
+      (let* ((tbl (fn-own-feeds o))
+             (msgid (fn-own-sub-msgid sub))
+             (octets (fn-own-sub-octets sub))
+             (targets (fn-own-feed-targets
+                       tbl (fn-own-sub-origin sub)
+                       (fn-own-sub-feed-groups sub)
+                       (fn-own-feed-path-of octets))))
+        (fn-own-feed-new-targets targets tbl msgid)))))
+
+(defun fn-own-submission-intent-result (o evidence generation txid)
+  (declare (xargs :guard t))
+  (let* ((sub (fn-own-inflight o))
+         (identity (and sub
+                        (fn-own-feed-intent-id (fn-own-sub-msgid sub)
+                                               (fn-own-sub-octets sub))))
+         (targets (fn-own-submission-targets o)))
+    (cond ((null sub) :absent)
+          ((or (not (fn-feed-namep identity))
+               (not (fn-feed-namep evidence))
+               (not (natp generation)) (not (natp txid)))
+           :refused)
+          ((not (fn-own-feed-target-capacityp
+                 targets (fn-own-feeds o) (fn-own-sub-msgid sub)))
+           :capacity)
+          (t :ready))))
+
+(defun fn-own-submission-intent-records (o evidence generation txid)
+  (declare (xargs :guard t))
+  (let ((sub (fn-own-inflight o)))
+    (if (not (equal (fn-own-submission-intent-result
+                     o evidence generation txid) :ready))
+        nil
+      (fn-own-feed-intent-records
+       (fn-own-submission-targets o)
+       (fn-own-sub-msgid sub)
+       (fn-own-feed-intent-id (fn-own-sub-msgid sub) (fn-own-sub-octets sub))
+       evidence generation txid (fn-own-feed-stamp o)))))
+
+
+
 ; The enqueue on a durable acceptance, and the FNFD records that authorize
 ; it.  The host appends the records to <journal>/feed/<peer>.fnfd and only
 ; then may the offer they enable be emitted.
 (defun fn-own-feed-durable (o sub)
   (declare (xargs :guard t))
-  (fn-own-feed-accept (fn-own-feeds o) (fn-own-sub-origin sub)
-                      (fn-own-sub-msgid sub) (fn-own-sub-octets sub)
-                      (fn-own-feed-stamp o)))
+  (fn-own-feed-enqueue-all (fn-own-submission-targets o) (fn-own-feeds o)
+                           (fn-own-sub-msgid sub) (fn-own-feed-stamp o)))
 
 (defun fn-own-feed-durable-records (o sub)
   (declare (xargs :guard t))
-  (fn-own-feed-accept-records (fn-own-feeds o) (fn-own-sub-origin sub)
-                              (fn-own-sub-msgid sub) (fn-own-sub-octets sub)
-                              (fn-own-feed-stamp o)))
+  (fn-own-feed-enqueue-records (fn-own-submission-targets o)
+                               (fn-own-sub-msgid sub)
+                               (fn-own-feed-stamp o)))
+
 
 ; The configuration arm.  The owner reads the peer rows out of the live
 ; configuration value the host supplies -- the same value fn-own-open-peer
@@ -1167,6 +1290,47 @@
              (fn-node-acceptance (fn-sn-node (fn-own-store o)))))))
     (if (consp a) (fn-article-payload a) nil)))
 
+; Resolve one intent only against a completely recovered authoritative node.
+; The caller supplies no verdict: the binding identifies the exact archived
+; object and its retention pin supplies the exact evidence stored with it.
+; A different complete binding proves this incarnation did not commit; a
+; partial binding/article/pin relation is recovery corruption and remains
+; uncertain instead of losing the obligation.
+(defun fn-own-retain-find-id-unguarded (id pins)
+  (declare (xargs :guard t))
+  (if (consp pins)
+      (if (equal id (fn-retain-obligation-id (car pins)))
+          (car pins)
+        (fn-own-retain-find-id-unguarded id (cdr pins)))
+    nil))
+
+(defun fn-own-feed-intent-reconcile-kind (node values)
+  (declare (xargs :guard t))
+  (let* ((msgid (fn-record-octets-string (fn-frame-item 1 values)))
+         (identity (fn-record-octets-string (fn-frame-item 2 values)))
+         (evidence (fn-record-octets-string (fn-frame-item 3 values)))
+         (article (fn-find-article
+                   msgid (fn-state-articles (fn-node-acceptance node))))
+         (binding (fn-node-find-binding msgid (fn-node-bindings node)))
+         (pin (and (consp binding)
+                   (fn-own-retain-find-id-unguarded
+                    (fn-node-binding-id binding)
+                    (fn-retain-pins (fn-node-retention node))))))
+    (cond ((and (consp article) (consp binding) (consp pin)
+                (equal (fn-node-binding-id binding) identity)
+                (equal (fn-retain-obligation-evidence pin) evidence))
+           :feed-commit)
+          ((and (null article) (null binding)) :feed-abort)
+          ((and (consp article) (consp binding) (consp pin)) :feed-abort)
+          (t :uncertain))))
+
+(defun fn-own-feed-intent-reconcile-record (node values)
+  (declare (xargs :guard t))
+  (let ((kind (fn-own-feed-intent-reconcile-kind node values)))
+    (if (member-equal kind '(:feed-commit :feed-abort))
+        (fn-feed-journal-entry kind values)
+      nil)))
+
 ; One reply line from one peer.  ACL2 reads the three-digit code
 ; (fn-own-feed-parse-response), maps it (fn-feed-observe) and renders what
 ; follows; the host frames bytes and takes no decision.  The result is
@@ -1189,21 +1353,13 @@
                    o (fn-own-feed-put peer (fn-own-feed-entry-record e) g
                                       tbl)))))))))
 
-(defun fn-own-feed-reply-records (o peer octets)
+(defun fn-own-feed-reply-records (o peer octets obs)
   (declare (xargs :guard t))
-  (let* ((tbl (fn-own-feeds o))
-         (e (fn-own-feed-entry-of peer tbl)))
-    (if (null e)
-        nil
-      (let* ((f (fn-own-feed-entry-feed e))
-             (msgid (fn-own-feed-inflight-msgid (fn-feed-queue f)))
-             (code (fn-own-feed-response-code octets)))
-        (if (or (null code) (null msgid))
-            nil
-          (fn-own-feed-reply-records-of
-           peer msgid
-           (fn-feed-state-attempt (fn-feed-state-of msgid (fn-feed-queue f)))
-           code))))))
+  (let* ((e (fn-own-feed-entry-of peer (fn-own-feeds o)))
+         (f (fn-own-feed-entry-feed e))
+         (msgid (fn-own-feed-inflight-msgid (fn-feed-queue f)))
+         (response (fn-own-feed-parse-response octets msgid)))
+    (if (and e response) (fn-feed-observe-records f response obs) nil)))
 
 ; The connection one peer's feed writes to.  The host opens the socket and
 ; reports its identifier here; nil stops selection at once
@@ -1239,9 +1395,9 @@
 ; The FNFD record that authorizes it, read off the state BEFORE it moves:
 ; `(:feed-outcome peer msgid attempt 400)' for the entry in flight, and
 ; nothing at all when none is.
-(defun fn-own-feed-lost-records (o peer)
+(defun fn-own-feed-lost-records (o peer obs)
   (declare (xargs :guard t))
-  (fn-own-feed-lost-records-of peer (fn-own-feeds o)))
+  (fn-own-feed-lost-records-of peer (fn-own-feeds o) obs))
 
 ; Replay: the peer's FNFD journal, folded through the feed machine, before
 ; any command may be emitted.  The host reads the file and decodes each frame
@@ -1304,8 +1460,27 @@
                 (natp (fn-own-sub-mark sub))
                 (< (fn-own-sub-mark sub) (len (fn-own-ledger o))))
            :durable)
-          ((equal word :refused) :refused)
+          ((member-equal word '(:refused :duplicate)) :refused)
           (t :uncertain))))
+
+; Resolution repeats the complete intent identity.  Durable is projected from
+; the consumed owner completion, never from the host word alone.  A known
+; refusal (including the store's duplicate outcome) aborts this incarnation;
+; an uncertain outcome writes neither record and recovery retains the intent.
+(defun fn-own-submission-resolution-records (o word evidence generation txid)
+  (declare (xargs :guard t))
+  (let* ((sub (fn-own-inflight o))
+         (completion (fn-own-outcome-completion o word))
+         (kind (cond ((equal completion :durable) :feed-commit)
+                     ((equal completion :refused) :feed-abort)
+                     (t nil))))
+    (if (or (null sub) (null kind))
+        nil
+      (fn-own-feed-resolution-records
+       kind (fn-own-submission-targets o) (fn-own-sub-msgid sub)
+       (fn-own-feed-intent-id (fn-own-sub-msgid sub) (fn-own-sub-octets sub))
+       evidence generation txid (fn-own-feed-stamp o)))))
+
 
 ; The outcome reaches exactly the connection whose submission is in flight:
 ; the reply is fn-served-post-outcome over that connection's served state
@@ -1353,6 +1528,46 @@
                     (fn-own-advance next id)
                   next)))
       (cons nil o))))
+
+; Control submissions use the same completion gate and the same feed update
+; as served POST, but have no socket session to render or re-pin.  The result
+; projection is closed and keeps a duplicate distinct for the CLI contract;
+; a duplicate is a refusal to create a new acceptance, while remaining an
+; idempotent success for the posting client.
+(defun fn-own-control-outcome-result (o word)
+  (declare (xargs :guard t))
+  (if (not (fn-own-control-submissionp (fn-own-inflight o)))
+      :absent
+    (if (equal word :duplicate)
+        :duplicate
+      (case (fn-own-outcome-completion o word)
+        (:durable :accepted)
+        (:refused :refused)
+        (otherwise :uncertain)))))
+
+(defun fn-own-control-outcome (o word)
+  (declare (xargs :guard t))
+  (let ((sub (fn-own-inflight o)))
+    (if (not (fn-own-control-submissionp sub))
+        o
+      (let ((completion (fn-own-outcome-completion o word)))
+        (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
+                     (fn-own-next-id o) (fn-own-max-conns o)
+                     (if (equal (fn-own-pending o) *fn-own-control-id*)
+                         nil (fn-own-pending o))
+                     (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                     (fn-own-config o) (fn-own-queue o) nil
+                     (if (equal completion :durable)
+                         (fn-own-feed-durable o sub)
+                       (fn-own-feeds o)))))))
+
+(defun fn-own-control-outcome-records (o word)
+  (declare (xargs :guard t))
+  (let ((sub (fn-own-inflight o)))
+    (if (and (fn-own-control-submissionp sub)
+             (equal (fn-own-outcome-completion o word) :durable))
+        (fn-own-feed-durable-records o sub)
+      nil)))
 
 ; A transit submission is the one the served path carried from a peer
 ; connection (books/peer-inbound, `(:transit peer kind msgid octets)`); an
@@ -1433,6 +1648,17 @@
         (fn-own-feed-durable-records o sub)
       nil)))
 
+; A shared submission intent/commit already is the durable journal event that
+; authorizes this exact local enqueue.  Its following owner outcome must not
+; emit the older standalone enqueue record a second time.  RESOLUTION-ID is
+; the in-flight connection recorded by the host wrapper when it projected the
+; resolution; direct callers pass nil and retain the legacy record path.
+(defun fn-own-outcome-journal-records (o id word resolution-id)
+  (declare (xargs :guard t))
+  (if (equal id resolution-id)
+      nil
+    (fn-own-outcome-records o id word)))
+
 (defun fn-own-transit-outcome-records (o id kind word)
   (declare (xargs :guard t))
   (let ((conn (fn-own-find-conn id (fn-own-conns o)))
@@ -1467,7 +1693,10 @@
     (:declare-group (fn-own-declare-group o (cadr event)))
     (:configure (fn-own-configure o (cadr event)))
     (:take (fn-own-take-submission o))
+    (:control-submit (fn-own-control-submit o (cadr event) (caddr event)
+                                            (cadddr event)))
     (:outcome (cdr (fn-own-outcome o (cadr event) (caddr event))))
+    (:control-outcome (fn-own-control-outcome o (cadr event)))
     (:transit-outcome (cdr (fn-own-transit-outcome o (cadr event) (caddr event)
                                                    (cadddr event)
                                                    (car (cddddr event)))))
@@ -1514,9 +1743,13 @@
 
 (deftheory fn-own-vocabulary
   '(fn-own-group-factp fn-own-prefix-archive fn-own-store-idlep fn-own-refresh
-    fn-own-start fn-own-conn-boundedp fn-own-set-conns fn-own-open fn-own-enqueue
+    fn-own-start fn-own-conn-boundedp fn-own-set-conns fn-own-body-limit
+    fn-own-open fn-own-enqueue
     fn-own-conn-live-session
     fn-own-read fn-own-read-step fn-own-advance fn-own-close fn-own-begin
+    fn-own-control-decision fn-own-control-submit-result fn-own-control-submit
+    fn-own-control-submissionp fn-own-control-outcome-result
+    fn-own-control-outcome fn-own-control-outcome-records
     fn-own-store-step fn-own-complete fn-own-reopen
     fn-own-observe-outcome fn-own-observe
     fn-own-declare-group fn-own-configure fn-own-take-submission fn-own-outcome-completion
@@ -1524,11 +1757,18 @@
     fn-own-open-peer fn-own-transit-subp fn-own-transit-inflightp
     fn-own-transit-outcome
     fn-own-with-feeds fn-own-sub-origin fn-own-sub-msgid fn-own-sub-octets
+    fn-own-sub-feed-groups fn-own-submission-targets
+    fn-own-submission-intent-result fn-own-submission-intent-records
+    fn-own-submission-resolution-records
     fn-own-feed-stamp fn-own-feed-durable fn-own-feed-durable-records
-    fn-own-outcome-records fn-own-transit-outcome-records
+    fn-own-outcome-records fn-own-outcome-journal-records
+    fn-own-transit-outcome-records
     fn-own-feeds-reconfigure fn-own-tick fn-own-tick-records
     fn-own-tick-peer fn-own-tick-peer-records
-    fn-own-feed-article fn-own-feed-reply fn-own-feed-reply-records
+    fn-own-feed-article fn-own-retain-find-id-unguarded
+    fn-own-feed-intent-reconcile-kind
+    fn-own-feed-intent-reconcile-record
+    fn-own-feed-reply fn-own-feed-reply-records
     fn-own-feed-connect fn-own-feed-lost fn-own-feed-lost-records
     fn-own-feed-recover))
 

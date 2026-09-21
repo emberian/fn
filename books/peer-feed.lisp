@@ -851,7 +851,7 @@
 
 (defconst *fn-feed-kinds*
   '(:feed-enqueue :feed-offer :feed-sent :feed-outcome :feed-drop
-    :feed-restart))
+    :feed-restart :feed-intent :feed-commit :feed-abort :feed-retry :feed-lost))
 
 (defconst *fn-feed-specs*
   (list (cons :feed-enqueue '(:text :text :nat))           ; peer msgid tick
@@ -867,7 +867,17 @@
         (cons :feed-outcome '(:text :text :nat :nat))
         (cons :feed-drop    (list :text :text
                                   (cons :enum *fn-feed-drop-reasons*)))
-        (cons :feed-restart '(:text))))                    ; peer
+        (cons :feed-restart '(:text))                      ; peer
+        ; A durable acceptance intent is keyed by the exact object
+        ; obligation identity, provenance rendering, configuration
+        ; generation and store transaction id.  Its enqueue tick is carried
+        ; too.  Commit and abort repeat the complete key, so a retry cannot
+        ; resolve an older incarnation.
+        (cons :feed-intent  '(:text :text :text :text :nat :nat :nat))
+        (cons :feed-commit  '(:text :text :text :text :nat :nat :nat))
+        (cons :feed-abort   '(:text :text :text :text :nat :nat :nat))
+        (cons :feed-retry   '(:text :text :nat :nat :nat))
+        (cons :feed-lost    '(:text :nat))))
 
 (defthm fn-feed-spec-for-is-spec-list
   (implies (not (equal (fn-frame-spec-for kind *fn-feed-specs*) :none))
@@ -878,10 +888,11 @@
   (let ((spec (fn-frame-spec-for kind *fn-feed-specs*)))
     (and (not (equal spec :none))
          (fn-frame-values-okp spec values)
-         (or (not (equal kind :feed-outcome))
-             (and (member-equal (fn-frame-item 3 values)
-                                *fn-feed-outcome-codes*)
-                  t)))))
+         (and (or (not (equal kind :feed-outcome))
+                  (and (member-equal (fn-frame-item 3 values)
+                                    *fn-feed-outcome-codes*) t))
+              (or (not (equal kind :feed-retry))
+                  (and (member-equal (fn-frame-item 3 values) '(431 436)) t))))))
 
 (verify-guards fn-feed-record-okp)
 
@@ -1053,6 +1064,11 @@
             (cond
              ((equal kind :feed-enqueue)
               (fn-feed-enqueue f msgid (fn-feed-record-nat 2 values)))
+             ((equal kind :feed-commit)
+              (fn-feed-enqueue f msgid (fn-feed-record-nat 6 values)))
+             ; Intent resolution is tracked by the owner journal fold.  An
+             ; unresolved intent never enters this offerable feed state.
+             ((or (equal kind :feed-intent) (equal kind :feed-abort)) f)
              ((equal kind :feed-offer)
               ; The one-in-flight rule again, and for the same reason as in
               ; `fn-feed-offer': a journal that offered twice at once is not
@@ -1097,6 +1113,12 @@
                       (t (fn-feed-with-queue
                           f (fn-feed-queue-requeue-inflight
                              (fn-feed-queue f) 0))))))
+             ((equal kind :feed-retry)
+              (fn-feed-back-off f msgid
+                (fn-clock-observation (fn-feed-record-nat 4 values) 0 0 nil)))
+             ((equal kind :feed-lost)
+              (fn-feed-lost f
+                (fn-clock-observation (fn-feed-record-nat 1 values) 0 0 nil)))
              ((equal kind :feed-drop)
               (fn-feed-give-up f msgid (fn-frame-item 2 values)))
              ((equal kind :feed-restart) (fn-feed-restart f))
@@ -1121,11 +1143,12 @@
        (equal (fn-feed-record-peer values) (fn-feed-peer f))
        (let ((msgid (fn-feed-record-msgid values)))
          (cond
-          ((equal kind :feed-enqueue)
+          ((or (equal kind :feed-enqueue) (equal kind :feed-commit))
            (and (fn-feed-namep msgid)
                 (not (consp (fn-feed-find msgid (fn-feed-queue f))))
                 (< (len (fn-feed-queue f))
                    (fn-feed-max-queue (fn-feed-limits-of f)))))
+          ((or (equal kind :feed-intent) (equal kind :feed-abort)) t)
           ((equal kind :feed-offer)
            (and (equal (fn-feed-state-of msgid (fn-feed-queue f)) :queued)
                 (equal (fn-feed-inflight-count (fn-feed-queue f)) 0)
@@ -1138,6 +1161,13 @@
           ((equal kind :feed-outcome)
            (fn-feed-state-inflightp
             (fn-feed-state-of msgid (fn-feed-queue f))))
+          ((equal kind :feed-retry)
+           (and (fn-feed-state-inflightp
+                 (fn-feed-state-of msgid (fn-feed-queue f)))
+                (equal (fn-feed-state-attempt
+                        (fn-feed-state-of msgid (fn-feed-queue f)))
+                       (fn-feed-record-nat 2 values))))
+          ((equal kind :feed-lost) t)
           ((equal kind :feed-drop)
            (and (consp (fn-feed-find msgid (fn-feed-queue f)))
                 (not (equal (fn-feed-state-of msgid (fn-feed-queue f)) :done))

@@ -96,6 +96,16 @@ class JournalTests(unittest.TestCase):
             self.open()
         self.assertEqual(path.read_bytes(), b"invalid-complete-evidence")
 
+    def test_legacy_timing_outcome_requires_migration_and_is_preserved(self):
+        path = Path(self.root) / "feed" / "inn.fnfd"
+        path.parent.mkdir()
+        path.write_bytes(b"legacy-timing-evidence")
+        self.bridge.feed_journal_scan.return_value = "migration-required"
+        with self.assertRaisesRegex(feed_wire.StoreFault,
+                                   "FNFD migration required"):
+            self.open()
+        self.assertEqual(path.read_bytes(), b"legacy-timing-evidence")
+
     def test_content_and_both_namespace_barrier_failures_are_uncertain(self):
         for barrier, results in (("fsync_file", [OSError("content")]),
                                  ("fsync_dir", [OSError("feed directory")]),

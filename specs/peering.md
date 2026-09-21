@@ -572,8 +572,8 @@ automatically and is reported as refused by the CLI.
 
 ### 3.3 The feed journal: a record kind
 
-Proposed frame family `FNFD` (schema 1), one file per peer under
-`<journal>/feed/<peer>/`, written with the frame grammar of `books/frame`
+Frame family `FNFD` (schema 1) has one file per peer at
+`<journal>/feed/<peer>.fnfd`, written with the frame grammar of `books/frame`
 (magic, version, kind, bounded length, payload, A-CRYPTO trailer) and
 replayed by `fn-feed-replay`. Records, with the discipline "durable before
 the effect it authorizes" (bp-workflow-host, scheduler.md):
@@ -586,6 +586,30 @@ the effect it authorizes" (bp-workflow-host, scheduler.md):
 | `(:feed-outcome peer msgid attempt code)` | code in `{235 239 435 438 437 439 431 436 400}` | after the response is parsed, before the next selection |
 | `(:feed-drop peer msgid reason)` | | when the retry bound is reached or the peer is removed |
 | `(:feed-restart peer)` | | on open, before any offer; fences the in-flight entries |
+| `(:feed-intent peer msgid obligation evidence generation txid tick)` | text, text, text, text, nat, nat, nat | before the article transaction may begin |
+| `(:feed-commit peer msgid obligation evidence generation txid tick)` | the exact intent values | after durable article completion and before the accepted reply or live enqueue |
+| `(:feed-abort peer msgid obligation evidence generation txid tick)` | the exact intent values | after a known refusal and before its reply |
+
+The intent key is all seven fields. A retry or configuration epoch therefore
+cannot consume an older accepted, completed or unresolved obligation that
+happens to share a Message-ID. ACL2 fixes the original target set, exact
+object obligation identity and provenance, and checks every target queue has
+room before the host starts the store transaction. Python transports the
+resulting frames; it does not reconstruct those decisions.
+
+An intent alone is not offerable. Replay of its matching `:feed-commit`
+enqueues it, and replay of its matching `:feed-abort` removes it without an
+enqueue. After authoritative store recovery, an unmatched intent is committed
+only when the article, Message-ID binding, obligation identity and retained
+evidence all match. Complete absence is aborted. A partial article/binding/pin
+relation is uncertain and fences the owner for recovery. This covers process
+death after the intent barrier and before either resolution without losing an
+accepted obligation or offering an article that did not commit.
+
+Startup discovers existing `.fnfd` files in addition to peers in the current
+configuration. A removed or disabled peer's journal remains a dormant durable
+obligation and is replayed when that peer is configured again; current
+configuration is not used to infer the acceptance-time target set.
 
 Replay: `fn-feed-replay records` folds them into an `fn-feedp`. An entry with
 `(:feed-offer ...)` or `(:feed-sent ...)` and no `(:feed-outcome ...)` for its

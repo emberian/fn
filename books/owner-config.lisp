@@ -38,6 +38,7 @@
 ; This book owns the prefix `fn-ocfg-' (docs/prefixes.md).
 
 (in-package "ACL2")
+(include-book "owner-fault")
 (include-book "owner-invariants")
 (include-book "config-stream")
 
@@ -248,20 +249,32 @@
 ; pending slot; uncertain is the store's own word, reported by the owner's
 ; existing outcome path and never inferred here.
 
+(defun fn-ocfg-config-stamp (observation)
+  ; Schema-0 configuration records have uint32 stamp fields, while the
+  ; owner's clock uses milliseconds.  The durable record carries the ACL2
+  ; seconds projection of that observation; no host clock conversion or
+  ; alternate configuration timestamp exists.
+  (declare (xargs :guard t))
+  (fn-clock-observation (floor (nfix (fn-clock-monotonic observation)) 1000)
+                        (floor (nfix (fn-clock-wall observation)) 1000)
+                        (floor (nfix (fn-clock-wall-error observation)) 1000)
+                        (fn-clock-has-wall observation)))
+
 (defun fn-ocfg-reconfig-record (oc deltas)
   (declare (xargs :guard (fn-cfgp (fn-ocfg-config oc))))
   (let* ((o (fn-ocfg-owner oc))
          (s (fn-own-store o))
          (node (fn-sn-node s)))
     (fn-cfg-record-make
-     ; The sequence is the position in the UNIFIED stream
-     ; (books/config-stream.lisp), so that replay re-checks this record at
-     ; the node the earlier article records produced.
-     (len (fn-sf-records (fn-sn-files s)))
+     ; Configuration records live in their own durable directory.  Their
+     ; sequence is therefore the prior configuration generation, exactly as
+     ; fn-store-cfg-reconfigure constructs it; article-record count is a
+     ; different coordinate and would reject a first live reconfiguration.
+     (fn-cfg-generation (fn-ocfg-config oc))
      (fn-state-next-txid (fn-node-acceptance node))
      (+ 1 (fn-cfg-generation (fn-ocfg-config oc)))
      deltas
-     (fn-own-clock o))))
+     (fn-ocfg-config-stamp (fn-own-clock o)))))
 
 (defun fn-ocfg-delta-names-group (d name)
   (declare (xargs :guard t))
@@ -335,7 +348,8 @@
            :stale-generation)
           ((fn-ocfg-group-pinned-by-readerp deltas (fn-own-conns o))
            :group-pinned-by-reader)
-          ((consp (fn-node-stage (fn-sn-node (fn-own-store o)))) :group-staged)
+          ((not (null (fn-node-stage (fn-sn-node (fn-own-store o)))))
+           :group-staged)
           (t (or (fn-cfg-admissible-reason
                   (fn-cfg-value (fn-ocfg-config oc))
                   (+ 1 (fn-cfg-generation (fn-ocfg-config oc)))
@@ -351,7 +365,12 @@
   ; stages a post.  Nothing becomes live here; `fn-ocfg-complete' publishes.
   (declare (xargs :guard (fn-cfgp (fn-ocfg-config oc))))
   (if (fn-ocfg-reconfig-okp oc id deltas)
-      (fn-ocfg-make (fn-own-begin (fn-ocfg-owner oc) id)
+      ; `staged' is the configuration transaction lock.  It is not an
+      ; article-store pending record: the host persists this typed config
+      ; record in the configuration journal, then reports :complete.  While
+      ; it is held, fn-ocfg-step refuses :begin and :take below, so an article
+      ; transaction cannot overlap the configuration generation.
+      (fn-ocfg-make (fn-ocfg-owner oc)
                     (fn-ocfg-config oc)
                     (fn-ocfg-pins oc)
                     (fn-ocfg-reconfig-record oc deltas))
@@ -363,19 +382,19 @@
 (defun fn-ocfg-complete (oc)
   (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
                   :verify-guards nil))
-  (let* ((o (fn-ocfg-owner oc))
-         (next (fn-own-complete o))
-         (record (fn-ocfg-staged oc)))
-    (if (equal next o)
-        oc
-      (if (null record)
-          (fn-ocfg-make next (fn-ocfg-config oc) (fn-ocfg-pins oc) nil)
-        (fn-ocfg-make next
-                      (fn-cnode-config
-                       (fn-cnode-apply-config (fn-ocfg-live-cnode oc) record
-                                              (fn-cnode-line-ceiling)))
-                      (fn-ocfg-pins oc)
-                      nil)))))
+  (let ((record (fn-ocfg-staged oc)))
+    (if record
+        ; The caller may use this arm only after the host has reported a
+        ; durable config-journal write.  An uncertain write deliberately does
+        ; not publish: the process must reopen and replay the observed prefix.
+        (fn-ocfg-make
+         (fn-ocfg-owner oc)
+         (fn-cnode-config
+          (fn-cnode-apply-config (fn-ocfg-live-cnode oc) record
+                                 (fn-cnode-line-ceiling)))
+         (fn-ocfg-pins oc) nil)
+      (fn-ocfg-make (fn-own-complete (fn-ocfg-owner oc))
+                    (fn-ocfg-config oc) (fn-ocfg-pins oc) nil))))
 
 ; -----------------------------------------------------------------------------
 ; The connection events that write a pin: open, advance, close.
@@ -416,13 +435,51 @@
                     nil
                   (fn-ocfg-staged oc))))
 
+; -----------------------------------------------------------------------------
+; Owner operations which are not ordinary `fn-own-step' events still have to
+; carry the configuration owner.  This is the single bridge used by the host:
+; it retains a pin for every surviving connection, removes pins for a close or
+; fault, and gives a newly opened connection the current live configuration.
+; It is deliberately in ACL2, rather than a host-side mirror of the pin table.
+
+(defun fn-ocfg-with-owner (oc owner)
+  ; Reserved for raw owner transformations that preserve connection
+  ; membership.  The host uses named fn-ocfg-open/read/fault transitions for
+  ; membership changes, so this wrapper never reconstructs a second pin map.
+  (declare (xargs :guard t))
+  (fn-ocfg-make owner (fn-ocfg-config oc) (fn-ocfg-pins oc)
+                (fn-ocfg-staged oc)))
+
+(defun fn-ocfg-read (oc id octets)
+  (declare (xargs :guard t))
+  (let ((result (fn-own-read (fn-ocfg-owner oc) id octets)))
+    (cons (car result) (fn-ocfg-with-owner oc (cdr result)))))
+
+(defun fn-ocfg-read-step (oc id event)
+  (declare (xargs :guard t))
+  (let ((result (fn-own-read-step (fn-ocfg-owner oc) id event)))
+    (cons (car result) (fn-ocfg-with-owner oc (cdr result)))))
+
+(defun fn-ocfg-open-peer (oc peer acfg)
+  (declare (xargs :guard t))
+  (let ((result (fn-own-open-peer (fn-ocfg-owner oc) peer
+                                  (fn-ocfg-config oc) acfg)))
+    (cons (car result) (fn-ocfg-with-owner oc (cdr result)))))
+
+(defun fn-ocfg-fault (oc id)
+  (declare (xargs :guard t))
+  (let ((result (fn-own-fault (fn-ocfg-owner oc) id)))
+    (cons (car result)
+          (fn-ocfg-make (cdr result) (fn-ocfg-config oc)
+                        (fn-ocfg-pin-remove id (fn-ocfg-pins oc))
+                        (fn-ocfg-staged oc)))))
+
 (defun fn-ocfg-pass (oc event)
   ; Every owner event that touches no pin: the served port, the writer step,
   ; the store events, the clock.  The table goes through untouched.
   (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
                   :verify-guards nil))
-  (fn-ocfg-make (fn-own-step (fn-ocfg-owner oc) event)
-                (fn-ocfg-config oc) (fn-ocfg-pins oc) (fn-ocfg-staged oc)))
+  (fn-ocfg-with-owner oc (fn-own-step (fn-ocfg-owner oc) event)))
 
 (defun fn-ocfg-step (oc event)
   (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
@@ -431,8 +488,15 @@
     (:open (cdr (fn-ocfg-open oc (cadr event))))
     (:advance (fn-ocfg-advance oc (car (cdr event))))
     (:close (fn-ocfg-close oc (car (cdr event))))
+    (:octets (cdr (fn-ocfg-read oc (car (cdr event)) (car (cdr (cdr event))))))
+    (:read (cdr (fn-ocfg-read-step oc (car (cdr event)) (car (cdr (cdr event))))))
+    (:open-peer (cdr (fn-ocfg-open-peer oc (car (cdr event))
+                                         (car (cdr (cdr (cdr event)))))))
+    (:fault (cdr (fn-ocfg-fault oc (car (cdr event)))))
     (:reconfigure (fn-ocfg-reconfigure oc (car (cdr event)) (car (cdr (cdr event)))))
     (:complete (fn-ocfg-complete oc))
+    (:begin (if (fn-ocfg-staged oc) oc (fn-ocfg-pass oc event)))
+    (:take (if (fn-ocfg-staged oc) oc (fn-ocfg-pass oc event)))
     (otherwise (fn-ocfg-pass oc event))))
 
 (defun fn-ocfg-run (oc events)
@@ -548,7 +612,7 @@
   (if (consp events)
       (or (and (member-equal (mbe :logic (car (car events))
                                   :exec (fn-ag-car (fn-ag-car events)))
-                             '(:advance :close))
+                             '(:advance :close :fault))
                (equal (mbe :logic (car (cdr (car events)))
                            :exec (fn-ag-car (fn-ag-cdr (fn-ag-car events))))
                       id))
@@ -557,7 +621,7 @@
 
 (local (defthm fn-ocfg-step-keeps-other-pins
   (implies (and (fn-ocfg-pin-find id (fn-ocfg-pins oc))
-                (not (and (member-equal (car event) '(:advance :close))
+                (not (and (member-equal (car event) '(:advance :close :fault))
                           (equal (car (cdr event)) id))))
            (equal (fn-ocfg-pin-find id (fn-ocfg-pins (fn-ocfg-step oc event)))
                   (fn-ocfg-pin-find id (fn-ocfg-pins oc))))
@@ -692,7 +756,7 @@
     (:d fn-ocfg-pin-remove) (:d fn-ocfg-conn-config) (:d fn-ocfg-conn-generation)
     (:d fn-ocfg-served) (:d fn-ocfg-pins-okp) (:d fn-ocfg-conns-pinnedp)
     (:d fn-ocfg-pins-pin-conns-only) (:d fn-ocfg-statep) (:d fn-ocfg-live-cnode)
-    (:d fn-ocfg-reconfig-record) (:d fn-ocfg-delta-names-group)
+    (:d fn-ocfg-config-stamp) (:d fn-ocfg-reconfig-record) (:d fn-ocfg-delta-names-group)
     (:d fn-ocfg-deltas-touch-groupp) (:d fn-ocfg-group-pinned-by-readerp)
     (:d fn-ocfg-reconfig-okp) (:d fn-ocfg-reconfig-refusal)
     (:d fn-ocfg-reconfigure) (:d fn-ocfg-complete) (:d fn-ocfg-open)

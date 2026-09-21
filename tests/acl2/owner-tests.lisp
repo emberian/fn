@@ -14,6 +14,7 @@
 (in-package "ACL2")
 (include-book "../../books/owner-invariants")
 (include-book "../../books/owner-fault")
+(include-book "../../books/crypto-attach")
 
 ; -----------------------------------------------------------------------------
 ; Guard-world audit: the served port and the connection events are total in
@@ -32,6 +33,12 @@
 (assert-event (equal (guard 'fn-own-take-submission nil (w state)) *t*))
 (assert-event (equal (symbol-class 'fn-own-outcome (w state)) :common-lisp-compliant))
 (assert-event (equal (guard 'fn-own-outcome nil (w state)) *t*))
+(assert-event (equal (symbol-class 'fn-own-control-submit (w state))
+                     :common-lisp-compliant))
+(assert-event (equal (guard 'fn-own-control-submit nil (w state)) *t*))
+(assert-event (equal (symbol-class 'fn-own-control-outcome (w state))
+                     :common-lisp-compliant))
+(assert-event (equal (guard 'fn-own-control-outcome nil (w state)) *t*))
 (assert-event (equal (guard 'fn-own-complete nil (w state))
                      '(fn-sn-statep (fn-own-store o))))
 (assert-event (equal (guard 'fn-own-step nil (w state))
@@ -536,6 +543,43 @@
                       32768))
 (defconst *own-post-obs* (fn-clock-observation 2000000 1600000010000 500 t))
 (defconst *own-post-command* (append (fn-nntp-string-octets "POST") '(13 10)))
+
+; One 9 KiB CRLF article is inside the Store profile and outside the stale
+; 8192-byte owner prototype limit.  Both live NNTP and the same-node control
+; port must take their bound from *own-config*, so neither path narrows what
+; direct Store acceptance admits.
+(defun own-large-crlf-body (n)
+  (declare (xargs :guard (natp n) :measure (nfix n)))
+  (if (zp n) nil
+    (append (fn-nntp-string-octets
+             "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+            '(13 10) (own-large-crlf-body (1- n)))))
+(defconst *own-large-source*
+  (append (fn-nntp-string-octets "From: large@example.invalid") '(13 10)
+          (fn-nntp-string-octets "Subject: configured owner capacity") '(13 10)
+          (fn-nntp-string-octets "Newsgroups: fn.letters") '(13 10)
+          (fn-nntp-string-octets "Message-ID: <large-owner@example.invalid>") '(13 10)
+          '(13 10) (own-large-crlf-body 145)))
+(defconst *own-large-article* (append *own-large-source* '(46 13 10)))
+(assert-event (< *fn-own-body-limit* (len *own-large-source*)))
+(assert-event (<= (len *own-large-source*)
+                  (fn-inj-config-max-octets *own-config*)))
+(assert-event (fn-inj-injectedp
+               (fn-own-control-decision
+                *own-config* (fn-nntp-string-octets
+                              "<large-owner@example.invalid>")
+                (list (fn-nntp-string-octets "fn.letters"))
+                *own-large-source*)))
+(defun own-large-served-submission ()
+  (let* ((base (fn-own-run *own-closed*
+                           (list (list :configure *own-config*)
+                                 (list :observe *own-post-obs*))))
+         (id (fn-own-next-id base))
+         (opened (cdr (fn-own-open base nil)))
+         (offered (cdr (fn-own-read opened id *own-post-command*))))
+    (fn-served-submission
+     (car (fn-own-read offered id *own-large-article*)))))
+(assert-event (fn-inj-injectedp (own-large-served-submission)))
 (defconst *own-article*
   (append (fn-nntp-string-octets "From: poster@example.invalid") '(13 10)
           (fn-nntp-string-octets "Subject: hello") '(13 10)
@@ -645,9 +689,286 @@
 (assert-event (equal (car (fn-own-outcome *own-p-done* 4 :fault))
                      (car (fn-own-outcome *own-p-done* 4 :uncertain))))
 
+(defconst *own-after-post* (cdr *own-240*))
+
+; The control port carries exact authored article octets into the SAME owner
+; submission queue.  It allocates no socket id, takes through the same writer
+; step and recognizes acceptance only after the same consumed completion.
+(defconst *own-control-msgid* (fn-nntp-string-octets "<control@example.invalid>"))
+(defconst *own-control-groups* (list (fn-nntp-string-octets "fn.letters")))
+(defconst *own-control-source*
+  (append (fn-nntp-string-octets "From: cli@example.invalid") '(13 10)
+          (fn-nntp-string-octets "Subject: exact") '(13 10)
+          (fn-nntp-string-octets "Newsgroups: fn.letters") '(13 10)
+          (fn-nntp-string-octets "Message-ID: <control@example.invalid>") '(13 10)
+          '(13 10)
+          (fn-nntp-string-octets "Authored bytes.") '(13 10)))
+(defconst *own-control-queued*
+(fn-own-control-submit *own-after-post* *own-control-msgid*
+                         *own-control-groups* *own-control-source*))
+(assert-event (equal (fn-own-control-submit-result
+                      *own-after-post* *own-control-msgid*
+                      *own-control-groups* *own-control-source*)
+                     :submitted))
+(assert-event (equal (fn-own-conns *own-control-queued*)
+                     (fn-own-conns *own-after-post*)))
+(assert-event (equal (fn-inj-decision-octets
+                      (fn-own-sub-decision (car (fn-own-queue *own-control-queued*))))
+                     *own-control-source*))
+(defconst *own-control-taken* (fn-own-take-submission *own-control-queued*))
+(assert-event (fn-own-control-submissionp (fn-own-inflight *own-control-taken*)))
+(assert-event (equal (fn-own-control-outcome-result *own-control-taken* :durable)
+                     :uncertain))
+(defconst *own-control-done*
+  (fn-own-run *own-control-taken*
+              (own-post-events (own-record 3 3 "<control@example.invalid>"))))
+(assert-event (equal (fn-own-control-outcome-result *own-control-done* :durable)
+                     :accepted))
+(assert-event (null (fn-own-inflight
+                     (fn-own-control-outcome *own-control-done* :durable))))
+(assert-event (equal (fn-own-conns
+                      (fn-own-control-outcome *own-control-done* :durable))
+                     (fn-own-conns *own-control-done*)))
+(assert-event (equal (fn-own-control-outcome-result *own-control-taken* :duplicate)
+                     :duplicate))
+(assert-event (equal (fn-own-outcome-completion *own-control-taken* :duplicate)
+                     :refused))
+(assert-event (equal (fn-own-control-outcome-result *own-control-taken* :refused)
+                     :refused))
+
+; Teeth: without a control submission in flight there is no outcome; without
+; exact valid boundary values nothing is queued; without a consumed
+; completion the host word :durable remains uncertain.
+(assert-event (equal (fn-own-control-outcome-result *own-after-post* :durable)
+                     :absent))
+(assert-event (equal (fn-own-control-submit-result
+                      *own-after-post* '(60 62) *own-control-groups*
+                      *own-control-source*)
+                     :refused))
+(assert-event (equal (fn-own-control-submit-result
+                      *own-control-taken* *own-control-msgid*
+                      *own-control-groups* *own-control-source*)
+                     :busy))
+
+; The control submission's durable-intent path uses the exact authored bytes
+; and the injection decision's groups.  This legacy-shaped local article has
+; no Injection-Info; it nevertheless targets the configured outbound peer
+; without rewriting one byte of the stored object.
+(defconst *own-out-peer-record*
+  (fn-cfg-peer-make "out" "out.example" '(:nntp "127.0.0.1" 2119)
+                    nil '("fn.*" nil 1 1) '(:source-address "127.0.0.2")))
+(defconst *own-out-cfg*
+  (fn-config-replay 0 510
+                    (list (fn-cfg-record-make
+                           0 0 1
+                           (append *fn-cfg-default-change*
+                                   (list (fn-cfg-set-policy
+                                          "path-identity" "own.example")
+                                         (fn-cfg-set-peer-delta
+                                          *own-out-peer-record*)))
+                           *fn-cfg-default-stamp*))))
+(defconst *own-control-fed-queued*
+  (fn-own-control-submit
+   (fn-own-feeds-reconfigure *own-after-post* *own-out-cfg*)
+   *own-control-msgid* *own-control-groups* *own-control-source*))
+(defconst *own-control-fed-taken*
+  (fn-own-take-submission *own-control-fed-queued*))
+(defconst *own-control-evidence*
+  (fn-nntp-string-octets "own-release:<control@example.invalid>"))
+(defun own-control-intents ()
+  (fn-own-submission-intent-records *own-control-fed-taken*
+                                    *own-control-evidence* 1 3))
+(assert-event (equal (fn-own-submission-intent-result
+                      *own-control-fed-taken* *own-control-evidence* 1 3)
+                     :ready))
+(assert-event (equal (len (own-control-intents)) 1))
+(assert-event (equal (fn-feed-journal-kind (car (own-control-intents)))
+                     :feed-intent))
+(assert-event (equal (fn-feed-record-peer
+                      (fn-feed-journal-values (car (own-control-intents))))
+                     (fn-record-string-octets "out")))
+(assert-event (equal (fn-frame-item 2
+                                    (fn-feed-journal-values
+                                     (car (own-control-intents))))
+                     (fn-own-feed-intent-id *own-control-msgid*
+                                            *own-control-source*)))
+(assert-event (equal (fn-inj-decision-octets
+                      (fn-own-sub-decision
+                       (fn-own-inflight *own-control-fed-taken*)))
+                     *own-control-source*))
+
+; A consumed owner completion projects a matching commit; a known duplicate
+; projects a matching abort; uncertainty retains the intent.  All seven key
+; fields, including transaction id and tick, are identical.
+(defconst *own-control-fed-done*
+  (fn-own-run *own-control-fed-taken*
+              (own-post-events (own-record 3 3 "<control@example.invalid>"))))
+(defun own-control-commits ()
+  (fn-own-submission-resolution-records *own-control-fed-done* :durable
+                                        *own-control-evidence* 1 3))
+(defun own-control-aborts ()
+  (fn-own-submission-resolution-records *own-control-fed-taken* :duplicate
+                                        *own-control-evidence* 1 3))
+(assert-event (equal (fn-feed-journal-kind (car (own-control-commits)))
+                     :feed-commit))
+(assert-event (equal (fn-feed-journal-kind (car (own-control-aborts)))
+                     :feed-abort))
+(assert-event (equal (fn-feed-journal-values (car (own-control-commits)))
+                     (fn-feed-journal-values (car (own-control-intents)))))
+(assert-event (equal (fn-feed-journal-values (car (own-control-aborts)))
+                     (fn-feed-journal-values (car (own-control-intents)))))
+(assert-event (null (fn-own-submission-resolution-records
+                     *own-control-fed-taken* :uncertain
+                     *own-control-evidence* 1 3)))
+
+; The shared commit is the one durable obligation for a local submission.
+; The following owner outcome still moves the live feed, but the host-facing
+; journal projection suppresses its older standalone enqueue.  Without the
+; exact resolution id the legacy projection remains reachable.
+(defun own-with-inflight (o sub)
+  (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
+               (fn-own-next-id o) (fn-own-max-conns o) (fn-own-pending o)
+               (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+               (fn-own-config o) (fn-own-queue o) sub (fn-own-feeds o)))
+(defun own-fed-local-on-connection ()
+  (let ((sub (fn-own-inflight *own-control-fed-done*)))
+    (own-with-inflight
+     *own-control-fed-done*
+     (fn-own-sub-make 4 (fn-own-sub-version sub) (fn-own-sub-mark sub)
+                      (fn-own-sub-decision sub)))))
+(assert-event (equal (len (own-control-commits)) 1))
+(assert-event (equal (len (fn-own-outcome-records
+                           (own-fed-local-on-connection) 4 :durable)) 1))
+(assert-event (null (fn-own-outcome-journal-records
+                     (own-fed-local-on-connection) 4 :durable 4)))
+(assert-event (equal (len (fn-own-outcome-journal-records
+                           (own-fed-local-on-connection) 4 :durable nil)) 1))
+
+; Transit keeps its standalone enqueue route: it does not pass through the
+; local fn-owner-outcome wrapper or its one-shot shared-resolution id.
+(defun own-fed-transit-on-connection ()
+  (let ((sub (fn-own-inflight *own-control-fed-done*)))
+    (own-with-inflight
+     *own-control-fed-done*
+     (fn-own-sub-make
+      4 (fn-own-sub-version sub) (fn-own-sub-mark sub)
+      (fn-peer-make-submission "p" :ihave *own-control-msgid*
+                               *own-control-source*)))))
+(assert-event (fn-own-transit-subp
+               (fn-own-inflight (own-fed-transit-on-connection))))
+(assert-event (equal (len (fn-own-transit-outcome-records
+                           (own-fed-transit-on-connection)
+                           4 :want :durable)) 1))
+
+; Isolation tooth: changing only the transaction id makes another retry.
+; Resolving this attempt cannot consume that earlier key.
+(defun own-control-old-values ()
+  (fn-own-feed-intent-values "out" *own-control-msgid*
+                             (fn-own-feed-intent-id *own-control-msgid*
+                                                    *own-control-source*)
+                             *own-control-evidence* 1 2 0))
+(defun own-control-new-values ()
+  (fn-own-feed-intent-values "out" *own-control-msgid*
+                             (fn-own-feed-intent-id *own-control-msgid*
+                                                    *own-control-source*)
+                             *own-control-evidence* 1 3 0))
+(assert-event
+ (member-equal (fn-own-feed-intent-key (own-control-old-values))
+               (fn-own-feed-intent-apply
+                (list (fn-own-feed-intent-key (own-control-old-values))
+                      (fn-own-feed-intent-key (own-control-new-values)))
+                :feed-abort (own-control-new-values))))
+
+; Reopen reconciliation reads the actual archived binding and its retained
+; evidence.  Exact evidence commits, a complete conflicting incarnation
+; aborts, complete absence aborts, and a partial binding/pin relation stays
+; uncertain so recovery cannot silently discard an obligation.
+(defun own-reopened-intent-values ()
+  (let* ((node (fn-sn-node (fn-own-store *own-reopened*)))
+         (msgid "<one@example>")
+         (binding (fn-node-find-binding msgid (fn-node-bindings node)))
+         (pin (fn-own-retain-find-id-unguarded
+               (fn-node-binding-id binding)
+               (fn-retain-pins (fn-node-retention node)))))
+    (fn-own-feed-intent-values
+     "out" (fn-record-string-octets msgid)
+     (fn-record-string-octets (fn-node-binding-id binding))
+     (fn-record-string-octets (fn-retain-obligation-evidence pin))
+     1 9 0)))
+
+(defun own-reopened-partial-node ()
+  (let* ((node (fn-sn-node (fn-own-store *own-reopened*)))
+         (retention (fn-node-retention node)))
+    (fn-node-make-state
+     (fn-node-acceptance node)
+     (fn-retain-make-state (fn-retain-capacity retention)
+                           0 nil nil)
+     (fn-node-stage node)
+     (fn-node-bindings node))))
+
+(assert-event
+ (equal (fn-own-feed-intent-reconcile-kind
+         (fn-sn-node (fn-own-store *own-reopened*))
+         (own-reopened-intent-values))
+        :feed-commit))
+(assert-event
+ (equal (fn-feed-journal-kind
+         (fn-own-feed-intent-reconcile-record
+          (fn-sn-node (fn-own-store *own-reopened*))
+          (own-reopened-intent-values)))
+        :feed-commit))
+(assert-event
+ (equal (fn-own-feed-intent-reconcile-kind
+         (fn-sn-node (fn-own-store *own-reopened*))
+         (fn-own-feed-intent-values
+          "out" (fn-record-string-octets "<one@example>")
+          (fn-record-string-octets "another-obligation")
+          (fn-frame-item 3 (own-reopened-intent-values)) 1 9 0))
+        :feed-abort))
+(assert-event
+ (equal (fn-own-feed-intent-reconcile-kind
+         (fn-sn-node (fn-own-store *own-reopened*))
+         (fn-own-feed-intent-values
+          "out" (fn-record-string-octets "<absent@example>")
+          (fn-record-string-octets "absent-obligation")
+          (fn-record-string-octets "absent-evidence") 1 9 0))
+        :feed-abort))
+(assert-event
+ (equal (fn-own-feed-intent-reconcile-kind
+         (own-reopened-partial-node) (own-reopened-intent-values))
+        :uncertain))
+
+; Local and transit provenance are distinct ACL2 values and therefore make
+; distinct durable intent keys even for the same object and transaction.
+(defun own-transit-evidence ()
+  (fn-record-string-octets (fn-peer-evidence "p" *own-peer-cfg*)))
+(assert-event (fn-feed-namep (own-transit-evidence)))
+(assert-event (not (equal (own-transit-evidence) *own-control-evidence*)))
+(assert-event
+ (not (equal
+       (fn-own-feed-intent-key
+        (fn-own-feed-intent-values
+         "out" *own-control-msgid* (fn-frame-item 2 (own-control-old-values))
+         *own-control-evidence* 1 2 0))
+       (fn-own-feed-intent-key
+        (fn-own-feed-intent-values
+         "out" *own-control-msgid* (fn-frame-item 2 (own-control-old-values))
+         (own-transit-evidence) 1 2 0)))))
+
+; Capacity is decided before store mutation.  Once the only slot is occupied,
+; a different Message-ID is refused at the intent boundary.
+(defconst *own-full-feed*
+  (fn-feed-enqueue (fn-own-feed-find "out" (fn-own-feeds *own-control-fed-taken*))
+                   (fn-nntp-string-octets "<already@example.invalid>") 0))
+(assert-event
+ (not (fn-own-feed-target-capacityp
+       '("out")
+       (fn-own-feed-put "out" *own-out-peer-record* *own-full-feed*
+                        (fn-own-feeds *own-control-fed-taken*))
+       *own-control-msgid*)))
+
 ; R, pinned before the post, still sees two articles; a reader opened after
 ; the post sees three; R's pinned prefix is unchanged.
-(defconst *own-after-post* (cdr *own-240*))
 (assert-event (equal (fn-own-conn-version (fn-own-find-conn 3 (fn-own-conns *own-after-post*))) 2))
 (assert-event (equal (fn-served-reply-octets (car (fn-own-read *own-after-post* 3 *own-group-octets*)))
                      (append (fn-nntp-string-octets "211 2 1 2 fn.letters") '(13 10))))

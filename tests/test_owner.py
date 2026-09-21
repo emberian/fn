@@ -225,6 +225,32 @@ class OwnerFixture(unittest.TestCase):
 
 
 class OwnerTests(OwnerFixture):
+    def test_configured_store_capacity_is_shared_by_control_and_nntp(self):
+        owner = self.start_owner()
+
+        def article(msgid):
+            return (b"From: large@example.invalid\r\n"
+                    b"Newsgroups: fn.letters\r\n"
+                    b"Subject: configured capacity\r\n"
+                    b"Message-ID: " + msgid.encode() + b"\r\n\r\n" +
+                    (b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\r\n"
+                     * 145))
+
+        control_source = article("<large-control@example.invalid>")
+        self.assertGreater(len(control_source), 8192)
+        self.assertLessEqual(len(control_source), 32768)
+        self.assertTrue(owner.post("<large-control@example.invalid>", control_source)
+                        .startswith(b"committed sequence=0 charge="))
+
+        served_source = article("<large-served@example.invalid>")
+        client = owner.connect()
+        self.addCleanup(client.close)
+        client.sendall(b"POST\r\n")
+        assert_bytes(client, b"340 send article to be posted\r\n")
+        client.sendall(served_source + b".\r\n")
+        assert_bytes(client, b"240 article received OK\r\n")
+        self.assertEqual(owner.control_line(b"VERSION"), b"version 2")
+
     def test_two_readers_keep_their_pins_across_a_post_until_advanced(self):
         owner = self.start_owner()
         first = owner.connect()
@@ -320,11 +346,32 @@ class OwnerTests(OwnerFixture):
         status = self.store_command("status")
         self.assertIn(b"transactions=3 articles=3", status.stdout)
 
-    def test_clock_and_group_facts_go_through_the_owner(self):
+    def test_live_group_reconfiguration_is_durable_and_uses_a_pinned_client(self):
         owner = self.start_owner()
-        self.assertEqual(owner.control_line(b"OBSERVE"), b"observed")
-        self.assertEqual(owner.control_line(b"DECLARE-GROUP fn.new"), b"declared")
-        self.assertEqual(owner.control_line(b"DECLARE-GROUP fn.new"), b"refused")
+        first = owner.connect()
+        second = owner.connect()
+        self.addCleanup(first.close)
+        self.addCleanup(second.close)
+        # Both readers remain open.  The first client's pinned generation is
+        # the ACL2 authorization for this event; no Python config table is
+        # consulted.  The durable record is committed before fn-ocfg publishes
+        # its next generation, and the other reader stays a separate pin.
+        self.assertEqual(set(owner.control_line(b"CONNECTIONS").split()[1:]),
+                         {b"0:0", b"1:0"})
+        self.assertEqual(owner.control_line(b"RECONFIGURE 0 create fn.live"),
+                         b"configured generation=2")
+        self.assertEqual(set(owner.control_line(b"CONNECTIONS").split()[1:]),
+                         {b"0:0", b"1:0"})
+        owner.kill()
+        self.owner = None
+        reopened = self.start_owner()
+        reader = reopened.connect()
+        self.addCleanup(reader.close)
+        # Recovery replays the durable configuration history into fn-ocfg.  A
+        # second create is refused by the same ACL2 admissibility predicate;
+        # it does not depend on a copied Python group table.
+        self.assertEqual(reopened.control_line(b"RECONFIGURE 0 create fn.live"),
+                         b"refused duplicate-group")
 
 
 if __name__ == "__main__":
@@ -354,6 +401,85 @@ def self_signed(directory):
             .format(result.stderr.decode("utf-8", "replace")[-500:]))
     return cert, key
 
+
+class SubmissionCrashCutTests(OwnerFixture):
+    """The intent protocol's five named process-death cuts use the real host."""
+
+    def setUp(self):
+        super().setUp()
+        self.payload.write_bytes(
+            b"From: seed@example.invalid\r\nSubject: seed\r\n"
+            b"Newsgroups: fn.letters\r\nMessage-ID: <seed@example.invalid>\r\n"
+            b"\r\nSeed.\r\n")
+        self.store_command("post", "--message-id", "<seed@example.invalid>",
+                           "--payload", str(self.payload), "--group", "fn.letters")
+        reservation = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        reservation.bind(("127.0.0.1", 0))
+        peer_port = reservation.getsockname()[1]
+        reservation.close()
+        self.store_command(
+            "peer", "add", "cut-peer", "--path-identity",
+            "cut-peer.example.invalid", "--nntp",
+            "127.0.0.1:{}".format(peer_port), "--outbound-groups", "fn.*",
+            "--source-address", "192.0.2.40")
+
+    @staticmethod
+    def article(msgid):
+        return (b"From: cut@example.invalid\r\nSubject: cut\r\n"
+                b"Newsgroups: fn.letters\r\nMessage-ID: " + msgid.encode() +
+                b"\r\n\r\nCut.\r\n")
+
+    def cut(self, point, code, msgid, payload=None):
+        owner = self.start_owner(inject_fault=point)
+        reply = owner.post(msgid, payload if payload is not None else self.article(msgid))
+        self.assertEqual(reply, b"")
+        self.assertEqual(owner.proc.wait(timeout=30), code)
+        owner.stop()
+        self.owner = None
+
+    def recovered_version(self, expected):
+        owner = self.start_owner()
+        self.assertEqual(owner.control_line(b"VERSION"),
+                         "version {}".format(expected).encode())
+        owner.stop()
+        self.owner = None
+
+    def test_precommit_resolution_and_response_cuts_recover_without_loss(self):
+        self.cut("preintent-cut", 90, "<preintent@example.invalid>")
+        self.recovered_version(1)
+
+        self.cut("intent-barrier-cut", 91, "<intent@example.invalid>")
+        self.recovered_version(1)
+        journal = self.store / "feed" / "cut-peer.fnfd"
+        self.assertTrue(journal.is_file())
+        self.assertGreater(journal.stat().st_size, 0)
+
+        # Seed predates the peer, so this duplicate has a new target and
+        # reaches a real durable abort record rather than the empty-target
+        # duplicate fast path.
+        self.cut("abort-barrier-cut", 93, "<seed@example.invalid>",
+                 self.payload.read_bytes())
+        self.recovered_version(1)
+
+        self.cut("commit-barrier-cut", 92, "<commit@example.invalid>")
+        self.recovered_version(2)
+
+        self.cut("response-cut", 94, "<response@example.invalid>")
+        self.recovered_version(3)
+
+    def test_an_ambiguous_store_result_is_reported_then_fences_the_owner(self):
+        owner = self.start_owner(inject_fault="store-uncertain")
+        reply = owner.post("<uncertain@example.invalid>",
+                           self.article("<uncertain@example.invalid>"))
+        self.assertTrue(reply.startswith(b"uncertain:"), reply)
+        self.assertEqual(owner.proc.wait(timeout=30), 3)
+        owner.stop()
+        self.owner = None
+
+        # This process cut happened after link(2), so ordinary process-death
+        # recovery finds the complete article and resolves the retained intent
+        # as a commit. No second mutation occurred in the uncertain image.
+        self.recovered_version(2)
 
 class OwnerTlsTests(unittest.TestCase):
     """RFC 4642 section 2.3's security layer is a HOST facility.

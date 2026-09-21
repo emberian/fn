@@ -47,8 +47,10 @@
 
 (in-package "ACL2")
 (include-book "peer-feed-invariants")
+(include-book "feed-events")
 (include-book "peer-config")
 (include-book "article-fields")
+(include-book "identity-invariants")
 
 ; -----------------------------------------------------------------------------
 ; The peer names a configuration value holds
@@ -1132,12 +1134,158 @@
             (fn-own-feed-enqueue-records (cdr names) msgid tick))
     nil))
 
+(defun fn-own-feed-enqueue-records-in (names tbl msgid tick)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (let* ((name (car names))
+             (e (fn-own-feed-entry-of name tbl)))
+        (append (if e (fn-feed-enqueue-records (fn-own-feed-entry-feed e) msgid tick) nil)
+                (fn-own-feed-enqueue-records-in
+                 (cdr names) (fn-own-feed-enqueue-all (list name) tbl msgid tick)
+                 msgid tick)))
+    nil))
+
 (defun fn-own-feed-accept-records (tbl origin msgid octets tick)
   (declare (xargs :guard t))
-  (fn-own-feed-enqueue-records
+  (fn-own-feed-enqueue-records-in
    (fn-own-feed-targets tbl origin (fn-own-feed-groups-of octets)
                         (fn-own-feed-path-of octets))
-   msgid tick))
+   tbl msgid tick))
+
+; -----------------------------------------------------------------------------
+; Acceptance intents
+;
+; An article record and one journal per peer cannot be committed atomically.
+; The intent is therefore durable first but not offerable.  Its stable key
+; binds the exact object obligation identity, provenance and configuration
+; generation; commit/abort can resolve only that key, so a retry or an older
+; completed obligation sharing a Message-ID is untouched.
+
+(defun fn-own-feed-intent-key (values)
+  (declare (xargs :guard t))
+  (list (fn-frame-item 0 values) (fn-frame-item 1 values)
+        (fn-frame-item 2 values) (fn-frame-item 3 values)
+        (fn-frame-item 4 values) (fn-frame-item 5 values)
+        (fn-frame-item 6 values)))
+
+(defun fn-own-feed-intent-remove (key intents)
+  (declare (xargs :guard t))
+  (if (consp intents)
+      (if (equal key (car intents))
+          (fn-own-feed-intent-remove key (cdr intents))
+        (cons (car intents) (fn-own-feed-intent-remove key (cdr intents))))
+    nil))
+
+(defun fn-own-feed-intent-memberp (key intents)
+  (declare (xargs :guard t))
+  (if (consp intents)
+      (or (equal key (car intents))
+          (fn-own-feed-intent-memberp key (cdr intents)))
+    nil))
+
+(defun fn-own-feed-intent-apply (intents kind values)
+  (declare (xargs :guard t))
+  (let ((key (fn-own-feed-intent-key values)))
+    (cond ((equal kind :feed-intent)
+           (if (fn-own-feed-intent-memberp key intents) intents
+             (cons key intents)))
+          ((or (equal kind :feed-commit) (equal kind :feed-abort))
+           (fn-own-feed-intent-remove key intents))
+          (t intents))))
+
+(defthm fn-own-feed-intent-resolution-keeps-another-key
+  (implies (and (fn-own-feed-intent-memberp other intents)
+                (not (equal other (fn-own-feed-intent-key values))))
+           (fn-own-feed-intent-memberp
+            other (fn-own-feed-intent-apply intents kind values)))
+  :hints (("Goal" :induct (fn-own-feed-intent-remove
+                            (fn-own-feed-intent-key values) intents))))
+
+(local
+ (defthm fn-own-feed-subject-of-payload-shape
+   (and (fn-cbor-octet-listp (fn-id-subject-of-payload octets))
+        (equal (len (fn-id-subject-of-payload octets))
+               *fn-id-subject-octets*))
+   :hints (("Goal"
+            :use ((:instance fn-id-subject-shape
+                             (digest (fn-frame-digest
+                                      (fn-id-subject-preimage octets)))))
+            :in-theory (enable fn-id-subject-of-payload fn-id-digestp)))))
+
+(local
+ (defthm fn-own-feed-obligation-of-shape
+   (and (fn-cbor-octet-listp (fn-id-obligation-of msgid subject))
+        (equal (len (fn-id-obligation-of msgid subject))
+               *fn-id-obligation-octets*))
+   :hints (("Goal"
+            :use ((:instance fn-id-obligation-shape
+                             (digest (fn-frame-digest
+                                      (fn-id-obligation-preimage
+                                       msgid subject)))))
+            :in-theory (enable fn-id-obligation-of fn-id-digestp)))))
+
+(defun fn-own-feed-intent-id (msgid octets)
+  (declare
+   (xargs
+    :guard t
+    :guard-hints
+    (("Goal" :use ((:instance fn-own-feed-subject-of-payload-shape)
+                    (:instance fn-own-feed-obligation-of-shape
+                               (subject (fn-id-subject-of-payload octets))))))))
+  (if (and (fn-cbor-octet-listp msgid)
+           (<= (len msgid) *fn-cbor-max-uint*)
+           (fn-cbor-octet-listp octets)
+           (<= (len octets) *fn-cbor-max-uint*))
+      (fn-id-text
+       (fn-id-obligation-of msgid (fn-id-subject-of-payload octets)))
+    nil))
+
+(defun fn-own-feed-intent-values (peer msgid identity evidence generation txid tick)
+  (declare (xargs :guard t))
+  (list (fn-record-string-octets peer) msgid identity evidence
+        (nfix generation) (nfix txid) (nfix tick)))
+
+(defun fn-own-feed-intent-records (names msgid identity evidence generation txid tick)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (cons (fn-feed-journal-entry
+             :feed-intent
+             (fn-own-feed-intent-values (car names) msgid identity evidence
+                                        generation txid tick))
+            (fn-own-feed-intent-records (cdr names) msgid identity evidence
+                                        generation txid tick))
+    nil))
+
+(defun fn-own-feed-resolution-records (kind names msgid identity evidence
+                                            generation txid tick)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (cons (fn-feed-journal-entry
+             kind (fn-own-feed-intent-values (car names) msgid identity
+                                             evidence generation txid tick))
+            (fn-own-feed-resolution-records kind (cdr names) msgid identity
+                                            evidence generation txid tick))
+    nil))
+
+(defun fn-own-feed-target-capacityp (names tbl msgid)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (let ((f (fn-own-feed-find (car names) tbl)))
+        (and (or (consp (fn-feed-find msgid (fn-feed-queue f)))
+                 (< (len (fn-feed-queue f))
+                    (nfix (fn-feed-max-queue (fn-feed-limits-of f)))))
+             (fn-own-feed-target-capacityp (cdr names) tbl msgid)))
+    t))
+
+(defun fn-own-feed-new-targets (names tbl msgid)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (if (consp (fn-feed-find msgid
+                               (fn-feed-queue
+                                (fn-own-feed-find (car names) tbl))))
+          (fn-own-feed-new-targets (cdr names) tbl msgid)
+        (cons (car names) (fn-own-feed-new-targets (cdr names) tbl msgid)))
+    nil))
 
 (defun fn-own-feed-offer-record (peer msgid attempt tick)
   (declare (xargs :guard t))
@@ -1233,13 +1381,10 @@
 ; -----------------------------------------------------------------------------
 ; Durable before the effect: the FNFD records a tick and a reply authorize
 ;
-; 335 and 238 are go-aheads, not outcomes: the record they authorize is
-; `(:feed-sent peer msgid attempt)', written before the TAKETHIS or the
-; article block.  Every other code is an outcome record.  A code outside
-; `*fn-feed-outcome-codes*' is journaled as 400, which is exactly what
-; `fn-feed-observe' does with it (`fn-feed-lost') and what
-; `fn-feed-apply-record' replays, so the journal's enumeration stays closed
-; and replay stays faithful to the live machine.
+; Legacy record constructor retained for codec compatibility fixtures. The
+; host-called fn-own-feed-reply-records uses fn-feed-observe-records with the
+; actual feed and observation; this constructor is not its replay theorem
+; subject. In particular these legacy retry/loss outcomes omit timing.
 
 (defun fn-own-feed-reply-records-of (peer msgid attempt code)
   (declare (xargs :guard t))
@@ -1262,12 +1407,9 @@
 ; genuinely in-flight entry is exactly the second transfer K5 forbids: that
 ; peer may have received the article and be about to answer 235.
 ;
-; The record this authorizes is `(:feed-outcome peer msgid attempt 400)',
-; which is the SAME record a 400 on the wire writes and which
-; `fn-feed-apply-record' replays as `fn-feed-queue-requeue-inflight' -- so
-; the journal's enumeration stays closed and a replay of it reaches the
-; queue the live machine reached.  A `(:feed-restart peer)' record would
-; not: `fn-feed-restart' retires the attempt where `fn-feed-lost' counts it.
+; The emitted :feed-lost carries the observation's monotonic tick. It is
+; written even with no in-flight entry because loss still moves the deadline.
+; Restart is distinct: it retires the active attempt without counting a loss.
 
 (defun fn-own-feed-lost-one (peer tbl obs)
   (declare (xargs :guard t))
@@ -1278,17 +1420,10 @@
                        (fn-feed-lost (fn-own-feed-entry-feed e) obs)
                        tbl))))
 
-(defun fn-own-feed-lost-records-of (peer tbl)
+(defun fn-own-feed-lost-records-of (peer tbl obs)
   (declare (xargs :guard t))
-  (let* ((e (fn-own-feed-entry-of peer tbl))
-         (f (fn-own-feed-entry-feed e))
-         (msgid (and e (fn-own-feed-inflight-msgid (fn-feed-queue f)))))
-    (if (null msgid)
-        nil
-      (list (fn-own-feed-outcome-record
-             peer msgid
-             (fn-feed-state-attempt (fn-feed-state-of msgid (fn-feed-queue f)))
-             400)))))
+  (let ((e (fn-own-feed-entry-of peer tbl)))
+    (if e (fn-feed-lost-records (fn-own-feed-entry-feed e) obs) nil)))
 
 (local (defthm fn-feed-lost-keeps-peer-and-contact
   (and (equal (fn-feed-peer (fn-feed-lost f obs)) (fn-feed-peer f))
@@ -1366,13 +1501,8 @@
 
 (defun fn-own-feed-tick-peer-records (peer tbl obs)
   (declare (xargs :guard t))
-  (let* ((e (fn-own-feed-entry-of peer tbl))
-         (f (fn-own-feed-entry-feed e))
-         (selected (and e (fn-feed-selection f obs))))
-    (if (null selected)
-        nil
-      (list (fn-own-feed-offer-record peer selected (fn-feed-next-attempt f)
-                                      (nfix (fn-clock-monotonic obs)))))))
+  (let ((e (fn-own-feed-entry-of peer tbl)))
+    (if e (fn-feed-tick-records (fn-own-feed-entry-feed e) obs) nil)))
 
 (defun fn-own-feed-tick-records (names tbl obs)
   (declare (xargs :guard t))
@@ -1418,6 +1548,12 @@
     fn-own-feed-accept fn-own-feed-tick-peer fn-own-feed-tick
     fn-own-feed-effect-peer fn-own-feed-effect-octets
     fn-own-feed-accept-records fn-own-feed-response-code
+    fn-own-feed-intent-key fn-own-feed-intent-remove
+    fn-own-feed-intent-memberp
+    fn-own-feed-intent-apply fn-own-feed-intent-id
+    fn-own-feed-intent-values fn-own-feed-intent-records
+    fn-own-feed-resolution-records fn-own-feed-target-capacityp
+    fn-own-feed-new-targets
     fn-own-feed-parse-response fn-own-feed-reply-records-of
     fn-own-feed-lost-one fn-own-feed-lost-records-of
     fn-own-feed-tick-peer-records fn-own-feed-tick-records))
