@@ -435,24 +435,27 @@ receive an OS error for every failed read."
       (fnn-posix (path) (sb-posix:closedir dir)))
     (nreverse names)))
 
-(defun fnn-list-directory-bounded (path limit)
+(defun fnn-list-directory-bounded (path limit &optional namespace)
   "Entry names of PATH, or a fault before an unbounded list is retained.
 
-The caller gets the positive LIMIT from an ACL2 policy wrapper.  We read at
-most LIMIT plus one directory entry, so a hostile staging namespace cannot
-turn recovery into an unbounded allocation or a partial cleanup."
-  (unless (and (integerp limit) (> limit 0))
-    (fnn-fault "invalid staging observation limit"))
-  (let ((dir (fnn-posix (path) (sb-posix:opendir path))) (names nil))
+The caller gets LIMIT from an ACL2 policy wrapper.  We read at most LIMIT plus
+one directory entry, so an untrusted namespace cannot turn recovery into an
+unbounded allocation or a partial cleanup.  NAMESPACE is only a diagnostic
+label; it does not select a policy."
+  (unless (and (integerp limit) (>= limit 0))
+    (fnn-fault "invalid ACL2 directory observation limit"))
+  (let ((dir (fnn-posix (path) (sb-posix:opendir path))) (names nil) (entry-count 0))
     (unwind-protect
          (loop
            (let ((entry (fnn-posix (path) (sb-posix:readdir dir))))
              (when (sb-alien:null-alien entry) (return))
              (let ((name (sb-posix:dirent-name entry)))
                (unless (or (string= name ".") (string= name ".."))
-                 (when (>= (length names) limit)
-                   (fnn-fault "staging namespace exceeds ACL2 observation bound"))
-                 (push name names)))))
+                 (when (>= entry-count limit)
+                   (fnn-fault "~a exceeds ACL2 observation bound"
+                              (or namespace "directory")))
+                 (push name names)
+                 (incf entry-count)))))
       (fnn-posix (path) (sb-posix:closedir dir)))
     (nreverse names)))
 
@@ -1030,7 +1033,9 @@ The core decides whether the records replay."
   "The bounded physical observation supplied to the ACL2 staging policy."
   (let ((limit (fnn-bridge-staging-observation-limit)))
     (handler-case
-        (sort (fnn-list-directory-bounded (fnn-staging store) limit) #'string<)
+        (sort (fnn-list-directory-bounded (fnn-staging store) limit
+                                          "staging namespace")
+              #'string<)
       (fnn-os-error () (fnn-fault "cannot enumerate staging")))))
 
 (defun fnn-staging-orphans (store)
