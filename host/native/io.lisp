@@ -289,21 +289,74 @@ power-loss qualification."
            (fnn-durable-barrier fd))
       (fnn-close fd))))
 
+(defvar *fnn-read-syscall*
+  (lambda (fd buffer)
+    (sb-sys:with-pinned-objects (buffer)
+      (sb-unix:unix-read fd (sb-sys:vector-sap buffer) (length buffer))))
+  "Raw read seam.  Tests bind this to inject POSIX results; production uses unix-read.")
+
+(defvar *fnn-write-syscall*
+  (lambda (fd octets offset count)
+    (sb-unix:unix-write fd octets offset count))
+  "Raw write seam.  Tests bind this to inject POSIX results; production uses unix-write.")
+
+(defvar *fnn-fd-waiter* #'sb-sys:wait-until-fd-usable
+  "Raw wait seam.  Tests bind it; production waits on the actual descriptor.")
+
+(defvar *fnn-monotonic-ticks* #'get-internal-real-time
+  "Monotonic clock seam for bounded retry tests and no other policy decision.")
+
+(defun fnn-now () (funcall *fnn-monotonic-ticks*))
+
+(defun fnn-seconds-to-deadline (deadline)
+  (max 0 (/ (- deadline (fnn-now)) (float internal-time-units-per-second))))
+
+(defun fnn-eintr-p (errno)
+  (and (integerp errno) (= errno sb-posix:eintr)))
+
+(defun fnn-retry-eintr (call &optional deadline)
+  "Run CALL until it returns a result other than an interrupted syscall.
+
+CALL returns the SBCL unix-read/unix-write pair (COUNT, ERRNO).  It does not
+choose an outcome for a non-EINTR error; callers retain their read/write
+semantics, including EOF's legitimate zero read.  A deadline bounds retry
+loops; it cannot make a blocking syscall itself interruptible."
+  (loop
+    (multiple-value-bind (count errno) (funcall call)
+      (if (and (null count) (fnn-eintr-p errno))
+          ;; A socket send has one deadline across all waits and retries.  A
+          ;; regular-file write has no timeout contract and passes NIL.
+          (when (and deadline (<= (fnn-seconds-to-deadline deadline) 0))
+            (fnn-os-fail sb-posix:etimedout))
+          (return (values count errno))))))
+
+(defun fnn-write-progress (call remaining context &optional deadline)
+  "One write's positive progress, retrying EINTR without changing its deadline."
+  (multiple-value-bind (count errno) (fnn-retry-eintr call deadline)
+    (cond ((null count) (fnn-os-fail errno))
+          ((not (and (integerp count) (> count 0) (<= count remaining)))
+           (fnn-fault "~a write made no valid progress" context))
+          (t count))))
+
 (defun fnn-write-all (fd octets)
   (let ((data (fnn-octets octets)) (offset 0))
     (loop while (< offset (length data)) do
-      (multiple-value-bind (count errno)
-          (sb-unix:unix-write fd data offset (- (length data) offset))
-        (when (null count) (fnn-os-fail errno))
-        (when (<= count 0) (fnn-fault "short store write"))
-        (incf offset count)))))
+      (let ((remaining (- (length data) offset)))
+        (incf offset
+              (fnn-write-progress
+               (lambda () (funcall *fnn-write-syscall* fd data offset remaining))
+               remaining "store"))))))
 
-(defun fnn-read-fd (fd buffer)
-  "Read into BUFFER; the octet count, 0 at end of file."
+(defun fnn-read-fd (fd buffer &optional deadline)
+  "Read into BUFFER; the octet count, 0 at end of file.  EINTR is retried.
+
+DEADLINE, when supplied by a socket receive, bounds retry loops but does not
+promise to interrupt a blocking unix-read after readiness was observed."
   (multiple-value-bind (count errno)
-      (sb-sys:with-pinned-objects (buffer)
-        (sb-unix:unix-read fd (sb-sys:vector-sap buffer) (length buffer)))
+      (fnn-retry-eintr (lambda () (funcall *fnn-read-syscall* fd buffer)) deadline)
     (when (null count) (fnn-os-fail errno))
+    (unless (and (integerp count) (<= 0 count) (<= count (length buffer)))
+      (fnn-fault "read returned an invalid count"))
     count))
 
 (defun fnn-read-regular-bounded (path maximum)
@@ -425,7 +478,11 @@ power-loss qualification."
     symbol))
 
 (defun fnn-call (name &rest args)
-  "Apply NAME's executable counterpart to ARGS; a refusal is fnn-store-error."
+  "Apply NAME's executable counterpart to ARGS.
+
+An explicit core result such as :REFUSED remains a semantic result for its
+wrapper to handle.  A thrown condition or escaped raw evaluation is an
+execution-boundary fault, never a claim that the core refused an input."
   (let ((outcome :thrown) (values nil))
     (setq values
           (catch 'raw-ev-fncall
@@ -437,20 +494,20 @@ power-loss qualification."
                 nil))))
     (case outcome
       (:ok values)
-      (:thrown (fnn-refuse "ACL2 error in ~(~a~): ~a" name
+      (:thrown (fnn-fault "ACL2 error in ~(~a~): ~a" name
                            (handler-case (princ-to-string values) (error () "guard violation"))))
-      (t (fnn-refuse "ACL2 error in ~(~a~): ~a" name outcome)))))
+      (t (fnn-fault "ACL2 error in ~(~a~): ~a" name outcome)))))
 
 (defun fnn-core (name &rest args)
   "A state-free wrapper's single value."
   (first (apply #'fnn-call name args)))
 
 (defun fnn-core-state (name &rest args)
-  "A `state`-returning wrapper's value; its error flag is a refusal."
+  "A `state`-returning wrapper's value; its error flag is a core fault."
   (destructuring-bind (erp val &rest ignored)
       (apply #'fnn-call name (append args (list *the-live-state*)))
     (declare (ignore ignored))
-    (when erp (fnn-refuse "ACL2 error in ~(~a~)" name))
+    (when erp (fnn-fault "ACL2 error in ~(~a~)" name))
     val))
 
 (defun fnn-global (name)
@@ -466,17 +523,17 @@ power-loss qualification."
 
 (defun fnn-action (value)
   (unless (member value +fnn-actions+)
-    (fnn-refuse "unexpected ACL2 action: ~s" value))
+    (fnn-fault "unexpected ACL2 action: ~s" value))
   value)
 
 (defun fnn-nat (value)
   (unless (and (integerp value) (>= value 0))
-    (fnn-refuse "ACL2 returned a non-natural"))
+    (fnn-fault "ACL2 returned a non-natural"))
   value)
 
 (defun fnn-as-octets (value)
   (unless (fnn-octet-list-p value)
-    (fnn-refuse "ACL2 returned a non-octet list"))
+    (fnn-fault "ACL2 returned a non-octet list"))
   (fnn-octets value))
 
 ;;; Durable metadata is one certified interface.  These functions deliberately
@@ -486,7 +543,7 @@ power-loss qualification."
 (defun fnn-metadata-config-frame (profile)
   (let ((value (fnn-core 'fn-store-metadata-config-frame profile)))
     (when (or (null value) (not (fnn-octet-list-p value)))
-      (fnn-refuse "ACL2 refused metadata profile"))
+      (fnn-fault "ACL2 returned malformed metadata profile frame"))
     (fnn-octets value)))
 
 (defun fnn-metadata-config-decode (octets)
@@ -503,7 +560,7 @@ power-loss qualification."
 (defun fnn-metadata-frontier-frame (frontier)
   (let ((value (fnn-core 'fn-store-metadata-frontier-frame frontier)))
     (when (or (null value) (not (fnn-octet-list-p value)))
-      (fnn-fault "ACL2 refused allocation frontier"))
+      (fnn-fault "ACL2 returned malformed allocation frontier frame"))
     (fnn-octets value)))
 
 (defun fnn-metadata-frontier-decode (octets)
@@ -583,7 +640,7 @@ here.  The host supplies octets and decides nothing about them."
   "A replayed name table: the core joins the names with LF, which no group
 name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
   (let ((octets (fnn-core-state wrapper)))
-    (unless (fnn-octet-list-p octets) (fnn-refuse "ACL2 returned a non-octet list"))
+    (unless (fnn-octet-list-p octets) (fnn-fault "ACL2 returned a non-octet list"))
     (let ((names nil) (current nil))
       (dolist (octet octets)
         (if (= octet 10)
@@ -604,7 +661,7 @@ name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
 (defun fnn-bridge-lookup-found-p (msgid)
   (let ((value (fnn-core-state 'fn-store-sn-lookup-foundp (fnn-octet-list msgid))))
     (cond ((eq value t) t) ((null value) nil)
-          (t (fnn-refuse "ACL2 returned a non-boolean")))))
+          (t (fnn-fault "ACL2 returned a non-boolean")))))
 
 ;;; The frame session: tools/frame_bridge.py, with SHA-256 from above.
 
@@ -617,7 +674,7 @@ name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
                      :max-inbound :max-text :max-blob :max-identity)))
         (unless (and (listp values) (= (length values) (length names))
                      (every #'integerp values))
-          (fnn-refuse "ACL2 returned an unexpected constant vector"))
+          (fnn-fault "ACL2 returned an unexpected constant vector"))
         (let ((table (mapcar #'cons names values)))
           ;; The two slice constants the store host still holds, checked
           ;; against the ACL2 grammar at session open as frame_bridge does.
@@ -684,12 +741,12 @@ which `fn-store-sn-prepare' then refuses."
 (defun fnn-post-boundary (msgid payload-length group-count charge)
   (let ((value (fnn-core 'fn-store-post-boundary (fnn-octet-list msgid) payload-length
                          group-count charge)))
-    (unless (keywordp value) (fnn-refuse "ACL2 returned an unexpected boundary verdict"))
+    (unless (keywordp value) (fnn-fault "ACL2 returned an unexpected boundary verdict"))
     value))
 
 (defun fnn-charge (length)
   (let ((value (fnn-core 'fn-store-charge length)))
-    (unless (and (integerp value) (> value 0)) (fnn-refuse "ACL2 returned a non-positive charge"))
+    (unless (and (integerp value) (> value 0)) (fnn-fault "ACL2 returned a non-positive charge"))
     value))
 
 (defun fnn-group-codes (names domain)
@@ -1142,8 +1199,12 @@ The obligation binds the CANONICAL subject identity octets; what comes back
 is each identity's text.  `fn-store-prov-post' selects the durable evidence
 from the live ACL2 configuration; the native host does not name a provenance."
   (let* ((subject (handler-case (fnn-subject-id payload)
+                    (fnn-store-indeterminate (e) (error e))
+                    (fnn-store-fault (e) (error e))
                     (fnn-store-error () (fnn-refuse "ACL2 refused to derive content identity"))))
          (obligation (handler-case (fnn-obligation-id msgid subject)
+                       (fnn-store-indeterminate (e) (error e))
+                       (fnn-store-fault (e) (error e))
                        (fnn-store-error () (fnn-refuse "ACL2 refused to derive content identity")))))
     (values (fnn-identity-text obligation) (fnn-identity-text subject)
             (fnn-provenance-post))))
@@ -1376,17 +1437,17 @@ payloads, close, reopen, and report both timings as JSON on stdout."
   (fnn-core-state 'fn-reader-set-posting nil)
   (let ((selection (fnn-core-state (if with-store 'fn-reader-use-store 'fn-reader-use-seed))))
     (unless (member selection '(:ready :refused))
-      (fnn-refuse "unexpected ACL2 archive-selection result"))
+      (fnn-fault "unexpected ACL2 archive-selection result"))
     (unless (eq selection :ready)
       (fnn-refuse "reader archive is not NNTP-projectable"))))
 
 (defun fnn-reader-octets-of (value)
-  (unless (fnn-octet-list-p value) (fnn-refuse "unexpected ACL2 octet-list result"))
+  (unless (fnn-octet-list-p value) (fnn-fault "unexpected ACL2 octet-list result"))
   (fnn-octets value))
 
 (defun fnn-reader-octets (global)
   (let ((value (fnn-global global)))
-    (unless (fnn-octet-list-p value) (fnn-refuse "unexpected ACL2 octet-list result"))
+    (unless (fnn-octet-list-p value) (fnn-fault "unexpected ACL2 octet-list result"))
     value))
 
 (defun fnn-model-chunks (path)
@@ -1428,7 +1489,7 @@ this host obeys it."
       (progn
         (fnn-core-state 'fn-reader-chunk octets)
         (let ((closing (fnn-global 'fn-reader-closep)))
-          (unless (member closing '(t nil)) (fnn-refuse "unexpected ACL2 boolean result"))
+          (unless (member closing '(t nil)) (fnn-fault "unexpected ACL2 boolean result"))
           (values (fnn-octets (fnn-reader-octets 'fn-reader-output)) closing)))))
 
 (defun fnn-reader-submission ()
@@ -1436,7 +1497,7 @@ this host obeys it."
   (let ((octets (fnn-global 'fn-reader-submit-octets)))
     (and octets
          (progn
-           (unless (fnn-octet-list-p octets) (fnn-refuse "unexpected ACL2 octet-list result"))
+           (unless (fnn-octet-list-p octets) (fnn-fault "unexpected ACL2 octet-list result"))
            (list (fnn-octets (fnn-reader-octets 'fn-reader-submit-msgid))
                  (fnn-octets octets))))))
 
@@ -1446,21 +1507,39 @@ this host obeys it."
   (fnn-octets (fnn-reader-octets 'fn-reader-output)))
 
 (defun fnn-recv (fd seconds)
-  "Up to +fnn-max-read+ octets, an empty vector at end of input, :timeout."
-  (if (not (sb-sys:wait-until-fd-usable fd :input seconds))
-      :timeout
-      (let* ((buffer (fnn-make-octets +fnn-max-read+))
-             (count (fnn-read-fd fd buffer)))
-        (subseq buffer 0 count))))
+  "Up to +fnn-max-read+ octets, an empty vector at end of input, :timeout.
+
+SECONDS bounds readiness and EINTR retries as one deadline.  The descriptor is
+currently blocking, so it does not claim to interrupt one unix-read that has
+already started after a readiness notification."
+  (let* ((deadline (+ (fnn-now) (* seconds internal-time-units-per-second)))
+         (remaining (fnn-seconds-to-deadline deadline)))
+    (if (or (<= remaining 0)
+            (not (funcall *fnn-fd-waiter* fd :input remaining)))
+        :timeout
+        (let* ((buffer (fnn-make-octets +fnn-max-read+))
+               (count (fnn-read-fd fd buffer deadline)))
+          (subseq buffer 0 count)))))
 
 (defun fnn-send-all (fd octets seconds)
-  (let ((offset 0))
-    (loop while (< offset (length octets)) do
-      (unless (sb-sys:wait-until-fd-usable fd :output seconds)
-        (fnn-os-fail sb-posix:etimedout))
-      (multiple-value-bind (count errno) (sb-unix:unix-write fd octets offset (- (length octets) offset))
-        (when (null count) (fnn-os-fail errno))
-        (incf offset count)))))
+  "Write OCTETS with one deadline for readiness waits and EINTR retries.
+
+The current socket descriptors are blocking.  This bounds the wait/retry loop
+but does not claim to interrupt an individual unix-write after readiness; that
+requires a separate nonblocking-socket contract."
+  (let ((data (fnn-octets octets))
+        (offset 0)
+        (deadline (+ (fnn-now) (* seconds internal-time-units-per-second))))
+    (loop while (< offset (length data)) do
+      (let ((remaining (fnn-seconds-to-deadline deadline)))
+        (when (<= remaining 0) (fnn-os-fail sb-posix:etimedout))
+        (unless (funcall *fnn-fd-waiter* fd :output remaining)
+          (fnn-os-fail sb-posix:etimedout))
+        (let ((unwritten (- (length data) offset)))
+          (incf offset
+                (fnn-write-progress
+                 (lambda () (funcall *fnn-write-syscall* fd data offset unwritten))
+                 unwritten "socket" deadline)))))))
 
 (defun fnn-graceful-close (fd)
   "End a connection after its final reply without a reset: shutdown the
@@ -1545,9 +1624,14 @@ failure that leaves the reader unable to correlate replies is a bridge fault."
                    ;; loop now.
                    (multiple-value-bind (reply closing)
                        (handler-case (fnn-reader-chunk (fnn-octet-list incoming))
+                         ;; A recovery fence and a malformed core result are
+                         ;; process outcomes, not a peer's ordinary refusal.
+                         (fnn-store-indeterminate (e) (error e))
+                         (fnn-store-fault (e) (error e))
                          (fnn-store-error ()
-                           ;; An invalid bridge result is not a protocol
-                           ;; reply; this connection's input is dropped.
+                           ;; A semantic refusal is not a protocol reply; this
+                           ;; connection's input is dropped while the listener
+                           ;; remains usable.
                            (return-from fnn-serve-client nil)))
                      (when (> (length reply) 0) (fnn-send-all fd reply 10))
                      (when (fnn-reader-submission)
@@ -1564,9 +1648,11 @@ failure that leaves the reader unable to correlate replies is a bridge fault."
                        (return-from fnn-serve-client nil))))))
            (fnn-os-error () nil)
            (sb-bsd-sockets:socket-error () nil)
-           ;; An ACL2 refusal is an answer that leaves the core usable, as an
-           ;; ACL2 Error reply leaves the pipe synchronized; only a Lisp
-           ;; condition that is not a refusal is a bridge fault.
+           ;; Keep the three core outcomes distinct.  A semantic refusal costs
+           ;; this connection; a fault or recovery fence reaches the one-shot
+           ;; command and preserves its 4 or 3 exit code.
+           (fnn-store-indeterminate (e) (error e))
+           (fnn-store-fault (e) (error e))
            (fnn-store-error () nil)
            (fnn-reader-bridge-fault (e) (error e))
            (serious-condition (e)
@@ -1721,14 +1807,15 @@ connection `fn-reader-reset' opens and projects with
              (fnn-usage-error (e)
                (fnn-err "fn-host: error: ~a" e)
                +fnn-exit-usage+)
-             ((or fnn-store-error fnn-os-error) (e)
-              ;; The reader's Python has no outcome table before it listens:
-              ;; an uncaught StoreError there exits 1 with a traceback.
+             ((or fnn-store-indeterminate fnn-store-fault fnn-store-error fnn-os-error) (e)
+              ;; Socket loss is consumed by fnn-serve-client.  A store/core
+              ;; condition that escapes reader setup or the client handler
+              ;; keeps the same 3/4/1 outcome as every other native command.
               (fnn-err "~a: ~a" (if reader-p "reader" "store") e)
-              (if reader-p +fnn-exit-refused+ (fnn-exit-code-for e)))
+              (fnn-exit-code-for e))
              (serious-condition (e)
                (fnn-err "~a: internal error: ~a" (if reader-p "reader" "store") e)
-               (if reader-p +fnn-exit-refused+ +fnn-exit-fault+)))))
+               +fnn-exit-fault+))))
     (fnn-exit code)))
 
 ;; The ACL2-visible entry that host/native/build.lisp defines in :program
