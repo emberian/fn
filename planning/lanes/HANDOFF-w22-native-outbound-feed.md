@@ -56,7 +56,7 @@ python3 tools/certify_books.py --jobs 1 \
 python3 tools/certify_books.py --jobs 1 \
   books/feed-connection-invariants tests/acl2/feed-connection-invariants-tests
 FN_ACL2=acl2 python3 tools/host_check.py host/owner-host.lisp
-tests/test_owner_feed_connection_host.sh
+FN_ACL2=/path/to/acl2 tests/test_owner_feed_connection_host.sh
 tests/test_native_feed_service_raw.sh
 sbcl --noinform --script tests/native_io_progress.lisp
 ```
@@ -66,7 +66,12 @@ time, exact 510/511 boundary behavior, split greeting and 203, rejected
 200/201 and MODE replies, and lost-connection closure. The correction invariant tests establish
 selected-state and put/remove preservation with premise teeth. The actual
 host-wrapper `ld` witness checks greeting 400 and MODE 500 map to
-`:connection-refused`, while a ready reply retains its port tag. The raw SBCL
+`:connection-refused`, while a ready reply retains its port tag. The older
+marker-only host witness result is superseded: at source
+`b2dc4a7ac2a91a38fcf2c137c34a70ae672f1660`, the repaired runner uses
+`tools/host_check.py`'s error-before-completion and logic-prompt discipline,
+honors `FN_ACL2`, and rejects the deliberately false
+`tests/owner-feed-connection-host-bad.lsp` fixture. The raw SBCL
 harness checks split/coalesced phase drains, no tick before ready, one flush per
 post-ready line, no reflush on connection refusal, stop-time shutdown without
 close, worker-owned final close, dial-after-stop rejection, and the bounded
