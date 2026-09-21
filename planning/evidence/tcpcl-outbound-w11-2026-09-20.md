@@ -25,27 +25,38 @@ same box at the same `--jobs`, in a copy of this tree
 lane is the first to change `books/tcpcl-octets`, and no hbox figure for that
 book existed to compare against.
 
-| root | dev bytes (control) | +D20 |
-| --- | --- | --- |
-| `books/tcpcl-octets` | 101.258 s | **101.740 s** |
-| `books/tcpcl-session` | 64.842 s | **62.542 s** |
-| `books/tcpcl-invariants` | 7.862 s | **6.974 s** |
-| `tests/acl2/tcpcl-tests` | 0.352 s | **0.323 s** |
-| wall, eight books at `--jobs 4` | 174.689 s | **172.038 s** |
+| root | dev bytes (control) | +D20, first | +D20, branch head |
+| --- | --- | --- | --- |
+| `books/tcpcl-octets` | 101.258 s | 101.740 s | **108.625 s** |
+| `books/tcpcl-session` | 64.842 s | 62.542 s | **64.584 s** |
+| `books/tcpcl-invariants` | 7.862 s | 6.974 s | **7.257 s** |
+| `tests/acl2/tcpcl-tests` | 0.352 s | 0.323 s | **0.333 s** |
+| wall, eight books at `--jobs 4` | 174.689 s | 172.038 s | **181.273 s** |
 
-Both runs: `status passed`, `book_failures {}`, zero `ACL2 Error` in every
-log, all eight books `passed`. Lane run
-`build/acl2/certify-20260921T004345Z-1351598` (fetched into this worktree),
-farm run `run-20260921T004339Z-301c`, exit code 0; control run
-`/tank/fn/lanes/w11-tcpcl-outbound-base/build/acl2/certify-20260921T004818Z-1354736`,
-`--no-publish` so it seeded nothing.
+All three runs: `status passed`, `book_failures {}`, zero `ACL2 Error` in
+every log, all eight books `passed`.
+
+- control: `/tank/fn/lanes/w11-tcpcl-outbound-base/build/acl2/certify-20260921T004818Z-1354736`,
+  `--no-publish` so it seeded nothing.
+- first: `build/acl2/certify-20260921T004345Z-1351598`, farm run
+  `run-20260921T004339Z-301c`, exit 0.
+- branch head: `build/acl2/certify-20260921T005957Z-1365818`, farm run
+  `run-20260921T005953Z-6393`, exit 0. This is the authoritative one: its
+  `source_digests_sha256` match all eight files of this worktree exactly
+  (checked, zero mismatches). The first run was superseded when the D19 → D20
+  renumber changed comment bytes in three of the four books — a reminder that
+  a certification speaks for bytes, not for a change.
 
 Reading: making `fn-tcl-take` and `fn-tcl-drop` guard-total costs
-`books/tcpcl-octets` **nothing** (+0.48 s on 101 s, inside this box's noise),
-and the cheap outbound recognizer costs `books/tcpcl-session` nothing either
-(−2.30 s). The previous lane's figures for the three roots it owned — 62.76 /
-7.25 / 0.46 s, `certify-20260921T000317Z-1324995` — agree with this control
-to within the same noise.
+`books/tcpcl-octets` **nothing**. The three readings for that book on this
+box inside twenty minutes are 101.258, 101.740 and 108.625 s, a spread of
+7.4 s on 101 s, and the two lower ones are one from each side of the change,
+so the change is well inside the box's own noise and is certainly not the
+7 s. The cheap outbound recognizer costs `books/tcpcl-session` nothing
+either: 64.584 s against the control's 64.842 s. The previous lane's figures
+for the three roots it owned — 62.76 / 7.25 / 0.46 s,
+`certify-20260921T000317Z-1324995` — agree with this control to within the
+same noise.
 
 ## 2. The guard, measured directly
 
