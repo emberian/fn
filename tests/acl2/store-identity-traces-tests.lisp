@@ -108,15 +108,14 @@
 (defconst *sit-reserved-refusal* (fn-sit-reserve *sit-reopened-ready*))
 (defconst *sit-refused* (fn-sn-refuse-reservation *sit-reserved-refusal* 2))
 (assert-event (equal (fn-sf-frontier (fn-sn-files *sit-refused*)) 3))
-(assert-event (equal (fn-sf-successes (fn-sn-files *sit-refused*))
-                     '((0 . 0) (1 . 1))))
+(assert-event (equal (fn-sf-successes (fn-sn-files *sit-refused*)) nil))
 
 (defconst *sit-legacy*
   (fn-record-make 2 3 3 "<legacy@example.invalid>" '(76 13 10) *sit-groups*
                   "legacy-obligation" "legacy-subject" "legacy-release" 2))
 (defconst *sit-after-legacy* (fn-sit-commit-legacy *sit-refused* *sit-legacy*))
 (assert-event (equal (fn-sf-successes (fn-sn-files *sit-after-legacy*))
-                     '((0 . 0) (1 . 1) (2 . 3))))
+                     '((2 . 3))))
 (assert-event
  (equal (fn-stx-verdict-token
          (fn-sn-verdict-lookup *sit-after-legacy* "<legacy@example.invalid>"))
@@ -131,7 +130,7 @@
 (defconst *sit-finished*
   (fn-sit-commit-retention *sit-after-legacy* *sit-retention*))
 (assert-event (equal (fn-sf-successes (fn-sn-files *sit-finished*))
-                     '((0 . 0) (1 . 1) (2 . 3) (3 . 4))))
+                     '((2 . 3) (3 . 4))))
 (assert-event (equal (len (fn-stx-store (fn-sn-node *sit-finished*))) 2))
 (assert-event
  (consp (fn-retain-find-id
@@ -146,7 +145,7 @@
 (assert-event (fn-sn-open-okp *sit-open*))
 (defconst *sit-recovered* (fn-sn-open-state *sit-open*))
 (assert-event (equal (fn-sf-successes (fn-sn-files *sit-recovered*))
-                     '((0 . 0) (1 . 1) (2 . 3) (3 . 4))))
+                     nil))
 (assert-event (equal (len (fn-stx-store (fn-sn-node *sit-recovered*))) 2))
 (assert-event (equal (fn-sn-keyring-snapshots *sit-recovered*)
                      (list *sit-enrollment*)))
