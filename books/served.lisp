@@ -887,13 +887,27 @@
 ; source to a peer name at :open and hands the node and configuration the
 ; offer decision reads; both are checked once here under their recognizers
 ; (fn-auth-open-session) and never per command.
+;
+; `acfg' is the SAME operator policy `fn-served-open' pins into a reader.  It
+; was `(fn-auth-open-config)' here -- a literal, so a peer connection was
+; opened under a policy with no credential, no protected-only bit and no
+; certificate, whatever the operator had configured.  That is not a peering
+; nicety: the owner resolves a connection to a peer by SOURCE ADDRESS alone
+; (host/owner-host.lisp fn-owner-peer-name-for), so on a box where a
+; configured peer is reachable on loopback EVERY client is opened here, and
+; the operator's whole AUTHINFO configuration reached no connection at all.
+; Measured 2026-09-21: one node, one `fn principal set-password', one peer
+; record with `--source-address 127.0.0.1'; `AUTHINFO PASS' answered 481 with
+; the secret just written, CAPABILITIES carried no AUTHINFO line, and POST
+; before any login answered 340.  With the record removed and nothing else
+; changed, the same node advertised `AUTHINFO USER' and the login succeeded.
+; The evidence is planning/evidence/auth-live-2026-09-21.md.
 (defun fn-served-open-peer (archive line-limit body-limit config observation
-                                    injection peer node cfg)
+                                    injection peer node cfg acfg)
   (declare (xargs :guard t))
   (fn-served-make-result
    (fn-served-make-conn (fn-wire-initial-state line-limit body-limit)
-                        (fn-auth-open-session archive peer node cfg
-                                              (fn-auth-open-config) nil)
+                        (fn-auth-open-session archive peer node cfg acfg nil)
                         archive config observation injection)
    (list (fn-nntp-reply-effect (fn-served-greeting config)))))
 
@@ -916,14 +930,62 @@
            (fn-served-connp
             (fn-served-result-conn
              (fn-served-open-peer archive line-limit body-limit config
-                                  observation injection peer node cfg))))
+                                  observation injection peer node cfg acfg))))
   :hints (("Goal" :in-theory (e/d (fn-served-connp)
                                   (fn-wire-statep fn-wire-initial-state
                                    fn-auth-open-session
                                    fn-auth-session-consistentp))
            :use ((:instance fn-wire-initial-state-is-state)
                  (:instance fn-auth-open-session-is-consistent
-                            (acfg (fn-auth-open-config)) (tlsp nil))))))
+                            (tlsp nil))))))
+
+; -----------------------------------------------------------------------------
+; The policy a connection is opened under, and it is one policy
+;
+; The defect this pair exists to refute: `fn-served-open-peer' pinned the
+; literal `(fn-auth-open-config)' while `fn-served-open' pinned the
+; operator's, so which AUTHINFO configuration a client met depended on
+; whether the owner had resolved its source address to a peer record --
+; which, on one box, it does for every client.  Neither theorem holds of
+; that definition: the first because the value pinned was a constant, the
+; second because the two sides differed on every `acfg' but one.
+;
+; They are stated over `fn-auth-session-config' of the opened session
+; because that is the field every decision in books/nntp-auth.lisp reads:
+; `fn-auth-authinfo' finds the credential in it, `fn-auth-capability-lines'
+; reads the STARTTLS and AUTHINFO labels off it, and `fn-auth-gatedp' and
+; `fn-auth-postingp' read the two policy bits from it.
+
+(defthm fn-served-open-peer-pins-the-configuration
+  (equal (fn-auth-session-config
+          (fn-served-conn-session
+           (fn-served-result-conn
+            (fn-served-open-peer archive line-limit body-limit config
+                                 observation injection peer node cfg acfg))))
+         (if (fn-auth-configp acfg) acfg (fn-auth-open-config)))
+  :hints (("Goal" :in-theory (e/d (fn-served-open-peer fn-auth-open-session)
+                                  (fn-auth-configp fn-auth-open-config
+                                   fn-peer-open-session)))))
+
+; The keystone.  A peer connection and a reader connection opened on the same
+; listener under the same operator policy carry the SAME policy, so no
+; decision in books/nntp-auth.lisp can answer one way for a client the owner
+; resolved to a peer record and another way for the client beside it.
+(defthm fn-served-peer-and-reader-open-under-the-same-policy
+  (equal (fn-auth-session-config
+          (fn-served-conn-session
+           (fn-served-result-conn
+            (fn-served-open-peer archive line-limit body-limit config
+                                 observation injection peer node cfg acfg))))
+         (fn-auth-session-config
+          (fn-served-conn-session
+           (fn-served-result-conn
+            (fn-served-open archive line-limit body-limit config
+                            observation injection acfg)))))
+  :hints (("Goal" :in-theory (e/d (fn-served-open-peer fn-served-open
+                                   fn-auth-open-session)
+                                  (fn-auth-configp fn-auth-open-config
+                                   fn-peer-open-session)))))
 
 (defthm fn-served-concat-is-an-octet-list
   (implies (fn-served-chunk-listp chunks)

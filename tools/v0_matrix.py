@@ -1868,9 +1868,10 @@ else echo NONE; fi
             step = self.sh("node {} principal set-password".format(node.upper),
                            self.cd(self.cli(node, args)), timeout=900, expect=None)
             self.from_step("V0-AUTH-PASSWORD", step, node=node.name,
-                           limit="the secret is stored in the clear on this tree "
-                                 "(BOARD OB-AUTH-DIGEST); this row is about the CLI, "
-                                 "not about the secret's protection")
+                           limit="what is stored is books/auth-secret.lisp's salted "
+                                 "verifier, derived in an ACL2 session; this row is "
+                                 "about the CLI writing it, not about the strength of "
+                                 "the digest or the secret's protection on the wire")
             listing = self.sh("node {} principal list".format(node.upper),
                               self.cd(self.cli(node, "principal list")),
                               timeout=900, expect=None)
@@ -1881,11 +1882,11 @@ else echo NONE; fi
                       listing.command, "rc={} lists {}: {}".format(
                           listing.rc, AUTH_USER, shows),
                       node=node.name, exit_code=listing.rc,
-                      limit="`principal set-password` writes a credential to "
-                            "<store>/auth.toml and `principal list` reads the "
-                            "<store>/principals/*.principal files: on this tree they "
-                            "are two registries and a login set by the first does not "
-                            "appear in the second")
+                      limit="one registry: `set-password` writes and `list` reads "
+                            "the credential file ([auth] path, else "
+                            "<store>/auth.toml), which is the same file the running "
+                            "service loads. The listing prints the login, its "
+                            "principal and its posting flag and never the verifier")
 
     def auth_session(self, node: NodeSpec):
         keys = ("V0-AUTH-ADVERTISED", "V0-AUTH-GATED", "V0-AUTH-LOGIN",
@@ -1930,7 +1931,16 @@ else echo NONE; fi
         self.from_reply("V0-AUTH-GATED", result.get("POST BEFORE", ""), step.command,
                         node=node.name,
                         limit="one gated command; RFC 4643 section 2.3 does not require "
-                              "the same code for every gated verb")
+                              "the same code for every gated verb. The gate is the "
+                              "NODE POLICY (`fn init --auth-required`, [auth] required) "
+                              "and these two nodes do not set it: a node that serves "
+                              "readers unauthenticated and a transit peer on the same "
+                              "loopback address cannot, because "
+                              "fn-auth-restricted-keywordp gates the reader verbs and "
+                              "IHAVE alike. tests/test_auth.py "
+                              "ServedCredentialTests.test_post_is_gated_by_the_"
+                              "configured_policy is the same question asked of a node "
+                              "that does set it")
         self.from_reply("V0-AUTH-LOGIN", result.get("AUTHINFO PASS", ""), step.command,
                         node=node.name,
                         limit="USER/PASS over an unprotected loopback connection")

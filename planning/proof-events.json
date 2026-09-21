@@ -1066,6 +1066,19 @@
           "kind": "guarded-function"
         }
       ]
+    },
+    {
+      "id": "PRF-035",
+      "events": [
+        {
+          "name": "fn-served-peer-and-reader-open-under-the-same-policy",
+          "kind": "theorem"
+        },
+        {
+          "name": "fn-served-open-peer-pins-the-configuration",
+          "kind": "theorem"
+        }
+      ]
     }
   ]
 }
