@@ -113,7 +113,12 @@
              t)
          (fnn-crypto-error (condition)
            (setq *fnn-crypto-state* :unavailable)
-           (error condition)))))))
+           (error condition))
+         (error (condition)
+           (setq *fnn-crypto-state* :unavailable)
+           (error 'fnn-crypto-unavailable
+                  :detail (format nil "libsodium ABI cannot initialize: ~a"
+                                  condition))))))))
 
 (defun fnn-crypto-version ()
   (fnn-crypto-initialize)
@@ -171,7 +176,11 @@
           :verified
         :refused)
     (fnn-crypto-unavailable () :unavailable)
-    (fnn-crypto-fault () :fault)))
+    (fnn-crypto-fault () :fault)
+    ;; Foreign symbol/call failures are host faults.  They are deliberately
+    ;; caught only by the observation API; the lower primitive keeps the
+    ;; diagnostic condition for callers that need to report it.
+    (error () :fault)))
 
 (defun fnn-crypto-sha512 (octets)
   "Return the 64 SHA-512 octets for one bounded input; signal facility faults."
