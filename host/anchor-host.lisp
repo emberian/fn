@@ -18,6 +18,7 @@
 
 (in-package "ACL2")
 (include-book "../books/anchor-invariants")
+(include-book "../books/anchor-replace")
 
 (set-state-ok t)
 (program)
@@ -69,6 +70,14 @@
 ; certified core rather than duplicating payload/header/trailer constants.
 (defun fn-anchor-host-frame-limit ()
   (+ *fn-anchor-max-payload* *fn-frame-overhead-octets*))
+
+(defun fn-anchor-host-replace-start () (fn-anchor-rp-start))
+(defun fn-anchor-host-recover-start (presentp)
+  (fn-anchor-rp-recover-start presentp))
+(defun fn-anchor-host-replace-action (phase) (fn-anchor-rp-action phase))
+(defun fn-anchor-host-replace-step (phase event)
+  (fn-anchor-rp-step phase event))
+(defun fn-anchor-host-replace-outcome (phase) (fn-anchor-rp-outcome phase))
 
 ; Accepting one observation into the node's durable anchor state.
 (defun fn-anchor-host-accept (pinned latest-fields incarnation fields verdict

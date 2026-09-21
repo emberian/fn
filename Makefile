@@ -178,11 +178,13 @@ ACL2_BOOKS ?= books/defrecord \
 	books/anchor \
 	books/anchor-wire \
 	books/anchor-servers \
+	books/anchor-replace \
 	books/anchor-record \
 	books/anchor-invariants \
 	tests/acl2/anchor-tests \
 	tests/acl2/anchor-wire-tests \
 	tests/acl2/anchor-server-tests \
+	tests/acl2/anchor-replace-tests \
 	tests/acl2/anchor-teeth-tests \
 	books/membership-epochs \
 	books/membership-epochs-invariants \

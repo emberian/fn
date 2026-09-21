@@ -202,38 +202,91 @@
 (defun fnn-anchor-path (store)
   (fnn-join (fnn-store-root store) "anchor.fnan"))
 
+(defun fnn-anchor-rp-start ()
+  (fnn-core 'fn-anchor-rp-start))
+
+(defun fnn-anchor-rp-recover-start (presentp)
+  (fnn-core 'fn-anchor-rp-recover-start presentp))
+
+(defun fnn-anchor-rp-action (phase)
+  (fnn-core 'fn-anchor-rp-action phase))
+
+(defun fnn-anchor-rp-step (phase event)
+  (let ((next (fnn-core 'fn-anchor-rp-step phase event)))
+    (when (equal next phase)
+      (fnn-fault "ACL2 rejected anchor replacement event ~s in ~s"
+                 event phase))
+    next))
+
+(defun fnn-anchor-rp-outcome (phase)
+  (let ((outcome (fnn-core 'fn-anchor-rp-outcome phase)))
+    (unless (member outcome '(:pending :durable :recovered :fault :uncertain))
+      (fnn-fault "ACL2 returned invalid anchor replacement outcome"))
+    outcome))
+
+(defun fnn-anchor-recovery-barriers (store path presentp)
+  "Make the observed final-name state durable before it becomes held state."
+  (let ((phase (fnn-anchor-rp-recover-start presentp)))
+    (when presentp
+      (unless (eq (fnn-anchor-rp-action phase) :recovery-file-barrier)
+        (fnn-fault "ACL2 rejected anchor file recovery barrier"))
+      (handler-case
+          (progn
+            (fnn-fsync-regular path)
+            (fnn-at store :anchor-recovery-file-durable)
+            (setq phase (fnn-anchor-rp-step
+                         phase '(:recovery-file-result :ok))))
+        ((or fnn-os-error serious-condition) ()
+          (setq phase (fnn-anchor-rp-step
+                       phase '(:recovery-file-result :uncertain))))))
+    (when (eq (fnn-anchor-rp-outcome phase) :uncertain)
+      (fnn-indeterminate "anchor final-file recovery barrier is uncertain"))
+    (unless (eq (fnn-anchor-rp-action phase) :recovery-directory-barrier)
+      (fnn-fault "ACL2 rejected anchor directory recovery barrier"))
+    (handler-case
+        (progn
+          (fnn-fsync-dir (fnn-store-root store))
+          (fnn-at store :anchor-recovery-directory-durable)
+          (setq phase (fnn-anchor-rp-step
+                       phase '(:recovery-directory-result :ok))))
+      ((or fnn-os-error serious-condition) ()
+        (setq phase (fnn-anchor-rp-step
+                     phase '(:recovery-directory-result :uncertain)))))
+    (unless (eq (fnn-anchor-rp-outcome phase) :recovered)
+      (fnn-indeterminate "anchor directory recovery barrier is uncertain"))
+    :recovered))
+
 (defun fnn-anchor-load-held (store)
   "Return (values incarnation fields), faulting on a present invalid FNAN."
   (let* ((path (fnn-anchor-path store))
          (stat (fnn-lstat path)))
+    (when (and stat (or (fnn-symlink-p stat) (not (fnn-regular-p stat))))
+      (fnn-fault "refusing non-regular anchor record"))
+    (fnn-anchor-recovery-barriers store path (not (null stat)))
     (when (null stat)
       (return-from fnn-anchor-load-held (values 0 nil)))
-    (when (or (fnn-symlink-p stat) (not (fnn-regular-p stat)))
-      (fnn-fault "refusing non-regular anchor record"))
     (let* ((limit (fnn-core 'fn-anchor-host-frame-limit))
+           (trailer (fnn-constant :trailer))
            (raw (progn
-                  (unless (and (integerp limit) (< 32 limit))
+                  (unless (and (integerp limit) (< trailer limit))
                     (fnn-fault "ACL2 returned an invalid FNAN frame limit"))
                   (fnn-read-regular-bounded path limit))))
-      (when (<= (length raw) 32)
+      (when (<= (length raw) trailer)
         (fnn-fault "truncated durable anchor record"))
-      (let* ((prefix (subseq raw 0 (- (length raw) 32)))
-             (digest (fnn-sha256 prefix))
-             (values (fnn-core 'fn-anchor-host-decode
+      (let* ((values (fnn-core 'fn-anchor-host-decode
                                (fnn-octet-list raw)
-                               (fnn-octet-list digest))))
+                               (fnn-digest-of raw))))
         (unless (and (listp values) (= (length values) 11)
                      (integerp (first values)) (<= 0 (first values)))
           (fnn-fault "invalid durable anchor record"))
         (values (first values) (rest values))))))
 
 (defun fnn-anchor-contents (incarnation fields)
-  "The exact ACL2 FNAN protected bytes followed by their native SHA-256."
+  "The exact ACL2 FNAN protected bytes sealed by ACL2's frame trailer."
   (let ((protected (fnn-core 'fn-anchor-host-protected incarnation fields)))
     (unless (fnn-octet-list-p protected)
       (fnn-fault "ACL2 refused FNAN encoding after anchor acceptance"))
-    (let ((digest (fnn-sha256 (fnn-octets protected))))
-      (fnn-octets (append protected (fnn-octet-list digest))))))
+    (fnn-seal protected)))
 
 (defun fnn-anchor-publish (store contents)
   "Replace anchor.fnan and return :DURABLE, :UNCERTAIN, or :FAULT.
@@ -247,23 +300,50 @@ decoding the final name while holding the same writer lock."
                           (format nil ".anchor-~d-~a"
                                   (sb-posix:getpid) (fnn-random-hex 12))))
          (final (fnn-anchor-path store))
-         (attempted nil))
+         (phase (fnn-anchor-rp-start)))
+    (unless (eq (fnn-anchor-rp-action phase) :stage-and-file-barrier)
+      (fnn-fault "ACL2 rejected anchor staging action"))
     (handler-case
         (progn
           (fnn-write-staged stage contents)
           (fnn-at store :anchor-staged-durable)
-          (setq attempted t)
+          (setq phase (fnn-anchor-rp-step phase '(:stage-result :ok))))
+      ((or fnn-os-error fnn-store-error serious-condition) ()
+        (ignore-errors (fnn-unlink stage))
+        (setq phase (fnn-anchor-rp-step
+                     phase '(:stage-result :known-fail)))))
+    (when (eq (fnn-anchor-rp-outcome phase) :fault)
+      (return-from fnn-anchor-publish :fault))
+    (unless (eq (fnn-anchor-rp-action phase) :issue-replace)
+      (fnn-fault "ACL2 rejected anchor replace action"))
+    ; Record issue before entering rename(2).  Death after the syscall but
+    ; before its result is therefore a reachable :replace-issued cut.
+    (setq phase (fnn-anchor-rp-step phase :replace-issued))
+    (unless (eq (fnn-anchor-rp-action phase) :observe-replace)
+      (fnn-fault "ACL2 rejected issued anchor replace"))
+    (handler-case
+        (progn
           (fnn-replace stage final)
           (fnn-at store :anchor-replaced)
+          (setq phase (fnn-anchor-rp-step
+                       phase '(:replace-result :ok))))
+      ((or fnn-os-error fnn-store-error serious-condition) ()
+        (setq phase (fnn-anchor-rp-step
+                     phase '(:replace-result :uncertain)))))
+    (when (eq (fnn-anchor-rp-outcome phase) :uncertain)
+      (return-from fnn-anchor-publish :uncertain))
+    (unless (eq (fnn-anchor-rp-action phase) :directory-barrier)
+      (fnn-fault "ACL2 rejected anchor directory action"))
+    (handler-case
+        (progn
           (fnn-fsync-dir (fnn-store-root store))
           (fnn-at store :anchor-directory-durable)
-          :durable)
+          (setq phase (fnn-anchor-rp-step
+                       phase '(:directory-result :ok))))
       ((or fnn-os-error fnn-store-error serious-condition) ()
-        (if attempted
-            :uncertain
-          (progn
-            (ignore-errors (fnn-unlink stage))
-            :fault))))))
+        (setq phase (fnn-anchor-rp-step
+                     phase '(:directory-result :uncertain)))))
+    (fnn-anchor-rp-outcome phase)))
 
 (defun fnn-anchor-decision (profile held-fields incarnation observation)
   "Call the actual ACL2 acceptance entry over one primitive observation."
