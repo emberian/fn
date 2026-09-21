@@ -200,15 +200,16 @@
                                         *own-ihave-octets*)))
                      (append (fn-nntp-string-octets "435 duplicate") (list 13 10))))
 (assert-event (equal (fn-served-reply-octets
-                      (car (fn-served-step
-                            (fn-served-make-conn
-                             (fn-own-conn-wire *own-peer-conn*)
-                             (fn-own-conn-session *own-peer-conn*)
-                             (fn-own-conn-archive *own-peer-conn*)
-                             (fn-own-conn-config *own-peer-conn*)
-                             (fn-own-conn-observation *own-peer-conn*)
-                             (fn-own-clock *own-peered-posted*))
-                            *own-ihave-octets*)))
+                      (fn-served-result-effects
+                       (fn-served-step
+                        (fn-served-make-conn
+                         (fn-own-conn-wire *own-peer-conn*)
+                         (fn-own-conn-session *own-peer-conn*)
+                         (fn-own-conn-archive *own-peer-conn*)
+                         (fn-own-conn-config *own-peer-conn*)
+                         (fn-own-conn-observation *own-peer-conn*)
+                         (fn-own-clock *own-peered-posted*))
+                        *own-ihave-octets*)))
                      (append (fn-nntp-string-octets
                               "335 send it; end with <CR-LF>.<CR-LF>")
                              (list 13 10))))
