@@ -56,8 +56,13 @@ control admission.
 
 The local transport is one bounded sealed FNCT request and one bounded sealed
 reply per AF_UNIX connection. ACL2 owns the frame grammar, maximum sizes,
-Message-ID/group validation, status classes and exit codes. Raw Lisp reads one
-regular payload file, moves bounded octets, and performs socket lifecycle only.
+Message-ID/group validation, status classes, exit codes, and the 16-client
+worker ceiling. One absolute ten-second deadline covers a complete incoming
+frame. Each raw receive is limited to the lesser of the shared chunk bound and
+the remaining frame allowance plus one overbound sentinel; retained chunks are
+copied once after EOF. An over-ceiling connection receives ACL2's sealed
+`:busy` result without creating a worker. Raw Lisp reads one regular payload
+file, moves bounded octets, and performs socket lifecycle only.
 Failure before request handoff is refused; loss after handoff is uncertain,
 because the missing reply cannot distinguish durable acceptance from a request
 the owner never observed. Before removing a stale socket node, the service

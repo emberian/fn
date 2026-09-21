@@ -29,3 +29,4 @@
         (fn-record-string-octets "/tmp/fn.sock.lock")))
 (assert-event (< (fn-native-control-host-max-article)
                  (fn-native-control-host-max-frame)))
+(assert-event (equal (fn-native-control-host-max-active-clients) 16))

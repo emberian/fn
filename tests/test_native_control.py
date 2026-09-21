@@ -6,6 +6,7 @@ import signal
 import socket
 import subprocess
 import tempfile
+import time
 import unittest
 
 
@@ -332,6 +333,59 @@ class NativeControlTests(unittest.TestCase):
             if owner.poll() is None:
                 owner.kill()
                 owner.wait(timeout=10)
+            owner.stdout.close()
+            owner.stderr.close()
+
+    def test_control_worker_ceiling_returns_busy(self):
+        owner = self.start_owner()
+        blockers = []
+        try:
+            # ACL2 fixes the active control worker ceiling at 16. Each partial
+            # frame occupies one worker without entering owner admission.
+            for _ in range(16):
+                client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                client.settimeout(30)
+                client.connect(str(self.control))
+                client.sendall(b"F")
+                blockers.append(client)
+            time.sleep(1)
+            message_id = "<native-control-busy@example.invalid>"
+            refused = self.post(message_id, self.article(message_id))
+            self.assertEqual(refused.returncode, 1, refused.stderr.decode())
+            self.assertIn(b"busy", refused.stderr.lower())
+        finally:
+            for client in blockers:
+                client.close()
+            owner.send_signal(signal.SIGTERM)
+            self.assertEqual(owner.wait(timeout=30), 0,
+                             owner.stderr.read().decode("utf-8", "replace"))
+            owner.stdout.close()
+            owner.stderr.close()
+
+    def test_partial_frame_has_one_absolute_deadline(self):
+        owner = self.start_owner()
+        client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        client.settimeout(30)
+        try:
+            client.connect(str(self.control))
+            started = time.monotonic()
+            client.sendall(b"F")
+            readable = False
+            while time.monotonic() - started < 12:
+                if select.select([client], [], [], 0.5)[0]:
+                    readable = True
+                    break
+                client.sendall(b"F")
+            elapsed = time.monotonic() - started
+            self.assertTrue(readable, "per-chunk reads reset the frame deadline")
+            self.assertGreaterEqual(elapsed, 8)
+            self.assertLess(elapsed, 12)
+            self.assertNotEqual(client.recv(4096), b"")
+        finally:
+            client.close()
+            owner.send_signal(signal.SIGTERM)
+            self.assertEqual(owner.wait(timeout=30), 0,
+                             owner.stderr.read().decode("utf-8", "replace"))
             owner.stdout.close()
             owner.stderr.close()
 
