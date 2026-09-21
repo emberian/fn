@@ -119,6 +119,7 @@
 ; The owner relation (proof vocabulary; never executed)
 
 (defun fn-own-conn-okp (conn groups capacity records)
+  (declare (xargs :guard t))
   (and (fn-own-conn-shapep conn)
        (natp (fn-own-conn-id conn))
        (natp (fn-own-conn-version conn))
@@ -131,12 +132,14 @@
        (fn-own-conn-boundedp conn groups)))
 
 (defun fn-own-conns-okp (conns groups capacity records)
+  (declare (xargs :guard t))
   (if (consp conns)
       (and (fn-own-conn-okp (car conns) groups capacity records)
            (fn-own-conns-okp (cdr conns) groups capacity records))
     (null conns)))
 
 (defun fn-own-view-okp (view groups capacity records)
+  (declare (xargs :guard t))
   (and (fn-own-view-shapep view)
        (natp (fn-own-view-version view))
        (<= (fn-own-view-version view) (len records))
@@ -147,12 +150,39 @@
                                      (fn-own-view-frontier view)))))
 
 (defun fn-own-ledger-durablep (ledger records)
+  (declare (xargs :guard t))
   (if (consp ledger)
       (and (fn-sf-record-has-pairp (car ledger) records)
            (fn-own-ledger-durablep (cdr ledger) records))
     (null ledger)))
 
+; Connection identifiers are allocated from fn-own-next-id and it only ever
+; moves up: fn-own-open and fn-own-open-peer (books/owner.lisp:650, :697) take
+; id = (fn-own-next-id o) for the new connection and write (1+ (nfix id)) back.
+; So no OPEN connection carries the identifier the next open will take, which
+; is what books/owner-config spends: a pin at (fn-own-next-id o) would have to
+; be a pin of an open connection at that identifier (fn-ocfg-pins-pin-conns-only)
+; and there is none.  The bound was true of every reachable state before this
+; conjunct existed -- fn-own-replace-conn rebuilds at (fn-own-conn-id conn),
+; fn-own-remove-conn only drops, fn-own-start and fn-own-reopen give conns = nil
+; -- it was simply not stated, so nothing about identifier allocation changed.
+; The (natp next-id) guard is discharged at the one call site by the
+; (natp (fn-own-next-id o)) conjunct that precedes it in the same `and'.
+(defun fn-own-ids-below-next-p (conns next-id)
+  (declare (xargs :guard (natp next-id)))
+  (if (consp conns)
+      (and (natp (fn-own-conn-id (car conns)))
+           (< (fn-own-conn-id (car conns)) next-id)
+           (fn-own-ids-below-next-p (cdr conns) next-id))
+    t))
+
+; Guard verified, with fn-snt-relation below it (books/store-node-traces.lisp):
+; fn-ocfg-statep (books/owner-config.lisp:191) declares :guard t and calls
+; this, so the whole chain owes its guards.  Nothing here runs per operation:
+; the relation is proof vocabulary, no transition is guarded by it, and
+; fn-served-dispatch does not reach it.
 (defun fn-own-relation (o)
+  (declare (xargs :guard t))
   (let* ((s (fn-own-store o))
          (groups (fn-sn-groups s))
          (capacity (fn-sn-capacity s))
@@ -164,6 +194,7 @@
          (natp (fn-own-max-conns o))
          (<= (len (fn-own-conns o)) (fn-own-max-conns o))
          (natp (fn-own-next-id o))
+         (fn-own-ids-below-next-p (fn-own-conns o) (fn-own-next-id o))
          (fn-own-ledger-durablep (fn-own-ledger o) records)
          (or (null (fn-own-clock o))
              (fn-clock-observationp (fn-own-clock o)))
@@ -241,6 +272,47 @@
   :rule-classes (:rewrite :linear)
   :hints (("Goal" :induct (fn-own-remove-conn id conns))))
 
+; The identifier bound over the three list operations.  `-monotone' is the
+; only one of the four that is not stated at a fixed bound: it is what the
+; two open arms need, where the bound moves from `next-id' to `1+ next-id'
+; while the list gains the connection at `next-id'.  It is :rule-classes nil
+; and reached by :use, because as a rewrite rule its `n' is free.
+(defthm fn-own-ids-below-next-p-monotone
+  (implies (and (fn-own-ids-below-next-p conns n)
+                (<= n m))
+           (fn-own-ids-below-next-p conns m))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-own-ids-below-next-p conns n))))
+
+(defthm fn-own-find-conn-id-below-next
+  (implies (and (fn-own-ids-below-next-p conns n)
+                (fn-own-find-conn id conns))
+           (and (natp id) (< id n)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-own-find-conn id conns))))
+
+(defthm fn-own-replace-conn-ids-below-next
+  (implies (and (fn-own-ids-below-next-p conns n)
+                (natp (fn-own-conn-id conn))
+                (< (fn-own-conn-id conn) n))
+           (fn-own-ids-below-next-p (fn-own-replace-conn conn conns) n))
+  :hints (("Goal" :induct (fn-own-replace-conn conn conns))))
+
+(defthm fn-own-remove-conn-ids-below-next
+  (implies (fn-own-ids-below-next-p conns n)
+           (fn-own-ids-below-next-p (fn-own-remove-conn id conns) n))
+  :hints (("Goal" :induct (fn-own-remove-conn id conns))))
+
+; The open arms: the new connection sits at the old `next-id' and the bound
+; becomes one above it.
+(defthm fn-own-ids-below-next-p-of-open
+  (implies (and (fn-own-ids-below-next-p conns n)
+                (natp n)
+                (equal (fn-own-conn-id conn) n))
+           (fn-own-ids-below-next-p (cons conn conns) (+ 1 n)))
+  :hints (("Goal" :use ((:instance fn-own-ids-below-next-p-monotone
+                                   (m (+ 1 n)))))))
+
 ; -----------------------------------------------------------------------------
 ; Facts about the embedded store the events need
 
@@ -272,6 +344,23 @@
            (true-listp (fn-sf-records (fn-sn-files (fn-own-store o)))))
   :hints (("Goal" :in-theory (e/d (fn-own-relation) (fn-own-conn-boundedp))
            :use ((:instance fn-own-related-records-true-list (s (fn-own-store o)))))))
+
+; The bridge books/owner-config spends.  A related owner has no OPEN
+; connection at the identifier its next open will allocate, so a pin table
+; whose domain is exactly the open connections has no pin there either, and
+; `fn-ocfg-pin-add' -- which never overwrites -- therefore installs the live
+; configuration rather than leaving a stale one.  Exported (it is not in the
+; withdrawal below): its left-hand side is the single term
+; `(fn-own-find-conn (fn-own-next-id o) (fn-own-conns o))', which no includer
+; states by accident.
+(defthm fn-own-relation-has-no-connection-at-next-id
+  (implies (fn-own-relation o)
+           (not (fn-own-find-conn (fn-own-next-id o) (fn-own-conns o))))
+  :hints (("Goal" :in-theory (e/d (fn-own-relation) (fn-own-conn-boundedp))
+           :use ((:instance fn-own-find-conn-id-below-next
+                            (conns (fn-own-conns o))
+                            (id (fn-own-next-id o))
+                            (n (fn-own-next-id o)))))))
 
 ; Every store transition keeps the fixed configuration.
 (defthm fn-own-snrt-step-keeps-configuration
@@ -479,7 +568,12 @@
                             (conns (fn-own-conns o))
                             (groups (fn-sn-groups (fn-own-store o)))
                             (capacity (fn-sn-capacity (fn-own-store o)))
-                            (records (fn-sf-records (fn-sn-files (fn-own-store o))))))
+                            (records (fn-sf-records (fn-sn-files (fn-own-store o)))))
+                 ; the rebuilt connection keeps the found connection's
+                 ; identifier, so it keeps its bound below `next-id' too
+                 (:instance fn-own-find-conn-id-below-next
+                            (conns (fn-own-conns o))
+                            (n (fn-own-next-id o))))
            :in-theory (e/d (fn-own-relation)
                            (fn-own-conn-boundedp fn-own-find-conn-okp)))))
 
@@ -491,7 +585,12 @@
                             (conns (fn-own-conns o))
                             (groups (fn-sn-groups (fn-own-store o)))
                             (capacity (fn-sn-capacity (fn-own-store o)))
-                            (records (fn-sf-records (fn-sn-files (fn-own-store o))))))
+                            (records (fn-sf-records (fn-sn-files (fn-own-store o)))))
+                 ; the rebuilt connection keeps the found connection's
+                 ; identifier, so it keeps its bound below `next-id' too
+                 (:instance fn-own-find-conn-id-below-next
+                            (conns (fn-own-conns o))
+                            (n (fn-own-next-id o))))
            :in-theory (e/d (fn-own-relation)
                            (fn-own-conn-boundedp fn-own-find-conn-okp)))))
 
@@ -503,9 +602,30 @@
                             (conns (fn-own-conns o))
                             (groups (fn-sn-groups (fn-own-store o)))
                             (capacity (fn-sn-capacity (fn-own-store o)))
-                            (records (fn-sf-records (fn-sn-files (fn-own-store o))))))
+                            (records (fn-sf-records (fn-sn-files (fn-own-store o)))))
+                 ; the rebuilt connection keeps the found connection's
+                 ; identifier, so it keeps its bound below `next-id' too
+                 (:instance fn-own-find-conn-id-below-next
+                            (conns (fn-own-conns o))
+                            (n (fn-own-next-id o))))
            :in-theory (e/d (fn-own-relation)
                            (fn-own-conn-boundedp fn-own-find-conn-okp)))))
+
+; `fn-own-advance' returns `o' unchanged when there is no connection at `id',
+; and otherwise either re-pins it in place (`fn-own-replace-conn', which keeps
+; the identifier) or leaves `o' alone; it never ADDS one.  So a connection
+; present after the advance was present before it.  books/owner-config spends
+; this to reach `fn-ocfg-conns-pinnedp' on the pre-state pin table, where the
+; pin it is about to replace lives.  :rule-classes nil -- the conclusion is a
+; recognizer call, not a rewrite target -- so it is reached by :use and needs
+; no place in the export theory.
+(defthm fn-own-advance-finds-only-what-it-had
+  (implies (fn-own-find-conn id (fn-own-conns (fn-own-advance o id)))
+           (fn-own-find-conn id (fn-own-conns o)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-own-advance fn-own-set-conns)
+                                  (fn-own-conn-boundedp fn-own-replace-conn
+                                   fn-own-conn-make)))))
 
 (defthm fn-own-close-preserves-relation
   (implies (fn-own-relation o)
@@ -1663,6 +1783,8 @@
     fn-own-ledger-durablep-member fn-own-facts-okp-append
     fn-own-find-conn-okp fn-own-find-conn-id fn-own-replace-conn-okp
     fn-own-replace-conn-len fn-own-remove-conn-okp fn-own-remove-conn-len
+    fn-own-ids-below-next-p fn-own-replace-conn-ids-below-next
+    fn-own-remove-conn-ids-below-next fn-own-ids-below-next-p-of-open
     fn-own-idle-node-is-replay fn-own-related-records-true-list
     fn-own-relation-records-true-list
     fn-own-related-frontier-natural fn-own-snrt-step-keeps-configuration

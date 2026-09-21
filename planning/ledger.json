@@ -243,6 +243,7 @@
     "books/owner",
     "books/owner-invariants",
     "tests/acl2/owner-tests",
+    "tests/acl2/owner-config-tests",
     "books/relay",
     "books/relay-invariants",
     "books/relay-crash-invariants",
@@ -278,19 +279,19 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 275,
-    "books_in_root_closure": 274,
-    "roots": 274,
-    "theorems": 5506,
-    "functions": 3927,
-    "assert_events": 5315,
+    "books": 276,
+    "books_in_root_closure": 275,
+    "roots": 275,
+    "theorems": 5558,
+    "functions": 3930,
+    "assert_events": 5403,
     "must_fails": 59,
     "encapsulates": 19,
     "guards": {
-      "verified": 1459,
+      "verified": 1461,
       "declared-off": 190,
-      "default-guarded": 1781,
-      "default-unguarded": 497
+      "default-guarded": 1790,
+      "default-unguarded": 489
     },
     "suspect_theorems": 46,
     "export_hygiene_warnings": 72,
@@ -3118,7 +3119,7 @@
       "book": "books/owner-config.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 19,
+      "theorems": 22,
       "functions": 34,
       "guards": {
         "verified": 0,
@@ -3173,13 +3174,13 @@
       "book": "books/owner-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 103,
-      "functions": 7,
+      "theorems": 110,
+      "functions": 8,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 7
+        "default-guarded": 6,
+        "default-unguarded": 2
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -4166,12 +4167,12 @@
       "theorems": 52,
       "functions": 5,
       "guards": {
-        "verified": 0,
+        "verified": 2,
         "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 5
+        "default-guarded": 1,
+        "default-unguarded": 2
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 2,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
@@ -4589,12 +4590,12 @@
       "book": "books/tcpcl-session.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 54,
-      "functions": 54,
+      "theorems": 96,
+      "functions": 56,
       "guards": {
         "verified": 9,
         "declared-off": 0,
-        "default-guarded": 45,
+        "default-guarded": 47,
         "default-unguarded": 0
       },
       "verify_guards_events": 9,
@@ -6524,6 +6525,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/owner-config-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 75,
+      "must_fails": 0,
+      "defconsts": 19,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-config"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/owner-feed-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -7347,9 +7373,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 104,
+      "assert_events": 117,
       "must_fails": 0,
-      "defconsts": 53,
+      "defconsts": 56,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7753,7 +7779,7 @@
     {
       "theorem": "fn-ocfg-refused-reconfiguration-changes-nothing",
       "book": "books/owner-config.lisp",
-      "line": 532,
+      "line": 646,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value"
       ]

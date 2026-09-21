@@ -377,3 +377,60 @@
 (assert-event
  (with-guard-checking :none
   (equal (fn-tcl-drive 42 *t-seg-octets* 0) (fn-tcl-make-result 42 nil *t-seg-octets*))))
+
+; -----------------------------------------------------------------------------
+; The cheap guard is STRICTLY weaker than the specification recognizer, and
+; strictly weaker in each of the two conjuncts it drops.  Without this,
+; `fn-tcl-sessionp-is-cheap' could be an identity between two spellings of
+; the same predicate and the served path would still be walking the staged
+; octets once per socket chunk (specs/tcpcl.md section 3).  Each witness is
+; the live-transfer session of *t-b-mid* with its inbound record rebuilt
+; through `fn-tcl-next' to violate exactly one conjunct, so the separation is
+; by more than the recognizers' weakest clause.
+
+(defconst *t-b-live* (fn-tcl-result-session *t-b-mid*))
+(assert-event (fn-tcl-sessionp *t-b-live*))
+(assert-event (fn-tcl-session-cheapp *t-b-live*))
+(assert-event (fn-tcl-session-inbound *t-b-live*))
+
+; (a) staged that is not octet lists.  `fn-tcl-lists-len' still measures 1,
+; so the carried sum agrees and `fn-tcl-octet-listsp' is the only conjunct
+; that separates them.
+(defconst *t-b-nonoctet*
+  (fn-tcl-next *t-b-live* (fn-tcl-session-phase *t-b-live*)
+               (fn-tcl-make-inbound
+                (fn-tcl-inbound-xfer-id (fn-tcl-session-inbound *t-b-live*))
+                '((300)) 1 nil)
+               (fn-tcl-session-outbound *t-b-live*)
+               (fn-tcl-session-term *t-b-live*)
+               (fn-tcl-session-last-tx *t-b-live*)))
+(assert-event
+ (equal (fn-tcl-lists-len (fn-tcl-inbound-staged (fn-tcl-session-inbound *t-b-nonoctet*))) 1))
+(assert-event (fn-tcl-session-cheapp *t-b-nonoctet*))
+(assert-event (not (fn-tcl-sessionp *t-b-nonoctet*)))
+
+; (b) a carried sum that is not the measurement of the staged list.  The
+; staged segments are octets here, so the length equation is the only
+; conjunct that separates them.
+(defconst *t-b-wrong-sum*
+  (fn-tcl-next *t-b-live* (fn-tcl-session-phase *t-b-live*)
+               (fn-tcl-make-inbound
+                (fn-tcl-inbound-xfer-id (fn-tcl-session-inbound *t-b-live*))
+                '((1 2 3)) 0 nil)
+               (fn-tcl-session-outbound *t-b-live*)
+               (fn-tcl-session-term *t-b-live*)
+               (fn-tcl-session-last-tx *t-b-live*)))
+(assert-event
+ (fn-tcl-octet-listsp (fn-tcl-inbound-staged (fn-tcl-session-inbound *t-b-wrong-sum*))))
+(assert-event (fn-tcl-session-cheapp *t-b-wrong-sum*))
+(assert-event (not (fn-tcl-sessionp *t-b-wrong-sum*)))
+
+; And the guard is reached on real sessions, not only on the two witnesses
+; above: every session the golden exchange drives through satisfies it, which
+; is what makes `fn-tcl-sessionp-is-cheap' the one cheap rule an includer
+; keeps enabled -- it discharges `fn-tcl-drive's totality test wherever the
+; session is known.
+(assert-event (fn-tcl-session-cheapp (fn-tcl-result-session *t-b-cont*)))
+(assert-event (fn-tcl-session-cheapp (fn-tcl-result-session *t-b3*)))
+(assert-event (fn-tcl-session-cheapp (fn-tcl-result-session *t-b-cut*)))
+(assert-event (fn-tcl-session-cheapp *t-a*))
