@@ -355,6 +355,8 @@
                 (fn-stxk-apply-verdict ctx (fn-stmt-value decoded)))))))
        (t (fn-replay-identity-advance ctx))))))
 
+(verify-guards fn-replay-identity-step)
+
 (defun fn-replay-identity-loop (records ctx)
   (declare (xargs :guard t :measure (len records) :verify-guards nil
                   :hints (("Goal" :in-theory (disable fn-store-event-p)))))
@@ -365,9 +367,13 @@
          (cdr records) (fn-replay-identity-step ctx (car records))))
     (if (null records) ctx (fn-stxk-fault ctx :improper-record-list))))
 
+(verify-guards fn-replay-identity-loop)
+
 (defun fn-replay-identity (records)
   (declare (xargs :guard t :verify-guards nil))
   (fn-replay-identity-loop records (fn-stxk-initial-context 0)))
+
+(verify-guards fn-replay-identity)
 
 (defun fn-replay-verdict-pairs (events)
   (declare (xargs :guard t :verify-guards nil))
