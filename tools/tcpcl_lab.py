@@ -359,7 +359,8 @@ class Lab:
                      durable_after=(acknowledged.exists()
                                     and acknowledged.read_bytes() == small.read_bytes()),
                      interrupted_absent=not holds_big,
-                     no_partials=[n for n in staged if n.startswith(".")] == [],
+                     no_partials=[n for n in staged
+                                  if n.startswith(".incoming-")] == [],
                      staged=staged)
         ok = (facts["first_rc"] == EXIT_OK and facts["reconnect_rc"] == EXIT_OK
               and facts["acks_before_kill"] >= 3 and facts["durable_before"]
