@@ -77,7 +77,11 @@ def start_owner(image, config, cwd):
                 port = int(line.split()[1])
                 return proc, port, (time.monotonic_ns() - started) / 1e9, observed.decode("ascii", "replace")
     proc.terminate()
-    _, error = proc.communicate(timeout=10)
+    try:
+        _, error = proc.communicate(timeout=10)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        _, error = proc.communicate(timeout=10)
     raise RuntimeError("owner startup failed: {!r} {}".format(observed, error.decode("utf-8", "replace")))
 
 
@@ -101,17 +105,20 @@ def recv_line(stream):
 def read_article(port, message_id):
     started = time.monotonic_ns()
     with socket.create_connection(("127.0.0.1", port), timeout=30) as sock:
-        stream = sock.makefile("rb")
-        greeting = recv_line(stream)
-        sock.sendall(("ARTICLE {}\r\n".format(message_id)).encode("ascii"))
-        status = recv_line(stream)
-        received = 0
-        if status.startswith(b"220 "):
-            while True:
-                line = recv_line(stream)
-                if line == b".\r\n": break
-                received += len(line)
-        sock.sendall(b"QUIT\r\n")
+        with sock.makefile("rb") as stream:
+            greeting = recv_line(stream)
+            sock.sendall(("ARTICLE {}\r\n".format(message_id)).encode("ascii"))
+            status = recv_line(stream)
+            received = 0
+            if status.startswith(b"220 "):
+                while True:
+                    line = recv_line(stream)
+                    if line == b".\r\n": break
+                    received += len(line)
+            sock.sendall(b"QUIT\r\n")
+            quit_status = recv_line(stream)
+            if not quit_status.startswith(b"205 "):
+                raise RuntimeError("NNTP QUIT failed: {!r}".format(quit_status))
     return ((time.monotonic_ns() - started) / 1e9, greeting.decode("ascii", "replace").strip(),
             status.decode("ascii", "replace").strip(), received)
 
