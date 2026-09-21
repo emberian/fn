@@ -181,6 +181,8 @@
     "tests/acl2/hybrid-signature-invariants-tests",
     "books/index",
     "tests/acl2/index-tests",
+    "books/msgid-index",
+    "tests/acl2/msgid-index-tests",
     "books/bp-ingress",
     "tests/acl2/bp-ingress-tests",
     "tests/acl2/bp-ingress-guards-tests",
@@ -402,25 +404,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 400,
-    "books_in_root_closure": 399,
-    "roots": 398,
-    "theorems": 6538,
-    "functions": 5161,
-    "assert_events": 7018,
-    "must_fails": 180,
+    "books": 402,
+    "books_in_root_closure": 401,
+    "roots": 400,
+    "theorems": 6555,
+    "functions": 5174,
+    "assert_events": 7034,
+    "must_fails": 184,
     "encapsulates": 19,
     "guards": {
       "verified": 1711,
       "declared-off": 268,
-      "default-guarded": 2577,
+      "default-guarded": 2590,
       "default-unguarded": 605
     },
     "suspect_theorems": 61,
     "export_hygiene_warnings": 85,
-    "enabled_projection_warnings": 26,
+    "enabled_projection_warnings": 27,
     "teeth_form_warnings": 10,
-    "include_hygiene_warnings": 154,
+    "include_hygiene_warnings": 155,
     "host_names_warnings": 636,
     "hand_written_record_warnings": 18
   },
@@ -3870,6 +3872,31 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/msgid-index.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 17,
+      "functions": 13,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 13,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "acceptance"
+      ],
       "system_includes": [],
       "suspects": [],
       "read_error": null
@@ -9053,6 +9080,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/msgid-index-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 7,
+      "must_fails": 2,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/msgid-index"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/native-admin-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -10193,15 +10247,17 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 63,
-      "must_fails": 0,
-      "defconsts": 13,
+      "assert_events": 72,
+      "must_fails": 2,
+      "defconsts": 16,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/store-files-invariants"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -11362,7 +11418,7 @@
     {
       "theorem": "fn-sf-frontier-rollback-visiblep-unfolds",
       "book": "books/store-files-invariants.lisp",
-      "line": 407,
+      "line": 410,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-sf-frontier-rollback-visiblep"
       ]
@@ -11370,7 +11426,7 @@
     {
       "theorem": "fn-sf-stable-records-outside-the-window",
       "book": "books/store-files-invariants.lisp",
-      "line": 88,
+      "line": 90,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sf-stable-records and the conclusion is that branch's value"
       ]
@@ -11778,7 +11834,7 @@
       {
         "theorem": "fn-sf-completed-frontier-barrier-removes-old-choice",
         "book": "books/store-files-invariants.lisp",
-        "line": 313,
+        "line": 316,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -11963,6 +12019,15 @@
       }
     ],
     "enabled_projection": [
+      {
+        "function": "fn-ag-car",
+        "book": "books/acceptance-alloc.lisp",
+        "line": 20,
+        "stated_in": [
+          "books/msgid-index.lisp"
+        ],
+        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
+      },
       {
         "function": "fn-aw-v",
         "book": "books/article-work-primitives.lisp",
@@ -13215,6 +13280,13 @@
         "line": 5,
         "include": "crypto-seam-tests",
         "included": "tests/acl2/crypto-seam-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/msgid-index-tests.lisp",
+        "line": 2,
+        "include": "../../books/msgid-index",
+        "included": "books/msgid-index.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

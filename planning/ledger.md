@@ -10,23 +10,23 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 400 |
-| Certification roots in the Makefile | 398 |
-| Books inside the root closure | 399 |
-| `defthm` and `defthmd` events | 6538 |
-| `defun` events | 5161 |
+| Books read | 402 |
+| Certification roots in the Makefile | 400 |
+| Books inside the root closure | 401 |
+| `defthm` and `defthmd` events | 6555 |
+| `defun` events | 5174 |
 | Functions with verified guards | 1711 |
 | Functions declared `:verify-guards nil` and never verified | 268 |
-| Functions left at the default with an explicit guard | 2577 |
+| Functions left at the default with an explicit guard | 2590 |
 | Functions left at the default with no guard | 605 |
-| `assert-event` checks | 7018 |
-| `must-fail` checks | 180 |
+| `assert-event` checks | 7034 |
+| `must-fail` checks | 184 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 61 |
 | Export-hygiene warnings | 85 |
-| Enabled-projection warnings | 26 |
+| Enabled-projection warnings | 27 |
 | Teeth-form warnings | 10 |
-| Include-hygiene warnings | 154 |
+| Include-hygiene warnings | 155 |
 | Host-names warnings | 636 |
 | Hand-written-record warnings | 18 |
 
@@ -215,6 +215,7 @@ that `make certify` requests.
 | `books/lace.lisp` | root | 5 | 20 | 0/0/20/0 | 0 | 0 | 0 |
 | `books/membership-epochs-invariants.lisp` | root | 33 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/membership-epochs.lisp` | root | 36 | 51 | 0/0/51/0 | 0 | 0 | 0 |
+| `books/msgid-index.lisp` | root | 17 | 13 | 0/0/13/0 | 0 | 0 | 0 |
 | `books/native-admin.lisp` | root | 5 | 32 | 1/0/31/0 | 0 | 0 | 0 |
 | `books/native-auth-admin.lisp` | root | 6 | 46 | 0/0/46/0 | 0 | 0 | 0 |
 | `books/native-auth-profile.lisp` | root | 3 | 19 | 0/0/19/0 | 0 | 0 | 0 |
@@ -411,6 +412,7 @@ that `make certify` requests.
 | `tests/acl2/journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 52 | 0 | 0 |
 | `tests/acl2/membership-epochs-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 100 | 0 | 0 |
+| `tests/acl2/msgid-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 2 | 0 |
 | `tests/acl2/native-admin-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 39 | 0 | 0 |
 | `tests/acl2/native-auth-admin-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/native-auth-admin-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 42 | 0 | 0 |
@@ -455,7 +457,7 @@ that `make certify` requests.
 | `tests/acl2/store-event-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
 | `tests/acl2/store-events-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 0 | 0 |
 | `tests/acl2/store-files-exploration-tests.lisp` | root | 0 | 29 | 0/0/0/29 | 58 | 0 | 0 |
-| `tests/acl2/store-files-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 63 | 0 | 0 |
+| `tests/acl2/store-files-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 72 | 2 | 0 |
 | `tests/acl2/store-files-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 88 | 0 | 0 |
 | `tests/acl2/store-files-traces-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 0 | 0 |
 | `tests/acl2/store-identity-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
@@ -545,8 +547,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-record-result-okp-is-parse-okp` | `books/records-canonicality.lisp` | 600 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-retain-admission-refusal-is-no-op` | `books/retention.lisp` | 287 | branch-of-definition: the hypothesis negates a branch test of fn-retain-admit and the conclusion is that branch's value |
 | `fn-retain-wrong-evidence-does-not-release` | `books/retention.lisp` | 327 | branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value |
-| `fn-sf-frontier-rollback-visiblep-unfolds` | `books/store-files-invariants.lisp` | 407 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-sf-frontier-rollback-visiblep |
-| `fn-sf-stable-records-outside-the-window` | `books/store-files-invariants.lisp` | 88 | branch-of-definition: the hypothesis negates a branch test of fn-sf-stable-records and the conclusion is that branch's value |
+| `fn-sf-frontier-rollback-visiblep-unfolds` | `books/store-files-invariants.lisp` | 410 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-sf-frontier-rollback-visiblep |
+| `fn-sf-stable-records-outside-the-window` | `books/store-files-invariants.lisp` | 90 | branch-of-definition: the hypothesis negates a branch test of fn-sf-stable-records and the conclusion is that branch's value |
 | `fn-sn-finish-disabled-is-no-op` | `books/store-node-invariants.lisp` | 189 | branch-of-definition: the hypothesis negates a branch test of fn-sn-finish and the conclusion is that branch's value |
 | `fn-sn-known-abort-disabled-is-no-op` | `books/store-node-resolution.lisp` | 136 | branch-of-definition: the hypothesis negates a branch test of fn-sn-known-abort and the conclusion is that branch's value |
 | `fn-sn-open-observed-invalid-history-refuses` | `books/store-observed.lisp` | 454 | branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value |
