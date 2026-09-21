@@ -12,6 +12,7 @@
 (include-book "store-observed")
 (include-book "byte-store-txn-name")
 (include-book "journal-publish")
+(include-book "native-config")
 
 (defconst *fn-native-admin-max-arguments* 10)
 (defconst *fn-native-admin-max-argument-octets* 512)
@@ -122,6 +123,8 @@
                   (coerce (nth 5 words) 'list)))
            (<= (fn-native-admin-decimal-value
                 (coerce (nth 5 words) 'list)) 65535)
+           (not (equal (fn-native-config-ipv4-address
+                        (fn-record-string-octets (nth 8 words))) :bad))
            (member-equal (nth 9 words) '("true" "false")))
       (let* ((inbound (if (equal (nth 6 words) "-") nil
                         (list (nth 6 words) *fn-record-max-payload* 16)))

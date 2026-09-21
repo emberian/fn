@@ -60,6 +60,20 @@
                 (fn-record-string-octets "192.0.2.44")
                 (fn-record-string-octets "true"))))
         :refused))
+(assert-event
+ (equal (fn-native-admin-result-status
+         (fn-native-admin-plan
+          (list (fn-record-string-octets "peer")
+                (fn-record-string-octets "add")
+                (fn-record-string-octets "far")
+                (fn-record-string-octets "far.example")
+                (fn-record-string-octets "192.0.2.44")
+                (fn-record-string-octets "1119")
+                (fn-record-string-octets "fn.*")
+                (fn-record-string-octets "fn.*")
+                (fn-record-string-octets "192.000.2.44")
+                (fn-record-string-octets "true"))))
+        :refused))
 (defconst *fn-na-peer-remove*
   (fn-native-admin-plan
    (list (fn-record-string-octets "peer")
