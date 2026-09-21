@@ -42,8 +42,8 @@
 (include-book "books/bp-native-app-fast")
 (include-book "books/bp-workflow-records")
 (include-book "books/bp-release")
-(include-book "books/bp-release-store")
-(include-book "books/bp-release-owner")
+; Canonical Store events own retention. The workflow wrapper below projects
+; that Store into workflow state; the former reverse-copy join was removed.
 (include-book "books/bp-outbound")
 (include-book "books/journal-publish")
 (include-book "books/app-journal")

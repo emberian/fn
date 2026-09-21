@@ -5,6 +5,7 @@ both saved images have been built; absence skips that witness rather than
 turning a source inspection into runtime evidence.
 """
 import os
+import re
 from pathlib import Path
 import subprocess
 import unittest
@@ -30,6 +31,17 @@ def invoke(image, *words):
 
 
 class NativeImageProfileSourceTests(unittest.TestCase):
+    def test_literal_build_inputs_exist(self):
+        # Check the actual saved-image driver, not only Makefile proof roots.
+        # A removed join book previously survived here and blocked every image.
+        build = (ROOT / "host/native/build.lisp").read_text()
+        inputs = re.findall(r'\((include-book|ld|load)\s+"([^"]+)"', build)
+        self.assertTrue(inputs)
+        for operation, name in inputs:
+            with self.subTest(operation=operation, name=name):
+                source = ROOT / (name + ".lisp" if operation == "include-book" else name)
+                self.assertTrue(source.is_file(), f"missing native build input: {source}")
+
     def test_default_build_is_production_and_developer_output_is_distinct(self):
         script = (ROOT / "tools/build_native_host.sh").read_text()
         self.assertIn('PROFILE="${FN_NATIVE_PROFILE:-production}"', script)
