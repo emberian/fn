@@ -627,6 +627,22 @@
          (fn-state-groups (fn-node-acceptance node)))
   :hints (("Goal" :in-theory (enable fn-replay-advance-txid)))))
 
+; Definition bridge for the release-record replay arm.  Release changes the
+; reservation and evidence lists but carries the configured capacity exactly.
+(local
+ (defthm fn-cnode-retain-release-keeps-capacity-by-definition
+   (equal (fn-retain-capacity
+           (fn-retain-release retention id subject kind evidence))
+          (fn-retain-capacity retention))
+   :hints (("Goal" :in-theory (enable fn-retain-release)))))
+
+(local
+ (defthm fn-cnode-retain-admit-keeps-capacity-by-definition
+   (equal (fn-retain-capacity
+           (fn-retain-admit retention id subject kind evidence charge))
+          (fn-retain-capacity retention))
+   :hints (("Goal" :in-theory (enable fn-retain-admit)))))
+
 (local (defthm fn-cnode-replay-apply-record-keeps-groups-and-capacity
   (implies (and (fn-node-statep node)
                 (consp (fn-replay-apply-record node record)))
@@ -636,12 +652,13 @@
                 (equal (fn-retain-capacity
                         (fn-node-retention (fn-replay-apply-record node record)))
                        (fn-retain-capacity (fn-node-retention node)))))
-  :hints (("Goal" :in-theory (e/d (fn-replay-apply-record)
-                                  (fn-node-prepare fn-node-complete
-                                   fn-node-pending-matchesp
-                                   fn-replay-advance-txid
-                                   fn-record-record-vocabulary
-                                   fn-record-codec-vocabulary))))))
+  :hints (("Goal"
+           :in-theory (e/d (fn-replay-apply-record)
+                           (fn-node-prepare fn-node-complete
+                            fn-node-pending-matchesp
+                            fn-replay-advance-txid
+                            fn-record-record-vocabulary
+                            fn-record-codec-vocabulary))))))
 
 (defthm fn-cnode-apply-record-keeps-config
   (implies (consp (fn-cnode-apply-record cn record))
