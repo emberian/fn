@@ -34,3 +34,25 @@ records both requested roots as passed.  It pins
 `14544f89b1836bd433b199ace52a53d849609a1de6332b47bb7f31b08e585460`.
 The native source is wired, but this lane has not built or runtime-tested a
 fresh native image; that remains for the root-coordinated frozen batch.
+
+## Recovery observation successor
+
+`fn-feed-filename-observation-limit` and
+`fn-feed-filename-observation-remaining` now own one 8192-name observation
+budget for the complete FNFD recovery walk. It is independent of configured
+peer rows because a configuration delta's row cap is not a retained-peer cap,
+and journals for removed peers remain recovery obligations. The raw host calls
+`fnn-list-directory-bounded` with the ACL2-produced remaining count, then
+returns the actual retained count to ACL2 before visiting another directory.
+It faults without removal on excess or conflicting evidence. The test-only
+four-name policy in `tests/native_fnfd_budget.lisp` exercises the production
+raw traversal through sibling v1 directories: one sibling drains the shared
+counter and the other faults before its leaf is retained.
+
+`hbox` farm closure `run-20260921T094123Z-d7ff` passed
+`books/feed-filename` and `tests/acl2/feed-filename-tests` with ACL2 8.7. Its
+[manifest](../../build/acl2/certify-20260921T094207Z-1976097/manifest.json)
+pins the changed book to SHA-256
+`a6c3d19f6f1aa9d1d85fe95cd79b9836b2ca2e9991960a0f17ab7b870a05fdbc`
+and its test root to SHA-256
+`96a86a25762dfe47b215e72a03f3fd47d71eb932d7a333aac0dc9bb493e232d5`.
