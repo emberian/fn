@@ -492,6 +492,34 @@ class Acl2Store:
     def reset(self):
         return acl2_symbol(self.call("(fn-store-sn-reset state)"))
 
+    # The served statement query (decision D21).  ACL2 holds the index in the
+    # store state; this sends the id and prints what the index answers.  No
+    # part of the query is computed here: fn-sn-statement-lookup reads the
+    # carried index, and fn-sn-statement-lookup-is-the-lace-lookup
+    # (books/store-node-invariants) is what says that is the same answer as
+    # the linear lace projection.
+    def set_keyring(self, pairs):
+        entries = " ".join(
+            "(" + self.literal(ident) + " " + self.literal(key) + ")"
+            for ident, key in pairs)
+        return acl2_keyword(self.call(
+            "(fn-store-sn-set-keyring '(" + entries + ") state)"))
+
+    def keyring_size(self):
+        return acl2_nat(self.call("(fn-store-sn-keyring-size state)"))
+
+    def index_size(self):
+        return acl2_nat(self.call("(fn-store-sn-index-size state)"))
+
+    def statement(self, id_octets):
+        return acl2_octets(self.call(
+            "(fn-store-sn-statement '" + self.literal(id_octets) + " state)"))
+
+    def equivocator(self, creator_octets, incarnation):
+        return acl2_keyword(self.call(
+            "(fn-store-sn-equivocator '" + self.literal(creator_octets) + " "
+            + str(int(incarnation)) + " state)"))
+
     def record_sequence(self, record):
         return acl2_nat(self.call("(fn-store-record-sequence '" + self.literal(record) + ")"))
 
@@ -2030,6 +2058,56 @@ def command_inspect(args):
         store.close()
 
 
+def read_keyring_file(path):
+    """Lines of '<creator-hex> <public-key-hex>', as tools/stx.py --keyring
+    reads them.  The keyring is supplied per invocation, not persisted: the
+    durable configuration history (books/node-config) does not carry one yet,
+    and D21 records that as the open half of the reconfiguration story."""
+    pairs = []
+    with open(path, "r") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            fields = line.split()
+            if len(fields) != 2:
+                raise StoreError("keyring line is not '<id-hex> <key-hex>'")
+            pairs.append((bytes.fromhex(fields[0]), bytes.fromhex(fields[1])))
+    return pairs
+
+
+def command_statement(args):
+    """Answer the statement query from the carried index.
+
+    Three outcomes stay distinct (D13): found prints the statement's
+    canonical octets and exits 0, absent exits 1 (a known absence is a
+    refusal, not a fault), and a keyring this node cannot read exits 5.
+    """
+    store, bridge, unused_records = open_live_store(args.store, writable=False)
+    try:
+        pairs = read_keyring_file(args.keyring) if args.keyring else []
+        if bridge.set_keyring(pairs) != "configured":
+            return EXIT_USAGE
+        if args.equivocator is not None:
+            outcome = bridge.equivocator(bytes.fromhex(args.equivocator),
+                                         args.incarnation)
+            if outcome == "invalid":
+                return EXIT_USAGE
+            print(outcome)
+            return EXIT_OK if outcome == "equivocator" else EXIT_REFUSED
+        if args.index_size:
+            print(bridge.index_size())
+            return EXIT_OK
+        octets = bridge.statement(bytes.fromhex(args.id))
+        if not octets:
+            return EXIT_REFUSED
+        sys.stdout.buffer.write(octets)
+        return EXIT_OK
+    finally:
+        bridge.close()
+        store.close()
+
+
 def main(argv=None):
     parser = UsageParser(description=__doc__)
     parser.add_argument("--store", required=True, help="local store root")
@@ -2078,6 +2156,19 @@ def main(argv=None):
             help="test-only: a captured response instead of a live query")
         parser_with_anchor.add_argument("--anchor-timeout", type=float, default=5.0)
     sub.add_parser("status")
+    statement = sub.add_parser("statement")
+    statement.add_argument("--id", default="",
+                           help="the statement content id, hex")
+    statement.add_argument("--keyring",
+                           help="lines of '<creator-hex> <public-key-hex>'; "
+                                "without it the node knows no key and every "
+                                "statement query is absent")
+    statement.add_argument("--equivocator",
+                           help="ask whether this creator (hex) has forked, "
+                                "instead of looking an id up")
+    statement.add_argument("--incarnation", type=int, default=0)
+    statement.add_argument("--index-size", action="store_true",
+                           help="print the number of bindings the index holds")
     inspect = sub.add_parser("inspect")
     inspect.add_argument("--message-id", required=True)
     inspect.add_argument("--provenance", action="store_true",
@@ -2095,7 +2186,7 @@ def main(argv=None):
                 "anchor": command_anchor, "group": command_group,
                 "capacity": command_capacity,
 
-                "peer": command_peer,
+                "peer": command_peer, "statement": command_statement,
                 "config": command_config}[args.command](args)
     except (StoreError, OSError, UnicodeError) as error:
         print("store: {}".format(error), file=sys.stderr)

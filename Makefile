@@ -278,6 +278,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/stx-authority \
 	tests/acl2/stx-tests \
 	tests/acl2/stx-transit-tests \
+	tests/acl2/store-node-index-tests \
 	books/scheduler-peers \
 	tests/acl2/scheduler-peers-tests
 

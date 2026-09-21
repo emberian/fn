@@ -483,6 +483,90 @@
                   (fn-sn-node (f-get-global 'fn-store-sn state)))))
                t nil))))
 
+; -----------------------------------------------------------------------------
+; The served statement query (decision D21)
+;
+; THE HOST LINE THE ASSURANCE RULE ASKS FOR.  fn-store-sn-statement below
+; calls fn-sn-statement-lookup (books/store-node.lisp) on the value of the
+; 'fn-store-sn global, and that function reads the carried index and nothing
+; else: it does not walk the store, does not re-parse an article and does not
+; verify a signature.  What licenses reading the index instead of the lace
+; projection is fn-sn-statement-lookup-is-the-lace-lookup
+; (books/store-node-invariants.lisp).  Its hypothesis, fn-sn-indexedp, holds
+; of this global because fn-sn-initial-is-indexed establishes it at
+; fn-store-sn-reset and every transition this file applies to the global --
+; fn-sn-io, fn-sn-prepare, fn-sn-finish, fn-sn-refuse-reservation,
+; fn-sn-known-abort, fn-sn-recover and fn-sn-set-keyring -- is proved to
+; preserve it.
+
+; The verification context.  A node that holds no key verifies no statement,
+; so an unconfigured store answers every statement query with "absent" rather
+; than with a guess: that is the fail-closed floor of specs/reconfiguration.md
+; section 1.6, at the statement layer.  Installing a keyring recomputes the
+; index over the whole store, which is correct -- a new keyring gives a new
+; set of verified statements -- and is a reconfiguration event, not a served
+; path.  The validity decision is ACL2's fn-prin-keyringp, called here; this
+; file does not re-decide it.
+(defun fn-store-sn-keyring-of-pairs (pairs)
+  (declare (xargs :mode :program))
+  (if (consp pairs)
+      (let ((entry (car pairs)))
+        (if (and (true-listp entry) (equal (len entry) 2))
+            (let ((rest (fn-store-sn-keyring-of-pairs (cdr pairs))))
+              (if (equal rest :bad)
+                  :bad
+                (cons (cons (car entry) (car (cdr entry))) rest)))
+          :bad))
+    (if (null pairs) nil :bad)))
+
+(defun fn-store-sn-set-keyring (pairs state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((keyring (fn-store-sn-keyring-of-pairs pairs)))
+    (if (or (equal keyring :bad) (not (fn-prin-keyringp keyring)))
+        (value :invalid)
+      (let ((state (f-put-global
+                    'fn-store-sn
+                    (fn-sn-set-keyring (f-get-global 'fn-store-sn state)
+                                       keyring)
+                    state)))
+        (value :configured)))))
+
+(defun fn-store-sn-keyring-size (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (len (fn-sn-keyring (f-get-global 'fn-store-sn state)))))
+
+; The query.  Absent is nil; present is the statement's canonical octets.
+(defun fn-store-sn-statement (id-octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (not (fn-octet-listp id-octets))
+      (value nil)
+    (let ((statement (fn-sn-statement-lookup
+                      (f-get-global 'fn-store-sn state) id-octets)))
+      (value (if statement (fn-stmt-encode statement) nil)))))
+
+; The equivocation question, answered from the index's third list.  It is a
+; DISCOVERY AID with a proved agreement to the lace
+; (fn-sn-equivocatorp-is-the-lace-equivocator), never an independent
+; authority.
+(defun fn-store-sn-equivocator (creator-octets incarnation state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (or (not (fn-octet-listp creator-octets)) (not (natp incarnation)))
+      (value :invalid)
+    (value (if (fn-sn-equivocatorp (f-get-global 'fn-store-sn state)
+                                   creator-octets incarnation)
+               :equivocator
+             :single))))
+
+; The number of bindings the index holds.  This is the served-path cost
+; witness: fn-stx-index-lookup-cost-is-index-bounded bounds a lookup by this
+; number, which grows by at most one per accepted article
+; (fn-stx-index-grows-by-at-most-one-binding), where the lace projection it
+; replaces is linear in the whole store.
+(defun fn-store-sn-index-size (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (len (fn-stx-index-bindings
+               (fn-sn-index (f-get-global 'fn-store-sn state))))))
+
 ; The staging sweep (books/store-sweep.lisp).  Python enumerates the staging
 ; directory and names what the live process still holds; which of those names
 ; may be unlinked is the book's decision, never Python's.  The answer is the

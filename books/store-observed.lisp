@@ -347,6 +347,48 @@
            :in-theory (e/d (fn-sn-open-okp )
                             (fn-sn-open-observed fn-sn-statep)))))
 
+; -----------------------------------------------------------------------------
+; The carried statement index at open (D21)
+;
+; host/store-node-host.lisp line 79 installs (fn-sn-open-state opened) into
+; the 'fn-store-sn global, so without these two the claim that fn-sn-indexedp
+; holds of every state the host installs would have a hole at open -- the one
+; place where the node does not come from a step of this machine.
+
+; The seed's node is fn-node-initial-state, whose store is empty, and the
+; index of an empty store is the empty index under EVERY keyring, so the
+; seed's empty keyring costs nothing here.
+(defthm fn-sn-observed-seed-is-indexed
+  (implies (and (fn-sn-observed-configurationp groups capacity)
+                (fn-sn-observed-historyp frontier records))
+           (fn-sn-indexedp (fn-sn-observed-seed groups capacity frontier records)))
+  :hints (("Goal"
+           :use ((:instance fn-sn-observed-seed-is-state))
+           :in-theory (e/d (fn-sn-indexedp fn-sn-observed-seed
+                            fn-stx-index-invariantp)
+                           (fn-sn-statep fn-node-initial-state
+                            fn-stx-index-of-store fn-stx-store
+                            fn-sn-observed-seed-is-state)))))
+
+; The opened state is the seed recovered, so its index is the recomputation
+; over the replayed store.  -by-recomputation, like fn-sn-recover's own row.
+(defthm fn-sn-open-observed-is-indexed-by-recomputation
+  (implies (fn-sn-open-okp (fn-sn-open-observed groups capacity frontier records))
+           (fn-sn-indexedp
+            (fn-sn-open-state
+             (fn-sn-open-observed groups capacity frontier records))))
+  :hints (("Goal"
+           :use ((:instance fn-sn-recover-preserves-indexedp-by-recomputation
+                            (s (fn-sn-observed-seed groups capacity frontier
+                                                    records)))
+                 (:instance fn-sn-observed-seed-is-indexed))
+           :in-theory (e/d (fn-sn-open-observed fn-sn-open-okp
+                            fn-sn-observed-historyp fn-record-uint32p)
+                           (fn-sn-indexedp fn-sn-recover fn-sn-observed-seed
+                            fn-sn-statep fn-sn-observed-configurationp
+                            fn-sn-observed-seed-is-indexed
+                            fn-sn-recover-preserves-indexedp-by-recomputation)))))
+
 (defthm fn-sn-open-observed-success-remains-recovering
   (implies (fn-sn-open-okp (fn-sn-open-observed groups capacity frontier records))
            (and (equal (fn-sf-phase
