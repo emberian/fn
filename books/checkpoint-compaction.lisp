@@ -19,9 +19,9 @@
 (defun fn-cc-make (sequence frontier event-octets)
   (declare (xargs :guard t :verify-guards nil))
   (list :fn-compaction-summary 0 sequence frontier event-octets))
-(defun fn-cc-sequence (summary) (declare (xargs :guard t :verify-guards nil)) (fn-cc-nth 2 summary))
-(defun fn-cc-frontier (summary) (declare (xargs :guard t :verify-guards nil)) (fn-cc-nth 3 summary))
-(defun fn-cc-events (summary) (declare (xargs :guard t :verify-guards nil)) (fn-cc-nth 4 summary))
+(defun fn-cc-sequence (summary) (declare (xargs :guard t)) (fn-cc-nth 2 summary))
+(defun fn-cc-frontier (summary) (declare (xargs :guard t)) (fn-cc-nth 3 summary))
+(defun fn-cc-events (summary) (declare (xargs :guard t)) (fn-cc-nth 4 summary))
 
 (defun fn-cc-event-octets-size (events)
   (declare (xargs :guard t :verify-guards nil))
@@ -86,7 +86,7 @@
 ; reclaim; no missing record at or above the boundary is accepted by the
 ; namespace observation.
 (defun fn-cc-observation-agrees (pairs events boundary)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (if (consp pairs)
       (let ((pair (car pairs)))
         (and (true-listp pair) (equal (len pair) 2)
@@ -98,12 +98,50 @@
     (null pairs)))
 
 (defun fn-cc-observation-suffix (pairs boundary)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (if (consp pairs)
       (if (< (caar pairs) boundary)
           (fn-cc-observation-suffix (cdr pairs) boundary)
         (cons (cadar pairs) (fn-cc-observation-suffix (cdr pairs) boundary)))
     nil))
+
+(defun fn-cc-recover-observation (summary observed frontier)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((boundary (fn-cc-sequence summary)))
+    (if (not (fn-cc-observation-agrees
+              observed (fn-cc-events summary) boundary))
+        (list :error :conflict)
+      (fn-cc-expand summary
+                    (fn-cc-observation-suffix observed boundary)
+                    frontier))))
+
+(defun fn-cc-partial-observationp (observed prefix suffix boundary)
+  (declare (xargs :guard t))
+  (and (equal boundary (len prefix))
+       (fn-cc-observation-agrees observed prefix boundary)
+       (equal (fn-cc-observation-suffix observed boundary) suffix)))
+
+(defun fn-cc-valid-suffixp (summary suffix final-frontier)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-record-uint32p final-frontier)
+       (<= (fn-cc-frontier summary) final-frontier)
+       (fn-cc-octet-event-listp suffix (fn-cc-sequence summary)
+                                (fn-cc-frontier summary) final-frontier)))
+
+(defthm fn-cc-partial-deletion-preserves-exact-history
+  (implies (and (fn-cc-summaryp summary)
+                (fn-cc-valid-suffixp summary suffix final-frontier)
+                (fn-cc-partial-observationp
+                 observed (fn-cc-events summary) suffix
+                 (fn-cc-sequence summary)))
+           (equal (fn-cc-recover-observation summary observed final-frontier)
+                  (list :ok (append (fn-cc-events summary) suffix)
+                        final-frontier)))
+  :hints (("Goal" :in-theory (enable fn-cc-recover-observation
+                                     fn-cc-partial-observationp
+                                     fn-cc-valid-suffixp
+                                     fn-cc-expand fn-cc-summaryp fn-cc-make
+                                     fn-cc-sequence fn-cc-frontier fn-cc-events))))
 
 (defun fn-cc-encode-events (events)
   (declare (xargs :guard t :verify-guards nil))
@@ -111,6 +149,45 @@
       (append (fn-cbor-encode (cons :bytes (car events)))
               (fn-cc-encode-events (cdr events)))
     nil))
+
+; The generic one-item CBOR entry point bounds its whole input to one Store
+; frame.  A pack is a bounded concatenation of such items, so its first item
+; legitimately has a remainder larger than that bound.  This local streaming
+; entry point applies the already-checked pack aggregate bound and retains the
+; canonical CBOR argument rules and the Store payload bound per byte string.
+(defun fn-cc-decode-bytes (additional tail)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((argument (fn-cbor-decode-argument additional tail)))
+    (if (not (fn-cbor-result-okp argument)) argument
+      (let ((length (fn-cbor-result-value argument))
+            (content (fn-cbor-result-rest argument)))
+        (if (not (fn-cbor-canonical-argumentp additional length))
+            (fn-cbor-error :noncanonical)
+          (if (< *fn-record-max-octets* length)
+              (fn-cbor-error :limit)
+            (if (<= length (len content))
+                (fn-cbor-ok (cons :bytes (take length content))
+                            (nthcdr length content))
+              (fn-cbor-error :truncated))))))))
+
+(defun fn-cc-decode-one (octets)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (not (fn-cbor-octet-listp octets)) (fn-cbor-error :malformed)
+    (if (not (consp octets)) (fn-cbor-error :truncated)
+      (let ((head (car octets)))
+        (if (< head 32)
+            (fn-cbor-decode-unsigned head (cdr octets))
+          (if (and (< 63 head) (< head 96))
+              (fn-cc-decode-bytes (- head 64) (cdr octets))
+            (fn-cbor-error :unsupported)))))))
+
+(defun fn-cc-decode-items (octets count values)
+  (declare (xargs :guard t :verify-guards nil :measure (nfix count)))
+  (if (zp count) (list :ok (reverse values) octets)
+    (let ((one (fn-cc-decode-one octets)))
+      (if (not (fn-cbor-result-okp one)) (list :error :field)
+        (fn-cc-decode-items (fn-cbor-result-rest one) (1- count)
+                            (cons (fn-cbor-result-value one) values))))))
 
 ; Canonical summary bytes.  Each already-canonical transaction is carried as
 ; one definite CBOR byte string, so boundaries do not depend on host filenames.
@@ -138,7 +215,7 @@
   (if (or (not (fn-cbor-octet-listp octets))
           (< *fn-cc-max-octets* (len octets)))
       (list :error :octets)
-    (let ((header (fn-store-event-decode-items octets 5 nil)))
+    (let ((header (fn-cc-decode-items octets 5 nil)))
       (if (or (not (equal (car header) :ok))
               (not (equal (fn-cc-nth 0 (fn-cc-nth 1 header))
                           (cons :bytes *fn-cc-magic*)))
@@ -154,7 +231,7 @@
                   (not (and (consp count-item) (equal (car count-item) :uint)))
                   (< *fn-cc-max-events* (cdr count-item)))
               (list :error :header)
-            (let* ((body (fn-store-event-decode-items
+            (let* ((body (fn-cc-decode-items
                           (fn-cc-nth 2 header) (cdr count-item) nil))
                    (events (if (equal (car body) :ok)
                                (fn-cc-values-event-octets (fn-cc-nth 1 body)) :bad))
@@ -165,6 +242,11 @@
                       (not (fn-cc-summaryp summary)))
                   (list :error :summary)
                 (list :ok summary)))))))))
+
+(defthm fn-cc-decode-rejects-over-aggregate-bound-before-header
+  (implies (< *fn-cc-max-octets* (len octets))
+           (equal (fn-cc-decode-exact octets) (list :error :octets)))
+  :hints (("Goal" :in-theory (enable fn-cc-decode-exact))))
 
 (defthm fn-cc-capture-produces-summary
   (implies (equal (car (fn-cc-capture prefix frontier)) :ok)

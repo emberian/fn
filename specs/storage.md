@@ -99,6 +99,10 @@ by unlinking only the ACL2-issued surviving covered names under the writer
 lease and fencing until the transaction-directory barrier succeeds.  The pack
 does not summarize or discard semantic history: generic replay still consumes
 the reconstructed full event stream, including retention and identity events.
+One selected pack is limited to 4096 events and 4 MiB of encoded bytes.  Since
+this tranche stores the complete canonical prefix rather than a semantic
+summary, it cannot compact an arbitrarily large history; rolling packs or a
+proved state summary remain future work.
 
 STO-006: replacing history with a checkpoint preserves the full logical state
 needed for future behavior, including allocation watermarks, duplicate history,
