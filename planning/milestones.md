@@ -10,13 +10,16 @@ passed. Native authentication startup, the shared-owner prepare refinement,
 shared BP publication and bounded checkpoint namespace are now integrated.
 Native control/posting, orderly shutdown and control resource bounds have
 also landed, with separate component/runtime evidence. Transaction namespace,
-native credential administration and the inactive outbound-feed component are
-integrated. The next service-composition source joins connection fault
+native credential administration and the outbound-feed component are
+integrated. The current service-composition source joins connection fault
 isolation and public administration, routes accepted IPv4/loopback addresses through
 the ACL2 peer/open decision, and activates the existing outbound feed through
 the public owner's lifecycle hooks. It has no source-matched image or two-node
-result yet. Parallel implementation closes TLS, credential and group/capacity
-administration, BP application/receipt composition and remaining namespace twins.
+result yet. STARTTLS and public credential/group/capacity/peer administration
+are joined in source. The next frozen qualification batch will exercise their
+composition. Parallel implementation extends authoritative Store history for
+BP obligations and identity/key snapshots, live administration, checkpoint
+compaction and physical crash correspondence; the full release scope remains.
 
 The two-peer native release remains unqualified. The packaged Python service
 is development infrastructure; component certificates and tests do not complete
