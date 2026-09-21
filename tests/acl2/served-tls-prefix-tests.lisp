@@ -42,6 +42,28 @@
  (equal (fn-served-counted-result
          (fn-served-step-counted *stp-conn* *stp-together*))
         (fn-served-step *stp-conn* *stp-together*)))
+(assert-event
+ (equal (fn-served-step-counted-fast *stp-conn* *stp-together*)
+        (fn-served-step-counted *stp-conn* *stp-together*)))
+
+; The full maintained invariant is necessary for correspondence.  This wire
+; has the right fixed spine and scalar counters, but retains a non-octet.  The
+; fast entry may execute safely; the total reference must reject it unchanged.
+(defconst *stp-cheap-only-wire*
+  (fn-wire-make-state :command '(300) 1 nil nil 0 510 1048576))
+(defconst *stp-cheap-only-conn*
+  (fn-served-make-conn *stp-cheap-only-wire*
+                       (fn-served-conn-session *stp-conn*)
+                       (fn-served-conn-archive *stp-conn*)
+                       (fn-served-conn-config *stp-conn*)
+                       (fn-served-conn-observation *stp-conn*)
+                       (fn-served-conn-injection *stp-conn*)))
+(assert-event (fn-wire-fast-statep *stp-cheap-only-wire*))
+(assert-event (not (fn-wire-statep *stp-cheap-only-wire*)))
+(must-fail
+ (defthm stp-fast-equals-reference-without-full-invariant
+   (equal (fn-served-step-counted-fast *stp-cheap-only-conn* '(65))
+          (fn-served-step-counted *stp-cheap-only-conn* '(65)))))
 
 ; Teeth: before the line terminator every observed byte is still plaintext;
 ; with no configured TLS facility, STARTTLS is refused and the alleged hello
