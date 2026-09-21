@@ -80,18 +80,25 @@ class NativeStorageCodecTests(unittest.TestCase):
         self.assertTrue(config.startswith(b"FNSM\x01\x01"))
         self.assertTrue(frontier.startswith(b"FNSM\x01\x02"))
         self.invoke(False, native_store, "status")
-        self.post(False, native_store, "<python-into-native@example.invalid>")
+        cross_id = "<cross-runtime@example.invalid>"
+        self.post(False, native_store, cross_id)
         inspected = self.invoke(True, native_store, "inspect", "--message-id",
-                                "<python-into-native@example.invalid>")
+                                cross_id)
         self.assertEqual(inspected.stdout, self.payload.read_bytes())
 
         python_store = self.base / "python-store"
         self.invoke(False, python_store, "init")
-        self.post(True, python_store, "<native-into-python@example.invalid>")
+        self.post(True, python_store, cross_id)
         inspected = self.invoke(False, python_store, "inspect", "--message-id",
-                                "<native-into-python@example.invalid>")
+                                cross_id)
         self.assertEqual(inspected.stdout, self.payload.read_bytes())
         self.assertEqual((python_store / "config.json").read_bytes(), config)
+        self.assertEqual(
+            (python_store / "allocation-frontier.json").read_bytes(),
+            (native_store / "allocation-frontier.json").read_bytes())
+        self.assertEqual(
+            (python_store / "transactions" / "00000000000000000000.txn").read_bytes(),
+            (native_store / "transactions" / "00000000000000000000.txn").read_bytes())
 
         scale_store = self.base / "scale-store"
         run_store.Store(scale_store, writable=True, profile="scale").initialize()
