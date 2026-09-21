@@ -147,7 +147,8 @@
 (defun fn-cc-encode-events (events)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp events)
-      (append (fn-cbor-encode (cons :bytes (car events)))
+      (append (fn-cbor-encode-bounded (cons :bytes (car events))
+                                      *fn-frame-max-store-payload*)
               (fn-cc-encode-events (cdr events)))
     nil))
 
