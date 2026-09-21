@@ -297,6 +297,9 @@ PLAN = (
     S("V0-POST-DUPLICATE", "F-POST",
       "a second POST of the same Message-ID is refused and allocates nothing",
       ("OBJ-002", "OBJ-005"), ("SCN-002",), REFUSED, "node"),
+    S("V0-POST-CLOCK", "F-POST",
+      "a duplicate POST is refused as an article and does not cost the node its clock",
+      ("FLR-002", "NNT-005"), ("SCN-002",), ACCEPTED, "node"),
     S("V0-POST-CONCURRENT", "F-POST",
       "a second reader stays live across another connection's whole POST",
       ("HST-002",), ("SCN-015",), ACCEPTED),
@@ -898,6 +901,16 @@ def postcycle(args):
     else:
         out["DUPLICATE"] = out["DUPLICATE POST"]
     drop(again)
+
+    # A refused clock reading costs the owner its clock (decision D10-a): it
+    # injects nothing, declares no group and answers DATE 503 until the next
+    # reading.  So asking DATE after the duplicate separates the two things
+    # that both arrive as 441 -- an article the node already holds, and a
+    # clock the node no longer has.
+    clock = Conn(args.port, timeout=SOCKET_TIMEOUT)
+    login(clock, args, {})
+    out["DATE AFTER DUPLICATE"] = clock.cmd("DATE")[0]
+    drop(clock)
 
     before = out["GROUP BEFORE"].split()
     after = out["GROUP AFTER"].split()
@@ -1942,8 +1955,7 @@ else echo NONE; fi
         # log in first; the row that checks an unauthenticated POST is refused
         # is V0-AUTH-GATED, and it must stay that way or the two rows would be
         # measuring each other.
-        keys = ("V0-POST-OPEN", "V0-POST-COMMIT", "V0-POST-READBACK",
-                "V0-POST-FRESH", "V0-POST-DUPLICATE")
+        keys = self.POST_KEYS
         step = self.matrix("postcycle", "--port {} --group {} --msgid '{}' "
                            "--user {} --secret {}".format(
                                node.port, GROUPS[0], SOCKET_POST[node.name],
@@ -2024,6 +2036,21 @@ else echo NONE; fi
                         node=node.name,
                         limit="the duplicate is offered on a fresh connection because "
                               "one clock observation is pinned per connection at accept")
+        duplicate = str(result.get("DUPLICATE", ""))
+        date = str(result.get("DATE AFTER DUPLICATE", ""))
+        self.emit("V0-POST-CLOCK",
+                  ACCEPTED if date.startswith("111") else
+                  REFUSED if date.startswith("503") else reply_verdict(date),
+                  step.command,
+                  "the duplicate answered '{}' and DATE afterwards answered '{}'".format(
+                      duplicate or "(nothing)", date or "(nothing)"),
+                  node=node.name,
+                  limit="a 441 for an article the node already holds and a 441 for a "
+                        "clock the node no longer has are the same code; DATE is what "
+                        "separates them from outside, because a refused reading costs "
+                        "the owner its clock (D10-a) and DATE then answers 503. This "
+                        "row does not INDUCE a clock fault -- it checks that an "
+                        "ordinary duplicate did not cause one")
         if str(result.get("COMMIT", "")).startswith("240"):
             node.accepted.append(SOCKET_POST[node.name])
 
@@ -3029,7 +3056,7 @@ else echo NONE; fi
     AUTH_KEYS = ("V0-AUTH-ADVERTISED", "V0-AUTH-GATED", "V0-AUTH-LOGIN",
                  "V0-AUTH-WITHDRAWN", "V0-AUTH-POST", "V0-AUTH-WRONG")
     POST_KEYS = ("V0-POST-OPEN", "V0-POST-COMMIT", "V0-POST-READBACK",
-                 "V0-POST-FRESH", "V0-POST-DUPLICATE")
+                 "V0-POST-FRESH", "V0-POST-DUPLICATE", "V0-POST-CLOCK")
     CRASH_KEYS = ("V0-CRASH-KILL", "V0-CRASH-SURVIVOR", "V0-CRASH-RECOVER",
                   "V0-CRASH-ACKNOWLEDGED", "V0-CRASH-INTERRUPTED",
                   "V0-CRASH-RESTART")
