@@ -763,15 +763,6 @@
   (value (fn-store-cfg-join-names
           (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
 
-; The currently served names come from the same canonical fn-ocfg value.
-; Store.recover asks every bridge for both the served table and allocation
-; domain after replay; the owner bridge must not fall back to fn-store-cfg,
-; which this process deliberately does not install.
-(defun fn-owner-served (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-store-cfg-join-names
-          (fn-cnode-served-of (fn-owner-config state)))))
-
 (defun fn-owner-next-txid (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-state-next-txid (fn-node-acceptance (fn-owner-node state)))))
