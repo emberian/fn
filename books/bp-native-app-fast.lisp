@@ -323,6 +323,47 @@
 
 ; Equations justify every fast function under the invariant established by a
 ; successful replay.  The host does not manufacture a second boolean.
+(defthm fn-bpaj-statep-components
+  (implies (fn-bpaj-statep joined)
+           (and (fn-bpr-statep (fn-bpaj-receiver joined))
+                (fn-bpaj-intent-listp (fn-bpaj-intents joined))
+                (fn-bpaj-context-v2-listp (fn-bpaj-facts joined))
+                (booleanp (fn-bpaj-strictp joined))))
+  :rule-classes (:rewrite :forward-chaining)
+  :hints (("Goal" :in-theory (enable fn-bpaj-statep))))
+
+(defthm fn-bpaj-statep-of-constructor
+  (equal (fn-bpaj-statep
+          (fn-bpaj-make-state receiver intents facts strictp))
+         (and (fn-bpr-statep receiver)
+              (fn-bpaj-intent-listp intents)
+              (fn-bpaj-context-v2-listp facts)))
+  :hints (("Goal" :in-theory (enable fn-bpaj-statep))))
+
+(defthm fn-bpaj-nth-one-of-two-list
+  (equal (fn-bpaj-nth 1 (list first second)) second)
+  :hints (("Goal" :in-theory (enable fn-bpaj-nth))))
+
+(defthm fn-bpaj-intent-listp-append-one
+  (implies (and (fn-bpaj-intent-listp intents)
+                (fn-bpaj-intentp intent))
+           (fn-bpaj-intent-listp (append intents (list intent))))
+  :hints (("Goal" :induct (fn-bpaj-intent-listp intents)
+           :in-theory (enable fn-bpaj-intent-listp append))))
+
+(defthm fn-bpaj-context-v2-listp-append-one
+  (implies (and (fn-bpaj-context-v2-listp facts)
+                (fn-bpaj-context-v2p fact))
+           (fn-bpaj-context-v2-listp (append facts (list fact))))
+  :hints (("Goal" :induct (fn-bpaj-context-v2-listp facts)
+           :in-theory (enable fn-bpaj-context-v2-listp append))))
+
+(defthm fn-bpaj-context-match-implies-context-v2p
+  (implies (fn-bpaj-context-matches-intentp context intent)
+           (fn-bpaj-context-v2p context))
+  :hints (("Goal" :in-theory
+           (enable fn-bpaj-context-matches-intentp))))
+
 (defthm fn-bpaj-store-record-accepted-fast-is-checked
   (implies (fn-sn-statep store)
            (equal (fn-bpaj-store-record-accepted-fast store record)
@@ -389,41 +430,66 @@
   (implies (and (fn-bpaj-statep joined) (fn-sn-statep store))
            (equal (fn-bpaj-apply-record-fast joined store r)
                   (fn-bpaj-apply-record joined store r)))
-  :hints (("Goal" :in-theory
-           (enable fn-bpaj-apply-record-fast fn-bpaj-apply-record
-                   fn-bpaj-statep))))
+  :hints (("Goal"
+           :use ((:instance fn-bpaj-bprr-apply-record-fast-is-checked
+                            (st (fn-bpaj-receiver joined))
+                            (r r))
+                 (:instance fn-bpaj-bprr-apply-record-fast-is-checked
+                            (st (fn-bpaj-receiver joined))
+                            (r (fn-bpaj-base-record r)))
+                 (:instance fn-bpaj-statep-components))
+           :cases ((equal (fn-bpaj-nth 0 r) :request-intent)
+                   (equal (fn-bpaj-nth 0 r) :request-context-v2)
+                   (equal (fn-bpaj-nth 0 r) :request-context))
+           :in-theory
+           (union-theories
+            (theory 'minimal-theory)
+            '(fn-bpaj-apply-record-fast fn-bpaj-apply-record)))))
 
 (defthm fn-bpaj-request-status-fast-is-checked
   (implies (fn-bpaj-statep joined)
            (equal (fn-bpaj-request-status-fast joined request-octets)
                   (fn-bpaj-request-status joined request-octets)))
-  :hints (("Goal" :in-theory
-           (enable fn-bpaj-request-status-fast fn-bpaj-request-status
-                   fn-bpaj-statep))))
+  :hints (("Goal"
+           :use ((:instance fn-bpaj-statep-components)
+                 (:instance fn-bpaj-bpr-receipt-adu-fast-is-checked
+                            (st (fn-bpaj-receiver joined))
+                            (request (fn-bpaj-request request-octets))))
+           :in-theory
+           (union-theories
+            (theory 'minimal-theory)
+            '(fn-bpaj-request-status-fast fn-bpaj-request-status)))))
 
 (defthm fn-bpaj-pending-resolution-fast-is-checked
   (implies (fn-bpaj-statep joined)
            (equal (fn-bpaj-pending-receipt-resolution-fast joined)
                   (fn-bpaj-pending-receipt-resolution joined)))
   :hints (("Goal" :in-theory
-           (enable fn-bpaj-pending-receipt-resolution-fast
-                   fn-bpaj-pending-receipt-resolution
-                   fn-bpaj-statep))))
+           (union-theories
+            (theory 'minimal-theory)
+            '(fn-bpaj-pending-receipt-resolution-fast
+              fn-bpaj-pending-receipt-resolution)))))
 
 (defthm fn-bpaj-record-matches-request-fast-is-checked
   (implies (fn-sn-statep store)
            (equal (fn-bpaj-record-matches-request-fast store record request)
                   (fn-bpaj-record-matches-requestp store record request)))
   :hints (("Goal" :in-theory
-           (enable fn-bpaj-record-matches-request-fast
-                   fn-bpaj-record-matches-requestp))))
+           (union-theories
+            (theory 'minimal-theory)
+            '(fn-bpaj-record-matches-request-fast
+              fn-bpaj-record-matches-requestp
+              fn-bpaj-store-record-accepted-fast-is-checked)))))
 
 (defthm fn-bpaj-record-lookup-fast-is-checked
   (implies (fn-sn-statep store)
            (equal (fn-bpaj-record-lookup-fast store request)
                   (fn-bpaj-record-lookup store request)))
   :hints (("Goal" :in-theory
-           (enable fn-bpaj-record-lookup-fast fn-bpaj-record-lookup))))
+           (union-theories
+            (theory 'minimal-theory)
+            '(fn-bpaj-record-lookup-fast fn-bpaj-record-lookup
+              fn-bpaj-record-matches-request-fast-is-checked)))))
 
 (defthm fn-bpaj-dispatch-fast-is-checked
   (implies (and (fn-bpaj-statep joined) (fn-sn-statep store))
@@ -432,7 +498,37 @@
                   (fn-bpaj-dispatch
                    joined store request-octets current-generation)))
   :hints (("Goal" :in-theory
-           (enable fn-bpaj-dispatch-fast fn-bpaj-dispatch))))
+           (union-theories
+            (theory 'minimal-theory)
+            '(fn-bpaj-dispatch-fast fn-bpaj-dispatch
+              fn-bpaj-request-status-fast-is-checked
+              fn-bpaj-record-lookup-fast-is-checked)))))
+
+(defthm fn-bpaj-apply-record-preserves-statep
+  (implies (and (fn-bpaj-statep joined)
+                (car (fn-bpaj-apply-record joined store r)))
+           (fn-bpaj-statep
+            (fn-bpaj-nth 1 (fn-bpaj-apply-record joined store r))))
+  :hints (("Goal"
+           :use ((:instance fn-bpaj-statep-components)
+                 (:instance fn-bprr-apply-record-preserves-statep
+                            (st (fn-bpaj-receiver joined))
+                            (record r))
+                 (:instance fn-bprr-apply-record-preserves-statep
+                            (st (fn-bpaj-receiver joined))
+                            (record (fn-bpaj-base-record r))))
+           :cases ((equal (fn-bpaj-nth 0 r) :request-intent)
+                   (equal (fn-bpaj-nth 0 r) :request-context-v2)
+                   (equal (fn-bpaj-nth 0 r) :request-context))
+           :in-theory
+           (union-theories
+            (theory 'minimal-theory)
+            '(car-cons cdr-cons fn-bpaj-nth-one-of-two-list
+              fn-bpaj-apply-record
+              fn-bpaj-statep-of-constructor
+              fn-bpaj-intent-listp-append-one
+              fn-bpaj-context-v2-listp-append-one
+              fn-bpaj-context-match-implies-context-v2p)))))
 
 (defthm fn-bpaj-apply-record-fast-preserves-statep
   (implies (and (fn-bpaj-statep joined)
@@ -443,27 +539,8 @@
                          (fn-bpaj-apply-record-fast joined store r))))
   :hints (("Goal"
            :use ((:instance fn-bpaj-apply-record-fast-is-checked)
-                 (:instance fn-bprr-apply-record-preserves-statep
-                            (st (fn-bpaj-receiver joined))
-                            (record (fn-bpaj-base-record r))))
-           :in-theory (enable fn-bpaj-apply-record-fast
-                              fn-bpaj-statep
-                              fn-bpaj-intent-listp
-                              fn-bpaj-context-v2-listp))))
-
-(defthm fn-bpaj-apply-record-preserves-statep
-  (implies (and (fn-bpaj-statep joined)
-                (car (fn-bpaj-apply-record joined store r)))
-           (fn-bpaj-statep
-            (fn-bpaj-nth 1 (fn-bpaj-apply-record joined store r))))
-  :hints (("Goal"
-           :use ((:instance fn-bprr-apply-record-preserves-statep
-                            (st (fn-bpaj-receiver joined))
-                            (record (fn-bpaj-base-record r))))
-           :in-theory (enable fn-bpaj-apply-record
-                              fn-bpaj-statep
-                              fn-bpaj-intent-listp
-                              fn-bpaj-context-v2-listp))))
+                 (:instance fn-bpaj-apply-record-preserves-statep))
+           :in-theory (theory 'minimal-theory))))
 
 (defthm fn-bpaj-replay-rest-preserves-statep
   (implies (and (fn-bpaj-statep joined)
