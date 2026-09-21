@@ -48,8 +48,12 @@ Local ACL2 8.7 evidence:
 
 The first local closure attempt stopped at the pre-existing
 `books/byte-store-invariants` inclusion of `arithmetic-5/top` under this local
-ACL2 8.7 world; it is not an initializer proof failure. Hbox owned-closure
-submission `run-20260921T071619Z-ea97` uses `/tank/fn/lanes/w13-storage-initializer`
-with four jobs and must be fetched/recorded before a remote certification
-claim. The earlier hbox run `run-20260921T071051Z-2934` was an obsolete
-pre-fix snapshot and failed at the then-unproved representation lemma.
+ACL2 8.7 world; it is not an initializer proof failure. Hbox owned closure
+`run-20260921T071619Z-ea97` passed with ACL2 8.7 on
+`/tank/fn/lanes/w13-storage-initializer`, four jobs, and source/certificate
+digests in
+`planning/evidence/manifests/certify-20260921T071623Z-1742111.json`. It
+certified the full local include closure, including
+`books/byte-store-initializer` and its test book. The earlier hbox run
+`run-20260921T071051Z-2934` was an obsolete pre-fix snapshot and failed at
+the then-unproved representation lemma.
