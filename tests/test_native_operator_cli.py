@@ -9,6 +9,8 @@ import tempfile
 import unittest
 
 
+from tests.native_process import wait_for_announcement
+
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
 
@@ -85,9 +87,7 @@ class NativeOperatorCliTests(unittest.TestCase):
             [str(IMAGE), "--fn", "operator", str(config), "run", "--once"],
             cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         try:
-            ready = select.select([process.stdout], [], [], 180)[0]
-            self.assertTrue(ready, "operator did not announce its port")
-            line = process.stdout.readline()
+            line = wait_for_announcement(process, b"LISTENING ")
             self.assertEqual(line, "LISTENING {}\n".format(port).encode(),
                              "unexpected listener announcement; process status={!r}".format(
                                  process.poll()))
