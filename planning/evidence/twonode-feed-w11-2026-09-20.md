@@ -334,12 +334,15 @@ renders the reader block on a transit connection.
 
 ## The gate's own self-test
 
-`python3 -m unittest tests.test_twonode_gate` on the laptop: **19 tests,
-843.1 s, OK**, both halves of the fake -- the one with no transit surface
-(120 steps, 0 failed, 8 not exercised) and the one with a transit surface
-(117 steps, 0 failed, 5 not exercised). It is slow here only because the
-laptop was carrying four other lanes' ACL2 processes; it is 30 s on a quiet
-machine.
+`python3 -m unittest tests.test_twonode_gate` on the laptop, at this
+lane's final code: **19 tests, 834.5 s, OK**, both halves of the fake --
+the one with no transit surface (122 steps, 0 failed, 8 not exercised) and
+the one with a transit surface (119 steps, 0 failed, 5 not exercised). It
+is slow here only because the laptop was carrying four other lanes' ACL2
+processes; it is 30 s on a quiet machine. `python3 -m unittest
+tests.test_feed`: 4 tests, 10.3 s, OK, which is the control on the
+`send_block` change. `python3 -m unittest tests.test_owner.TransitPortTests`:
+4 tests, 32.9 s, OK.
 
 ## Limits of this record
 
