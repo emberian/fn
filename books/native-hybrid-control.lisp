@@ -21,7 +21,9 @@
 
 (defun fn-nhctrl-open-values (octets kind specs)
   (declare (xargs :guard t))
-  (let ((opened (fn-frame-decode octets
+  (if (not (and (fn-cbor-octet-listp octets)
+                (fn-frame-spec-listp specs))) nil
+    (let ((opened (fn-frame-decode octets
                                  (fn-frame-trailer
                                   (fn-frame-protected-prefix octets))
                                  *fn-nhctrl-max-payload*)))
@@ -33,7 +35,7 @@
                                            (fn-frame-result-payload opened))))
         (if (and (fn-frame-parse-okp parsed)
                  (null (fn-frame-parse-rest parsed)))
-            (fn-frame-parse-value parsed) nil)))))
+            (fn-frame-parse-value parsed) nil))))
 
 (defun fn-native-hybrid-control-enroll-encode
     (keyring-generation principal ed-key ml-key)
@@ -82,6 +84,7 @@
         (if (and (fn-record-uint32p (nth 0 v))
                  (fn-af-message-idp (nth 1 v))
                  (fn-cbor-at-mostp (nth 2 v) *fn-article-max-octets*)
+                 (consp (nth 2 v))
                  (fn-hsig-exact-octets-p (nth 3 v) 64)
                  (fn-hsig-exact-octets-p (nth 4 v) 3309)
                  (fn-record-parse-okp groups)
