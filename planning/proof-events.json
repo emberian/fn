@@ -1211,6 +1211,63 @@
           "name": "fn-bs-crash-image-records-do-not-fault"
         }
       ]
+    },
+    {
+      "id": "PRF-042",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-peer-loop-is-refused"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-history-is-refused-at-offer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-history-is-have-at-offer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-history-is-refused-at-transfer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-history-grows-under-transfer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-transfer-stages-only-scope-groups"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-scope-groups-are-live"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-not-now-is-a-retry-code"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-ihave-of-a-held-message-id-is-435-and-no-article",
+          "note": "The subject-equating theorem AGENTS.md rule 1 asks for, on the duplicate-offer row. The host line is host/owner-host.lisp fn-owner-chunk -> books/owner.lisp fn-own-read -> fn-served-step -> fn-served-dispatch -> fn-auth-step -> fn-peer-step -> fn-peer-command, whose IHAVE and CHECK arms are the only callers of fn-peer-decide-offer on this tree. It says the reply octets ARE that decision and that no article mode is entered, so a duplicate offer costs the peer no bytes."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-check-of-a-held-message-id-is-438-and-no-offer-outstanding",
+          "note": "The subject-equating theorem AGENTS.md rule 1 asks for, on the duplicate-offer row. The host line is host/owner-host.lisp fn-owner-chunk -> books/owner.lisp fn-own-read -> fn-served-step -> fn-served-dispatch -> fn-auth-step -> fn-peer-step -> fn-peer-command, whose IHAVE and CHECK arms are the only callers of fn-peer-decide-offer on this tree. It says the reply octets ARE that decision and that no article mode is entered, so a duplicate offer costs the peer no bytes."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-read-offers-against-the-live-node",
+          "note": "The other half of the same bridge: WHICH node the served path hands fn-peer-decide-offer. Until w11/transit-correct it was the value fn-peer-open-session pinned at :open, so the duplicate refusal was unreachable on a live connection and the wire answered 335 and 238 (V0-TRANSIT-DUPLICATE and V0-TRANSIT-CHECK-DUP at 6fb30ca). fn-own-conn-live-session re-pins it from the owner's store once per socket read."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-live-session-boundedp",
+          "note": "The re-pin cannot drop a connection: it leaves the reader session identical, so fn-own-conn-boundedp -- the test fn-own-read applies after the step, and the one that made ADVANCE a silent no-op for a wave when a rebuild lost a wrapper -- answers exactly as before."
+        }
+      ]
     }
   ]
 }

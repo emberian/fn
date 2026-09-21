@@ -1327,6 +1327,37 @@
         "fn-bs-crash-image-namespace-is-contiguous",
         "fn-bs-crash-image-records-do-not-fault"
       ]
+    },
+    {
+      "id": "PRF-042",
+      "title": "The inbound transit decision the served path reaches is the model's, over the node the owner holds now (K2 loop, K3 duplicate)",
+      "statement": "fn-peer-loop-is-refused: an article whose Path already names this node's path-identity is never accepted through transit, and fn-peer-transfer leaves the node. fn-peer-history-is-have-at-offer and fn-peer-history-is-refused-at-transfer: a Message-ID in the history is :have :history at the offer and is never accepted at the transfer. The subject rule (AGENTS.md rule 1) is closed in two halves: fn-peer-ihave-of-a-held-message-id-is-435-and-no-article and fn-peer-check-of-a-held-message-id-is-438-and-no-offer-outstanding say the reply octets fn-peer-command emits ARE that decision and that the connection does not enter article mode, and fn-own-read-offers-against-the-live-node says the node the served path supplies is fn-sn-node of the owner's own store. The host line is host/owner-host.lisp fn-owner-chunk -> books/owner.lisp fn-own-read for the offer, and host/owner-host.lisp fn-owner-transit-decide -> fn-peer-decide-transfer for the transfer. Covered scope: one connection's offer and one article's transfer against one node and one pinned peer record; the hypotheses are the connection facts the decision needs before it reaches its history arm. NOT covered: the peer record is still the one the connection opened with, so a (:set-peer ...) delta reaches the transfer decision and not the offer decision; and fn-peer-decide-transfer emits no :date-future or :no-clock, because the tree has no certified RFC 5322 date-time reader.",
+      "milestone": "M2",
+      "requirements": [
+        "REP-001",
+        "REP-002"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-CRYPTO"
+      ],
+      "status": "in-progress",
+      "evidence": [],
+      "progress_note": "Certified on persvati (farm run-20260921T033252Z-6ba2, 0 failures over 87 books: books/peer-inbound, books/peer-inbound-invariants, books/owner, books/owner-invariants, books/served, tests/acl2/peer-inbound-tests, tests/acl2/served-tests). Until w11/transit-correct the offer half was unreachable on a live connection: fn-peer-open-session pinned the node at :open and nothing replaced it, so the wire answered 335 and 238 for an article the connection had itself delivered (V0-TRANSIT-DUPLICATE, V0-TRANSIT-CHECK-DUP at 6fb30ca). The loop half was never inert in the model and was inert in the v0 matrix's deployment, which set no path-identity on either node.",
+      "events": [
+        "fn-peer-loop-is-refused",
+        "fn-peer-history-is-refused-at-offer",
+        "fn-peer-history-is-have-at-offer",
+        "fn-peer-history-is-refused-at-transfer",
+        "fn-peer-history-grows-under-transfer",
+        "fn-peer-transfer-stages-only-scope-groups",
+        "fn-peer-scope-groups-are-live",
+        "fn-peer-not-now-is-a-retry-code",
+        "fn-peer-ihave-of-a-held-message-id-is-435-and-no-article",
+        "fn-peer-check-of-a-held-message-id-is-438-and-no-offer-outstanding",
+        "fn-own-read-offers-against-the-live-node",
+        "fn-own-live-session-boundedp"
+      ]
     }
   ]
 }

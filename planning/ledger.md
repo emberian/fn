@@ -13,16 +13,16 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 283 |
 | Certification roots in the Makefile | 283 |
 | Books inside the root closure | 283 |
-| `defthm` and `defthmd` events | 5795 |
-| `defun` events | 3973 |
+| `defthm` and `defthmd` events | 5813 |
+| `defun` events | 3975 |
 | Functions with verified guards | 1491 |
 | Functions declared `:verify-guards nil` and never verified | 192 |
-| Functions left at the default with an explicit guard | 1795 |
+| Functions left at the default with an explicit guard | 1797 |
 | Functions left at the default with no guard | 495 |
-| `assert-event` checks | 5857 |
+| `assert-event` checks | 5895 |
 | `must-fail` checks | 63 |
 | `encapsulate` events | 19 |
-| Theorems flagged SUSPECT by shape | 47 |
+| Theorems flagged SUSPECT by shape | 48 |
 | Export-hygiene warnings | 73 |
 | Enabled-projection warnings | 21 |
 | Teeth-form warnings | 0 |
@@ -193,14 +193,14 @@ that `make certify` requests.
 | `books/owner-config.lisp` | root | 22 | 34 | 0/4/30/0 | 0 | 0 | 1 |
 | `books/owner-fault.lisp` | root | 11 | 2 | 2/0/0/0 | 0 | 0 | 0 |
 | `books/owner-feed.lisp` | root | 74 | 54 | 0/0/54/0 | 0 | 0 | 0 |
-| `books/owner-invariants.lisp` | root | 113 | 8 | 0/0/6/2 | 0 | 0 | 0 |
-| `books/owner.lisp` | root | 46 | 96 | 0/3/93/0 | 0 | 0 | 0 |
+| `books/owner-invariants.lisp` | root | 121 | 8 | 0/0/6/2 | 0 | 0 | 1 |
+| `books/owner.lisp` | root | 46 | 97 | 0/3/94/0 | 0 | 0 | 0 |
 | `books/path.lisp` | root | 0 | 21 | 0/0/21/0 | 0 | 0 | 0 |
 | `books/peer-config.lisp` | root | 26 | 27 | 0/0/27/0 | 0 | 0 | 0 |
 | `books/peer-feed-invariants.lisp` | root | 127 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/peer-feed.lisp` | root | 35 | 100 | 3/0/97/0 | 0 | 0 | 0 |
-| `books/peer-inbound-invariants.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/peer-inbound.lisp` | root | 50 | 56 | 6/4/46/0 | 0 | 0 | 0 |
+| `books/peer-inbound-invariants.lisp` | root | 15 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/peer-inbound.lisp` | root | 58 | 57 | 6/4/47/0 | 0 | 0 | 0 |
 | `books/policy-invariants.lisp` | root | 32 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/policy.lisp` | root | 13 | 29 | 1/0/28/0 | 0 | 0 | 0 |
 | `books/principal-invariants.lisp` | root | 19 | 0 | 0/0/0/0 | 0 | 0 | 1 |
@@ -325,9 +325,9 @@ that `make certify` requests.
 | `tests/acl2/node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 92 | 0 | 0 |
 | `tests/acl2/owner-config-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 75 | 0 | 0 |
 | `tests/acl2/owner-feed-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 98 | 0 | 0 |
-| `tests/acl2/owner-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 227 | 0 | 0 |
+| `tests/acl2/owner-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 243 | 0 | 0 |
 | `tests/acl2/peer-feed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 108 | 0 | 0 |
-| `tests/acl2/peer-inbound-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 147 | 0 | 0 |
+| `tests/acl2/peer-inbound-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 169 | 0 | 0 |
 | `tests/acl2/policy-tests.lisp` | root | 0 | 27 | 0/0/0/27 | 66 | 0 | 0 |
 | `tests/acl2/principal-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 44 | 0 | 0 |
 | `tests/acl2/provenance-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 103 | 0 | 0 |
@@ -404,6 +404,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-node-stale-completion-is-no-op` | `books/node.lisp` | 320 | branch-of-definition: the hypothesis is a branch test of fn-node-complete and the conclusion is that branch's value |
 | `fn-nov-missing-header-is-empty` | `books/nntp-overview.lisp` | 99 | branch-of-definition: the hypothesis negates a branch test of fn-nov-header-content and the conclusion is that branch's value |
 | `fn-ocfg-refused-reconfiguration-changes-nothing` | `books/owner-config.lisp` | 646 | branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value |
+| `fn-own-conn-live-session-of-a-reader-is-the-session` | `books/owner-invariants.lisp` | 587 | branch-of-definition: the hypothesis negates a branch test of fn-own-conn-live-session and the conclusion is that branch's value |
 | `fn-prin-apply-succession-when-not-acceptable` | `books/principal-invariants.lisp` | 205 | branch-of-definition: the hypothesis negates a branch test of fn-prin-apply-succession and the conclusion is that branch's value |
 | `fn-prov-transit-kindp-forward` | `books/provenance.lisp` | 56 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-prov-transit-kindp |
 | `fn-prov-wire-of-a-string-is-itself-by-definition` | `books/provenance-codec.lisp` | 561 | branch-of-definition: the hypothesis is a branch test of fn-prov-wire and the conclusion is that branch's value |
