@@ -153,6 +153,7 @@
     "tests/acl2/bp-workflow-teeth-tests",
     "books/bp-workflow-records",
     "books/bp-workflow-records-invariants",
+    "books/bp-workflow-replay-status",
     "tests/acl2/bp-workflow-records-tests",
     "tests/acl2/bp-workflow-records-guards-tests",
     "books/bp-receipt",
@@ -279,17 +280,17 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 276,
-    "books_in_root_closure": 275,
-    "roots": 275,
-    "theorems": 5587,
-    "functions": 3939,
-    "assert_events": 5566,
+    "books": 277,
+    "books_in_root_closure": 276,
+    "roots": 276,
+    "theorems": 5617,
+    "functions": 3945,
+    "assert_events": 5593,
     "must_fails": 63,
     "encapsulates": 19,
     "guards": {
-      "verified": 1469,
-      "declared-off": 190,
+      "verified": 1474,
+      "declared-off": 191,
       "default-guarded": 1791,
       "default-unguarded": 489
     },
@@ -1549,11 +1550,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 12,
+      "functions": 16,
       "guards": {
-        "verified": 10,
+        "verified": 15,
         "declared-off": 0,
-        "default-guarded": 2,
+        "default-guarded": 1,
         "default-unguarded": 0
       },
       "verify_guards_events": 10,
@@ -1564,6 +1565,31 @@
       "encapsulates": 0,
       "includes": [
         "bp-workflow"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/bp-workflow-replay-status.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 30,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "bp-workflow-records-invariants"
       ],
       "system_includes": [],
       "suspects": [],
@@ -5735,13 +5761,13 @@
         "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 74,
+      "assert_events": 101,
       "must_fails": 6,
-      "defconsts": 37,
+      "defconsts": 48,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/bp-workflow-records-invariants"
+        "../../books/bp-workflow-replay-status"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -8824,6 +8850,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/bp-workflow-replay-status.lisp",
+        "line": 17,
+        "include": "bp-workflow-records-invariants",
+        "included": "books/bp-workflow-records-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/bp-workflow-transport-invariants.lisp",
         "line": 2,
         "include": "bp-workflow-invariants",
@@ -9108,13 +9141,6 @@
         "line": 3,
         "include": "../../books/bp-workflow-records",
         "included": "books/bp-workflow-records.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/bp-workflow-records-tests.lisp",
-        "line": 2,
-        "include": "../../books/bp-workflow-records-invariants",
-        "included": "books/bp-workflow-records-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
