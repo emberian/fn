@@ -48,15 +48,19 @@ backticks or quotes, and `` `books/nntp-probe` `` is); the fixture data of
 lines are still read); and `tests/evidence/`, `planning/evidence/`, whose
 records name what was certified THEN and must keep naming it.
 
+A fourth, CATALOGUE, is the three files whose subject is absent paths — this
+checker, its tests and this triage. They name paths that are not there on
+purpose, and counting them would make the tree's number a measure of how much
+has been written about the tree's number. The control: the tree's number is
+**identical before and after those three files were tracked**.
+
 **Counts on this tree after the repairs below** (`python3 tools/cite_check.py`):
 
-    75 citations of 47 absent paths (49 phantom, 26 drift); by citer:
-    1 load-bearing, 35 spec, 0 tool, 39 planning; 26 annotated, 218
-    placeholder, 1 wrapped, 19 prose, 6 system, 233 fixture, 115 record
-    not raised.
+    74 citations of 46 absent paths (48 phantom, 26 drift); by citer:
+    0 load-bearing, 35 spec, 0 tool, 39 planning; 25 annotated, 117
+    catalogue, 235 placeholder, 1 wrapped, 31 prose, 14 system, 233
+    fixture, 115 record not raised.
 
-The one load-bearing line is this file, named by the annotation in
-`tests/acl2/bp-bundle-tests.lisp`; it resolves when this commit lands.
 `make check` runs `--summary --strict`, so a NEW undisclosed load-bearing
 phantom fails it. The other three tiers are reported and do not.
 
@@ -175,6 +179,17 @@ that is not stale at all.
   (`DESIGN-bp-summary.md:37`), `tools/run_container.py`, `tools/run_transfer.py`.
 
 **TOOL (0 after repair).** `docs/trust-boundary.md` was the only one: see §4.
+
+**Not raised, and each was on the crude sweep's list.** `tools/run_peer.py`
+(`tests/test_feed.py:89`, `tests/test_twonode_gate.py:36`) is CORRECT: both
+tests run `tests/twonode_gate_fake/tools/run_peer.py`, which exists, copied
+into or named relative to a fixture tree; `tests/test_feed.py`'s own docstring
+says so. `host/host/native/io.lisp` is not a doubled prefix anywhere: the tree
+has `build/lanes/w3-native-host/host/native/io.lisp` twice
+(`specs/bp-design.md:809`, `HANDOFF-w4-tcpcl.md:138`), a path into an
+uncommitted lane worktree, which the tool deliberately does not read.
+`books/arithmetic/top.lisp` (three citers) is ACL2's own book. The four
+`tests/acl2/*-teeth-tests.lisp` of the LANEDUMP are DRIFT and are records.
 
 ## 4. What was repaired
 

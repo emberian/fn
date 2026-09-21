@@ -82,9 +82,11 @@ WHAT IT CANNOT SEE.  Every line below is a question for a reader.
 * It reads tokens, not sentences.  A citation spelled in prose ("the transit
   book"), split across a line break, or given only by theorem name is
   invisible to it.
-* The fixture and record classes below are exclusions with reasons, not
+* The fixture, record and catalogue classes are exclusions with reasons, not
   proofs of innocence: a genuine stale citation inside a unit test's fixture
-  data or inside an evidence record is classed with them and not raised.
+  data, inside an evidence record, or inside this file is classed with them
+  and not raised.  The tree's number is the same before and after this tool
+  was tracked, which is the point of the catalogue list and its only defence.
 """
 from __future__ import annotations
 
@@ -137,6 +139,18 @@ RECORD_FILES = re.compile(r"^(tests|planning)/evidence/")
 # A load-bearing citer: a source file a reader consults while deciding whether
 # to trust a theorem.
 LOAD_BEARING = re.compile(r"^(books/|tests/acl2/)")
+
+# Files whose SUBJECT is absent paths.  This checker's own examples, its
+# tests, and the triage that reads its output all name paths that are not
+# there, on purpose; counting them would make the tree's number a measure of
+# how much has been written ABOUT the tree's number.  Add a file here only
+# when enumerating absent paths is what it is for, and say so in one line.
+CATALOGUE = {
+    "tools/cite_check.py": "the checker, whose rules are named in examples",
+    "tests/test_cite_check.py": "its cases, which are absent paths",
+    "planning/lanes/HANDOFF-w11-phantom-cites.md":
+        "the triage of every finding this tool reported",
+}
 
 # A citation the surrounding prose already says is empty.  Disclosure is the
 # repair AGENTS.md asks for when there is nothing to point at ("Never conceal
@@ -286,6 +300,7 @@ def scan(present: set[str], history: set[str],
             continue
         fixture = bool(FIXTURE_FILES.match(citer))
         record = bool(RECORD_FILES.match(citer))
+        catalogue = citer in CATALOGUE
         lines = text.splitlines()
         for number, line in enumerate(lines, 1):
             comment = line.lstrip().startswith("#")
@@ -295,7 +310,9 @@ def scan(present: set[str], history: set[str],
                     continue
                 klass = benign(token, citer, line, match.start(1))
                 if klass is None:
-                    if fixture and not comment:
+                    if catalogue:
+                        klass = "catalogue"
+                    elif fixture and not comment:
                         klass = "fixture"
                     elif record:
                         klass = "record"
@@ -305,7 +322,8 @@ def scan(present: set[str], history: set[str],
                         klass = "drift" if token in history or any(
                             token + e in history
                             for e in IMPLIED_EXTENSIONS) else "phantom"
-                tier = ("record" if record else
+                tier = ("catalogue" if klass == "catalogue" else
+                        "record" if record else
                         "fixture" if klass == "fixture" else
                         "load-bearing" if LOAD_BEARING.match(citer) else
                         "planning" if citer.startswith("planning/") else
@@ -319,8 +337,8 @@ def scan(present: set[str], history: set[str],
 
 
 RAISED = ("phantom", "drift")
-BENIGN = ("annotated", "placeholder", "wrapped", "prose", "system",
-          "fixture", "record")
+BENIGN = ("annotated", "catalogue", "placeholder", "wrapped", "prose",
+          "system", "fixture", "record")
 
 
 def main(argv: list[str] | None = None) -> int:

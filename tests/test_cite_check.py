@@ -179,6 +179,16 @@ class ScanTests(unittest.TestCase):
                          {"books/leaf-a": "fixture", "books/base": "fixture",
                           "books/gone.lisp": "phantom"})
 
+    def test_a_catalogue_of_absent_paths_does_not_count_itself(self):
+        # The checker's own examples and its triage name absent paths on
+        # purpose; counting them would measure the writing, not the tree.
+        found = self.scan({"tools/cite_check.py": "e.g. `books/gone.lisp`\n"})
+        self.assertEqual([(f.klass, f.tier) for f in found],
+                         [("catalogue", "catalogue")])
+        self.assertEqual(sorted(cite_check.CATALOGUE),
+                         ["planning/lanes/HANDOFF-w11-phantom-cites.md",
+                          "tests/test_cite_check.py", "tools/cite_check.py"])
+
     def test_an_evidence_record_names_what_was_certified_then(self):
         found = self.silent({"tests/evidence/2026-09-18-store.json":
                              '{"books/folded.lisp": "deadbeef"}\n'},
