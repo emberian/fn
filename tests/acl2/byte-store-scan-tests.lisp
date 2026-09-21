@@ -18,6 +18,54 @@
 (include-book "../../books/byte-store-programs")
 (include-book "../../books/byte-store-txn-name")
 
+; The byte scanner consumes the shared Store-event dispatcher, so one
+; immutable namespace may contain a legacy article followed by retention
+; state.  These are real FNST frames, not already-decoded sibling values.
+(defconst *bsk-event-article*
+  (fn-record-make 0 0 0 "<byte-scan@example.invalid>" '(65)
+                  '("fn.letters") "archive" "subject" "evidence" 1))
+(defconst *bsk-event-retention*
+  (fn-store-retention-event-make :undertake 1 1 1
+                                 "obligation-1" "article-0" "local" 1))
+(defconst *bsk-event-article-frame*
+  (fn-frame-seal *fn-frame-magic-store* *fn-frame-version*
+                 *fn-frame-store-kind*
+                 (fn-store-event-encode *bsk-event-article*)))
+(defconst *bsk-event-retention-frame*
+  (fn-frame-seal *fn-frame-magic-store* *fn-frame-version*
+                 *fn-frame-store-kind*
+                 (fn-store-event-encode *bsk-event-retention*)))
+(defconst *bsk-mixed-event-store*
+  (fn-bs-make 4
+              (list (cons 10 *bsk-event-article-frame*)
+                    (cons 11 *bsk-event-retention-frame*))
+              (list (cons :transactions
+                          (list (cons (fn-bs-txn-name 0) 10)
+                                (cons (fn-bs-txn-name 1) 11))))
+              nil 12))
+(assert-event (fn-store-event-p *bsk-event-article*))
+(assert-event (fn-store-event-p *bsk-event-retention*))
+(assert-event
+ (equal (fn-bs-read-records *bsk-mixed-event-store* 0 2)
+        (list *bsk-event-article* *bsk-event-retention*)))
+
+; Sequence checking is over the generic event accessor.  A valid retention
+; event under the wrong immutable filename is rejected rather than silently
+; interpreted as an article or accepted by record count alone.
+(defconst *bsk-wrong-event-sequence*
+  (fn-store-retention-event-make :undertake 7 1 1
+                                 "obligation-1" "article-0" "local" 1))
+(defconst *bsk-wrong-event-frame*
+  (fn-frame-seal *fn-frame-magic-store* *fn-frame-version*
+                 *fn-frame-store-kind*
+                 (fn-store-event-encode *bsk-wrong-event-sequence*)))
+(defconst *bsk-wrong-event-store*
+  (fn-bs-make 4 (list (cons 10 *bsk-wrong-event-frame*))
+              (list (cons :transactions
+                          (list (cons (fn-bs-txn-name 0) 10)))) nil 11))
+(assert-event
+ (equal (fn-bs-read-records *bsk-wrong-event-store* 0 1) :fault))
+
 ; -----------------------------------------------------------------------------
 ; The anchor: the clause each tooth violates is TRUE of the store the
 ; programs run on, so neither tooth is a statement about an impossible

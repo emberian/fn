@@ -249,6 +249,15 @@
 ; was lost may still be pending, and 817/818 are what drain it.
 (defconst *fn-bs-recover-on-barrier-error* '((:observe (:recovery-barrier :uncertain))))
 
+; Recovery removes bounded staging orphans before replay barriers.  The
+; native `recovery-stage-unlinked` death point is after this unlink and before
+; any subsequent process can rely on cleanup.  Staging is not an authority
+; directory, but the physical cut still needs a byte-program transition.
+(defun fn-bs-recover-stage-cleanup-program (stage)
+  (declare (xargs :guard t :verify-guards nil))
+  (list (list :unlink :staging stage)
+        (list :cut "recovery-stage-unlinked")))
+
 ; P-INIT (Store.initialize and _publish_initial_file, 612-667): mkdir root,
 ; transactions, staging; each of config and frontier is staged, fenced,
 ; linked (EEXIST reported, never replaced), the root fenced, the stage
