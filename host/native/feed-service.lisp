@@ -13,6 +13,9 @@
 
 (in-package "ACL2")
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (require :sb-posix))
+
 (eval-when (:load-toplevel :execute)
   (unless (fboundp 'fnn-core)
     (load "host/native/io.lisp")))
