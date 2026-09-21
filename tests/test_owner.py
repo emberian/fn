@@ -345,7 +345,7 @@ class OwnerTests(OwnerFixture):
         # second create is refused by the same ACL2 admissibility predicate;
         # it does not depend on a copied Python group table.
         self.assertEqual(reopened.control_line(b"RECONFIGURE 0 create fn.live"),
-                         b"refused group-exists")
+                         b"refused duplicate-group")
 
 
 if __name__ == "__main__":
