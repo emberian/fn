@@ -744,26 +744,50 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
       (fnn-tls-send-all channel octets seconds)
     (fnn-send-all fd octets seconds)))
 
+(defun fnn-owner-socket-address (service socket)
+  "Return only the kernel family/address observation; ACL2 resolves its role."
+  (multiple-value-bind (address port)
+      (fnn-owner-connection-call
+       service :peer-address
+       (lambda () (sb-bsd-sockets:socket-peername socket)))
+    (declare (ignore port))
+    (unless (and (vectorp address)
+                 (member (length address) '(4 16)))
+      (fnn-fault "socket returned a malformed peer address"))
+    (values (if (= (length address) 4) :inet :inet6)
+            (coerce address 'list))))
+
 (defun fnn-owner-serve-client (service socket)
   (let ((fd (fnn-socket-fd socket)) (cid nil) (channel nil))
     (unwind-protect
          (handler-case
              (progn
-               (multiple-value-bind (opened greeting)
+               (multiple-value-bind (family address)
+                   (fnn-owner-socket-address service socket)
+                 (multiple-value-bind (opened greeting)
                    (fnn-owner-serialized
                     service nil
                     (lambda ()
-                      (let ((opened (fnn-owner-core 'fn-owner-open)))
+                      (let* ((peer
+                               (fnn-owner-core
+                                'fn-owner-peer-for-socket-address
+                                family address))
+                             (opened
+                              (if peer
+                                  (fnn-owner-core 'fn-owner-open-peer peer)
+                                (fnn-owner-core 'fn-owner-open))))
+                        (unless (or (null peer) (fnn-octet-list-p peer))
+                          (fnn-fault "owner returned a malformed peer identity"))
                         (values opened
                                 (if opened (fnn-owner-octets-global 'fn-owner-output)
                                   (fnn-make-octets 0))))))
-                 (unless (and opened (integerp opened))
-                   (return-from fnn-owner-serve-client nil))
-                 (setq cid opened)
-                 (when (> (length greeting) 0)
-                   (fnn-owner-connection-call
-                    service :send-greeting
-                    (lambda () (fnn-owner-send fd channel greeting 10)))))
+                   (unless (and opened (integerp opened))
+                     (return-from fnn-owner-serve-client nil))
+                   (setq cid opened)
+                   (when (> (length greeting) 0)
+                     (fnn-owner-connection-call
+                      service :send-greeting
+                      (lambda () (fnn-owner-send fd channel greeting 10))))))
                (loop
                  (let ((incoming
                          (fnn-owner-connection-call

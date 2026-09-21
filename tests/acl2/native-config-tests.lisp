@@ -133,6 +133,16 @@
         '(:inet (127 0 0 1))))
 (assert-event (equal (fn-native-config-listener-address '(127 0 0 2)) :bad))
 (assert-event
+ (equal (fn-native-config-listener-address
+         (fn-record-string-octets "192.0.2.44"))
+        '(:inet (192 0 2 44))))
+(assert-event
+ (fn-native-config-listener-hostp "192.0.2.44"))
+(assert-event
+ (not (fn-native-config-listener-hostp "192.0.2.999")))
+(assert-event
+ (not (fn-native-config-listener-hostp "192.0.2")))
+(assert-event
  (equal (fn-native-config-host-listener-address
          (fn-record-string-octets "127.0.0.1"))
         '(:inet (127 0 0 1))))

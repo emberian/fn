@@ -96,6 +96,12 @@
               (let* ((*fnn-owner-startup-hooks*
                        (list (fnn-native-auth-startup-hook
                               auth-path auth-required auth-protected)))
+                     (*fnn-owner-start-hooks*
+                       (cons #'fnn-feed-service-start *fnn-owner-start-hooks*))
+                     (*fnn-owner-stop-hooks*
+                       (cons #'fnn-feed-service-wake *fnn-owner-stop-hooks*))
+                     (*fnn-owner-close-hooks*
+                       (cons #'fnn-feed-service-close *fnn-owner-close-hooks*))
                      (code
                        (fnn-control-owner-run-normalized
                         (fnn-octets

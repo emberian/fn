@@ -25,10 +25,47 @@
 (defconst *fn-ncfg-listener-ipv6-loopback*
   '(0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1))
 
-(defun fn-native-config-listener-hostp (host)
-  "The three deployment-local listener spellings the profile admits."
+(defun fn-ncfg-ipv4-digitp (octet)
   (declare (xargs :guard t))
-  (member-equal host '("127.0.0.1" "::1" "localhost")))
+  (and (natp octet) (<= 48 octet) (<= octet 57)))
+
+(defun fn-ncfg-ipv4-reverse (xs)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (append (fn-ncfg-ipv4-reverse (cdr xs)) (list (car xs)))
+    nil))
+
+(defun fn-ncfg-ipv4-address-aux (xs value digits parts-rev)
+  (declare (xargs :guard t :measure (len xs)))
+  (cond
+   ((consp xs)
+    (cond
+     ((fn-ncfg-ipv4-digitp (car xs))
+      (let ((next (+ (* 10 (nfix value)) (- (car xs) 48))))
+        (if (and (< (nfix digits) 3) (<= next 255))
+            (fn-ncfg-ipv4-address-aux
+             (cdr xs) next (1+ (nfix digits)) parts-rev)
+          :bad)))
+     ((and (equal (car xs) 46) (posp digits) (< (len parts-rev) 3))
+      (fn-ncfg-ipv4-address-aux (cdr xs) 0 0 (cons value parts-rev)))
+     (t :bad)))
+   ((and (posp digits) (equal (len parts-rev) 3))
+    (fn-ncfg-ipv4-reverse (cons value parts-rev)))
+   (t :bad)))
+
+(defun fn-native-config-ipv4-address (host-octets)
+  (declare (xargs :guard t))
+  (fn-ncfg-ipv4-address-aux host-octets 0 0 nil))
+
+(defun fn-native-config-listener-hostp (host)
+  "A numeric IPv4 listener, or one of the two explicit loopback aliases."
+  (declare (xargs :guard t))
+  (and (stringp host)
+       (or (let ((ipv4 (fn-native-config-ipv4-address
+                         (fn-record-string-octets host))))
+             (and (not (equal ipv4 :bad))
+                  (not (equal ipv4 '(0 0 0 0)))))
+           (member-equal host '("::1" "localhost")))))
 
 (defun fn-native-config-listener-address (host-octets)
   "ACL2's complete address projection for an admitted listener host.
@@ -39,12 +76,15 @@ subject for the concrete loopback family/address, and never resolves a name.
 host resolver's intended deployment behavior.
 "
   (declare (xargs :guard t))
-  (cond ((or (equal host-octets (fn-record-string-octets "127.0.0.1"))
-             (equal host-octets (fn-record-string-octets "localhost")))
+  (let ((ipv4 (fn-native-config-ipv4-address host-octets)))
+    (cond ((and (not (equal ipv4 :bad))
+                (not (equal ipv4 '(0 0 0 0))))
+           (list :inet ipv4))
+        ((equal host-octets (fn-record-string-octets "localhost"))
          (list :inet *fn-ncfg-listener-ipv4-loopback*))
         ((equal host-octets (fn-record-string-octets "::1"))
          (list :inet6 *fn-ncfg-listener-ipv6-loopback*))
-        (t :bad)))
+        (t :bad))))
 
 (defun fn-ncfg-ws-p (x)
   (declare (xargs :guard t))

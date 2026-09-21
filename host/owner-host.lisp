@@ -529,6 +529,33 @@
                    address)))
         (value (if name (fn-record-string-octets name) nil))))))
 
+; The native socket boundary supplies a family tag and the kernel's fixed-width
+; address octets.  ACL2 owns their textual projection because the configured
+; source-address is a semantic peer-identity decision, not a raw-host string
+; formatting choice.  Numeric IPv4 is rendered canonically here; the current
+; IPv6 profile admits only ::1, so every other IPv6 shape remains an explicit
+; non-match until its textual policy is added in ACL2.
+(defun fn-owner-ipv4-address-octets (address)
+  (declare (xargs :mode :program))
+  (if (consp address)
+      (if (and (natp (car address)) (<= (car address) 255))
+          (append (fn-nntp-decimal (car address))
+                  (if (consp (cdr address)) '(46) nil)
+                  (fn-owner-ipv4-address-octets (cdr address)))
+        nil)
+    nil))
+
+(defun fn-owner-peer-for-socket-address (family address state)
+  (declare (xargs :stobjs state :mode :program))
+  (cond ((and (equal family :inet)
+              (true-listp address) (equal (len address) 4)
+              (fn-cbor-octet-listp address))
+         (fn-owner-peer-for-address (fn-owner-ipv4-address-octets address) state))
+        ((and (equal family :inet6)
+              (equal address '(0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1)))
+         (fn-owner-peer-for-address (fn-record-string-octets "::1") state))
+        (t (value nil))))
+
 (defun fn-owner-open-peer (peer-octets state)
   (declare (xargs :stobjs state :mode :program))
   (let ((peer (fn-store-octets->string peer-octets)))

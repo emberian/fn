@@ -209,6 +209,18 @@ its serialized profile. Store diagnostics and the existing BP/TCPCL/application
 verbs remain available in the production image; this split does not claim full
 operator parity for them.
 
+Native peering now composes with that same public owner lifecycle in source.
+At accept, raw Lisp supplies only the kernel address family and fixed-width
+address octets. `fn-owner-peer-for-socket-address` owns their numeric IPv4 or
+IPv6-loopback projection and configured-peer lookup, and `fn-owner-open-peer` owns
+the session role. The lookup and open occur under the shared owner mutex. The
+public operator installs the existing outbound feed's start, wake and close
+hooks on this owner; the developer-only low-level owner entry remains a
+separate diagnostic and does not acquire those hooks. This source composition
+has not yet passed a source-matched image or two-node runtime gate. The native
+listener profile accepts ACL2-parsed numeric IPv4 literals and explicit IPv6
+loopback; general IPv6 textual policy remains open.
+
 The decimal-octet pipe, its nonce correlation and its reply bounds do not
 exist in this host: every call is an in-process application of the wrapper's
 executable counterpart (`fnn-call`, the raw-Lisp spelling of `ec-call`), under

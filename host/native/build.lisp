@@ -134,6 +134,10 @@
         ; The writable NNTP owner.  It registers the `owner' verb and calls
         ; only host/owner-host.lisp wrappers for protocol and state decisions.
         (load "host/native/owner.lisp")
+        ; The outbound feed is a lifecycle extension of that same owner.  The
+        ; public operator activates it; the developer-only low-level owner
+        ; entry retains its separate diagnostic surface.
+        (load "host/native/feed-service.lisp")
         (load "host/native/control.lisp")
         ; Public operator grammar follows the owner so its normalized run
         ; callback is present; it can call the already-loaded private admin

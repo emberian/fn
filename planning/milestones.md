@@ -11,8 +11,11 @@ shared BP publication and bounded checkpoint namespace are now integrated.
 Native control/posting, orderly shutdown and control resource bounds have
 also landed, with separate component/runtime evidence. Transaction namespace,
 native credential administration and the inactive outbound-feed component are
-integrated. Parallel implementation closes connection
-fault isolation, inbound/outbound peering, TLS, credential and group/capacity
+integrated. The next service-composition source joins connection fault
+isolation and public administration, routes accepted IPv4/loopback addresses through
+the ACL2 peer/open decision, and activates the existing outbound feed through
+the public owner's lifecycle hooks. It has no source-matched image or two-node
+result yet. Parallel implementation closes TLS, credential and group/capacity
 administration, BP application/receipt composition and remaining namespace twins.
 
 The two-peer native release remains unqualified. The packaged Python service

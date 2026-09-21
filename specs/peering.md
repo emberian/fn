@@ -1315,6 +1315,15 @@ two-node feed scenario.
   `fn-served-peer-and-reader-open-under-the-same-policy` (PRF-039) now says
   the two branches pin one value.
 
+  The native owner now reaches this same decision in source:
+  `host/native/owner.lisp` passes the accepted socket's family and address
+  octets to `fn-owner-peer-for-socket-address`, then calls
+  `fn-owner-open-peer` or `fn-owner-open` under the one owner mutex. Raw Lisp
+  does not format or compare a configured address. The projection currently
+  covers ACL2-parsed numeric IPv4 and the native profile's explicit `::1`
+  spelling. General IPv6 textual equivalence remains open. Runtime evidence
+  is still pending.
+
   **Implemented 2026-09-21: reader AUTHINFO and transit authorization are
   separate decisions.** `fn-auth-restricted-keywordp` gates local reader
   operations, including POST and article reads, but not `IHAVE`, `CHECK` or
