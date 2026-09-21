@@ -23,6 +23,13 @@
 (assert-event
  (equal (fn-bpaj-record-lookup-fast *bpr-store* *bpaj-request*)
         (fn-bpaj-record-lookup *bpr-store* *bpaj-request*)))
+(assert-event
+ (equal (fn-bpaj-config-status-fast
+         (fn-bpaj-nth 1 *bpaj-context-replay*)
+         "dtn://b.lab/fn" "policy-v1" "node-b")
+        (fn-bpaj-config-status
+         (fn-bpaj-nth 1 *bpaj-context-replay*)
+         "dtn://b.lab/fn" "policy-v1" "node-b")))
 
 ; An actual live receipt-intent transition succeeds and retains the joined
 ; invariant through the fast apply function called by the host.
@@ -89,3 +96,13 @@
               *bpaj-fast-hypothesis-counterexample* *bpaj-request-octets*)
              (fn-bpaj-request-status
               *bpaj-fast-hypothesis-counterexample* *bpaj-request-octets*))))
+(assert-event
+ (equal (fn-bpaj-config-status
+         *bpaj-fast-hypothesis-counterexample*
+         "dtn://b.lab/fn" "policy-v1" "node-b")
+        :absent))
+(assert-event
+ (not (equal (fn-bpaj-config-status-fast
+              *bpaj-fast-hypothesis-counterexample*
+              "dtn://b.lab/fn" "policy-v1" "node-b")
+             :absent)))
