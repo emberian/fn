@@ -29,6 +29,7 @@
 ; Outbound feed connection establishment and reply framing remain ACL2-owned.
 (include-book "books/feed-wire-input")
 (include-book "books/feed-connection")
+(include-book "books/feed-connection-invariants")
 (include-book "books/native-operator")
 (include-book "books/native-control")
 (include-book "books/bp-receipt-records")

@@ -32,6 +32,7 @@
 (include-book "../books/owner-prepare-correspondence")
 (include-book "../books/feed-wire-input")
 (include-book "../books/feed-connection")
+(include-book "../books/feed-connection-invariants")
 ; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
 ; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
 ; ACL2 session does not load `host/store-host.lisp', so the one owner has to
@@ -193,7 +194,8 @@
                        ; Socket-only reply framers are recreated after
                        ; authoritative recovery; their durable counterpart is
                        ; the FNFD replay above, not this retained input.
-                       (state (f-put-global 'fn-owner-feed-inputs nil state)))
+                       (state (f-put-global 'fn-owner-feed-inputs
+                                                  (fn-fc-table-initial-state) state)))
                   (value :recovering))
               (value :fault))))))))
 
@@ -1129,18 +1131,22 @@
         (value :ok)))))
 
 (defun fn-owner-feed-dial-open (peer-octets conn state)
-  "Install greeting/MODE state without treating a TCP socket as a feed."
+  "Install greeting/MODE state without treating a TCP socket as a feed.
+
+FN-OWNER-RECOVER installs the carried table invariant, and this is its only
+constructor thereafter.  It deliberately does not rescan every peer/framer on
+a dial: the selected peer entry is the owner-feed boundary being opened."
   (declare (xargs :stobjs state :mode :program))
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (or (equal peer :bad) (not (natp conn)))
         (value :invalid)
-      (let ((inputs (f-get-global 'fn-owner-feed-inputs state)))
-        (if (or (not (fn-fc-tablep inputs))
-                (null (fn-own-feed-entry-of peer
-                                             (fn-own-feeds (fn-owner-core state)))))
+      (let* ((inputs (f-get-global 'fn-owner-feed-inputs state))
+             (entry (fn-own-feed-entry-of peer
+                                          (fn-own-feeds (fn-owner-core state)))))
+        (if (null entry)
             (value :fault)
           (let* ((streamingp (fn-cfg-peer-streamingp
-                               (fn-owner-feed-record peer-octets state)))
+                               (fn-own-feed-entry-record entry)))
                  (state (f-put-global
                          'fn-owner-feed-inputs
                          (fn-fc-table-put peer (fn-fc-initial-state streamingp conn) inputs)
@@ -1190,6 +1196,15 @@
               (value (if (equal status :refused) :refused
                        (if (fn-own-feed-port-effects result) :send :quiet))))))))))
 
+(defun fn-owner-feed-connection-result-kind (step)
+  "Map only a connection-phase refusal away from the feed-port outcome tag.
+
+The feed port's :REFUSED means an ACL2 transition may have produced a fresh
+FNFD record batch.  A greeting or MODE rejection produces no such batch, so
+it is :CONNECTION-REFUSED and the raw adapter must close this peer without
+flushing the previous peer's pending projection."
+  (if (equal (fn-fc-kind step) :refused) :connection-refused (fn-fc-kind step)))
+
 (defun fn-owner-feed-reply-chunk (peer-octets octets monotonic state)
   "Consume one ACL2 connection/reply event; nil drains retained input.
 
@@ -1199,19 +1214,20 @@ existing port only after fn-fc has made this connection ready."
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (or (equal peer :bad) (not (fn-wire-octet-listp octets)))
         (value :invalid)
-      (let ((inputs (f-get-global 'fn-owner-feed-inputs state)))
-        (if (not (fn-fc-tablep inputs))
-            (value :fault)
-          (let ((input (fn-fc-table-lookup peer inputs)))
-            (if (not input)
-                (value :invalid)
-              (let* ((step (fn-fc-step input octets))
-                     (kind (fn-fc-kind step))
-                     (state (f-put-global
-                             'fn-owner-feed-inputs
-                             (fn-fc-table-put peer (fn-fc-next-state step) inputs)
-                             state)))
-                (case kind
+      (let* ((inputs (f-get-global 'fn-owner-feed-inputs state))
+             (input (fn-fc-table-lookup peer inputs)))
+        ;; The table invariant is carried from recovery through only
+        ;; put/remove.  This served path validates the selected connection,
+        ;; never every peer's retained buffer.
+        (if (not (fn-fc-statep input))
+            (value :invalid)
+          (let* ((step (fn-fc-step input octets))
+                 (kind (fn-owner-feed-connection-result-kind step))
+                 (state (f-put-global
+                         'fn-owner-feed-inputs
+                         (fn-fc-table-put peer (fn-fc-next-state step) inputs)
+                         state)))
+            (case kind
                   (:mode
                    (let ((command (fn-fc-mode-command)))
                      (if (null command)
@@ -1230,9 +1246,10 @@ existing port only after fn-fc has made this connection ready."
                                             monotonic state)
                      (if erp (mv erp word state) (value word))))
                   (:need-input (value :need-input))
+                  (:connection-refused (value :connection-refused))
                   (:closed (value :closed))
                   (:invalid (value :invalid))
-                  (otherwise (value :fault)))))))))))
+                  (otherwise (value :fault)))))))))
 
 
 ; The connection to ONE peer is gone.  The host reports the event and the
@@ -1252,19 +1269,19 @@ existing port only after fn-fc has made this connection ready."
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (equal peer :bad)
         (value nil)
-      (let ((inputs (f-get-global 'fn-owner-feed-inputs state)))
-        (if (not (fn-fc-tablep inputs))
-            (value :fault)
-          (let* ((owner (fn-owner-core state))
-                 (obs (fn-clock-observation monotonic 0 0 nil))
-                 (result (fn-own-feed-port-lost-peer
-                          peer (fn-own-feeds owner) obs)))
-            (mv-let (status state)
-              (fn-owner-feed-install-port-result owner result state)
-              (let ((state (f-put-global 'fn-owner-feed-inputs
-                                         (fn-fc-table-remove peer inputs)
-                                         state)))
-                (value (if (equal status :refused) :refused :ok))))))))))
+      (let* ((inputs (f-get-global 'fn-owner-feed-inputs state))
+             (owner (fn-owner-core state))
+             (obs (fn-clock-observation monotonic 0 0 nil))
+             (result (fn-own-feed-port-lost-peer
+                      peer (fn-own-feeds owner) obs)))
+        ;; Removal is the other carried-table transition; a lost peer has no
+        ;; reason to revalidate unrelated live connections or suffixes.
+        (mv-let (status state)
+          (fn-owner-feed-install-port-result owner result state)
+          (let ((state (f-put-global 'fn-owner-feed-inputs
+                                     (fn-fc-table-remove peer inputs)
+                                     state)))
+            (value (if (equal status :refused) :refused :ok))))))))
 
 ; Which peer's journal each pending frame belongs in, in the same order as
 ; the frames: the record's own field 0, read by ACL2.
