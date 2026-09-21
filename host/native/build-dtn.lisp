@@ -32,6 +32,7 @@
 (include-book "books/store-observed-traces")
 (include-book "books/store-node")
 (include-book "books/node-config")
+(include-book "books/native-admin")
 (include-book "books/nntp")
 (include-book "books/bp-receipt-records")
 (include-book "books/bp-workflow-records")
@@ -56,6 +57,7 @@
 ; The configuration record the core builds for a fresh store; it uses the
 ; octet-list helpers store-host defines above it, as run_store.py's bridge does.
 (ld "host/config-host.lisp" :ld-error-action :error)
+(ld "host/native-admin-host.lisp" :ld-error-action :error)
 ;; The external freshness anchor.  Without it the image cannot answer the
 ;; anchor question at all and `recover' silently omitted the field the Python
 ;; host prints (HANDOFF-w3-native-host.md, "the differential's four findings").
@@ -82,6 +84,7 @@
 (progn! (set-raw-mode t)
         (load "host/native/io.lisp")
         (load "host/native/immutable-publish.lisp")
+        (load "host/native/admin.lisp")
         (load "host/native/workflow.lisp")
         ; The convergence layer, over io.lisp's socket surface and nothing else.
         (load "host/native/tcpcl.lisp")

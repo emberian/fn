@@ -926,8 +926,17 @@ resolves the names against `domain' and the host carries that list verbatim."
 (defun fnn-lock-path (s) (fnn-join (fnn-store-root s) "writer.lock"))
 (defun fnn-frontier-path (s) (fnn-join (fnn-store-root s) "allocation-frontier.json"))
 (defun fnn-config-dir (s) (fnn-join (fnn-store-root s) "config"))
+(defun fnn-config-record-name (generation)
+  "The one persistent configuration filename renderer is ACL2's fixed-width
+codec.  Directory enumeration remains a separate, bounded-recovery successor;
+this function never formats a generation in raw Lisp."
+  (let ((name (fnn-core 'fn-native-admin-host-config-name generation)))
+    (unless (and (stringp name) (= (length name) 12)
+                 (null (position #\/ name)))
+      (fnn-refuse "ACL2 refused configuration record generation ~a" generation))
+    name))
 (defun fnn-config-record-path (s generation)
-  (fnn-join (fnn-config-dir s) (format nil "~8,'0d.cfg" generation)))
+  (fnn-join (fnn-config-dir s) (fnn-config-record-name generation)))
 
 (defun fnn-config-record-names (store &optional test-fault-point)
   "The durable configuration records in generation order; NIL when absent.
