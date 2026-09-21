@@ -1,10 +1,10 @@
 # Native operator grammar packet
 
-Source: `w15/native-operator` corrected commit pending certification; the hbox tree is an isolated
+Source: `w15/native-operator` commit `550c7b462ba4355c8d17b0d653e7f69d1f4c55bd`; the hbox tree was an isolated
 `rsync --exclude .git` copy at
 `/tank/fn/gates/w15-native-operator`. The manifest carries the source digests;
 `books/native-operator.lisp` is SHA-256
-`8dcc1054b11406557834b3b55e6ab0e295228db50f1288b4df30aa77d0c5c97c`.
+`c79052308fb8d83dc11cd98cd6f97c6d86738efc93c3d73dcb400c539a549abe`.
 
 `fn-native-operator-run` is the ACL2 command-plan subject. It receives bounded
 configuration and argv octets, delegates configuration syntax/defaults to
@@ -31,12 +31,11 @@ Hbox ACL2 8.7 / SBCL 2.6.8 command:
 ```
 FN_ACL2=/tank/fn/acl2-8.7/saved_acl2 FN_CERT_CACHE=/tank/fn/certcache \
 python3 tools/certify_books.py --jobs 1 --closure \
-  books/native-operator tests/acl2/native-operator-tests
+  tests/acl2/native-operator-host-tests
 ```
 
-The prior command passed before the boundary correction; the corrected closure
-and source digest are recorded in the follow-up evidence committed with this
-report. The tests exercise normalized run/status/recover plans, explicit post
-unavailability, quoted nonnumeric port and ACL2-slot types, out-of-range port,
-repeated configuration keys, repeated/conflicting command options, and explicit
-unsupported-profile/verb outcomes.
+The corrected closure passed in 4.780 seconds. The tests exercise normalized
+run/status/recover plans, explicit post unavailability, quoted nonnumeric port
+and ACL2-slot types, out-of-range port, repeated configuration keys, repeated/
+conflicting command options, and explicit unsupported-profile/verb outcomes.
+The corrected source digest and per-book result are in [the manifest](manifests/certify-20260921T084953Z-1881932.json).

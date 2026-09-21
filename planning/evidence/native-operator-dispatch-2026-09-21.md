@@ -1,6 +1,6 @@
 # Native operator status/recover dispatch increment
 
-Source: `w15/native-operator` commit `b9ed8e5`; isolated hbox source copy
+Source: `w15/native-operator` commit `b9ed8e5` for the raw module, with the corrected ACL2 grammar at `550c7b4`; isolated hbox source copy
 `/tank/fn/gates/w15-native-operator`, without `.git`. The source digest for
 `books/native-operator.lisp` is recorded by the manifest.
 
@@ -10,9 +10,9 @@ It reads bounded configuration and argv octets, calls only
 `fn-native-operator-host-run` and its ACL2 result projections, then executes
 only the ACL2-designated normalized `status` or `recover` plan using the
 existing native store functions. It emits one tagged stderr result after the
-operation returns. `run` reaches an owner-required normalized plan and `post` is explicit usage
-until the owner supplies a shared-submission callback; neither creates a second
-service owner or a direct payload-post bypass. Owner convergence will consume
+operation returns. `run` reaches an owner-required normalized plan and `post`
+is explicit usage until the owner supplies a shared-submission callback; neither
+creates a second service owner or a direct payload-post bypass. Owner convergence will consume
 the `run` plan through the named result accessors.
 
 The current saved image does not include this unregistered module: owner
@@ -31,4 +31,4 @@ python3 tools/certify_books.py --jobs 1 --closure \
 
 ACL2 8.7 / SBCL 2.6.8 passed in the source-pinned manifest. The host wrapper
 test verifies it calls the exact result subject and its status/action/exit
-projections. See [the manifest](manifests/certify-20260921T084415Z-1876240.json).
+projections. The corrected grammar and wrapper closure is [certified here](manifests/certify-20260921T084953Z-1881932.json); the prior raw-dispatch witness is retained [here](manifests/certify-20260921T084415Z-1876240.json).
