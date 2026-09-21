@@ -68,7 +68,7 @@
            (state (f-put-global 'fn-workflow-state workflow state))
                (state (f-put-global 'fn-workflow-effects
                                     (fn-bp-journal-nth 2 answer) state)))
-      (value :ready))))
+      (value :ready)))))
 
 (defun fn-owner-workflow-sync-store-node (state)
  (declare (xargs :stobjs state :mode :program))
