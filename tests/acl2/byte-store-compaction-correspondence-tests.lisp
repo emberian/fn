@@ -8,6 +8,21 @@
 (defconst *bscc-plan* (fn-bs-pack-reclaim-plan *bscc-names* 8 4))
 (assert-event
  (equal *bscc-plan* (list (fn-bs-txn-name 1) (fn-bs-txn-name 3))))
+
+; Total accessors keep malformed nested observations safe, and the public
+; actual-call subject rejects a malformed nested namespace rather than
+; returning any pathname for the host to unlink.
+(assert-event
+ (equal (fn-bs-pack-covered-names '((bad) nil atom) 4)
+        '(nil nil nil)))
+(assert-event
+ (equal (fn-bs-pack-reclaim-plan
+         (list (list (fn-bs-txn-name 0)) (fn-bs-txn-name 4)) 8 4)
+        :invalid))
+(assert-event
+ (equal (fn-bs-pack-reclaim-program
+         (list (list (fn-bs-txn-name 0)) (fn-bs-txn-name 4)) 8 4)
+        nil))
 (assert-event
  (equal (fn-bs-pack-reclaim-program *bscc-names* 8 4)
         (list (list :unlink :transactions (fn-bs-txn-name 1))
