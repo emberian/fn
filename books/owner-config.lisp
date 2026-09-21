@@ -249,6 +249,17 @@
 ; pending slot; uncertain is the store's own word, reported by the owner's
 ; existing outcome path and never inferred here.
 
+(defun fn-ocfg-config-stamp (observation)
+  ; Schema-0 configuration records have uint32 stamp fields, while the
+  ; owner's clock uses milliseconds.  The durable record carries the ACL2
+  ; seconds projection of that observation; no host clock conversion or
+  ; alternate configuration timestamp exists.
+  (declare (xargs :guard t))
+  (fn-clock-observation (floor (nfix (fn-clock-monotonic observation)) 1000)
+                        (floor (nfix (fn-clock-wall observation)) 1000)
+                        (floor (nfix (fn-clock-wall-error observation)) 1000)
+                        (fn-clock-has-wall observation)))
+
 (defun fn-ocfg-reconfig-record (oc deltas)
   (declare (xargs :guard (fn-cfgp (fn-ocfg-config oc))))
   (let* ((o (fn-ocfg-owner oc))
@@ -263,7 +274,7 @@
      (fn-state-next-txid (fn-node-acceptance node))
      (+ 1 (fn-cfg-generation (fn-ocfg-config oc)))
      deltas
-     (fn-own-clock o))))
+     (fn-ocfg-config-stamp (fn-own-clock o))))
 
 (defun fn-ocfg-delta-names-group (d name)
   (declare (xargs :guard t))
@@ -773,7 +784,7 @@
     (:d fn-ocfg-pin-remove) (:d fn-ocfg-conn-config) (:d fn-ocfg-conn-generation)
     (:d fn-ocfg-served) (:d fn-ocfg-pins-okp) (:d fn-ocfg-conns-pinnedp)
     (:d fn-ocfg-pins-pin-conns-only) (:d fn-ocfg-statep) (:d fn-ocfg-live-cnode)
-    (:d fn-ocfg-reconfig-record) (:d fn-ocfg-delta-names-group)
+    (:d fn-ocfg-config-stamp) (:d fn-ocfg-reconfig-record) (:d fn-ocfg-delta-names-group)
     (:d fn-ocfg-deltas-touch-groupp) (:d fn-ocfg-group-pinned-by-readerp)
     (:d fn-ocfg-reconfig-okp) (:d fn-ocfg-reconfig-refusal)
     (:d fn-ocfg-reconfigure) (:d fn-ocfg-complete) (:d fn-ocfg-open)
