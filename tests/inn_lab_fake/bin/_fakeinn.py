@@ -220,7 +220,15 @@ def innd(argv):
 
 
 def nnrpd(argv):
+    # Real nnrpd -D writes run/nnrpd-<port>.pid and the lab reads that file,
+    # because killing the shell child it forked from left a stray reader
+    # daemon on the box on 2026-09-20.  The fake wrote only run/nnrpd.pid, so
+    # the lab read an empty pid and died with an IndexError -- which is how
+    # tools/inn_lab.py's own dry run came to be red on dev with nothing
+    # running it.  The fake writes both names.
     port = int(argv[argv.index("-p") + 1]) if "-p" in argv else 11120
+    with open(path("run", "nnrpd-{}.pid".format(port)), "w") as handle:
+        handle.write(str(os.getpid()))
     serve(port, True, path("run", "nnrpd.pid"))
     return 0
 

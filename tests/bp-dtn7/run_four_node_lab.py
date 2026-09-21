@@ -410,7 +410,42 @@ def source_snapshot() -> dict:
             for p in sorted(paths)}
 
 
-def run_lab(run: Path, *, dtn7_repo=None) -> dict:
+class NoRevision(RuntimeError):
+    """The lab cannot say which revision it ran, so it will not run."""
+
+
+def lab_revision(named: str | None = None) -> str:
+    """The revision this run is evidence about.
+
+    `git rev-parse HEAD` was called here unguarded until 2026-09-21, and a
+    gate tree is a `git archive` extract with no repository, so it raised
+    before the lab did anything: all eight four-node reds of one gate had
+    that single cause, reproducible in 0.085 s.  A gate therefore passes
+    `--revision`, or sets `FN_GATE_REVISION`, and the rev-parse is only the
+    fallback for a worktree that has one.
+
+    A missing revision REFUSES rather than substituting "unknown".  This lab
+    writes an evidence file, and an evidence file that cannot name what it is
+    evidence about is worse than no run: the four-node record was read as
+    current for a day while it described a tree that could no longer start
+    the lab.
+    """
+    for candidate in (named, os.environ.get("FN_GATE_REVISION")):
+        if candidate and candidate.strip():
+            return candidate.strip()
+    try:
+        return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT,
+                                       text=True,
+                                       stderr=subprocess.DEVNULL).strip()
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise NoRevision(
+            "this tree is not a git repository ({} is a `git archive` extract "
+            "in a gate), so the lab cannot name the revision its evidence is "
+            "about; pass --revision <rev> or set FN_GATE_REVISION. It will "
+            "not write \"unknown\".".format(ROOT)) from error
+
+
+def run_lab(run: Path, *, dtn7_repo=None, revision=None) -> dict:
     started = time.monotonic()
     lab = Lab(run, "mock_bpa" if dtn7_repo is None else "pinned dtn7-rs")
     report = lab.report
@@ -419,8 +454,7 @@ def run_lab(run: Path, *, dtn7_repo=None) -> dict:
         "invocation": [sys.executable, *sys.argv],
         "topology": "home -> relay-a -> relay-b -> destination",
         "a_policy": "explicitly trusted local lab; no signatures, no authenticated peer",
-        "revision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT,
-                                            text=True).strip(),
+        "revision": lab_revision(revision),
         "versions": {"python": sys.version, "platform": platform.platform()},
         "source_sha256": source_snapshot(), "assertions": {}, "events": [],
     })
@@ -691,10 +725,15 @@ def main(argv=None) -> int:
     parser.add_argument("--run-base", type=Path, default=ROOT / "build/bp-four-node")
     parser.add_argument("--dtn7-repo", type=Path, default=None,
                         help="optional pinned checkout; unset uses the mock BPA")
+    parser.add_argument("--revision", default=None,
+                        help="the revision this run is evidence about; a gate "
+                             "tree has no git repository to ask, and the lab "
+                             "refuses rather than writing \"unknown\". "
+                             "FN_GATE_REVISION does the same thing.")
     args = parser.parse_args(argv)
     args.run_base.mkdir(parents=True, exist_ok=True)
     run = Path(tempfile.mkdtemp(prefix="four-node-", dir=args.run_base)).resolve()
-    report = run_lab(run, dtn7_repo=args.dtn7_repo)
+    report = run_lab(run, dtn7_repo=args.dtn7_repo, revision=args.revision)
     print(json.dumps({"status": report["status"], "seconds": report["seconds"],
                       "evidence": str(run / "evidence.json")}))
     return 0 if report["status"] == "passed" else 1
