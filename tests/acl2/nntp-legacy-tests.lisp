@@ -287,41 +287,114 @@
                      (fn-nntp-string-octets "a b")))
 (assert-event (equal (fn-nntp-xpat-join (list (fn-nntp-string-octets "a")))
                      (fn-nntp-string-octets "a")))
-; ... and the joined pattern is the one matched, but fn refuses it.  RFC 2980
-; predates RFC 3977 section 4.1, whose <wildmat-exact> excludes SP, so a
-; pattern joined from two or more tokens always carries an SP that
-; fn-wildmat-parse rejects and fn answers 501 where RFC 2980's response list
-; and INN answer 221 with an empty list.  DIVERGENCE, not a pin: recorded as
-; OB-XPAT-SPACE in planning/lanes/HANDOFF-w10-nntp-tests.md with the INN 2.7.4
-; measurement in planning/evidence/inn-xpat-2026-09-20.md.  The 501 is a
-; sharper witness of the join than the empty block was, because the two
-; controls below show each token ALONE parses and the second one alone
-; matches: only a single pattern carrying the joining SP produces this reply.
+; ... and the joined pattern is the one matched.  This is where OB-XPAT-SPACE
+; was: section 2.9's join puts an SP in every multi-token pattern, RFC 3977
+; section 4.1's <wildmat-exact> excludes SP -- "This should not be a problem,
+; since these characters cannot occur in newsgroup names, which is the only
+; current use of wildmats" -- and fn read the join with the newsgroup-name
+; grammar, so every multi-token XPAT was 501 and the join's multi-token branch
+; could never produce a match.  Section 4.3 licenses the cure and decision D19
+; takes it: fn-nntp-xpat-response reads the join with fn-wildmat-parse-text.
+;
+; `*T *t*' now parses as ONE pattern carrying a literal SP, and "Test" has no
+; SP, so the reply is section 2.9's 221 with an empty list -- the same answer
+; INN 2.7.4 gives for the same command, measured against its own libinn.a in
+; planning/evidence/inn-xpat-2026-09-20.md ("uwildmat_simple=false").
 (assert-event (equal (lg-reply *lg-env* "XPAT subject 1-1 *T *t*")
-                     (lg-single "501 syntax error")))
+                     (lg-block "221 header follows" nil)))
 ; Control: the second token alone is a valid pattern and matches "Test", so
-; two-pattern semantics would have rendered a line here rather than a 501.
+; the empty block above is the joined SP failing to match and not the field,
+; the range or the article going missing.
 (assert-event (equal (lg-reply *lg-env* "XPAT subject 1-1 *t*")
                      (lg-block "221 header follows" (list "1 Test"))))
 ; Control: the first token alone is a valid pattern that does not match, and
-; a pattern that matches nothing gives the empty block.  So the 501 above is
-; the parser refusing SP, not XPAT refusing to match.
+; a pattern that matches nothing gives the same empty block.
 (assert-event (equal (lg-reply *lg-env* "XPAT subject 1-1 *T")
                      (lg-block "221 header follows" nil)))
 (assert-event (equal (lg-reply *lg-env* "XPAT subject 1-1 *Q*")
                      (lg-block "221 header follows" nil)))
-; The cause, directly: SP is not a <wildmat-item> while "*" is, and the
-; joined pattern therefore does not parse while each token does.
+; The two profiles, directly.  SP is still not a section 4.1 <wildmat-item>
+; and the newsgroup-name entry still refuses the joined pattern; the
+; header-value entry parses it.  Both statements are about the same octets.
 (assert-event (not (fn-wildmat-itemp 32)))
+(assert-event (fn-wildmat-text-itemp 32))
 (assert-event (fn-wildmat-itemp 42))
 (assert-event (not (fn-wildmat-result-okp
                     (fn-wildmat-parse
                      (fn-nntp-xpat-join (list (fn-nntp-string-octets "*T")
                                               (fn-nntp-string-octets "*t*")))))))
 (assert-event (fn-wildmat-result-okp
+               (fn-wildmat-parse-text
+                (fn-nntp-xpat-join (list (fn-nntp-string-octets "*T")
+                                         (fn-nntp-string-octets "*t*"))))))
+(assert-event (fn-wildmat-result-okp
                (fn-wildmat-parse (fn-nntp-string-octets "*T"))))
 (assert-event (fn-wildmat-result-okp
                (fn-wildmat-parse (fn-nntp-string-octets "*t*"))))
+; The newsgroup-name path still refuses a space, which is what D19 promised to
+; leave alone.  A LIST wildmat cannot carry an SP over the wire because the
+; tokenizer splits on it, so this is the parse that path performs, on the
+; octets a spaced group pattern would present.
+(assert-event (equal (fn-wildmat-parse (fn-nntp-string-octets "fn.a fn.b"))
+                     '(:error :syntax)))
+(assert-event (fn-wildmat-result-okp
+               (fn-wildmat-parse (fn-nntp-string-octets "fn.*"))))
+
+; -----------------------------------------------------------------------------
+; XPAT phrase search: the multi-token branch producing a MATCH
+;
+; The archive above has no header value containing SP -- its Subject is the one
+; word "Test" -- which is why the join could be witnessed joining but never
+; witnessed matching.  A second one-article archive supplies a phrase.
+
+(defconst *lg-phrase-id* "<Phrase@Id.invalid>")
+(defconst *lg-phrase-payload*
+  (append (fn-nntp-string-octets "Message-ID: <Phrase@Id.invalid>") '(13 10)
+          (fn-nntp-string-octets "Subject: Hello there world") '(13 10)
+          '(13 10)
+          (fn-nntp-string-octets "Hi") '(13 10)))
+(defconst *lg-phrase-archive*
+  (fn-accept-complete
+   (fn-accept-prepare (fn-initial-state *lg-groups*) 1 *lg-phrase-id*
+                      *lg-phrase-payload* '("fn.letters"))
+   0 1 :durable))
+(assert-event (fn-nntp-projectionp *lg-phrase-archive*))
+(defconst *lg-phrase-session*
+  (fn-nntp-result-session
+   (fn-nntp-step (fn-nntp-open-session *lg-phrase-archive*) *lg-phrase-archive*
+                 *lg-env*
+                 (list :command
+                       (fn-nntp-string-octets "GROUP fn.letters")))))
+(defmacro lg-phrase-reply (text)
+  `(fn-nntp-result-effects
+    (fn-nntp-step *lg-phrase-session* *lg-phrase-archive* *lg-env*
+                  (list :command (fn-nntp-string-octets ,text)))))
+
+; The single-token control first, so the phrase cases below are read against a
+; reply that did not depend on the join at all.
+(assert-event (equal (lg-phrase-reply "XPAT subject 1-1 *there*")
+                     (lg-block "221 header follows"
+                               (list "1 Hello there world"))))
+; A MULTI-TOKEN XPAT THAT MATCHES.  Three trailing tokens, joined by section
+; 2.9 into the one pattern "*Hello *there *world*", matched against the phrase
+; "Hello there world".  This reply was 501 before D19 and it is the thing
+; OB-XPAT-SPACE said fn could not do.
+(assert-event (equal (lg-phrase-reply "XPAT subject 1-1 *Hello *there *world*")
+                     (lg-block "221 header follows"
+                               (list "1 Hello there world"))))
+; A multi-token XPAT that does NOT match is section 2.9's 221 with an empty
+; list, not a 501: the phrase is absent from the value, not malformed.  This
+; is the distinction fn could not express before.
+(assert-event (equal (lg-phrase-reply "XPAT subject 1-1 *Hello *nowhere*")
+                     (lg-block "221 header follows" nil)))
+; A pattern with a bracketed tag, which is ordinary Subject prose and which
+; section 4.1 also excludes.  It parses and does not match this Subject.
+(assert-event (equal (lg-phrase-reply "XPAT subject 1-1 *[PATCH]*")
+                     (lg-block "221 header follows" nil)))
+; Still 501 when the pattern is genuinely malformed: a bare `!' is the
+; post-comma negation marker in both profiles and an item in neither.
+(assert-event (equal (lg-phrase-reply "XPAT subject 1-1 !Hello")
+                     (lg-single "501 syntax error")))
 ; LOCAL POLICY, witnessed: the match target is bounded at
 ; *fn-wildmat-max-octets*.  A content longer than that matches nothing.
 (assert-event (not (fn-nntp-xpat-matchesp

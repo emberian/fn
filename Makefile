@@ -156,6 +156,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-workflow-teeth-tests \
 	books/bp-workflow-records \
 	books/bp-workflow-records-invariants \
+	books/bp-workflow-replay-status \
 	tests/acl2/bp-workflow-records-tests \
 	tests/acl2/bp-workflow-records-guards-tests \
 	books/bp-receipt \
@@ -313,6 +314,17 @@ check:
 # `python3 tools/teeth_check.py --evaluate` produces in about twenty minutes
 # of one ACL2.
 	$(PYTHON) tools/teeth_check.py --summary
+# Every repository path this tree cites and no file answers.  On 2026-09-21
+# `books/stx-lace.lisp` was found citing a book and a test book that have
+# never existed, for the observation four keystones hypothesise.  The counts
+# for `specs/`, `planning/` and `tools/` are REPORTED: a design naming the
+# book a packet will add is not a defect.  A citation inside `books/` or
+# `tests/acl2/` is a claim about EVIDENCE, there are none undisclosed on this
+# tree as of w11/phantom-cites, and `--strict` is what keeps it that way: a
+# new one fails `make check` until the file exists, the path is corrected, or
+# the comment says the file does not exist and what rests on it.  Mechanical,
+# no ACL2; triage in planning/lanes/HANDOFF-w11-phantom-cites.md.
+	$(PYTHON) tools/cite_check.py --summary --strict
 
 certify:
 	$(PYTHON) tools/certify_books.py --jobs $(FN_CERTIFY_JOBS) $(ACL2_BOOKS)
@@ -339,7 +351,7 @@ model-test: certify
 
 tooling-test:
 	$(PYTHON) -m unittest tests.test_certify_runner tests.test_acl2_wrapper \
-	    tests.test_ledger -v
+	    tests.test_ledger tests.test_cite_check -v
 
 test: check certify
 	$(PYTHON) tools/run_simulator.py
