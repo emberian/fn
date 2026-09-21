@@ -676,7 +676,7 @@
         (setf (symbol-function (car pair)) (cdr pair))))))
 
 (defun nio-config-enumeration-is-bounded-and-core-ordered ()
-  (let ((store (make-fnn-store :root "/native-config-observer")))
+  (let ((store (make-fnn-store "/native-config-observer")))
     (nio-with-config-observation-stubs
      '("00000001.cfg" "00000002.cfg")
      (lambda ()
