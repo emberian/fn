@@ -9,7 +9,7 @@ what was not exercised. **It certifies nothing itself.**
 
 | fact | value | source |
 | --- | --- | --- |
-| lane | `w11/one-owner`, worktree `build/lanes/w11-one-owner`, from `dev` `e4fb8bc` | `git worktree` |
+| lane | `w11/one-owner`, worktree `build/lanes/w11-one-owner`, from `dev` `e4fb8bc`, re-run after merging `dev` `3a2640c` | `git worktree`, `git log` |
 | ACL2 | Version 8.7, `saved_acl2` sha256 `36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324` | certify manifest `acl2_version`, `acl2_executable_sha256` |
 | host Lisp | SBCL 2.6.8 | certify manifest `host_lisp_banner` |
 | platform | `macOS-26.6.1-arm64-arm-64bit-Mach-O`, Python 3.14.7 | certify manifest `platform`, `python` |
@@ -29,6 +29,25 @@ a reader on this machine and the manifest facts that matter are copied here.
 The closure both runs certified against is the frame cluster plus
 `books/crypto-attach`, `books/sha256` and `books/crypto-seam`; the manifests
 record all sixteen source digests.
+
+**Re-run after merging `dev` `3a2640c`**, which changed books in that closure
+(`books/wildmat.lisp` among them), so the two pairs above went stale:
+`build/acl2/certify-20260921T015922Z-80937`, both roots in one run, 1.754 s
+and 2.508 s, **passed**, and the two source digests are unchanged from the
+table. This is the authoritative run for the merged tree.
+
+**One operational finding, paid for once.** Between the merge and that
+re-run, `tests/test_store_config.py`'s third `peer add` failed with
+`store: ACL2 bridge call marker did not precede its prompt`, and the same
+test passed after recertifying. `host/store-host.lisp` includes
+`books/frame-trailer` now, so **every ACL2-backed CLI invocation loads it**,
+and a *stale* certificate is an `include-book` error where *no* certificate
+is only a warning. `tools/certs.py install` replaces pairs it has and leaves
+pairs it does not, so a merge that changes a dependency can leave a stale
+pair behind that breaks the CLI rather than just a proof. The failure was
+not reproduced deliberately, so the cause is the likely one and not a
+measured one; the cure either way is `certify_books.py` (or deleting the
+stale `.cert`) after a merge that touches the closure.
 
 **Covered scope.** One laptop, one warm ACL2, the two roots named and their
 cached closure. No farm run, and no other root was recertified: the only
@@ -89,10 +108,15 @@ reads its record back and `recover` reports `transactions=0 articles=0`.
 ## 5. Python suites re-run against the change
 
 `python3 -m unittest tests.test_workflow_journal tests.test_receipt_journal
-tests.test_checkpoint -v` — **38 tests, OK, 487.2 s.** These are the suites
+tests.test_checkpoint -v` — **38 tests, OK, 487.2 s**, before the merge. These are the suites
 that drive `FrameSession.seal` and `FrameSession.digest_of` through the
 journal and checkpoint record paths, which is where the trailer is written
-and re-derived.
+and re-derived. After the merge and the recertification,
+`tests.test_store_config.StoreConfigTests.test_peer_add_with_no_size_options_is_accepted`
+(1 test, OK, 27.2 s) and
+`tests.test_fn_cli.FnCliTests.test_peer_add_with_no_size_options_is_accepted`
+(OK) both pass; the three journal suites were **not** re-run after the
+merge.
 
 ## 6. What was NOT exercised
 
@@ -102,9 +126,13 @@ and re-derived.
   makes this expected to work is `fnn-subject-id`, which has called an
   attached-digest ACL2 function through the same `fnn-core` path since
   `w9/digest`; that is a precedent, not a run.
-- **The owner's feed.** `Acl2Owner.trailer` is called by `feed_frames` and
-  `feed_replay_frame`. No feed test was run here: `tests/test_feed.py` drives
-  `tools/run_feed.py`, which is a different (and unchanged) code path, and
-  its feed cases have not passed since BOARD 739/781.
+- **The owner's feed, end to end.** `Acl2Owner.trailer` was driven
+  directly: a live `Acl2Owner(max_conns=4)` session came up in 4.0 s with the
+  new `host/owner-host.lisp` include, and its trailer over 0, 3 and 1024
+  octets equals `hashlib.sha256` each time. So the owner session resolves
+  `fn-frame-trailer` and answers correctly. What was **not** driven is
+  `feed_frames`/`feed_replay_frame` themselves: `tests/test_feed.py` drives
+  `tools/run_feed.py`, a different and unchanged code path, and its feed
+  cases have not passed since BOARD 739/781.
 - **Anything about SHA-256's collision or preimage resistance.** A-CRYPTO is
   unchanged. Section 4's equalities are statements about specific octets.

@@ -353,11 +353,15 @@ value being wrong**, which is not the same as the size of the fix.
 
 Full record: `planning/evidence/frame-trailer-one-owner-2026-09-21.md`.
 
-- `tools/certify_books.py books/frame-trailer` — passed, 1.137 s.
-- `tools/certify_books.py tests/acl2/frame-trailer-tests` — passed, 2.818 s.
-  25 `assert-event` checks; the tree's total moved 5459 → 5484 in that
-  commit. ACL2 8.7, SBCL 2.6.8, laptop; certificates installed with
-  `python3 tools/certs.py install` (141 of 276 books cached).
+- `tools/certify_books.py books/frame-trailer tests/acl2/frame-trailer-tests`
+  **on the merged tree** — both passed, 1.754 s and 2.508 s, evidence
+  `build/acl2/certify-20260921T015922Z-80937`. (Before the merge: 1.137 s
+  and 2.818 s in two runs.) 25 `assert-event` checks; the tree's total moved
+  5459 → 5484. ACL2 8.7, SBCL 2.6.8, laptop.
+- `Acl2Owner(max_conns=4)` comes up in 4.0 s with the new
+  `host/owner-host.lisp` include and `Acl2Owner.trailer` equals
+  `hashlib.sha256` at 0, 3 and 1024 octets — so the owner session, which
+  never loads `host/store-host.lisp`, resolves `fn-frame-trailer`.
 - `tests.test_workflow_journal` + `tests.test_receipt_journal` +
   `tests.test_checkpoint` — 38 tests, OK, 487.2 s. These are the suites that
   drive `seal` and `digest_of` through the journal and checkpoint record
@@ -368,10 +372,23 @@ Full record: `planning/evidence/frame-trailer-one-owner-2026-09-21.md`.
   written by the previous code still opens.
 - `make check` and `python3 tools/ledger.py --write` before each commit.
 
+**One operational finding, paid for once.** Right after the merge and
+before the recertification, this lane's own `peer add` test failed with
+`store: ACL2 bridge call marker did not precede its prompt`, and passed
+after `certify_books.py`. `host/store-host.lisp` includes
+`books/frame-trailer` now, so **every ACL2-backed CLI invocation loads it**,
+and a *stale* certificate is an `include-book` error where *no* certificate
+is only a warning; `tools/certs.py install` replaces the pairs it has and
+leaves the ones it does not. So a merge that changes anything in that
+closure can leave a stale pair that breaks the CLI rather than only a proof.
+Not reproduced deliberately, so that is the likely cause and not a measured
+one — but recertify (or delete the stale `.cert`) after a merge either way.
+
 **Not exercised.** The native image was not rebuilt or run; `fnn-trailer`
 rests on the precedent of `fnn-subject-id`, which has called an
 attached-digest ACL2 function through the same `fnn-core` path since
-`w9/digest`. That is a precedent, not a run. No feed test was run: the ones
-that exist drive `tools/run_feed.py`, which this lane did not change. No
+`w9/digest`. That is a precedent, not a run. `feed_frames` and `feed_replay_frame`
+were not driven end to end, only the `trailer` call they make: the feed
+tests that exist drive `tools/run_feed.py`, which this lane did not change. No
 farm run: the only certified files this lane added are a leaf book and its
 test book, and no existing book includes either.
