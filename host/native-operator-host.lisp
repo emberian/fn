@@ -17,3 +17,27 @@
 (defun fn-native-operator-host-argv-max-octets ()
   (declare (xargs :mode :program))
   *fn-nop-max-argument-octets*)
+
+(defun fn-native-operator-host-result-status (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-status result))
+
+(defun fn-native-operator-host-result-reason (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-reason result))
+
+(defun fn-native-operator-host-result-command (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-command result))
+
+(defun fn-native-operator-host-result-exit-code (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-exit-code result))
+
+(defun fn-native-operator-host-result-native-action (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-native-action result))
+
+(defun fn-native-operator-host-result-store-root (result)
+  (declare (xargs :mode :program))
+  (fn-native-config-store (fn-native-operator-result-config result)))

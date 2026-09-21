@@ -81,6 +81,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/native-config \
 	tests/acl2/native-config-tests \
 	books/native-operator \
+	host/native-operator-host \
 	tests/acl2/native-operator-tests \
 	tests/acl2/native-operator-host-tests \
 	books/store-files \
