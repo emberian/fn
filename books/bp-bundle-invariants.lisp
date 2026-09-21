@@ -6,7 +6,12 @@
 ;   fn-bpb-decode-of-encode                       every bundle decodes back
 ;   fn-bpb-accepted-input-is-canonical-by-construction
 ;                                                 an accepted input IS the
-;                                                 encoding of what was accepted
+;                                                 encoding of what was
+;                                                 accepted -- OPEN, removed
+;                                                 2026-09-20 with the fold
+;                                                 half it rests on; the note
+;                                                 in the block-sequence
+;                                                 section has both statements
 ;   fn-bpb-decode-yields-bundle                   and what was accepted is a
 ;                                                 bundle, so its block numbers
 ;                                                 are distinct and its payload
@@ -291,25 +296,34 @@
  (defthm fn-bpbi-encode-blocks-of-one
    (implies (fn-bpb-blockp b)
             (equal (fn-bpb-encode-blocks (list b)) (fn-bpb-encode-block b)))
-   :hints (("Goal" :use fn-bpb-encode-block-is-true-list
-            :in-theory (disable fn-bpb-encode-block
-                                fn-bpb-encode-block-is-true-list)))))
+   :hints (("Goal"
+            ;; `:do-not-induct t` on purpose: the whole content is
+            ;; `(append e nil)` = `e` for a true list, and left to induct
+            ;; over an encoder term the prover runs for twenty minutes
+            ;; instead of failing (measured 2026-09-20, hbox run
+            ;; run-20260920T221045Z-35e7, stopped at its budget).
+            :do-not-induct t
+            :use (fn-bpb-encode-block-is-true-list
+                  (:instance fn-bpc-append-nil (x (fn-bpb-encode-block b))))
+            :in-theory (e/d (fn-bpb-encode-blocks)
+                            (fn-bpb-encode-block
+                             fn-bpb-encode-block-is-true-list
+                             fn-bpc-append-nil))))))
 (local (in-theory (disable fn-bpbi-encode-blocks-of-one)))
 
 ; `fn-bpb-scan-primary` takes the prefix its own scan consumed:
 ; `(take (- (len octets) (len after)) octets)`.  Once the CBOR round trip has
 ; told it that `after` is the tail, that count is the length of the head, and
 ; this is the one arithmetic step of the whole codec.  Stated over the
-; DIFFERENCE rather than over `(len a)` on purpose: `fn-bpc-len-of-append` is
-; disabled at the form below, so the count stays in exactly this shape and
+; DIFFERENCE rather than over `(len a)` on purpose: `fn-bpc-len-of-append`
+; is DISABLED at the form below, so the count keeps exactly this shape and
 ; the rule matches it syntactically, with no arithmetic library anywhere in
-; this book's include closure.
-; Both argument orders, because ACL2 sorts a sum by term order and the rule
-; is matched against the sorted form: measured 2026-09-20, the goal carries
-; `(+ (- (len rest)) (len (append e rest)))` and a rule written the other way
-; round does not fire.  `fn-bpc-len-of-append` stays DISABLED at the form
-; below so that the count keeps this shape; with it enabled the count becomes
-; a five-term sum that base ACL2 does not cancel inside a `take`.
+; this book's include closure.  With `fn-bpc-len-of-append` enabled the
+; count becomes a five-term sum that base ACL2 does not cancel inside a
+; `take`.  Both argument orders are stated because ACL2 sorts a sum by term
+; order and matches the rule against the sorted form: measured 2026-09-20,
+; the goal carries `(+ (- (len rest)) (len (append e rest)))` and a rule
+; written the other way round does not fire.
 (local
  (defthm fn-bpbi-len-of-append-minus-tail
    (and (equal (+ (- (len b)) (len (append a b))) (len a))
@@ -415,6 +429,15 @@
 ; -----------------------------------------------------------------------------
 ; Keystone: an accepted input is the encoding of the bundle it produced.
 
+; This one is a read-off of a branch test, not a computation:
+; `fn-bpb-decode-block` returns `ok` only where it has just checked
+; `(equal octets (append (fn-bpb-encode-block b) (fn-cbor-result-rest r6)))`.
+; Everything under the decoder therefore stays CLOSED --- the two field
+; readers, the CBOR head, and the two rules that rewrite a small head --- and
+; the proof is the branch.  Measured 2026-09-20: with them open the form
+; splits on `fn-bpc-canonical-argumentp` to depth eight
+; (`Subgoal 51.19.11.40.19.12.1.20`) and was still running at the 1200 s
+; budget.
 (defthm fn-bpb-decode-block-is-canonical-by-construction
   (implies (and (fn-cbor-octet-listp octets)
                 (fn-cbor-result-okp (fn-bpb-decode-block octets)))
@@ -422,49 +445,84 @@
                            (fn-cbor-result-value (fn-bpb-decode-block octets)))
                           (fn-cbor-result-rest (fn-bpb-decode-block octets)))
                   octets))
-  :hints (("Goal" :in-theory (disable fn-bpb-encode-block fn-bpb-block-crc))))
-
-(defthm fn-bpb-decode-blocks-are-canonical-by-construction
-  (implies (and (fn-cbor-octet-listp octets)
-                (fn-cbor-result-okp (fn-bpb-decode-blocks octets budget)))
-           (equal (append (fn-bpb-encode-blocks
-                           (fn-cbor-result-value
-                            (fn-bpb-decode-blocks octets budget)))
-                          (cons *fn-bpb-array-break*
-                                (fn-cbor-result-rest
-                                 (fn-bpb-decode-blocks octets budget))))
-                  octets))
   :hints (("Goal"
-           :induct (fn-bpb-decode-blocks octets budget)
-           :in-theory (disable fn-bpb-decode-block fn-bpb-encode-block
-                               fn-bpb-block-crc))))
+           :do-not-induct t
+           :in-theory (e/d (fn-bpb-decode-block)
+                           (fn-bpb-encode-block fn-bpb-block-crc
+                            fn-bpb-take-uint fn-bpb-take-bytes
+                            fn-bpc-decode-head fn-bpc-decode-argument
+                            fn-cbor-decode-argument
+                            fn-bpc-canonical-argumentp
+                            fn-bpb-decode-head-of-small-additional
+                            fn-bpb-take-uint-of-small-head
+                            fn-bpb-take-uint-of-argument
+                            fn-bpb-take-bytes-of-argument
+                            fn-bpp-blockp fn-bpp-eidp
+                            fn-bpp-vchar-listp fn-bpp-vcharp)))))
+
+; OPEN, removed rather than weakened (w10/dtn-3, 2026-09-20).
+;
+;   fn-bpb-decode-blocks-are-canonical-by-construction
+;     (implies (and (fn-cbor-octet-listp octets)
+;                   (fn-cbor-result-okp (fn-bpb-decode-blocks octets budget)))
+;              (equal (append (fn-bpb-encode-blocks
+;                              (fn-cbor-result-value
+;                               (fn-bpb-decode-blocks octets budget)))
+;                             (cons *fn-bpb-array-break*
+;                                   (fn-cbor-result-rest
+;                                    (fn-bpb-decode-blocks octets budget))))
+;                     octets))
+;
+; The fold's half of "an accepted input IS the encoding of what was
+; accepted".  The one-block half above it PROVES in 0.05 s.  The fold does
+; not, and the failure is a rewriter runaway rather than a checkpoint: three
+; runs on hbox reached
+;
+;   Subgoal *1/6.1.3.1.3.1.2.1.3.1.3.1.3.1.3.1.3.1.3.1.3.1.3.1.3.1.3.1.3.
+;   1.3.1.3.1.3.1.2.1.3.1.3 ... 1.3.1.3.1.3.1.3'
+;
+; about eighty `.1.3` levels deep, and were still there at the 900, 1200 and
+; 1500 s budgets.  Three cures were measured and none stopped it: disabling
+; the fold's `:definition` rune with a one-level `:expand` (and note that
+; `(disable fn-bpb-decode-blocks)` alone also withdraws the `:induction`
+; rune, so the `:induct` hint silently has no scheme and the whole Goal comes
+; back as the key checkpoint -- worth knowing on its own); closing every
+; function under the decoder, which is exactly what took the one-block half
+; from a 1200 s cap to 0.05 s; and closing the two list recognizers
+; `fn-cbor-octet-listp` and `fn-bpb-block-listp`, which this book's header
+; says must be settled by a rule.  The `.1.3` alternation is some other pair
+; of branches, and the next lane should find it with `tools/proof_profile.py`
+; at a `--steps` high enough not to cut (see the tool's CUT BY THE STEP LIMIT
+; line, added by the same lane).
+;
+; Removed with it, because it rests on it: this book's third header keystone
+;
+;   fn-bpb-accepted-input-is-canonical-by-construction
+;     (implies (and (fn-cbor-octet-listp octets)
+;                   (fn-cbor-result-okp (fn-bpb-decode octets limit)))
+;              (equal (fn-bpb-encode (fn-cbor-result-value
+;                                     (fn-bpb-decode octets limit)))
+;                     octets))
+;
+; which needs a rule about `(fn-bpb-encode-blocks (fn-cbor-result-value
+; (fn-bpb-decode-blocks ...)))` and has no other source for one.  Both
+; statements are verbatim above and in
+; `planning/lanes/HANDOFF-w10-dtn-3.md`; neither was weakened, and nothing in
+; this tree claims either.
 
 (defthm fn-bpb-decode-yields-bundle
   (implies (fn-cbor-result-okp (fn-bpb-decode octets limit))
            (fn-bpb-bundlep (fn-cbor-result-value (fn-bpb-decode octets limit))))
   :hints (("Goal"
            :do-not-induct t
+           ;; `fn-bpb-scan-primary` closed: the fact wanted here is
+           ;; `fn-bpb-scan-primary-yields-a-block`, which is a rule about the
+           ;; closed call (books/bp-bundle).
            :in-theory (e/d (fn-bpb-decode)
                            (fn-bpc-dec fn-bpp-decode fn-bpb-decode-blocks
+                            fn-bpb-scan-primary
                             fn-bpb-encode-block fn-bpb-encode-blocks
                             fn-bpb-block-crc)))))
-
-(defthm fn-bpb-accepted-input-is-canonical-by-construction
-  (implies (and (fn-cbor-octet-listp octets)
-                (fn-cbor-result-okp (fn-bpb-decode octets limit)))
-           (equal (fn-bpb-encode (fn-cbor-result-value
-                                  (fn-bpb-decode octets limit)))
-                  octets))
-  :hints (("Goal"
-           :do-not-induct t
-           :use ((:instance fn-bpc-dec-reencodes-consumed-prefix
-                            (flg :item) (count 0) (octets (cdr octets))
-                            (budget *fn-bpc-max-items*)))
-           :in-theory (e/d (fn-bpb-decode fn-bpb-encode fn-bpc-vocabulary)
-                           (fn-bpc-dec fn-bpc-enc fn-bpp-decode fn-bpp-encode
-                            fn-bpb-decode-blocks fn-bpb-encode-block
-                            fn-bpb-encode-blocks fn-bpb-block-crc
-                            fn-bpc-dec-reencodes-consumed-prefix)))))
 
 ; -----------------------------------------------------------------------------
 ; Keystone: bounds before allocation.
@@ -487,7 +545,28 @@
                      (fn-cbor-result-value (fn-bpb-decode-block octets))))
                *fn-bpb-max-data*))
   :rule-classes :linear
-  :hints (("Goal" :in-theory (disable fn-bpb-encode-block fn-bpb-block-crc))))
+  ;; Same cure as `fn-bpb-decode-block-is-canonical-by-construction`: the
+  ;; bound is a conjunct of `fn-bpb-datap`, which the decoder checked through
+  ;; `fn-bpb-blockp` before returning `ok`, so both of those stay OPEN and
+  ;; everything under the decoder stays CLOSED --- in particular
+  ;; `fn-cbor-octet-listp`, whose walk over a symbolic octet list is what
+  ;; sent this form to `Subgoal 30.19.11.24.40.4.21` and past the 900 s
+  ;; budget (measured 2026-09-20).
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-bpb-decode-block fn-bpb-blockp fn-bpb-datap)
+                           (fn-bpb-encode-block fn-bpb-block-crc
+                            fn-bpb-take-uint fn-bpb-take-bytes
+                            fn-bpc-decode-head fn-bpc-decode-argument
+                            fn-cbor-decode-argument
+                            fn-bpc-canonical-argumentp
+                            fn-bpb-decode-head-of-small-additional
+                            fn-bpb-take-uint-of-small-head
+                            fn-bpb-take-uint-of-argument
+                            fn-bpb-take-bytes-of-argument
+                            fn-cbor-octet-listp fn-cbor-octetp
+                            fn-bpp-blockp fn-bpp-eidp
+                            fn-bpp-vchar-listp fn-bpp-vcharp)))))
 
 ; -----------------------------------------------------------------------------
 ; Export theory.
