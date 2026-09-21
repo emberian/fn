@@ -8,6 +8,7 @@
 (include-book "../books/store-observed")
 (include-book "../books/store-sweep")
 (include-book "../books/store-node-resolution")
+(include-book "../books/store-prepare-correspondence")
 (include-book "../books/node-config")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
@@ -405,7 +406,12 @@
                                          (fn-store-octets->string subject-octets)
                                          (fn-store-octets->string evidence-octets)
                                          charge))
-                 (next (fn-sn-prepare s record)))
+                 ; The host-called prepare is the executable projection from
+                 ; books/store-prepare-correspondence.  Its keystone
+                 ; fn-spc-prepare-equals-specification-under-relation equates
+                 ; this call to fn-sn-prepare for every state reachable from
+                 ; successful observed open through the actual mutators.
+                 (next (fn-spc-prepare s record)))
             (if (equal next s)
                 (value :refused)
                 (let ((state (f-put-global 'fn-store-sn next state)))

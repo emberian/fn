@@ -67,9 +67,11 @@
         "tests/evidence/2026-09-18-composed-store.md",
         "tests/evidence/2026-09-18-bp-composition-assurance.md",
         "tests/evidence/2026-09-18-bp-composition-assurance.json",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "books/store-prepare-correspondence.lisp",
+        "tests/acl2/store-prepare-correspondence-tests.lisp"
       ],
-      "progress_note": "Actual finite node traces preserve state and prior bindings; mixed live file/node traces including refusal, known abort and recovery preserve the phase/history relation. Provenance, complete runtime guards and physical refinement remain open. BP joint durable/pending sender binding and fixed-Store receiver state/context/decision invariants now hold through actual transitions and arbitrary finite replay; changing-Store composition remains open."
+      "progress_note": "Actual finite node traces preserve state and prior bindings; mixed live file/node traces including refusal, known abort and recovery preserve the phase/history relation. The host-called store prepare projection now preserves that relation after observed open across the actual post-open mutators without replaying the appended history per prepare. Provenance, complete runtime guards and physical refinement remain open. BP joint durable/pending sender binding and fixed-Store receiver state/context/decision invariants now hold through actual transitions and arbitrary finite replay; changing-Store composition remains open."
     },
     {
       "id": "PRF-002",
@@ -632,9 +634,11 @@
         "tests/evidence/2026-09-18-bp-guards.md",
         "tests/evidence/2026-09-18-bp-guards.json",
         "planning/evidence/wave-realignment-2026-09-19.md",
-        "planning/evidence/deploy-cce4b11-2026-09-20.md"
+        "planning/evidence/deploy-cce4b11-2026-09-20.md",
+        "books/store-prepare-correspondence.lisp",
+        "tests/acl2/store-prepare-correspondence-tests.lisp"
       ],
-      "progress_note": "Composed storage host adoption passed the 75-root/67-test batch. Seventeen existing base graphs now have 678 guarded functions, adding NNTP115 and semantic fields30 with unchanged existing logic; the derived index separately has 20 guarded functions. NNTP retains one explicit EC-CALL for total wildcard behavior. The host uses interpreted ACL2; full physical byte/effect correspondence and platform qualification remain open. The complete 41-function BP ADU codec now has verified guards after closing five streaming decoder functions without logical changes. An actual seven-book BP inventory records 97 functions still awaiting guard verification outside that codec; those remain a separate execution gap. The host's :program-mode chunk loop and its duplicate reply framing are gone: books/served owns both, in logic mode with guards verified. host/scheduler-host.lisp is still :program mode, and books/owner -- the host of the real service -- does not certify, so no run executes the proved core through the service entry point."
+      "progress_note": "Composed storage host adoption passed the 75-root/67-test batch. The native store wrapper now calls fn-spc-prepare; fn-spc-prepare-equals-specification-under-relation equates that projection to fn-sn-prepare under the relation established by observed recovery and preserved by every modeled post-open store mutator. The projection retains exact candidate and pending binding checks while omitting the appended-history replay. Seventeen existing base graphs now have 678 guarded functions, adding NNTP115 and semantic fields30 with unchanged existing logic; the derived index separately has 20 guarded functions. NNTP retains one explicit EC-CALL for total wildcard behavior. Full physical byte/effect correspondence and platform qualification remain open. The complete 41-function BP ADU codec now has verified guards after closing five streaming decoder functions without logical changes. An actual seven-book BP inventory records 97 functions still awaiting guard verification outside that codec; those remain a separate execution gap. The host's :program-mode chunk loop and its duplicate reply framing are gone: books/served owns both, in logic mode with guards verified. Native owner adoption of this store projection still requires the integrated owner join and saved-image gate."
     },
     {
       "id": "PRF-015",

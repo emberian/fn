@@ -470,7 +470,8 @@
         "Effects remain bounded and the same core/declared trust boundary is used.",
         "No deployed entry point, helper or recovery path requires Python or silently falls back to the Python owner; missing native features remain open.",
         "The native owner calls the same ACL2 semantic subjects or named justified refinements and preserves accepted, refused, uncertain and fault outcomes.",
-        "The uncertainty fence is established before releasing the shared mutex; no connected or newly arriving client mutates the stopped owner, workers finish before shared resources close, and the process reports uncertainty distinctly from a core fault."
+        "The uncertainty fence is established before releasing the shared mutex; no connected or newly arriving client mutates the stopped owner, workers finish before shared resources close, and the process reports uncertainty distinctly from a core fault.",
+        "A live store prepare may omit repeated history replay only through a named equality to fn-sn-prepare whose invariant is established at observed open and preserved by every post-open mutator."
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -491,9 +492,11 @@
         "books/served.lisp",
         "planning/evidence/deploy-cce4b11-2026-09-20.md",
         "planning/evidence/wave-realignment-2026-09-19.md",
-        "tests/test_native_owner.py"
+        "tests/test_native_owner.py",
+        "books/store-prepare-correspondence.lisp",
+        "tests/acl2/store-prepare-correspondence-tests.lisp"
       ],
-      "execution_scope": "Existing logical traces and targeted Python/native component tests cover stated subcontracts. The frozen cdbd6b2 Python service matrix ran with recorded authentication and BP-crash disagreements; the former owner-does-not-certify blocker is historical. Full native service parity, deployment dependency evidence, concurrent backpressure/stale-completion composition and complete physical adapter correspondence remain open. D07 adds a specified native-only gate, not passing evidence. The native owner fence/worker-lifetime regression is implemented at 76901c1 but its frozen integrated runtime result is pending."
+      "execution_scope": "Existing logical traces and targeted Python/native component tests cover stated subcontracts. The store prepare projection is certified equal to the replaying specification under the maintained live-history relation, with a nonempty-history witness and a stale-node counterexample when the relation is removed. The frozen cdbd6b2 Python service matrix ran with recorded authentication and BP-crash disagreements; the former owner-does-not-certify blocker is historical. Full native service parity, deployment dependency evidence, concurrent backpressure/stale-completion composition, native owner adoption and complete physical adapter correspondence remain open. D07 adds a specified native-only gate, not passing evidence. The native owner fence/worker-lifetime regression is implemented at 76901c1 but its frozen integrated runtime result is pending."
     },
     {
       "id": "SCN-016",
