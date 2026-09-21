@@ -30,3 +30,5 @@ ValueError: invalid literal for int() with base 10: 'not-a-port'
 [witness init-listen-70000]
 bin/fn override port= 70000
 run_owner exit= 5
+run_owner stderr=
+-: error: --port must be from 0 through 65535
