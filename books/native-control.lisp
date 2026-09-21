@@ -31,6 +31,7 @@
      4 *fn-nctrl-max-groups-octets*))
 (defconst *fn-nctrl-max-frame*
   (+ *fn-frame-overhead-octets* *fn-nctrl-max-payload*))
+(defconst *fn-nctrl-max-active-clients* 16)
 (defconst *fn-nctrl-lease-suffix* '(46 108 111 99 107)) ; .lock
 (defconst *fn-nctrl-max-lease-path* (+ *fn-ncfg-max-path* 5))
 
@@ -212,6 +213,15 @@ distinguish an unobserved refusal from a durable acceptance."
     (:before-submission :refused)
     (:after-submission :uncertain)
     (otherwise :fault)))
+
+(defun fn-native-control-max-active-clients ()
+  "The fixed local transport worker ceiling selected by ACL2 policy."
+  (declare (xargs :guard t))
+  *fn-nctrl-max-active-clients*)
+
+(defthm fn-native-control-max-active-clients-is-positive
+  (and (posp (fn-native-control-max-active-clients))
+       (<= (fn-native-control-max-active-clients) 64)))
 
 ; The generic frame library deliberately exports its ten-octet header and
 ; 32-octet digest facts separately.  Close that arithmetic here so the reader

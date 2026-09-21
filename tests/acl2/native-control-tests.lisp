@@ -54,6 +54,7 @@
 (assert-event (equal (fn-native-control-status-exit-code :refused) 1))
 (assert-event (equal (fn-native-control-status-exit-code :uncertain) 3))
 (assert-event (equal (fn-native-control-status-exit-code :fault) 4))
+(assert-event (equal (fn-native-control-max-active-clients) 16))
 
 (assert-event
  (equal (fn-native-control-lease-path

@@ -10,6 +10,10 @@
   (declare (xargs :mode :program))
   *fn-article-max-octets*)
 
+(defun fn-native-control-host-max-active-clients ()
+  (declare (xargs :mode :program))
+  (fn-native-control-max-active-clients))
+
 (defun fn-native-control-host-lease-path (control-path)
   (declare (xargs :mode :program))
   (fn-native-control-lease-path control-path))

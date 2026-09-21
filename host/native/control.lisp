@@ -12,7 +12,7 @@
 (defstruct (fnn-control-state (:constructor %make-fnn-control-state))
   path listener accept-thread service
   (lock (sb-thread:make-mutex :name "fn local control"))
-  (workers nil) (clients nil) (stopping nil)
+  (workers nil) (clients nil) (stopping nil) (max-clients 0)
   device inode lease-path lease-fd)
 
 (defmacro fnn-with-control ((control) &body body)
@@ -80,24 +80,36 @@
           (ignore-errors (fnn-unlink path)))
         (error condition)))))
 
-(defun fnn-control-append (left right maximum)
-  (let ((total (+ (length left) (length right))))
-    (when (< maximum total)
-      (return-from fnn-control-append :overbound))
-    (let ((joined (fnn-make-octets total)))
-      (replace joined left)
-      (replace joined right :start1 (length left))
-      joined)))
+(defun fnn-control-join-chunks (chunks total)
+  "Copy a reverse list of retained chunks once into its exact final vector."
+  (let ((joined (fnn-make-octets total)) (offset 0))
+    (dolist (chunk (nreverse chunks) joined)
+      (replace joined chunk :start1 offset)
+      (incf offset (length chunk)))))
 
 (defun fnn-control-read-frame (socket maximum)
-  "Read one half-closed request/reply, bounded before each allocation."
-  (let ((fd (fnn-socket-fd socket)) (all (fnn-make-octets 0)))
+  "Read one half-closed frame under one deadline and retained-input bound."
+  (unless (and (integerp maximum) (>= maximum 0))
+    (fnn-fault "invalid local-control frame maximum"))
+  (let ((fd (fnn-socket-fd socket))
+        (chunks nil) (total 0)
+        (deadline (+ (fnn-now)
+                     (* +fnn-control-io-seconds+
+                        internal-time-units-per-second))))
     (loop
-      (let ((part (fnn-recv fd +fnn-control-io-seconds+)))
-        (when (eq part :timeout) (return :timeout))
-        (when (zerop (length part)) (return all))
-        (setq all (fnn-control-append all part maximum))
-        (when (eq all :overbound) (return :overbound))))))
+      (let ((remaining-seconds (fnn-seconds-to-deadline deadline)))
+        (when (<= remaining-seconds 0) (return :timeout))
+        ;; The extra byte distinguishes exact-bound EOF from overbound input;
+        ;; no recv buffer or retained chunk can exceed that sentinel request.
+        (let* ((sentinel (1+ (- maximum total)))
+               (part (fnn-recv fd remaining-seconds
+                               (min +fnn-max-read+ sentinel))))
+          (when (eq part :timeout) (return :timeout))
+          (when (zerop (length part))
+            (return (fnn-control-join-chunks chunks total)))
+          (incf total (length part))
+          (when (< maximum total) (return :overbound))
+          (push part chunks))))))
 
 (defun fnn-control-reply-octets (status)
   (let ((reply (fnn-core 'fn-native-control-host-reply-encode status)))
@@ -113,6 +125,15 @@
                       "after-submit"))
     (fnn-out "CONTROL-SUBMITTED")
     (sb-posix:kill (sb-posix:getpid) sb-posix:sigstop)))
+
+(defun fnn-control-send-reply (socket status)
+  "Transport ACL2's sealed status; the caller retains socket ownership."
+  (handler-case
+      (let ((fd (fnn-socket-fd socket)))
+        (fnn-send-all fd (fnn-control-reply-octets status)
+                      +fnn-control-io-seconds+)
+        (fnn-graceful-close fd))
+    (error () nil)))
 
 (defun fnn-control-handle-client (control socket)
   (let* ((service (fnn-control-state-service control))
@@ -149,12 +170,7 @@
     ;; A peer that disappears here creates no uncertainty for the owner: the
     ;; status already records its durable observation.  The client, which did
     ;; not receive it, conservatively reports :uncertain.
-    (handler-case
-        (let ((fd (fnn-socket-fd socket)))
-          (fnn-send-all fd (fnn-control-reply-octets status)
-                        +fnn-control-io-seconds+)
-          (fnn-graceful-close fd))
-      (error () nil))))
+    (fnn-control-send-reply socket status)))
 
 (defun fnn-control-client-done (control socket)
   (fnn-with-control (control)
@@ -165,20 +181,32 @@
                   (fnn-control-state-workers control) :test #'eq))))
 
 (defun fnn-control-launch-client (control socket)
-  (fnn-with-control (control)
-    (if (fnn-control-state-stopping control)
-        (fnn-socket-shut socket)
-      (progn
-        (push socket (fnn-control-state-clients control))
-        (let ((worker
-                (sb-thread:make-thread
-                 (lambda ()
-                   (unwind-protect
-                        (fnn-control-handle-client control socket)
-                     (fnn-socket-shut socket)
-                     (fnn-control-client-done control socket)))
-                 :name "fn local control client")))
-          (push worker (fnn-control-state-workers control)))))))
+  (let ((disposition nil))
+    (fnn-with-control (control)
+      (cond ((fnn-control-state-stopping control)
+             (setq disposition :stopping))
+            ((>= (length (fnn-control-state-workers control))
+                 (fnn-control-state-max-clients control))
+             (setq disposition :busy))
+            (t
+             (push socket (fnn-control-state-clients control))
+             (let ((worker
+                     (sb-thread:make-thread
+                      (lambda ()
+                        (unwind-protect
+                             (fnn-control-handle-client control socket)
+                          (fnn-socket-shut socket)
+                          (fnn-control-client-done control socket)))
+                      :name "fn local control client")))
+               (push worker (fnn-control-state-workers control))
+               (setq disposition :launched)))))
+    (case disposition
+      (:stopping (fnn-socket-shut socket))
+      (:busy
+       ;; The accept thread owns an over-ceiling socket and can return ACL2's
+       ;; bounded BUSY frame without spawning an untracked worker.
+       (unwind-protect (fnn-control-send-reply socket :busy)
+         (fnn-socket-shut socket))))))
 
 (defun fnn-control-accept-loop (control)
   (let ((listener (fnn-control-state-listener control)))
@@ -240,10 +268,8 @@
         (ignore-errors
           (sb-bsd-sockets:socket-shutdown listener :direction :io)))
       (dolist (socket clients)
-        ;; close(2) from another thread does not reliably interrupt its
-        ;; blocked read on Linux.  Shutdown first while this socket object
-        ;; still owns the descriptor, then close; the first-call guard above
-        ;; prevents any later stop from touching a reused descriptor.
+        ;; Shutdown wakes the blocked read without releasing the descriptor;
+        ;; the owning worker performs the sole final close after its I/O ends.
         (ignore-errors
           (sb-bsd-sockets:socket-shutdown socket :direction :io))))))
 
@@ -281,7 +307,9 @@
                (> (length control-path-octets) 0)
                (member posting-enabledp '(t nil)))
     (fnn-fault "malformed ACL2 control run plan"))
-  (let* ((lease-octets
+  (let* ((max-clients
+           (fnn-core 'fn-native-control-host-max-active-clients))
+         (lease-octets
            (fnn-core 'fn-native-control-host-lease-path
                      (fnn-octet-list control-path-octets)))
          (lease-path
@@ -289,7 +317,8 @@
                 (fnn-octets-string (fnn-octets lease-octets))))
          (control (%make-fnn-control-state
                    :path (fnn-octets-string control-path-octets)
-                   :lease-path lease-path))
+                   :lease-path lease-path
+                   :max-clients max-clients))
          (*fnn-owner-start-hooks*
            (append *fnn-owner-start-hooks*
                    (list (lambda (service)
@@ -302,6 +331,8 @@
            (append *fnn-owner-close-hooks*
                    (list (lambda (service)
                            (fnn-control-close control service))))))
+    (unless (and (integerp max-clients) (< 0 max-clients 65))
+      (fnn-fault "ACL2 returned an invalid control client ceiling"))
     (unless lease-path
       (fnn-fault "ACL2 refused the control lease path"))
     (fnn-owner-run-normalized store-octets listener-host-octets listener-port
