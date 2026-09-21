@@ -994,28 +994,42 @@ kernel may have issued the namespace operation even when it reports failure."
                              (fnn-init-cut store (fnn-concat initializer-prefix "file-fenced"))))
       (fnn-close fd))
     (unwind-protect
-         (progn
-           (handler-case
-               (progn
-                 (fnn-link stage final)
-                 (when initializer-prefix (fnn-init-cut store (fnn-concat initializer-prefix "linked")))
-                 (fnn-fsync-dir (fnn-store-root store))
-                 (when initializer-prefix (fnn-init-cut store (fnn-concat initializer-prefix "root-fenced")))
-                 :published)
-             (fnn-os-error (e)
-               (if (= (fnn-os-errno e) sb-posix:eexist)
-                   (progn
-                     ;; The following cut is after the actual EEXIST return,
-                     ;; before cleanup of the separately staged candidate.
-                     (when initializer-prefix
-                       (fnn-init-cut store (fnn-concat initializer-prefix "link-eexist")))
-                     :existing)
-                   (fnn-indeterminate
-                    "initial immutable-link outcome is indeterminate: ~a" e))))
+         ;; Catch EEXIST only from link(2).  Directory fencing and the test
+         ;; seam below retain their own error/cut origin.
+         (let ((publication
+                 (handler-case
+                     (progn (fnn-link stage final) :published)
+                   (fnn-os-error (e)
+                     (if (= (fnn-os-errno e) sb-posix:eexist)
+                         :existing
+                       (fnn-indeterminate
+                        "initial immutable-link outcome is indeterminate: ~a" e))))))
+           (case publication
+             (:published
+              (when initializer-prefix
+                (fnn-init-cut store (fnn-concat initializer-prefix "linked")))
+              ;; Link succeeded, so a later directory-barrier error cannot
+              ;; be retried as EEXIST.  The final name may be visible; surface
+              ;; either errno as uncertain for recovery.
+              (handler-case
+                  (progn
+                    (fnn-fsync-dir (fnn-store-root store))
+                    (when initializer-prefix
+                      (fnn-init-cut store (fnn-concat initializer-prefix "root-fenced")))
+                    :published)
+                (fnn-os-error (e)
+                  (fnn-indeterminate
+                   "initial immutable-link directory fence is indeterminate: ~a" e))))
+             (:existing
+              ;; This cut is after link(2)'s EEXIST return and before cleanup
+              ;; of the separately staged candidate.
+              (when initializer-prefix
+                (fnn-init-cut store (fnn-concat initializer-prefix "link-eexist")))
+              :existing)))
       (ignore-errors (fnn-unlink stage))
       ;; Keep the real best-effort unlink policy above.  The test seam is
       ;; deliberately outside that handler so its selected outcome is visible.
-      (when initializer-prefix (fnn-init-cut store (fnn-concat initializer-prefix "stage-unlinked")))))))
+      (when initializer-prefix (fnn-init-cut store (fnn-concat initializer-prefix "stage-unlinked"))))))
 
 (defun fnn-transaction-files (store)
   "Sorted (sequence . path) pairs of the final namespace, gap-free or a fault."
