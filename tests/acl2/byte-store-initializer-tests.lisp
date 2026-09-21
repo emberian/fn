@@ -236,9 +236,9 @@
 ; error with an issued namespace operation remains a stopped/uncertain model
 ; observation, rather than a known-abort retry.
 (assert-event
- (let* ((program (fn-bsi-existing-init-program
-                  (fn-bsi-test-config) (fn-bsi-test-frontier)
-                  ".issued-config" ".issued-frontier"))
+ (let* ((program (fn-bsi-publish-existing-steps
+                  "issued-link-" ".issued-config" :transactions "issued.txn"
+                  (fn-bsi-test-config)))
         (run (fn-bs-run (fn-bsi-current-initial-image
                          (fn-bsi-test-config) (fn-bsi-test-record)
                          (fn-bsi-test-frontier)
