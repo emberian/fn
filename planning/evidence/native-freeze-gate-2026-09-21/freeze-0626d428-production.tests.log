@@ -1,0 +1,113 @@
+test_existing_valid_init_takes_actual_eexist_links_then_reopens (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_existing_valid_init_takes_actual_eexist_links_then_reopens) ... ok
+test_fresh_init_then_new_process_recover (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_fresh_init_then_new_process_recover) ... ok
+test_history_fenced_process_death_retries_through_config_eexist (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_history_fenced_process_death_retries_through_config_eexist) ... ok
+test_live_initializer_lock_refuses_second_initializer_before_metadata (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_live_initializer_lock_refuses_second_initializer_before_metadata) ... ok
+test_post_history_fence_eio_stops_before_frontier_publication (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_post_history_fence_eio_stops_before_frontier_publication) ... ok
+test_second_config_enumeration_eacces_is_not_empty_history (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_second_config_enumeration_eacces_is_not_empty_history) ... ok
+test_sigkill_after_actual_config_eexist_leaves_existing_store_openable (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_sigkill_after_actual_config_eexist_leaves_existing_store_openable) ... ok
+test_sigkill_after_frontier_publication_recovers_in_a_new_process (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_sigkill_after_frontier_publication_recovers_in_a_new_process) ... ok
+test_sigkill_at_history_fence_is_process_death_then_faulted_restart (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_sigkill_at_history_fence_is_process_death_then_faulted_restart) ... ok
+test_sigkill_before_metadata_makes_restart_fault (tests.test_native_initializer_fidelity.NativeInitializerFidelityTests.test_sigkill_before_metadata_makes_restart_fault) ... ok
+test_source_map_exposes_each_current_initializer_model_cut (tests.test_native_initializer_fidelity.NativeInitializerSourceMapTests.test_source_map_exposes_each_current_initializer_model_cut) ... ok
+test_native_config_scan_is_bounded_and_acl2_bound (tests.test_native_storage_codec.NativeConfigNamespaceSourceTests.test_native_config_scan_is_bounded_and_acl2_bound) ... ok
+test_acl2_frontier_maximum_refuses_before_staging (tests.test_native_storage_codec.NativeStorageCodecTests.test_acl2_frontier_maximum_refuses_before_staging) ... ok
+test_injected_allocator_barrier_failure_consumes_the_id_after_recovery (tests.test_native_storage_codec.NativeStorageCodecTests.test_injected_allocator_barrier_failure_consumes_the_id_after_recovery) ... ok
+test_injected_record_barrier_failure_replays_visible_publication (tests.test_native_storage_codec.NativeStorageCodecTests.test_injected_record_barrier_failure_replays_visible_publication) ... ok
+test_legacy_json_is_retained_and_requires_offline_migration (tests.test_native_storage_codec.NativeStorageCodecTests.test_legacy_json_is_retained_and_requires_offline_migration) ... ok
+test_native_and_python_cross_open_identical_acl2_frames (tests.test_native_storage_codec.NativeStorageCodecTests.test_native_and_python_cross_open_identical_acl2_frames) ... ok
+test_native_config_namespace_refuses_mismatched_name_and_symlink (tests.test_native_storage_codec.NativeStorageCodecTests.test_native_config_namespace_refuses_mismatched_name_and_symlink) ... ok
+test_native_namespace_codec_binds_filename_to_decoded_record_sequence (tests.test_native_storage_codec.NativeStorageCodecTests.test_native_namespace_codec_binds_filename_to_decoded_record_sequence) ... ok
+test_native_publication_cut_stays_uncertain_until_recovery (tests.test_native_storage_codec.NativeStorageCodecTests.test_native_publication_cut_stays_uncertain_until_recovery) ... ok
+test_native_refuses_truncated_or_malformed_metadata (tests.test_native_storage_codec.NativeStorageCodecTests.test_native_refuses_truncated_or_malformed_metadata) ... ok
+test_native_scan_uses_bounded_acl2_transaction_observation (tests.test_native_storage_codec.NativeTransactionNamespaceSourceTests.test_native_scan_uses_bounded_acl2_transaction_observation) ... ok
+test_missing_staging_is_a_current_native_fault (tests.test_native_recovery.NativeRecoveryFidelityTests.test_missing_staging_is_a_current_native_fault) ... ok
+test_over_limit_staging_namespace_faults_without_partial_sweep (tests.test_native_recovery.NativeRecoveryFidelityTests.test_over_limit_staging_namespace_faults_without_partial_sweep) ... ok
+test_post_unlink_eio_is_uncertain_then_a_new_process_recovers (tests.test_native_recovery.NativeRecoveryFidelityTests.test_post_unlink_eio_is_uncertain_then_a_new_process_recovers) ... ok
+test_recover_removes_only_acl2_stage_names_and_preserves_unknown_names (tests.test_native_recovery.NativeRecoveryFidelityTests.test_recover_removes_only_acl2_stage_names_and_preserves_unknown_names) ... ok
+test_sigkill_after_one_unlink_restarts_and_reconciles_remaining_stage (tests.test_native_recovery.NativeRecoveryFidelityTests.test_sigkill_after_one_unlink_restarts_and_reconciles_remaining_stage) ... ok
+test_acquire_checks_staging_and_recovery_calls_the_acl2_sweep_subject (tests.test_native_recovery.NativeRecoverySourceMapTests.test_acquire_checks_staging_and_recovery_calls_the_acl2_sweep_subject) ... ok
+test_acl2_namespace_codec_rejects_alias_overflow_and_excess (tests.test_native_checkpoint.NativeCheckpointTests.test_acl2_namespace_codec_rejects_alias_overflow_and_excess) ... ok
+test_corrupt_unselected_generation_is_invisible (tests.test_native_checkpoint.NativeCheckpointTests.test_corrupt_unselected_generation_is_invisible) ... ok
+test_differential_mismatch_is_always_corruption (tests.test_native_checkpoint.NativeCheckpointTests.test_differential_mismatch_is_always_corruption) ... ok
+test_known_and_ambiguous_failures_keep_distinct_exit_codes (tests.test_native_checkpoint.NativeCheckpointTests.test_known_and_ambiguous_failures_keep_distinct_exit_codes) ... ok
+test_native_and_python_frames_cross_open_byte_identically (tests.test_native_checkpoint.NativeCheckpointTests.test_native_and_python_frames_cross_open_byte_identically) ... ok
+test_process_death_at_every_native_checkpoint_cut_reopens (tests.test_native_checkpoint.NativeCheckpointTests.test_process_death_at_every_native_checkpoint_cut_reopens) ... ok
+test_selected_corruption_is_reported_without_rollback_or_lost_replay (tests.test_native_checkpoint.NativeCheckpointTests.test_selected_corruption_is_reported_without_rollback_or_lost_replay) ... ok
+test_generated_credential_gates_reader_and_does_not_grant_transit (tests.test_native_auth.NativeAuthTests.test_generated_credential_gates_reader_and_does_not_grant_transit) ... ok
+test_legacy_cleartext_registry_is_refused_before_listener (tests.test_native_auth.NativeAuthTests.test_legacy_cleartext_registry_is_refused_before_listener) ... ok
+test_protected_only_is_refused_before_listener (tests.test_native_auth.NativeAuthTests.test_protected_only_is_refused_before_listener) ... ok
+test_help_does_not_open_missing_config (tests.test_native_operator_cli.NativeOperatorCliTests.test_help_does_not_open_missing_config) ... ok
+test_missing_directory_and_oversize_config_are_usage (tests.test_native_operator_cli.NativeOperatorCliTests.test_missing_directory_and_oversize_config_are_usage) ... ok
+test_operator_run_uses_acl2_projected_ipv4_loopbacks (tests.test_native_operator_cli.NativeOperatorCliTests.test_operator_run_uses_acl2_projected_ipv4_loopbacks) ... ok
+test_operator_run_uses_acl2_projected_ipv6_loopback (tests.test_native_operator_cli.NativeOperatorCliTests.test_operator_run_uses_acl2_projected_ipv6_loopback) ... ok
+test_unreadable_config_is_fault (tests.test_native_operator_cli.NativeOperatorCliTests.test_unreadable_config_is_fault) ... ok
+test_control_worker_ceiling_returns_busy (tests.test_native_control.NativeControlTests.test_control_worker_ceiling_returns_busy) ... ok
+test_disabled_posting_refuses_cli_and_served_post (tests.test_native_control.NativeControlTests.test_disabled_posting_refuses_cli_and_served_post) ... ok
+test_lost_reply_after_submission_is_uncertain_and_recovers (tests.test_native_control.NativeControlTests.test_lost_reply_after_submission_is_uncertain_and_recovers) ... ok
+test_partial_frame_has_one_absolute_deadline (tests.test_native_control.NativeControlTests.test_partial_frame_has_one_absolute_deadline) ... ok
+test_prelisten_sigterm_skips_modules_and_reopens (tests.test_native_control.NativeControlTests.test_prelisten_sigterm_skips_modules_and_reopens) ... ok
+test_shared_control_path_is_not_stolen_by_another_store (tests.test_native_control.NativeControlTests.test_shared_control_path_is_not_stolen_by_another_store) ... ok
+test_two_clients_sigterm_cleanup_and_restart (tests.test_native_control.NativeControlTests.test_two_clients_sigterm_cleanup_and_restart) ... ok
+test_context_mismatch_refuses_before_listener (tests.test_native_starttls.NativeStartTlsTests.test_context_mismatch_refuses_before_listener) ... ok
+test_pipelined_clienthello_protection_and_failure_isolation (tests.test_native_starttls.NativeStartTlsTests.test_pipelined_clienthello_protection_and_failure_isolation) ... ERROR
+test_context_handshake_failure_and_roundtrip (tests.test_native_tls_transport.NativeTlsTransportTest.test_context_handshake_failure_and_roundtrip) ... ok
+test_lost_receipt_restart_replays_without_second_acceptance (tests.test_bp_app_native.NativeBpApplicationTests.test_lost_receipt_restart_replays_without_second_acceptance) ... FAIL
+test_visible_decision_namespace_eio_fences_before_receipt (tests.test_bp_app_native.NativeBpApplicationTests.test_visible_decision_namespace_eio_fences_before_receipt) ... FAIL
+
+======================================================================
+ERROR: test_pipelined_clienthello_protection_and_failure_isolation (tests.test_native_starttls.NativeStartTlsTests.test_pipelined_clienthello_protection_and_failure_isolation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ember/fn-gates/freeze-f7190d69/tests/test_native_starttls.py", line 239, in test_pipelined_clienthello_protection_and_failure_isolation
+    self.assertEqual(bad.recv(1024), b"")
+                     ~~~~~~~~^^^^^^
+ConnectionResetError: [Errno 104] Connection reset by peer
+
+======================================================================
+FAIL: test_lost_receipt_restart_replays_without_second_acceptance (tests.test_bp_app_native.NativeBpApplicationTests.test_lost_receipt_restart_replays_without_second_acceptance)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ember/fn-gates/freeze-f7190d69/tests/native_process.py", line 41, in wait_for_announcement
+    raise AssertionError("native startup ended before announcement")
+AssertionError: native startup ended before announcement
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ember/fn-gates/freeze-f7190d69/tests/test_bp_app_native.py", line 138, in test_lost_receipt_restart_replays_without_second_acceptance
+    receiver, port = self.start_receiver(pause=True)
+                     ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/home/ember/fn-gates/freeze-f7190d69/tests/test_bp_app_native.py", line 101, in start_receiver
+    line = wait_for_announcement(process, b"BP APP LISTENING ")
+  File "/home/ember/fn-gates/freeze-f7190d69/tests/native_process.py", line 47, in wait_for_announcement
+    raise AssertionError("{}; stdout={!r}; stderr={}".format(
+        error, observed, diagnostic)) from error
+AssertionError: native startup ended before announcement; stdout=b''; stderr=store: BP application receipt configuration conflicts
+
+
+======================================================================
+FAIL: test_visible_decision_namespace_eio_fences_before_receipt (tests.test_bp_app_native.NativeBpApplicationTests.test_visible_decision_namespace_eio_fences_before_receipt)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ember/fn-gates/freeze-f7190d69/tests/native_process.py", line 41, in wait_for_announcement
+    raise AssertionError("native startup ended before announcement")
+AssertionError: native startup ended before announcement
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ember/fn-gates/freeze-f7190d69/tests/test_bp_app_native.py", line 217, in test_visible_decision_namespace_eio_fences_before_receipt
+    receiver, port = self.start_receiver(fail_decision_namespace=True)
+                     ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ember/fn-gates/freeze-f7190d69/tests/test_bp_app_native.py", line 101, in start_receiver
+    line = wait_for_announcement(process, b"BP APP LISTENING ")
+  File "/home/ember/fn-gates/freeze-f7190d69/tests/native_process.py", line 47, in wait_for_announcement
+    raise AssertionError("{}; stdout={!r}; stderr={}".format(
+        error, observed, diagnostic)) from error
+AssertionError: native startup ended before announcement; stdout=b''; stderr=store: BP application receipt configuration conflicts
+
+
+----------------------------------------------------------------------
+Ran 55 tests in 80.724s
+
+FAILED (failures=2, errors=1)

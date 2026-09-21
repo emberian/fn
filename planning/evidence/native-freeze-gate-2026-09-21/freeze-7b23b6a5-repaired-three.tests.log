@@ -1,0 +1,8 @@
+test_pipelined_clienthello_protection_and_failure_isolation (tests.test_native_starttls.NativeStartTlsTests.test_pipelined_clienthello_protection_and_failure_isolation) ... ok
+test_lost_receipt_restart_replays_without_second_acceptance (tests.test_bp_app_native.NativeBpApplicationTests.test_lost_receipt_restart_replays_without_second_acceptance) ... ok
+test_visible_decision_namespace_eio_fences_before_receipt (tests.test_bp_app_native.NativeBpApplicationTests.test_visible_decision_namespace_eio_fences_before_receipt) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 26.826s
+
+OK

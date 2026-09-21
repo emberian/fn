@@ -1,0 +1,55 @@
+test_condition_handlers_and_cleanup_enclose_the_served_body (tests.test_native_owner.NativeOwnerHandlerStructureTests.test_condition_handlers_and_cleanup_enclose_the_served_body) ... ok
+test_client_disconnect_is_not_a_global_owner_fault (tests.test_native_owner.NativeOwnerTests.test_client_disconnect_is_not_a_global_owner_fault) ... ok
+test_configured_source_address_opens_native_transit_session (tests.test_native_owner.NativeOwnerTests.test_configured_source_address_opens_native_transit_session) ... ERROR
+test_empty_v1_feed_namespace_is_preserved_as_conflicting_evidence (tests.test_native_owner.NativeOwnerTests.test_empty_v1_feed_namespace_is_preserved_as_conflicting_evidence) ... ok
+test_invalid_complete_feed_evidence_is_process_fault (tests.test_native_owner.NativeOwnerTests.test_invalid_complete_feed_evidence_is_process_fault) ... ok
+test_local_handler_fault_uses_core_fault_and_preserves_other_clients (tests.test_native_owner.NativeOwnerTests.test_local_handler_fault_uses_core_fault_and_preserves_other_clients) ... ok
+test_post_is_committed_and_readable_after_owner_exit (tests.test_native_owner.NativeOwnerTests.test_post_is_committed_and_readable_after_owner_exit) ... ok
+test_reset_peer_does_not_stop_concurrent_writer_or_reader (tests.test_native_owner.NativeOwnerTests.test_reset_peer_does_not_stop_concurrent_writer_or_reader) ... ok
+test_two_client_uncertainty_fences_before_later_mutation (tests.test_native_owner.NativeOwnerTests.test_two_client_uncertainty_fences_before_later_mutation) ... ok
+test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart (tests.test_native_owner.NativeOwnerTests.test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart) ... ok
+test_bytewise_partition_agrees (tests.test_native_served_differential.NativeServedDifferentialTests.test_bytewise_partition_agrees) ... ok
+test_cut_after_a_reply_agrees (tests.test_native_served_differential.NativeServedDifferentialTests.test_cut_after_a_reply_agrees) ... ok
+test_cut_inside_a_command_agrees (tests.test_native_served_differential.NativeServedDifferentialTests.test_cut_inside_a_command_agrees) ... ok
+test_framing_rejection_agrees (tests.test_native_served_differential.NativeServedDifferentialTests.test_framing_rejection_agrees) ... ok
+test_input_after_quit_is_ignored_identically (tests.test_native_served_differential.NativeServedDifferentialTests.test_input_after_quit_is_ignored_identically) ... ok
+test_split_utf8_wildmat_agrees (tests.test_native_served_differential.NativeServedDifferentialTests.test_split_utf8_wildmat_agrees) ... ok
+test_whole_transcript_agrees (tests.test_native_served_differential.NativeServedDifferentialTests.test_whole_transcript_agrees) ... ok
+test_production_rejects_raw_services_but_keeps_operator_and_bp (tests.test_native_image_profiles.NativeImageProfileSavedImageTests.test_production_rejects_raw_services_but_keeps_operator_and_bp) ... ok
+test_restart_environment_cannot_hide_developer_entries_or_enable_production (tests.test_native_image_profiles.NativeImageProfileSavedImageTests.test_restart_environment_cannot_hide_developer_entries_or_enable_production) ... ok
+test_default_build_is_production_and_developer_output_is_distinct (tests.test_native_image_profiles.NativeImageProfileSourceTests.test_default_build_is_production_and_developer_output_is_distinct) ... ok
+test_only_developer_image_registers_raw_owner_and_admits_raw_reader (tests.test_native_image_profiles.NativeImageProfileSourceTests.test_only_developer_image_registers_raw_owner_and_admits_raw_reader) ... ok
+test_packaged_launcher_defaults_to_the_production_image (tests.test_native_image_profiles.NativeImageProfileSourceTests.test_packaged_launcher_defaults_to_the_production_image) ... ok
+test_profile_is_selected_before_owner_and_operator_are_loaded (tests.test_native_image_profiles.NativeImageProfileSourceTests.test_profile_is_selected_before_owner_and_operator_are_loaded) ... ok
+
+======================================================================
+ERROR: test_configured_source_address_opens_native_transit_session (tests.test_native_owner.NativeOwnerTests.test_configured_source_address_opens_native_transit_session)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ember/fn-gates/freeze-f7190d69/tests/test_native_owner.py", line 250, in test_configured_source_address_opens_native_transit_session
+    self.assertEqual(process.wait(timeout=60), 0,
+                     ~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 1280, in wait
+    return self._wait(timeout=timeout)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 2058, in _wait
+    raise TimeoutExpired(self.args, timeout)
+subprocess.TimeoutExpired: Command '['/home/ember/fn-gates/freeze-f7190d69/build/fn-host-developer', '--fn', 'owner', 'run', '/tmp/fn-native-owner-rbt0z059/store', '0', '1', '8']' timed out after 60 seconds
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/ember/fn-gates/freeze-f7190d69/tests/test_native_owner.py", line 255, in test_configured_source_address_opens_native_transit_session
+    process.wait(timeout=10)
+    ~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 1280, in wait
+    return self._wait(timeout=timeout)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 2058, in _wait
+    raise TimeoutExpired(self.args, timeout)
+subprocess.TimeoutExpired: Command '['/home/ember/fn-gates/freeze-f7190d69/build/fn-host-developer', '--fn', 'owner', 'run', '/tmp/fn-native-owner-rbt0z059/store', '0', '1', '8']' timed out after 10 seconds
+
+----------------------------------------------------------------------
+Ran 23 tests in 83.624s
+
+FAILED (errors=1)
