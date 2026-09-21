@@ -31,6 +31,14 @@ limit. The command prints separate algorithm-tagged hexadecimal components
 only after verifying the newly produced pair through the ACL2 profile. It
 stores no keys and defines no custody or recovery authority.
 
+The live owner also accepts bounded `hybrid-enroll` and `hybrid-author`
+operations on its operator-authorized local-control socket. ACL2 parses the
+Message-ID and Newsgroups from the signed source, derives the charge and
+identities, and constructs the atomic article/verdict event. The owner writes
+that event between its durable feed intent and resolution. Missing, unknown,
+or substituted enrollment generations are refusals. This local operator path
+is not yet the portable authenticated author transport.
+
 `fn-hsig-subject-body-injective` proves that equality of two valid authored
 subject bodies implies equality of their principal, ordered Ed25519 and
 ML-DSA-65 key set, and exact source octets. The proof projects the fixed-width

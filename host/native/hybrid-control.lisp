@@ -137,7 +137,9 @@
            (fnn-core
             'fn-native-hybrid-control-host-author-encode
             generation-value
-            (fnn-octet-list (fnn-read-regular-bounded source-path 32768))
+            (fnn-octet-list
+             (fnn-read-regular-bounded
+              source-path (fnn-core 'fn-hsig-host-max-source-octets)))
             (fnn-hsig-command-read-exact ed-path 64 "Ed25519 signature")
             (fnn-hsig-command-read-exact ml-path 3309 "ML-DSA-65 signature")
             (fnn-octet-list (fnn-string-octets ml-public)))))
