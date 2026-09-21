@@ -612,8 +612,18 @@
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)))
 
 ; The wire limits of one connection.  RFC 3977 section 3.1's 512 octets
-; include the CRLF (books/nntp-syntax.lisp); the body limit is the reader's.
+; include the CRLF (books/nntp-syntax.lisp).  A configured owner takes the
+; article/body capacity from its pinned injection configuration, which the
+; host builds from the same replayed Store profile used by direct acceptance.
+; The positive fallback exists only for the pre-configuration model states
+; that correctly refuse POST; it is not a production configuration default.
 (defconst *fn-own-body-limit* 8192)
+(defun fn-own-body-limit (o)
+  (declare (xargs :guard t))
+  (let ((limit (fn-inj-config-max-octets (fn-own-config o))))
+    (if (posp limit)
+        limit
+      *fn-own-body-limit*)))
 
 ; Open pins the current committed view and opens one served connection over
 ; it (fn-served-open: the one place the whole-archive projection recognizer
@@ -643,7 +653,7 @@
              (archive (fn-own-view-archive view))
              (id (fn-own-next-id o))
              (opened (fn-served-open archive *fn-nntp-max-initial-line-octets*
-                                     *fn-own-body-limit* (fn-own-config o)
+                                     (fn-own-body-limit o) (fn-own-config o)
                                      (fn-own-clock o) (fn-own-clock o) acfg))
              (sconn (fn-served-result-conn opened))
              (conn (fn-own-conn-make id (fn-own-view-version view)
@@ -683,7 +693,7 @@
              (limit (if (and record (fn-cfg-peer-inbound record)
                              (posp (fn-cfg-peer-inbound-max-octets record)))
                         (fn-cfg-peer-inbound-max-octets record)
-                      *fn-own-body-limit*))
+                      (fn-own-body-limit o)))
              ; The reader pin and the injection reading, in that order, as
              ; fn-own-open passes them: `fn-served-open-peer' gained the
              ; injection argument with the per-submission injection clock
@@ -745,13 +755,14 @@
 ; cannot alias a socket and no control request consumes a connection slot.
 (defconst *fn-own-control-id* :control)
 
-(defun fn-own-control-decision (msgid groups octets)
+(defun fn-own-control-decision (cfg msgid groups octets)
   (declare (xargs :guard t))
   (if (and (fn-af-message-idp msgid)
            (fn-inj-group-namesp groups)
            (consp groups)
            (fn-octet-listp octets)
-           (<= (len octets) *fn-own-body-limit*))
+           (posp (fn-inj-config-max-octets cfg))
+           (<= (len octets) (fn-inj-config-max-octets cfg)))
       ; The CLI supplies an already-authored article object.  Preserve those
       ; octets exactly; NNTP POST separately calls fn-inj-decide because it
       ; receives a proto-article.  Both become the same owner submission
@@ -761,7 +772,8 @@
 
 (defun fn-own-control-submit-result (o msgid groups octets)
   (declare (xargs :guard t))
-  (let ((decision (fn-own-control-decision msgid groups octets)))
+  (let ((decision (fn-own-control-decision (fn-own-config o)
+                                           msgid groups octets)))
     (cond ((not (fn-inj-injectedp decision)) :refused)
           ; A control request is synchronous.  The host drains after every
           ; served read, so a non-idle writer here is a bounded busy refusal,
@@ -780,7 +792,8 @@
       (fn-own-enqueue
        o (fn-own-sub-make *fn-own-control-id*
                           (fn-own-view-version (fn-own-view o)) nil
-                          (fn-own-control-decision msgid groups octets)))
+                          (fn-own-control-decision (fn-own-config o)
+                                                   msgid groups octets)))
     o))
 
 (defun fn-own-control-submissionp (sub)
@@ -1635,6 +1648,17 @@
         (fn-own-feed-durable-records o sub)
       nil)))
 
+; A shared submission intent/commit already is the durable journal event that
+; authorizes this exact local enqueue.  Its following owner outcome must not
+; emit the older standalone enqueue record a second time.  RESOLUTION-ID is
+; the in-flight connection recorded by the host wrapper when it projected the
+; resolution; direct callers pass nil and retain the legacy record path.
+(defun fn-own-outcome-journal-records (o id word resolution-id)
+  (declare (xargs :guard t))
+  (if (equal id resolution-id)
+      nil
+    (fn-own-outcome-records o id word)))
+
 (defun fn-own-transit-outcome-records (o id kind word)
   (declare (xargs :guard t))
   (let ((conn (fn-own-find-conn id (fn-own-conns o)))
@@ -1719,7 +1743,8 @@
 
 (deftheory fn-own-vocabulary
   '(fn-own-group-factp fn-own-prefix-archive fn-own-store-idlep fn-own-refresh
-    fn-own-start fn-own-conn-boundedp fn-own-set-conns fn-own-open fn-own-enqueue
+    fn-own-start fn-own-conn-boundedp fn-own-set-conns fn-own-body-limit
+    fn-own-open fn-own-enqueue
     fn-own-conn-live-session
     fn-own-read fn-own-read-step fn-own-advance fn-own-close fn-own-begin
     fn-own-control-decision fn-own-control-submit-result fn-own-control-submit
@@ -1736,7 +1761,8 @@
     fn-own-submission-intent-result fn-own-submission-intent-records
     fn-own-submission-resolution-records
     fn-own-feed-stamp fn-own-feed-durable fn-own-feed-durable-records
-    fn-own-outcome-records fn-own-transit-outcome-records
+    fn-own-outcome-records fn-own-outcome-journal-records
+    fn-own-transit-outcome-records
     fn-own-feeds-reconfigure fn-own-tick fn-own-tick-records
     fn-own-tick-peer fn-own-tick-peer-records
     fn-own-feed-article fn-own-retain-find-id-unguarded

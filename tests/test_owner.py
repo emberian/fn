@@ -225,6 +225,32 @@ class OwnerFixture(unittest.TestCase):
 
 
 class OwnerTests(OwnerFixture):
+    def test_configured_store_capacity_is_shared_by_control_and_nntp(self):
+        owner = self.start_owner()
+
+        def article(msgid):
+            return (b"From: large@example.invalid\r\n"
+                    b"Newsgroups: fn.letters\r\n"
+                    b"Subject: configured capacity\r\n"
+                    b"Message-ID: " + msgid.encode() + b"\r\n\r\n" +
+                    (b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\r\n"
+                     * 145))
+
+        control_source = article("<large-control@example.invalid>")
+        self.assertGreater(len(control_source), 8192)
+        self.assertLessEqual(len(control_source), 32768)
+        self.assertTrue(owner.post("<large-control@example.invalid>", control_source)
+                        .startswith(b"committed sequence=0 charge="))
+
+        served_source = article("<large-served@example.invalid>")
+        client = owner.connect()
+        self.addCleanup(client.close)
+        client.sendall(b"POST\r\n")
+        assert_bytes(client, b"340 send article to be posted\r\n")
+        client.sendall(served_source + b".\r\n")
+        assert_bytes(client, b"240 article received OK\r\n")
+        self.assertEqual(owner.control_line(b"VERSION"), b"version 2")
+
     def test_two_readers_keep_their_pins_across_a_post_until_advanced(self):
         owner = self.start_owner()
         first = owner.connect()

@@ -22,6 +22,7 @@
 (include-book "books/nntp")
 (include-book "books/served")
 (include-book "books/nntp-effects")
+(include-book "books/native-config")
 (include-book "books/bp-receipt-records")
 (include-book "books/bp-workflow-records")
 ; The TCPCLv4 convergence layer: the octet grammar and the session machine the
@@ -40,6 +41,7 @@
 (ld "host/anchor-host.lisp" :ld-error-action :error)
 (ld "host/reader-host.lisp" :ld-error-action :error)
 (ld "host/owner-host.lisp" :ld-error-action :error)
+(ld "host/native-config-host.lisp" :ld-error-action :error)
 ; The differential model side, over the same fn-served-open reader-host uses.
 (ld "host/native/reader-model-host.lisp" :ld-error-action :error)
 (ld "host/workflow-host.lisp" :ld-error-action :error)
@@ -55,7 +57,20 @@
   (declare (xargs :mode :program :stobjs state))
   (prog2$ (cw "fn-native: raw entry not installed~%") (value :missing)))
 (progn! (set-raw-mode t)
+        ; Native cryptographic observations are a required process facility.
+        ; Validate them before saving and again after the saved image starts;
+        ; serialized foreign-library readiness is never trusted.
+        (load "host/native/crypto.lisp")
+        (fnn-crypto-initialize)
         (load "host/native/io.lisp")
+        (defun fn-native-entry (st)
+          (declare (ignore st))
+          (fnn-crypto-startup)
+          (fnn-main)
+          (values nil :exited *the-live-state*))
+        ; Bounded raw file read only; parsing, defaults and availability are
+        ; all ACL2's fn-native-config-load profile.
+        (load "host/native/config.lisp")
         ; The writable NNTP owner.  It registers the `owner' verb and calls
         ; only host/owner-host.lisp wrappers for protocol and state decisions.
         (load "host/native/owner.lisp")
