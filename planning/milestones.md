@@ -4,7 +4,10 @@ Post-reboot status (2026-09-21): see the [recovery matrix](recovery-2026-09-21.m
 for landed components, surviving unmerged packets, exact evidence boundaries
 and the next integration cycles. The release contract below remains unchanged.
 
-Current task (2026-09-21): compose the next native service batch after the
+Current task (2026-09-21): repair and qualify the wider native service batch
+under the source-pinned progression in [current work](now.md), alongside the
+durable identity, bounded Store-record, compaction, and authenticated peering
+joins. The earlier
 frozen `03eb3ba3` certification, default/DTN builds and scoped runtime gate
 passed. Native authentication startup, the shared-owner prepare refinement,
 shared BP publication and bounded checkpoint namespace are now integrated.

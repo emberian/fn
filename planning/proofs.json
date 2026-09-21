@@ -417,10 +417,6 @@
         "A-POLICY"
       ],
       "status": "in-progress",
-      "events": [
-        "fn-cc-capture-produces-summary",
-        "fn-cc-capture-preserves-prefix-member"
-      ],
       "evidence": [
         "books/checkpoint-compaction.lisp",
         "tests/acl2/checkpoint-compaction-tests.lisp",
@@ -1636,7 +1632,6 @@
         "A-CRYPTO"
       ],
       "status": "in-progress",
-      "events": [],
       "evidence": [
         "books/hybrid-signature.lisp",
         "tests/acl2/hybrid-signature-tests.lisp",

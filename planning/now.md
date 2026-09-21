@@ -50,8 +50,11 @@ article transactions and BP undertaking/release events share the allocator,
 publication barriers and ordered recovery. Acceptance-verdict, keyring-snapshot
 and atomic article-plus-verdict codecs have also landed. The shared identity
 writer/replay join remains in progress; component codecs do not establish that
-historical trust is durably recovered. Physical checkpoint packing/reclamation
-and the mandatory hybrid-signature implementation remain in capability lanes.
+historical trust is durably recovered. Physical checkpoint packing/reclamation, hybrid primitive verification, and
+principal-authenticated inbound peering are integrated in source. Large-record
+decoding and persisted resource profiles, arbitrary partial-reclamation
+correspondence, durable enrolled-key binding, and outbound AUTHINFO remain
+active joins; none is implied complete by the component integrations.
 
 The first frozen combined source `f7190d69` failed certification because native
 administration omitted its peer-config dependency. Repair `55e6d00a` then
@@ -63,17 +66,24 @@ that boundary and built production, developer and DTN images. Its runtime batch
 then exposed fresh initialization being sent through the nonempty recovery
 observation. Repair `e96e8a39` separates those ACL2 entries. Its focused and
 profile certification, production rebuild, and initialization followed by
-new-process recovery smoke passed; the full runtime batch is running. These
-steps do not establish a complete service qualification. See the [gate record](evidence/wide-native-gate-2026-09-21.md).
+new-process recovery smoke passed; the runtime batch then exposed an incorrectly nested native connection handler.
+Frozen repair `0626d428` restored handler and unwind structure; its production
+batch passed storage/recovery, authentication, operator/control and TLS tests,
+while BP startup and one platform-specific socket-close expectation failed.
+Repair `7b23b6a5` preserves the actual absent-journal startup state in the fast
+ACL2 configuration projection and accepts Linux connection reset as a closed
+malformed TLS connection. Its certification and runtime checks are pending.
+These steps do not establish a complete service qualification. See the [gate record](evidence/wide-native-gate-2026-09-21.md).
 The remote origin is `/home/ember/fn-gates/freeze-f7190d69`; exact source
 revisions and manifest digests, rather than that directory name, identify each
 input. Later main integrations are outside this frozen gate.
 
 Outbound authenticated TLS and live administration are now integrated in main.
 Focused raw transport tests pass, including handshake rejection and retry
-cleanup; their scope is not a two-node service qualification. The next peering
-vertical binds inbound transit roles to authenticated configured principals,
-while retaining the explicit legacy source-address profile. The developer-only
+cleanup; their scope is not a two-node service qualification. Inbound transit roles now bind to authenticated configured principals, with
+public administration syntax and an explicit legacy source-address profile.
+Outbound AUTHINFO over the selected transport policy is the next active
+peering join; TLS server authentication alone does not provide that login. The developer-only
 native process-death cuts and K7 supporting facts are integrated; their native
 fault campaign awaits the next combined image.
 
