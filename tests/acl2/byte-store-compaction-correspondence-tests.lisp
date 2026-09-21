@@ -42,20 +42,16 @@
                                (cons "00000000000000000003.txn" 13)
                                (cons "00000000000000000004.txn" 14))))
              nil 15))
-(defconst *bscc-run*
+(defun fn-bs-test-reclaim-run ()
+  (declare (xargs :guard t :verify-guards nil))
   (fn-bs-run *bscc-store* (fn-sf-initial-state)
-             (list (list :unlink :transactions "00000000000000000001.txn")
-                   (list :cut "pack-reclaim-unlink")
-                   (list :unlink :transactions "00000000000000000003.txn")
-                   (list :cut "pack-reclaim-unlink")
-                   (list :fsync-dir :transactions)
-                   (list :cut "pack-reclaim-directory"))
+             (fn-bs-pack-reclaim-program *bscc-names* 8 4)
              nil nil nil))
 
 ; First post-unlink cut: the view has removed name 1, while crash choice
 ; :drop retains it and :apply removes it.  Both preserve the suffix name 4.
 (assert-event
- (let ((bs (car (nth 1 *bscc-run*))))
+ (let ((bs (car (nth 1 (fn-bs-test-reclaim-run)))))
    (and (member-equal "00000000000000000001.txn"
                       (fn-bs-durable-names bs :transactions))
         (not (member-equal "00000000000000000001.txn"
@@ -68,7 +64,7 @@
 ; After the directory fence, no crash choice can restore either reclaimed
 ; covered name; the uncovered suffix remains.
 (assert-event
- (let ((bs (car (nth 5 *bscc-run*))))
+ (let ((bs (car (nth 5 (fn-bs-test-reclaim-run)))))
    (and (fn-bs-dir-quietp bs :transactions)
         (not (member-equal "00000000000000000001.txn" (fn-bs-names bs :transactions)))
         (not (member-equal "00000000000000000003.txn" (fn-bs-names bs :transactions)))
