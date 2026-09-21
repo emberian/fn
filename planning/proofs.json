@@ -1292,6 +1292,41 @@
       "assumptions": [],
       "status": "in-progress",
       "note": "Lane w11/owner-survival. CLAIMED as PRF-035 and renumbered to PRF-040 on merging dev: 035 had already gone to w11/one-owner's frame trailer, 036 to w11/bytestore-k2, 037 to w11/checkpoint-validator, 038 to w11/bp-node and 039 to w11/auth-live, all inside one evening. Keystones fn-own-fault-keeps-every-other-connection, fn-own-fault-clears-the-faulted-submission and fn-own-fault-reply-is-not-a-post-outcome (books/owner-fault.lisp), with fn-own-fault-closes-the-faulted-connection, fn-own-fault-keeps-another-connections-submission, fn-own-fault-releases-the-faulted-transaction and fn-own-fault-is-not-a-store-event beside them. Teeth are evaluated in tests/acl2/owner-tests.lisp on the same witness the served POST scenario builds (*own-taken*: connection 4's submission in flight, reader 3 open), including one violating value per hypothesis and the relation holding after a fault. The host side is tests/test_owner.py OwnerSurvivesAFaultTests, which injects an unexpected exception on one connection and asserts the other is still served. OPEN under this target: nothing states that the HOST calls fn-own-fault at every point where it can fault -- the boundary's coverage is a code property, not a theorem -- and tools/run_reader.py has no such boundary at all."
+    },
+    {
+      "id": "PRF-041",
+      "title": "Every byte-level crash image of a related store scans, and scans to an image the file kernel admits",
+      "statement": "fn-bs-store-crash-image-scans (K1): for every byte store related to a file-kernel state and every image fn-bs-crash-imagep admits of it, the scan tools/run_store.py performs at open -- the config entry and its integrity check, the frontier entry and its decode, the contiguity of the transaction namespace, and the record list -- returns :ok and not any of its four :fault values. No trailer assumption is used: an authority inode is fenced before any name points at it (D1) and is never overwritten (D2), so the only freedom a crash has over the authority namespace is whether the last entry operation landed. fn-bs-store-crash-image-is-kernel-admissible (K2): what that scan reads is an image fn-sf-recovery-crash-imagep admits, which outside the recovery window is the reliance predicate fn-sf-crash-imagep and inside it is that plus the two rollback arms of D14-b and D14-c -- the record the replay read and has not re-fenced, and the allocator rename that the fourth recovery barrier has not drained. fn-bs-store-recovery-is-a-kernel-crash (K3): fn-sf-image-crash at that image reproduces its frontier, its record list and the :replaying phase. fn-bs-crash-image-reopens: the host reopen entry fn-sn-open-observed succeeds on every such image, in both windows. fn-bs-acknowledged-record-survives-byte-crash (K4): an outcome the store acknowledged before the crash names a record of the state the host reopens on.",
+      "milestone": "M5",
+      "requirements": [
+        "FLR-001",
+        "STO-005"
+      ],
+      "depends_on": [
+        "PRF-032",
+        "PRF-036"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "note": "Lane w11/k1-scan. CLAIMED as PRF-040 and renumbered to PRF-041 on merging dev: w11/owner-survival had claimed 035, been renumbered to 040 by its own merge, and landed first. That is the fifth collision in two evenings and the board CLAIM line is what caught it here. K1's namespace clause was closed by w9/storage-3; this target closes its other three and everything that waited on them. Books books/byte-store-scan.lisp (K1, K2) and books/byte-store-keystones.lisp (K3, K4, at the seam where the host reopen entry lives), teeth in tests/acl2/byte-store-scan-tests.lisp. The subject of K4 and of fn-bs-crash-image-reopens is fn-sn-open-observed, which host/store-node-host.lisp:70 calls at every process start, reached from tools/run_store.py:1245 (acl2.recover). SCOPE, stated because it is not visible in the statement: K4's instances inside the recovery window are vacuous, because fn-bs-replay-matches-scan carries (equal (fn-sf-successes ks) nil) there and K4's fourth hypothesis is a member of that list; its live instances are the publish window, and what covers the recovery window is fn-bs-crash-image-reopens, which carries no success hypothesis. A positive GROUND witness for K1 does not exist in this tree and the test book says so: an assert-event evaluates and three of the scan's tests are calls of constrained functions (fn-bs-config-okp, fn-bs-frontier-decode, fn-bs-txn-name), so the teeth are the two violating values, one per hypothesis, reached through the scan's first test. Packet P4, which makes the config and frontier files fn-frame frames, is what makes a positive ground witness possible. K0 (fn-bs-program-step-preserves-relation) is still open and is what discharges the relation's own clauses on the host's programs; K5 to K8 are open.",
+      "evidence": [
+        "books/byte-store-scan.lisp",
+        "books/byte-store-keystones.lisp",
+        "tests/acl2/byte-store-scan-tests.lisp",
+        "specs/crash-model-v2.md",
+        "planning/lanes/HANDOFF-w11-k1-scan.md"
+      ],
+      "events": [
+        "fn-bs-store-crash-image-scans",
+        "fn-bs-store-crash-image-is-kernel-admissible",
+        "fn-bs-store-recovery-is-a-kernel-crash",
+        "fn-bs-crash-image-reopens",
+        "fn-bs-acknowledged-record-survives-byte-crash",
+        "fn-bs-crash-image-reads-the-config",
+        "fn-bs-crash-image-frontier-decodes-to-a-natural",
+        "fn-bs-crash-image-namespace-is-contiguous",
+        "fn-bs-crash-image-records-do-not-fault"
+      ]
     }
   ]
 }
