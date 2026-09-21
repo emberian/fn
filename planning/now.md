@@ -37,8 +37,9 @@ own these complete paths and their source-pinned evidence:
   serialized owner. Control and BP submission share completion machinery;
   lifecycle hooks and orderly SIGTERM must compose without deadlocks.
 - Native BP application join is integrated with a scoped lost-reply/restart
-  witness. Next is actual receipt-decision barrier failure and broader joined
-  trace assurance; carrier ACKs are not application acceptance.
+  witness. Receipt-decision barrier failure now has a scoped native recovery witness.
+  Next is maintained joined-state assurance and removing redundant retained-state
+  scans; carrier ACKs are not application acceptance.
 - Actual BP lifecycle invariant/effects, transaction/configuration namespace
   bounds, and wider syscall/model correspondence.
 - Measured native shared-owner service cost after prepare correspondence adoption.

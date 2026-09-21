@@ -351,22 +351,22 @@
     "books_in_root_closure": 342,
     "roots": 343,
     "theorems": 6193,
-    "functions": 4677,
-    "assert_events": 6509,
+    "functions": 4680,
+    "assert_events": 6516,
     "must_fails": 131,
     "encapsulates": 19,
     "guards": {
       "verified": 1567,
       "declared-off": 234,
-      "default-guarded": 2286,
-      "default-unguarded": 590
+      "default-guarded": 2288,
+      "default-unguarded": 591
     },
     "suspect_theorems": 57,
     "export_hygiene_warnings": 79,
     "enabled_projection_warnings": 24,
     "teeth_form_warnings": 4,
     "include_hygiene_warnings": 118,
-    "host_names_warnings": 413,
+    "host_names_warnings": 414,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -613,12 +613,12 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 3,
-      "functions": 22,
+      "functions": 23,
       "guards": {
         "verified": 0,
         "declared-off": 1,
         "default-guarded": 0,
-        "default-unguarded": 21
+        "default-unguarded": 22
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -3398,11 +3398,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 3,
-      "functions": 17,
+      "functions": 19,
       "guards": {
         "verified": 0,
         "declared-off": 0,
-        "default-guarded": 17,
+        "default-guarded": 19,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -7784,7 +7784,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 9,
+      "assert_events": 10,
       "must_fails": 5,
       "defconsts": 4,
       "defmacros": 0,
@@ -7913,7 +7913,7 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 16,
+      "assert_events": 22,
       "must_fails": 0,
       "defconsts": 6,
       "defmacros": 0,
@@ -9442,7 +9442,7 @@
     {
       "theorem": "fn-bpaj-dispatch-intent-absent-retries",
       "book": "books/bp-native-app.lisp",
-      "line": 446,
+      "line": 445,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-bpaj-dispatch and the conclusion is that branch's value"
       ]
@@ -14268,48 +14268,55 @@
       {
         "host": "host/native/workflow.lisp",
         "line": 174,
+        "name": "fnn-os-fail",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/workflow.lisp",
+        "line": 174,
         "name": "fnn-immutable-publish-effect",
         "source": "host/native/immutable-publish.lisp",
         "reason": "defined in host/native/immutable-publish.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/workflow.lisp",
-        "line": 221,
+        "line": 234,
         "name": "fnn-require-writer",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/workflow.lisp",
-        "line": 318,
+        "line": 331,
         "name": "fnn-open-live-store",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/workflow.lisp",
-        "line": 318,
+        "line": 331,
         "name": "fnn-store-close",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/workflow.lisp",
-        "line": 335,
+        "line": 348,
         "name": "fnn-out",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/workflow.lisp",
-        "line": 388,
+        "line": 401,
         "name": "fnn-hex",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/workflow.lisp",
-        "line": 435,
+        "line": 448,
         "name": "fnn-register-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"

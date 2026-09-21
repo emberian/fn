@@ -14,12 +14,12 @@ stale. Counts describe artifacts, not coverage; see
 | Certification roots in the Makefile | 343 |
 | Books inside the root closure | 342 |
 | `defthm` and `defthmd` events | 6193 |
-| `defun` events | 4677 |
+| `defun` events | 4680 |
 | Functions with verified guards | 1567 |
 | Functions declared `:verify-guards nil` and never verified | 234 |
-| Functions left at the default with an explicit guard | 2286 |
-| Functions left at the default with no guard | 590 |
-| `assert-event` checks | 6509 |
+| Functions left at the default with an explicit guard | 2288 |
+| Functions left at the default with no guard | 591 |
+| `assert-event` checks | 6516 |
 | `must-fail` checks | 131 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 57 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Enabled-projection warnings | 24 |
 | Teeth-form warnings | 4 |
 | Include-hygiene warnings | 118 |
-| Host-names warnings | 413 |
+| Host-names warnings | 414 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -94,7 +94,7 @@ that `make certify` requests.
 | `books/anchor-servers.lisp` | root | 4 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/anchor-wire.lisp` | root | 2 | 34 | 0/0/34/0 | 0 | 0 | 0 |
 | `books/anchor.lisp` | root | 60 | 63 | 45/1/16/1 | 0 | 0 | 1 |
-| `books/app-journal.lisp` | root | 3 | 22 | 0/1/0/21 | 0 | 0 | 0 |
+| `books/app-journal.lisp` | root | 3 | 23 | 0/1/0/22 | 0 | 0 | 0 |
 | `books/article-fields.lisp` | root | 5 | 31 | 31/0/0/0 | 0 | 0 | 1 |
 | `books/article-invariants.lisp` | root | 44 | 14 | 0/7/7/0 | 0 | 0 | 0 |
 | `books/article-properties.lisp` | root | 42 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -199,7 +199,7 @@ that `make certify` requests.
 | `books/lace.lisp` | root | 5 | 20 | 0/0/20/0 | 0 | 0 | 0 |
 | `books/membership-epochs-invariants.lisp` | root | 33 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/membership-epochs.lisp` | root | 36 | 51 | 0/0/51/0 | 0 | 0 | 0 |
-| `books/native-auth-profile.lisp` | root | 3 | 17 | 0/0/17/0 | 0 | 0 | 0 |
+| `books/native-auth-profile.lisp` | root | 3 | 19 | 0/0/19/0 | 0 | 0 | 0 |
 | `books/native-config.lisp` | root | 2 | 59 | 0/0/59/0 | 0 | 0 | 0 |
 | `books/native-operator.lisp` | root | 0 | 28 | 0/0/28/0 | 0 | 0 | 0 |
 | `books/nntp-auth-invariants.lisp` | root | 4 | 3 | 0/0/3/0 | 0 | 0 | 0 |
@@ -365,12 +365,12 @@ that `make certify` requests.
 | `tests/acl2/identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 0 | 0 |
 | `tests/acl2/index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 0 | 0 |
 | `tests/acl2/injection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 35 | 0 | 0 |
-| `tests/acl2/journal-publish-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 5 | 0 |
+| `tests/acl2/journal-publish-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 5 | 0 |
 | `tests/acl2/journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 52 | 0 | 0 |
 | `tests/acl2/membership-epochs-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 100 | 0 | 0 |
 | `tests/acl2/native-auth-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
-| `tests/acl2/native-auth-profile-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 16 | 0 | 0 |
+| `tests/acl2/native-auth-profile-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 0 | 0 |
 | `tests/acl2/native-config-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 37 | 0 | 0 |
 | `tests/acl2/native-operator-host-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 22 | 0 | 0 |
 | `tests/acl2/native-operator-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 25 | 0 | 0 |
@@ -444,7 +444,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-auth-consistent-forward` | `books/nntp-auth.lisp` | 409 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-session-consistentp |
 | `fn-auth-token-argp-forward` | `books/nntp-auth.lisp` | 663 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-auth-token-argp |
 | `fn-bp-effect-for-pending-attempt-unfolds` | `books/bp-workflow-invariants.lisp` | 884 | branch-of-definition: the hypothesis is a branch test of fn-bp-effect-for-pending and the conclusion is that branch's value |
-| `fn-bpaj-dispatch-intent-absent-retries` | `books/bp-native-app.lisp` | 446 | branch-of-definition: the hypothesis is a branch test of fn-bpaj-dispatch and the conclusion is that branch's value |
+| `fn-bpaj-dispatch-intent-absent-retries` | `books/bp-native-app.lisp` | 445 | branch-of-definition: the hypothesis is a branch test of fn-bpaj-dispatch and the conclusion is that branch's value |
 | `fn-bpb-decode-refuses-overlong-input` | `books/bp-bundle-invariants.lisp` | 530 | branch-of-definition: the hypothesis is a branch test of fn-bpb-decode and the conclusion is that branch's value |
 | `fn-bpbi-bpp-encode-unfolds` | `books/bp-bundle-invariants.lisp` | 277 | definition-restated: the conclusion is the body of fn-bpp-encode |
 | `fn-bpc-decode-refuses-overlong-input` | `books/bp-primary-cbor.lisp` | 1175 | branch-of-definition: the hypothesis is a branch test of fn-bpc-decode and the conclusion is that branch's value |
