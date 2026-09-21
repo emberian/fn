@@ -200,7 +200,7 @@ class NativeBpApplicationTests(unittest.TestCase):
         self.assertIn(b" label=native-policy", provenance)
 
         result_files = sorted(
-            (self.sender_spool / "receive-evidence").glob("*.accepted")
+            (self.sender_spool / "receive-evidence").glob("*.adu")
         )
         self.assertEqual(len(result_files), 1)
         replay = self.invoke(
