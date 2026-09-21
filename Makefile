@@ -239,6 +239,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-receipt-records-tests \
 	books/bp-native-app \
 	tests/acl2/bp-native-app-tests \
+	books/bp-native-app-fast \
+	tests/acl2/bp-native-app-fast-tests \
 	books/bp-receiver-store-invariants \
 	books/bp-receiver-context-invariants \
 	books/bp-receiver-journal-invariants \

@@ -37,7 +37,7 @@
 (include-book "books/native-operator")
 (include-book "books/native-control")
 (include-book "books/bp-receipt-records")
-(include-book "books/bp-native-app")
+(include-book "books/bp-native-app-fast")
 (include-book "books/bp-workflow-records")
 (include-book "books/journal-publish")
 (include-book "books/app-journal")

@@ -5,7 +5,7 @@
 ; image.  Every call below reads the canonical configured owner installed by
 ; host/owner-host.lisp.
 (in-package "ACL2")
-(include-book "../books/bp-native-app")
+(include-book "../books/bp-native-app-fast")
 
 (defun fn-owner-app-bind-receipt-store (state)
   (declare (xargs :stobjs state :mode :program))
@@ -60,7 +60,8 @@
                         (fn-bpaj-bp-provenance-octets
                          node-id bundle-identity request)))
          (lookup (and request
-                      (fn-bpaj-record-lookup (fn-owner-store state) request)))
+                      (fn-bpaj-record-lookup-fast
+                       (fn-owner-store state) request)))
          (planned-result (case (car lookup)
                            (:absent :accepted)
                            (:found :duplicate)
@@ -110,9 +111,9 @@
   (declare (xargs :stobjs state :mode :program))
   (let* ((request (f-get-global 'fn-owner-app-request state))
          (generation (f-get-global 'fn-owner-app-generation state))
-         (action (fn-bpaj-dispatch (f-get-global 'fn-bpaj-state state)
-                                    (fn-owner-store state)
-                                    request generation)))
+         (action (fn-bpaj-dispatch-fast
+                  (f-get-global 'fn-bpaj-state state)
+                  (fn-owner-store state) request generation)))
     (if (not (equal action (list :submit)))
         (value (if (equal (car action) :busy) :busy :refused))
       (fn-owner-control-submit
@@ -124,7 +125,8 @@
   (declare (xargs :stobjs state :mode :program))
   (let* ((request-octets (f-get-global 'fn-owner-app-request state))
          (request (fn-bpaj-request request-octets))
-         (answer (fn-bpaj-record-lookup (fn-owner-store state) request))
+         (answer (fn-bpaj-record-lookup-fast
+                  (fn-owner-store state) request))
          (record (and (equal (car answer) :found) (cadr answer)))
          (state (f-put-global 'fn-owner-app-record
                               (and record (fn-record-encode record)) state))
