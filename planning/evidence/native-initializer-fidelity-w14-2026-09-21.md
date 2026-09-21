@@ -54,3 +54,31 @@ Limits remain: the byte-program theorem is conditional and models the fresh
 path only; this runtime evidence does not establish physical crash-image
 qualification after SIGKILL, a full K0 preservation theorem, or behavior of
 existing directories/locks, EEXIST publication, and load branches.
+
+## Enumeration regression follow-up
+
+Local follow-up commit `3ef4d2b` adds a test-only `eacces` setup action at the
+second initializer enumeration.  It chmods `config/` to `000` immediately
+before the actual `fnn-list-directory` call; it does not throw an injected
+error in advance of that call.  The real directory list therefore returns
+EACCES.  Reintroducing the removed `handler-case` around that list would turn
+this error into NIL and let init continue, so this is a regression witness for
+the error/empty fix.
+
+The raw-I/O-only follow-up was replayed onto the same frozen source as hbox
+HEAD `f5bc64c3aa5298cc95cb8a0a84fa7032d63f8502`; it changed neither `books/`
+nor `host/store-host.lisp`.  A rebuilt default image ran exactly
+`NativeInitializerFidelityTests.test_second_config_enumeration_eacces_is_not_empty_history`:
+one test passed.  The test restores `config/` mode before opening recovery,
+which then succeeds.  This targeted native unit did not rerun the ACL2
+closure; the previously recorded artifact validation remains its logical
+closure evidence.
+
+The follow-up launcher SHA-256 is
+`5b7b4d8cd1d9a749afe556e091ede16f38666550f0d6bb74543516c601ce6bdb` and
+its core is `f4fe2e84b476ce30e4797da2b3fa34b0457c5a60ef75d3531bc23d3e9c0912bf`.
+The raw build log is `planning/evidence/native-host-build-w14-enumeration.log`
+(SHA-256 `1a050e824ee592229d0eead06dce3ef9976af8773452899073af15e239762a35`)
+and the targeted test log is
+`planning/evidence/native-initializer-enumeration-eacces-w14.log` (SHA-256
+`553c9b206a6b9e3f80cba8f72312e0982a495d579f3de3a1a6aa6ddf74f18647`).
