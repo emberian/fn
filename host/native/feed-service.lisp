@@ -76,14 +76,12 @@
      (fnn-owner-name-list (fnn-owner-core 'fn-owner-feed-peers)))))
 
 (defun fnn-feed-read-limit (service)
-  (fnn-owner-serialized
-   service nil
-   (lambda ()
-     (let ((limit (fnn-owner-core 'fn-owner-feed-read-limit)))
-       (unless (and (integerp limit) (<= 1 limit)
-                    (<= limit +fnn-max-read+))
-         (fnn-fault "invalid ACL2 feed reply limit: ~s" limit))
-       limit))))
+  (declare (ignore service))
+  (let ((limit (fnn-core 'fn-owner-feed-read-limit)))
+    (unless (and (integerp limit) (<= 1 limit)
+                 (<= limit +fnn-max-read+))
+      (fnn-fault "invalid ACL2 feed reply limit: ~s" limit))
+    limit))
 
 (defun fnn-feed-checked-connect-timeout (timeout)
   "Validate ACL2's TCP completion deadline at the raw boundary."
@@ -110,7 +108,7 @@
          (fnn-fault "feed core returned malformed peer backoff"))
        (values queued (fnn-octets-string (fnn-octets host)) port backoff
                (fnn-feed-checked-connect-timeout
-                (fnn-owner-core 'fn-owner-feed-connect-timeout)))))))
+                (fnn-core 'fn-owner-feed-connect-timeout)))))))
 
 (defun fnn-feed-connect-core (service peer-octets fd)
   "Start ACL2's greeting/MODE phase; this does not make a feed live."
