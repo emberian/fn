@@ -31,6 +31,7 @@
 (include-book "../books/owner-feed-port")
 (include-book "../books/owner-prepare-correspondence")
 (include-book "../books/feed-wire-input")
+(include-book "../books/feed-connection")
 ; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
 ; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
 ; ACL2 session does not load `host/store-host.lisp', so the one owner has to
@@ -1116,64 +1117,40 @@
                    (fn-own-feed-find peer (fn-own-feeds
                                            (fn-owner-core state)))))))))
 
-; The host's socket identifier for one peer's outbound connection; nil when
-; the socket is gone, which stops selection at once (fn-feed-selection wants
-; a natural conn) and returns the in-flight entry at the next observation.
+; A raw TCP descriptor starts in the ACL2 connection phase below.  Only a
+; successful greeting (and configured MODE STREAM exchange) makes this feed
+; live for selection.
 (defun fn-owner-feed-connect (peer-octets conn state)
   (declare (xargs :stobjs state :mode :program))
   (let ((peer (fn-store-octets->string peer-octets)))
-    (if (equal peer :bad)
+    (if (or (equal peer :bad) (not (natp conn)))
         (value nil)
+      (let ((state (fn-owner-step (list :feed-conn peer conn) state)))
+        (value :ok)))))
+
+(defun fn-owner-feed-dial-open (peer-octets conn state)
+  "Install greeting/MODE state without treating a TCP socket as a feed."
+  (declare (xargs :stobjs state :mode :program))
+  (let ((peer (fn-store-octets->string peer-octets)))
+    (if (or (equal peer :bad) (not (natp conn)))
+        (value :invalid)
       (let ((inputs (f-get-global 'fn-owner-feed-inputs state)))
-        (if (not (fn-fwi-tablep inputs))
+        (if (or (not (fn-fc-tablep inputs))
+                (null (fn-own-feed-entry-of peer
+                                             (fn-own-feeds (fn-owner-core state)))))
             (value :fault)
-          (let* ((state (fn-owner-step (list :feed-conn peer conn) state))
-                 (state (if conn
-                            (f-put-global 'fn-owner-feed-inputs
-                                          (fn-fwi-table-put peer (fn-fwi-initial-state)
-                                                            inputs)
-                                          state)
-                          (f-put-global 'fn-owner-feed-inputs
-                                        (fn-fwi-table-remove peer inputs) state))))
-            (value :ok))))))
+          (let* ((streamingp (fn-cfg-peer-streamingp
+                               (fn-owner-feed-record peer-octets state)))
+                 (state (f-put-global
+                         'fn-owner-feed-inputs
+                         (fn-fc-table-put peer (fn-fc-initial-state streamingp conn) inputs)
+                         state)))
+            (value :await-greeting)))))))
 
 (defun fn-owner-feed-read-limit ()
   "ACL2-owned upper bound for one native feed socket-read observation."
   (declare (xargs :mode :program))
   *fn-feed-wire-input-max-chunk-octets*)
-
-(defun fn-owner-feed-reply-chunk (peer-octets octets monotonic state)
-  "Consume one bounded reply event; the caller drains retained input with NIL.
-
-One :line event invokes the existing owner feed port exactly once.  That keeps
-the resulting frame batch available for FNFD persistence before the next line
-can overwrite the command projection."
-  (declare (xargs :stobjs state :mode :program))
-  (let ((peer (fn-store-octets->string peer-octets)))
-    (if (or (equal peer :bad) (not (fn-wire-octet-listp octets)))
-        (value :invalid)
-      (let ((inputs (f-get-global 'fn-owner-feed-inputs state)))
-        (if (not (fn-fwi-tablep inputs))
-            (value :fault)
-          (let ((input (fn-fwi-table-lookup peer inputs)))
-            (if (not input)
-                (value :invalid)
-              (let* ((step (fn-fwi-step input octets))
-                     (kind (fn-fwi-kind step))
-                     (state (f-put-global
-                             'fn-owner-feed-inputs
-                             (fn-fwi-table-put peer (fn-fwi-next-state step) inputs)
-                             state)))
-                (case kind
-                  (:line
-                   (mv-let (word state)
-                     (fn-owner-feed-octets peer-octets (fn-fwi-line step)
-                                            monotonic state)
-                     (value word)))
-                  (:need-input (value :need-input))
-                  (:closed (value :closed))
-                  (:invalid (value :invalid))
-                  (otherwise (value :fault))))))))))
 
 ; One tick for one peer: the records first, then the bytes.
 (defun fn-owner-feed-tick (peer-octets monotonic state)
@@ -1213,6 +1190,51 @@ can overwrite the command projection."
               (value (if (equal status :refused) :refused
                        (if (fn-own-feed-port-effects result) :send :quiet))))))))))
 
+(defun fn-owner-feed-reply-chunk (peer-octets octets monotonic state)
+  "Consume one ACL2 connection/reply event; nil drains retained input.
+
+Greeting and MODE replies stay inside fn-fc.  A normal feed reply reaches the
+existing port only after fn-fc has made this connection ready."
+  (declare (xargs :stobjs state :mode :program))
+  (let ((peer (fn-store-octets->string peer-octets)))
+    (if (or (equal peer :bad) (not (fn-wire-octet-listp octets)))
+        (value :invalid)
+      (let ((inputs (f-get-global 'fn-owner-feed-inputs state)))
+        (if (not (fn-fc-tablep inputs))
+            (value :fault)
+          (let ((input (fn-fc-table-lookup peer inputs)))
+            (if (not input)
+                (value :invalid)
+              (let* ((step (fn-fc-step input octets))
+                     (kind (fn-fc-kind step))
+                     (state (f-put-global
+                             'fn-owner-feed-inputs
+                             (fn-fc-table-put peer (fn-fc-next-state step) inputs)
+                             state)))
+                (case kind
+                  (:mode
+                   (let ((command (fn-fc-mode-command)))
+                     (if (null command)
+                         (value :fault)
+                       (let ((state (f-put-global 'fn-owner-feed-command command state)))
+                         (value :mode)))))
+                  (:ready
+                   (mv-let (erp word state)
+                     (fn-owner-feed-connect peer-octets
+                                            (fn-fc-conn (fn-fc-next-state step)) state)
+                     (if erp (mv erp word state)
+                       (if (equal word :ok) (value :ready) (value :fault)))))
+                  (:reply
+                   (mv-let (erp word state)
+                     (fn-owner-feed-octets peer-octets (fn-fc-line step)
+                                            monotonic state)
+                     (if erp (mv erp word state) (value word))))
+                  (:need-input (value :need-input))
+                  (:closed (value :closed))
+                  (:invalid (value :invalid))
+                  (otherwise (value :fault)))))))))))
+
+
 ; The connection to ONE peer is gone.  The host reports the event and the
 ; time it happened; ACL2 decides what it means.  `fn-own-feed-lost-records'
 ; is read off the state BEFORE it moves and `fn-own-feed-lost' moves it, so
@@ -1230,18 +1252,19 @@ can overwrite the command projection."
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (equal peer :bad)
         (value nil)
-      (let* ((owner (fn-owner-core state))
-             (obs (fn-clock-observation monotonic 0 0 nil))
-             (result (fn-own-feed-port-lost-peer
-                      peer (fn-own-feeds owner) obs)))
-        (mv-let (status state)
-          (fn-owner-feed-install-port-result owner result state)
-          (let ((state (f-put-global
-                        'fn-owner-feed-inputs
-                        (fn-fwi-table-remove peer
-                                             (f-get-global 'fn-owner-feed-inputs state))
-                        state)))
-            (value (if (equal status :refused) :refused :ok))))))))
+      (let ((inputs (f-get-global 'fn-owner-feed-inputs state)))
+        (if (not (fn-fc-tablep inputs))
+            (value :fault)
+          (let* ((owner (fn-owner-core state))
+                 (obs (fn-clock-observation monotonic 0 0 nil))
+                 (result (fn-own-feed-port-lost-peer
+                          peer (fn-own-feeds owner) obs)))
+            (mv-let (status state)
+              (fn-owner-feed-install-port-result owner result state)
+              (let ((state (f-put-global 'fn-owner-feed-inputs
+                                         (fn-fc-table-remove peer inputs)
+                                         state)))
+                (value (if (equal status :refused) :refused :ok))))))))))
 
 ; Which peer's journal each pending frame belongs in, in the same order as
 ; the frames: the record's own field 0, read by ACL2.
