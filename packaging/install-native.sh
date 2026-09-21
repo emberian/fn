@@ -54,6 +54,32 @@ sed "s|@PREFIX@|$prefix|g" packaging/net.fn.native.plist.in > "$sharedir/launchd
 
 hash_command=sha256sum
 command -v "$hash_command" >/dev/null 2>&1 || hash_command='shasum -a 256'
+crypto_inventory=
+if command -v ldconfig >/dev/null 2>&1; then
+  crypto_inventory=$(ldconfig -p 2>/dev/null || true)
+  printf '%s\n' "$crypto_inventory" | grep -Eq 'libsodium\.so(\.23)? ' || {
+    echo "install-native: libsodium shared library is unavailable" >&2; exit 4; }
+  printf '%s\n' "$crypto_inventory" | grep -q 'libcrypto\.so\.3 ' || {
+    echo "install-native: OpenSSL 3 libcrypto is unavailable" >&2; exit 4; }
+  printf '%s\n' "$crypto_inventory" | grep -q 'libssl\.so\.3 ' || {
+    echo "install-native: OpenSSL 3 libssl is unavailable" >&2; exit 4; }
+else
+  sodium_path=
+  crypto_path=
+  ssl_path=
+  for dependency in /opt/homebrew/opt/libsodium/lib/libsodium.dylib /usr/local/opt/libsodium/lib/libsodium.dylib; do
+    [ ! -f "$dependency" ] || sodium_path=$dependency
+  done
+  for dependency in /opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib /usr/local/opt/openssl@3/lib/libcrypto.3.dylib; do
+    [ ! -f "$dependency" ] || crypto_path=$dependency
+  done
+  for dependency in /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib /usr/local/opt/openssl@3/lib/libssl.3.dylib; do
+    [ ! -f "$dependency" ] || ssl_path=$dependency
+  done
+  [ -n "$sodium_path" ] || { echo "install-native: libsodium shared library is unavailable" >&2; exit 4; }
+  [ -n "$crypto_path" ] && [ -n "$ssl_path" ] || {
+    echo "install-native: OpenSSL 3 shared libraries are unavailable" >&2; exit 4; }
+fi
 {
   echo "profile=production (verified by disabled reader entrypoint)"
   echo "source_revision=$source_revision"
@@ -72,18 +98,10 @@ command -v "$hash_command" >/dev/null 2>&1 || hash_command='shasum -a 256'
   elif command -v ldd >/dev/null 2>&1; then ldd "$runtime"
   fi
   echo "dlopen-requirements: libsodium.so.23|libsodium.so libcrypto.so.3 libssl.so.3"
-  if command -v ldconfig >/dev/null 2>&1; then
-    ldconfig -p 2>/dev/null | grep -E 'libsodium\.so(\.23)?|libcrypto\.so\.3|libssl\.so\.3' || true
+  if [ -n "$crypto_inventory" ]; then
+    printf '%s\n' "$crypto_inventory" | grep -E 'libsodium\.so(\.23)?|libcrypto\.so\.3|libssl\.so\.3'
   else
-    for dependency in \
-      /opt/homebrew/opt/libsodium/lib/libsodium.dylib \
-      /usr/local/opt/libsodium/lib/libsodium.dylib \
-      /opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib \
-      /opt/homebrew/opt/openssl@3/lib/libssl.3.dylib \
-      /usr/local/opt/openssl@3/lib/libcrypto.3.dylib \
-      /usr/local/opt/openssl@3/lib/libssl.3.dylib; do
-      [ ! -f "$dependency" ] || $hash_command "$dependency"
-    done
+    $hash_command "$sodium_path" "$crypto_path" "$ssl_path"
   fi
 } > "$sharedir/native-artifacts.txt"
 
