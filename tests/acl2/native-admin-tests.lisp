@@ -48,3 +48,10 @@
 (assert-event (equal (fn-native-admin-config-name 1) "00000001.cfg"))
 (assert-event (equal (fn-native-admin-config-name 99999999) "99999999.cfg"))
 (assert-event (equal (fn-native-admin-config-name 100000000) nil))
+
+; Candidate validation is the logical replay/open predicate the host wrapper
+; calls after byte decoding.  The default durable record opens an empty image;
+; an out-of-range frontier is a reachable differing observation and refuses.
+(assert-event (fn-native-admin-candidate-openp nil 0 (list *fn-cfg-default-record*)))
+(assert-event (not (fn-native-admin-candidate-openp nil 4294967296
+                                                 (list *fn-cfg-default-record*))))
