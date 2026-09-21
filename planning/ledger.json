@@ -287,16 +287,16 @@
     "books": 280,
     "books_in_root_closure": 280,
     "roots": 280,
-    "theorems": 5687,
-    "functions": 3967,
-    "assert_events": 5805,
+    "theorems": 5692,
+    "functions": 3971,
+    "assert_events": 5826,
     "must_fails": 63,
     "encapsulates": 19,
     "guards": {
       "verified": 1489,
       "declared-off": 192,
       "default-guarded": 1795,
-      "default-unguarded": 491
+      "default-unguarded": 495
     },
     "suspect_theorems": 46,
     "export_hygiene_warnings": 73,
@@ -3958,7 +3958,7 @@
       "book": "books/served.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 62,
+      "theorems": 67,
       "functions": 37,
       "guards": {
         "verified": 2,
@@ -6994,17 +6994,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 0,
+      "functions": 4,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 0
+        "default-unguarded": 4
       },
       "verify_guards_events": 0,
-      "assert_events": 95,
+      "assert_events": 116,
       "must_fails": 0,
-      "defconsts": 45,
+      "defconsts": 53,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [

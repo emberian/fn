@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 280 |
 | Certification roots in the Makefile | 280 |
 | Books inside the root closure | 280 |
-| `defthm` and `defthmd` events | 5687 |
-| `defun` events | 3967 |
+| `defthm` and `defthmd` events | 5692 |
+| `defun` events | 3971 |
 | Functions with verified guards | 1489 |
 | Functions declared `:verify-guards nil` and never verified | 192 |
 | Functions left at the default with an explicit guard | 1795 |
-| Functions left at the default with no guard | 491 |
-| `assert-event` checks | 5805 |
+| Functions left at the default with no guard | 495 |
+| `assert-event` checks | 5826 |
 | `must-fail` checks | 63 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 46 |
@@ -218,7 +218,7 @@ that `make certify` requests.
 | `books/scheduler-invariants.lisp` | root | 59 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/scheduler-peers.lisp` | root | 18 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/scheduler.lisp` | root | 64 | 104 | 27/0/77/0 | 0 | 0 | 0 |
-| `books/served.lisp` | root | 62 | 37 | 2/4/31/0 | 0 | 0 | 0 |
+| `books/served.lisp` | root | 67 | 37 | 2/4/31/0 | 0 | 0 | 0 |
 | `books/sha256.lisp` | root | 26 | 30 | 0/0/30/0 | 0 | 0 | 0 |
 | `books/statement-invariants.lisp` | root | 59 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/statement.lisp` | root | 30 | 65 | 0/0/65/0 | 0 | 0 | 0 |
@@ -335,7 +335,7 @@ that `make certify` requests.
 | `tests/acl2/retention-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 49 | 0 | 0 |
 | `tests/acl2/scheduler-peers-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/scheduler-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 103 | 0 | 0 |
-| `tests/acl2/served-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 95 | 0 | 0 |
+| `tests/acl2/served-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 116 | 0 | 0 |
 | `tests/acl2/sha256-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 21 | 0 | 0 |
 | `tests/acl2/statement-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 40 | 0 | 0 |
 | `tests/acl2/store-files-exploration-tests.lisp` | root | 0 | 29 | 0/0/0/29 | 58 | 0 | 0 |
