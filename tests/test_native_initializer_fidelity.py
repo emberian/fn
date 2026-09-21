@@ -62,6 +62,7 @@ class NativeInitializerSourceMapTests(unittest.TestCase):
         self.assertIsNotNone(config_names)
         self.assertNotIn("handler-case", config_names.group(0))
         self.assertIn(":init-config-records-final-enumerate", source)
+        self.assertIn(":fnn-test-config-no-read", source)
 
 
 @unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK),
@@ -106,15 +107,20 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         self.assertEqual(reopened.returncode, run_store.EXIT_FAULT, reopened.stderr)
         self.assertIn(b"allocation frontier", reopened.stderr)
 
-    def test_second_config_enumeration_fault_is_not_an_empty_history(self):
+    def test_second_config_enumeration_eacces_is_not_empty_history(self):
         store = self.base / "enumeration"
-        failed = self.invoke(store, "init", "init-config-records-final-enumerate:eio")
-        self.assertEqual(failed.returncode, run_store.EXIT_FAULT, failed.stderr)
-        self.assertIn(b"Input/output error", failed.stderr)
-        # Both publication helpers have run.  The injected error is before the
-        # second directory enumeration, so a silent NIL conversion would have
-        # continued to final barriers and reported a successful init instead.
-        self.assertTrue((store / "config" / "00000001.cfg").is_file())
+        config_dir = store / "config"
+        try:
+            failed = self.invoke(store, "init", "init-config-records-final-enumerate:eacces")
+            self.assertEqual(failed.returncode, run_store.EXIT_FAULT, failed.stderr)
+            # The test control removes directory access immediately before
+            # fnn-list-directory.  EACCES therefore comes from that real call;
+            # the former handler would have returned NIL and init would pass.
+            self.assertEqual(config_dir.stat().st_mode & 0o777, 0)
+        finally:
+            if config_dir.exists():
+                os.chmod(config_dir, 0o700)
+        self.assertTrue((config_dir / "00000001.cfg").is_file())
         reopened = self.invoke(store, "recover")
         self.assertEqual(reopened.returncode, run_store.EXIT_OK, reopened.stderr)
 
