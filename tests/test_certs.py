@@ -469,6 +469,42 @@ class ArtifactSetTests(unittest.TestCase):
             self.assertFalse((target / "books/base.cert").exists())
             self.assertFalse((target / "books/mid.cert").exists())
 
+    def test_source_identical_parent_and_child_from_different_absolute_origins_refuse(self):
+        """Regression for the full-book-name conflict seen in the farm logs.
+
+        Both source trees have byte-identical books.  Their certificate bytes
+        model ACL2's absolute post-alist: the parent from B requires B's child,
+        while the only cached child is from A.  The legacy per-book installer
+        assembles that invalid pair; set installation refuses it before ACL2.
+        """
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two, \
+                tempfile.TemporaryDirectory() as destination:
+            cache = Path(destination) / "cache"
+            first = worktree(one, certified=["books/base"])
+            second = worktree(two, certified=["books/mid"])
+            (first / "books/base.cert").write_bytes(
+                SERIALIZED + b" FULL-BOOK /farm/run-a/books/base.lisp")
+            (second / "books/mid.cert").write_bytes(
+                SERIALIZED + b" REQUIRES /farm/run-b/books/base.lisp")
+            self.publish(first, cache, ["books/base"], "/farm/run-a")
+            self.publish(second, cache, ["books/mid"], "/farm/run-b")
+            target = worktree(destination + "/target")
+
+            legacy = certs.install(target, cache, ["books/base", "books/mid"])
+            self.assertEqual(legacy.installed, 2)
+            self.assertIn(b"/farm/run-a/books/base.lisp",
+                          (target / "books/base.cert").read_bytes())
+            self.assertIn(b"/farm/run-b/books/base.lisp",
+                          (target / "books/mid.cert").read_bytes())
+
+            (target / "books/base.cert").unlink()
+            (target / "books/mid.cert").unlink()
+            refused = certs.install_artifact_set(
+                target, cache, ["books/mid"], self.TOOLCHAIN)
+            self.assertIsNone(refused.artifact_set)
+            self.assertFalse((target / "books/base.cert").exists())
+            self.assertFalse((target / "books/mid.cert").exists())
+
     def test_one_complete_origin_is_installed_as_a_unit(self):
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two:
             source = worktree(one, certified=["books/base", "books/mid"])
@@ -495,6 +531,54 @@ class ArtifactSetTests(unittest.TestCase):
                 target, cache, ["books/mid"], "b" * 64)
             self.assertIsNone(report.artifact_set)
             self.assertCountEqual(report.uncached, ["books/base", "books/mid"])
+
+    def test_incremental_install_requires_the_origin_it_will_extend(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two, \
+                tempfile.TemporaryDirectory() as destination:
+            cache = Path(destination) / "cache"
+            first = worktree(one, certified=["books/base", "books/mid"])
+            second = worktree(two, certified=["books/base", "books/mid"])
+            for root, label in ((first, b"/farm/run-a"), (second, b"/farm/run-b")):
+                for name in ("books/base", "books/mid"):
+                    (root / f"{name}.cert").write_bytes(
+                        SERIALIZED + b" FULL-BOOK " + label + b"/" + name.encode())
+            self.publish(first, cache, ["books/base", "books/mid"], "/farm/run-a")
+            self.publish(second, cache, ["books/base", "books/mid"], "/farm/run-b")
+            target = worktree(destination + "/target")
+            report = certs.install_artifact_set(
+                target, cache, ["books/mid"], self.TOOLCHAIN,
+                require_origin="/farm/run-a")
+            self.assertEqual(report.artifact_origin, "/farm/run-a")
+            self.assertIn(b"/farm/run-a/books/base",
+                          (target / "books/base.cert").read_bytes())
+            self.assertIn(b"/farm/run-a/books/mid",
+                          (target / "books/mid.cert").read_bytes())
+
+    def test_incremental_set_needs_dependencies_not_the_changed_root(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as destination:
+            cache = Path(destination) / "cache"
+            source = worktree(one, certified=["books/base"])
+            self.publish(source, cache, ["books/base"], "/farm/canonical")
+            target = worktree(destination + "/target")
+            report = certs.install_artifact_set(
+                target, cache, ["books/mid"], self.TOOLCHAIN,
+                require_origin="/farm/canonical", dependencies_only=True)
+            self.assertEqual(report.artifact_origin, "/farm/canonical")
+            self.assertEqual(report.books, 1)
+            self.assertTrue((target / "books/base.cert").exists())
+            self.assertFalse((target / "books/mid.cert").exists())
+
+    def test_closure_recertification_purges_every_stale_pair_on_miss(self):
+        with tempfile.TemporaryDirectory() as directory:
+            target = worktree(directory, certified=["books/base", "books/mid"])
+            report = certs.install_artifact_set(
+                target, target / "empty-cache", ["books/mid"], self.TOOLCHAIN,
+                require_origin=str(target), purge_on_miss=True)
+            self.assertIsNone(report.artifact_set)
+            self.assertEqual(report.removed_foreign, 4)
+            for name in ("books/base", "books/mid"):
+                self.assertFalse((target / f"{name}.cert").exists())
+                self.assertFalse((target / f"{name}.port").exists())
 
 
 class StatusAndRemoteTests(unittest.TestCase):

@@ -12,11 +12,14 @@ cache.
     python3 tools/farm.py wait persvati run-20260919T101500Z-4f2a
     python3 tools/farm.py status hbox
 
-``submit`` mirrors this worktree to the *same absolute path* on the host,
-installs everything the box's own certificate cache already holds into the
-mirrored tree, starts the runner detached with its own log and status file,
-and returns a run id.  The install is the difference between certifying what
-changed and certifying a whole dependency closure: on 2026-09-20 a lane's
+``submit`` mirrors this worktree to the requested absolute path on the host,
+installs one origin/toolchain-coherent certificate set for the selected
+closure into the mirrored tree, starts the runner detached with its own log and status file,
+and returns a run id.  The installer first computes the runner's exact selected
+roots and requires a complete cache set from that same absolute origin and ACL2
+executable.  A miss refuses before ACL2 starts unless ``--closure`` explicitly
+requests dependency-ordered recertification at the new origin.  The install is
+the difference between certifying what changed and certifying a whole dependency closure: on 2026-09-20 a lane's
 ``--closure`` run on an empty remote root spent 30 minutes re-certifying the
 substrate for four new books.  ``wait`` blocks on that id, printing progress
 every poll and never spinning; it returns the runner's own exit code.  hbox
@@ -76,10 +79,11 @@ EXCLUDES = ("build/", ".git/", "__pycache__/", ".venv/", "*.pyc")
 POLL_SECONDS = 30
 DEFAULT_WAIT_SECONDS = 6 * 60 * 60
 EVIDENCE = re.compile(r"Certification evidence: (build/acl2/[A-Za-z0-9._-]+)")
-# `certs.py install` prints one counted line; these are the numbers worth
-# recording with the run, and their absence means the install did not run.
-INSTALLED = re.compile(r"installed (\d+), kept identical local (\d+), "
-                       r"no cached pair (\d+), foreign-local (\d+)")
+# `certs.py install-set` prints the identity and counts of the one set it
+# selected.  A missing identity means there was no coherent input set.
+INSTALLED_SET = re.compile(
+    r"artifact-set (\S+) origin (\S+) source (\S+) toolchain (\S+); "
+    r"installed (\d+), kept (\d+), missing (\d+), removed (\d+)")
 
 # Seams: the tests drive the real command construction through these.
 RUN = subprocess.run
@@ -167,28 +171,84 @@ def certs_script(host: str, root: Path, action: str,
             f"{kind}{action}")
 
 
-def parse_installed(output: str) -> dict[str, int]:
-    """The counted line `certs.py install` prints, as numbers."""
-    found = INSTALLED.search(output)
+def parse_installed(output: str) -> dict[str, object]:
+    """The identity/count line `certs.py install-set` prints."""
+    found = INSTALLED_SET.search(output)
     if not found:
         return {}
-    return dict(zip(("installed", "kept", "uncached", "foreign_local"),
-                    (int(number) for number in found.groups())))
+    artifact_set, origin, source, toolchain, *numbers = found.groups()
+    return {
+        "artifact_set": None if artifact_set == "NONE" else artifact_set,
+        "origin": None if origin == "NONE" else origin,
+        "source_identity": None if source == "NONE" else source,
+        "toolchain_identity": None if toolchain == "NONE" else toolchain,
+        **dict(zip(("installed", "kept", "missing", "removed"),
+                   (int(number) for number in numbers))),
+    }
 
 
-def install_from_cache(host: str, remote: Path, cache: str | None = None) -> dict:
-    """Install the box's cached pairs into the mirrored tree, and say how many.
+def selection_words(books: list[str], affected_by: list[str],
+                    closure: bool) -> list[str]:
+    """The runner arguments that select its exact requested book list."""
+    words = ["python3", "tools/certify_books.py", "--dry-run"]
+    for path in affected_by:
+        words.extend(["--affected-by", path])
+    if closure:
+        words.append("--closure")
+    words.extend(books)
+    return words
 
-    A cache miss is not a reason to refuse the run: the runner certifies what
-    it must.  So a failure here is recorded with the run, never raised.
+
+def cache_preflight_script(host: str, remote: Path, books: list[str],
+                           affected_by: list[str], closure: bool,
+                           cache: str | None = None) -> str:
+    """Select and install one exact-origin dependency set before ACL2 starts.
+
+    Incremental certification extends certificates at ``remote``.  It may
+    therefore reuse only a complete set already authored at that same absolute
+    root with the same ACL2 executable.  A relocatable set from another origin
+    is valid for loading a native image, but extending it would create a parent
+    at ``remote`` whose children retain the other origin's full-book-names.
     """
-    answer = ssh(host, certs_script(host, remote, "install", cache=cache),
-                 check=False)
+    settings = host_settings(host, cache)
+    select = " ".join(shlex.quote(word) for word in
+                      selection_words(books, affected_by, closure))
+    mode = "--purge-on-miss " if closure else "--dependencies-only "
+    return (
+        f"cd {remote_quote(remote)} || exit 9; "
+        f"roots=$({select}) || exit 13; "
+        f"if [ -z \"$roots\" ]; then "
+        "echo 'artifact-set EMPTY origin NONE source NONE toolchain NONE; "
+        "installed 0, kept 0, missing 0, removed 0'; exit 0; fi; "
+        f"acl2={settings['acl2']}; "
+        "acl2_sha=$(python3 -c 'import hashlib,sys; "
+        "print(hashlib.sha256(open(sys.argv[1], \"rb\").read()).hexdigest())' "
+        "\"$acl2\") || exit 14; "
+        f"python3 tools/certs.py --cache {remote_quote(settings['cache'])} "
+        f"--toolchain-sha256 \"$acl2_sha\" "
+        f"--require-origin {remote_quote(remote)} {mode}install-set $roots")
+
+
+def install_from_cache(host: str, remote: Path, books: list[str],
+                       affected_by: list[str], closure: bool,
+                       cache: str | None = None) -> dict[str, object]:
+    """Install one coherent input set, or require explicit closure recertification."""
+    answer = ssh(host, cache_preflight_script(
+        host, remote, books, affected_by, closure, cache), check=False)
     counts = parse_installed(answer.stdout)
     if counts and answer.returncode == 0:
         return counts
-    return {"error": (answer.stdout.strip() or
-                      f"ssh exited {answer.returncode}")[-400:]}
+    if closure and counts and answer.returncode == 1:
+        # `--closure` is the explicit recertification plan.  install-set has
+        # removed stale pairs for the exact closure; the dependency-ordered
+        # runner will now author every pair under this one remote root.
+        return counts | {"recertify_closure": True}
+    detail = (answer.stdout.strip() or
+              f"ssh exited {answer.returncode}")[-800:]
+    raise FarmError(
+        f"{host}: no origin/toolchain-coherent certificate set at {remote}; "
+        f"ACL2 was not started. Re-run with --closure to recertify the selected "
+        f"dependency closure at that root. Cache preflight: {detail}")
 
 
 def run_id() -> str:
@@ -298,7 +358,7 @@ def submit(host: str, root: Path, books: list[str], jobs: int,
     identifier = run_id()
     remote = expand_remote(host, remote) if remote else root
     push(host, root, remote)
-    cached = install_from_cache(host, remote, cache)
+    cached = install_from_cache(host, remote, books, affected_by, closure, cache)
     print(f"{identifier}: from {host}'s cache, "
           + ", ".join(f"{name} {value}" for name, value in cached.items()),
           file=sys.stderr)

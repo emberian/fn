@@ -463,6 +463,34 @@ class CachePublishTests(unittest.TestCase):
             self.assertEqual(repository.cached_books(),
                              sorted(ParallelScheduleTests.ORDER))
 
+    def test_immediate_publish_carries_toolchain_identity_before_final_sweep(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = FakeRepository(directory, {"books/base": []})
+            cert = repository.root / "books/base.cert"
+            cert.write_text('(IN-PACKAGE "ACL2")\n:BEGIN-PORTCULLIS-CMDS\n'
+                            ':END-PORTCULLIS-CMDS\n')
+            nonce = "1" * 32
+            output = "ACL2 !>" + runner.success_token("books/base", nonce) + "\n"
+            source_digests = {
+                "books/base.lisp": runner.digest(repository.root / "books/base.lisp")}
+            toolchain = {
+                "acl2_version": "ACL2 Version 8.7",
+                "acl2_executable_sha256": "a" * 64,
+                "environment": {"ACL2_BOOK_HASH_ALISTP": "NIL"},
+                "runner_sha256": "b" * 64,
+                "reader_sha256": "c" * 64,
+            }
+            with mock.patch.object(runner, "ROOT", repository.root), \
+                    mock.patch.object(runner.ledger, "ROOT", repository.root), \
+                    mock.patch.dict(os.environ,
+                                    {"FN_CERT_CACHE": str(repository.cache)}):
+                event = runner.publish_pair(
+                    "books/base", "passed", repository.root / "run", nonce,
+                    source_digests, output, 0, toolchain)
+            self.assertTrue(event["published"])
+            meta = json.loads(next(repository.cache.rglob("meta.json")).read_text())
+            self.assertEqual(meta["toolchain"], toolchain)
+
     def test_no_publish_leaves_the_cache_untouched(self):
         with tempfile.TemporaryDirectory() as directory:
             repository = FakeRepository(directory, ParallelScheduleTests.LAYERED)

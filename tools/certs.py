@@ -34,13 +34,15 @@ the sorted ``<path>:<sha256>`` listing of the book and its whole local include
 closure, which also keeps two same-byte books apart, since each listing names
 its own path.
 
-**And a pair is installed only where its sub-book paths cannot mislead.**  An
+**And a certification dependency closure is installed as one set.**  An
 ACL2 certificate's post-alist names every sub-book by *absolute* path, so a
-pair made in worktree X and installed in worktree Y on one machine makes Y
-include X's books, and Y's own certificates then conflict with them.  Each
-entry records the ``origin_root`` it was produced in; ``install`` takes this
-worktree's own entry, else one whose origin does not exist on this machine,
-and otherwise refuses and says ``foreign-local``.
+parent from worktree X and a child from worktree Y conflict even when both
+source closures are byte-identical.  Each entry records the ``origin_root``
+and toolchain it was produced with; ``install-set`` chooses one complete
+origin/toolchain group for the requested roots or refuses before ACL2 starts.
+An incremental certification also requires that origin to be the absolute
+tree it will extend.  ``install`` remains the legacy per-book inspection and
+recovery command; certification and native builds must use ``install-set``.
 
 **Unless that origin is not a worktree.**  A gate directory and a farm run
 root are snapshots: each is made from one commit by one run, and nothing edits
@@ -58,7 +60,7 @@ cache only moves its result to another worktree, where ACL2 checks it again.
 
     python3 tools/certs.py publish [--manifest PATH] [--remote hbox]
     python3 tools/certs.py publish --origin-kind gate    # from a gate directory
-    python3 tools/certs.py install                   # entering a new worktree
+    python3 tools/certs.py install-set books/served # coherent dependency set
     python3 tools/certs.py status
 """
 
@@ -167,10 +169,11 @@ class Report:
         elif self.action == "install-set":
             out.append(
                 "  artifact-set {} origin {} source {} toolchain {}; "
-                "installed {}, kept {}, missing {}".format(
+                "installed {}, kept {}, missing {}, removed {}".format(
                     self.artifact_set or "NONE", self.artifact_origin or "NONE",
                     self.source_identity or "NONE", self.toolchain_identity or "NONE",
-                    self.installed, self.kept, len(self.uncached)))
+                    self.installed, self.kept, len(self.uncached),
+                    self.removed_foreign))
         else:
             out.append(f"  certified here {self.certified_locally}, "
                        f"usable from the cache "
@@ -416,11 +419,22 @@ class ArtifactSet:
         return not self.missing
 
 
-def required_closure(root: Path, roots: Iterable[str]) -> dict[str, str]:
-    """The union of the local include closures needed by ``roots``."""
+def required_closure(root: Path, roots: Iterable[str],
+                     dependencies_only: bool = False) -> dict[str, str]:
+    """The union of the local include closures needed by ``roots``.
+
+    An incremental certification will author each selected root itself, so its
+    reusable input set contains only books outside that selected set.  Roots
+    which include one another are all excluded: the scheduler will certify the
+    selected dependency before its selected parent.
+    """
+    selected = tuple(roots)
     required: dict[str, str] = {}
-    for name in roots:
+    for name in selected:
         required.update(closure(root, name))
+    if dependencies_only:
+        for name in selected:
+            required.pop(name, None)
     return required
 
 
@@ -440,7 +454,8 @@ def usable_origin(meta: dict, target: str) -> bool:
 
 
 def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
-                  toolchain_sha256: str | None = None) -> list[ArtifactSet]:
+                  toolchain_sha256: str | None = None,
+                  dependencies_only: bool = False) -> list[ArtifactSet]:
     """Candidate whole sets for ``roots``, ordered by usable coverage.
 
     Grouping is by origin *and* toolchain.  Closure keys already bind every
@@ -448,7 +463,7 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
     visible as a candidate only when no toolchain was requested; deployment
     passes the hash of the ACL2 executable it is about to run.
     """
-    needed = required_closure(root, roots)
+    needed = required_closure(root, roots, dependencies_only)
     required = tuple(sorted(needed))
     source_id = source_set_identity(needed)
     target = str(root.resolve())
@@ -494,18 +509,46 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
 
 def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
                          toolchain_sha256: str | None = None,
-                         reject: Iterable[str] = ()) -> Report:
+                         reject: Iterable[str] = (),
+                         require_origin: str | None = None,
+                         purge_on_miss: bool = False,
+                         dependencies_only: bool = False) -> Report:
     """Install one complete origin/toolchain set, never a per-book mixture."""
     rejected = set(reject)
     report = Report(action="install-set", cache=str(cache))
-    candidates = [one for one in artifact_sets(root, cache, roots, toolchain_sha256)
-                  if one.identity not in rejected]
+    roots = tuple(roots)
+    required = required_closure(root, roots, dependencies_only)
+    if not required:
+        report.books = 0
+        report.artifact_set = stable_identity({"empty": True})
+        report.artifact_origin = require_origin or str(root.resolve())
+        report.source_identity = source_set_identity({})
+        report.toolchain_identity = stable_identity({
+            "acl2_executable_sha256": toolchain_sha256})
+        return report
+    candidates = [one for one in artifact_sets(
+                      root, cache, roots, toolchain_sha256, dependencies_only)
+                  if one.identity not in rejected
+                  and (require_origin is None
+                       or one.origin_root == require_origin)]
     chosen = next((one for one in candidates if one.complete), None)
     if chosen is None:
-        required = required_closure(root, roots)
         report.books = len(required)
         best = candidates[0] if candidates else None
         report.uncached = list(best.missing if best else sorted(required))
+        if purge_on_miss:
+            # A closure recertification is safe only when it cannot consume a
+            # leftover per-book mixture before it has rebuilt the dependency.
+            # The certification scheduler orders this exact closure from
+            # dependencies to parents, so removing every local pair makes that
+            # premise explicit and leaves no ambiguous input behind.
+            for name in sorted(required):
+                source = root / f"{name}.lisp"
+                for suffix in (".cert", ".port"):
+                    artifact = source.with_suffix(suffix)
+                    if artifact.is_file():
+                        artifact.unlink()
+                        report.removed_foreign += 1
         return report
     report.books = len(chosen.required)
     report.artifact_set = chosen.identity
@@ -886,6 +929,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--toolchain-sha256", default=None,
                         help="for install-set, require certificates produced by "
                              "this ACL2 executable digest")
+    parser.add_argument("--require-origin", default=None,
+                        help="for install-set, require this exact certificate "
+                             "origin (needed when this run will extend the set)")
+    parser.add_argument("--purge-on-miss", action="store_true",
+                        help="for install-set, remove every local .cert/.port in "
+                             "the requested closure when no complete set exists")
+    parser.add_argument("--dependencies-only", action="store_true",
+                        help="for install-set, install the requested roots' local "
+                             "dependencies but not roots that this run will author")
     arguments = parser.parse_args(argv)
     root = Path(arguments.root).resolve()
     cache = Path(arguments.cache).expanduser() if arguments.cache else cache_directory()
@@ -903,7 +955,10 @@ def main(argv: list[str] | None = None) -> int:
         if not names:
             parser.error("install-set needs one or more root books")
         report = install_artifact_set(
-            root, cache, names, toolchain_sha256=arguments.toolchain_sha256)
+            root, cache, names, toolchain_sha256=arguments.toolchain_sha256,
+            require_origin=arguments.require_origin,
+            purge_on_miss=arguments.purge_on_miss,
+            dependencies_only=arguments.dependencies_only)
     else:
         report = status(root, cache)
     for line in report.lines():
