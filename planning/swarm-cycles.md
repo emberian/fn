@@ -16,6 +16,11 @@ Private group cryptography remains deferred, with privacy boundaries preserved.
 
 ## Current staffing and integration checkpoint
 
+Post-reboot correction (2026-09-21): the workers in the table below are the
+pre-crash assignments, not live agents. Source work and remote runs survived;
+see [recovery status](recovery-2026-09-21.md) before resuming any lane. Recovery
+uses bounded read-only audits first and does not restart the former swarm.
+
 D07 selects a Python-free production runtime. Frozen integration source
 `03eb3ba3` combines native owner/operator, safe feed filenames, application
 journals, BP receive evidence, checkpoint and anchor persistence. Its combined farm gate, both image builds and scoped runtime suites passed;
