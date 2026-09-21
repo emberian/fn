@@ -1,7 +1,8 @@
 # Decision workbook
 
 Status: D01, D02, D03, D04, and D17 have selected directions from the user on
-2026-09-18. Exact native encodings and cryptographic profiles remain open; other
+2026-09-18; D07's native-only runtime boundary was reaffirmed on 2026-09-21.
+Exact native encodings and cryptographic profiles remain open; other
 choices remain proposals. This is the agenda for discussion, not an approval
 gate for routine work. Record answers here with their rationale and consequences.
 No unanswered recommendation is silently promoted to an agreed decision.
@@ -36,7 +37,7 @@ authorship support are resolved below.
 
 ## Decisions to make together
 
-D01–D04 and D17 now have selected directions. The remaining table is a long-term
+D01–D04, D07 and D17 now have selected directions. The remaining table is a long-term
 backlog; detailed byte profiles and key lifecycle still need design. The
 [privacy note](../specs/privacy.md) keeps the eventual group-encryption protocol choice open.
 
@@ -48,7 +49,7 @@ backlog; detailed byte profiles and key lifecycle still need design. The
 | D04 — decided | Is private encrypted communication in the first release? | **Selected:** shared community groups first; design confidentiality and metadata boundaries now. | Private encrypted groups in the initial release are deferred. The later cryptosystem remains open. | M1 scope |
 | D05 | How much NNTP constitutes the first usable release? | Complete proposed READER + mandatory commands + POST + OVER; configured unmoderated groups. | A smaller experimental subset, explicitly without full bundle advertisement or broad client compatibility claims. | M1 session scope, M3 |
 | D06 | How far down should we implement indexes initially? | Journal/checkpoint authority with rebuildable in-memory indexes; add disk indexes when scale demands. | Disk-resident indexes immediately; earlier scale, larger recovery/refinement proof surface. | M2 |
-| D07 | What execution host should we target? | ACL2 on SBCL with a small Common Lisp host, versions and integration path pinned in M1. | Another supported Lisp or an external-process bridge; different packaging and boundary costs. | M1 |
+| D07 — decided | What execution host should we target? | **Selected:** native Lisp deployment, executing ACL2 definitions directly; no Python in the deployed node, CLI, launchers or runtime helpers. Continue the existing ACL2/SBCL integration with pinned versions. Python remains development/test tooling. | Python service/bridge retained only as a development oracle; it cannot satisfy the production v0 gate. | v0 across all waves |
 | D08 | What portable encoding and evolution policy? | Restricted deterministic CBOR, exact schema versions, bounded parsing; unknown objects may be carried opaquely but not interpreted as authority. | A custom binary grammar, or textual encoding; different tooling, size, and canonicalization costs. | M2 |
 | D09 | How do keys, algorithms, and signatures evolve? | Algorithm-tagged containers and explicit signing profiles; stable principals with recorded authorized key succession. Choose concrete suites after the threat/longevity discussion. | A fixed key-is-identity scheme; simpler v1, harder rotation and long-lived migration. | M2 |
 | D10 | How do we handle time, old backups, and forks? | Local counters plus explicit origin incarnations; causal references; restore/clone procedure creates or validates a fresh sequence namespace. | Depend on a central identity/sequence service; reduces offline autonomy. | M1 model, M4 restore tooling |
@@ -62,6 +63,21 @@ backlog; detailed byte profiles and key lifecycle still need design. The
 | D18 | How much should we prove before calling the first release usable? | Core invariants, codec properties, and conditional crash recovery first; state host/crypto/platform assumptions explicitly. | Ship an experimental server sooner with a smaller proved subset and equally explicit limits. | M1 proof scope, M3 release |
 
 ## Consequences worth thinking through
+
+### D07: native runtime, development tools outside it
+
+The 2026-09-21 user clarification says they do not want Python in a running fn
+process. `cv` recovery also found the earlier 2026-09-19T14:47:06.020Z criticism
+in Claude session `8d4521d3-3e8f-4a05-a722-a9c843463a45`: “I don't understand why
+we have so much going on in Python anyway, maybe it was a crutch we shouldn't
+have reached for?” The later Python service work did not close that concern.
+
+The production boundary is now explicit in [the host contract](../specs/host.md#selected-production-runtime),
+HST-001 and SCN-015. This selects native execution and excludes Python runtime
+helpers; it does not freeze a new crypto suite, turn raw Lisp into proved code,
+or remove any selected v0 feature. Keep Python tools for development/evidence,
+and carry the actual ACL2 machines into the native host rather than translating
+their decisions into a second implementation.
 
 ### D01: source bytes and compatibility
 

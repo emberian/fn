@@ -1183,8 +1183,8 @@
         "tests/evidence/2026-09-18-storage.json",
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "implementation_note": "Simulator, socket reader, and file-store bridge invoke actual ACL2 definitions. Raw-execution guards and production host packaging remain open.",
-      "note": "Advanced in substance and not in status. The w4/served-path lane removed the :program-mode fn-reader-chunk and the host's duplicate reply framing, so the wire pending_subject note is closed: the subject of fn-served-step-partition-independence and fn-served-step-preserves-connp is the one function the host calls per socket read. But host/scheduler-host.lisp is still :program mode, and books/owner -- the host of the real service -- does not certify, so no run executes the proved core through the service entry point."
+      "implementation_note": "D07 selects a Python-free deployed Lisp node and operator CLI calling the executable ACL2 core directly. Python build/test/differential tools remain permitted. Current bin/fn and service unit still invoke the Python owner; native store/reader/BP components do not yet establish full native service parity. Native owner, configuration/control/CLI, selected feature parity and deployment dependency gate remain open.",
+      "note": "Owner and served components have since certified and the frozen cdbd6b2 Python service matrix ran with recorded disagreements; the earlier owner-does-not-certify blocker is historical. Neither those results nor native component tests establish HST-001 for the full native production service. Required: exact host-called subjects or named refinements, justified execution guards, and SCN-015 native deployment/dependency evidence; no status advancement follows from choosing D07."
     },
     {
       "id": "HST-002",

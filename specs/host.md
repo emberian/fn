@@ -6,6 +6,40 @@ now executes the [persistence experiment](store-experiment.md) through the same
 ACL2 node and record/replay definitions. The production Common Lisp packaging,
 guard boundary, and platform qualification remain open.
 
+## Selected production runtime
+
+D07 requires a native Lisp node and operator CLI, executing the ACL2 core
+directly in the supported host image. The deployed service, launchers, recovery,
+NNTP posting/peering, BP workflows, live configuration, control and selected
+identity/anchor operations must not require a Python interpreter, module or
+helper subprocess. Python remains permitted in build, certification, test,
+benchmark and differential-oracle tooling outside the deployed node.
+
+This is a requirement, not the current implementation: `bin/fn` and the service
+unit still start the Python owner. Native store, reader and BP components do not
+yet establish complete service parity. `FN_HOST=native` through a Python argument
+parser is a test convenience, not a conforming production entry point.
+
+HST-001 includes this runtime boundary. The replacement host must call the same
+ACL2 semantic subjects or a named justified refinement; translating Python's
+decisions into raw Lisp does not meet it. Configuration defaults, bounds, framing,
+identity derivation and persistence decisions retain one ACL2 owner. External
+configuration/control data use bounded parsers, never the Lisp reader/evaluator.
+HST-002 through HST-005 still apply to the native owner, including uncertainty
+fencing, generation checks, concurrent sessions and fault isolation.
+
+The v0 runtime gate must exercise the installed CLI and two native services in
+an environment without Python, including restart/recovery and all selected
+features. Record image/source/dependency identities and child-process execution;
+a restricted PATH alone cannot exclude an absolute Python helper. An external
+Python harness may drive the gate but is not part of either node. Missing native
+features remain open rather than falling back to the Python service. Existing
+Python integration results remain scoped historical evidence.
+
+Raw Lisp I/O, FFI, TLS/crypto libraries, runtime/compiler and filesystem/hardware
+assumptions remain explicit trust boundaries. A Python-free process is a
+deployment property, not a theorem of functional correctness or durability.
+
 ## Core interface
 
 Conceptual events include connection-opened, input-octets, connection-closed,

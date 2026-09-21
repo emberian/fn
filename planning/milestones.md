@@ -106,6 +106,13 @@ the remaining product choices.
 
 ## Release shape: v0 and v1
 
+D07 clarification (2026-09-21): all six v0 waves must run through the native Lisp
+node and operator CLI without Python runtime dependencies. Native component tests
+or a Python service with a native subprocess do not close this gate. See the
+[runtime contract](../specs/host.md#selected-production-runtime) and SCN-015.
+The existing Python matrix remains useful development evidence; its node launch
+and dependency checks must adopt the native deployment before establishing v0.
+
 Agreed 2026-09-20. **v0 is every feature usable between two peered fn nodes.**
 Not every feature designed, and not a mission profile: the test of v0 is that
 two fn nodes, peered, can do everything fn claims to do, with the assurance

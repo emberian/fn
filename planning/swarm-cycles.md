@@ -16,6 +16,17 @@ Private group cryptography remains deferred, with privacy boundaries preserved.
 
 ## Current staffing and integration checkpoint
 
+D07 now selects a Python-free production runtime. `owner-convergence` (Sol)
+owns native multiplexed owner/config/feed/control adoption after its current
+integration checkpoint; `native-storage-codec` (Sol) owns shared native storage
+I/O; `storage-codecs` (Terra, new native-CLI worktree) inventories and implements
+independent CLI/config/packaging work. The old transaction-codec worktree remains
+owned by `artifact-set` (Sol). Native BP convergence continues independently.
+No new Python service feature closes a production requirement. Python harnesses
+and differential oracles remain development tools. The native migration carries
+the existing model/host correspondence and fault obligations, not a fresh raw-Lisp
+implementation of the decisions already owned by ACL2.
+
 The user activated an overnight autonomous goal and then requested lower usage:
 use Luna/Terra for appropriate work and reserve Astra for larger review and
 convergence steps. Routine implementation, test repair and farm execution now
