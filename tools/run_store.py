@@ -1315,16 +1315,14 @@ class Store:
         The journal replayed above stays the authority.  The outcome is one of
         ("none",), ("ok", generation, sequence, differential) or ("corrupt",
         reason); a corrupt selected generation is reported, never replaced by
-        an older one.  `differential` is ACL2's comparison of the two nodes;
-        it is asserted only under FN_CHECKPOINT_DIFFERENTIAL.
+        an older one.  ACL2's differential mismatch is corruption on every
+        open because the selected diagnostic image disagrees with full replay.
         """
         from tools import checkpoint
         try:
             outcome = checkpoint.restore_selected(self, acl2, records, self.frontier)
         except checkpoint.CheckpointCorrupt as error:
             return ("corrupt", str(error))
-        if outcome[0] == "ok" and checkpoint.differential_enabled():
-            assert outcome[3], "checkpoint plus suffix differs from full replay"
         return outcome
 
     def advance_frontier(self, acl2, current_txid):

@@ -27,6 +27,7 @@
 (in-package "ACL2")
 (include-book "checkpoint-codec")
 (include-book "journal-publish")
+(include-book "byte-store-txn-name")
 (include-book "defrecord")
 ; The codec withdraws its reader and encoder vocabulary at export
 ; (docs/proof-style.md s2); the proofs here induct with it.
@@ -314,12 +315,32 @@
          (fn-cpp-marker-dir-result s result))
         (t s)))
 
-; The generation namespace is parsed at the host boundary, but choosing the
-; next generation and distinguishing a gap from uint32 exhaustion is an ACL2
-; decision.  NAMES must be ascending and gap-free from zero.
+; The complete checkpoint namespace is an ACL2 decision: observation bounds,
+; rendering, canonical parsing, ordering, gap detection and exhaustion.  The
+; host supplies only the bounded list of directory-entry octets.
+(defconst *fn-cpp-max-generations* 4096)
+
+; One explicit selection marker may coexist with the retained generations.
+; The host asks for this bound before it starts retaining directory names.
+(defconst *fn-cpp-namespace-observation-limit*
+  (+ 1 *fn-cpp-max-generations*))
+
+; A selection payload is one canonical CBOR uint32, whose longest encoding is
+; five octets, inside the common frame header and trailer.
+(defconst *fn-cpp-selection-read-bound*
+  (+ *fn-frame-overhead-octets* 5))
+
+(defconst *fn-cpp-generation-prefix*
+  '(#\g #\e #\n #\e #\r #\a #\t #\i #\o #\n #\-))
+(defconst *fn-cpp-generation-suffix* '(#\. #\f #\n #\c #\p))
+(defconst *fn-cpp-selection-name*
+  '(#\s #\e #\l #\e #\c #\t #\e #\d #\. #\f #\n #\c #\p))
+
 (defun fn-cpp-next-generation-from (names expected)
   (declare (xargs :guard t))
-  (cond ((not (fn-record-uint32p expected)) :exhausted)
+  (cond ((or (not (fn-record-uint32p expected))
+             (>= expected *fn-cpp-max-generations*))
+         :exhausted)
         ((null names) expected)
         ((atom names) :bad)
         ((equal (car names) expected)
@@ -329,6 +350,114 @@
 (defun fn-cpp-next-generation (names)
   (declare (xargs :guard t))
   (fn-cpp-next-generation-from names 0))
+
+; The filename codec reuses the byte store's one natural-decimal renderer.
+; Prefix/suffix removal and canonical re-rendering reject aliases such as
+; generation-00.fncp, signs, whitespace, overflow and partial suffixes.
+(defun fn-cpp-strip-prefix (prefix chars)
+  (declare (xargs :guard t))
+  (if (consp prefix)
+      (if (and (consp chars) (equal (car prefix) (car chars)))
+          (fn-cpp-strip-prefix (cdr prefix) (cdr chars))
+        '(:error :prefix))
+    (list :ok chars)))
+
+(defthm fn-cpp-strip-prefix-of-append
+  (implies (true-listp prefix)
+           (equal (fn-cpp-strip-prefix prefix (append prefix chars))
+                  (list :ok chars)))
+  :hints (("Goal" :induct (append prefix chars))))
+
+(defun fn-cpp-generation-name-chars (generation)
+  (declare (xargs :guard t))
+  (if (not (fn-record-uint32p generation))
+      :bad
+    (append *fn-cpp-generation-prefix*
+            (fn-bs-txn-natural-digits generation)
+            *fn-cpp-generation-suffix*)))
+
+(defun fn-cpp-generation-name-decode (chars)
+  (declare (xargs :guard t))
+  (let ((front (fn-cpp-strip-prefix *fn-cpp-generation-prefix* chars)))
+    (if (not (equal (car front) :ok))
+        '(:error :name)
+      (let ((back (fn-cpp-strip-prefix
+                   (fn-bs-txn-reverse *fn-cpp-generation-suffix*)
+                   (fn-bs-txn-reverse (cadr front)))))
+        (if (not (equal (car back) :ok))
+            '(:error :name)
+          (let* ((digits (fn-bs-txn-reverse (cadr back)))
+                 (generation (fn-bs-txn-decode-digits digits)))
+            (if (and (consp digits)
+                     (fn-record-uint32p generation)
+                     (equal chars
+                            (fn-cpp-generation-name-chars generation)))
+                (list :ok generation)
+              '(:error :name))))))))
+
+(defun fn-cpp-namespace-name-decode (chars)
+  (declare (xargs :guard t))
+  (if (equal chars *fn-cpp-selection-name*)
+      '(:selection)
+    (fn-cpp-generation-name-decode chars)))
+
+(defun fn-cpp-insert-generation (generation generations)
+  (declare (xargs :guard t))
+  (if (consp generations)
+      (if (and (natp generation) (natp (car generations))
+               (< generation (car generations)))
+          (cons generation generations)
+        (cons (car generations)
+              (fn-cpp-insert-generation generation (cdr generations))))
+    (list generation)))
+
+(defun fn-cpp-namespace-plan-aux (names generations)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (let ((decoded (fn-cpp-namespace-name-decode (car names))))
+        (cond ((equal (car decoded) :selection)
+               (fn-cpp-namespace-plan-aux (cdr names) generations))
+              ((equal (car decoded) :ok)
+               (fn-cpp-namespace-plan-aux
+                (cdr names)
+                (fn-cpp-insert-generation (cadr decoded) generations)))
+              (t '(:error :name))))
+    (if (null names) (list :ok generations) '(:error :names))))
+
+(defun fn-cpp-namespace-plan (names)
+  (declare (xargs :guard t))
+  (if (and (true-listp names)
+           (<= (len names) *fn-cpp-namespace-observation-limit*))
+      (fn-cpp-namespace-plan-aux names nil)
+    '(:error :bound)))
+
+(defthm fn-cpp-generation-name-decode-of-render
+  (implies (fn-record-uint32p generation)
+           (equal (fn-cpp-generation-name-decode
+                   (fn-cpp-generation-name-chars generation))
+                  (list :ok generation)))
+  :hints (("Goal"
+           :use ((:instance fn-cpp-strip-prefix-of-append
+                            (prefix *fn-cpp-generation-prefix*)
+                            (chars (append
+                                    (fn-bs-txn-natural-digits generation)
+                                    *fn-cpp-generation-suffix*)))
+                 (:instance fn-cpp-strip-prefix-of-append
+                            (prefix (fn-bs-txn-reverse
+                                     *fn-cpp-generation-suffix*))
+                            (chars (fn-bs-txn-reverse
+                                    (fn-bs-txn-natural-digits generation))))
+                 (:instance fn-bs-txn-reverse-involution
+                            (xs (fn-bs-txn-natural-digits generation)))
+                 (:instance fn-bs-txn-natural-digits-consp
+                            (n generation))
+                 (:instance fn-bs-txn-decode-natural-digits-left-inverse
+                            (n generation)))
+           :in-theory (e/d (fn-cpp-generation-name-decode
+                            fn-cpp-generation-name-chars)
+                           (fn-bs-txn-natural-digits
+                            fn-bs-txn-natural-digits-rev
+                            fn-bs-txn-reverse)))))
 
 ; Authorize the shared immutable publication machine only when the caller's
 ; boundary observations establish exclusive authority, a gap-free generation

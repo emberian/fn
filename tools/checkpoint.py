@@ -27,7 +27,6 @@ from __future__ import annotations
 import argparse
 import os
 from pathlib import Path
-import re
 import sys
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -39,12 +38,6 @@ from tools import run_store  # noqa: E402
 from tools.run_store import (EXIT_FAULT, EXIT_OK, NO_FAULTS, StoreError,  # noqa: E402
                              StoreFault, check_regular, fsync_dir, fsync_file,
                              read_regular_bounded, write_all)
-
-GENERATION_NAME = re.compile(r"^generation-([0-9]+)\.fncp$")
-SELECTION_NAME = "selected.fncp"
-# The selection frame is a header, one CBOR uint and a trailer.
-SELECTION_BOUND = 4096
-
 
 class CheckpointCorrupt(StoreFault):
     """The selected generation or the marker exists but does not decode."""
@@ -58,25 +51,75 @@ def checkpoints_dir(store):
     return store.root / "checkpoints"
 
 
-def generations(store):
-    """Published generation numbers, ascending."""
+def _call(bridge, form):
+    return frame_bridge.read_form(bridge.call(form))
+
+
+def _name(bridge, function, *arguments):
+    value = _call(bridge, "({} {})".format(
+        function, " ".join(str(int(argument)) for argument in arguments)))
+    try:
+        raw = frame_bridge._as_bytes(value)
+        name = raw.decode("ascii")
+    except (TypeError, ValueError, UnicodeError) as error:
+        raise StoreFault("ACL2 returned an invalid checkpoint name") from error
+    if not name or "/" in name or "\0" in name:
+        raise StoreFault("ACL2 returned an invalid checkpoint path component")
+    return name
+
+
+def generation_name(bridge, generation):
+    return _name(bridge, "fn-store-checkpoint-generation-name-octets", generation)
+
+
+def selection_name(bridge):
+    return _name(bridge, "fn-store-checkpoint-selection-name-octets")
+
+
+def namespace_observation_limit(bridge):
+    value = _call(bridge, "(fn-store-checkpoint-namespace-observation-limit)")
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        raise StoreFault("ACL2 returned an invalid checkpoint namespace bound")
+    return value
+
+
+def selection_read_bound(bridge):
+    value = _call(bridge, "(fn-store-checkpoint-selection-read-bound)")
+    if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+        raise StoreFault("ACL2 returned an invalid checkpoint selection bound")
+    return value
+
+
+def generations(store, bridge):
+    """ACL2's sorted plan for one bounded checkpoint directory observation."""
     directory = checkpoints_dir(store)
     if not directory.is_dir():
         return []
-    found = []
-    for name in os.listdir(directory):
-        match = GENERATION_NAME.match(name)
-        if match:
-            found.append(int(match.group(1)))
-    return sorted(found)
+    limit = namespace_observation_limit(bridge)
+    names = []
+    with os.scandir(directory) as entries:
+        for entry in entries:
+            if len(names) >= limit:
+                raise StoreFault("checkpoint namespace exceeds ACL2 observation bound")
+            names.append(entry.name.encode("utf-8", "surrogateescape"))
+    literal = "(" + " ".join(bridge.literal(name) for name in names) + ")"
+    plan = _call(bridge, "(fn-store-checkpoint-namespace-plan '{})".format(literal))
+    if (not isinstance(plan, list) or len(plan) != 2 or plan[0] != "ok"
+            or not isinstance(plan[1], list)
+            or any(not isinstance(value, int) or isinstance(value, bool) or value < 0
+                   for value in plan[1])):
+        raise StoreFault("ACL2 rejected checkpoint namespace: {}".format(plan))
+    for generation in plan[1]:
+        check_regular(generation_path(store, bridge, generation))
+    return plan[1]
 
 
-def generation_path(store, generation):
-    return checkpoints_dir(store) / "generation-{}.fncp".format(generation)
+def generation_path(store, bridge, generation):
+    return checkpoints_dir(store) / generation_name(bridge, generation)
 
 
-def selection_path(store):
-    return checkpoints_dir(store) / SELECTION_NAME
+def selection_path(store, bridge):
+    return checkpoints_dir(store) / selection_name(bridge)
 
 
 def _payload_bound():
@@ -112,10 +155,18 @@ def publish(store, bridge, records, faults=NO_FAULTS):
     _ensure_dir(store)
     protected = capture_protected(bridge, records, store.frontier)
     framed = frame_bridge.session().seal(protected)
-    existing = generations(store)
-    generation = (existing[-1] + 1) if existing else 0
+    existing = generations(store, bridge)
+    generation = _call(
+        bridge, "(fn-store-checkpoint-next-generation '{})".format(
+            "(" + " ".join(map(str, existing)) + ")"))
+    if generation == "bad":
+        raise StoreFault("checkpoint generation namespace is not gap-free")
+    if generation == "exhausted":
+        raise StoreError("checkpoint generation domain exhausted")
+    if not isinstance(generation, int) or isinstance(generation, bool) or generation < 0:
+        raise StoreFault("ACL2 returned an invalid checkpoint generation")
     stage = store.staging / ".checkpoint-{}-{}".format(os.getpid(), os.urandom(12).hex())
-    final = generation_path(store, generation)
+    final = generation_path(store, bridge, generation)
     # The file kernel's publication discipline: data barrier under a staged
     # name, non-overwriting link under the generation name, directory barrier.
     fd = os.open(stage, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -144,7 +195,7 @@ def publish(store, bridge, records, faults=NO_FAULTS):
 def select(store, bridge, generation, faults=NO_FAULTS):
     """Make a complete published generation the authority."""
     store._require_writer()
-    if generation not in generations(store):
+    if generation not in generations(store, bridge):
         raise StoreError("generation {} is not published".format(generation))
     value = frame_bridge.read_form(bridge.call(
         "(fn-store-checkpoint-selection-protected {})".format(int(generation))))
@@ -160,7 +211,7 @@ def select(store, bridge, generation, faults=NO_FAULTS):
         os.close(fd)
     faults.at("checkpoint:selection-durable")
     try:
-        os.replace(stage, selection_path(store))
+        os.replace(stage, selection_path(store, bridge))
     except OSError:
         try:
             os.unlink(stage)
@@ -174,10 +225,10 @@ def select(store, bridge, generation, faults=NO_FAULTS):
 
 def selected_generation(store, bridge):
     """The marker's generation, None without a marker; corrupt markers raise."""
-    path = selection_path(store)
+    path = selection_path(store, bridge)
     if not check_regular(path):
         return None
-    raw = read_regular_bounded(path, SELECTION_BOUND)
+    raw = read_regular_bounded(path, selection_read_bound(bridge))
     session = frame_bridge.session()
     value = frame_bridge.read_form(bridge.call(
         "(fn-store-checkpoint-selection-decode {} {})".format(
@@ -191,15 +242,14 @@ def selected_generation(store, bridge):
 def restore_selected(store, bridge, records, frontier):
     """Decode the selected generation and replay only the suffix.
 
-    Returns ("none",), ("ok", generation, sequence, differential) or raises
-    CheckpointCorrupt.  `differential` is ACL2's comparison of the restored
-    node with the node full replay produced; the caller asserts on it only
-    under FN_CHECKPOINT_DIFFERENTIAL.
+    Returns ("none",), ("ok", generation, sequence, True) or raises
+    CheckpointCorrupt.  ACL2's comparison of the restored node with the node
+    full replay produced is part of checkpoint validity on every open.
     """
     generation = selected_generation(store, bridge)
     if generation is None:
         return ("none",)
-    path = generation_path(store, generation)
+    path = generation_path(store, bridge, generation)
     if not check_regular(path):
         raise CheckpointCorrupt(
             "selected generation {} is missing".format(generation))
@@ -225,11 +275,9 @@ def restore_selected(store, bridge, records, frontier):
             "selected generation {} does not restore: {}".format(generation, restored))
     differential = frame_bridge.read_form(bridge.call(
         "(fn-store-checkpoint-differential state)")) is True
+    if not differential:
+        raise CheckpointCorrupt("checkpoint plus suffix differs from full replay")
     return ("ok", generation, sequence, differential)
-
-
-def differential_enabled():
-    return os.environ.get("FN_CHECKPOINT_DIFFERENTIAL", "") not in ("", "0")
 
 
 def describe(outcome):
@@ -270,7 +318,7 @@ def command_status(args):
     store, bridge, unused = run_store.open_live_store(args.store, writable=False)
     try:
         print("generations={} {}".format(
-            " ".join(map(str, generations(store))) or "-",
+            " ".join(map(str, generations(store, bridge))) or "-",
             describe(store.checkpoint_outcome)))
         return EXIT_FAULT if store.checkpoint_outcome[0] == "corrupt" else EXIT_OK
     finally:

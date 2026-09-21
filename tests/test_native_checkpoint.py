@@ -138,6 +138,45 @@ class NativeCheckpointTests(unittest.TestCase):
         status = self.native("checkpoint", "status", store)
         self.assertIn("generations=0 1 checkpoint=ok generation=0", status.stdout)
 
+    def test_acl2_namespace_codec_rejects_alias_overflow_and_excess(self):
+        original = self.initialized("namespace", article=False)
+        self.native("checkpoint", "publish", original)
+        generation = original / "checkpoints" / "generation-0.fncp"
+        for label, alias in (("leading-zero", "generation-00.fncp"),
+                             ("overflow", "generation-4294967296.fncp")):
+            with self.subTest(label=label):
+                store = self.base / label
+                shutil.copytree(original, store)
+                shutil.copy2(generation, store / "checkpoints" / alias)
+                result = self.native("checkpoint", "status", store,
+                                     expected=run_store.EXIT_FAULT)
+                self.assertIn("ACL2 rejected checkpoint namespace", result.stderr)
+
+        excess = self.base / "namespace-excess"
+        shutil.copytree(original, excess)
+        directory = excess / "checkpoints"
+        for index in range(4097):
+            (directory / f"unexpected-{index}").touch()
+        result = self.native("checkpoint", "status", excess,
+                             expected=run_store.EXIT_FAULT)
+        self.assertIn("checkpoint namespace exceeds ACL2 observation bound",
+                      result.stderr)
+
+    def test_differential_mismatch_is_always_corruption(self):
+        store = self.initialized("mismatch")
+        self.native("checkpoint", "publish", store, "select")
+        env = dict(self.env)
+        env["FN_CHECKPOINT_DIFFERENTIAL"] = "0"
+        env["FN_CHECKPOINT_TEST_MISMATCH"] = "1"
+        status = self.native("checkpoint", "status", store,
+                             expected=run_store.EXIT_FAULT, env=env)
+        self.assertIn("checkpoint=corrupt", status.stdout)
+        self.assertIn("differs from full replay", status.stdout)
+        recovered = self.native("store", store, "recover",
+                                expected=run_store.EXIT_FAULT, env=env)
+        self.assertIn("transactions=1 articles=1", recovered.stdout)
+        self.assertIn("checkpoint=corrupt", recovered.stdout)
+
     def test_known_and_ambiguous_failures_keep_distinct_exit_codes(self):
         refused_store = self.initialized("candidate-refused", article=False)
         refused_env = dict(self.env)

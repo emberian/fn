@@ -81,9 +81,15 @@ class CheckpointTests(unittest.TestCase):
         return result.stdout.decode("utf-8", "replace")
 
     @contextlib.contextmanager
-    def recovered(self, differential=True):
-        previous = os.environ.get("FN_CHECKPOINT_DIFFERENTIAL")
-        os.environ["FN_CHECKPOINT_DIFFERENTIAL"] = "1" if differential else ""
+    def checkpoint_bridge(self):
+        bridge = Acl2Store()
+        try:
+            yield bridge
+        finally:
+            bridge.close()
+
+    @contextlib.contextmanager
+    def recovered(self):
         host = Store(self.path, writable=True)
         bridge = None
         try:
@@ -96,10 +102,6 @@ class CheckpointTests(unittest.TestCase):
             if bridge is not None:
                 bridge.close()
             host.close()
-            if previous is None:
-                del os.environ["FN_CHECKPOINT_DIFFERENTIAL"]
-            else:
-                os.environ["FN_CHECKPOINT_DIFFERENTIAL"] = previous
 
     # -- publication, selection and the differential -----------------------
 
@@ -110,8 +112,7 @@ class CheckpointTests(unittest.TestCase):
         output = self.invoke("tools/checkpoint.py", "publish", "--select")
         self.assertIn("published generation=0 records=120 selected=yes", output)
         self.assertEqual(post_many(self.path, 8, "suffix"), 128)
-        output = self.invoke("tools/run_store.py", "recover",
-                             env={"FN_CHECKPOINT_DIFFERENTIAL": "1"})
+        output = self.invoke("tools/run_store.py", "recover")
         self.assertIn("transactions=128", output)
         self.assertIn("checkpoint=ok generation=0 suffix-from=120 differential=equal",
                       output)
@@ -149,8 +150,9 @@ class CheckpointTests(unittest.TestCase):
         post_many(self.path, 2, "more")
         self.invoke("tools/checkpoint.py", "publish", "--select")
         store = Store(self.path)
-        self.assertEqual(checkpoint.generations(store), [0, 1])
-        self._corrupt_middle(checkpoint.generation_path(store, 1))
+        with self.checkpoint_bridge() as bridge:
+            self.assertEqual(checkpoint.generations(store, bridge), [0, 1])
+            self._corrupt_middle(checkpoint.generation_path(store, bridge, 1))
         result = subprocess.run(
             [sys.executable, "tools/run_store.py", "--store", str(self.path), "recover"],
             cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
@@ -162,8 +164,9 @@ class CheckpointTests(unittest.TestCase):
         self.assertIn("generation 1", output)
         self.assertNotIn("checkpoint=ok", output)
         # The intact older generation is still there and still not selected.
-        self.assertEqual(checkpoint.generations(store), [0, 1])
-        with self.recovered(differential=False) as (host, bridge, records):
+        with self.checkpoint_bridge() as bridge:
+            self.assertEqual(checkpoint.generations(store, bridge), [0, 1])
+        with self.recovered() as (host, bridge, records):
             self.assertEqual(host.checkpoint_outcome[0], "corrupt")
             self.assertEqual(bridge.article_count(), 5)
             self.assertEqual(checkpoint.selected_generation(host, bridge), 1)
@@ -172,13 +175,40 @@ class CheckpointTests(unittest.TestCase):
         post_many(self.path, 2, "base")
         self.invoke("tools/checkpoint.py", "publish", "--select")
         store = Store(self.path)
-        self._corrupt_middle(checkpoint.selection_path(store))
+        with self.checkpoint_bridge() as bridge:
+            self._corrupt_middle(checkpoint.selection_path(store, bridge))
         result = subprocess.run(
             [sys.executable, "tools/run_store.py", "--store", str(self.path), "recover"],
             cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
             timeout=600)
         self.assertEqual(result.returncode, run_store.EXIT_FAULT)
         self.assertIn("checkpoint=corrupt", result.stdout.decode("utf-8", "replace"))
+
+    def test_differential_mismatch_is_corruption_without_a_debug_flag(self):
+        post_many(self.path, 2, "base")
+        self.invoke("tools/checkpoint.py", "publish", "--select")
+        host = Store(self.path, writable=True)
+        bridge = None
+        try:
+            host.acquire()
+            bridge = Acl2Store()
+            original_call = bridge.call
+
+            def mismatch_call(form, timeout=None):
+                if form == "(fn-store-checkpoint-differential state)":
+                    return original_call("(value-triple nil)", timeout=timeout)
+                return original_call(form, timeout=timeout)
+
+            bridge.call = mismatch_call
+            records = host.recover(bridge)
+            self.assertEqual(len(records), 2)
+            self.assertEqual(host.checkpoint_outcome[0], "corrupt")
+            self.assertIn("differs from full replay", host.checkpoint_outcome[1])
+            self.assertFalse(host.fenced)
+        finally:
+            if bridge is not None:
+                bridge.close()
+            host.close()
 
     # -- process death at every cut -----------------------------------------
 
@@ -248,9 +278,9 @@ class CheckpointTests(unittest.TestCase):
                 self.invoke("tools/checkpoint.py", "publish", "--select")
                 post_many(self.path, 1, "more")
                 self._crash_after(point)
-                store = Store(self.path)
-                self.assertIn(checkpoint.generations(store), allowed_generations)
                 with self.recovered() as (host, bridge, records):
+                    self.assertIn(checkpoint.generations(host, bridge),
+                                  allowed_generations)
                     outcome = host.checkpoint_outcome
                     self.assertEqual(outcome[0], "ok", outcome)
                     self.assertIn(outcome[1], allowed_selected)
@@ -260,7 +290,7 @@ class CheckpointTests(unittest.TestCase):
                     self.assertEqual(bridge.article_count(), 4)
                     self.assertEqual(len(records), 4)
                 # Staged names are cleaned or reported, never adopted.
-                for name in os.listdir(store.staging):
+                for name in os.listdir(self.path / "staging"):
                     self.assertTrue(name.startswith("."), name)
 
 
