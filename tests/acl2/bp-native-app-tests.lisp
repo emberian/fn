@@ -68,9 +68,9 @@
             (list *bpaj-config* *bpaj-intent*
                   (update-nth 8 :accepted *bpaj-context*))))))
 
-; Accepted retries are conditional on the original generation and the exact
-; planned transaction remaining absent.  These are reachable dispatcher
-; witnesses for the theorem's three premises.
+; Reachable examples for the dispatcher projections: a matching current intent
+; over an absent Store submits, while a stale generation or committed context
+; does not.
 (defconst *bpaj-fresh-store* (fn-sn-initial *bpr-groups* 20))
 (defconst *bpaj-accept-intent*
   (list :request-intent "bundle-new" *bpaj-request-octets* 9 0 :accepted))
