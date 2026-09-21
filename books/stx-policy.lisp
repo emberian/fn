@@ -32,8 +32,16 @@
 ; equation below is the unfolding of the definition, and it is here so that
 ; the policy keystones can be read as being about the gate.  The substantive
 ; theorem-subject obligation -- that the function the HOST calls on the
-; transit path is this one -- is fn-stx-transit-gate-is-the-gate in
-; books/stx-transit.lisp, which names fn-peer-transfer.
+; transit path is this one -- IS OPEN AND HAS NO BOOK.  Until 2026-09-21 this
+; comment named `fn-stx-transit-gate-is-the-gate' in `books/stx-transit.lisp';
+; that book has never existed.  What is true at this revision: the host's
+; transit path is `fn-peer-transfer' (books/peer-inbound.lisp line 328), whose
+; admission decision is `fn-peer-decide-transfer', and it does not call
+; `fn-stx-transit-authority-ok' at all -- `grep -rn fn-stx-transit-authority-ok
+; books host tools bin' names only this book and books/stx-authority.lisp.  So
+; this gate is not yet on any path, and the whole-lace walk inside it (D3:
+; `fn-pol-admitp' is linear in the store, per article) is a cost this design
+; still owes an index-shaped answer.  See planning/lanes/HANDOFF-w11-node-index.md.
 (defthm fn-stx-transit-admit-is-fn-pol-admitp-by-definition
   (implies (fn-stx-verifiedp article keyring)
            (equal (fn-stx-transit-authority-ok node article keyring group

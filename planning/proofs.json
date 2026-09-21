@@ -905,12 +905,13 @@
       "status": "in-progress",
       "evidence": [],
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
-      "note": "`books/stx-index` CERTIFIES (w10/substrate-2). The three agreements `fn-stx-index-bindings-agree`, `fn-stx-index-slots-agree` and `fn-stx-index-equivocators-agree` are the keystones; `fn-stx-index-agrees-with-lace` is their `:rule-classes nil` corollary and is cited as such, and `fn-stx-recorded-equivocation-agrees-with-lace` is a corollary of that. Not closed: no host line calls `fn-stx-index-lookup` or `fn-stx-index-equivocatorp` -- `fn-node-statep` has no index slot -- so the theorem-subject rule is not met and the D3 claim is about a query the served path does not yet carry.",
+      "note": "`books/stx-index` CERTIFIES (w10/substrate-2). The three agreements `fn-stx-index-bindings-agree`, `fn-stx-index-slots-agree` and `fn-stx-index-equivocators-agree` are the keystones; `fn-stx-index-agrees-with-lace` is their `:rule-classes nil` corollary and is cited as such, and `fn-stx-recorded-equivocation-agrees-with-lace` is a corollary of that. Not closed: no host line calls `fn-stx-index-lookup` or `fn-stx-index-equivocatorp`, so the theorem-subject rule is not met for the query half. w11/node-index measured why the proposed cure -- a fifth slot on `fn-node-statep` -- is not one: `books/stx-index` includes `stx-lace` includes `node` and `fn-stx-store` IS `(fn-state-articles (fn-node-acceptance node))`, so the slot is a dependency cycle; the conjunct needs a keyring and no state or configuration record in the tree holds one; and it would touch the 26 theorems that CONCLUDE `fn-node-statep` across 13 books while still leaving the query uncalled. The carrier belongs in `fn-sn-statep` (books/store-node.lisp), which the host holds and which is not in stx-index's closure. The PRESERVATION half did gain its subject: `fn-stx-index-invariant-preserved-by-accept` hypothesises `fn-stx-acceptedp`, which `fn-stx-durable-completion-is-an-acceptance` (books/stx-lace.lisp) now proves of the durable branch of `fn-node-complete` -- the only node step of `fn-sn-finish`, the only node step of the host's `fn-store-sn-finish` (host/store-node-host.lisp:402). Before that theorem the hypothesis was an assumption attributed to `books/stx-transit.lisp`, which has never existed. Route: planning/lanes/HANDOFF-w11-node-index.md.",
       "events": [
         "fn-stx-index-bindings-agree",
         "fn-stx-index-slots-agree",
         "fn-stx-index-equivocators-agree",
-        "fn-stx-index-invariant-preserved-by-accept"
+        "fn-stx-index-invariant-preserved-by-accept",
+        "fn-stx-durable-completion-is-an-acceptance"
       ]
     },
     {
@@ -950,7 +951,7 @@
       "status": "in-progress",
       "evidence": [],
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
-      "note": "`books/stx-epochs` CERTIFIES (w10/substrate-2), so the carrier obligation `fn-stx-commits-of-batch-are-verified-and-well-formed` is proved and the three reconnection rows follow it as labelled corollaries of the `books/membership-epochs-invariants` keystones. Its local witness lemma needed a repair, not a weakening: `fn-stx-commits-of-lace-have-witnesses` asked only `fn-lace-p` of the delta and was false; it now asks that every statement of the delta verifies, which `fn-stx-batch-delta` satisfies by construction. Not closed: nothing on the host's reconnection path calls `fn-stx-commits-of-batch`, and A-CRYPTO stands behind every verification here.",
+      "note": "`books/stx-epochs` CERTIFIES (w10/substrate-2), so the carrier obligation `fn-stx-commits-of-batch-are-verified-and-well-formed` is proved and the three reconnection rows follow it as labelled corollaries of the `books/membership-epochs-invariants` keystones. Its local witness lemma needed a repair, not a weakening: `fn-stx-commits-of-lace-have-witnesses` asked only `fn-lace-p` of the delta and was false; it now asks that every statement of the delta verifies, which `fn-stx-batch-delta` satisfies by construction. Not closed, and w11/node-index found the gap is wider than `no caller`: NO BOOK OUTSIDE THE STX CLUSTER INCLUDES `books/stx-epochs`, and there is no reconnection path in the tree to wire `fn-stx-commits-of-batch` to. That is future feature work, not missing evidence for implemented behaviour (docs/proofs.md, assurance scope). A-CRYPTO stands behind every verification here.",
       "events": [
         "fn-stx-commit-decode-is-a-commit",
         "fn-stx-commits-of-batch-are-verified-and-well-formed"
