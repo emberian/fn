@@ -29,8 +29,10 @@ class ProfileTests(unittest.TestCase):
         # shared logical dependency.
         self.assertIn("books/bp-node", default_roots)
         self.assertIn("books/bp-node", dtn_roots)
-        self.assertIn("books/owner-fault", default_roots)
-        self.assertIn("books/owner-fault", dtn_roots)
+        # Owner fault isolation is now included by owner-config. Assert it
+        # remains in each complete artifact set, not necessarily a direct root.
+        self.assertIn("books/owner-fault", certs.required_closure(ROOT, default_roots))
+        self.assertIn("books/owner-fault", certs.required_closure(ROOT, dtn_roots))
 
     def test_deployed_owner_host_additions_join_the_artifact_set(self):
         with tempfile.TemporaryDirectory() as directory:

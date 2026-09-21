@@ -149,6 +149,8 @@
     "tests/acl2/byte-store-relation-tests",
     "books/byte-store-program-invariants",
     "tests/acl2/byte-store-program-invariants-tests",
+    "books/byte-store-native-correspondence",
+    "tests/acl2/byte-store-native-correspondence-tests",
     "books/assumptions",
     "tests/acl2/assumptions-tests",
     "tests/acl2/store-node-guards-tests",
@@ -374,25 +376,25 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 369,
-    "books_in_root_closure": 368,
-    "roots": 370,
-    "theorems": 6393,
-    "functions": 4913,
-    "assert_events": 6746,
-    "must_fails": 145,
+    "books": 371,
+    "books_in_root_closure": 370,
+    "roots": 372,
+    "theorems": 6395,
+    "functions": 4916,
+    "assert_events": 6747,
+    "must_fails": 147,
     "encapsulates": 19,
     "guards": {
       "verified": 1621,
       "declared-off": 242,
-      "default-guarded": 2456,
+      "default-guarded": 2459,
       "default-unguarded": 594
     },
     "suspect_theorems": 60,
     "export_hygiene_warnings": 82,
     "enabled_projection_warnings": 25,
     "teeth_form_warnings": 4,
-    "include_hygiene_warnings": 134,
+    "include_hygiene_warnings": 136,
     "host_names_warnings": 543,
     "hand_written_record_warnings": 18
   },
@@ -2248,6 +2250,32 @@
       "includes": [
         "byte-store-scan",
         "store-observed"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/byte-store-native-correspondence.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store-relation",
+        "store-node"
       ],
       "system_includes": [],
       "suspects": [],
@@ -7556,6 +7584,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/byte-store-native-correspondence-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 2,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/byte-store-native-correspondence"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/byte-store-program-invariants-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -11626,6 +11681,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/byte-store-native-correspondence.lisp",
+        "line": 10,
+        "include": "byte-store-relation",
+        "included": "books/byte-store-relation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/byte-store-program-invariants.lisp",
         "line": 4,
         "include": "byte-store-relation",
@@ -12057,6 +12119,13 @@
         "line": 4,
         "include": "../../books/byte-store-frame",
         "included": "books/byte-store-frame.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/byte-store-native-correspondence-tests.lisp",
+        "line": 2,
+        "include": "../../books/byte-store-native-correspondence",
+        "included": "books/byte-store-native-correspondence.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
