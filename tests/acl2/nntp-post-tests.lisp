@@ -285,3 +285,85 @@
 (assert-event
  (equal (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :refused))
         (fn-post-result-effects (fn-nntp-post-outcome *fn-tp-too-deep* :durable))))
+
+; -----------------------------------------------------------------------------
+; Teeth for fn-post-without-a-clock-refuses-with-the-clock-line (D10-a)
+;
+; The owner has no clock exactly when its host reported a reading that
+; contradicted the one it held (books/owner.lisp fn-own-observe), so what
+; fn-own-read supplies as the injection reading is not an observation.  The
+; witness is reachable -- the session is the one POST left awaiting above --
+; and each case below drops one hypothesis and shows the conclusion fail.
+
+(defconst *fn-tp-clockless*
+  (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*) *fn-tp-archive*
+                     *fn-tp-cfg* *fn-tp-obs* nil
+                     (list :article *fn-tp-good-lines*)))
+(assert-event
+ (equal (fn-post-result-effects *fn-tp-clockless*)
+        (list (fn-nntp-reply-effect
+               (fn-nntp-crlf
+                (fn-nntp-string-octets
+                 "441 posting failed; this server has no usable clock reading"))))))
+(assert-event (equal (fn-post-result-submission *fn-tp-clockless*) nil))
+(assert-event (fn-nntp-effectsp (fn-post-result-effects *fn-tp-clockless*)))
+; and it is a DIFFERENT line from every other refusal this step can give,
+; which is the whole point: a clock fault is not an article verdict.
+(assert-event
+ (not (equal (fn-post-result-effects *fn-tp-clockless*)
+             (fn-post-result-effects *fn-tp-r3*))))
+(assert-event
+ (not (equal (fn-post-result-effects *fn-tp-clockless*)
+             (fn-post-result-effects
+              (fn-nntp-post-outcome (fn-post-result-session *fn-tp-r2*) :refused)))))
+(assert-event
+ (not (equal (fn-post-result-effects *fn-tp-clockless*)
+             (fn-post-result-effects
+              (fn-nntp-post-outcome (fn-post-result-session *fn-tp-r2*) :uncertain)))))
+
+; Hypothesis (not (fn-clock-observationp injection)) dropped: with a reading
+; the article is injected and there IS a submission.
+(assert-event (fn-inj-injectedp (fn-post-result-submission *fn-tp-r2*)))
+(assert-event
+ (not (equal (fn-post-result-effects *fn-tp-r2*)
+             (fn-post-result-effects *fn-tp-clockless*))))
+
+; Hypothesis (fn-post-session-awaiting ps) dropped: the same event on a
+; session that is not awaiting an article is not an injection at all.
+(assert-event (not (fn-post-session-awaiting *fn-tp-s0*)))
+(assert-event
+ (not (equal (fn-post-result-effects
+              (fn-nntp-post-step *fn-tp-s0* *fn-tp-archive* *fn-tp-cfg*
+                                 *fn-tp-obs* nil (list :article *fn-tp-good-lines*)))
+             (fn-post-result-effects *fn-tp-clockless*))))
+
+; Hypothesis (fn-post-sessionp ps) dropped: one wrapper too shallow answers
+; with no effects at all, which is neither refusal.
+(assert-event
+ (equal (fn-post-result-effects
+         (fn-nntp-post-step *fn-tp-too-shallow* *fn-tp-archive* *fn-tp-cfg*
+                            *fn-tp-obs* nil (list :article *fn-tp-good-lines*)))
+        nil))
+
+; Hypothesis (fn-inj-config-allow config) dropped: a connection whose pinned
+; configuration forbids posting is refused for THAT reason, with no clock.
+(assert-event
+ (equal (fn-post-result-effects
+         (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*) *fn-tp-archive*
+                            *fn-tp-cfg-closed* *fn-tp-obs* nil
+                            (list :article *fn-tp-good-lines*)))
+        (list (fn-nntp-reply-effect
+               (fn-nntp-crlf
+                (fn-nntp-string-octets
+                 "441 posting failed; posting is not permitted"))))))
+
+; Hypothesis (fn-inj-configp config) dropped: a value that is not a
+; configuration is refused before the clock is ever read, with the bare line.
+(assert-event (fn-inj-configp *fn-tp-cfg*))
+(assert-event (not (fn-inj-configp 7)))
+(assert-event
+ (equal (fn-post-result-effects
+         (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*) *fn-tp-archive*
+                            7 *fn-tp-obs* nil (list :article *fn-tp-good-lines*)))
+        (list (fn-nntp-reply-effect
+               (fn-nntp-crlf (fn-nntp-string-octets "441 posting failed"))))))

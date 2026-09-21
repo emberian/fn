@@ -33,10 +33,19 @@ the WIRE, not the model: no host line calls any `fn-ocfg-` function, so the
 served port still answers LIST ACTIVE from the allocation domain and every
 PRF-028 owner-side event carries a `pending_subject`.
 
+**A connection posts repeatedly.** The one-durable-post-per-connection defect
+was fixed by `w5/clock-seam` (merge `7d8eff8`, the per-submission injection
+clock) and the board line was never closed; measured live on persvati at
+`dev` `5ae226f`, `tests.test_post.StorePostTests.test_a_reader_pinned_before_a_post_keeps_its_view`
+and `tests.test_owner.OwnerTests.test_clock_and_group_facts_go_through_the_owner`
+both pass. What remained at that seam, and is closed by
+[D10-a](decisions.md)/PRF-033 (w11/clock-seam), is that a REFUSED clock
+observation froze the owner's clock and the resulting duplicate identity
+reached the poster as `441 posting failed; the article was refused` -- an
+article verdict for a clock fault.
+
 The nearest known gaps behind the live re-run are, in order: the owner's three
-one-line `host/owner-host.lisp` edits from w5-config-groups; the one-durable-post-
-per-connection defect, which is the pinned clock observation and not the
-read-back re-pin ([BOARD](deputies/BOARD.md), w5/owner-followups, DIAGNOSED);
+one-line `host/owner-host.lisp` edits from w5-config-groups;
 `books/nntp-effects`, open at `FN-NNTP-HDR-LABELLED-LINE-IS-BLOCK-TEXT` after
 2598.79 s and 1.47e9 prover steps; the `NNT-001` capability/dispatch mismatch;
 and `books/stx-verify` at one printability lemma. See
@@ -95,7 +104,7 @@ the whole-tree run behind these statuses is
 | --- | --- | --- |
 | The owner certifies | **blocked** | `books/owner` has no certificate; ACL2 refuses `(include-book "books/owner")`, which is why `fn run` cannot start at all ([live-52eb0db](evidence/live-52eb0db-2026-09-20.md)) |
 | The owner runs as a service | **blocked** | the installed unit falls back to `tools/run_reader.py`, the same second choice `tools/deploy_gate.py` makes ([live-52eb0db](evidence/live-52eb0db-2026-09-20.md)) |
-| POST is durable end to end | **partial** | one durable post per connection works and rereads byte-for-byte after a kill ([deploy-cce4b11](evidence/deploy-cce4b11-2026-09-20.md) rows 23 to 28); a **second** post on the same connection is always refused 441, diagnosed to the one clock observation pinned at accept ([BOARD](deputies/BOARD.md), w5/owner-followups) |
+| POST is durable end to end | **partial** | a post is durable and rereads byte-for-byte after a kill ([deploy-cce4b11](evidence/deploy-cce4b11-2026-09-20.md) rows 23 to 28), and a connection now posts REPEATEDLY: `test_a_reader_pinned_before_a_post_keeps_its_view` passes live on persvati at `dev` `5ae226f` (w5/clock-seam's per-submission injection clock, merge `7d8eff8`). Open: two submissions inside one millisecond still share a generated Message-ID ([D10-a](decisions.md), PRF-033) |
 | Capabilities match dispatch | **open** | refuted by counterexample: POST answers 340 while CAPABILITIES omits POST, against RFC 3977 5.2.2 (NNT-001 note, `planning/requirements.json`) |
 | Concurrent sessions | **open** | `tools/run_reader.py` is `listen(1)` and serves one connection to completion; the owner is the only concurrent server ([BOARD](deputies/BOARD.md), w5-deploy-gate) |
 | Three outcomes distinct at the CLI | **done** | accepted 0, refused 1, uncertain 3 ([deploy-cce4b11](evidence/deploy-cce4b11-2026-09-20.md) rows 11 to 13) |

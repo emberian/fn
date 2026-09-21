@@ -536,12 +536,17 @@
 ; -----------------------------------------------------------------------------
 ; Clock observations and group facts
 
+; The word is fn-own-observe-outcome's (books/owner.lisp; decision D10-a).
+; This used to compare the owner before and after the event and answer
+; :rejected whenever nothing moved, which spelled an ADMITTED reading equal
+; to the one already held exactly like a contradicted clock, and put the
+; decision in the host.  Nothing here judges a reading.
 (defun fn-owner-observe (monotonic wall wall-error has-wall state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((before (f-get-global 'fn-owner state))
-         (obs (fn-clock-observation monotonic wall wall-error has-wall))
+  (let* ((obs (fn-clock-observation monotonic wall wall-error has-wall))
+         (outcome (fn-own-observe-outcome (f-get-global 'fn-owner state) obs))
          (state (fn-owner-step (list :observe obs) state)))
-    (value (if (equal (f-get-global 'fn-owner state) before) :rejected :observed))))
+    (value outcome)))
 
 (defun fn-owner-declare-group (name-octets state)
   (declare (xargs :stobjs state :mode :program))
