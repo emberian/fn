@@ -183,11 +183,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-sequence-persistence-tests \
 	books/bp-node-machine \
 	books/bp-node-machine-codec \
+	books/bp-node-machine-invariants \
+	books/bp-node-machine-authorization \
 	tests/acl2/bp-node-machine-tests \
 	books/bp-sequence-fidelity \
 	tests/acl2/bp-sequence-fidelity-tests \
 	books/bp-receive-evidence \
 	tests/acl2/bp-receive-evidence-tests \
+	tests/acl2/bp-node-machine-authorization-tests \
 	books/bp-fragment \
 	books/bp-fragment-invariants \
 	tests/acl2/bp-fragment-tests \

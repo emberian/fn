@@ -1303,13 +1303,12 @@
 ; Keystone: the effect output of the host-called dispatcher is typed from the
 ; maintained input invariant, rather than assumed typed after the fact.
 (defthm fn-bpn-step-effects-are-typed
-  (implies (fn-bpn-machine-invariantp st)
-           (fn-bpn-effect-listp
-            (fn-bpn-answer-effects (fn-bpn-step st event))))
+  (fn-bpn-effect-listp
+   (fn-bpn-answer-effects (fn-bpn-step st event)))
   :hints (("Goal"
            :in-theory
            (union-theories
-            '(fn-bpn-machine-invariantp fn-bpn-step
+            '(fn-bpn-step
               fn-bpn-enqueue-step-effects-are-typed
               fn-bpn-contact-step-effects-are-typed
               fn-bpn-start-one-effects-are-typed
@@ -1319,6 +1318,44 @@
               fn-bpn-restart-step-effects-are-typed
               fn-bpn-answer-constructor-accessors fn-bpn-effect-listp)
             (theory 'minimal-theory)))))
+
+(defthm fn-bpn-step-emits-no-release-from-actual-effects
+  (not (fn-bpn-effect-kind-memberp
+        :release (fn-bpn-answer-effects (fn-bpn-step st event))))
+  :hints
+  (("Goal"
+    :use
+    ((:instance fn-bpn-effect-listp-excludes-release
+                (effects (fn-bpn-answer-effects (fn-bpn-step st event)))))
+    :in-theory
+    (union-theories '(fn-bpn-step-effects-are-typed)
+                    (theory 'minimal-theory)))))
+
+(defthm fn-bpn-effectp-excludes-receipt-prepare
+  (implies (fn-bpn-effectp effect)
+           (not (equal (fn-cbor-ag-car effect) :receipt-prepare)))
+  :hints (("Goal" :in-theory (enable fn-bpn-effectp fn-bpn-member))))
+
+(defthm fn-bpn-effect-listp-excludes-receipt-prepare
+  (implies (fn-bpn-effect-listp effects)
+           (not (fn-bpn-effect-kind-memberp :receipt-prepare effects)))
+  :hints
+  (("Goal" :induct (fn-bpn-effect-listp effects)
+    :in-theory
+    (enable fn-bpn-effect-listp fn-bpn-effect-kind-memberp
+            fn-bpn-effectp-excludes-receipt-prepare))))
+
+(defthm fn-bpn-step-emits-no-receipt-prepare
+  (not (fn-bpn-effect-kind-memberp
+        :receipt-prepare (fn-bpn-answer-effects (fn-bpn-step st event))))
+  :hints
+  (("Goal"
+    :use
+    ((:instance fn-bpn-effect-listp-excludes-receipt-prepare
+                (effects (fn-bpn-answer-effects (fn-bpn-step st event)))))
+    :in-theory
+    (union-theories '(fn-bpn-step-effects-are-typed)
+                    (theory 'minimal-theory)))))
 
 (defthm fn-bpn-step-preserves-machine-invariant
   (implies (and (fn-bpn-machine-invariantp st)
