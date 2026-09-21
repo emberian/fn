@@ -410,6 +410,7 @@ promise to interrupt a blocking unix-read after readiness was observed."
 (defun fnn-replace (old new) (fnn-posix (new) (sb-posix:rename old new)))
 (defun fnn-unlink (path) (fnn-posix (path) (sb-posix:unlink path)))
 (defun fnn-mkdir (path mode) (fnn-posix (path) (sb-posix:mkdir path mode)))
+(defun fnn-chmod (path mode) (fnn-posix (path) (sb-posix:chmod path mode)))
 
 (defun fnn-flock (fd operation)
   (let ((result (fnn-%flock fd operation)))
@@ -807,6 +808,12 @@ resolves the names against `domain' and the host carries that list verbatim."
           ((eq (fnn-store-fault-class store) :fnn-test-kill)
            (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
            (fnn-fault "test SIGKILL did not terminate the process"))
+          ;; A test-only setup action.  fnn-config-record-names invokes this
+          ;; immediately before its real fnn-list-directory call, so that call
+          ;; itself returns EACCES.  A handler that turned its error into NIL
+          ;; would make the regression test below falsely succeed.
+          ((eq (fnn-store-fault-class store) :fnn-test-config-no-read)
+           (fnn-chmod (fnn-config-dir store) #o000))
           (t
            (error (fnn-store-fault-class store) :message (fnn-store-fault-message store))))))
 
@@ -1308,7 +1315,7 @@ from the live ACL2 configuration; the native host does not name a provenance."
   '("init-config-records-first-enumerate" "init-config-records-final-enumerate"))
 
 (defun fnn-init-test-fault ()
-  "Developer-only FN_NATIVE_INIT_FAULT=MODEL-CUT:eio|kill selector.
+  "Developer-only FN_NATIVE_INIT_FAULT=MODEL-CUT:eio|kill|eacces selector.
 
 This is intentionally not a command-line option or an operator configuration
 field.  The external native fidelity test uses it to stop one child process at
@@ -1317,7 +1324,7 @@ a source-pinned post-syscall cut."
     (when raw
       (let ((colon (position #\: raw :from-end t)))
         (unless colon
-          (fnn-fault "invalid FN_NATIVE_INIT_FAULT (expected MODEL-CUT:eio|kill)"))
+          (fnn-fault "invalid FN_NATIVE_INIT_FAULT (expected MODEL-CUT:eio|kill|eacces)"))
         (let ((label (subseq raw 0 colon)) (action (subseq raw (1+ colon))))
           (unless (or (member label +fnn-init-model-cuts+ :test #'string=)
                       (member label +fnn-init-test-controls+ :test #'string=))
@@ -1325,6 +1332,7 @@ a source-pinned post-syscall cut."
           (list (intern (string-upcase label) :keyword)
                 (cond ((string= action "eio") 'fnn-os-error)
                       ((string= action "kill") :fnn-test-kill)
+                      ((string= action "eacces") :fnn-test-config-no-read)
                       (t (fnn-fault "invalid FN_NATIVE_INIT_FAULT action: ~a" action)))
                 "developer-only native initializer fault"))))))
 
@@ -1816,7 +1824,7 @@ connection `fn-reader-reset' opens and projects with
 ;;;   tcpcl replay TRACE-FILE [ROLE NODE-ID PEER KEEPALIVE SEGMENT-MRU
 ;;;                      TRANSFER-MRU]
 ;;;   sha256 PATH
-;;; `FN_NATIVE_INIT_FAULT=MODEL-CUT:eio|kill` is a developer-only test seam;
+;;; `FN_NATIVE_INIT_FAULT=MODEL-CUT:eio|kill|eacces` is a developer-only test seam;
 ;;; it is intentionally absent from this command protocol and normal CLI.
 
 ;;; Verbs a layer above this file owns.  host/native/tcpcl.lisp registers
