@@ -49,12 +49,12 @@
                  (fnn-hsig-authorized-submission-event
                   coordinates keyring-generation
                   (fnn-core 'fn-hsig-host-keyring-snapshot-octets snapshot)
-                  (fn-record-octets-string (fnn-octet-list msgid)) source
-                  (mapcar (lambda (g) (fn-record-octets-string (fnn-octet-list g))) groups)
-                  (fn-record-octets-string (fnn-octet-list obligation))
-                  (fn-record-octets-string (fnn-octet-list subject))
-                  (fn-record-octets-string (fnn-octet-list release)) charge
-                  principal keys signatures (fn-record-octets-string ml-path))))
+                  (fnn-octets-string msgid) source
+                  (mapcar #'fnn-octets-string groups)
+                  (fnn-octets-string obligation)
+                  (fnn-octets-string subject)
+                  (fnn-octets-string release) charge
+                  principal keys signatures (fnn-octets-string ml-path))))
            (if event
                (let* ((evidence (fnn-octets (fnn-owner-core 'fn-owner-prov-post)))
                       (generation
