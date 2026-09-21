@@ -920,6 +920,8 @@ class Owner:
     # (books/owner-fault.lisp), reached through `fn-owner-fault'.
     def guard(self, site, work, conn=None, feed=None):
         """Run one unit of the loop; a fault in it costs at most `conn'/`feed'."""
+        if self.feed_uncertain:
+            return
         try:
             work()
         except (SystemExit, KeyboardInterrupt):

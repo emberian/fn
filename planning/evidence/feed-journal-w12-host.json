@@ -1,0 +1,35 @@
+{
+  "revision": "0e642a1aa95819a4eb2b6b0154de44254a8cba22",
+  "time_utc": "2026-09-21T06:26:48.307642+00:00",
+  "command": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tests",
+    "-p",
+    "test_feed*.py",
+    "-v"
+  ],
+  "cwd": "/Users/ember/dev/fn/build/lanes/w12-feed-durability",
+  "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "acl2_version_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.\nMore information about SBCL is available at <http://www.sbcl.org/>.\n\nSBCL is free software, provided as is, with absolutely no warranty.\nIt is mostly in the public domain; some portions are provided under\nBSD-style licenses.  See the CREDITS and COPYING files in the\ndistribution for more information.\n\n ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n + ACL2 Version 8.7                                                     +\n +   built August 28, 2026  20:52:14.                                   +\n + Copyright (C) 2026, Regents of the University of Texas.              +\n + ACL2 comes with ABSOLUTELY NO WARRANTY.  This is free software and   +\n + you are welcome to redistribute it under certain conditions.  For    +\n + details, see the LICENSE file distributed with ACL2.                 +\n ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\nProject-dir-alist:\n((:SYSTEM . \"/opt/homebrew/Cellar/acl2/8.7_6/libexec/books/\")).\nType :help for help.\nType (quit) to quit completely out of ACL2.\n\n",
+  "result": 0,
+  "output": "planning/evidence/feed-journal-w12-host.log",
+  "output_sha256": "b91a11565b94f32c367ff1ec8f5b8d85f236fed4ff53053e196c9a62dc10c667",
+  "input_digests_sha256": {
+    "books/feed-journal.lisp": "84ba8c34bfd193c567ccb4de8b8ee3721caad5d7a1b703019abff3b5434dbcca",
+    "host/owner-host.lisp": "170b56190d6447a5eab180c5ff7ede923558d451b827ab527900808002a5282d",
+    "tools/feed_wire.py": "aeefa5ae4df69f9925b39de809c5720501034a604b6a6b47bf67ac46fbf4ec09",
+    "tools/run_owner.py": "9c95634a69eb0b2e4dc6126b6c74a3d9a9d9f5d484813862f4de9a14c3187ea2",
+    "tools/run_store.py": "98c7096bc82affde94baff6be85044e549d11c43b5874e919f7a3f6f4a797c81",
+    "tools/run_reader.py": "f68b4559e21b715d15d88adce4d0e86ca5caba04caff9975e5beb3c4485a0904",
+    "tests/test_feed.py": "46c93660f2e120163e31199279390b16c249631b8215f12a7a7e96f3f052d2d1",
+    "tests/test_feed_fence.py": "e8ae653ab5a007ca3907fe4e1339dc4c27a790ba097f1d597d14c77585262c7b",
+    "tests/test_feed_journal_live.py": "ad02dd85141dc28d9d9e3177013f6a83bcfd44e4f2ebdd7ba45cfbbe6b2ce485",
+    "tests/acl2/feed-journal-tests.lisp": "3251f00560d175011c7cfb977c3d1747e335693060cecb058625d85b185fa9fb"
+  },
+  "scope": "Actual ACL2 scanner and replay fold plus Journal physical I/O; mock owner boundary fence methods; excludes composed NNTP acceptance/feed atomicity and physical K0 refinement."
+}
