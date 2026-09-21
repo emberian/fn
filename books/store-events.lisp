@@ -7,6 +7,7 @@
 ; obligation log.
 (in-package "ACL2")
 (include-book "records")
+(include-book "stx-accept-records")
 
 (defconst *fn-store-event-magic* '(102 110 45 101)) ; fn-e
 (defconst *fn-store-event-version* 0)
@@ -44,20 +45,41 @@
 
 (defun fn-store-event-p (x)
   (declare (xargs :guard t :verify-guards nil))
-  (or (fn-record-p x) (fn-store-retention-event-p x)))
+  (or (fn-record-p x) (fn-store-retention-event-p x)
+      (fn-stxe-p x) (fn-stxk-p x) (fn-stxa-p x)))
 
 (defun fn-store-event-kind (x)
   (declare (xargs :guard t :verify-guards nil))
-  (if (fn-record-p x) :article (fn-store-event-nth 1 x)))
+  (cond ((fn-record-p x) :article)
+        ((fn-store-retention-event-p x) (fn-store-event-nth 1 x))
+        ((fn-stxe-p x) :statement-verdict)
+        ((fn-stxk-p x) :keyring-snapshot)
+        ((fn-stxa-p x) :accepted-statement)
+        (t nil)))
 (defun fn-store-event-sequence (x)
   (declare (xargs :guard t :verify-guards nil))
-  (if (fn-record-p x) (fn-record-sequence x) (fn-store-event-nth 2 x)))
+  (cond ((fn-record-p x) (fn-record-sequence x))
+        ((fn-store-retention-event-p x) (fn-store-event-nth 2 x))
+        ((fn-stxe-p x) (fn-stxe-sequence x))
+        ((fn-stxk-p x) (fn-stxk-sequence x))
+        ((fn-stxa-p x) (fn-stxa-sequence x))
+        (t nil)))
 (defun fn-store-event-txid (x)
   (declare (xargs :guard t :verify-guards nil))
-  (if (fn-record-p x) (fn-record-txid x) (fn-store-event-nth 3 x)))
+  (cond ((fn-record-p x) (fn-record-txid x))
+        ((fn-store-retention-event-p x) (fn-store-event-nth 3 x))
+        ((fn-stxe-p x) (fn-stxe-txid x))
+        ((fn-stxk-p x) (fn-stxk-txid x))
+        ((fn-stxa-p x) (fn-stxa-txid x))
+        (t nil)))
 (defun fn-store-event-generation (x)
   (declare (xargs :guard t :verify-guards nil))
-  (if (fn-record-p x) (fn-record-generation x) (fn-store-event-nth 4 x)))
+  (cond ((fn-record-p x) (fn-record-generation x))
+        ((fn-store-retention-event-p x) (fn-store-event-nth 4 x))
+        ((fn-stxe-p x) (fn-stxe-generation x))
+        ((fn-stxk-p x) (fn-stxk-generation x))
+        ((fn-stxa-p x) (fn-stxa-generation x))
+        (t nil)))
 (defun fn-store-event-obligation-id (x) (declare (xargs :guard t :verify-guards nil)) (fn-store-event-nth 5 x))
 (defun fn-store-event-subject (x) (declare (xargs :guard t :verify-guards nil)) (fn-store-event-nth 6 x))
 (defun fn-store-event-evidence (x) (declare (xargs :guard t :verify-guards nil)) (fn-store-event-nth 7 x))
@@ -96,8 +118,13 @@
 
 (defun fn-store-event-encode (event)
   (declare (xargs :guard t :verify-guards nil))
-  (if (fn-record-p event) (fn-record-encode event)
-    (fn-store-retention-event-encode event)))
+  (cond ((fn-record-p event) (fn-record-encode event))
+        ((fn-store-retention-event-p event)
+         (fn-store-retention-event-encode event))
+        ((fn-stxe-p event) (fn-stxe-encode event))
+        ((fn-stxk-p event) (fn-stxk-encode event))
+        ((fn-stxa-p event) (fn-stxa-encode event))
+        (t nil)))
 
 (defthm fn-store-event-article-encoding-is-legacy-record-encoding
   (implies (fn-record-p record)
@@ -174,4 +201,10 @@
   (declare (xargs :guard t :verify-guards nil))
   (let ((legacy (fn-record-decode-exact octets)))
     (if (fn-record-result-okp legacy) legacy
-      (fn-store-retention-event-decode-exact octets))))
+      (let ((retention (fn-store-retention-event-decode-exact octets)))
+        (if (equal (car retention) :ok) retention
+          (let ((verdict (fn-stxe-decode-exact octets)))
+            (if (fn-stmt-okp verdict) verdict
+              (let ((snapshot (fn-stxk-decode-exact octets)))
+                (if (fn-stmt-okp snapshot) snapshot
+                  (fn-stxa-decode-exact octets))))))))))
