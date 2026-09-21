@@ -250,10 +250,32 @@ class NativeCheckpointTests(unittest.TestCase):
         }
         for point, expected in candidate_expectations.items():
             with self.subTest(point=point):
-                store = self.initialized(point, article=False)
+                store = self.initialized(point)
+                before = self.transaction_bytes(store)
                 self.stopped_then_killed(("checkpoint", "publish", store), point)
                 status = self.native("checkpoint", "status", store)
                 self.assertIn(expected, status.stdout)
+                recovered = self.native("store", store, "recover")
+                self.assertIn("transactions=1 articles=1", recovered.stdout)
+                self.assertEqual(self.transaction_bytes(store), before)
+
+    def test_process_death_at_every_selection_cut_preserves_event_bytes(self):
+        selection_expectations = {
+            "selection-file": "checkpoint=none",
+            "selection-replace": "checkpoint=ok generation=0",
+            "selection-directory": "checkpoint=ok generation=0",
+        }
+        for point, expected in selection_expectations.items():
+            with self.subTest(point=point):
+                store = self.initialized(point)
+                self.native("checkpoint", "publish", store)
+                before = self.transaction_bytes(store)
+                self.stopped_then_killed(("checkpoint", "select", store, "0"), point)
+                status = self.native("checkpoint", "status", store)
+                self.assertIn(expected, status.stdout)
+                recovered = self.native("store", store, "recover")
+                self.assertIn("transactions=1 articles=1", recovered.stdout)
+                self.assertEqual(self.transaction_bytes(store), before)
 
     def test_selected_lossless_pack_splices_before_generic_replay(self):
         store = self.initialized("pack")
@@ -409,20 +431,6 @@ class NativeCheckpointTests(unittest.TestCase):
         suffix_name = "00000000000000000004.txn"
         self.assertEqual(self.transaction_bytes(store),
                          {suffix_name: before[suffix_name]})
-
-        selection_expectations = {
-            "selection-file": "checkpoint=none",
-            "selection-replace": "checkpoint=ok generation=0",
-            "selection-directory": "checkpoint=ok generation=0",
-        }
-        for point, expected in selection_expectations.items():
-            with self.subTest(point=point):
-                store = self.initialized(point, article=False)
-                self.native("checkpoint", "publish", store)
-                self.stopped_then_killed(("checkpoint", "select", store, "0"), point)
-                status = self.native("checkpoint", "status", store)
-                self.assertIn(expected, status.stdout)
-
 
 if __name__ == "__main__":
     unittest.main()
