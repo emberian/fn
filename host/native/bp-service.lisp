@@ -8,7 +8,7 @@
 (in-package "ACL2")
 
 (defstruct fnn-bps
-  root lifecycle tally state lock-fd (outcome :accepted))
+  root lifecycle tally state spool-lock lock-fd (outcome :accepted))
 
 (defun fnn-bps-lock (root)
   (let ((fd (fnn-open (fnn-join root "lifecycle.lock")
@@ -18,9 +18,11 @@
       (fnn-close fd)
       (fnn-fault "bp-service: refusing non-regular lifecycle lock"))
     (handler-case (fnn-flock fd (logior +fnn-lock-ex+ +fnn-lock-nb+))
-      (fnn-os-error ()
+      (fnn-os-error (e)
         (fnn-close fd)
-        (fnn-refuse "bp-service: lifecycle queue is already locked")))
+        (if (= (fnn-os-errno e) sb-posix:eagain)
+            (fnn-refuse "bp-service: lifecycle queue is already locked")
+          (fnn-fault "bp-service: cannot establish lifecycle ownership: ~a" e))))
     fd))
 
 (defun fnn-bps-release (service)
@@ -28,7 +30,11 @@
     (when fd
       (ignore-errors (fnn-flock fd +fnn-lock-un+))
       (fnn-close fd)
-      (setf (fnn-bps-lock-fd service) nil))))
+      (setf (fnn-bps-lock-fd service) nil)))
+  ; Release in reverse acquisition order: lifecycle, then the shared journal
+  ; owner lock used by tcpcl, bp send/receive, and this service.
+  (fnn-tcl-spool-release (fnn-bps-spool-lock service))
+  (setf (fnn-bps-spool-lock service) nil))
 
 (defun fnn-bps-frame-name-p (name)
   (and (= (length name) 24)
@@ -211,34 +217,44 @@
 
 (defun fnn-bps-open (journal config wall wall-error)
   (let* ((root (fnn-bp-journal-dir journal))
+         ; Shared journal ownership precedes cleanup and the lifecycle lock.
+         ; No live bp/tcpcl writer can lose its staging file to recovery.
+         (spool-lock (fnn-tcl-spool-acquire root))
          (life (fnn-join root "lifecycle"))
          (tally (make-fnn-bp-tally :config config :wall wall :wall-error wall-error
                                    :journal root))
          (service nil))
     (handler-case
         (progn
-          (fnn-safe-directory life t)
-          ;; Repeat the namespace-publication barrier on every recovery: an
-          ;; earlier mkdir may have returned before its parent barrier failed.
-          (fnn-fsync-dir (fnn-parent life)))
-      (fnn-os-error (e)
-        (fnn-indeterminate
-         "bp-service: lifecycle namespace publication failed: ~a" e)))
-    (setq service
-          (make-fnn-bps
-           :root root :lifecycle life :tally tally :lock-fd (fnn-bps-lock root)
-           :state (fnn-core 'fn-bpn-host-machine-initial
-                            config
-                            (fnn-core 'fn-bpn-host-machine-max-jobs)
-                            (fnn-core 'fn-bpn-host-machine-max-octets))))
-    (handler-case
-        (let* ((names (fnn-bps-record-names service))
-               (records (fnn-bps-read-records service names))
-               (sequence (fnn-bps-sequence-ready service (and records t))))
-          (fnn-bps-drive-effects
-           service (fnn-bps-step service (list :restart records sequence)))
-          service)
-      (error (e) (fnn-bps-release service) (error e)))))
+          (handler-case
+              (progn
+                (fnn-safe-directory life t)
+                ;; Repeat the namespace-publication barrier on every recovery:
+                ;; an earlier mkdir may have returned before its parent barrier
+                ;; failed.
+                (fnn-fsync-dir (fnn-parent life)))
+            (fnn-os-error (e)
+              (fnn-indeterminate
+               "bp-service: lifecycle namespace publication failed: ~a" e)))
+          (setq service
+                (make-fnn-bps
+                 :root root :lifecycle life :tally tally
+                 :spool-lock spool-lock :lock-fd (fnn-bps-lock root)
+                 :state (fnn-core 'fn-bpn-host-machine-initial
+                                  config
+                                  (fnn-core 'fn-bpn-host-machine-max-jobs)
+                                  (fnn-core 'fn-bpn-host-machine-max-octets))))
+          (let* ((names (fnn-bps-record-names service))
+                 (records (fnn-bps-read-records service names))
+                 (sequence (fnn-bps-sequence-ready service (and records t))))
+            (fnn-bps-drive-effects
+             service (fnn-bps-step service (list :restart records sequence)))
+            service))
+      (error (e)
+        (if service
+            (fnn-bps-release service)
+          (fnn-tcl-spool-release spool-lock))
+        (error e)))))
 
 (defun fnn-bps-attempt-ready (service)
   ;; Expiry changes only the BP job's lifecycle status.  The record retains

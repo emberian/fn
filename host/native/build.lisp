@@ -28,6 +28,8 @@
 ; native host's host/native/tcpcl.lisp drives.  books/tcpcl-session includes
 ; books/tcpcl-octets and books/tcpcl-records; all three are Makefile roots.
 (include-book "books/tcpcl-session")
+; The spool recovery plan the raw convergence host calls before socket I/O.
+(include-book "books/tcpcl-spool")
 (include-book "books/bp-node")
 (include-book "books/bp-node-records")
 (include-book "books/bp-node-machine")
