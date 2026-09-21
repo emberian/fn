@@ -1006,13 +1006,13 @@ kernel may have issued the namespace operation even when it reports failure."
                         "initial immutable-link outcome is indeterminate: ~a" e))))))
            (case publication
              (:published
-              (when initializer-prefix
-                (fnn-init-cut store (fnn-concat initializer-prefix "linked")))
               ;; Link succeeded, so a later directory-barrier error cannot
               ;; be retried as EEXIST.  The final name may be visible; surface
               ;; either errno as uncertain for recovery.
               (handler-case
                   (progn
+                    (when initializer-prefix
+                      (fnn-init-cut store (fnn-concat initializer-prefix "linked")))
                     (fnn-fsync-dir (fnn-store-root store))
                     (when initializer-prefix
                       (fnn-init-cut store (fnn-concat initializer-prefix "root-fenced")))
