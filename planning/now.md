@@ -12,14 +12,18 @@ sequence allocation, shared CLI/NNTP submission, and ACL2 outbound framing.
 Both hbox and persvati are used for owned certification and integration work.
 Root integrates coherent batches and updates the registries from their evidence.
 The first auth/feed/framing/artifact batch is integrated at `cdbd6b2`; Terra
-is measuring the combined two-node runtime on hbox; that run has exposed a
-transfer-probe stall under investigation, not a passing service result. Luna
+completed the frozen two-node runtime exercise on hbox. The TAKETHIS probe
+stall was a harness ordering defect, corrected in a scoped supplemental run.
+The original run still has authentication-gate disagreements on both nodes and
+a BP crash disagreement; Sol owns diagnosis with the producing lanes. It is
+not a passing service result. Luna
 finished the frozen-source ledger synchronization. Storage codecs and the
 scoped physical relation packet are integrated at `1501492`; metadata
 initialization and first-frontier results do not establish full current-host
 initialization or general recovery. Terra now owns the feed correspondence
 continuation and a fresh initializer transcription; both Astra proof lanes have
-handed off their checkpoints. Luna is registering the scoped storage evidence.
+handed off their checkpoints. Luna registered the scoped storage evidence
+as PRF-044; the conditional scope and missing host correspondence remain explicit.
 The overnight goal remains active. Luna handles bounded mechanical work, Terra
 implementation, and Sol substantial implementation/proof debugging and combined
 owner-service integration. Astra handles periodic cross-project review and
@@ -43,3 +47,16 @@ The [evidence index](evidence-index.md), [assurance matrix](assurance-closure.md
 and [implementation status](../docs/implementation.md) retain scoped historical
 evidence. A passing scaffold check is not certification; certification is not a
 running-system, RFC-conformance or mission-qualification claim.
+
+The next integration order is the combined live-config/submission/feed path,
+native BP allocation/lifecycle and their crash joins, then persisted identity
+and admission context, checkpoints/index adoption, and bounded long-lived
+operation. Prerequisite-ready work continues in parallel. Fresh initializer
+transcription and native metadata adoption close existing assurance gaps;
+they are not new release scope.
+
+Design discussion should now settle deployment resource targets, human/agent
+principal and delegation semantics, and offline policy/restore/release behavior.
+Existing D09/D11 proposals are inputs, not selected requirements. The performance
+baseline needs a fresh run on the converged owner/native paths: the historical
+scale measurements and placeholder native comparison do not qualify this head.
