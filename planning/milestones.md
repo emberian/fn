@@ -42,7 +42,7 @@ credential --- which is every two-node harness fn has. `AUTHINFO PASS`
 answered 481 with the secret the CLI had just written, no AUTHINFO label was
 advertised and POST was never gated (v0 matrix `c3b99f8`, eight F-AUTH rows).
 The before-and-after measurement is
-[auth-live](evidence/auth-live-2026-09-21.md), PRF-039 is the pair of
+[auth-live](evidence/auth-live-2026-09-21.md), PRF-039 carries the
 theorems, and the boundary test that would have caught it --- `bin/fn run`
 over an `fn.toml`, with a peer record, logging in with a credential written
 in the same test --- is `tests/test_auth.py ServedCredentialTests`. `fn init`

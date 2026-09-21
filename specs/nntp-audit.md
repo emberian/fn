@@ -287,7 +287,7 @@ whenever the source address matches a peer record — which on one box is
 every client. `AUTHINFO PASS` answered 481 with the secret just written,
 no AUTHINFO label was advertised and POST was never gated.
 [The live record](../planning/evidence/auth-live-2026-09-21.md) is the
-before and after; PRF-039 is the pair of theorems; and the test that
+before and after; PRF-039 carries the theorems; and the test that
 would have caught it is `tests/test_auth.py ServedCredentialTests`, which
 starts the node through `bin/fn run` with a peer record, because no test
 that starts `tools/run_owner.py` directly can reach the peer branch. The
