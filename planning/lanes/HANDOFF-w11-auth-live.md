@@ -104,7 +104,8 @@ root `/home/ember/fn-lanes/w11-auth-live`:
 | `run-20260921T020122Z-d422` | **passed**, `tests/acl2/served-tests` with the PRF-039 teeth, 112 assertions, 0 errors |
 | `run-20260921T021107Z-808e` | **failed** at one form, recorded because it is the only one: `fn-auth-capability-lines-offer-post-by-definition` was stated with `fn-nntp-capability-lines` disabled, so `member-equal` over the append had no law. Made `local` with `:rule-classes nil` and both definitions open |
 | `run-20260921T021603Z-e2e8` | **passed**, 0 failures, 266 s, with the greeting keystones: `books/served`, `books/owner`, `books/owner-invariants`, `books/owner-config`, `books/nntp-auth`, `books/nntp-auth-invariants`, `books/ideal`, `tests/acl2/served-tests`, `tests/acl2/owner-tests`, `tests/acl2/owner-config-tests` |
-| `run-20260921T022610Z-355a` | **passed**, 0 failures, 212 s, on the tree AFTER merging dev, over the closure of `books/served.lisp` AND `books/owner.lisp` (`--jobs 8`, installed 46 kept 100 uncached 133). **This is the certification of record for the lane.** |
+| `run-20260921T022610Z-355a` | **passed**, 0 failures, 212 s, on the tree after the first dev merge, over the closure of `books/served.lisp` AND `books/owner.lisp` |
+| `run-20260921T030418Z-407c` | **passed**, 0 failures, 267 s, on the lane's FINAL tree (`c326483`, merged with dev `9010d01`), same two roots and their closure (`--jobs 8`, installed 28 kept 117 uncached 135): `books/served`, `books/owner`, `books/owner-invariants`, `books/owner-config`, `books/owner-feed`, `tests/acl2/served-tests`, `tests/acl2/owner-tests`. **This is the certification of record for the lane**, and it is of the head, not of an earlier commit: dev had changed `books/owner-feed.lisp` and the store-node cluster underneath since the previous run |
 
 ## The v0 matrix re-run: six of the eight F-AUTH rows moved
 
