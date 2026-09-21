@@ -46,7 +46,7 @@
           (values nil :exited *the-live-state*))
         (setq *print-startup-banner* nil))
 (defttag nil)
-(value-triple (prog2$ (cw "FN_NATIVE_STORE_TEST_BUILD_LOADED~%") :loaded))
+(value-triple (prog2$ (cw "FN_NATIVE_BUILD_LOADED~%") :loaded))
 :q
 (save-exec "build/fn-host-store-test" "fn native store test host"
            :return-from-lp '(fn-native-entry state)
