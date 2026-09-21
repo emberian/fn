@@ -235,8 +235,13 @@ asserts.
 
 ## 8. The merge
 
+**dev is at `7f6df89` and carries this packet**, fast-forwarded from the
+lane branch, so dev's three tcpcl files are byte-for-byte the tree that
+`certify-20260921T000317Z-1324995` certified (the two commits after that run
+touch only `planning/`).
+
 `w11/snt-guards` landed on dev (`2e99538`) while this lane was measuring, so
-dev was merged in here rather than the other way round. Three conflicts, all
+dev was merged in here first, rather than the other way round. Three conflicts, all
 in shared registries and none in a book: `planning/deputies/BOARD.md`, where
 both lanes appended a dated section and both are kept in merge order with no
 line of either edited, and `planning/ledger.json`/`.md`, regenerated with
