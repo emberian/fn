@@ -113,6 +113,81 @@ step 1 -- that is a reading of a document, argued in
 `specs/peering.md`'s wave-11 status section, and no theorem in this tree
 says it.
 
+## Run 2 and run 3: the two-node gate on persvati
+
+`python3 tools/twonode_gate.py HEAD --host persvati`, invoked from this lane's
+worktree (`build/lanes/w11-twonode-feed`), which is where the evidence lands.
+Both runs are committed whole: `twonode-bbd1f47-2026-09-21.md` (99 steps, 2
+failed, 4 not exercised) and `twonode-ea76826-2026-09-21.md` (101 steps).
+
+### What run 2 (`bbd1f47`) established, and what it hid
+
+`transit | IHAVE -> '335 send it'`, where every gate before this lane
+recorded `502 transit is not permitted on this connection`. The hand-driven
+relay crossed with `identical=True`.
+
+Its owner-feed rows all read "not exercised", and they were wrong: the
+crossings had happened. `FEED_DRIVER`'s `post` read its reply with
+`conn.read_line()`, which `Conn` does not have, and the AttributeError fires
+AFTER the article is on the wire. The wire tap is what caught it, and is the
+reason this gate has one. Recorded here because it is a shape to watch for:
+**a harness can report a feature as absent when the only thing missing is
+its own reply read.**
+
+### What run 3 (`ea76826`) shows
+
+| row | value |
+| --- | --- |
+| `owner feed` | **A->B True** |
+| `owner feed streaming` | **True** |
+| `owner feed wire` | `IHAVE <fed-ab@example.invalid>` |
+| `owner feed streaming wire` | `MODE STREAM; CHECK <fed-streaming@example.invalid>; TAKETHIS <fed-streaming@example.invalid>` |
+| `feed` (hand relay) | `offer=335 transfer=235 ... loop=437 transfer rejected; path loop reread=220 identical=True` |
+| `owner feed cut` | `CUT-TAKEN ; served=220 ... accepted-transfers-observed=0` |
+| `transit` | `IHAVE -> '335 send it'` |
+
+Three readings.
+
+**The feed carried it, and by which command is on record.** The tap in front
+of node B recorded, from node A's own feed and nothing else,
+`IHAVE <fed-ab@example.invalid>` / `335` / the article / `235`, and then
+`MODE STREAM` / `203` / `CHECK <fed-streaming@...>` / `238` /
+`TAKETHIS` / `239`. Same node pair, same deploy, two offer commands, because
+streaming is the peer record's outbound flag and the records were rewritten
+and both nodes restarted between them.
+
+**Loop suppression fired for the first time on this tree.** `loop=437
+transfer rejected; path loop`. Every earlier run recorded `235 article
+transferred OK` for the same probe, and that was correct behaviour for a node
+with no name: `fn-peer-local-identity` reads a policy slot nothing could
+write, an unset slot reads as the empty string, and `fn-path-names-p` never
+matches it.
+
+**The lost-reply crash point was reached and resolved.** The tap cut the
+transfer after the article block and before the status line (`CUT-TAKEN`);
+node B served the article afterwards and node A observed ZERO accepted
+transfers. Whether B committed before the cut is genuinely indeterminate and
+neither is asserted.
+
+### What run 3 did not show, with the blocker named
+
+| step | why |
+| --- | --- |
+| B to A by node B's own feed | Node B reached its connection bound. `tools/run_owner.py` defaults to `--max-connections 8`; a two-node run holds a persistent feed connection each way, a tap backend session per dial, and the harness's own probes. `accept_nntp` closes the socket at accept when the bound is reached, which the driver reports as `RuntimeError: server closed the connection`. Four steps were lost to it: the B-to-A post, the second-offer probe, the K5 restart arrival and the cut scenario's first group count. The gate's nodes now run with `--max-connections 32`; **that the default of 8 is reachable in a two-node run is a finding and is not fixed here.** |
+| K5 restart by re-offer (`kill -9` node A) | the same bound, at the arrival step |
+| `identical` for the two feed-delivered articles | reported `False` with nothing to say which lines differ. RFC 5537 3.6 lets a relaying agent alter Path and Xref and nothing else, so which lines differ is the whole question; `wait` now reports both line counts and the lines present on one side only. The hand relay's `identical=True` in the same run says the octets survive an IHAVE that copies them verbatim. |
+| the TCPCLv4 scenario | `build/fn-host` did not build on this commit; the layer was not exercised at all |
+| `CAPABILITIES` naming the transit commands | the book renders the reader block on a peer session (`transit | ... CAPABILITIES lists IHAVE: False`), which is an open defect, not a gap in this run |
+
+### One limitation worked around, named as the coordinator asked
+
+A connection can never POST twice today: one clock observation is pinned at
+accept and the decision is built from it, so a second POST on the same
+connection is refused `441` whatever the article is. A separate lane owns
+that seam. This harness was already immune -- `FEED_DRIVER`'s `post` opens a
+fresh connection per article and closes it -- so nothing here works around
+it, and nothing here exercises two posts on one connection either.
+
 ## Limits of this record
 
 - **Run 1 is not the gate.** It is a scratch driver on the laptop with a
