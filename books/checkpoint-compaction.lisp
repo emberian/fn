@@ -81,6 +81,30 @@
          (list :error :suffix))
         (t (list :ok (append (fn-cc-events summary) suffix) final-frontier))))
 
+; Every surviving physical record inside the packed interval must be the exact
+; packed byte string.  Missing covered records are allowed after an interrupted
+; reclaim; no missing record at or above the boundary is accepted by the
+; namespace observation.
+(defun fn-cc-observation-agrees (pairs events boundary)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp pairs)
+      (let ((pair (car pairs)))
+        (and (true-listp pair) (equal (len pair) 2)
+             (natp (car pair))
+             (or (<= boundary (car pair))
+                 (and (< (car pair) (len events))
+                      (equal (cadr pair) (nth (car pair) events))))
+             (fn-cc-observation-agrees (cdr pairs) events boundary)))
+    (null pairs)))
+
+(defun fn-cc-observation-suffix (pairs boundary)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp pairs)
+      (if (< (caar pairs) boundary)
+          (fn-cc-observation-suffix (cdr pairs) boundary)
+        (cons (cadar pairs) (fn-cc-observation-suffix (cdr pairs) boundary)))
+    nil))
+
 (defun fn-cc-encode-events (events)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp events)
@@ -148,8 +172,8 @@
   :hints (("Goal" :in-theory (enable fn-cc-capture fn-cc-summaryp fn-cc-make
                                      fn-cc-sequence fn-cc-frontier fn-cc-events))))
 
-; Keystone: checkpoint summary plus suffix reconstructs the exact full
-; transaction byte history.  No host re-derives articles, evidence or keys.
+; Definition unfolding: the summary stores the exact prefix bytes and expand
+; appends the validated suffix.  This is not a recovery correspondence proof.
 (defthm fn-cc-capture-plus-suffix-is-full-history-by-definition
   (implies (and (fn-record-uint32p checkpoint-frontier)
                 (fn-record-uint32p final-frontier)

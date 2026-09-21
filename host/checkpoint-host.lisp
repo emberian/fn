@@ -117,6 +117,30 @@
       (if (not (equal trailer digest)) '(:error :integrity)
         (fn-store-checkpoint-compaction-expand payload octet-suffix frontier)))))
 
+(defun fn-store-checkpoint-compaction-max-octets ()
+  (declare (xargs :mode :program))
+  *fn-cc-max-octets*)
+
+(defun fn-store-checkpoint-compaction-observe (framed digest observed frontier)
+  (declare (xargs :mode :program))
+  (if (or (not (fn-cbor-octet-listp framed))
+          (< (len framed) *fn-frame-trailer-octets*))
+      '(:error :frame)
+    (let* ((n (- (len framed) *fn-frame-trailer-octets*))
+           (payload (take n framed))
+           (trailer (nthcdr n framed))
+           (decoded (and (equal trailer digest) (fn-cc-decode-exact payload))))
+      (if (or (not (consp decoded)) (not (equal (car decoded) :ok)))
+          '(:error :integrity)
+        (let* ((summary (cadr decoded))
+               (boundary (fn-cc-sequence summary)))
+          (if (not (fn-cc-observation-agrees
+                    observed (fn-cc-events summary) boundary))
+              '(:error :conflict)
+            (fn-cc-expand summary
+                          (fn-cc-observation-suffix observed boundary)
+                          frontier)))))))
+
 ; Inspect the selected authority before the host slices its bounded physical
 ; observation.  ACL2 returns the only accepted coverage boundary.
 (defun fn-store-checkpoint-compaction-coverage (framed digest observed-count frontier)

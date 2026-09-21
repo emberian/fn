@@ -416,8 +416,20 @@
         "A-WRITE-ISOLATION",
         "A-POLICY"
       ],
-      "status": "planned",
-      "evidence": []
+      "status": "in-progress",
+      "events": [
+        "fn-cc-capture-produces-summary",
+        "fn-cc-capture-preserves-prefix-member"
+      ],
+      "evidence": [
+        "books/checkpoint-compaction.lisp",
+        "tests/acl2/checkpoint-compaction-tests.lisp",
+        "books/byte-store-txn-name.lisp",
+        "tests/acl2/byte-store-txn-name-tests.lisp",
+        "host/native/checkpoint.lisp",
+        "tests/test_native_checkpoint.py"
+      ],
+      "progress_note": "The implemented physical tranche retains exact canonical event bytes in an immutable selected pack, validates every surviving covered record, accepts only missing files within the covered prefix, requires a contiguous uncovered suffix, and resumes exact prefix unlink under the writer lease. The definition-unfolding prefix-plus-suffix equality is deliberately not a registry event. Open: a general crash correspondence theorem, active-reader coordination, protected article-object closure, filesystem qualification, and integrated native-image execution."
     },
     {
       "id": "PRF-010",

@@ -774,8 +774,8 @@ not repeat the staging-prefix, held-name, or phase policy."
 ; generic decoder/replay call.  Without the optional pack layer this is the
 ; identity function.
 (defvar *fnn-pack-recover-callback*
-  (lambda (store records actual-lower)
-    (declare (ignore store actual-lower)) records))
+  (lambda (store records sequences actual-lower)
+    (declare (ignore store sequences actual-lower)) records))
 (defvar *fnn-pack-lower-bound-callback*
   (lambda (store) (declare (ignore store)) 0))
 
@@ -1282,7 +1282,7 @@ because the name may or may not still be present after the syscall."
         (fnn-close fd)))))
 
 (defun fnn-durable-records (store &optional (selected-lower 0))
-  (let ((records nil) (aggregate 0)
+  (let ((records nil) (sequences nil) (aggregate 0)
         (bound (+ (fnn-constant :overhead) (fnn-constant :max-store))))
     (multiple-value-bind (files actual-lower)
         (fnn-transaction-files store selected-lower)
@@ -1294,8 +1294,9 @@ because the name may or may not still be present after the syscall."
             (fnn-fault "transaction recovery input exceeds configured bound"))
           (unless (= (fnn-bridge-record-sequence record) sequence)
             (fnn-fault "record sequence does not match immutable filename"))
+          (push sequence sequences)
           (push record records)))
-      (values (nreverse records) actual-lower))))
+      (values (nreverse records) actual-lower (nreverse sequences)))))
 
 (defun fnn-observe (store operation &optional (result :ok))
   "Submit one already-observed filesystem result and keep failure fenced."
@@ -1311,11 +1312,12 @@ because the name may or may not still be present after the syscall."
         (progn
           (fnn-load-frontier store)
           (let ((config-records (fnn-config-records store)))
-            (multiple-value-bind (physical-records actual-lower)
+            (multiple-value-bind (physical-records actual-lower physical-sequences)
                 (fnn-durable-records
                  store (funcall *fnn-pack-lower-bound-callback* store))
               (setq records (funcall *fnn-pack-recover-callback*
-                                     store physical-records actual-lower)))
+                                     store physical-records physical-sequences
+                                     actual-lower)))
             (unless (eq (fnn-bridge-recover records (fnn-store-frontier store) config-records)
                         :recovering)
               (fnn-fault "ACL2 replay rejected committed transaction history or configuration history")))

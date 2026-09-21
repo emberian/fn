@@ -7,7 +7,7 @@
       "title": "Immutable content and explicit digest conflicts",
       "specification": "specs/objects.md#logical-records",
       "milestone": "M1",
-      "status": "specified",
+      "status": "in-progress",
       "proof_targets": [
         "PRF-001",
         "PRF-003"
@@ -520,8 +520,15 @@
         "proof",
         "scenario"
       ],
-      "evidence": [],
-      "note": "PRF-009 is planned with no events. No compaction exists."
+      "evidence": [
+        "books/checkpoint-compaction.lisp",
+        "books/byte-store-txn-name.lisp",
+        "host/native/checkpoint.lisp",
+        "host/native/io.lisp",
+        "tests/acl2/checkpoint-compaction-tests.lisp",
+        "tests/test_native_checkpoint.py"
+      ],
+      "note": "A lossless selected prefix pack now permits exact prefix-file reclamation and crash resumption while preserving every canonical Store event byte. Surviving covered files must match the pack and the uncovered suffix must be contiguous. Focused source and ACL2 tests do not yet establish active-reader safety, all physical crash cuts, filesystem qualification, or protected-closure reclamation of article objects."
     },
     {
       "id": "STO-008",
