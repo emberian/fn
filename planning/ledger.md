@@ -19,7 +19,7 @@ stale. Counts describe artifacts, not coverage; see
 | Functions declared `:verify-guards nil` and never verified | 190 |
 | Functions left at the default with an explicit guard | 1790 |
 | Functions left at the default with no guard | 489 |
-| `assert-event` checks | 5518 |
+| `assert-event` checks | 5522 |
 | `must-fail` checks | 63 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 46 |
@@ -355,7 +355,7 @@ that `make certify` requests.
 | `tests/acl2/transfer-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 60 | 0 | 0 |
 | `tests/acl2/wildmat-parser-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 0 | 0 |
 | `tests/acl2/wildmat-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 5 | 0 |
-| `tests/acl2/wildmat-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 57 | 0 | 0 |
+| `tests/acl2/wildmat-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 61 | 0 | 0 |
 | `tests/acl2/wire-tests.lisp` | root | 4 | 0 | 0/0/0/0 | 49 | 0 | 0 |
 
 ## Theorems flagged SUSPECT by shape

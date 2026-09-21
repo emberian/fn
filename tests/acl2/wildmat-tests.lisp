@@ -166,6 +166,26 @@
                       '(84 101 115 116))
                      '(:ok t)))
 
+; The remaining row of the INN 2.7.4 measurement: `* *' joined from two bare
+; stars.  INN answers false for "Test", and so does fn, for the same reason --
+; the target carries no SP.  With those, fn and INN agree on five of the six
+; rows of planning/evidence/inn-xpat-2026-09-20.md and differ only on the
+; comma, where RFC 2980 is on fn's side.
+(assert-event (equal (fn-wildmat-parse-text '(42 32 42))
+                     '(:ok ((:positive (42 32 42))))))
+(assert-event (equal (fn-wildmat-match-parsed
+                      (fn-wildmat-result-value (fn-wildmat-parse-text '(42 32 42)))
+                      '(84 101 115 116))
+                     '(:ok nil)))
+(assert-event (equal (fn-wildmat-match-parsed
+                      (fn-wildmat-result-value (fn-wildmat-parse-text '(42 32 42)))
+                      '(84 32 115 116))
+                     '(:ok t)))
+(assert-event (equal (fn-wildmat-match-parsed
+                      (fn-wildmat-result-value (fn-wildmat-parse-text '(42 84 42)))
+                      '(84 101 115 116))
+                     '(:ok t)))
+
 ; The newsgroup-name path is where it was: a group wildmat still matches a
 ; group name, and SP alone is still not a wildmat there.
 (assert-event (equal (fn-wildmat-match '(102 110 46 42)
