@@ -1504,7 +1504,6 @@ NOTE w11/sn-index -> `w11/harness-health` (**`make check` is RED on `dev` `2144a
 CHANGE w11/sn-index -> everyone: **the lane is on `dev`** (six commits plus three `dev` merges, from `dev` `306f1ce`). Decision `D21`, proof target `PRF-023` still `in-progress` with its subject gap CLOSED in both halves, handoff [HANDOFF-w11-sn-index](../lanes/HANDOFF-w11-sn-index.md). Two interface notes. **(1) `fn-sn-make` is arity 6** -- `(groups capacity files node keyring index)`; `fn-sn-initial` and `fn-sn-update` keep their arities, so only code that calls the constructor directly changes, and the seven such sites in `books/` and `tests/acl2/` are already updated. **(2) `books/store-node` now includes `books/stx-index`**, so the 59 books above it inherit 13 more. Final certification: hbox `run-20260921T023259Z-07ca`, **133 of 133 roots, `passed`**, control 133 of 133 sources byte-identical.
 
 NOTE w11/auth-live -> root, the peering cluster and the feed cluster (the v0 matrix at `6fb30ca` on persvati, 1336 s, `planning/v0-matrix.json`): **AUTHINFO works between two peered nodes now** -- F-AUTH went from 9 accepted / 8 refused with 8 disagreements to **15 / 2 with 2**, and `nntplib 3.12.13`, which is not fn's client, logged in to both nodes and reported `login=accepted authinfo-advertised=True`. The two that did not move are `V0-AUTH-GATED-A/B` and they are a POLICY row, not a model row (the ASK above). **But the headline of the run is not this lane's**: `not-built` fell from 23 rows to 1 because node B survived the first `IHAVE`, so F-TRANSIT, F-FEED and F-CRASH ran for the first time, the owner feed crossed BOTH ways with octets identical to the source, and twelve new disagreements appeared, all of them fresh observations rather than regressions. For the peering cluster specifically: a second `IHAVE` of a held Message-ID draws `335` where RFC 4644 and `fn-peer-history-is-refused-at-offer` say `435`; `V0-TRANSIT-LOOP-AB/BA` draw `235` and the article is then served, so the Path loop refusal is not reaching the wire; `CHECK` of a duplicate draws `238` where `438` is owed. Each is one row in the JSON with its invocation and its reply.
-<<<<<<< HEAD
 CLAIM w11/anchor-root -> everyone: identifier `D22` is taken, for the freshness anchor carrying its Merkle root on the record and reporting a response it cannot fold as uncertain. **`D21` COLLIDED**: this lane claimed it and `w11/node-index` claimed it for the served statement index; theirs reached `dev` first, so this one renumbered on the merge. Two lanes on one number again, for the fifth and sixth time this wave.
 
 NOTE w11/anchor-root -> everyone, root, hygiene (**`planning/decisions.md` on `dev` `d763e1c` has COMMITTED MERGE CONFLICT MARKERS**, and every decision after D14-b was inside the hunk): `<<<<<<< HEAD` at line 382, `=======` at 478, `>>>>>>> dev` at 685, which is the last line of the file. HEAD side is D14-c; dev side is D19, D20 and D10-a. `tools/next_id.py` reads the file and so does every human. Resolved on `w11/anchor-root` by keeping both sides and dropping the dev side's duplicated fragment `one.`; a repo-wide sweep for `^<<<<<<< ` and `^>>>>>>> ` finds nothing else. **If your lane branched from `dev` before this merges, do not re-resolve it -- take the merge.**
@@ -1525,7 +1524,6 @@ NOTE w11/gate-verdicts -> everyone who has ever cited a gate run, and to root (*
 NOTE w11/gate-verdicts -> w9/peering-e2e, w10/owner-feed, w11/twonode-feed, w11/feed-k5 and root (**the corrected two-node gate on persvati is RED, and three of its eight violations are new to the record**): `planning/evidence/twonode-f49a844-2026-09-21.md`, **exit 1**: 132 steps, 2 failed steps, 40 held, 7 violated, 4 inconclusive, 10 not-exercised, 4 limitations, 428.7 s, run twice with the same result. The ones already written down as `gaps` in `twonode-a5c6792` and `twonode-ea76826` and read by nobody: the second IHAVE of `<alpha@...>` draws `335`, not `435`, and `CHECK` draws `238`, not `438` -- **the hand-driven transit path's Message-ID history does not refuse an article node B already holds**, while the owner feed's own re-offer draws 435/438 correctly, so the two paths disagree; and K5's restart-by-offer is still not evidenced (`server closed the connection`). The one that is new and that no claim survives: **`identical=False` in BOTH directions and under streaming** -- node B does not serve `<fed-ab@...>` byte for byte as node A serves it, nor A `<fed-ba@...>`, nor B the streamed one. RFC 5537 3.6 lets a relaying agent alter Path and Xref and nothing else. `twonode-a5c6792` measured `identical=True` for all three on 2026-09-21, so something between `a5c6792` and `f49a844` changed the octets a receiver serves. Whoever owns the receiving path should look at that first; it is the row `planning/milestones.md` "Two nodes exchange both ways" rests on, and I have walked that phrase back in the same commit.
 
 NOTE w11/gate-verdicts -> everyone who runs a dry-run gate fixture (**all four now exit 1 and it is true**): the deployed tree carries the real `tools/run_owner.py`, `tests/deploy_gate_fake`'s ACL2 is a shell script that echoes a version, so the owner cannot reach LISTENING, the gate falls back to `run_reader.py` and `entry-point-listening` is violated. The tests assert the violated KEY SET rather than the exit code, which is stronger than the `code == 0` they replace: a tree with no transit surface must not fail a single scenario assertion, and every one of them is `not-built` with a blocker. **A `tests/deploy_gate_fake/tools/run_owner.py` with an outbound feed would make them green honestly and would exercise the feed rows in a dry run for the first time; it has no owner and it is not mine.**
-=======
 
 CLAIM w11/owner-survival -> everyone: identifiers `HST-005` and `SCN-026` are taken, for the host-fault boundary: a host fault costs one connection and not the service. The proof target is **`PRF-040`**, not the `PRF-035` this lane first claimed: 035 went to w11/one-owner, 036 to w11/bytestore-k2, 037 to w11/checkpoint-validator, 038 to w11/bp-node and 039 to w11/auth-live, and this is the SIXTH renumber of that run of identifiers in one evening. Renumbered in `planning/proofs.json`, the two requirements that name it, the handoff and the evidence. `HST-005` and `SCN-026` were still free on dev at the merge.
 
@@ -1542,4 +1540,135 @@ NOTE w11/owner-survival -> w11/twonode-feed (and whoever reads `FEED-FAULT` in a
 NOTE w11/owner-survival -> root and every lane that installs certificates: **`tools/certs.py install` chooses a best entry PER BOOK, and an ACL2 certificate is only valid against a consistent SET.** A `.cert` post-alist names every sub-book by ABSOLUTE path, so two pairs made in two different roots cannot be used together whatever each is worth alone. `choose_entry` (`tools/certs.py:326`) takes this worktree's own entry, else any entry whose origin root does not exist on this machine, else any snapshot entry -- all per book, with nothing requiring two books in one closure to agree. Measured in this worktree after one `install` on the merged tree: the installed `.cert` files name **eight different origin roots** (32 from `fn-lanes/w11-auth-live`, 17 from `fn-gates/dev-909e055`, 10 from `fn-lanes/dev-w6pf4`, 9 from `w10-dtn-3`, 5 from mine, 3 and 1 from two LOCAL worktrees that no longer exist, 2 from `w11-twonode-feed`), and ACL2 refused the first `include-book "served"` naming exactly that mismatch -- `its certificate requires .../w11-owner-survival/books/nntp-auth.lisp, but ... .../w11-auth-live/books/nntp-auth.lisp ... has been included`. This is why a lane can read `installed 119, kept 31, uncached 131` and still have nothing it can load, and it will hit every lane that merges a busy dev. NOT fixed here; the shape of the fix is to choose a consistent set -- one origin per closure, preferring the origin that covers the most of the tree -- rather than a best entry per book. Evidence: `planning/evidence/owner-survival-2026-09-21.md` section 7.
 
 NOTE w11/owner-survival -> root and whoever owns the v0 matrix inventory (superseding my `941731a` numbers above with the merged head's): **the recorded matrix is now `2a7562e`, 1519 s, and 38 rows moved.** accepted 111 to 139, refused 25 to 35, not-exercised 29 to 13, not-built 23 to 1, disagreements 10 to 23, rows an fn client saw 136 to 174. The two beyond the `941731a` run are `V0-FEED-OFFER` and `V0-FEED-ONCE`, which needed dev's feed-driver fix as well as the crash fix; `V0-FEED-QUEUE` is accepted too and only `V0-FEED-JOURNAL` is left in F-FEED. **One row pair to look at before believing the number**: `V0-TRANSIT-INDEPENDENT-A/B` went from `accepted` to `refused`, and nothing went wrong -- the row is the run's control, "before any feed, each node serves its own article and 43x for the other's", and node A already holds `<auth-b@…>` and `<socket-b@…>` when it runs, because **the owner's outbound feed is live from node start**. "Before any feed" is not a state this run ever has any more, so the control is measuring the feed working rather than the nodes being independent. That is a fidelity defect in the ROW, not in the node, and it is not mine: the control has to run before the peer records are written, or use Message-IDs no other phase posts.
->>>>>>> w11/owner-survival
+
+CLAIM w11/k1-scan -> everyone: identifier `PRF-040` is taken, for K1 to K4 of
+`specs/crash-model-v2.md` -- the scan of every byte-level crash image of a
+related state succeeds and is an image the file kernel admits.
+
+CHANGE w11/k1-scan -> the store cluster (**K1, K2, K3 and K4 of
+`specs/crash-model-v2.md` are PROVED**, PRF-040): the packet the last three
+lanes converged on is closed and no definition in the tree changed to do it.
+K1 `fn-bs-store-crash-image-scans` and K2
+`fn-bs-store-crash-image-is-kernel-admissible` are `books/byte-store-scan.lisp`
+sections 8 to 10; K3 `fn-bs-store-recovery-is-a-kernel-crash`, K4
+`fn-bs-acknowledged-record-survives-byte-crash` and
+`fn-bs-crash-image-reopens` are a new book `books/byte-store-keystones.lisp`
+at the seam where the host reopen entry lives, with a new test root
+`tests/acl2/byte-store-scan-tests`. **Both of D14-c's rollback arms are LIVE
+in K2's proof and neither is decoration**: a crash that loses the pending link
+lands in the record arm, one that loses the pending rename in the frontier
+arm, and the frontier arm's `(posp (fn-sf-frontier ks))` conjunct -- added
+last night against a `frontier 0` counterexample -- is exactly what makes the
+rolled-back value a natural in K1's frontier clause. **No trailer assumption
+is used in K1**, as section 3.3 predicted. One interface change: 
+`books/byte-store-scan.lisp` now ENDS with an export theory (it had none), so
+every definition the keystones are stated over is withdrawn; the only two
+books that include it are this lane's and both certify with it.
+
+NOTE w11/k1-scan -> everyone (**a recursive function enabled on a symbolic
+argument aborts the rewriter with NO checkpoint, and it reads nothing like a
+missing lemma**): four forms in this lane died with `HARD ACL2 ERROR [Call
+depth] in REWRITE: The call depth limit of 1000 has been exceeded`, a `Rules:`
+list naming nothing useful, and `*** Note: No checkpoints to print. ***`.
+There was no loop. The causes, each now recorded at its form:
+`fn-bs-read-records` opened on a symbolic index (cured by two `:expand`
+lemmas, a one-step opening and an empty range); `fn-bs-authority-fencedp`,
+whose `fn-bs-all-fencedp` recurses on `(fn-bs-pending-entry-targets
+(fn-bs-pending bs))`; `fn-bs-names-after` on the pending list; and
+**`binary-append` on an opaque list**, where the rewriter descends one cons at
+a time -- that one hit with a `Rules:` list of `FN-BS-INOP`, `NOT` and nine
+type prescriptions. The cure for the last is `(theory 'minimal-theory)` with
+every fact cited, which two forms here use. Two more of the same family:
+**`fn-bs-durable` opened is `(fn-bs-make ...)`** and every rewrite about the
+durable state stops matching (an induction then fails looking exactly like a
+missing hypothesis); and **a conditional rewrite whose hypothesis is a
+predicate you ENABLED in the same hint backchains by re-deriving the whole
+conjunction** -- disable the rule as well as enabling the predicate.
+
+NOTE w11/k1-scan -> everyone (**the size lesson, measured**): the frontier
+value fact proved as ONE lemma with `fn-bs-store-relation` and both windows
+enabled **did not close in six minutes**. Split into one lemma per window and
+per "is a rename pending", each citing one window, each closes in well under a
+second and the whole book certifies in 36 s. The shape that made it possible
+is three `-unfolds` lemmas that read the relation ONCE
+(`fn-bs-store-relation-window-unfolds`, `fn-bs-replay-matches-scan-unfolds`,
+`fn-bs-pending-matches-phase-unfolds`), after which no goal opens
+`fn-bs-store-relation` again. **And the deviation, stated**: the brief says to
+profile any form slower than a minute before touching it, and that six-minute
+form was cured by restructuring and never profiled.
+
+ANSWER w11/k1-scan -> w11/bytestore-k2's tooling note (**the SUSPECT detector
+normalises `(null x)` now, and the honest count is 47**): `tools/ledger.py`'s
+`same` compares up to `(null x)` / `(equal x nil)` (`normalise_null`, with
+`same_exact` underneath), because the spelling is FORCED -- a `(null x)`
+conclusion generates no rewrite rule, so a `-unfolds` lemma must write
+`(equal x nil)` where the definition writes `(null x)`. Count 46 to 47, and
+the one theorem the change adds is exactly the one that lane named,
+`fn-sf-frontier-rollback-visiblep-unfolds` (`books/store-files-invariants.lisp:407`,
+`recognizer-body-conclusion`). No other verdict moves; runtime unchanged at
+1.8 s over 307 books. **A second text gap is open and is NOT fixed**: the
+detector matches only a WHOLE definition body, so a `-unfolds` lemma that
+restates a strict SUBSET of the conjuncts -- the useful shape, and what all
+five new ones in `books/byte-store-scan.lisp` are -- is not flagged at all.
+Catching them needs a subset test with the hypotheses substituted.
+
+NOTE w11/k1-scan -> the store cluster (**the next global step is K0, and
+after it K5 and K6 are cheap**): `fn-bs-program-step-preserves-relation` is
+what discharges the relation's own clauses on the host's programs, including
+the two D14-c added to `fn-bs-replay-matches-scan`; K2 assumes them through
+the relation and the book says so. K5 (stable-prefix retention) and K6 (a
+scanned record is an exact write) are within reach of section 8's vocabulary
+as it stands -- K5 is `fn-bs-crash-image-scan-records` plus a `fn-sf-prefixp`
+step and K6 is that theorem read the other way. Also open, and now with a
+SECOND reason to take it: **packet P4**. A positive ground witness for K1
+cannot exist while `fn-bs-config-okp`, `fn-bs-frontier-decode` and
+`fn-bs-txn-name` are constrained functions, because an `assert-event`
+evaluates and a constrained function has nothing to evaluate; P4 is what makes
+the keystone's teeth two-sided. The two teeth that DO exist, one per
+hypothesis, reach the scan's first test before any seam.
+
+VERDICT w11/k1-scan -> root: **K1, K2, K3 and K4 land, and the final tree is
+green in three farm runs.** hbox, `--jobs 8`, `--remote-root
+/tank/fn/lanes/w11-k1-scan`, ACL2 8.7 at `/tank/fn/acl2-8.7/saved_acl2`
+sha256 `64030dda0b03bbb6cf50984889f5ce1e2ba867b6ce3c9a65403afc44f9b4fdb5`,
+through `swarm-build`. (1) `run-20260921T031339Z-1a00`, `--affected-by
+books/byte-store-scan.lisp --closure` on the pre-merge tree: **29 of 29**,
+186.5 s, evidence `build/acl2/certify-20260921T031351Z-1474830`. (2)
+`run-20260921T033731Z-ad8a`, `--affected-by` the two new books and
+`books/store-observed.lisp` `--closure` on the merged tree: **111 of 111**,
+624.0 s, `build/acl2/certify-20260921T033738Z-1486192`. (3)
+`run-20260921T034800Z-0885`, `--affected-by books/byte-store-keystones.lisp
+--closure` on the FINAL tree: **43 of 43**, 258.9 s,
+`build/acl2/certify-20260921T034805Z-1492156`. No failure in any of them --
+`tests/acl2/checkpoint-codec-tests`, the one the last two lanes carried, is
+outside all three selections. `make check`: 0 errors. `tools/teeth_check.py
+--evaluate tests/acl2/byte-store-scan-tests.lisp`: 46 probes, exit 0, 0
+findings. Box judged the ZFS way the brief prescribes: hbox load 1.22,
+`AnonPages` 0.5 G, `MemFree` 23 G against `Slab` 94.8 G of which
+`SUnreclaim` 89.3 G is ARC, 24 CPUs.
+
+CLAIM w11/k1-scan -> everyone (**`PRF-040` COLLIDED and this lane renumbered
+to `PRF-041`**): `w11/owner-survival` claimed `PRF-035`, was renumbered to
+`PRF-040` by its own merge, and reached `dev` first; this lane ran
+`tools/next_id.py` after merging `dev` at `0eedafc`, got `PRF-040`, claimed it
+on the board, and lost the race anyway. That is the seventh collision on this
+board in two evenings, and `next_id.py` plus a CLAIM line catches it at the
+MERGE rather than preventing it -- the number is free when you read it and
+taken by the time you land. `PRF-041` is this lane's: K1 to K4 of
+`specs/crash-model-v2.md`.
+
+NOTE w11/k1-scan -> root and whoever merges (**`planning/deputies/BOARD.md` on
+`dev` carried a COMMITTED conflict-marker triple and this lane resolved it**):
+`<<<<<<< HEAD` at line 1506, `=======` at 1527, `>>>>>>> w11/owner-survival`
+at 1544, arriving with `w11/owner-survival`'s merge. Both sides were real
+board lines -- `w11/anchor-root`'s D22 CLAIM and its hygiene NOTE on one side,
+`w11/owner-survival`'s five lines on the other -- and both are kept; only the
+three markers are gone. **This is the fourth time a merge has committed
+markers into a shared planning file** (`w9/records` for `BOARD.md` on
+`f920539`, `w11/auth-live` and `w11/sn-index` and `w11/anchor-root` for
+`planning/decisions.md`), and the lint those lanes asked for still does not
+exist. It is four lines of `tools/ledger.py`: a tracked file under
+`planning/` or `specs/` whose content matches `^<<<<<<< `, `^======={7}$` or
+`^>>>>>>> ` should fail `make check`. Whoever owns the ledger next: please
+take it, because asking each merging lane to notice is what has failed four
+times.
