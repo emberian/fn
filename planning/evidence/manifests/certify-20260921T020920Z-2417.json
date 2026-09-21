@@ -1,0 +1,134 @@
+{
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/frame-trailer": 0
+  },
+  "acl2_slots": 4,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/lanes/w11-fault-tests/build/acl2/certify-20260921T020920Z-2417",
+  "book_failures": {},
+  "book_results": {
+    "books/frame-trailer": "passed"
+  },
+  "book_wall_seconds": {
+    "books/frame-trailer": 1.741
+  },
+  "cert_cache": {
+    "already_cached": 1,
+    "directory": "/Users/ember/.cache/fn-certs",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/frame-trailer",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 1,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/frame-trailer": "f928616a095cf91639efeadbf075480b3d6c0017aa3ebcc6edaf26fdfee13e07"
+  },
+  "certify_wall_seconds": 1.849,
+  "closure": false,
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/frame-trailer": "eaeae616830068d19d7b1ff0774ecb51dbfe12b75c9fd3fe3eedce1bba0ea265"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 2e03b19ab7c43dba5abcfbe5a121fe90 5faba6f199f1"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-21T02:09:22+00:00",
+  "git_branch": "w11/fault-tests",
+  "git_dirty": false,
+  "git_revision": "9abb640313452db5c49ecd8aa451794a3f909a0c",
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "nextop.local",
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 2e03b19ab7c43dba5abcfbe5a121fe90 5faba6f199f1"
+  ],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "de84702b19bfe30f132291dcb8ac7b3d3ad10b16a4134dcb0c1d6239187a839d",
+  "requested_before_filter": [
+    "books/frame-trailer"
+  ],
+  "requested_books": [
+    "books/frame-trailer"
+  ],
+  "run_id": "certify-20260921T020920Z-2417",
+  "runner_sha256": "3c39d51224f9125782c30bc81c30ad6a0878283adba8215df5bd50a4eb36ba35",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/frame-trailer": 0.0,
+    "version-probe": 0.001
+  },
+  "source_digests_sha256": {
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/crypto-attach.lisp": "54a655456b13ce20957d519608c284d3f1ec81c3a364d274373dd632547e945e",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "b95fa1730fe0074f92bdd45cc136f7b6fbb8f069c2f35ec25ceea067cf6d60ea",
+    "books/frame-journal.lisp": "512201c2299a6ac6760a03f8416fa98f5f6a0191af902fe53792450d2a6b2255",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame-trailer.lisp": "0886078615817c8fb29aa57fae6aa53fb2c8ac5977cfd01ccf87fc587057223f",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "books/sha256.lisp": "dce8222e1b95ff23df78a6c8c67ea980aa6e7da115d5c9ad16426e6714307dd7",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0"
+  },
+  "source_digests_sha256_after": {
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/crypto-attach.lisp": "54a655456b13ce20957d519608c284d3f1ec81c3a364d274373dd632547e945e",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "b95fa1730fe0074f92bdd45cc136f7b6fbb8f069c2f35ec25ceea067cf6d60ea",
+    "books/frame-journal.lisp": "512201c2299a6ac6760a03f8416fa98f5f6a0191af902fe53792450d2a6b2255",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame-trailer.lisp": "0886078615817c8fb29aa57fae6aa53fb2c8ac5977cfd01ccf87fc587057223f",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "books/sha256.lisp": "dce8222e1b95ff23df78a6c8c67ea980aa6e7da115d5c9ad16426e6714307dd7",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0"
+  },
+  "start_order": [
+    "books/frame-trailer"
+  ],
+  "started_utc": "2026-09-21T02:09:20+00:00",
+  "status": "passed",
+  "timeout_seconds": 1800,
+  "tree": "/Users/ember/dev/fn/build/lanes/w11-fault-tests"
+}

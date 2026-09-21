@@ -227,12 +227,15 @@
 (defthm fn-snt-state-reconstruction
   (implies (fn-sn-statep s)
            (equal (fn-sn-make (fn-sn-groups s) (fn-sn-capacity s)
-                              (fn-sn-files s) (fn-sn-node s))
+                              (fn-sn-files s) (fn-sn-node s)
+                              (fn-sn-keyring s) (fn-sn-index s))
                   s))
   :hints (("Goal" :in-theory (enable len fn-sn-statep fn-sn-shapep fn-sn-make fn-sn-groups
-                                     fn-sn-capacity fn-sn-files fn-sn-node)
+                                     fn-sn-capacity fn-sn-files fn-sn-node
+                                     fn-sn-keyring fn-sn-index)
            :expand ((len s) (len (cdr s)) (len (cddr s))
-                    (len (cdddr s)) (len (cddddr s)))
+                    (len (cdddr s)) (len (cddddr s))
+                    (len (cdr (cddddr s))) (len (cddr (cddddr s))))
            :do-not-induct t)))
 
 (defthm fn-snt-typed-store-components

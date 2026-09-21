@@ -139,7 +139,7 @@ in §1. At the CLI:
 Both are asserted in `tests/test_anchor.py::StoreAnchorCommands::test_a_batched_anchor_is_uncertain_at_both_commands`,
 against the real capture. **This is a behaviour regression against a real
 server, taken deliberately**: fn can no longer use roughly one in three of
-int08h's answers, and the operator retries. D21 records the trade.
+int08h's answers, and the operator retries. D22 records the trade.
 
 ## 4. What the keystones cover, before and after
 
@@ -261,9 +261,14 @@ lane.
 
 ## 9. Registry
 
-- **D21** (`planning/decisions.md`), claimed on the board: the root on the
+- **D22** (`planning/decisions.md`), claimed on the board: the root on the
   record, the uncertain outcome, the seam split, and the three rejected
-  alternatives.
+  alternatives. **It was claimed as D21 and renumbered on the merge**:
+  `w11/node-index` took D21 for the served statement index and reached `dev`
+  first. `tools/next_id.py` was run and the board CLAIM was posted, and the
+  collision happened anyway, because both claims were written before either
+  branch merged. That is the fifth and sixth lane on one number this wave;
+  the CLAIM line catches it at merge, not at allocation.
 - **FLR-004**'s note (`planning/requirements.json`) rewritten: the paragraph
   describing this defect as open is replaced by what closed it and what did
   not.

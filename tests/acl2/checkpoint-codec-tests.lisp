@@ -113,6 +113,9 @@
                              (fn-cpc-encode-tree (fn-checkpoint-node *cpc-value*)))
                      *cpc-octets*))
 
+; The acceptance recogniser is anchored positively first, so the refusals
+; below separate two answers instead of naming a constantly false predicate.
+(assert-event (fn-cpc-result-okp (fn-cpc-decode *cpc-octets* *cpc-groups* 10 3 1)))
 ; Bad length: a truncated and an overlong payload.
 (assert-event (not (fn-cpc-result-okp
                     (fn-cpc-decode (take (- (len *cpc-octets*) 1) *cpc-octets*)
@@ -152,7 +155,9 @@
         '(:error :invalid)))
 
 ; -----------------------------------------------------------------------------
-; KEYSTONE fn-cpc-valid-is-capture-value: exact binding.
+; KEYSTONE fn-cpc-valid-is-capture-value: exact binding.  Its one hypothesis
+; is FN-CPC-VALIDP; the journal-interval condition it used to carry beside it
+; is now a clause of that recognizer.
 
 (assert-event (fn-cpc-validp *cpc-value* *cpc-groups* 10 *cpc-prefix*))
 (assert-event (fn-sf-record-listp *cpc-prefix* 0 0 (fn-checkpoint-frontier *cpc-value*)))
@@ -189,20 +194,48 @@
 (assert-event (not (equal (fn-checkpoint-capture-value
                  (fn-checkpoint-capture '("fn.letters") 10 *cpc-prefix* 3))
                 *cpc-value*)))
-; The record-list hypothesis: a prefix whose record binds a generation
-; different from its transaction id violates it; replay refuses that record,
-; so validation fails with it and the hypothesis is not separately
-; droppable on an executable witness.  It is retained because capture tests
-; it before replay (fn-checkpoint-capture, clause :history).
+; -----------------------------------------------------------------------------
+; KEYSTONE fn-cpc-valid-refuses-generation-mismatch, and the tooth for the
+; journal-interval clause of FN-CPC-VALIDP itself.
+;
+; *CPC-R0-BAD-GENERATION* is *CPC-R0* with the generation it consumed moved
+; off its txid 0 to 1, so it is not a journal record and
+; FN-CHECKPOINT-CAPTURE refuses the one-record prefix as :history.
 (defconst *cpc-r0-bad-generation*
   (fn-record-make 0 0 1 "<cp0@example.invalid>" '(65 13 10)
                   '("fn.letters") "cp-pin-0" "cp-content-0" "cp-release-0" 2))
-(assert-event (not (fn-sf-record-listp (list *cpc-r0-bad-generation*) 0 0 3)))
-(assert-event (equal (fn-checkpoint-capture *cpc-groups* 10
-                                            (list *cpc-r0-bad-generation*) 3)
+(defconst *cpc-bad-prefix* (list *cpc-r0-bad-generation*))
+(assert-event (not (equal (fn-record-generation *cpc-r0-bad-generation*)
+                          (fn-record-txid *cpc-r0-bad-generation*))))
+(assert-event (not (fn-sf-record-listp *cpc-bad-prefix* 0 0 3)))
+(assert-event (equal (fn-checkpoint-capture *cpc-groups* 10 *cpc-bad-prefix* 3)
                      '(:error :history)))
-(assert-event (not (fn-cpc-validp *cpc-value* *cpc-groups* 10
-                                  (list *cpc-r0-bad-generation*))))
+; Why the clause is the only thing that can refuse this prefix: FN-REPLAY
+; carries a record's generation into the node transitions and never compares
+; it with the txid, so replaying the corrupt prefix returns *exactly* the
+; replay of *CPC-PREFIX*.  Before the clause was added, FN-CPC-VALIDP
+; compared only these two results and answered T here.
+(assert-event (equal (fn-replay *cpc-groups* 10 *cpc-bad-prefix*)
+                     (fn-replay *cpc-groups* 10 *cpc-prefix*)))
+; Witness: both hypotheses hold on this prefix and validation refuses it.
+(assert-event (member-equal *cpc-r0-bad-generation* *cpc-bad-prefix*))
+(assert-event (not (fn-cpc-validp *cpc-value* *cpc-groups* 10 *cpc-bad-prefix*)))
+; Tooth, membership hypothesis dropped: the same mismatching record, not a
+; member of the prefix offered, and validation accepts.
+(assert-event (not (member-equal *cpc-r0-bad-generation* *cpc-prefix*)))
+(assert-event (fn-cpc-validp *cpc-value* *cpc-groups* 10 *cpc-prefix*))
+; Tooth, mismatch hypothesis dropped: a record that is a member of the
+; prefix and whose generation is its txid, and validation accepts.
+(assert-event (member-equal *cpc-r0* *cpc-prefix*))
+(assert-event (equal (fn-record-generation *cpc-r0*) (fn-record-txid *cpc-r0*)))
+(assert-event (fn-cpc-validp *cpc-value* *cpc-groups* 10 *cpc-prefix*))
+; Tooth for the clause inside FN-CPC-VALIDP: drop it from the definition and
+; fn-cpc-valid-is-capture-value is false, because the capture of this prefix
+; is the refusal (:error :history) and not the checkpoint offered.
+(assert-event (not (equal (fn-checkpoint-capture-value
+                           (fn-checkpoint-capture *cpc-groups* 10
+                                                  *cpc-bad-prefix* 3))
+                          *cpc-value*)))
 
 ; -----------------------------------------------------------------------------
 ; The frame: its own magic and kind table, both directions, hostile frames.

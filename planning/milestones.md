@@ -33,6 +33,22 @@ the WIRE, not the model: no host line calls any `fn-ocfg-` function, so the
 served port still answers LIST ACTIVE from the allocation domain and every
 PRF-028 owner-side event carries a `pending_subject`.
 
+**The checkpoint validator refused nothing about its prefix.** The one root
+of the 2026-09-21 persvati gate of `dev` `e4fb8bc` (272 of 275) that no lane
+owned, `tests/acl2/checkpoint-codec-tests`, failed a true assertion:
+`fn-cpc-validp` accepted a record prefix whose recorded generation is not its
+transaction id, which `fn-checkpoint-capture` refuses as `:history`.
+`fn-replay` never compares those two fields, so the replay of the corrupt
+prefix is EQUAL to the replay of the sound one and a validator comparing only
+replay results could not see it. The recognizer carries the journal-interval
+clause now and the refusal is PRF-037, with teeth
+([handoff](lanes/HANDOFF-w11-checkpoint-validator.md),
+[evidence](evidence/checkpoint-validator-2026-09-21.md)). The four roots that
+transitively include `books/checkpoint-codec` all certify. The other two
+failures of that gate are `books/bp-node` and its test book, owned by
+`w11/bp-node`. Still open at that seam: no host line calls `fn-cpc-validp`,
+so its keystones carry a `pending_subject` and cover no served path.
+
 **A connection posts repeatedly.** The one-durable-post-per-connection defect
 was fixed by `w5/clock-seam` (merge `7d8eff8`, the per-submission injection
 clock) and the board line was never closed; measured live on persvati at
@@ -147,6 +163,8 @@ the whole-tree run behind these statuses is
 | Durable scheduling with fairness | **done, with a caution** | REP-005 `implemented`; `fn-sched-conditional-progress-under-a-fairness` is conditional on a constrained assumption |
 | The scheduler host writes valid records | **open** | `fn-sched-host-decision-octets` builds a `:bad` record ([BOARD](deputies/BOARD.md), w3-scheduler) |
 | Interrupted contact-plan run | **open** | no evidence file exists; the w9/dtn-e2e lane owns it |
+| fn authors a BPv7 bundle another implementation accepts | **done** | `books/bp-node` certifies; dtn7-rs 0.21.0 decoded and delivered fn's 138-octet bundle, and fn decoded and re-encoded dtn7-rs's 132-octet one byte for byte ([bp-dtn7-w11](evidence/bp-dtn7-w11-2026-09-21.md)) |
+| The node's processing machine (`fn-bpn-step`, T1 to T6) | **open** | `books/bp-node` is the two ends of `specs/bp-design.md` §1.5, not the machine; §1.5.1 lists what is absent and nothing claims T1 to T6 |
 | LTP | **open** | `planning/ltp-feasibility.md` is a study; REP-006 stays `specified` for that half |
 
 ### v0.4 substrate transport -- fiber record: [fiber-substrate-transport](evidence/fiber-substrate-transport-2026-09-20.md)
@@ -158,7 +176,8 @@ the whole-tree run behind these statuses is
 | A two-node transfer over fn's own CL | **open** | the v0.4 gate condition; no run |
 | S1 statement field codec | **partial** | `books/stx-carrier` certified; `books/stx-verify` open at `fn-stx-decimal-octets-are-printable` |
 | S2 verdict | **open** | cascades off `stx-verify`; PRF-020's subject rule needs K1's transit path |
-| S3 to S6 | **open** | no book exists; SUB-003 to SUB-006 `specified` |
+| S3 laces, index and equivocation | **partial** | `books/stx-lace`, `books/stx-index`, `books/stx-policy`, `books/stx-authority` and `books/stx-epochs` certify (w10/substrate-2). The index has a CARRIER and a HOST LINE since w11/sn-index (D21): `fn-sn-state` carries it and the keyring beside the node, `fn-sn-finish` grows it by one cons, `host/store-node-host.lisp` `fn-store-sn-statement` reads it, and `fn-sn-statement-lookup-is-the-lace-lookup` equates the called function to the projection. PRF-023 stays `in-progress`: `fn-stx-index-slots-agree` has no caller, the keyring is per-invocation and not in the durable configuration history, and `fn-stx-transit-authority-ok` still walks the whole lace per article on the ADMISSION path with no caller |
+| S4 to S6 | **open** | SUB-004 to SUB-006 `specified`; S6's reader verdict has no slot to read (see the design's section 10) |
 | The LTP question decided | **open** | no decision recorded |
 
 ### v0.5 reconfiguration and storage -- fiber record: [fiber-reconfiguration-storage](evidence/fiber-reconfiguration-storage-2026-09-20.md)
@@ -396,7 +415,14 @@ loopback and one each way with dtn7-rs 0.21.0 over RFC 9174. That closes v0.4's
 gate, "a two-node transfer over fn's own convergence layer", and nothing more:
 the image is the DTN-only build list, there is no BP node behind the layer, and
 `books/tcpcl-invariants` had no verdict against the new text when this was
-written. It has one now: `w9/dtn-e2e` reverted that guard rather than leave
+written. **There is a BP node behind the layer as of 2026-09-21**:
+`w11/bp-node` gave `books/bp-node` and `tests/acl2/bp-node-tests` their first
+certificates, the DTN image carries the node, `tools/tcpcl_lab.py --scenario
+adu` passes fn to fn with the bundle authored by `fn-bpn-send` at each end,
+and the dtn7-rs exchange now has **one side authoring each way** rather than
+dtn7 authoring both — with the octets kept in `tests/bp-dtn7/golden/` and the
+dtn7-authored one inlined in a certified book
+([the evidence](evidence/bp-dtn7-w11-2026-09-21.md)). It has one now: `w9/dtn-e2e` reverted that guard rather than leave
 the invariants book timing out, and `w11/tcpcl-theory` re-landed it together
 with the theory work the book needed to survive it, all three roots certified
 together (`certify-20260921T000317Z-1324995`, the invariants book 609.69 s to

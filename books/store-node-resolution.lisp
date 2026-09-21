@@ -182,6 +182,48 @@
                            (fn-sn-record-bindsp
                             fn-sn-known-abort-files fn-node-complete)))))
 
+; -----------------------------------------------------------------------------
+; The carried statement index (D21): the two resolution transitions
+;
+; Neither publishes an article, so neither changes the store and both carry
+; the index unchanged through fn-sn-update.  Without these two the claim
+; "fn-sn-indexedp holds of every state the host installs" would be false at
+; host/store-node-host.lisp lines 377 and 392.
+
+(local (defthm fn-snr-refusal-keeps-the-store-unfolds
+         (equal (fn-stx-store (fn-replay-advance-txid node recorded-txid))
+                (fn-stx-store node))
+         :hints (("Goal" :in-theory (enable fn-stx-store)))))
+
+(local (defthm fn-snr-aborted-completion-keeps-the-store-unfolds
+         (equal (fn-stx-store (fn-node-complete node txid generation :aborted))
+                (fn-stx-store node))
+         :hints (("Goal" :in-theory (enable fn-stx-store fn-node-complete
+                                            fn-accept-complete fn-clear-pending)))))
+
+(defthm fn-sn-refuse-reservation-preserves-indexedp
+  (implies (fn-sn-indexedp s)
+           (fn-sn-indexedp (fn-sn-refuse-reservation s txid)))
+  :hints (("Goal"
+           :use ((:instance fn-sn-refuse-reservation-preserves-state))
+           :in-theory (e/d (fn-sn-indexedp fn-sn-refuse-reservation
+                            fn-sn-update fn-stx-index-invariantp)
+                           (fn-sn-statep fn-node-statep fn-sf-statep
+                            fn-sf-refuse-reservation fn-replay-advance-txid
+                            fn-stx-index-of-store fn-stx-store)))))
+
+(defthm fn-sn-known-abort-preserves-indexedp
+  (implies (fn-sn-indexedp s)
+           (fn-sn-indexedp (fn-sn-known-abort s)))
+  :hints (("Goal"
+           :use ((:instance fn-sn-known-abort-preserves-state))
+           :in-theory (e/d (fn-sn-indexedp fn-sn-known-abort fn-sn-update
+                            fn-stx-index-invariantp)
+                           (fn-sn-statep fn-node-statep fn-sf-statep
+                            fn-sn-known-abort-files fn-node-complete
+                            fn-sn-record-bindsp
+                            fn-stx-index-of-store fn-stx-store)))))
+
 (defthm fn-sn-refuse-reservation-preserves-configuration
   (and (equal (fn-sn-groups (fn-sn-refuse-reservation s txid))
               (fn-sn-groups s))

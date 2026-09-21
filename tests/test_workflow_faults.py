@@ -116,9 +116,10 @@ class WorkflowFaultTests(unittest.TestCase):
 
         reopened = WorkflowJournal(self.root, lambda records: records)
         reopened.open()
-        self.assertEqual([(bid, decode_inbound(path.read_bytes()))
-                          for bid, _identity, path in reopened.inbound_items],
-                         [("bid-link", ("bid-link", b"linked"))])
+        self.assertEqual([(bid, identity, decode_inbound(path.read_bytes()))
+                          for bid, identity, path in reopened.inbound_items],
+                         [("bid-link", IDENTITY,
+                           ("bid-link", IDENTITY, b"linked"))])
         reopened.close()
 
     def test_recovery_callback_failure_fences_and_releases_exclusive_lock(self) -> None:
@@ -147,9 +148,10 @@ class WorkflowFaultTests(unittest.TestCase):
         self.assertEqual(reopened.open(), "reopened")
         self.assertEqual(replayed, [()])
         self.assertEqual(len(reopened.inbound_items), 1)
-        bid, _identity, path = reopened.inbound_items[0]
-        self.assertEqual((bid, decode_inbound(path.read_bytes())),
-                         ("bid-restart", ("bid-restart", b"restart-payload")))
+        bid, identity, path = reopened.inbound_items[0]
+        self.assertEqual((bid, identity, decode_inbound(path.read_bytes())),
+                         ("bid-restart", IDENTITY,
+                          ("bid-restart", IDENTITY, b"restart-payload")))
         reopened.close()
 
     def test_process_restart_rediscovers_inbox_linked_before_directory_barrier(self) -> None:
@@ -162,9 +164,10 @@ class WorkflowFaultTests(unittest.TestCase):
 
         reopened = WorkflowJournal(self.root, lambda records: records)
         reopened.open()
-        self.assertEqual([(bid, decode_inbound(path.read_bytes()))
-                          for bid, _identity, path in reopened.inbound_items],
-                         [("bid-crash", ("bid-crash", b"crash-payload"))])
+        self.assertEqual([(bid, identity, decode_inbound(path.read_bytes()))
+                          for bid, identity, path in reopened.inbound_items],
+                         [("bid-crash", IDENTITY,
+                           ("bid-crash", IDENTITY, b"crash-payload"))])
         reopened.close()
 
     def test_inventory_count_and_aggregate_refuse_before_staging_allocation(self) -> None:

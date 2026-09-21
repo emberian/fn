@@ -1,0 +1,52 @@
+{
+  "gate": [
+    {
+      "arrived": false,
+      "accepted_replies": 0,
+      "final_group_count": 0,
+      "failed_steps": 0,
+      "main_exit_expression_without_exception": 0,
+      "gaps": [
+        "owner feed cut: node B never served <fed-cut@example.invalid> within 120 s of the cut. A lost reply must be resolved by a re-offer (K5); on this run it was not, so the article is lost between two nodes that are both up."
+      ]
+    },
+    {
+      "arrived": true,
+      "accepted_replies": 2,
+      "final_group_count": 1,
+      "failed_steps": 0,
+      "main_exit_expression_without_exception": 0,
+      "gaps": [
+        "owner feed cut: node A observed 2 accepted transfers of <fed-cut@example.invalid> across one lost reply, not at most one: the re-offer path transferred the article twice."
+      ]
+    },
+    {
+      "arrived": true,
+      "accepted_replies": 1,
+      "final_group_count": 2,
+      "failed_steps": 0,
+      "main_exit_expression_without_exception": 0,
+      "gaps": [
+        "owner feed cut: node B's fn.letters went from 0 articles to 2 across one lost reply; exactly one article crossed, so exactly one is the right difference."
+      ]
+    }
+  ],
+  "disconnect": {
+    "fixture": "only in-flight work, no queued work",
+    "host_events": [
+      [
+        "unregister",
+        "socket"
+      ],
+      [
+        "close-socket"
+      ],
+      [
+        "feed-connect",
+        "peer-b",
+        null
+      ]
+    ],
+    "scope": "Actual Python methods; ACL2 transition established separately by source trace."
+  }
+}

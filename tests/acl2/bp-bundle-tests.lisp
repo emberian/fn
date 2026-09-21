@@ -5,33 +5,32 @@
 ;
 ; Golden vectors.  RFC 9171 publishes no example bundle -- its only worked
 ; numbers are the CRC check values `tests/acl2/bp-primary-tests.lisp` already
-; pins -- so the external vector here is a bundle dtn7-rs 0.21.0 authored and
-; fn received over the certified TCPCLv4 layer.  `tests/bp-dtn7/golden/`
-; holds the capture and the run that produced it; the octets are inlined below
-; so that this book needs no file at certification time.
+; pins -- so the external vector here is `*bpb-dtn7-0-21-0*` below: 132
+; octets that **dtn7-rs 0.21.0 authored**, captured off the wire by `bp
+; receive` before fn decoded anything, and inlined so that this book needs no
+; file at certification time.
 ;
-; READ THE PARAGRAPH ABOVE AS AN OBLIGATION, NOT AS A DESCRIPTION OF THIS
-; BOOK (recorded 2026-09-21, lane w11/phantom-cites, not weakened).
-; `tests/bp-dtn7/golden/' HAS NEVER EXISTED on any ref of this repository: it
-; was written into this header by a437c32, the commit that created the book,
-; and nothing else in the tree has ever named it.  And no octets are inlined
-; below.  Every vector in this book -- *bpb-primary*, *bpb-bundle*,
-; *bpb-bundle-nocrc*, the three teeth bundles, *bpb-full* -- is BUILT by fn's
-; own constructors (`fn-bpp-make-block', `fn-bpb-hop-count-block', ...) and
-; checked by round trip through fn's own `fn-bpb-encode' and `fn-bpb-decode'.
-; A round trip of fn against fn is a self-consistency check of the codec; it
-; is not interoperability evidence and it cannot fail on a disagreement with
-; dtn7-rs, because no dtn7-rs octets are here to disagree with.
+; THE HISTORY OF THIS PARAGRAPH, because it was false for three days and the
+; correction is worth keeping.  Until 2026-09-21 it claimed exactly what it
+; claims now and there was nothing behind it: `tests/bp-dtn7/golden/' did not
+; exist on any ref, no octets were inlined, and every other vector in this
+; book -- *bpb-primary*, *bpb-bundle*, *bpb-bundle-nocrc*, the three teeth
+; bundles, *bpb-full* -- is BUILT by fn's own constructors and round-tripped
+; through fn's own encoder and decoder, which is a self-consistency check of
+; the codec and cannot disagree with another implementation.  Lane
+; w11/phantom-cites found that and marked the paragraph an obligation rather
+; than deleting it (`planning/lanes/HANDOFF-w11-phantom-cites.md`).  Lane
+; w11/bp-node met the obligation: `tests/bp-dtn7/golden/` exists now, holds
+; both captured images with their digests and the run that produced them, and
+; the dtn7-authored one is inlined below.  The other vectors are still fn
+; against fn and are still not interoperability evidence; this one is.
 ;
-; So the claim "interoperability vectors" in line 1, and the provenance claim
-; above, rest on nothing in this book.  What the tree DOES hold about dtn7-rs
-; 0.21.0 is the harness of `tests/bp-dtn7/' and its records
-; (`tests/evidence/2026-09-18-bpv7-transport.md',
-; `tests/evidence/2026-09-18-bp-exchange.md'); those record exchanges, not a
-; pinned bundle this codec was run against.  Supplying a captured bundle --
-; the octets, and the record of the run that captured them -- is open work for
-; the BP cluster, whose predecessor is w9/dtn-2.  See
-; planning/lanes/HANDOFF-w11-phantom-cites.md.
+; Provenance, in one line, so a reader need not leave the book: hbox,
+; 2026-09-21, `tests/bp-dtn7/run_fn_bp_interop.py` against dtn7-rs 0.21.0 at
+; revision 4daf02d7ea927e9293753b2a5c4497457f6e5a40, image
+; `build/fn-host-dtn`; the octets are SHA-256
+; 3ba1d435188867c7f5b184cbb90dacacb73ec40865b60ece080af524583616df and are
+; `tests/bp-dtn7/golden/dtn7-rs-0.21.0-authored.bundle` byte for byte.
 
 (in-package "ACL2")
 
@@ -59,6 +58,101 @@
                      '(fn-bpb-bundlep bundle)))
 (assert-event (equal (symbol-class 'fn-bpb-encode-block (w state)) :common-lisp-compliant))
 (assert-event (equal (symbol-class 'fn-bpb-block-crc (w state)) :common-lisp-compliant))
+
+; -----------------------------------------------------------------------------
+; The interoperability vector: a bundle a FOREIGN encoder wrote.
+;
+; dtn7-rs 0.21.0 authored these 132 octets for `dtn://fn-b/incoming` and put
+; them on an RFC 9174 session with fn; `bp receive` journalled them as they
+; arrived, before the node was asked what it made of them, and
+; `tests/bp-dtn7/golden/dtn7-rs-0.21.0-authored.bundle` is that file.  The
+; assertions below are the only ones in this book that can fail because fn
+; and another implementation disagree.
+;
+; What they say, and each is a distinct claim:
+;
+;   * fn's decoder ACCEPTS it, so fn parses what dtn7-rs writes;
+;   * the fields it recovers are the ones dtn7-rs sent -- source
+;     `dtn://dtn7x/`, destination `dtn://fn-b/incoming`, the payload text --
+;     so fn agrees about what the octets MEAN and not merely that they parse;
+;   * fn's ENCODER reproduces them byte for byte, so the deterministic
+;     spelling `fn-bpb-decode` insists on (RFC 9171 section 4.1, RFC 8949
+;     section 4.2) is the spelling dtn7-rs actually emits.  This is the
+;     strongest of the three and the one a canonicality bug would break;
+;   * two extension blocks dtn7-rs chose to include -- previous-node (type 6)
+;     and hop count (type 10) -- survive the round trip in its order.
+;
+; The primary block carries no CRC (CRC type 0) and flags 131076, which is
+; `no-fragment` (4) plus `report-delivery` (131072): dtn7-rs's defaults, not
+; fn's, which is part of what makes this a vector rather than a mirror.
+
+(defconst *bpb-dtn7-0-21-0*
+  '(
+   159 136 7 26 0 2 0 4 0 130 1 111
+   47 47 102 110 45 98 47 105 110 99 111 109
+   105 110 103 130 1 104 47 47 100 116 110 55
+   120 47 130 1 104 47 47 100 116 110 55 120
+   47 130 27 0 0 0 196 86 239 187 59 0
+   26 0 54 238 128 133 6 3 0 0 75 130
+   1 104 47 47 100 116 110 55 120 47 133 10
+   2 0 0 68 130 24 32 1 133 1 1 0
+   0 88 32 100 116 110 55 32 45 62 32 102
+   110 44 32 100 101 99 111 100 101 100 32 97
+   115 32 97 32 98 117 110 100 108 101 10 255))
+
+(assert-event (equal (len *bpb-dtn7-0-21-0*) 132))
+(assert-event (fn-cbor-octet-listp *bpb-dtn7-0-21-0*))
+
+; It decodes.
+(assert-event (fn-cbor-result-okp (fn-bpb-decode *bpb-dtn7-0-21-0* 1048576)))
+
+(defconst *bpb-dtn7-decoded*
+  (fn-cbor-result-value (fn-bpb-decode *bpb-dtn7-0-21-0* 1048576)))
+
+(assert-event (fn-bpb-bundlep *bpb-dtn7-decoded*))
+
+; The fields are dtn7-rs's, not fn's.
+(assert-event
+ (equal (fn-bpp-source (fn-bpb-bundle-primary *bpb-dtn7-decoded*))
+        (cons :dtn '(47 47 100 116 110 55 120 47))))          ; dtn://dtn7x/
+(assert-event
+ (equal (fn-bpp-destination (fn-bpb-bundle-primary *bpb-dtn7-decoded*))
+        (cons :dtn '(47 47 102 110 45 98 47
+                     105 110 99 111 109 105 110 103))))       ; dtn://fn-b/incoming
+(assert-event
+ (equal (fn-bpp-crc-type (fn-bpb-bundle-primary *bpb-dtn7-decoded*)) 0))
+(assert-event
+ (equal (fn-bpp-flags (fn-bpb-bundle-primary *bpb-dtn7-decoded*)) 131076))
+(assert-event
+ (fn-bpp-no-fragmentp (fn-bpp-flags (fn-bpb-bundle-primary *bpb-dtn7-decoded*))))
+(assert-event
+ (not (fn-bpp-fragmentp (fn-bpp-flags (fn-bpb-bundle-primary *bpb-dtn7-decoded*)))))
+
+; "dtn7 -> fn, decoded as a bundle\n"
+(assert-event
+ (equal (fn-bpb-payload *bpb-dtn7-decoded*)
+        '(100 116 110 55 32 45 62 32 102 110 44 32 100 101 99 111 100 101
+          100 32 97 115 32 97 32 98 117 110 100 108 101 10)))
+
+; The two extension blocks dtn7-rs included, in its order: previous-node
+; (type 6, block number 3) and hop count (type 10, block number 2).
+(assert-event
+ (equal (fn-bpb-block-numbers (fn-bpb-bundle-blocks *bpb-dtn7-decoded*))
+        '(3 2)))
+(assert-event
+ (equal (fn-bpb-block-type (car (fn-bpb-bundle-blocks *bpb-dtn7-decoded*))) 6))
+(assert-event
+ (equal (fn-bpb-block-type (car (cdr (fn-bpb-bundle-blocks *bpb-dtn7-decoded*))))
+        10))
+
+; And fn re-encodes dtn7-rs's bundle byte for byte: the deterministic
+; spelling this decoder insists on is the one dtn7-rs emits.
+(assert-event (equal (fn-bpb-encode *bpb-dtn7-decoded*) *bpb-dtn7-0-21-0*))
+
+; The bound is applied before the first octet is examined, on a real foreign
+; bundle and not only on a fabricated one.
+(assert-event
+ (equal (fn-cbor-result-value (fn-bpb-decode *bpb-dtn7-0-21-0* 16)) :limit))
 
 ; -----------------------------------------------------------------------------
 ; A witness bundle: fn-a to fn-b, a CRC32C primary block, a hop-count and a
