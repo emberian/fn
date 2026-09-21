@@ -1,5 +1,9 @@
 # Development milestones
 
+Post-reboot status (2026-09-21): see the [recovery matrix](recovery-2026-09-21.md)
+for landed components, surviving unmerged packets, exact evidence boundaries
+and the next integration cycles. The release contract below remains unchanged.
+
 Current task (2026-09-21): compose the next native service batch after the
 frozen `03eb3ba3` certification, default/DTN builds and scoped runtime gate
 passed. Native authentication startup, the shared-owner prepare refinement,
@@ -182,6 +186,12 @@ deliverables and acceptance are
 theorem in §6 of that design exists yet.
 
 ## v0 checklist: every item, its status, its evidence
+
+**Historical snapshot:** this checklist records the cited `52eb0db` gate and
+its dated followups. It is not a current-main status table. In particular, the
+old owner-certification/startup blockers are superseded by the native integrated
+gate linked in the [recovery matrix](recovery-2026-09-21.md). Preserve its negative
+evidence; use the recovery matrix for present integration priorities.
 
 Generated-from-evidence, not from intent. A row is `done` only where a named
 keystone certified in a farm gate this table cites, or a harness run in the

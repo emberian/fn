@@ -5,6 +5,12 @@ scope in [milestones](milestones.md#release-shape-v0-and-v1). Component tests
 and certificates do not establish that release. D07 requires a Python-free
 node, operator CLI and runtime helpers; Python remains development tooling.
 
+Post-reboot orientation: [recovery status and next cycles](recovery-2026-09-21.md)
+records surviving main/lane work, the development-test memory incident and the
+remaining pillars. Previous local workers stopped; recover remote results before
+restarting jobs. Current priority is test-process containment and native service
+composition, with the full selected release scope retained.
+
 ## Integrated and under validation
 
 Main contains native owner/operator help/status/recover/run, feed intent and
@@ -21,12 +27,15 @@ publication now uses the shared immutable publication machine.
 Native public control/posting and orderly SIGTERM are integrated with separate
 ACL2 closure and exact-raw Darwin runtime evidence. The control resource
 followup now bounds active clients, total frame time and accumulation work,
-with scoped witnesses; the clean combined Linux image is pending.
+with scoped witnesses and a [source-pinned Linux image run](evidence/native-control-linux-build-2026-09-21.md).
+That image does not qualify later whole-main changes.
 Transaction namespace recovery now uses bounded observation and ACL2-issued
 sequence/name pairs, with a source-matched developer Store image witness.
 The corrected native outbound-feed and credential-administration components
 are integrated; feed activation and public principal CLI composition remain
 with their owning lanes.
+Native group/capacity administration and production/developer startup separation
+are also integrated as components; the public admin join remains outside main.
 
 The frozen combined source is `03eb3ba3`, with retained persvati job
 `run-20260921T095031Z-5cf4`. Certification, both same-origin image builds, scoped runtime suites and the
