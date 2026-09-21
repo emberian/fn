@@ -120,6 +120,19 @@
                   :detail (format nil "libsodium ABI cannot initialize: ~a"
                                   condition))))))))
 
+(defun fnn-crypto-reset ()
+  "Forget serialized readiness before a saved image enters service."
+  (sb-thread:with-mutex (*fnn-crypto-initialize-lock*)
+    (setq *fnn-crypto-state* :uninitialized
+          *fnn-crypto-library* nil
+          *fnn-crypto-version* nil))
+  t)
+
+(defun fnn-crypto-startup ()
+  "Re-load and re-check the facility for this process incarnation."
+  (fnn-crypto-reset)
+  (fnn-crypto-initialize))
+
 (defun fnn-crypto-version ()
   (fnn-crypto-initialize)
   (list *fnn-crypto-library* *fnn-crypto-version*))
@@ -153,8 +166,9 @@
         (sig (fnn-crypto-octets signature
                                 +fnn-crypto-ed25519-signature-octets+
                                 "Ed25519 signature")))
-    ;; Wrong widths are a negative verification verdict, matching the ACL2
-    ;; seam's constraints; malformed/non-octet values above are host faults.
+    ;; Short wrong widths are a negative verification verdict, matching the
+    ;; ACL2 seam's constraints.  A value longer than the hard allocation cap,
+    ;; or a malformed/non-octet value, faults before primitive entry.
     (if (or (/= (length key) +fnn-crypto-ed25519-public-key-octets+)
             (/= (length sig) +fnn-crypto-ed25519-signature-octets+))
         nil
