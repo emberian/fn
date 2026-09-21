@@ -46,3 +46,14 @@
    (equal (fn-midx-lookup "<missing@example.invalid>"
                           (fn-midx-build (list *fn-midx-a*)))
           *fn-midx-a*)))
+
+(assert-event
+ (fn-midx-unique-branchesp
+  (fn-midx-build
+   (list *fn-midx-a* *fn-midx-b* *fn-midx-a-conflict*))))
+
+; A malformed alist with repeated character branches demonstrates why the
+; builder-produced uniqueness hypothesis is load-bearing for the fanout bound.
+(assert-event
+ (not (fn-midx-unique-branchesp
+       (list (cons #\a nil) (cons #\a nil)))))
