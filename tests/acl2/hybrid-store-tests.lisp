@@ -2,13 +2,13 @@
 (include-book "../../books/hybrid-store")
 (include-book "std/testing/assert-equal" :dir :system)
 
-(defconst *hst-principal* (repeat 32 7))
-(defconst *hst-ed-key* (repeat 32 11))
-(defconst *hst-ml-key* (repeat 1952 13))
+(defconst *hst-principal* (make-list 32 :initial-element 7))
+(defconst *hst-ed-key* (make-list 32 :initial-element 11))
+(defconst *hst-ml-key* (make-list 1952 :initial-element 13))
 (defconst *hst-keys* (list (cons :ed25519 *hst-ed-key*)
                            (cons :ml-dsa-65 *hst-ml-key*)))
-(defconst *hst-signatures* (list (cons :ed25519 (repeat 64 17))
-                                 (cons :ml-dsa-65 (repeat 3309 19))))
+(defconst *hst-signatures* (list (cons :ed25519 (make-list 64 :initial-element 17))
+                                 (cons :ml-dsa-65 (make-list 3309 :initial-element 19))))
 (defconst *hst-source* '(65 13 10))
 (defconst *hst-record*
   (fn-record-make 2 3 4 "<hybrid@example.invalid>" *hst-source* '("example")
@@ -79,8 +79,8 @@
   *hst-event*
   (fn-hsig-keyring-event
    1 2 3 4 *hst-principal*
-   (list (cons :ed25519 (repeat 32 23))
-         (cons :ml-dsa-65 (repeat 1952 29)))))
+   (list (cons :ed25519 (make-list 32 :initial-element 23))
+         (cons :ml-dsa-65 (make-list 1952 :initial-element 29)))))
  nil)
 (assert-equal
  (fn-hsig-authorized-article-event
