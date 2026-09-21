@@ -360,9 +360,11 @@
         "tests/acl2/byte-store-relation-tests.lisp",
         "tests/acl2/byte-store-program-invariants-tests.lisp",
         "tests/test_store_node_host.py",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "planning/lanes/HANDOFF-w13-storage-initializer.md",
+        "planning/lanes/HANDOFF-w13-transaction-name-codec.md"
       ],
-      "implementation_note": "Actual file/kernel completion ordering and arbitrary finite stable-history/success-prefix proofs are certified; composed live completion calls actual node semantics before acknowledgement. Real syscall/process-death tests pass. Full adapter adoption/refinement and qualified physical persistence remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open.",
+      "implementation_note": "Actual file/kernel completion ordering and arbitrary finite stable-history/success-prefix proofs are certified; composed live completion calls actual node semantics before acknowledgement. Real syscall/process-death tests pass. Full adapter adoption/refinement and qualified physical persistence remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open. W13 supplies the exact fresh-initializer image theorem and executable injective transaction-name attachment (PRF-044). The configuration-history fence witness distinguishes this image from the weaker existing relation. Source review and selected failures do not establish all host cuts, existing/retry initialization, native correspondence or general recovery.",
       "keystones": [
         "fn-sf-success-requires-matching-completion",
         "fn-sn-new-success-requires-actual-matching-durable-node-completion",
@@ -453,9 +455,11 @@
         "books/byte-store-relation.lisp",
         "books/byte-store-program-invariants.lisp",
         "tests/acl2/byte-store-relation-tests.lisp",
-        "tests/acl2/byte-store-program-invariants-tests.lisp"
+        "tests/acl2/byte-store-program-invariants-tests.lisp",
+        "planning/lanes/HANDOFF-w13-storage-initializer.md",
+        "planning/lanes/HANDOFF-w13-transaction-name-codec.md"
       ],
-      "implementation_note": "General finite file traces retain earlier acknowledged records under named stable-storage and ghost-history premises, and across a real reopen under fn-sf-crash-imagep (A-DURABILITY as hypothesis); the bounded exploration with a txid-gap record, fault injection and actual process reopen/lost-success retries pass, with designated process-death cuts represented in the experimental model. Complete current-host syscall/cut fidelity remains open: the metadata initializer omits lock/config-history operations and helper parent barriers (PRF-044). Freshness, host composition and platform qualification remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open.",
+      "implementation_note": "General finite file traces retain earlier acknowledged records under named stable-storage and ghost-history premises, and across a real reopen under fn-sf-crash-imagep (A-DURABILITY as hypothesis); the bounded exploration with a txid-gap record, fault injection and actual process reopen/lost-success retries pass, with designated process-death cuts represented in the experimental model. Complete current-host syscall/cut fidelity remains open: the metadata initializer omits lock/config-history operations and helper parent barriers (PRF-044). Freshness, host composition and platform qualification remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open. W13 supplies the exact fresh-initializer image theorem and executable injective transaction-name attachment (PRF-044). The configuration-history fence witness distinguishes this image from the weaker existing relation. Source review and selected failures do not establish all host cuts, existing/retry initialization, native correspondence or general recovery.",
       "keystones": [
         "fn-sn-acknowledged-record-survives-observed-reopen",
         "fn-sf-prior-success-has-record-after-one-crash",

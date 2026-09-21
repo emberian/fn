@@ -1361,8 +1361,8 @@
     },
     {
       "id": "PRF-044",
-      "title": "Bounded byte-store initialization and frontier relation preservation",
-      "statement": "Under successful syscall outcomes, fn-bs-init-program establishes fn-bs-store-relation from fn-bs-initial-inputp. Under a positive write unit, fn-bs-first-frontier-program preserves that relation when fn-bs-initial-inputp and fn-bs-frontier-inputp hold. The actual fn-bs-step interpreter preserves a related prestate through the enumerated noncommit frontier observations; for a successful directory observation it additionally requires phase :frontier-attempted and independently durable candidate bytes with a quiet root. These are conditional model results: current Store.initialize and Store.advance_frontier correspondence, full initialization/recovery syscall composition, general crash-image preservation, and platform durability remain open.",
+      "title": "Concrete storage naming, fresh initializer image and conditional frontier preservation",
+      "statement": "Under successful syscall outcomes, fn-bs-init-program establishes fn-bs-store-relation from fn-bs-initial-inputp. Under a positive write unit, fn-bs-first-frontier-program preserves that relation when fn-bs-initial-inputp and fn-bs-frontier-inputp hold. The actual fn-bs-step interpreter preserves a related prestate through the enumerated noncommit frontier observations; for a successful directory observation it additionally requires phase :frontier-attempted and independently durable candidate bytes with a quiet root. These are conditional model results: current Store.initialize and Store.advance_frontier correspondence, full initialization/recovery syscall composition, general crash-image preservation, and platform durability remain open. For naturals i and j, equal fn-bs-txn-name-impl outputs imply equal inputs; the constrained naming seam is attached to that renderer. From an empty byte store and initial kernel with fn-bsi-fresh-inputp and successful syscall observations, fn-bsi-current-init-program reaches fn-bsi-current-initial-image, including configuration history and lock publication. The existing relation alone does not observe configuration history or the lock.",
       "milestone": "M2",
       "requirements": [
         "STO-003",
@@ -1384,17 +1384,28 @@
         "specs/store-refinement.md",
         "planning/lanes/HANDOFF-w12-storage-relation.md",
         "planning/evidence/manifests/certify-20260921T064847Z-1678502.json",
-        "planning/evidence/manifests/certify-20260921T065322Z-2727.json"
+        "planning/evidence/manifests/certify-20260921T065322Z-2727.json",
+        "books/byte-store-txn-name.lisp",
+        "tests/acl2/byte-store-txn-name-tests.lisp",
+        "books/byte-store-initializer.lisp",
+        "tests/acl2/byte-store-initializer-tests.lisp",
+        "planning/lanes/HANDOFF-w13-transaction-name-codec.md",
+        "planning/lanes/HANDOFF-w13-storage-initializer.md",
+        "planning/evidence/claude-storage-initializer-response.md",
+        "planning/evidence/manifests/certify-20260921T074336Z-1779617.json",
+        "planning/evidence/manifests/certify-20260921T074637Z-1785855.json"
       ],
-      "pending_subject": "No theorem currently equates these metadata-program subjects to the current host calls Store.initialize or Store.advance_frontier. The full initializer, recovery entry and syscall composition therefore remain open; this target is conditional model evidence only.",
-      "progress_note": "The certified roots cover the metadata frame, exact initial image under fn-bs-initial-inputp, first frontier allocation and the named fn-bs-step observation cases, with nondegenerate witnesses and must-fail checks. The old unqualified frontier formula is explicitly refuted. The metadata-only model subject does not establish the current host's full initializer, lock/config/history namespace, existing/retry branches, recovery entry, or a syscall bijection; those correspondence and general recovery obligations remain open. The Python metadata validation twins identified in review are removed in d65fbec; native host/native/io.lisp still uses its older JSON/frontier implementation and awaits ACL2 codec adoption. No broader host claim follows.",
+      "pending_subject": "The fresh initializer transcription has source-reviewed correspondence to the fresh Python Store.initialize path, not a theorem equating the host execution to fn-bs-run; its cut checker explicitly cannot inline helpers. Existing/retry initialization, native initializer correspondence, Store.advance_frontier composition and recovery remain open. The naming wrapper invokes the attached ACL2 renderer directly; this does not close those program correspondence gaps.",
+      "progress_note": "The metadata-only initial image/frontier results and conditional fn-bs-step observations remain scoped as above. W13 adds a source-reviewed fresh initializer and exact-image theorem; the configuration-directory fence separating witness leaves the old root/transactions relation true while falsifying that image. Unique model cut names do not make uninstrumented host cuts covered. Transaction naming has a guard-verified executable injective realization, including above-20-digit witnesses and hypothesis teeth, adopted by the Python Store.publish call path. Native metadata/naming adoption is in a separate active packet. General K0, existing/retry branches, native host correspondence, recovery composition and platform durability remain open.",
       "events": [
         "fn-bs-related-allocation-is-fresh",
         "fn-bs-frontier-noncommit-observation-preserves-relation",
         "fn-bs-frontier-directory-commit-observation-preserves-relation",
         "fn-bs-init-program-establishes-initial-image",
         "fn-bs-initial-image-establishes-relation",
-        "fn-bs-first-frontier-program-preserves-relation"
+        "fn-bs-first-frontier-program-preserves-relation",
+        "fn-bs-txn-name-impl-injective",
+        "fn-bsi-current-init-program-establishes-current-image"
       ]
     },
     {

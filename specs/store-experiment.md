@@ -33,6 +33,15 @@ simple write isolation and fault injection before segment packing/compaction.
 Packing these records into segments later needs its own recovery argument. A
 complete transaction carries its article once even when it names several groups.
 
+The final filename is computed by `fn-bs-txn-name`, attached to the executable
+ACL2 decimal renderer in `books/byte-store-txn-name.lisp`: minimum width twenty,
+followed by `.txn`. Its injectivity theorem covers every natural sequence;
+the concrete allocation frontier is separately uint32-bounded. The Python
+development adapter now consumes `fn-store-txn-name-octets` instead of formatting
+the name. Native call-site adoption has its own integration packet. This naming
+result does not establish crash recovery, durable allocation or filesystem
+publication correctness; see PRF-044 and the transaction-name handoff.
+
 ## Publication boundary
 
 The [refinement contract](store-refinement.md) defines the implemented
