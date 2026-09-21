@@ -232,6 +232,24 @@
                 bs (fn-bs-durable-entry bs :root "allocation-frontier.json"))
                (fn-bsi-test-frontier)))))
 
+; EEXIST is the only link result that continues the retry program.  A link
+; error with an issued namespace operation remains a stopped/uncertain model
+; observation, rather than a known-abort retry.
+(assert-event
+ (let* ((program (fn-bsi-existing-init-program
+                  (fn-bsi-test-config) (fn-bsi-test-frontier)
+                  ".issued-config" ".issued-frontier"))
+        (run (fn-bs-run (fn-bsi-current-initial-image
+                         (fn-bsi-test-config) (fn-bsi-test-record)
+                         (fn-bsi-test-frontier)
+                         *fn-bsi-test-config-stage*
+                         *fn-bsi-test-record-stage*
+                         *fn-bsi-test-frontier-stage*)
+                        (fn-sf-initial-state) program
+                        (fn-bsi-test-outcome-at 6 '(:eio . :issued)) nil nil)))
+   (and (equal (len run) 7)
+        (< (len run) (len program)))))
+
 (must-fail
  (assert-event
   (let* ((program (fn-bsi-existing-init-program
