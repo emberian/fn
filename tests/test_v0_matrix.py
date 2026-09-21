@@ -14,7 +14,9 @@ be trusted without:
   synthetic dictionary.
 """
 import json
+import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -138,6 +140,89 @@ class VocabularyTests(unittest.TestCase):
         self.assertEqual(v0_matrix.V0Matrix.statement_verdict(3), REFUSED)
         self.assertEqual(v0_matrix.V0Matrix.statement_verdict(4), REFUSED)
         self.assertEqual(v0_matrix.V0Matrix.statement_verdict(2), UNCERTAIN)
+
+
+class CapabilityPinProtocolTests(unittest.TestCase):
+    """The capability audit has to speak each transfer protocol correctly."""
+
+    def test_takethis_writes_its_block_before_reading_the_final_status(self):
+        # A transfer server does not answer TAKETHIS until it has the article
+        # block.  This small Conn double records call order while letting every
+        # other probe reach the same driver branch it uses on a live node.
+        fake_driver = r'''
+import json, os
+
+def note(kind, value=""):
+    with open(os.environ["PIN_LOG"], "a", encoding="utf-8") as out:
+        out.write(json.dumps([kind, value]) + "\n")
+
+class Sock:
+    def sendall(self, payload):
+        note("sendall", payload.decode("ascii"))
+    def close(self):
+        note("close")
+
+class Conn:
+    def __init__(self, port, timeout=30):
+        self.sock = Sock()
+        self.greeting = "200 ready"
+    def cmd(self, text, multiline=False):
+        note("cmd", text)
+        if text.startswith("AUTHINFO USER"):
+            return "381 password required", []
+        if text.startswith("AUTHINFO PASS"):
+            return "281 authentication accepted", []
+        if text == "CAPABILITIES":
+            return "101 capability list follows", ["READER", "POST", "IHAVE",
+                                                     "STREAMING", "OVER", "HDR", "LIST"]
+        if text == "POST":
+            return "340 send article", []
+        if text.startswith("IHAVE"):
+            return "335 send article", []
+        if text == "MODE STREAM":
+            return "203 streaming permitted", []
+        if text == "STARTTLS":
+            return "580 TLS unavailable", []
+        if text.startswith("CHECK"):
+            return "238 send it", []
+        if text.startswith("TAKETHIS"):
+            raise AssertionError("TAKETHIS must be block-first")
+        if text.startswith("NEWNEWS"):
+            return "500 command not recognized", []
+        if text.startswith("GROUP") or text.startswith("LISTGROUP"):
+            return "211 group selected", []
+        if text.startswith(("OVER", "HDR", "XOVER", "XHDR", "XPAT")):
+            return "412 no newsgroup selected", []
+        if text == "MODE READER":
+            return "200 reader", []
+        if text == "LIST ACTIVE":
+            return "215 list follows", []
+        return "500 command not recognized", []
+    def send(self, text):
+        note("send", text)
+    def line(self):
+        note("line")
+        return "439 rejected"
+    def close(self):
+        self.sock.close()
+'''
+        with tempfile.TemporaryDirectory() as name:
+            directory = Path(name)
+            (directory / "drive.py").write_text(fake_driver)
+            (directory / "matrix.py").write_text(v0_matrix.MATRIX_DRIVER)
+            log = directory / "pins.log"
+            environment = dict(os.environ, PIN_LOG=str(log))
+            done = subprocess.run(
+                [sys.executable, "matrix.py", "pins", "--port", "1",
+                 "--group", "fn.letters", "--user", "matrix",
+                 "--secret", "matrix-secret-8f21"],
+                cwd=directory, env=environment, text=True,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
+            self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+            calls = [json.loads(line) for line in log.read_text().splitlines()]
+        take = calls.index(["send", "TAKETHIS <pin.take@matrix.example.invalid>"])
+        self.assertEqual(calls[take + 1], ["sendall", ".\r\n"])
+        self.assertEqual(calls[take + 2], ["line", ""])
 
 
 def make_gate(home):
