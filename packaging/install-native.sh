@@ -8,9 +8,10 @@ core=${FN_NATIVE_CORE:-$image.core}
 source_revision=${FN_NATIVE_SOURCE_REVISION:-}
 
 case $prefix in /*) ;; *) echo "install-native: PREFIX must be absolute" >&2; exit 2;; esac
+case $prefix in *[!A-Za-z0-9_./-]*) echo "install-native: PREFIX contains unsupported characters" >&2; exit 2;; esac
+case $source_revision in ''|*[!A-Za-z0-9._-]*) echo "install-native: invalid FN_NATIVE_SOURCE_REVISION" >&2; exit 2;; esac
 [ -x "$image" ] || { echo "install-native: missing executable image: $image" >&2; exit 4; }
 [ -s "$core" ] || { echo "install-native: missing image core: $core" >&2; exit 4; }
-[ -n "$source_revision" ] || { echo "install-native: FN_NATIVE_SOURCE_REVISION is required" >&2; exit 2; }
 
 bindir=$destdir$prefix/bin
 libdir=$destdir$prefix/libexec/fn
