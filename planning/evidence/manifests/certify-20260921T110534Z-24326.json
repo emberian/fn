@@ -1,0 +1,199 @@
+{
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/feed-connection-invariants": 0,
+    "tests/acl2/feed-connection-invariants-tests": 0
+  },
+  "acl2_slots": 4,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/lanes/w22-native-outbound-feed/build/acl2/certify-20260921T110534Z-24326",
+  "book_failures": {},
+  "book_results": {
+    "books/feed-connection-invariants": "passed",
+    "tests/acl2/feed-connection-invariants-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/feed-connection-invariants": 24.354,
+    "tests/acl2/feed-connection-invariants-tests": 2.457
+  },
+  "cert_cache": {
+    "already_cached": 2,
+    "directory": "/Users/ember/.cache/fn-certs",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": true,
+        "book": "books/feed-connection-invariants",
+        "published": false,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": true,
+        "book": "tests/acl2/feed-connection-invariants-tests",
+        "published": false,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 0,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/feed-connection-invariants": "79e8f6bb0b847797c0ef3605f22931c71a5fcb40feff0b988713bc586da4d571",
+    "tests/acl2/feed-connection-invariants-tests": "bbe9162f01514221a4fbca0cc3b7082a0a8e982efc121302aec5c1f29553ae02"
+  },
+  "certify_wall_seconds": 27.084,
+  "closure": false,
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/feed-connection-invariants": "a5d616f01ef22c2dbee39c0f5d7177243b4283a72cb7c2a4a47e42333b02272c",
+    "tests/acl2/feed-connection-invariants-tests": "df28aa9d0dc97264cd92b43b93354d479dae064f454a760111bc89fec0a647ff"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 014f4bce9bb711153dfb0a351570ff18 a500bf2a44a7",
+    "FN_CERTIFY_SUCCESS 014f4bce9bb711153dfb0a351570ff18 61f686062aba"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-21T11:06:02+00:00",
+  "git_branch": "w22/native-outbound-feed",
+  "git_dirty": false,
+  "git_revision": "8ebf77ca4999adee638f6d78434282e0625838ec",
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "nextop.local",
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 014f4bce9bb711153dfb0a351570ff18 a500bf2a44a7",
+    "FN_CERTIFY_SUCCESS 014f4bce9bb711153dfb0a351570ff18 61f686062aba"
+  ],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "662e8ef911ffe2cef222a48b8a279a01f86a4557dcf1fc00bc8002c8d8dfacb4",
+  "requested_before_filter": [
+    "books/feed-connection-invariants",
+    "tests/acl2/feed-connection-invariants-tests"
+  ],
+  "requested_books": [
+    "books/feed-connection-invariants",
+    "tests/acl2/feed-connection-invariants-tests"
+  ],
+  "run_id": "certify-20260921T110534Z-24326",
+  "runner_sha256": "3c39d51224f9125782c30bc81c30ad6a0878283adba8215df5bd50a4eb36ba35",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/feed-connection-invariants": 0.0,
+    "tests/acl2/feed-connection-invariants-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "d9837d7cf602953989ce0539562e1b03471d2f76da5579efd3397bd66e4440c8",
+    "books/acceptance.lisp": "06906656064b8683808c11e2ad7b292f6b24aade8a4c17ab7301833a677f6c7b",
+    "books/article-fields.lisp": "99e7cf20e18f181bd2b3dcf35d7c1aabaed80a15329aa850c5fed44469dc98d6",
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/bp-workflow.lisp": "af3515050f4daed0f2c2cc9b1155b453e51ee783ec54c365e54a0a31f403cc29",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/config.lisp": "fa3a908676012cc232a93f2cdd0baebf972fc74ac8a6197d42d8b44aab5d9ff4",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/feed-connection-invariants.lisp": "dbe715afd071a9fdcd5fc21587cd4cc0c52d0f5342af8be65dc2e92491c3c3b9",
+    "books/feed-connection.lisp": "cd8a434571fb6a04c96d9d70311856a95f6c054099a7fdf4c01df0f63dd0af23",
+    "books/feed-events.lisp": "fbc9977a0215ba0188c106668e1f4c410b92247693324a90f0ab46937421b029",
+    "books/feed-wire-input.lisp": "a6e352fac6d03097fd5205334bc5328cf75b12bffbbee8f020ac6b24f711949f",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "b95fa1730fe0074f92bdd45cc136f7b6fbb8f069c2f35ec25ceea067cf6d60ea",
+    "books/frame-journal.lisp": "a67624c2c8390faec404253353765075e7a66f707c6ef3341ea8ab4a99a3c1b8",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/identity-invariants.lisp": "eed5f37029e66221612d79a52e156a5fe222c4154bc2d65298d5bfefd6c1f64b",
+    "books/identity.lisp": "b34e54f718e4f45e512491d9020296e198f189a2fc856c2651d4ae45f1294ade",
+    "books/nntp-syntax.lisp": "86abc0d9e4be8068cbdee6822fe316c75b5cb1907febd1a11bcb3d4d61864f95",
+    "books/node-invariants.lisp": "39c89601e6f14703a3958cd8ee32ae2de0cbd0acafda9be5bb782969c3de2c62",
+    "books/node.lisp": "fa0e368bdbbb99aba595fb5fbbb962f525011499ba81d35861f3e857f54792cd",
+    "books/owner-feed.lisp": "72008fd5582f72de970969094901dfac8338f9b0b5edd132966093b4c4c2c15f",
+    "books/path.lisp": "cc2b8333cdcdbad11922293fbeddd5e8a9310a9dffc3c93e95f609b088f0269b",
+    "books/peer-config.lisp": "fd2f79649538b709bd6a237cb5a23b500989fb139e449b5d9e0c3304d2f7d86b",
+    "books/peer-feed-invariants.lisp": "b6c97b5c99d405833bca0d687bad0203e19c4fca71c0f0d820e2ddcd3b1dc8ac",
+    "books/peer-feed.lisp": "db8cb72cdaa31b2ecab1aa3a104539e4436e29741c39629ba13a3a0f6e9c0d50",
+    "books/provenance.lisp": "39899088b28462bbb04f555ec74c05da1adbc0b8fbc4a1c4db179e39529cf3aa",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "books/retention.lisp": "2052593f1013b1cb24c40a6926970232b275f198cd89fc5f88a8d577c74ee9d1",
+    "books/scheduler.lisp": "5abbb9a30a5a898badc8cac23df3a6385889e8ff671dabb0838bf75b79adf890",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "books/wire-invariants.lisp": "f80efbfba1d072d73036348ceab355e35376ef0310430eb5af0b99aa69013aba",
+    "books/wire.lisp": "69faa44d2125fbf005a2e8bb0287fc779cd14d5b5ef4881fc2b78fb11ae23ef2",
+    "tests/acl2/feed-connection-invariants-tests.lisp": "13ec39abede746832a7de370d87d9167727fc60b11e199a0d49d3dc44461da74"
+  },
+  "source_digests_sha256_after": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "d9837d7cf602953989ce0539562e1b03471d2f76da5579efd3397bd66e4440c8",
+    "books/acceptance.lisp": "06906656064b8683808c11e2ad7b292f6b24aade8a4c17ab7301833a677f6c7b",
+    "books/article-fields.lisp": "99e7cf20e18f181bd2b3dcf35d7c1aabaed80a15329aa850c5fed44469dc98d6",
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/bp-workflow.lisp": "af3515050f4daed0f2c2cc9b1155b453e51ee783ec54c365e54a0a31f403cc29",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/config.lisp": "fa3a908676012cc232a93f2cdd0baebf972fc74ac8a6197d42d8b44aab5d9ff4",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/feed-connection-invariants.lisp": "dbe715afd071a9fdcd5fc21587cd4cc0c52d0f5342af8be65dc2e92491c3c3b9",
+    "books/feed-connection.lisp": "cd8a434571fb6a04c96d9d70311856a95f6c054099a7fdf4c01df0f63dd0af23",
+    "books/feed-events.lisp": "fbc9977a0215ba0188c106668e1f4c410b92247693324a90f0ab46937421b029",
+    "books/feed-wire-input.lisp": "a6e352fac6d03097fd5205334bc5328cf75b12bffbbee8f020ac6b24f711949f",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "b95fa1730fe0074f92bdd45cc136f7b6fbb8f069c2f35ec25ceea067cf6d60ea",
+    "books/frame-journal.lisp": "a67624c2c8390faec404253353765075e7a66f707c6ef3341ea8ab4a99a3c1b8",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/identity-invariants.lisp": "eed5f37029e66221612d79a52e156a5fe222c4154bc2d65298d5bfefd6c1f64b",
+    "books/identity.lisp": "b34e54f718e4f45e512491d9020296e198f189a2fc856c2651d4ae45f1294ade",
+    "books/nntp-syntax.lisp": "86abc0d9e4be8068cbdee6822fe316c75b5cb1907febd1a11bcb3d4d61864f95",
+    "books/node-invariants.lisp": "39c89601e6f14703a3958cd8ee32ae2de0cbd0acafda9be5bb782969c3de2c62",
+    "books/node.lisp": "fa0e368bdbbb99aba595fb5fbbb962f525011499ba81d35861f3e857f54792cd",
+    "books/owner-feed.lisp": "72008fd5582f72de970969094901dfac8338f9b0b5edd132966093b4c4c2c15f",
+    "books/path.lisp": "cc2b8333cdcdbad11922293fbeddd5e8a9310a9dffc3c93e95f609b088f0269b",
+    "books/peer-config.lisp": "fd2f79649538b709bd6a237cb5a23b500989fb139e449b5d9e0c3304d2f7d86b",
+    "books/peer-feed-invariants.lisp": "b6c97b5c99d405833bca0d687bad0203e19c4fca71c0f0d820e2ddcd3b1dc8ac",
+    "books/peer-feed.lisp": "db8cb72cdaa31b2ecab1aa3a104539e4436e29741c39629ba13a3a0f6e9c0d50",
+    "books/provenance.lisp": "39899088b28462bbb04f555ec74c05da1adbc0b8fbc4a1c4db179e39529cf3aa",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "books/retention.lisp": "2052593f1013b1cb24c40a6926970232b275f198cd89fc5f88a8d577c74ee9d1",
+    "books/scheduler.lisp": "5abbb9a30a5a898badc8cac23df3a6385889e8ff671dabb0838bf75b79adf890",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "books/wire-invariants.lisp": "f80efbfba1d072d73036348ceab355e35376ef0310430eb5af0b99aa69013aba",
+    "books/wire.lisp": "69faa44d2125fbf005a2e8bb0287fc779cd14d5b5ef4881fc2b78fb11ae23ef2",
+    "tests/acl2/feed-connection-invariants-tests.lisp": "13ec39abede746832a7de370d87d9167727fc60b11e199a0d49d3dc44461da74"
+  },
+  "start_order": [
+    "books/feed-connection-invariants",
+    "tests/acl2/feed-connection-invariants-tests"
+  ],
+  "started_utc": "2026-09-21T11:05:34+00:00",
+  "status": "passed",
+  "timeout_seconds": 600,
+  "tree": "/Users/ember/dev/fn/build/lanes/w22-native-outbound-feed"
+}
