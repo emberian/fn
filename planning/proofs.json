@@ -1073,8 +1073,8 @@
     },
     {
       "id": "PRF-032",
-      "title": "The recovery window's crash image is kernel-admissible and risks no acknowledged record",
-      "statement": "In the recovery window -- the phases between a process replaying what it scanned from the view and completing its five recovery fences -- a crash may drop the record the replay read, because that record's directory entry is the entry operation a dead process left pending. fn-sf-recovery-crash-imagep admits exactly that image and no other, gated by an empty success history; every image it admits is produced by fn-sf-image-crash with the same frontier, records, :replaying phase and success history; and an acknowledged pair of the pre-crash state names a record of EVERY image it admits, the rolled-back one included.",
+      "title": "The recovery window's crash images are kernel-admissible and risk no acknowledged record",
+      "statement": "In the recovery window -- the phases between a process replaying what it scanned from the view and completing its five recovery fences -- a crash may drop the record the replay read, because that record's directory entry is the entry operation a dead process left pending; and it may roll the frontier back, because the pending entry operation may be the allocator rename instead. fn-sf-recovery-crash-imagep admits exactly those two images and no other, each gated by an empty success history, the frontier arm additionally by a record list that leaves the reserved txid unused, and the two exclusive of one another; every image it admits is produced by fn-sf-image-crash with the same frontier, records, :replaying phase and success history; and an acknowledged pair of the pre-crash state names a record of EVERY image it admits, both rolled-back ones included.",
       "milestone": "M5",
       "requirements": [
         "FLR-001",
@@ -1085,7 +1085,7 @@
       ],
       "assumptions": [],
       "status": "certified",
-      "note": "Decision D14-b, lane w10/kernel-freedom. The recognizer is a SECOND one: fn-sf-crash-imagep is unchanged and stays the reliance predicate that fn-own-reopen gates on and every reopen theorem takes as a premise, because widening it is false for the composition -- an owner reopened on an image is a recovery-window state whose own success history is empty while its ledger names records earlier processes acknowledged, and which of a state's records are fenced is a fact about the byte store's pending list, not about the kernel state. The counterexample is mechanized in tests/acl2/owner-tests.lisp (the owner half) and tests/acl2/store-observed-traces-tests.lisp (the kernel half). This target retires the open row K2r of specs/crash-model-v2.md; crash-model-v2 K2, whose conclusion this predicate is, remains open on the byte side (K1's three remaining clauses and the frontier sub-case K2f).",
+      "note": "Decisions D14-b (lane w10/kernel-freedom, the record arm) and D14-c (lane w11/bytestore-k2, the frontier arm K2f). The recognizer is a SECOND one: fn-sf-crash-imagep is unchanged and stays the reliance predicate that fn-own-reopen gates on and every reopen theorem takes as a premise, because widening it is false for the composition -- an owner reopened on an image is a recovery-window state whose own success history is empty while its ledger names records earlier processes acknowledged, and which of a state's records are fenced is a fact about the byte store's pending list, not about the kernel state. The counterexample is mechanized in tests/acl2/owner-tests.lisp (the owner half) and tests/acl2/store-observed-traces-tests.lisp (the kernel half). This target retires the open row K2r of specs/crash-model-v2.md; crash-model-v2 K2, whose conclusion this predicate is, remains open on the byte side, and what it waits on is now only K1's three remaining scan clauses: the frontier sub-case K2f is modelled, so K2's STATEMENT is true of every image the platform can leave in the window.",
       "events": [
         "fn-sf-recovery-crash-realizes-every-admissible-image",
         "fn-sf-recovery-admissible-image-facts",
@@ -1093,7 +1093,9 @@
         "fn-sf-crash-rollback-preserves-state",
         "fn-sf-crash-rollback-image-is-recovery-admissible",
         "fn-sf-crash-imagep-implies-recovery-crash-imagep",
-        "fn-sf-image-crash-preserves-state"
+        "fn-sf-image-crash-preserves-state",
+        "fn-sf-crash-frontier-rollback-preserves-state",
+        "fn-sf-crash-frontier-rollback-image-is-recovery-admissible"
       ],
       "evidence": [
         "books/store-files.lisp",
@@ -1149,6 +1151,92 @@
         "fn-bp-work-status",
         "fn-bp-work-origin"
       ]
+    },
+    {
+      "id": "PRF-036",
+      "title": "Prefix and lower-frontier recoverability of a replayed history",
+      "statement": "A history that replays successfully leaves an IDLE node whose next txid only moves forward, so dropping its last record leaves a history recoverable at the same frontier, and a history whose txids are all below a bound is recoverable AT that bound. Those are the two facts fn-sf-history-recoverablep needs beyond a successful replay -- together they are fn-replay-advance-okp -- and on them every image the platform may leave in the recovery window is replayable at its own frontier and the host's reopen entry succeeds on it.",
+      "milestone": "M5",
+      "requirements": [
+        "FLR-001",
+        "STO-005"
+      ],
+      "depends_on": [
+        "PRF-007",
+        "PRF-032"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "note": "Lane w11/bytestore-k2, packet 2. fn-sn-replay-loop-append already gave ok(whole) implies ok(prefix); what was missing, and what blocked lane w10/kernel-freedom's first widening at fn-snt-admissible-crash-image-is-recoverable, is that the prefix node is idle with next-txid at most the frontier. The acknowledged-record half of crash-model-v2 K4 is NOT restated over the wider predicate: on both rollback arms the arm's own (null (fn-sf-successes s)) and a member-equal success hypothesis are contradictory, so the restatement would be fn-sn-acknowledged-record-survives-observed-reopen with two vacuous arms. fn-sf-recovery-admissible-image-facts carries that guarantee over every arm instead. Claimed as PRF-033 before merging dev at 81ae082 and RENUMBERED: w11/clock-seam and w11/workflow-replay had taken 033 and 034, and w11/one-owner 035, while this lane held an older dev.",
+      "evidence": [
+        "books/store-node-invariants.lisp",
+        "books/store-node-traces.lisp",
+        "books/store-observed.lisp",
+        "tests/acl2/store-observed-traces-tests.lisp",
+        "planning/lanes/HANDOFF-w11-bytestore-k2.md"
+      ],
+      "events": [
+        "fn-snt-replayed-history-node-is-idle",
+        "fn-snt-history-recoverable-prefix",
+        "fn-snt-history-recoverable-of-but-last",
+        "fn-snt-history-recoverable-under-record-bound",
+        "fn-snt-recovery-admissible-crash-image-is-recoverable",
+        "fn-sn-recovery-admissible-image-reopens"
+      ]
+    },
+    {
+      "id": "PRF-035",
+      "title": "The frame integrity trailer has one owner, and the host's framing is the model's",
+      "statement": "fn-frame-trailer (books/frame-trailer.lisp) is the only definition of the 32-octet frame integrity trailer in the tree: it is fn-frame-digest, realised by fn-sha256 through books/crypto-attach.lisp, and it answers :bad rather than a digest for an argument that is not an octet list. For any magic, version, kind and payload in fn-frame-inputp, the byte string a host builds by asking ACL2 for the protected prefix, asking ACL2 for the trailer over it and concatenating the two is fn-frame-seal of those fields; and handing that byte string back to fn-frame-decode with the trailer re-derived over the frame's own fn-frame-protected-prefix answers fn-frame-ok of the fields that went in. The same two statements hold for the store instance the bridge executes, over fn-frame-store-protected and fn-frame-store-decode. Collision and preimage resistance are A-CRYPTO and are not claimed: the attachment introduces no axiom and the seam's constraints are shape only.",
+      "milestone": "M2",
+      "requirements": [
+        "ENC-003",
+        "STO-008",
+        "HST-004"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-CRYPTO"
+      ],
+      "status": "certified",
+      "note": "Lane w11/one-owner. Keystones fn-frame-protected-plus-trailer-is-seal, fn-frame-decode-of-host-framing and their store instances fn-frame-store-protected-plus-trailer-is-seal and fn-frame-store-decode-of-host-framing, all in books/frame-trailer.lisp. Subject-to-host: the host lines that call fn-frame-trailer are tools/frame_bridge.py FrameSession.trailer (called by seal and digest_of), host/native/io.lisp fnn-trailer (called by fnn-seal and fnn-digest-of) and tools/run_owner.py Acl2Owner.trailer (called by feed_frames and feed_replay_frame); each replaced a separate SHA-256 in that host. Teeth in tests/acl2/frame-trailer-tests.lisp: 25 assert-events, including two FIPS 180-4 vectors, the exact store prefix and trailer octets, the :bad boundary arm, and one violating value per clause (a magic whose third octet is 300 for the shape clause keystone 1 needs, a max-payload of 2 for the bound clause keystone 2 needs, and a non-octet record for the store instance). Byte identity with the deleted host copies was cross-checked outside ACL2 against CPython hashlib.sha256 at 32, 4096, 32768, 262144 and 1048576 octets. NOT closed by this target: fn-frame-digest's collision resistance, and the marshalling cost of sealing a 4 MiB staged inbound bundle through the decimal-octet bridge.",
+      "events": [
+        "fn-frame-protected-plus-trailer-is-seal",
+        "fn-frame-decode-of-host-framing",
+        "fn-frame-store-protected-plus-trailer-is-seal",
+        "fn-frame-store-decode-of-host-framing"
+      ],
+      "evidence": [
+        "books/frame-trailer.lisp",
+        "tests/acl2/frame-trailer-tests.lisp",
+        "planning/evidence/frame-trailer-one-owner-2026-09-21.md"
+      ],
+      "progress_note": "Both books certified with tools/certify_books.py on the laptop (ACL2 8.7, SBCL 2.6.8), evidence dirs above. The four keystones and the 25 assert-events all pass. What the target does NOT establish: collision or preimage resistance of SHA-256 (A-CRYPTO, unchanged by the attachment); and one host trailer copy survives outside the three this lane closed -- tools/run_feed.py:179,184,190, the FNFD client half, which w11/harness-health deletes on its branch, so it was reported rather than edited into a merge conflict."
+    },
+    {
+      "id": "PRF-037",
+      "title": "Checkpoint validation refuses a non-journal prefix",
+      "statement": "Checkpoint validation binds a checkpoint to exactly one prefix and refuses a prefix that is not an ordered journal interval below the checkpoint frontier: fn-cpc-validp implies the checkpoint is fn-checkpoint-capture-value of that prefix at its frontier, and a prefix with any record whose recorded generation is not its transaction id is refused for every checkpoint and configuration offered with it.",
+      "milestone": "M2",
+      "requirements": [
+        "STO-006"
+      ],
+      "depends_on": [
+        "PRF-008"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "events": [
+        "fn-cpc-valid-is-capture-value",
+        "fn-cpc-valid-refuses-generation-mismatch"
+      ],
+      "evidence": [
+        "books/checkpoint-codec.lisp",
+        "tests/acl2/checkpoint-codec-tests.lisp",
+        "specs/checkpoint.md",
+        "planning/evidence/checkpoint-validator-2026-09-21.md"
+      ],
+      "progress_note": "fn-cpc-validp accepted a prefix that fn-checkpoint-capture refuses as :history until 2026-09-21, because fn-replay carries a record generation into the node transitions without comparing it with the txid and validation compared only replay results. The journal-interval clause is now in the recognizer. Open, and not claimed here: fn-cpc-validp has no host caller, so these are properties of a sibling API to the served restore path (host/checkpoint-host.lisp calls fn-checkpoint-restore, which tests the condition itself)."
     }
   ]
 }

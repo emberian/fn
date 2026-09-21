@@ -107,3 +107,61 @@
 (assert-event
  (fn-checkpoint-admissible-splitp
   *cp-groups* 10 (list *cp-r0*) 3 (list *cp-r1*) 6))
+
+; -----------------------------------------------------------------------------
+; The three PRF-008 keystones on this same reachable split, each with the one
+; hypothesis it has -- FN-CHECKPOINT-ADMISSIBLE-SPLITP -- shown necessary on a
+; concrete value.  The split asserted just above is the admissible one.
+
+; KEYSTONE fn-checkpoint-admissible-capture-is-exact: the capture is not
+; merely :OK, it is the exact FN-CHECKPOINT-MAKE the theorem names.
+(assert-event
+ (equal *cp-capture*
+        (list :ok
+              (fn-checkpoint-make
+               3 (len (list *cp-r0*))
+               (fn-replay-result-node
+                (fn-replay *cp-groups* 10 (list *cp-r0*)))))))
+
+; KEYSTONE fn-checkpoint-admissible-capture-value-is-valid: witnessed by
+; (fn-checkpointp *cp-value*) above on this same split.
+
+; Tooth for both, hypothesis dropped: a prefix whose record binds a
+; generation other than its txid is no journal interval, so the split is
+; inadmissible, and BOTH conclusions fail on it -- the capture is the refusal
+; and not the FN-CHECKPOINT-MAKE, and its value is not a checkpoint at all.
+(defconst *cp-r0-bad-generation*
+  (fn-record-make 0 0 1 "<cp0@example.invalid>" '(65 13 10)
+                  '("fn.letters") "cp-pin-0" "cp-content-0" "cp-release-0" 2))
+(assert-event (not (fn-checkpoint-admissible-splitp
+                    *cp-groups* 10 (list *cp-r0-bad-generation*) 3 nil 3)))
+(assert-event (not (equal (fn-checkpoint-capture *cp-groups* 10
+                                                 (list *cp-r0-bad-generation*) 3)
+                          (list :ok
+                                (fn-checkpoint-make
+                                 3 1
+                                 (fn-replay-result-node
+                                  (fn-replay *cp-groups* 10
+                                             (list *cp-r0-bad-generation*))))))))
+(assert-event (not (fn-checkpointp
+                    (fn-checkpoint-capture-value
+                     (fn-checkpoint-capture *cp-groups* 10
+                                            (list *cp-r0-bad-generation*) 3)))))
+
+; KEYSTONE fn-checkpoint-plus-suffix-equals-full-replay: witnessed by the
+; restore/full-replay equality above on the admissible split.  Tooth,
+; hypothesis dropped: with *CP-STALE-TXID* as the suffix the split is
+; inadmissible and the two sides genuinely disagree -- restore refuses the
+; frontier reuse as :SUFFIX while full replay of the appended history
+; answers :OK, which is exactly the divergence the hypothesis rules out.
+(assert-event (not (fn-checkpoint-admissible-splitp
+                    *cp-groups* 10 (list *cp-r0*) 3 (list *cp-stale-txid*) 6)))
+(assert-event (equal (car (fn-checkpoint-full-replay
+                           *cp-groups* 10
+                           (append (list *cp-r0*) (list *cp-stale-txid*)) 6))
+                     :ok))
+(assert-event (not (equal (fn-checkpoint-restore *cp-value* *cp-groups* 10
+                                                 (list *cp-stale-txid*) 6)
+                          (fn-checkpoint-full-replay
+                           *cp-groups* 10
+                           (append (list *cp-r0*) (list *cp-stale-txid*)) 6))))
