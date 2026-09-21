@@ -130,6 +130,7 @@ def write_source(directory, seed, index, size, folded=False):
 def current_owner(work, counts, payload, folded_bytes, seed, acl2):
     """One owner and one growing dev-profile store, through CLI→control POST."""
     result = {"path": "bin/fn post -> live bin/fn run control socket",
+              "scope": "development oracle only; the Python bridge is not a production endpoint",
               "profile": "development", "counts_requested": counts,
               "payload_bytes": payload, "groups": list(GROUPS), "points": [],
               "quota": None, "folded_stress": None, "stopped_by": None}
@@ -292,7 +293,7 @@ def report_text(result):
              "- Owner source: `{}`".format(result["owner_source_revision"]),
              "- Harness revision: `{}`".format(result["harness_revision"]),
              "- Host: `{}`; load at start `{}`.".format(result["host"]["platform"], result["loadavg_at_start"]),
-             "- Owner scope: `bin/fn post` through the live `bin/fn run` control socket; each accepted post reports `path=control`.",
+             "- Owner scope: development-oracle evidence only: `bin/fn post` through the live `bin/fn run` control socket; each accepted post reports `path=control`. This Python bridge path is not a production endpoint.",
              "- Native scope: direct `tools/run_store.py` / `tools/run_reader.py`; it does not measure served owner/control behavior.", "",
              "## Owner results", ""]
     for point in owner["points"]:
