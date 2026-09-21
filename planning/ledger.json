@@ -89,6 +89,7 @@
     "tests/acl2/store-node-traces-tests",
     "books/store-node-resolution",
     "tests/acl2/store-node-resolution-tests",
+    "tests/acl2/store-node-resolution-traces-tests",
     "books/store-sweep",
     "tests/acl2/store-sweep-tests",
     "books/store-observed",
@@ -283,8 +284,8 @@
   ],
   "totals": {
     "books": 279,
-    "books_in_root_closure": 278,
-    "roots": 278,
+    "books_in_root_closure": 279,
+    "roots": 279,
     "theorems": 5648,
     "functions": 3950,
     "assert_events": 5676,
@@ -7215,8 +7216,8 @@
     },
     {
       "book": "tests/acl2/store-node-resolution-traces-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 0,
       "guards": {
