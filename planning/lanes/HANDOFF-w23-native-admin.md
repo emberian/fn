@@ -22,6 +22,16 @@ Raw Lisp only validates and interprets that accepted authorization for the
 shared immutable publisher.  Publisher uncertainty fences the live Store and
 exits as indeterminate; it is never treated as refusal or success.
 
+After a durable publication, `fnn-admin-verify-under-lock` calls the existing
+recovery observation while the same exclusive writer lock is still held.  It
+therefore cannot mistake a later administrator's generation for a defect in
+the completed command.  A verification diagnostic fault fences the in-memory
+Store and is reported as `verification=unavailable`, but cannot rewrite the
+already durable result into a different CLI outcome.  The temporary file uses
+the existing `.stage-` namespace, so ordinary ACL2-owned staging recovery
+collects an interrupted administrative residue; there is no `.admin-`
+recovery grammar.
+
 The generation filename has one owner:
 `fn-native-admin-config-name GENERATION` returns the eight-decimal-digit
 `.cfg` name only for natural generations below `100000000`.  The host wrapper
@@ -61,5 +71,9 @@ the dirty source digest set rather than merely the parent revision label.
 Neither run populated the serial certificate cache or certifies a saved native
 image.  A standalone SBCL load/read of `host/native/admin.lisp` succeeded, but
 does not exercise the native image, public operator join, physical publisher,
-crash recovery, or namespace recovery.  Those require the integrated operator
-image and the normal remote serial gate.
+crash recovery, or namespace recovery.  `tests/test_native_admin.py` now
+defines the public-image witnesses for create/capacity/retire history,
+owner-lock refusal, uncertainty followed by recovery/sweep, and two
+administrators; it is skipped in this isolated worktree because no image has
+been saved.  Those runs require the integrated operator image and the normal
+remote serial gate.
