@@ -16,6 +16,7 @@
 (include-book "node-invariants")
 (include-book "node-retention-transitions")
 (include-book "store-events")
+(include-book "hybrid-store")
 ; The codecs cluster withdraws (:d fn-store-event-p) at export (2026-09-19); the
 ; loop's guard proof needs only that a record is a true list.  Interim
 ; local fact applied by the store deputy so its closure certifies; the
@@ -340,13 +341,18 @@
                              (fn-stxk-context-verdicts ctx)
                              (fn-stxk-context-current-generation checked) nil))))
        ((fn-stxa-p event)
-        (if (not (fn-stxa-bindsp event))
-            (fn-stxk-fault ctx :composite-binding)
-          (let ((decoded (fn-stxe-decode-exact
-                          (fn-stxa-verdict-event event))))
+        (let ((snapshot
+               (fn-stxk-find (fn-stxa-keyring-generation event)
+                              (fn-stxk-context-snapshots ctx))))
+          (if (or (not (fn-stxa-bindsp event))
+                  (not snapshot)
+                  (not (fn-hsig-article-event-snapshot-bindsp event snapshot)))
+              (fn-stxk-fault ctx :composite-binding)
+            (let ((decoded (fn-stxe-decode-exact
+                            (fn-stxa-verdict-event event))))
             (if (not (fn-stmt-okp decoded))
                 (fn-stxk-fault ctx :composite-verdict)
-              (fn-stxk-apply-verdict ctx (fn-stmt-value decoded))))))
+                (fn-stxk-apply-verdict ctx (fn-stmt-value decoded)))))))
        (t (fn-replay-identity-advance ctx))))))
 
 (defun fn-replay-identity-loop (records ctx)
