@@ -1362,7 +1362,7 @@
     {
       "id": "PRF-044",
       "title": "Bounded byte-store initialization and frontier relation preservation",
-      "statement": "Under successful syscall outcomes, fn-bs-init-program establishes fn-bs-store-relation from fn-bs-initial-inputp; under a positive write unit, fn-bs-first-frontier-program preserves that relation for fn-bs-frontier-inputp, and the actual fn-bs-step interpreter preserves it for the enumerated noncommit and committed frontier observations. This is a conditional model result: current Store.initialize and Store.advance_frontier correspondence, full initialization/recovery syscall composition, general crash-image preservation, and platform durability remain open.",
+      "statement": "Under successful syscall outcomes, fn-bs-init-program establishes fn-bs-store-relation from fn-bs-initial-inputp. Under a positive write unit, fn-bs-first-frontier-program preserves that relation when fn-bs-initial-inputp and fn-bs-frontier-inputp hold; for a committed directory observation, the related prestate is fn-bs-frontier-attempted and the candidate bytes are independently durable with a quiet root. The actual fn-bs-step interpreter preserves the enumerated noncommit and committed observations. This is a conditional model result: current Store.initialize and Store.advance_frontier correspondence, full initialization/recovery syscall composition, general crash-image preservation, and platform durability remain open.",
       "milestone": "M2",
       "requirements": [
         "STO-003",
@@ -1387,24 +1387,14 @@
         "planning/evidence/manifests/certify-20260921T065322Z-2727.json"
       ],
       "pending_subject": "No theorem currently equates these metadata-program subjects to the current host calls Store.initialize or Store.advance_frontier. The full initializer, recovery entry and syscall composition therefore remain open; this target is conditional model evidence only.",
-      "progress_note": "The certified roots cover the metadata frame, exact initial image under fn-bs-initial-inputp, first frontier allocation and the named fn-bs-step observation cases, with nondegenerate witnesses and must-fail checks. The old unqualified frontier formula is explicitly refuted. The metadata-only model subject does not establish the current host's full initializer, lock/config/history namespace, existing/retry branches, recovery entry, or a syscall bijection; those correspondence and general recovery obligations remain open. Root review also leaves the _load_config duplicate profile validation and initialize fallback twin checks open for the storage-codecs packet.",
+      "progress_note": "The certified roots cover the metadata frame, exact initial image under fn-bs-initial-inputp, first frontier allocation and the named fn-bs-step observation cases, with nondegenerate witnesses and must-fail checks. The old unqualified frontier formula is explicitly refuted. The metadata-only model subject does not establish the current host's full initializer, lock/config/history namespace, existing/retry branches, recovery entry, or a syscall bijection; those correspondence and general recovery obligations remain open. The metadata twin review is closed in d65fbec; no broader host claim follows.",
       "events": [
-        "fn-bs-known-inode-list-member-is-known",
         "fn-bs-related-allocation-is-fresh",
-        "fn-bs-ready-relation-authority-is-quiet",
-        "fn-bs-start-frontier-preserves-relation",
-        "fn-bs-frontier-file-result-preserves-relation",
-        "fn-bs-frontier-replace-result-preserves-relation",
-        "fn-bs-frontier-dir-error-preserves-relation",
         "fn-bs-frontier-noncommit-observation-preserves-relation",
         "fn-bs-frontier-directory-commit-observation-preserves-relation",
-        "fn-bs-initial-image-establishes-relation",
         "fn-bs-init-program-establishes-initial-image",
-        "fn-bs-init-program-establishes-relation",
-        "fn-bs-first-frontier-program-preserves-relation",
-        "fn-bs-first-frontier-program-completes",
-        "fn-bs-first-frontier-program-rejects-old-frontier-bytes",
-        "fn-bs-related-allocation-is-not-a-transaction-target"
+        "fn-bs-initial-image-establishes-relation",
+        "fn-bs-first-frontier-program-preserves-relation"
       ]
     },
     {
