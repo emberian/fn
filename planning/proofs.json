@@ -1642,7 +1642,8 @@
         "tests/acl2/hybrid-signature-tests.lisp",
         "host/hybrid-signature-host.lisp",
         "host/native/signatures.lisp",
-        "tests/native_hybrid_signatures.lisp"
+        "tests/native_hybrid_signatures.lisp",
+        "tests/evidence/2026-09-21-native-hybrid-signatures.md"
       ],
       "progress_note": "host/native/signatures.lisp calls fn-hsig-host-authorize, whose body calls fn-hsig-authorize. Reachable tests cover both-valid, each bad component, absent ML-DSA, unknown/unsupported ML-DSA, stripping, component order/profile confusion, source changes and enrolled-key changes. Native component evidence covers libsodium Ed25519 and OpenSSL 3.6.4 ML-DSA-65. Primitive security, RNG, ABI and library correctness remain trusted assumptions; key custody, recovery authority and durable article/verdict composition remain open."
     }
