@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import run_reader  # noqa: E402
 import run_store  # noqa: E402
+from tools import frame_bridge  # noqa: E402
 from run_store import PROMPT, StoreError  # noqa: E402
 
 
@@ -183,6 +184,61 @@ class BridgeParsingTests(unittest.TestCase):
             with self.subTest(bad=bad):
                 with self.assertRaises(StoreError):
                     run_store.acl2_octets(bad + PROMPT)
+
+
+class FrameSessionLifecycleTests(unittest.TestCase):
+    """The process-wide frame cache follows its adopted ACL2 context."""
+
+    class Store:
+        def __init__(self):
+            self.closed = False
+            self.poisoned = False
+
+        def close(self):
+            self.closed = True
+
+    def setUp(self):
+        frame_bridge.close()
+        self.constants = mock.patch.object(
+            frame_bridge.FrameSession, "_constants", return_value={})
+        self.host_constants = mock.patch.object(
+            frame_bridge.FrameSession, "_check_host_constants", return_value=None)
+        self.constants.start()
+        self.host_constants.start()
+
+    def tearDown(self):
+        frame_bridge.close()
+        self.host_constants.stop()
+        self.constants.stop()
+
+    def test_cleanly_closed_adopted_session_is_replaced(self):
+        first_store = self.Store()
+        first_session = frame_bridge.adopt(first_store)
+        first_store.close()
+
+        second_store = self.Store()
+        with mock.patch.object(run_store, "Acl2Store", return_value=second_store) as start:
+            second_session = frame_bridge.session()
+
+        self.assertIsNot(second_session, first_session)
+        self.assertIs(second_session.store, second_store)
+        self.assertTrue(second_session.owned)
+        start.assert_called_once_with()
+
+    def test_poisoned_adopted_session_is_not_silently_replaced(self):
+        store = self.Store()
+        poisoned = frame_bridge.adopt(store)
+        store.poisoned = True
+
+        with mock.patch.object(run_store, "Acl2Store") as start:
+            with self.assertRaisesRegex(frame_bridge.BridgeError, "poisoned"):
+                frame_bridge.session()
+
+        self.assertIs(frame_bridge._SESSION, poisoned)
+        start.assert_not_called()
+        with self.assertRaisesRegex(frame_bridge.BridgeError, "poisoned"):
+            frame_bridge.session(self.Store())
+        self.assertIs(frame_bridge._SESSION, poisoned)
 
 
 class ReaderFailClosedTests(unittest.TestCase):
