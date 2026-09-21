@@ -223,11 +223,11 @@ class NativePeeringTests(unittest.TestCase):
             self.assertTrue(stream.readline().startswith(b"205 "))
             return lines
 
-    def test_public_native_outbound_feed_crosses_and_suppresses_duplicate(self):
+    def test_public_native_nodes_exchange_both_ways_and_suppress_duplicate(self):
         a = self.initialize("a", free_port())
         b = self.initialize("b", free_port())
         self.configure_peer(a, b)
-        self.configure_peer(b, a, outbound="-")
+        self.configure_peer(b, a)
         self.start(a)
         self.start(b)
         self.assertIn(b"IHAVE", self.capabilities(a))
@@ -241,6 +241,13 @@ class NativePeeringTests(unittest.TestCase):
         b_article = self.await_article(b, a_id)
         self.assertEqual(b_article, a_source)
         self.assertTrue(self.duplicate_offer(b, a_id).startswith(b"435 "))
+
+        b_id = "<native-b-to-a@example.invalid>"
+        self.post(b, b_id, "b-to-a")
+        b_source = self.await_article(b, b_id)
+        a_article = self.await_article(a, b_id)
+        self.assertEqual(a_article, b_source)
+        self.assertTrue(self.duplicate_offer(a, b_id).startswith(b"435 "))
 
 
     def test_durable_feed_requeues_after_source_process_death(self):
@@ -271,7 +278,7 @@ class NativePeeringTests(unittest.TestCase):
         self.assertEqual(target_article, source_article)
         self.assertTrue(self.duplicate_offer(b, message_id).startswith(b"435 "))
 
-    def test_reply_reset_after_durable_transit_is_connection_local(self):
+    def test_reset_while_transit_completes_keeps_durable_article_and_owner(self):
         source = self.initialize("reset-source", free_port())
         target = self.initialize("reset-target", free_port())
         self.configure_peer(target, source, outbound="-")
