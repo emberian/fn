@@ -230,6 +230,7 @@
                       "FN_APP_JOURNAL_TEST_FENCE_STORE") "")
                  "before-publish")
     (setf (fnn-store-fenced (fnn-app-journal-store journal)) t))
+  (fnn-require-writer (fnn-app-journal-store journal))
   (fnn-app-require-live-store (fnn-app-journal-store journal))
   (when (fnn-app-journal-fenced journal)
     (fnn-indeterminate "application journal is fenced"))
@@ -318,11 +319,18 @@
 ;;; they open one Store, replay one application journal against that same
 ;;; global, perform the requested operation, and close both in reverse order.
 
-(defun fnn-app-call-with-journal (store-root journal-root domain thunk)
+(defun fnn-app-call-with-journal (store-root journal-root domain writable thunk)
   (let ((store nil) (journal nil))
     (unwind-protect
          (progn
-           (setq store (fnn-open-live-store store-root nil))
+           (setq store
+                 (fnn-open-live-store
+                  store-root
+                  (and writable
+                       (not (string=
+                             (or (sb-ext:posix-getenv
+                                  "FN_APP_JOURNAL_TEST_READ_ONLY_STORE") "")
+                             "1")))))
            (setq journal (fnn-app-open store journal-root domain))
            (funcall thunk journal))
       (when journal (fnn-app-journal-close journal))
@@ -330,7 +338,7 @@
 
 (defun fnn-command-workflow-init (store-root journal-root values)
   (fnn-app-call-with-journal
-   store-root journal-root :workflow
+   store-root journal-root :workflow t
    (lambda (journal)
      (fnn-workflow-initialize journal values)
      (fnn-out "workflow durable records=1")
@@ -340,7 +348,7 @@
                                      work-id msgid forward-obligation-id
                                      peer-eid policy-id terms-id)
   (fnn-app-call-with-journal
-   store-root journal-root :workflow
+   store-root journal-root :workflow t
    (lambda (journal)
      (fnn-workflow-enqueue-for-article
       journal txid generation work-id msgid forward-obligation-id peer-eid
@@ -351,7 +359,7 @@
 
 (defun fnn-command-workflow-status (store-root journal-root work-id)
   (fnn-app-call-with-journal
-   store-root journal-root :workflow
+   store-root journal-root :workflow nil
    (lambda (journal)
      (fnn-out "workflow status work=~a status=~(~a~)"
               work-id (fnn-workflow-status journal work-id))
@@ -359,7 +367,7 @@
 
 (defun fnn-command-receipt-init (store-root journal-root values)
   (fnn-app-call-with-journal
-   store-root journal-root :receipt
+   store-root journal-root :receipt t
    (lambda (journal)
      (fnn-receipt-initialize journal values)
      (fnn-out "receipt durable records=1")
@@ -368,7 +376,7 @@
 (defun fnn-command-receipt-complete (store-root journal-root inbound-bid
                                      request-path record-path work-id receipt-id)
   (fnn-app-call-with-journal
-   store-root journal-root :receipt
+   store-root journal-root :receipt t
    (lambda (journal)
      (let* ((request (fnn-octet-list
                       (fnn-read-regular-bounded request-path 131072)))
@@ -383,7 +391,7 @@
 
 (defun fnn-command-receipt-replay (store-root journal-root request-path)
   (fnn-app-call-with-journal
-   store-root journal-root :receipt
+   store-root journal-root :receipt nil
    (lambda (journal)
      (let* ((request (fnn-octet-list
                       (fnn-read-regular-bounded request-path 131072)))

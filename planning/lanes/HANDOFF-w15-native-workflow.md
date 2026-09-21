@@ -50,7 +50,7 @@ reader image:
 ```sh
 FN_NATIVE_BUILD=host/native/build-dtn.lisp \
 FN_NATIVE_IMAGE=build/fn-host-dtn \
-FN_NATIVE_LOG=build/native-workflow-build-v6.log \
+FN_NATIVE_LOG=build/native-workflow-build-v7.log \
 sh tools/build_native_host.sh
 ```
 
@@ -60,11 +60,11 @@ It built a 284 MiB core.  Against that image:
 python3 -m unittest -v tests.test_native_app_journal
 ```
 
-passed six tests.  The witnesses cover Store-bound enqueue and outstanding
+passed seven tests.  The witnesses cover Store-bound enqueue and outstanding
 status after process restart; pre-link stage `EIO` reported as refused with no
 intent; final-directory barrier `EIO` reported as uncertain with a visible
 intent, no outcome, a fenced retry, and no equal-byte durability shortcut; and
-a held-but-fenced Store rejected before any journal mutation; callbacks observing file, link and directory barriers saw the already-reported ACL2 phase; and native persistence of request context, receipt intent, committed decision, then identical nonempty receipt regeneration in two fresh processes.
+a read-only Store lock and a held-but-fenced Store each rejected before any journal mutation; callbacks observing file, link and directory barriers saw the already-reported ACL2 phase; and native persistence of request context, receipt intent, committed decision, then identical nonempty receipt regeneration in two fresh processes.
 
 Existing adapters remained green when run in their isolated supported test
 processes:

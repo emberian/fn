@@ -124,6 +124,19 @@ class NativeApplicationJournalTests(unittest.TestCase):
         self.assertEqual(reopened.returncode, 0, reopened.stderr)
         self.assertIn("status=absent", reopened.stdout)
 
+    def test_read_only_store_lock_cannot_publish(self):
+        journal = self.tmp / "store-read-only"
+        self.initialize_workflow(journal)
+        injected = dict(self.env)
+        injected["FN_APP_JOURNAL_TEST_READ_ONLY_STORE"] = "1"
+        cut = self.enqueue(journal, env=injected)
+        self.assertEqual(cut.returncode, 1, cut.stderr)
+        self.assertIn("mutation requires a live exclusive store owner", cut.stderr)
+        self.assertEqual(
+            len(self.records(journal)), 1,
+            "a read-only Store lock must not authorize application mutation",
+        )
+
     def test_publication_observer_sees_reported_acl2_state(self):
         journal = self.tmp / "observer-order"
         self.initialize_workflow(journal)
