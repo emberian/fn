@@ -152,3 +152,24 @@
            (fn-af-test-octets "Newsgroups: fn.letters") '(13 10 13 10))))
 (assert-event (equal (fn-af-proto-article-check *fn-af-invalid-id-article*)
                      '(:error :message-id-invalid)))
+
+; The relaying agent's check (RFC 5537 section 3.6 step 1) against the
+; injecting agent's (section 3.4.1), on the two articles that separate them.
+; These two assertions are the whole difference: an injected article carries
+; Injection-Info and a relayed one may carry Xref, and a relaying agent that
+; refused either would refuse every article any injecting agent has made.
+(assert-event (equal (fn-af-relayed-article-check *fn-af-forbidden-injection-article*)
+                     (list :ok nil (list (fn-af-test-octets "fn.letters")) nil
+                           (fn-article-get-header *fn-af-forbidden-injection-article*
+                                                  *fn-af-newsgroups-name*))))
+(assert-event (equal (fn-af-relayed-article-check *fn-af-forbidden-xref-article*)
+                     (list :ok nil (list (fn-af-test-octets "fn.letters")) nil
+                           (fn-article-get-header *fn-af-forbidden-xref-article*
+                                                  *fn-af-newsgroups-name*))))
+; And everywhere else the two agree, so the split moved no other decision.
+(assert-event (equal (fn-af-relayed-article-check *fn-af-good-article*)
+                     (fn-af-proto-article-check *fn-af-good-article*)))
+(assert-event (equal (fn-af-relayed-article-check *fn-af-missing-groups-article*)
+                     '(:error :newsgroups-missing)))
+(assert-event (equal (fn-af-relayed-article-check *fn-af-invalid-id-article*)
+                     '(:error :message-id-invalid)))

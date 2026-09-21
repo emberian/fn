@@ -25,6 +25,7 @@ import ssl
 import tomllib
 import sys
 import time
+import traceback
 
 from run_store import (ACL2_RECOVER_BASE_SECONDS, ACL2_RECOVER_PER_RECORD_SECONDS,
                        Acl2Store, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, Store,
@@ -270,9 +271,18 @@ class Acl2Owner(Acl2Store):
         scope, loop, history, date, capacity -- is fn-peer-decide-transfer's;
         this reads its answer.
         """
+        # `metadata` returns what `fn-store-identity-text` rendered, and
+        # frame_bridge.identity_text is `(self, identity: bytes) -> bytes`:
+        # both of these are already octets, exactly as `prepare` above passes
+        # `obligation_id` straight to `literal`.  Encoding them again raised
+        # AttributeError inside `drain`, which is not caught there, so the
+        # OWNER PROCESS DIED on the first IHAVE any peer sent it.  Found by
+        # tools/v0_matrix.py on persvati, 2026-09-20: the capability probe's
+        # `IHAVE` killed both nodes and every later row became a connection
+        # error (planning/evidence/v0-matrix-2026-09-20.md, node A's log).
         kind = self._symbol_any("(fn-owner-transit-decide '{} '{} state)".format(
-            self.literal(obligation.encode("utf-8")),
-            self.literal(subject.encode("utf-8"))))
+            self.literal(obligation),
+            self.literal(subject)))
         reason = self._symbol_any("(fn-owner-transit-reason state)")
         return kind, reason
 
@@ -309,6 +319,20 @@ class Acl2Owner(Acl2Store):
 
     def feed_queue_length(self, peer):
         return self._nat("(fn-owner-feed-queue-length '{} state)".format(
+            self.literal(peer.encode("utf-8"))))
+
+    def feed_has_queued(self, peer):
+        """Is there an entry the feed could OFFER: `fn-feed-head-queued`.
+
+        Not the queue length: an entry in flight is in the queue, and
+        dialling for one the feed cannot offer is what filled a peer's
+        connection table after a lost reply."""
+        return acl2_boolean(self.call("(fn-owner-feed-has-queued '{} state)".format(
+            self.literal(peer.encode("utf-8")))))
+
+    def feed_backoff_ms(self, peer):
+        """The peer record's outbound backoff, which ACL2 reads, not Python."""
+        return self._nat("(fn-owner-feed-backoff-ms '{} state)".format(
             self.literal(peer.encode("utf-8"))))
 
     def feed_connect(self, peer, conn):
@@ -511,6 +535,12 @@ class Feed:
         self.session = None
         self.conn_id = None
         self.pending_article = b""
+        # When the host may next open a socket for this peer. The interval
+        # is the peer record's own outbound backoff (ACL2 reads it); only
+        # the waiting is the host's. The feed machine's backoff cannot do
+        # this job: it gates `fn-feed-selection`, which needs a connection
+        # that a dial has not made yet.
+        self.next_dial = 0.0
 
     def close(self):
         if self.session is not None:
@@ -537,6 +567,27 @@ class Owner:
 
     # -- NNTP connections -------------------------------------------------
     def accept_nntp(self, listener):
+        """One accepted connection, and never the end of the service.
+
+        Everything below can raise: the bridge, the TLS handshake, the
+        peer-table read. Before this wrapper an unexpected error unwound
+        through `run` and the OWNER PROCESS EXITED at accept, which reaches
+        the client as a closed connection and reaches every later client as
+        `ConnectionRefusedError` -- one connection deciding the lifetime of
+        a service that was serving readers. The fault is printed whole, with
+        its traceback, so the diagnosis survives in the server log, and only
+        this connection is lost. `ACCEPT-FAULT` is a defect signal, not an
+        outcome.
+        """
+        try:
+            self.accept_nntp_step(listener)
+        except Exception as error:                       # noqa: BLE001
+            print("ACCEPT-FAULT {}: {}".format(type(error).__name__, error),
+                  file=sys.stderr, flush=True)
+            traceback.print_exc(file=sys.stderr)
+            sys.stderr.flush()
+
+    def accept_nntp_step(self, listener):
         try:
             sock, _ = listener.accept()
         except OSError:
@@ -649,8 +700,12 @@ class Owner:
         """The TLS handshake, and the whole of it (RFC 4642 section 2.2).
 
         This is the trust boundary: Python's `ssl` performs the handshake and
-        no theorem in this tree says anything about it
-        (docs/trust-boundary.md, specs/nntp.md).  What ACL2 decided is
+        no theorem in this tree says anything about it (specs/nntp.md,
+        "Transport security, and what is trusted"; the audit row is
+        specs/nntp-audit.md section 2.3).  This line named
+        docs/trust-boundary.md until 2026-09-21; no such file has ever
+        existed, and the boundary it pointed at is the section named here.
+        What ACL2 decided is
         already decided -- that a handshake is owed, that the 382 was the
         right answer, that the connection served nothing behind it -- and
         what ACL2 is told afterwards is one wire event.  The socket goes
@@ -832,6 +887,16 @@ class Owner:
             session = Session(host, port, 5.0)
         except OSError:
             return False
+        if not session.greeting.startswith(b"20"):
+            # RFC 3977 5.1.1: a server that does not greet has not given us a
+            # session. Without this, a peer that closes at accept -- or
+            # anything forwarding to a peer that is down -- looks like an open
+            # connection, and the feed writes a `(:feed-offer ...)` record and
+            # counts an attempt for an offer that can never be sent. Three of
+            # those reach `*fn-own-feed-retry-bound*` and the entry is
+            # dropped, so a peer that is merely down would cost an article.
+            session.close()
+            return False
         if self.bridge.feed_streamingp(feed.peer):
             session.send(b"MODE STREAM\r\n")
             session.line()
@@ -869,15 +934,30 @@ class Owner:
     def feed_poll(self):
         now = self.clock.milliseconds()
         for feed in list(self.feeds.values()):
-            if feed.session is None:
-                if self.bridge.feed_queue_length(feed.peer) > 0:
-                    self.feed_dial(feed)
-                continue
+            # A feed that cannot make progress must not end the node. Before
+            # this, any unexpected error here unwound through `run` and the
+            # SERVICE EXITED -- readers, POST and every other peer with it --
+            # because one outbound connection went wrong. The fault is said
+            # once, loudly and by peer name, and the feed is dropped; the
+            # entry stays queued and the next dial retries it. `FEED-FAULT`
+            # is a defect signal, not an outcome.
             try:
+                if feed.session is None:
+                    if (now >= feed.next_dial
+                            and self.bridge.feed_has_queued(feed.peer)):
+                        if not self.feed_dial(feed):
+                            feed.next_dial = now + self.bridge.feed_backoff_ms(
+                                feed.peer)
+                    continue
                 if self.bridge.feed_tick(feed.peer, now) == "offer":
                     self.feed_flush()
                     self.feed_write(feed, self.bridge.feed_command())
             except OSError:
+                self.feed_drop(feed)
+            except Exception as error:                   # noqa: BLE001
+                print("FEED-FAULT {}: {}: {}".format(
+                    feed.peer, type(error).__name__, error), file=sys.stderr,
+                    flush=True)
                 self.feed_drop(feed)
 
     def feed_read(self, peer):
@@ -903,6 +983,12 @@ class Owner:
                 self.feed_flush()
                 self.feed_write(feed, self.bridge.feed_command())
             except OSError:
+                self.feed_drop(feed)
+                return
+            except Exception as error:                   # noqa: BLE001
+                print("FEED-FAULT {}: {}: {}".format(
+                    peer, type(error).__name__, error), file=sys.stderr,
+                    flush=True)
                 self.feed_drop(feed)
                 return
 

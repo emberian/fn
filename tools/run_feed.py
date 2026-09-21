@@ -268,12 +268,23 @@ class Session:
         self.sock.sendall(octets)
 
     def send_block(self, article: bytes):
-        """RFC 3977 section 3.1.1: dot-stuffed, terminated by a lone dot."""
+        """RFC 3977 section 3.1.1: dot-stuffed, terminated by a lone dot.
+
+        Exactly ONE trailing CRLF comes off before the terminator, never
+        every trailing CRLF. `rstrip(b"\r\n")` ate a trailing blank line, so
+        an article whose body ends in one arrived a line shorter than it
+        left: measured on two-node gate `0e5a7f8`, `source_lines` 11,
+        `target_lines` 10, with NO line differing in content in either
+        direction. RFC 5537 section 3.6 lets a relaying agent alter Path and
+        Xref and nothing else, so that was the feed altering a body.
+        """
         body = article.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
         lines = body.split(b"\r\n")
         stuffed = b"\r\n".join(b"." + one if one.startswith(b".") else one
                                for one in lines)
-        self.sock.sendall(stuffed.rstrip(b"\r\n") + b"\r\n.\r\n")
+        if stuffed.endswith(b"\r\n"):
+            stuffed = stuffed[:-2]
+        self.sock.sendall(stuffed + b"\r\n.\r\n")
 
     def close(self):
         try:

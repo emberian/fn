@@ -59,7 +59,14 @@
 ;   fn-sf-crash-preserves-state                   books/store-files.lisp
 ;   fn-sf-prior-emitted-success-retained-by-run-trace  books/store-files-traces.lisp
 ;   fn-snrt-acknowledged-history-retained-through-mixed-trace
-;                                                 books/store-node-resolution-traces.lisp
+;                                                 books/store-node-resolution.lisp:392
+; That last line said `books/store-node-resolution-traces.lisp' until
+; 2026-09-21.  The theorem is where it always was; the BOOK was folded into
+; books/store-node-resolution.lisp by 8209f27 ("store-node-resolution-traces
+; is folded into store-node-resolution") and this citation was not moved with
+; it.  Two evidence records still name the old path, correctly: they record
+; runs of a tree that had it (tests/evidence/2026-09-18-composed-store.json,
+; tests/evidence/2026-09-19-wave1a.json).
 ; The five-barrier gate `fn-sf-phase-shapep' (books/store-files.lisp:167) is
 ; what decides which records are in the BARRIERED argument at a crash point.
 
