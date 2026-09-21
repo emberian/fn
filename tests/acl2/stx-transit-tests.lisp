@@ -174,6 +174,107 @@
                                          *stxt-keyring*)))))
 
 ; -----------------------------------------------------------------------------
+; S3-0: the accepted article comes from the TRANSITION THE HOST CALLS
+;
+; Every witness above reaches its "next" node with `fn-stxt-node', which
+; builds a store by hand.  Such a value is NOT a node state -- the assertion
+; below evaluates that -- so nothing above exercised an actual acceptance, and
+; `fn-stx-acceptedp' was the assumed observation that
+; books/stx-lace.lisp's comment wrongly attributed to a book that has never
+; existed.  This section runs the real thing: the durable branch of
+; `fn-node-complete', which is the only node step of `fn-sn-finish'
+; (books/store-node.lisp line 200), which is the only node step of the host's
+; `fn-store-sn-finish' (host/store-node-host.lisp line 402).
+;
+; Teeth for `fn-stx-durable-completion-is-an-acceptance' (books/stx-lace.lisp).
+
+(assert-event (not (fn-node-statep (fn-stxt-node (list *stxt-r1*)))))
+
+(defconst *stxt-live-0* (fn-node-initial-state '("fn.test") 100))
+(assert-event (fn-node-statep *stxt-live-0*))
+
+(defconst *stxt-live-1*
+  (fn-node-prepare *stxt-live-0* 9 "<1>" (fn-article-payload *stxt-r1*)
+                   '("fn.test") "archive-1" "content-1" "release-1" 5))
+(assert-event (fn-node-statep *stxt-live-1*))
+(assert-event (not (equal *stxt-live-1* *stxt-live-0*)))
+(assert-event (fn-node-pending-matchesp *stxt-live-1* 0 9))
+
+(defconst *stxt-live-2* (fn-node-complete *stxt-live-1* 0 9 :durable))
+(assert-event (fn-node-statep *stxt-live-2*))
+
+; The keystone instance, evaluated at the transition the host calls.
+(assert-event
+ (fn-stx-acceptedp *stxt-live-1* *stxt-live-2*
+                   (fn-article-from-pending
+                    (fn-state-pending (fn-node-acceptance *stxt-live-1*)))))
+
+; Non-degenerate: the store grows by exactly one, and the article it grows by
+; carries the signed octets, so the accepted delta is a real statement and not
+; the empty one that made two earlier substrate witnesses vacuous.
+(assert-event (equal (len (fn-stx-store *stxt-live-1*)) 0))
+(assert-event (equal (len (fn-stx-store *stxt-live-2*)) 1))
+(assert-event (equal (fn-article-payload
+                      (fn-article-from-pending
+                       (fn-state-pending (fn-node-acceptance *stxt-live-1*))))
+                     (fn-article-payload *stxt-r1*)))
+(assert-event (equal (fn-stx-lace *stxt-live-1* *stxt-keyring*) nil))
+(assert-event (equal (fn-stx-lace *stxt-live-2* *stxt-keyring*) (list *stxt-s1*)))
+
+; S3-1's conclusion, now on a run reached by the node transition rather than
+; by a hand-built store: accepting is a lace merge of the delta.
+(assert-event (fn-stx-delta-freshp (fn-stx-lace *stxt-live-1* *stxt-keyring*)
+                                   (fn-stx-delta (fn-article-payload *stxt-r1*)
+                                                 *stxt-keyring*)))
+(assert-event (equal (fn-stx-lace *stxt-live-2* *stxt-keyring*)
+                     (fn-lace-merge (fn-stx-lace *stxt-live-1* *stxt-keyring*)
+                                    (fn-stx-delta (fn-article-payload *stxt-r1*)
+                                                  *stxt-keyring*))))
+
+; S3-3's preservation obligation and its query, on the same run.  The index
+; after the transition is the index before it plus the accepted delta, and the
+; index answers the content-id lookup exactly as the linear projection does.
+; This is evidence that the twin is maintainable across the real transition;
+; it is NOT a host line, because nothing in host/, bin/ or tools/ calls
+; `fn-stx-index-lookup'.  See planning/lanes/HANDOFF-w11-node-index.md.
+(assert-event
+ (equal (fn-stx-index-of-store (fn-stx-store *stxt-live-2*) *stxt-keyring*)
+        (fn-stx-index-add
+         (fn-stx-index-of-store (fn-stx-store *stxt-live-1*) *stxt-keyring*)
+         (fn-stx-delta (fn-article-payload *stxt-r1*) *stxt-keyring*))))
+(assert-event
+ (equal (fn-stx-index-lookup
+         (fn-stx-index-of-store (fn-stx-store *stxt-live-2*) *stxt-keyring*)
+         (fn-stmt-id *stxt-s1*))
+        *stxt-s1*))
+(assert-event
+ (equal (fn-lace-lookup (fn-stx-lace *stxt-live-2* *stxt-keyring*)
+                        (fn-stmt-id *stxt-s1*))
+        *stxt-s1*))
+
+; The one hypothesis, dropped, on two concrete violating values.  Both calls
+; are inside `fn-node-complete's guard (both states are node states), so no
+; guard relaxation is needed.
+;
+; (a) No pending at all: the completion is a no-op and the store does not grow.
+(assert-event (not (fn-node-pending-matchesp *stxt-live-0* 0 9)))
+(assert-event
+ (not (fn-stx-acceptedp *stxt-live-0*
+                        (fn-node-complete *stxt-live-0* 0 9 :durable)
+                        (fn-article-from-pending
+                         (fn-state-pending (fn-node-acceptance *stxt-live-0*))))))
+; (b) A pending that does not match the transaction offered: same refusal, and
+; here the node DOES hold a stage, so the tooth separates the matching test
+; rather than the existence of a proposal.
+(assert-event (consp (fn-node-stage *stxt-live-1*)))
+(assert-event (not (fn-node-pending-matchesp *stxt-live-1* 1 9)))
+(assert-event
+ (not (fn-stx-acceptedp *stxt-live-1*
+                        (fn-node-complete *stxt-live-1* 1 9 :durable)
+                        (fn-article-from-pending
+                         (fn-state-pending (fn-node-acceptance *stxt-live-1*))))))
+
+; -----------------------------------------------------------------------------
 ; S3-2: equivocation.  One key, one (creator, incarnation, sequence), two
 ; payloads: the D10 restore-from-snapshot fork, arriving at transit.
 
