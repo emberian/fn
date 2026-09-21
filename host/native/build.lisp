@@ -26,6 +26,9 @@
 (include-book "books/native-config")
 (include-book "books/native-auth-profile")
 (include-book "books/feed-filename")
+; Outbound feed connection establishment and reply framing remain ACL2-owned.
+(include-book "books/feed-wire-input")
+(include-book "books/feed-connection")
 (include-book "books/native-operator")
 (include-book "books/native-control")
 (include-book "books/bp-receipt-records")
