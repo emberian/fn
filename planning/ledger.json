@@ -318,7 +318,7 @@
     "enabled_projection_warnings": 21,
     "teeth_form_warnings": 3,
     "include_hygiene_warnings": 102,
-    "host_names_warnings": 35,
+    "host_names_warnings": 37,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -10084,6 +10084,20 @@
         "name": "fnn-register-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/crypto.lisp",
+        "line": 36,
+        "name": "*features*",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
+      },
+      {
+        "host": "host/native/crypto.lisp",
+        "line": 140,
+        "name": "elt",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",

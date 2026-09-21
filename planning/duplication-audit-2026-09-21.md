@@ -112,6 +112,12 @@ the others. The immediate U01 repair must not wait for this broader factoring.
   signature observation and an accepted retention obligation remain different.
 
 The CLI lane is separately auditing repeated verbs/options/defaults and conflicting
-operator documentation. Independent Claude review is running in the existing real
-tmux against frozen `406578c`; its findings will be checked against active packet
-changes before assigning repairs. Neither review runs another whole-tree gate.
+operator documentation; its [report](lanes/native-cli-duplication-audit.md) and
+native migration plan have landed. Independent Claude review in the real tmux
+inspected the native I/O boundary at `406578c` and owner candidate `d47212d`.
+Its [report](evidence/claude-native-io-seam-review.md) and
+[root disposition](evidence/claude-native-io-seam-response.md) identify swallowed
+enumeration errors, outcome subtype collapse and I/O progress differences. The
+fresh-data-loss claim is narrower after checking the earlier staging barrier;
+the owner uncertainty handler has already changed in its active successor.
+Concrete repairs are assigned without another serial review gate.
