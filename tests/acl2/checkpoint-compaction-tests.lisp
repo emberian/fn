@@ -19,6 +19,14 @@
                       (list *cc-b2*) 4)
         (list :ok (list *cc-b0* *cc-b1* *cc-b2*) 4)))
 (assert-event
+ (equal (fn-cc-decode-exact
+         (fn-cc-encode (fn-cc-make 2 2 (list *cc-b0* *cc-b1*))))
+        (list :ok (fn-cc-make 2 2 (list *cc-b0* *cc-b1*)))))
+(assert-event
+ (equal (fn-cc-decode-exact
+         (append (fn-cc-encode (fn-cc-make 2 2 (list *cc-b0* *cc-b1*))) '(0)))
+        '(:error :summary)))
+(assert-event
  (member-equal *cc-b0*
                (fn-cc-events
                 (fn-cc-nth 1 (fn-cc-capture (list *cc-b0* *cc-b1*) 2)))))
