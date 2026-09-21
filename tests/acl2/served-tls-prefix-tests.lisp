@@ -1,6 +1,7 @@
 ; Tests and teeth for the STARTTLS physical receive-prefix projection.
 (in-package "ACL2")
 (include-book "../../books/served-tls-prefix")
+(include-book "std/testing/must-fail" :dir :system)
 
 (defconst *stp-groups* (list (fn-nntp-string-octets "fn.test")))
 (defconst *stp-config*
@@ -60,10 +61,11 @@
                        (fn-served-conn-injection *stp-conn*)))
 (assert-event (fn-wire-fast-statep *stp-cheap-only-wire*))
 (assert-event (not (fn-wire-statep *stp-cheap-only-wire*)))
-(must-fail
- (defthm stp-fast-equals-reference-without-full-invariant
-   (equal (fn-served-step-counted-fast *stp-cheap-only-conn* '(65))
-          (fn-served-step-counted *stp-cheap-only-conn* '(65)))))
+(local
+ (must-fail
+  (defthm stp-fast-equals-reference-without-full-invariant
+    (equal (fn-served-step-counted-fast *stp-cheap-only-conn* '(65))
+           (fn-served-step-counted *stp-cheap-only-conn* '(65))))))
 
 ; Teeth: before the line terminator every observed byte is still plaintext;
 ; with no configured TLS facility, STARTTLS is refused and the alleged hello
