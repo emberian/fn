@@ -1,0 +1,41 @@
+{
+  "lane": "w12/evidence-sync",
+  "frozen_commit": "cdbd6b285542110616dc96bfd3d037d410dfc20a",
+  "tool_versions": {
+    "python": "3.14.7",
+    "git": "2.54.0 (Apple Git-157)"
+  },
+  "invocations": [
+    {
+      "command": "python3 tools/ledger.py --write",
+      "exit_status": 0,
+      "log_sha256": "eead15c58d07734e39b43d04237ceada0b746691e5f107f5659a47f0f620a6de"
+    },
+    {
+      "command": "python3 tools/evidence_manifests.py sync --add",
+      "exit_status": 0,
+      "result": "193 cited manifests already archived; no local recovery"
+    },
+    {
+      "command": "python3 tools/evidence_manifests.py sync --from /Users/ember/dev/fn/build/article-work-work/build/acl2 --add",
+      "exit_status": 0,
+      "result": "recovered exact cited run certify-20260918T121514Z-94241; 194 archived, 176 recorded missing",
+      "log_sha256": "f18cf1f34bee384fda398a622378c655bc5fad10dd3d6adf0aa981f28bd0964c"
+    },
+    {
+      "command": "make check",
+      "exit_status": 0,
+      "result": "scaffold checks passed; no ACL2 certification or scenario execution",
+      "log_sha256": "fe5ccccb1cf2f0d217d9e38c17b5c104c053c2e30867a90a526d2dc3fb3c5d79"
+    }
+  ],
+  "artifacts": {
+    "planning/ledger.json": "27d0c4d7ed5ccd2ba066fedd49af914de8cb22b6d2a6f2ebe6742743008d24a0",
+    "planning/ledger.md": "a68dbfe5f6384606122ab7bb07620b1de51193e6ac71ed49ac5255d6e1db2160",
+    "planning/evidence/manifests/certify-20260918T121514Z-94241.json": "30e5aaa571517d7432cafd1140fa2618f154ef9ce47f5e39d809514bae39b5b7"
+  },
+  "limitations": [
+    "No ACL2 certification or remote job was run.",
+    "176 cited run IDs remain unresolved and are recorded in LOST.txt."
+  ]
+}

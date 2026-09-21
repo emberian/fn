@@ -1,0 +1,115 @@
+{
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/article-public-bound": 0,
+    "books/article-public-work": 0,
+    "books/article-work": 0,
+    "books/article-work-budget": 0,
+    "books/article-work-primitives": 0,
+    "books/article-work-scanners": 0,
+    "tests/acl2/article-work-tests": 0
+  },
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/article-work-work/build/acl2/certify-20260918T121514Z-94241",
+  "certificate_digests_sha256": {
+    "books/article-public-bound": "03eabd59bf82fe86e296bab0c2ee2642d91bb81c5793a48a61e988f812f52708",
+    "books/article-public-work": "55de244c8e397586671ae03cead3279b5f182db761f774b009a4fbebbc21ca0e",
+    "books/article-work": "8a420b61921facfd657275c71ef2e199b8a5275d5227f25553c2ee08b3b9d92d",
+    "books/article-work-budget": "edd127544c5c33f5e7f5833ab7f3afd65aecc689b00f7d5f7b6d752375c6d403",
+    "books/article-work-primitives": "75306407993ada8dd4ae206eb3f8c82b9226a17034d7236053651a8ba2ecd289",
+    "books/article-work-scanners": "b35135e649da8972ae8e830a83456a4fddba67ff1fefa3d3c7a8a2eccc173092",
+    "tests/acl2/article-work-tests": "57a35897717375e672c15934e95c3b8764fa05546a7ac72e4d99d74fac903d9a"
+  },
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/article-public-bound": "f9d03e166856281aec96bb5b1ba39c62fce5fb2174682e6109b8d653879bd637",
+    "books/article-public-work": "3bae14776b7dc7643749257bc743d0368cd1085e5260e1e275fd6791fc160504",
+    "books/article-work": "8bdae5bf0efe5604e1910f4bbc8c33f2306f4fb809fa5e8866a62dbf79140e21",
+    "books/article-work-budget": "7b0a3c1ef91388ba168525c80d97eaebd189cc541d82c570d49efb6a6f365f1e",
+    "books/article-work-primitives": "07e10bff148ac387e118381ad7d331b679b803400ddb56b609250ffb0df9641c",
+    "books/article-work-scanners": "9b6b92fc6c969c13cf3307afa97b1d42f67db529cc1283cc750bdfdb54d8c60f",
+    "tests/acl2/article-work-tests": "e259aac46cceaae4b67a85df6a07190fdc31e8d5475f747b0cf979e21e75094e"
+  },
+  "environment": {
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS d9e6c9bd2cebb218f63066d5390bb9f6 55dfe6942d2e",
+    "FN_CERTIFY_SUCCESS d9e6c9bd2cebb218f63066d5390bb9f6 f1e638318568",
+    "FN_CERTIFY_SUCCESS d9e6c9bd2cebb218f63066d5390bb9f6 e0f9f50438b9",
+    "FN_CERTIFY_SUCCESS d9e6c9bd2cebb218f63066d5390bb9f6 ebe43d88d7ef",
+    "FN_CERTIFY_SUCCESS d9e6c9bd2cebb218f63066d5390bb9f6 c067ac036a79",
+    "FN_CERTIFY_SUCCESS d9e6c9bd2cebb218f63066d5390bb9f6 2c8ae2e991cd",
+    "FN_CERTIFY_SUCCESS d9e6c9bd2cebb218f63066d5390bb9f6 f8a1393e7ba4"
+  ],
+  "failure_markers": [],
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS d9e6c9bd2cebb218f63066d5390bb9f6 55dfe6942d2e",
+    "FN_CERTIFY_SUCCESS d9e6c9bd2cebb218f63066d5390bb9f6 f1e638318568",
+    "FN_CERTIFY_SUCCESS d9e6c9bd2cebb218f63066d5390bb9f6 e0f9f50438b9",
+    "FN_CERTIFY_SUCCESS d9e6c9bd2cebb218f63066d5390bb9f6 ebe43d88d7ef",
+    "FN_CERTIFY_SUCCESS d9e6c9bd2cebb218f63066d5390bb9f6 c067ac036a79",
+    "FN_CERTIFY_SUCCESS d9e6c9bd2cebb218f63066d5390bb9f6 2c8ae2e991cd",
+    "FN_CERTIFY_SUCCESS d9e6c9bd2cebb218f63066d5390bb9f6 f8a1393e7ba4"
+  ],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "requested_books": [
+    "books/article-work-primitives",
+    "books/article-work-scanners",
+    "books/article-work",
+    "books/article-work-budget",
+    "books/article-public-work",
+    "books/article-public-bound",
+    "tests/acl2/article-work-tests"
+  ],
+  "run_id": "certify-20260918T121514Z-94241",
+  "runner_sha256": "dd444d5cc83bfc60b75020e9aea69fdfcdda9135872cd1392e3ab53c6ff1a3d7",
+  "runner_unchanged": true,
+  "source_digests_sha256": {
+    "books/article-invariants.lisp": "3ed30e0a402f28f80074166fd7fa09dbc1e6839e33d0e14b190d906a1e837395",
+    "books/article-properties.lisp": "b92a7443e840565325e39f463894b3928c72ebc78e82611b75ec30fcbf92e81f",
+    "books/article-public-bound.lisp": "c6ab0d8b24f6f981c0d5467d9d831637183ef40597201ab1dd7b538e035cd180",
+    "books/article-public-work.lisp": "8122c57492615af7b24a752ac8637114ec4afb2e4bcb0a3f973e7ac49fa4b5ea",
+    "books/article-work-budget.lisp": "58af99b59ce0b756e01e2afd11aaffb72e937214164f79c2b0965fc5c26575bd",
+    "books/article-work-primitives.lisp": "324de5853de59a5b82aa13800d7cbc2dafe13982d0cadf75d39542188d896ca1",
+    "books/article-work-scanners.lisp": "cf9f3e57dbf93251adce18d1e165b90cf605b12c377ee64944b5dd8cf1612c1c",
+    "books/article-work.lisp": "1f274dddebd024eab8a87d4eb21d36791ab58872b2d5f36c610e863038d34637",
+    "books/article.lisp": "97571867dbfad8a6892319f36a0b5523be216199a6f7b90e6e4eaa9976d18d8d",
+    "books/cbor.lisp": "5f1bda9c6c67a77d78bcbed67f7d6dc487192e1a3bb65359ea47b9ad300b3323",
+    "tests/acl2/article-work-tests.lisp": "10424fd3c7011b219cb934790696622cafcdcd28a3fd26d4868f1249a3bd2f4b"
+  },
+  "source_digests_sha256_after": {
+    "books/article-invariants.lisp": "3ed30e0a402f28f80074166fd7fa09dbc1e6839e33d0e14b190d906a1e837395",
+    "books/article-properties.lisp": "b92a7443e840565325e39f463894b3928c72ebc78e82611b75ec30fcbf92e81f",
+    "books/article-public-bound.lisp": "c6ab0d8b24f6f981c0d5467d9d831637183ef40597201ab1dd7b538e035cd180",
+    "books/article-public-work.lisp": "8122c57492615af7b24a752ac8637114ec4afb2e4bcb0a3f973e7ac49fa4b5ea",
+    "books/article-work-budget.lisp": "58af99b59ce0b756e01e2afd11aaffb72e937214164f79c2b0965fc5c26575bd",
+    "books/article-work-primitives.lisp": "324de5853de59a5b82aa13800d7cbc2dafe13982d0cadf75d39542188d896ca1",
+    "books/article-work-scanners.lisp": "cf9f3e57dbf93251adce18d1e165b90cf605b12c377ee64944b5dd8cf1612c1c",
+    "books/article-work.lisp": "1f274dddebd024eab8a87d4eb21d36791ab58872b2d5f36c610e863038d34637",
+    "books/article.lisp": "97571867dbfad8a6892319f36a0b5523be216199a6f7b90e6e4eaa9976d18d8d",
+    "books/cbor.lisp": "5f1bda9c6c67a77d78bcbed67f7d6dc487192e1a3bb65359ea47b9ad300b3323",
+    "tests/acl2/article-work-tests.lisp": "10424fd3c7011b219cb934790696622cafcdcd28a3fd26d4868f1249a3bd2f4b"
+  },
+  "status": "passed",
+  "timeout_seconds": 180
+}
