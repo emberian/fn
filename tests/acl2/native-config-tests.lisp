@@ -22,6 +22,24 @@
 (assert-event (equal (fn-native-config-control-path *fn-ncfg-minimal-config*) "/var/lib/fn/store/control.sock"))
 (assert-event (fn-native-config-operator-availablep *fn-ncfg-minimal-config*))
 
+; A 512-octet store path is legal itself, but its two derived defaults would
+; exceed the same path bound.  Supplying bounded auth/control paths explicitly
+; is the non-degenerate accepted alternative.
+(defconst *fn-ncfg-path-512*
+  (coerce (make-list 512 :initial-element #\a) 'string))
+(defconst *fn-ncfg-store-512-line*
+  (concatenate 'string "path = \"" *fn-ncfg-path-512* "\""))
+(defconst *fn-ncfg-derived-over-bound*
+  (fn-native-config-load (fn-ncfg-test-lines (list "[store]" *fn-ncfg-store-512-line*))))
+(assert-event (equal *fn-ncfg-derived-over-bound* '(:refused :invalid)))
+(defconst *fn-ncfg-explicit-bounded-paths*
+  (fn-native-config-load
+   (fn-ncfg-test-lines
+    (list "[store]" *fn-ncfg-store-512-line*
+          "[auth]" "path = \"/a\""
+          "[control]" "path = \"/c\""))))
+(assert-event (equal (car *fn-ncfg-explicit-bounded-paths*) :accepted))
+
 ; One operator-written profile with every documented table/key.  Parsing and
 ; normalization preserve the complete surface; the availability gate refuses
 ; fields whose native consumers have not landed instead of dropping them.
