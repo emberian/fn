@@ -4,6 +4,7 @@ from pathlib import Path
 import select
 import socket
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -148,6 +149,66 @@ class NativeOwnerTests(unittest.TestCase):
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             env=environment(), timeout=180, check=False)
         self.assertNotEqual(missing.returncode, 0)
+
+    def test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart(self):
+        configured = subprocess.run(
+            [sys.executable, "tools/run_store.py", "--store", str(self.store),
+             "peer", "add", "sink", "--path-identity", "sink.example.invalid",
+             "--nntp", "127.0.0.1:9", "--outbound-groups", "fn.*",
+             "--source-address", "127.0.0.1"],
+            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env=environment(), timeout=180, check=False)
+        self.assertEqual(configured.returncode, 0, configured.stderr.decode())
+
+        msgid = b"<native-owner-feed-recovery@example.invalid>"
+        article = self.article(msgid)
+        process, port = self.start_owner(once=False, fault="postpublish")
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
+                stream = client.makefile("rwb", buffering=0)
+                self.assertTrue(stream.readline().startswith(b"200 "))
+                stream.write(b"POST\r\n")
+                self.assertTrue(stream.readline().startswith(b"340 "))
+                stream.write(article + b".\r\n")
+            self.assertEqual(process.wait(timeout=60), 3,
+                             process.stderr.read().decode("utf-8", "replace"))
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                process.wait(timeout=10)
+            process.stdout.close()
+            process.stderr.close()
+
+        journal = self.store / "feed" / "sink.fnfd"
+        self.assertTrue(journal.is_file())
+        intent_size = journal.stat().st_size
+        self.assertGreater(intent_size, 0)
+
+        # Opening the same native owner resolves the retained intent against
+        # the physically committed Store record before it serves a client.
+        restarted, port = self.start_owner()
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
+                stream = client.makefile("rwb", buffering=0)
+                self.assertTrue(stream.readline().startswith(b"200 "))
+                stream.write(b"QUIT\r\n")
+                self.assertTrue(stream.readline().startswith(b"205 "))
+            self.assertEqual(restarted.wait(timeout=60), 0,
+                             restarted.stderr.read().decode("utf-8", "replace"))
+        finally:
+            if restarted.poll() is None:
+                restarted.terminate()
+                restarted.wait(timeout=10)
+            restarted.stdout.close()
+            restarted.stderr.close()
+        self.assertGreater(journal.stat().st_size, intent_size)
+
+        inspected = subprocess.run(
+            [str(IMAGE), "--fn", "store", str(self.store), "inspect",
+             msgid.decode("ascii")], cwd=ROOT, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, env=environment(), timeout=180, check=False)
+        self.assertEqual(inspected.returncode, 0, inspected.stderr.decode())
+        self.assertTrue(inspected.stdout.endswith(article), inspected.stdout[-80:])
 
     def test_post_is_committed_and_readable_after_owner_exit(self):
         process, port = self.start_owner()
