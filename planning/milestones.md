@@ -21,13 +21,19 @@ ACL2 refuses `(include-book "books/owner")`
 and is no longer the reason, so **the current task is to re-run the live unit
 and both gates on current `dev` and say what is actually missing now.**
 
-The nearest known gap behind it is `books/owner-config`, the per-connection
-configuration pin: every definition in it admits and guard verifies as of
-w11/snt-guards --- the whole `fn-ocfg-statep` to `fn-snt-relation` guard chain
-is closed --- and the book still does not certify, at two keystones that are
-false as stated for a missing pin-table precondition
-([BOARD](deputies/BOARD.md), w11/snt-guards;
-[handoff](lanes/HANDOFF-w11-snt-guards.md) §4). Then, in order: the owner's three
+**`books/owner-config` certifies** as of 2026-09-20 (w11/owner-config,
+persvati `run-20260921T001423Z-0f98`, 74 of 74 roots), with its new test root
+`tests/acl2/owner-config-tests` beside it, so the owner cluster has no red
+root. Its two keystones that were false as stated each gained the hypothesis
+`(fn-ocfg-statep oc)`, and the first needed one new conjunct of
+`fn-own-relation` --- `fn-own-ids-below-next-p`, already true of every
+reachable owner state and merely unstated
+([handoff](lanes/HANDOFF-w11-owner-config.md)). What is still open there is
+the WIRE, not the model: no host line calls any `fn-ocfg-` function, so the
+served port still answers LIST ACTIVE from the allocation domain and every
+PRF-028 owner-side event carries a `pending_subject`.
+
+The nearest known gaps behind the live re-run are, in order: the owner's three
 one-line `host/owner-host.lisp` edits from w5-config-groups; the one-durable-post-
 per-connection defect, which is the pinned clock observation and not the
 read-back re-pin ([BOARD](deputies/BOARD.md), w5/owner-followups, DIAGNOSED);
