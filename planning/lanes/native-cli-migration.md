@@ -155,9 +155,11 @@ ACL2.
    implement each listed `bin/fn` behavior or refuse it explicitly with exit
    5 and a named missing capability during development; no command may be
    discarded or silently mapped to a different operation.
-3. Integrate owner convergence's `owner run ROOT PORT ONCE MAX-CONNECTIONS`
-   verb into the default build profile.  The packaging layer passes words
-   through and does not reproduce owner option/default semantics.
+3. Keep the raw `owner run ROOT PORT ONCE MAX-CONNECTIONS` and raw `reader`
+   entries in the explicit developer image only. The default production image
+   starts its owner solely through `operator CONFIG run`, after ACL2 has parsed
+   and normalized the configuration. The packaging layer passes words through
+   and does not reproduce operator or owner option/default semantics.
 4. Produce separate systemd and launchd native templates only after the
    native configuration/owner path can supply the exact store, listener,
    log, control, TLS, and credential fields.  Retain the existing stop,
@@ -175,9 +177,11 @@ ACL2.
    parser, no ACL2-owned operator configuration decision, and no native
    full-command parser.  Existing `tools/fn_native.py` deliberately uses the
    Python parsers for test compatibility and therefore cannot be deployed.
-2. **Owner/service controls.**  The raw owner verb is owned by the owner
-   convergence lane; configuration-to-listener/control/auth fields and the
-   service supervisor integration still need the ACL2/native path.
+2. **Owner/service controls.**  The native operator now supplies the
+   configuration-to-owner path, and the production/developer image split
+   removes raw owner/reader alternatives from the production entry surface.
+   Full service-supervisor lifecycle and remaining operator parity still need
+   the ACL2/native path.
 3. **TLS and authentication.**  Python `ssl`, credential TOML, password
    prompting, and auth-file policy currently serve `run`/`principal`.  Native
    TLS trust and credential handling need bounded raw I/O plus ACL2-owned

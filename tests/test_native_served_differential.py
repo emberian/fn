@@ -6,8 +6,8 @@ Python in it.  The same octets go two ways through `build/fn-host`:
   model   `--fn model CHUNKS -`, which is one `fn-served-open' followed by
           one `fn-served-run' over the exact chunk list, projected with
           `fn-served-reply-octets' (host/native/reader-model-host.lisp);
-  socket  `--fn reader 0 1 -`, the production listener, whose chunking is
-          whatever the kernel chose.
+  socket  `--fn reader 0 1 -`, the developer-image diagnostic listener, whose
+          chunking is whatever the kernel chose.
 
 They must produce identical bytes.  The two differ in how the input was cut,
 which is the point: `fn-served-run-is-the-concatenated-step' says the cut is
@@ -15,21 +15,20 @@ invisible, and this test is the evidence that the native host obeys it -- one
 `fn-served-step' per socket read, the reply octets from the book, no wire
 loop in host/native/io.lisp.
 
-The image is built by tools/build_native_host.sh; without it these tests are
-skipped rather than silently passing.
+The diagnostic image is built with
+`FN_NATIVE_PROFILE=developer tools/build_native_host.sh`; without it these
+tests are skipped rather than silently passing.  The production image has no
+raw `reader` entry: its listener is reached only through the native operator.
 """
 import os
 from pathlib import Path
 import select
 import socket
 import subprocess
-import sys
 import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "tools"))
-import fn_native  # noqa: E402
 
 
 MULTI_COMMAND = b"GROUP fn.letters\r\nSTAT\r\nQUIT\r\n"
@@ -51,10 +50,13 @@ class NativeServedDifferentialTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.image = fn_native.image_path()
+        cls.image = Path(os.environ.get(
+            "FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
         if not os.access(cls.image, os.X_OK):
             raise unittest.SkipTest(
-                "native host image missing: {} (tools/build_native_host.sh)".format(cls.image))
+                "developer native image missing: {} "
+                "(FN_NATIVE_PROFILE=developer tools/build_native_host.sh)"
+                .format(cls.image))
 
     def model_bytes(self, chunks):
         """The reply stream of `fn-served-run', evaluated inside the image.

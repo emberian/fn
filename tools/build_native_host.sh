@@ -8,15 +8,25 @@ set -eu
 cd "$(dirname "$0")/.."
 ACL2="${FN_ACL2:-acl2}"
 # FN_NATIVE_BUILD selects the session script and FN_NATIVE_IMAGE the image it
-# saves; the two must agree, because the `save-exec` path lives in the script.
-# The default pair is the deployment image. host/native/build-dtn.lisp is the
-# DTN-only variant and says in its own header what it leaves out.
+# saves.  The main build reads the latter at save-exec; specialized build
+# scripts still document the matching path they require.
+# The default pair is the production deployment image.  The developer profile
+# is explicit and gets a different default output, so diagnostic service
+# entries cannot replace the production image by accident. host/native/build-dtn.lisp
+# is the DTN-only variant and says in its own header what it leaves out.
 BUILD="${FN_NATIVE_BUILD:-host/native/build.lisp}"
-IMAGE="${FN_NATIVE_IMAGE:-build/fn-host}"
+PROFILE="${FN_NATIVE_PROFILE:-production}"
+case "$PROFILE" in
+  production) DEFAULT_IMAGE=build/fn-host ;;
+  developer) DEFAULT_IMAGE=build/fn-host-developer ;;
+  *) echo "build_native_host: FN_NATIVE_PROFILE must be production or developer" >&2; exit 2 ;;
+esac
+IMAGE="${FN_NATIVE_IMAGE:-$DEFAULT_IMAGE}"
 LOG="${FN_NATIVE_LOG:-build/native-host-build.log}"
 mkdir -p build
 rm -f "$IMAGE" "$IMAGE.core"
-if ! ACL2_CUSTOMIZATION=NONE ACL2_SYSTEM_BOOKS= env -u ACL2_SYSTEM_BOOKS \
+if ! FN_NATIVE_PROFILE="$PROFILE" FN_NATIVE_IMAGE="$IMAGE" \
+     ACL2_CUSTOMIZATION=NONE ACL2_SYSTEM_BOOKS= env -u ACL2_SYSTEM_BOOKS \
      "$ACL2" < "$BUILD" > "$LOG" 2>&1; then
     echo "build_native_host: acl2 exited with status $?; see $LOG" >&2
     exit 1
@@ -34,4 +44,4 @@ if [ ! -x "$IMAGE" ] || [ ! -s "$IMAGE.core" ]; then
     echo "build_native_host: save-exec produced no image; see $LOG" >&2
     exit 1
 fi
-echo "built $IMAGE ($(du -h "$IMAGE.core" | cut -f1) core)"
+echo "built $IMAGE profile=$PROFILE ($(du -h "$IMAGE.core" | cut -f1) core)"

@@ -12,12 +12,12 @@
 ; host/native/build.lisp by default, and an image built from this file must
 ; say so in its evidence record.
 ;
-; What it costs: `--fn reader ...` and `--fn model ...` reach `fnn-call` for a
-; `fn-reader-*` counterpart that is not in this image and fault with
-; "ACL2 executable counterpart missing", which is the honest answer and not a
-; silent wrong one.  Every reference to those functions in
-; host/native/io.lisp is a quoted symbol resolved at call time, so the raw
-; file loads unchanged.
+; What it costs: this specialized image keeps io.lisp's production profile, so
+; `--fn reader ...` is refused at dispatch and `--fn model ...` reaches
+; `fnn-call` for a counterpart that is not in this image and faults with
+; "ACL2 executable counterpart missing".  Every reference to the omitted
+; reader functions in host/native/io.lisp is a quoted symbol resolved at call
+; time, so the raw file loads unchanged.
 ;
 ; Build it with:  FN_NATIVE_BUILD=host/native/build-dtn.lisp \
 ;                 FN_NATIVE_IMAGE=build/fn-host-dtn sh tools/build_native_host.sh

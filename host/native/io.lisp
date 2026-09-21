@@ -2117,12 +2117,33 @@ connection `fn-reader-reset' opens and projects with
 ;;; host built without that layer should say.
 
 (defvar *fnn-verbs* nil)
+(defvar *fnn-image-profile* :production)
 (defvar *fnn-sigterm-owner-active* nil)
 (defvar *fnn-sigterm-requested* nil)
 (defvar *fnn-sigterm-wakeup-fd* nil)
 
 (defun fnn-register-verb (verb handler)
   (push (cons verb handler) *fnn-verbs*)
+  verb)
+
+(defun fnn-select-image-profile (name)
+  "Select the entry surface once while constructing the saved image.
+
+The default and deployment profile is production.  Developer images opt in
+before diagnostic modules are loaded; a process environment cannot change the
+serialized profile when the saved image later starts."
+  (setq *fnn-image-profile*
+        (cond ((string= name "production") :production)
+              ((string= name "developer") :developer)
+              (t (error "unknown native image profile ~s" name)))))
+
+(defun fnn-developer-image-p ()
+  (eq *fnn-image-profile* :developer))
+
+(defun fnn-register-developer-verb (verb handler)
+  "Register a diagnostic entry only in an explicitly selected developer image."
+  (when (fnn-developer-image-p)
+    (fnn-register-verb verb handler))
   verb)
 
 (defun fnn-verb-handler (verb)
@@ -2150,6 +2171,9 @@ connection `fn-reader-reset' opens and projects with
                                     (fnn-dash-nil (fourth rest)) (cddddr rest)))
                  (t (error 'fnn-usage-error :message (format nil "unknown store command ~a" command))))))
         ((string= verb "reader")
+         (unless (fnn-developer-image-p)
+           (error 'fnn-usage-error
+                  :message "reader is available only in the developer image"))
          (need 4)
          (fnn-command-reader (parse-integer (second args)) (string= (third args) "1")
                              (fnn-dash-nil (fourth args))))

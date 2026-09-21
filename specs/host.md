@@ -170,14 +170,27 @@ adapter `host/native/io.lisp`. `tools/build_native_host.sh` feeds
 error marker, any uncertified-book warning, or a missing ready marker; the
 books it `include-book`s are Makefile certification roots, so the image holds
 the certified definitions and nothing reinterpreted. `tools/fn_native.py`
-launches it with the Python hosts' command-line surface, and `FN_HOST=native`
-makes `tools/run_store.py` and `tools/run_reader.py` delegate to it after
-parsing, so the same tests drive either host.
+launches its component store surface for development tests. Raw reader/owner
+component tests use the separately built `developer` image profile; the
+production image reaches the served owner only through the public native
+operator.
 
 The Python launchers above are development conveniences. The Python-free
 component launcher is `packaging/fn-native`; its current operator commands and
 unsupported profiles are documented in [the operator guide](../docs/operator.md).
 It does not yet satisfy the full two-node production gate.
+
+The build selects and serializes one entry profile. The default `production`
+profile writes `build/fn-host`, does not register the raw `owner` verb and
+refuses the raw `reader` branch. Its one news-service start is
+`operator CONFIG run`, whose store, listener, authentication, control and
+posting projections come from the ACL2 native-operator/configuration plan.
+`FN_NATIVE_PROFILE=developer tools/build_native_host.sh` writes the separate
+`build/fn-host-developer` image with those two diagnostic entries enabled.
+Changing that environment variable when a saved image restarts does not change
+its serialized profile. Store diagnostics and the existing BP/TCPCL/application
+verbs remain available in the production image; this split does not claim full
+operator parity for them.
 
 The decimal-octet pipe, its nonce correlation and its reply bounds do not
 exist in this host: every call is an in-process application of the wrapper's
@@ -250,7 +263,7 @@ one ACL2-visible symbol whose raw definition that file replaces.
 | Store metadata | `fnn-metadata-config-frame/-decode`, `fnn-metadata-frontier-frame/-decode/-next`, `fnn-transaction-name`, `fnn-load-config`, `fnn-load-frontier` | `config.json` and `allocation-frontier.json` contain the same ACL2-sealed `FNSM` frames that the Python adapter uses. `books/byte-store-frame.lisp` owns profile values, framing, parsing, integrity and the frontier successor; `books/byte-store-txn-name.lisp` owns the published transaction name. The native host moves octets and retains format-5 JSON in place while refusing normal open pending offline migration. |
 | Core calls | `fnn-call`, `fnn-core`, `fnn-core-state`, `fnn-global` | Counterparts of `fn-store-sn-reset/-recover/-io/-prepare/-existing-action/-pending-octets/-known-abort/-refuse-reservation/-finish/-article-count/-next-txid/-group-next/-pin-count/-reserved/-lookup/-lookup-foundp`, `fn-store-record-sequence/-txid`, `fn-store-frame-constants/-store-protected/-store-decode`, `fn-store-metadata-config-frame/-decode`, `fn-store-metadata-frontier-frame/-decode/-next`, `fn-store-txn-name`, `fn-store-subject-id`, `fn-store-obligation-preimage/-id`, `fn-store-post-boundary`, `fn-store-charge`, `fn-store-group-codes` (names against the replayed domain), `fn-store-cfg-generation/-served/-domain`, `fn-cfg-host-initial-octets`, `fn-reader-use-seed/-use-store/-set-posting/-reset/-chunk/-outcome`, `fn-reader-model-octets`; the globals `fn-reader-output`, `fn-reader-closep`, `fn-reader-submit-octets/-msgid`, `guard-checking-on`. A `raw-ev-fncall` throw, Lisp error, core error flag or malformed result is a fault; a returned semantic refusal remains a refusal |
 | Sockets | `fnn-listen` (`sb-bsd-sockets` `inet-socket`/`inet6-socket`, loopback unless an address is passed), `fnn-connect`, `fnn-accept-loop`, `fnn-socket-fd`, `fnn-socket-shut`; `fnn-recv`, `fnn-send-all` (`sb-sys:wait-until-fd-usable` with absolute deadlines over nonblocking read/write retries; DNS/connect remain outside this contract), `fnn-graceful-close` (alien `shutdown(fd, SHUT_WR)` then a one-second drain), `fnn-serve-client`; AF_UNIX bind/connect in `host/native/control.lisp` | The served reader loop and the bounded FNCT local-control transport. Control accepts one sealed request and returns one sealed reply per connection; ACL2 owns both frames and their caps. Raw Lisp transports the bytes and never opens the Store from the control module. |
-| Entry | `fnn-main`, `fnn-dispatch`, `fn-native-entry` | The fixed positional protocol behind `--fn`, the outcome-to-exit-code map (reader setup and escaped core conditions retain refusal 1, uncertainty 3 and fault 4) |
+| Entry | `fnn-main`, `fnn-dispatch`, `fnn-select-image-profile`, `fn-native-entry` | The fixed positional protocol behind `--fn`, the build-time production/developer entry split, and the outcome-to-exit-code map. Production owner start is only the registered public `operator`; raw owner/reader diagnostics exist only in the developer image. |
 
 The native anchor follow-on is loaded by the common saved-image build:
 
@@ -297,16 +310,18 @@ startup check of `guard-checking-on`.
 
 ### Differential evidence and measurements
 
-`python3 -m unittest tests.test_native_served_differential` feeds one chunk
+`python3 -m unittest tests.test_native_served_differential` now uses the
+explicit developer image and feeds one chunk
 list through the image twice -- `--fn model` (one `fn-served-open` then one
 `fn-served-run`, projected with `fn-served-reply-octets`) and `--fn reader`
-(the production listener) -- and requires identical bytes, for a whole
+(the diagnostic listener) -- and requires identical bytes, for a whole
 transcript, three cut points, a bytewise partition, a cut inside a UTF-8
 sequence, input after QUIT and a framing rejection. It is the native mirror
 of `tests/test_served_differential.py`, and it is what says the thing on the
 socket is the certified fold and nothing else. Recorded run (persvati,
 2026-09-20, image built by `FN_ACL2=$HOME/fn-tools/acl2-8.7/saved_acl2 sh
-tools/build_native_host.sh` against the `dev-bdd59d2` gate certificates:
+tools/build_native_host.sh` against the `dev-bdd59d2` gate certificates,
+before the production/developer entry split:
 `built build/fn-host (250M core)`, 8.5 s wall): 7 tests, OK, 0.38 s. The
 image is what found the two defects that no static check could: the SBCL
 banner on stdout (`--noinform` belongs in `save-exec`'s `:host-lisp-args`,
