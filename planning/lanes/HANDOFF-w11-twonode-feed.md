@@ -54,6 +54,20 @@ green.
    recorded "POST answered 'nothing'" and skipped the wait. The wire tap is
    what caught it.
 
+7. **The feed was altering the article body.** `Session.send_block`
+   (`tools/run_feed.py`) used `rstrip(b"\r\n")` where the terminator needs
+   exactly one CRLF removed, so an article whose body ends in a blank line
+   arrived one line shorter. Measured, not guessed: gate `0e5a7f8` reported
+   `source_lines: 11, target_lines: 10, only_on_target: [], only_on_source:
+   []` in BOTH directions -- one line fewer and not one line different in
+   content. RFC 5537 section 3.6 lets a relaying agent alter Path and Xref
+   and nothing else.
+8. **A connection could end the owner at accept.** Everything in
+   `accept_nntp` can raise, and an unexpected error unwound through `run`.
+   It is wrapped now: the fault is printed with its traceback so the
+   diagnosis survives in the server log, and only that connection is lost
+   (`ACCEPT-FAULT`). Same rule as the feed containment.
+
 ## What is in the branch
 
 | File | What |
@@ -93,6 +107,7 @@ green.
 | --- | --- |
 | `CAPABILITIES` renders the reader block on a transit connection | `books/served`'s capability list has to read the session. RFC 3977 §5.2.2. `tests/test_owner.py::test_the_capability_block_does_not_yet_name_the_transit_commands` asserts the current behaviour, so the day it changes the test says so. |
 | Should a host fault on a transit connection reach the wire as the `403` fourth outcome? | A design question, not a defect: today a feed fault is contained and logged, and a served-path fault has the 403. Nothing decides the transit case. |
+| The owner's `--max-connections` default of 8 is reachable in a two-node run | A two-node run holds a persistent feed connection each way, a tap backend session per dial, and the harness's probes. On gate `ea76826` node B refused four steps at accept. The gate runs its nodes at 32 now; whether a feed connection is released promptly, and whether 8 is the right default for a peered node, is not answered. |
 | Duplicate suppression at OFFER time does not see an article accepted earlier in the SAME session | By design: the session pins the node at open and RFC 4644 2.4.2 makes an offer advisory, so a second `IHAVE` in one session draws 335 and the transfer then draws 437, and `CHECK` draws 238 and `TAKETHIS` 439. It is still a cost -- a streaming peer pays the bytes for every article it has already sent on that connection. Whoever owns specs/peering.md 2.2 should decide whether the offer-time history reads the live node, and say so either way. `scenario_feed` asserts 435/438 and so reports this as a gap. |
 | `host/reader-host.lisp`'s `*fn-reader-agent*` | The same hard-coded identity this lane removed from the owner. The reader's `--post` path should read the policy slot too; not this lane's. |
 | `tools/run_feed.py` | It is a second driver for `tests/test_feed.py` and its Python copy of an owner decision has drifted three times. This lane did not touch it and does not propose retiring it without measuring what `tests/test_feed.py` would lose. |
