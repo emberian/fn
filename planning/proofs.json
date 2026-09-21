@@ -1599,7 +1599,7 @@
       "progress_note": "Ground witnesses cover accepted 382, refusal, authenticated client success, wrong anchor and wrong hostname. Focused integrated batch certification is pending."
     },
     {
-      "id": "PRF-048",
+      "id": "PRF-049",
       "title": "Principal-bound inbound peer role selection",
       "statement": "A connection opened through the host-called fn-ocfg-open remains a reader until AUTHINFO succeeds for a credential whose principal has exactly one configured (:principal ...) peer match; mismatch and duplicate bindings remain readers, protected-only refuses the cleartext exchange, STARTTLS clears a principal-derived role, and each reconnect begins unbound.",
       "milestone": "M4",
