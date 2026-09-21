@@ -1,0 +1,16 @@
+test_bound_enqueue_survives_process_restart (tests.test_native_app_journal.NativeApplicationJournalTests.test_bound_enqueue_survives_process_restart) ... ok
+test_locked_but_fenced_store_cannot_publish (tests.test_native_app_journal.NativeApplicationJournalTests.test_locked_but_fenced_store_cannot_publish) ... ok
+test_namespace_eio_is_uncertain_despite_visible_final (tests.test_native_app_journal.NativeApplicationJournalTests.test_namespace_eio_is_uncertain_despite_visible_final) ... ok
+test_publication_observer_sees_reported_acl2_state (tests.test_native_app_journal.NativeApplicationJournalTests.test_publication_observer_sees_reported_acl2_state) ... ok
+test_read_only_store_lock_cannot_publish (tests.test_native_app_journal.NativeApplicationJournalTests.test_read_only_store_lock_cannot_publish) ... ok
+test_receiver_request_receipt_intent_and_restart_regeneration (tests.test_native_app_journal.NativeApplicationJournalTests.test_receiver_request_receipt_intent_and_restart_regeneration) ... ok
+test_reinitialization_preserves_existing_work_and_bytes (tests.test_native_app_journal.NativeApplicationJournalTests.test_reinitialization_preserves_existing_work_and_bytes) ... ok
+test_stage_eio_is_refused_before_namespace_attempt (tests.test_native_app_journal.NativeApplicationJournalTests.test_stage_eio_is_refused_before_namespace_attempt) ... ok
+test_receive_core_fault_remains_exit_four (tests.test_bp_receive_integrity_native.NativeBpReceiveIntegrityTests.test_receive_core_fault_remains_exit_four) ... ok
+test_two_sessions_reusing_transfer_zero_keep_both_exact_wires (tests.test_bp_receive_integrity_native.NativeBpReceiveIntegrityTests.test_two_sessions_reusing_transfer_zero_keep_both_exact_wires) ... ok
+test_uncertain_publication_exits_and_prevents_next_session_mutation (tests.test_bp_receive_integrity_native.NativeBpReceiveIntegrityTests.test_uncertain_publication_exits_and_prevents_next_session_mutation) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 3.801s
+
+OK
