@@ -42,6 +42,15 @@ previous-node (type 6, block number 3) and hop count (type 10, block number
 fn accepted it: `BP accepted xfer=1 adu=32`, and the ADU equals the payload
 `dtnsend` was given.
 
+**Why this is 132 octets and `dtnsend -v` printed 115.** `dtnsend` prints the
+bundle the CLI created, and `dtnd` adds a previous-node block (RFC 9171
+§4.4.1) before putting it on the convergence layer. The difference is exactly
+those 17 octets — `85 06 03 00 00 4b` followed by the 11-octet CBOR of
+`dtn://dtn7x/` — and every other octet, including the creation timestamp
+843272141627, is identical. The 132-octet wire image is the vector, because
+the wire image is what an implementation has to accept. `dtnsend`'s own hex
+is in the run's JSON (`dtnsend_out`), which is how the two were compared.
+
 **These octets are inlined in `tests/acl2/bp-bundle-tests.lisp`** as
 `*bpb-dtn7-0-21-0*`, where the certified codec asserts that it decodes them,
 that the fields it recovers are the ones above, and that `fn-bpb-encode`

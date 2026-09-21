@@ -97,10 +97,123 @@ The replacement, `fn-bpn-decoded-primary-flag-test-is-guarded`, concludes
 | `tests/acl2/bp-primary-tests`, `bp-fragment-tests`, `bp-node-tests` | `assert-event`s | unaffected in principle (they evaluate, and a theory does not change an executable counterpart) and unchanged in fact |
 | `host/bp-ingress-host.lisp:142`, `:175` | `fn-bpp-result-block`, `-source`, `-creation-time`, `-sequence` | **unaffected**: the file is `ld`'d by `tools/run_bp_ingress.py` and `tools/bundle_bridge.py`, contains no `defthm`, and is not a Makefile root — it evaluates the projections |
 
+## 2a. The three things packet 1 did NOT predict
+
+`certify-book` stops at the first failure, so "everything else in
+`books/bp-node` closes" had never been a statement about anything after
+`fn-bpn-receive`. Three forms behind it had never been attempted, and each
+was a distinct defect.
+
+**K5 had to move in front of K1.** K1 is the round trip and its only route
+from `fn-bpb-decode` to `fn-bpb-encode` is `fn-bpb-decode-of-encode`, whose
+first hypothesis is exactly K5. With K1 first the form does not fail, it
+RUNS: twenty-five minutes on hbox with no checkpoint, because the rewriter
+cannot relieve that hypothesis and falls back on induction over an encoder.
+
+**K5 itself wanted the clock OPEN and the CBOR encoder CLOSED.** Closed, it
+stops at `Subgoal 12.5`, `(INTEGERP (FN-CLOCK-WALL OBS))`, with
+`(FN-CLOCK-OBSERVATIONP OBS)` sitting unopened in its own hypotheses. Open,
+`fn-bpc-enc` unfolds the extension blocks' data and the goal becomes
+`(FN-CBOR-OCTET-LISTP (CONS 130 (APPEND (FN-CBOR-ENCODE-ARGUMENT 0 ...)
+'(0))))`, which neither `fn-bpc-enc-are-octets` nor `fn-bpc-enc-length-bound`
+matches any more — and both are in `fn-bpc-vocabulary` and both ship
+DISABLED, so they have to be named.
+
+**K1 needed the receiver's transfer limit as a case split.** Nothing in K1's
+statement bounds the authored bundle against the RECEIVER's limit, which is
+`fn-bpb-decode-of-encode`'s second hypothesis; a node configured for a
+16-octet transfer refuses this very bundle and
+`tests/acl2/bp-node-tests.lisp` has that witness. The theorem is true only
+because the acceptance hypothesis rules that branch out, and the split is
+how the prover gets to use it: above the limit
+`fn-bpb-decode-refuses-overlong-input` makes the decode `:limit`, the
+outcome a refusal, and the hypothesis false.
+
+**And then the theory, which was the whole of the remaining cost.** K1's
+`Time:` line read `427.20 seconds (prove: 0.43, other: 426.77)` and
+`fn-bpn-receive-yields-one-of-three`'s read `371.16 (prove: 0.00, other:
+371.16)` — no proof search at all, forward chaining and type reasoning over
+a decoded bundle neither statement looks inside (`docs/proof-style.md` §9.1:
+that shape is cured by a theory change and never by a hint). The three local
+bridges exist for ONE obligation, `fn-bpn-receive`'s guard, and two of them
+are forward-chaining rules triggered on
+`(fn-bpb-bundle-primary (fn-cbor-result-value (fn-bpb-decode octets limit)))`
+— a term every keystone below is full of. Closed once, in the book, together
+with `fn-bpb-decode-yields-bundle`: **K1 then closes in 0.01 s and 2,339
+prover steps.**
+
 ## 3. Per-root table
 
-(filled below)
+| root | verdict | run / evidence | note |
+| --- | --- | --- | --- |
+| `books/bp-primary` | CERTIFIED | hbox `run-20260921T005707Z-8672` / `certify-20260921T005711Z-1363238` | 5.5 s; the six projections withdrawn, six accessor-of-constructor laws added |
+| `books/bp-primary-invariants` | CERTIFIED | same run | the one local `in-theory` of §1.2 |
+| `books/bp-primary-cbor`, `books/cbor`, `books/cbor-invariants`, `books/clock`, `books/defrecord` | CERTIFIED | same run | unchanged, re-certified against the changed book |
+| `books/bp-fragment`, `books/bp-fragment-invariants`, `tests/acl2/bp-fragment-tests` | CERTIFIED | same run | 0.33 s, 15.5 s, 10.2 s; no edit needed |
+| `books/bp-bundle`, `books/bp-bundle-invariants` | CERTIFIED | same run | no edit needed |
+| `tests/acl2/bp-primary-tests` | CERTIFIED | same run | no edit needed |
+| the DTN image's 60-book closure | 59 of 60 CERTIFIED | hbox `run-20260921T015051Z-6596` / `certify-20260921T015101Z-1417898` | 652.0 s at `--jobs 8`; `books/bp-node` the only gap at that point |
+| **`books/bp-node`** | **CERTIFIED, first time ever** | hbox `run-20260921T021131Z-1eb0` / `certify-20260921T021134Z-1437596` | **1.083 s** |
+| **`tests/acl2/bp-node-tests`** | **CERTIFIED, first time ever** | same run | 0.759 s |
+| `tests/acl2/bp-bundle-tests` | CERTIFIED with the dtn7-rs vector | hbox `run-20260921T021823Z-8f90` / `certify-20260921T021827Z-1443510` | 0.743 s, 68 assert-events |
+| `build/fn-host-dtn` | **BUILT** | hbox, `build/native-host-build-dtn.log` | 272,527,376-octet core |
+| `tools/tcpcl_lab.py --scenario adu` | **PASSED** | §4 | 1500-octet ADU into a 1589-octet bundle, both ways |
+| `tests/bp-dtn7/run_fn_bp_interop.py` | **PASSED, `ok: true`** | [the evidence record](../evidence/bp-dtn7-w11-2026-09-21.md) | one bundle authored each way |
 
-## 4. Packet 2
+## 4. Packet 2 — the run, and which side authored what
 
-(filled below)
+**The standing caveat is retired.** Until tonight fn exchanged a bundle with
+dtn7-rs over RFC 9174 and **dtn7 authored it in both directions**, because
+nothing in the tree encoded BPv7.
+
+- **Leg 1, dtn7-rs 0.21.0 AUTHORED**: 132 octets for `dtn://fn-b/incoming`
+  from `dtn://dtn7x/`. fn decoded them with `fn-bpn-receive` —
+  `BP accepted xfer=1 adu=32` — and the ADU equals the file `dtnsend` was
+  given. sha256 `3ba1d435…3616df`.
+- **Leg 2, FN AUTHORED**: `BP authored creation=843272138572 sequence=1
+  lifetime=3600000 payload=33 octets=138`. dtn7-rs decoded it, delivered the
+  ADU to its `incoming` endpoint, and `dtnrecv` printed it back. sha256
+  `f6688bde…9b11b7`.
+
+Both wire images are in `tests/bp-dtn7/golden/` with the run and the
+revision that produced them. `host/native/bp.lisp` journals them itself —
+inbound under `.wire` BEFORE the node decides anything, outbound before the
+bundle reaches a socket — so neither is a re-derivation after the fact.
+
+**And the obligation `w11/phantom-cites` recorded is met.** The
+dtn7-authored 132 octets are inlined in `tests/acl2/bp-bundle-tests.lisp` as
+`*bpb-dtn7-0-21-0*`, and the book asserts three separable things: that fn's
+decoder accepts them; that the fields recovered are the ones dtn7-rs sent,
+so fn agrees about what they MEAN; and that **`fn-bpb-encode` reproduces
+them byte for byte**, so the deterministic spelling fn insists on is the
+spelling dtn7-rs emits. The header now describes what is there and keeps the
+history of what was not.
+
+## 5. The phantom deliverables in `specs/bp-design.md` §5
+
+`w11/phantom-cites` named three for this cluster. The answer is that none of
+them was ever written and none of them should be: `specs/bp-bundle.md` and
+`specs/bp-node.md` are §1.4 and §1.5 of `specs/bp-design.md` itself, which
+is where the frame and the machine are designed and where their status
+sections live; `books/bp-node-records` is packet 1, which has not been
+started, so it is an unbuilt deliverable rather than a misnamed one. §5 now
+says so in the table's own preamble rather than leaving three names that
+resolve to nothing.
+
+## 6. What the next lane should take
+
+1. **A dtn7-rs capture WITH a CRC.** The bundle dtn7-rs authored carries no
+   CRC at all (type 0), so `specs/bp-design.md` §1.4.1's open point — no
+   foreign vector pins the canonical-block CRC — survives this lane. dtn7-rs
+   can be configured to write one; one more capture closes it.
+2. **The FNBS record family and the `(:bpn-sequence n)` frontier**
+   (§1.3). `bp send` still takes the sequence as an argument and says in its
+   own header that a restarted operator must not reuse one. This is the one
+   open item that changes a claim rather than adding a feature.
+3. **`fn-bpn-step`**, without which T1 to T6 of §1.6 have no subject. §1.5.1
+   lists what is absent; nothing in the tree claims those theorems.
+4. **The five other projections of `books/bp-primary`** (`-destination`,
+   `-report-to`, `-lifetime`, `-fragment-offset`, `-total-adu-length`) and
+   `fn-bpp-make-block` itself, in one step, which is the opaque-record
+   refactor (item 4 of `planning/deputies/bp.md`). Doing it piecemeal only
+   moves the problem; this lane closed exactly the six the lint names.
