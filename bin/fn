@@ -483,6 +483,29 @@ def command_peer(settings, args):
                     "peer {} {}".format(args.action, args.name or ""))
 
 
+def command_policy(settings, args):
+    """`fn policy set|get <slot> [value]`: the node's own configuration slots.
+
+    `path-identity` is the slot peering needs: `fn-peer-local-identity`
+    reads it, and while it is unset a node cannot recognise its own name in
+    a Path, so RFC 5537 section 3.5 loop suppression cannot fire. A `set` is
+    a configuration record like a peer delta, so it needs the writer lock
+    and the owner must be stopped; `get` reads the replayed configuration.
+    """
+    if args.action == "set":
+        if not args.value:
+            return EXIT_USAGE, "policy set needs a value"
+        control = settings.control()
+        if owner_probe(control) is not None:
+            return EXIT_REFUSED, ("policy set {} an owner is live on {}; a "
+                                  "configuration record needs the writer lock, so "
+                                  "stop the service first".format(args.slot, control))
+    namespace = SimpleNamespace(store=settings.require_store(), action=args.action,
+                                slot=args.slot, value=args.value)
+    return delegate(run_store.command_policy, namespace,
+                    "policy {} {}".format(args.action, args.slot))
+
+
 def command_status(settings, args):
     """Generation, article count, last anchor, and whether an owner is live.
 
@@ -793,6 +816,12 @@ def build_parser():
     principal.add_argument("--posting", dest="posting", action="store_true", default=True)
     principal.add_argument("--no-posting", dest="posting", action="store_false")
 
+    policy = sub.add_parser(
+        "policy", help="set or read one of the node's own configuration slots")
+    policy.add_argument("action", choices=("set", "get"))
+    policy.add_argument("slot", help="`path-identity` is this node's own RFC 5537 "
+                                     "<path-identity>, which peering reads")
+    policy.add_argument("value", nargs="?")
     peer = sub.add_parser("peer", help="add, remove or list a transit peer")
     peer.add_argument("action", choices=("add", "remove", "list"))
     peer.add_argument("name", nargs="?", default="")
@@ -854,7 +883,8 @@ def overrides(settings, args):
 COMMANDS = {"init": command_init, "run": command_run, "post": command_post,
             "principal": command_principal,
             "group": command_group, "capacity": command_capacity,
-            "peer": command_peer, "status": command_status,
+            "peer": command_peer, "policy": command_policy,
+            "status": command_status,
             "recover": command_recover, "anchor": command_anchor,
             "statement": command_statement}
 

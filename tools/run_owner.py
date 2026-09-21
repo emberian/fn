@@ -315,6 +315,11 @@ class Acl2Owner(Acl2Store):
         return self._nat("(fn-owner-feed-queue-length '{} state)".format(
             self.literal(peer.encode("utf-8"))))
 
+    def feed_backoff_ms(self, peer):
+        """The peer record's outbound backoff, which ACL2 reads, not Python."""
+        return self._nat("(fn-owner-feed-backoff-ms '{} state)".format(
+            self.literal(peer.encode("utf-8"))))
+
     def feed_connect(self, peer, conn):
         return self._symbol_any("(fn-owner-feed-connect '{} {} state)".format(
             self.literal(peer.encode("utf-8")),
@@ -507,6 +512,12 @@ class Feed:
         self.session = None
         self.conn_id = None
         self.pending_article = b""
+        # When the host may next open a socket for this peer. The interval
+        # is the peer record's own outbound backoff (ACL2 reads it); only
+        # the waiting is the host's. The feed machine's backoff cannot do
+        # this job: it gates `fn-feed-selection`, which needs a connection
+        # that a dial has not made yet.
+        self.next_dial = 0.0
 
     def close(self):
         if self.session is not None:
@@ -884,8 +895,11 @@ class Owner:
             # is a defect signal, not an outcome.
             try:
                 if feed.session is None:
-                    if self.bridge.feed_queue_length(feed.peer) > 0:
-                        self.feed_dial(feed)
+                    if (now >= feed.next_dial
+                            and self.bridge.feed_queue_length(feed.peer) > 0):
+                        if not self.feed_dial(feed):
+                            feed.next_dial = now + self.bridge.feed_backoff_ms(
+                                feed.peer)
                     continue
                 if self.bridge.feed_tick(feed.peer, now) == "offer":
                     self.feed_flush()
