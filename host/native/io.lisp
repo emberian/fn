@@ -1015,7 +1015,7 @@ kernel may have issued the namespace operation even when it reports failure."
       (ignore-errors (fnn-unlink stage))
       ;; Keep the real best-effort unlink policy above.  The test seam is
       ;; deliberately outside that handler so its selected outcome is visible.
-      (when initializer-prefix (fnn-init-cut store (fnn-concat initializer-prefix "stage-unlinked"))))))
+      (when initializer-prefix (fnn-init-cut store (fnn-concat initializer-prefix "stage-unlinked")))))))
 
 (defun fnn-transaction-files (store)
   "Sorted (sequence . path) pairs of the final namespace, gap-free or a fault."
