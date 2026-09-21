@@ -1195,11 +1195,11 @@
                                     (list :command line))))
   :hints (("Goal"
            :do-not-induct t
-           :in-theory (e/d (fn-auth-step fn-auth-command fn-auth-gatedp)
+           :in-theory (e/d (fn-auth-step fn-auth-command fn-auth-gatedp
+                            fn-auth-transit-keywordp fn-nntp-keywordp)
                            (fn-auth-delegate fn-peer-step fn-auth-sessionp
-                            fn-auth-transit-keywordp
                             fn-auth-transit-keyword-is-not-reader-restricted
-                            fn-auth-restricted-keywordp fn-nntp-keywordp
+                            fn-auth-restricted-keywordp
                             fn-nntp-tokenize fn-nntp-command-inputp
                             fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp))
