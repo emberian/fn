@@ -14,6 +14,29 @@ path = "/var/lib/fn/store"
 host = "127.0.0.1"
 port = 1119
 
+[auth]
+# RFC 4643 AUTHINFO.  Omit the whole table and the node requires no login,
+# which is what `fn init` writes unless you pass --auth-required.
+#
+#   required        a connection must authenticate before a command that
+#                   changes durable state or discloses article content
+#                   (POST, GROUP, ARTICLE, LIST, OVER, HDR, IHAVE, ...).
+#                   CAPABILITIES, HELP, QUIT, MODE, DATE, AUTHINFO and
+#                   STARTTLS never need one, so a client can still discover
+#                   the server and still log in.
+#   protected_only  RFC 4643 section 2.3.2: AUTHINFO answers 483 until a TLS
+#                   layer is active.  Set it whenever the node is reachable
+#                   off the box, because USER/PASS crosses in the clear.
+#   path            the credential file `fn principal set-password` writes.
+#                   Default <store>/auth.toml, mode 0600.  It holds salted
+#                   verifiers (books/auth-secret.lisp), never secrets.
+#
+# The policy reaches EVERY connection the owner opens, including one it
+# resolved to a peer record by source address.
+required = false
+protected_only = false
+# path = "/var/lib/fn/auth.toml"
+
 [posting]
 enabled = true
 # The injecting agent this node names for locally accepted articles.  It is
@@ -33,7 +56,9 @@ path = "acl2"
 slots = 4
 
 [log]
-# One line per post and per reader connection, outcome word first.  Remove
+# One line per post and per accepted connection, outcome word first; the
+# connection lines say the ROLE the owner gave the connection at accept,
+# `reader` or `peer <name>`.  Remove
 # this table to log to stderr, which under systemd is the journal.
 path = "/var/log/fn/fn.log"
 

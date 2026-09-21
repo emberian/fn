@@ -1,0 +1,190 @@
+{
+  "acl2_executable": "/home/ember/fn-tools/acl2-8.7/saved_acl2",
+  "acl2_executable_sha256": "c8a7a804d9cc80e2025a8ab0e1d9325f2a0c4a027a5dcdcb2c1093e9cd5c8163",
+  "acl2_exit_codes": {
+    "tests/acl2/peer-inbound-tests": 0,
+    "tests/acl2/served-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "persvati:/home/ember/fn-lanes/w6-peering-inbound-2/build/acl2/certify-20260920T195046Z-2511951",
+  "book_failures": {
+    "tests/acl2/peer-inbound-tests": [
+      "no fresh success marker in this book's log",
+      "failure marker in this book's log: ACL2 Error",
+      "no certificate on disk"
+    ]
+  },
+  "book_results": {
+    "tests/acl2/peer-inbound-tests": "failed",
+    "tests/acl2/served-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "tests/acl2/peer-inbound-tests": 0.438,
+    "tests/acl2/served-tests": 0.789
+  },
+  "certificate_digests_sha256": {
+    "tests/acl2/served-tests": "f88a81f2aa902d5adf48866c622e532b73b4827be48ac421eb748d94f486b3f9"
+  },
+  "certify_wall_seconds": 0.792,
+  "closure": false,
+  "command": [
+    "/home/ember/fn-tools/acl2-8.7/saved_acl2"
+  ],
+  "driver_digests_sha256": {
+    "tests/acl2/peer-inbound-tests": "55c8f34322969298c438259ce3959c8ba73f80e42e935cacc1628ed86f77f9d2",
+    "tests/acl2/served-tests": "a54252ef284d1939f8b0061013e8bb89889a005e9ce47c1c1347e500721e8aa9"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 90d06dbf5631a7c2c4334734b9177a00 eb731d34e33b",
+    "FN_CERTIFY_SUCCESS 90d06dbf5631a7c2c4334734b9177a00 0633cca66f28"
+  ],
+  "failure": "ACL2 did not produce complete clean certification evidence. See certify.log. Books that failed: tests/acl2/peer-inbound-tests",
+  "failure_markers": [
+    "ACL2 Error"
+  ],
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "jobs": 2,
+  "jobs_effective": 2,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 90d06dbf5631a7c2c4334734b9177a00 0633cca66f28"
+  ],
+  "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.42",
+  "python": "3.13.7",
+  "reader_sha256": "cb5c7e6645d83c46e5bce2aadd69120d687d337ea814401535f7887514bad7ad",
+  "requested_before_filter": [
+    "tests/acl2/peer-inbound-tests",
+    "tests/acl2/served-tests"
+  ],
+  "requested_books": [
+    "tests/acl2/peer-inbound-tests",
+    "tests/acl2/served-tests"
+  ],
+  "run_id": "certify-20260920T195046Z-2511951",
+  "runner_sha256": "3607dc4b15cbe771eda434bc1911f7106b4b81f98aded95f9ea5e4cda6546ce5",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "tests/acl2/peer-inbound-tests": 0.0,
+    "tests/acl2/served-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "d9837d7cf602953989ce0539562e1b03471d2f76da5579efd3397bd66e4440c8",
+    "books/acceptance.lisp": "db062af997f850f6dad43ae00967db557cca5117108f43d5464ced55be5f286a",
+    "books/article-fields.lisp": "14dfa236bcac52e0b4dea86d105c701f3e74fcb554b912964f6b08d4cd430f85",
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/config-invariants.lisp": "aca5a5f6a49d7330c33c5db5b3ae2557afc5baf961dd540c953f8499b7d181a0",
+    "books/config-records.lisp": "b3294f88d082723d3bed30cde7a603a432370fe4804fa894032ab0bcad3bce2f",
+    "books/config.lisp": "fa3a908676012cc232a93f2cdd0baebf972fc74ac8a6197d42d8b44aab5d9ff4",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-journal.lisp": "512201c2299a6ac6760a03f8416fa98f5f6a0191af902fe53792450d2a6b2255",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/identity.lisp": "b34e54f718e4f45e512491d9020296e198f189a2fc856c2651d4ae45f1294ade",
+    "books/injection-invariants.lisp": "9c3fde73dbefc58126b44750c9b454ba009fb1a1b4d265f629ec4be37a8f6c74",
+    "books/injection.lisp": "d2c65fb131cf93c75ce7bb0510fc029f1498daaffba2f1875e4cd31212d4e16e",
+    "books/nntp-effects.lisp": "a872fd0f3e6fa5dba63a23528cd72228c035e8cc8359a0e4d4436c98a1d5ded2",
+    "books/nntp-invariants.lisp": "5c8823b7adef2fdf7fa89e7551ca3c0da73f29f30c98c35abfd0fe5e5a08c4c1",
+    "books/nntp-legacy.lisp": "1ec86432fdc4df96e249f4ae7ac1cf6e96e29c8a7e839bf935afa186ea373311",
+    "books/nntp-overview.lisp": "e7e672279e01656c79d79383ee28170c1c402e9eba50f12a946362fe97f756c6",
+    "books/nntp-post.lisp": "b648186bb687038d601bd18d693dc4f1ec76dd33f6ab9df373a80f90ad94261d",
+    "books/nntp-projection.lisp": "0709955607510e4e8c4f4404a15af737cf8db91be21352a92403b1260861eb0b",
+    "books/nntp-responses.lisp": "6fc4c3aeaafbf498d6b13fe12924988b59787205a6e457f831e4b4834523ad3e",
+    "books/nntp-session.lisp": "ed364496944b77118cdd826272802fafb961911fcc6ed85961d8b2f940c4ca51",
+    "books/nntp-syntax.lisp": "86abc0d9e4be8068cbdee6822fe316c75b5cb1907febd1a11bcb3d4d61864f95",
+    "books/nntp.lisp": "461941cb07f5a172ce33574c80346df36a29de15c83c3b15b59bfac6706d8278",
+    "books/node-config.lisp": "a4aee75dd324a178f69d1df0b09ae7180a4529c18741067136bb3192378457f2",
+    "books/node-invariants.lisp": "39c89601e6f14703a3958cd8ee32ae2de0cbd0acafda9be5bb782969c3de2c62",
+    "books/node.lisp": "59c886706bafd7e34574716b1b620a5e2c95e32d47de4a4901580805c02a4a4d",
+    "books/path.lisp": "cc2b8333cdcdbad11922293fbeddd5e8a9310a9dffc3c93e95f609b088f0269b",
+    "books/peer-config.lisp": "fd2f79649538b709bd6a237cb5a23b500989fb139e449b5d9e0c3304d2f7d86b",
+    "books/peer-inbound-invariants.lisp": "f2bf6fbe08796dd414c69e97ca3085846ec718a61c16f62ae021574c34adb0b8",
+    "books/peer-inbound.lisp": "b018fccfc67c980e8e39fa46527a2164827e2711e9c04e9119a4467fc41b96e3",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "02c34455e55acbd5492613e3c0cfc2790121e9ed09b900e63319c6f771ba281a",
+    "books/replay.lisp": "9e3310d1bebd408a513b6447a5653afe1aaa945becba82dfc898f55f6480c868",
+    "books/retention.lisp": "b9e366de6fdc55602e28c7d2e2f519ed437597c789a85b9845bf9e39485f3291",
+    "books/served.lisp": "8c9e9a41e70757e65774af60de0695c03dc72a48493f9a4d597b3c8e898502d9",
+    "books/wildmat.lisp": "f9df9399e752a6edf1f1c10b2a0a6fc7abf528dbd3f6839df6e944334f4de3c9",
+    "books/wire-invariants.lisp": "02998d02d2a84ea4b30e3a45b230da3b3bf13d7ab153786e5d1f86b81d92f6a5",
+    "books/wire.lisp": "1e2e7492a82bcd6c0f5bf2864b96fd45aa1241164e65dd574034e83c66f84dfa",
+    "tests/acl2/peer-inbound-tests.lisp": "57ff1c666ba8f278cac21921ea61bbf4465d8a843e3cb532071c40d37b54281c",
+    "tests/acl2/served-tests.lisp": "99a8329938c9059895f26940bb6582a661e5aac2096ac4bc8594b5a2b8c29ada"
+  },
+  "source_digests_sha256_after": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "d9837d7cf602953989ce0539562e1b03471d2f76da5579efd3397bd66e4440c8",
+    "books/acceptance.lisp": "db062af997f850f6dad43ae00967db557cca5117108f43d5464ced55be5f286a",
+    "books/article-fields.lisp": "14dfa236bcac52e0b4dea86d105c701f3e74fcb554b912964f6b08d4cd430f85",
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/config-invariants.lisp": "aca5a5f6a49d7330c33c5db5b3ae2557afc5baf961dd540c953f8499b7d181a0",
+    "books/config-records.lisp": "b3294f88d082723d3bed30cde7a603a432370fe4804fa894032ab0bcad3bce2f",
+    "books/config.lisp": "fa3a908676012cc232a93f2cdd0baebf972fc74ac8a6197d42d8b44aab5d9ff4",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-journal.lisp": "512201c2299a6ac6760a03f8416fa98f5f6a0191af902fe53792450d2a6b2255",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/identity.lisp": "b34e54f718e4f45e512491d9020296e198f189a2fc856c2651d4ae45f1294ade",
+    "books/injection-invariants.lisp": "9c3fde73dbefc58126b44750c9b454ba009fb1a1b4d265f629ec4be37a8f6c74",
+    "books/injection.lisp": "d2c65fb131cf93c75ce7bb0510fc029f1498daaffba2f1875e4cd31212d4e16e",
+    "books/nntp-effects.lisp": "a872fd0f3e6fa5dba63a23528cd72228c035e8cc8359a0e4d4436c98a1d5ded2",
+    "books/nntp-invariants.lisp": "5c8823b7adef2fdf7fa89e7551ca3c0da73f29f30c98c35abfd0fe5e5a08c4c1",
+    "books/nntp-legacy.lisp": "1ec86432fdc4df96e249f4ae7ac1cf6e96e29c8a7e839bf935afa186ea373311",
+    "books/nntp-overview.lisp": "e7e672279e01656c79d79383ee28170c1c402e9eba50f12a946362fe97f756c6",
+    "books/nntp-post.lisp": "b648186bb687038d601bd18d693dc4f1ec76dd33f6ab9df373a80f90ad94261d",
+    "books/nntp-projection.lisp": "0709955607510e4e8c4f4404a15af737cf8db91be21352a92403b1260861eb0b",
+    "books/nntp-responses.lisp": "6fc4c3aeaafbf498d6b13fe12924988b59787205a6e457f831e4b4834523ad3e",
+    "books/nntp-session.lisp": "ed364496944b77118cdd826272802fafb961911fcc6ed85961d8b2f940c4ca51",
+    "books/nntp-syntax.lisp": "86abc0d9e4be8068cbdee6822fe316c75b5cb1907febd1a11bcb3d4d61864f95",
+    "books/nntp.lisp": "461941cb07f5a172ce33574c80346df36a29de15c83c3b15b59bfac6706d8278",
+    "books/node-config.lisp": "a4aee75dd324a178f69d1df0b09ae7180a4529c18741067136bb3192378457f2",
+    "books/node-invariants.lisp": "39c89601e6f14703a3958cd8ee32ae2de0cbd0acafda9be5bb782969c3de2c62",
+    "books/node.lisp": "59c886706bafd7e34574716b1b620a5e2c95e32d47de4a4901580805c02a4a4d",
+    "books/path.lisp": "cc2b8333cdcdbad11922293fbeddd5e8a9310a9dffc3c93e95f609b088f0269b",
+    "books/peer-config.lisp": "fd2f79649538b709bd6a237cb5a23b500989fb139e449b5d9e0c3304d2f7d86b",
+    "books/peer-inbound-invariants.lisp": "f2bf6fbe08796dd414c69e97ca3085846ec718a61c16f62ae021574c34adb0b8",
+    "books/peer-inbound.lisp": "b018fccfc67c980e8e39fa46527a2164827e2711e9c04e9119a4467fc41b96e3",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "02c34455e55acbd5492613e3c0cfc2790121e9ed09b900e63319c6f771ba281a",
+    "books/replay.lisp": "9e3310d1bebd408a513b6447a5653afe1aaa945becba82dfc898f55f6480c868",
+    "books/retention.lisp": "b9e366de6fdc55602e28c7d2e2f519ed437597c789a85b9845bf9e39485f3291",
+    "books/served.lisp": "8c9e9a41e70757e65774af60de0695c03dc72a48493f9a4d597b3c8e898502d9",
+    "books/wildmat.lisp": "f9df9399e752a6edf1f1c10b2a0a6fc7abf528dbd3f6839df6e944334f4de3c9",
+    "books/wire-invariants.lisp": "02998d02d2a84ea4b30e3a45b230da3b3bf13d7ab153786e5d1f86b81d92f6a5",
+    "books/wire.lisp": "1e2e7492a82bcd6c0f5bf2864b96fd45aa1241164e65dd574034e83c66f84dfa",
+    "tests/acl2/peer-inbound-tests.lisp": "57ff1c666ba8f278cac21921ea61bbf4465d8a843e3cb532071c40d37b54281c",
+    "tests/acl2/served-tests.lisp": "99a8329938c9059895f26940bb6582a661e5aac2096ac4bc8594b5a2b8c29ada"
+  },
+  "start_order": [
+    "tests/acl2/peer-inbound-tests",
+    "tests/acl2/served-tests"
+  ],
+  "status": "failed",
+  "timeout_seconds": 1800
+}

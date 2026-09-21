@@ -11,10 +11,16 @@ pinned configuration allows posting (`fn-inj-config-allow`, threaded to the
 dispatcher as the third field of `fn-nntp-env`) — the same bit
 `fn-nntp-post-step` reads before it answers a `POST` command with 340 rather
 than 440, so the label is a promise this server keeps. The greeting carries the
-same bit as §5.1.1's code (`200` when posting is allowed, `201` when it is not,
-`fn-served-greeting`) and so does `MODE READER` (§5.3.2). The read-only reader
-profile pins a configuration that disallows posting, so it greets with 201 and
-advertises no POST. IHAVE, NEWNEWS and MODE-READER remain unadvertised. D05's checklist
+same bit as §5.1.1's code (`200` when this connection may post, `201` when it
+may not, `fn-served-greeting config session`) and so does `MODE READER`
+(§5.3.2). On a connection under a policy that requires a login the allowance is
+the conjunction of that bit and `fn-auth-postingp`, so an unauthenticated
+connection greets 201 and gains the label with its 281; before 2026-09-21 the
+greeting read the injection configuration alone and promised 200 where POST
+answered 480. `fn-served-open-greets-200-exactly-when-the-connection-may-post`
+and `fn-served-open-greeting-agrees-with-the-post-label` (PRF-039) are the
+statement of it. The read-only reader profile pins a configuration that
+disallows posting, so it greets with 201 and advertises no POST. IHAVE, NEWNEWS and MODE-READER remain unadvertised. D05's checklist
 is the matrix. See [implementation status](../docs/implementation.md).
 
 ## Planned surface
@@ -401,7 +407,25 @@ host owns only the socket.
 
 ### The posting allowance
 
-Posting is the AUTHENTICATED PRINCIPAL's, not the connection's. `fn principal
+Posting is the AUTHENTICATED PRINCIPAL's, not the connection's.
+
+**Fixed 2026-09-21, and it is why none of the paragraph below reached a
+running server.** `fn-served-open-peer` pinned the literal
+`(fn-auth-open-config)` — no credential, no protected-only bit, no
+certificate — while `fn-served-open` pinned the operator's. The owner decides
+a connection's role at accept from the peer table and matches the SOURCE
+ADDRESS and nothing else (`fn-owner-peer-name-for`, host/owner-host.lisp), so
+wherever a configured peer answers on loopback every client is opened by the
+peer branch. On the v0 matrix's two nodes that was every client: `AUTHINFO
+PASS` answered 481 with the secret `fn principal set-password` had just
+written, `CAPABILITIES` carried no AUTHINFO line, and POST was never gated.
+The measurement, one variable at a time, is
+[the live record](../planning/evidence/auth-live-2026-09-21.md); the repair is
+the `acfg` argument through `fn-served-open-peer`, `fn-own-open-peer` and
+`fn-owner-open-peer`, and PRF-039 carries the theorems that are false of
+the old definition. The operator sets the policy with `fn init
+--auth-required` / `--auth-protected-only`, which is also new: before it there
+was no way to reach `fn-auth-config-requiredp` from the operator surface. `fn principal
 set-password --posting/--no-posting` writes the flag; `fn-auth-postingp`
 reads it. Authenticated, the credential decides and nothing else: a
 principal enrolled without the flag passes the 480 gate and is still

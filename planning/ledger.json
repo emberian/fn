@@ -47,6 +47,8 @@
     "books/frame",
     "books/frame-invariants",
     "tests/acl2/frame-tests",
+    "books/frame-trailer",
+    "tests/acl2/frame-trailer-tests",
     "books/identity",
     "books/identity-invariants",
     "tests/acl2/identity-tests",
@@ -87,6 +89,7 @@
     "tests/acl2/store-node-traces-tests",
     "books/store-node-resolution",
     "tests/acl2/store-node-resolution-tests",
+    "tests/acl2/store-node-resolution-traces-tests",
     "books/store-sweep",
     "tests/acl2/store-sweep-tests",
     "books/store-observed",
@@ -276,29 +279,30 @@
     "books/stx-authority",
     "tests/acl2/stx-tests",
     "tests/acl2/stx-transit-tests",
+    "tests/acl2/store-node-index-tests",
     "books/scheduler-peers",
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 277,
-    "books_in_root_closure": 276,
-    "roots": 276,
-    "theorems": 5638,
-    "functions": 3949,
-    "assert_events": 5634,
+    "books": 280,
+    "books_in_root_closure": 280,
+    "roots": 280,
+    "theorems": 5692,
+    "functions": 3971,
+    "assert_events": 5826,
     "must_fails": 63,
     "encapsulates": 19,
     "guards": {
-      "verified": 1477,
+      "verified": 1489,
       "declared-off": 192,
-      "default-guarded": 1791,
-      "default-unguarded": 489
+      "default-guarded": 1795,
+      "default-unguarded": 495
     },
     "suspect_theorems": 46,
-    "export_hygiene_warnings": 72,
-    "enabled_projection_warnings": 27,
+    "export_hygiene_warnings": 73,
+    "enabled_projection_warnings": 21,
     "teeth_form_warnings": 0,
-    "include_hygiene_warnings": 88,
+    "include_hygiene_warnings": 89,
     "host_names_warnings": 33,
     "hand_written_record_warnings": 18
   },
@@ -383,7 +387,7 @@
       "book": "books/anchor-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 25,
+      "theorems": 30,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -439,15 +443,15 @@
       "book": "books/anchor.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 58,
-      "functions": 59,
+      "theorems": 60,
+      "functions": 63,
       "guards": {
-        "verified": 40,
+        "verified": 45,
         "declared-off": 1,
-        "default-guarded": 17,
+        "default-guarded": 16,
         "default-unguarded": 1
       },
-      "verify_guards_events": 40,
+      "verify_guards_events": 45,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 13,
@@ -951,7 +955,7 @@
       "book": "books/bp-node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 21,
+      "theorems": 25,
       "functions": 30,
       "guards": {
         "verified": 23,
@@ -1060,7 +1064,7 @@
       "book": "books/bp-primary.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 9,
+      "theorems": 15,
       "functions": 75,
       "guards": {
         "verified": 75,
@@ -1813,7 +1817,7 @@
       "book": "books/checkpoint-codec.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 105,
+      "theorems": 108,
       "functions": 32,
       "guards": {
         "verified": 13,
@@ -2361,6 +2365,34 @@
       "system_includes": [
         "arithmetic/top",
         "ihs/quotient-remainder-lemmas"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/frame-trailer.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 1,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "crypto-attach",
+        "frame-invariants"
+      ],
+      "system_includes": [
+        "arithmetic/top"
       ],
       "suspects": [],
       "read_error": null
@@ -3926,7 +3958,7 @@
       "book": "books/served.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 62,
+      "theorems": 67,
       "functions": 37,
       "guards": {
         "verified": 2,
@@ -4133,7 +4165,7 @@
       "book": "books/store-node-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 59,
+      "theorems": 71,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -4162,7 +4194,7 @@
       "book": "books/store-node-resolution.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 30,
+      "theorems": 34,
       "functions": 8,
       "guards": {
         "verified": 6,
@@ -4218,22 +4250,23 @@
       "book": "books/store-node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 9,
-      "functions": 23,
+      "theorems": 12,
+      "functions": 31,
       "guards": {
-        "verified": 21,
+        "verified": 27,
         "declared-off": 0,
-        "default-guarded": 2,
+        "default-guarded": 4,
         "default-unguarded": 0
       },
-      "verify_guards_events": 21,
+      "verify_guards_events": 27,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 0,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "store-files-invariants"
+        "store-files-invariants",
+        "stx-index"
       ],
       "system_includes": [],
       "suspects": [],
@@ -4268,7 +4301,7 @@
       "book": "books/store-observed.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 37,
+      "theorems": 39,
       "functions": 13,
       "guards": {
         "verified": 12,
@@ -4295,7 +4328,7 @@
       "book": "books/store-sweep.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 7,
+      "theorems": 8,
       "functions": 8,
       "guards": {
         "verified": 0,
@@ -5118,9 +5151,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 26,
+      "assert_events": 57,
       "must_fails": 0,
-      "defconsts": 0,
+      "defconsts": 1,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -5143,9 +5176,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 40,
+      "assert_events": 53,
       "must_fails": 0,
-      "defconsts": 25,
+      "defconsts": 31,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -5347,9 +5380,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 52,
+      "assert_events": 68,
       "must_fails": 0,
-      "defconsts": 14,
+      "defconsts": 16,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -5918,9 +5951,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 68,
+      "assert_events": 78,
       "must_fails": 0,
-      "defconsts": 14,
+      "defconsts": 15,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -5968,9 +6001,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 20,
+      "assert_events": 27,
       "must_fails": 0,
-      "defconsts": 11,
+      "defconsts": 12,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -6184,6 +6217,31 @@
       "encapsulates": 0,
       "includes": [
         "../../books/frame-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/frame-trailer-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 25,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/frame-trailer"
       ],
       "system_includes": [],
       "suspects": [],
@@ -6936,17 +6994,17 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 0,
+      "functions": 4,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 0
+        "default-unguarded": 4
       },
       "verify_guards_events": 0,
-      "assert_events": 95,
+      "assert_events": 116,
       "must_fails": 0,
-      "defconsts": 45,
+      "defconsts": 53,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -7134,6 +7192,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/store-node-index-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 69,
+      "must_fails": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-node-invariants",
+        "crypto-seam-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/store-node-resolution-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -7160,8 +7244,8 @@
     },
     {
       "book": "tests/acl2/store-node-resolution-traces-tests.lisp",
-      "in_root_closure": false,
-      "is_root": false,
+      "in_root_closure": true,
+      "is_root": true,
       "theorems": 0,
       "functions": 0,
       "guards": {
@@ -7586,7 +7670,7 @@
     {
       "theorem": "fn-anchor-octets-of-lengthp-forward",
       "book": "books/anchor.lisp",
-      "line": 107,
+      "line": 130,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-anchor-octets-of-lengthp"
       ]
@@ -7886,7 +7970,7 @@
     {
       "theorem": "fn-sn-open-observed-invalid-history-refuses",
       "book": "books/store-observed.lisp",
-      "line": 408,
+      "line": 454,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value"
       ]
@@ -8078,13 +8162,13 @@
       {
         "theorem": "fn-bpp-decode-of-encode",
         "book": "books/bp-primary-invariants.lisp",
-        "line": 225,
+        "line": 240,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-bpp-accepted-block-has-valid-crc",
         "book": "books/bp-primary-invariants.lisp",
-        "line": 278,
+        "line": 293,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -8139,6 +8223,12 @@
         "theorem": "fn-jrec-config-sequence-agrees",
         "book": "books/config-records.lisp",
         "line": 87,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-frame-trailer-of-octets",
+        "book": "books/frame-trailer.lisp",
+        "line": 82,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -8519,62 +8609,6 @@
         "line": 302,
         "stated_in": [
           "books/bp-fragment-invariants.lisp"
-        ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
-      },
-      {
-        "function": "fn-bpp-flags",
-        "book": "books/bp-primary.lisp",
-        "line": 394,
-        "stated_in": [
-          "books/bp-fragment-invariants.lisp",
-          "books/bp-node.lisp",
-          "books/bp-primary-invariants.lisp"
-        ],
-        "reason": "enabled-projection: the definition rune ships enabled and 3 books state theorems over it, so one downstream unfold stops those theorems matching"
-      },
-      {
-        "function": "fn-bpp-crc-type",
-        "book": "books/bp-primary.lisp",
-        "line": 395,
-        "stated_in": [
-          "books/bp-primary-invariants.lisp"
-        ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
-      },
-      {
-        "function": "fn-bpp-source",
-        "book": "books/bp-primary.lisp",
-        "line": 397,
-        "stated_in": [
-          "books/bp-primary-invariants.lisp"
-        ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
-      },
-      {
-        "function": "fn-bpp-creation-time",
-        "book": "books/bp-primary.lisp",
-        "line": 399,
-        "stated_in": [
-          "books/bp-primary-invariants.lisp"
-        ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
-      },
-      {
-        "function": "fn-bpp-sequence",
-        "book": "books/bp-primary.lisp",
-        "line": 400,
-        "stated_in": [
-          "books/bp-primary-invariants.lisp"
-        ],
-        "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
-      },
-      {
-        "function": "fn-bpp-result-block",
-        "book": "books/bp-primary.lisp",
-        "line": 599,
-        "stated_in": [
-          "books/bp-primary-invariants.lisp"
         ],
         "reason": "enabled-projection: the definition rune ships enabled and 1 book states theorems over it, so one downstream unfold stops those theorems matching"
       },
@@ -9221,6 +9255,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/store-node-index-tests.lisp",
+        "line": 25,
+        "include": "crypto-seam-tests",
+        "included": "tests/acl2/crypto-seam-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/stx-tests.lisp",
         "line": 14,
         "include": "crypto-seam-tests",
@@ -9385,112 +9426,112 @@
       },
       {
         "host": "host/native/bp.lisp",
-        "line": 136,
+        "line": 146,
         "name": "plusp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the bridge that loads this file fails at start-up"
       },
       {
         "host": "host/native/bp.lisp",
-        "line": 136,
+        "line": 146,
         "name": "fnn-tclc-outcome",
         "source": "host/native/tcpcl.lisp",
         "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp.lisp",
-        "line": 145,
+        "line": 155,
         "name": "fnn-out",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp.lisp",
-        "line": 153,
+        "line": 163,
         "name": "fnn-read-regular-bounded",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp.lisp",
-        "line": 153,
+        "line": 163,
         "name": "fnn-tcl-connect",
         "source": "host/native/tcpcl.lisp",
         "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp.lisp",
-        "line": 153,
+        "line": 163,
         "name": "fnn-tcl-session",
         "source": "host/native/tcpcl.lisp",
         "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp.lisp",
-        "line": 153,
+        "line": 163,
         "name": "fnn-socket-fd",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp.lisp",
-        "line": 153,
+        "line": 163,
         "name": "fnn-tcl-params",
         "source": "host/native/tcpcl.lisp",
         "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp.lisp",
-        "line": 153,
+        "line": 163,
         "name": "fnn-tcl-summary",
         "source": "host/native/tcpcl.lisp",
         "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp.lisp",
-        "line": 153,
+        "line": 163,
         "name": "fnn-socket-shut",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp.lisp",
-        "line": 196,
+        "line": 212,
         "name": "fnn-tcl-listen",
         "source": "host/native/tcpcl.lisp",
         "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp.lisp",
-        "line": 196,
+        "line": 212,
         "name": "fnn-accept-loop",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp.lisp",
-        "line": 196,
+        "line": 212,
         "name": "fnn-err",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp.lisp",
-        "line": 286,
+        "line": 302,
         "name": "fnn-tcl-number",
         "source": "host/native/tcpcl.lisp",
         "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp.lisp",
-        "line": 286,
+        "line": 302,
         "name": "fnn-tcl-arg",
         "source": "host/native/tcpcl.lisp",
         "reason": "defined in host/native/tcpcl.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/bp.lisp",
-        "line": 343,
+        "line": 359,
         "name": "fnn-register-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"

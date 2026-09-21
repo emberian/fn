@@ -13,9 +13,14 @@
 ;       incarnation with different newest anchors are both refused, and the
 ;       outcome carries both of them
 ;
-; Every one of them is conditional on `fn-anchor-verifiedp', which is the
-; constrained Ed25519 check.  None of them claims a signature cannot be forged
-; or that a Roughtime server is honest; specs/anchor.md carries that trust.
+; Every one of them is conditional on `fn-anchor-verifiedp' -- the two
+; constrained Ed25519 checks and the delegation window -- and, since
+; 2026-09-20, on `fn-anchor-one-nonce-p', which says the response covers one
+; nonce and it is this node's.  A response that fails the second is reported
+; `:uncertain :unmodelled-tree' and never reaches the rules above; see
+; `fn-anchor-unmodelled-tree-is-uncertain'.  None of them claims a signature
+; cannot be forged, that a Merkle path binds a nonce to a root, or that a
+; Roughtime server is honest; specs/anchor.md carries that trust.
 ;
 ; Style: docs/proof-style.md.  This is the properties book of the anchor
 ; cluster, so it opens the definitions `books/anchor.lisp' withdrew, locally
@@ -100,6 +105,58 @@
                        :refused)
                 (equal (fn-anchor-reason (fn-anchor-node-accept node a))
                        :unverified))))
+
+; -----------------------------------------------------------------------------
+; A response this model cannot describe is an uncertainty, not an acceptance
+;
+; These unfold `fn-anchor-node-accept'/`fn-anchor-restore' and
+; `fn-anchor-one-nonce-p', so they are definitional consequences and NOT
+; registry events (docs/proof-style.md sec. 7, AGENTS.md "cite keystones").
+; They are here because they are the sentence the fix is for, in one line
+; each, at the two decisions that write durable state: nothing the node
+; accepts, and nothing it restores under, is a response whose nonce binding
+; this book cannot state.  The teeth are the evidence
+; (tests/acl2/anchor-teeth-tests.lisp: a concrete batched anchor, and the
+; real batched capture in tests/test_anchor.py).
+
+(defthm fn-anchor-accepted-anchor-covers-one-nonce
+  (implies (equal (fn-anchor-status (fn-anchor-node-accept node a)) :accepted)
+           (fn-anchor-one-nonce-p a)))
+
+(defthm fn-anchor-accepted-restore-anchor-covers-one-nonce
+  (implies (equal (fn-anchor-status (fn-anchor-restore node image presented))
+                  :accepted)
+           (fn-anchor-one-nonce-p presented)))
+
+; D13, at the new branch: an unfoldable tree is `:uncertain', which is
+; neither of the other two.  A verified, pinned, strictly newer response
+; whose PATH fn cannot walk leaves the freshness question open and says so.
+(defthm fn-anchor-unmodelled-tree-is-uncertain
+  (implies (and (fn-anchor-p a)
+                (fn-anchor-verifiedp a)
+                (not (fn-anchor-one-nonce-p a)))
+           (and (equal (fn-anchor-status (fn-anchor-node-accept node a))
+                       :uncertain)
+                (equal (fn-anchor-reason (fn-anchor-node-accept node a))
+                       :unmodelled-tree)
+                (not (equal (fn-anchor-status (fn-anchor-node-accept node a))
+                            :refused))
+                (not (equal (fn-anchor-status (fn-anchor-node-accept node a))
+                            :accepted)))))
+
+(defthm fn-anchor-restore-under-an-unmodelled-tree-is-uncertain
+  (implies (and (fn-anchor-p presented)
+                (fn-anchor-verifiedp presented)
+                (not (fn-anchor-one-nonce-p presented)))
+           (and (equal (fn-anchor-status
+                        (fn-anchor-restore node image presented))
+                       :uncertain)
+                (equal (fn-anchor-reason
+                        (fn-anchor-restore node image presented))
+                       :unmodelled-tree)
+                (not (equal (fn-anchor-status
+                             (fn-anchor-restore node image presented))
+                            :accepted)))))
 
 ; Three outcomes stay distinct: no anchor at all is `:uncertain', and an
 ; uncertain outcome is neither a refusal nor an acceptance.
@@ -253,24 +310,41 @@
 ; AGENTS.md: "The theorem subject is the function the host calls."  The host
 ; calls `fn-anchor-node-accept-observed', `fn-anchor-node-advance-observed' and
 ; `fn-anchor-restore-observed' (`tools/run_store.py anchor` and `recover`,
-; through `host/anchor-host.lisp`).  These three equalities are the named
-; theorems that make every keystone above a statement about those calls, under
-; exactly one hypothesis: that the host's Ed25519 verdict is the value the
-; constrained seam names for that anchor.
+; through `host/anchor-host.lisp`).  These equalities are the named theorems
+; that make every keystone above a statement about those calls, under one
+; hypothesis PER A-CRYPTO SEAM and nothing else: the host's `verdict' is
+; `fn-anchor-signatures-okp' (the two constrained Ed25519 checks) and its
+; `one-nonce' is `fn-anchor-one-nonce-p' (the constrained leaf digest).  The
+; delegation window is not among them: `fn-anchor-verifiedp-observed'
+; applies it inside the entry, so it is ACL2's and no host has to agree
+; about it.
+
+; KEYSTONE.  The Ed25519 half is discharged once, here, and every entry
+; equality below uses it: a verdict that is the seam's value makes the
+; entry's own verification test `fn-anchor-verifiedp' exactly, window and
+; all.
+(defthm fn-anchor-verifiedp-observed-is-verifiedp
+  (implies (equal (and verdict t) (fn-anchor-signatures-okp a))
+           (equal (fn-anchor-verifiedp-observed a verdict)
+                  (fn-anchor-verifiedp a))))
 
 (defthm fn-anchor-node-accept-observed-is-node-accept
-  (implies (equal (and verdict t) (fn-anchor-verifiedp a))
-           (equal (fn-anchor-node-accept-observed node a verdict)
+  (implies (and (equal (and verdict t) (fn-anchor-signatures-okp a))
+                (equal (and one-nonce t) (fn-anchor-one-nonce-p a)))
+           (equal (fn-anchor-node-accept-observed node a verdict one-nonce)
                   (fn-anchor-node-accept node a))))
 
 (defthm fn-anchor-node-advance-observed-is-node-advance
-  (implies (equal (and verdict t) (fn-anchor-verifiedp a))
-           (equal (fn-anchor-node-advance-observed node a verdict)
+  (implies (and (equal (and verdict t) (fn-anchor-signatures-okp a))
+                (equal (and one-nonce t) (fn-anchor-one-nonce-p a)))
+           (equal (fn-anchor-node-advance-observed node a verdict one-nonce)
                   (fn-anchor-node-advance node a))))
 
 (defthm fn-anchor-restore-observed-is-restore
-  (implies (equal (and verdict t) (fn-anchor-verifiedp presented))
-           (equal (fn-anchor-restore-observed node image presented verdict)
+  (implies (and (equal (and verdict t) (fn-anchor-signatures-okp presented))
+                (equal (and one-nonce t) (fn-anchor-one-nonce-p presented)))
+           (equal (fn-anchor-restore-observed node image presented verdict
+                                              one-nonce)
                   (fn-anchor-restore node image presented))))
 
 ; -----------------------------------------------------------------------------

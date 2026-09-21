@@ -164,7 +164,11 @@ CATALOGUE = {
 DISCLOSURE = re.compile(
     r"(never existed|never been written|has ever existed|does not exist|"
     r"no such (?:file|book|directory)|no longer exists|was removed|"
-    r"folded into|renamed to)", re.IGNORECASE)
+    # `retired` and `deleted` were added 2026-09-21: they are what the lanes
+    # actually wrote when they removed a file, and a disclosure the tool
+    # cannot read is a disclosure that did not happen.
+    r"folded into|renamed to|was retired|is retired|retired on|"
+    r"was deleted|deleted on)", re.IGNORECASE)
 DISCLOSURE_WINDOW = (2, 8)      # lines before, lines after
 
 # One regex, one hint.  See WHAT IT CANNOT SEE.

@@ -615,3 +615,169 @@
 (assert-event (fn-served-effectsp
                (fn-served-result-effects
                 (fn-served-post-outcome *fn-t-served-forged* :uncertain))))
+
+; -----------------------------------------------------------------------------
+; Teeth for PRF-035: which AUTHINFO policy a PEER connection is opened under
+;
+; The defect, measured on a running node 2026-09-21 and not inferred:
+; `fn-served-open-peer' pinned the literal `(fn-auth-open-config)' while
+; `fn-served-open' pinned the operator's, and the owner resolves a
+; connection to a peer by SOURCE ADDRESS alone, so on a box where a
+; configured peer answers on loopback EVERY client was opened here.  The
+; operator's credential therefore reached no connection: `AUTHINFO PASS'
+; answered 481 with the secret just written, `CAPABILITIES' carried no
+; AUTHINFO line, and POST was never gated.
+;
+; The two connections below differ in exactly the one argument, so every
+; assertion in this section separates the repair from the defect: run them
+; against the old definition and the 281 pair reads 481 and the two
+; capability assertions swap.  The credential fixture is the one
+; tests/acl2/nntp-auth-tests.lisp enrols; it authenticates nothing outside
+; these two constants.
+
+(defconst *fn-t-served-cred-name* (fn-nntp-string-octets "reader"))
+(defconst *fn-t-served-cred-secret* (fn-nntp-string-octets "correct-horse"))
+(defconst *fn-t-served-cred-salt* (make-list 16 :initial-element 3))
+; Written out, not computed: ACL2 refuses to call an ATTACHMENT while
+; evaluating a `defconst' (:DOC ignored-attachment), and a constant over
+; `fn-digest' would bake an attachment-dependent value into the world.  The
+; assert-event re-derives it under the real SHA-256 attachment, where
+; top-level evaluation applies, so the literal cannot drift from enrolment.
+(defconst *fn-t-served-cred-digest*
+  '(60 237 250 71 154 204 168 180 72 224 241 93 232 185 72 59
+    73 5 240 237 54 116 175 93 127 219 39 238 113 83 63 194))
+(defconst *fn-t-served-cred*
+  (fn-auth-make-cred *fn-t-served-cred-name* (make-list 32 :initial-element 7)
+                     (fn-authsec-verifier *fn-t-served-cred-salt*
+                                          *fn-t-served-cred-digest*)
+                     t))
+(assert-event (equal (fn-auth-cred-secret *fn-t-served-cred*)
+                     (fn-authsec-enrol *fn-t-served-cred-salt*
+                                       *fn-t-served-cred-secret*)))
+(assert-event (fn-auth-credp *fn-t-served-cred*))
+
+; The operator's policy: a login is required, one credential is enrolled and
+; a certificate is configured.  Not degenerate in any of the three fields
+; fn-auth-capability-lines and fn-auth-gatedp read.
+(defconst *fn-t-served-policy*
+  (fn-auth-make-config t nil t (list *fn-t-served-cred*)))
+(assert-event (fn-auth-configp *fn-t-served-policy*))
+; The separating witness.  This is the value the peer branch used to pin,
+; and it differs from the operator's in every field that decides anything.
+(assert-event (not (equal *fn-t-served-policy* (fn-auth-open-config))))
+
+(defun fn-t-served-peer-conn (acfg)
+  (fn-served-result-conn
+   (fn-served-open-peer *fn-t-served-archive* 510 8192 *fn-t-served-config*
+                        *fn-t-served-observation* *fn-t-served-observation*
+                        "innA" nil nil acfg)))
+(defconst *fn-t-served-peer* (fn-t-served-peer-conn *fn-t-served-policy*))
+(defconst *fn-t-served-peer-unpolicied*
+  (fn-t-served-peer-conn (fn-auth-open-config)))
+(assert-event (fn-served-connp *fn-t-served-peer*))
+(assert-event (fn-served-connp *fn-t-served-peer-unpolicied*))
+
+; PRF-035's two theorems, on a concrete policy: the peer connection carries
+; the operator's, and it is the same one the reader carries.
+(assert-event (equal (fn-auth-session-config
+                      (fn-served-conn-session *fn-t-served-peer*))
+                     *fn-t-served-policy*))
+(assert-event (equal (fn-auth-session-config
+                      (fn-served-conn-session *fn-t-served-peer*))
+                     (fn-auth-session-config
+                      (fn-served-conn-session
+                       (fn-served-result-conn
+                        (fn-served-open *fn-t-served-archive* 510 8192
+                                        *fn-t-served-config*
+                                        *fn-t-served-observation*
+                                        *fn-t-served-observation*
+                                        *fn-t-served-policy*))))))
+(assert-event (not (equal (fn-auth-session-config
+                           (fn-served-conn-session *fn-t-served-peer*))
+                          (fn-auth-session-config
+                           (fn-served-conn-session
+                            *fn-t-served-peer-unpolicied*)))))
+
+; What that is worth on the wire, through fn-served-step -- the function
+; host/owner-host.lisp fn-owner-chunk reaches through fn-own-read.  Two
+; reads, because RFC 4643 section 2.3.2 caches the name on the first.
+(defun fn-t-served-line (conn text)
+  (fn-served-step conn (append (fn-nntp-string-octets text) '(13 10))))
+(defun fn-t-served-said (result)
+  (take 4 (fn-served-reply-octets (fn-served-result-effects result))))
+(defun fn-t-served-login (conn)
+  (fn-t-served-line
+   (fn-served-result-conn (fn-t-served-line conn "AUTHINFO USER reader"))
+   "AUTHINFO PASS correct-horse"))
+
+; 281 authentication accepted, on a connection the owner resolved to a peer.
+(assert-event (equal (fn-t-served-said (fn-t-served-login *fn-t-served-peer*))
+                     '(50 56 49 32)))
+; 481 authentication failed, with the SAME secret, when the connection is
+; opened with no policy.  This is the reply tools/v0_matrix.py recorded on
+; both nodes at c3b99f8.
+(assert-event (equal (fn-t-served-said
+                      (fn-t-served-login *fn-t-served-peer-unpolicied*))
+                     '(52 56 49 32)))
+; 480 before the login and 340 after it: the gate is the operator's policy
+; and it reaches this connection (RFC 4643 section 2.2, RFC 3977 6.3.1.1).
+(assert-event (equal (fn-t-served-said (fn-t-served-line *fn-t-served-peer* "POST"))
+                     '(52 56 48 32)))
+(assert-event (equal (fn-t-served-said
+                      (fn-t-served-line
+                       (fn-served-result-conn
+                        (fn-t-served-login *fn-t-served-peer*)) "POST"))
+                     '(51 52 48 32)))
+; And the capability block says both of the things RFC 4643 section 2.1 and
+; RFC 4642 section 2.1 make it say, off the same policy.
+(assert-event (member-equal (fn-nntp-string-octets "AUTHINFO USER")
+                            (fn-auth-capability-lines *fn-t-served-policy*
+                                                      nil nil t)))
+(assert-event (member-equal (fn-nntp-string-octets "STARTTLS")
+                            (fn-auth-capability-lines *fn-t-served-policy*
+                                                      nil nil t)))
+(assert-event (not (member-equal (fn-nntp-string-octets "AUTHINFO USER")
+                                 (fn-auth-capability-lines (fn-auth-open-config)
+                                                           nil nil t))))
+(assert-event (not (member-equal (fn-nntp-string-octets "STARTTLS")
+                                 (fn-auth-capability-lines (fn-auth-open-config)
+                                                           nil nil t))))
+
+; RFC 3977 section 5.1.2, on the same two connections.  The policy requires
+; a login, so an unauthenticated connection may not POST and the greeting is
+; 201 -- the code the section's MUST names -- while the connection opened
+; with no policy greets 200 and means it.  Before this lane the greeting read
+; the injection configuration alone and both greeted 200, so the greeting
+; promised what the POST label withheld.
+(assert-event (equal (fn-served-reply-octets
+                      (fn-served-result-effects
+                       (fn-served-open-peer
+                        *fn-t-served-archive* 510 8192 *fn-t-served-config*
+                        *fn-t-served-observation* *fn-t-served-observation*
+                        "innA" nil nil *fn-t-served-policy*)))
+                     *fn-served-greeting*))
+(assert-event (equal (fn-served-reply-octets
+                      (fn-served-result-effects
+                       (fn-served-open-peer
+                        *fn-t-served-archive* 510 8192 *fn-t-served-config*
+                        *fn-t-served-observation* *fn-t-served-observation*
+                        "innA" nil nil (fn-auth-open-config))))
+                     *fn-served-greeting-posting*))
+; And the greeting agrees with the label it would then send, both ways.
+(assert-event (not (member-equal
+                    (fn-nntp-string-octets "POST")
+                    (fn-auth-capability-lines *fn-t-served-policy* nil nil
+                                              (and (fn-inj-config-allow
+                                                    *fn-t-served-config*)
+                                                   (fn-auth-postingp
+                                                    (fn-served-conn-session
+                                                     *fn-t-served-peer*)))))))
+(assert-event (member-equal
+               (fn-nntp-string-octets "POST")
+               (fn-auth-capability-lines
+                *fn-t-served-policy* nil nil
+                (and (fn-inj-config-allow *fn-t-served-config*)
+                     (fn-auth-postingp
+                      (fn-served-conn-session
+                       (fn-served-result-conn
+                        (fn-t-served-login *fn-t-served-peer*))))))))

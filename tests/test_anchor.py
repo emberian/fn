@@ -41,6 +41,22 @@ def reparse(record, packet=None, key=None):
         record["server"])
 
 
+def batched(anchor, nodes=1):
+    """The same response as if the server had batched it.
+
+    Every signed octet is unchanged -- the SREP, the ROOT it carries and both
+    signatures are the captured ones -- and only the Merkle proof's shape
+    differs, which is the case the model could not tell apart until the root
+    became a record field.  It exists alongside the REAL batched capture
+    (LATER2) so one test can vary the tree shape and nothing else.
+    """
+    return roughtime.Anchor(
+        anchor.key_id, anchor.delegate, anchor.mint, anchor.maxt,
+        anchor.delegation_signature, anchor.midpoint, anchor.radius,
+        anchor.nonce, anchor.signature, anchor.srep, anchor.dele, anchor.root,
+        b"\x00" * (roughtime.ROOT_OCTETS * nodes), 0, anchor.server)
+
+
 class CryptoSeam(unittest.TestCase):
     def test_absent_library_is_not_a_verdict(self):
         """Whatever the environment, no path answers True without Ed25519."""
@@ -122,6 +138,44 @@ class RoughtimeClient(unittest.TestCase):
             roughtime.merkle_root(nonce, top[b"PATH"], index),
             bytes.fromhex(record["root_hex"]))
 
+    def test_two_captures_cover_one_nonce_and_the_third_is_batched(self):
+        """int08h batches, and one of fn's own vectors is proof of it.
+
+        This corrects a claim `specs/anchor.md` and two handoffs carried:
+        "every captured vector in tests/vectors/ is single-nonce, so this has
+        never been observed".  LATER2 has a PATH one node deep and INDX 1,
+        its ROOT is not the leaf digest of its nonce, and until 2026-09-20
+        the model described a different signed message for it than the one
+        the host verified -- in fn's own test suite, on every run.
+        """
+        for path in (PRIMARY, LATER1):
+            anchor = reparse(captured(path))
+            self.assertEqual((anchor.path, anchor.index), (b"", 0))
+            self.assertTrue(anchor.one_nonce)
+            self.assertEqual(anchor.root, roughtime._leaf(anchor.nonce))
+        anchor = reparse(captured(LATER2))
+        self.assertEqual(len(anchor.path), roughtime.ROOT_OCTETS)
+        self.assertEqual(anchor.index, 1)
+        self.assertFalse(anchor.one_nonce)
+        self.assertNotEqual(anchor.root, roughtime._leaf(anchor.nonce))
+        # And it is a perfectly good response: the fold does reach the root.
+        self.assertEqual(
+            roughtime.merkle_root(anchor.nonce, anchor.path, anchor.index),
+            anchor.root)
+
+    def test_a_batched_response_does_not_cover_one_nonce(self):
+        """A PATH of even one node is a tree `books/anchor.lisp` cannot fold."""
+        anchor = batched(reparse(captured(PRIMARY)))
+        self.assertFalse(anchor.one_nonce)
+        # Nothing else about it changed: same ten fields but the tree shape.
+        self.assertEqual(anchor.fields(), reparse(captured(PRIMARY)).fields())
+
+    def test_the_root_is_the_tenth_field(self):
+        anchor = reparse(captured(PRIMARY))
+        self.assertEqual(len(anchor.fields()), 10)
+        self.assertEqual(anchor.fields()[9], anchor.root)
+        self.assertEqual(len(anchor.root), roughtime.ROOT_OCTETS)
+
     def test_request_is_padded_to_the_minimum(self):
         packet = roughtime.request_packet(b"\x11" * 32)
         self.assertGreaterEqual(len(packet), roughtime.MIN_REQUEST_OCTETS)
@@ -154,21 +208,84 @@ class Acl2OwnsTheSignedOctets(unittest.TestCase):
         self.assertTrue(run_store.anchor_verdict(self.bridge, anchor))
 
     @NEEDS_CRYPTO
+    def test_the_real_batched_capture_is_uncertain_not_accepted(self):
+        """The fix, at the surface, on the vector that provoked it.
+
+        LATER2 is a real int08h response with a one-node PATH.  Its
+        signatures verify -- `anchor_verdict` is True -- and its
+        `one_nonce` is False, so the entry the host calls answers
+        ('uncertain', 'unmodelled-tree').  Before this lane the same call
+        answered 'accepted' and recorded it durably, while every anchor
+        keystone described a different signed message.
+        """
+        anchor = reparse(captured(LATER2))
+        self.assertTrue(run_store.anchor_verdict(self.bridge, anchor))
+        self.assertFalse(anchor.one_nonce)
+        status, reason = self.bridge.anchor_accept(
+            run_store.pinned_keys(), None, 0, anchor.fields(),
+            run_store.anchor_verdict(self.bridge, anchor), anchor.one_nonce)
+        self.assertEqual((status, reason), ("uncertain", "unmodelled-tree"))
+
+    @NEEDS_CRYPTO
+    def test_the_tree_shape_alone_decides_it(self):
+        """Same ten fields, different Merkle shape: accepted, then uncertain."""
+        anchor = reparse(captured(PRIMARY))
+        pinned = run_store.pinned_keys()
+        status, _ = self.bridge.anchor_accept(
+            pinned, None, 0, anchor.fields(),
+            run_store.anchor_verdict(self.bridge, anchor), anchor.one_nonce)
+        self.assertEqual(status, "accepted")
+        blob = batched(anchor)
+        self.assertEqual(blob.fields(), anchor.fields())
+        self.assertTrue(run_store.anchor_verdict(self.bridge, blob))
+        status, reason = self.bridge.anchor_accept(
+            pinned, None, 0, blob.fields(),
+            run_store.anchor_verdict(self.bridge, blob), blob.one_nonce)
+        self.assertEqual((status, reason), ("uncertain", "unmodelled-tree"))
+
+    @NEEDS_CRYPTO
+    def test_acl2_owns_the_delegation_window(self):
+        """The window is applied inside the entry, not by the host's verdict.
+
+        `tools/roughtime.py`'s window check is a preflight now.  Handing
+        ACL2 True for both seams, for an anchor whose MINT is after its MIDP,
+        still gets a refusal, because `fn-anchor-verifiedp-observed` applies
+        `fn-anchor-window-okp` itself.
+        """
+        anchor = reparse(captured(PRIMARY))
+        fields = list(anchor.fields())
+        fields[2] = anchor.midpoint + 1          # MINT one microsecond late
+        status, reason = self.bridge.anchor_accept(
+            run_store.pinned_keys(), None, 0, tuple(fields), True, True)
+        self.assertEqual((status, reason), ("refused", "unverified"))
+        # And the two seam values are not interchangeable at the entry.
+        status, reason = self.bridge.anchor_accept(
+            run_store.pinned_keys(), None, 0, anchor.fields(), True, False)
+        self.assertEqual((status, reason), ("uncertain", "unmodelled-tree"))
+        status, reason = self.bridge.anchor_accept(
+            run_store.pinned_keys(), None, 0, anchor.fields(), False, True)
+        self.assertEqual((status, reason), ("refused", "unverified"))
+
+    @NEEDS_CRYPTO
     def test_the_model_orders_the_three_captures(self):
-        fields = [reparse(captured(path)).fields()
-                  for path in (PRIMARY, LATER1, LATER2)]
+        # PRIMARY and LATER1 only: LATER2 is batched and never reaches the
+        # ordering rule (see test_the_real_batched_capture_is_uncertain...).
+        fields = [reparse(captured(path)).fields() for path in (PRIMARY, LATER1)]
         pinned = run_store.pinned_keys()
         # A node holding the primary accepts a later capture ...
-        status, _ = self.bridge.anchor_accept(pinned, fields[0], 0, fields[1], True)
+        status, _ = self.bridge.anchor_accept(pinned, fields[0], 0, fields[1],
+                                              True, True)
         self.assertEqual(status, "accepted")
         # ... and refuses the primary replayed back at it.
-        status, reason = self.bridge.anchor_accept(pinned, fields[1], 0, fields[0], True)
+        status, reason = self.bridge.anchor_accept(pinned, fields[1], 0, fields[0],
+                                                   True, True)
         self.assertEqual((status, reason), ("refused", "stale"))
         # A failed Ed25519 check is its own refusal, never an accept.
-        status, reason = self.bridge.anchor_accept(pinned, fields[0], 0, fields[1], False)
+        status, reason = self.bridge.anchor_accept(pinned, fields[0], 0, fields[1],
+                                                   False, True)
         self.assertEqual((status, reason), ("refused", "unverified"))
         # No anchor at all stays uncertain.
-        status, _ = self.bridge.anchor_accept(pinned, fields[0], 0, None, True)
+        status, _ = self.bridge.anchor_accept(pinned, fields[0], 0, None, True, True)
         self.assertEqual(status, "uncertain")
 
 
@@ -218,12 +335,32 @@ class StoreAnchorCommands(unittest.TestCase):
     @NEEDS_CRYPTO
     def test_restoring_with_a_fresh_anchor_succeeds(self):
         root = self.initialized()
-        code, output = self.store_command(root, "anchor", "--anchor-vector", str(LATER1))
+        code, output = self.store_command(root, "anchor", "--anchor-vector", str(PRIMARY))
         self.assertEqual(code, run_store.EXIT_OK, output)
         code, output = self.store_command(
-            root, "recover", "--anchor-vector", str(LATER2))
+            root, "recover", "--anchor-vector", str(LATER1))
         self.assertEqual(code, run_store.EXIT_OK, output)
         self.assertIn("anchor=accepted incarnation=1", output)
+
+    @NEEDS_CRYPTO
+    def test_a_batched_anchor_is_uncertain_at_both_commands(self):
+        """Three outcomes, to the exit code, on a real batched capture.
+
+        LATER2 is strictly newer than LATER1 and would have been accepted on
+        freshness alone.  fn cannot fold its tree, so it says so: exit 3 and
+        the word `uncertain`, not exit 1 and `refused`, because every
+        signature in it is good and nothing here knows the image is stale.
+        """
+        root = self.initialized()
+        code, output = self.store_command(root, "anchor", "--anchor-vector", str(LATER1))
+        self.assertEqual(code, run_store.EXIT_OK, output)
+        code, output = self.store_command(root, "anchor", "--anchor-vector", str(LATER2))
+        self.assertEqual(code, run_store.EXIT_UNCERTAIN, output)
+        self.assertIn("anchor uncertain: unmodelled-tree", output)
+        code, output = self.store_command(
+            root, "recover", "--anchor-vector", str(LATER2))
+        self.assertEqual(code, run_store.EXIT_UNCERTAIN, output)
+        self.assertIn("anchor=uncertain [unmodelled-tree]", output)
 
     @NEEDS_CRYPTO
     def test_no_anchor_obtainable_is_uncertain_not_refused(self):

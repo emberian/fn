@@ -1,0 +1,121 @@
+{
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/bp-receiver-trace-invariants": 0,
+    "tests/acl2/bp-receiver-invariants-tests": 0
+  },
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/acl2/certify-20260919T010128Z-43605",
+  "certificate_digests_sha256": {
+    "books/bp-receiver-trace-invariants": "ddfc8d3e9b680c3d1ea975b570ce422c6b28a31b20e807a1e2600719ba6b4a1b",
+    "tests/acl2/bp-receiver-invariants-tests": "4ef111e447e1e80132d0c326ec77d75f73386468e8e4028c162eec0ff8321be3"
+  },
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/bp-receiver-trace-invariants": "c65f161edfb994524fbb33795bef551fcca0699ba1d3d3394a3b0af87a9ca94b",
+    "tests/acl2/bp-receiver-invariants-tests": "e37199d88246ba3e8c1f9ac296b651b3aeab4faabcbc8e185d140ebb9e69a893"
+  },
+  "environment": {
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS a6bca172dfb06c53d7ab050cefbf653e fb12636b1fbc",
+    "FN_CERTIFY_SUCCESS a6bca172dfb06c53d7ab050cefbf653e ba3120cfc3f4"
+  ],
+  "failure_markers": [],
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS a6bca172dfb06c53d7ab050cefbf653e fb12636b1fbc",
+    "FN_CERTIFY_SUCCESS a6bca172dfb06c53d7ab050cefbf653e ba3120cfc3f4"
+  ],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "requested_books": [
+    "books/bp-receiver-trace-invariants",
+    "tests/acl2/bp-receiver-invariants-tests"
+  ],
+  "run_id": "certify-20260919T010128Z-43605",
+  "runner_sha256": "dd444d5cc83bfc60b75020e9aea69fdfcdda9135872cd1392e3ab53c6ff1a3d7",
+  "runner_unchanged": true,
+  "source_digests_sha256": {
+    "books/acceptance-invariants.lisp": "547b4e1d4c56516b66d965f432aa539c6ac3f6df327bfd4eb24c6a1267745476",
+    "books/acceptance.lisp": "5a263f505a66864f6a055852dc2fec576746703938a673f9d195d47226baaac6",
+    "books/article-fields.lisp": "14dfa236bcac52e0b4dea86d105c701f3e74fcb554b912964f6b08d4cd430f85",
+    "books/article.lisp": "97571867dbfad8a6892319f36a0b5523be216199a6f7b90e6e4eaa9976d18d8d",
+    "books/bp-adu.lisp": "84d76d9c9f26c98f0e0a6684d13b9a49b4318a0b04c927a3862c7df31c898f6d",
+    "books/bp-ingress.lisp": "e5988a583822ad4811405b9a36a19849c6a60d0f4a2a9db81cfe8b44ff945256",
+    "books/bp-receipt-records.lisp": "74f0588aec0f84564c5a68c3ec0830186ca5425f763d26972aa46a2f6177b3dd",
+    "books/bp-receipt.lisp": "5ae8bd47a536a8d85e0f7cc34f8c85ea36d3ed6f189ddb602d021223de4911e7",
+    "books/bp-receiver-context-invariants.lisp": "1582a5319ea6f4b2d3e7cef72b98f61616c2b188743d48d11a920149c46e6758",
+    "books/bp-receiver-invariants.lisp": "9bdbc042e7b621ad75927719c1160eb938ffea822fd9eff18bcd50ef169b9b51",
+    "books/bp-receiver-journal-invariants.lisp": "f779da71c6e05adc989ba02ef0c1e11045eb21103fa6fa0256973f593c5e4fa4",
+    "books/bp-receiver-retention-invariants.lisp": "57b1ac4a6a32bcf2c531f0482e75b81b06d230e7e9d76c4a0865a0cdd7ab2bb4",
+    "books/bp-receiver-state-invariants.lisp": "303bb1d3a8f098b86701252dfb4e587a6e266406d8ae33673ade96243ce9b701",
+    "books/bp-receiver-store-invariants.lisp": "22dc0bc5bc777b15bf387ec66a48e6f5ddc4baf96f81ae810f4b941b2063507b",
+    "books/bp-receiver-trace-invariants.lisp": "0739e3af8d8efff0101e05613cd2af1dda1af801736fd0b597afd2ca13ff0f79",
+    "books/cbor-invariants.lisp": "ccf99ff8dd9e53ecc6d161adaaaba8c35bafc8b97fae4f4bcd05e4a62ca167bc",
+    "books/cbor.lisp": "5f1bda9c6c67a77d78bcbed67f7d6dc487192e1a3bb65359ea47b9ad300b3323",
+    "books/node-invariants.lisp": "261a7265208a7ef364b7e706d9dcbbf49b9b665150f4239d9dd9031d59be98c2",
+    "books/node.lisp": "8cc072126188611d4649c95fb004819a5cca7c29479c92a7ae34c74de7789acc",
+    "books/records-invariants.lisp": "28d816c0a6555ba5b06f1e979b80fa275928fd80bf40a61ab3282cb77f939e39",
+    "books/records.lisp": "8b629db1749c30030acde59dc009f0e55534954cedb90aba8dc316d2cfc7a9b1",
+    "books/replay-invariants.lisp": "2be7ac42b0f2a7e98b55370b0759d5de4b49913a4f9a1bdbab3fff981580c30c",
+    "books/replay.lisp": "eff09246e4f2442a24ba544fc3ee8b550a9ca39c6f1f1c4c6868867e066b7598",
+    "books/retention.lisp": "6a335873a6f0e50af3b6af99bc508536588600ba0db778f237ceff9aa7a19914",
+    "books/store-files.lisp": "ca7142067aa8bd54dba50b4927f592342acf7eae8021dbdb07ae5150f4e4d0e0",
+    "books/store-node.lisp": "1051d260b6b042deb08b69e4c4261f479110b862586d9395a4fb5c287d78e8b3",
+    "tests/acl2/bp-receipt-records-tests.lisp": "2be22c6711a095b98b356184db773f575abbd4669f2e909600061255db9fb4ea",
+    "tests/acl2/bp-receipt-tests.lisp": "71d9bcf4c2b9cc939631b241f27447da8ee1a74c9e0658567e7752d0d174b8f8",
+    "tests/acl2/bp-receiver-invariants-tests.lisp": "4eecef08db66d2c9498503dc25912ea5ca5223f2fc87e2e2f1d6358598af8e3f"
+  },
+  "source_digests_sha256_after": {
+    "books/acceptance-invariants.lisp": "547b4e1d4c56516b66d965f432aa539c6ac3f6df327bfd4eb24c6a1267745476",
+    "books/acceptance.lisp": "5a263f505a66864f6a055852dc2fec576746703938a673f9d195d47226baaac6",
+    "books/article-fields.lisp": "14dfa236bcac52e0b4dea86d105c701f3e74fcb554b912964f6b08d4cd430f85",
+    "books/article.lisp": "97571867dbfad8a6892319f36a0b5523be216199a6f7b90e6e4eaa9976d18d8d",
+    "books/bp-adu.lisp": "84d76d9c9f26c98f0e0a6684d13b9a49b4318a0b04c927a3862c7df31c898f6d",
+    "books/bp-ingress.lisp": "e5988a583822ad4811405b9a36a19849c6a60d0f4a2a9db81cfe8b44ff945256",
+    "books/bp-receipt-records.lisp": "74f0588aec0f84564c5a68c3ec0830186ca5425f763d26972aa46a2f6177b3dd",
+    "books/bp-receipt.lisp": "5ae8bd47a536a8d85e0f7cc34f8c85ea36d3ed6f189ddb602d021223de4911e7",
+    "books/bp-receiver-context-invariants.lisp": "1582a5319ea6f4b2d3e7cef72b98f61616c2b188743d48d11a920149c46e6758",
+    "books/bp-receiver-invariants.lisp": "9bdbc042e7b621ad75927719c1160eb938ffea822fd9eff18bcd50ef169b9b51",
+    "books/bp-receiver-journal-invariants.lisp": "f779da71c6e05adc989ba02ef0c1e11045eb21103fa6fa0256973f593c5e4fa4",
+    "books/bp-receiver-retention-invariants.lisp": "57b1ac4a6a32bcf2c531f0482e75b81b06d230e7e9d76c4a0865a0cdd7ab2bb4",
+    "books/bp-receiver-state-invariants.lisp": "303bb1d3a8f098b86701252dfb4e587a6e266406d8ae33673ade96243ce9b701",
+    "books/bp-receiver-store-invariants.lisp": "22dc0bc5bc777b15bf387ec66a48e6f5ddc4baf96f81ae810f4b941b2063507b",
+    "books/bp-receiver-trace-invariants.lisp": "0739e3af8d8efff0101e05613cd2af1dda1af801736fd0b597afd2ca13ff0f79",
+    "books/cbor-invariants.lisp": "ccf99ff8dd9e53ecc6d161adaaaba8c35bafc8b97fae4f4bcd05e4a62ca167bc",
+    "books/cbor.lisp": "5f1bda9c6c67a77d78bcbed67f7d6dc487192e1a3bb65359ea47b9ad300b3323",
+    "books/node-invariants.lisp": "261a7265208a7ef364b7e706d9dcbbf49b9b665150f4239d9dd9031d59be98c2",
+    "books/node.lisp": "8cc072126188611d4649c95fb004819a5cca7c29479c92a7ae34c74de7789acc",
+    "books/records-invariants.lisp": "28d816c0a6555ba5b06f1e979b80fa275928fd80bf40a61ab3282cb77f939e39",
+    "books/records.lisp": "8b629db1749c30030acde59dc009f0e55534954cedb90aba8dc316d2cfc7a9b1",
+    "books/replay-invariants.lisp": "2be7ac42b0f2a7e98b55370b0759d5de4b49913a4f9a1bdbab3fff981580c30c",
+    "books/replay.lisp": "eff09246e4f2442a24ba544fc3ee8b550a9ca39c6f1f1c4c6868867e066b7598",
+    "books/retention.lisp": "6a335873a6f0e50af3b6af99bc508536588600ba0db778f237ceff9aa7a19914",
+    "books/store-files.lisp": "ca7142067aa8bd54dba50b4927f592342acf7eae8021dbdb07ae5150f4e4d0e0",
+    "books/store-node.lisp": "1051d260b6b042deb08b69e4c4261f479110b862586d9395a4fb5c287d78e8b3",
+    "tests/acl2/bp-receipt-records-tests.lisp": "2be22c6711a095b98b356184db773f575abbd4669f2e909600061255db9fb4ea",
+    "tests/acl2/bp-receipt-tests.lisp": "71d9bcf4c2b9cc939631b241f27447da8ee1a74c9e0658567e7752d0d174b8f8",
+    "tests/acl2/bp-receiver-invariants-tests.lisp": "4eecef08db66d2c9498503dc25912ea5ca5223f2fc87e2e2f1d6358598af8e3f"
+  },
+  "status": "passed",
+  "timeout_seconds": 600
+}

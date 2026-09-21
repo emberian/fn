@@ -1,0 +1,149 @@
+{
+  "acl2_executable": "/tank/fn/acl2-8.7/saved_acl2",
+  "acl2_executable_sha256": "64030dda0b03bbb6cf50984889f5ce1e2ba867b6ce3c9a65403afc44f9b4fdb5",
+  "acl2_exit_codes": {
+    "books/bp-bundle": 0,
+    "books/bp-bundle-invariants": 0,
+    "tests/acl2/bp-bundle-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/lanes/w10-dtn-3/build/acl2/certify-20260921T003651Z-1346980",
+  "book_failures": {},
+  "book_results": {
+    "books/bp-bundle": "passed",
+    "books/bp-bundle-invariants": "passed",
+    "tests/acl2/bp-bundle-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/bp-bundle": 7.653,
+    "books/bp-bundle-invariants": 22.258,
+    "tests/acl2/bp-bundle-tests": 0.709
+  },
+  "cert_cache": {
+    "already_cached": 3,
+    "directory": "/tank/fn/certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": true,
+        "book": "books/bp-bundle",
+        "published": false,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": true,
+        "book": "books/bp-bundle-invariants",
+        "published": false,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/bp-bundle-tests",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 1,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/bp-bundle": "9e6e82d6b25d6b8c7c6863e36de6ed69d995e20fc6645356af2082ffb276aa52",
+    "books/bp-bundle-invariants": "4af5c9cbb250f4ae886a5852e1faa89eef362d35800651046c95bba0dd0038a8",
+    "tests/acl2/bp-bundle-tests": "83f8b06fdc8821e9363b6d075f6ad7b2df9efc857870047d1471edf70c16e453"
+  },
+  "certify_wall_seconds": 30.671,
+  "closure": false,
+  "command": [
+    "/tank/fn/acl2-8.7/saved_acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/bp-bundle": "b890f6a8d8623bf3bc65505f73253b336be846b2fab686477c9520f1132abb23",
+    "books/bp-bundle-invariants": "79df30902558b61bcfe7d775c363f2abda522a8c3fad848bfbff19b1095219fa",
+    "tests/acl2/bp-bundle-tests": "227c764630c0c720ba78a33b00cb21189d95170c920a1d34ccf8055b006a704a"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS dd784ee74f7c9fd0e1d78e67a6108cbd ea60a8068966",
+    "FN_CERTIFY_SUCCESS dd784ee74f7c9fd0e1d78e67a6108cbd c7a40e1635af",
+    "FN_CERTIFY_SUCCESS dd784ee74f7c9fd0e1d78e67a6108cbd fedcdfea1822"
+  ],
+  "failure_markers": [],
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "jobs": 2,
+  "jobs_effective": 2,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS dd784ee74f7c9fd0e1d78e67a6108cbd ea60a8068966",
+    "FN_CERTIFY_SUCCESS dd784ee74f7c9fd0e1d78e67a6108cbd c7a40e1635af",
+    "FN_CERTIFY_SUCCESS dd784ee74f7c9fd0e1d78e67a6108cbd fedcdfea1822"
+  ],
+  "platform": "Linux-6.11.0-29-generic-x86_64-with-glibc2.40",
+  "python": "3.12.7",
+  "reader_sha256": "de84702b19bfe30f132291dcb8ac7b3d3ad10b16a4134dcb0c1d6239187a839d",
+  "requested_before_filter": [
+    "books/bp-bundle",
+    "books/bp-bundle-invariants",
+    "tests/acl2/bp-bundle-tests"
+  ],
+  "requested_books": [
+    "books/bp-bundle",
+    "books/bp-bundle-invariants",
+    "tests/acl2/bp-bundle-tests"
+  ],
+  "run_id": "certify-20260921T003651Z-1346980",
+  "runner_sha256": "b1693353f9618f5eba6a5e2eebbc6f6275b71d753ff4c81c94a99c5a1795b3c4",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/bp-bundle": 0.0,
+    "books/bp-bundle-invariants": 0.0,
+    "tests/acl2/bp-bundle-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/bp-bundle-invariants.lisp": "0ee87c1fa232bbf28bde0fddf3b8dd314498731d12a52a84689ceb42f57197f0",
+    "books/bp-bundle.lisp": "79015605cc463de8d3068963d70912b77df25e4669568855afc17d5539f88c54",
+    "books/bp-primary-cbor.lisp": "7b14fd94ddcc80919a128ab7f43f27aed9a47bf14d380a8e8b2f95bef0174a67",
+    "books/bp-primary-invariants.lisp": "36933e36b615ce9cd76e6416e71aadab1fc4e1323b1b566f7888591b91be9a3e",
+    "books/bp-primary.lisp": "f32acb51a3490fb1a0886f4e12d85c6f5d8297de4fde36e560b100d9f29e0a35",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "tests/acl2/bp-bundle-tests.lisp": "15b5b381d2aa4d332850f80660414ce67118b93dbde45d4b36c6f0818011a779"
+  },
+  "source_digests_sha256_after": {
+    "books/bp-bundle-invariants.lisp": "0ee87c1fa232bbf28bde0fddf3b8dd314498731d12a52a84689ceb42f57197f0",
+    "books/bp-bundle.lisp": "79015605cc463de8d3068963d70912b77df25e4669568855afc17d5539f88c54",
+    "books/bp-primary-cbor.lisp": "7b14fd94ddcc80919a128ab7f43f27aed9a47bf14d380a8e8b2f95bef0174a67",
+    "books/bp-primary-invariants.lisp": "36933e36b615ce9cd76e6416e71aadab1fc4e1323b1b566f7888591b91be9a3e",
+    "books/bp-primary.lisp": "f32acb51a3490fb1a0886f4e12d85c6f5d8297de4fde36e560b100d9f29e0a35",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "tests/acl2/bp-bundle-tests.lisp": "15b5b381d2aa4d332850f80660414ce67118b93dbde45d4b36c6f0818011a779"
+  },
+  "start_order": [
+    "books/bp-bundle",
+    "books/bp-bundle-invariants",
+    "tests/acl2/bp-bundle-tests"
+  ],
+  "status": "passed",
+  "timeout_seconds": 900
+}

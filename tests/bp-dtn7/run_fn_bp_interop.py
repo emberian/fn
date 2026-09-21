@@ -26,6 +26,7 @@ Usage:
       --image build/fn-host-dtn --dtn7-repo /tank/fn/dtn7/repo --work /tmp/fn-bp
 """
 import argparse
+import hashlib
 import json
 import re
 import shutil
@@ -54,6 +55,19 @@ def tail(path: Path, n=400):
     if not path.exists():
         return []
     return path.read_text(errors="replace").splitlines()[-n:]
+
+
+def vector(path: Path):
+    """One captured wire image, named by what it is and by its digest.
+
+    The length and the SHA-256 are what make a saved copy checkable against
+    the run that produced it; the head is enough to read the CBOR opening by
+    eye (RFC 9171 section 4.3.1: an indefinite-length array, 0x9f).
+    """
+    data = path.read_bytes()
+    return dict(name=path.name, octets=len(data),
+                sha256=hashlib.sha256(data).hexdigest(),
+                head=list(data[:16]), path=str(path))
 
 
 def bp_lines(path: Path):
@@ -141,6 +155,10 @@ def main(argv=None) -> int:
             pass
         accepted = sorted(journal.glob("*.adu"))
         refused = sorted(journal.glob("*.refused")) + sorted(journal.glob("*.uncertain"))
+        # The octets dtn7 put on the wire, as `bp receive' journalled them
+        # before deciding anything.  This is the only artifact of the run
+        # that is an INTEROPERABILITY VECTOR: bytes a foreign encoder wrote.
+        wire = sorted(journal.glob("*.wire"))
         report["leg1"] = dict(
             direction="dtn7 authors, fn decodes",
             accepted=[p.name for p in accepted],
@@ -149,7 +167,8 @@ def main(argv=None) -> int:
             adu_matches_payload=bool(
                 accepted and accepted[0].read_bytes() == payload.read_bytes()),
             fn_lines=bp_lines(fn_log),
-            fn_rc=fn_receive.poll())
+            fn_rc=fn_receive.poll(),
+            dtn7_authored_wire=[vector(p) for p in wire])
         # fn's ADU is the payload only if dtn7 sent it unwrapped; dtn7 wraps
         # the payload in its own way, so the honest assertion is that fn
         # accepted a bundle and recovered SOME ADU of the right length.
@@ -171,8 +190,10 @@ def main(argv=None) -> int:
              "0", wall, "60000"],
             capture_output=True, text=True, timeout=120)
         (work / "fn-send.log").write_text(out.stdout + out.stderr)
+        out_wire = sorted((work / "fn-out-journal").glob("*.wire"))
         leg2.update(fn_rc=out.returncode,
-                    fn_lines=bp_lines(work / "fn-send.log"))
+                    fn_lines=bp_lines(work / "fn-send.log"),
+                    fn_authored_wire=[vector(p) for p in out_wire])
         time.sleep(4.0)
         got = subprocess.run(
             [str(dtnrecv), "-e", "incoming", "-p", str(web_port)],

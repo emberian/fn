@@ -379,7 +379,6 @@ recovery barriers, while the cuts are `recover-replayed` at `:1207` and
 `recover-barrier` at `:1228`). Closing it needs a clause in
 `fn-bs-replay-matches-scan` saying the durable frontier is the scanned one
 minus one, and a matching frontier arm here; that is the next packet, not this
-<<<<<<< HEAD
 one. **Taken 2026-09-20 as D14-c below**, in that shape, with the gate
 `fn-sf-frontier-rollback-visiblep` and one conjunct D14-b did not name: the
 two rollbacks are exclusive.
@@ -475,8 +474,6 @@ record-list gate is what excludes that, and a trace event carries no gate.
 every image the platform can leave in the recovery window; K2 itself is still
 open, and what it waits on is unchanged — K1's other three scan clauses. The
 byte-side clause is an obligation on K0, not a theorem.
-=======
-one.
 
 ### 2026-09-20: D19 — the header-value wildmat profile, and what fn's 501 was
 
@@ -682,4 +679,175 @@ Registry: PRF-033. Keystones
 `fn-own-observe-refusal-names-a-contradiction` (`books/owner-invariants.lisp`)
 and `fn-post-without-a-clock-refuses-with-the-clock-line`
 (`books/nntp-post.lisp`).
->>>>>>> dev
+
+### 2026-09-21: D21 — the served statement index is a slot on `fn-sn-state`, and the keyring it was computed under is the slot beside it
+
+`w11/node-index` measured that a fifth slot on `fn-node-statep` is a dependency
+cycle and named `fn-sn-statep` (`books/store-node.lisp`) as the carrier that
+works. It left one question open and called it the real design question: the
+index is a function of `(store, keyring)`, and **no state or configuration
+record in the tree holds a keyring.** This entry answers it, and answers a
+second one the first answer exposes.
+
+**Q1: where does the keyring come from? Taken: a carried field beside the
+index, initialised empty, replaced only by an explicit reconfiguration
+transition that recomputes the index over the store.**
+
+Three candidates were open.
+
+- *Derived from the configuration `fn-sn-state` already carries.* Closed by
+  inspection: that configuration is `(groups capacity)`, neither of which
+  mentions a principal. The nearest thing to a key table inside the node is
+  `fn-node-bindings`, and `books/node.lisp:126` shows it is
+  msgid-to-archive-obligation, not principal-to-key. Today a keyring reaches
+  ACL2 only as a file the operator names on the command line
+  (`bin/fn:782 --keyring`, read by `tools/stx.py:159`), which is a value
+  arriving from outside, not a value derived from anything held.
+- *Carried in a form that needs no keyring.* Closed by the invariant's shape:
+  `fn-stx-index-invariantp` is `(equal index (fn-stx-index-of-store store
+  keyring))`. Two different keyrings give two different indexes over the same
+  store, so a carried index whose keyring is not also carried is not
+  determined by the state, and the conjunct cannot be stated of the state
+  alone. Boxing the pair into one slot is this decision with an extra record
+  in front of it; it is not a third option.
+- **Taken: a `keyring` field.** It is configuration, and it is the third piece
+  of configuration `fn-sn-state` carries, beside `groups` and `capacity`.
+
+Its cost, stated where the brief asked for it.
+
+- **`fn-sn-initial` keeps arity 2 and `fn-sn-update` keeps arity 3.** The
+  initial keyring is `nil`, which satisfies `fn-prin-keyringp`, and
+  `(fn-stx-index-of-store nil k)` is `(fn-stx-index-empty)` for every `k`, so
+  the empty store's invariant holds under any keyring and the initial state
+  needs no keyring argument. A node that knows no principal's key verifies no
+  statement, so its lace and its index are both empty: that is the correct
+  answer for an unconfigured node, not a degenerate one.
+- **`fn-sn-finish` pays one cons.** The delta of the article the durable branch
+  publishes, through `fn-stx-index-add`. This is the D3 property the index
+  exists for and it is proved:
+  `fn-stx-index-grows-by-at-most-one-binding` bounds the growth and
+  `fn-sn-finish-preserves-indexedp` carries the agreement.
+- **Three sites recompute over the whole store, and none of them is a served
+  path.** `fn-sn-recover`, whose node comes from a replay; `fn-sn-set-keyring`,
+  the reconfiguration transition; and `fn-sn-crash`, where the recomputation is
+  free because the node is reset to `fn-node-initial-state` and the empty
+  store's index is `fn-stx-index-empty` by definition.
+- **The two fresh-state sites `w11/node-index` flagged do not bite.**
+  `books/node-config.lisp:405` and `books/replay.lisp:198` build a fresh
+  `fn-node-make-state`, not a fresh `fn-sn-state`, and neither book is in
+  `books/store-node`'s include closure nor above it. Because the carrier is on
+  `fn-sn-state` and not on `fn-node-state`, their recomputation lands once, at
+  the `fn-sn-recover` that consumes `fn-sf-replay-node`.
+
+**Q2: the agreement is NOT a conjunct of `fn-sn-statep`. It is a second
+recognizer, `fn-sn-indexedp`.** This is the part `w11/node-index`'s §6.1
+proposal got wrong, and D20 is why.
+
+D20 records that "the native host reaches the session machine through the ACL2
+executable counterpart of `fnn-call` (`host/native/io.lisp`), which checks the
+callee's guard on every call." `fn-sn-statep` is the guard of `fn-sn-prepare`,
+`fn-sn-io`, `fn-sn-finish` and `fn-sn-recover`. Putting
+`(fn-stx-index-invariantp (fn-sn-index s) (fn-sn-node s) (fn-sn-keyring s))`
+into it would therefore **re-derive the index — and so re-run `fn-stx-verdict`,
+and so re-verify every signature in the store — on every host call into the
+store machine.** That is the no-whole-state-revalidation rule (D3) violated by
+the very change made to satisfy it, and it is strictly worse than the whole-
+store walk the index removes, because the walk gains a signature check per
+article. It is also the exact shape D20 cured on the send path, and the cure is
+the same one: a second recognizer.
+
+So `fn-sn-statep` gains only the **cheap** conjunct,
+`(fn-prin-keyringp (fn-sn-keyring s))`, which walks the keyring and never the
+store. `fn-sn-indexedp` is `fn-sn-statep` plus the agreement; it is the guard of
+nothing, it is established at `fn-sn-initial` and proved preserved by every
+transition, and it is the hypothesis of the query's correctness theorem. It is a
+carried invariant in the sense of the fourth micro-discipline rule — held by a
+theorem about the reachable states, never re-run per operation.
+
+**Rejected: a wrapper record above `fn-sn-state`** holding `(sn keyring index)`
+with its own five transitions. It would cost `books/store-node.lisp` nothing and
+leave all 59 books above it untouched, which is why it was considered. It is
+rejected because the index would then be maintained only on the paths the
+wrapper reimplements, and `fn-sn-refuse-reservation`, `fn-sn-known-abort`,
+`fn-sn-sweep-staging` and `fn-sn-open-observed` move the state without going
+through it. Every transition that the wrapper did not mirror would silently
+desynchronise the index from the store, and "silently" is the word that decides
+it: a stale index answers a query wrongly with no fault anywhere. The slot has
+no such hole, because every one of those transitions already rebuilds the state
+through `fn-sn-update`, which carries the two new fields across by
+construction.
+
+**The price of the slot, stated plainly.** `books/store-node.lisp` must include
+`books/stx-index`, so its include closure goes from 13 books to 26 and the 59
+books whose closure contains `books/store-node` inherit those 13. That is real
+and it is paid by the store and BP-receiver clusters. It is smaller than the
+alternative `w11/node-index` priced, where the same 13 books would have been
+inherited by the 70 books above `books/node`.
+
+Registry: PRF-023. Keystone `fn-sn-statement-lookup-is-the-lace-lookup`
+(`books/store-node-invariants.lisp`), with `fn-sn-initial-is-indexed` and the
+five `fn-sn-*-preserves-indexedp` theorems as the reachability chain that
+discharges its hypothesis.
+
+### 2026-09-20: D22 — the freshness anchor carries its root, and fn reports a Roughtime response it cannot describe as uncertain
+
+**The question.** `fn-anchor-root` was not an accessor: it was
+`(fn-anchor-leaf-digest (fn-anchor-nonce a))`, and the nine fields the durable
+record carried did not include the root. So every keystone about the signed
+octets — `fn-anchor-signed-octets-determine-the-root` above all — described a
+one-nonce tree, empty `PATH` and `INDX` 0, while `tools/roughtime.py` admitted
+a `PATH` up to 32 nodes deep and `anchor_verdict` ran Ed25519 over the root
+**from the wire**. For a batched response the host held a verdict about one
+message and `fn-anchor-node-accept-observed-is-node-accept`'s hypothesis was
+about another, and nothing anywhere noticed: `anchor_verdict`'s own
+consistency check passed, because it had fed ACL2 the wire root. Every
+captured vector is single-nonce, so this was never observed; it was a property
+of the servers fn happens to query.
+
+**Taken.** The root is a tenth field on `fn-anchor` and on both FNAN kinds, so
+`fn-anchor-signed-octets` is the octets that were verified for a batch of any
+size; and `fn-anchor-one-nonce-p` — `(equal (fn-anchor-root a)
+(fn-anchor-leaf-digest (fn-anchor-nonce a)))` — is a conjunct of
+`fn-anchor-verifiedp`, so a response whose tree the model cannot fold is
+refused with `:unverified` rather than admitted under a description that does
+not fit it. **fn therefore refuses a Roughtime server that batches.** Every
+pinned server answers one nonce per response today, so this refuses nothing fn
+has seen; against a batching server `fn anchor` reports `anchor refused:
+unverified` and the node keeps the anchor it had. Refusing honestly beats
+describing wrongly, and the refusal is loud.
+
+**And the verdict the host owes is now one value in one place.** The host
+supplies `fn-anchor-seam-verdict`: the two constrained Ed25519 checks and
+`fn-anchor-one-nonce-p`, which are the three things that run through A-CRYPTO.
+The delegation window is arithmetic on fields the record carries, so ACL2 owns
+it — `fn-anchor-verifiedp-observed` applies `fn-anchor-window-okp` inside the
+entry the host calls. Until now `mint <= midpoint <= maxt` was *half* the
+discharge of that hypothesis, copied at `tools/roughtime.py:258`, with
+`anchor_verdict` supplying the other half from a different file; if the copy
+and `books/anchor.lisp` had ever disagreed, every anchor keystone would have
+stopped describing the run with no test failing.
+
+**Rejected: a stated hypothesis instead of a refusal.** Carrying
+`fn-anchor-one-nonce-p` as a hypothesis of the keystones rather than a
+conjunct of `fn-anchor-verifiedp` leaves the host free to record a batched
+anchor durably, with the keystones silently not applying to it. That is the
+defect, restated as a caveat.
+
+**Rejected: an `A-*` assumption covering the fold.** There is no fold in the
+logic to hypothesise about, so no theorem could take the assumption — it would
+be the prose assumption AGENTS.md forbids. The fold is recorded as a trusted
+facility in `specs/anchor.md` instead, with its file, its lines and what it
+decides named.
+
+**Rejected: `books/sha512.lisp` and the fold in this packet.** Stating the
+fold over a constrained digest without attaching a realiser would leave Python
+deciding while looking proved. The design is
+`planning/lanes/HANDOFF-w11-one-owner.md` §3 steps 1 to 3; it is a packet of
+its own and admitting batched responses is what it buys.
+
+Registry: FLR-004, OBJ-006. Keystones
+`fn-anchor-signed-octets-determine-the-root` (`books/anchor.lisp`, now over
+the field and so covering any batch size) and
+`fn-anchor-verifiedp-observed-is-verifiedp` (`books/anchor-invariants.lisp`,
+the seam hypothesis discharged once for all three host entries). Teeth in
+`tests/acl2/anchor-teeth-tests.lisp` and `tests/test_anchor.py`.

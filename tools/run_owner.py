@@ -16,7 +16,6 @@ A served POST is a submission the book queued on the connection's read;
 uses and feeds the observed word back, and the book renders the 240 or 441.
 """
 import argparse
-import hashlib
 import os
 import selectors
 import signal
@@ -34,7 +33,7 @@ from run_store import (ACL2_RECOVER_BASE_SECONDS, ACL2_RECOVER_PER_RECORD_SECOND
                        durable_post, exit_code_for, group_codes, metadata,
                        post_article, validate_post_boundary)
 from run_reader import acl2_boolean, acl2_octet_list
-from run_feed import Journal, Session, TRAILER_BYTES  # the FNFD layout and the client half
+from feed_wire import Journal, Session, TRAILER_BYTES  # the FNFD layout and the client half
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAX_READ = 512
@@ -348,13 +347,28 @@ class Acl2Owner(Acl2Store):
         return self._symbol_any("(fn-owner-feed-octets '{} '{} {} state)".format(
             self.literal(peer.encode("utf-8")), self.literal(line), monotonic))
 
+    def trailer(self, prefix):
+        """The integrity trailer over a protected prefix, computed by ACL2.
+
+        `fn-frame-trailer' (books/frame-trailer.lisp) is `fn-frame-digest',
+        realised by `fn-sha256' through `books/crypto-attach.lisp'.  Until
+        `w11/one-owner' this method did not exist and the two call sites
+        below ran `hashlib.sha256', which made the FNFD trailer a third
+        owner of one decision beside `tools/frame_bridge.py' and
+        `host/native/io.lisp'.
+        """
+        octets = "'(" + " ".join(str(byte) for byte in prefix) + ")"
+        return bytes(acl2_octet_list(self.call(
+            "(fn-frame-trailer {})".format(octets))))
+
     def feed_frames(self):
         """The FNFD frames the last feed call authorized, sealed here.
 
         `fn-feed-encode' takes the trailer as an argument and ACL2 built each
-        frame with a zero one, so the host hashes the protected prefix and
-        appends the real digest (A-CRYPTO).  Python chooses no field and no
-        bound; it slices at a constant the book fixed.
+        frame with a zero one, so the host asks ACL2 for the trailer over the
+        protected prefix and appends it (A-CRYPTO).  Python chooses no field,
+        no bound and no digest; it slices at a constant the book fixed and
+        concatenates.
         """
         count = self._nat("(len (@ fn-owner-feed-frames))")
         frames = []
@@ -362,7 +376,7 @@ class Acl2Owner(Acl2Store):
             frame = bytes(acl2_octet_list(self.call(
                 "(fn-frame-item {} (@ fn-owner-feed-frames))".format(index))))
             protected = frame[:-TRAILER_BYTES]
-            frames.append(protected + hashlib.sha256(protected).digest())
+            frames.append(protected + self.trailer(protected))
         return frames
 
     def feed_record_peers(self):
@@ -373,7 +387,7 @@ class Acl2Owner(Acl2Store):
             "(fn-owner-feed-command state)")) or b"")
 
     def feed_replay_frame(self, peer, frame):
-        digest = hashlib.sha256(frame[:-TRAILER_BYTES]).digest()
+        digest = self.trailer(frame[:-TRAILER_BYTES])
         return self._symbol_any("(fn-owner-feed-replay-frame '{} '{} '{} state)".format(
             self.literal(peer.encode("utf-8")), self.literal(frame),
             self.literal(digest)))
@@ -490,9 +504,15 @@ def load_credentials(path):
 
 
 class Connection:
-    def __init__(self, sock, cid):
+    def __init__(self, sock, cid, peer=None):
         self.sock = sock
         self.cid = cid
+        # The peer record this connection was resolved to at accept, or None
+        # for a reader.  Recorded so the operator log can say which role the
+        # owner gave the connection: it said `reader` for every connection,
+        # including the ones ACL2 opened with fn-own-open-peer, and that is
+        # part of why a peer-shaped reader went unnoticed for a wave.
+        self.peer = peer
         self.outbuf = b""
         self.closing = False
         self.reading = True
@@ -623,7 +643,7 @@ class Owner:
             # The configured bound is reached; the owner installed nothing.
             sock.close()
             return
-        conn = Connection(sock, cid)
+        conn = Connection(sock, cid, peer)
         conn.outbuf = greeting
         self.connections[sock] = conn
         self.selector.register(sock, selectors.EVENT_READ | selectors.EVENT_WRITE, conn)
