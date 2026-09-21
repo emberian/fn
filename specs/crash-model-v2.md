@@ -1060,7 +1060,8 @@ Proposed book: `books/byte-store-scan.lisp` (scan, relation, keystones) and
            (if (and (consp octets) (natp (car octets)) (null (cdr octets)))
                (car octets) nil)))
   (defthm fn-bs-frontier-round-trip
-    (implies (natp n) (equal (fn-bs-frontier-decode (fn-bs-frontier-encode n)) n)))
+    (implies (and (natp n) (<= n *fn-cbor-max-uint*))
+             (equal (fn-bs-frontier-decode (fn-bs-frontier-encode n)) n)))
   (defthm fn-bs-frontier-decode-nat-or-nil
     (or (natp (fn-bs-frontier-decode octets)) (null (fn-bs-frontier-decode octets)))
     :rule-classes nil))
@@ -1275,18 +1276,36 @@ previous process's un-fenced entry operation, and the recovery arm is exactly
 that state. The durable-namespace contiguity clause is what makes the scan's
 namespace test decidable from the byte store alone.
 
+The implemented relation additionally requires `fn-bs-authority-knownp`:
+every durable or pending authority target occurs in the inode table. This
+is a publication/allocation invariant, not a codec assumption. The bare
+byte-state recognizer permits dangling directory entries; without this
+clause an authority entry may name `next-ino`, which a staging create and
+write can then reuse. Successful initialization establishes actual inode
+membership. The byte crash set and the platform freedom predicates are
+unchanged; general host-program preservation of this additional clause is
+part of K0.
+
 ### 3.3 The store keystones
 
 ```lisp
-; K0. Every program step preserves the relation, for every outcome, with the
-; kernel observation the host makes for that outcome.
-(defthm fn-bs-program-step-preserves-relation
-  (implies (and (fn-bs-store-relation bs ks)
-                (member-equal steps (list (fn-bs-frontier-program stage octets)
-                                          (fn-bs-record-program stage name frame)
-                                          (fn-bs-recover-program)))
-                (member-equal (cons bs1 ks1) (fn-bs-run bs ks steps outcomes groups capacity)))
-           (fn-bs-store-relation bs1 ks1)))
+; K0 remains OPEN. The earlier proposed formula quantified arbitrary
+; program arguments, phases, and outcomes and was false: from frontier 0,
+; staging bytes that decode to 0 instead of the candidate 1 breaks the
+; relation at frontier-replaced. The host supplies candidate bytes.
+; The corrected target requires an independent host-program input contract:
+; frontier: :ready, room to increment, a staging name, octet bytes decoding
+;   to frontier+1;
+; record: :record-staged, a staging name, octet frame decoding to the kernel
+;   candidate, final name fn-bs-txn-name(sequence of that candidate);
+; recovery: a freshly replayed kernel image of the byte-store view, before
+;   its five barriers (including the recovery-window relation clauses);
+; every syscall: the outcome domain of that syscall, including admissible
+;   torn-fsync selections. The caller's error observation must be modelled.
+; These are input/phase conditions, never the desired post-step relation.
+; Initialization has its own establishment obligation: the relation requires
+; durable config/frontier authority and therefore does not hold at its early
+; mkdir/create/write/link cuts. Those cuts remain in the byte crash model.
 
 ; K1. The scan never faults on a crash image of a related state.  No torn
 ; unit is ever under an authority name, because links and renames are
