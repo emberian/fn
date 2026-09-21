@@ -9,6 +9,7 @@
 (include-book "bp-node-machine")
 (include-book "frame-trailer")
 (include-book "byte-store-txn-name")
+(include-book "journal-publish")
 
 (set-verify-guards-eagerness 0)
 
@@ -172,6 +173,47 @@
        (fn-bpn-machine-statep st)
        (equal (fn-bpn-lifecycle-recovery-next-token answer)
               (fn-bpn-machine-state-next-token st))))
+
+; Authorize the shared immutable publication machine only for the exact
+; :persist token/record currently pending in fn-bpn-step.  The native caller
+; supplies its held lifecycle lock and an observation that the canonical final
+; name is absent.  A malformed echo or occupied next name is a recovery/core
+; contradiction, not a second admission decision.
+(defun fn-bpn-lifecycle-publication-authorize
+  (st token record lock-owned final-absent)
+  (declare (xargs :guard t))
+  (let ((pending (fn-bpn-machine-state-pending st)))
+    (if (and (fn-bpn-machine-statep st)
+             (not (fn-bpn-machine-state-fenced st))
+             pending
+             (equal token (fn-bpn-machine-state-next-token st))
+             (equal token (fn-bpn-pending-token pending))
+             (equal record (fn-bpn-pending-record pending))
+             lock-owned
+             final-absent)
+        (list :ok token record (fn-jpub-initial t))
+      (list :fault :lifecycle-publication-authority))))
+
+(defun fn-bpn-lifecycle-publication-operationp (operation)
+  (declare (xargs :guard t))
+  (and (true-listp operation)
+       (equal (len operation) 4)
+       (equal (car operation) :ok)
+       (fn-bpn-machine-u64p (nth 1 operation))
+       (fn-bpn-lifecycle-recordp (nth 2 operation))
+       (equal (nth 3 operation) (fn-jpub-initial t))))
+
+(defun fn-bpn-lifecycle-publication-operation-token (operation)
+  (declare (xargs :guard t))
+  (nth 1 operation))
+
+(defun fn-bpn-lifecycle-publication-operation-record (operation)
+  (declare (xargs :guard t))
+  (nth 2 operation))
+
+(defun fn-bpn-lifecycle-publication-operation-publication (operation)
+  (declare (xargs :guard t))
+  (nth 3 operation))
 
 (defconst *fn-bpn-lifecycle-queued-spec*
   '(:nat :text :text :nat :nat :nat :nat

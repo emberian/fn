@@ -74,6 +74,23 @@
 (defun fn-bpn-host-lifecycle-recovery-agrees-p (answer st)
   (and (fn-bpn-lifecycle-recovery-agrees-with-statep answer st) t))
 
+(defun fn-bpn-host-lifecycle-publication-authorize
+  (st token record lock-owned final-absent)
+  (fn-bpn-lifecycle-publication-authorize
+   st token record lock-owned final-absent))
+
+(defun fn-bpn-host-lifecycle-publication-operationp (operation)
+  (if (fn-bpn-lifecycle-publication-operationp operation) t nil))
+
+(defun fn-bpn-host-lifecycle-publication-operation-token (operation)
+  (fn-bpn-lifecycle-publication-operation-token operation))
+
+(defun fn-bpn-host-lifecycle-publication-operation-record (operation)
+  (fn-bpn-lifecycle-publication-operation-record operation))
+
+(defun fn-bpn-host-lifecycle-publication-operation-publication (operation)
+  (fn-bpn-lifecycle-publication-operation-publication operation))
+
 (defun fn-bpn-host-machine-max-jobs () *fn-bpn-machine-max-jobs*)
 (defun fn-bpn-host-machine-max-octets () *fn-bpn-machine-max-octets*)
 (defun fn-bpn-host-machine-max-records () *fn-bpn-machine-max-records*)

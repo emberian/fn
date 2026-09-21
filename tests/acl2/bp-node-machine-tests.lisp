@@ -33,6 +33,40 @@
                       (fn-bpn-lifecycle-record-frame *bpnm-r0*))
                      *bpnm-r0*))
 
+; The publication operation is authorized only for the exact token and record
+; currently pending in the host-called machine state.  Lock ownership and a
+; physically absent canonical next name are explicit premises.
+(defconst *bpnm-publication-operation*
+  (fn-bpn-lifecycle-publication-authorize
+   (fn-bpn-answer-state *bpnm-a0*) 0 *bpnm-r0* t t))
+(assert-event
+ (fn-bpn-lifecycle-publication-operationp *bpnm-publication-operation*))
+(assert-event
+ (equal (fn-bpn-lifecycle-publication-operation-token
+         *bpnm-publication-operation*)
+        0))
+(assert-event
+ (equal (fn-bpn-lifecycle-publication-operation-record
+         *bpnm-publication-operation*)
+        *bpnm-r0*))
+(assert-event
+ (equal (fn-bpn-lifecycle-publication-operation-publication
+         *bpnm-publication-operation*)
+        (fn-jpub-initial t)))
+(assert-event
+ (not (fn-bpn-lifecycle-publication-operationp
+       (fn-bpn-lifecycle-publication-authorize
+        (fn-bpn-answer-state *bpnm-a0*) 0 *bpnm-r0* nil t))))
+(assert-event
+ (not (fn-bpn-lifecycle-publication-operationp
+       (fn-bpn-lifecycle-publication-authorize
+        (fn-bpn-answer-state *bpnm-a0*) 0 *bpnm-r0* t nil))))
+(must-fail
+ (assert-event
+  (fn-bpn-lifecycle-publication-operationp
+   (fn-bpn-lifecycle-publication-authorize
+    (fn-bpn-answer-state *bpnm-a0*) 0 *bpnm-r0* t nil))))
+
 (defconst *bpnm-a1*
   (fn-bpn-step (fn-bpn-answer-state *bpnm-a0*) '(:persist-result 0 :durable)))
 (defconst *bpnm-s1* (fn-bpn-answer-state *bpnm-a1*))
@@ -119,6 +153,10 @@
 (defconst *bpnm-a2* (fn-bpn-step *bpnm-s1* (list :contact *bpnm-peer* t)))
 (defconst *bpnm-r1* (third (car (fn-bpn-answer-effects *bpnm-a2*))))
 (assert-event (equal (car *bpnm-r1*) :attempting))
+(assert-event
+ (not (fn-bpn-lifecycle-publication-operationp
+       (fn-bpn-lifecycle-publication-authorize
+        (fn-bpn-answer-state *bpnm-a0*) 0 *bpnm-r1* t t))))
 
 ; Decoded record tokens must agree with their canonical observed filenames.
 ; Swapping the token-1 record under the token-0 name is a reachable namespace
