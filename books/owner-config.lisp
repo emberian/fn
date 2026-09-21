@@ -352,7 +352,12 @@
   ; stages a post.  Nothing becomes live here; `fn-ocfg-complete' publishes.
   (declare (xargs :guard (fn-cfgp (fn-ocfg-config oc))))
   (if (fn-ocfg-reconfig-okp oc id deltas)
-      (fn-ocfg-make (fn-own-begin (fn-ocfg-owner oc) id)
+      ; `staged' is the configuration transaction lock.  It is not an
+      ; article-store pending record: the host persists this typed config
+      ; record in the configuration journal, then reports :complete.  While
+      ; it is held, fn-ocfg-step refuses :begin and :take below, so an article
+      ; transaction cannot overlap the configuration generation.
+      (fn-ocfg-make (fn-ocfg-owner oc)
                     (fn-ocfg-config oc)
                     (fn-ocfg-pins oc)
                     (fn-ocfg-reconfig-record oc deltas))
@@ -364,19 +369,18 @@
 (defun fn-ocfg-complete (oc)
   (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
                   :verify-guards nil))
-  (let* ((o (fn-ocfg-owner oc))
-         (next (fn-own-complete o))
-         (record (fn-ocfg-staged oc)))
-    (if (equal next o)
-        oc
-      (if (null record)
-          (fn-ocfg-make next (fn-ocfg-config oc) (fn-ocfg-pins oc) nil)
-        (fn-ocfg-make next
-                      (fn-cnode-config
-                       (fn-cnode-apply-config (fn-ocfg-live-cnode oc) record
-                                              (fn-cnode-line-ceiling)))
-                      (fn-ocfg-pins oc)
-                      nil)))))
+  (let ((record (fn-ocfg-staged oc)))
+    (if record
+        ; The caller may use this arm only after the host has reported a
+        ; durable config-journal write.  An uncertain write deliberately does
+        ; not publish: the process must reopen and replay the observed prefix.
+        (fn-ocfg-make
+         (fn-ocfg-owner oc)
+         (fn-cnode-config
+          (fn-cnode-apply-config (fn-ocfg-live-cnode oc) record
+                                 (fn-cnode-line-ceiling)))
+         (fn-ocfg-pins oc) nil)
+      (fn-ocfg-with-owner oc (fn-own-complete (fn-ocfg-owner oc))))))
 
 ; -----------------------------------------------------------------------------
 ; The connection events that write a pin: open, advance, close.
@@ -496,6 +500,8 @@
     (:fault (cdr (fn-ocfg-fault oc (car (cdr event)))))
     (:reconfigure (fn-ocfg-reconfigure oc (car (cdr event)) (car (cdr (cdr event)))))
     (:complete (fn-ocfg-complete oc))
+    (:begin (if (fn-ocfg-staged oc) oc (fn-ocfg-pass oc event)))
+    (:take (if (fn-ocfg-staged oc) oc (fn-ocfg-pass oc event)))
     (otherwise (fn-ocfg-pass oc event))))
 
 (defun fn-ocfg-run (oc events)
