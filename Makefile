@@ -106,6 +106,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-scan-tests \
 	books/byte-store-programs \
 	tests/acl2/byte-store-tests \
+	books/byte-store-frame \
+	tests/acl2/byte-store-frame-tests \
+	books/byte-store-relation \
+	tests/acl2/byte-store-relation-tests \
+	books/byte-store-program-invariants \
+	tests/acl2/byte-store-program-invariants-tests \
 	books/assumptions \
 	tests/acl2/assumptions-tests \
 	tests/acl2/store-node-guards-tests \
