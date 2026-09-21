@@ -403,15 +403,15 @@
     "books": 398,
     "books_in_root_closure": 397,
     "roots": 396,
-    "theorems": 6519,
-    "functions": 5144,
-    "assert_events": 7004,
-    "must_fails": 179,
+    "theorems": 6529,
+    "functions": 5148,
+    "assert_events": 7015,
+    "must_fails": 180,
     "encapsulates": 19,
     "guards": {
       "verified": 1705,
       "declared-off": 267,
-      "default-guarded": 2568,
+      "default-guarded": 2572,
       "default-unguarded": 604
     },
     "suspect_theorems": 61,
@@ -5446,12 +5446,12 @@
       "book": "books/served-tls-prefix.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 8,
-      "functions": 5,
+      "theorems": 12,
+      "functions": 7,
       "guards": {
         "verified": 1,
         "declared-off": 0,
-        "default-guarded": 4,
+        "default-guarded": 6,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -5471,7 +5471,7 @@
       "book": "books/served.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 68,
+      "theorems": 71,
       "functions": 38,
       "guards": {
         "verified": 2,
@@ -6782,12 +6782,12 @@
       "book": "books/wire.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 47,
-      "functions": 67,
+      "theorems": 50,
+      "functions": 69,
       "guards": {
         "verified": 49,
         "declared-off": 0,
-        "default-guarded": 18,
+        "default-guarded": 20,
         "default-unguarded": 0
       },
       "verify_guards_events": 49,
@@ -9982,15 +9982,17 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 6,
-      "must_fails": 0,
-      "defconsts": 10,
+      "assert_events": 9,
+      "must_fails": 1,
+      "defconsts": 12,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/served-tls-prefix"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -10234,9 +10236,9 @@
         "default-unguarded": 6
       },
       "verify_guards_events": 0,
-      "assert_events": 25,
+      "assert_events": 33,
       "must_fails": 0,
-      "defconsts": 26,
+      "defconsts": 30,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -11383,7 +11385,7 @@
     {
       "theorem": "fn-wire-feed-closed-noop",
       "book": "books/wire.lisp",
-      "line": 1019,
+      "line": 1071,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-wire-feed and the conclusion is that branch's value"
       ]

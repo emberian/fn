@@ -464,9 +464,15 @@ ClientHello behind the STARTTLS line in one kernel observation. This is a
 robustness property and does not relax RFC 4642's client prohibition. The
 sole connection worker observes with `MSG_PEEK`; `fn-ocfg-read-tls-prefix`
 returns the one ACL2 transition, its effects and the exact consumed count.
-`fn-ocfg-read-tls-prefix-is-full-read` proves that the actual host-call result
-equals the full observation, while `fn-served-tls-prefix-suffix-accounting`
-proves that prefix and suffix reconstruct it. Raw Lisp then consumes and
+`fn-ocfg-read-tls-prefix-is-full-read`, under the configured-owner state
+invariant, proves that the actual host-call result equals the checked full
+observation. The host-called path uses `fn-served-step-counted-fast`: its entry
+predicate examines the fixed eight-cell wire record and scalar counters, never
+the retained current line or article body. `fn-served-step-counted-fast-is-reference`
+equates it to the total checked transition under the full wire invariant, and
+`fn-served-step-counted-fast-preserves-connp` carries that invariant to the
+next read. `fn-served-tls-prefix-suffix-accounting` proves that prefix and
+suffix reconstruct the observation. Raw Lisp then consumes and
 byte-checks only that prefix before OpenSSL reads the suffix. Sole-reader
 ownership and stable `MSG_PEEK`/consume behavior are explicit scheduling and
 platform premises; a short, changed or failed consume closes the connection

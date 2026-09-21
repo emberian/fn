@@ -4,13 +4,16 @@ This bounded run measured the production launcher
 `/home/ember/fn-gates/freeze-f7190d69/build/fn-host` on `persvati`.  The JSON's
 `source_revision` value `8c231978` was supplied from the earlier freeze record,
 but the worktree's Git metadata was broken when checked and the core had been
-rebuilt at 2026-09-21 14:06 local time.  Therefore this run is pinned to bytes,
-not asserted to be the earlier byte-identical 8c core.  The launcher SHA-256 was
+rebuilt at 2026-09-21 14:06 local time. The original run pinned only its launcher,
+not the loaded core; it is not the earlier byte-identical 8c qualification.
+The launcher SHA-256 was
 `4fe51b69b65530868a168b38454c1929f90e82d987eabbe3614ea6b86b35837e`.
-The invoked `fn-host.core` SHA-256 was
+The `fn-host.core` observed during the subsequent provenance check had SHA-256
 `4efcb8a3f758be9c7838617cde2f67696985c5b0758d26e47b25e40426dbaa3b`.
-Its qualification and build provenance are recorded in
-`planning/evidence/native-freeze-gate-2026-09-21.md`.  The harness SHA-256 was
+That later observation cannot alone establish the core loaded during every
+sample. The earlier qualification in
+`planning/evidence/native-freeze-gate-2026-09-21.md` concerns a different core.
+Source/build provenance reconciliation remains open. The harness SHA-256 was
 `5a42d67bd8db7ea9c486086acefb3f97191d9f913308824c7c6ea4839c85857d`.
 
 One production operator owner held one task-local store.  Each post invoked the
@@ -51,8 +54,8 @@ this 128-article profile.
 
 The adjacent JSON is the complete original machine-readable result.  The
 original harness did not explicitly close its `socket.makefile()` wrapper or
-consume the QUIT response; the socket context still closed each connection,
-and all 20 reads at every point completed, but the corrected harness now does
-both.  This evidence is scoped to the launcher/core digests above, host, input
-profile, and one run; it
+consume the QUIT response; the wrapper could retain the descriptor after the
+socket context closed. All reads completed, but the corrected harness now
+closes both resources. This evidence is scoped to the recorded launcher, host,
+input profile, and one run, with the core-provenance limitation above; it
 does not prove scalability or predict larger histories.
