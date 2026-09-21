@@ -713,6 +713,7 @@
         "fn-wildmat-successful-decode-length-bounded-by-input",
         "fn-wildmat-successful-parse-parsedp",
         "fn-wildmat-parse-yields-rfc3977-patterns",
+        "fn-wildmat-successful-parse-text-parsedp",
         "fn-transfer-entry-candidate-work-value",
         "fn-transfer-entry-candidate-work-cost-bound",
         "fn-transfer-missing-work-cost-bound",

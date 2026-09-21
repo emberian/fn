@@ -312,3 +312,29 @@
                              fn-wildmat-parsedp)
                            (fn-wildmat-parse-one
                             fn-wildmat-successful-parse-parsedp)))))
+
+; The same result-shape guarantee for the header-value entry.  Without this,
+; the matcher correspondence theorems of books/wildmat-matcher-invariants --
+; which hypothesise `fn-wildmat-pattern-listp' -- would apply to the LIST
+; paths and not to XPAT, and XPAT's match would have no proved tie to RFC 3977
+; section 4.2's semantics.  `fn-nntp-xpat-response'
+; (books/nntp-responses.lisp:1639) calls `fn-wildmat-parse-text' and hands the
+; value straight to `fn-wildmat-match-codepoints', so this is the theorem
+; about the function the host path actually calls.
+(defthm fn-wildmat-successful-parse-text-parsedp
+  (implies (fn-wildmat-result-okp (fn-wildmat-parse-text octets))
+           (fn-wildmat-parsedp
+            (fn-wildmat-result-value (fn-wildmat-parse-text octets))))
+  :hints (("Goal"
+           :use ((:instance fn-wm-parse-one-success-pattern-listp
+                            (codepoints
+                             (fn-wildmat-result-value
+                              (fn-wildmat-decode octets)))
+                            (positivep t)
+                            (fuel *fn-wildmat-max-octets*)))
+           :in-theory (e/d (fn-wildmat-parse-text
+                             fn-wildmat-parse-codepoints
+                             fn-wildmat-result-okp
+                             fn-wildmat-result-value
+                             fn-wildmat-parsedp)
+                           (fn-wildmat-parse-one)))))
