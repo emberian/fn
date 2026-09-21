@@ -57,6 +57,17 @@
               (list (cons :ed25519 (make-list 32 :initial-element 18))
                     (cons :ml-dsa-65 *hs-ml-key*))
               *hs-source*))))
+(assert-event
+ (not (equal (fn-hsig-signed-preimage *hs-principal* *hs-keys* *hs-source*)
+             (fn-hsig-signed-preimage
+              (make-list 32 :initial-element 86) *hs-keys* *hs-source*))))
+(assert-event
+ (not (equal (fn-hsig-signed-preimage *hs-principal* *hs-keys* *hs-source*)
+             (fn-hsig-signed-preimage
+              *hs-principal*
+              (list (cons :ed25519 *hs-ed-key*)
+                    (cons :ml-dsa-65 (make-list 1952 :initial-element 35)))
+              *hs-source*))))
 
 ; Teeth: neither theorem follows after deleting one of its essential premises.
 (must-fail

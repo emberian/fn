@@ -52,6 +52,16 @@
                          (cons :ml-dsa-65 ml-signature))))
   (fnn-hsig-check (fnn-crypto-ed25519-verify ed-public message ed-signature)
                   "libsodium Ed25519 sign/verify")
+  (let* ((large-message
+          (make-array +fnn-hsig-max-message-octets+
+                      :element-type '(unsigned-byte 8) :initial-element 42))
+         (large-signature (fnn-hsig-ed25519-sign ed-secret large-message)))
+    (fnn-hsig-check
+     (eq (fnn-crypto-ed25519-observe
+          ed-public large-message large-signature
+          +fnn-hsig-max-message-octets+)
+         :verified)
+     "hybrid Ed25519 observation accepts the maximum profile preimage"))
   (fnn-hsig-check (fnn-hsig-ml-dsa-65-verify public message ml-signature)
                   "OpenSSL ML-DSA-65 sign/verify")
   (fnn-hsig-check

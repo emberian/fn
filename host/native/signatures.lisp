@@ -260,7 +260,8 @@ the other, and unsupported ML-DSA is never mapped to :VERIFIED."
   (let ((ed-signature (and (consp signatures) (cdr (car signatures))))
         (ml-signature (and (consp (cdr signatures))
                            (cdr (car (cdr signatures))))))
-    (list (fnn-crypto-ed25519-observe ed-public-key message ed-signature)
+    (list (fnn-crypto-ed25519-observe
+           ed-public-key message ed-signature +fnn-hsig-max-message-octets+)
           (handler-case
               (multiple-value-bind (verified observed-key)
                   (fnn-hsig-ml-dsa-65-verify
