@@ -93,6 +93,11 @@ class NativeStorageCodecTests(unittest.TestCase):
         self.assertEqual(inspected.stdout, self.payload.read_bytes())
         self.assertEqual((python_store / "config.json").read_bytes(), config)
 
+        scale_store = self.base / "scale-store"
+        run_store.Store(scale_store, writable=True, profile="scale").initialize()
+        scale_status = self.invoke(True, scale_store, "status")
+        self.assertIn(b"transactions=0 articles=0", scale_status.stdout)
+
     def test_native_refuses_truncated_or_malformed_metadata(self):
         original = self.base / "original"
         self.invoke(True, original, "init")
