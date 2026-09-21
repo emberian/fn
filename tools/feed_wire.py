@@ -46,14 +46,28 @@ class Journal:
 
     def __init__(self, root: str, peer: bytes, bridge, faults=NO_FAULTS):
         self.root = root
-        self.peer = peer.decode("utf-8")
+        self.peer = peer
         self.bridge = bridge
         self.faults = faults
         self.phase = "closed"
         self.handle = None
         self.replayed = 0
-        self.dir = os.path.join(root, "feed")
-        self.path = os.path.join(self.dir, self.peer + ".fnfd")
+        self.feed_dir = os.path.join(root, "feed")
+        components = bridge.feed_filename_components(peer)
+        try:
+            text_components = tuple(component.decode("ascii") for component in components)
+        except (AttributeError, UnicodeError) as error:
+            raise StoreFault("ACL2 returned non-ASCII FNFD filename component") from error
+        # This is an output boundary guard, not a second peer-name policy: the
+        # ACL2 codec alone chooses components.  Do not give a malformed bridge
+        # result path semantics on the way to the filesystem.
+        if (not text_components or
+                any(not component or component in (".", "..") or
+                    "/" in component or "\\" in component or "\x00" in component
+                    for component in text_components)):
+            raise StoreFault("ACL2 returned unsafe FNFD filename component")
+        self.dir = os.path.join(self.feed_dir, *text_components[:-1])
+        self.path = os.path.join(self.dir, text_components[-1])
         try:
             os.makedirs(self.dir, exist_ok=True)
             self.handle = os.open(self.path, os.O_RDWR | os.O_CREAT, 0o600)
@@ -83,6 +97,12 @@ class Journal:
             self._step("content-durable")
             fsync_dir(self.dir)
             self._step("directory-durable")
+            if self.dir != self.feed_dir:
+                parent = os.path.dirname(self.dir)
+                while parent != self.feed_dir:
+                    fsync_dir(parent)
+                    parent = os.path.dirname(parent)
+                fsync_dir(self.feed_dir)
             fsync_dir(self.root)
             self._step("parent-durable")
             os.lseek(self.handle, 0, os.SEEK_END)

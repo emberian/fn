@@ -30,6 +30,7 @@ class BookBridge(Acl2Owner):
                                      stderr=subprocess.STDOUT, env=env)
         run_store.read_prompt(self.proc, run_store.ACL2_START_TIMEOUT_SECONDS)
         self.call('(include-book "books/feed-journal")')
+        self.call('(ld "host/feed-filename-host.lisp" :ld-error-action :return :ld-error-triples t)')
 
     def feed_journal_begin(self):
         super().feed_journal_begin()
@@ -41,7 +42,7 @@ class BookBridge(Acl2Owner):
         self.call("(f-put-global 'fn-test-scan "
                   "(fn-feed-journal-scan '{} '{} '{} "
                   "(@ fn-owner-feed-safe-offset)) state)".format(
-                      self.literal(peer.encode()), self.literal(prefix), self.literal(frame)))
+                      self.literal(peer), self.literal(prefix), self.literal(frame)))
         status = self._symbol_any("(car (@ fn-test-scan))")
         if status == "next":
             self.call("(f-put-global 'fn-owner-feed-safe-offset "
@@ -98,6 +99,14 @@ class FeedJournalLiveTests(unittest.TestCase):
                 self.assertEqual(self.path.read_bytes(), self.envelope + self.restart_envelope)
                 self.assertEqual(self.bridge._nat("(len (fn-feed-queue (@ fn-test-feed)))"), 1)
                 reopened.close()
+
+    def test_traversal_shaped_peer_uses_acl2_v1_components(self):
+        peer = b"../escape"
+        journal = Journal(str(self.root), peer, self.bridge)
+        self.addCleanup(journal.close)
+        self.assertEqual(Path(journal.path).relative_to(self.root / "feed"),
+                         Path("v1") / "2e2e2f657363617065" / "journal.fnfd")
+        self.assertNotIn("..", Path(journal.path).parts)
 
     def test_complete_invalid_digest_length_schema_and_peer_preserve_evidence(self):
         corrupted = bytearray(self.envelope)

@@ -51,6 +51,7 @@ class JournalTests(unittest.TestCase):
         self.bridge.feed_journal_step.return_value = "ready"
         self.bridge.feed_journal_offset.return_value = 8
         self.bridge.feed_journal_wrap.return_value = b"encoded-envelope"
+        self.bridge.feed_filename_components.return_value = (b"inn.fnfd",)
 
     def open(self):
         journal = feed_wire.Journal(self.root, b"inn", self.bridge)
@@ -114,6 +115,21 @@ class JournalTests(unittest.TestCase):
                 with mock.patch.object(feed_wire, barrier, side_effect=results):
                     with self.assertRaises(feed_wire.StoreIndeterminate):
                         self.open()
+
+    def test_v1_components_are_used_as_acl2_returned(self):
+        self.bridge.feed_filename_components.return_value = (
+            b"v1", b"2e2e2f657363617065", b"journal.fnfd")
+        with mock.patch.object(feed_wire, "fsync_file"), \
+             mock.patch.object(feed_wire, "fsync_dir"):
+            journal = self.open()
+        self.assertEqual(Path(journal.path).relative_to(Path(self.root) / "feed"),
+                         Path("v1") / "2e2e2f657363617065" / "journal.fnfd")
+        self.assertNotIn("..", Path(journal.path).parts)
+
+    def test_malformed_acl2_component_is_not_a_path(self):
+        self.bridge.feed_filename_components.return_value = (b"..", b"journal.fnfd")
+        with self.assertRaises(feed_wire.StoreFault):
+            self.open()
 
     def test_failed_append_carries_uncertain_phase(self):
         journal = self.open()
