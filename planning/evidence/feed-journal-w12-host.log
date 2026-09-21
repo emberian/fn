@@ -12,7 +12,7 @@ test_an_article_that_ends_in_a_blank_line_crosses_with_it (test_feed.SessionTest
 test_the_block_unstuffs_back_to_the_article_it_was_given (test_feed.SessionTests.test_the_block_unstuffs_back_to_the_article_it_was_given) ... ok
 test_the_greeting_is_read_before_anything_is_sent (test_feed.SessionTests.test_the_greeting_is_read_before_anything_is_sent) ... ok
 test_two_blank_lines_at_the_end_both_cross (test_feed.SessionTests.test_two_blank_lines_at_the_end_both_cross) ... ok
-test_ambiguous_append_stops_all_feed_mutations_and_preserves_exit_three (test_feed_fence.FeedFenceTests.test_ambiguous_append_stops_all_feed_mutations_and_preserves_exit_three) ... FAIL
+test_ambiguous_append_stops_all_feed_mutations_and_preserves_exit_three (test_feed_fence.FeedFenceTests.test_ambiguous_append_stops_all_feed_mutations_and_preserves_exit_three) ... ok
 test_missing_journal_or_mismatched_peer_list_never_silently_loses_obligation (test_feed_fence.FeedFenceTests.test_missing_journal_or_mismatched_peer_list_never_silently_loses_obligation) ... ok
 test_second_peer_is_not_advanced_after_lost_connection_append_failure (test_feed_fence.FeedFenceTests.test_second_peer_is_not_advanced_after_lost_connection_append_failure) ... ok
 test_complete_invalid_digest_length_schema_and_peer_preserve_evidence (test_feed_journal_live.FeedJournalLiveTests.test_complete_invalid_digest_length_schema_and_peer_preserve_evidence) ... ok
@@ -22,19 +22,7 @@ test_process_death_at_each_named_recovery_and_append_cut (test_feed_journal_live
 test_real_model_fence_survives_a_second_append_after_sync_failure (test_feed_journal_live.FeedJournalLiveTests.test_real_model_fence_survives_a_second_append_after_sync_failure) ... ok
 test_short_reads_are_accumulated_until_real_eof (test_feed_journal_live.FeedJournalLiveTests.test_short_reads_are_accumulated_until_real_eof) ... ok
 
-======================================================================
-FAIL: test_ambiguous_append_stops_all_feed_mutations_and_preserves_exit_three (test_feed_fence.FeedFenceTests.test_ambiguous_append_stops_all_feed_mutations_and_preserves_exit_three)
 ----------------------------------------------------------------------
-Traceback (most recent call last):
-  File "/Users/ember/dev/fn/build/lanes/w12-feed-durability/tests/test_feed_fence.py", line 41, in test_ambiguous_append_stops_all_feed_mutations_and_preserves_exit_three
-    work.assert_not_called()
-    ~~~~~~~~~~~~~~~~~~~~~~^^
-  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/unittest/mock.py", line 947, in assert_not_called
-    raise AssertionError(msg)
-AssertionError: Expected 'mock' to not have been called. Called 1 times.
-Calls: [call()].
+Ran 23 tests in 7.383s
 
-----------------------------------------------------------------------
-Ran 23 tests in 7.152s
-
-FAILED (failures=1)
+OK

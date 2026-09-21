@@ -1,6 +1,6 @@
 # Handoff: w12/feed-durability
 
-Baseline `8b474e2`; code tip `59eb42f`. This packet repairs the physical FNFD
+Baseline `8b474e2`; code tip `0e642a1`. This packet repairs the physical FNFD
 append/reopen path. It does not wait for, or implement, the next packet's
 submission intent/abort protocol. No shared registry, milestone, BOARD or
 Makefile root list was edited.
@@ -65,7 +65,9 @@ hashes, invocations and results. The farm uses `swarm-build`; no broad roots
 outside the initial owned dependency closure were requested. Earlier failures
 were ordinary guard/test-admission failures, fixed without trust facilities.
 
-Host validation is the exact command, version, revision and input hashes in
+A final fence test detected that an intended generic-guard gate had not been
+inserted; `0e642a1` adds it before invoking the callback. The corrected final
+host validation passed. Its exact command, version, revision and input hashes are in
 [the generated host evidence](../evidence/feed-journal-w12-host.json), with
 [raw output](../evidence/feed-journal-w12-host.log):
 
