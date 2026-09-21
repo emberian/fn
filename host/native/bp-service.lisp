@@ -64,19 +64,26 @@
         (push record records)))))
 
 (defun fnn-bps-sequence-ready (service has-records)
-  (multiple-value-bind (dir freshp) (fnn-bp-sequence-dir (fnn-bps-tally service))
-    (let* ((frontier (fnn-join dir "frontier.fnb"))
-           (present (fnn-check-regular frontier))
-           (raw (if present
-                    (fnn-read-regular-bounded
-                     frontier (fnn-core 'fn-bpn-host-sequence-frame-limit))
-                  (fnn-make-octets 0)))
-           (answer (fnn-core 'fn-bpn-host-sequence-recover
-                             (fnn-octet-list raw) (and present t)
-                             (and freshp (not has-records)))))
-      (if (eq (fnn-core 'fn-bpn-host-sequence-ready-p answer) t)
-          :ready
-        :fault))))
+  (let* ((dir (fnn-join (fnn-bps-root service) "sequence"))
+         (prior (fnn-lstat dir)))
+    ;; Do not create a fresh sequence namespace just to inspect it: W12's
+    ;; allocator must observe the creation itself so it can accept an absent
+    ;; frontier exactly once and barrier the parent before first allocation.
+    (if (null prior)
+        (if has-records :fault :ready)
+      (progn
+        (fnn-safe-directory dir nil)
+        (let* ((frontier (fnn-join dir "frontier.fnb"))
+               (present (fnn-check-regular frontier))
+               (raw (if present
+                        (fnn-read-regular-bounded
+                         frontier (fnn-core 'fn-bpn-host-sequence-frame-limit))
+                      (fnn-make-octets 0)))
+               (answer (fnn-core 'fn-bpn-host-sequence-recover
+                                 (fnn-octet-list raw) (and present t) nil)))
+          (if (eq (fnn-core 'fn-bpn-host-sequence-ready-p answer) t)
+              :ready
+            :fault))))))
 
 (defun fnn-bps-step (service event)
   ;; Assurance subject: this is the host call to fn-bpn-step, with no sibling
@@ -240,16 +247,23 @@
     (unwind-protect
          (let* ((adu (fnn-octet-list (fnn-read-regular-bounded adu-path transfer-mru)))
                 (obs (fnn-bp-observation wall wall-error))
+                (work-octets (fnn-octet-list (fnn-string-octets work)))
+                (attempt-octets (fnn-octet-list (fnn-string-octets attempt)))
+                (existing (fnn-core 'fn-bpn-host-existing-sequence
+                                    (fnn-bps-state service) work-octets
+                                    attempt-octets generation))
                 ;; Allocation has crossed W12's file and directory barriers
                 ;; before this sequence enters fn-bpn-step.
-                (sequence (fnn-bp-reserve-sequence (fnn-bps-tally service)))
+                (sequence
+                 (if (eq (fnn-core 'fn-bpn-host-existing-sequence-p existing) t)
+                     (fnn-core 'fn-bpn-host-existing-sequence-value existing)
+                   (fnn-bp-reserve-sequence (fnn-bps-tally service))))
                 (route (list :route
                              (fnn-octet-list (fnn-string-octets host)) port
                              (fnn-octet-list (fnn-string-octets node-id))
                              +fnn-tcl-keepalive+ +fnn-tcl-segment-mru+ transfer-mru))
                 (event (list :enqueue
-                             (fnn-octet-list (fnn-string-octets work))
-                             (fnn-octet-list (fnn-string-octets attempt))
+                             work-octets attempt-octets
                              generation sequence route peer adu obs)))
            (fnn-bps-drive-effects service (fnn-bps-step service event))
            (fnn-bps-attempt-ready service)
