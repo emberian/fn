@@ -28,6 +28,7 @@
 (include-book "books/feed-filename")
 (include-book "books/native-operator")
 (include-book "books/bp-receipt-records")
+(include-book "books/bp-native-app")
 (include-book "books/bp-workflow-records")
 (include-book "books/journal-publish")
 (include-book "books/app-journal")
@@ -68,6 +69,7 @@
 (ld "host/native/reader-model-host.lisp" :ld-error-action :error)
 (ld "host/workflow-host.lisp" :ld-error-action :error)
 (ld "host/bp-receipt-journal-host.lisp" :ld-error-action :error)
+(ld "host/bp-native-app-host.lisp" :ld-error-action :error)
 (ld "host/journal-publish-host.lisp" :ld-error-action :error)
 ; The ACL2 side of the TCPCLv4 host: every protocol value the convergence
 ; layer needs, so that host/native/tcpcl.lisp computes none of them.
@@ -113,6 +115,10 @@
         ; The convergence layer, over io.lisp's socket surface and nothing else.
         (load "host/native/tcpcl.lisp")
         (load "host/native/bp.lisp")
+        ; The application receiver is loaded after both owner and BP so its
+        ; callback joins their existing objects instead of opening a second
+        ; Store or convergence interpreter.
+        (load "host/native/bp-app.lisp")
         (load "host/native/bp-service.lisp")
         ; Native anchor acquisition and its real primitive facility.  The
         ; anchor command calls fnn-crypto-startup in the restarted image, so
