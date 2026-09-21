@@ -112,6 +112,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/feed-filename-tests \
 	books/feed-wire-input \
 	tests/acl2/feed-wire-input-tests \
+	books/feed-auth-profile \
+	tests/acl2/feed-auth-profile-tests \
 	books/feed-connection \
 	tests/acl2/feed-connection-tests \
 	books/feed-connection-invariants \

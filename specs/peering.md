@@ -1299,6 +1299,17 @@ typed peer record and the existing configuration record codec persists and
 recovers it.  The earlier form without `AUTH-KIND` remains a source-address
 decode for compatibility with stored operator procedures.
 
+An outbound v2 tuple appends `(:authinfo profile-ref allow-clear)` to the
+legacy four outbound fields.  `profile-ref` names an owner-only regular file;
+the native host bounds and reads it without parsing, and ACL2 decodes exactly
+`FNAUTH1\n<user>\n<password>\n`.  USER and PASS are transient connection
+state and never enter the configuration journal or FNFD delivery journal.
+ACL2 sends AUTHINFO after TLS and before MODE STREAM.  `allow-clear` defaults
+false; a clear transport refuses before USER unless the stored policy is
+explicitly true.  A 481 response, malformed profile, transport interruption,
+or any other handshake refusal closes the connection; the ordinary peer-loss
+transition retains or requeues durable delivery work.
+
 - **The per-peer scheduler is a table of schedulers, not a peer field on
   `fn-sched-item`.** §3.1's shape (peer at item index 7, `fn-sched-selection`
   over the peer-filtered queue) **falsifies two keystones of
