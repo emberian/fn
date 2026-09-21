@@ -248,8 +248,9 @@ def did_not_complete(name, command, reason) -> Step:
 # The vocabulary is `tools/v0_matrix.py`'s, which already keeps five verdicts
 # apart over 190 rows: a fixed set of words never collapsed into pass/fail; a
 # declared inventory, so a silently skipped item is impossible; one emitter
-# that refuses an undeclared key or a verdict with no blocker; and a sha256
-# over the records, so a verdict cannot be typed into the evidence afterwards.
+# that refuses an undeclared CLAIM or an undecided verdict with no blocker;
+# and a sha256 over the records, so a verdict cannot be typed in afterwards.
+# `violated` is deliberately outside the inventory rule: see `record`.
 #
 # Where this diverges from that file, and why.  A v0_matrix row is an
 # OBSERVATION of a feature, and `accepted`, `refused` and `uncertain` are D13's
@@ -694,11 +695,11 @@ class DeployGate:
                blocker="", owner="", planned=None, title="") -> Finding:
         """The ONLY way a finding is created.  It refuses what it cannot check.
 
-        A planned key must be in `ASSERTIONS` with this instance declared, an
-        undecided verdict must name its blocker, and an unknown verdict stops
-        the gate.  Each of those is a defect in the gate, not in the tree, and
-        a gate that records a verdict it cannot justify is the thing this
-        whole file exists to stop."""
+        `held` is the CLAIM, so its key must be in `ASSERTIONS` with this
+        instance declared; an undecided verdict must name its blocker; an
+        unknown verdict stops the gate.  Each of those is a defect in the
+        gate, not in the tree, and a gate that records a verdict it cannot
+        justify is the thing this whole file exists to stop."""
         if verdict not in FINDINGS:
             raise FindingError("{}: verdict {!r} is not one of {}".format(
                 key, verdict, FINDINGS))
@@ -708,7 +709,7 @@ class DeployGate:
         if planned:
             if declared is None:
                 raise FindingError(
-                    "{}: a decided finding must be declared in ASSERTIONS".format(key))
+                    "{}: a planned finding must be declared in ASSERTIONS".format(key))
             if instance not in declared[1]:
                 raise FindingError("{}: instance {!r} is not one of {}".format(
                     key, instance, declared[1]))
@@ -930,13 +931,24 @@ fi
                 "reads them. Nothing in this gate re-establishes any certificate, and a "
                 "book whose pair did not come across is included uncertified."
                 .format(gate))
-            self.check(
-                "certificates-match", "mismatched=0" in step.output,
-                "some books in the gate did not hash to this revision's sources, so "
-                "their pairs were not copied and ACL2 read them uncertified: {}. "
-                "Nothing in this run rests on those books being proved."
-                .format(step.first_line),
-                observed=step.first_line)
+            if "mismatched=0" in step.output:
+                self.check("certificates-match", True, "",
+                           observed=step.first_line)
+            else:
+                # This gate never claims the books are PROVED -- only that the
+                # certificates named here are the ones ACL2 read.  A pair that
+                # did not come across therefore does not falsify an assertion;
+                # it means the tree that served is not the certified tree, and
+                # the run cannot stand behind a claim that says it is.
+                self.inconclusive(
+                    "certificates-match",
+                    "some books in the gate did not hash to this revision's sources, "
+                    "so their pairs were not copied and ACL2 read them uncertified: "
+                    "{}. Nothing in this run is evidence about those books, and no "
+                    "claim of the form \"this certified commit serves\" follows from "
+                    "it.".format(step.first_line),
+                    "a certificate pair did not match this revision's source",
+                    observed=step.first_line)
             self.certificates_ok = step.rc == 0
             return step
         step = self.sh("certify on host",

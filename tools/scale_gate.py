@@ -607,7 +607,8 @@ class ScaleGate(deploy_gate.DeployGate):
         self.read_at_scale(largest)
         if self.skip_previous:
             self.skip("previous method", "tests/bench/generate.py + measure.py",
-                      "--skip-previous: the like-for-like comparison was not run")
+                      "--skip-previous: the like-for-like comparison was not run",
+                      key="previous-method")
         else:
             self.previous_method()
 

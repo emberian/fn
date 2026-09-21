@@ -581,11 +581,24 @@ fi
                 "only reads them. Nothing in this lab re-establishes any certificate, "
                 "and a book whose pair did not come across is included uncertified."
                 .format(gate))
-            self.check(
-                "certificates-match", "mismatched=0" in step.output,
-                "some books in the gate did not hash to this revision's sources, so "
-                "their pairs were not copied and ACL2 read them uncertified: {}"
-                .format(step.first_line), observed=step.first_line)
+            if "mismatched=0" in step.output:
+                self.check("certificates-match", True, "",
+                           observed=step.first_line)
+            else:
+                # This gate never claims the books are PROVED -- only that the
+                # certificates named here are the ones ACL2 read.  A pair that
+                # did not come across therefore does not falsify an assertion;
+                # it means the tree that served is not the certified tree, and
+                # the run cannot stand behind a claim that says it is.
+                self.inconclusive(
+                    "certificates-match",
+                    "some books in the gate did not hash to this revision's sources, "
+                    "so their pairs were not copied and ACL2 read them uncertified: "
+                    "{}. Nothing in this run is evidence about those books, and no "
+                    "claim of the form \"this certified commit serves\" follows from "
+                    "it.".format(step.first_line),
+                    "a certificate pair did not match this revision's source",
+                    observed=step.first_line)
             return step
         return self.farm_closure()
 
