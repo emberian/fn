@@ -3,7 +3,7 @@
 ; and slices the suffix by the sequence ACL2 returned; ACL2 revalidates that
 ; suffix in fn-checkpoint-restore.
 (in-package "ACL2")
-(include-book "../books/checkpoint-reclaim")
+(include-book "../books/checkpoint-publish")
 (include-book "../books/checkpoint-compaction")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
@@ -90,28 +90,6 @@
 (defun fn-store-checkpoint-next-generation (generations)
   (declare (xargs :mode :program))
   (fn-cpp-next-generation generations))
-
-(defun fn-store-checkpoint-decode-events (octet-events)
-  (declare (xargs :mode :program))
-  (if (consp octet-events)
-      (let ((decoded (fn-store-event-decode-exact (car octet-events))))
-        (if (and (consp decoded) (equal (car decoded) :ok)
-                 (consp (cdr decoded))
-                 (fn-store-event-p (car (cdr decoded))))
-            (let ((rest (fn-store-checkpoint-decode-events (cdr octet-events))))
-              (if (equal rest :bad)
-                  :bad
-                (cons (car (cdr decoded)) rest)))
-          :bad))
-    (if (null octet-events) nil :bad)))
-
-(defun fn-store-checkpoint-reclaim-plan
-    (generations selected leases octet-records)
-  (declare (xargs :mode :program))
-  (let ((events (fn-store-checkpoint-decode-events octet-records)))
-    (if (equal events :bad)
-        '(:error :records)
-      (fn-cr-preservation-plan generations selected leases events))))
 
 ; Native compaction/recovery boundary.  The returned octet records are the
 ; exact prefix held by the selected summary followed by the observed suffix;
