@@ -149,7 +149,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-013",
-        "PRF-031"
+        "PRF-031",
+        "PRF-039"
       ],
       "verification": [
         "proof",
@@ -242,7 +243,8 @@
       "milestone": "M2",
       "status": "specified",
       "proof_targets": [
-        "PRF-005"
+        "PRF-005",
+        "PRF-035"
       ],
       "verification": [
         "proof",
@@ -413,7 +415,8 @@
       "proof_targets": [
         "PRF-007",
         "PRF-032",
-        "PRF-034"
+        "PRF-034",
+        "PRF-036"
       ],
       "verification": [
         "proof",
@@ -453,7 +456,8 @@
       "milestone": "M2",
       "status": "implemented",
       "proof_targets": [
-        "PRF-008"
+        "PRF-008",
+        "PRF-037"
       ],
       "verification": [
         "proof",
@@ -463,7 +467,8 @@
         "books/checkpoint.lisp",
         "tests/acl2/checkpoint-tests.lisp",
         "specs/checkpoint.md",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "planning/evidence/checkpoint-validator-2026-09-21.md"
       ],
       "implementation_note": "Logical checkpoint plus suffix replay equivalence is implemented; persisted checkpoint bytes, generation publication, crash selection and freshness remain open.",
       "keystones": [
@@ -495,7 +500,9 @@
       "specification": "specs/storage.md#checkpointing-and-compaction",
       "milestone": "M5",
       "status": "specified",
-      "proof_targets": [],
+      "proof_targets": [
+        "PRF-035"
+      ],
       "verification": [
         "integration",
         "scenario"
@@ -516,7 +523,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-007",
-        "PRF-032"
+        "PRF-032",
+        "PRF-036"
       ],
       "verification": [
         "proof",
@@ -610,7 +618,7 @@
       "evidence": [
         "planning/evidence/wave-realignment-2026-09-19.md"
       ],
-      "note": "PRF-017 and PRF-018 have no events. books/clock and books/anchor certify and books/assumptions holds the constrained A-* functions, but docs/proofs.md records that no theorem in the tree takes one of those constraints as a hypothesis yet, so the delay and liveness assumptions are declared, not applied."
+      "note": "PRF-017 and PRF-018 have no events. books/clock and books/anchor certify and books/assumptions holds the constrained A-* functions, but docs/proofs.md records that no theorem in the tree takes one of those constraints as a hypothesis yet, so the delay and liveness assumptions are declared, not applied. w11/anchor-root (D22) closed the divergence w11/one-owner found: fn-anchor-root is a record field, not (fn-anchor-leaf-digest (fn-anchor-nonce a)), so fn-anchor-signed-octets is the message the host verified for a response of any batch size, and fn-anchor-signed-octets-determine-the-root now covers every response rather than the empty-PATH case only. fn-anchor-one-nonce-p is a branch of every transition answering :uncertain :unmodelled-tree, so a batched response is never accepted. The host-entry hypothesis is two values, one per A-CRYPTO seam (fn-anchor-signatures-okp and fn-anchor-one-nonce-p), both computed in tools/run_store.py anchor_verdict and Anchor.one_nonce; the mint<=midpoint<=maxt conjunct moved into fn-anchor-verifiedp-observed, so tools/roughtime.py's copy is a preflight and no longer half the discharge. Correction to the earlier note and to w11/one-owner: the vectors were NOT all single-nonce -- tests/vectors/roughtime-int08h-2026-09-19-later2.json has a one-node PATH and INDX 1, so the divergence was live in fn's own tests, not hypothetical. Still open and now a feature item: there is no SHA-512 in the tree, tools/roughtime.py's _leaf/_node/merkle_root remain unowned (recorded as a trusted facility in specs/anchor.md), and fn therefore cannot use a batched Roughtime response at all. PRF-017 still has no curated events in planning/proof-events.json."
     },
     {
       "id": "RET-001",
@@ -910,7 +918,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-012",
-        "PRF-018"
+        "PRF-018",
+        "PRF-038"
       ],
       "verification": [
         "proof",
@@ -924,10 +933,11 @@
         "tests/evidence/2026-09-18-bp-workflow.md",
         "tests/evidence/2026-09-18-bp-exchange.md",
         "tests/evidence/2026-09-18-bp-composition-assurance.md",
-        "planning/evidence/wave-realignment-2026-09-19.md"
+        "planning/evidence/wave-realignment-2026-09-19.md",
+        "planning/evidence/bp-dtn7-w11-2026-09-21.md"
       ],
       "implementation_note": "Actual pinned dtn7-rs TCP-CLA exchange exercised durable fn work, outage/restart, lost receipt, duplicate recognition and return receipt. Joint sender binding and fixed-Store receiver replay are certified; five receiver SIGKILL cuts and the 133-test suite passed. BPA observations never discharge application work/archive pins. The prior inert-bundle restart failure and explicit fn retry are retained in evidence. Authentication, changing-Store/host refinement, LTP, multi-relay and physical qualification remain open.",
-      "note": "The BP half has certified keystones (fn-bp-step-preserves-node, fn-bp-trace-preserves-node, and the bp-receiver invariants), and the requirement as written also names LTP, for which there is only planning/ltp-feasibility.md -- a feasibility study, not an implementation. Stays specified because the requirement's scope is wider than the evidence."
+      "note": "The BP half has certified keystones (fn-bp-step-preserves-node, fn-bp-trace-preserves-node, and the bp-receiver invariants), and the requirement as written also names LTP, for which there is only planning/ltp-feasibility.md -- a feasibility study, not an implementation. Stays specified because the requirement's scope is wider than the evidence. Amended 2026-09-21 (w11/bp-node): fn now ENCODES BPv7 as well as carrying it, PRF-038 names the codec's round trip and the node's two ends, and the dtn7-rs exchange has one side authoring each way rather than dtn7 authoring both. Still `specified` and not `implemented`, for the reason already given -- the requirement names LTP, for which there is only a feasibility study -- and now for a second: `specs/bp-design.md` section 1.5's processing machine does not exist, so no bundle is stored, retried, expired or reassembled by a node state."
     },
     {
       "id": "NNT-001",
@@ -937,7 +947,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-015",
-        "PRF-031"
+        "PRF-031",
+        "PRF-039"
       ],
       "verification": [
         "proof",
@@ -1028,7 +1039,8 @@
         "PRF-013",
         "PRF-015",
         "PRF-031",
-        "PRF-033"
+        "PRF-033",
+        "PRF-039"
       ],
       "verification": [
         "proof",
@@ -1205,7 +1217,8 @@
       "milestone": "M1",
       "status": "specified",
       "proof_targets": [
-        "PRF-014"
+        "PRF-014",
+        "PRF-035"
       ],
       "verification": [
         "proof",

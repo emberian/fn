@@ -228,7 +228,8 @@
 ; Without the live-history relation: the ready files with an empty node.
 (defconst *bpre-forged-store*
   (fn-sn-make *bpr-groups* 20 (fn-sn-files *bpre-final-store*)
-              (fn-node-initial-state *bpr-groups* 20)))
+              (fn-node-initial-state *bpr-groups* 20)
+              nil (fn-stx-index-empty)))
 (assert-event (fn-sn-statep *bpre-forged-store*))
 (assert-event (equal (fn-bprv-phase *bpre-forged-store*) :ready))
 (assert-event (not (fn-snt-relation *bpre-forged-store*)))
@@ -334,7 +335,7 @@
 ; list is a no-op for every transition and is not its own prefix.
 (defconst *bpre-untyped-store*
   (fn-sn-make *bpr-groups* 20 (fn-sf-make :ready 3 nil (cons *bpr-record* 7) nil nil nil 5)
-              (fn-sn-node *bpr-store*)))
+              (fn-sn-node *bpr-store*) nil (fn-stx-index-empty)))
 (assert-event (not (fn-sn-statep *bpre-untyped-store*)))
 ; fn-snrt-step carries (fn-sn-statep s) now (store, 2026-09-19); this witness is a
 ; non-state on purpose, so it is evaluated on the :logic body.

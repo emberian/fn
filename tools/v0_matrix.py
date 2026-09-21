@@ -1130,6 +1130,8 @@ def main():
     parser.add_argument("--group", required=True)
     parser.add_argument("--msgid", required=True)
     parser.add_argument("--absent", default="<absent@example.invalid>")
+    parser.add_argument("--user", default="")
+    parser.add_argument("--secret", default="")
     args = parser.parse_args()
     out = {"client": "stdlib nntplib", "python": platform.python_version(),
            "commands": []}
@@ -1139,6 +1141,17 @@ def main():
             caps = client.getcapabilities()
             out["capabilities"] = sorted(caps)
             out["commands"].append("CAPABILITIES")
+            # RFC 4643, and the whole of it is nntplib's: it sends AUTHINFO
+            # USER and AUTHINFO PASS and reads the codes.  Nothing in this
+            # file frames or parses them.  The login is the observation the
+            # matrix could not make with a non-fn client before.
+            if args.user:
+                out["authinfo_advertised"] = "AUTHINFO" in caps
+                client.login(args.user, args.secret, usenetrc=False)
+                out["login"] = "accepted"
+                out["commands"].append("AUTHINFO USER/PASS")
+                out["capabilities_after_login"] = sorted(
+                    client.getcapabilities())
             _, count, first, last, name = client.group(args.group)
             out["group"] = {"count": count, "first": first, "last": last,
                             "name": name}
@@ -1176,7 +1189,8 @@ def main():
             out["commands"].append("QUIT")
         out["ok"] = (out["group"]["count"] >= 1 and out["article_has_msgid"]
                      and out["body_lines"] >= 1
-                     and str(out["absent"]).startswith("43"))
+                     and str(out["absent"]).startswith("43")
+                     and (not args.user or out.get("login") == "accepted"))
     except Exception as error:
         out["ok"] = False
         out["error"] = "{}: {}".format(type(error).__name__, error)
@@ -1868,9 +1882,10 @@ else echo NONE; fi
             step = self.sh("node {} principal set-password".format(node.upper),
                            self.cd(self.cli(node, args)), timeout=900, expect=None)
             self.from_step("V0-AUTH-PASSWORD", step, node=node.name,
-                           limit="the secret is stored in the clear on this tree "
-                                 "(BOARD OB-AUTH-DIGEST); this row is about the CLI, "
-                                 "not about the secret's protection")
+                           limit="what is stored is books/auth-secret.lisp's salted "
+                                 "verifier, derived in an ACL2 session; this row is "
+                                 "about the CLI writing it, not about the strength of "
+                                 "the digest or the secret's protection on the wire")
             listing = self.sh("node {} principal list".format(node.upper),
                               self.cd(self.cli(node, "principal list")),
                               timeout=900, expect=None)
@@ -1881,11 +1896,11 @@ else echo NONE; fi
                       listing.command, "rc={} lists {}: {}".format(
                           listing.rc, AUTH_USER, shows),
                       node=node.name, exit_code=listing.rc,
-                      limit="`principal set-password` writes a credential to "
-                            "<store>/auth.toml and `principal list` reads the "
-                            "<store>/principals/*.principal files: on this tree they "
-                            "are two registries and a login set by the first does not "
-                            "appear in the second")
+                      limit="one registry: `set-password` writes and `list` reads "
+                            "the credential file ([auth] path, else "
+                            "<store>/auth.toml), which is the same file the running "
+                            "service loads. The listing prints the login, its "
+                            "principal and its posting flag and never the verifier")
 
     def auth_session(self, node: NodeSpec):
         keys = ("V0-AUTH-ADVERTISED", "V0-AUTH-GATED", "V0-AUTH-LOGIN",
@@ -1930,7 +1945,16 @@ else echo NONE; fi
         self.from_reply("V0-AUTH-GATED", result.get("POST BEFORE", ""), step.command,
                         node=node.name,
                         limit="one gated command; RFC 4643 section 2.3 does not require "
-                              "the same code for every gated verb")
+                              "the same code for every gated verb. The gate is the "
+                              "NODE POLICY (`fn init --auth-required`, [auth] required) "
+                              "and these two nodes do not set it: a node that serves "
+                              "readers unauthenticated and a transit peer on the same "
+                              "loopback address cannot, because "
+                              "fn-auth-restricted-keywordp gates the reader verbs and "
+                              "IHAVE alike. tests/test_auth.py "
+                              "ServedCredentialTests.test_post_is_gated_by_the_"
+                              "configured_policy is the same question asked of a node "
+                              "that does set it")
         self.from_reply("V0-AUTH-LOGIN", result.get("AUTHINFO PASS", ""), step.command,
                         node=node.name,
                         limit="USER/PASS over an unprotected loopback connection")
@@ -2895,16 +2919,19 @@ else echo NONE; fi
                 step = self.sh("independent nntplib client on node {}".format(
                     node.upper), self.cd(
                         "{} {}/independent.py --port {} --group {} --msgid '{}' "
-                        "--absent '{}'".format(
+                        "--absent '{}' --user {} --secret {}".format(
                             interpreter, self.run, node.port, GROUPS[0],
                             node.accepted[0] if node.accepted else ART[node.name],
-                            ABSENT_ID)), timeout=600, expect=None)
+                            ABSENT_ID, AUTH_USER, AUTH_SECRET)),
+                    timeout=600, expect=None)
                 result = self.payload(step)
                 self.emit("V0-CLIENT-NNTPLIB", exit_verdict(step.rc), step.command,
-                          "nntplib {} drove {}; group={} article_lines={} "
-                          "absent={}".format(
+                          "nntplib {} drove {}; login={} authinfo-advertised={} "
+                          "group={} article_lines={} absent={}".format(
                               result.get("python", "?"),
                               ", ".join(result.get("commands", [])) or "nothing",
+                              result.get("login", "(not attempted)"),
+                              result.get("authinfo_advertised"),
                               result.get("group"), result.get("article_lines"),
                               str(result.get("absent"))[:60])
                           if result else (step.first_line or "(no output)"),

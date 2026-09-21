@@ -50,6 +50,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/frame \
 	books/frame-invariants \
 	tests/acl2/frame-tests \
+	books/frame-trailer \
+	tests/acl2/frame-trailer-tests \
 	books/identity \
 	books/identity-invariants \
 	tests/acl2/identity-tests \
@@ -90,6 +92,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-node-traces-tests \
 	books/store-node-resolution \
 	tests/acl2/store-node-resolution-tests \
+	tests/acl2/store-node-resolution-traces-tests \
 	books/store-sweep \
 	tests/acl2/store-sweep-tests \
 	books/store-observed \
@@ -279,10 +282,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/stx-authority \
 	tests/acl2/stx-tests \
 	tests/acl2/stx-transit-tests \
+	tests/acl2/store-node-index-tests \
 	books/scheduler-peers \
 	tests/acl2/scheduler-peers-tests
 
-.PHONY: check certify acl2-ld certs-install certs-publish model-test tooling-test test
+.PHONY: check certify acl2-ld certs-install certs-publish model-test tooling-test test labs labs-quick
 check:
 	$(PYTHON) tools/check_scaffold.py
 # Every host file loaded alone in its own ACL2: the dynamic half of the
@@ -304,6 +308,18 @@ check:
 # walk spelled by hand instead of through a named projection is drift and is
 # counted, not failed (--strict fails on those too).  Mechanical, no ACL2.
 	$(PYTHON) tools/session_depth.py
+# Every certification claim in this tree cites a run directory under
+# `build/`, which `.gitignore:6` excludes: the directory exists only on the
+# box that ran it, and a worktree removal, a farm root or a gate reaper
+# deletes it.  At dev 5698648, 314 run ids were cited in tracked files and
+# none resolved, so a reader could not check a single one.  The manifest is
+# the claim and is committed under planning/evidence/manifests/; this fails
+# on a NEWLY cited run with no committed manifest and tolerates the 177 the
+# lane could not recover, which are named in that directory's LOST.txt.
+# `--strict` fails on those too, once their owners re-run or retract them.
+# Mechanical, no ACL2.  `tools/cite_check.py` is the same family for
+# repository paths and deliberately does not read `build/`.
+	$(PYTHON) tools/evidence_manifests.py check
 # The teeth audit's static half: assertions that exercise ACL2 rather than fn,
 # recognisers that no test ever makes TRUE, keystones with no witness in any
 # test book, and citations of theorems the tree no longer defines.  It needs
@@ -314,6 +330,38 @@ check:
 # `python3 tools/teeth_check.py --evaluate` produces in about twenty minutes
 # of one ACL2.
 	$(PYTHON) tools/teeth_check.py --summary
+# Two static lints over the harness, both from the 2026-09-19 incident: a
+# host entry point gained a required keyword-only argument, two callers in
+# tests/ were never updated, and both integration labs were dead for a day
+# while every `make check` was green -- because nothing ran a lab and the one
+# test that would have failed had a skip keyed on a failure message.
+# `signatures` binds every resolvable Python call against the definition it
+# names and fails on a disagreement; `acl2-arity` does the same for the `ld`ed
+# host files, which no certification reads, and reports; `waivers` fails on a
+# skip keyed on a failure that carries no `waiver-ok:` declaration.  All three
+# are static, need no ACL2 and take about a second.
+	$(PYTHON) tools/harness_check.py
+# Every repository path this tree cites and no file answers.  On 2026-09-21
+# `books/stx-lace.lisp` was found citing a book and a test book that have
+# never existed, for the observation four keystones hypothesise.  The counts
+# for `specs/`, `planning/` and `tools/` are REPORTED: a design naming the
+# book a packet will add is not a defect.  A citation inside `books/` or
+# `tests/acl2/` is a claim about EVIDENCE, there are none undisclosed on this
+# tree as of w11/phantom-cites, and `--strict` is what keeps it that way: a
+# new one fails `make check` until the file exists, the path is corrected, or
+# the comment says the file does not exist and what rests on it.  Mechanical,
+# no ACL2; triage in planning/lanes/HANDOFF-w11-phantom-cites.md.
+	$(PYTHON) tools/cite_check.py --summary --strict
+
+# The integration labs.  Deliberately NOT part of `check`: the quick tier is
+# about two and a half minutes and the box tier is hours, while `check` is
+# seconds and runs before every commit.  `tests/README.md` has the table of
+# tiers and costs.  Each lab reports passed, failed, or not-runnable with the
+# exact reason; the exit code is 1 only when one actually failed.
+labs:
+	$(PYTHON) tools/labs.py --tier local
+labs-quick:
+	$(PYTHON) tools/labs.py --tier quick
 
 certify:
 	$(PYTHON) tools/certify_books.py --jobs $(FN_CERTIFY_JOBS) $(ACL2_BOOKS)
@@ -340,7 +388,8 @@ model-test: certify
 
 tooling-test:
 	$(PYTHON) -m unittest tests.test_certify_runner tests.test_acl2_wrapper \
-	    tests.test_ledger -v
+	    tests.test_ledger tests.test_cite_check \
+	    tests.test_evidence_manifests -v
 
 test: check certify
 	$(PYTHON) tools/run_simulator.py

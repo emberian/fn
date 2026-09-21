@@ -90,6 +90,13 @@ cross-cluster steps you could not take alone.
   it are unattempted" instead, and expect a tail when X closes: one book's
   keystone closed on 2026-09-20 and ten of the eleven events behind it were
   then open, including four of the five keystones the book exists for.
+- **A CLAIM catches an identifier collision at MERGE, not at allocation.**
+  Measured 2026-09-21: two lanes both ran `tools/next_id.py`, both posted a
+  board CLAIM, and both took D21 anyway, because neither could see the
+  other's claim until one had merged. So expect to renumber, do it in one
+  pass on the merge, and never assume your id survived just because you
+  claimed it. If your id appears in a spec or a book comment, grep for it
+  after merging dev.
 - `python3 tools/next_id.py` prints the next free identifier in every
   registry. Run it, claim what it prints on the board with a one-line CLAIM,
   then write the row. The CLAIM line is what has actually been catching

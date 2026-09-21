@@ -27,11 +27,18 @@
 ;; The test-only realisers for the two A-CRYPTO seams
 
 ;; The captured response has one nonce, so its tree has one leaf and the root
-;; is that leaf digest: the realiser returns the captured ROOT.  It satisfies
-;; both constraints of the encapsulate (64 octets) and claims nothing else.
+;; is that leaf digest: the realiser returns the captured ROOT for the nonce
+;; this node chose, and a different 64 octets for any other nonce.  It
+;; satisfies both constraints of the encapsulate (64 octets) and claims
+;; nothing else -- in particular nothing about collisions.  It DISCRIMINATES
+;; on the nonce on purpose: a realiser constant in its argument would make
+;; `fn-anchor-one-nonce-p' true of every root that happened to match, and the
+;; separating witnesses below would separate nothing.
+(defconst *anchor-foreign-root* (cons 7 (cdr *anchor-root*)))
+
 (defun fn-t-anchor-leaf-digest (nonce)
-  (declare (ignore nonce) (xargs :guard t))
-  *anchor-root*)
+  (declare (xargs :guard t))
+  (if (equal nonce *anchor-nonce*) *anchor-root* *anchor-foreign-root*))
 
 ;; The Ed25519 realiser is the encapsulate's own local witness: it refuses a
 ;; key or a signature of the wrong width and otherwise accepts.  That is
@@ -51,6 +58,124 @@
 ;; below reaches the branch it is meant to reach.
 (assert-event (fn-anchor-verifiedp *anchor-live*))
 (assert-event (fn-anchor-acceptablep *anchor-live* *anchor-pinned*))
+(assert-event (fn-anchor-one-nonce-p *anchor-live*))
+(assert-event (fn-anchor-signatures-okp *anchor-live*))
+(assert-event (fn-anchor-window-okp *anchor-live*))
+
+;; -----------------------------------------------------------------------------
+;; A batched response is UNCERTAIN, which is what w11/anchor-root bought
+;;
+;; `*anchor-batched*' (tests/acl2/anchor-tests.lisp) is a well-formed anchor
+;; whose ROOT is not the leaf digest of this node's nonce: exactly what a
+;; Roughtime server answering a batch of clients sends, and exactly what
+;; tests/vectors/roughtime-int08h-2026-09-19-later2.json really is (PATH one
+;; node, INDX 1).  Before the root was a record field the model could not
+;; tell it from `*anchor-live*', because `fn-anchor-root' RECOMPUTED the root
+;; from the nonce; the host verified one message and the keystones described
+;; another.  Now the model sees the real signed octets, cannot fold the tree,
+;; and says so -- as an UNCERTAINTY, because every signature in it is good
+;; and fn simply cannot tell whether it covers this node's nonce.
+
+(assert-event (fn-anchor-p *anchor-batched*))
+(assert-event (not (fn-anchor-one-nonce-p *anchor-batched*)))
+;; Its signatures are fine, which is why `:refused :unverified' would be a
+;; false statement about it.
+(assert-event (fn-anchor-signatures-okp *anchor-batched*))
+(assert-event (fn-anchor-verifiedp *anchor-batched*))
+(assert-event (not (fn-anchor-acceptablep *anchor-batched* *anchor-pinned*)))
+
+;; At the acceptance decision: uncertain, with its own reason, and the node's
+;; durable anchor is untouched.
+(assert-event
+ (equal (fn-anchor-status (fn-anchor-node-accept *anchor-node-held*
+                                                 *anchor-batched*))
+        :uncertain))
+(assert-event
+ (equal (fn-anchor-reason (fn-anchor-node-accept *anchor-node-held*
+                                                 *anchor-batched*))
+        :unmodelled-tree))
+(assert-event
+ (not (equal (fn-anchor-status (fn-anchor-node-accept *anchor-node-held*
+                                                      *anchor-batched*))
+             :refused)))
+(assert-event
+ (equal (fn-anchor-payload (fn-anchor-node-accept *anchor-node-held*
+                                                  *anchor-batched*))
+        *anchor-node-held*))
+
+;; At the restore decision, where the same batched response would otherwise
+;; have outdated the image and opened a new incarnation: uncertain.
+(assert-event
+ (fn-anchor-newerp *anchor-batched-newer* (fn-anchor-image-referenced
+                                           *anchor-image-old*)))
+(assert-event
+ (equal (fn-anchor-status (fn-anchor-restore *anchor-node-fresh*
+                                             *anchor-image-old*
+                                             *anchor-batched-newer*))
+        :uncertain))
+(assert-event
+ (equal (fn-anchor-reason (fn-anchor-restore *anchor-node-fresh*
+                                             *anchor-image-old*
+                                             *anchor-batched-newer*))
+        :unmodelled-tree))
+
+;; And the separation is the ROOT and nothing else: the one-nonce twin of the
+;; same response, identical in its other nine fields, is accepted.
+(assert-event
+ (equal (fn-anchor-status (fn-anchor-restore *anchor-node-fresh*
+                                             *anchor-image-old*
+                                             *anchor-newer*))
+        :accepted))
+
+;; The nonce is load-bearing, concretely: a response carrying a FOREIGN nonce
+;; under this node's signed root does not cover one nonce of ours either.
+;; This is the witness for
+;; `fn-anchor-one-nonce-signed-octets-determine-the-leaf-digest'.
+(assert-event (not (fn-anchor-one-nonce-p *anchor-foreign-nonce*)))
+;; Its signatures and its window are fine; it is the binding that is not.
+(assert-event (fn-anchor-verifiedp *anchor-foreign-nonce*))
+(assert-event
+ (not (fn-anchor-acceptablep *anchor-foreign-nonce* *anchor-pinned*)))
+(assert-event
+ (equal (fn-anchor-reason (fn-anchor-node-accept *anchor-node-held*
+                                                 *anchor-foreign-nonce*))
+        :unmodelled-tree))
+(assert-event
+ (not (equal (fn-anchor-leaf-digest (fn-anchor-nonce *anchor-foreign-nonce*))
+             (fn-anchor-leaf-digest (fn-anchor-nonce *anchor-live*)))))
+
+;; -----------------------------------------------------------------------------
+;; The delegation window is ACL2's, not the host's
+;;
+;; `*anchor-out-of-window*' has MINT one microsecond after MIDP.  Its seam
+;; verdict is T -- the two Ed25519 checks pass and the response covers one
+;; nonce, which is everything the host is asked for -- and the entry the host
+;; calls still refuses it, because `fn-anchor-verifiedp-observed' applies
+;; `fn-anchor-window-okp' inside.  Before 2026-09-20 this refusal existed
+;; only in `tools/roughtime.py:258'.
+(assert-event (fn-anchor-signatures-okp *anchor-out-of-window*))
+(assert-event (not (fn-anchor-window-okp *anchor-out-of-window*)))
+(assert-event (not (fn-anchor-verifiedp *anchor-out-of-window*)))
+(assert-event
+ (equal (fn-anchor-reason (fn-anchor-node-accept-observed
+                           *anchor-node-held* *anchor-out-of-window* t t))
+        :unverified))
+;; Non-degenerate: with the window intact and the same two seam values, it
+;; accepts.
+(assert-event
+ (equal (fn-anchor-status (fn-anchor-node-accept-observed
+                           *anchor-node-held* *anchor-live* t t))
+        :accepted))
+;; And the two seam arguments are not interchangeable: a good signature with
+;; an unfoldable tree is uncertain, a bad signature is a refusal.
+(assert-event
+ (equal (fn-anchor-status (fn-anchor-node-accept-observed
+                           *anchor-node-held* *anchor-live* t nil))
+        :uncertain))
+(assert-event
+ (equal (fn-anchor-status (fn-anchor-node-accept-observed
+                           *anchor-node-held* *anchor-live* nil t))
+        :refused))
 
 ;; -----------------------------------------------------------------------------
 ;; fn-anchor-accepted-anchor-is-strictly-newer
@@ -301,34 +426,72 @@
 ;; -----------------------------------------------------------------------------
 ;; The three host-entry equalities
 ;;
-;; Hypothesis: the host's verdict is the value the constrained seam names for
-;; that anchor.  Without it the host entry and the theorems' subject come
-;; apart, and a host that answers NIL to everything (or T to everything) is
-;; not computing `fn-anchor-verifiedp'.
+;; Two hypotheses, one per A-CRYPTO seam: the host's `verdict' is
+;; `fn-anchor-signatures-okp' and its `one-nonce' is
+;; `fn-anchor-one-nonce-p'.  Without either, the host entry and the theorems'
+;; subject come apart, and a host that answers NIL to everything (or T to
+;; everything) is computing neither.
 
+;; Without the Ed25519 half.
 (assert-event
  (and (fn-anchor-verifiedp *anchor-live*)
       (not (equal (fn-anchor-node-accept-observed *anchor-node-held*
-                                                  *anchor-live* nil)
+                                                  *anchor-live* nil t)
                   (fn-anchor-node-accept *anchor-node-held* *anchor-live*)))))
 
 (assert-event
  (not (equal (fn-anchor-node-advance-observed *anchor-node-held*
-                                              *anchor-live* nil)
+                                              *anchor-live* nil t)
              (fn-anchor-node-advance *anchor-node-held* *anchor-live*))))
 
 (assert-event
  (not (equal (fn-anchor-restore-observed *anchor-node-fresh*
-                                         *anchor-image-old* *anchor-newer* nil)
+                                         *anchor-image-old* *anchor-newer*
+                                         nil t)
              (fn-anchor-restore *anchor-node-fresh* *anchor-image-old*
                                 *anchor-newer*))))
 
-;; And with the verdict the seam names, the two agree, which is the equality
-;; the keystones are carried across.
+;; Without the SHA-512 half, and this is the one this lane added.  A host
+;; that reports the two Ed25519 checks ALONE -- T for a batched response,
+;; which is what `anchor_verdict' did before this lane -- hands `t' for an
+;; anchor whose `fn-anchor-one-nonce-p' is NIL, and the entry and the
+;; keystones' subject come apart: the entry accepts and the subject does not.
 (assert-event
- (equal (fn-anchor-node-accept-observed *anchor-node-held* *anchor-live*
-                                        (fn-anchor-verifiedp *anchor-live*))
+ (and (fn-anchor-signatures-okp *anchor-batched*)
+      (not (fn-anchor-one-nonce-p *anchor-batched*))
+      (equal (fn-anchor-status (fn-anchor-node-accept-observed
+                                *anchor-node-held* *anchor-batched* t t))
+             :accepted)
+      (not (equal (fn-anchor-status (fn-anchor-node-accept
+                                     *anchor-node-held* *anchor-batched*))
+                  :accepted))
+      (not (equal (fn-anchor-node-accept-observed *anchor-node-held*
+                                                  *anchor-batched* t t)
+                  (fn-anchor-node-accept *anchor-node-held*
+                                         *anchor-batched*)))))
+
+;; And with both seam values, the two agree, which is the equality the
+;; keystones are carried across.  Neither is `fn-anchor-verifiedp': the
+;; window conjunct is applied by the entry itself.
+(assert-event
+ (equal (fn-anchor-node-accept-observed
+         *anchor-node-held* *anchor-live*
+         (fn-anchor-signatures-okp *anchor-live*)
+         (fn-anchor-one-nonce-p *anchor-live*))
         (fn-anchor-node-accept *anchor-node-held* *anchor-live*)))
+(assert-event
+ (equal (fn-anchor-node-accept-observed
+         *anchor-node-held* *anchor-batched*
+         (fn-anchor-signatures-okp *anchor-batched*)
+         (fn-anchor-one-nonce-p *anchor-batched*))
+        (fn-anchor-node-accept *anchor-node-held* *anchor-batched*)))
+(assert-event
+ (equal (fn-anchor-restore-observed
+         *anchor-node-fresh* *anchor-image-old* *anchor-batched-newer*
+         (fn-anchor-signatures-okp *anchor-batched-newer*)
+         (fn-anchor-one-nonce-p *anchor-batched-newer*))
+        (fn-anchor-restore *anchor-node-fresh* *anchor-image-old*
+                           *anchor-batched-newer*)))
 
 ;; -----------------------------------------------------------------------------
 ;; What the crypto seam does and does not constrain

@@ -1539,8 +1539,11 @@ else echo NONE; fi
                 self.cd(self.fn("--store {} inspect --message-id '{}'".format(
                     self.b.store, INTERRUPTED_ID))), timeout=900, expect=EXIT_REFUSED)
         if not self.start_node(self.b, tag="after-recovery"):
-            self.skip("reread node B after recovery", "feed.py presence",
-                      "node B did not restart after the recovery")
+            # B served before the kill; a B that will not come back is this
+            # gate's subject failing, not an absent dependency.
+            self.broke("reread node B after recovery", "feed.py presence",
+                       "node B did not restart after the recovery: {}".format(
+                           self.server_failure or "no symptom recorded"))
             return
         self.feed("presence", "--port {} --groups {} --present '{}' --absent '{}'".format(
             self.b.port, ",".join(GROUPS), ",".join(self.b.accepted),
@@ -1571,14 +1574,29 @@ else echo NONE; fi
                         self.cd("FN_ACL2=${FN_ACL2:-$HOME/fn-tools/acl2-8.7/saved_acl2} "
                                 "nice -n 10 sh tools/build_native_host.sh"),
                         timeout=1800, expect=None)
+        if not self.certificates_ok:
+            # `tools/build_native_host.sh` refuses an uncertified book by
+            # design, so a deploy tree with no certificates cannot produce an
+            # image at all.  That is an absence of a dependency, not a broken
+            # build, and it is the one case here that is not a failure.
+            self.facts["tcpcl"] = "no image: the deploy tree holds no certificates"
+            self.skip("tcpcl exchange", "tools/tcpcl_lab.py",
+                      "the deploy tree holds no certificates, so "
+                      "tools/build_native_host.sh cannot build an image: it "
+                      "refuses to load an uncertified book")
+            return
         if build.rc != 0 or "built build/fn-host" not in build.output:
             self.facts["tcpcl"] = "no image: the layer could not be exercised"
             self.gaps.append(
                 "The native image did not build on this commit, so the TCPCLv4\n"
                 "  convergence layer was not exercised at all. Its last lines were:\n"
                 "  " + " | ".join(build.output.strip().splitlines()[-3:]))
-            self.skip("tcpcl exchange", "tools/tcpcl_lab.py",
-                      "build/fn-host was not produced on this commit")
+            # The build script ran; it failed.  A build that fails is not
+            # an absent convergence layer, it is a broken one, and the last
+            # three lines of the build are in the gap above.
+            self.broke("tcpcl exchange", "tools/tcpcl_lab.py",
+                       "build/fn-host was not produced on this commit: "
+                       + (build.first_line or "the build printed nothing"))
             return
         lab = self.sh("tcpcl lab (exchange, refused, keepalive, crash, "
                       "profile, replay)",
@@ -1602,8 +1620,9 @@ else echo NONE; fi
                      "profile", "replay"):
             row = rows.get(name)
             if row is None:
-                self.skip("tcpcl {}".format(name), "tools/tcpcl_lab.py",
-                          "the lab produced no result for this scenario")
+                self.broke("tcpcl {}".format(name), "tools/tcpcl_lab.py",
+                           "the lab ran and produced no result for this "
+                           "scenario, which is a silence, not an absence")
                 continue
             note = ", ".join("{}={}".format(k, v) for k, v in sorted(row.items())
                              if k not in ("scenario", "ok"))
