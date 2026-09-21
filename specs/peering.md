@@ -1534,6 +1534,33 @@ phase machine. `Journal` in `tools/feed_wire.py` performs only file I/O and
 uses the same platform barriers as the store (`run_store.fsync_file` and
 `fsync_dir`). This is fn's local persistence policy, not an NNTP requirement.
 
+### FNFD peer filename migration (wave 14)
+
+`books/feed-filename.lisp` is the only peer-label-to-pathname decision. It
+accepts a nonempty ASCII peer label of at most 256 octets. A historical safe
+label of at most 250 octets containing only ASCII letters, digits, `.`, `_`,
+and `-`, except `.` and `..`, remains exactly the existing leaf
+`feed/<label>.fnfd`. This preserves an existing safe journal without copying,
+renaming, or interpreting it again.
+
+Every other accepted label uses only ACL2-produced relative components:
+`feed/v1/<lowercase-hex label, split every 120 octets>/journal.fnfd`. Each
+input octet has two lowercase hexadecimal output octets; the called projection
+re-exports `fn-id-hex-octets-injective`, so distinct accepted labels cannot
+select the same v1 components. `../escape`, `..`, separators, and overlong
+labels therefore never select a legacy pathname; malformed labels are refused.
+An old unsafe spelling is neither opened nor migrated automatically because it
+could have named outside `feed/` or collided after filesystem normalization.
+An operator who needs to retain its bytes must inspect and move it manually
+before reusing the peer label.
+
+The host receives only the component vector through
+`fn-feed-filename-host-{okp,count,component}`. It rejects a malformed returned
+component at its filesystem boundary and does no label parsing or normalization.
+Nested v1 creation currently has extra directory barriers that are compressed
+into the existing journal phase events; the physical crash correspondence for
+those intermediate barriers remains open and is not claimed by the phase book.
+
 At open, ACL2 accepts a complete frame only if its envelope length is between
 the frame header-plus-trailer size and that size plus the FNFD payload cap,
 its FNFD codec accepts its integrity/schema, and its peer equals the journal's
@@ -1579,4 +1606,3 @@ loss of an entire previously durable suffix cannot be detected without an
 independent durable anchor. The scanner retains existing
 `fn-feed-apply-record` semantics for valid records; it does not retroactively
 enforce `fn-feed-drivenp` against configuration changes or historical no-ops.
-

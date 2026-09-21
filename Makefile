@@ -88,6 +88,8 @@ ACL2_BOOKS ?= books/defrecord \
 	host/native-operator-host \
 	tests/acl2/native-operator-tests \
 	tests/acl2/native-operator-host-tests \
+	books/feed-filename \
+	tests/acl2/feed-filename-tests \
 	books/store-files \
 	books/store-files-invariants \
 	tests/acl2/store-files-tests \

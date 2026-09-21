@@ -1,0 +1,13 @@
+; Program wrappers: the Python and native hosts call this ACL2 codec, never
+; turn a peer label into a pathname themselves.
+(in-package "ACL2")
+(include-book "../books/feed-filename")
+(defun fn-feed-filename-host-okp (name) (declare (xargs :mode :program))
+  (not (equal (fn-feed-filename-components name) :bad)))
+(defun fn-feed-filename-host-count (name) (declare (xargs :mode :program))
+  (len (fn-feed-filename-components name)))
+(defun fn-feed-filename-host-nth (n xs) (declare (xargs :mode :program))
+  (if (and (natp n) (consp xs))
+      (if (zp n) (car xs) (fn-feed-filename-host-nth (1- n) (cdr xs))) nil))
+(defun fn-feed-filename-host-component (name index) (declare (xargs :mode :program))
+  (fn-feed-filename-host-nth index (fn-feed-filename-components name)))

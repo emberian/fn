@@ -116,6 +116,7 @@ class Acl2Owner(Acl2Store):
         # host-fault boundary in `Owner.guard' below calls.
         self.call('(include-book "books/owner-fault")')
         self.call('(ld "host/owner-host.lisp" :ld-error-action :return :ld-error-triples t)')
+        self.call('(ld "host/feed-filename-host.lisp" :ld-error-action :return :ld-error-triples t)')
 
     def _symbol(self, form, timeout=None):
         return acl2_owner_symbol(self.call(form, timeout=timeout))
@@ -489,6 +490,20 @@ class Acl2Owner(Acl2Store):
     def feed_journal_prefix_size(self):
         return self._nat("*fn-feed-journal-prefix-size*")
 
+    def feed_filename_components(self, peer):
+        """ACL2's only peer-label to filesystem-component conversion."""
+        octets = peer if isinstance(peer, bytes) else peer.encode("utf-8")
+        literal = self.literal(octets)
+        if not acl2_boolean(self.call("(fn-feed-filename-host-okp '{})".format(literal))):
+            raise StoreFault("ACL2 refused FNFD peer filename")
+        count = self._nat("(fn-feed-filename-host-count '{})".format(literal))
+        if count < 1:
+            raise StoreFault("ACL2 returned no FNFD filename components")
+        return tuple(
+            bytes(acl2_octet_list(self.call(
+                "(fn-feed-filename-host-component '{} {} )".format(literal, index))))
+            for index in range(count))
+
     def feed_journal_prefix(self, prefix):
         result = self._symbol_any("(fn-feed-journal-prefix '{} )".format(
             self.literal(prefix)))
@@ -499,7 +514,7 @@ class Acl2Owner(Acl2Store):
 
     def feed_journal_scan(self, peer, prefix, frame):
         return self._symbol_any("(fn-owner-feed-journal-scan '{} '{} '{} state)".format(
-            self.literal(peer.encode("utf-8")), self.literal(prefix), self.literal(frame)))
+            self.literal(peer), self.literal(prefix), self.literal(frame)))
 
     def feed_journal_offset(self):
         return self._nat("(@ fn-owner-feed-safe-offset)")
