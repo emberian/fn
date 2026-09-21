@@ -1,0 +1,13 @@
+test_receive_core_fault_remains_exit_four (tests.test_bp_receive_integrity_native.NativeBpReceiveIntegrityTests.test_receive_core_fault_remains_exit_four) ... ok
+test_two_sessions_reusing_transfer_zero_keep_both_exact_wires (tests.test_bp_receive_integrity_native.NativeBpReceiveIntegrityTests.test_two_sessions_reusing_transfer_zero_keep_both_exact_wires) ... ok
+test_uncertain_publication_exits_and_prevents_next_session_mutation (tests.test_bp_receive_integrity_native.NativeBpReceiveIntegrityTests.test_uncertain_publication_exits_and_prevents_next_session_mutation) ... ok
+test_outage_restart_duplicate_and_conflict (tests.test_bp_service_native.NativeBpServiceTests.test_outage_restart_duplicate_and_conflict) ... ok
+test_send_core_fault_remains_exit_four (tests.test_bp_service_native.NativeBpServiceTests.test_send_core_fault_remains_exit_four) ... ok
+test_shared_spool_owner_precedes_lifecycle_mutation (tests.test_bp_service_native.NativeBpServiceTests.test_shared_spool_owner_precedes_lifecycle_mutation) ... ok
+test_transport_uncertain_dominates_refused_article (tests.test_bp_service_native.NativeBpServiceTests.test_transport_uncertain_dominates_refused_article) ... ok
+test_visible_final_never_converts_failed_barrier_to_durable (tests.test_bp_service_native.NativeBpServiceTests.test_visible_final_never_converts_failed_barrier_to_durable) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 11.341s
+
+OK
