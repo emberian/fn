@@ -116,10 +116,11 @@ configuration records inside the store, which ACL2 replays at every open;
 `--group` seeds them once, and `fn group` changes them afterwards. The
 configuration file holds only what the host needs in order to start.
 
-`[listener] host` must be loopback. `fn run` refuses any other host rather
-than binding loopback behind your back: this scaffold does not authorize a
-public listener, and reaching fn from another machine is a job for an SSH
-tunnel or a reverse proxy you configure yourself.
+`[listener] host` accepts loopback aliases or an explicit numeric IPv4
+address. ACL2 parses the literal and supplies the exact bind address; the host
+does not resolve or reinterpret it. The wildcard `0.0.0.0` remains refused so
+an operator must name the interface placed in service. General IPv6 literals
+remain open; `::1` is the admitted IPv6 spelling.
 
 ## Run it as a service
 
@@ -190,7 +191,7 @@ stops when you log out.
 
 ### Reaching it from a laptop
 
-`[listener] host` must be loopback, so the way in is a tunnel:
+For a local-only listener, the way in is a tunnel:
 
 ```sh
 ssh -N -L 11190:127.0.0.1:11190 persvati &

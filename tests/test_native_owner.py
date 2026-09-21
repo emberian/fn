@@ -190,6 +190,41 @@ class NativeOwnerTests(unittest.TestCase):
         self.assertIn(b"empty FNFD v1 namespace", result.stderr)
         self.assertTrue((self.store / "feed" / "v1").is_dir())
 
+    def test_configured_source_address_opens_native_transit_session(self):
+        configured = subprocess.run(
+            [sys.executable, "tools/run_store.py", "--store", str(self.store),
+             "peer", "add", "source", "--path-identity", "source.invalid",
+             "--nntp", "127.0.0.1:9", "--inbound-groups", "fn.*",
+             "--source-address", "127.0.0.1"],
+            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env=environment(), timeout=180, check=False)
+        self.assertEqual(configured.returncode, 0, configured.stderr.decode())
+
+        process, port = self.start_owner()
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
+                stream = client.makefile("rwb", buffering=0)
+                self.assertTrue(stream.readline().startswith(b"200 "))
+                stream.write(b"CAPABILITIES\r\n")
+                self.assertTrue(stream.readline().startswith(b"101 "))
+                capabilities = []
+                while True:
+                    line = stream.readline()
+                    if line == b".\r\n":
+                        break
+                    capabilities.append(line)
+                self.assertIn(b"IHAVE\r\n", capabilities)
+                stream.write(b"IHAVE <native-transit@example.invalid>\r\n")
+                self.assertTrue(stream.readline().startswith(b"335 "))
+            self.assertEqual(process.wait(timeout=60), 0,
+                             process.stderr.read().decode("utf-8", "replace"))
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                process.wait(timeout=10)
+            process.stdout.close()
+            process.stderr.close()
+
     def test_two_client_uncertainty_fences_before_later_mutation(self):
         process, port = self.start_owner(once=False, fault="postpublish")
         first = socket.create_connection(("127.0.0.1", port), timeout=30)
@@ -245,7 +280,7 @@ class NativeOwnerTests(unittest.TestCase):
             [sys.executable, "tools/run_store.py", "--store", str(self.store),
              "peer", "add", "sink", "--path-identity", "sink.example.invalid",
              "--nntp", "127.0.0.1:9", "--outbound-groups", "fn.*",
-             "--source-address", "127.0.0.1"],
+             "--source-address", "127.0.0.2"],
             cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             env=environment(), timeout=180, check=False)
         self.assertEqual(configured.returncode, 0, configured.stderr.decode())

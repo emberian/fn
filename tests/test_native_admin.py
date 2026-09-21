@@ -5,6 +5,7 @@ the existing read-only `store config` diagnostic).  Python is test harness
 plumbing here; it neither parses fn.toml nor builds configuration records.
 """
 
+import hashlib
 import os
 from pathlib import Path
 import select
@@ -14,12 +15,44 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parent.parent
-IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
+IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
+IMAGE = Path(IMAGE_TEXT) if IMAGE_TEXT else None
+CORE = Path(str(IMAGE) + ".core") if IMAGE is not None else None
+IMAGE_SOURCE_SHA = os.environ.get("FN_NATIVE_IMAGE_SOURCE_SHA")
+LAUNCHER_SHA256 = os.environ.get("FN_NATIVE_LAUNCHER_SHA256")
+CORE_SHA256 = os.environ.get("FN_NATIVE_CORE_SHA256")
 
 
-@unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK),
-                     "build/fn-host is required")
+def file_digest(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+ACTUAL_LAUNCHER_SHA256 = (
+    file_digest(IMAGE) if IMAGE is not None and IMAGE.is_file() else None)
+ACTUAL_CORE_SHA256 = (
+    file_digest(CORE) if CORE is not None and CORE.is_file() else None)
+IMAGE_READY = bool(
+    IMAGE_TEXT and IMAGE is not None and CORE is not None
+    and IMAGE.is_file() and os.access(IMAGE, os.X_OK) and CORE.is_file()
+    and IMAGE_SOURCE_SHA and LAUNCHER_SHA256 and CORE_SHA256
+    and ACTUAL_LAUNCHER_SHA256 == LAUNCHER_SHA256
+    and ACTUAL_CORE_SHA256 == CORE_SHA256)
+
+
+@unittest.skipUnless(
+    IMAGE_READY,
+    "set explicit FN_NATIVE_HOST/source and matching launcher/core SHA-256 values",
+)
 class NativeAdminTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        print("native-admin launcher-sha256={} core-sha256={} declared-source={}".format(
+            ACTUAL_LAUNCHER_SHA256, ACTUAL_CORE_SHA256, IMAGE_SOURCE_SHA))
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-admin-")
         self.addCleanup(self.temporary.cleanup)

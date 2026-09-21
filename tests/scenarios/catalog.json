@@ -741,8 +741,11 @@
         "CHECK answers 238 for a wanted article and 438 for one the target holds; TAKETHIS answers 239 and 439 to match, never a 2xx and never a retry code.",
         "A peer record is configuration, not authorization: nothing in this scenario authenticates the peer."
       ],
-      "evidence": [],
-      "execution_scope": "Specified. Both nodes run on one host over loopback, so nothing here exercises a partition, latency or clock disagreement, and two articles crossing once is not the merge property of specs/peering.md section 4."
+      "evidence": [
+        "tests/test_native_owner.py",
+        "tests/test_native_peering.py"
+      ],
+      "execution_scope": "Native source now maps an accepted loopback socket through the ACL2 peer lookup/open transition, and a focused developer-image witness specifies the advertised transit surface. The two-node native harness is implemented but not run. Both nodes run on one host over loopback, so a future pass will not exercise a partition, latency or clock disagreement, and two articles crossing once is not the merge property of specs/peering.md section 4."
     },
     {
       "id": "SCN-024",
@@ -776,9 +779,10 @@
       "evidence": [
         "planning/evidence/feed-k5-w11-2026-09-21.md",
         "planning/evidence/feed-journal-w12-host.json",
-        "planning/lanes/HANDOFF-w12-feed-durability.md"
+        "planning/lanes/HANDOFF-w12-feed-durability.md",
+        "tests/test_native_peering.py"
       ],
-      "execution_scope": "The owner drives outbound feeds; the former standalone tools/run_feed.py is retired. Historical two-node feed evidence is recorded by the W11 gate. W12 tests execute the actual bounded scanner/replay with file and process cuts and exercise owner fence methods with a scripted bridge. The W12 tests do not run the combined owner/NNTP submission path; article-commit/feed-intent atomicity and general K5 correspondence remain active work, so the whole scenario is not marked validated."
+      "execution_scope": "The owner drives outbound feeds; the former standalone tools/run_feed.py is retired. Historical two-node feed evidence is recorded by the W11 gate. Native source now installs the existing feed component through the public owner's start/wake/close lifecycle, and a two-node native harness is implemented but not run. W12 tests execute the actual bounded scanner/replay with file and process cuts and exercise owner fence methods with a scripted bridge. The W12 tests do not run the combined owner/NNTP submission path; article-commit/feed-intent atomicity and general K5 correspondence remain active work, so the whole scenario is not marked validated."
     },
     {
       "id": "SCN-025",
