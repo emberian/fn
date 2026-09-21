@@ -2,7 +2,7 @@
 
 Status: active repair work, not a completed audit or release claim. The user
 requested an implementation/design scan for duplication and unnecessary
-complexity on 2026-09-21. Sources inspected: integration `406578c`, native
+complexity on 2026-09-21. Initial sources inspected: integration `406578c`, native
 storage candidate `37ec36b`, and BP convergence candidate `52ab12d`.
 
 The criterion is one owner of each decision, with representations and external
@@ -361,3 +361,31 @@ allocation, and recovery list reversal is linear. The
 and actual-handler tests. The remaining raw lifecycle publication algorithm
 is now a separate shared-publisher adoption task; namespace consolidation does
 not establish that phase correspondence.
+
+The live store prepare correspondence is integrated through `ef6a0177`.
+`fn-store-sn-prepare` now calls `fn-spc-prepare`, equated to the replaying
+specification under the maintained live-history relation. The
+[evidence](evidence/store-prepare-correspondence-w18-2026-09-21.md) records
+the nonempty-history witness, separating stale-node counterexample, certification
+and saved-image storage tests. Its cost probe uses a different platform from the
+baseline and is not an absolute speedup or asymptotic claim. Adoption inside the
+shared owner remains a separate caller/relation task.
+
+### U13: transaction recovery still has a second namespace parser
+
+Source inspected at `ef6a0177`: `fnn-transaction-files` collects the entire
+transaction directory before checking the configured count bound. Its raw
+`fnn-seq-name-p`, `parse-integer` and sequence-gap loop also decide namespace
+validity independently of the ACL2 byte-store scan and transaction-name codec.
+The comment calling the count check a physical enumeration boundary is stronger
+than the implementation. No live exhaustion reproducer is claimed by this scan.
+
+Repair: collect names with the shared bounded observer, let ACL2 validate their
+canonical sequence and binding to decoded records, and preserve explicit faults
+for gaps, unexpected entries and symlinks. The initializer lane owns this as a
+separate successor to its current EEXIST/crash packet.
+
+The neighboring configuration namespace also uses raw `~8d.cfg` construction,
+suffix filtering and unbounded enumeration. The administration lane will share
+its ACL2 filename codec with the existing builder; complete configuration
+namespace recovery/budget correspondence remains an explicit successor.
