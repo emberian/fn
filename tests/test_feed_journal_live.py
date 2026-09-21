@@ -103,14 +103,41 @@ class FeedJournalLiveTests(unittest.TestCase):
         corrupted = bytearray(self.envelope)
         corrupted[-1] ^= 1
         wrong = self.bridge.frame("feed-restart", "((98))")
+        # Well-integrity-framed but outside the FNFD kind grammar. ACL2
+        # builds both layers of this deliberately invalid evidence fixture.
+        bad_schema = bytes(acl2_octet_list(self.bridge.call(
+            "(let ((f (fn-frame-seal *fn-feed-magic* *fn-frame-version* 255 nil))) "
+            "(append (fn-cbor-u32-bytes (len f)) f))")))
         for bad in (bytes(corrupted), b"\xff\xff\xff\xff", b"\0\0\0\0",
-                    self.bridge.feed_journal_wrap(wrong)):
+                    self.bridge.feed_journal_wrap(wrong), bad_schema):
             with self.subTest(bad=bad.hex()):
                 original = self.envelope + bad
                 self.path.write_bytes(original)
                 with self.assertRaises(run_store.StoreFault):
                     self.open()
                 self.assertEqual(self.path.read_bytes(), original)
+
+    def test_short_reads_are_accumulated_until_real_eof(self):
+        self.path.write_bytes(self.envelope + self.restart_envelope)
+        read = os.read
+        with mock.patch.object(feed_wire.os, "read", side_effect=lambda fd, size: read(fd, 1)):
+            journal = self.open()
+        self.assertEqual(journal.replayed, 2)
+        self.assertEqual(self.path.read_bytes(), self.envelope + self.restart_envelope)
+
+    def test_each_recovery_barrier_failure_requires_a_fresh_successful_recovery(self):
+        for name, effects in (("fsync_file", [OSError("content")]),
+                              ("fsync_dir", [OSError("directory")]),
+                              ("fsync_dir", [None, OSError("parent")])):
+            with self.subTest(name=name, effects=effects):
+                self.path.write_bytes(self.envelope + self.restart_envelope[:7])
+                with mock.patch.object(feed_wire, name, side_effect=effects):
+                    with self.assertRaises(run_store.StoreIndeterminate):
+                        self.open()
+                recovered = self.open()
+                recovered.append(self.restart)
+                recovered.close()
+                self.assertEqual(self.path.read_bytes(), self.envelope + self.restart_envelope)
 
     def test_real_model_fence_survives_a_second_append_after_sync_failure(self):
         journal = self.open()
@@ -129,12 +156,13 @@ class FeedJournalLiveTests(unittest.TestCase):
     def test_process_death_at_each_named_recovery_and_append_cut(self):
         # The child is the I/O host; the parent owns the single ACL2 oracle.
         # No concurrent calls: parent waits before issuing another query.
-        events = ("opened", "repair", "truncated", "content-durable",
+        events = ("opened", "end", "repair", "truncated", "content-durable",
                   "directory-durable", "parent-durable", "append", "written",
                   "append-durable")
         for event in events:
             with self.subTest(event=event):
-                self.path.write_bytes(self.envelope + self.restart_envelope[:7])
+                suffix = b"" if event == "end" else self.restart_envelope[:7]
+                self.path.write_bytes(self.envelope + suffix)
                 pid = os.fork()
                 if pid == 0:
                     fault = run_store.ScriptedFaults("feed-journal:" + event, exit_code=73)

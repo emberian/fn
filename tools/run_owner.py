@@ -936,6 +936,16 @@ class Owner:
 
     def take_fault(self, site, error, conn=None, feed=None, cid=None):
         """Record one fault distinctly and abandon exactly what caused it."""
+        if self.feed_uncertain:
+            # Preserve the persistence outcome even through a generic host
+            # boundary. Do not precede it with a contradictory FAULT label.
+            print("FEED-UNCERTAIN {}: recovery required".format(site),
+                  file=sys.stderr, flush=True)
+            traceback.print_exception(type(error), error, error.__traceback__,
+                                      file=sys.stderr)
+            self.stopping = True
+            self.exit_code = EXIT_UNCERTAIN
+            return
         named = "cid={}".format(conn.cid if conn is not None else cid) \
             if (conn is not None or cid is not None) \
             else (feed.peer if feed is not None else "-")
@@ -949,11 +959,6 @@ class Owner:
         traceback.print_exception(type(error), error, error.__traceback__,
                                   file=sys.stderr)
         sys.stderr.flush()
-        if self.feed_uncertain:
-            # A persistence ambiguity is already fenced and is not a host fault.
-            self.stopping = True
-            self.exit_code = EXIT_UNCERTAIN
-            return
         if self.bridge.poisoned:
             # The ACL2 image IS the server: every decision the owner makes is
             # a call into it.  With the bridge lost there is nothing left to
@@ -1289,6 +1294,8 @@ class Owner:
             self.bridge.feed_lost(feed.peer, self.clock.milliseconds())
             self.feed_flush()
         except Exception as error:                   # noqa: BLE001
+            if self.feed_uncertain:
+                return  # feed_fence already reported the uncertain outcome.
             # `feed_drop` is itself the containment for a feed that went
             # wrong, so nothing here may raise out of it: an exception
             # escaping this method ends the node from inside the handler

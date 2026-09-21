@@ -60,10 +60,11 @@ class Journal:
             self.handle = os.open(self.path, os.O_RDWR | os.O_CREAT, 0o600)
             self._step("opened")
             bridge.feed_journal_begin()
+            prefix_size = bridge.feed_journal_prefix_size()
             while True:
-                prefix = os.read(self.handle, bridge.feed_journal_prefix_size())
+                prefix = self._read(prefix_size)
                 plan = bridge.feed_journal_prefix(prefix)
-                frame = os.read(self.handle, plan) if isinstance(plan, int) else b""
+                frame = self._read(plan) if isinstance(plan, int) else b""
                 status = bridge.feed_journal_scan(self.peer, prefix, frame)
                 if status == "next":
                     self.replayed += 1
@@ -89,6 +90,16 @@ class Journal:
             self.close()
             raise StoreIndeterminate("FNFD recovery uncertain: " + self.path) from error
 
+    def _read(self, size):
+        """Read the ACL2-authorized extent, stopping only at physical EOF."""
+        chunks = bytearray()
+        while len(chunks) < size:
+            chunk = os.read(self.handle, size - len(chunks))
+            if not chunk:
+                break
+            chunks.extend(chunk)
+        return bytes(chunks)
+
     def _step(self, event):
         self.phase = self.bridge.feed_journal_step(self.phase, event)
         if self.phase == "uncertain":
@@ -106,6 +117,8 @@ class Journal:
         except Exception as error:
             try:
                 self.phase = self.bridge.feed_journal_step(self.phase, "failed")
+            except Exception:
+                pass  # A lost bridge has no trustworthy logical result.
             finally:
                 # A lost bridge cannot issue a phase result; closing the I/O
                 # capability still prevents any further write from this object.

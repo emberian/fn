@@ -49,10 +49,13 @@
           '(:append :written :append-durable))) :uncertain))
 ; Every process cut in the host is an event position in these traces.
 (defun fj-crash-cuts (phase events)
+  (declare (xargs :measure (acl2-count events)))
   (if (atom events) t
     (let ((next (fn-feed-journal-phase-step phase (car events))))
       (and (equal (fn-feed-journal-phase-run next
                    (cons :crash (cdr events))) :uncertain)
            (fj-crash-cuts next (cdr events))))))
 (assert-event (fj-crash-cuts :closed *fj-open-events*))
+(assert-event (fj-crash-cuts :closed
+  '(:opened :end :content-durable :directory-durable :parent-durable)))
 (assert-event (fj-crash-cuts :ready '(:append :written :append-durable)))
