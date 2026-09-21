@@ -252,6 +252,7 @@ def main():
         start_owner(a); await_article(b,ca_mid,ca_article,args.timeout)
         print("PASS declared-source={} hosts={},{}".format(args.source,args.host_a,args.host_b))
     finally:
+        cleanup_errors=[]
         for n in nodes:
             try:
                 cleanup=("if test -f {0}/owner.pid; then p=$(cat {0}/owner.pid); "
@@ -259,15 +260,22 @@ def main():
                          "if kill -0 $p 2>/dev/null; then kill -KILL $p 2>/dev/null || true; sleep .2; fi; "
                          "if kill -0 $p 2>/dev/null; then exit 70; fi; fi; rm -rf -- {0}").format(shlex.quote(n["root"]))
                 ssh(n["host"],["sh","-c",cleanup],timeout=30)
-            except Exception: pass
+            except Exception as error:
+                cleanup_errors.append("{}: {}".format(n.get("host"),error))
         for p in owners+tunnels:
             if p.poll() is None: p.terminate()
         for p in owners+tunnels:
             try: p.wait(timeout=10)
             except subprocess.TimeoutExpired: p.kill(); p.wait(timeout=5)
+        for n in nodes:
+            handle=n.get("log_handle")
+            if handle is not None and not handle.closed:
+                handle.flush(); handle.close()
         evidence=Path(args.evidence_dir); evidence.mkdir(parents=True,exist_ok=True)
         for path in Path(local.name).glob("*.stderr"):
             (evidence/path.name).write_bytes(path.read_bytes())
         local.cleanup()
+        if cleanup_errors:
+            raise RuntimeError("remote cleanup failed: "+"; ".join(cleanup_errors))
 
 if __name__ == "__main__": main()
