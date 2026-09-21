@@ -1128,17 +1128,25 @@ text, and ACL2 decides what that text is.  A record field holds this, never
 the canonical octets, which are not `fn-store-text-octetsp'."
   (fnn-as-octets (fnn-core 'fn-store-identity-text (fnn-octet-list identity))))
 
+(defun fnn-provenance-post ()
+  "The durable provenance for a locally injected article, decided by ACL2
+from the live configuration generation and path identity."
+  (let ((value (fnn-core-state 'fn-store-prov-post)))
+    (unless (fnn-octet-list-p value)
+      (fnn-fault "ACL2 returned invalid local-post provenance"))
+    (fnn-as-octets value)))
+
 (defun fnn-metadata (msgid payload)
-  "Content identity, derived in ACL2 by books/identity over host digests.
+  "Content identity and provenance, derived in ACL2.
 The obligation binds the CANONICAL subject identity octets; what comes back
-is each identity's text.  The evidence label is a host constant naming a
-provenance the model only compares."
+is each identity's text.  `fn-store-prov-post' selects the durable evidence
+from the live ACL2 configuration; the native host does not name a provenance."
   (let* ((subject (handler-case (fnn-subject-id payload)
                     (fnn-store-error () (fnn-refuse "ACL2 refused to derive content identity"))))
          (obligation (handler-case (fnn-obligation-id msgid subject)
                        (fnn-store-error () (fnn-refuse "ACL2 refused to derive content identity")))))
     (values (fnn-identity-text obligation) (fnn-identity-text subject)
-            (fnn-string-octets "unsigned-legacy-v0"))))
+            (fnn-provenance-post))))
 
 (defun fnn-group-codes-for (store groups)
   (when (null groups) (fnn-refuse "provide one or more distinct configured groups"))
