@@ -323,7 +323,7 @@
              (existing (fn-store-article-match msgid payload groups node)))
         (if existing
             (value existing)
-          (let* ((record (fn-record-make (len (fn-sf-records (fn-sn-files s)))
+          (let* ((record (fn-record-make (fn-sn-identity-next s)
                                          (fn-state-next-txid (fn-node-acceptance node))
                                          (fn-state-next-txid (fn-node-acceptance node))
                                          msgid payload groups
@@ -368,7 +368,7 @@
         (value :invalid)
       (let* ((txid (fn-state-next-txid (fn-node-acceptance node)))
              (event (fn-store-retention-event-make
-                     kind (len (fn-sf-records (fn-sn-files s))) txid txid
+                     kind (fn-sn-identity-next s) txid txid
                      (fn-store-octets->string id-octets)
                      (fn-store-octets->string subject-octets)
                      (fn-store-octets->string evidence-octets) charge))
@@ -910,6 +910,17 @@
 (defun fn-owner-next-txid (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-state-next-txid (fn-node-acceptance (fn-owner-node state)))))
+
+(defun fn-owner-next-store-coordinates (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((s (fn-owner-store state))
+         (txid (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
+    (value (list (fn-sn-identity-next s) txid txid))))
+
+(defun fn-owner-keyring-snapshot (generation state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-stxk-find generation
+                       (fn-sn-keyring-snapshots (fn-owner-store state)))))
 
 (defun fn-owner-article-count (state)
   (declare (xargs :stobjs state :mode :program))

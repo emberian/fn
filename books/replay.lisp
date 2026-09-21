@@ -382,6 +382,8 @@
           (fn-replay-verdict-pairs (cdr events))))
     nil))
 
+(verify-guards fn-replay-verdict-pairs)
+
 ; Apply exactly one record only after its sequence has been checked.  NIL is a
 ; refusal signal; it is deliberately not a normal partial state.  The guard
 ; on the node is discharged through the two node transitions by their

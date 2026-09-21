@@ -85,5 +85,13 @@ authenticate the display name in From. Legacy, gateway-attested, and author-sign
 provenance must remain distinguishable. Define signing subjects and key-rotation
 rules before claiming end-to-end authorship.
 
+The durable historical-verdict profile applies only to an atomic kind-4
+article-plus-verdict Store event bound to an earlier enrolled key snapshot.
+A legacy article record has no verdict or key-snapshot bytes: its live
+verification observation is non-durable and recovery must report no historical
+verdict for it.  Persisting equivalent authority for legacy acceptance is an
+implemented-behavior evidence gap until a bound durable record is written; it
+must not be reconstructed under the current keyring.
+
 Group names initially describe configured local groups. D11 decides the portable
 authority/naming representation. No cross-site consensus service is assumed.
