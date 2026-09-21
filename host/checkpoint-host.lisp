@@ -3,12 +3,8 @@
 ; and slices the suffix by the sequence ACL2 returned; ACL2 revalidates that
 ; suffix in fn-checkpoint-restore.
 (in-package "ACL2")
-<<<<<<< HEAD
-(include-book "../books/checkpoint-publish")
-=======
 (include-book "../books/checkpoint-reclaim")
 (include-book "../books/checkpoint-compaction")
->>>>>>> ed90025a (model(store): preserve exact events in compaction summaries)
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -95,8 +91,6 @@
   (declare (xargs :mode :program))
   (fn-cpp-next-generation generations))
 
-<<<<<<< HEAD
-=======
 (defun fn-store-checkpoint-decode-events (octet-events)
   (declare (xargs :mode :program))
   (if (consp octet-events)
@@ -143,7 +137,28 @@
            (payload (take n framed))
            (trailer (nthcdr n framed)))
       (if (not (equal trailer digest)) '(:error :integrity)
-         (fn-store-checkpoint-compaction-expand payload octet-suffix frontier)))))
+        (fn-store-checkpoint-compaction-expand payload octet-suffix frontier)))))
+
+; Inspect the selected authority before the host slices its bounded physical
+; observation.  ACL2 returns the only accepted coverage boundary.
+(defun fn-store-checkpoint-compaction-coverage (framed digest observed-count frontier)
+  (declare (xargs :mode :program))
+  (if (or (not (fn-cbor-octet-listp framed))
+          (< (len framed) *fn-frame-trailer-octets*))
+      '(:error :frame)
+    (let* ((n (- (len framed) *fn-frame-trailer-octets*))
+           (payload (take n framed))
+           (trailer (nthcdr n framed))
+           (decoded (and (equal trailer digest) (fn-cc-decode-exact payload))))
+      (if (or (not (consp decoded)) (not (equal (car decoded) :ok)))
+          '(:error :integrity)
+        (let ((summary (car (cdr decoded))))
+          (if (or (< observed-count (fn-cc-sequence summary))
+                  (< frontier (fn-cc-frontier summary)))
+              '(:error :coverage)
+            (list :ok (fn-cc-sequence summary)
+                  (fn-cc-frontier summary))))))))
+
 (defun fn-store-checkpoint-publication-initial
   (generations proposed-generation exclusivep final-absentp)
   (declare (xargs :mode :program))

@@ -90,20 +90,65 @@
                                       (fnn-random-hex 12))))
              (final (fnn-pack-generation-path store generation))
              (frame (fnn-seal (fnn-octets (second captured)))))
-        (setf (fnn-store-fenced store) t)
-        (fnn-write-staged stage frame)
-        (fnn-link stage final)
-        (fnn-fsync-dir directory)
-        (ignore-errors (fnn-unlink stage) (fnn-fsync-dir (fnn-staging store)))
+        (let ((authorization
+                (fnn-core 'fn-store-checkpoint-publication-initial
+                          generations generation t (if (fnn-lstat final) nil t))))
+          (unless (and (listp authorization) (eq (first authorization) :ok)
+                       (= (second authorization) generation))
+            (fnn-fault "ACL2 refused pack publication authority: ~s" authorization))
+          (setf (fnn-store-fenced store) t)
+          (case (fnn-immutable-publish-effect
+                 (third authorization) stage final directory frame
+                 :cleanup-directory (fnn-staging store))
+            (:durable (setf (fnn-store-fenced store) nil))
+            (:refused (setf (fnn-store-fenced store) nil)
+                      (fnn-refuse "pack generation publication refused"))
+            (:uncertain (fnn-indeterminate "pack generation publication is uncertain"))
+            (otherwise (fnn-fault "invalid pack publication outcome"))))
         (when selectp
           (let* ((marker-value (fnn-core 'fn-store-checkpoint-selection-protected generation))
                  (marker (fnn-seal (fnn-octets marker-value)))
                  (marker-stage (fnn-join (fnn-staging store)
                                          (format nil ".pack-selection-~d-~a"
-                                                 (sb-posix:getpid) (fnn-random-hex 12)))))
-            (fnn-write-staged marker-stage marker)
-            (fnn-replace marker-stage (fnn-pack-selection-path store))
-            (fnn-fsync-dir directory)))
+                                                 (sb-posix:getpid) (fnn-random-hex 12))))
+                 (phase :marker-staged))
+            (unwind-protect
+                 (loop
+                   (case (fnn-core 'fn-store-checkpoint-marker-action phase)
+                     (:stage-and-file-barrier
+                      (setq phase
+                            (handler-case
+                                (progn (fnn-write-staged marker-stage marker)
+                                       (fnn-core 'fn-store-checkpoint-marker-step phase :ok))
+                              (fnn-os-error ()
+                                (fnn-core 'fn-store-checkpoint-marker-step
+                                          phase :known-fail)))))
+                     (:replace
+                      (setf (fnn-store-fenced store) t)
+                      (setq phase
+                            (handler-case
+                                (progn (fnn-replace marker-stage
+                                                   (fnn-pack-selection-path store))
+                                       (fnn-core 'fn-store-checkpoint-marker-step phase :ok))
+                              (fnn-os-error ()
+                                (fnn-core 'fn-store-checkpoint-marker-step phase :error)))))
+                     (:directory-barrier
+                      (setq phase
+                            (handler-case
+                                (progn (fnn-fsync-dir directory)
+                                       (fnn-core 'fn-store-checkpoint-marker-step phase :ok))
+                              (fnn-os-error ()
+                                (fnn-core 'fn-store-checkpoint-marker-step phase :error)))))
+                     (:done (return))
+                     (otherwise (fnn-fault "ACL2 returned invalid pack marker action"))))
+              (ignore-errors (fnn-unlink marker-stage)
+                             (fnn-fsync-dir (fnn-staging store))))
+            (case (fnn-core 'fn-store-checkpoint-marker-outcome phase)
+              (:durable (setf (fnn-store-fenced store) nil))
+              (:refused (setf (fnn-store-fenced store) nil)
+                        (fnn-refuse "pack selection refused"))
+              (:uncertain (fnn-indeterminate "pack selection is uncertain"))
+              (otherwise (fnn-fault "pack selection marker remained pending")))))
         (setf (fnn-store-fenced store) nil)
         generation))))
 
@@ -115,17 +160,16 @@
         (fnn-checkpoint-corrupt "selected pack generation ~d is missing" generation))
       (let* ((raw (fnn-read-regular-bounded
                    path (+ (fnn-constant :trailer) 4194304)))
-             ; Sequence equals the compacted prefix length.  Until transaction
-             ; unlink is enabled, discover it by asking ACL2 to open against
-             ; each possible suffix; only one can satisfy sequence continuity.
-             (answer (loop for n from 0 to (length records)
-                           for candidate = (fnn-core
-                                            'fn-store-checkpoint-compaction-open
-                                            (fnn-octet-list raw) (fnn-digest-of raw)
-                                            (mapcar #'fnn-octet-list (nthcdr n records))
-                                            (fnn-store-frontier store))
-                           when (and (listp candidate) (eq (first candidate) :ok))
-                             return candidate)))
+             (coverage (fnn-core 'fn-store-checkpoint-compaction-coverage
+                                 (fnn-octet-list raw) (fnn-digest-of raw)
+                                 (length records) (fnn-store-frontier store)))
+             (sequence (and (listp coverage) (eq (first coverage) :ok)
+                            (second coverage)))
+             (answer (and sequence
+                          (fnn-core 'fn-store-checkpoint-compaction-open
+                                    (fnn-octet-list raw) (fnn-digest-of raw)
+                                    (mapcar #'fnn-octet-list (nthcdr sequence records))
+                                    (fnn-store-frontier store)))))
         (unless (and answer (equal (second answer)
                                    (mapcar #'fnn-octet-list records)))
           (fnn-checkpoint-corrupt "selected pack does not reconstruct observed history"))
