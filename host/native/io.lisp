@@ -766,6 +766,11 @@ not repeat the staging-prefix, held-name, or phase policy."
 ; no selected checkpoint.
 (defvar *fnn-checkpoint-recover-callback*
   (lambda (store records) (declare (ignore store records)) '(:none)))
+; A selected lossless prefix pack may reconstruct records before the one
+; generic decoder/replay call.  Without the optional pack layer this is the
+; identity function.
+(defvar *fnn-pack-recover-callback*
+  (lambda (store records) (declare (ignore store)) records))
 
 (defun fnn-bridge-article-count () (fnn-nat (fnn-core-state 'fn-store-sn-article-count)))
 (defun fnn-bridge-next-txid () (fnn-nat (fnn-core-state 'fn-store-sn-next-txid)))
@@ -1295,6 +1300,7 @@ because the name may or may not still be present after the syscall."
           (fnn-load-frontier store)
           (let ((config-records (fnn-config-records store)))
             (setq records (fnn-durable-records store))
+            (setq records (funcall *fnn-pack-recover-callback* store records))
             (unless (eq (fnn-bridge-recover records (fnn-store-frontier store) config-records)
                         :recovering)
               (fnn-fault "ACL2 replay rejected committed transaction history or configuration history")))

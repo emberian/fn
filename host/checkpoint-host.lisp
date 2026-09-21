@@ -134,7 +134,16 @@
     (if (not (equal (car decoded) :ok)) decoded
       (fn-cc-expand (car (cdr decoded)) octet-suffix frontier))))
 
->>>>>>> ed90025a (model(store): preserve exact events in compaction summaries)
+(defun fn-store-checkpoint-compaction-open (framed digest octet-suffix frontier)
+  (declare (xargs :mode :program))
+  (if (or (not (fn-cbor-octet-listp framed))
+          (< (len framed) *fn-frame-trailer-octets*))
+      '(:error :frame)
+    (let* ((n (- (len framed) *fn-frame-trailer-octets*))
+           (payload (take n framed))
+           (trailer (nthcdr n framed)))
+      (if (not (equal trailer digest)) '(:error :integrity)
+         (fn-store-checkpoint-compaction-expand payload octet-suffix frontier)))))
 (defun fn-store-checkpoint-publication-initial
   (generations proposed-generation exclusivep final-absentp)
   (declare (xargs :mode :program))
