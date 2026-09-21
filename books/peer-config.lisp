@@ -173,12 +173,18 @@
 (defun fn-cfg-peer-outboundp (x)
   (declare (xargs :guard t))
   (or (null x)
-      (and (true-listp x) (equal (len x) 4)
+      (and (true-listp x) (member-equal (len x) '(4 5))
            (fn-cfg-wildmatp (car x))
            (booleanp (car (cdr x)))
            (posp (car (cdr (cdr x))))
            (fn-record-uint32p (car (cdr (cdr x))))
-           (fn-record-uint32p (car (cdr (cdr (cdr x))))))))
+           (fn-record-uint32p (car (cdr (cdr (cdr x)))))
+           (or (equal (len x) 4)
+               (let ((policy (car (cddddr x))))
+                 (and (true-listp policy) (equal (len policy) 3)
+                      (equal (car policy) :authinfo)
+                      (fn-cfg-cstringp (cadr policy))
+                      (booleanp (caddr policy))))))))
 
 (defun fn-cfg-peer-authp (x)
   (declare (xargs :guard t))
@@ -225,6 +231,11 @@
   (declare (xargs :guard t))
   (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr (fn-cfg-ag-cdr
                                                 (fn-cfg-peer-outbound p))))))
+(defun fn-cfg-peer-outbound-auth (p)
+  (declare (xargs :guard t))
+  (let ((outbound (fn-cfg-peer-outbound p)))
+    (if (and (true-listp outbound) (equal (len outbound) 5))
+        (car (cddddr outbound)) nil)))
 
 ; -----------------------------------------------------------------------------
 ; The row codec
@@ -263,13 +274,19 @@
                                 (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr inbound)))))
        nil)
      (if outbound
-         (list (fn-cfg-row-make name "outbound-groups" (fn-cfg-ag-car outbound)
-                                (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr outbound))))
-               (fn-cfg-row-make name "outbound-streaming" ""
-                                (if (fn-cfg-ag-car (fn-cfg-ag-cdr outbound)) 1 0))
-               (fn-cfg-row-make name "outbound-backoff" ""
-                                (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr
-                                                               (fn-cfg-ag-cdr outbound))))))
+         (append
+          (list (fn-cfg-row-make name "outbound-groups" (fn-cfg-ag-car outbound)
+                                 (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr outbound))))
+                (fn-cfg-row-make name "outbound-streaming" ""
+                                 (if (fn-cfg-ag-car (fn-cfg-ag-cdr outbound)) 1 0))
+                (fn-cfg-row-make name "outbound-backoff" ""
+                                 (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr
+                                                                (fn-cfg-ag-cdr outbound))))))
+          (let ((policy (fn-cfg-peer-outbound-auth p)))
+            (if policy
+                (list (fn-cfg-row-make name "outbound-auth-profile" (cadr policy)
+                                       (if (caddr policy) 1 0)))
+              nil)))
        nil)
      (if (equal (fn-cfg-ag-car auth) :source-address)
          (list (fn-cfg-row-make name "auth-source-address"
@@ -300,6 +317,7 @@
          (og (fn-cfg-peer-slot rows "outbound-groups"))
          (os (fn-cfg-peer-slot rows "outbound-streaming"))
          (ob (fn-cfg-peer-slot rows "outbound-backoff"))
+         (oa (fn-cfg-peer-slot rows "outbound-auth-profile"))
          (as (fn-cfg-peer-slot rows "auth-source-address"))
          (ap (fn-cfg-peer-slot rows "auth-principal"))
          (p (fn-cfg-peer-make
@@ -320,8 +338,10 @@
                  (list (fn-cfg-row-c ig) (fn-cfg-row-n ig) (fn-cfg-row-n ii))
                nil)
              (if (and og os ob)
-                 (list (fn-cfg-row-c og) (equal (fn-cfg-row-n os) 1)
-                       (fn-cfg-row-n og) (fn-cfg-row-n ob))
+                 (append (list (fn-cfg-row-c og) (equal (fn-cfg-row-n os) 1)
+                               (fn-cfg-row-n og) (fn-cfg-row-n ob))
+                         (if oa (list (list :authinfo (fn-cfg-row-c oa)
+                                           (equal (fn-cfg-row-n oa) 1))) nil))
                nil)
              (cond (as (list :source-address (fn-cfg-row-c as)))
                    (ap (list :principal (fn-cfg-row-c ap)))
@@ -497,7 +517,8 @@
     (:d fn-cfg-peer-inbound-groups) (:d fn-cfg-peer-inbound-max-octets)
     (:d fn-cfg-peer-inbound-max-inflight) (:d fn-cfg-peer-outbound-groups)
     (:d fn-cfg-peer-streamingp) (:d fn-cfg-peer-max-queue)
-    (:d fn-cfg-peer-backoff) (:d fn-cfg-peer-rows) (:d fn-cfg-peer-slot)
+    (:d fn-cfg-peer-backoff) (:d fn-cfg-peer-outbound-auth)
+    (:d fn-cfg-peer-rows) (:d fn-cfg-peer-slot)
     (:d fn-cfg-peer-of-rows) (:d fn-cfg-peer-find) (:d fn-cfg-set-peer-delta)
     (:d fn-cfg-remove-peer-delta)))
 
