@@ -1513,6 +1513,63 @@
                obs))
     nil))
 
+; -----------------------------------------------------------------------------
+; Bounded FNFD port boundary
+;
+; The feed keeps mathematical-natural counters.  Before an owner table adopts
+; a live transition or exposes its command, this wrapper invokes the same
+; `fn-feed-live-port-step' that checks the exact record encoder.  Refusal is
+; owner-visible, and preserves the table, records and effects.
+
+(defun fn-own-feed-port-result (status table records effects)
+  (declare (xargs :guard t))
+  (list status table records effects))
+
+(defun fn-own-feed-port-status (result)
+  (declare (xargs :guard t))
+  (fn-frame-item 0 result))
+(defun fn-own-feed-port-table (result)
+  (declare (xargs :guard t))
+  (fn-frame-item 1 result))
+(defun fn-own-feed-port-records (result)
+  (declare (xargs :guard t))
+  (fn-frame-item 2 result))
+(defun fn-own-feed-port-effects (result)
+  (declare (xargs :guard t))
+  (fn-frame-item 3 result))
+
+(defun fn-own-feed-port-peer (peer tbl event)
+  (declare (xargs :guard t))
+  (let ((e (fn-own-feed-entry-of peer tbl)))
+    (if (null e)
+        (fn-own-feed-port-result :ignored tbl nil nil)
+      (let ((step (fn-feed-live-port-step (fn-own-feed-entry-feed e) event)))
+        (if (equal (fn-feed-port-step-status step) :accepted)
+            (let ((effects (fn-feed-port-step-effects step)))
+              (fn-own-feed-port-result
+               :accepted
+               (fn-own-feed-put peer (fn-own-feed-entry-record e)
+                                (fn-feed-port-step-feed step) tbl)
+               (fn-feed-port-step-records step)
+               (if (null effects) nil (list (cons peer effects)))))
+          (fn-own-feed-port-result :refused tbl nil nil))))))
+
+(defun fn-own-feed-port-tick-peer (peer tbl obs)
+  (declare (xargs :guard t))
+  (fn-own-feed-port-peer peer tbl (list :tick obs)))
+
+(defun fn-own-feed-port-observe-peer (peer tbl response article obs)
+  (declare (xargs :guard t))
+  (fn-own-feed-port-peer peer tbl (list :reply response article obs)))
+
+(defun fn-own-feed-port-lost-peer (peer tbl obs)
+  (declare (xargs :guard t))
+  (fn-own-feed-port-peer peer tbl (list :lost obs)))
+
+(defun fn-own-feed-port-restart-peer (peer tbl)
+  (declare (xargs :guard t))
+  (fn-own-feed-port-peer peer tbl (list :restart)))
+
 ; OPEN, recorded rather than weakened (docs/proof-style.md sec. 5, AGENTS.md).
 ; `fn-own-feed-tick-peer-records-the-command-it-emits' -- a record is built
 ; exactly when a command goes out and names the Message-ID that command
@@ -1556,6 +1613,10 @@
     fn-own-feed-new-targets
     fn-own-feed-parse-response fn-own-feed-reply-records-of
     fn-own-feed-lost-one fn-own-feed-lost-records-of
-    fn-own-feed-tick-peer-records fn-own-feed-tick-records))
+    fn-own-feed-tick-peer-records fn-own-feed-tick-records
+    fn-own-feed-port-result fn-own-feed-port-status fn-own-feed-port-table
+    fn-own-feed-port-records fn-own-feed-port-effects fn-own-feed-port-peer
+    fn-own-feed-port-tick-peer fn-own-feed-port-observe-peer
+    fn-own-feed-port-lost-peer fn-own-feed-port-restart-peer))
 
 (in-theory (disable fn-own-feed-vocabulary))
