@@ -50,7 +50,9 @@ complete ACL2 transcript is
 
 ## Limits
 
-This is component evidence.  It proves neither Ed25519 nor SHA-512 security
+This is component evidence: admission/certification is not guard verification.
+The parser book currently disables eager guard verification and has no completed
+guard-verification pass. It proves neither Ed25519 nor SHA-512 security
 and does not exercise UDP acquisition, request encoding, nonce generation,
 native crypto composition, FNAN persistence/recovery, or CLI outcomes.  A
 nonempty PATH is parsed and retained but remains `:uncertain

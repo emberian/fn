@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 297 |
-| Certification roots in the Makefile | 297 |
-| Books inside the root closure | 297 |
-| `defthm` and `defthmd` events | 5898 |
-| `defun` events | 4123 |
+| Books read | 299 |
+| Certification roots in the Makefile | 299 |
+| Books inside the root closure | 299 |
+| `defthm` and `defthmd` events | 5900 |
+| `defun` events | 4156 |
 | Functions with verified guards | 1515 |
 | Functions declared `:verify-guards nil` and never verified | 209 |
-| Functions left at the default with an explicit guard | 1882 |
+| Functions left at the default with an explicit guard | 1915 |
 | Functions left at the default with no guard | 517 |
-| `assert-event` checks | 6036 |
+| `assert-event` checks | 6052 |
 | `must-fail` checks | 90 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 48 |
@@ -86,6 +86,7 @@ that `make certify` requests.
 | `books/acceptance.lisp` | root | 50 | 45 | 36/0/9/0 | 0 | 0 | 0 |
 | `books/anchor-invariants.lisp` | root | 30 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/anchor-record.lisp` | root | 5 | 4 | 4/0/0/0 | 0 | 0 | 0 |
+| `books/anchor-wire.lisp` | root | 2 | 31 | 0/0/31/0 | 0 | 0 | 0 |
 | `books/anchor.lisp` | root | 60 | 63 | 45/1/16/1 | 0 | 0 | 1 |
 | `books/article-fields.lisp` | root | 5 | 31 | 31/0/0/0 | 0 | 0 | 1 |
 | `books/article-invariants.lisp` | root | 44 | 14 | 0/7/7/0 | 0 | 0 | 0 |
@@ -274,6 +275,7 @@ that `make certify` requests.
 | `tests/acl2/acceptance-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 246 | 0 | 0 |
 | `tests/acl2/anchor-teeth-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 57 | 0 | 0 |
 | `tests/acl2/anchor-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 53 | 0 | 0 |
+| `tests/acl2/anchor-wire-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 16 | 0 | 0 |
 | `tests/acl2/article-fields-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 36 | 0 | 0 |
 | `tests/acl2/article-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 2 | 0 |
 | `tests/acl2/article-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 38 | 0 | 0 |

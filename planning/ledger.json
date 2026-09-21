@@ -153,9 +153,11 @@
     "books/tcpcl-invariants",
     "tests/acl2/tcpcl-tests",
     "books/anchor",
+    "books/anchor-wire",
     "books/anchor-record",
     "books/anchor-invariants",
     "tests/acl2/anchor-tests",
+    "tests/acl2/anchor-wire-tests",
     "tests/acl2/anchor-teeth-tests",
     "books/membership-epochs",
     "books/membership-epochs-invariants",
@@ -301,18 +303,18 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 297,
-    "books_in_root_closure": 297,
-    "roots": 297,
-    "theorems": 5898,
-    "functions": 4123,
-    "assert_events": 6036,
+    "books": 299,
+    "books_in_root_closure": 299,
+    "roots": 299,
+    "theorems": 5900,
+    "functions": 4156,
+    "assert_events": 6052,
     "must_fails": 90,
     "encapsulates": 19,
     "guards": {
       "verified": 1515,
       "declared-off": 209,
-      "default-guarded": 1882,
+      "default-guarded": 1915,
       "default-unguarded": 517
     },
     "suspect_theorems": 48,
@@ -453,6 +455,31 @@
       "system_includes": [
         "arithmetic/top"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/anchor-wire.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 31,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 31,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 10,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "anchor"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -5439,6 +5466,31 @@
       "encapsulates": 0,
       "includes": [
         "../../books/anchor-invariants"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/anchor-wire-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 2,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 16,
+      "must_fails": 0,
+      "defconsts": 12,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/anchor-wire"
       ],
       "system_includes": [],
       "suspects": [],

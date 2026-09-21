@@ -67,6 +67,9 @@ PATH/INDX shape.  Before returning a record it compares the received nested
 DELE and SREP byte strings with the canonical byte strings rebuilt from that
 record.  `host/anchor-wire-host.lisp` returns those ACL2-produced signature
 subjects to a native crypto caller; it does not reconstruct them in raw Lisp.
+This parser component is certified, but its current book disables eager guard
+verification and has not yet verified its execution guards. Native acquisition
+and cryptographic/persistence composition remain separate work.
 
 `root` is a **field, not a derivation**, and that is what makes the
 reconstruction the message that was verified. Until 2026-09-20 `fn-anchor-root`
