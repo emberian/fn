@@ -1,0 +1,213 @@
+{
+  "acl2_executable": "/tank/fn/acl2-8.7/saved_acl2",
+  "acl2_executable_sha256": "64030dda0b03bbb6cf50984889f5ce1e2ba867b6ce3c9a65403afc44f9b4fdb5",
+  "acl2_exit_codes": {
+    "books/cbor": 0,
+    "books/defrecord": 0,
+    "books/native-config": 0,
+    "books/native-operator": 0,
+    "books/records": 0,
+    "host/native-operator-host": 0,
+    "tests/acl2/native-operator-host-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "book_failures": {},
+  "book_results": {
+    "books/cbor": "passed",
+    "books/defrecord": "passed",
+    "books/native-config": "passed",
+    "books/native-operator": "passed",
+    "books/records": "passed",
+    "host/native-operator-host": "passed",
+    "tests/acl2/native-operator-host-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/cbor": 0.164,
+    "books/defrecord": 0.095,
+    "books/native-config": 0.218,
+    "books/native-operator": 0.163,
+    "books/records": 3.821,
+    "host/native-operator-host": 0.144,
+    "tests/acl2/native-operator-host-tests": 0.14
+  },
+  "cert_cache": {
+    "already_cached": 7,
+    "directory": "/tank/fn/certcache",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": true,
+        "book": "books/defrecord",
+        "published": false,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": true,
+        "book": "books/cbor",
+        "published": false,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": true,
+        "book": "books/records",
+        "published": false,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": true,
+        "book": "books/native-config",
+        "published": false,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": true,
+        "book": "books/native-operator",
+        "published": false,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "host/native-operator-host",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/native-operator-host-tests",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 2,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/cbor": "cfde10eec5697518eb4e1ec58cc5d5f899b3f88a53649600a068a9ea09036662",
+    "books/defrecord": "a386bd1a3721859bed854b3c07042b6c756c02e63741c3dd3c5184f930bb65bc",
+    "books/native-config": "dd617286b1830a40932a41801eac863a8fe44c6aac6a5196677adf3f00b04d1e",
+    "books/native-operator": "4ef714d5734ab99fe1fdc0e66746a9add4832324e3a614e07e119ec36009336d",
+    "books/records": "c56ef2c80474f7a4f176648d8e075349cc87856a78e38914a30b1943b1fa016f",
+    "host/native-operator-host": "83490362feb13f02b700792d7964fc182337735ba9cc07dba62110e3e9884e19",
+    "tests/acl2/native-operator-host-tests": "4e3a4fa6015173dba758cbd6d1f15c182d7287b38d29732a87da5115bbe782d8"
+  },
+  "certify_wall_seconds": 4.794,
+  "closure": true,
+  "command": [
+    "/tank/fn/acl2-8.7/saved_acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/cbor": "5eac0f6e31dcfae399614d33f890697d3afddc35b8bc9a820a49506e5eb5910b",
+    "books/defrecord": "2a2386753f3cfb9ad7b8798bd119b810ffa5807198724b2f9b2d6f26fb015c4a",
+    "books/native-config": "15e754d95e4530f3e2f6401d4656225de9537fb99bdcc669767f8bc360631ea6",
+    "books/native-operator": "bba5269b1d770136957e636ccc2526d475b19089285290d222513b2951906b6f",
+    "books/records": "ecbdb0f0dfa33039725f1e5aeee2b079ce6e9a42210d2026b455059ddf11f50f",
+    "host/native-operator-host": "fd3f1f6752c90da5e4c06ae6e7c1308e7ac99482ae151f0ac88e2322b2e157e0",
+    "tests/acl2/native-operator-host-tests": "1a3b0f33d990c63867140870d5f677149abaa4c8ee7562b960ba2045da256b2d"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 7d91c04704a40b314520427b921caab1 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS 7d91c04704a40b314520427b921caab1 949ba7ded144",
+    "FN_CERTIFY_SUCCESS 7d91c04704a40b314520427b921caab1 d45992d8befd",
+    "FN_CERTIFY_SUCCESS 7d91c04704a40b314520427b921caab1 ef7877596d92",
+    "FN_CERTIFY_SUCCESS 7d91c04704a40b314520427b921caab1 af4d66d367a1",
+    "FN_CERTIFY_SUCCESS 7d91c04704a40b314520427b921caab1 ddbae01792ab",
+    "FN_CERTIFY_SUCCESS 7d91c04704a40b314520427b921caab1 ad485ffb8c7a"
+  ],
+  "failure_markers": [],
+  "finished_utc": "2026-09-21T08:52:05+00:00",
+  "git_branch": null,
+  "git_dirty": null,
+  "git_revision": null,
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "hostname": "hbox",
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 7d91c04704a40b314520427b921caab1 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS 7d91c04704a40b314520427b921caab1 949ba7ded144",
+    "FN_CERTIFY_SUCCESS 7d91c04704a40b314520427b921caab1 d45992d8befd",
+    "FN_CERTIFY_SUCCESS 7d91c04704a40b314520427b921caab1 ef7877596d92",
+    "FN_CERTIFY_SUCCESS 7d91c04704a40b314520427b921caab1 af4d66d367a1",
+    "FN_CERTIFY_SUCCESS 7d91c04704a40b314520427b921caab1 ddbae01792ab",
+    "FN_CERTIFY_SUCCESS 7d91c04704a40b314520427b921caab1 ad485ffb8c7a"
+  ],
+  "platform": "Linux-6.11.0-29-generic-x86_64-with-glibc2.40",
+  "python": "3.12.7",
+  "reader_sha256": "8eae3751596a72bd0c404afaf643b5d28331f5b7017670dcfee53022f4b121f4",
+  "requested_before_filter": [
+    "tests/acl2/native-operator-host-tests"
+  ],
+  "requested_books": [
+    "books/defrecord",
+    "books/cbor",
+    "books/records",
+    "books/native-config",
+    "books/native-operator",
+    "host/native-operator-host",
+    "tests/acl2/native-operator-host-tests"
+  ],
+  "run_id": "certify-20260921T085200Z-1886133",
+  "runner_sha256": "3c39d51224f9125782c30bc81c30ad6a0878283adba8215df5bd50a4eb36ba35",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/cbor": 0.0,
+    "books/defrecord": 0.0,
+    "books/native-config": 0.0,
+    "books/native-operator": 0.0,
+    "books/records": 0.0,
+    "host/native-operator-host": 0.0,
+    "tests/acl2/native-operator-host-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/native-config.lisp": "97f72a16389ddff95675dfc384693683ad913c5f8b956b0a15cb3dfaf1104cf6",
+    "books/native-operator.lisp": "c79052308fb8d83dc11cd98cd6f97c6d86738efc93c3d73dcb400c539a549abe",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "host/native-operator-host.lisp": "da90ea959a05a0d8b946181b2775d603ba6406204b53b0ff7d3376b61105f192",
+    "tests/acl2/native-operator-host-tests.lisp": "dbc11c60d6e19797b69ef5af630bcf2f3ebda7642c0c71509e307b48f65e2339"
+  },
+  "source_digests_sha256_after": {
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/native-config.lisp": "97f72a16389ddff95675dfc384693683ad913c5f8b956b0a15cb3dfaf1104cf6",
+    "books/native-operator.lisp": "c79052308fb8d83dc11cd98cd6f97c6d86738efc93c3d73dcb400c539a549abe",
+    "books/records.lisp": "1e00a6f18b387148b4cb0ae308cd0b2369261067d82256c0052059d0715d987c",
+    "host/native-operator-host.lisp": "da90ea959a05a0d8b946181b2775d603ba6406204b53b0ff7d3376b61105f192",
+    "tests/acl2/native-operator-host-tests.lisp": "dbc11c60d6e19797b69ef5af630bcf2f3ebda7642c0c71509e307b48f65e2339"
+  },
+  "start_order": [
+    "books/defrecord",
+    "books/cbor",
+    "books/records",
+    "books/native-config",
+    "books/native-operator",
+    "host/native-operator-host",
+    "tests/acl2/native-operator-host-tests"
+  ],
+  "started_utc": "2026-09-21T08:52:00+00:00",
+  "status": "passed",
+  "timeout_seconds": 600,
+  "tree": "/tank/fn/gates/w15-native-operator"
+}
