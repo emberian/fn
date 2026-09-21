@@ -145,3 +145,22 @@
                                 "00000000000000000004.txn")
            (fn-bs-lookup before :transactions
                          "00000000000000000004.txn")))))
+
+; The selected observer's boundary connects suffix sequence 4 to the actual
+; plan: surviving covered names 1 and 3 are reclaimable, while every suffix
+; sequence at or above 4 is excluded.
+(assert-event
+ (and (not (member-equal
+            "00000000000000000004.txn"
+            (fn-bs-pack-reclaim-plan *bscc-names* 8 4)))
+      (not (member-equal
+            "00000000000000000005.txn"
+            (fn-bs-pack-reclaim-plan *bscc-names* 8 4)))))
+
+; Dropping the suffix-boundary premise admits covered sequence 1, which is
+; present in the actual plan.
+(must-fail
+ (assert-event
+  (not (member-equal
+        "00000000000000000001.txn"
+        (fn-bs-pack-reclaim-plan *bscc-names* 8 4)))))

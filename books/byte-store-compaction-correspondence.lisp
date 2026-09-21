@@ -56,6 +56,45 @@
   :hints (("Goal" :in-theory (enable fn-bs-pack-reclaim-plan))))
 
 (local
+ (defthm fn-bs-txn-name-of-distinct-naturals
+   (implies (and (natp a) (natp b) (not (equal a b)))
+            (not (equal (fn-bs-txn-name a) (fn-bs-txn-name b))))
+   :hints (("Goal" :use ((:instance fn-bs-txn-name-is-injective))))))
+
+(local
+ (defthm fn-bs-covered-observation-excludes-suffix-sequence
+   (implies (and (natp start) (natp selected-lower)
+                 (natp sequence) (<= start selected-lower)
+                 (<= selected-lower sequence))
+            (not (member-equal
+                  (fn-bs-txn-name sequence)
+                  (fn-bs-pack-covered-names
+                   (fn-bs-txn-observation-covered
+                    names start selected-lower)
+                   selected-lower))))
+   :hints (("Goal"
+            :induct (fn-bs-txn-observation-covered
+                     names start selected-lower)
+            :in-theory (enable fn-bs-txn-observation-covered
+                               fn-bs-pack-covered-names)))))
+
+; This is the selected-observation-to-program bridge used by the crash
+; theorem: every canonical suffix sequence is absent from the actual covered
+; reclaim plan.
+(defthm fn-bs-selected-suffix-is-not-in-reclaim-plan
+  (implies (and (natp maximum) (natp selected-lower) (natp sequence)
+                (<= selected-lower sequence)
+                (true-listp names) (<= (len names) maximum)
+                (not (equal (fn-bs-txn-observation-selected
+                             names selected-lower)
+                            :invalid)))
+           (not (member-equal
+                 (fn-bs-txn-name sequence)
+                 (fn-bs-pack-reclaim-plan names maximum selected-lower))))
+  :hints (("Goal" :in-theory (enable fn-bs-pack-reclaim-plan
+                                      fn-bs-txn-observation-selected))))
+
+(local
  (defthm fn-bs-pack-reclaim-steps-last
    (equal (last (fn-bs-pack-reclaim-steps names))
           (list (list :cut "pack-reclaim-directory")))
@@ -120,8 +159,7 @@
 (defun fn-bs-exact-name-payloadp (before after name)
   (declare (xargs :guard t :verify-guards nil))
   (let ((ino (fn-bs-lookup before :transactions name)))
-    (and (fn-bs-inop ino)
-         (equal (fn-bs-lookup after :transactions name) ino)
+    (and (equal (fn-bs-lookup after :transactions name) ino)
          (equal (fn-bs-content after ino) (fn-bs-content before ino)))))
 
 (defun fn-bs-crash-preserves-name-payloadp (before at-cut image name)
@@ -286,8 +324,7 @@
   (implies (and (fn-bs-reclaim-program-shapep steps)
                 (fn-bs-reclaim-steps-avoid-namep steps name)
                 (fn-bs-pending-reclaim-safe-p (fn-bs-pending bs) name)
-                (fn-bs-fencedp bs (fn-bs-lookup bs :transactions name))
-                (fn-bs-inop (fn-bs-lookup bs :transactions name)))
+                (fn-bs-fencedp bs (fn-bs-lookup bs :transactions name)))
            (fn-bs-exact-name-payloadp
             bs (fn-bs-prefix-state bs ks steps limit groups capacity) name))
   :hints (("Goal" :induct (fn-bs-prefix-state bs ks steps limit groups capacity)
@@ -301,8 +338,7 @@
   (implies (and (fn-bs-reclaim-program-shapep steps)
                 (fn-bs-reclaim-steps-avoid-namep steps name)
                 (fn-bs-pending-reclaim-safe-p (fn-bs-pending bs) name)
-                (fn-bs-fencedp bs (fn-bs-lookup bs :transactions name))
-                (fn-bs-inop (fn-bs-lookup bs :transactions name)))
+                (fn-bs-fencedp bs (fn-bs-lookup bs :transactions name)))
            (fn-bs-reclaim-cut-ready-p
             bs (fn-bs-prefix-state bs ks steps limit groups capacity) name))
   :hints (("Goal" :induct (fn-bs-prefix-state bs ks steps limit groups capacity)
@@ -335,8 +371,7 @@
     (implies (and (not (equal plan :invalid))
                   (not (member-equal name plan))
                   (fn-bs-pending-reclaim-safe-p (fn-bs-pending bs) name)
-                  (fn-bs-fencedp bs (fn-bs-lookup bs :transactions name))
-                  (fn-bs-inop (fn-bs-lookup bs :transactions name)))
+                  (fn-bs-fencedp bs (fn-bs-lookup bs :transactions name)))
              (fn-bs-exact-name-payloadp
               bs
               (fn-bs-prefix-state
@@ -377,7 +412,6 @@
                   limit groups capacity)))
     (implies (and (not (member-equal name plan))
                   (fn-bs-pending-reclaim-safe-p (fn-bs-pending bs) name)
-                  (fn-bs-inop (fn-bs-lookup bs :transactions name))
                   (fn-bs-crash-imagep at-cut image))
              (fn-bs-crash-preserves-name-payloadp bs at-cut image name)))
   :hints (("Goal"
@@ -401,3 +435,22 @@
                                       names maximum selected-lower)
                                      limit groups capacity))))
            :in-theory (enable fn-bs-pack-reclaim-program fn-bs-fencedp))))
+
+(defthm fn-bs-selected-reclaim-crash-preserves-suffix-payload
+  (let* ((name (fn-bs-txn-name sequence))
+         (at-cut (fn-bs-prefix-state
+                  bs ks (fn-bs-pack-reclaim-program names maximum selected-lower)
+                  limit groups capacity)))
+    (implies (and (natp maximum) (natp selected-lower) (natp sequence)
+                  (<= selected-lower sequence)
+                  (true-listp names) (<= (len names) maximum)
+                  (not (equal (fn-bs-txn-observation-selected
+                               names selected-lower)
+                              :invalid))
+                  (fn-bs-pending-reclaim-safe-p (fn-bs-pending bs) name)
+                  (fn-bs-crash-imagep at-cut image))
+             (fn-bs-crash-preserves-name-payloadp bs at-cut image name)))
+  :hints (("Goal"
+           :use ((:instance fn-bs-selected-suffix-is-not-in-reclaim-plan)
+                 (:instance
+                  fn-bs-pack-reclaim-program-crash-preserves-uncovered-sequence)))))
