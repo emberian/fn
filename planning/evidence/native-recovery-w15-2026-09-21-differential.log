@@ -1,0 +1,61 @@
+step  1 init                                             python=0 native=0
+step  2 init again                                       python=0 native=0
+step  3 status empty                                     python=0 native=0
+step  4 post first                                       python=0 native=0
+step  5 post duplicate                                   python=0 native=0
+step  6 post conflict                                    python=1 native=1
+step  7 post literal two groups                          python=0 native=0
+step  8 post empty payload                               python=0 native=0
+step  9 post maximum payload                             python=0 native=0
+step 10 post oversize payload                            python=4 native=4
+step 11 post bad message-id                              python=1 native=1
+step 12 post unknown group                               python=1 native=1
+step 13 post duplicate group                             python=1 native=1
+step 14 post zero charge                                 python=1 native=1
+step 15 post missing payload                             python=4 native=4
+step 16 post prepublish fault                            python=1 native=1
+step 17 post after abort                                 python=0 native=0
+step 18 post postpublish fault                           python=3 native=3
+step 19 recover                                          python=0 native=0
+step 20 status                                           python=0 native=0
+step 21 inspect literal                                  python=0 native=0
+step 22 inspect absent                                   python=1 native=1
+step 23 inspect bad id                                   python=1 native=1
+  stderr differs at recover absent store:
+    python: store: missing store directory: /tmp/fn-native-diff-_g1_w0m8/python/absent
+    native: store: missing store directory: /tmp/fn-native-diff-_g1_w0m8/native/absent
+step 24 recover absent store                             python=4 native=4
+step 25 damaged: truncated                               python=4 native=4
+step 26 damaged: flipped trailer                         python=4 native=4
+step 27 damaged: gap                                     python=4 native=4
+  stderr differs at damaged: config truncated:
+    python: store: invalid durable config frame
+    native: store: ACL2 rejected durable configuration frame
+step 28 damaged: config truncated                        python=4 native=4
+  stderr differs at damaged: config wrong kind:
+    python: store: invalid durable config frame
+    native: store: ACL2 rejected durable configuration frame
+step 29 damaged: config wrong kind                       python=4 native=4
+  stderr differs at damaged: frontier truncated:
+    python: store: invalid durable allocation frontier frame
+    native: store: ACL2 rejected durable allocation frontier frame
+step 30 damaged: frontier truncated                      python=4 native=4
+  stderr differs at damaged: frontier wrong kind:
+    python: store: invalid durable allocation frontier frame
+    native: store: ACL2 rejected durable allocation frontier frame
+step 31 damaged: frontier wrong kind                     python=4 native=4
+step 32 damaged: frontier legacy JSON                    python=4 native=4
+step 33 damaged: stray file                              python=4 native=4
+step 34 damaged: symlinked transaction                   python=4 native=4
+  stderr differs at damaged: missing staging:
+    python: store: missing store directory: /tmp/fn-native-diff-_g1_w0m8/python/damaged-missing-staging/staging
+    native: store: missing store directory: /tmp/fn-native-diff-_g1_w0m8/native/damaged-missing-staging/staging
+step 35 damaged: missing staging                         python=4 native=4
+step 36 damaged: lock symlink                            python=4 native=4
+step 37 reader store: group stat article quit            match (exit python=0 native=0)
+step 38 reader store: split command                      match (exit python=0 native=0)
+step 39 reader store: over-long line                     match (exit python=0 native=0)
+step 40 reader seed: list and quit                       match (exit python=0 native=0)
+
+steps=40 findings=1 stderr-text-differences=6
+FINDING recover: stdout python=b'recovered transactions=6 articles=6 staging-orphans=0 anchor=none checkpoint=none\n' native=b'recovered transactions=6 articles=6 staging-orphans=0 anchor=none\n'
