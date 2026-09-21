@@ -60,3 +60,26 @@ for the exact raw source are in
 passed on Darwin 25.6.0 in 17.202 seconds. The preceding blocking-accept failure,
 the repair, and the local image-build limitation are recorded in
 `planning/evidence/native-control-accept-shutdown-2026-09-21.md`.
+
+The bounded-transport successor makes each frame use one absolute ten-second
+deadline, requests at most the remaining allowance plus one sentinel from the
+shared bounded receive primitive, retains chunks without prefix copying, and
+performs one final vector copy at EOF. ACL2 projects the 16-active-client
+ceiling; the accept thread returns ACL2's sealed `:busy` status without
+creating a seventeenth worker. The focused successor closure was:
+
+```text
+python3 tools/certify_books.py --jobs 2 --closure books/native-control tests/acl2/native-control-tests tests/acl2/native-control-host-tests
+```
+
+All 24 closure books passed. The source-pinned manifest is
+`planning/evidence/manifests/certify-20260921T111015Z-28175-native-control-resource.json`
+(SHA-256 `3bb1f1c5792b634170b9ceed2b376349a8f435eb0d5419d8557e9cdce150dfcd`).
+`sbcl --script tests/native_io_progress.lisp` passed, including validation
+that the caller's limit controls allocation before the read syscall. The
+expanded seven-case native suite passed on Darwin 25.6.0 in 37.941 seconds;
+its exact command and output are in
+`planning/evidence/native-control-resource-b0dfdf55-2026-09-21-tests.log`.
+As with the earlier local saved-image trace, the raw behavior is exact but the
+local image build is not the clean build gate because unrelated copied
+certificates have different absolute book names.
