@@ -247,12 +247,36 @@ class NativeOwnerTests(unittest.TestCase):
                 self.assertIn(b"IHAVE\r\n", capabilities)
                 stream.write(b"IHAVE <native-transit@example.invalid>\r\n")
                 self.assertTrue(stream.readline().startswith(b"335 "))
+                # makefile owns a descriptor reference independently of the
+                # socket context manager; close both to actually deliver EOF.
+                stream.close()
             self.assertEqual(process.wait(timeout=60), 0,
                              process.stderr.read().decode("utf-8", "replace"))
         finally:
             if process.poll() is None:
                 process.terminate()
                 process.wait(timeout=10)
+            process.stdout.close()
+            process.stderr.close()
+
+    def test_once_sigterm_closes_client_with_incomplete_post(self):
+        process, port = self.start_owner()
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=30) as client:
+                with client.makefile("rwb", buffering=0) as stream:
+                    self.assertTrue(stream.readline().startswith(b"200 "))
+                    stream.write(b"POST\r\n")
+                    self.assertTrue(stream.readline().startswith(b"340 "))
+                    stream.write(b"From: incomplete")
+                    # Keep the client's descriptor open: this is SIGTERM,
+                    # not the easier ordinary-EOF shutdown path.
+                    process.terminate()
+                    _out, err = process.communicate(timeout=15)
+                    self.assertEqual(process.returncode, 0, err.decode())
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.communicate(timeout=10)
             process.stdout.close()
             process.stderr.close()
 
