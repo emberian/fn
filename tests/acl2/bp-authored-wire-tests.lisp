@@ -26,8 +26,9 @@
 (assert-event
  (equal (fn-bpp-sequence
           (fn-bpb-bundle-primary
-          (fn-bpb-decode
-           (fn-bpn-authored-wire-operation-wire *bpaw-operation*) 1048576)))
+           (fn-cbor-result-value
+            (fn-bpb-decode
+             (fn-bpn-authored-wire-operation-wire *bpaw-operation*) 1048576))))
         7))
 
 ; The reservation determines a different durable name for the next sequence.
