@@ -109,7 +109,8 @@
                        *fn-feed-journal-frame-max*))))
   :hints (("Goal" :in-theory (disable fn-feed-journal-open-frame))))
 
-(defthm fn-feed-journal-repair-preserves-accepted-offset
+; Unfolding helper, not a registry proof event.
+(defthm fn-feed-journal-repair-offset-unfolds
   (implies (equal (car (fn-feed-journal-scan peer prefix frame offset)) :repair)
            (equal (cadr (fn-feed-journal-scan peer prefix frame offset))
                   (nfix offset)))
