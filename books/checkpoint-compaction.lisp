@@ -177,7 +177,7 @@
   (if (or (not (fn-cbor-octet-listp octets))
           (< *fn-cc-max-octets* (len octets)))
       (list :error :octets)
-    (let ((header (fn-stmt-decode-items-bounded
+    (let ((header (fn-stmt-decode-prefix-items-bounded
                    5 octets *fn-cc-max-octets*
                    *fn-frame-max-store-payload*)))
       (if (or (not (equal (car header) :ok))
@@ -195,7 +195,7 @@
                   (not (and (consp count-item) (equal (car count-item) :uint)))
                   (< *fn-cc-max-events* (cdr count-item)))
               (list :error :header)
-            (let* ((body (fn-stmt-decode-items-bounded
+            (let* ((body (fn-stmt-decode-prefix-items-bounded
                           (cdr count-item) (fn-cc-nth 2 header)
                           *fn-cc-max-octets* *fn-frame-max-store-payload*))
                    (events (if (equal (car body) :ok)
