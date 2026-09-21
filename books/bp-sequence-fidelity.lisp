@@ -54,7 +54,7 @@
 
 (defun fn-bpn-sf-nth (n s)
   (declare (xargs :guard t))
-  (if (true-listp s) (nth n s) nil))
+  (if (and (natp n) (true-listp s)) (nth n s) nil))
 (defun fn-bpn-sf-rootp (s) (declare (xargs :guard t)) (fn-bpn-sf-nth 1 s))
 (defun fn-bpn-sf-sequencep (s) (declare (xargs :guard t)) (fn-bpn-sf-nth 2 s))
 (defun fn-bpn-sf-freshp (s) (declare (xargs :guard t)) (fn-bpn-sf-nth 3 s))
