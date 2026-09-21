@@ -32,6 +32,12 @@
 (assert-event (equal (guard 'fn-own-take-submission nil (w state)) *t*))
 (assert-event (equal (symbol-class 'fn-own-outcome (w state)) :common-lisp-compliant))
 (assert-event (equal (guard 'fn-own-outcome nil (w state)) *t*))
+(assert-event (equal (symbol-class 'fn-own-control-submit (w state))
+                     :common-lisp-compliant))
+(assert-event (equal (guard 'fn-own-control-submit nil (w state)) *t*))
+(assert-event (equal (symbol-class 'fn-own-control-outcome (w state))
+                     :common-lisp-compliant))
+(assert-event (equal (guard 'fn-own-control-outcome nil (w state)) *t*))
 (assert-event (equal (guard 'fn-own-complete nil (w state))
                      '(fn-sn-statep (fn-own-store o))))
 (assert-event (equal (guard 'fn-own-step nil (w state))
@@ -645,9 +651,69 @@
 (assert-event (equal (car (fn-own-outcome *own-p-done* 4 :fault))
                      (car (fn-own-outcome *own-p-done* 4 :uncertain))))
 
+(defconst *own-after-post* (cdr *own-240*))
+
+; The control port carries exact authored article octets into the SAME owner
+; submission queue.  It allocates no socket id, takes through the same writer
+; step and recognizes acceptance only after the same consumed completion.
+(defconst *own-control-msgid* (fn-nntp-string-octets "<control@example.invalid>"))
+(defconst *own-control-groups* (list (fn-nntp-string-octets "fn.letters")))
+(defconst *own-control-source*
+  (append (fn-nntp-string-octets "From: cli@example.invalid") '(13 10)
+          (fn-nntp-string-octets "Subject: exact") '(13 10)
+          (fn-nntp-string-octets "Newsgroups: fn.letters") '(13 10)
+          (fn-nntp-string-octets "Message-ID: <control@example.invalid>") '(13 10)
+          '(13 10)
+          (fn-nntp-string-octets "Authored bytes.") '(13 10)))
+(defconst *own-control-queued*
+(fn-own-control-submit *own-after-post* *own-control-msgid*
+                         *own-control-groups* *own-control-source*))
+(assert-event (equal (fn-own-control-submit-result
+                      *own-after-post* *own-control-msgid*
+                      *own-control-groups* *own-control-source*)
+                     :submitted))
+(assert-event (equal (fn-own-conns *own-control-queued*)
+                     (fn-own-conns *own-after-post*)))
+(assert-event (equal (fn-inj-decision-octets
+                      (fn-own-sub-decision (car (fn-own-queue *own-control-queued*))))
+                     *own-control-source*))
+(defconst *own-control-taken* (fn-own-take-submission *own-control-queued*))
+(assert-event (fn-own-control-submissionp (fn-own-inflight *own-control-taken*)))
+(assert-event (equal (fn-own-control-outcome-result *own-control-taken* :durable)
+                     :uncertain))
+(defconst *own-control-done*
+  (fn-own-run *own-control-taken*
+              (own-post-events (own-record 3 3 "<control@example.invalid>"))))
+(assert-event (equal (fn-own-control-outcome-result *own-control-done* :durable)
+                     :accepted))
+(assert-event (null (fn-own-inflight
+                     (fn-own-control-outcome *own-control-done* :durable))))
+(assert-event (equal (fn-own-conns
+                      (fn-own-control-outcome *own-control-done* :durable))
+                     (fn-own-conns *own-control-done*)))
+(assert-event (equal (fn-own-control-outcome-result *own-control-taken* :duplicate)
+                     :duplicate))
+(assert-event (equal (fn-own-outcome-completion *own-control-taken* :duplicate)
+                     :refused))
+(assert-event (equal (fn-own-control-outcome-result *own-control-taken* :refused)
+                     :refused))
+
+; Teeth: without a control submission in flight there is no outcome; without
+; exact valid boundary values nothing is queued; without a consumed
+; completion the host word :durable remains uncertain.
+(assert-event (equal (fn-own-control-outcome-result *own-after-post* :durable)
+                     :absent))
+(assert-event (equal (fn-own-control-submit-result
+                      *own-after-post* '(60 62) *own-control-groups*
+                      *own-control-source*)
+                     :refused))
+(assert-event (equal (fn-own-control-submit-result
+                      *own-control-taken* *own-control-msgid*
+                      *own-control-groups* *own-control-source*)
+                     :busy))
+
 ; R, pinned before the post, still sees two articles; a reader opened after
 ; the post sees three; R's pinned prefix is unchanged.
-(defconst *own-after-post* (cdr *own-240*))
 (assert-event (equal (fn-own-conn-version (fn-own-find-conn 3 (fn-own-conns *own-after-post*))) 2))
 (assert-event (equal (fn-served-reply-octets (car (fn-own-read *own-after-post* 3 *own-group-octets*)))
                      (append (fn-nntp-string-octets "211 2 1 2 fn.letters") '(13 10))))
