@@ -320,11 +320,30 @@ class OwnerTests(OwnerFixture):
         status = self.store_command("status")
         self.assertIn(b"transactions=3 articles=3", status.stdout)
 
-    def test_clock_and_group_facts_go_through_the_owner(self):
+    def test_live_group_reconfiguration_is_durable_and_uses_a_pinned_client(self):
         owner = self.start_owner()
-        self.assertEqual(owner.control_line(b"OBSERVE"), b"observed")
-        self.assertEqual(owner.control_line(b"DECLARE-GROUP fn.new"), b"declared")
-        self.assertEqual(owner.control_line(b"DECLARE-GROUP fn.new"), b"refused")
+        first = owner.connect()
+        second = owner.connect()
+        self.addCleanup(first.close)
+        self.addCleanup(second.close)
+        # Both readers remain open.  The first client's pinned generation is
+        # the ACL2 authorization for this event; no Python config table is
+        # consulted.  The durable record is committed before fn-ocfg publishes
+        # its next generation, and the other reader stays a separate pin.
+        self.assertEqual(owner.control_line(b"CONNECTIONS"), b"connections 0:0 1:0")
+        self.assertEqual(owner.control_line(b"RECONFIGURE 0 create fn.live"),
+                         b"configured generation=2")
+        self.assertEqual(owner.control_line(b"CONNECTIONS"), b"connections 0:0 1:0")
+        owner.kill()
+        self.owner = None
+        reopened = self.start_owner()
+        reader = reopened.connect()
+        self.addCleanup(reader.close)
+        # Recovery replays the durable configuration history into fn-ocfg.  A
+        # second create is refused by the same ACL2 admissibility predicate;
+        # it does not depend on a copied Python group table.
+        self.assertEqual(reopened.control_line(b"RECONFIGURE 0 create fn.live"),
+                         b"refused group-exists")
 
 
 if __name__ == "__main__":
