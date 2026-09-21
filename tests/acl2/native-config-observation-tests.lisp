@@ -76,3 +76,16 @@
          (fn-nco-observe (make-list (+ 1 *fn-nco-max-config-observations*)
                                     :initial-element nil)))
         :budget))
+
+; Fresh initialization differs from recovery only for the exactly empty list.
+(assert-event (equal (fn-nco-observe-initial nil) (list :ok nil nil)))
+(assert-event (equal (fn-nco-observe nil) (list :fault :namespace nil)))
+(assert-event
+ (equal (fn-nco-observe-initial *fn-nco-test-good*)
+        (fn-nco-observe *fn-nco-test-good*)))
+(assert-event
+ (equal (fn-nco-observe-initial
+         (list (list "00000002.cfg" *fn-nco-test-record-1*)))
+        (list :fault :namespace nil)))
+(assert-event
+ (equal (fn-nco-observe-initial 'malformed) (list :fault :budget nil)))
