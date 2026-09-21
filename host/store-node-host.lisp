@@ -10,6 +10,7 @@
 (include-book "../books/store-node-resolution")
 (include-book "../books/store-prepare-correspondence")
 (include-book "../books/node-config")
+(include-book "../books/native-admin")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-host.lisp defines, so a session that loads this file alone
@@ -54,6 +55,19 @@
           (let ((rest (fn-store-cfg-decode-records (cdr octet-records))))
             (if (equal rest :bad) :bad (cons (fn-record-parse-value parsed) rest)))))
     (if (null octet-records) nil :bad)))
+
+(defun fn-store-cfg-candidate-openp (octet-records frontier config-octet-records)
+  "Decode at the existing byte boundary, then ask the logical native-admin
+candidate predicate whether this exact next durable image reopens.  This is
+not a second recovery algorithm: `fn-native-admin-candidate-openp' invokes
+the same configuration replay and observed-node open definitions startup uses."
+  (declare (xargs :mode :program))
+  (let ((records (fn-store-decode-records octet-records))
+        (config-records (fn-store-cfg-decode-records config-octet-records)))
+    (if (or (equal records :bad) (equal config-records :bad)
+            (null config-records))
+        nil
+      (if (fn-native-admin-candidate-openp records frontier config-records) t nil))))
 
 ; The configuration history is replayed first (`fn-cnode-config-replay',
 ; books/node-config), and the node the article history is replayed into takes
