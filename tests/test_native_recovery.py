@@ -26,6 +26,7 @@ def missing_enrollment_fixture():
     """Return transaction/frontier bytes produced entirely by ACL2."""
     bridge = frame_bridge.session()
     bridge.store.call('(include-book "books/hybrid-store")')
+    bridge.store.call('(include-book "books/store-node")')
     transaction = bytes(bridge.call(
         "(let* ((msgid \"<missing-keyring@example.invalid>\")"
         " (source '(70 114 111 109 58 32 97 64 98 13 10 78 101 119 115 103 114 111 117 112 115 58 32 102 110 46 116 101 115 116 13 10 83 117 98 106 101 99 116 58 32 120 13 10 77 101 115 115 97 103 101 45 73 68 58 32 60 109 105 115 115 105 110 103 45 107 101 121 114 105 110 103 64 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100 62 13 10 13 10 120 13 10))"
@@ -37,8 +38,15 @@ def missing_enrollment_fixture():
         "                       (fn-record-string-octets subject)"
         "                       (fn-record-encode record)"
         "                       (fn-stxe-encode verdict))))"
-        " (if (fn-stxa-bindsp event) (fn-store-event-encode event) nil))"))
-    return transaction, bytes(bridge.call("(fn-store-metadata-frontier-frame 1)"))
+        " (if (and (fn-stxa-bindsp event)"
+        "          (fn-sn-observed-historyp 1 (list event))"
+        "          (fn-sf-history-recoverablep '(\"fn.test\") 32 (list event) 1)"
+        "          (equal (fn-stxk-context-kind (fn-replay-identity (list event)))"
+        "                 :fault))"
+        "     (fn-store-event-encode event) nil))"))
+    if not transaction:
+        raise AssertionError("fixture must pass article replay and fail identity replay")
+    return bridge.store_frame(transaction), bridge.metadata_frontier_frame(1)
 
 
 class NativeRecoverySourceMapTests(unittest.TestCase):
@@ -58,7 +66,8 @@ class NativeRecoverySourceMapTests(unittest.TestCase):
     def test_missing_enrollment_fixture_is_acl2_encoded_and_nonempty(self):
         try:
             transaction, frontier = missing_enrollment_fixture()
-            self.assertTrue(transaction.startswith(b"\x44fn-e"))
+            decoded = frame_bridge.session().store_unframe(transaction)
+            self.assertTrue(decoded.startswith(b"\x44fn-e"))
             self.assertTrue(frontier.startswith(b"FNSM"))
         finally:
             frame_bridge.close()
