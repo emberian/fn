@@ -396,3 +396,13 @@ the OWNER half of D14-b's counterexample, written but never run, is certified
 in this tree. So is `books/byte-store-scan` with the new relation clause,
 `books/bp-receiver-evolving-store-invariants` and its test book, and
 `tests/acl2/store-files-tests`, `-teeth-tests` and `store-node-teeth-tests`.
+
+**Re-run on the MERGED tree** (after `dev` `81ae082`, which moved
+`books/owner-invariants` and `books/owner.lisp` under `w11/clock-seam`):
+hbox `run-20260921T014510Z-c57d`, same command, evidence
+`build/acl2/certify-20260921T014516Z-1413130`, **130 attempted, 129
+certified, 1 failed**, 702.6 s, `installed 70, kept 87, uncached 120`. Same
+single failure, same assertion. `books/owner-invariants`,
+`tests/acl2/owner-tests`, `books/nntp-post` and every store root pass on the
+merged tree, so the two registries and the two books `dev` moved under this
+lane's feet are green together with it.
