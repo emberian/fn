@@ -107,10 +107,12 @@
 ; nonempty octet list of at most 512 octets, and repeated words are ordinary.
 (defun fn-nctrl-admin-words-encode (argv)
   (declare (xargs :guard t))
-  (if (consp argv)
-      (append (fn-cbor-encode (cons :bytes (car argv)))
-              (fn-nctrl-admin-words-encode (cdr argv)))
-    nil))
+  (if (not (fn-native-admin-argvp argv))
+      nil
+    (if (consp argv)
+        (append (fn-cbor-encode (cons :bytes (car argv)))
+                (fn-nctrl-admin-words-encode (cdr argv)))
+      nil)))
 
 (defun fn-nctrl-admin-argv-encode (argv)
   (declare (xargs :guard t))
@@ -121,23 +123,25 @@
 
 (defun fn-nctrl-admin-words-decode (count octets)
   (declare (xargs :guard t))
-  (if (zp count)
-      (fn-record-parse-ok nil octets)
-    (let ((first (fn-record-read-bytes octets)))
-      (if (not (fn-record-parse-okp first))
-          first
-        (let ((word (fn-record-parse-value first)))
-          (if (not (and (consp word)
-                        (<= (len word) *fn-native-admin-max-argument-octets*)
-                        (fn-record-ascii-octet-listp word)))
-              (fn-record-parse-error :argument)
-            (let ((tail (fn-nctrl-admin-words-decode
-                         (1- count) (fn-record-parse-rest first))))
-              (if (not (fn-record-parse-okp tail))
-                  tail
-                 (fn-record-parse-ok
-                 (cons word (fn-record-parse-value tail))
-                 (fn-record-parse-rest tail))))))))))
+  (if (not (and (natp count) (fn-cbor-octet-listp octets)))
+      (fn-record-parse-error :arguments)
+    (if (zp count)
+        (fn-record-parse-ok nil octets)
+      (let ((first (fn-record-read-bytes octets)))
+        (if (not (fn-record-parse-okp first))
+            first
+          (let ((word (fn-record-parse-value first)))
+            (if (not (and (consp word)
+                          (<= (len word) *fn-native-admin-max-argument-octets*)
+                          (fn-record-ascii-octet-listp word)))
+                (fn-record-parse-error :argument)
+              (let ((tail (fn-nctrl-admin-words-decode
+                           (1- count) (fn-record-parse-rest first))))
+                (if (not (fn-record-parse-okp tail))
+                    tail
+                  (fn-record-parse-ok
+                   (cons word (fn-record-parse-value tail))
+                   (fn-record-parse-rest tail)))))))))))
 
 (defun fn-nctrl-admin-argv-decode (octets)
   (declare (xargs :guard t))
