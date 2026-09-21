@@ -606,6 +606,18 @@ the current connection."
     (incf (fnn-owner-service-records service))
     :durable))
 
+(defun fnn-owner-preflight-publication (service kind)
+  "Ask ACL2 whether this persisted profile admits the kind's worst case."
+  (let* ((store (fnn-owner-service-store service))
+         (ceiling (fnn-core 'fn-store-publication-kind-ceiling kind))
+         (verdict
+          (fnn-core 'fn-store-publication-admissibility
+                    (fnn-store-config store)
+                    (fnn-owner-service-records service) ceiling)))
+    (unless (eq verdict :admissible)
+      (fnn-refuse "Store profile refuses ~(~a~) transaction" kind))
+    :admissible))
+
 (defun fnn-owner-attempt (service msgid payload groups evidence)
   "One Store attempt under the owner callbacks; return its observed word."
   (let* ((store (fnn-owner-service-store service))
@@ -623,6 +635,7 @@ the current connection."
           (when (>= (fnn-owner-service-records service)
                     (fnn-config-max-transactions store))
             (return-from fnn-owner-attempt :refused))
+          (fnn-owner-preflight-publication service :article)
           (let ((*fnn-observe-callback* #'fnn-owner-observe)
                 (*fnn-finish-callback* #'fnn-owner-finish))
             (fnn-advance-frontier store
@@ -658,6 +671,7 @@ the current connection."
     (when (>= (fnn-owner-service-records service)
               (fnn-config-max-transactions store))
       (fnn-refuse "Store transaction capacity exhausted"))
+    (fnn-owner-preflight-publication service (first event))
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
           (*fnn-finish-callback* #'fnn-owner-finish))
       (fnn-advance-frontier store
@@ -681,6 +695,8 @@ the current connection."
     (when (>= (fnn-owner-service-records service)
               (fnn-config-max-transactions store))
       (fnn-refuse "Store transaction capacity exhausted"))
+    (fnn-owner-preflight-publication
+     service (fnn-core 'fn-store-event-kind event))
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
           (*fnn-finish-callback* #'fnn-owner-finish))
       (fnn-advance-frontier store
