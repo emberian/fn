@@ -9,6 +9,14 @@ and packaging work. BP remains native. Python service measurements are diagnosti
 baselines; production claims require native two-node evidence. Preserve the full
 selected feature set and its assurance obligations during this migration.
 
+The user also requested a high-assurance, pleasant implementation with duplicated
+decisions and awkward interfaces consolidated. The [consolidation audit](duplication-audit-2026-09-21.md)
+tracks concrete findings and owners. A BP candidate's visible-file fallback after
+failed publication barriers is a blocking durability defect; repair and fault
+evidence precede landing. Outcome aggregation and repeated journal scans are
+separate assigned work. This extends the one-owner rule to raw Lisp as well as
+Python; the native migration is not permission to reproduce the same twins.
+
 Development has resumed from `8b474e2`. Both outbound feed and transit repair
 branches are merged. Their [combined book certification](evidence/manifests/certify-20260921T051833Z-3941584.json)
 does not establish the behavior of the merged packaged service; the selected
