@@ -33,6 +33,15 @@
                                               (fn-nop-test-argv '("recover"))))
                      :accepted))
 
+; Help is a config-free ACL2 action, including an absent/broken configuration.
+(defconst *fn-nop-help-without-config*
+  (fn-native-operator-run nil (fn-nop-test-argv '("help" "run"))))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-help-without-config*) :accepted))
+(assert-event (equal (fn-native-operator-result-arguments *fn-nop-help-without-config*)
+                     '(:help "run" "usage: fn operator CONFIG run [--once]")))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-help-without-config*)
+                     :help))
+
 (assert-event (equal (fn-native-operator-result-status
                       (fn-native-operator-run
                        *fn-nop-minimal-config*

@@ -75,6 +75,17 @@
   (declare (xargs :guard t))
   (member-equal subject '("help" "run" "post" "status" "recover")))
 
+(defun fn-nop-help-text (subject)
+  "Bounded operator help output, selected only from ACL2-normalized subjects."
+  (declare (xargs :guard t))
+  (cond ((equal subject "run") "usage: fn operator CONFIG run [--once]")
+        ((equal subject "post")
+         "usage: fn operator CONFIG post SOURCE (shared submission unavailable)")
+        ((equal subject "status") "usage: fn operator CONFIG status")
+        ((equal subject "recover") "usage: fn operator CONFIG recover")
+        ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
+        (t "usage: fn operator CONFIG {help|run|post|status|recover}")))
+
 (defun fn-nop-parse-command (words config)
   "The accepted tag means a bounded command *plan* exists; no host effect ran."
   (declare (xargs :guard t))
@@ -84,8 +95,9 @@
       (cond ((equal command "help")
              (if (or (null rest)
                      (and (equal (len rest) 1) (fn-nop-help-subjectp (car rest))))
-                 (fn-nop-result :accepted :plan "help" config
-                                (list :help (if (consp rest) (car rest) "help")))
+                 (let ((subject (if (consp rest) (car rest) "help")))
+                   (fn-nop-result :accepted :plan "help" config
+                                  (list :help subject (fn-nop-help-text subject))))
                (fn-nop-usage :invalid-help "help" config rest)))
             ((equal command "run")
              (let ((arguments (fn-nop-parse-run rest nil)))
@@ -113,33 +125,77 @@ A profile the current native owner cannot consume is USAGE, never an accepted
 service plan.  `posting.enabled = false' remains explicit unsupported-profile
 until owner convergence exposes one ACL2 posting projection to served/control."
   (declare (xargs :guard t))
-  (cond ((or (not (fn-ncfg-ascii-octetsp config-octets))
-             (< *fn-ncfg-max-octets* (len config-octets)))
-         (fn-nop-usage :configuration-bounds nil nil nil))
-        ((or (not (true-listp argv-octets))
+  (cond ((or (not (true-listp argv-octets))
              (< *fn-nop-max-arguments* (len argv-octets))
              (not (fn-nop-argvp argv-octets)))
          (fn-nop-usage :argv-bounds nil nil nil))
-        (t (let ((loaded (fn-native-config-load config-octets)))
-             (if (not (equal (fn-ncfg-first loaded) :accepted))
-                 (fn-nop-usage (list :configuration (fn-ncfg-second loaded)) nil nil nil)
-               (let ((config (fn-ncfg-second loaded)))
-                 (if (not (fn-native-config-operator-availablep config))
-                     (fn-nop-usage :unsupported-profile nil config nil)
-                   (fn-nop-parse-command (fn-nop-argument-texts argv-octets) config))))))))
+        (t (let ((words (fn-nop-argument-texts argv-octets)))
+             ; Help is an ACL2-selected action and deliberately needs no file.
+             (if (and (consp words) (equal (car words) "help"))
+                 (fn-nop-parse-command words nil)
+               (if (or (not (fn-ncfg-ascii-octetsp config-octets))
+                       (< *fn-ncfg-max-octets* (len config-octets)))
+                   (fn-nop-usage :configuration-bounds nil nil nil)
+                 (let ((loaded (fn-native-config-load config-octets)))
+                   (if (not (equal (fn-ncfg-first loaded) :accepted))
+                       (fn-nop-usage (list :configuration (fn-ncfg-second loaded)) nil nil nil)
+                     (let ((config (fn-ncfg-second loaded)))
+                       (if (not (fn-native-config-operator-availablep config))
+                           (fn-nop-usage :unsupported-profile nil config nil)
+                         (fn-nop-parse-command words config))))))))))
 
 (in-theory (disable fn-native-operator-run))
+
+(defun fn-native-operator-result-run-planp (result)
+  (declare (xargs :guard t))
+  (and (equal (fn-native-operator-result-status result) :accepted)
+       (equal (fn-native-operator-result-command result) "run")))
+
+(defun fn-native-operator-result-run-store-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-run-planp result)
+      (fn-record-string-octets
+       (fn-native-config-store (fn-native-operator-result-config result)))
+    nil))
+
+(defun fn-native-operator-result-run-listener-host-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-run-planp result)
+      (fn-record-string-octets
+       (fn-native-config-listener-host (fn-native-operator-result-config result)))
+    nil))
+
+(defun fn-native-operator-result-run-listener-port (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-run-planp result)
+      (fn-native-config-listener-port (fn-native-operator-result-config result))
+    0))
+
+(defun fn-native-operator-result-run-oncep (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-run-planp result)
+      (fn-ncfg-nth 2 (fn-native-operator-result-arguments result))
+    nil))
+
+(defun fn-native-operator-result-run-max-connections (result)
+  (declare (xargs :guard t))
+  (if (fn-native-operator-result-run-planp result)
+      (fn-native-config-owner-max-connections
+       (fn-native-operator-result-config result))
+    0))
 
 (defun fn-native-operator-result-native-action (result)
   "The only commands the current raw native module may execute by itself.
 
-`run' retains its normalized plan for owner convergence.  `post' is usage
+`run' retains its normalized plan for the one owner callback.  `post' is usage
 until that owner exposes its shared-submission callback.  Neither is translated
-into a direct host call, which would create another owner of lifecycle or
+into a direct store call, which would create another owner of lifecycle or
 submission semantics."
   (declare (xargs :guard t))
   (if (not (equal (fn-native-operator-result-status result) :accepted))
       :none
-    (cond ((equal (fn-native-operator-result-command result) "status") :status)
+    (cond ((equal (fn-native-operator-result-command result) "help") :help)
+          ((equal (fn-native-operator-result-command result) "run") :run)
+          ((equal (fn-native-operator-result-command result) "status") :status)
           ((equal (fn-native-operator-result-command result) "recover") :recover)
           (t :owner-required))))
