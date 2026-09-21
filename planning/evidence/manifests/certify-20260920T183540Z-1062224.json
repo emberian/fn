@@ -1,0 +1,165 @@
+{
+  "acl2_executable": "/tank/fn/acl2-8.7/saved_acl2",
+  "acl2_executable_sha256": "64030dda0b03bbb6cf50984889f5ce1e2ba867b6ce3c9a65403afc44f9b4fdb5",
+  "acl2_exit_codes": {
+    "books/acceptance": 0,
+    "books/acceptance-alloc": 0,
+    "books/acceptance-invariants": 0,
+    "books/defrecord": 0,
+    "books/deftransition": 0,
+    "tests/acl2/acceptance-tests": 0,
+    "tests/acl2/defrecord-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "hbox:/tank/fn/lanes/w9-records/build/acl2/certify-20260920T183540Z-1062224",
+  "book_failures": {},
+  "book_results": {
+    "books/acceptance": "passed",
+    "books/acceptance-alloc": "passed",
+    "books/acceptance-invariants": "passed",
+    "books/defrecord": "passed",
+    "books/deftransition": "passed",
+    "tests/acl2/acceptance-tests": "passed",
+    "tests/acl2/defrecord-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/acceptance": 0.372,
+    "books/acceptance-alloc": 0.131,
+    "books/acceptance-invariants": 0.373,
+    "books/defrecord": 0.135,
+    "books/deftransition": 0.076,
+    "tests/acl2/acceptance-tests": 0.125,
+    "tests/acl2/defrecord-tests": 0.15
+  },
+  "cert_cache": {
+    "already_cached": 0,
+    "directory": "/tank/fn/certcache",
+    "not_published": [],
+    "published": 7
+  },
+  "certificate_digests_sha256": {
+    "books/acceptance": "8e08ebb9065e57183e072e6b8842b6dad717d4fa1899b8674b305c02eb2e41dc",
+    "books/acceptance-alloc": "d6f745b33fe70284876428cbe7d8c2536d4528fbd57402ae00674e1ee7970af0",
+    "books/acceptance-invariants": "d86b53b083507a4cec078a03def424b7101bcf5c4eb369c2cc31be11cf3f3068",
+    "books/defrecord": "bfec701624ddd7eba9baed82aa4830d453fa66090467bf12602e93b8cd00f74c",
+    "books/deftransition": "f2a41fd3cf683cd618843cf01732c909640de840cf2bdbed04f4fbae2ad4baec",
+    "tests/acl2/acceptance-tests": "68d1667305a6b294e09cf84ed7dec0aec0abc91257fe826471283982cde77085",
+    "tests/acl2/defrecord-tests": "50b05a1a745ee9c62de63ca39473c35b3ab60b2db1cce79fa9c316e6810b9a30"
+  },
+  "certify_wall_seconds": 1.017,
+  "closure": true,
+  "command": [
+    "/tank/fn/acl2-8.7/saved_acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/acceptance": "6cdbe8ed5c6f4e2fd159c192deeb89dd828a9cc9bbe4e468411722da560737cd",
+    "books/acceptance-alloc": "5a34bfb35180f73c867d06ec5c39fd4c94366836350cd35922885a4836130d5e",
+    "books/acceptance-invariants": "7271065a256bb77abc737237ddcea1a0d19d4912aeda74ec64bf07242c5f0c79",
+    "books/defrecord": "dc728115de19639847d2fb1a0997336c437251dbd5f5ff9bd2e754c2bc465f76",
+    "books/deftransition": "787f64bd9355f781e09ff25c2d01e992090421b9f57820a67dd8885b20c70b6e",
+    "tests/acl2/acceptance-tests": "cd857b8a21cdbfd2f904217818318eda482a490498de71f1ba65f152ad32c87e",
+    "tests/acl2/defrecord-tests": "d911645533495bd81ba814693c6839ee0914076bf2de06e3d82948c0ae876691"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 45358e736ee378df25bfa4b2be2133fc 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS 45358e736ee378df25bfa4b2be2133fc e768a5583691",
+    "FN_CERTIFY_SUCCESS 45358e736ee378df25bfa4b2be2133fc 23645b7a2c53",
+    "FN_CERTIFY_SUCCESS 45358e736ee378df25bfa4b2be2133fc 00bdd09c4915",
+    "FN_CERTIFY_SUCCESS 45358e736ee378df25bfa4b2be2133fc a08cb5ccd312",
+    "FN_CERTIFY_SUCCESS 45358e736ee378df25bfa4b2be2133fc ba90180bf5e7",
+    "FN_CERTIFY_SUCCESS 45358e736ee378df25bfa4b2be2133fc a714f9d5dd70"
+  ],
+  "failure_markers": [],
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "jobs": 8,
+  "jobs_effective": 7,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 45358e736ee378df25bfa4b2be2133fc 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS 45358e736ee378df25bfa4b2be2133fc e768a5583691",
+    "FN_CERTIFY_SUCCESS 45358e736ee378df25bfa4b2be2133fc 23645b7a2c53",
+    "FN_CERTIFY_SUCCESS 45358e736ee378df25bfa4b2be2133fc 00bdd09c4915",
+    "FN_CERTIFY_SUCCESS 45358e736ee378df25bfa4b2be2133fc a08cb5ccd312",
+    "FN_CERTIFY_SUCCESS 45358e736ee378df25bfa4b2be2133fc ba90180bf5e7",
+    "FN_CERTIFY_SUCCESS 45358e736ee378df25bfa4b2be2133fc a714f9d5dd70"
+  ],
+  "platform": "Linux-6.11.0-29-generic-x86_64-with-glibc2.40",
+  "python": "3.12.7",
+  "reader_sha256": "95aae0992b7f77b29a7c4dd3c5c99db32b1ed509e6b2217f457a322898a4894f",
+  "requested_before_filter": [
+    "books/acceptance",
+    "books/acceptance-invariants",
+    "tests/acl2/acceptance-tests",
+    "tests/acl2/defrecord-tests"
+  ],
+  "requested_books": [
+    "books/defrecord",
+    "books/acceptance-alloc",
+    "books/acceptance",
+    "books/acceptance-invariants",
+    "tests/acl2/acceptance-tests",
+    "books/deftransition",
+    "tests/acl2/defrecord-tests"
+  ],
+  "run_id": "certify-20260920T183540Z-1062224",
+  "runner_sha256": "3607dc4b15cbe771eda434bc1911f7106b4b81f98aded95f9ea5e4cda6546ce5",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/acceptance": 0.0,
+    "books/acceptance-alloc": 0.0,
+    "books/acceptance-invariants": 0.0,
+    "books/defrecord": 0.0,
+    "books/deftransition": 0.0,
+    "tests/acl2/acceptance-tests": 0.0,
+    "tests/acl2/defrecord-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "d9837d7cf602953989ce0539562e1b03471d2f76da5579efd3397bd66e4440c8",
+    "books/acceptance.lisp": "06906656064b8683808c11e2ad7b292f6b24aade8a4c17ab7301833a677f6c7b",
+    "books/defrecord.lisp": "305bad6b7e3afe6ec8994a5f03bb8c6511a56d4e7f4a576782ff5b9535d7a5ba",
+    "books/deftransition.lisp": "daf77eff163662a24cbd5e66bc728ab507b1934804ffb5c2675c6a9ffa1f4f00",
+    "tests/acl2/acceptance-tests.lisp": "5d75739d02bc6e17f2c2b3a1a70b357daf2e5f0a0a57002bbcb4f2e2340d13de",
+    "tests/acl2/defrecord-tests.lisp": "3e37ea23b30b52be3d9c456176948ae37e8c338e670fbd04cf775980ed47eeb4"
+  },
+  "source_digests_sha256_after": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/acceptance-invariants.lisp": "d9837d7cf602953989ce0539562e1b03471d2f76da5579efd3397bd66e4440c8",
+    "books/acceptance.lisp": "06906656064b8683808c11e2ad7b292f6b24aade8a4c17ab7301833a677f6c7b",
+    "books/defrecord.lisp": "305bad6b7e3afe6ec8994a5f03bb8c6511a56d4e7f4a576782ff5b9535d7a5ba",
+    "books/deftransition.lisp": "daf77eff163662a24cbd5e66bc728ab507b1934804ffb5c2675c6a9ffa1f4f00",
+    "tests/acl2/acceptance-tests.lisp": "5d75739d02bc6e17f2c2b3a1a70b357daf2e5f0a0a57002bbcb4f2e2340d13de",
+    "tests/acl2/defrecord-tests.lisp": "3e37ea23b30b52be3d9c456176948ae37e8c338e670fbd04cf775980ed47eeb4"
+  },
+  "start_order": [
+    "books/defrecord",
+    "books/deftransition",
+    "books/acceptance-alloc",
+    "tests/acl2/defrecord-tests",
+    "books/acceptance",
+    "books/acceptance-invariants",
+    "tests/acl2/acceptance-tests"
+  ],
+  "status": "passed",
+  "timeout_seconds": 1800
+}

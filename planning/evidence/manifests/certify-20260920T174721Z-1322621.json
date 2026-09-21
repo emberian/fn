@@ -1,0 +1,112 @@
+{
+  "acl2_executable": "/home/ember/fn-tools/acl2-8.7/saved_acl2",
+  "acl2_executable_sha256": "c8a7a804d9cc80e2025a8ab0e1d9325f2a0c4a027a5dcdcb2c1093e9cd5c8163",
+  "acl2_exit_codes": {
+    "tests/acl2/stx-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "persvati:/home/ember/fn-lanes/w7-substrate-s1-2/build/acl2/certify-20260920T174721Z-1322621",
+  "book_wall_seconds": {
+    "tests/acl2/stx-tests": 1.668
+  },
+  "cert_cache": {
+    "already_cached": 0,
+    "directory": "/home/ember/fn-certcache",
+    "not_published": [],
+    "published": 1
+  },
+  "certificate_digests_sha256": {
+    "tests/acl2/stx-tests": "d82828a339b7b552ae4d737525cbd7d6ba607645e716960dd67628972f15e4bc"
+  },
+  "certify_wall_seconds": 1.672,
+  "closure": false,
+  "command": [
+    "/home/ember/fn-tools/acl2-8.7/saved_acl2"
+  ],
+  "driver_digests_sha256": {
+    "tests/acl2/stx-tests": "edbe27cb3058e2466282b6aa2e52000fa54ccbd921456fbc8088d6b60655d21b"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS db64973fb25d1f3924f7506722dcd0c2 4390cb2d628c"
+  ],
+  "failure_markers": [],
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "jobs": 8,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS db64973fb25d1f3924f7506722dcd0c2 4390cb2d628c"
+  ],
+  "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.42",
+  "python": "3.13.7",
+  "reader_sha256": "3794af1e0ec92f4c9571ed34daa01b06705fce8a0f3d27c800746d3666741fff",
+  "requested_before_filter": [
+    "tests/acl2/stx-tests"
+  ],
+  "requested_books": [
+    "tests/acl2/stx-tests"
+  ],
+  "run_id": "certify-20260920T174721Z-1322621",
+  "runner_sha256": "4210828c097d8ec7691aeefa93a2f66e739fae0fa1acfd59521574144b3b0c7e",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "tests/acl2/stx-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/principal.lisp": "ba1d7595b49b1bfc06e47c758cc6a1847372bbe2b869ed7438077f7b67dd49b1",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "02c34455e55acbd5492613e3c0cfc2790121e9ed09b900e63319c6f771ba281a",
+    "books/statement-invariants.lisp": "cd148b6952a6ad6cafb39c523ed8e7f9f671def14d8b6713fe64fbf78a8a8262",
+    "books/statement.lisp": "0e2c23c6131d42838a95192249b7b42f4282a830743a4626d98272b89381c924",
+    "books/stx-carrier.lisp": "539e357b268d171b4411d8ee767877f5a881e8ba4d86789b825c0812bb80fca4",
+    "books/stx-invariants.lisp": "32f73fb34557126e461b19fd031a0f2c5d2028a0f98426ff94c9194c10ebc294",
+    "books/stx-verify.lisp": "25e0b53b8e0e502de8c78f5433849f5f3d67c7c4293ccba9ddcdcaa59eeec38f",
+    "tests/acl2/crypto-seam-tests.lisp": "98b984bc32cd235695912e1038362709bc0f544649eae38b435f5bd29258ded6",
+    "tests/acl2/stx-tests.lisp": "8e49bca7a756a51614c9a169258f206f689d9605ec5f78b17551b76da7ae9599"
+  },
+  "source_digests_sha256_after": {
+    "books/article.lisp": "fa301b728e62c8f5e5f3256da9ae22d3f162215fc63b8c0288b92548d2d1fade",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/principal.lisp": "ba1d7595b49b1bfc06e47c758cc6a1847372bbe2b869ed7438077f7b67dd49b1",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "02c34455e55acbd5492613e3c0cfc2790121e9ed09b900e63319c6f771ba281a",
+    "books/statement-invariants.lisp": "cd148b6952a6ad6cafb39c523ed8e7f9f671def14d8b6713fe64fbf78a8a8262",
+    "books/statement.lisp": "0e2c23c6131d42838a95192249b7b42f4282a830743a4626d98272b89381c924",
+    "books/stx-carrier.lisp": "539e357b268d171b4411d8ee767877f5a881e8ba4d86789b825c0812bb80fca4",
+    "books/stx-invariants.lisp": "32f73fb34557126e461b19fd031a0f2c5d2028a0f98426ff94c9194c10ebc294",
+    "books/stx-verify.lisp": "25e0b53b8e0e502de8c78f5433849f5f3d67c7c4293ccba9ddcdcaa59eeec38f",
+    "tests/acl2/crypto-seam-tests.lisp": "98b984bc32cd235695912e1038362709bc0f544649eae38b435f5bd29258ded6",
+    "tests/acl2/stx-tests.lisp": "8e49bca7a756a51614c9a169258f206f689d9605ec5f78b17551b76da7ae9599"
+  },
+  "start_order": [
+    "tests/acl2/stx-tests"
+  ],
+  "status": "passed",
+  "timeout_seconds": 1800
+}

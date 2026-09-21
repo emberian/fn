@@ -1,0 +1,102 @@
+{
+  "acl2_executable": "/home/ember/fn-tools/acl2-8.7/saved_acl2",
+  "acl2_executable_sha256": "c8a7a804d9cc80e2025a8ab0e1d9325f2a0c4a027a5dcdcb2c1093e9cd5c8163",
+  "acl2_exit_codes": {
+    "tests/acl2/tcpcl-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "persvati:/home/ember/fn-lanes/w6-tcpcl-tests/build/acl2/certify-20260920T175604Z-1409642",
+  "book_failures": {},
+  "book_results": {
+    "tests/acl2/tcpcl-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "tests/acl2/tcpcl-tests": 0.626
+  },
+  "cert_cache": {
+    "already_cached": 0,
+    "directory": "/home/ember/fn-certcache",
+    "not_published": [],
+    "published": 1
+  },
+  "certificate_digests_sha256": {
+    "tests/acl2/tcpcl-tests": "15b68a3b467536b626434bfddfeed11dd64161f1e279be231188d26410aad8c6"
+  },
+  "certify_wall_seconds": 0.629,
+  "closure": false,
+  "command": [
+    "/home/ember/fn-tools/acl2-8.7/saved_acl2"
+  ],
+  "driver_digests_sha256": {
+    "tests/acl2/tcpcl-tests": "06ab4b3b87b469cf5fb265ed5c58baaae2ab1bbe33023b28484e01de8c4f2a00"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 05f3aedf7dbeccfbdae1ffd52e34a5a8 50bf6acf4803"
+  ],
+  "failure_markers": [],
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "jobs": 2,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 05f3aedf7dbeccfbdae1ffd52e34a5a8 50bf6acf4803"
+  ],
+  "platform": "Linux-6.17.0-40-generic-x86_64-with-glibc2.42",
+  "python": "3.13.7",
+  "reader_sha256": "3794af1e0ec92f4c9571ed34daa01b06705fce8a0f3d27c800746d3666741fff",
+  "requested_before_filter": [
+    "tests/acl2/tcpcl-tests"
+  ],
+  "requested_books": [
+    "tests/acl2/tcpcl-tests"
+  ],
+  "run_id": "certify-20260920T175604Z-1409642",
+  "runner_sha256": "3607dc4b15cbe771eda434bc1911f7106b4b81f98aded95f9ea5e4cda6546ce5",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "tests/acl2/tcpcl-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/tcpcl-invariants.lisp": "73ddc4e8c31c8eac88caf3fd5b49717a6b1627fe8239202f7c834761b4700ca1",
+    "books/tcpcl-octets.lisp": "77754db435cb029deddd382bd286732a3ea6831059a180f7e1fdc9a800bfe0d5",
+    "books/tcpcl-records.lisp": "b2cdde11d1269f63e334525b61393ef30cc4157377b16a6b10b00864c064a215",
+    "books/tcpcl-session.lisp": "447ac0b585d293405c1c34a10e67e6e430094ade8ef7ff98b9ec431cb5ebe651",
+    "tests/acl2/tcpcl-tests.lisp": "23f4d50419779de428f9fc3dc43f7537f72ecc30cfb20e49918387bb1147c886"
+  },
+  "source_digests_sha256_after": {
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/clock.lisp": "112ef052f236f2ac625ff52f81dbacdc5d9ba8c12e457cd07bf7837eb7f85b6a",
+    "books/tcpcl-invariants.lisp": "73ddc4e8c31c8eac88caf3fd5b49717a6b1627fe8239202f7c834761b4700ca1",
+    "books/tcpcl-octets.lisp": "77754db435cb029deddd382bd286732a3ea6831059a180f7e1fdc9a800bfe0d5",
+    "books/tcpcl-records.lisp": "b2cdde11d1269f63e334525b61393ef30cc4157377b16a6b10b00864c064a215",
+    "books/tcpcl-session.lisp": "447ac0b585d293405c1c34a10e67e6e430094ade8ef7ff98b9ec431cb5ebe651",
+    "tests/acl2/tcpcl-tests.lisp": "23f4d50419779de428f9fc3dc43f7537f72ecc30cfb20e49918387bb1147c886"
+  },
+  "start_order": [
+    "tests/acl2/tcpcl-tests"
+  ],
+  "status": "passed",
+  "timeout_seconds": 1800
+}
