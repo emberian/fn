@@ -149,8 +149,37 @@ obsolete BP reverse-retention join includes. Those have been removed, with a
 literal build-input existence regression; the current workflow projects the
 authoritative Store into workflow state. The frozen gate is taking that repair
 and the independently certified node-config capacity-preservation proof fix.
-A read-only Claude review in tmux `fn-w29-recovery-review` examines the sequence,
-recovery and publication batch at `31f49d78`; its findings remain pending.
+The read-only Claude review in tmux `fn-w29-recovery-review` completed against
+`31f49d78`; its [disposition](review-2026-09-21-recovery-cross-model.md) records
+a repaired recovery defect. Identity replay failure now forces a recovery
+fault even when embedded article replay succeeds, preserving the observed
+history instead of successfully opening an empty node. Positive mixed-history
+and negative missing-enrollment traces execute from current ACL2 sources;
+fresh certification and native corrupt-history startup remain open.
+
+The native peering investigation has also repaired the pure administration
+call boundary and the unimplemented transit drain branch. A taken peer article
+now goes through the ACL2 transfer decision, durable feed intent, shared Store
+attempt and transit outcome. Earlier runs never reached that Store attempt.
+The gate lane is exercising the repaired path; a source check is not a
+two-peer result. The served counted fast transition is integrated with
+[focused correspondence evidence](evidence/native-served-fast-path-w26-2026-09-21.md);
+its current outer-owner closure still needs certification.
+
+The [shared-owner cost run](evidence/native-shared-owner-2026-09-21.md) measures
+real control posting and NNTP reads. Its launcher/core timeline required
+reconciliation because a shared artifact path was rebuilt; the record retains
+that provenance limitation. Future gates use revision-specific immutable image
+paths. The measurements motivate maintained Message-ID indexing, with bounded
+generation ownership rather than an unbounded memoization cache.
+
+Portable hybrid authorship is a separate active implementation packet. The
+local kind-4 acceptance event alone does not transmit signatures. A distinct
+versioned `FN-Authorship` carrier will preserve the selected exact source and
+both signatures across NNTP and BP, leaving existing `FN-Statement` subjects
+unchanged. Carrier keys remain evidence; receiver-local durable enrollment
+controls authority. Its codec/projection work proceeds alongside the live
+author-control join, with transport and recovery obligations still open.
 
 ## Parallel paths to the next service batch
 

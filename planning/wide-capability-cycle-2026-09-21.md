@@ -13,9 +13,10 @@ small book or adapter followed by another handoff.
 | `hybrid_signatures` / Sol | Mandatory Ed25519 plus ML-DSA-65 primitives and signing CLI are integrated; complete native live-owner authored submission and durable acceptance/restart. |
 | `bounded_event_profiles` / Sol | Large canonical events and linear bounded streaming codecs are integrated; finish real closure certification and persisted profile/publication composition. |
 | `peer_tls_vertical` / Sol | Actual identity/recovery trace integrated; next prove general durable peer-row round trips for legacy and TLS/AUTHINFO records. Real two-peer runtime remains with the gate lane. |
-| `compaction_vertical` / Sol | Partial-deletion compaction packet integrated; hybrid subject/preimage injectivity and concrete hypothesis counterexamples now certified on hbox. |
-| `crash_correspondence` / Sol | Reclaim cut/model packet is integrated; source-matched process-death execution and broader physical relation remain. |
-| `served_fast_path` / Sol | Fixed-shape framing execution and called-path correspondence; resolve fresh node-config preservation prerequisites without changing semantics to fit proofs. |
+| `compaction_vertical` / Sol | Compaction and injectivity packets integrated; shared-owner cost measurement archived with provenance limits. Next design and implement maintained Message-ID indexing with bounded lifetime and an ACL2 correspondence. |
+| `crash_correspondence` / Sol | Reclaim cut/model packet integrated; finish total-accessor/guard and actual-plan execution witnesses. Source-matched process-death execution and broader physical relation remain. |
+| `served_fast_path` / Sol | Fast framing transition integrated with focused certification; close actual outer-owner correspondence on current combined dependencies after the gate's prerequisite closure. |
+| `recovery_pillars` / Sol | Portable hybrid authorship carrier and exact-source projection for NNTP and BP; reuse bounded codec mechanisms while keeping signature subjects and receiver authority distinct. |
 | `service_join` / Sol | Native distribution and principal operator route integrated; freeze `df21773d` for the next combined production/developer/DTN certification and image gate on persvati. |
 | `toolchain_recovery` / Sol | Scoped frozen repair evidence archived; repair old snapshot's missing public peer dispatch and exercise real two-node native exchange/requeue/restart. |
 | Root / Astra | Shared contracts, concrete batch review/merges, assurance scopes, next coherent image and qualification matrix. |
