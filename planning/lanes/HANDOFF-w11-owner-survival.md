@@ -102,11 +102,20 @@ from another connection to `240` and shows the faulted article is absent.
 `SCN-026` is that scenario; `HST-005` (`specs/host.md`) is the requirement;
 `PRF-040` is the proof target (claimed as PRF-035; five lanes took 035 to 039 the same evening and this one renumbered on merging dev).
 
-## 5. The matrix re-run
+## 5. The matrix re-run: 36 rows moved
 
-See section 5 of the evidence and `planning/v0-matrix.json`. Before: 190
-rows at `c3b99f8`, 111 accepted / 25 refused / 2 uncertain / 29
-not-exercised / 23 not-built, 10 disagreements.
+`python3 tools/v0_matrix.py 941731a --host persvati`, 1449 s. Accepted 111
+to **138**, refused 25 to **34**, not-exercised 29 to **15**, not-built 23
+to **1**, disagreements 10 to **22**, rows an fn client saw 136 to **172**.
+**36 rows moved out of the two non-outcome classes and none moved back.**
+F-TRANSIT is 24 outcomes where it was 22 `not-built`; an article crosses both
+ways and arrives byte-identical. The 12 new disagreements are first
+observations, not regressions -- a duplicate `IHAVE` drawing `335` instead of
+`435`, `CHECK` of a duplicate drawing `238` instead of `438`, the Path loop
+refusal not reaching the wire, and the matrix's own feed driver raising
+`NameError: name 'article' is not defined`. Section 6 of the evidence has the
+table and the row names. `w11/auth-live` measured the same move independently
+at `6fb30ca`.
 
 ## What is open after this lane
 

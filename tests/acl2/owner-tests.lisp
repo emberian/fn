@@ -1005,9 +1005,9 @@
                                    *fn-post-malformed-session-line*)
                                   '(13 10)))))))
 
-; Totality, not a reachable case: an id with no open connection draws no
-; reply at all (the branch the book marks unreachable-in-composition, since
-; the host faults only a connection it is serving), and the state the owner
-; is left in is still one the relation holds on.
+; An id with no open connection draws no reply at all, and the owner still
+; forgets it.  This is the branch `Owner.drain' takes when the poster hung up
+; between the read that queued its article and the writer step that carried
+; it: there is no socket to answer on, and the submission must go anyway.
 (assert-event (null (car (fn-own-fault *own-taken* 99))))
 (assert-event (fn-own-relation (cdr (fn-own-fault *own-taken* 99))))

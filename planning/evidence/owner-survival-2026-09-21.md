@@ -183,12 +183,58 @@ expectation dates from when `fn run` started the read-only reader.
 `python3 -m unittest tests.test_fn_cli` now runs 5 tests in 156 s, OK,
 against 337 s and one error before.
 
-## 6. The matrix re-run
+## 6. The matrix re-run: 36 rows moved, measured
 
-The before state is the recorded run at `c3b99f8`: 190 rows, 111 accepted,
-25 refused, 2 uncertain, 29 not exercised, 23 not built, 10 disagreements,
-and 33 of those blocked rows named node B's death in `drain` as their
-blocker.
+    python3 tools/v0_matrix.py 941731a --host persvati
+    # matrix: planning/v0-matrix.json
+    # evidence: planning/evidence/v0-matrix-2026-09-21.md
+    # steps=190 failed=22 not-exercised=16     (1449 s)
+
+| | `c3b99f8` (recorded) | `941731a` (this lane) |
+| --- | --- | --- |
+| accepted | 111 | **138** |
+| refused | 25 | **34** |
+| uncertain | 2 | 2 |
+| not-exercised | 29 | **15** |
+| not-built | 23 | **1** |
+| disagreements | 10 | **22** |
+| rows an fn client saw | 136 | **172** |
+
+**36 rows moved out of `not-built`/`not-exercised` into one of the three
+outcomes**, and none moved the other way. The lane's note predicted about 33;
+the number is measured, not predicted, and the extra three are
+`V0-CFG-LIVE`, `V0-CFG-LIVE-REFUSE` and `V0-STX-CROSS`, paired-node rows that
+were blocked by the same death without naming it.
+
+Whole features that ran for the first time: **F-TRANSIT** is 24 rows of
+outcomes where it was 22 `not-built` and 2 blocked -- an article crosses A to
+B and B to A through `IHAVE`, `TAKETHIS`, `CHECK` and `MODE STREAM`, and
+`V0-TRANSIT-IDENTICAL-AB/BA` say the octets that arrive are the octets that
+left. **F-CRASH** is 9 rows where it was 6 blocked. **F-PIN**, **`V0-POST-CONCURRENT`**
+and the two live-reconfiguration rows ran.
+
+The 12 new disagreements are all fresh observations of behaviour nothing had
+ever exercised, not regressions -- every one of them is a row that could not
+run before:
+
+* `V0-TRANSIT-DUPLICATE-AB/BA`: a second `IHAVE` of a Message-ID the node
+  holds draws `335 send it`, where RFC 4644 and
+  `fn-peer-history-is-refused-at-offer` say `435`.
+* `V0-TRANSIT-CHECK-DUP-AB/BA`: `CHECK` of a duplicate draws `238`, not `438`.
+* `V0-TRANSIT-LOOP-AB/BA` and `-ABSENT-AB/BA`: an article whose `Path`
+  already names the receiving node is accepted (`235`) and then served, so
+  the RFC 5537 section 3.2.1 loop refusal is not reaching the wire.
+* `V0-FEED-QUEUE`/`V0-FEED-JOURNAL`: the matrix's own feed driver raises
+  `NameError: name 'article' is not defined` -- a defect in
+  `tools/v0_matrix.py`'s driver, not in the node.
+* `V0-CRASH-RESTART`, `V0-PIN-ADVERTISED-B`: one recovery row and the
+  capability-truthfulness row for node B, both first observations.
+
+An independent lane, `w11/auth-live`, ran the matrix at `6fb30ca` with dev's
+own copy of the transit fix and reported the same shape from a different
+tree: `not-built` 23 to 1, twelve new transit disagreements. Two independent
+measurements of the same move is the best evidence this lane has that the
+number is the tree's and not the harness's.
 
 ## 7. What is still open after this lane
 

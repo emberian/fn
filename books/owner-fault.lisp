@@ -80,21 +80,25 @@
 ; the host installs it through the same `fn-owner-install-effects' and takes
 ; the same three projections of it.
 ;
-; The CLOSE IS UNCONDITIONAL and only the reply is not.  The first draft did
-; nothing at all for an id with no open connection, which would have left a
-; submission in flight while its connection was gone -- and
-; `fn-own-take-submission' moves a submission into the durable path only when
-; NOTHING is in flight, so that state stops EVERY other connection from ever
-; posting again.  In the composed machine that state is not reachable
-; (`fn-own-close' clears a connection`s in-flight submission with the
-; connection, so the two never come apart), but making the close
-; unconditional is what lets K-FAULT-3 be stated with no hypothesis about the
-; socket: what the owner forgets does not depend on what the host still
-; holds.  The empty-effects branch is the same totality choice on the reply
-; side and is UNREACHABLE-IN-COMPOSITION: `fn-owner-fault`
-; (host/owner-host.lisp) is called with a connection id the host is serving,
-; and a host fault with no connection to name -- an accept, a feed poll --
-; never enters the model at all.
+; The CLOSE IS UNCONDITIONAL and only the reply is not.
+;
+; The empty-effects branch is REACHABLE and is not decoration: `Owner.drain'
+; (tools/run_owner.py) faults by the SUBMISSION's connection id, and the
+; poster may have hung up between the read that queued the article and the
+; writer step that carried it, in which case the host has no socket and the
+; owner has no connection.  A reply needs somewhere to go; forgetting the id
+; does not.
+;
+; What is UNREACHABLE-IN-COMPOSITION is the state where the owner holds a
+; submission in flight whose connection it has already dropped:
+; `fn-own-close' clears a connection's in-flight submission with the
+; connection, so the two never come apart.  Had the close been conditional
+; on the connection, that state would have been a wedge -- it stops EVERY
+; other connection from posting, since `fn-own-take-submission' moves a
+; submission into the durable path only when NOTHING is in flight -- and the
+; unconditional form is what lets K-FAULT-3 be stated with no hypothesis
+; about the socket at all: what the owner forgets does not depend on what the
+; host still holds.
 
 (defun fn-own-fault (o id)
   (declare (xargs :guard t))
