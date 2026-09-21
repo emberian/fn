@@ -31,7 +31,18 @@ limit. The command prints separate algorithm-tagged hexadecimal components
 only after verifying the newly produced pair through the ACL2 profile. It
 stores no keys and defines no custody or recovery authority.
 
-Books: `books/crypto-seam.lisp`, `books/hybrid-signature.lisp`, `books/principal.lisp`,
+`fn-hsig-subject-body-injective` proves that equality of two valid authored
+subject bodies implies equality of their principal, ordered Ed25519 and
+ML-DSA-65 key set, and exact source octets. The proof projects the fixed-width
+fields and the source from the bytes; there are no optional profile fields or
+normalization variants. `fn-hsig-signed-preimage-injective` instantiates the
+tagged-preimage theorem with the exact hybrid domain tag and those bodies.
+Both results concern byte framing below the signature primitives. They make no
+claim about signature unforgeability, hash collisions, library correctness, or
+key custody.
+
+Books: `books/crypto-seam.lisp`, `books/hybrid-signature.lisp`,
+`books/hybrid-signature-invariants.lisp`, `books/principal.lisp`,
 `books/principal-invariants.lisp`; tests `tests/acl2/crypto-seam-tests.lisp`,
 `tests/acl2/principal-tests.lisp`. The [decision packet](../planning/decision-packet-d09-d11.md)
 carries the proposals this profile assumes.

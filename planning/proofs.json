@@ -1637,13 +1637,19 @@
       "status": "in-progress",
       "evidence": [
         "books/hybrid-signature.lisp",
+        "books/hybrid-signature-invariants.lisp",
         "tests/acl2/hybrid-signature-tests.lisp",
+        "tests/acl2/hybrid-signature-invariants-tests.lisp",
         "host/hybrid-signature-host.lisp",
         "host/native/signatures.lisp",
         "tests/native_hybrid_signatures.lisp",
         "tests/evidence/2026-09-21-native-hybrid-signatures.md"
       ],
-      "progress_note": "host/native/signatures.lisp calls fn-hsig-host-authorize, whose body calls fn-hsig-authorize. Reachable tests cover both-valid, each bad component, absent ML-DSA, unknown/unsupported ML-DSA, stripping, component order/profile confusion, source changes and enrolled-key changes. Native component evidence covers libsodium Ed25519 and OpenSSL 3.6.4 ML-DSA-65. Primitive security, RNG, ABI and library correctness remain trusted assumptions; key custody, recovery authority and durable article/verdict composition remain open."
+      "events": [
+        "fn-hsig-subject-body-injective",
+        "fn-hsig-signed-preimage-injective"
+      ],
+      "progress_note": "host/native/signatures.lisp calls fn-hsig-host-authorize, whose body calls fn-hsig-authorize. The framing keystones prove that equal valid subject bodies, and equal tagged signing preimages, determine the same principal, ordered Ed25519/ML-DSA-65 key set and exact authored source. Projection witnesses are non-degenerate and each theorem has one must-fail event per hypothesis. Reachable tests cover both-valid, each bad component, absent ML-DSA, unknown/unsupported ML-DSA, stripping, component order/profile confusion, source changes and enrolled-key changes. Native component evidence covers libsodium Ed25519 and OpenSSL 3.6.4 ML-DSA-65. These are byte-framing results, not cryptographic injectivity: primitive security, RNG, ABI and library correctness remain trusted assumptions; key custody, recovery authority and durable article/verdict composition remain open."
     },
     {
       "id": "PRF-051",
