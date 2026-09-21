@@ -295,3 +295,20 @@
            :use ((:instance fn-wire-outbound-lines-aux-success-respects-fuel
                             (fuel (nfix limit)) (line-rev nil) (lines-rev nil)))
            :in-theory (enable fn-wire-outbound-lines))))
+
+; The receiver fold below records source lines in the same reverse-order body
+; accumulator that `fn-wire-after-line' uses.  This is only an executable
+; expected-state helper: the composition theorem will establish that the real
+; `fn-wire-feed-proper' reaches it through the existing per-line keystones.
+(defun fn-wire-receive-source-lines (lines body-rev)
+  (declare (xargs :guard t :measure (acl2-count lines)))
+  (if (consp lines)
+      (fn-wire-receive-source-lines (cdr lines) (cons (car lines) body-rev))
+    body-rev))
+
+(defthm fn-wire-receive-source-lines-is-revappend
+  (equal (fn-wire-receive-source-lines lines body-rev)
+         (revappend lines body-rev))
+  :hints (("Goal"
+           :induct (fn-wire-receive-source-lines lines body-rev)
+           :in-theory (enable fn-wire-receive-source-lines revappend))))
