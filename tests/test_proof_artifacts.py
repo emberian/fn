@@ -22,8 +22,28 @@ class ProfileTests(unittest.TestCase):
                          ("host/native/build.lisp", "build/fn-host"))
         self.assertEqual((dtn.build, dtn.image),
                          ("host/native/build-dtn.lisp", "build/fn-host-dtn"))
-        self.assertNotIn("books/bp-node", proof_artifacts.profile_roots(ROOT, "default"))
-        self.assertIn("books/bp-node", proof_artifacts.profile_roots(ROOT, "dtn"))
+        default_roots = proof_artifacts.profile_roots(ROOT, "default")
+        dtn_roots = proof_artifacts.profile_roots(ROOT, "dtn")
+        self.assertNotIn("books/bp-node", default_roots)
+        self.assertIn("books/bp-node", dtn_roots)
+        self.assertIn("books/owner-fault", default_roots)
+        self.assertIn("books/owner-fault", dtn_roots)
+
+    def test_deployed_owner_host_additions_join_the_artifact_set(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "host/native").mkdir(parents=True)
+            (root / "host/native/build.lisp").write_text(
+                '(include-book "books/native")\n', encoding="utf-8")
+            (root / "host/owner-host.lisp").write_text(
+                '(include-book "../books/owner-fault")\n'
+                '(include-book "../books/future-owner-root")\n', encoding="utf-8")
+            with mock.patch.dict(proof_artifacts.PROFILES, {
+                    "default": proof_artifacts.NativeProfile(
+                        "default", "host/native/build.lisp", "build/fn-host",
+                        ("host/owner-host.lisp",))}):
+                self.assertEqual(proof_artifacts.profile_roots(root, "default"), [
+                    "books/future-owner-root", "books/native", "books/owner-fault"])
 
 
 class AcquisitionTests(unittest.TestCase):

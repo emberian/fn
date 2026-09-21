@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Acquire and load-check one coherent ACL2 certificate artifact set.
 
-The native image declaration is the source of the required root books.  A
-candidate set must bind those roots' complete local include closure to one
-certificate origin and one ACL2 executable digest.  ACL2 then loads the roots
-with warnings treated as failure; a set that reproduces an absolute-origin
-conflict is rejected and the next complete set is tried.
+The selected native image declaration and the deployed ACL2 entry points are
+the sources of the required root books.  A candidate set must bind those
+roots' complete local include closure to one certificate origin and one ACL2
+executable digest.  ACL2 then loads the roots; an uncertified warning, an ACL2
+error, or an absolute-origin conflict rejects the set and the next complete
+set is tried.
 """
 from __future__ import annotations
 
@@ -27,11 +28,14 @@ class NativeProfile:
     name: str
     build: str
     image: str
+    entrypoints: tuple[str, ...]
 
 
 PROFILES = {
-    "default": NativeProfile("default", "host/native/build.lisp", "build/fn-host"),
-    "dtn": NativeProfile("dtn", "host/native/build-dtn.lisp", "build/fn-host-dtn"),
+    "default": NativeProfile("default", "host/native/build.lisp", "build/fn-host",
+                             ("host/owner-host.lisp",)),
+    "dtn": NativeProfile("dtn", "host/native/build-dtn.lisp", "build/fn-host-dtn",
+                         ("host/owner-host.lisp",)),
 }
 
 INCLUDE = re.compile(r'^\s*\(include-book\s+"([^"]+)"')
@@ -52,11 +56,12 @@ def forms(path: Path, pattern: re.Pattern[str]) -> list[str]:
 
 
 def profile_roots(root: Path, profile: str) -> list[str]:
-    """Certified roots named by the selected native image and its host loads."""
+    """Certified roots named by the native image and deployed entry points."""
     selected = PROFILES[profile]
     build = root / selected.build
     roots = set(forms(build, INCLUDE))
     pending = [(root / loaded).resolve() for loaded in forms(build, LOAD)]
+    pending.extend((root / loaded).resolve() for loaded in selected.entrypoints)
     seen: set[Path] = set()
     while pending:
         host_file = pending.pop()
@@ -88,7 +93,7 @@ class LoadResult:
 
 def validate(root: Path, acl2: Path, roots: list[str], timeout: int = 1800,
              run=subprocess.run) -> LoadResult:
-    """Actually load the declared roots; warnings and ACL2 errors are fatal."""
+    """Load the roots; ACL2 errors and uncertified-book warnings are fatal."""
     environment = dict(os.environ)
     environment.update({"ACL2_CUSTOMIZATION": "NONE", "ACL2_BOOK_HASH_ALISTP": "NIL"})
     environment.pop("ACL2_SYSTEM_BOOKS", None)

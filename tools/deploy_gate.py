@@ -27,10 +27,11 @@ promised behaviour fail, write the sentence into `gaps`, and exit 0; see
 `Finding` below and planning/review-2026-09-20-astra-followup.md F1.
 
 Certificates come from one current origin/toolchain set in the host's proof
-artifact cache.  ACL2 actually loads the declared native image roots before
-the set is accepted; a set that reproduces an absolute sub-book-name conflict
-is rejected.  When no cached set loads, the gate certifies only that declared
-closure on the host and load-checks it before continuing.
+artifact cache.  ACL2 actually loads the declared native image roots and the
+deployed owner entry point's roots before the set is accepted; a set that
+reproduces an absolute sub-book-name conflict is rejected.  When no cached set
+loads, the gate certifies only that declared union on the host and load-checks
+it before continuing.
 
 Dry run.  ``--dry-run --home DIR`` runs every one of these scripts through
 bash on this machine with ``HOME`` pointed at DIR and no ssh at all, so the
@@ -529,59 +530,6 @@ if __name__ == "__main__":
 '''
 
 
-CERTPICK = r'''#!/usr/bin/env python3
-"""Copy in only the certificate pairs whose book content still matches.
-
-A certificate is valid for a book and its whole include closure by content
-(`ACL2_BOOK_HASH_ALISTP=NIL`), so a pair from a neighbouring revision of the
-same tree is either exactly right or exactly wrong, and which one is decided
-here rather than assumed: a pair is copied only when the `.lisp` beside it in
-the gate hashes the same as the `.lisp` in the deploy tree.  ACL2 checks the
-closure again at include time; this only avoids handing it pairs that cannot
-hold.
-"""
-import hashlib, os, shutil, sys
-
-
-def digest(path):
-    with open(path, "rb") as handle:
-        return hashlib.sha256(handle.read()).hexdigest()
-
-
-def main():
-    gate, deploy = sys.argv[1], sys.argv[2]
-    matched = mismatched = absent = 0
-    for sub in ("books", "tests/acl2"):
-        source = os.path.join(gate, sub)
-        target = os.path.join(deploy, sub)
-        if not os.path.isdir(source) or not os.path.isdir(target):
-            continue
-        for name in sorted(os.listdir(source)):
-            if not name.endswith(".cert"):
-                continue
-            stem = name[: -len(".cert")]
-            book = os.path.join(source, stem + ".lisp")
-            mine = os.path.join(target, stem + ".lisp")
-            if not (os.path.exists(book) and os.path.exists(mine)):
-                absent += 1
-                continue
-            if digest(book) != digest(mine):
-                mismatched += 1
-                continue
-            for extension in (".cert", ".port"):
-                one = os.path.join(source, stem + extension)
-                if os.path.exists(one):
-                    shutil.copy2(one, os.path.join(target, stem + extension))
-            matched += 1
-    print("matched={} mismatched={} absent={}".format(matched, mismatched, absent))
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
-'''
-
-
 # --------------------------------------------------------------------------
 # the gate
 
@@ -961,7 +909,7 @@ fi
             "certify declared artifact closure",
             self.cd("python3 tools/certify_books.py --jobs {jobs} --closure {roots}".format(
                 jobs=self.jobs, roots=roots)), timeout=6 * 3600,
-            note="bounded to the explicitly selected native image declaration")
+            note="bounded to the selected native image and deployed entry points")
         loaded = self.sh(
             "load declared artifact closure",
             self.cd("python3 tools/proof_artifacts.py validate --profile {profile} "
@@ -979,8 +927,9 @@ fi
             "failed: acquire rc={}, certify rc={}, load rc={}".format(
                 acquire.rc, certified.rc, loaded.rc),
             observed=self.facts["certificates"],
-            held_detail="the selected native image closure was certified on this host "
-                        "and then loaded without ACL2 errors or uncertified warnings")
+            held_detail="the selected native image and deployed entry-point closure "
+                        "was certified on this host and then loaded without ACL2 "
+                        "errors or uncertified warnings")
         self.certificates_ok = ok
         if not ok:
             raise GateError("declared certificate artifact closure did not load")
