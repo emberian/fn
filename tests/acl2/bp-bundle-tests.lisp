@@ -9,6 +9,29 @@
 ; fn received over the certified TCPCLv4 layer.  `tests/bp-dtn7/golden/`
 ; holds the capture and the run that produced it; the octets are inlined below
 ; so that this book needs no file at certification time.
+;
+; READ THE PARAGRAPH ABOVE AS AN OBLIGATION, NOT AS A DESCRIPTION OF THIS
+; BOOK (recorded 2026-09-21, lane w11/phantom-cites, not weakened).
+; `tests/bp-dtn7/golden/' HAS NEVER EXISTED on any ref of this repository: it
+; was written into this header by a437c32, the commit that created the book,
+; and nothing else in the tree has ever named it.  And no octets are inlined
+; below.  Every vector in this book -- *bpb-primary*, *bpb-bundle*,
+; *bpb-bundle-nocrc*, the three teeth bundles, *bpb-full* -- is BUILT by fn's
+; own constructors (`fn-bpp-make-block', `fn-bpb-hop-count-block', ...) and
+; checked by round trip through fn's own `fn-bpb-encode' and `fn-bpb-decode'.
+; A round trip of fn against fn is a self-consistency check of the codec; it
+; is not interoperability evidence and it cannot fail on a disagreement with
+; dtn7-rs, because no dtn7-rs octets are here to disagree with.
+;
+; So the claim "interoperability vectors" in line 1, and the provenance claim
+; above, rest on nothing in this book.  What the tree DOES hold about dtn7-rs
+; 0.21.0 is the harness of `tests/bp-dtn7/' and its records
+; (`tests/evidence/2026-09-18-bpv7-transport.md',
+; `tests/evidence/2026-09-18-bp-exchange.md'); those record exchanges, not a
+; pinned bundle this codec was run against.  Supplying a captured bundle --
+; the octets, and the record of the run that captured them -- is open work for
+; the BP cluster, whose predecessor is w9/dtn-2.  See
+; planning/lanes/HANDOFF-w11-phantom-cites.md.
 
 (in-package "ACL2")
 

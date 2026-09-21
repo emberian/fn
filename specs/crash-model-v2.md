@@ -1220,12 +1220,29 @@ off by one at the three recovery cuts and is withdrawn.
 ; conjunct is why a crash here cannot lose an acknowledged record.
 (defun fn-bs-replay-matches-scan (bs ks)
   (declare (xargs :guard t))
-  (let ((scan (fn-bs-scan-store bs)))
+  (let ((scan (fn-bs-scan-store bs))
+        (root-ops (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
+        (txn-ops (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
     (and (fn-bs-pending-shape-okp bs)
          (fn-bs-scan-okp scan)
          (equal (fn-sf-frontier ks) (fn-bs-scan-frontier scan))
          (equal (fn-sf-records ks) (fn-bs-scan-records scan))
-         (equal (fn-sf-successes ks) nil))))
+         (equal (fn-sf-successes ks) nil)
+         ; K2f (2026-09-20, lane w11/bytestore-k2).  The window is entered
+         ; with a pending :root rename too, and :root is drained only by the
+         ; FOURTH recovery barrier, so the DURABLE frontier is then the
+         ; scanned one minus one -- advance_frontier writes old+1
+         ; (run_store.py:1281).  (null txn-ops) is the exclusivity the phase
+         ; supplies in the publish window and cannot supply here: a dead
+         ; process leaves at most one un-fenced authority entry, because
+         ; each publishing program fences its own directory before it
+         ; returns and none runs before recovery completes.
+         (if root-ops
+             (and (null txn-ops)
+                  (fn-sf-frontier-rollback-visiblep ks)
+                  (equal (fn-bs-durable-frontier bs)
+                         (1- (fn-sf-frontier ks))))
+           t))))
 
 ; Every inode an authority entry names, durable or pending, is fenced.
 (defun fn-bs-authority-inodes (bs) ...)   ; config, frontier, every :transactions entry, every pending :set-entry target on :root/:transactions
@@ -1309,17 +1326,40 @@ namespace test decidable from the byte store alone.
 ; its own success.  Which records are fenced is a fact about fn-bs-pending,
 ; not about ks, so no gate on kernel data separates them.  (D14-b.)
 ;
-; K2f. STILL OPEN and distinct from K2r: the recovery window may also be
-; entered with a pending :root entry operation -- die at frontier-replaced
+; K2f, the frontier sub-case.  MODELLED 2026-09-20 (lane w11/bytestore-k2);
+; K2 above is now stated over a predicate that covers it, and what is left
+; open is K2 itself, not its statement.  The recovery window is also entered
+; with a pending :root entry operation -- die at frontier-replaced
 ; (tools/run_store.py:1305), reopen, and the rename is drained only by
-; fsync_dir(root) at :1216, the FOURTH recovery barrier.  A crash there rolls
-; the frontier back to the durable one, a value the kernel does not hold
-; (fn-sf-frontier-candidate is nil in that window).  K2 as written above is
-; false in that sub-case.  Closing it needs a clause in
-; fn-bs-replay-matches-scan saying the durable frontier is the scanned one
-; minus one -- true because advance_frontier writes old+1 -- and a matching
-; frontier arm in fn-sf-recovery-crash-imagep gated by
-; (fn-sf-record-listp (fn-sf-records ks) 0 0 (1- (fn-sf-frontier ks))).
+; fsync_dir(root) at :1216, the FOURTH recovery barrier -- so a crash there
+; rolls the frontier back to the durable one, a value the kernel does not
+; hold (fn-sf-frontier-candidate is nil in that window).  Before this,
+; K2 as written was FALSE in that sub-case.
+;
+; fn-sf-recovery-crash-imagep now carries the arm
+;   (and (fn-sf-frontier-rollback-visiblep s)
+;        (equal frontier (1- (fn-sf-frontier s)))
+;        (equal records (fn-sf-records s)))
+; with the gate
+;   (and (fn-sf-recovery-visiblep s) (null (fn-sf-successes s))
+;        (posp (fn-sf-frontier s))
+;        (fn-sf-record-listp (fn-sf-records s) 0 0 (1- (fn-sf-frontier s))))
+; and fn-sf-crash-frontier-rollback inhabits it.  The record-list conjunct is
+; the correspondence and not a convenience: advance_frontier reserves txid =
+; old for the record published AFTER the rename is durable, so while the
+; rename is pending no record holds that txid, and once it is published the
+; conjunct is false and the frontier can no longer roll back.  The same
+; conjunct is what keeps fn-sf-recovery-admissible-image-facts true of the
+; image, what makes fn-sf-crash-frontier-rollback preserve fn-sf-statep, and
+; what makes the image replayable (fn-snt-recovery-admissible-crash-image-
+; is-recoverable).  The (equal records ...) conjunct is exclusivity: a
+; recovery window holds at most one pending authority entry operation.
+; The (null (fn-sf-successes s)) conjunct is NOT about losing a record -- the
+; record list does not change -- but about telling a scan-reached :replaying
+; state from a crash-reached one: a crash from :reserved has already seen
+; (:frontier-directory :ok), so its rename is durable, and a crash from
+; :frontier-attempted is covered by fn-sf-crash's :old choice.
+; fn-bs-replay-matches-scan already carries it, so K2 pays nothing.
 
 ; K3. The constructor as a corollary: fn-sf-image-crash with the image read
 ; off the scan reproduces it exactly.  fn-sf-image-crash selects between
@@ -1824,10 +1864,10 @@ arm, and a model program that took it stops at `:enoent`.
 | --- | --- |
 | K0 `fn-bs-program-step-preserves-relation` | **open** (P3): needs `fn-bs-store-relation`. Ground form: `fn-bs-run-statep` holds on every ground run (`byte-store-programs`) and the composed runs reach `:reserved`, `:completing`, `:ready` and recover to `:ready` (`tests/acl2/byte-store-tests.lisp`). |
 | K1 `fn-bs-store-crash-image-scans` | **open** (P3), and its NAMESPACE clause is closed as of 2026-09-20 (lane `w9/storage-3`, hbox `build/acl2/certify-20260920T204940Z-1181403`): `fn-bs-apply-entries-names-is-names-after` (the bridge the previous lane left open; `tools/proof_profile.py` named four opened recognizers as the cause and closing them took it from an induction-depth-limit blowout at 2,016,278 prover steps to 33,789), then `fn-bs-crash-names-is-names-after`, `fn-bs-crash-image-names-are-an-outcome` and `fn-bs-crash-image-transaction-names`, which is the "exactly the durable transaction namespace, or that namespace with the one pending link's name appended" clause. What is left of K1 is the other three scan clauses. |
-| K2 `fn-bs-store-crash-image-is-kernel-admissible` | **open** (P3), and BOTH model questions in front of it are now decided. [D14-a](../planning/decisions.md) (lane `w9/storage-3`) keeps `books/byte-store-scan.lisp`'s `(fn-bs-txn-name (len (fn-bs-durable-names bs :transactions)))` and withdraws §3.2's `(fn-bs-txn-name (len (fn-sf-records ks)))`, on the six cut states between the record write and the pending link's removal; the duplicate-record image is excluded by the publish window's `(equal (fn-bs-durable-records bs) (fn-sf-records ks))`, an equality of LISTS. [D14-b](../planning/decisions.md) (lane `w10/kernel-freedom`) then removes the `(not (fn-bs-replay-visiblep ks))` hypothesis D14-a had to add, by making K2's CONCLUSION the platform predicate `fn-sf-recovery-crash-imagep` (`books/store-files.lisp`, **certified**) rather than the reliance predicate `fn-sf-crash-imagep`, which is unchanged. What is still unproved is the byte side: K2 rests on K1, whose namespace clause is closed and whose other three clauses are not, and on the frontier sub-case K2f below. |
+| K2 `fn-bs-store-crash-image-is-kernel-admissible` | **open** (P3), and ALL THREE model questions in front of it are now decided. [D14-a](../planning/decisions.md) (lane `w9/storage-3`) keeps `books/byte-store-scan.lisp`'s `(fn-bs-txn-name (len (fn-bs-durable-names bs :transactions)))` and withdraws §3.2's `(fn-bs-txn-name (len (fn-sf-records ks)))`, on the six cut states between the record write and the pending link's removal; the duplicate-record image is excluded by the publish window's `(equal (fn-bs-durable-records bs) (fn-sf-records ks))`, an equality of LISTS. [D14-b](../planning/decisions.md) (lane `w10/kernel-freedom`) then removes the `(not (fn-bs-replay-visiblep ks))` hypothesis D14-a had to add, by making K2's CONCLUSION the platform predicate `fn-sf-recovery-crash-imagep` (`books/store-files.lisp`, **certified**) rather than the reliance predicate `fn-sf-crash-imagep`, which is unchanged. [D14-c](../planning/decisions.md) (lane `w11/bytestore-k2`) then adds the frontier arm K2f below, so the conclusion is true of every image the platform can leave in the recovery window and not only of the record rollback. What is still unproved is the byte side: K2 rests on K1, whose namespace clause is closed and whose other three clauses are not. |
 | K2r `fn-bs-replay-window-carries-no-success` | **retired 2026-09-20 into a certified kernel theorem** (D14-b, lane `w10/kernel-freedom`). The obligation was "a crash in the recovery window risks no acknowledged record", stated at the byte level because the kernel could not express it. It is now `fn-sf-recovery-admissible-image-facts` (`books/store-files-invariants.lisp`): an acknowledged pair of the pre-crash state names a record of EVERY image the platform may leave, the rolled-back one included, because the arm that drops a record carries `(null (fn-sf-successes s))` as a conjunct. Nothing at the byte level has to carry it any more. |
-| K3 `fn-bs-store-recovery-is-a-kernel-crash` | **open** (P3): from K2 and `fn-sf-recovery-crash-realizes-every-admissible-image` (**certified**, `books/store-files-invariants.lisp`, D14-b), which covers all three arms; the constructor in K3's statement is now `fn-sf-image-crash`. |
-| K2f (the frontier sub-case of K2) | **open, and new 2026-09-20** (D14-b, lane `w10/kernel-freedom`). The recovery window can also be entered with a pending `:root` entry operation: die at `frontier-replaced` (`tools/run_store.py:1305`), reopen, and the rename is drained only by `fsync_dir(self.root)` at `:1216`, the FOURTH recovery barrier, so at `recover-replayed` (`:1207`) and the first three `recover-barrier` cuts (`:1228`) a crash rolls the frontier back to the durable value -- which the kernel does not hold, `fn-sf-frontier-candidate` being `nil` in that window. K2 as §3.3 states it is false in that sub-case. It needs a clause in `fn-bs-replay-matches-scan` (the durable frontier is the scanned one minus one, true because `advance_frontier` writes `old+1`) and a frontier arm in `fn-sf-recovery-crash-imagep` gated by `(fn-sf-record-listp (fn-sf-records ks) 0 0 (1- (fn-sf-frontier ks)))`. |
+| K3 `fn-bs-store-recovery-is-a-kernel-crash` | **open** (P3): from K2 and `fn-sf-recovery-crash-realizes-every-admissible-image` (**certified**, `books/store-files-invariants.lisp`, D14-b and D14-c), which covers all four arms; the constructor in K3's statement is `fn-sf-image-crash`, which selects among `fn-sf-crash` at the two choice functions, `fn-sf-crash-rollback` and `fn-sf-crash-frontier-rollback`. **K3's kernel half is proved and its byte half is exactly K2**: given K2, K3 is that theorem applied. |
+| K2f (the frontier sub-case of K2) | **modelled 2026-09-20** ([D14-c](../planning/decisions.md), lane `w11/bytestore-k2`), in the shape `w10/kernel-freedom` named plus one conjunct it did not: the two rollbacks are exclusive. The recovery window can also be entered with a pending `:root` entry operation -- die at `frontier-replaced` (`tools/run_store.py:1305`), reopen, and the rename is drained only by `fsync_dir(self.root)` at `:1216`, the FOURTH recovery barrier, so at `recover-replayed` (`:1207`) and the first three `recover-barrier` cuts (`:1228`) a crash rolls the frontier back to the durable value, which the kernel does not hold. K2 as §3.3 stated it was FALSE in that sub-case; §3.3 now states it over a predicate that covers it. `fn-sf-recovery-crash-imagep` carries the arm, `fn-sf-frontier-rollback-visiblep` is its gate, `fn-sf-crash-frontier-rollback` inhabits it, and `fn-bs-replay-matches-scan` carries the byte clause. The gate's `fn-sf-record-listp` conjunct admits exactly the reachable window: the reserved txid has no record while the rename is pending, and has one the moment it does. **K2 itself is still open and waits on the same thing it did: K1's other three scan clauses.** |
 | K4-K8 | **open** (P3) |
 | K9, K9b, K9c, K10 | **open** (P5) |
 | K11a-d | **open** (P4) |

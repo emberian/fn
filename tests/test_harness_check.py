@@ -280,6 +280,18 @@ class Acl2InPythonStringTests(unittest.TestCase):
             forms = [form for _r, _l, form in self.forms(temporary)]
             self.assertIn(harness_check.PLACEHOLDER, repr(forms))
 
+    def test_a_sentence_that_mentions_a_form_is_not_a_form(self):
+        """Prose in a message, not a call: two v0_matrix findings were this."""
+        temporary = self.written("tools/thing.py", '\n'.join([
+            'def message():',
+            '    return ("posting on this tree is the authenticated "',
+            '            "principal\'s allowance (fn-auth-postingp, RFC 3977 "',
+            '            "section 6.3.1.1). The feed was never reached.")',
+            '']))
+        with temporary:
+            self.assertEqual([form for _r, _l, form in self.forms(temporary)],
+                             [None])
+
     def test_a_string_that_is_a_fragment_is_declined(self):
         temporary = self.written("tools/thing.py", '\n'.join([
             'def call(rest):',

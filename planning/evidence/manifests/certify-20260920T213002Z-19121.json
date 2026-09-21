@@ -1,0 +1,107 @@
+{
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/defrecord": 0,
+    "tests/acl2/defrecord-tests": 0
+  },
+  "acl2_slots": 4,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/lanes/w10-dtn-3/build/acl2/certify-20260920T213002Z-19121",
+  "book_failures": {},
+  "book_results": {
+    "books/defrecord": "passed",
+    "tests/acl2/defrecord-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/defrecord": 0.134,
+    "tests/acl2/defrecord-tests": 0.217
+  },
+  "cert_cache": {
+    "already_cached": 0,
+    "directory": "/Users/ember/.cache/fn-certs",
+    "not_published": [],
+    "published": 2
+  },
+  "certificate_digests_sha256": {
+    "books/defrecord": "cfab7e636bc423bb9f1eb280464286532f9c93cb6c85b1428d5c653017374434",
+    "tests/acl2/defrecord-tests": "f595de1d5d8a1d86b8711c8874e69acaae4355f353acebd6cc1c8d91478c8617"
+  },
+  "certify_wall_seconds": 0.355,
+  "closure": false,
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/defrecord": "9760103e93b281742ff4db703a3dfe487c71f7cebd05d15a1cf2e2f9548ed972",
+    "tests/acl2/defrecord-tests": "b14427e1e73049e032a1f95ef7bba4d4cb277ffa365dc765ee7378ddd436d5f3"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS fae0b5fdacbcc614f164baead613f00b 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS fae0b5fdacbcc614f164baead613f00b a714f9d5dd70"
+  ],
+  "failure_markers": [],
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS fae0b5fdacbcc614f164baead613f00b 433b650ef7cb",
+    "FN_CERTIFY_SUCCESS fae0b5fdacbcc614f164baead613f00b a714f9d5dd70"
+  ],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "d6ef4aa750f3b608322680da324c40779c59c6d539fedd2413f7a51b3dca377c",
+  "requested_before_filter": [
+    "books/defrecord",
+    "tests/acl2/defrecord-tests"
+  ],
+  "requested_books": [
+    "books/defrecord",
+    "tests/acl2/defrecord-tests"
+  ],
+  "run_id": "certify-20260920T213002Z-19121",
+  "runner_sha256": "3607dc4b15cbe771eda434bc1911f7106b4b81f98aded95f9ea5e4cda6546ce5",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/defrecord": 0.0,
+    "tests/acl2/defrecord-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/deftransition.lisp": "daf77eff163662a24cbd5e66bc728ab507b1934804ffb5c2675c6a9ffa1f4f00",
+    "tests/acl2/defrecord-tests.lisp": "49251b8a466aa029923a8a700515321509288cbee84c864c4657b4dd1e86d7f3"
+  },
+  "source_digests_sha256_after": {
+    "books/acceptance-alloc.lisp": "9e8a507520360c78f699f45704e2e1d96bf0c5ef85c5a684ef42c370cdf867b3",
+    "books/defrecord.lisp": "ec4252ef85d2f5d340d8cdefda4f21344c73dfc851daad8d7237f6152cc9d639",
+    "books/deftransition.lisp": "daf77eff163662a24cbd5e66bc728ab507b1934804ffb5c2675c6a9ffa1f4f00",
+    "tests/acl2/defrecord-tests.lisp": "49251b8a466aa029923a8a700515321509288cbee84c864c4657b4dd1e86d7f3"
+  },
+  "start_order": [
+    "books/defrecord",
+    "tests/acl2/defrecord-tests"
+  ],
+  "status": "passed",
+  "timeout_seconds": 900
+}

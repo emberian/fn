@@ -1,0 +1,203 @@
+{
+  "acl2_executable": "/tank/fn/acl2-8.7/saved_acl2",
+  "acl2_executable_sha256": "64030dda0b03bbb6cf50984889f5ce1e2ba867b6ce3c9a65403afc44f9b4fdb5",
+  "acl2_exit_codes": {
+    "books/auth-secret": 0,
+    "books/crypto-attach": 0,
+    "books/identity": 0,
+    "books/identity-invariants": 0,
+    "books/sha256": 0,
+    "tests/acl2/auth-secret-tests": 0,
+    "tests/acl2/identity-tests": 0,
+    "tests/acl2/sha256-tests": 0
+  },
+  "acl2_slots": 16,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "hbox:/tank/fn/lanes/w9-digest/build/acl2/certify-20260920T190013Z-1089503",
+  "book_failures": {},
+  "book_results": {
+    "books/auth-secret": "passed",
+    "books/crypto-attach": "passed",
+    "books/identity": "passed",
+    "books/identity-invariants": "passed",
+    "books/sha256": "passed",
+    "tests/acl2/auth-secret-tests": "passed",
+    "tests/acl2/identity-tests": "passed",
+    "tests/acl2/sha256-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/auth-secret": 0.536,
+    "books/crypto-attach": 0.377,
+    "books/identity": 0.362,
+    "books/identity-invariants": 14.074,
+    "books/sha256": 5.146,
+    "tests/acl2/auth-secret-tests": 0.763,
+    "tests/acl2/identity-tests": 0.603,
+    "tests/acl2/sha256-tests": 0.57
+  },
+  "cert_cache": {
+    "already_cached": 0,
+    "directory": "/home/hbox/.cache/fn-certs",
+    "not_published": [],
+    "published": 8
+  },
+  "certificate_digests_sha256": {
+    "books/auth-secret": "85f809c3256d53b4d0ebcca34f8a6f7928ca13e36667ca56bc1f5df26b1ac363",
+    "books/crypto-attach": "0d24b32fbdc1968ace5cef197fd40ae99e184b7d44927c00b3994f7e7a694491",
+    "books/identity": "ea66d6732491aaa3abb94763bba3f2fbd35bf1dc3c92b50d3af2847dc5240df2",
+    "books/identity-invariants": "f36fe43f31fc9f879170e7cb5c3c5d2602ae28cc219b1394670403197e168c5d",
+    "books/sha256": "d41f48da953a740453179f6c4aa22e6534c6a7e7aa60bcf9388a4ceb58fc9c04",
+    "tests/acl2/auth-secret-tests": "d809d38f9efc66c9419d8b0c2179ac24d1e04f5989ce0ff843ed8cfa47f7d521",
+    "tests/acl2/identity-tests": "8e37c57230627d896d6fbb86c65abbb95d943ea51424983494254121a5fe0527",
+    "tests/acl2/sha256-tests": "47c74bc991b4af0865ea927ddb936d79a3da3f6386557a3c7e5b227fc760aab4"
+  },
+  "certify_wall_seconds": 15.042,
+  "closure": false,
+  "command": [
+    "/tank/fn/acl2-8.7/saved_acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/auth-secret": "b20ac5d0d4dcdadf974104028199480291f3c77d75a6082b964a73b89906e25b",
+    "books/crypto-attach": "f68e6439398abed8c2529b9e7a6d8c88fd5cccf23a836333f515f47f886ba7cf",
+    "books/identity": "b091ae8bb48be8534cea4990cb208fe4573ece7dc1815096b641edd4b564b499",
+    "books/identity-invariants": "b9ccffe5b25e25d66296e1f57fa1b31ede914706109948452a353dca9c8ce626",
+    "books/sha256": "2e2de7973d824b7ea56268148ca7b244eefcd1f078e271f42be77fb6f3d9c08e",
+    "tests/acl2/auth-secret-tests": "02c3c463ceb152d29983611552eed01182bb216abd2acdb3b90cc203528c2ffd",
+    "tests/acl2/identity-tests": "ed72a793fe024ecb6014859838049a6039d9d3d6897cc675e59ffc86e2086221",
+    "tests/acl2/sha256-tests": "5c80b271c17c5adb05e3a931c73fc50e6a27120c51742e06d1b3f0e7cda7818e"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 33336fe05a51e7a490fec916f008c823 89355f22bbc7",
+    "FN_CERTIFY_SUCCESS 33336fe05a51e7a490fec916f008c823 8292d81e9702",
+    "FN_CERTIFY_SUCCESS 33336fe05a51e7a490fec916f008c823 76c84983347e",
+    "FN_CERTIFY_SUCCESS 33336fe05a51e7a490fec916f008c823 96014d57a864",
+    "FN_CERTIFY_SUCCESS 33336fe05a51e7a490fec916f008c823 0e5414b07b9b",
+    "FN_CERTIFY_SUCCESS 33336fe05a51e7a490fec916f008c823 ca82a33bc26d",
+    "FN_CERTIFY_SUCCESS 33336fe05a51e7a490fec916f008c823 771478088edd",
+    "FN_CERTIFY_SUCCESS 33336fe05a51e7a490fec916f008c823 4dd0cf24a9fa"
+  ],
+  "failure_markers": [],
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "jobs": 4,
+  "jobs_effective": 4,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 33336fe05a51e7a490fec916f008c823 89355f22bbc7",
+    "FN_CERTIFY_SUCCESS 33336fe05a51e7a490fec916f008c823 8292d81e9702",
+    "FN_CERTIFY_SUCCESS 33336fe05a51e7a490fec916f008c823 76c84983347e",
+    "FN_CERTIFY_SUCCESS 33336fe05a51e7a490fec916f008c823 96014d57a864",
+    "FN_CERTIFY_SUCCESS 33336fe05a51e7a490fec916f008c823 0e5414b07b9b",
+    "FN_CERTIFY_SUCCESS 33336fe05a51e7a490fec916f008c823 ca82a33bc26d",
+    "FN_CERTIFY_SUCCESS 33336fe05a51e7a490fec916f008c823 771478088edd",
+    "FN_CERTIFY_SUCCESS 33336fe05a51e7a490fec916f008c823 4dd0cf24a9fa"
+  ],
+  "platform": "Linux-6.11.0-29-generic-x86_64-with-glibc2.40",
+  "python": "3.12.7",
+  "reader_sha256": "cb5c7e6645d83c46e5bce2aadd69120d687d337ea814401535f7887514bad7ad",
+  "requested_before_filter": [
+    "books/sha256",
+    "tests/acl2/sha256-tests",
+    "books/crypto-attach",
+    "books/auth-secret",
+    "tests/acl2/auth-secret-tests",
+    "books/identity",
+    "books/identity-invariants",
+    "tests/acl2/identity-tests"
+  ],
+  "requested_books": [
+    "books/sha256",
+    "tests/acl2/sha256-tests",
+    "books/crypto-attach",
+    "books/auth-secret",
+    "tests/acl2/auth-secret-tests",
+    "books/identity",
+    "books/identity-invariants",
+    "tests/acl2/identity-tests"
+  ],
+  "run_id": "certify-20260920T190013Z-1089503",
+  "runner_sha256": "3607dc4b15cbe771eda434bc1911f7106b4b81f98aded95f9ea5e4cda6546ce5",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/auth-secret": 0.0,
+    "books/crypto-attach": 0.0,
+    "books/identity": 0.0,
+    "books/identity-invariants": 0.0,
+    "books/sha256": 0.0,
+    "tests/acl2/auth-secret-tests": 0.0,
+    "tests/acl2/identity-tests": 0.0,
+    "tests/acl2/sha256-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/auth-secret.lisp": "09599f128c05ec547c9bffcfd83d0838f157a775c973d8009e67456664f77e85",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/crypto-attach.lisp": "54a655456b13ce20957d519608c284d3f1ec81c3a364d274373dd632547e945e",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "b95fa1730fe0074f92bdd45cc136f7b6fbb8f069c2f35ec25ceea067cf6d60ea",
+    "books/frame-journal.lisp": "512201c2299a6ac6760a03f8416fa98f5f6a0191af902fe53792450d2a6b2255",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/identity-invariants.lisp": "eed5f37029e66221612d79a52e156a5fe222c4154bc2d65298d5bfefd6c1f64b",
+    "books/identity.lisp": "b34e54f718e4f45e512491d9020296e198f189a2fc856c2651d4ae45f1294ade",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "02c34455e55acbd5492613e3c0cfc2790121e9ed09b900e63319c6f771ba281a",
+    "books/sha256.lisp": "dce8222e1b95ff23df78a6c8c67ea980aa6e7da115d5c9ad16426e6714307dd7",
+    "books/wildmat.lisp": "f9df9399e752a6edf1f1c10b2a0a6fc7abf528dbd3f6839df6e944334f4de3c9",
+    "tests/acl2/auth-secret-tests.lisp": "19e4e3304bd1100ea30503ba54303b7ac00090f65d3c786bbba9db72fb7a58e4",
+    "tests/acl2/identity-tests.lisp": "d1409cf71efa802290c36e983adf81a87a1fcab3be0746af186b0332fd186535",
+    "tests/acl2/sha256-tests.lisp": "705d7e7088833a93c090dc65644fcff590403b22328c606602f55eb1f11a517a"
+  },
+  "source_digests_sha256_after": {
+    "books/auth-secret.lisp": "09599f128c05ec547c9bffcfd83d0838f157a775c973d8009e67456664f77e85",
+    "books/cbor-invariants.lisp": "ab8dabf3a0c515eac05cb902d7fdca439ce8098c291b2c3b3fffb68ec2f0f2a4",
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/crypto-attach.lisp": "54a655456b13ce20957d519608c284d3f1ec81c3a364d274373dd632547e945e",
+    "books/crypto-seam.lisp": "25ab29192bc0d90d93968f41039e61b0333646342721be6fa350b12884038fa1",
+    "books/frame-fields.lisp": "240aec8c842113f4d1df5370083daafefddd583bf9febb33e1e1c2d4c6fabf83",
+    "books/frame-invariants.lisp": "b95fa1730fe0074f92bdd45cc136f7b6fbb8f069c2f35ec25ceea067cf6d60ea",
+    "books/frame-journal.lisp": "512201c2299a6ac6760a03f8416fa98f5f6a0191af902fe53792450d2a6b2255",
+    "books/frame-octets.lisp": "6315841a1242756faa47f11b5e74bb4918ce2183912b34a71b41212b2e18c645",
+    "books/frame.lisp": "30b34e09d532fe689c47c1f0d459381d838d5d5161b5c1ea5a3a2d1bfaf1b4db",
+    "books/identity-invariants.lisp": "eed5f37029e66221612d79a52e156a5fe222c4154bc2d65298d5bfefd6c1f64b",
+    "books/identity.lisp": "b34e54f718e4f45e512491d9020296e198f189a2fc856c2651d4ae45f1294ade",
+    "books/records-invariants.lisp": "bc695e30caa6146495532bd0ca1f9a2dd378ee7a06b2da189f75da8df6fcedbc",
+    "books/records.lisp": "02c34455e55acbd5492613e3c0cfc2790121e9ed09b900e63319c6f771ba281a",
+    "books/sha256.lisp": "dce8222e1b95ff23df78a6c8c67ea980aa6e7da115d5c9ad16426e6714307dd7",
+    "books/wildmat.lisp": "f9df9399e752a6edf1f1c10b2a0a6fc7abf528dbd3f6839df6e944334f4de3c9",
+    "tests/acl2/auth-secret-tests.lisp": "19e4e3304bd1100ea30503ba54303b7ac00090f65d3c786bbba9db72fb7a58e4",
+    "tests/acl2/identity-tests.lisp": "d1409cf71efa802290c36e983adf81a87a1fcab3be0746af186b0332fd186535",
+    "tests/acl2/sha256-tests.lisp": "705d7e7088833a93c090dc65644fcff590403b22328c606602f55eb1f11a517a"
+  },
+  "start_order": [
+    "books/sha256",
+    "books/identity",
+    "books/identity-invariants",
+    "tests/acl2/sha256-tests",
+    "books/crypto-attach",
+    "books/auth-secret",
+    "tests/acl2/auth-secret-tests",
+    "tests/acl2/identity-tests"
+  ],
+  "status": "passed",
+  "timeout_seconds": 1800
+}

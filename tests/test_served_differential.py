@@ -52,16 +52,17 @@ class ServedDifferentialTests(unittest.TestCase):
         touches none of the bridge's globals, so it may be evaluated in the
         same session that serves the socket.
         """
-        # The posting configuration and the clock observation are pinned at
-        # open; a read-only transcript never consults them.
-        # `(fn-auth-open-config)` last, exactly as host/reader-host.lisp:137
-        # passes it.  `d484e9a` gave `fn-served-open` a seventh formal and
-        # updated both Lisp callers; this call is spelled as TEXT, so nothing
-        # on either side could see it, and all seven tests here raised
-        # "FN-SERVED-OPEN takes 7 arguments ... given 6" instead of comparing
-        # bytes -- the bridge and books/served went a day with no divergence
-        # check running.  `tools/harness_check.py --lint acl2-arity` reads
-        # ACL2 forms out of Python string literals now, for this shape.
+        # The posting configuration, the clock observation and the AUTHINFO
+        # policy are pinned at open; a read-only transcript never consults
+        # them.  This form is `fn-reader-reset' (host/reader-host.lisp:137)
+        # spelled out: the same archive, the same limits, the same
+        # `(fn-auth-open-config)' the served side opens with.  A trailing
+        # argument added to `fn-served-open' has to be added here too, or the
+        # differential errors instead of comparing -- which is what happened
+        # for a day after `d484e9a' gave it a seventh formal, since a call
+        # spelled as TEXT is invisible to both sides.  `tools/harness_check.py
+        # --lint acl2-arity' reads ACL2 forms out of Python string literals
+        # and checks their arity against the books, for exactly this shape.
         open_form = ("(fn-served-open *fn-reader-archive* 510 8192"
                      " (fn-reader-post-config *fn-reader-archive* nil)"
                      " nil nil (fn-auth-open-config))")

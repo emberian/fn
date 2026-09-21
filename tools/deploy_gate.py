@@ -724,8 +724,17 @@ else echo reader; fi
                 "service wrapper's own argument handling and logging are not exercised.")
             kind = "owner"
         if kind == "owner":
-            return kind, "python3 tools/run_owner.py --store {} --port 0 --control {}/control.sock".format(
-                store, run)
+            # 32, not the owner's default 8. A two-node run holds a
+            # persistent feed connection in each direction, a wire tap's
+            # backend session per feed dial, and the harness's own probes;
+            # on gate run `ea76826` node B reached the bound and closed
+            # four steps' connections at accept, which reads as
+            # "server closed the connection". That the bound is reachable
+            # at all in a two-node run is a finding, recorded on the board;
+            # this is the harness giving itself room, not a fix for it.
+            return kind, ("python3 tools/run_owner.py --store {} --port 0 "
+                          "--max-connections 32 --control {}/control.sock".format(
+                              store, run))
         return kind, "python3 tools/run_reader.py --store {} --port 0 --post".format(store)
 
     def start_server(self, kind: str, command: str, tag: str, run=None) -> bool:
@@ -952,6 +961,13 @@ head -5 $typescript 2>/dev/null || echo "(the client left no typescript)"
         ]
         for key in self.FACT_KEYS:
             if key in self.facts:
+                lines.append("| {} | {} |".format(key, self.facts[key].replace("|", "\\|")))
+        # A fact recorded under a name the class did not enumerate is still a
+        # measurement. Dropping it silently is how a number that was measured
+        # disappears from the record; the enumeration is an ORDER, not a
+        # filter.
+        for key in sorted(self.facts):
+            if key not in self.FACT_KEYS:
                 lines.append("| {} | {} |".format(key, self.facts[key].replace("|", "\\|")))
         clients = ", ".join("{}={}".format(k, v) for k, v in sorted(
             getattr(self, "clients", {}).items()))

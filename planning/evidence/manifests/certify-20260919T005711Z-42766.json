@@ -1,0 +1,89 @@
+{
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/bp-workflow-binding-core": 0,
+    "books/bp-workflow-binding-invariants": 0,
+    "tests/acl2/bp-workflow-binding-invariants-tests": 0
+  },
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/acl2/certify-20260919T005711Z-42766",
+  "certificate_digests_sha256": {
+    "books/bp-workflow-binding-core": "8f7e31208f0a56472737118a8e533ea051f0eb02d888d05fb2c8470efd31389f",
+    "books/bp-workflow-binding-invariants": "6e9c094c29d373bf742061d690781630fa6b3d6eb6a63319d575a64ab45a3971",
+    "tests/acl2/bp-workflow-binding-invariants-tests": "e16dc67b0ea37e7adea3fd660a188db60f4ecab4f006c128c3eb8da93edd6f8e"
+  },
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/bp-workflow-binding-core": "c6ea4c8c7e0da7904f3d3bd4f4ab2d15159d8fb9a80f23de0d19c8bb0b1b1fe9",
+    "books/bp-workflow-binding-invariants": "07dfa69bccf86038f5e4c9c9e715b57b183d84933a278592d345308d23b4be1b",
+    "tests/acl2/bp-workflow-binding-invariants-tests": "9bf675a3aeace3e8bbd139148623ea55a38e713a7fd86661a56d35efbbf12069"
+  },
+  "environment": {
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 2c287e2352af9dc95af4ef51054a125e 5527f594c481",
+    "FN_CERTIFY_SUCCESS 2c287e2352af9dc95af4ef51054a125e a571c08e0f1f",
+    "FN_CERTIFY_SUCCESS 2c287e2352af9dc95af4ef51054a125e 8cd841d0a53e"
+  ],
+  "failure_markers": [],
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 2c287e2352af9dc95af4ef51054a125e 5527f594c481",
+    "FN_CERTIFY_SUCCESS 2c287e2352af9dc95af4ef51054a125e a571c08e0f1f",
+    "FN_CERTIFY_SUCCESS 2c287e2352af9dc95af4ef51054a125e 8cd841d0a53e"
+  ],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "requested_books": [
+    "books/bp-workflow-binding-core",
+    "books/bp-workflow-binding-invariants",
+    "tests/acl2/bp-workflow-binding-invariants-tests"
+  ],
+  "run_id": "certify-20260919T005711Z-42766",
+  "runner_sha256": "dd444d5cc83bfc60b75020e9aea69fdfcdda9135872cd1392e3ab53c6ff1a3d7",
+  "runner_unchanged": true,
+  "source_digests_sha256": {
+    "books/acceptance-invariants.lisp": "547b4e1d4c56516b66d965f432aa539c6ac3f6df327bfd4eb24c6a1267745476",
+    "books/acceptance.lisp": "5a263f505a66864f6a055852dc2fec576746703938a673f9d195d47226baaac6",
+    "books/bp-workflow-binding-core.lisp": "87bcd87cb008be180985516f930e28540554d1f23fd794537248b11314056ba1",
+    "books/bp-workflow-binding-invariants.lisp": "e247d9d1549fa668b33be785f959bda5f5dec42eb2a13c904d02e436d86774e8",
+    "books/bp-workflow-invariants.lisp": "16611ec7f9fdb96bd87727d1a9856637e40d1c148b81bd359bd250014c0b362e",
+    "books/bp-workflow.lisp": "47d1a887fca5cca5d030d437fe27b8f20b8823390e1ed06f125d51369d547914",
+    "books/node-invariants.lisp": "261a7265208a7ef364b7e706d9dcbbf49b9b665150f4239d9dd9031d59be98c2",
+    "books/node.lisp": "8cc072126188611d4649c95fb004819a5cca7c29479c92a7ae34c74de7789acc",
+    "books/retention.lisp": "6a335873a6f0e50af3b6af99bc508536588600ba0db778f237ceff9aa7a19914",
+    "tests/acl2/bp-workflow-binding-invariants-tests.lisp": "b354a2bd873d2ed6c2340db4d705d00892b691b6dde58906d280b831f6040b57"
+  },
+  "source_digests_sha256_after": {
+    "books/acceptance-invariants.lisp": "547b4e1d4c56516b66d965f432aa539c6ac3f6df327bfd4eb24c6a1267745476",
+    "books/acceptance.lisp": "5a263f505a66864f6a055852dc2fec576746703938a673f9d195d47226baaac6",
+    "books/bp-workflow-binding-core.lisp": "87bcd87cb008be180985516f930e28540554d1f23fd794537248b11314056ba1",
+    "books/bp-workflow-binding-invariants.lisp": "e247d9d1549fa668b33be785f959bda5f5dec42eb2a13c904d02e436d86774e8",
+    "books/bp-workflow-invariants.lisp": "16611ec7f9fdb96bd87727d1a9856637e40d1c148b81bd359bd250014c0b362e",
+    "books/bp-workflow.lisp": "47d1a887fca5cca5d030d437fe27b8f20b8823390e1ed06f125d51369d547914",
+    "books/node-invariants.lisp": "261a7265208a7ef364b7e706d9dcbbf49b9b665150f4239d9dd9031d59be98c2",
+    "books/node.lisp": "8cc072126188611d4649c95fb004819a5cca7c29479c92a7ae34c74de7789acc",
+    "books/retention.lisp": "6a335873a6f0e50af3b6af99bc508536588600ba0db778f237ceff9aa7a19914",
+    "tests/acl2/bp-workflow-binding-invariants-tests.lisp": "b354a2bd873d2ed6c2340db4d705d00892b691b6dde58906d280b831f6040b57"
+  },
+  "status": "passed",
+  "timeout_seconds": 600
+}
