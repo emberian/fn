@@ -51,8 +51,9 @@ source identity
 `fcc8911fb04af8779d39f4d164d0ae828c3c420c0f171ef205e97a3e322ea0bc`, and
 loaded all 118 books before native construction.
 
-The final test-only added witness is certified separately after the checkpoint
-lane releases the hbox certificate budget.  It checks that `(:eio . :issued)`
+The final test-only witness certified as
+[certify-20260921T095918Z-2002274.json](manifests/certify-20260921T095918Z-2002274.json)
+(SHA-256 `16699a07f0f2b98fa6ac9e76d896bc05ba19a7eb5a90b06297206a43ffff75a6`) after the image run.  It checks that `(:eio . :issued)`
 at `:link-eexist` stops rather than becoming the accepted `EEXIST` branch.
 
 ## Native runtime evidence
