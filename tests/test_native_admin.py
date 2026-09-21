@@ -130,6 +130,18 @@ class NativeAdminTests(unittest.TestCase):
         # obligations or the allocation-domain identity they rely on.
         self.native("store", self.store, "inspect", message_id)
 
+    def test_peer_add_and_remove_use_public_native_admin(self):
+        added = self.operator("peer", "add", "far", "far.example.invalid",
+                              "192.0.2.44", "1119", "fn.*", "fn.*",
+                              "192.0.2.44", "true")
+        self.assertIn(b"configured generation=2 record=00000002.cfg verification=verified",
+                      added.stdout)
+        self.assertIn("generation=2", self.config_report())
+        removed = self.operator("peer", "remove", "far")
+        self.assertIn(b"configured generation=3 record=00000003.cfg verification=verified",
+                      removed.stdout)
+        self.assertIn("generation=3", self.config_report())
+
     def test_running_owner_refuses_offline_administration(self):
         self.start_owner()
         refused = self.operator("group", "create", "fn.locked", expected=1)

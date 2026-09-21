@@ -1,6 +1,7 @@
 ; Program bridge for the native administrative plan.
 (in-package "ACL2")
 (include-book "../books/native-admin")
+(ld "store-node-host.lisp" :ld-error-action :error)
 
 (defun fn-native-admin-host-plan (argv) (fn-native-admin-plan argv))
 (defun fn-native-admin-host-status (result) (fn-native-admin-result-status result))
@@ -8,6 +9,21 @@
 (defun fn-native-admin-host-kind (result) (fn-native-admin-result-kind result))
 (defun fn-native-admin-host-name (result) (fn-native-admin-result-name result))
 (defun fn-native-admin-host-capacity (result) (fn-native-admin-result-capacity result))
+(defun fn-native-admin-host-peer (result) (fn-native-admin-result-peer result))
+(defun fn-native-admin-host-apply (plan monotonic wall state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((kind (fn-native-admin-result-kind plan)))
+    (cond ((equal kind :set-peer)
+           (fn-store-cfg-peer-delta-record
+            (list (fn-cfg-set-peer-delta (fn-native-admin-result-peer plan)))
+            monotonic wall state))
+          ((equal kind :remove-peer)
+           (fn-store-cfg-remove-peer (fn-native-admin-result-name plan)
+                                     monotonic wall state))
+          (t (fn-store-cfg-reconfigure
+              kind (fn-native-admin-result-name plan)
+              (fn-native-admin-result-capacity plan)
+              monotonic wall state)))))
 (defun fn-native-admin-host-config-name (generation)
   (fn-native-admin-config-name generation))
 (defun fn-native-admin-host-clock-observation (monotonic wall)

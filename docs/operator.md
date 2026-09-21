@@ -116,6 +116,18 @@ configuration records inside the store, which ACL2 replays at every open;
 `--group` seeds them once, and `fn group` changes them afterwards. The
 configuration file holds only what the host needs in order to start.
 
+Native peer records use the same offline durable administration path:
+
+```text
+fn-native --fn operator /etc/fn/fn.toml peer add NAME PATH-ID HOST PORT INBOUND|- OUTBOUND|- SOURCE-ADDRESS true|false
+fn-native --fn operator /etc/fn/fn.toml peer remove NAME
+```
+
+ACL2 parses the port and streaming word, supplies the inbound body/inflight
+limits and outbound queue/backoff limits, builds the typed peer record and
+selects the configuration delta. Run these while the owner is stopped; the
+exclusive store lock refuses offline administration against a live owner.
+
 `[listener] host` accepts loopback aliases or an explicit numeric IPv4
 address. ACL2 parses the literal and supplies the exact bind address; the host
 does not resolve or reinterpret it. The wildcard `0.0.0.0` remains refused so

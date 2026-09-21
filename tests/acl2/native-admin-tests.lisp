@@ -25,6 +25,48 @@
 (assert-event (equal (fn-native-admin-result-status *fn-na-capacity*) :accepted))
 (assert-event (equal (fn-native-admin-result-capacity *fn-na-capacity*) 1048576))
 
+(defconst *fn-na-peer-add*
+  (fn-native-admin-plan
+   (list (fn-record-string-octets "peer")
+         (fn-record-string-octets "add")
+         (fn-record-string-octets "far")
+         (fn-record-string-octets "far.example")
+         (fn-record-string-octets "192.0.2.44")
+         (fn-record-string-octets "1119")
+         (fn-record-string-octets "fn.*")
+         (fn-record-string-octets "fn.*")
+         (fn-record-string-octets "192.0.2.44")
+         (fn-record-string-octets "true"))))
+(assert-event (equal (fn-native-admin-result-status *fn-na-peer-add*) :accepted))
+(assert-event (equal (fn-native-admin-result-kind *fn-na-peer-add*) :set-peer))
+(assert-event (fn-cfg-peerp (fn-native-admin-result-peer *fn-na-peer-add*)))
+(assert-event
+ (equal (fn-cfg-peer-transport (fn-native-admin-result-peer *fn-na-peer-add*))
+        '(:nntp "192.0.2.44" 1119)))
+(assert-event
+ (equal (fn-cfg-peer-auth (fn-native-admin-result-peer *fn-na-peer-add*))
+        '(:source-address "192.0.2.44")))
+(assert-event
+ (equal (fn-native-admin-result-status
+         (fn-native-admin-plan
+          (list (fn-record-string-octets "peer")
+                (fn-record-string-octets "add")
+                (fn-record-string-octets "far")
+                (fn-record-string-octets "far.example")
+                (fn-record-string-octets "192.0.2.44")
+                (fn-record-string-octets "70000")
+                (fn-record-string-octets "fn.*")
+                (fn-record-string-octets "fn.*")
+                (fn-record-string-octets "192.0.2.44")
+                (fn-record-string-octets "true"))))
+        :refused))
+(defconst *fn-na-peer-remove*
+  (fn-native-admin-plan
+   (list (fn-record-string-octets "peer")
+         (fn-record-string-octets "remove")
+         (fn-record-string-octets "far"))))
+(assert-event (equal (fn-native-admin-result-kind *fn-na-peer-remove*) :remove-peer))
+
 ; Leading zeroes, signs, overflow, malformed verbs, and non-group labels are
 ; all refusals before the physical adapter acquires a writable store.
 (assert-event (equal (fn-native-admin-result-status

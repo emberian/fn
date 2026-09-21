@@ -2,8 +2,8 @@
 ;;;
 ;;; This internal verb has one job: execute an ACL2-native-admin plan while
 ;;; holding the store's existing exclusive writer lock.  It deliberately does
-;;; not add public CLI grammar; the operator/control owner can project the
-;;; same plan.  No raw group table, decimal capacity, configuration record, or
+;;; receives public CLI grammar only through the operator's ACL2 plan. No raw
+;;; group/peer table, port/default, decimal capacity, configuration record, or
 ;;; durable final filename is computed here.
 
 (in-package "ACL2")
@@ -37,13 +37,11 @@ represent."
   "Invoke the existing ACL2 configuration transaction constructor.
 On :ok it returns the exact record octets the core admitted; on refusal it
 returns NIL and the core's named reason."
-  (let* ((kind (fnn-core 'fn-native-admin-host-kind plan))
-         (name (fnn-core 'fn-native-admin-host-name plan))
-         (capacity (fnn-core 'fn-native-admin-host-capacity plan))
-         (status (fnn-core-state 'fn-store-cfg-reconfigure
-                                 kind (or name nil) capacity
-                                 (fnn-core 'fn-native-admin-host-clock-monotonic stamp)
-                                 (fnn-core 'fn-native-admin-host-clock-wall stamp))))
+  (let* ((status
+           (fnn-core-state
+            'fn-native-admin-host-apply plan
+            (fnn-core 'fn-native-admin-host-clock-monotonic stamp)
+            (fnn-core 'fn-native-admin-host-clock-wall stamp))))
     (if (eq status :ok)
         (let ((octets (fnn-core-state 'fn-store-cfg-last-octets)))
           (unless (fnn-octet-list-p octets)

@@ -221,6 +221,13 @@ has not yet passed a source-matched image or two-node runtime gate. The native
 listener profile accepts ACL2-parsed numeric IPv4 literals and explicit IPv6
 loopback; general IPv6 textual policy remains open.
 
+The public native operator also plans `peer add` and `peer remove` in ACL2.
+The add plan constructs the complete typed peer record, including bounded
+inbound and outbound defaults, and the ACL2 host wrapper applies its exact
+set/remove delta through the existing configuration transaction. Raw Lisp
+executes one accepted plan and never parses a host/port pair, wildmat,
+streaming flag, source authorization or peer-record default.
+
 The decimal-octet pipe, its nonce correlation and its reply bounds do not
 exist in this host: every call is an in-process application of the wrapper's
 executable counterpart (`fnn-call`, the raw-Lisp spelling of `ec-call`), under

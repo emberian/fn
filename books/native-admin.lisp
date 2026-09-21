@@ -1,8 +1,8 @@
 ; fn: bounded native administrative configuration plan.
 ;
-; This is deliberately a narrow command boundary.  It selects only the three
-; durable configuration deltas that the store already owns, and it never owns
-; a second group table, capacity rule, record encoder, or replay algorithm.
+; This is deliberately a narrow command boundary.  It selects group, capacity
+; and peer deltas that the store already owns, and it never owns a second
+; group/peer table, capacity rule, record encoder, or replay algorithm.
 ; Raw Lisp supplies bounded argv octets and physical observations; the record
 ; remains `fn-store-cfg-reconfigure' and a proposed history is checked here by
 ; the same logical replay/open entry used at ordinary recovery.
@@ -13,7 +13,7 @@
 (include-book "byte-store-txn-name")
 (include-book "journal-publish")
 
-(defconst *fn-native-admin-max-arguments* 3)
+(defconst *fn-native-admin-max-arguments* 10)
 (defconst *fn-native-admin-max-argument-octets* 512)
 (defconst *fn-native-admin-config-name-width* 8)
 (defconst *fn-native-admin-config-name-limit* 100000000)
@@ -85,9 +85,9 @@
            (<= 0 (fn-native-admin-decimal-value chars))
            (fn-record-uint32p (fn-native-admin-decimal-value chars))))))
 
-(defun fn-native-admin-result (status reason kind name capacity)
+(defun fn-native-admin-result (status reason kind name capacity peer)
   (declare (xargs :guard t))
-  (list status reason kind name capacity))
+  (list status reason kind name capacity peer))
 
 (defun fn-native-admin-result-status (result)
   (declare (xargs :guard t))
@@ -105,32 +105,72 @@
 (defun fn-native-admin-result-capacity (result) (declare (xargs :guard t))
   (mbe :logic (car (cddddr result))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr result)))))))
+(defun fn-native-admin-result-peer (result) (declare (xargs :guard t))
+  (mbe :logic (cadr (cddddr result))
+       :exec (fn-ag-car
+              (fn-ag-cdr
+               (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr result))))))))
+
+(defun fn-native-admin-peer-plan (words)
+  "Build the complete peer record in ACL2; raw Lisp receives no field defaults."
+  (declare (xargs :guard t))
+  (if (and (equal (len words) 10)
+           (equal (car words) "peer")
+           (equal (cadr words) "add")
+           (fn-native-admin-decimalp (nth 5 words))
+           (<= 1 (fn-native-admin-decimal-value
+                  (coerce (nth 5 words) 'list)))
+           (<= (fn-native-admin-decimal-value
+                (coerce (nth 5 words) 'list)) 65535)
+           (member-equal (nth 9 words) '("true" "false")))
+      (let* ((inbound (if (equal (nth 6 words) "-") nil
+                        (list (nth 6 words) *fn-record-max-payload* 16)))
+             (outbound (if (equal (nth 7 words) "-") nil
+                         (list (nth 7 words) (equal (nth 9 words) "true")
+                               1024 1000)))
+             (peer (fn-cfg-peer-make
+                    (nth 2 words) (nth 3 words)
+                    (list :nntp (nth 4 words)
+                          (fn-native-admin-decimal-value
+                           (coerce (nth 5 words) 'list)))
+                    inbound outbound (list :source-address (nth 8 words)))))
+        (if (fn-cfg-peerp peer)
+            (fn-native-admin-result :accepted nil :set-peer nil 0 peer)
+          (fn-native-admin-result :refused :peer-record nil nil 0 nil)))
+    (fn-native-admin-result :refused :syntax nil nil 0 nil)))
 
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
   (declare (xargs :guard t))
   (if (or (not (fn-native-admin-argvp argv))
           (< *fn-native-admin-max-arguments* (len argv)))
-      (fn-native-admin-result :refused :argv nil nil nil)
+      (fn-native-admin-result :refused :argv nil nil nil nil)
     (let ((words (fn-native-admin-words argv)))
       (cond
        ((and (equal (len words) 3)
              (equal (car words) "group")
              (equal (cadr words) "create")
              (fn-record-group-namep (caddr words)))
-        (fn-native-admin-result :accepted nil :create-group (caddr argv) 0))
+        (fn-native-admin-result :accepted nil :create-group (caddr argv) 0 nil))
        ((and (equal (len words) 3)
              (equal (car words) "group")
              (equal (cadr words) "retire")
              (fn-record-group-namep (caddr words)))
-        (fn-native-admin-result :accepted nil :remove-group (caddr argv) 0))
+        (fn-native-admin-result :accepted nil :remove-group (caddr argv) 0 nil))
        ((and (equal (len words) 2)
              (equal (car words) "capacity")
              (fn-native-admin-decimalp (cadr words)))
         (fn-native-admin-result :accepted nil :set-capacity nil
                                 (fn-native-admin-decimal-value
-                                 (coerce (cadr words) 'list))))
-       (t (fn-native-admin-result :refused :syntax nil nil nil))))))
+                                 (coerce (cadr words) 'list)) nil))
+       ((and (consp words) (equal (car words) "peer"))
+        (if (and (equal (len words) 3)
+                 (equal (cadr words) "remove")
+                 (stringp (caddr words))
+                 (not (equal (caddr words) "")))
+            (fn-native-admin-result :accepted nil :remove-peer (caddr argv) 0 nil)
+          (fn-native-admin-peer-plan words)))
+       (t (fn-native-admin-result :refused :syntax nil nil nil nil))))))
 
 ; Config record names are a fixed-width namespace.  The digit renderer is the
 ; existing ACL2 byte-store renderer; no host formatter derives a durable name.
