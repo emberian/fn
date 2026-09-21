@@ -72,14 +72,14 @@
 (assert-event
  (equal (fn-cpp-marker-driver-step (fn-cpp-phase *cpp-s5*) :ok)
         (fn-cpp-phase (fn-cpp-marker-step *cpp-s5* :ok))))
-; Teeth for the correspondence hypotheses: outside a marker phase there is no
-; native marker step to correspond to, and without statep a forged state can
-; carry a non-phase value whose accessor projection is not a driver phase.
-(assert-event (not (member-equal (fn-cpp-phase *cpp-s4*)
-                                 '(:marker-staged :marker-data-durable
-                                   :marker-attempted))))
+; Tooth for the correspondence hypothesis: without statep the full machine
+; refuses the forged state while the phase-only driver would advance it.
 (defconst *cpp-bad-driver-state* '(:fn-cpp nil 10 :marker-staged nil nil nil))
 (assert-event (not (fn-cpp-statep *cpp-bad-driver-state*)))
+(assert-event
+ (not (equal (fn-cpp-marker-driver-step
+              (fn-cpp-phase *cpp-bad-driver-state*) :ok)
+             (fn-cpp-phase (fn-cpp-marker-step *cpp-bad-driver-state* :ok)))))
 
 ; Namespace parsing is a host boundary; ACL2 alone decides contiguous next,
 ; malformed/gapped, and exhausted outcomes.
@@ -87,6 +87,22 @@
 (assert-event (equal (fn-cpp-next-generation '(0 1 2)) 3))
 (assert-event (equal (fn-cpp-next-generation '(0 2)) :bad))
 (assert-event (equal (fn-cpp-next-generation-from nil 4294967296) :exhausted))
+
+; The immutable executor receives authority only through this ACL2 gate.
+(defconst *cpp-publication* (fn-cpp-publication-initial '(0 1) 2 t t))
+(assert-event (equal (car *cpp-publication*) :ok))
+(assert-event (fn-jpub-statep (car (cdr (cdr *cpp-publication*)))))
+(assert-event (fn-jpub-authorityp (car (cdr (cdr *cpp-publication*)))))
+; Every premise is a tooth: no exclusive owner, occupied exact name, proposed
+; generation mismatch, and a gapped namespace all refuse authorization.
+(assert-event (equal (fn-cpp-publication-initial '(0 1) 2 nil t)
+                     '(:error :authority)))
+(assert-event (equal (fn-cpp-publication-initial '(0 1) 2 t nil)
+                     '(:error :occupied)))
+(assert-event (equal (fn-cpp-publication-initial '(0 1) 3 t t)
+                     '(:error :generation)))
+(assert-event (equal (fn-cpp-publication-initial '(0 2) 3 t t)
+                     '(:error :namespace)))
 
 ; A second generation over the longer prefix, selected over the first.
 (defconst *cpp-t1* (fn-cpp-stage *cpp-s8* *cpp-prefix-1* 6 *cpp-digest*))

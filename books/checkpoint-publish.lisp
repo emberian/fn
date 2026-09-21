@@ -26,6 +26,7 @@
 
 (in-package "ACL2")
 (include-book "checkpoint-codec")
+(include-book "journal-publish")
 (include-book "defrecord")
 ; The codec withdraws its reader and encoder vocabulary at export
 ; (docs/proof-style.md s2); the proofs here induct with it.
@@ -329,6 +330,21 @@
   (declare (xargs :guard t))
   (fn-cpp-next-generation-from names 0))
 
+; Authorize the shared immutable publication machine only when the caller's
+; boundary observations establish exclusive authority, a gap-free generation
+; namespace, and absence of the exact final name.  The raw executor receives
+; the returned fn-jpub state; it never manufactures authority itself.
+(defun fn-cpp-publication-initial
+  (names proposed-generation exclusivep final-absentp)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((next (fn-cpp-next-generation names)))
+    (cond ((equal next :bad) '(:error :namespace))
+          ((equal next :exhausted) '(:error :exhausted))
+          ((not (equal proposed-generation next)) '(:error :generation))
+          ((not (equal exclusivep t)) '(:error :authority))
+          ((not (equal final-absentp t)) '(:error :occupied))
+          (t (list :ok next (fn-jpub-initial t))))))
+
 ; -----------------------------------------------------------------------------
 ; Crash images and recovery
 
@@ -565,15 +581,35 @@
 ; reachable marker phase that value is the full checkpoint publication
 ; machine's next phase under the same observed syscall result.
 (defthm fn-cpp-marker-driver-step-corresponds
-  (implies (and (fn-cpp-statep s)
-                (member-equal (fn-cpp-phase s)
-                              '(:marker-staged :marker-data-durable
-                                :marker-attempted)))
+  (implies (fn-cpp-statep s)
            (equal (fn-cpp-marker-driver-step (fn-cpp-phase s) result)
                   (fn-cpp-phase (fn-cpp-marker-step s result))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-cpp-marker-step
                                       fn-cpp-marker-driver-step))))
+
+(defthm fn-cpp-publication-initial-authorizes-state
+  (implies (equal (car (fn-cpp-publication-initial
+                        names proposed-generation exclusivep final-absentp))
+                  :ok)
+           (and (equal (car (cdr (fn-cpp-publication-initial
+                                  names proposed-generation exclusivep
+                                  final-absentp)))
+                       proposed-generation)
+                (fn-jpub-statep
+                 (car (cdr (cdr (fn-cpp-publication-initial
+                                 names proposed-generation exclusivep
+                                 final-absentp)))))
+                (fn-jpub-authorityp
+                 (car (cdr (cdr (fn-cpp-publication-initial
+                                 names proposed-generation exclusivep
+                                 final-absentp)))))))
+  :hints (("Goal" :in-theory (enable fn-cpp-publication-initial
+                                      fn-cpp-next-generation
+                                      fn-jpub-initial fn-jpub-state
+                                      fn-jpub-statep fn-jpub-authorityp
+                                      fn-jpub-phase fn-jpub-outcome
+                                      fn-jpub-phasep fn-jpub-outcomep))))
 
 (defthm fn-cpp-crash-image-is-image
   (implies (fn-cpp-statep s)
