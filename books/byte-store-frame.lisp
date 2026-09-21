@@ -56,6 +56,7 @@
        (equal (fn-frame-result-version frame) *fn-bs-meta-version*)
        (equal (fn-frame-result-kind frame) kind)
        (fn-cbor-octet-listp payload)
+       (natp bound)
        (<= (len payload) bound)))
 
 (defun fn-bs-frontier-encode-impl (n)
