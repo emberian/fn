@@ -1044,6 +1044,7 @@
    :rule-classes nil
    :hints (("Goal" :in-theory (e/d (fn-auth-capability-lines
                                     fn-auth-capability-lines-for-peer
+                                    fn-auth-access-capability-lines
                                     fn-peer-capability-lines
                                     fn-nntp-capability-lines)
                                    (fn-auth-config-creds
