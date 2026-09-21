@@ -126,12 +126,30 @@
       (nio-check (null answers) "store write did not consume every injected partial result"))))
 
 (defun nio-with-transaction-scan-stubs (names thunk)
-  (let* ((symbols '(fnn-list-directory fnn-lstat fnn-symlink-p fnn-regular-p))
+  (let* ((symbols '(fnn-list-directory fnn-list-directory-bounded
+                    fnn-bridge-transaction-observation
+                    fnn-lstat fnn-symlink-p fnn-regular-p))
          (saved (mapcar (lambda (symbol) (cons symbol (symbol-function symbol))) symbols)))
     (unwind-protect
          (progn
+           ;; If fnn-transaction-files regresses to the unbounded helper this
+           ;; test fails immediately instead of retaining a large list first.
            (setf (symbol-function 'fnn-list-directory) (lambda (&rest ignored)
-                                                        (declare (ignore ignored)) names)
+                                                        (declare (ignore ignored))
+                                                        (error "unbounded transaction enumeration"))
+                 (symbol-function 'fnn-list-directory-bounded)
+                 (lambda (path limit namespace)
+                   (declare (ignore path namespace))
+                   (when (> (length names) limit)
+                     (fnn-fault "transaction namespace exceeds ACL2 observation bound"))
+                   names)
+                 (symbol-function 'fnn-bridge-transaction-observation)
+                 (lambda (observed limit)
+                   (unless (and (= (length observed) (length names))
+                                (>= limit (length observed)))
+                     (fnn-fault "transaction observation lost its ACL2 bound"))
+                   (loop for name in observed for sequence from 0
+                         collect (cons sequence name)))
                  (symbol-function 'fnn-lstat) (lambda (&rest ignored)
                                                 (declare (ignore ignored)) :regular)
                  (symbol-function 'fnn-symlink-p) (lambda (&rest ignored)

@@ -87,3 +87,16 @@
 (assert-event (not (fn-bs-replay-visiblep (fn-sf-initial-state))))
 (assert-event (fn-bs-replay-visiblep
                (fn-sf-make :replaying 0 nil nil nil nil nil 0)))
+
+; The native final-namespace observer consumes these ACL2-issued pairs.  It
+; carries sequence 0..n-1 only when every sorted filename is exactly the scan
+; codec's name; reordering one reachable two-entry observation is refused.
+(assert-event
+ (equal (fn-bs-txn-observation-pairs
+         (list (fn-bs-txn-name 0) (fn-bs-txn-name 1)) 0)
+        (list (list 0 (fn-bs-txn-name 0))
+              (list 1 (fn-bs-txn-name 1)))))
+(assert-event
+ (equal (fn-bs-txn-observation-pairs
+         (list (fn-bs-txn-name 1) (fn-bs-txn-name 0)) 0)
+        :invalid))

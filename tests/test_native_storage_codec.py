@@ -27,6 +27,23 @@ def host_env(native):
     return env
 
 
+class NativeTransactionNamespaceSourceTests(unittest.TestCase):
+    def test_native_scan_uses_bounded_acl2_transaction_observation(self):
+        source = (ROOT / "host" / "native" / "io.lisp").read_text()
+        block = source[source.index("(defun fnn-transaction-files"):
+                       source.index("(defun fnn-staging-observation")]
+        self.assertIn("fnn-list-directory-bounded", block)
+        self.assertIn("fnn-bridge-transaction-observation", block)
+        self.assertNotIn("fnn-list-directory (fnn-transactions", block)
+        self.assertNotIn("parse-integer", block)
+        self.assertNotIn("fnn-seq-name-p", block)
+        bridge = source[source.index("(defun fnn-bridge-transaction-observation"):
+                        source.index("(defun fnn-bridge-staging-observation-limit")]
+        self.assertIn("fn-store-txn-observation", bridge)
+        model = (ROOT / "books" / "byte-store-scan.lisp").read_text()
+        self.assertIn("(defun fn-bs-txn-observation-pairs", model)
+
+
 @unittest.skipUnless(IMAGE.is_file() and os.access(IMAGE, os.X_OK),
                      "build/fn-host is required")
 class NativeStorageCodecTests(unittest.TestCase):
@@ -190,6 +207,27 @@ class NativeStorageCodecTests(unittest.TestCase):
         inspected = self.invoke(False, store, "inspect", "--message-id",
                                 "<record-barrier@example.invalid>")
         self.assertEqual(inspected.stdout, self.payload.read_bytes())
+
+    def test_native_namespace_codec_binds_filename_to_decoded_record_sequence(self):
+        malformed = self.base / "namespace-malformed"
+        self.invoke(True, malformed, "init")
+        self.post(True, malformed, "<native-namespace@example.invalid>")
+        original = malformed / "transactions" / "00000000000000000000.txn"
+        os.link(original, malformed / "transactions" / "not-a-transaction")
+        rejected = self.invoke(True, malformed, "status", expected=run_store.EXIT_FAULT)
+        self.assertIn(b"ACL2 refused transaction namespace observation", rejected.stderr)
+        self.assertEqual(original.read_bytes(),
+                         (malformed / "transactions" / "not-a-transaction").read_bytes())
+
+        mismatch = self.base / "namespace-binding"
+        self.invoke(True, mismatch, "init")
+        self.post(True, mismatch, "<native-binding@example.invalid>")
+        first = mismatch / "transactions" / "00000000000000000000.txn"
+        os.link(first, mismatch / "transactions" / "00000000000000000001.txn")
+        bound = self.invoke(True, mismatch, "status", expected=run_store.EXIT_FAULT)
+        self.assertIn(b"record sequence does not match immutable filename", bound.stderr)
+        self.assertEqual(first.read_bytes(),
+                         (mismatch / "transactions" / "00000000000000000001.txn").read_bytes())
 
 
 if __name__ == "__main__":

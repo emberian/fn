@@ -348,6 +348,18 @@
   (declare (xargs :guard t :verify-guards nil))
   (equal names (fn-bs-txn-names n)))
 
+(defun fn-bs-txn-observation-pairs (names sequence)
+  "Bind each sorted observed transaction name to the scan codec's sequence."
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp names)
+      (if (equal (car names) (fn-bs-txn-name sequence))
+          (let ((rest (fn-bs-txn-observation-pairs (cdr names) (1+ sequence))))
+            (if (equal rest :invalid)
+                :invalid
+              (cons (list sequence (car names)) rest)))
+        :invalid)
+    (if (null names) nil :invalid)))
+
 (defun fn-bs-read-records (s n count)
   (declare (xargs :guard t :verify-guards nil :measure (nfix (- (nfix count) (nfix n)))))
   (if (or (not (natp n)) (not (natp count)) (>= n count))
