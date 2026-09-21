@@ -424,14 +424,14 @@ class Lab:
         adu_b.write_bytes(bundle(700, 4))
         listener = self.spawn(
             ["bp", "receive", 0, 1, b_journal, "dtn://fn-b/", "-", 3600000, 2, 32,
-             1048576, adu_b, "dtn://fn-a/", 1],
+             1048576, adu_b, "dtn://fn-a/"],
             root / "receive.log")
         try:
             port = self.port_of(listener)
             sender = subprocess.run(
                 [self.image, "--fn", "bp", "send", "127.0.0.1", str(port),
                  str(adu_a), str(a_journal), "dtn://fn-a/", "dtn://fn-b/",
-                 "3600000", "2", "32", "1", "1048576", "1"],
+                 "3600000", "2", "32", "1048576", "1"],
                 capture_output=True, timeout=120)
             send_log = root / "send.log"
             send_log.write_bytes(sender.stdout + sender.stderr)

@@ -138,6 +138,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-bundle-tests \
 	books/bp-node \
 	tests/acl2/bp-node-tests \
+	books/bp-node-records \
+	tests/acl2/bp-node-records-tests \
 	books/bp-fragment \
 	books/bp-fragment-invariants \
 	tests/acl2/bp-fragment-tests \

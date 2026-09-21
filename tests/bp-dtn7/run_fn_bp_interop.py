@@ -116,7 +116,7 @@ def main(argv=None) -> int:
     #   bp receive PORT ONCE JOURNAL NODE-ID PEER LIFETIME CRC HOP MRU ...
     fn_receive = subprocess.Popen(
         [str(image), "--fn", "bp", "receive", str(fn_port), "1", str(journal),
-         "dtn://fn-b/", "-", "3600000", "2", "32", "1048576", "-", "-", "1",
+         "dtn://fn-b/", "-", "3600000", "2", "32", "1048576", "-", "-",
          wall, "60000"],
         stdout=fn_log.open("wb"), stderr=subprocess.STDOUT)
     daemon = None
@@ -186,7 +186,7 @@ def main(argv=None) -> int:
         out = subprocess.run(
             [str(image), "--fn", "bp", "send", "127.0.0.1", str(dtn_port),
              str(adu), str(work / "fn-out-journal"), "dtn://fn-b/",
-             "dtn://dtn7x/incoming", "3600000", "2", "32", "1", "1048576",
+             "dtn://dtn7x/incoming", "3600000", "2", "32", "1048576",
              "0", wall, "60000"],
             capture_output=True, text=True, timeout=120)
         (work / "fn-send.log").write_text(out.stdout + out.stderr)
