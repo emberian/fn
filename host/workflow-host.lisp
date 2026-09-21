@@ -32,6 +32,11 @@
  (declare (xargs :stobjs state :mode :program))
  (value (f-get-global 'fn-workflow-effects state)))
 
+(defun fn-workflow-valid-config (record)
+  ; Read-only validation for the first record.  Installation happens only
+  ; after the native publication machine reports :durable.
+  (if (fn-bp-config-recordp record) t nil))
+
 (defun fn-workflow-preflight-record (record state)
  (declare (xargs :stobjs state :mode :program))
  (let ((answer (fn-bp-apply-journal-record
