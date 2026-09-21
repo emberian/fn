@@ -19,6 +19,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/store-files-invariants")
+(include-book "std/testing/must-fail" :dir :system)
 
 ; -----------------------------------------------------------------------------
 ; A reachable, non-degenerate witness: the whole publication sequence, driven
@@ -108,6 +109,21 @@
                             (:retention :undertake 1 1 1
                              "obligation-two" "subject-two" "evidence-two" 1))
                           0 0 2)))
+
+; Each premise is proof-relevant: ACL2 must reject the universal theorem when
+; either the ordered-history premise or the candidate premise is omitted.
+(local
+ (must-fail
+  (defthm sft-candidate-append-without-ordered-history
+    (implies (fn-sf-candidatep record records frontier)
+             (fn-sf-record-listp (append records (list record))
+                                 0 0 frontier)))))
+(local
+ (must-fail
+  (defthm sft-candidate-append-without-candidate
+    (implies (fn-sf-record-listp records 0 0 frontier)
+             (fn-sf-record-listp (append records (list record))
+                                 0 0 frontier)))))
 
 ; Emission is reachable exactly at :completed, and it is the only thing that
 ; grows the success list.  Not before the phase, and not for another identity.
