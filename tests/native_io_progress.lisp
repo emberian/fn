@@ -125,6 +125,38 @@
                  "partial store writes did not resume at exact offsets")
       (nio-check (null answers) "store write did not consume every injected partial result"))))
 
+(defun nio-with-transaction-scan-stubs (names thunk)
+  (let* ((symbols '(fnn-list-directory fnn-lstat fnn-symlink-p fnn-regular-p))
+         (saved (mapcar (lambda (symbol) (cons symbol (symbol-function symbol))) symbols)))
+    (unwind-protect
+         (progn
+           (setf (symbol-function 'fnn-list-directory) (lambda (&rest ignored)
+                                                        (declare (ignore ignored)) names)
+                 (symbol-function 'fnn-lstat) (lambda (&rest ignored)
+                                                (declare (ignore ignored)) :regular)
+                 (symbol-function 'fnn-symlink-p) (lambda (&rest ignored)
+                                                    (declare (ignore ignored)) nil)
+                 (symbol-function 'fnn-regular-p) (lambda (st) (eq st :regular)))
+           (funcall thunk))
+      (dolist (pair saved)
+        (setf (symbol-function (car pair)) (cdr pair))))))
+
+(defun nio-transaction-enumeration-bound-is-exact ()
+  (flet ((name (n) (format nil "~20,'0d.txn" n))
+         (store () (%make-fnn-store :root "/native-io-test"
+                                     :config (list nil 0 0 0 3))))
+    (nio-with-transaction-scan-stubs
+     (loop for n below 3 collect (name n))
+     (lambda ()
+       (nio-check (equal (mapcar #'car (fnn-transaction-files (store))) '(0 1 2))
+                  "transaction enumeration changed accepted bound behavior")))
+    (nio-with-transaction-scan-stubs
+     (loop for n below 4 collect (name n))
+     (lambda ()
+       (nio-check (nio-expects 'fnn-store-fault
+                               (lambda () (fnn-transaction-files (store))))
+                  "transaction enumeration did not reject the first excess entry")))))
+
 (defun nio-zero-writes-fault ()
   (let ((*fnn-write-syscall* (lambda (&rest ignored)
                                 (declare (ignore ignored))
@@ -339,6 +371,7 @@
 (nio-zero-recv-eagain-does-not-spin)
 (nio-wrong-condition-is-rejected)
 (nio-store-write-progress)
+(nio-transaction-enumeration-bound-is-exact)
 (nio-zero-writes-fault)
 (nio-send-retries-with-one-deadline)
 (nio-zero-send-faults)

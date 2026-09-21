@@ -952,11 +952,14 @@ The core decides whether the records replay."
 
 (defun fnn-transaction-files (store)
   "Sorted (sequence . path) pairs of the final namespace, gap-free or a fault."
-  (let ((files nil)
+  (let ((files nil) (count 0)
         (names (handler-case (fnn-list-directory (fnn-transactions store))
                  (fnn-os-error () (fnn-fault "cannot enumerate transactions")))))
     (dolist (name names)
-      (when (>= (length files) (fnn-config-max-transactions store))
+      ;; The configured count bound is a physical enumeration boundary.  Keep
+      ;; it as carried scalar progress instead of recounting the accumulated
+      ;; list for every directory entry.
+      (when (>= count (fnn-config-max-transactions store))
         (fnn-fault "transaction count exceeds configured bound"))
       (unless (fnn-seq-name-p name)
         (fnn-fault "unexpected final-namespace entry: ~a" name))
@@ -964,7 +967,8 @@ The core decides whether the records replay."
              (st (fnn-lstat path)))
         (when (or (null st) (fnn-symlink-p st) (not (fnn-regular-p st)))
           (fnn-fault "refusing transaction symlink or non-file"))
-        (push (cons (parse-integer name :end 20) path) files)))
+        (push (cons (parse-integer name :end 20) path) files)
+        (incf count)))
     (setq files (sort files #'< :key #'car))
     (loop for (sequence . nil) in files for expected from 0 do
       (unless (= sequence expected) (fnn-fault "transaction sequence gap")))
