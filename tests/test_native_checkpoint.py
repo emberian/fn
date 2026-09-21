@@ -209,9 +209,14 @@ class NativeCheckpointTests(unittest.TestCase):
         reopened = self.native("checkpoint", "status", marker_store)
         self.assertIn("checkpoint=ok generation=0", reopened.stdout)
 
-    def stopped_then_killed(self, args, point):
+    def transaction_bytes(self, store):
+        return {path.name: path.read_bytes()
+                for path in sorted((store / "transactions").glob("*.txn"))}
+
+    def stopped_then_killed(self, args, point, occurrence=1):
         env = dict(self.env)
         env["FN_CHECKPOINT_TEST_STOP"] = point
+        env["FN_CHECKPOINT_TEST_STOP_AFTER"] = str(occurrence)
         process = subprocess.Popen(
             [str(IMAGE), "--fn", *map(str, args)], cwd=ROOT, env=env,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -303,9 +308,14 @@ class NativeCheckpointTests(unittest.TestCase):
             with self.subTest(point=point):
                 store = self.initialized(point)
                 self.native("checkpoint", "pack", store, "select")
+                before = self.transaction_bytes(store)
                 self.stopped_then_killed(("checkpoint", "pack-reclaim", store), point)
                 recovered = self.native("store", store, "recover")
                 self.assertIn("transactions=1 articles=1", recovered.stdout)
+                # Recovery observes the selected packed bytes; any transaction
+                # file that survived the cut remains byte-identical.
+                after = self.transaction_bytes(store)
+                self.assertEqual(after, {name: before[name] for name in after})
 
     def test_partial_multi_file_prefix_reclaim_resumes_from_selected_pack(self):
         store = self.initialized("pack-partial")
@@ -314,6 +324,8 @@ class NativeCheckpointTests(unittest.TestCase):
         self.native("checkpoint", "pack", store, "select")
         self.native("store", store, "post", "<suffix-three@example.invalid>",
                     self.payload, "-", "-", "fn.letters")
+        before = self.transaction_bytes(store)
+        suffix_name = "00000000000000000002.txn"
         self.stopped_then_killed(("checkpoint", "pack-reclaim", store),
                                  "pack-reclaim-unlink")
         recovered = self.native("store", store, "recover")
@@ -321,6 +333,56 @@ class NativeCheckpointTests(unittest.TestCase):
         self.native("checkpoint", "pack-reclaim", store)
         self.assertEqual(sorted((store / "transactions").glob("*.txn")),
                          [store / "transactions" / "00000000000000000002.txn"])
+        self.assertEqual((store / "transactions" / suffix_name).read_bytes(),
+                         before[suffix_name])
+
+    def test_death_after_each_covered_unlink_preserves_exact_suffix_and_resumes(self):
+        for occurrence in range(1, 5):
+            with self.subTest(occurrence=occurrence):
+                store = self.initialized(f"pack-unlink-{occurrence}")
+                for number in range(1, 4):
+                    self.native("store", store, "post",
+                                f"<covered-{number}@example.invalid>",
+                                self.payload, "-", "-", "fn.letters")
+                self.native("checkpoint", "pack", store, "select")
+                self.native("store", store, "post", "<retained@example.invalid>",
+                            self.payload, "-", "-", "fn.letters")
+                before = self.transaction_bytes(store)
+                suffix_name = "00000000000000000004.txn"
+
+                self.stopped_then_killed(
+                    ("checkpoint", "pack-reclaim", store),
+                    "pack-reclaim-unlink", occurrence=occurrence)
+                recovered = self.native("store", store, "recover")
+                self.assertIn("transactions=5 articles=5", recovered.stdout)
+                self.assertEqual((store / "transactions" / suffix_name).read_bytes(),
+                                 before[suffix_name])
+
+                # Retry removes exactly the remaining covered prefix and does
+                # not expire or rewrite the retained suffix event.
+                self.native("checkpoint", "pack-reclaim", store)
+                self.assertEqual(self.transaction_bytes(store),
+                                 {suffix_name: before[suffix_name]})
+
+    def test_missing_retained_suffix_gap_fails_closed_without_reclamation(self):
+        store = self.initialized("pack-suffix-gap")
+        self.native("checkpoint", "pack", store, "select")
+        self.native("store", store, "post", "<suffix-one@example.invalid>",
+                    self.payload, "-", "-", "fn.letters")
+        self.native("store", store, "post", "<suffix-two@example.invalid>",
+                    self.payload, "-", "-", "fn.letters")
+        transactions = store / "transactions"
+        (transactions / "00000000000000000001.txn").unlink()
+        before = self.transaction_bytes(store)
+
+        refused = self.native("store", store, "recover",
+                              expected=run_store.EXIT_FAULT)
+        self.assertNotIn("articles=", refused.stdout)
+        self.assertEqual(self.transaction_bytes(store), before)
+        reclaim = self.native("checkpoint", "pack-reclaim", store,
+                              expected=run_store.EXIT_FAULT)
+        self.assertNotEqual(reclaim.returncode, 0)
+        self.assertEqual(self.transaction_bytes(store), before)
 
     def test_arbitrary_covered_deletion_image_recovers_and_resumes(self):
         store = self.initialized("pack-subset")
@@ -331,6 +393,7 @@ class NativeCheckpointTests(unittest.TestCase):
         self.native("checkpoint", "pack", store, "select")
         self.native("store", store, "post", "<suffix-4@example.invalid>",
                     self.payload, "-", "-", "fn.letters")
+        before = self.transaction_bytes(store)
 
         # A process-death image may contain any subset of already-issued
         # covered unlinks.  Keep covered 1 and 3, remove covered 0 and 2, and
@@ -340,9 +403,12 @@ class NativeCheckpointTests(unittest.TestCase):
              f"{sequence:020d}.txn").unlink()
         recovered = self.native("store", store, "recover")
         self.assertIn("transactions=5 articles=5", recovered.stdout)
+        for name, raw in self.transaction_bytes(store).items():
+            self.assertEqual(raw, before[name])
         self.native("checkpoint", "pack-reclaim", store)
-        self.assertEqual([p.name for p in (store / "transactions").iterdir()],
-                         ["00000000000000000004.txn"])
+        suffix_name = "00000000000000000004.txn"
+        self.assertEqual(self.transaction_bytes(store),
+                         {suffix_name: before[suffix_name]})
 
         selection_expectations = {
             "selection-file": "checkpoint=none",

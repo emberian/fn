@@ -36,6 +36,21 @@ RECOVERY_CUTS = (
 )
 ALL_CUTS = POST_CUTS + RECOVERY_CUTS
 
+# Checkpoint publication and selection are driven by their ACL2 phase machines.
+# Reclamation has one repeated unlink boundary per covered name and a final
+# transaction-directory barrier.  Runtime tests select repeated unlink cuts by
+# 1-based occurrence, matching fn-bs-pack-reclaim-steps order.
+CHECKPOINT_CUTS = (
+    NativeCut("candidate-file", "fn-cpp-publication-step", "absent"),
+    NativeCut("candidate-link", "fn-cpp-publication-step", "either"),
+    NativeCut("candidate-directory", "fn-cpp-publication-step", "present"),
+    NativeCut("selection-file", "fn-cpp-marker-step", "absent"),
+    NativeCut("selection-replace", "fn-cpp-marker-step", "present"),
+    NativeCut("selection-directory", "fn-cpp-marker-step", "present"),
+    NativeCut("pack-reclaim-unlink", "fn-bs-pack-reclaim-program", "either"),
+    NativeCut("pack-reclaim-directory", "fn-bs-pack-reclaim-program", "n/a"),
+)
+
 
 def native_declared_cut_names(parameter: str) -> tuple[str, ...]:
     source = (ROOT / "host/native/io.lisp").read_text()
@@ -48,8 +63,8 @@ def native_declared_cut_names(parameter: str) -> tuple[str, ...]:
     return tuple(keywords or strings)
 
 
-def model_cut_names(program: str) -> tuple[str, ...]:
-    source = (ROOT / "books/byte-store-programs.lisp").read_text()
+def model_cut_names(program: str, book: str = "byte-store-programs.lisp") -> tuple[str, ...]:
+    source = (ROOT / "books" / book).read_text()
     start = source.index("(defun {} ".format(program))
     next_def = source.find("\n(defun ", start + 1)
     body = source[start:next_def if next_def >= 0 else len(source)]
@@ -68,3 +83,16 @@ def verify_native_cut_map() -> None:
     for cut in ALL_CUTS:
         if cut.name not in model_cut_names(cut.program):
             raise AssertionError("{} absent from {}".format(cut.name, cut.program))
+
+
+def verify_checkpoint_cut_map() -> None:
+    native = (ROOT / "host/native/checkpoint.lisp").read_text()
+    for cut in CHECKPOINT_CUTS:
+        hook = '(fnn-checkpoint-test-stop "{}")'.format(cut.name)
+        if hook not in native:
+            raise AssertionError("native checkpoint cut absent: {}".format(cut.name))
+    reclaim = model_cut_names("fn-bs-pack-reclaim-steps",
+                              "byte-store-compaction-correspondence.lisp")
+    for name in ("pack-reclaim-unlink", "pack-reclaim-directory"):
+        if name not in reclaim:
+            raise AssertionError("{} absent from reclaim model".format(name))
