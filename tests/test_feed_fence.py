@@ -36,6 +36,12 @@ class FeedFenceTests(unittest.TestCase):
             self.assertTrue(owner.feed_uncertain)
             self.assertEqual(owner.exit_code, EXIT_UNCERTAIN)
             owner.bridge.reset_mock()
+            work = mock.Mock()
+            owner.guard("control", work)
+            work.assert_not_called()
+            owner.serve(object(), 0)
+            with self.assertRaises(StoreIndeterminate):
+                owner.control(object())
             owner.feed_drop(owner.feeds["inn"])
             owner.feed_read("inn")
             owner.feed_poll()
