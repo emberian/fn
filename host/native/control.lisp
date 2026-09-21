@@ -31,13 +31,8 @@
 
 (defun fnn-control-acquire-lease (control)
   "Hold the ACL2-derived adjacent lease before inspecting the socket name."
-  (let* ((path-octets
-           (fnn-core 'fn-native-control-host-lease-path
-                     (fnn-ascii-octet-list (fnn-control-state-path control))))
-         (lease-path
-           (and (fnn-octet-list-p path-octets)
-                (fnn-octets-string (fnn-octets path-octets))))
-         (fd nil))
+  (let ((lease-path (fnn-control-state-lease-path control))
+        (fd nil))
     (unless lease-path
       (fnn-fault "ACL2 refused the control lease path"))
     (handler-case
@@ -280,8 +275,15 @@
                (> (length control-path-octets) 0)
                (member posting-enabledp '(t nil)))
     (fnn-fault "malformed ACL2 control run plan"))
-  (let* ((control (%make-fnn-control-state
-                   :path (fnn-octets-string control-path-octets)))
+  (let* ((lease-octets
+           (fnn-core 'fn-native-control-host-lease-path
+                     (fnn-octet-list control-path-octets)))
+         (lease-path
+           (and (fnn-octet-list-p lease-octets)
+                (fnn-octets-string (fnn-octets lease-octets))))
+         (control (%make-fnn-control-state
+                   :path (fnn-octets-string control-path-octets)
+                   :lease-path lease-path))
          (*fnn-owner-start-hooks*
            (append *fnn-owner-start-hooks*
                    (list (lambda (service)
@@ -294,6 +296,8 @@
            (append *fnn-owner-close-hooks*
                    (list (lambda (service)
                            (fnn-control-close control service))))))
+    (unless lease-path
+      (fnn-fault "ACL2 refused the control lease path"))
     (fnn-owner-run-normalized store-octets listener-host-octets listener-port
                               oncep max-connections)))
 
