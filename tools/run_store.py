@@ -690,6 +690,22 @@ class Acl2Store:
             raise StoreFault("unexpected peer outcome: {}".format(status))
         return "refused", acl2_keyword(self.call("(fn-store-cfg-last-reason state)"))
 
+    def set_policy(self, slot, value, monotonic, wall):
+        """One `policy set': the delta, its admissibility and the octets are
+        ACL2's (`fn-store-cfg-set-policy'). Nothing here decides a slot."""
+        form = "(fn-store-cfg-set-policy '{} '{} {} {} state)".format(
+            self.literal(slot), self.literal(value), int(monotonic), int(wall))
+        status = acl2_keyword(self.call(form))
+        if status == "ok":
+            return status, acl2_octets(self.call("(fn-store-cfg-last-octets state)"))
+        if status != "refused":
+            raise StoreFault("unexpected policy outcome: {}".format(status))
+        return "refused", acl2_keyword(self.call("(fn-store-cfg-last-reason state)"))
+
+    def policy(self, slot):
+        return acl2_octets(self.call("(fn-store-cfg-policy '{} state)".format(
+            self.literal(slot))))
+
     def remove_peer(self, name, monotonic, wall):
         """One `peer remove': `:no-such-peer' is ACL2's refusal, not a lookup here."""
         form = "(fn-store-cfg-remove-peer '{} {} {} state)".format(
@@ -1692,6 +1708,38 @@ def peer_arguments(args):
     }
 
 
+def command_policy(args):
+    """`policy set|get <slot> [value]': the node's own configuration slots.
+
+    `path-identity` is the one peering needs: `fn-peer-local-identity` reads
+    it and RFC 5537 section 3.5 loop suppression cannot fire while it is
+    unset. Three outcomes stay distinct exactly as `peer` keeps them.
+    """
+    import time
+    writable = args.action == "set"
+    store, bridge, unused_records = open_live_store(args.store, writable=writable)
+    try:
+        if args.action == "get":
+            print("{}={}".format(
+                args.slot, bridge.policy(args.slot.encode("utf-8")).decode(
+                    "utf-8", "replace")))
+            return EXIT_OK
+        status, payload = bridge.set_policy(
+            args.slot.encode("utf-8"), (args.value or "").encode("utf-8"),
+            time.monotonic(), time.time())
+        if status != "ok":
+            print("store: refused policy set: {}".format(payload), file=sys.stderr)
+            return EXIT_REFUSED
+        generation = store.config_generation + 1
+        store.write_config_record(generation, payload)
+        print("policy set {}={} generation={}".format(
+            args.slot, args.value, generation))
+        return EXIT_OK
+    finally:
+        bridge.close()
+        store.close()
+
+
 def command_config(args):
     """Print the replayed configuration: generation, served table, domain."""
     store, bridge, unused_records = open_live_store(args.store, writable=False)
@@ -2051,7 +2099,10 @@ def main(argv=None):
     peer.add_argument("--nntp", help="HOST:PORT of the peer's NNTP listener")
     peer.add_argument("--bp", help="the peer's BP endpoint id (instead of --nntp)")
     peer.add_argument("--inbound-groups", help="wildmat this peer may feed us")
-    peer.add_argument("--inbound-max-octets", type=int, default=1048576)
+    peer.add_argument("--inbound-max-octets", type=int, default=0,
+                      help="the largest article this peer may send; 0, the "
+                           "default, is the record layer's own ceiling, which "
+                           "ACL2 supplies (fn-store-cfg-peer-record)")
     peer.add_argument("--inbound-max-inflight", type=int, default=16)
     peer.add_argument("--outbound-groups", help="wildmat we feed this peer")
     peer.add_argument("--streaming", action="store_true")
@@ -2059,6 +2110,12 @@ def main(argv=None):
     peer.add_argument("--backoff-ms", type=int, default=1000)
     peer.add_argument("--source-address")
     peer.add_argument("--principal")
+    policy = sub.add_parser("policy")
+    policy.add_argument("action", choices=("set", "get"))
+    policy.add_argument("slot",
+                        help="a configuration policy slot; `path-identity` is "
+                             "the node's own RFC 5537 <path-identity>")
+    policy.add_argument("value", nargs="?")
     sub.add_parser("config")
     post = sub.add_parser("post")
     post.add_argument("--message-id", required=True)
@@ -2096,6 +2153,7 @@ def main(argv=None):
                 "capacity": command_capacity,
 
                 "peer": command_peer,
+                "policy": command_policy,
                 "config": command_config}[args.command](args)
     except (StoreError, OSError, UnicodeError) as error:
         print("store: {}".format(error), file=sys.stderr)
