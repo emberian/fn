@@ -1922,6 +1922,17 @@ switches the established descriptor to nonblocking operation."
           socket)
       (error (e) (fnn-socket-shut socket) (error e)))))
 
+(defun fnn-accept-observe (listener seconds)
+  "Return one accepted socket or :TIMEOUT after a bounded readiness wait.
+
+The listener is nonblocking so shutdown(2) need not wake a blocking accept(2)
+on every supported host.  Socket and syscall conditions remain conditions for
+the caller to classify against its own stop and fault state."
+  (let ((fd (fnn-socket-fd listener)))
+    (if (funcall *fnn-fd-waiter* fd :input seconds)
+        (sb-bsd-sockets:socket-accept listener)
+      :timeout)))
+
 (defun fnn-accept-loop (listener handler &optional once)
   "Run HANDLER on each accepted connection; HANDLER owns and closes its socket."
   (loop

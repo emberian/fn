@@ -724,22 +724,27 @@ and control-outcome sequence."
       (dolist (worker workers) (sb-thread:join-thread worker)))))
 
 (defun fnn-owner-accept (service listener once)
-  (if once
-      (handler-case
-          (fnn-owner-serve-client service
-                                  (sb-bsd-sockets:socket-accept listener))
-        (sb-bsd-sockets:socket-error (condition)
-          (unless (or *fnn-sigterm-requested*
-                      (fnn-owner-service-stopping service))
-            (error condition))))
-      (loop until (fnn-owner-service-stopping service) do
-        (handler-case
-            (let ((socket (sb-bsd-sockets:socket-accept listener)))
-              (fnn-owner-launch-client service socket))
-          (sb-bsd-sockets:socket-error (e)
-            (cond (*fnn-sigterm-requested* (return))
-                  ((fnn-owner-service-stopping service) (return))
-                  (t (error e))))))))
+  ;; Darwin does not reliably wake a blocking accept(2) when another context
+  ;; calls shutdown(2) on the listener.  Keep accept itself nonblocking and
+  ;; let the ordinary owner thread poll readiness so a signal request is
+  ;; consumed within one second even when the raw shutdown is only advisory.
+  ;; The signal handler still performs no allocation, locking, or core call.
+  (loop
+    (when (or *fnn-sigterm-requested*
+              (fnn-owner-service-stopping service))
+      (return))
+    (handler-case
+        (let ((socket (fnn-accept-observe listener 1)))
+          (unless (eq socket :timeout)
+            (if once
+                (progn
+                  (fnn-owner-serve-client service socket)
+                  (return))
+              (fnn-owner-launch-client service socket))))
+      (sb-bsd-sockets:socket-error (condition)
+        (unless (or *fnn-sigterm-requested*
+                    (fnn-owner-service-stopping service))
+          (error condition))))))
 
 (defun fnn-owner-run (root port once max-connections
                       &optional fault address (family :inet))

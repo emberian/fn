@@ -186,10 +186,10 @@
       (when (fnn-with-control (control)
               (fnn-control-state-stopping control))
         (return))
-      (when (funcall *fnn-fd-waiter* (fnn-socket-fd listener) :input 1)
-        (handler-case
-            (fnn-control-launch-client
-             control (sb-bsd-sockets:socket-accept listener))
+      (handler-case
+          (let ((socket (fnn-accept-observe listener 1)))
+            (unless (eq socket :timeout)
+              (fnn-control-launch-client control socket)))
           (sb-bsd-sockets:socket-error (condition)
             (unless (fnn-with-control (control)
                       (fnn-control-state-stopping control))
@@ -199,7 +199,7 @@
           (error (condition)
             (fnn-owner-fault-service
              (fnn-control-state-service control) nil condition)
-            (return)))))))
+            (return))))))
 
 (defun fnn-control-start (control service posting-enabledp)
   (let ((configured
