@@ -292,3 +292,68 @@
                    (fn-wire-drive (fn-wire-initial-state 32 64) '(65 . 66)))
                   '(13 10)))))))
   :rule-classes nil)
+
+; -----------------------------------------------------------------------------
+; Outbound RFC 3977 section 3.1.1 rendering.  `fn-owner-feed-command' is the
+; host-called projection of fn-wire-render-feed-command (owner-host.lisp), so
+; these traces exercise the same renderer, not a Python counterpart.
+
+(defconst *fn-wire-outbound-source*
+  '(83 117 98 106 101 99 116 58 32 116 13 10 13 10
+    46 108 105 116 101 114 97 108 13 10 46 13 10
+    98 111 100 121 13 10 13 10 13 10))
+(defconst *fn-wire-outbound-rendered*
+  (fn-wire-render-block *fn-wire-outbound-source* 64))
+(assert-event (fn-wire-outbound-okp *fn-wire-outbound-rendered*))
+; All source CRLFs survive, including both final blank lines; only the two
+; source line-leading dots gain one octet, and the final dot CRLF is framing.
+(assert-event
+ (equal (fn-wire-outbound-octets *fn-wire-outbound-rendered*)
+        '(83 117 98 106 101 99 116 58 32 116 13 10 13 10
+          46 46 108 105 116 101 114 97 108 13 10 46 46 13 10
+          98 111 100 121 13 10 13 10 13 10 46 13 10)))
+
+; Empty source is a valid empty NNTP block, and is distinct from malformed
+; source.  It is the zero-line article accepted by the inbound wire machine.
+(assert-event
+ (equal (fn-wire-render-block nil 0) '(:ok (46 13 10))))
+(assert-event
+ (equal (fn-wire-render-block '(13 10) 2) '(:ok (13 10 46 13 10))))
+
+; Teeth for the renderer's source hypotheses: no newline repair and no
+; unbounded walk.  Each source differs materially from the accepted witness.
+(assert-event
+ (equal (fn-wire-outbound-reason
+         (fn-wire-render-block '(83 10) 8))
+        :bare-lf))
+(assert-event
+ (equal (fn-wire-outbound-reason
+         (fn-wire-render-block '(83 13 88) 8))
+        :malformed-cr))
+(assert-event
+ (equal (fn-wire-outbound-reason
+         (fn-wire-render-block '(83 13 10) 2))
+        :overlimit))
+(assert-event
+ (equal (fn-wire-outbound-reason
+         (fn-wire-render-block '(83 . 13) 8))
+        :malformed-list))
+
+; The composed feed command keeps an ACL2-issued CHECK verbatim, and renders
+; the body after an ACL2-issued TAKETHIS line as one complete block.  A CHECK
+; with an article suffix is refused rather than silently sent as a block.
+(assert-event
+ (equal (fn-wire-render-feed-command
+         '(67 72 69 67 75 32 60 105 64 110 62 13 10) 32 64)
+        '(:ok (67 72 69 67 75 32 60 105 64 110 62 13 10))))
+(assert-event
+ (equal (fn-wire-render-feed-command
+         '(84 65 75 69 84 72 73 83 32 60 105 64 110 62 13 10
+           46 13 10) 32 64)
+        '(:ok (84 65 75 69 84 72 73 83 32 60 105 64 110 62 13 10
+               46 46 13 10 46 13 10))))
+(assert-event
+ (equal (fn-wire-outbound-reason
+         (fn-wire-render-feed-command
+          '(67 72 69 67 75 32 60 105 64 110 62 13 10 120 13 10) 32 64))
+        :offer-has-body))

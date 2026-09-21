@@ -442,6 +442,9 @@ class Acl2Owner(Acl2Store):
         return self._names("(fn-owner-feed-record-peers state)")
 
     def feed_command(self):
+        status = self._symbol_any("(fn-owner-feed-command-status state)")
+        if status != "ok":
+            raise StoreError("ACL2 refused outbound feed framing: {}".format(status))
         return bytes(acl2_octet_list_any(self.call(
             "(fn-owner-feed-command state)")) or b"")
 
@@ -602,9 +605,8 @@ class Feed:
     books/owner-feed.lisp); this object holds the socket, the read buffer and
     the append-only journal file, and nothing else.  Three things here are
     the host's and are named because of the "one owner per decision" rule:
-    opening the TCP connection, the RFC 3977 section 3.1.1 dot stuffing of an
-    article block (`Session.send_block`), and the greeting plus `MODE STREAM`
-    handshake, which is transport setup before the feed machine has a
+    opening the TCP connection and the greeting plus `MODE STREAM` handshake,
+    which is transport setup before the feed machine has a
     connection at all -- `fn-feed-observe` never sees a 200 or a 203.
     """
 
@@ -1259,17 +1261,10 @@ class Owner:
                 file=sys.stderr, flush=True)
 
     def feed_write(self, feed, command):
-        """The bytes one feed decision authorized, after its records."""
+        """Write the one ACL2-rendered byte vector its records authorized."""
         if not command:
             return
-        head, _, body = command.partition(b"\r\n")
-        if head.startswith(b"TAKETHIS") or head.startswith(b"CHECK") \
-                or head.startswith(b"IHAVE"):
-            feed.session.send(head + b"\r\n")
-            if body:
-                feed.session.send_block(body)
-        else:
-            feed.session.send_block(command)
+        feed.session.send_block(command)
 
     def feed_poll(self):
         now = self.clock.milliseconds()

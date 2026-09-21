@@ -100,6 +100,184 @@
 (defthm fn-wire-unstuff-stuff-line
   (equal (fn-wire-unstuff-line (fn-wire-stuff-line line)) line))
 
+; ---------------------------------------------------------------------------
+; Outbound article blocks
+;
+; A retained article is exact source octets.  The outbound direction is not
+; permitted to repair bare LF, discard a final blank line, or otherwise choose
+; a different source spelling.  It first accepts only a bounded sequence of
+; CRLF-terminated octet lines, then applies RFC 3977 section 3.1.1's one wire
+; transformation (a leading dot becomes two) and appends the block terminator.
+; The result record is (:ok octets) or (:refused reason).  In particular NIL
+; is a valid empty article and is not used as the refusal signal.
+
+(defun fn-wire-reverse-lines-aux (lines accumulator)
+  (declare (xargs :guard t))
+  (if (consp lines)
+      (fn-wire-reverse-lines-aux (cdr lines) (cons (car lines) accumulator))
+    accumulator))
+
+(defun fn-wire-reverse-lines (lines)
+  (declare (xargs :guard t))
+  (fn-wire-reverse-lines-aux lines nil))
+
+; `append' requires a true list in executable ACL2.  This total counterpart
+; keeps the public renderer guard-t on malformed host values; on proper lists
+; (the successful parser result) it is ordinary append.
+(defun fn-wire-append (left right)
+  (declare (xargs :guard t :measure (acl2-count left)))
+  (if (consp left)
+      (cons (car left) (fn-wire-append (cdr left) right))
+    right))
+
+(defun fn-wire-outbound-ok (octets)
+  (declare (xargs :guard t))
+  (list :ok octets))
+
+(defun fn-wire-outbound-refused (reason)
+  (declare (xargs :guard t))
+  (list :refused reason))
+
+(defun fn-wire-outbound-okp (result)
+  (declare (xargs :guard t))
+  (and (consp result) (equal (car result) :ok)))
+
+(defun fn-wire-outbound-octets (result)
+  (declare (xargs :guard t))
+  (if (fn-wire-outbound-okp result)
+      (fn-wire-ag-car (fn-wire-ag-cdr result))
+    nil))
+
+(defun fn-wire-outbound-reason (result)
+  (declare (xargs :guard t))
+  (if (and (consp result) (equal (car result) :refused))
+      (fn-wire-ag-car (fn-wire-ag-cdr result))
+    nil))
+
+; `fuel' is an explicit source-octet bound.  A CRLF consumes two units at
+; once, so an input whose final CRLF crosses the bound is refused too.  This
+; scanner has no newline normalization branch: CR not followed by LF, bare LF,
+; a non-octet and an unterminated final line are all distinct refusal reasons.
+(defun fn-wire-outbound-lines-aux (octets fuel line-rev lines-rev)
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count octets)))
+  (cond
+   ((null octets)
+    (if (null line-rev)
+        (fn-wire-outbound-ok (fn-wire-reverse-lines lines-rev))
+      (fn-wire-outbound-refused :unterminated)))
+   ((not (consp octets)) (fn-wire-outbound-refused :malformed-list))
+   ((not (fn-wire-octetp (car octets)))
+    (fn-wire-outbound-refused :non-octet))
+   ((equal (car octets) 13)
+    (if (and (consp (cdr octets))
+             (equal (car (cdr octets)) 10)
+             (<= 2 (nfix fuel)))
+        (fn-wire-outbound-lines-aux
+         (cdr (cdr octets)) (- (nfix fuel) 2) nil
+         (cons (fn-wire-reverse-octets line-rev) lines-rev))
+      (if (and (consp (cdr octets))
+               (equal (car (cdr octets)) 10))
+          (fn-wire-outbound-refused :overlimit)
+        (fn-wire-outbound-refused :malformed-cr))))
+   ((equal (car octets) 10) (fn-wire-outbound-refused :bare-lf))
+   ((zp (nfix fuel)) (fn-wire-outbound-refused :overlimit))
+   (t (fn-wire-outbound-lines-aux (cdr octets) (1- (nfix fuel))
+                                  (cons (car octets) line-rev) lines-rev))))
+
+(defun fn-wire-outbound-lines (octets limit)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-wire-outbound-lines-aux octets (nfix limit) nil nil))
+
+(defun fn-wire-render-lines (lines)
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count lines)))
+  (if (consp lines)
+      (fn-wire-append (fn-wire-stuff-line (car lines))
+                      (fn-wire-append '(13 10)
+                                      (fn-wire-render-lines (cdr lines))))
+    nil))
+
+(defun fn-wire-render-block (article limit)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((parsed (fn-wire-outbound-lines article limit)))
+    (if (fn-wire-outbound-okp parsed)
+        (fn-wire-outbound-ok
+         (fn-wire-append (fn-wire-render-lines (fn-wire-outbound-octets parsed))
+                         '(46 13 10)))
+      parsed)))
+
+(defun fn-wire-prefixp (prefix octets)
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count prefix)))
+  (if (consp prefix)
+      (and (consp octets)
+           (equal (car prefix) (car octets))
+           (fn-wire-prefixp (cdr prefix) (cdr octets)))
+    t))
+
+(defconst *fn-wire-check-prefix* '(67 72 69 67 75 32))       ; "CHECK "
+(defconst *fn-wire-ihave-prefix* '(73 72 65 86 69 32))       ; "IHAVE "
+(defconst *fn-wire-takethis-prefix* '(84 65 75 69 84 72 73 83 32)) ; "TAKETHIS "
+
+; Split one command line without accepting a different delimiter.  The line
+; is returned WITH its CRLF because it is already ACL2's command effect and
+; must cross the socket verbatim.  This is bounded independently from the
+; following article source.
+(defun fn-wire-outbound-command-line-aux (octets fuel reversed)
+  (declare (xargs :guard t :verify-guards nil :measure (acl2-count octets)))
+  (cond
+   ((null octets) (fn-wire-outbound-refused :unterminated-command))
+   ((not (consp octets)) (fn-wire-outbound-refused :malformed-list))
+   ((not (fn-wire-octetp (car octets)))
+    (fn-wire-outbound-refused :non-octet))
+   ((equal (car octets) 13)
+    (if (and (consp (cdr octets))
+             (equal (car (cdr octets)) 10)
+             (<= 2 (nfix fuel)))
+         (fn-wire-outbound-ok
+         (list (fn-wire-append (fn-wire-reverse-octets reversed) '(13 10))
+               (cdr (cdr octets))))
+      (if (and (consp (cdr octets))
+               (equal (car (cdr octets)) 10))
+          (fn-wire-outbound-refused :command-overlimit)
+        (fn-wire-outbound-refused :malformed-command-cr))))
+   ((equal (car octets) 10) (fn-wire-outbound-refused :bare-command-lf))
+   ((zp (nfix fuel)) (fn-wire-outbound-refused :command-overlimit))
+   (t (fn-wire-outbound-command-line-aux (cdr octets) (1- (nfix fuel))
+                                          (cons (car octets) reversed)))))
+
+(defun fn-wire-outbound-command-line (octets limit)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-wire-outbound-command-line-aux octets (nfix limit) nil))
+
+(defun fn-wire-render-feed-command (command command-limit article-limit)
+  (declare (xargs :guard t :verify-guards nil))
+  (cond
+   ((null command) (fn-wire-outbound-ok nil))
+   ((or (fn-wire-prefixp *fn-wire-check-prefix* command)
+        (fn-wire-prefixp *fn-wire-ihave-prefix* command))
+    (let ((line (fn-wire-outbound-command-line command command-limit)))
+      (if (and (fn-wire-outbound-okp line)
+               (null (fn-wire-ag-car
+                      (fn-wire-ag-cdr (fn-wire-outbound-octets line)))))
+          (fn-wire-outbound-ok (fn-wire-ag-car
+                                (fn-wire-outbound-octets line)))
+        (if (fn-wire-outbound-okp line)
+            (fn-wire-outbound-refused :offer-has-body)
+          line))))
+   ((fn-wire-prefixp *fn-wire-takethis-prefix* command)
+    (let ((line (fn-wire-outbound-command-line command command-limit)))
+      (if (not (fn-wire-outbound-okp line))
+          line
+        (let ((block (fn-wire-render-block
+                      (fn-wire-ag-car
+                       (fn-wire-ag-cdr (fn-wire-outbound-octets line)))
+                      article-limit)))
+          (if (fn-wire-outbound-okp block)
+              (fn-wire-outbound-ok
+               (fn-wire-append (fn-wire-ag-car (fn-wire-outbound-octets line))
+                               (fn-wire-outbound-octets block)))
+            block)))))
+   (t (fn-wire-render-block command article-limit))))
+
 ; -----------------------------------------------------------------------------
 ; State and results
 ;
@@ -819,6 +997,22 @@
 (verify-guards fn-wire-unstuff-line)
 (verify-guards fn-wire-reverse-octets-aux)
 (verify-guards fn-wire-reverse-octets)
+(verify-guards fn-wire-reverse-lines-aux)
+(verify-guards fn-wire-reverse-lines)
+(verify-guards fn-wire-append)
+(verify-guards fn-wire-outbound-ok)
+(verify-guards fn-wire-outbound-refused)
+(verify-guards fn-wire-outbound-okp)
+(verify-guards fn-wire-outbound-octets)
+(verify-guards fn-wire-outbound-reason)
+(verify-guards fn-wire-outbound-lines-aux)
+(verify-guards fn-wire-outbound-lines)
+(verify-guards fn-wire-render-lines)
+(verify-guards fn-wire-render-block)
+(verify-guards fn-wire-prefixp)
+(verify-guards fn-wire-outbound-command-line-aux)
+(verify-guards fn-wire-outbound-command-line)
+(verify-guards fn-wire-render-feed-command)
 (verify-guards fn-wire-modep)
 (verify-guards fn-wire-make-state)
 (verify-guards fn-wire-line-cost)
@@ -865,6 +1059,8 @@
     fn-wire-feed-proper fn-wire-feed fn-wire-continue
     fn-wire-next-loop fn-wire-next fn-wire-next-reference
     fn-wire-command-event fn-wire-article-event fn-wire-reject-event
-    fn-wire-stuff-line fn-wire-unstuff-line))
+    fn-wire-stuff-line fn-wire-unstuff-line
+    fn-wire-outbound-okp fn-wire-outbound-octets fn-wire-outbound-reason
+    fn-wire-outbound-lines fn-wire-render-block fn-wire-render-feed-command))
 
 (in-theory (disable fn-wire-step-vocabulary))
