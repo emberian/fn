@@ -94,11 +94,19 @@
           code)))))
 
 (defun fnn-operator-read-config (path maximum)
-  "I/O is bounded here; all config grammar stays in native-config ACL2."
-  (handler-case
-      (values (fnn-octet-list (fnn-read-regular-bounded path maximum)) nil)
-    ((or fnn-store-fault fnn-os-error) (condition)
-      (values nil condition))))
+  "Classify only ordinary configuration-file defects as usage before reading.
+
+A fault from lstat/open/read after this precheck remains a host fault.  In
+particular, this does not turn EIO or an internal bounded-read failure into a
+configuration usage result."
+  (let ((info (fnn-lstat path)))
+    (when (null info)
+      (error 'fnn-usage-error :message "operator configuration file is missing"))
+    (when (or (fnn-symlink-p info) (not (fnn-regular-p info)))
+      (error 'fnn-usage-error :message "operator configuration file is not regular"))
+    (when (> (sb-posix:stat-size info) maximum)
+      (error 'fnn-usage-error :message "operator configuration file exceeds ACL2 bound"))
+    (fnn-octet-list (fnn-read-regular-bounded path maximum))))
 
 (defun fnn-operator-dispatch-plan (result)
   (let ((status (fnn-core 'fn-native-operator-host-result-status result)))
@@ -127,15 +135,10 @@
          (action (fnn-core 'fn-native-operator-host-result-native-action preflight)))
     (cond ((eq action :help) (fnn-operator-dispatch-plan preflight))
           ((and (eq status :usage) (eq reason :configuration-bounds))
-           (let ((config-bound (fnn-core 'fn-native-config-host-max-octets)))
-             (multiple-value-bind (config-octets problem)
-                 (fnn-operator-read-config config-path config-bound)
-               (if problem
-                   (progn
-                     (fnn-operator-emit-status :usage "configuration" problem)
-                     +fnn-exit-usage+)
-                 (fnn-operator-dispatch-plan
-                  (fnn-core 'fn-native-operator-host-run config-octets argv-octets))))))
+           (let* ((config-bound (fnn-core 'fn-native-config-host-max-octets))
+                  (config-octets (fnn-operator-read-config config-path config-bound)))
+             (fnn-operator-dispatch-plan
+              (fnn-core 'fn-native-operator-host-run config-octets argv-octets))))
           (t (fnn-operator-dispatch-plan preflight)))))
 
 (fnn-register-verb "operator"
