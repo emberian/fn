@@ -94,7 +94,7 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         self.assertEqual(recovered.returncode, run_store.EXIT_OK, recovered.stderr)
         self.assertIn(b"recovered transactions=0 articles=0", recovered.stdout)
 
-    def test_post_history_fence_eio_is_a_real_source_cut_and_reopens(self):
+    def test_post_history_fence_eio_stops_before_frontier_publication(self):
         store = self.base / "eio"
         failed = self.invoke(store, "init", "init-config-history-fenced:eio")
         self.assertEqual(failed.returncode, run_store.EXIT_FAULT, failed.stderr)
@@ -103,7 +103,8 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         # source-cut routing only; it does not assert a platform EIO outcome.
         self.assertTrue((store / "config" / "00000001.cfg").is_file())
         reopened = self.invoke(store, "recover")
-        self.assertEqual(reopened.returncode, run_store.EXIT_OK, reopened.stderr)
+        self.assertEqual(reopened.returncode, run_store.EXIT_FAULT, reopened.stderr)
+        self.assertIn(b"allocation frontier", reopened.stderr)
 
     def test_second_config_enumeration_fault_is_not_an_empty_history(self):
         store = self.base / "enumeration"
@@ -117,7 +118,7 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         reopened = self.invoke(store, "recover")
         self.assertEqual(reopened.returncode, run_store.EXIT_OK, reopened.stderr)
 
-    def test_sigkill_at_history_fence_is_process_death_then_restart(self):
+    def test_sigkill_at_history_fence_is_process_death_then_faulted_restart(self):
         store = self.base / "killed-history"
         killed = self.invoke(store, "init", "init-config-history-fenced:kill")
         self.assertLess(killed.returncode, 0, killed.stderr)
@@ -125,6 +126,14 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         # This is a separate executable process.  It is deliberately not an
         # exception retry within fnn-initialize, whose unwind-protect could
         # erase the staging evidence before the restart.
+        reopened = self.invoke(store, "recover")
+        self.assertEqual(reopened.returncode, run_store.EXIT_FAULT, reopened.stderr)
+        self.assertIn(b"allocation frontier", reopened.stderr)
+
+    def test_sigkill_after_frontier_publication_recovers_in_a_new_process(self):
+        store = self.base / "killed-frontier"
+        killed = self.invoke(store, "init", "init-final-frontier-file-fenced:kill")
+        self.assertEqual(killed.returncode, -9, killed.stderr)
         reopened = self.invoke(store, "recover")
         self.assertEqual(reopened.returncode, run_store.EXIT_OK, reopened.stderr)
         self.assertIn(b"recovered transactions=0 articles=0", reopened.stdout)
