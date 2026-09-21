@@ -57,9 +57,11 @@ because the missing reply cannot distinguish durable acceptance from a request
 the owner never observed. Before removing a stale socket node, the service
 holds an exclusive lock on the ACL2-derived adjacent `.lock` path; another
 Store configured with the same control path is refused and cannot steal the
-live endpoint. Stop hooks use shutdown only to wake connection owners, which
-perform the final close before the close hook releases the lease. The control
-adapter never opens the Store.
+live endpoint. The persistent lease inode is not unlinked; this argument, like
+the socket node itself, assumes the configured parent directory excludes an
+independent attacker that can replace entries. Stop hooks use shutdown only to
+wake connection owners, which perform the final close before the close hook
+releases the lease. The control adapter never opens the Store.
 
 ## What the owner is
 
