@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 276 |
-| Certification roots in the Makefile | 275 |
-| Books inside the root closure | 275 |
-| `defthm` and `defthmd` events | 5558 |
-| `defun` events | 3929 |
+| Books read | 277 |
+| Certification roots in the Makefile | 276 |
+| Books inside the root closure | 276 |
+| `defthm` and `defthmd` events | 5588 |
+| `defun` events | 3934 |
 | Functions with verified guards | 1460 |
-| Functions declared `:verify-guards nil` and never verified | 190 |
-| Functions left at the default with an explicit guard | 1790 |
+| Functions declared `:verify-guards nil` and never verified | 191 |
+| Functions left at the default with an explicit guard | 1794 |
 | Functions left at the default with no guard | 489 |
-| `assert-event` checks | 5398 |
+| `assert-event` checks | 5425 |
 | `must-fail` checks | 59 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 46 |
@@ -128,7 +128,8 @@ that `make certify` requests.
 | `books/bp-workflow-binding-invariants.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/bp-workflow-invariants.lisp` | root | 59 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/bp-workflow-records-invariants.lisp` | root | 72 | 8 | 0/8/0/0 | 0 | 0 | 0 |
-| `books/bp-workflow-records.lisp` | root | 0 | 12 | 10/0/2/0 | 0 | 0 | 0 |
+| `books/bp-workflow-records.lisp` | root | 0 | 15 | 10/0/5/0 | 0 | 0 | 0 |
+| `books/bp-workflow-replay-status.lisp` | root | 30 | 2 | 0/1/1/0 | 0 | 0 | 0 |
 | `books/bp-workflow-transport-invariants.lisp` | root | 32 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/bp-workflow.lisp` | root | 0 | 111 | 0/0/111/0 | 0 | 0 | 0 |
 | `books/byte-store-invariants.lisp` | root | 127 | 8 | 0/7/0/1 | 0 | 0 | 0 |
@@ -286,7 +287,7 @@ that `make certify` requests.
 | `tests/acl2/bp-release-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 65 | 4 | 0 |
 | `tests/acl2/bp-workflow-binding-invariants-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 23 | 2 | 0 |
 | `tests/acl2/bp-workflow-records-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 0 | 0 |
-| `tests/acl2/bp-workflow-records-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 74 | 6 | 0 |
+| `tests/acl2/bp-workflow-records-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 101 | 6 | 0 |
 | `tests/acl2/bp-workflow-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
 | `tests/acl2/bp-workflow-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 50 | 7 | 0 |
 | `tests/acl2/byte-store-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 65 | 0 | 0 |

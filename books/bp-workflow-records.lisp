@@ -281,3 +281,35 @@
         ((not (fn-bp-work-outstandingp work)) :receipted)
         ((consp attempt) (fn-bp-attempt-status attempt))
         (t :outstanding))))
+
+; What a reopen does to that answer.  A journal replay ends in the :restart
+; transition (fn-bp-restart-works), which moves an attempt that was in flight
+; when the process died to :restart-observed and leaves a retryable or
+; delivered one alone.  The three answers that are not an attempt status --
+; :absent, :outstanding and :receipted -- are fixed points of it, which is the
+; separation the boundary needs: a reopen can neither lose a work, nor invent
+; one, nor reopen a receipted one.
+(defun fn-bp-work-status-after-restart (status)
+ (declare (xargs :guard t))
+ (if (fn-bp-transport-statusp status)
+     (if (or (fn-bp-retryable-statusp status) (equal status :delivered))
+         status
+       :restart-observed)
+   status))
+
+; Provenance, which is not status.  Two works can both be :outstanding and
+; have arrived in the image by materially different routes: one was enqueued
+; before a cut and came back through replay, the other was enqueued after the
+; reopen.  fn-bp-work-ids is the list the image holds at open; the host carries
+; that list back unread and decides nothing with it.
+(defun fn-bp-work-ids (works)
+ (declare (xargs :guard t))
+ (if (consp works)
+     (cons (fn-bp-work-id (car works)) (fn-bp-work-ids (cdr works)))
+   nil))
+
+(defun fn-bp-work-origin (work-id recovered works)
+ (declare (xargs :guard t))
+ (cond ((not (consp (fn-bp-find-work work-id works))) :absent)
+       ((member-equal work-id recovered) :recovered)
+       (t :enqueued)))
