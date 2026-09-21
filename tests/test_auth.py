@@ -505,6 +505,17 @@ class ServedCredentialTests(unittest.TestCase):
         # accept NOW, and it will accept USER/PASS.
         self.assertIn(b"AUTHINFO USER", self.capabilities(self.client()))
 
+    def test_peer_transit_is_advertised_without_a_reader_login(self):
+        # This socket's source address resolves to the configured peer record.
+        # Transit authority is that pinned role, not the AUTHINFO principal;
+        # the same required reader policy still gates POST and GROUP below.
+        client = self.client()
+        labels = self.capabilities(client)
+        self.assertIn(b"IHAVE", labels)
+        self.assertIn(b"STREAMING", labels)
+        self.assertTrue(client.command("IHAVE <auth-peer@example.invalid>")
+                        .startswith(b"335 "))
+
     def test_login_with_the_credential_the_cli_just_wrote(self):
         client = self.client()
         self.assertTrue(client.command("AUTHINFO USER " + self.POSTER)

@@ -493,8 +493,13 @@
 ; The capability block (RFC 3977 section 5.2, RFC 4643 section 2.1,
 ; RFC 4642 section 2.1)
 ;
-; One function composes the reader's own list with the two access-dependent
-; labels; the reader list is not restated here.
+; One function composes the connection's effective base list with the two
+; access-dependent labels; neither the reader list nor the peer list is
+; restated here.  On a transit connection the base is
+; fn-peer-capability-lines, so IHAVE and STREAMING mean exactly what the
+; pinned peer record currently permits.  AUTHINFO remains a reader mechanism:
+; it is offered when this connection may use it for reader commands, but it
+; neither creates nor changes the peer identity which authorizes transit.
 ;
 ;   STARTTLS        advertised only when a certificate is configured and no
 ;                   TLS layer is active.  "MUST NOT be advertised once a TLS
@@ -513,22 +518,45 @@
 ;                   fn-auth-postingp, so the label, the greeting code and the
 ;                   440 all still say the same thing.
 
-(defun fn-auth-capability-lines (acfg subject tlsp postingp)
+(defun fn-auth-access-capability-lines (acfg subject tlsp)
   (declare (xargs :guard t))
-  (append (fn-nntp-capability-lines postingp)
-          (append
-           (if (and (fn-auth-config-tls-availablep acfg) (not tlsp))
-               (list (fn-nntp-string-octets "STARTTLS"))
-             nil)
-           ; RFC 4643 section 2.1: the arguments are the mechanisms the
-           ; server will accept NOW.  With no credential configured every
-           ; PASS is 481, so the label would promise a mechanism that
-           ; cannot succeed; with one, it is the honest offer.
-           (if (or subject
-                   (not (consp (fn-auth-config-creds acfg)))
-                   (and (fn-auth-config-protected-onlyp acfg) (not tlsp)))
-               nil
-             (list (fn-nntp-string-octets "AUTHINFO USER"))))))
+  (append
+   (if (and (fn-auth-config-tls-availablep acfg) (not tlsp))
+       (list (fn-nntp-string-octets "STARTTLS"))
+     nil)
+   ; RFC 4643 section 2.1: the arguments are the mechanisms the
+   ; server will accept NOW.  With no credential configured every
+   ; PASS is 481, so the label would promise a mechanism that
+   ; cannot succeed; with one, it is the honest offer.
+   (if (or subject
+           (not (consp (fn-auth-config-creds acfg)))
+           (and (fn-auth-config-protected-onlyp acfg) (not tlsp)))
+       nil
+     (list (fn-nntp-string-octets "AUTHINFO USER")))))
+
+(defun fn-auth-capability-lines-for-peer (acfg subject tlsp postingp record)
+  ; `record' is looked up from the peer session that the owner opened from
+  ; the configured source role.  A missing record or missing inbound half
+  ; therefore carries no transit promise; fn-peer-step gives the refusal.
+  (declare (xargs :guard t))
+  (append (fn-peer-capability-lines record postingp)
+          (fn-auth-access-capability-lines acfg subject tlsp)))
+
+(defun fn-auth-capability-lines (acfg subject tlsp postingp)
+  ; The reader-facing compatibility entry.  The called path uses the peer
+  ; aware function above; keeping this entry means reader facts and callers
+  ; continue to name the same ordinary-reader list.
+  (declare (xargs :guard t))
+  (fn-auth-capability-lines-for-peer acfg subject tlsp postingp nil))
+
+(defun fn-auth-peer-record (as)
+  ; Peer identity is the source/configuration role pinned at accept, never an
+  ; AUTHINFO principal.  This is a bounded record lookup, not a store scan.
+  (declare (xargs :guard t))
+  (let ((ps (fn-auth-session-base as)))
+    (fn-cfg-peer-find (fn-peer-session-peer ps)
+                      (fn-cfg-peers
+                       (fn-cfg-value (fn-peer-session-cfg ps))))))
 
 ; -----------------------------------------------------------------------------
 ; The decision functions
@@ -567,10 +595,12 @@
 ; Which commands this book refuses before delegating when the configuration
 ; requires authentication and the connection has not authenticated.  RFC 4643
 ; section 2.2 permits a server to require authentication for any command; fn
-; requires it for exactly the commands that can change durable state or
-; disclose article content, and never for the four the reader answers without
-; touching the archive, so an unauthenticated client can still discover the
-; server (CAPABILITIES, HELP, QUIT, MODE, DATE, AUTHINFO, STARTTLS).
+; requires it for exactly the local reader commands that can change durable
+; state or disclose article content.  Transit is not reader authentication:
+; IHAVE, CHECK, and TAKETHIS always delegate to fn-peer-step, which decides
+; from the configured source-role record and refuses a non-peer itself.  An
+; unauthenticated client can still discover the server (CAPABILITIES, HELP,
+; QUIT, MODE, DATE, AUTHINFO, STARTTLS).
 (defun fn-auth-restricted-keywordp (keyword)
   (declare (xargs :guard t))
   (or (fn-nntp-keywordp keyword "POST")
@@ -588,10 +618,21 @@
       (fn-nntp-keywordp keyword "HDR")
       (fn-nntp-keywordp keyword "XHDR")
       (fn-nntp-keywordp keyword "XPAT")
-      (fn-nntp-keywordp keyword "NEWGROUPS")
-      (fn-nntp-keywordp keyword "IHAVE")
+      (fn-nntp-keywordp keyword "NEWGROUPS")))
+
+(defun fn-auth-transit-keywordp (keyword)
+  ; The three inbound-transfer verbs are peer policy, not reader policy.
+  (declare (xargs :guard t))
+  (or (fn-nntp-keywordp keyword "IHAVE")
       (fn-nntp-keywordp keyword "CHECK")
       (fn-nntp-keywordp keyword "TAKETHIS")))
+
+(defthm fn-auth-transit-keyword-is-not-reader-restricted
+  (implies (fn-auth-transit-keywordp keyword)
+           (not (fn-auth-restricted-keywordp keyword)))
+  :hints (("Goal" :in-theory (enable fn-auth-transit-keywordp
+                                        fn-auth-restricted-keywordp
+                                        fn-nntp-keywordp))))
 
 (defun fn-auth-gatedp (as keyword)
   (declare (xargs :guard t))
@@ -789,14 +830,16 @@
                   (fn-nntp-keyword-tokenp (car args)))))
     (fn-post-make-result
      as
-     (fn-nntp-result-effects
+      (fn-nntp-result-effects
       (fn-nntp-multi (fn-auth-reader-session as)
                      "101 capability list follows"
-                     (fn-auth-capability-lines (fn-auth-session-config as)
-                                               (fn-auth-session-subject as)
-                                               (fn-auth-session-tlsp as)
-                                               (and (fn-inj-config-allow config)
-                                                    (fn-auth-postingp as)))))
+                     (fn-auth-capability-lines-for-peer
+                      (fn-auth-session-config as)
+                      (fn-auth-session-subject as)
+                      (fn-auth-session-tlsp as)
+                      (and (fn-inj-config-allow config)
+                           (fn-auth-postingp as))
+                      (fn-auth-peer-record as))))
      nil))
    (t nil)))
 
@@ -852,10 +895,14 @@
 (verify-guards fn-auth-with-base)
 (verify-guards fn-auth-single)
 (verify-guards fn-auth-starttls-effect)
+(verify-guards fn-auth-access-capability-lines)
+(verify-guards fn-auth-capability-lines-for-peer)
 (verify-guards fn-auth-capability-lines)
+(verify-guards fn-auth-peer-record)
 (verify-guards fn-auth-checkp)
 (verify-guards fn-auth-postingp)
 (verify-guards fn-auth-restricted-keywordp)
+(verify-guards fn-auth-transit-keywordp)
 (verify-guards fn-auth-gatedp)
 (verify-guards fn-auth-token-argp)
 (verify-guards fn-auth-authinfo)
@@ -932,6 +979,17 @@
                                    fn-nntp-capability-lines)
                                   nil))))
 
+(defthm fn-auth-capability-lines-for-peer-are-block-text
+  (fn-nntp-block-textp
+   (fn-auth-capability-lines-for-peer acfg subject tlsp postingp record))
+  :hints (("Goal"
+           :in-theory (e/d (fn-auth-capability-lines-for-peer
+                            fn-auth-access-capability-lines
+                            fn-peer-capability-lines
+                            fn-nntp-capability-lines
+                            fn-nntp-block-textp)
+                           ((:d fn-cfg-peer-inbound))))))
+
 (defthm fn-auth-authinfo-effects-well-formed
   (fn-auth-effectsp (fn-post-result-effects (fn-auth-authinfo as args)))
   :hints (("Goal" :in-theory (e/d (fn-auth-authinfo)
@@ -964,18 +1022,21 @@
                                    fn-nntp-effectsp fn-nntp-response-textp
                                    fn-nntp-initial-status-linep
                                    fn-nntp-keywordp fn-nntp-keyword-tokenp
-                                   fn-nntp-multi fn-auth-capability-lines
+                                   fn-nntp-multi
+                                   fn-auth-capability-lines-for-peer
+                                   fn-auth-peer-record
                                    fn-inj-config-allow
                                    fn-auth-postingp))
            :use ((:instance fn-nntp-effects-multi
                             (session (fn-auth-reader-session as))
                             (initial "101 capability list follows")
-                            (lines (fn-auth-capability-lines
+                            (lines (fn-auth-capability-lines-for-peer
                                     (fn-auth-session-config as)
                                     (fn-auth-session-subject as)
                                     (fn-auth-session-tlsp as)
                                     (and (fn-inj-config-allow config)
-                                         (fn-auth-postingp as)))))))))
+                                         (fn-auth-postingp as))
+                                    (fn-auth-peer-record as))))))))
 
 (defthm fn-auth-step-effects-well-formed
   (implies (fn-auth-session-consistentp as archive)
@@ -1113,6 +1174,37 @@
                      as config
                      (car (fn-nntp-tokenize (car (cdr wire-event))))
                      (cdr (fn-nntp-tokenize (car (cdr wire-event)))))))))
+
+; KEYSTONE.  The outer auth dispatcher is transparent for the three inbound
+; transit verbs.  The peer step is therefore the sole authorization decision:
+; a configured peer's pinned record reaches its offer logic, and a reader
+; connection reaches its own not-permitted refusal.  In particular no
+; AUTHINFO subject is a hypothesis of this equality.
+(defthm fn-auth-step-transit-command-delegates-to-peer
+  (implies (and (fn-auth-sessionp as)
+                (not (fn-auth-session-handshakingp as))
+                (fn-nntp-command-inputp line)
+                (consp (fn-nntp-tokenize line))
+                (fn-nntp-keyword-tokenp (car (fn-nntp-tokenize line)))
+                (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
+                (fn-auth-transit-keywordp
+                 (car (fn-nntp-tokenize line))))
+           (equal (fn-auth-step as archive config observation injection
+                                (list :command line))
+                  (fn-auth-delegate as archive config observation injection
+                                    (list :command line))))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (e/d (fn-auth-step fn-auth-command fn-auth-gatedp)
+                           (fn-auth-delegate fn-peer-step fn-auth-sessionp
+                            fn-auth-transit-keywordp
+                            fn-auth-transit-keyword-is-not-reader-restricted
+                            fn-auth-restricted-keywordp fn-nntp-keywordp
+                            fn-nntp-tokenize fn-nntp-command-inputp
+                            fn-nntp-keyword-tokenp
+                            fn-nntp-command-arguments-at-mostp))
+           :use ((:instance fn-auth-transit-keyword-is-not-reader-restricted
+                            (keyword (car (fn-nntp-tokenize line))))))))
 
 (defthm fn-auth-step-submission-is-typed
   (implies (and (fn-auth-sessionp as)
@@ -1498,9 +1590,12 @@
     (:d fn-auth-sessionp) (:d fn-auth-session-consistentp)
     (:d fn-auth-open-session) (:d fn-auth-with-base) (:d fn-auth-single)
     (:d fn-auth-starttls-effect) (:d fn-auth-effectp) (:d fn-auth-effectsp)
-    (:d fn-auth-capability-lines)
+    (:d fn-auth-access-capability-lines)
+    (:d fn-auth-capability-lines-for-peer) (:d fn-auth-capability-lines)
+    (:d fn-auth-peer-record)
     (:d fn-auth-checkp) (:d fn-auth-postingp)
-    (:d fn-auth-restricted-keywordp) (:d fn-auth-gatedp)
+    (:d fn-auth-restricted-keywordp) (:d fn-auth-transit-keywordp)
+    (:d fn-auth-gatedp)
     (:d fn-auth-token-argp) (:d fn-auth-authinfo) (:d fn-auth-starttls)
     (:d fn-auth-tls-established) (:d fn-auth-tls-eventp)
     (:d fn-auth-command) (:d fn-auth-delegate) (:d fn-auth-step)))
