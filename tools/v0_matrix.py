@@ -1385,40 +1385,13 @@ class V0Matrix(twonode_gate.TwoNodeGate):
 
     # -- certificates -------------------------------------------------------
     def certificates(self):
-        """The deploy gate's gate-directory copy, then the box's own cache.
+        """Use the deploy gate's one load-checked artifact set unchanged.
 
-        `certpick.py` copies a pair only when the `.lisp` beside it in the
-        gate hashes the same as the one here, so a revision the box has no
-        gate for loses a pair per changed book -- and a book whose pair did
-        not come across is included UNCERTIFIED, which is exactly the thing a
-        release gate must not leave unsaid. The box's content-keyed cache
-        (`tools/certs.py install`) is keyed on each book's whole include
-        closure rather than on a revision, so it fills in what a neighbouring
-        gate could not. What is still missing afterwards is recorded by name.
+        A second per-book cache install here used to overwrite that set with
+        certificates from other absolute origins, recreating the exact
+        sub-book-name conflict the set acquisition excludes.
         """
-        step = super().certificates()
-        cache = self.sh("install from the box certificate cache", self.cd(
-            "python3 tools/certs.py install --root {} --cache $HOME/fn-certcache "
-            "2>&1 | tail -8".format(self.deploy)), timeout=1800, expect=None)
-        summary = " | ".join(cache.output.strip().splitlines()[-3:])
-        self.facts["certificates"] = "{}; cache install rc={}: {}".format(
-            self.facts.get("certificates", "(none)"), cache.rc, summary)
-        missing = self.sh("books with no certificate", self.cd(
-            "for f in books/*.lisp; do b=${f%.lisp}; "
-            "[ -f \"$b.cert\" ] || printf '%s ' \"${b#books/}\"; done; echo"),
-            expect=None)
-        names = missing.output.strip().split()
-        self.facts["uncertified books"] = (
-            "{}: {}".format(len(names), " ".join(names)) if names
-            else "none: every book in the deploy tree has a certificate")
-        if names:
-            self.limitation(
-                None,
-                "{} book(s) in the deploy tree have no certificate and are included "
-                "from source if anything asks for them: {}. Every `not-exercised` row "
-                "below whose blocker names a book is naming one of these."
-                .format(len(names), " ".join(names)))
-        return step
+        return super().certificates()
 
     # -- probes -----------------------------------------------------------
     def probe_tree(self):

@@ -26,13 +26,12 @@ the run establishes no release claim; 2 means the gate stopped early.  Before
 promised behaviour fail, write the sentence into `gaps`, and exit 0; see
 `Finding` below and planning/review-2026-09-20-astra-followup.md F1.
 
-Certificates come from the host's own last gate of the tree
-(``~/fn-gates/<tree>-<rev>/books``) when one is there, because a certificate
-is content-keyed (``ACL2_BOOK_HASH_ALISTP=NIL``, see docs/proofs.md); when it
-is not, the gate certifies on the host with 16 jobs.  Certificates copied from
-a *live* origin root on the same machine are the ``foreign-local`` case
-tools/certs.py refuses for a worktree that will itself certify; this deploy
-tree never certifies, so the copy is safe here and is recorded as such.
+Certificates come from one current origin/toolchain set in the host's proof
+artifact cache.  ACL2 actually loads the declared native image roots and the
+deployed owner entry point's roots before the set is accepted; a set that
+reproduces an absolute sub-book-name conflict is rejected.  When no cached set
+loads, the gate certifies only that declared union on the host and load-checks
+it before continuing.
 
 Dry run.  ``--dry-run --home DIR`` runs every one of these scripts through
 bash on this machine with ``HOME`` pointed at DIR and no ssh at all, so the
@@ -74,6 +73,15 @@ GROUPS = ("fn.letters", "fn.test")
 NNTP_CLIENTS = ("slrn", "tin", "nn", "trn")
 EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN = 0, 1, 3
 SERVER_READY_SECONDS = 300
+
+
+def deployment_identity(tree: str, rev: str) -> str:
+    """One shell-safe identity shared by the deploy directory and its lock."""
+    if not re.fullmatch(r"[A-Za-z0-9._-]+", tree):
+        raise ValueError("--tree must contain only letters, digits, dot, dash or underscore")
+    if not re.fullmatch(r"[0-9a-fA-F]{7,40}", rev):
+        raise ValueError("revision must be 7 to 40 hexadecimal digits")
+    return "{}-{}".format(tree, rev.lower())
 
 
 class GateError(RuntimeError):
@@ -522,59 +530,6 @@ if __name__ == "__main__":
 '''
 
 
-CERTPICK = r'''#!/usr/bin/env python3
-"""Copy in only the certificate pairs whose book content still matches.
-
-A certificate is valid for a book and its whole include closure by content
-(`ACL2_BOOK_HASH_ALISTP=NIL`), so a pair from a neighbouring revision of the
-same tree is either exactly right or exactly wrong, and which one is decided
-here rather than assumed: a pair is copied only when the `.lisp` beside it in
-the gate hashes the same as the `.lisp` in the deploy tree.  ACL2 checks the
-closure again at include time; this only avoids handing it pairs that cannot
-hold.
-"""
-import hashlib, os, shutil, sys
-
-
-def digest(path):
-    with open(path, "rb") as handle:
-        return hashlib.sha256(handle.read()).hexdigest()
-
-
-def main():
-    gate, deploy = sys.argv[1], sys.argv[2]
-    matched = mismatched = absent = 0
-    for sub in ("books", "tests/acl2"):
-        source = os.path.join(gate, sub)
-        target = os.path.join(deploy, sub)
-        if not os.path.isdir(source) or not os.path.isdir(target):
-            continue
-        for name in sorted(os.listdir(source)):
-            if not name.endswith(".cert"):
-                continue
-            stem = name[: -len(".cert")]
-            book = os.path.join(source, stem + ".lisp")
-            mine = os.path.join(target, stem + ".lisp")
-            if not (os.path.exists(book) and os.path.exists(mine)):
-                absent += 1
-                continue
-            if digest(book) != digest(mine):
-                mismatched += 1
-                continue
-            for extension in (".cert", ".port"):
-                one = os.path.join(source, stem + extension)
-                if os.path.exists(one):
-                    shutil.copy2(one, os.path.join(target, stem + extension))
-            matched += 1
-    print("matched={} mismatched={} absent={}".format(matched, mismatched, absent))
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
-'''
-
-
 # --------------------------------------------------------------------------
 # the gate
 
@@ -629,11 +584,13 @@ class DeployGate:
         "No RFC 3977 conformance audit: the transcript exercises the verbs listed\n"
         "  above and no others, and the assertions are the driver's, not a spec's.",
         "No concurrent load, no multi-host peering, no BP/DTN transport.",
-        "The certificates were not re-established here; see the certificate row.")
+        "The certificate artifact set was load-checked here, not re-certified here;\n"
+        "  see the certificate row for its source and toolchain identities.")
 
     def __init__(self, host: Host, repo: Path, commit: str, rev: str, tree: str,
                  overlay: Path | None = None, jobs: int = 16, keep: bool = False,
-                 nntplib_python: str = "auto", acl2: str = "acl2"):
+                 nntplib_python: str = "auto", acl2: str = "acl2",
+                 artifact_profile: str = "default"):
         self.host = host
         self.repo = repo
         self.commit = commit
@@ -644,10 +601,14 @@ class DeployGate:
         self.keep = keep
         self.nntplib_python = nntplib_python
         self.acl2 = acl2
+        self.artifact_profile = artifact_profile
         self.steps: list[Step] = []
         self.facts: dict[str, str] = {}
         self.found: list[Finding] = []
-        self.deploy = "{}/{}".format(DEPLOY_ROOT, rev)
+        self.deploy_id = deployment_identity(tree, rev)
+        self.deploy = "{}/{}".format(DEPLOY_ROOT, self.deploy_id)
+        self.deploy_lock = "{}/.locks/{}.lock".format(DEPLOY_ROOT, self.deploy_id)
+        self.deploy_lock_acquired = False
         self.run = "{}/gate-run".format(self.deploy)
         self.store = "{}/store".format(self.run)
         self.log = "{}/server.log".format(self.run)
@@ -870,6 +831,16 @@ done
         return step
 
     def ship(self):
+        lock = self.sh("acquire deploy lock", """
+mkdir -p {root}/.locks
+if ! mkdir {lock} 2>/dev/null; then
+  echo "deploy identity is already active: {identity}"
+  exit 73
+fi
+""".format(root=DEPLOY_ROOT, lock=self.deploy_lock, identity=self.deploy_id))
+        if lock.rc != 0:
+            raise GateError(lock.first_line or "deploy identity is already active")
+        self.deploy_lock_acquired = True
         start = time.monotonic()
         done = self.host.deploy(self.repo, self.commit, self.deploy, timeout=600)
         output = done.stdout.decode("utf-8", "replace")
@@ -881,7 +852,6 @@ done
         if self.overlay is not None:
             self.push_tree(self.overlay)
         self.push_file(DRIVER, "{}/drive.py".format(self.run), mode="755")
-        self.push_file(CERTPICK, "{}/certpick.py".format(self.run), mode="755")
 
     def push_file(self, content, remote: str, mode="644"):
         """Byte-exact: an article payload carries CRLF a heredoc would reshape."""
@@ -902,62 +872,68 @@ done
                     "mkdir -p {}/{}".format(self.deploy, rel.parent))
             self.push_file(path.read_bytes(), "{}/{}".format(self.deploy, rel), mode="755")
 
-    def certificates(self):
-        """The host's own gate of this tree, verified pair by pair, else certify."""
-        exact = "{}/{}-{}".format(GATE_ROOT, self.tree, self.rev)
-        probe = self.sh("certificate source", """
-if [ -d {exact}/books ]; then echo "GATE {exact}"; else
-  newest=$(ls -dt {root}/{tree}-* 2>/dev/null | head -1)
-  if [ -n "$newest" ] && [ -d "$newest/books" ]; then echo "NEIGHBOUR $newest"; else echo NOGATE; fi
-fi
-""".format(exact=exact, root=GATE_ROOT, tree=self.tree))
-        first = probe.output.strip().splitlines()[-1] if probe.output.strip() else "NOGATE"
-        if first.startswith(("GATE", "NEIGHBOUR")):
-            kind, gate = first.split(None, 1)
-            step = self.sh("install certificates",
-                           "python3 {}/certpick.py {} {}".format(self.run, gate, self.deploy),
-                           timeout=600,
-                           note=("the host's own gate for this revision" if kind == "GATE"
-                                 else "the host's newest gate of this tree; only the pairs "
-                                      "whose book content matches this revision were copied"))
-            self.facts["certificates"] = "{} {} -> {}".format(
-                kind.lower(), gate, step.first_line)
-            self.limitation(
-                "certificates-copied",
-                "certificates were copied from {}, a live origin root on the same host. "
-                "tools/certs.py calls that foreign-local and refuses it for a worktree "
-                "that will itself certify, because the pairs' post-alists name that "
-                "root's absolute paths; this deploy tree never certifies, so ACL2 only "
-                "reads them. Nothing in this gate re-establishes any certificate, and a "
-                "book whose pair did not come across is included uncertified."
-                .format(gate))
-            if "mismatched=0" in step.output:
-                self.check("certificates-match", True, "",
-                           observed=step.first_line)
-            else:
-                # This gate never claims the books are PROVED -- only that the
-                # certificates named here are the ones ACL2 read.  A pair that
-                # did not come across therefore does not falsify an assertion;
-                # it means the tree that served is not the certified tree, and
-                # the run cannot stand behind a claim that says it is.
-                self.inconclusive(
-                    "certificates-match",
-                    "some books in the gate did not hash to this revision's sources, "
-                    "so their pairs were not copied and ACL2 read them uncertified: "
-                    "{}. Nothing in this run is evidence about those books, and no "
-                    "claim of the form \"this certified commit serves\" follows from "
-                    "it.".format(step.first_line),
-                    "a certificate pair did not match this revision's source",
-                    observed=step.first_line)
-            self.certificates_ok = step.rc == 0
-            return step
-        step = self.sh("certify on host",
-                       self.cd("make certify FN_CERTIFY_JOBS={} 2>&1 | tail -40".format(self.jobs)),
-                       timeout=6 * 3600)
-        self.facts["certificates"] = "make certify on the host, {} jobs, rc={}".format(
-            self.jobs, step.rc)
-        self.certificates_ok = step.rc == 0
+    def release_deploy_lock(self):
+        """Release this tree+revision's lock; safe to call once at cleanup."""
+        if not self.deploy_lock_acquired:
+            return None
+        step = self.sh("release deploy lock", "rmdir {}".format(self.deploy_lock),
+                       expect=None)
+        if step.rc == 0:
+            self.deploy_lock_acquired = False
         return step
+
+    def certificates(self):
+        """Acquire one coherent set and prove that ACL2 can load it."""
+        cache = FARM_HOSTS.get(self.host.label, {}).get(
+            "cache", "$HOME/.cache/fn-certs")
+        acquire = self.sh(
+            "acquire certificate artifact set",
+            self.cd("python3 tools/proof_artifacts.py acquire "
+                    "--profile {profile} --root {deploy} --cache {cache} "
+                    "--acl2 \"$FN_ACL2\"".format(
+                        profile=self.artifact_profile, deploy=self.deploy,
+                        cache=cache)), timeout=3600, expect=None,
+            note="one absolute origin, one ACL2 executable digest, then an actual ACL2 load")
+        if acquire.rc == 0:
+            self.facts["certificates"] = acquire.output.strip().splitlines()[-1]
+            self.facts["native artifact profile"] = self.artifact_profile
+            self.check("certificates-match", True, "", observed=acquire.first_line,
+                       held_detail="one current origin/toolchain artifact set loaded "
+                                   "without ACL2 errors or uncertified warnings")
+            self.certificates_ok = True
+            return acquire
+
+        roots = "$(python3 tools/proof_artifacts.py roots --profile {profile})".format(
+            profile=self.artifact_profile)
+        certified = self.sh(
+            "certify declared artifact closure",
+            self.cd("python3 tools/certify_books.py --jobs {jobs} --closure {roots}".format(
+                jobs=self.jobs, roots=roots)), timeout=6 * 3600,
+            note="bounded to the selected native image and deployed entry points")
+        loaded = self.sh(
+            "load declared artifact closure",
+            self.cd("python3 tools/proof_artifacts.py validate --profile {profile} "
+                    "--root {deploy} --acl2 \"$FN_ACL2\"".format(
+                        profile=self.artifact_profile, deploy=self.deploy)),
+            timeout=3600)
+        self.facts["native artifact profile"] = self.artifact_profile
+        self.facts["certificates"] = (
+            "cache acquisition rc={}; bounded certification rc={}; load rc={}: {}"
+            .format(acquire.rc, certified.rc, loaded.rc, loaded.first_line))
+        ok = certified.rc == 0 and loaded.rc == 0
+        self.check(
+            "certificates-match", ok,
+            "no current coherent cache set loaded and the bounded certification/load "
+            "failed: acquire rc={}, certify rc={}, load rc={}".format(
+                acquire.rc, certified.rc, loaded.rc),
+            observed=self.facts["certificates"],
+            held_detail="the selected native image and deployed entry-point closure "
+                        "was certified on this host and then loaded without ACL2 "
+                        "errors or uncertified warnings")
+        self.certificates_ok = ok
+        if not ok:
+            raise GateError("declared certificate artifact closure did not load")
+        return loaded
 
     def init_store(self):
         groups = " ".join("--group {}".format(g) for g in GROUPS)
@@ -1252,6 +1228,7 @@ head -5 $typescript 2>/dev/null || echo "(the client left no typescript)"
         self.sh("server log tail", "tail -15 {}/server-main.log".format(self.run))
         if not self.keep:
             self.sh("remove the deploy tree", "rm -rf {}".format(self.deploy))
+        self.release_deploy_lock()
 
     # -- evidence ---------------------------------------------------------
     def evidence(self, path: Path, started: str, elapsed: float) -> Path:
@@ -1496,6 +1473,11 @@ def main(argv=None) -> int:
     parser.add_argument("--acl2", default=None,
                         help="the host's ACL2 image; the default is tools/farm.py's "
                              "entry for the host, else `acl2` on its PATH")
+    parser.add_argument("--artifact-profile", choices=("default", "dtn"),
+                        default="default",
+                        help="native image declaration whose exact certificate "
+                             "closure must load (default: deployment image; DTN "
+                             "must be selected explicitly)")
     parser.add_argument("--nntplib-python", default="auto",
                         help="auto, none, or an interpreter with a stdlib nntplib")
     parser.add_argument("--overlay", default=None,
@@ -1511,10 +1493,15 @@ def main(argv=None) -> int:
     else:
         host = SshHost(args.host)
     overlay = Path(args.overlay).resolve() if args.overlay else None
-    gate = DeployGate(host, repo, commit, rev, args.tree, overlay=overlay,
-                      jobs=args.jobs, keep=args.keep,
-                      nntplib_python=args.nntplib_python,
-                      acl2=args.acl2 or FARM_HOSTS.get(args.host, {}).get("acl2", "acl2"))
+    try:
+        gate = DeployGate(
+            host, repo, commit, rev, args.tree, overlay=overlay,
+            jobs=args.jobs, keep=args.keep,
+            nntplib_python=args.nntplib_python,
+            acl2=args.acl2 or FARM_HOSTS.get(args.host, {}).get("acl2", "acl2"),
+            artifact_profile=args.artifact_profile)
+    except ValueError as error:
+        parser.error(str(error))
     started = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     clock = time.monotonic()
     failure = None
@@ -1524,6 +1511,7 @@ def main(argv=None) -> int:
         failure = str(error)
         gate.limitation("gate-stopped-early",
                         "the gate stopped early: {}".format(error))
+        gate.release_deploy_lock()
     elapsed = time.monotonic() - clock
     gate.finalize_findings()
     date = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")

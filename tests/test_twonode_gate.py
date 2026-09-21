@@ -121,7 +121,7 @@ class DryRun:
                 if line.startswith("| ") and fragment in line]
 
     def store(self, node):
-        path = self.home / "fn-deploy/{}/{}/store/store.json".format(self.rev, node)
+        path = self.home / "fn-deploy/dev-{}/{}/store/store.json".format(self.rev, node)
         return json.loads(path.read_text())
 
     def ids(self, node):
@@ -210,7 +210,7 @@ class NoTransitTests(DryRun, unittest.TestCase):
     def test_the_peer_record_is_a_stub_and_says_so(self):
         rows = self.named("node A peer record for B")
         self.assertTrue(rows and "not exercised" in rows[0], rows)
-        stub = self.home / "fn-deploy/{}/a/peers/b.peer".format(self.rev)
+        stub = self.home / "fn-deploy/dev-{}/a/peers/b.peer".format(self.rev)
         self.assertIn("fn-cfg-peer-make", stub.read_text())
 
     def test_the_kill_landed_in_a_post_and_b_recovered(self):
