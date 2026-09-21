@@ -119,6 +119,58 @@ The payload/profile is explicitly experimental until D01/D09 are selected.
 6. Repeat with a bundle expiry, duplicate/reordered delivery, full staging quota,
    uncertain submission, clock error and an inbound delivery interruption.
 
+## Native application join
+
+The native receive command joins the TCPCL session, BP bundle decoder, writable
+owner and FNRJ receipt journal in one process.  Its TCPCL callback is an actual
+application entry point, not an archive-only diagnostic: an accepted bundle ADU
+is decoded as one `fn-bpa` request and submitted through the same live owner
+Store transition used by served and control posting.  The owner mutex covers the
+application transition.  The callback never opens a standalone Store image and
+never reads a raw epoch in place of the owner's configuration generation.
+
+The durable order for a new request is:
+
+1. Publish `(:request-intent inbound-id exact-request-adu)` to FNRJ.
+2. Ask the owner for the exact Message-ID, groups, article, BP provenance,
+   configuration generation and transaction id, then publish its existing feed
+   submission intent.
+3. Execute the owner's Store attempt, publish its feed commit or abort, and
+   apply the control completion.
+4. Publish FNRJ `:request-context` with the exact committed Store record chosen
+   by ACL2, then publish receipt intent and committed decision.
+5. Regenerate the receipt ADU from the committed FNRJ state, author its BP
+   bundle through the BP node machine, and only then offer that bundle to TCPCL.
+
+These are separate facts.  TCPCL's XFER_ACK acknowledges a durable inbound
+transfer.  The owner completion says whether the article and archive pin were
+accepted.  The FNRJ decision authorizes an application receipt.  None is
+substituted for another.
+
+`request-intent` is appended to the version-1 FNRJ kind table, so existing kind
+codes and record bytes retain their meaning.  Replay accepts a legacy
+context-first prefix until the first request intent.  From that point the
+journal is strict: every request context consumes one byte-identical pending
+intent with the same inbound identity, and a conflicting retry or unmatched
+context faults recovery.  An intent by itself proves no Store acceptance.
+
+Recovery obtains a Store record only from the recovered live owner's history.
+The ACL2 lookup compares the parsed Message-ID, exact article, immutable subject,
+transaction id and configuration generation.  No candidate is `:absent`, one
+matching committed candidate is `:found`, and multiple or conflicting candidates
+are `:conflict`; the host never chooses the first record in a directory scan.
+
+The modeled process-death cuts are after request intent, owner/feed intent,
+Store publication, feed resolution, request context, receipt intent, receipt
+decision and receipt transmission.  Before Store publication, recovery may
+retry the same pending request.  After Store publication it binds the recovered
+record and never creates another article or archive pin.  A receipt intent with
+no visible decision is resolved absent after authoritative journal recovery and
+may be prepared again.  A committed decision regenerates identical receipt
+bytes after restart, including when the earlier receipt bundle was sent and
+lost.  Any ambiguous Store, FNFD or FNRJ persistence observation fences the
+whole owner process and emits no accepted receipt.
+
 Run a later A–relay–B contact plan with non-overlapping contact windows, and
 carried-media import through the same fn acceptance boundary. The first two-node
 test is not proof of arbitrary topology, liveness, or mission operation.
