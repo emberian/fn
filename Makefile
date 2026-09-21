@@ -187,6 +187,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-workflow-binding-invariants-tests \
 	tests/acl2/bp-workflow-tests \
 	tests/acl2/bp-workflow-teeth-tests \
+	books/app-journal \
+	books/journal-publish \
+	tests/acl2/journal-publish-tests \
 	books/bp-workflow-records \
 	books/bp-workflow-records-invariants \
 	books/bp-workflow-replay-status \
@@ -281,6 +284,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-feed-tests \
 	tests/acl2/feed-correspondence-tests \
 	books/owner-feed \
+	books/owner-feed-port \
+	tests/acl2/owner-feed-port-tests \
 	tests/acl2/owner-feed-tests \
 	books/owner \
 	books/owner-invariants \

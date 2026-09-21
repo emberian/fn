@@ -11,8 +11,8 @@ stale. Counts describe artifacts, not coverage; see
 | Quantity | Count |
 | --- | --- |
 | Books read | 322 |
-| Certification roots in the Makefile | 316 |
-| Books inside the root closure | 315 |
+| Certification roots in the Makefile | 321 |
+| Books inside the root closure | 321 |
 | `defthm` and `defthmd` events | 6031 |
 | `defun` events | 4453 |
 | Functions with verified guards | 1560 |
@@ -88,7 +88,7 @@ that `make certify` requests.
 | `books/anchor-record.lisp` | root | 5 | 4 | 4/0/0/0 | 0 | 0 | 0 |
 | `books/anchor-wire.lisp` | root | 2 | 34 | 0/0/34/0 | 0 | 0 | 0 |
 | `books/anchor.lisp` | root | 60 | 63 | 45/1/16/1 | 0 | 0 | 1 |
-| `books/app-journal.lisp` | - | 3 | 22 | 0/1/0/21 | 0 | 0 | 0 |
+| `books/app-journal.lisp` | root | 3 | 22 | 0/1/0/21 | 0 | 0 | 0 |
 | `books/article-fields.lisp` | root | 5 | 31 | 31/0/0/0 | 0 | 0 | 1 |
 | `books/article-invariants.lisp` | root | 44 | 14 | 0/7/7/0 | 0 | 0 | 0 |
 | `books/article-properties.lisp` | root | 42 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -170,7 +170,7 @@ that `make certify` requests.
 | `books/feed-correspondence.lisp` | root | 26 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/feed-events.lisp` | root | 0 | 19 | 0/0/19/0 | 0 | 0 | 0 |
 | `books/feed-journal.lisp` | root | 3 | 7 | 2/0/5/0 | 0 | 0 | 0 |
-| `books/feed-totality.lisp` | - | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/feed-totality.lisp` | closure | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/frame-fields.lisp` | root | 23 | 38 | 13/0/25/0 | 0 | 0 | 0 |
 | `books/frame-invariants.lisp` | root | 80 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/frame-journal.lisp` | root | 3 | 14 | 11/0/3/0 | 0 | 0 | 0 |
@@ -183,7 +183,7 @@ that `make certify` requests.
 | `books/index.lisp` | root | 32 | 23 | 22/0/1/0 | 0 | 0 | 0 |
 | `books/injection-invariants.lisp` | root | 38 | 5 | 0/0/5/0 | 0 | 0 | 1 |
 | `books/injection.lisp` | root | 11 | 72 | 57/0/15/0 | 0 | 0 | 0 |
-| `books/journal-publish.lisp` | - | 5 | 12 | 0/0/0/12 | 0 | 0 | 0 |
+| `books/journal-publish.lisp` | root | 5 | 12 | 0/0/0/12 | 0 | 0 | 0 |
 | `books/journal.lisp` | root | 9 | 61 | 0/0/0/61 | 0 | 0 | 0 |
 | `books/lace-invariants.lisp` | root | 65 | 1 | 0/0/0/1 | 0 | 0 | 1 |
 | `books/lace.lisp` | root | 5 | 20 | 0/0/20/0 | 0 | 0 | 0 |
@@ -210,7 +210,7 @@ that `make certify` requests.
 | `books/node.lisp` | root | 37 | 33 | 27/0/6/0 | 0 | 0 | 2 |
 | `books/owner-config.lisp` | root | 22 | 40 | 0/4/36/0 | 0 | 0 | 1 |
 | `books/owner-fault.lisp` | root | 11 | 2 | 2/0/0/0 | 0 | 0 | 0 |
-| `books/owner-feed-port.lisp` | - | 6 | 0 | 0/0/0/0 | 0 | 0 | 4 |
+| `books/owner-feed-port.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 4 |
 | `books/owner-feed.lisp` | root | 84 | 77 | 0/0/77/0 | 0 | 0 | 0 |
 | `books/owner-invariants.lisp` | root | 127 | 8 | 0/0/6/2 | 0 | 0 | 1 |
 | `books/owner.lisp` | root | 46 | 118 | 0/3/115/0 | 0 | 0 | 0 |
@@ -345,7 +345,7 @@ that `make certify` requests.
 | `tests/acl2/identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 0 | 0 |
 | `tests/acl2/index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 0 | 0 |
 | `tests/acl2/injection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 35 | 0 | 0 |
-| `tests/acl2/journal-publish-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 9 | 5 | 0 |
+| `tests/acl2/journal-publish-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 5 | 0 |
 | `tests/acl2/journal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 0 | 0 |
 | `tests/acl2/lace-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 52 | 0 | 0 |
 | `tests/acl2/membership-epochs-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 100 | 0 | 0 |
@@ -361,7 +361,7 @@ that `make certify` requests.
 | `tests/acl2/nntp-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 167 | 0 | 0 |
 | `tests/acl2/node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 92 | 0 | 0 |
 | `tests/acl2/owner-config-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 75 | 0 | 0 |
-| `tests/acl2/owner-feed-port-tests.lisp` | - | 0 | 0 | 0/0/0/0 | 21 | 1 | 0 |
+| `tests/acl2/owner-feed-port-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 1 | 0 |
 | `tests/acl2/owner-feed-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 119 | 0 | 0 |
 | `tests/acl2/owner-tests.lisp` | root | 0 | 15 | 0/0/1/14 | 292 | 0 | 0 |
 | `tests/acl2/peer-feed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 108 | 0 | 0 |
