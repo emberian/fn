@@ -38,6 +38,26 @@ cascading failure as an observer proof result.
 No ACL2 certification, certificate installation/publication, or native image
 build ran in this packet.
 
+### Sorter repair after source review
+
+The originally landed insertion base case discarded an entry at the end of a
+nonempty sort, so a malformed nonempty history could collapse to an accepted
+empty plan.  The repair returns `(list entry)`, refuses an empty observed
+history, and keeps the final close inside `fn-nco-observe`; an independent
+Common Lisp reader sees 23 top-level forms in the book and 16 in its test.
+The model teeth now evaluate a three-record reverse-order input to its exact
+three-record canonical output and fault malformed names, name/generation
+mismatches, and an empty history.  The sorter has occurrence-count,
+cardinality, and membership preservation theorems, so duplicates cannot be
+silently dropped before namespace rejection.
+
+Contained ACL2 source evaluation loaded this exact book and test with proofs
+enabled and completed successfully.  A narrow certification attempt could not
+start because the local cache has no matching corrected `journal-publish` or
+`native-admin` certificates; a 50-root no-publish closure was terminated at
+its 180-second containment limit while certifying dependencies, before it
+reached this book.  Neither result is certification evidence.
+
 ## Ready contained closure
 
 After process-group containment is available, run exactly:
