@@ -740,6 +740,53 @@
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                (fn-ag-append (fn-own-queue o) (list sub)) (fn-own-inflight o) (fn-own-feeds o)))
 
+; The local control channel is a submission port, not a second store writer.
+; Its identifier is outside the natural-number connection namespace, so it
+; cannot alias a socket and no control request consumes a connection slot.
+(defconst *fn-own-control-id* :control)
+
+(defun fn-own-control-decision (msgid groups octets)
+  (declare (xargs :guard t))
+  (if (and (fn-af-message-idp msgid)
+           (fn-inj-group-namesp groups)
+           (consp groups)
+           (fn-octet-listp octets)
+           (<= (len octets) *fn-own-body-limit*))
+      ; The CLI supplies an already-authored article object.  Preserve those
+      ; octets exactly; NNTP POST separately calls fn-inj-decide because it
+      ; receives a proto-article.  Both become the same owner submission
+      ; record after that interface-specific boundary.
+      (fn-inj-make-decision :injected nil msgid groups octets)
+    (fn-inj-refuse :control-invalid)))
+
+(defun fn-own-control-submit-result (o msgid groups octets)
+  (declare (xargs :guard t))
+  (let ((decision (fn-own-control-decision msgid groups octets)))
+    (cond ((not (fn-inj-injectedp decision)) :refused)
+          ; A control request is synchronous.  The host drains after every
+          ; served read, so a non-idle writer here is a bounded busy refusal,
+          ; never a second queue whose completion Python would have to match.
+          ((or (consp (fn-own-queue o))
+               (fn-own-inflight o)
+               (fn-own-pending o)
+               (not (equal (fn-sf-phase (fn-sn-files (fn-own-store o)))
+                           :ready)))
+           :busy)
+          (t :submitted))))
+
+(defun fn-own-control-submit (o msgid groups octets)
+  (declare (xargs :guard t))
+  (if (equal (fn-own-control-submit-result o msgid groups octets) :submitted)
+      (fn-own-enqueue
+       o (fn-own-sub-make *fn-own-control-id*
+                          (fn-own-view-version (fn-own-view o)) nil
+                          (fn-own-control-decision msgid groups octets)))
+    o))
+
+(defun fn-own-control-submissionp (sub)
+  (declare (xargs :guard t))
+  (and (consp sub) (equal (fn-own-sub-id sub) *fn-own-control-id*)))
+
 ; The node a peer connection's OFFER decision reads.
 ;
 ; `fn-peer-decide-offer' (books/peer-inbound.lisp, the IHAVE and CHECK arms
@@ -1304,7 +1351,7 @@
                 (natp (fn-own-sub-mark sub))
                 (< (fn-own-sub-mark sub) (len (fn-own-ledger o))))
            :durable)
-          ((equal word :refused) :refused)
+          ((member-equal word '(:refused :duplicate)) :refused)
           (t :uncertain))))
 
 ; The outcome reaches exactly the connection whose submission is in flight:
@@ -1353,6 +1400,46 @@
                     (fn-own-advance next id)
                   next)))
       (cons nil o))))
+
+; Control submissions use the same completion gate and the same feed update
+; as served POST, but have no socket session to render or re-pin.  The result
+; projection is closed and keeps a duplicate distinct for the CLI contract;
+; a duplicate is a refusal to create a new acceptance, while remaining an
+; idempotent success for the posting client.
+(defun fn-own-control-outcome-result (o word)
+  (declare (xargs :guard t))
+  (if (not (fn-own-control-submissionp (fn-own-inflight o)))
+      :absent
+    (if (equal word :duplicate)
+        :duplicate
+      (case (fn-own-outcome-completion o word)
+        (:durable :accepted)
+        (:refused :refused)
+        (otherwise :uncertain)))))
+
+(defun fn-own-control-outcome (o word)
+  (declare (xargs :guard t))
+  (let ((sub (fn-own-inflight o)))
+    (if (not (fn-own-control-submissionp sub))
+        o
+      (let ((completion (fn-own-outcome-completion o word)))
+        (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
+                     (fn-own-next-id o) (fn-own-max-conns o)
+                     (if (equal (fn-own-pending o) *fn-own-control-id*)
+                         nil (fn-own-pending o))
+                     (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                     (fn-own-config o) (fn-own-queue o) nil
+                     (if (equal completion :durable)
+                         (fn-own-feed-durable o sub)
+                       (fn-own-feeds o)))))))
+
+(defun fn-own-control-outcome-records (o word)
+  (declare (xargs :guard t))
+  (let ((sub (fn-own-inflight o)))
+    (if (and (fn-own-control-submissionp sub)
+             (equal (fn-own-outcome-completion o word) :durable))
+        (fn-own-feed-durable-records o sub)
+      nil)))
 
 ; A transit submission is the one the served path carried from a peer
 ; connection (books/peer-inbound, `(:transit peer kind msgid octets)`); an
@@ -1467,7 +1554,10 @@
     (:declare-group (fn-own-declare-group o (cadr event)))
     (:configure (fn-own-configure o (cadr event)))
     (:take (fn-own-take-submission o))
+    (:control-submit (fn-own-control-submit o (cadr event) (caddr event)
+                                            (cadddr event)))
     (:outcome (cdr (fn-own-outcome o (cadr event) (caddr event))))
+    (:control-outcome (fn-own-control-outcome o (cadr event)))
     (:transit-outcome (cdr (fn-own-transit-outcome o (cadr event) (caddr event)
                                                    (cadddr event)
                                                    (car (cddddr event)))))
@@ -1517,6 +1607,9 @@
     fn-own-start fn-own-conn-boundedp fn-own-set-conns fn-own-open fn-own-enqueue
     fn-own-conn-live-session
     fn-own-read fn-own-read-step fn-own-advance fn-own-close fn-own-begin
+    fn-own-control-decision fn-own-control-submit-result fn-own-control-submit
+    fn-own-control-submissionp fn-own-control-outcome-result
+    fn-own-control-outcome fn-own-control-outcome-records
     fn-own-store-step fn-own-complete fn-own-reopen
     fn-own-observe-outcome fn-own-observe
     fn-own-declare-group fn-own-configure fn-own-take-submission fn-own-outcome-completion
