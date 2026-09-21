@@ -7,6 +7,10 @@
 (defconst *stxk-same* (fn-stxk-make 1 11 21 7 *stxk-profile* '(1 2 3 4)))
 (defconst *stxk-conflict* (fn-stxk-make 1 11 21 7 *stxk-profile* '(1 2 3 5)))
 (defconst *stxk-two* (fn-stxk-make 2 12 22 8 *stxk-profile* '(9 8 7)))
+(defconst *stxk-duplicate-one-late*
+  (fn-stxk-make 3 13 23 7 *stxk-profile* '(1 2 3 4)))
+(defconst *stxk-fresh-older*
+  (fn-stxk-make 3 13 23 6 *stxk-profile* '(6 6 6)))
 (defconst *stxk-verdict*
   (fn-stxe-make 1 11 21 "<ordered@example.invalid>" :verified
                 '(115 105 103 110 97 116 117 114 101) 7 *stxk-profile*))
@@ -58,6 +62,46 @@
 (assert-event (equal (fn-stxe-keyring-generation
                       (car (fn-stxk-context-verdicts *stxk-rotated*))) 7))
 (assert-event (equal (fn-stxk-current-trust *stxk-rotated*) nil))
+
+; G7 -> G8 -> exact duplicate G7 is a retry, not a rotation back to G7.
+(defconst *stxk-duplicate-old*
+  (fn-stxk-apply-snapshot *stxk-rotated* *stxk-duplicate-one-late*))
+(assert-event (equal (fn-stxk-context-kind *stxk-duplicate-old*) :ok))
+(assert-event (equal (fn-stxk-context-current-generation
+                      *stxk-duplicate-old*) 8))
+(assert-event (equal (fn-stxk-context-verdicts *stxk-duplicate-old*)
+                     (list *stxk-verdict*)))
+
+; A previously unseen older generation cannot rotate current trust backward.
+(defconst *stxk-fresh-old-fault*
+  (fn-stxk-apply-snapshot *stxk-rotated* *stxk-fresh-older*))
+(assert-event (equal (fn-stxk-context-kind *stxk-fresh-old-fault*) :fault))
+(assert-event (equal (fn-stxk-context-tail *stxk-fresh-old-fault*)
+                     :keyring-generation-order))
+(assert-event (equal (fn-stxk-context-current-generation
+                      *stxk-fresh-old-fault*) 8))
+
+; The monotonicity theorem's sole hypothesis has teeth.  Without the carried
+; natural-number generation, the transition cannot apply successor ordering:
+; this malformed context reaches a lower numeric generation.
+(defconst *stxk-nonnatural-context*
+  (fn-stxk-context :ok 0 nil nil 17/2 nil))
+(defconst *stxk-from-nonnatural*
+  (fn-stxk-apply-snapshot *stxk-nonnatural-context*
+                          (fn-stxk-make 0 1 1 1 *stxk-profile* '(1))))
+(assert-event
+ (not (<= (fn-stxk-context-current-generation *stxk-nonnatural-context*)
+          (fn-stxk-context-current-generation *stxk-from-nonnatural*))))
+
+; A verdict is historical evidence about one concrete snapshot profile.
+(defconst *stxk-wrong-profile-verdict*
+  (fn-stxe-make 1 11 21 "<ordered@example.invalid>" :verified
+                '(115 105 103) 7 '(111 116 104 101 114)))
+(defconst *stxk-profile-fault*
+  (fn-stxk-apply-verdict *stxk-after-one* *stxk-wrong-profile-verdict*))
+(assert-event (equal (fn-stxk-context-kind *stxk-profile-fault*) :fault))
+(assert-event (equal (fn-stxk-context-tail *stxk-profile-fault*)
+                     :keyring-profile-mismatch))
 
 ; Sequence ordering has teeth independently of generation references.
 (defconst *stxk-out-of-order*
