@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 328 |
-| Certification roots in the Makefile | 327 |
-| Books inside the root closure | 327 |
-| `defthm` and `defthmd` events | 6139 |
-| `defun` events | 4526 |
+| Books read | 334 |
+| Certification roots in the Makefile | 333 |
+| Books inside the root closure | 333 |
+| `defthm` and `defthmd` events | 6151 |
+| `defun` events | 4559 |
 | Functions with verified guards | 1562 |
 | Functions declared `:verify-guards nil` and never verified | 228 |
-| Functions left at the default with an explicit guard | 2151 |
-| Functions left at the default with no guard | 585 |
-| `assert-event` checks | 6328 |
+| Functions left at the default with an explicit guard | 2183 |
+| Functions left at the default with no guard | 586 |
+| `assert-event` checks | 6345 |
 | `must-fail` checks | 124 |
 | `encapsulate` events | 19 |
 | Theorems flagged SUSPECT by shape | 56 |
 | Export-hygiene warnings | 76 |
 | Enabled-projection warnings | 24 |
 | Teeth-form warnings | 4 |
-| Include-hygiene warnings | 113 |
-| Host-names warnings | 295 |
+| Include-hygiene warnings | 114 |
+| Host-names warnings | 341 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -86,6 +86,8 @@ that `make certify` requests.
 | `books/acceptance.lisp` | root | 50 | 45 | 36/0/9/0 | 0 | 0 | 0 |
 | `books/anchor-invariants.lisp` | root | 30 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/anchor-record.lisp` | root | 5 | 4 | 4/0/0/0 | 0 | 0 | 0 |
+| `books/anchor-replace.lisp` | root | 6 | 10 | 0/0/10/0 | 0 | 0 | 0 |
+| `books/anchor-servers.lisp` | root | 4 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/anchor-wire.lisp` | root | 2 | 34 | 0/0/34/0 | 0 | 0 | 0 |
 | `books/anchor.lisp` | root | 60 | 63 | 45/1/16/1 | 0 | 0 | 1 |
 | `books/app-journal.lisp` | root | 3 | 22 | 0/1/0/21 | 0 | 0 | 0 |
@@ -171,6 +173,7 @@ that `make certify` requests.
 | `books/exchange.lisp` | root | 40 | 43 | 34/0/9/0 | 0 | 0 | 1 |
 | `books/feed-correspondence.lisp` | root | 26 | 1 | 0/0/0/1 | 0 | 0 | 0 |
 | `books/feed-events.lisp` | root | 0 | 19 | 0/0/19/0 | 0 | 0 | 0 |
+| `books/feed-filename.lisp` | root | 2 | 19 | 0/0/19/0 | 0 | 0 | 0 |
 | `books/feed-journal.lisp` | root | 3 | 7 | 2/0/5/0 | 0 | 0 | 0 |
 | `books/feed-totality.lisp` | closure | 8 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/frame-fields.lisp` | root | 23 | 38 | 13/0/25/0 | 0 | 0 | 0 |
@@ -288,6 +291,8 @@ that `make certify` requests.
 | `books/wire-outbound-invariants.lisp` | root | 64 | 6 | 0/2/4/0 | 0 | 0 | 0 |
 | `books/wire.lisp` | root | 47 | 67 | 49/0/18/0 | 0 | 0 | 1 |
 | `tests/acl2/acceptance-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 246 | 0 | 0 |
+| `tests/acl2/anchor-replace-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `tests/acl2/anchor-server-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `tests/acl2/anchor-teeth-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 57 | 0 | 0 |
 | `tests/acl2/anchor-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 53 | 0 | 0 |
 | `tests/acl2/anchor-wire-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 21 | 0 | 0 |
@@ -343,6 +348,7 @@ that `make certify` requests.
 | `tests/acl2/defrecord-tests.lisp` | root | 37 | 19 | 9/0/10/0 | 37 | 0 | 2 |
 | `tests/acl2/exchange-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 162 | 0 | 0 |
 | `tests/acl2/feed-correspondence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 3 | 0 |
+| `tests/acl2/feed-filename-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 17 | 0 | 0 |
 | `tests/acl2/feed-journal-tests.lisp` | root | 0 | 2 | 0/1/0/1 | 22 | 2 | 0 |
 | `tests/acl2/feed-totality-tests.lisp` | - | 0 | 1 | 0/0/1/0 | 13 | 3 | 0 |
 | `tests/acl2/frame-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 48 | 0 | 0 |

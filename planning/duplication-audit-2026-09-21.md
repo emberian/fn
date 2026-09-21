@@ -286,8 +286,9 @@ native directory listing before comparing its size with the ACL2 maximum. This
 bounds admitted state but fails to bound the allocation used to reach admission.
 Use the shared bounded directory observer with the ACL2 limit before collection;
 retain the logical validator for the actual namespace decision. The bounded
-observer already serves native staging recovery (`9e2d159`). A Terra successor
-owns the BP correction and actual enumeration regression. The checkpoint
+observer already serves native staging recovery (`9e2d159`). The BP correction is integrated in `7a0b96f`; the raw native I/O suite
+passes on that integrated source, including a real directory accepted at the
+policy limit and rejected on the next entry. The checkpoint
 namespace is under the same audit, alongside its remaining host filename codec.
 
 ### Current component dispositions
@@ -307,3 +308,18 @@ compares a checkpoint restore in private state. The host filename grammar,
 uncertain-store reuse guard and optional differential-mismatch outcome remain
 assigned convergence items. A checkpoint report must not call a known unequal
 restore healthy merely because a developer environment switch is absent.
+
+
+Safe FNFD codec and both recovery callers are integrated through `cf36789`.
+The [handoff](lanes/HANDOFF-w14-fnfd-filename.md) records certified codec tests
+and explicit empty-v1 crash availability debt. The recursive native observer
+still needs a total width/work budget; limiting depth alone is insufficient.
+That followup is assigned to the configuration lane. Combined image tests of
+these actual caller changes remain pending.
+
+Corrected anchor persistence is integrated through `47562c0`, after a bounded
+Sol source review of the final composed path. It uses shared framing helpers
+and an ACL2 pre-rename issue phase, then recovery barriers before reading held
+state. The [anchor report](../tests/evidence/2026-09-21-native-anchor-replace.md)
+separates actual EIO/restart tests from internet interoperability and build gaps.
+The earlier unsafe persistence packet is retained as superseded history.
