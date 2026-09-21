@@ -73,7 +73,7 @@ python3 tools/certify_books.py --jobs 2 --closure books/native-control tests/acl
 ```
 
 All 24 closure books passed. The source-pinned manifest is
-`planning/evidence/manifests/certify-20260921T111015Z-28175-native-control-resource.json`
+`planning/evidence/manifests/certify-20260921T111015Z-28175.json`
 (SHA-256 `3bb1f1c5792b634170b9ceed2b376349a8f435eb0d5419d8557e9cdce150dfcd`).
 `sbcl --script tests/native_io_progress.lisp` passed, including validation
 that the caller's limit controls allocation before the read syscall. The

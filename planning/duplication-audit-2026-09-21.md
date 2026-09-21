@@ -13,6 +13,13 @@ Moving the second path from Python into Lisp does not remove that problem.
 
 ## Current-source recheck (2026-09-21)
 
+Update through `117f4bbe`: U18's transport repair is integrated, with scoped
+slow-drip and excess-client witnesses recorded in the
+[control handoff](lanes/HANDOFF-w22-native-control.md). The feed shell-wrapper
+harness repair also landed through `91009691`; its valid witness and deliberate
+ACL2-failure fixture distinguish a real load from a later unconditional marker.
+The source-only raw-check report below retains its earlier withheld-test scope.
+
 Update through `0f0a0c7e`: U13's transaction half is integrated with the
 [source-matched Store witness](evidence/native-txn-namespace-u13-2026-09-21.md);
 configuration namespace recovery remains assigned. U15's feed table repair
@@ -654,3 +661,19 @@ limit enforced under the control lock, an absolute frame deadline, remaining-
 budget receive and linear chunk accumulation with one final copy. These are
 HST-002 and SCN-015 implementation obligations. They do not invalidate the
 distinct endpoint-lease, lost-reply or shutdown witnesses already recorded.
+
+### U19: pending config admin invents a staging prefix and races its own check
+
+At candidate `016a2d21`, `fnn-admin-stage-path` generates `.admin-*` names,
+while the established staging cleanup recognizes `.stage-*`. A process death
+can leave the new names outside that cleanup policy. No different persistence
+semantics require this extra namespace: the writer should reuse the shared
+staging constructor and demonstrate uncertain-publication restart cleanup.
+
+The same candidate closes its exclusive Store descriptor after durable
+publication, reopens independently, and requires the exact just-published
+generation. Another authorized writer can commit in that gap, or hold the
+lock during reopen, making the first known-durable operation report a fault
+or refusal. Verification must retain its observation authority or distinguish
+an independent reopen diagnostic from the already known publication result.
+The configuration lane owns both repairs; this candidate is not yet integrated.

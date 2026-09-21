@@ -76,11 +76,13 @@ releases the lease. The control adapter never opens the Store.
 
 HST-002 also requires bounded active control clients, one absolute receive
 deadline per frame and linear input accumulation, including one-byte reads.
-These resource obligations are not yet met by the integrated transport, which
-resets its timeout per read and copies its retained prefix repeatedly. The
-assigned followup must enforce ACL2-projected limits before thread creation
-and byte consumption; a socket backlog is not an active-client bound. SCN-015
-tracks these cases separately from the completed endpoint/lifecycle witnesses.
+The integrated transport now enforces the ACL2-projected active-client ceiling
+under its lock before spawning, uses one absolute deadline and reads at most
+the remaining frame budget plus one excess-byte sentinel. It accumulates
+chunks and copies them once at EOF. SCN-015 tracks these cases; scoped native
+slow-drip and over-ceiling-client witnesses are in the
+[control handoff](../planning/lanes/HANDOFF-w22-native-control.md). The combined
+Linux image gate and general concurrent host refinement remain separate.
 
 ## What the owner is
 

@@ -26,15 +26,15 @@ operator coverage and the selected two-peer release gate are complete.
 
 | Active lane / worker | Next complete result |
 | --- | --- |
-| `owner-convergence` / Sol | Native connection-local fault isolation without weakening shared uncertainty fencing (HST-005). Frozen `03eb3ba3` certification/build/runtime gate is archived; control lane owns orderly SIGTERM. |
+| `owner-convergence` / Sol | Finish source-pinned native connection-local fault evidence (HST-005), then activate inbound transit and outbound feed on fresh integrated source. Frozen `03eb3ba3` gate is archived. |
 | `submission-path` / Sol | Native BP application join and lost-receipt restart witness are integrated. Receipt-decision barrier EIO/recovery witness is integrated. Next: maintained joined-state invariant and justified fast caller adoption without revalidating retained intents/ADUs. |
-| `bp-fidelity-convergence` / Sol | Native local control/submission through the serialized owner, bounded framing and ambiguous-reply outcomes; shared lifecycle hooks and orderly SIGTERM. Coordinate the same completion helper with BP application submission. |
+| `bp-fidelity-convergence` / Sol | Integrated native control, endpoint lease, orderly SIGTERM and bounded transport have scoped evidence; finish matching serial-image runtime evidence and compose with the next owner batch. |
 | `artifact-set` / Sol | Authored BP wire publication through the shared immutable publisher, preserving allocation identity and collision/uncertainty semantics. Audit refresh and lifecycle publisher are integrated. |
 | `native-storage-codec` / Sol | Native STARTTLS using a mature OpenSSL backend and ACL2-owned consumed-prefix handling; coordinate authentication and owner lifecycle. Checkpoint namespace/mismatch/fencing packet is integrated. |
 | `native-config-impl` / Terra | Native group/capacity administration through ACL2 plans and the shared durable configuration path. Safe FNFD codec and total traversal budget are integrated. |
-| `storage-codecs` / Terra | Native outbound NNTP feed socket/timer interpreter over ACL2 effects, with durable FNFD records before transmission and actual two-node tests. |
-| `storage-initializer` / Terra | Consolidate transaction namespace recovery and bound collection before allocation. Initializer EEXIST/retry and error-origin/effect-classifier corrections are integrated. |
-| `store-prepare-correspondence-sol` / Sol | Native v0 matrix backend and first two-node slice; Python is test orchestration only. Certified feed table invariant packet is handed to the host lane for actual caller adoption. Owner prepare and auth parser repair/evidence are integrated. |
+| `storage-codecs` / Terra | Bound native TCP connect completion using shared transport and an ACL2-projected deadline; synchronous DNS remains an explicit separate availability boundary. Corrected feed component and failure-detecting host harness are integrated; owner lane owns activation. |
+| `storage-initializer` / Terra | Configuration namespace bounded recovery using the administration writer's canonical codec. Transaction namespace and initializer error-origin repairs are integrated. |
+| `store-prepare-correspondence-sol` / Sol | Separate accidental native diagnostic service entries from the production operator path. Native v0 harness first slice and feed-table caller invariant are integrated, without a two-node release claim. |
 | `wire-composition-sol` / Sol | Actual BP lifecycle step invariant, fenced-state behavior and application obligation confinement. Wire composition proof is integrated. |
 | `recover-user-direction` / Sol | Repair mixed-origin incremental certificate installation with failure-detecting tooling/tests. Native principal list/set-password component is integrated; public CLI join remains with integrated-runtime. |
 | `integrated-runtime` / Terra | Native operator administration join with the configuration lane. Raw-load lint/preflight and fixed loopback projection are integrated; current endpoint runtime tests await a matching image. |

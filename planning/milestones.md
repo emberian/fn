@@ -4,9 +4,10 @@ Current task (2026-09-21): compose the next native service batch after the
 frozen `03eb3ba3` certification, default/DTN builds and scoped runtime gate
 passed. Native authentication startup, the shared-owner prepare refinement,
 shared BP publication and bounded checkpoint namespace are now integrated.
-Native control/posting and orderly shutdown have also landed, with separate
-component/runtime evidence and open transport-resource followup.
-Parallel implementation closes control resource bounds, connection
+Native control/posting, orderly shutdown and control resource bounds have
+also landed, with separate component/runtime evidence. Transaction namespace,
+native credential administration and the inactive outbound-feed component are
+integrated. Parallel implementation closes connection
 fault isolation, inbound/outbound peering, TLS, credential and group/capacity
 administration, BP application/receipt composition and remaining namespace twins.
 
