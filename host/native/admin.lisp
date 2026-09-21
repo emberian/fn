@@ -52,7 +52,7 @@ returns NIL and the core's named reason."
 (defun fnn-admin-authorize (store records config-records record observed-names)
   "The one ACL2 publication operation binds the observed lock, occupied-name
 set, exact record, candidate replay/open result and generated final name."
-  (let ((result (fnn-core-state
+  (let ((result (fnn-core
                  'fn-store-cfg-native-admin-authorize
                  (mapcar #'fnn-octet-list records) (fnn-store-frontier store)
                  (mapcar #'fnn-octet-list config-records) (fnn-octet-list record)
