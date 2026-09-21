@@ -826,10 +826,12 @@ class Acl2Store:
                         self.proc.kill()
                         self.proc.wait(timeout=3)
         finally:
-            for stream in (self.proc.stdin, self.proc.stdout):
-                if stream and not stream.closed:
-                    stream.close()
-            self.closed = True
+            try:
+                for stream in (self.proc.stdin, self.proc.stdout):
+                    if stream and not stream.closed:
+                        stream.close()
+            finally:
+                self.closed = True
 
 
 class Store:
