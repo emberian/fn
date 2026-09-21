@@ -170,6 +170,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/checkpoint-codec-tests \
 	books/checkpoint-publish \
 	tests/acl2/checkpoint-publish-tests \
+	books/checkpoint-compaction \
+	tests/acl2/checkpoint-compaction-tests \
 	books/index \
 	tests/acl2/index-tests \
 	books/bp-ingress \

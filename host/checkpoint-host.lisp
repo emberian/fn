@@ -3,7 +3,12 @@
 ; and slices the suffix by the sequence ACL2 returned; ACL2 revalidates that
 ; suffix in fn-checkpoint-restore.
 (in-package "ACL2")
+<<<<<<< HEAD
 (include-book "../books/checkpoint-publish")
+=======
+(include-book "../books/checkpoint-reclaim")
+(include-book "../books/checkpoint-compaction")
+>>>>>>> ed90025a (model(store): preserve exact events in compaction summaries)
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -90,6 +95,42 @@
   (declare (xargs :mode :program))
   (fn-cpp-next-generation generations))
 
+<<<<<<< HEAD
+=======
+(defun fn-store-checkpoint-decode-events (octet-events)
+  (declare (xargs :mode :program))
+  (if (consp octet-events)
+      (let ((decoded (fn-store-event-decode-exact (car octet-events))))
+        (if (and (consp decoded) (equal (car decoded) :ok)
+                 (consp (cdr decoded))
+                 (fn-store-event-p (car (cdr decoded))))
+            (let ((rest (fn-store-checkpoint-decode-events (cdr octet-events))))
+              (if (equal rest :bad)
+                  :bad
+                (cons (car (cdr decoded)) rest)))
+          :bad))
+    (if (null octet-events) nil :bad)))
+
+(defun fn-store-checkpoint-reclaim-plan
+    (generations selected leases octet-records)
+  (declare (xargs :mode :program))
+  (let ((events (fn-store-checkpoint-decode-events octet-records)))
+    (if (equal events :bad)
+        '(:error :records)
+      (fn-cr-preservation-plan generations selected leases events))))
+
+; Native compaction/recovery boundary.  The returned octet records are the
+; exact prefix held by the selected summary followed by the observed suffix;
+; the native host does not interpret, merge or recreate any transaction fact.
+(defun fn-store-checkpoint-compaction-capture (octet-records frontier)
+  (declare (xargs :mode :program))
+  (fn-cc-capture octet-records frontier))
+
+(defun fn-store-checkpoint-compaction-expand (summary octet-suffix frontier)
+  (declare (xargs :mode :program))
+  (fn-cc-expand summary octet-suffix frontier))
+
+>>>>>>> ed90025a (model(store): preserve exact events in compaction summaries)
 (defun fn-store-checkpoint-publication-initial
   (generations proposed-generation exclusivep final-absentp)
   (declare (xargs :mode :program))
