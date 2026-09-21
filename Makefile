@@ -150,9 +150,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/tcpcl-invariants \
 	tests/acl2/tcpcl-tests \
 	books/anchor \
+	books/anchor-wire \
 	books/anchor-record \
 	books/anchor-invariants \
 	tests/acl2/anchor-tests \
+	tests/acl2/anchor-wire-tests \
 	tests/acl2/anchor-teeth-tests \
 	books/membership-epochs \
 	books/membership-epochs-invariants \

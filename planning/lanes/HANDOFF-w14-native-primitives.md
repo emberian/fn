@@ -16,7 +16,7 @@ gaps separate as follows.
 | DELE and SREP signed preimages | `books/anchor.lisp`; host wrappers in `host/anchor-host.lisp` | Remain ACL2-owned | Call `fn-anchor-host-delegation-octets` and `fn-anchor-host-signed-octets`; never rebuild either in raw Lisp |
 | Delegation window | `fn-anchor-window-okp`, reached through `fn-anchor-verifiedp-observed` | Remain ACL2-owned | Remove the Python parser's historical preflight from the production composition; pass fields to the ACL2 entry |
 | Merkle/nonce binding | Python parses/folds up to 32 nodes; accepted ACL2 scope is only `fn-anchor-one-nonce-p` | For the selected accepted scope, the host observes empty `PATH`, zero `INDX`, and equality of `ROOT` with `fnn-crypto-anchor-leaf(NONCE)` | A non-empty path stays `:uncertain :unmodelled-tree`.  A general native fold cannot establish acceptance until ACL2 models it (D22) |
-| Roughtime tagged-message parsing and request encoding | `tools/roughtime.py` | Still missing | Add an executable ACL2 grammar or a named bounded refinement before a native anchor command; do not translate the Python decisions into raw Lisp |
+| Roughtime tagged-message parsing | `tools/roughtime.py` | `books/anchor-wire.lisp`, implemented in the follow-on commit | Native acquisition must call `fn-anchor-wire-host-parse`; request encoding and UDP acquisition remain to implement |
 | Server list, pinned key and nonce generation | JSON plus Python `os.urandom` | Still missing | One bounded native/ACL2 configuration owner, explicit OS CSPRNG trust, and no caller-selected unpinned key |
 | FNAN framing and anchor decisions | `books/anchor-record.lisp`, `books/anchor.lisp`, `host/anchor-host.lisp` | Already ACL2-owned | Native storage must call those wrappers and preserve accepted/refused/uncertain |
 | NNTP TLS | Python `ssl` in `tools/run_owner.py`; ACL2 owns the surrounding STARTTLS state | Native owner lane, using the existing OpenSSL 3 `libssl` dependency | Flush 382 before the handshake; on success call `fn-owner-tls-established`; handshake/certificate/cipher properties remain TCB claims |
@@ -60,11 +60,13 @@ tests constrain integration mistakes; they prove no cryptographic property.
 
 ## Required anchor call sequence
 
-For a parsed ten-field anchor record, the native caller must:
+For one bounded datagram, the native caller must:
 
-1. Ask `fn-anchor-host-delegation-octets(fields)` for the long-term-key subject.
-2. Ask `fn-anchor-host-signed-octets(radius, midpoint, root)` for the delegated-
-   key subject.
+1. Call `fn-anchor-wire-host-parse(packet, nonce, pinned-key)`.  A malformed
+   response is `(:refused reason)`; success is tagged `:parsed`, never accepted.
+2. Take the ten fields, path/index, and both signature subjects from that
+   result.  They are all projections of the same ACL2 parse.  Do not parse the
+   packet or rebuild DELE/SREP in raw Lisp.
 3. Verify those exact two results with `fnn-crypto-ed25519-observe`.
 4. Treat either `:refused` as a false signature verdict.  Treat `:unavailable`
    and `:fault` as no verdict; the operation cannot report accepted.
@@ -78,6 +80,37 @@ For a parsed ten-field anchor record, the native caller must:
 The native code must not perform the delegation-window decision, accept a
 general Merkle path, substitute current configuration for the pinned key, or
 write FNAN bytes of its own.
+
+## Implemented wire grammar
+
+`books/anchor-wire.lisp` owns the deployed RoughTime v1 tagged-message grammar
+for the top response and nested CERT, DELE and SREP messages.  It bounds the
+datagram at 4096 octets, tag count at 32, and PATH at 32 SHA-512 nodes before
+walking them.  It requires strictly increasing numeric tags, monotone in-range
+cumulative offsets, all required fields and exact field widths; binds NONC to
+the caller's request nonce; constrains INDX to the PATH depth; and compares the
+received DELE and SREP octets to `books/anchor.lisp`'s canonical reconstruction.
+
+`host/anchor-wire-host.lisp` is the program-mode bridge.  Its `:parsed` result
+contains the ten anchor fields, PATH, INDX, ACL2's delegation subject, ACL2's
+response subject, and a one-nonce shape bit.  It makes no crypto, delegation-
+window, pinned-membership, freshness or storage decision.  UDP acquisition,
+nonce generation and request encoding remain the next native packet; the
+configuration/CLI lane owns the server address and pinned-key inputs.
+
+The public safety theorem is `fn-anchor-wire-parse-success-has-anchor`, whose
+subject is exactly `fn-anchor-wire-parse-response`; the deployed bridge calls
+that function at `host/anchor-wire-host.lisp:29`.  The empty-PATH captured
+packet is the reachable non-degenerate witness in the test book.  The theorem
+is unconditional, so it has no removable hypothesis to test with `must-fail`.
+
+`tests/acl2/anchor-wire-tests.lisp` evaluates the parser on exact committed
+int08h captures.  It includes both an empty-PATH response and the real one-node
+batched response, plus nonce mismatch, duplicate/out-of-order tag, decreasing
+offset, truncation and packet-bound negatives.  The book and test certified
+under ACL2 8.7.  Exact source digests, invocations, results, manifests, the
+independent host-load transcript and limitations are archived in
+[`tests/evidence/2026-09-21-native-anchor-wire.md`](../../tests/evidence/2026-09-21-native-anchor-wire.md).
 
 ## TLS composition contract for the owner lane
 
