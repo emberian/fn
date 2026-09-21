@@ -27,6 +27,7 @@
 ; tools/run_owner.py can abandon ONE connection, and before it existed an
 ; exception in the serve loop ended the process for every connection.
 (include-book "../books/owner-config")
+(include-book "../books/owner-feed-port")
 ; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
 ; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
 ; ACL2 session does not load `host/store-host.lisp', so the one owner has to
@@ -642,26 +643,6 @@
     (let ((state (fn-owner-feed-install-feed nil nil state)))
       (mv :refused state))))
 
-; Restart is one selected port step per configured peer.  The fold retains
-; intermediate tables only locally: one refused peer returns the original
-; table and no accumulated records, so the host cannot publish a partial
-; restart fence.
-(defun fn-owner-feed-port-restart-fold (names current original)
-  (declare (xargs :mode :program))
-  (if (consp names)
-      (let ((one (fn-own-feed-port-restart-peer (car names) current)))
-        (if (equal (fn-own-feed-port-status one) :refused)
-            (fn-own-feed-port-result :refused original nil nil)
-          (let ((rest (fn-owner-feed-port-restart-fold
-                       (cdr names) (fn-own-feed-port-table one) original)))
-            (if (equal (fn-own-feed-port-status rest) :refused)
-                rest
-              (fn-own-feed-port-result
-               :accepted (fn-own-feed-port-table rest)
-               (append (fn-own-feed-port-records one)
-                       (fn-own-feed-port-records rest)) nil)))))
-    (fn-own-feed-port-result :accepted current nil nil)))
-
 ; Project the durable intent before the store is allowed to begin.  The host
 ; supplies values ACL2 itself produced (provenance, configuration generation
 ; and next transaction id); this function derives the exact object identity,
@@ -1242,7 +1223,7 @@
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (fn-owner-core state))
          (table (fn-own-feeds owner))
-         (result (fn-owner-feed-port-restart-fold
+         (result (fn-own-feed-port-restart-fold
                   (fn-own-feed-names table) table table)))
     (mv-let (status state)
       (fn-owner-feed-install-port-result owner result state)

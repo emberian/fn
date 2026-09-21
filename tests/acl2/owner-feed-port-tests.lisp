@@ -89,3 +89,33 @@
                                  (fn-own-feed-port-table *fn-ofp-lost*)))
 (assert-event (equal (fn-own-feed-port-status *fn-ofp-restart*) :accepted))
 (assert-event (consp (fn-own-feed-port-records *fn-ofp-restart*)))
+
+; Restart composition is one logical all-or-nothing owner transition.  Two
+; configured peers are both restarted and contribute their exact port records.
+(defconst *fn-ofp-record-2*
+  (fn-cfg-peer-make "peer2" "peer2.fn.test" '(:nntp "127.0.0.1" 1121)
+                    '("fn.*" 32768 16) '("fn.*" t 256 1000)
+                    '(:source-address "127.0.0.3")))
+(defconst *fn-ofp-two-table*
+  (fn-own-feed-reconfigure nil (list *fn-ofp-record* *fn-ofp-record-2*)))
+(defconst *fn-ofp-restart-fold*
+  (fn-own-feed-port-restart-fold
+   (fn-own-feed-names *fn-ofp-two-table*)
+   *fn-ofp-two-table* *fn-ofp-two-table*))
+(assert-event (equal (fn-own-feed-port-status *fn-ofp-restart-fold*) :accepted))
+(assert-event (equal (len (fn-own-feed-port-records *fn-ofp-restart-fold*)) 2))
+(assert-event (equal (fn-own-feed-port-effects *fn-ofp-restart-fold*) nil))
+
+; A stale/missing peer name refuses the whole fold and exposes neither the
+; earlier table nor a partial restart-record batch.
+(defconst *fn-ofp-restart-refusal*
+  (fn-own-feed-port-restart-fold
+   (list *fn-ofp-peer* "missing") *fn-ofp-two-table* *fn-ofp-two-table*))
+(assert-event (equal (fn-own-feed-port-status *fn-ofp-restart-refusal*) :refused))
+(assert-event (equal (fn-own-feed-port-table *fn-ofp-restart-refusal*)
+                     *fn-ofp-two-table*))
+(assert-event (equal (fn-own-feed-port-records *fn-ofp-restart-refusal*) nil))
+(assert-event (equal (fn-own-feed-port-effects *fn-ofp-restart-refusal*) nil))
+(must-fail
+ (assert-event
+  (equal (fn-own-feed-port-status *fn-ofp-restart-refusal*) :accepted)))
