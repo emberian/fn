@@ -228,8 +228,11 @@ IPv6-loopback projection and configured-peer lookup, and `fn-owner-open-peer` ow
 the session role. The lookup and open occur under the shared owner mutex. The
 public operator installs the existing outbound feed's start, wake and close
 hooks on this owner; the developer-only low-level owner entry remains a
-separate diagnostic and does not acquire those hooks. This source composition
-has not yet passed a source-matched image or two-node runtime gate. The native
+separate diagnostic and does not acquire those hooks. A source-matched
+production image at `915d5c72` passed the private-loopback native A-to-B
+transfer, duplicate suppression, source-death requeue and post-acceptance
+reply-reset cases recorded in
+`planning/evidence/native-peering-915d5c72-2026-09-21.md`. The native
 listener profile accepts ACL2-parsed numeric IPv4 literals and explicit IPv6
 loopback; general IPv6 textual policy remains open.
 

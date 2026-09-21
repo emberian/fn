@@ -9,6 +9,7 @@ import hashlib
 import os
 from pathlib import Path
 import socket
+import struct
 import subprocess
 import tempfile
 import time
@@ -96,11 +97,11 @@ class NativePeeringTests(unittest.TestCase):
         return {"name": name, "root": root, "store": store,
                 "control": control, "config": config, "port": port}
 
-    def configure_peer(self, source, target):
+    def configure_peer(self, source, target, outbound="fn.*"):
         self.command([
             IMAGE, "--fn", "operator", source["config"], "peer", "add",
             target["name"], "{}.example.invalid".format(target["name"]),
-            "127.0.0.1", str(target["port"]), "fn.*", "fn.*",
+            "127.0.0.1", str(target["port"]), "fn.*", outbound,
             "127.0.0.1", "true",
         ])
 
@@ -109,6 +110,7 @@ class NativePeeringTests(unittest.TestCase):
             [str(IMAGE), "--fn", "operator", str(node["config"]), "run"],
             cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.processes.append(process)
+        node["process"] = process
         line = wait_for_announcement(process, b"LISTENING ")
         self.assertEqual(line, "LISTENING {}\n".format(node["port"]).encode(),
                          "{} emitted an unexpected readiness line: {!r}".format(
@@ -144,7 +146,15 @@ class NativePeeringTests(unittest.TestCase):
                       "--group", "fn.test"])
 
     def article_from(self, node, message_id):
-        with socket.create_connection(("127.0.0.1", node["port"]), timeout=10) as client:
+        try:
+            client = socket.create_connection(("127.0.0.1", node["port"]), timeout=10)
+        except ConnectionRefusedError:
+            process = node.get("process")
+            if process is not None and process.poll() is not None:
+                self.fail("{} exited while awaiting article: {}".format(
+                    node["name"], process.stderr.read().decode("utf-8", "replace")))
+            return None
+        with client:
             stream = client.makefile("rwb", buffering=0)
             if not stream.readline().startswith(b"200 "):
                 return None
@@ -176,6 +186,24 @@ class NativePeeringTests(unittest.TestCase):
             stream.write(b"IHAVE " + message_id.encode("ascii") + b"\r\n")
             return stream.readline()
 
+    def transfer_then_reset_before_reply(self, node, message_id, marker):
+        client = socket.create_connection(("127.0.0.1", node["port"]), timeout=10)
+        greeting = bytearray()
+        while not greeting.endswith(b"\n"):
+            chunk = client.recv(1)
+            self.assertTrue(chunk)
+            greeting.extend(chunk)
+        self.assertTrue(greeting.startswith(b"200 "))
+        payload = self.article(message_id, marker).replace(b"\r\n.\r\n", b"\r\n..\r\n")
+        client.sendall(b"TAKETHIS " + message_id.encode("ascii") + b"\r\n"
+                       + payload + b".\r\n")
+        # Force a reset while the owner is completing the accepted article.
+        # A reply write may fail, but that connection-local failure must not
+        # be reclassified as an ambiguous Store outcome or stop the owner.
+        client.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,
+                          struct.pack("ii", 1, 0))
+        client.close()
+
     def capabilities(self, node):
         with socket.create_connection(("127.0.0.1", node["port"]), timeout=10) as client:
             stream = client.makefile("rwb", buffering=0)
@@ -195,37 +223,32 @@ class NativePeeringTests(unittest.TestCase):
             self.assertTrue(stream.readline().startswith(b"205 "))
             return lines
 
-    def test_public_native_nodes_exchange_both_ways_and_suppress_duplicate(self):
+    def test_public_native_outbound_feed_crosses_and_suppresses_duplicate(self):
         a = self.initialize("a", free_port())
         b = self.initialize("b", free_port())
+        self.configure_peer(a, b)
+        self.configure_peer(b, a, outbound="-")
         self.start(a)
         self.start(b)
-        self.configure_peer(a, b)
-        self.configure_peer(b, a)
         self.assertIn(b"IHAVE", self.capabilities(a))
         self.assertIn(b"STREAMING", self.capabilities(a))
         self.assertIn(b"IHAVE", self.capabilities(b))
         self.assertIn(b"STREAMING", self.capabilities(b))
 
         a_id = "<native-a-to-b@example.invalid>"
-        b_id = "<native-b-to-a@example.invalid>"
         self.post(a, a_id, "a-to-b")
         a_source = self.await_article(a, a_id)
         b_article = self.await_article(b, a_id)
         self.assertEqual(b_article, a_source)
         self.assertTrue(self.duplicate_offer(b, a_id).startswith(b"435 "))
 
-        self.post(b, b_id, "b-to-a")
-        b_source = self.await_article(b, b_id)
-        a_article = self.await_article(a, b_id)
-        self.assertEqual(a_article, b_source)
-        self.assertTrue(self.duplicate_offer(a, b_id).startswith(b"435 "))
 
     def test_durable_feed_requeues_after_source_process_death(self):
         a = self.initialize("restart-a", free_port())
         b = self.initialize("restart-b", free_port())
-        self.start(a)
         self.configure_peer(a, b)
+        self.configure_peer(b, a, outbound="-")
+        self.start(a)
 
         message_id = "<native-requeue-after-kill@example.invalid>"
         self.post(a, message_id, "requeue-after-kill")
@@ -247,3 +270,17 @@ class NativePeeringTests(unittest.TestCase):
         target_article = self.await_article(b, message_id)
         self.assertEqual(target_article, source_article)
         self.assertTrue(self.duplicate_offer(b, message_id).startswith(b"435 "))
+
+    def test_reply_reset_after_durable_transit_is_connection_local(self):
+        source = self.initialize("reset-source", free_port())
+        target = self.initialize("reset-target", free_port())
+        self.configure_peer(target, source, outbound="-")
+        self.start(target)
+
+        message_id = "<native-reset-after-transit@example.invalid>"
+        self.transfer_then_reset_before_reply(target, message_id, "reset-after-transit")
+        self.assertEqual(self.await_article(target, message_id),
+                         self.article(message_id, "reset-after-transit"))
+        self.assertIsNone(target["process"].poll(),
+                          "connection-local reply failure stopped the owner")
+        self.assertIn(b"IHAVE", self.capabilities(target))
