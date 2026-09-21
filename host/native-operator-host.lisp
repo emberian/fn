@@ -71,6 +71,14 @@
   (declare (xargs :mode :program))
   (fn-native-operator-result-run-listener-port result))
 
+(defun fn-native-operator-host-result-run-tls-cert-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-run-tls-cert-octets result))
+
+(defun fn-native-operator-host-result-run-tls-key-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-run-tls-key-octets result))
+
 (defun fn-native-operator-host-result-run-oncep (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-run-oncep result))

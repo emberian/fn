@@ -16,7 +16,7 @@
 
 (defstruct (fnn-owner-service (:constructor %make-fnn-owner-service))
   store records lock listener stopping (exit-code +fnn-exit-ok+) (feeds nil)
-  (workers nil) (clients nil)
+  (workers nil) (clients nil) tls-context
   (start-hooks nil) (stop-hooks nil) (close-hooks nil))
 
 (defstruct (fnn-owner-feed-journal (:constructor %make-fnn-owner-feed-journal))
@@ -635,7 +635,11 @@ and control-outcome sequence."
        (fnn-refuse "owner no longer knows connection ~d" cid))
      (let ((reply (fnn-owner-octets-global 'fn-owner-output))
            (closing (fnn-owner-bool-global 'fn-owner-closep))
+           (starttls (fnn-owner-bool-global 'fn-owner-starttlsp))
+           (consumed (fnn-global 'fn-owner-consumed))
            (uncertain nil))
+       (unless (and (integerp consumed) (<= 0 consumed (length incoming)))
+         (fnn-fault "owner returned malformed receive-prefix count"))
        (when (fnn-owner-bool-global 'fn-owner-submittedp)
          (multiple-value-bind (reply-cid completion stop)
              (fnn-owner-drain-one service)
@@ -645,10 +649,23 @@ and control-outcome sequence."
                  uncertain stop)))
        (when uncertain
          (fnn-owner-stop-service-locked service +fnn-exit-uncertain+))
-       (values reply (or closing uncertain))))))
+       (values reply (or closing uncertain) starttls consumed)))))
+
+(defun fnn-owner-receive (service fd channel seconds)
+  "Read through the active transport.  Before TLS, MSG_PEEK is used only when
+a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
+  (cond (channel (fnn-tls-read channel seconds))
+        ((fnn-owner-service-tls-context service)
+         (fnn-tls-peek-plaintext fd seconds))
+        (t (fnn-recv fd seconds))))
+
+(defun fnn-owner-send (fd channel octets seconds)
+  (if channel
+      (fnn-tls-send-all channel octets seconds)
+    (fnn-send-all fd octets seconds)))
 
 (defun fnn-owner-serve-client (service socket)
-  (let ((fd (fnn-socket-fd socket)) (cid nil))
+  (let ((fd (fnn-socket-fd socket)) (cid nil) (channel nil))
     (unwind-protect
          (handler-case
              (progn
@@ -663,17 +680,51 @@ and control-outcome sequence."
                  (unless (and opened (integerp opened))
                    (return-from fnn-owner-serve-client nil))
                  (setq cid opened)
-                 (when (> (length greeting) 0) (fnn-send-all fd greeting 10)))
+                 (when (> (length greeting) 0)
+                   (fnn-owner-send fd channel greeting 10)))
                (loop
-                 (let ((incoming (fnn-recv fd 10)))
+                 (let ((incoming (fnn-owner-receive service fd channel 10)))
                    (cond ((eq incoming :timeout) nil)
                          ((zerop (length incoming)) (return))
-                         (t (multiple-value-bind (reply closing)
+                         (t (multiple-value-bind (reply closing starttls consumed)
                                 (fnn-owner-handle-chunk service cid incoming)
+                              (cond
+                                (channel
+                                 ;; Once protected, no transport suffix may be
+                                 ;; reclassified as a second TLS handshake.
+                                 (unless (= consumed (length incoming))
+                                   (fnn-fault "protected owner read left a TLS suffix")))
+                                ((fnn-owner-service-tls-context service)
+                                 ;; The worker is the sole socket reader.  A
+                                 ;; failed/short consume closes this connection;
+                                 ;; the ACL2 transition is never replayed.
+                                 (fnn-tls-consume-plaintext
+                                  fd (subseq incoming 0 consumed) 10))
+                                ((/= consumed (length incoming))
+                                 (fnn-fault "plaintext owner read left a suffix without TLS")))
                               (when (> (length reply) 0)
-                                (fnn-send-all fd reply 10))
+                                (fnn-owner-send fd channel reply 10))
+                              (when starttls
+                                (when channel
+                                  (fnn-fault "owner requested STARTTLS on a protected channel"))
+                                (unless (fnn-owner-service-tls-context service)
+                                  (fnn-fault "owner requested STARTTLS without a TLS context"))
+                                ;; Only successful SSL_accept makes the ACL2
+                                ;; session protected.  Pipelined ClientHello
+                                ;; bytes remained unread after exact consume.
+                                (setq channel
+                                      (fnn-tls-accept
+                                       (fnn-owner-service-tls-context service)
+                                       fd 10))
+                                (fnn-owner-serialized
+                                 service cid
+                                 (lambda ()
+                                   (unless (eq (fnn-owner-action
+                                                'fn-owner-tls-established cid)
+                                               :ok)
+                                     (fnn-fault "owner rejected established TLS")))))
                               (when closing
-                                (fnn-graceful-close fd)
+                                (unless channel (fnn-graceful-close fd))
                                 (return))))))))
            (fnn-store-indeterminate (e)
              (fnn-owner-fence-service service)
@@ -682,12 +733,18 @@ and control-outcome sequence."
              (fnn-owner-fault-service service cid e))
            ((or fnn-store-error fnn-os-error sb-bsd-sockets:socket-error) (e)
              (fnn-err "owner connection: ~a" e))
+           (fnn-tls-error (e)
+             ;; Certificate/handshake/record failure is scoped to this peer.
+             ;; The owner connection is removed in the unwind cleanup and the
+             ;; listener and shared TLS context remain live.
+             (fnn-err "owner TLS connection: ~a" e))
            (serious-condition (e)
              (fnn-owner-fault-service service cid e)))
       (when cid
         (ignore-errors
           (fnn-owner-serialized
            service cid (lambda () (fnn-owner-action 'fn-owner-close cid)))))
+      (when channel (fnn-tls-close-channel channel))
       (fnn-socket-shut socket))))
 
 (defun fnn-owner-client-done (service socket)
@@ -747,7 +804,7 @@ and control-outcome sequence."
           (error condition))))))
 
 (defun fnn-owner-run (root port once max-connections
-                      &optional fault address (family :inet))
+                      &optional fault address (family :inet) tls-context)
   "Run one service from already-normalized boundary values."
   (let ((service nil) (listener nil)
         (old-active *fnn-sigterm-owner-active*)
@@ -761,6 +818,7 @@ and control-outcome sequence."
            (unwind-protect
                 (progn
                   (setq service (fnn-owner-install root max-connections fault))
+                  (setf (fnn-owner-service-tls-context service) tls-context)
                   (fnn-owner-run-startup-hooks service)
                   ;; Deterministic native witness for the signal window in
                   ;; which recovery is complete but no listener fd or module
@@ -823,13 +881,14 @@ and control-outcome sequence."
             *fnn-sigterm-owner-active* old-active))))
 
 (defun fnn-owner-run-normalized (store-octets listener-host-octets
-                                 listener-port oncep max-connections)
+                                 listener-port oncep max-connections &optional tls-context)
   "Operator callback over ACL2-normalized projections; no argv semantics."
   (unless (and (typep store-octets 'fnn-octets)
                (typep listener-host-octets 'fnn-octets)
                (integerp listener-port) (<= 0 listener-port 65535)
                (member oncep '(t nil))
-               (integerp max-connections) (> max-connections 0))
+               (integerp max-connections) (> max-connections 0)
+               (or (null tls-context) (fnn-tls-context-p tls-context)))
     (fnn-fault "malformed ACL2 owner run plan"))
   (let* ((root (fnn-octets-string store-octets))
          (projection
@@ -844,7 +903,7 @@ and control-outcome sequence."
                        (= (length address-list) 16)))
         (fnn-fault "ACL2 listener address projection is malformed"))
       (fnn-owner-run root listener-port oncep max-connections
-                     nil (fnn-octets address-list) family))))
+                     nil (fnn-octets address-list) family tls-context))))
 
 (defun fnn-command-owner (command args)
   "Private low-level test entry; public operators use the normalized callback."

@@ -54,6 +54,12 @@
 (assert-event
  (not (fn-native-operator-host-result-run-auth-protected-onlyp
        *fn-nop-host-run-result*)))
+(assert-event
+ (not (fn-native-operator-host-result-run-tls-cert-octets
+       *fn-nop-host-run-result*)))
+(assert-event
+ (not (fn-native-operator-host-result-run-tls-key-octets
+       *fn-nop-host-run-result*)))
 
 (defconst *fn-nop-host-auth-config*
   (append *fn-nop-host-config*
@@ -73,3 +79,23 @@
  (equal (fn-native-operator-host-result-run-auth-path-octets
          *fn-nop-host-auth-run-result*)
         (fn-record-string-octets "/run/fn/auth.toml")))
+
+(defconst *fn-nop-host-tls-config*
+  (append *fn-nop-host-config*
+          (fn-record-string-octets "[listener]") (list 10)
+          (fn-record-string-octets "tls_cert = \"/run/fn/cert.pem\"") (list 10)
+          (fn-record-string-octets "tls_key = \"/run/fn/key.pem\"") (list 10)))
+(defconst *fn-nop-host-tls-run-result*
+  (fn-native-operator-host-run *fn-nop-host-tls-config*
+                               (list (fn-record-string-octets "run"))))
+(assert-event
+ (equal (fn-native-operator-host-result-native-action
+         *fn-nop-host-tls-run-result*) :run))
+(assert-event
+ (equal (fn-native-operator-host-result-run-tls-cert-octets
+         *fn-nop-host-tls-run-result*)
+        (fn-record-string-octets "/run/fn/cert.pem")))
+(assert-event
+ (equal (fn-native-operator-host-result-run-tls-key-octets
+         *fn-nop-host-tls-run-result*)
+        (fn-record-string-octets "/run/fn/key.pem")))

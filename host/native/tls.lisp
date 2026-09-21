@@ -324,7 +324,14 @@ plaintext already buffered inside OpenSSL cannot be stranded."
          (initialp t))
     (loop
       (when (and initialp (zerop (fnn-%ssl-pending ssl)))
-        (fnn-tls-wait fd :input deadline 'fnn-tls-io-error))
+        ;; Match the plaintext receive contract while no TLS operation has
+        ;; begun: an idle deadline is not a connection failure.  Once
+        ;; SSL_read has returned WANT_*, its retry stays inside this call so
+        ;; OpenSSL's operation is never restarted with different arguments.
+        (let ((remaining (fnn-seconds-to-deadline deadline)))
+          (when (or (<= remaining 0)
+                    (not (funcall *fnn-fd-waiter* fd :input remaining)))
+            (return :timeout))))
       (setq initialp nil)
       (fnn-%err-clear-error)
       (let ((result
@@ -382,11 +389,15 @@ socket is closed immediately, so this channel is never reused."
   "Raw MSG_PEEK seam.  Tests bind it; production calls recv(2).")
 
 (defun fnn-tls-peek-plaintext (fd seconds)
-  "Observe, but do not consume, at most +fnn-max-read+ plaintext octets."
+  "Observe, but do not consume, at most +fnn-max-read+ plaintext octets.
+Return :TIMEOUT with no observation, matching FNN-RECV's idle behavior."
   (let ((deadline (fnn-tls-deadline seconds))
         (buffer (fnn-make-octets +fnn-max-read+)))
     (loop
-      (fnn-tls-wait fd :input deadline 'fnn-tls-io-error)
+      (let ((remaining (fnn-seconds-to-deadline deadline)))
+        (when (or (<= remaining 0)
+                  (not (funcall *fnn-fd-waiter* fd :input remaining)))
+          (return :timeout)))
       (multiple-value-bind (count errno)
           (funcall *fnn-tls-peek-syscall* fd buffer)
         (cond ((and (null count) (fnn-eintr-p errno)) nil)

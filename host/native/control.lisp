@@ -301,7 +301,7 @@
 
 (defun fnn-control-owner-run-normalized
     (store-octets listener-host-octets listener-port oncep max-connections
-     control-path-octets posting-enabledp)
+     control-path-octets posting-enabledp &optional tls-context)
   "Add composable lifecycle hooks while leaving owner normalization intact."
   (unless (and (typep control-path-octets 'fnn-octets)
                (> (length control-path-octets) 0)
@@ -336,7 +336,7 @@
     (unless lease-path
       (fnn-fault "ACL2 refused the control lease path"))
     (fnn-owner-run-normalized store-octets listener-host-octets listener-port
-                              oncep max-connections)))
+                              oncep max-connections tls-context)))
 
 (defun fnn-control-connect (path)
   (let ((socket (make-instance 'sb-bsd-sockets:local-socket

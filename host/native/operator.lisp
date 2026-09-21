@@ -57,6 +57,14 @@
     (fnn-operator-emit-status :accepted "help")
     +fnn-exit-ok+))
 
+(defun fnn-operator-optional-path (result projection)
+  "Decode one ACL2-projected optional path without supplying a default."
+  (let ((value (fnn-core projection result)))
+    (cond ((null value) nil)
+          ((fnn-octet-list-p value) (fnn-octets-string (fnn-octets value)))
+          (t (fnn-fault "ACL2 returned malformed optional path from ~a"
+                        projection)))))
+
 (defun fnn-operator-execute-run (result)
   "Invoke the one owner entry only with ACL2-normalized plan projections."
   (handler-case
@@ -71,26 +79,44 @@
              (auth-protected
                (fnn-core
                 'fn-native-operator-host-result-run-auth-protected-onlyp result))
-             (*fnn-owner-startup-hooks*
-               (list (fnn-native-auth-startup-hook
-                      auth-path auth-required auth-protected)))
-             (code
-               (fnn-control-owner-run-normalized
-                (fnn-octets (fnn-core
-                             'fn-native-operator-host-result-run-store-octets result))
-                (fnn-octets (fnn-core
-                             'fn-native-operator-host-result-run-listener-host-octets result))
-                (fnn-core 'fn-native-operator-host-result-run-listener-port result)
-                (fnn-core 'fn-native-operator-host-result-run-oncep result)
-                (fnn-core
-                 'fn-native-operator-host-result-run-max-connections result)
-                (fnn-octets (fnn-core
-                             'fn-native-operator-host-result-run-control-path-octets
-                             result))
-                (fnn-core
-                 'fn-native-operator-host-result-run-posting-enabledp result))))
-        (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "run")
-        code)
+             (certificate
+               (fnn-operator-optional-path
+                result 'fn-native-operator-host-result-run-tls-cert-octets))
+             (private-key
+               (fnn-operator-optional-path
+                result 'fn-native-operator-host-result-run-tls-key-octets))
+             (tls-context nil))
+        (unwind-protect
+            (progn
+              ;; ACL2 already enforced paired presence.  Only a successfully
+              ;; loaded and key-checked context is passed to auth/owner.
+              (when certificate
+                (setq tls-context
+                      (fnn-tls-open-context certificate private-key)))
+              (let* ((*fnn-owner-startup-hooks*
+                       (list (fnn-native-auth-startup-hook
+                              auth-path auth-required auth-protected)))
+                     (code
+                       (fnn-control-owner-run-normalized
+                        (fnn-octets
+                         (fnn-core
+                          'fn-native-operator-host-result-run-store-octets result))
+                        (fnn-octets
+                         (fnn-core
+                          'fn-native-operator-host-result-run-listener-host-octets result))
+                        (fnn-core
+                         'fn-native-operator-host-result-run-listener-port result)
+                        (fnn-core 'fn-native-operator-host-result-run-oncep result)
+                        (fnn-core
+                         'fn-native-operator-host-result-run-max-connections result)
+                        (fnn-octets (fnn-core
+                                     'fn-native-operator-host-result-run-control-path-octets result))
+                        (fnn-core 'fn-native-operator-host-result-run-posting-enabledp result)
+                        tls-context)))
+                (fnn-operator-emit-status
+                 (fnn-operator-status-of-exit-code code) "run")
+                code))
+          (when tls-context (fnn-tls-close-context tls-context))))
     (error (condition)
       (let ((code (fnn-exit-code-for condition)))
         (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "run" condition)

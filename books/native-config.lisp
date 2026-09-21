@@ -395,12 +395,12 @@ host resolver's intended deployment behavior.
     (list :refused :bounds-or-encoding)))
 
 (defun fn-native-config-operator-availablep (config)
-  ; A later native operator must call this before claiming a setting is live.
-  ; Today only the store/listener core profile is consumable by the saved image.
+  ; The saved image consumes the paired TLS paths through its OpenSSL boundary.
+  ; Protected-only credentials therefore require a configured TLS context;
+  ; the parser's paired-path check makes one certificate imply one key.
   (declare (xargs :guard t))
-  (and (null (fn-native-config-tls-cert config))
-       (null (fn-native-config-tls-key config))
-       (not (fn-native-config-auth-protected-onlyp config))
+  (and (or (not (fn-native-config-auth-protected-onlyp config))
+           (fn-native-config-tls-cert config))
        (booleanp (fn-native-config-posting-enabledp config))
        (equal (fn-native-config-posting-agent config) *fn-ncfg-default-agent*)
        (null (fn-native-config-anchor-server config))

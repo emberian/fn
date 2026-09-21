@@ -122,26 +122,25 @@ and persistence components have [scoped evidence](../tests/evidence/2026-09-21-n
 this is not general Roughtime interoperability or platform qualification.
 See D22 and [the anchor specification](../specs/anchor.md).
 
-**TLS remains a host facility.** The following handshake path describes the
-development Python service. Native STARTTLS adoption remains open; a native
-configuration must not claim protection from this development result.
-RFC 4642 STARTTLS is
-served by `books/nntp-auth.lisp`, which sees plaintext octets on both sides of
-the handshake: it answers 382 and emits a `(:starttls)` effect, and
-`tools/run_owner.py` `Owner.upgrade` performs the handshake with Python's
-`ssl` using the configured `[listener] tls_cert`/`tls_key`. No theorem in this
-tree says anything about confidentiality, integrity, certificate validation,
-cipher selection or the handshake itself. What ACL2 owns is the protocol state
-machine around it, and all of it: that a handshake is owed (the effect leaves
-only the branch that answered 382), that the octets behind the command line in
-the same read are handshake bytes and are never framed as NNTP
-(`fn-served-tls-handshakingp` stops the byte fold, RFC 4642 §2.2's
-no-pipelining rule), and when the TLS layer is recorded (the host's
-`(:tls-established)` wire event is the only transition that sets `tlsp`). The
-host owns the socket and nothing else. The AUTHINFO secret is a different
-matter: it crosses an unprotected connection in the clear, which is what RFC
-4643 §2.3's mechanism is, and `[auth] protected_only` is how an operator
-refuses to accept it before a layer is up.
+**TLS remains a host facility.** RFC 4642 STARTTLS is served by
+`books/nntp-auth.lisp`, which sees plaintext octets on both sides of the
+handshake: it answers 382 and emits a `(:starttls)` effect. The native owner
+uses OpenSSL 3 through `host/native/tls.lisp`; the development adapter uses
+Python's `ssl`. No theorem in this tree says anything about confidentiality,
+integrity, certificate validation, cipher selection or the handshake itself.
+The native OpenSSL library, dynamic loader, C ABI, socket BIO and the
+sole-reader `MSG_PEEK`/consume premise are explicit trust.
+
+ACL2 owns the protocol state machine around that facility: that a handshake is
+owed only from the branch that answered 382, that later bytes in the same
+observation are never framed as NNTP, and when the TLS layer is recorded. The
+native host calls `fn-ocfg-read-tls-prefix` once, consumes its exact prefix,
+lets OpenSSL read the suffix, and supplies `(:tls-established)` only after
+`SSL_accept` succeeds. The owner then checks `SSL_pending` before waiting on
+the raw descriptor so already decrypted plaintext is not stranded. The
+AUTHINFO secret still crosses an unprotected connection in the clear, which
+is what RFC 4643 §2.3's mechanism is, and `[auth] protected_only` makes the
+ACL2 session refuse it until the per-connection layer is active.
 
 Stored evidence is not automatically authority. An untrusted article cannot
 change configuration, authorize a new peer, erase another article, or create a
