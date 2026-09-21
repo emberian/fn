@@ -1,11 +1,11 @@
 ; Observed-file recovery model for the FNBS creation-sequence frontier.
 ;
-; This model follows host/native/bp.lisp:132-170.  It calls the same ACL2 host
-; wrappers used at lines 148-165, and it models only observations obtainable
-; from the final pathname.  No rename-completed or directory-barrier bit is
-; remembered across a restart.  `confirmed' is a ghost frontier justified by
-; the parent-directory and sequence-directory fsync assumptions; it is not a
-; second counter used by the native host.
+; This model follows host/native/bp.lisp:132-170.  It calls the core functions
+; selected by the ACL2 host wrappers used at lines 148-165, and it models only
+; observations obtainable from the final pathname.  No rename-completed or
+; directory-barrier bit is remembered across a restart.  `confirmed' is a
+; ghost frontier justified by the parent-directory and sequence-directory
+; fsync assumptions; it is not a second counter used by the native host.
 
 (in-package "ACL2")
 (include-book "bp-node-records")
@@ -288,7 +288,10 @@
                  (fn-bpn-sf-host-reserve frontier))
                 (equal (fn-bpn-sequence-reservation-sequence
                         (fn-bpn-sf-host-reserve frontier))
-                       frontier)))
+                       frontier)
+                (equal (cadr (fn-bpn-sequence-reservation-record
+                              (fn-bpn-sf-host-reserve frontier)))
+                       (+ 1 frontier))))
   :hints (("Goal" :use
            ((:instance fn-bpn-sequence-reserve-advances-frontier))
            :in-theory (enable fn-bpn-sf-host-reserve))))
