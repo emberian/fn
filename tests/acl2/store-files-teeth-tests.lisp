@@ -74,6 +74,41 @@
 (assert-event (null (fn-sf-successes *sft-completed*)))
 (assert-event (equal (fn-sf-successes *sft-acknowledged*) '((0 . 0))))
 
+; The ordered publication history is over the tagged store-event grammar, not
+; only legacy article records.  Exercise the candidate append lemma with a
+; retention event and separate both of its premises with concrete values.
+(defconst *sft-retention-candidate*
+  (fn-store-retention-event-make
+   :undertake 0 0 0 "obligation-zero" "subject-zero" "evidence-zero" 1))
+(assert-event (fn-store-event-p *sft-retention-candidate*))
+(assert-event (fn-sf-candidatep *sft-retention-candidate* nil 1))
+(assert-event
+ (fn-sf-record-listp (list *sft-retention-candidate*) 0 0 1))
+
+; Without candidatep, an otherwise valid empty history does not admit an event
+; with the wrong carried sequence.
+(defconst *sft-wrong-sequence-event*
+  (fn-store-retention-event-make
+   :undertake 1 0 0 "obligation-one" "subject-one" "evidence-one" 1))
+(assert-event (fn-sf-record-listp nil 0 0 1))
+(assert-event (not (fn-sf-candidatep *sft-wrong-sequence-event* nil 1)))
+(assert-event
+ (not (fn-sf-record-listp (list *sft-wrong-sequence-event*) 0 0 1)))
+
+; Without the ordered-history premise, candidatep alone cannot repair a bad
+; prefix.  The total next-lower fold sees the bad prefix as one carried slot,
+; while record-listp rejects it as a store event.
+(defconst *sft-after-bad-prefix*
+  (fn-store-retention-event-make
+   :undertake 1 1 1 "obligation-two" "subject-two" "evidence-two" 1))
+(assert-event (fn-sf-candidatep *sft-after-bad-prefix* '(bad-prefix) 2))
+(assert-event (not (fn-sf-record-listp '(bad-prefix) 0 0 2)))
+(assert-event
+ (not (fn-sf-record-listp '(bad-prefix
+                            (:retention :undertake 1 1 1
+                             "obligation-two" "subject-two" "evidence-two" 1))
+                          0 0 2)))
+
 ; Emission is reachable exactly at :completed, and it is the only thing that
 ; grows the success list.  Not before the phase, and not for another identity.
 (assert-event (equal (fn-sf-emit-success *sft-published* 0 0) *sft-published*))

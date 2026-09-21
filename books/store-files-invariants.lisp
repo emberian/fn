@@ -7,8 +7,10 @@
 (in-package "ACL2")
 (include-book "store-files")
 (local (include-book "arithmetic/top" :dir :system))
-; The codecs cluster withdraws the record and codec definitions at export
-; (2026-09-19); the proofs here open fn-record-p and the record accessors.
+; The codecs cluster withdraws the article-record definitions at export
+; (2026-09-19).  Some later proofs still open that vocabulary, while the
+; ordered publication history below is stated over the authoritative tagged
+; store-event grammar and its total accessors.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary)))
 
 ; The preservation keystones open the kernel definitions locally (docs/
@@ -113,11 +115,12 @@
   (implies
    (and (fn-sf-record-listp records sequence lower frontier)
         (natp sequence) (natp lower) (natp frontier)
-        (fn-record-p record)
-        (equal (fn-record-sequence record) (+ sequence (len records)))
-        (<= (fn-sf-next-lower records lower) (fn-record-txid record))
-        (< (fn-record-txid record) frontier)
-        (equal (fn-record-generation record) (fn-record-txid record)))
+        (fn-store-event-p record)
+        (equal (fn-store-event-sequence record) (+ sequence (len records)))
+        (<= (fn-sf-next-lower records lower) (fn-store-event-txid record))
+        (< (fn-store-event-txid record) frontier)
+        (equal (fn-store-event-generation record)
+               (fn-store-event-txid record)))
    (fn-sf-record-listp (append records (list record))
                        sequence lower frontier))
   :hints (("Goal" :induct
@@ -180,7 +183,7 @@
              (and (equal (fn-sf-records crashed)
                          (append (fn-sf-records s)
                                  (list (fn-sf-record-candidate s))))
-                  (< (fn-record-txid (fn-sf-record-candidate s))
+                  (< (fn-store-event-txid (fn-sf-record-candidate s))
                      (fn-sf-frontier crashed)))))
   :hints (("Goal"
            :in-theory (enable fn-sf-crash
