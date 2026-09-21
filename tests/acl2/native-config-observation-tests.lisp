@@ -10,8 +10,9 @@
   (fn-cfg-encode (fn-cfg-record-make 2 2 3 (list (fn-cfg-set-capacity 3)) (fn-clock-observation 2 2 0 t))))
 
 (defconst *fn-nco-test-good*
-  (list (list "00000002.cfg" *fn-nco-test-record-2*)
-        (list "00000001.cfg" *fn-nco-test-record-1*)))
+  (list (list "00000003.cfg" *fn-nco-test-record-3*)
+        (list "00000001.cfg" *fn-nco-test-record-1*)
+        (list "00000002.cfg" *fn-nco-test-record-2*)))
 
 ; The separating accepted witness arrives in physical directory order opposite
 ; to its logical generation plan.  ACL2 sorts decoded generations and returns
@@ -20,7 +21,18 @@
  (equal (fn-nco-observe *fn-nco-test-good*)
         (list :ok nil
               (list (list "00000001.cfg" *fn-nco-test-record-1*)
-                    (list "00000002.cfg" *fn-nco-test-record-2*)))))
+                    (list "00000002.cfg" *fn-nco-test-record-2*)
+                    (list "00000003.cfg" *fn-nco-test-record-3*)))))
+
+; This is a model witness, not a raw-host stub: a nonempty valid observation
+; must produce the exact nonempty canonical output, and the sorter must retain
+; every decoded source entry even when physical order is the reverse plan.
+(assert-event
+ (equal (fn-nco-sort-by-generation
+         (fn-nco-decode-entries *fn-nco-test-good*))
+        (list (fn-nco-decode-entry (list "00000001.cfg" *fn-nco-test-record-1*))
+              (fn-nco-decode-entry (list "00000002.cfg" *fn-nco-test-record-2*))
+              (fn-nco-decode-entry (list "00000003.cfg" *fn-nco-test-record-3*)))))
 
 ; Each tooth retains the observed input as a fault rather than silently taking
 ; a shorter prefix: name/record mismatch, an absent generation, duplicate
@@ -40,8 +52,16 @@
                                (list "other.cfg" *fn-nco-test-record-1*))))
         :namespace))
 (assert-event
+ (equal (fn-nco-observe (list (list "malformed-name.cfg" *fn-nco-test-record-1*)))
+        (list :fault :namespace nil)))
+(assert-event
+ (equal (fn-nco-observe (list (list "00000002.cfg" *fn-nco-test-record-1*)))
+        (list :fault :namespace nil)))
+(assert-event
  (equal (fn-nco-result-reason (fn-nco-observe (list (list "bad.cfg" '(255)))))
         :decode))
+(assert-event
+ (equal (fn-nco-observe nil) (list :fault :namespace nil)))
 (assert-event
  (equal (fn-nco-result-reason
          (fn-nco-observe (make-list (+ 1 *fn-nco-max-config-observations*)

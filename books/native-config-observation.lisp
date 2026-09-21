@@ -65,7 +65,7 @@
           (cons entry entries)
         (cons (car entries)
               (fn-nco-insert-by-generation entry (cdr entries))))
-    entries))
+    (list entry)))
 
 (defun fn-nco-sort-by-generation (entries)
   (declare (xargs :guard t))
@@ -73,6 +73,38 @@
       (fn-nco-insert-by-generation (car entries)
                                    (fn-nco-sort-by-generation (cdr entries)))
     nil))
+
+; These are the preservation keystones for the recovery sorter.  A directory
+; can contain conflicting decoded generations, so preserving only a set of
+; generations would be too weak: every observed decoded entry must remain in
+; the result until the namespace validator rejects the conflict.
+(defun fn-nco-occurrences (target entries)
+  (declare (xargs :guard t))
+  (if (consp entries)
+      (+ (if (equal target (car entries)) 1 0)
+         (fn-nco-occurrences target (cdr entries)))
+    0))
+
+(defthm fn-nco-insert-by-generation-preserves-occurrences
+  (equal (fn-nco-occurrences target
+                             (fn-nco-insert-by-generation entry entries))
+         (+ (if (equal target entry) 1 0)
+            (fn-nco-occurrences target entries)))
+  :hints (("Goal" :induct (fn-nco-insert-by-generation entry entries))))
+
+(defthm fn-nco-sort-by-generation-preserves-occurrences
+  (equal (fn-nco-occurrences target (fn-nco-sort-by-generation entries))
+         (fn-nco-occurrences target entries))
+  :hints (("Goal" :induct (fn-nco-sort-by-generation entries))))
+
+(defthm fn-nco-sort-by-generation-preserves-cardinality
+  (equal (len (fn-nco-sort-by-generation entries))
+         (len entries))
+  :hints (("Goal" :induct (fn-nco-sort-by-generation entries))))
+
+(defthm fn-nco-sort-by-generation-preserves-membership
+  (iff (member-equal entry (fn-nco-sort-by-generation entries))
+       (member-equal entry entries)))
 
 (defun fn-nco-canonical-contiguousp (entries expected-generation)
   (declare (xargs :guard t))
@@ -103,7 +135,7 @@
       (if (equal decoded :bad)
           (fn-nco-result :fault :decode nil)
         (let ((ordered (fn-nco-sort-by-generation decoded)))
-          (if (fn-nco-canonical-contiguousp ordered 1)
-              (fn-nco-result :ok nil (fn-nco-output-entries ordered))
-            (fn-nco-result :fault :namespace nil))))))
-)
+          (if (and (consp ordered)
+                   (fn-nco-canonical-contiguousp ordered 1))
+            (fn-nco-result :ok nil (fn-nco-output-entries ordered))
+            (fn-nco-result :fault :namespace nil)))))))
