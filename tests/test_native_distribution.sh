@@ -20,7 +20,7 @@ int main(int argc, char **argv) {
   if (n > 0) printf("exe=%s\n", exe);
   printf("pid=%ld ppid=%ld", (long)getpid(), (long)getppid());
   for (int i=1; i<argc; i++) printf(" arg=%s", argv[i]);
-  putchar('\n'); return 3;
+  putchar('\n'); fflush(stdout); sleep(2); return 3;
 }
 EOF
 cc "$tmp/host.c" -o "$tmp/host-runtime"
@@ -40,10 +40,17 @@ grep -q -- "--core \"$tmp/root/opt/fn/libexec/fn/fn-host.core\"" "$tmp/root/opt/
 grep -q "ExecStart=$tmp/root/opt/fn/bin/fn operator /etc/fn/fn.toml run" "$tmp/root/opt/fn/share/fn/systemd/fn.service"
 grep -q "<string>$tmp/root/opt/fn/bin/fn</string>" "$tmp/root/opt/fn/share/fn/launchd/net.fn.plist"
 set +e
-out=$("$tmp/root/opt/fn/bin/fn" operator /etc/fn/fn.toml status)
-rc=$?
+"$tmp/root/opt/fn/bin/fn" operator /etc/fn/fn.toml status > "$tmp/out" &
+native_pid=$!
+sleep 1
+ps -p "$native_pid" -o command= > "$tmp/process"
+children=$(pgrep -P "$native_pid" 2>/dev/null || true)
+wait "$native_pid"; rc=$?
 set -e
+out=$(cat "$tmp/out")
 test "$rc" -eq 3
 printf '%s\n' "$out" | grep -q "arg=--core arg=$tmp/root/opt/fn/libexec/fn/fn-host.core arg=--fn arg=operator arg=/etc/fn/fn.toml arg=status"
 printf '%s\n' "$out" | grep -q 'exe=.*/host-runtime'
 ! printf '%s\n' "$out" | grep -qi python
+! grep -qi python "$tmp/process"
+test -z "$children"
