@@ -20,8 +20,8 @@ Per root, `certify-book`'s own `Time:` line, hbox, `--jobs 4`:
 
 | root | dev `19f3302` | +theory (`164f964`) | +guard (`9784cdc`) |
 | --- | --- | --- | --- |
-| `books/tcpcl-session` | 25.259 s | 25.59 s | **64.27 s** |
-| `books/tcpcl-invariants` | **609.687 s** | **6.61 s** | **7.31 s** |
+| `books/tcpcl-session` | 25.259 s | 25.59 s | **64.33 s** |
+| `books/tcpcl-invariants` | **609.687 s** | **6.61 s** | **7.35 s** |
 | `tests/acl2/tcpcl-tests` | 0.312 s | 0.46 s | **0.47 s** |
 
 Evidence: dev is w9/dtn-e2e's `certify-20260920T230902Z-1283742`
@@ -29,11 +29,14 @@ Evidence: dev is w9/dtn-e2e's `certify-20260920T230902Z-1283742`
 bytes — its manifest's `source_digests_sha256` for all eight books in the
 closure equal this worktree's at `19f3302`, so it was not re-run. +theory is
 `certify-20260920T233326Z-1303168`; +guard is
-`certify-20260920T234831Z-1314032` (the branch head, including the teeth of
-§5; the same tree without them was `certify-20260920T233937Z-1307933` at
-65.30 / 7.40 / 0.48 s). All in `/tank/fn/lanes/w11-tcpcl-theory`, all
-`ACL2 certification passed`, zero `ACL2 Error` in every log, 72.453 s wall
-for the three roots at `--jobs 4`.
+`certify-20260920T235524Z-1317872`, the branch head at `540dd78`; the same
+tree before the teeth of §5 was `certify-20260920T233937Z-1307933` at
+65.30 / 7.40 / 0.48 s and with them but before the §9.3 comment was
+`certify-20260920T234831Z-1314032` at 64.27 / 7.31 / 0.47 s. All in
+`/tank/fn/lanes/w11-tcpcl-theory`, all `ACL2 certification passed`, zero
+`ACL2 Error` in every log, 72.561 s wall for the three roots at `--jobs 4`.
+The three +guard runs differ by well under a second per root, which is the
+scale of the noise on this box.
 
 The 39.7 s `books/tcpcl-session` gains is the cheap recognizer family proving
 itself once, at certification, against a walk of the staged prefix removed
@@ -95,7 +98,18 @@ top of the book took C1 from 0.42 s to 0.05 s, and it is why w9's profile saw
 `FN-TCL-STEP` at 481,747 frames inside a theorem whose Goal hint disables
 `fn-tcl-step`. The general rule: **a Goal-level `e/d` only holds under a
 subgoal that names no `:in-theory` of its own; to hold everywhere, close it in
-the book.**
+the book.** It is written down as `docs/proof-style.md` §9.3, beside w9's §9.1
+and §9.2.
+
+`grep -rn '("Subgoal[^"]*"[^)]*:in-theory' books/ tests/acl2/ host/` finds two
+other sites in the tree, both unmeasured and both certifying today:
+`books/peer-inbound.lisp:1125`, whose `("Subgoal *1/1" :in-theory (enable
+fn-peer-session-consistentp fn-peer-sessionp ...))` gets back the `Goal`
+hint's `(:d fn-node-statep)`, `(:d fn-cfgp)` and
+`fn-peer-command-preserves-consistent-session`; and
+`books/article-public-bound.lisp:99`, whose two sibling subgoal hints spell
+the whole `e/d` and whose `*1/1` does not. Cost, not correctness; one `Time:`
+line each settles it.
 
 ## 4. Every configuration tried, with what it cost
 
@@ -110,7 +124,8 @@ No step limit anywhere; the cap is wall clock.
 | T3 | T2 + `("Subgoal *1/2" … :in-theory (enable fn-tcl-drive-is-a-result))` | 900 s `ld` probe | C1 fails at `Subgoal *1/4''`, same rule, one case further on |
 | T4 | T3 + the same hint at `Subgoal *1/4` | 900 s `ld` probe | **7.27 s, 59 of 59 forms, zero errors, no unused hints** |
 | T4 | the same, as a real `certify-book` over three roots | 1800 s | **green**: 65.30 / 7.40 / 0.48 s |
-| T4+teeth | T4 + the four separating witnesses of §5, branch head | 1800 s | **green**: 64.27 / 7.31 / 0.47 s (`certify-20260920T234831Z-1314032`) |
+| T4+teeth | T4 + the separating witnesses of §5 | 1800 s | **green**: 64.27 / 7.31 / 0.47 s (`certify-20260920T234831Z-1314032`) |
+| head | the branch head `540dd78` | 1800 s | **green**: 64.33 / 7.35 / 0.47 s (`certify-20260920T235524Z-1317872`) |
 
 The T2/T3 failure is the packet in miniature and is recorded rather than
 patched over: while `fn-tcl-drive`'s totality test was the literal
@@ -158,9 +173,52 @@ bridges, 24 `-preserves-cheapp` lemmas and `fn-tcl-initial-session-is-cheap`
 carry it, and `fn-tcl-cheap-rules` names the whole family so an includer can
 close all of it at once.
 
-## 7. The transfer cost
+## 7. The transfer cost, measured two ways
 
-PROFILE-PLACEHOLDER
+**The mechanism, measured directly, and this is the number to quote.** Both
+recognizers asked the same question about the same session record, on hbox,
+`books/tcpcl-session` certified, guard checking on, under `time$`:
+
+| staged segments | `fn-tcl-sessionp` | `fn-tcl-session-cheapp` |
+| --- | --- | --- |
+| 1 | 0.75 µs/call (0.15 s / 200,000) | **0.70 µs/call** (0.14 s / 200,000) |
+| 1,000 | 15 µs/call (0.03 s / 2,000) | **0.70 µs/call** (0.14 s / 200,000) |
+| 20,000 | 250 µs/call (0.50 s / 2,000) | **0.70 µs/call** (0.14 s / 200,000) |
+
+The specification recognizer is linear in the staged list — 20× the segments
+for 16.7× the cost — and the cheap one does not move at all, to three
+significant figures, across four orders of magnitude of staged data. At
+20,000 staged segments the guard the host used to pay per socket chunk cost
+**about 360× the one it pays now**, and since the staged list grows with the
+transfer, that per-chunk cost is exactly the O(n²/chunk) w8 found. The driver
+is nine forms over the certified book (a `defconst` session the machine
+accepts — `assert-event` confirms `fn-tcl-sessionp` holds of all three, so
+both recognizers traverse to completion and return T — and two counting
+loops); it is scratch, not tree code, and is reproduced in
+`planning/evidence/tcpcl-theory-w11-2026-09-20.md`.
+
+**`tools/tcpcl_lab.py --scenario profile`, and a caveat about it.** Its
+verdict is `ok` — below the 8× bar that a quadratic guard would blow through
+at about 16× — but its *ratio* is not a reproducible number at these sizes.
+Run today on hbox against the image w9/dtn-e2e built (`/tank/fn/lanes/
+w9-dtn-e2e/build/fn-host-dtn`, a cheap-guard image, though not from bytes
+identical to this branch's): 64 KiB **0.232 s**, 256 KiB **0.124 s**, ratio
+**0.53**, both transfers intact, `ok: true`. w9's own run of the same
+scenario against the same image reported 0.115 s, 0.212 s and ratio 1.84.
+The large transfer being *faster* than the small one says what is really
+being timed: two process starts of a 262 MB image, with the second warm. The
+scenario separates 16× from ~1×, which is what it was built for; it does not
+measure the guard, and a lane should not quote its ratio as though it did.
+
+**Not measured here: an image built from this branch.** It needs the DTN
+closure certified on a box, and `books/bp-bundle-invariants` and
+`books/bp-node` were still certifying on persvati
+(`run-20260920T234237Z-8081`, `/home/ember/fn-lanes/w11-tcpcl-theory`; the
+other seven roots of that run passed) when this lane closed. Nothing above
+depends on it: the direct measurement is of the certified book itself, and
+the lab run is of a cheap-guard image. The remaining claim it would settle is
+end-to-end throughput on this exact tree, which no number in this record
+asserts.
 
 ## 8. Two things the next lane inherits rather than fixes
 
