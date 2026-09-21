@@ -725,22 +725,49 @@ the current connection."
         (values nil (fnn-make-octets 0) nil)
         (let* ((cid (fnn-nat (fnn-global 'fn-owner-submit-id)))
                (msgid (fnn-owner-octets-global 'fn-owner-submit-msgid))
-               (payload (fnn-owner-octets-global 'fn-owner-submit-octets))
-               (groups (fnn-owner-submit-groups)))
-          (when (not (eq taken :taken))
+               (payload (fnn-owner-octets-global 'fn-owner-submit-octets)))
+          (when (eq taken :taken-control)
             (fnn-owner-action 'fn-owner-fault cid)
             (return-from fnn-owner-drain-one
               (values cid (fnn-owner-octets-global 'fn-owner-output) t)))
-          (let* ((evidence (fnn-octets (fnn-owner-core 'fn-owner-prov-post)))
+          (multiple-value-bind (obligation subject ignored)
+              (fnn-metadata msgid payload)
+            (declare (ignore ignored))
+            (let* ((transitp (eq taken :taken-transit))
+                   (transit-kind
+                     (when transitp
+                       (fnn-owner-action 'fn-owner-transit-decide
+                                         (fnn-octet-list obligation)
+                                         (fnn-octet-list subject))))
+                   (transit-reason
+                     (when transitp (fnn-owner-core 'fn-owner-transit-reason)))
+                   ;; Transit memberships are computed by the ACL2 transfer
+                   ;; decision above and installed in this same global.
+                   (groups (fnn-owner-submit-groups))
+                   (evidence
+                     (fnn-octets
+                      (if transitp
+                          (fnn-owner-core 'fn-owner-transit-evidence)
+                        (fnn-owner-core 'fn-owner-prov-post))))
                  (generation (fnn-nat (fnn-owner-core 'fn-owner-config-generation)))
                  (txid (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
-                 (intent (fnn-owner-action 'fn-owner-submission-intent
-                                           (fnn-octet-list evidence)
-                                           generation txid)))
-            (if (not (eq intent :ready))
+                 (intent
+                   (when (or (not transitp) (eq transit-kind :want))
+                     (fnn-owner-action 'fn-owner-submission-intent
+                                       (fnn-octet-list evidence)
+                                       generation txid))))
+            (if (and transitp (not (eq transit-kind :want)))
                 (progn
-                  (fnn-owner-action 'fn-owner-outcome cid :refused)
+                  (fnn-owner-action 'fn-owner-transit-outcome
+                                    cid transit-kind transit-reason :refused)
                   (values cid (fnn-owner-octets-global 'fn-owner-output) nil))
+              (if (not (eq intent :ready))
+                  (progn
+                    (if transitp
+                        (fnn-owner-action 'fn-owner-transit-outcome
+                                          cid :want transit-reason :refused)
+                      (fnn-owner-action 'fn-owner-outcome cid :refused))
+                    (values cid (fnn-owner-octets-global 'fn-owner-output) nil))
                 (progn
                   ;; Durable intent before the first Store mutation.  Empty is
                   ;; a complete batch when the ACL2 target set is empty.
@@ -750,9 +777,12 @@ the current connection."
                                       word (fnn-octet-list evidence)
                                       generation txid)
                     (fnn-owner-feed-flush service)
-                    (fnn-owner-action 'fn-owner-outcome cid word)
+                    (if transitp
+                        (fnn-owner-action 'fn-owner-transit-outcome
+                                          cid :want transit-reason word)
+                      (fnn-owner-action 'fn-owner-outcome cid word))
                     (values cid (fnn-owner-octets-global 'fn-owner-output)
-                            (eq word :uncertain))))))))))
+                            (eq word :uncertain))))))))))))
 
 (defun fnn-owner-complete-bound-submission
     (service submit-callback msgid payload groups evidence generation txid)
