@@ -35,14 +35,15 @@ postpublication injection: the ambiguous article may recover, but the second
 client must not obtain a fresh posting grant. Its passing frozen-image scope
 is recorded in the integration report above.
 
-This global boundary applies to uncertain shared state and core failure. It
-does not replace HST-005's connection-local fault isolation contract: an
-attributable failure that leaves the shared state valid must still use
-`fn-own-fault` and preserve other connections. The native adapter currently
-stops the process for an unexpected serious condition; the scoped survival
-scenario still needs native adoption. ACL2's connection-local theorem alone
-does not justify continuing after shared-state corruption, and stopping every
-connection does not discharge that survival requirement.
+This global boundary applies to uncertain shared state and core failure. The
+native adapter implements HST-005 separately: its bounded connection I/O
+envelope contains only work outside the serialized semantic transition, and an
+unexpected failure there re-enters the owner mutex and calls `fn-owner-fault`.
+That is the host-called projection of `fn-own-fault`; it supplies the 403/close
+effects and preserves every other connection. The same exception from inside a
+serialized ACL2, Store or journal action remains global and installs its fence
+before unlocking. The adapter does not infer locality from an exception class
+after an unknown mutation.
 
 Safe FNFD filename adoption and the public operator/auth callback are
 integrated. Outbound feed/timers and TLS remain integration work. The native
