@@ -78,6 +78,25 @@ FN_PORT = 11190           # the fn node's listener; innfeed.conf names this port
 
 INN_PATH_IDENTITY = "inn.hbox.test"
 FN_PATH_IDENTITY = "fnA.hbox.test"
+
+
+def reported_pid(output: str) -> str:
+    """The pid a `...-UP pid=$(cat <pidfile>)` step reported, or "".
+
+    An empty pid file (the server is up but has not written one, or writes
+    one under another name) used to make this an `IndexError` inside
+    `inn_start`, which reaches a caller as a harness crash and a
+    `setUpClass` error: indistinguishable from a broken lab.  A pid the lab
+    does not know is a recorded gap -- the lab then kills nothing, which is
+    the safe direction -- so this answers "" and never raises.
+    """
+    if "pid=" not in output:
+        return ""
+    tail = output.split("pid=")[-1].strip().splitlines()
+    if not tail:
+        return ""
+    word = tail[0].split()[0] if tail[0].split() else ""
+    return word if word.isdigit() else ""
 # Message-IDs carry a per-run tag.  INN's history is deliberately NOT reset
 # between runs -- the install is the lab, and a history that survives is what
 # the innd-restart control asserts -- so a fixed Message-ID makes the second
@@ -795,8 +814,14 @@ echo INND-TIMEOUT; tail -20 $P/log/innd-stdout.log; exit 1
             self.gaps.append("innd did not come up: {}".format(step.first_line))
             self.facts["inn server"] = "innd did not start"
             return False
-        pid = step.output.split("pid=")[-1].strip().splitlines()[0]
-        self.started_pids["innd"] = pid
+        pid = reported_pid(step.output)
+        if pid:
+            self.started_pids["innd"] = pid
+        else:
+            self.gaps.append(
+                "innd answered `Server running` but wrote no pid to "
+                "{}/run/innd.pid, so this run will not kill it".format(
+                    self.inn_prefix))
         self.inn_running = True
         for group in GROUPS:
             self.sh("ctlinnd newgroup {}".format(group),
@@ -823,8 +848,14 @@ done
 echo NNRPD-TIMEOUT; tail -10 $P/log/nnrpd-stdout.log; exit 1
 """.format(p=self.inn_prefix, port=self.nnrpd_port), timeout=90, expect=None)
         if nnrpd.rc == 0 and "NNRPD-UP" in nnrpd.output:
-            self.started_pids["nnrpd"] = nnrpd.output.split("pid=")[-1].strip(
-            ).splitlines()[0]
+            nnrpd_pid = reported_pid(nnrpd.output)
+            if nnrpd_pid:
+                self.started_pids["nnrpd"] = nnrpd_pid
+            else:
+                self.gaps.append(
+                    "nnrpd is listening on port {} but wrote no pid to "
+                    "{}/run/nnrpd-{}.pid, so this run will not kill it".format(
+                        self.nnrpd_port, self.inn_prefix, self.nnrpd_port))
         else:
             self.gaps.append("nnrpd did not come up on port {}: {}".format(
                 self.nnrpd_port, nnrpd.first_line))
@@ -840,13 +871,17 @@ echo NNRPD-TIMEOUT; tail -10 $P/log/nnrpd-stdout.log; exit 1
         if self.inn_running:
             self.sh("ctlinnd shutdown", "{} -t 5 shutdown 'inn lab done' 2>&1 || true"
                     .format(self.bin("ctlinnd")), expect=None)
+            # `kill -0 0` asks about the whole process group and succeeds, so
+            # an unknown innd pid must not be spelled 0: read the pid file.
             self.sh("innd and innfeed are gone", """
 for i in $(seq 1 20); do
   kill -0 {pid} 2>/dev/null || break; sleep 1
 done
 kill -0 {pid} 2>/dev/null && echo INND-ALIVE || echo INND-GONE
 pgrep -F {p}/run/innfeed.pid >/dev/null 2>&1 && echo INNFEED-ALIVE || echo INNFEED-GONE
-""".format(pid=self.started_pids.get("innd", 0), p=self.inn_prefix), expect=None)
+""".format(pid=self.started_pids.get("innd")
+           or "$(cat {}/run/innd.pid 2>/dev/null || echo -1)".format(self.inn_prefix),
+           p=self.inn_prefix), expect=None)
             self.inn_running = False
 
     # -- the scenarios ----------------------------------------------------
@@ -1029,8 +1064,13 @@ done
 echo INND-TIMEOUT; tail -20 $P/log/innd-stdout.log; exit 1
 """.format(p=self.inn_prefix), timeout=180, expect=None)
         if again.rc == 0 and "INND-UP" in again.output:
-            self.started_pids["innd"] = again.output.split(
-                "pid=")[-1].strip().splitlines()[0]
+            back = reported_pid(again.output)
+            if back:
+                self.started_pids["innd"] = back
+            else:
+                self.gaps.append(
+                    "innd restarted but wrote no pid to {}/run/innd.pid, so "
+                    "this run will not kill it".format(self.inn_prefix))
             self.inn_running = True
         else:
             self.gaps.append("innd did not come back after the SIGKILL: {}".format(
