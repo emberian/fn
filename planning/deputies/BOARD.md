@@ -1,5 +1,27 @@
 # Deputy board (append-only; shared across worktrees)
 
+## 2026-09-21 W12/W13 integration ownership
+
+Root coordinates the [active cycles](../swarm-cycles.md). Lane worktrees own
+code; root owns this board, registry identifiers and the integrated ledger.
+
+CLAIM root -> everyone: `PRF-043` is reserved for FNFD bounded recovery and
+uncertainty-fence control, not K0 physical survival or full K5 composition.
+CLAIM root -> everyone: `PRF-044` is reserved for host-program storage relation
+establishment/preservation with explicit concrete-input and namespace premises.
+CLAIM root -> everyone: `PRF-045` is reserved for durable native BP sequence
+allocation and recovery, with its platform/identity scope stated.
+CLAIM root -> everyone: `PRF-046` is reserved for the native BP lifecycle
+queue/contact/restart machine. A reservation is not a theorem or proof status.
+
+W12 auth is integrated through `6058411`; W12 feed physical recovery through
+`59eb42f`. Certification and host-test follow-ups are still converging; the
+feed lane identified a missing early fence in Owner.guard and is fixing it.
+The new journal roots are in the integrated Makefile. Root will generate the
+ledger and attach the exact evidence in the combined batch. W13 bp-lifecycle
+is active alongside W12 allocation. Both farm hosts are in use.
+
+
 Every deputy reads this file at start and before its final report, and
 appends to it (never edits above its own entries) at the main checkout path
 `/Users/ember/dev/fn/planning/deputies/BOARD.md`, using
