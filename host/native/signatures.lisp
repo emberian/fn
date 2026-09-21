@@ -288,7 +288,8 @@ the other, and unsupported ML-DSA is never mapped to :VERIFIED."
                   ml-observation)))))
 
 (defun fnn-hsig-authorized-article-event
-    (sequence txid generation keyring-generation msgid content-subject
+    (sequence txid generation keyring-generation enrolled-snapshot
+              msgid content-subject
               article-record principal keys source signatures
               ml-public-key-path)
   "Verify once, then ask ACL2 to construct the complete durable kind-4 event.
@@ -304,7 +305,8 @@ The caller may pass the returned object unchanged to the identity owner."
                                  (second ml-observation))))
       (fnn-core
        'fn-hsig-host-authorized-article-event
-       sequence txid generation keyring-generation msgid content-subject
+       sequence txid generation keyring-generation enrolled-snapshot
+       msgid content-subject
        article-record principal keys source signatures
        (and observed-ml-key (coerce observed-ml-key 'list))
        (first observations)

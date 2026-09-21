@@ -15,7 +15,7 @@
 (defconst *fn-stxe-kind* 2)
 (defconst *fn-stxe-max-octets* 65538)
 (defconst *fn-stxe-max-profile* 64)
-(defconst *fn-stxe-max-detail* 4096)
+(defconst *fn-stxe-max-detail* 8192)
 
 (defun fn-stxe-tokenp (x)
   (declare (xargs :guard t))

@@ -32,28 +32,38 @@
 ; The retained verdict detail contains both detached components in canonical
 ; algorithm order.  Replay can therefore preserve and independently inspect
 ; the evidence which produced :verified.
-(defun fn-hsig-verdict-detail (signatures)
+(defun fn-hsig-verdict-detail (principal keys signatures)
   (declare (xargs :guard t))
-  (if (fn-hsig-signatures-p signatures)
+  (if (and (fn-hsig-exact-octets-p principal 32)
+           (fn-hsig-keyset-p keys)
+           (fn-hsig-signatures-p signatures))
       (fn-stmt-encode-items
-       (list (cons :uint *fn-hsig-ed25519-algorithm*)
+       (list (cons :bytes principal)
+             (cons :uint *fn-hsig-ed25519-algorithm*)
+             (cons :bytes (cdr (car keys)))
+             (cons :uint *fn-hsig-ml-dsa-65-algorithm*)
+             (cons :bytes (cdr (car (cdr keys))))
+             (cons :uint *fn-hsig-ed25519-algorithm*)
              (cons :bytes (cdr (car signatures)))
              (cons :uint *fn-hsig-ml-dsa-65-algorithm*)
              (cons :bytes (cdr (car (cdr signatures))))))
     nil))
 
 (defun fn-hsig-authorized-article-event
-    (sequence txid generation keyring-generation msgid content-subject
+    (sequence txid generation keyring-generation enrolled-snapshot
+              msgid content-subject
               article-record principal keys source signatures observed-ml-key
               ed25519-observation ml-dsa-65-observation)
   (declare (xargs :guard t))
   (let ((decoded (fn-record-decode-exact article-record)))
-    (if (and (fn-hsig-authorize principal keys source signatures
+    (if (and (equal enrolled-snapshot
+                    (fn-hsig-keyring-snapshot principal keys))
+             (fn-hsig-authorize principal keys source signatures
                                 observed-ml-key ed25519-observation
                                 ml-dsa-65-observation)
              (fn-record-result-okp decoded))
         (let* ((record (fn-record-result-record decoded))
-               (detail (fn-hsig-verdict-detail signatures))
+               (detail (fn-hsig-verdict-detail principal keys signatures))
                (verdict (fn-stxe-make sequence txid generation msgid :verified
                                       detail keyring-generation
                                       *fn-hsig-profile-tag*))
@@ -74,7 +84,64 @@
               event nil))
       nil)))
 
+; Publication and recovery use the exact durable snapshot, not merely its
+; generation number.  The construction-time authorization above also requires
+; this same canonical snapshot, closing a valid-signature/wrong-enrollment
+; substitution.
+(defun fn-hsig-article-event-snapshot-bindsp (event snapshot)
+  (declare (xargs :guard t))
+  (and (fn-stxa-p event)
+       (fn-stxk-p snapshot)
+       (equal (fn-stxa-keyring-generation event)
+              (fn-stxk-keyring-generation snapshot))
+       (equal (fn-stxa-profile event) *fn-hsig-profile-tag*)
+       (equal (fn-stxk-profile snapshot) *fn-hsig-profile-tag*)
+       (let ((key-items (fn-stmt-decode-items 5 (fn-stxk-snapshot snapshot)))
+             (verdict (fn-stxe-decode-exact (fn-stxa-verdict-event event))))
+         (and (fn-stmt-okp key-items)
+              (fn-stmt-okp verdict)
+              (let* ((items (fn-stmt-value key-items))
+                     (detail-items
+                      (fn-stmt-decode-items
+                       9 (fn-stxe-detail (fn-stmt-value verdict)))))
+                (and (equal (fn-stxk-snapshot snapshot)
+                            (fn-stxe-encode-items items))
+                     (true-listp items) (equal (len items) 5)
+                     (fn-stmt-bytes-item-p (nth 0 items))
+                     (fn-hsig-exact-octets-p (cdr (nth 0 items)) 32)
+                     (fn-stmt-uint-item-p (nth 1 items))
+                     (equal (cdr (nth 1 items)) *fn-hsig-ed25519-algorithm*)
+                     (fn-stmt-bytes-item-p (nth 2 items))
+                     (fn-hsig-exact-octets-p
+                      (cdr (nth 2 items)) *fn-hsig-ed25519-public-key-octets*)
+                     (fn-stmt-uint-item-p (nth 3 items))
+                     (equal (cdr (nth 3 items)) *fn-hsig-ml-dsa-65-algorithm*)
+                     (fn-stmt-bytes-item-p (nth 4 items))
+                     (fn-hsig-exact-octets-p
+                      (cdr (nth 4 items)) *fn-hsig-ml-dsa-65-public-key-octets*)
+                     (fn-stmt-okp detail-items)
+                     (let ((details (fn-stmt-value detail-items)))
+                       (and (equal (fn-stxe-detail (fn-stmt-value verdict))
+                                   (fn-stxe-encode-items details))
+                            (true-listp details) (equal (len details) 9)
+                            (equal items (take 5 details))
+                            (fn-stmt-uint-item-p (nth 5 details))
+                            (equal (cdr (nth 5 details))
+                                   *fn-hsig-ed25519-algorithm*)
+                            (fn-stmt-bytes-item-p (nth 6 details))
+                            (fn-hsig-exact-octets-p
+                             (cdr (nth 6 details))
+                             *fn-hsig-ed25519-signature-octets*)
+                            (fn-stmt-uint-item-p (nth 7 details))
+                            (equal (cdr (nth 7 details))
+                                   *fn-hsig-ml-dsa-65-algorithm*)
+                            (fn-stmt-bytes-item-p (nth 8 details))
+                            (fn-hsig-exact-octets-p
+                             (cdr (nth 8 details))
+                             *fn-hsig-ml-dsa-65-signature-octets*)))))))))
+
 (in-theory (disable (:d fn-hsig-keyring-snapshot)
                     (:d fn-hsig-keyring-event)
                     (:d fn-hsig-verdict-detail)
-                    (:d fn-hsig-authorized-article-event)))
+                    (:d fn-hsig-authorized-article-event)
+                    (:d fn-hsig-article-event-snapshot-bindsp)))
