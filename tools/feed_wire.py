@@ -33,6 +33,12 @@ import os
 import socket
 import struct
 
+# TRAILER_BYTES is *fn-frame-trailer-octets* (books/frame-octets.lisp:21)
+# typed a second time, and UNCHECKED: the store path cross-checks nine such
+# constants against `(fn-store-frame-constants)` at session open
+# (tools/frame_bridge.py:124-146) and the owner's feed path does not consult
+# that vector at all.  Recorded as an open twin by w11/harness-health rather
+# than fixed here, because the fix belongs where the session is.
 TRAILER_BYTES = 32
 LENGTH_BYTES = 4
 MAX_RECORD = 4096
