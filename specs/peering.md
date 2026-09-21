@@ -19,6 +19,22 @@ contact/tick model, and whose peer table is a configuration record kind under
 [bp-design](bp-design.md) is the same profile over a different convergence
 layer; §1.4 says exactly which state is shared.
 
+### Native public-witness scope
+
+`tests/test_native_peering.py` is an opt-in host observation, not a proof or a
+replacement for the executable ACL2 transition. It starts two saved native
+images only through `operator CONFIG run`, configures peers through the public
+`operator CONFIG peer add` grammar, and uses ordinary NNTP sockets to observe
+IHAVE/235 transit, byte-identical reread, 435 duplicate suppression, outbound
+delivery in both directions, and one source-process-death/restart requeue.
+`tools/v0_matrix.py --backend native-operator` invokes that same witness only
+when the image's source digest is explicitly supplied; it records unmeasured
+transit commands and unavailable image facts as `not-exercised`. The matrix
+captures wrapper and image digests before and after the witness. A sidecar core
+and any externally declared runtime are recorded separately; their loading is
+not inferred from those names. Those matching bytes identify the observed
+inputs, but do not establish that a named source revision produced them.
+
 RFC vocabulary, used exactly: fn acting on a received transit article is a
 *relaying agent* (RFC 5537 §3.6) toward its outbound peers and a *serving
 agent* (§3.7) toward its readers; both sets of duties apply to one
