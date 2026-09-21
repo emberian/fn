@@ -14,6 +14,7 @@
 (in-package "ACL2")
 (include-book "../books/bp-node")
 (include-book "../books/bp-node-records")
+(include-book "../books/bp-authored-wire")
 
 ; -----------------------------------------------------------------------------
 ; Endpoint IDs from the command line.
@@ -119,6 +120,33 @@
 
 (defun fn-bpn-host-sequence-frame-limit ()
   (fn-bpn-sequence-frame-limit))
+
+; -----------------------------------------------------------------------------
+; Immutable authored-wire evidence.  The preview is used only to observe the
+; exact final path under the BP spool lock.  The later operation carries that
+; same ACL2 name and the wire bytes produced by fn-bpn-send.
+
+(defun fn-bpn-host-authored-wire-name (reservation)
+  (let ((chars (fn-bpn-authored-wire-name-for-reservation reservation)))
+    (if (character-listp chars) (coerce chars 'string) "")))
+
+(defun fn-bpn-host-authored-wire-authorize
+  (config peer adu reservation obs lock-owned final-absent)
+  (fn-bpn-authored-wire-authorize
+   config peer adu reservation obs lock-owned final-absent))
+
+(defun fn-bpn-host-authored-wire-operationp (operation)
+  (and (fn-bpn-authored-wire-operationp operation) t))
+
+(defun fn-bpn-host-authored-wire-operation-name (operation)
+  (let ((chars (fn-bpn-authored-wire-operation-name-chars operation)))
+    (if (character-listp chars) (coerce chars 'string) "")))
+
+(defun fn-bpn-host-authored-wire-operation-wire (operation)
+  (fn-bpn-authored-wire-operation-wire operation))
+
+(defun fn-bpn-host-authored-wire-operation-publication (operation)
+  (fn-bpn-authored-wire-operation-publication operation))
 
 ; -----------------------------------------------------------------------------
 ; Receiving.  The flat result is
