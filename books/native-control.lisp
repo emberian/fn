@@ -237,9 +237,8 @@ distinguish an unobserved refusal from a durable acceptance."
 
 ; The raw reader allocates at most this many octets before ACL2 sees the frame.
 (defthm fn-native-control-encoded-request-is-bounded
-  (implies (fn-nctrl-requestp msgid groups article)
-           (<= (len (fn-native-control-request-encode msgid groups article))
-               *fn-nctrl-max-frame*))
+  (<= (len (fn-native-control-request-encode msgid groups article))
+      *fn-nctrl-max-frame*)
   :hints (("Goal" :in-theory (disable fn-nctrl-seal)))
   :rule-classes :linear)
 
