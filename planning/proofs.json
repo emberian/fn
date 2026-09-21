@@ -1099,6 +1099,21 @@
         "planning/evidence/kernel-freedom-d14b-2026-09-20.md",
         "planning/lanes/HANDOFF-w10-kernel-freedom.md"
       ]
+    },
+    {
+      "id": "PRF-033",
+      "title": "A clock the host contradicts is dropped, and the refusal is not an article verdict",
+      "statement": "fn-own-observe answers exactly one of :observed, :refused and :invalid, and the host reports that word rather than inferring one from a state comparison. On a related owner a :refused reading names a host contradiction -- the monotonic counter went backwards, has-wall changed, or a widened error bound moved the earliest admissible true time back -- and never merely a reading that did not move, because a reading equal to the one held is admitted. A refusal leaves the owner with no clock, and with no usable injection reading fn-nntp-post-step emits no submission and answers `441 posting failed; this server has no usable clock reading', which is a different constant from every article verdict the step can give.",
+      "milestone": "M3",
+      "requirements": [
+        "FLR-004",
+        "NNT-004",
+        "NNT-005"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "in-progress",
+      "note": "Decision D10-a, lane w11/clock-seam. Keystones fn-own-observe-refusal-names-a-contradiction (books/owner-invariants.lisp) and fn-post-without-a-clock-refuses-with-the-clock-line (books/nntp-post.lisp), with fn-own-observe-outcome-is-one-of-three and fn-own-observe-outcome-decides-the-clock-by-definition named for what they are and cited by :use. Teeth are evaluated in tests/acl2/owner-tests.lisp (the served-path second post on one connection, the same-reading collision, the clock 441 with an empty queue, DATE 503, and one-event recovery) and tests/acl2/nntp-post-tests.lisp (one must-fail per hypothesis). OPEN under this target: two submissions inside one millisecond still share a generated Message-ID, because fn-clock-later-observationp is non-strict; separating them needs the owner to remember the reading it last minted under and is not done here."
     }
   ]
 }
