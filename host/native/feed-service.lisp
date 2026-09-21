@@ -153,18 +153,26 @@ closed by this worker, preserving the one-closer rule."
 (defun fnn-feed-auth-profile (policy)
   "Read a private regular profile and let ACL2 decode its bounded bytes."
   (if (null policy) (values nil nil nil)
-    (let* ((path (second policy)) (info (fnn-lstat path)))
-      (unless (and info (fnn-regular-p info) (not (fnn-symlink-p info))
-                   (= (sb-posix:stat-uid info) (sb-posix:getuid))
-                   (zerop (logand (sb-posix:stat-mode info) #o077)))
-        (error 'fnn-feed-auth-error))
-      (let* ((maximum (fnn-core 'fn-owner-feed-profile-max-octets))
-             (raw (fnn-octet-list (fnn-read-regular-bounded path maximum)))
-             (decoded (fnn-core 'fn-owner-feed-profile-decode raw)))
-        (unless (and (consp decoded) (eq (car decoded) :ok)
-                     (= (length decoded) 3))
-          (error 'fnn-feed-auth-error))
-        (values (second decoded) (third decoded) (third policy))))))
+    (let* ((path (second policy))
+           (maximum (fnn-core 'fn-owner-feed-profile-max-octets))
+           (fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+))))
+      (unwind-protect
+           (let ((info (fnn-fstat fd)))
+             (unless (and (fnn-regular-p info)
+                          (= (sb-posix:stat-uid info) (sb-posix:getuid))
+                          (zerop (logand (sb-posix:stat-mode info) #o077))
+                          (<= (sb-posix:stat-size info) maximum))
+               (error 'fnn-feed-auth-error))
+             (let* ((bytes
+                      (handler-case (fnn-read-bounded-fd fd maximum)
+                        (fnn-store-fault () (error 'fnn-feed-auth-error))))
+                    (decoded (fnn-core 'fn-owner-feed-profile-decode
+                                       (fnn-octet-list bytes))))
+               (unless (and (consp decoded) (eq (car decoded) :ok)
+                            (= (length decoded) 3))
+                 (error 'fnn-feed-auth-error))
+               (values (second decoded) (third decoded) (third policy))))
+        (fnn-close fd)))))
 
 (defun fnn-feed-connect-core (service peer-octets fd user pass allow-clear)
   "Start ACL2's greeting/MODE phase; this does not make a feed live."

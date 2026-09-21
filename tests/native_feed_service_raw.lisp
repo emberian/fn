@@ -122,7 +122,7 @@
       (error "feed tick ran before ACL2 :READY"))
     (fnn-feed-pump-link runtime ready 2)
     (unless (= *test-ticks* 1)
-      (error "ready feed did not reach its one tick")))
+          (error "ready feed did not reach its one tick")))
   ;; A handshake refusal is peer-local and has no FNFD port transition.  It
   ;; must therefore neither be elevated to a host fault nor reappend an older
   ;; unrelated command batch while this link is being dropped.
@@ -142,6 +142,25 @@
              (error "connection refusal reappended an FNFD batch")))
       (setf (symbol-function 'fnn-feed-dial-plan) old-plan
             (symbol-function 'fnn-feed-lost) old-lost))))
+
+;; The raw adapter sends each ACL2-produced AUTHINFO command and does not mark
+;; the link ready until ACL2 has accepted PASS and the following MODE reply.
+(let* ((*test-words* '(:auth-user :need-input :auth-pass :need-input
+                       :mode :need-input :ready :need-input))
+       (*test-sends* nil)
+       (runtime (%make-fnn-feed-runtime :service :auth-test
+                                        :lock (sb-thread:make-mutex)
+                                        :limit 512))
+       (link (%make-fnn-feed-link :peer "auth" :peer-octets #(97)
+                                  :socket :fake :fd 21 :ready nil)))
+  (dolist (reply '((50 48 48 13 10) (51 56 49 13 10)
+                   (50 56 49 13 10) (50 48 51 13 10)))
+    (fnn-feed-consume runtime link reply nil 4))
+  (unless (and (fnn-feed-link-ready link)
+               (= (length *test-sends*) 3)
+               (every (lambda (sent) (equal (second sent) '(9 10)))
+                      *test-sends*))
+    (error "native AUTHINFO phase did not send three ACL2 commands before ready")))
 
 ;; The stop hook may wake a socket but never closes it.  The worker's
 ;; unwind-protect owns the one close, and a dial completing after stop cannot
