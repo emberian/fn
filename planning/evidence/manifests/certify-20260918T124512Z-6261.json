@@ -1,0 +1,75 @@
+{
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/bp-adu": 0,
+    "tests/acl2/bp-adu-tests": 0
+  },
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/acl2/certify-20260918T124512Z-6261",
+  "certificate_digests_sha256": {
+    "books/bp-adu": "7c62e8213c4430e59c36e14098b46da97ccacded2311ac4009e0d3d3c2e2be38",
+    "tests/acl2/bp-adu-tests": "f8bb44bd68f42213c69f4fe27f534fefcd5078921c263a7c6c3e9fc46e1f3eec"
+  },
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/bp-adu": "fa046f5e4a4289367becc2766a07c1f3e73c89a3fee8ead131bef62377c79e98",
+    "tests/acl2/bp-adu-tests": "ddf733ea7ceb69d4a84c469ccbc22162cdbf82f8e29cb3d2acf6b6ab27d839d5"
+  },
+  "environment": {
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 35eacd88abbd8cf01744de817c8f74a1 f14e2b1c28f7",
+    "FN_CERTIFY_SUCCESS 35eacd88abbd8cf01744de817c8f74a1 6d5afa109a0b"
+  ],
+  "failure_markers": [],
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 35eacd88abbd8cf01744de817c8f74a1 f14e2b1c28f7",
+    "FN_CERTIFY_SUCCESS 35eacd88abbd8cf01744de817c8f74a1 6d5afa109a0b"
+  ],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "requested_books": [
+    "books/bp-adu",
+    "tests/acl2/bp-adu-tests"
+  ],
+  "run_id": "certify-20260918T124512Z-6261",
+  "runner_sha256": "dd444d5cc83bfc60b75020e9aea69fdfcdda9135872cd1392e3ab53c6ff1a3d7",
+  "runner_unchanged": true,
+  "source_digests_sha256": {
+    "books/bp-adu.lisp": "915fc284171e366d2a2fefd2ae8854a93bc3b7e9be294784af03823eac76edf5",
+    "books/cbor-invariants.lisp": "ccf99ff8dd9e53ecc6d161adaaaba8c35bafc8b97fae4f4bcd05e4a62ca167bc",
+    "books/cbor.lisp": "5f1bda9c6c67a77d78bcbed67f7d6dc487192e1a3bb65359ea47b9ad300b3323",
+    "books/records-invariants.lisp": "28d816c0a6555ba5b06f1e979b80fa275928fd80bf40a61ab3282cb77f939e39",
+    "books/records.lisp": "8b629db1749c30030acde59dc009f0e55534954cedb90aba8dc316d2cfc7a9b1",
+    "tests/acl2/bp-adu-tests.lisp": "2f379f62f0ba4384a32563295eee7a0c6d92d2f89217a18a183573e1425670fb"
+  },
+  "source_digests_sha256_after": {
+    "books/bp-adu.lisp": "915fc284171e366d2a2fefd2ae8854a93bc3b7e9be294784af03823eac76edf5",
+    "books/cbor-invariants.lisp": "ccf99ff8dd9e53ecc6d161adaaaba8c35bafc8b97fae4f4bcd05e4a62ca167bc",
+    "books/cbor.lisp": "5f1bda9c6c67a77d78bcbed67f7d6dc487192e1a3bb65359ea47b9ad300b3323",
+    "books/records-invariants.lisp": "28d816c0a6555ba5b06f1e979b80fa275928fd80bf40a61ab3282cb77f939e39",
+    "books/records.lisp": "8b629db1749c30030acde59dc009f0e55534954cedb90aba8dc316d2cfc7a9b1",
+    "tests/acl2/bp-adu-tests.lisp": "2f379f62f0ba4384a32563295eee7a0c6d92d2f89217a18a183573e1425670fb"
+  },
+  "status": "passed",
+  "timeout_seconds": 180
+}

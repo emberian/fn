@@ -379,7 +379,101 @@ recovery barriers, while the cuts are `recover-replayed` at `:1207` and
 `recover-barrier` at `:1228`). Closing it needs a clause in
 `fn-bs-replay-matches-scan` saying the durable frontier is the scanned one
 minus one, and a matching frontier arm here; that is the next packet, not this
-one.
+one. **Taken 2026-09-20 as D14-c below**, in that shape, with the gate
+`fn-sf-frontier-rollback-visiblep` and one conjunct D14-b did not name: the
+two rollbacks are exclusive.
+
+### 2026-09-20: D14-c — the frontier rollback is a fourth arm with a record-list gate, and the two rollbacks are exclusive
+
+The packet D14-b named and did not take (lane `w11/bytestore-k2`). Nothing in
+D14-a or D14-b is reopened: `fn-sf-crash-imagep` stays byte-for-byte unchanged
+and is still the reliance predicate, and the counterexample from
+`*own-reopened*` still says why.
+
+**The question.** The recovery window is entered with a pending `:root` rename
+as well as with a pending `:transactions` link. `Store.advance_frontier`
+issues `os.replace` and the host cuts at `frontier-replaced`
+(`tools/run_store.py:1305`); the next process's `_load_frontier` reads the
+VIEW, so the kernel it builds holds `old+1` while the durable name still holds
+`old`; and `:root` is drained only by `fsync_dir(self.root)` at `:1216`, the
+FOURTH of the five recovery barriers, with cuts at `recover-replayed`
+(`:1207`) and `recover-barrier` (`:1228`). A crash at any of those rolls the
+frontier back to a value the kernel holds nowhere — `fn-sf-frontier-candidate`
+is `nil` in the window, and `fn-sf-frontier-new-visiblep` is false there. So
+`specs/crash-model-v2.md` K2 was FALSE in that sub-case.
+
+**Selected:** a fourth arm on `fn-sf-recovery-crash-imagep`,
+
+    (and (fn-sf-frontier-rollback-visiblep s)
+         (equal frontier (1- (fn-sf-frontier s)))
+         (equal records (fn-sf-records s)))
+
+gated by
+
+    (defun fn-sf-frontier-rollback-visiblep (s)
+      (and (fn-sf-recovery-visiblep s)
+           (null (fn-sf-successes s))
+           (posp (fn-sf-frontier s))
+           (fn-sf-record-listp (fn-sf-records s) 0 0 (1- (fn-sf-frontier s)))))
+
+with `fn-sf-crash-frontier-rollback` as its constructor and
+`fn-sf-image-crash` selecting among the three. The matching byte-side clause
+is in `fn-bs-replay-matches-scan`.
+
+**Why the record-list conjunct is the gate and not a convenience.** It admits
+exactly the reachable window. `fn-sf-statep` requires every record's txid below
+the frontier, and the allocator reserves txid `frontier-1` for the record
+published *after* the rename is durable (`fn-sf-candidatep`: the candidate's
+txid is `frontier-1`). So while the rename is pending no record holds that
+txid — which is exactly the conjunct — and the moment that record is published
+the conjunct is false and the frontier can no longer roll back. The same
+conjunct does three jobs: it makes the rolled-back value a kernel state
+(`fn-sf-crash-frontier-rollback-preserves-state`), it keeps
+`fn-sf-recovery-admissible-image-facts` true of the image, and it makes the
+image replayable at its own frontier
+(`fn-snt-recovery-admissible-crash-image-is-recoverable`, through
+`fn-snt-history-recoverable-under-record-bound`).
+
+**Why there IS a success-history conjunct, and it is not the record
+rollback's reason.** Rolling the frontier back drops no record, so every
+acknowledged pair still names one and nothing needs protecting. The conjunct
+is the only kernel-visible mark that separates a `:replaying` state built by
+`fn-sn-open-observed` from *this process's scan* — where the rename may still
+be pending — from one reached by `fn-sf-crash`, where the model already knows
+it is not. A crash from `:reserved` has observed `(:frontier-directory :ok)`,
+so `fsync_dir(self.root)` returned and the rename is durable; and a crash from
+`:frontier-attempted` is already covered by `fn-sf-crash`'s `:old` choice,
+because `fn-sf-frontier-new-visiblep` holds there. Without the conjunct the
+predicate would admit, on a crashed `:reserved` state, an image the same model
+refutes — `*fn-so-reserved-crashed*` in
+`tests/acl2/store-observed-traces-tests.lisp` is that state, and it is the
+tooth. `fn-sn-open-observed` keeps no ghost
+(`fn-sn-open-observed-success-exact-history`) and `Store.recover` runs once
+per process, so the conjunct costs nothing reachable; and
+`fn-bs-replay-matches-scan` already carries `(equal (fn-sf-successes ks) nil)`,
+so it costs `K2` nothing either. As in D14-b it is necessary and not
+sufficient, which is why the predicate is a conclusion and never a premise.
+
+**Why the two rollbacks are exclusive.** The arm carries
+`(equal records (fn-sf-records s))`, so the image that loses the rename AND the
+link is not admitted. A recovery window holds at most one pending authority
+entry operation: `advance_frontier` fences `:root` and `publish` fences
+`:transactions` before either returns, and neither runs before recovery
+completes, so a dead process leaves at most one un-fenced authority entry
+behind. Outside the window `fn-bs-pending-matches-phase` gets that for free —
+`fn-sf-frontier-new-visiblep` and `fn-sf-record-present-visiblep` are disjoint
+phase sets — and inside it the phase says nothing, so the relation says it:
+`fn-bs-replay-matches-scan` now carries `(null txn-ops)` under `root-ops`.
+
+**`fn-sf-crash-choicep` again gains no choice**, for D14-b's reason in its
+frontier spelling: a trace that could roll the frontier back would let a later
+trace re-issue a txid an earlier process had already published under. The
+record-list gate is what excludes that, and a trace event carries no gate.
+
+**What this closes and what it does not.** K2's *statement* is now true of
+every image the platform can leave in the recovery window; K2 itself is still
+open, and what it waits on is unchanged — K1's other three scan clauses. The
+byte-side clause is an obligation on K0, not a theorem.
 
 ### 2026-09-20: D19 — the header-value wildmat profile, and what fn's 501 was
 

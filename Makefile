@@ -50,6 +50,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/frame \
 	books/frame-invariants \
 	tests/acl2/frame-tests \
+	books/frame-trailer \
+	tests/acl2/frame-trailer-tests \
 	books/identity \
 	books/identity-invariants \
 	tests/acl2/identity-tests \
@@ -305,6 +307,18 @@ check:
 # walk spelled by hand instead of through a named projection is drift and is
 # counted, not failed (--strict fails on those too).  Mechanical, no ACL2.
 	$(PYTHON) tools/session_depth.py
+# Every certification claim in this tree cites a run directory under
+# `build/`, which `.gitignore:6` excludes: the directory exists only on the
+# box that ran it, and a worktree removal, a farm root or a gate reaper
+# deletes it.  At dev 5698648, 314 run ids were cited in tracked files and
+# none resolved, so a reader could not check a single one.  The manifest is
+# the claim and is committed under planning/evidence/manifests/; this fails
+# on a NEWLY cited run with no committed manifest and tolerates the 177 the
+# lane could not recover, which are named in that directory's LOST.txt.
+# `--strict` fails on those too, once their owners re-run or retract them.
+# Mechanical, no ACL2.  `tools/cite_check.py` is the same family for
+# repository paths and deliberately does not read `build/`.
+	$(PYTHON) tools/evidence_manifests.py check
 # The teeth audit's static half: assertions that exercise ACL2 rather than fn,
 # recognisers that no test ever makes TRUE, keystones with no witness in any
 # test book, and citations of theorems the tree no longer defines.  It needs
@@ -352,7 +366,8 @@ model-test: certify
 
 tooling-test:
 	$(PYTHON) -m unittest tests.test_certify_runner tests.test_acl2_wrapper \
-	    tests.test_ledger tests.test_cite_check -v
+	    tests.test_ledger tests.test_cite_check \
+	    tests.test_evidence_manifests -v
 
 test: check certify
 	$(PYTHON) tools/run_simulator.py

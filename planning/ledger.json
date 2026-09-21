@@ -47,6 +47,8 @@
     "books/frame",
     "books/frame-invariants",
     "tests/acl2/frame-tests",
+    "books/frame-trailer",
+    "tests/acl2/frame-trailer-tests",
     "books/identity",
     "books/identity-invariants",
     "tests/acl2/identity-tests",
@@ -281,22 +283,22 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 278,
-    "books_in_root_closure": 277,
-    "roots": 277,
-    "theorems": 5639,
-    "functions": 3959,
-    "assert_events": 5667,
+    "books": 280,
+    "books_in_root_closure": 279,
+    "roots": 279,
+    "theorems": 5667,
+    "functions": 3963,
+    "assert_events": 5728,
     "must_fails": 63,
     "encapsulates": 19,
     "guards": {
-      "verified": 1481,
-      "declared-off": 191,
+      "verified": 1484,
+      "declared-off": 192,
       "default-guarded": 1796,
       "default-unguarded": 491
     },
     "suspect_theorems": 46,
-    "export_hygiene_warnings": 72,
+    "export_hygiene_warnings": 73,
     "enabled_projection_warnings": 27,
     "teeth_form_warnings": 0,
     "include_hygiene_warnings": 89,
@@ -2367,6 +2369,34 @@
       "read_error": null
     },
     {
+      "book": "books/frame-trailer.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 1,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "crypto-attach",
+        "frame-invariants"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/frame.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -4055,7 +4085,7 @@
       "book": "books/store-files-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 58,
+      "theorems": 62,
       "functions": 4,
       "guards": {
         "verified": 0,
@@ -4110,14 +4140,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 30,
-      "functions": 55,
+      "functions": 57,
       "guards": {
-        "verified": 52,
+        "verified": 54,
         "declared-off": 0,
         "default-guarded": 3,
         "default-unguarded": 0
       },
-      "verify_guards_events": 52,
+      "verify_guards_events": 54,
       "assert_events": 0,
       "must_fails": 0,
       "defconsts": 2,
@@ -4134,11 +4164,11 @@
       "book": "books/store-node-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 56,
-      "functions": 1,
+      "theorems": 71,
+      "functions": 2,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 1,
         "default-guarded": 0,
         "default-unguarded": 1
       },
@@ -4191,7 +4221,7 @@
       "book": "books/store-node-traces.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 52,
+      "theorems": 53,
       "functions": 5,
       "guards": {
         "verified": 2,
@@ -4270,7 +4300,7 @@
       "book": "books/store-observed.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 38,
+      "theorems": 39,
       "functions": 13,
       "guards": {
         "verified": 12,
@@ -6192,6 +6222,31 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/frame-trailer-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 25,
+      "must_fails": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/frame-trailer"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/identity-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -7324,9 +7379,9 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 101,
+      "assert_events": 137,
       "must_fails": 0,
-      "defconsts": 28,
+      "defconsts": 30,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -8167,6 +8222,12 @@
         "theorem": "fn-jrec-config-sequence-agrees",
         "book": "books/config-records.lisp",
         "line": 87,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-frame-trailer-of-octets",
+        "book": "books/frame-trailer.lisp",
+        "line": 82,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {

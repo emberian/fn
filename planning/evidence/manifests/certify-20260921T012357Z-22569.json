@@ -1,0 +1,164 @@
+{
+  "acl2_executable": "/opt/homebrew/Cellar/acl2/8.7_6/bin/acl2",
+  "acl2_executable_sha256": "36519682f97e83f1aadf9d092f46cb944d6621751595b8abf6b27b74309df324",
+  "acl2_exit_codes": {
+    "books/wildmat-parser-invariants": 0,
+    "tests/acl2/wildmat-parser-invariants-tests": 0,
+    "tests/acl2/wildmat-teeth-tests": 0,
+    "tests/acl2/wildmat-tests": 0
+  },
+  "acl2_slots": 4,
+  "acl2_version": "ACL2 Version 8.7",
+  "acl2_version_probe_exit_code": 0,
+  "affected_by": [],
+  "archived_from": "nextop.local:/Users/ember/dev/fn/build/acl2/certify-20260921T012357Z-22569",
+  "book_failures": {},
+  "book_results": {
+    "books/wildmat-parser-invariants": "passed",
+    "tests/acl2/wildmat-parser-invariants-tests": "passed",
+    "tests/acl2/wildmat-teeth-tests": "passed",
+    "tests/acl2/wildmat-tests": "passed"
+  },
+  "book_wall_seconds": {
+    "books/wildmat-parser-invariants": 4.377,
+    "tests/acl2/wildmat-parser-invariants-tests": 0.617,
+    "tests/acl2/wildmat-teeth-tests": 0.989,
+    "tests/acl2/wildmat-tests": 1.156
+  },
+  "cert_cache": {
+    "already_cached": 4,
+    "directory": "/Users/ember/.cache/fn-certs",
+    "not_published": [],
+    "per_book": [
+      {
+        "already_cached": false,
+        "book": "books/wildmat-parser-invariants",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/wildmat-tests",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/wildmat-parser-invariants-tests",
+        "published": true,
+        "verdict": "passed"
+      },
+      {
+        "already_cached": false,
+        "book": "tests/acl2/wildmat-teeth-tests",
+        "published": true,
+        "verdict": "passed"
+      }
+    ],
+    "per_book_published": 4,
+    "published": 0
+  },
+  "certificate_digests_sha256": {
+    "books/wildmat-parser-invariants": "994f46c25484e4272f5f2e2a2e5780d62ab407153208bcaa71bea0ceb7ea1a43",
+    "tests/acl2/wildmat-parser-invariants-tests": "5a1fcb4babdb737084e194467d98a83c0b4c31d24b3f99d83119b5925ce83d81",
+    "tests/acl2/wildmat-teeth-tests": "23228b04b73095e99af032fc6f971a1a5ecc50a27f82ebfbae09f8965de1d1cc",
+    "tests/acl2/wildmat-tests": "fb5b77edf699919b54e254e69abbe18ecfaff76e4cff11d068923dd8aefe67a6"
+  },
+  "certify_wall_seconds": 7.266,
+  "closure": false,
+  "command": [
+    "acl2"
+  ],
+  "driver_digests_sha256": {
+    "books/wildmat-parser-invariants": "017e34aa56df3579693d5cdfb70445256d215e930841623204a12f3c2f6170f6",
+    "tests/acl2/wildmat-parser-invariants-tests": "da28dd88927af9a2e30827a3c991cccfcb6f9529d5499797fe8562ae9aa14d1a",
+    "tests/acl2/wildmat-teeth-tests": "9743067d8eb4ab342cad20ea28d3ef7f79ebd7646d672794b1560610a31b1d5c",
+    "tests/acl2/wildmat-tests": "16bc4a8bc13a89e01ac58141463b28c0f406fec2d3c31f93a10d0c4891dc3e18"
+  },
+  "environment": {
+    "ACL2_BOOK_HASH_ALISTP": "NIL",
+    "ACL2_CUSTOMIZATION": "NONE",
+    "ACL2_SYSTEM_BOOKS": null
+  },
+  "expected_success_markers": [
+    "FN_CERTIFY_SUCCESS 96795ce18abeae9ab95c5e98e36e6003 5cf207f3109f",
+    "FN_CERTIFY_SUCCESS 96795ce18abeae9ab95c5e98e36e6003 4d2326e85bd0",
+    "FN_CERTIFY_SUCCESS 96795ce18abeae9ab95c5e98e36e6003 b4791499de81",
+    "FN_CERTIFY_SUCCESS 96795ce18abeae9ab95c5e98e36e6003 f9b034412a58"
+  ],
+  "failure_markers": [],
+  "host_lisp_banner": "This is SBCL 2.6.8, an implementation of ANSI Common Lisp.",
+  "jobs": 1,
+  "jobs_effective": 1,
+  "local_source_audit": {
+    "findings": {},
+    "forbidden_facilities": [
+      "defaxiom",
+      "defttag",
+      "include-raw",
+      "set-raw-mode",
+      "skip-proofs"
+    ],
+    "method": "conservative lexical symbol scan plus human batch review; not macro expansion",
+    "scope": "local source closure only; installed ACL2/system books remain trusted"
+  },
+  "observed_success_markers": [
+    "FN_CERTIFY_SUCCESS 96795ce18abeae9ab95c5e98e36e6003 5cf207f3109f",
+    "FN_CERTIFY_SUCCESS 96795ce18abeae9ab95c5e98e36e6003 4d2326e85bd0",
+    "FN_CERTIFY_SUCCESS 96795ce18abeae9ab95c5e98e36e6003 b4791499de81",
+    "FN_CERTIFY_SUCCESS 96795ce18abeae9ab95c5e98e36e6003 f9b034412a58"
+  ],
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.7",
+  "reader_sha256": "de84702b19bfe30f132291dcb8ac7b3d3ad10b16a4134dcb0c1d6239187a839d",
+  "requested_before_filter": [
+    "books/wildmat-parser-invariants",
+    "tests/acl2/wildmat-tests",
+    "tests/acl2/wildmat-parser-invariants-tests",
+    "tests/acl2/wildmat-teeth-tests"
+  ],
+  "requested_books": [
+    "books/wildmat-parser-invariants",
+    "tests/acl2/wildmat-tests",
+    "tests/acl2/wildmat-parser-invariants-tests",
+    "tests/acl2/wildmat-teeth-tests"
+  ],
+  "run_id": "certify-20260921T012357Z-22569",
+  "runner_sha256": "b1693353f9618f5eba6a5e2eebbc6f6275b71d753ff4c81c94a99c5a1795b3c4",
+  "runner_unchanged": true,
+  "slot_wait_seconds": {
+    "books/wildmat-parser-invariants": 0.0,
+    "tests/acl2/wildmat-parser-invariants-tests": 0.0,
+    "tests/acl2/wildmat-teeth-tests": 0.0,
+    "tests/acl2/wildmat-tests": 0.0,
+    "version-probe": 0.0
+  },
+  "source_digests_sha256": {
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/wildmat-matcher-invariants.lisp": "f823762d9724f8f07ff716009db5d3d8caa1ed33965f5f361f5679546b3a0489",
+    "books/wildmat-parser-invariants.lisp": "b6dab0b04e34a50c602af55be66dbd55524f37d72d8f46a25227b298529b3e17",
+    "books/wildmat-utf8-invariants.lisp": "d2920c847d4a6a5e4650f1f934cda9295e26a9ac44e4f11a6870d6cb8dfe3438",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/wildmat-parser-invariants-tests.lisp": "74a232fc2790c6cf4c955a69eb4045ed1019c8a29710e559a67a91768b2620eb",
+    "tests/acl2/wildmat-teeth-tests.lisp": "bc1ab596e0cb714d41a6392c5528eb7b3416b23844f23109b54941e110475cdb",
+    "tests/acl2/wildmat-tests.lisp": "0f0ec50b2c988e3d34b15366d9e11b4f96fd83c96079f385a644b3acda4d6dc7"
+  },
+  "source_digests_sha256_after": {
+    "books/cbor.lisp": "8d012edd6a07cc673a14307b074fed7f63b9244c7e857c59fce498e956d96a0d",
+    "books/wildmat-matcher-invariants.lisp": "f823762d9724f8f07ff716009db5d3d8caa1ed33965f5f361f5679546b3a0489",
+    "books/wildmat-parser-invariants.lisp": "b6dab0b04e34a50c602af55be66dbd55524f37d72d8f46a25227b298529b3e17",
+    "books/wildmat-utf8-invariants.lisp": "d2920c847d4a6a5e4650f1f934cda9295e26a9ac44e4f11a6870d6cb8dfe3438",
+    "books/wildmat.lisp": "9dc49762d1e24ad96cec51510584a8bff88f20f8f94d5c1962c379bcc084a5f0",
+    "tests/acl2/wildmat-parser-invariants-tests.lisp": "74a232fc2790c6cf4c955a69eb4045ed1019c8a29710e559a67a91768b2620eb",
+    "tests/acl2/wildmat-teeth-tests.lisp": "bc1ab596e0cb714d41a6392c5528eb7b3416b23844f23109b54941e110475cdb",
+    "tests/acl2/wildmat-tests.lisp": "0f0ec50b2c988e3d34b15366d9e11b4f96fd83c96079f385a644b3acda4d6dc7"
+  },
+  "start_order": [
+    "books/wildmat-parser-invariants",
+    "tests/acl2/wildmat-tests",
+    "tests/acl2/wildmat-parser-invariants-tests",
+    "tests/acl2/wildmat-teeth-tests"
+  ],
+  "status": "passed",
+  "timeout_seconds": 1800
+}
