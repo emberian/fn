@@ -21,6 +21,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import certs  # noqa: E402
+import acl2_toolchain  # noqa: E402
 
 
 @dataclass(frozen=True)
@@ -133,7 +134,12 @@ def acquire(root: Path, cache: Path, acl2: Path, profile: str,
             timeout: int = 1800, run=subprocess.run) -> Acquisition:
     """Try complete current sets until ACL2 accepts one without warnings."""
     roots = profile_roots(root, profile)
-    toolchain = certs.content_hash(acl2)
+    fingerprint = acl2_toolchain.fingerprint(acl2)
+    if not fingerprint.qualified or fingerprint.identity is None:
+        return Acquisition(
+            False, profile, roots,
+            reason="unqualified ACL2 launcher/core/runtime: " + fingerprint.reason)
+    toolchain = fingerprint.identity
     candidates = certs.artifact_sets(root, cache, roots, toolchain)
     rejected: list[str] = []
     attempts: list[str] = []
@@ -141,7 +147,7 @@ def acquire(root: Path, cache: Path, acl2: Path, profile: str,
         if not candidate.complete:
             continue
         report = certs.install_artifact_set(
-            root, cache, roots, toolchain_sha256=toolchain, reject=rejected)
+            root, cache, roots, toolchain_identity=toolchain, reject=rejected)
         if report.artifact_set is None:
             break
         loaded = validate(root, acl2, roots, timeout=timeout, run=run)

@@ -122,7 +122,8 @@ class Certified:
     # The ACL2 executable and environment are part of a reusable proof
     # artifact's identity.  Source bytes alone do not say which prover wrote
     # the certificate.
-    toolchain: dict[str, object] = field(default_factory=dict)
+    compatibility: dict[str, object] = field(default_factory=dict)
+    certification_provenance: dict[str, object] = field(default_factory=dict)
 
 
 @dataclass
@@ -327,11 +328,26 @@ def stable_identity(value: object) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-def manifest_toolchain(manifest: dict) -> dict[str, object]:
-    """The certification inputs that are neither fn source nor a certificate."""
+def manifest_compatibility(manifest: dict) -> dict[str, object]:
+    """Inputs which decide whether ACL2 may reuse this certificate.
+
+    Runner and reader hashes are audit provenance: changing either tool's text
+    does not change the ACL2 world which wrote a certificate.  The qualified
+    fingerprint already binds the launcher chain, saved core, Lisp runtime and
+    proof environment.  Older launcher-only manifests intentionally return no
+    compatibility identity.
+    """
+    compatibility = manifest.get("acl2_compatibility")
+    return dict(compatibility) if isinstance(compatibility, dict) else {}
+
+
+def manifest_provenance(manifest: dict) -> dict[str, object]:
+    """Per-certification audit facts retained without fragmenting reuse sets."""
     return {
         "acl2_version": manifest.get("acl2_version"),
         "acl2_executable_sha256": manifest.get("acl2_executable_sha256"),
+        "acl2_toolchain": manifest.get("acl2_toolchain"),
+        "acl2_toolchain_identity": manifest.get("acl2_toolchain_identity"),
         "environment": manifest.get("environment"),
         "runner_sha256": manifest.get("runner_sha256"),
         "reader_sha256": manifest.get("reader_sha256"),
@@ -454,7 +470,7 @@ def usable_origin(meta: dict, target: str) -> bool:
 
 
 def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
-                  toolchain_sha256: str | None = None,
+                  toolchain_identity: str | None = None,
                   dependencies_only: bool = False) -> list[ArtifactSet]:
     """Candidate whole sets for ``roots``, ordered by usable coverage.
 
@@ -474,8 +490,8 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
             if not usable_origin(meta, target):
                 continue
             toolchain = meta.get("toolchain") or {}
-            found_sha = toolchain.get("acl2_executable_sha256")
-            if toolchain_sha256 and found_sha != toolchain_sha256:
+            found_identity = meta.get("toolchain_identity")
+            if toolchain_identity and found_identity != toolchain_identity:
                 continue
             origin = str(meta.get("origin_root", ""))
             toolchain_id = stable_identity(toolchain)
@@ -508,7 +524,7 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
 
 
 def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
-                         toolchain_sha256: str | None = None,
+                         toolchain_identity: str | None = None,
                          reject: Iterable[str] = (),
                          require_origin: str | None = None,
                          purge_on_miss: bool = False,
@@ -524,10 +540,10 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
         report.artifact_origin = require_origin or str(root.resolve())
         report.source_identity = source_set_identity({})
         report.toolchain_identity = stable_identity({
-            "acl2_executable_sha256": toolchain_sha256})
+            "empty": True, "toolchain_identity": toolchain_identity})
         return report
     candidates = [one for one in artifact_sets(
-                      root, cache, roots, toolchain_sha256, dependencies_only)
+                      root, cache, roots, toolchain_identity, dependencies_only)
                   if one.identity not in rejected
                   and (require_origin is None
                        or one.origin_root == require_origin)]
@@ -660,7 +676,8 @@ def certified_books(manifests: list[dict],
                 # error, so it must not verify anything.
                 after=after.get(f"{book}.lisp", None if not after else ""),
                 cert=certificate, evidence=evidence, origin=origin,
-                toolchain=manifest_toolchain(manifest)))
+                compatibility=manifest_compatibility(manifest),
+                certification_provenance=manifest_provenance(manifest)))
     return found
 
 
@@ -732,6 +749,10 @@ def publish(root: Path, cache: Path, manifests: list[dict] | None = None,
             # describes content it was never produced from.
             report.unverified.append(name)
             continue
+        if not record.compatibility:
+            report.unverified.append(
+                f"{name}: no qualified ACL2 launcher/core/runtime fingerprint")
+            continue
         try:
             key, listing = closure_key(root, name)
         except UnreadableBook as error:
@@ -754,7 +775,9 @@ def publish(root: Path, cache: Path, manifests: list[dict] | None = None,
             report.already += 1
             old_meta = read_meta(directory)
             if (old_meta.get("origin_kind", LIVE_ORIGIN) != kind
-                    or old_meta.get("toolchain") != record.toolchain):
+                    or old_meta.get("toolchain") != record.compatibility
+                    or old_meta.get("certification_provenance")
+                    != record.certification_provenance):
                 # The same bytes, published again by a run that knows what its
                 # origin tree and toolchain are: these fields are metadata
                 # about the artifact, not its certificate bytes, so refresh
@@ -796,7 +819,9 @@ def write_entry(directory: Path, name: str, key: str, listing: list[str],
         # snapshots, installable wherever the cache reaches.
         "origin_kind": origin_kind,
         "origin_host": origin_host or os.uname().nodename,
-        "toolchain": record.toolchain,
+        "toolchain": record.compatibility,
+        "toolchain_identity": stable_identity(record.compatibility),
+        "certification_provenance": record.certification_provenance,
         "has_port": port is not None,
         "published_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "published_from": str(cert.parent),
@@ -926,9 +951,9 @@ def main(argv: list[str] | None = None) -> int:
                              "live worktree (default, or FN_CERT_ORIGIN_KIND), a "
                              "gate directory or a farm run root.  A snapshot's "
                              "pairs install on the machine that holds it too")
-    parser.add_argument("--toolchain-sha256", default=None,
-                        help="for install-set, require certificates produced by "
-                             "this ACL2 executable digest")
+    parser.add_argument("--toolchain-identity", default=None,
+                        help="for install-set, require this qualified ACL2 "
+                             "launcher/core/runtime compatibility identity")
     parser.add_argument("--require-origin", default=None,
                         help="for install-set, require this exact certificate "
                              "origin (needed when this run will extend the set)")
@@ -955,7 +980,7 @@ def main(argv: list[str] | None = None) -> int:
         if not names:
             parser.error("install-set needs one or more root books")
         report = install_artifact_set(
-            root, cache, names, toolchain_sha256=arguments.toolchain_sha256,
+            root, cache, names, toolchain_identity=arguments.toolchain_identity,
             require_origin=arguments.require_origin,
             purge_on_miss=arguments.purge_on_miss,
             dependencies_only=arguments.dependencies_only)

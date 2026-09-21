@@ -32,6 +32,17 @@ TEXT_CERT = ('(IN-PACKAGE "ACL2")\n"ACL2 Version 8.7"\n'
              ":BEGIN-PORTCULLIS-CMDS\n:END-PORTCULLIS-CMDS\n:EXPANSION-ALIST\nNIL\n")
 # ACL2 8.7's compact serializer: binary, opening with the `#Z` magic.
 SERIALIZED = b"\n#Z(|ACL2|\x00\x01\x02 fake serialized certificate\n"
+TEST_COMPATIBILITY = {
+    "schema": "fn-acl2-toolchain-v1",
+    "launcher_chain_sha256": ["1" * 64],
+    "core_sha256": "2" * 64,
+    "runtime_sha256": "3" * 64,
+    "proof_environment": {
+        "ACL2_CUSTOMIZATION": "NONE",
+        "ACL2_BOOK_HASH_ALISTP": "NIL",
+        "ACL2_SYSTEM_BOOKS": None,
+    },
+}
 
 # A two-level closure: the test book includes mid, and mid includes base.
 BOOKS = {
@@ -72,6 +83,9 @@ def manifest_for(root: Path, certified: list[str], status: str = "passed",
         "acl2_exit_codes": {name: 0 for name in certified},
         "acl2_version": "ACL2 Version 8.7 test",
         "acl2_executable_sha256": "a" * 64,
+        "acl2_compatibility": TEST_COMPATIBILITY,
+        "acl2_toolchain_identity": certs.stable_identity(TEST_COMPATIBILITY),
+        "acl2_toolchain": {"status": "qualified", "fixture": True},
         "environment": {"ACL2_BOOK_HASH_ALISTP": "NIL"},
     }
     if write:
@@ -201,6 +215,18 @@ class PublishTests(unittest.TestCase):
             root = worktree(directory, certified=["books/mid"])
             manifest_for(root, ["books/mid"], status="failed")
             self.assertEqual(certs.publish(root, root / "cache").published, 0)
+
+    def test_launcher_only_legacy_manifest_is_not_reusable(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = worktree(directory, certified=["books/mid"])
+            manifest = manifest_for(root, ["books/mid"], write=False)
+            manifest.pop("acl2_compatibility")
+            manifest["acl2_toolchain"] = {
+                "status": "unqualified", "reason": "unknown launcher"}
+            report = certs.publish(root, root / "cache", [manifest])
+            self.assertEqual(report.published, 0)
+            self.assertIn("no qualified ACL2 launcher/core/runtime fingerprint",
+                          report.unverified[0])
 
     def test_a_recorded_closure_error_after_the_run_vouches_for_nothing(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -446,7 +472,7 @@ class SnapshotOriginTests(unittest.TestCase):
 class ArtifactSetTests(unittest.TestCase):
     """A closure is installed from one origin/toolchain, or not at all."""
 
-    TOOLCHAIN = "a" * 64
+    TOOLCHAIN = certs.stable_identity(TEST_COMPATIBILITY)
 
     def publish(self, source: Path, cache: Path, books: list[str], origin: str):
         manifest = manifest_for(source, books, write=False)
@@ -531,6 +557,26 @@ class ArtifactSetTests(unittest.TestCase):
                 target, cache, ["books/mid"], "b" * 64)
             self.assertIsNone(report.artifact_set)
             self.assertCountEqual(report.uncached, ["books/base", "books/mid"])
+
+    def test_runner_and_reader_hashes_are_provenance_not_compatibility(self):
+        with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as destination:
+            cache = Path(destination) / "cache"
+            source = worktree(one, certified=["books/base", "books/mid"])
+            for name, marker in (("books/base", "a"), ("books/mid", "b")):
+                manifest = manifest_for(source, [name], write=False)
+                manifest["runner_sha256"] = marker * 64
+                manifest["reader_sha256"] = marker.upper() * 64
+                certs.publish(source, cache, [manifest], [name],
+                              origin="/farm/coherent", origin_kind="run")
+            target = worktree(destination + "/target")
+            report = certs.install_artifact_set(
+                target, cache, ["books/mid"], self.TOOLCHAIN)
+            self.assertEqual(report.artifact_origin, "/farm/coherent")
+            self.assertEqual(report.installed, 2)
+            key, _ = certs.closure_key(target, "books/base")
+            base_meta = certs.cached_entries(cache, key)[0][1]
+            self.assertEqual(
+                base_meta["certification_provenance"]["runner_sha256"], "a" * 64)
 
     def test_incremental_install_requires_the_origin_it_will_extend(self):
         with tempfile.TemporaryDirectory() as one, tempfile.TemporaryDirectory() as two, \

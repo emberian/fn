@@ -49,12 +49,25 @@ class ProfileTests(unittest.TestCase):
 class AcquisitionTests(unittest.TestCase):
     TOOLCHAIN = b"test acl2 image"
 
-    def publish_set(self, source: Path, cache: Path, origin: str):
+    def acl2(self, root: Path) -> Path:
+        runtime = root / "fake-sbcl"
+        runtime.write_bytes(self.TOOLCHAIN)
+        runtime.chmod(0o755)
+        core = root / "saved_acl2.core"
+        core.write_bytes(b"test core")
+        launcher = root / "acl2"
+        launcher.write_text(
+            '#!/bin/sh\nexec "{}" --core "{}" "$@"\n'.format(runtime, core))
+        launcher.chmod(0o755)
+        return launcher
+
+    def publish_set(self, source: Path, cache: Path, origin: str,
+                    fingerprint):
         names = ["books/base", "books/mid"]
         manifest = manifest_for(source, names, write=False)
-        manifest["acl2_executable_sha256"] = certs.stable_identity("placeholder")
-        # acquire hashes the actual executable, so make the manifest exact.
-        manifest["acl2_executable_sha256"] = certs.content_hash(source / "acl2")
+        manifest["acl2_compatibility"] = fingerprint.compatibility
+        manifest["acl2_toolchain_identity"] = fingerprint.identity
+        manifest["acl2_toolchain"] = fingerprint.provenance
         certs.publish(source, cache, [manifest], names, origin=origin,
                       origin_kind="run")
 
@@ -63,13 +76,12 @@ class AcquisitionTests(unittest.TestCase):
             base = Path(directory)
             cache = base / "cache"
             target = worktree(str(base / "target"))
-            acl2 = target / "acl2"
-            acl2.write_bytes(self.TOOLCHAIN)
+            acl2 = self.acl2(target)
+            fingerprint = proof_artifacts.acl2_toolchain.fingerprint(acl2)
             for number in (1, 2):
                 source = worktree(str(base / f"source-{number}"),
                                   certified=["books/base", "books/mid"])
-                (source / "acl2").write_bytes(self.TOOLCHAIN)
-                self.publish_set(source, cache, f"/farm/run-{number}")
+                self.publish_set(source, cache, f"/farm/run-{number}", fingerprint)
 
             calls = 0
 
