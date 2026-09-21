@@ -15,7 +15,14 @@
        ; Effects reconstructed from old durable records are audit history, not
        ; permission to repeat external actions after open.
        (let ((state (f-put-global 'fn-workflow-effects nil state)))
-        (value :ready)))
+        ; The work ids this image came back holding.  ACL2 computes the list
+        ; and the host carries it back unread: it is what separates a work
+        ; recovered from a cut from one this session enqueues next.
+        (let ((state (f-put-global 'fn-workflow-recovered
+                      (fn-bp-work-ids
+                       (fn-bp-state-works (fn-bp-journal-nth 1 answer)))
+                      state)))
+         (value :ready))))
     (value :fault))))
 
 (defun fn-workflow-state (state)
@@ -58,6 +65,15 @@
  ; ACL2 owns the projection; this reports it.  :absent means no such work in
  ; the installed image, never "enqueued but not yet attempted".
  (value (fn-bp-work-status work-id
+         (fn-bp-state-works (f-get-global 'fn-workflow-state state)))))
+
+; Provenance is a second question and a second answer.  Two works can both be
+; :outstanding and have reached the image by materially different routes;
+; ACL2 decides which, from the id list the install recorded.
+(defun fn-workflow-work-origin (work-id state)
+ (declare (xargs :stobjs state :mode :program))
+ (value (fn-bp-work-origin work-id
+         (f-get-global 'fn-workflow-recovered state)
          (fn-bp-state-works (f-get-global 'fn-workflow-state state)))))
 
 (defun fn-workflow-take-submit (work-id attempt-id generation state)

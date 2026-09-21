@@ -156,6 +156,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-workflow-teeth-tests \
 	books/bp-workflow-records \
 	books/bp-workflow-records-invariants \
+	books/bp-workflow-replay-status \
 	tests/acl2/bp-workflow-records-tests \
 	tests/acl2/bp-workflow-records-guards-tests \
 	books/bp-receipt \
