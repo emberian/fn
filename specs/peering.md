@@ -1260,7 +1260,7 @@ two-node feed scenario.
   policy, and the effect was that no credential, no `required` bit and no
   certificate reached any connection on either node of the v0 matrix
   ([the record](../planning/evidence/auth-live-2026-09-21.md)).
-  `fn-served-peer-and-reader-open-under-the-same-policy` (PRF-038) now says
+  `fn-served-peer-and-reader-open-under-the-same-policy` (PRF-039) now says
   the two branches pin one value.
 
   **Open, and not this lane's to decide** (board, w11/auth-live): the policy
