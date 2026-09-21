@@ -113,3 +113,38 @@ green.
 | `host/reader-host.lisp`'s `*fn-reader-agent*` | The same hard-coded identity this lane removed from the owner. The reader's `--post` path should read the policy slot too; not this lane's. |
 | `tools/run_feed.py` | It is a second driver for `tests/test_feed.py` and its Python copy of an owner decision has drifted three times. This lane did not touch it and does not propose retiring it without measuring what `tests/test_feed.py` would lose. |
 | fn does not prepend its path-identity to a relayed article's Path | unchanged from wave 10; loop suppression on the return leg rests on the peer's history answer. |
+
+## The one step this lane could not exercise, and everything known about it
+
+K5's `kill -9` restart-by-offer did not deliver in gate runs `a5c6792`,
+`27cb717` or `0ec08bb`. It is NOT EXERCISED, not failed, and there are two
+separate blockers in front of it.
+
+**One: a lost connection never requeues the in-flight entry** (the packet in
+the table above). Node A's feed reaches the restart with its entry settled
+only because the PROCESS restarted; within a running process a cut leaves
+the entry `:sent` forever.
+
+**Two, unexplained: node B answers every connection with an immediate close
+for the whole 90 s after that restart.** What is known:
+
+- `kill -0` says node B is alive, immediately before (run `0ec08bb`, steps
+  87 and 88).
+- Its six log files carry `LISTENING`, `CONTROL`, `FEED a replayed 5` and
+  nothing else -- no `ACCEPT-FAULT`, no traceback.
+- The tap in front of node B records NO session in that window. Node A's
+  feed did not reach it. Before B restarted the tap logged nine refused
+  dials from A, so A was trying with its entry queued; after B restarted,
+  nothing.
+- The only path in `accept_nntp` that closes without a greeting is
+  `fn-own-open`/`fn-own-open-peer` answering nil, and their only refusal is
+  `(len conns) >= max-conns` -- which three sessions against a node started
+  with `--max-connections 32` does not explain.
+- Both nodes recover at the next restart: the cut scenario runs immediately
+  afterwards and crosses an article byte-identically.
+
+The run meant to capture node B's log at that moment captured nothing:
+`log_tail` answered `NO-SERVER-LOG` while the files sat there readable,
+because `tail A B C | tail -40 || echo ...` under `set -o pipefail` does not
+do what it reads like. Fixed; the next run of the gate will have the log.
+Start there.

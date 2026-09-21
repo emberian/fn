@@ -269,35 +269,64 @@ accepted transfer.
 That is every row of packets 2 and 3 of this lane's brief, and the
 lost-reply half of packet 4.
 
-### What run 5 still does not show, with the blocker named
+### Runs 6 (`27cb717`) and 7 (`0ec08bb`): what the dial gate changed
 
-**K5's `kill -9` restart-by-offer did not deliver**, and the run named why.
-Both nodes were ALIVE at the liveness probes, and then the arrival step
-polled node B 180 times over 90 s getting `server closed the connection`
-every time. Node B's own log shows it listening and healthy. What filled it
-up is upstream, and the tap has it: after the earlier cut, node A's feed
-reconnected every five seconds, sent `MODE STREAM`, offered nothing and sat
-there -- seven sessions in one log, each one a connection node B did not
-release -- until node B reached its `--max-connections` bound and began
-refusing every client at accept, including the harness's reader probes.
+Run 6 is run 5 again on the code with the dial gate, and it shows the same
+crossings with one number moved: **three tap sessions in front of node B
+where run 5 had seven, and no reconnect at all after the cut.** Run 7 (127
+steps) adds the log capture and repeats it: three sessions, and while node
+B is down during the K5 scenario the tap records nine refused dials rather
+than the 9,479 of run 3. The host no longer opens a socket for an entry it
+cannot offer.
 
-The root cause is one defect, and it is the last thing between this lane
-and K5 on a live machine: **the host drops a lost socket and never tells
-ACL2, so the in-flight entry is never requeued.** `feed_drop` calls
+### What runs 5 to 7 still do not show, with the blocker named
+
+**K5's `kill -9` restart-by-offer did not deliver in any of runs 5, 6 or
+7, and it is NOT EXERCISED rather than failed.** What is known, exactly:
+
+- Both nodes are ALIVE at the liveness probes taken immediately before the
+  arrival step (`kill -0`, run 7 steps 87 and 88).
+- The arrival step then polls node B 180 times over 90 s and every one
+  answers `RuntimeError: server closed the connection`. So does the next
+  step.
+- Node B's own six log files carry `LISTENING 39549`, `CONTROL ...`,
+  `FEED a replayed 5` and **no `ACCEPT-FAULT`, no traceback, nothing else**.
+- The tap in front of node B records **no session at all** in that window:
+  node A's feed did not reach it. Before B restarted, the tap logged nine
+  `Connection refused` dials from A -- so A was trying, with its entry
+  queued -- and after B restarted, nothing.
+- The only path in `accept_nntp` that closes a connection without sending a
+  greeting is `fn-own-open`/`fn-own-open-peer` answering nil, and their
+  only refusal is `(len conns) >= max-conns`, which three sessions against
+  a node started with `--max-connections 32` does not explain.
+- Both nodes recover completely at the next restart: the cut scenario runs
+  immediately afterwards and crosses an article byte-identically.
+
+That is as far as this lane took it. The run that was supposed to capture
+node B's log at the moment of failure did not: `log_tail` answered
+`NO-SERVER-LOG` while the six files sat there readable, because
+`tail A B C | tail -40 || echo ...` under `set -o pipefail` does not do
+what it reads like. That is fixed for the next run.
+
+**A second defect, found and bounded rather than fixed: a lost connection
+never requeues the in-flight entry.** `feed_drop` calls
 `fn-owner-feed-connect peer nil` and nothing applies `fn-feed-lost`, which
 is the transition for exactly this. The entry stays `:sent`,
 `fn-feed-selection` will not pick it, and only `fn-own-reopen` at the next
-process start resolves it. The exact packet is in the lane handoff: a
-PER-PEER restart or loss on the owner's table -- never `fn-own-feed-restart-all`,
-because settling another peer's genuinely in-flight entry is the second
-transfer K5 forbids -- with the `(:feed-restart peer)` record written
-before the state moves.
+process start resolves it. Before run 6 this also made the feed reconnect
+every five seconds forever, offering nothing, until the peer's connection
+table filled: seven tap sessions in run 5, 9,479 refused dials in run 3.
+The exact packet is in the lane handoff -- a PER-PEER restart or loss on
+the owner's table, never `fn-own-feed-restart-all`, because settling
+another peer's genuinely in-flight entry is the second transfer K5 forbids,
+with the `(:feed-restart peer)` record written before the state moves.
 
 What this lane did about it, short of that packet: the host no longer dials
 for an entry it cannot offer. `fn-owner-feed-has-queued` reads
 `fn-feed-head-queued`, and `feed_poll` gates the dial on it instead of on
-queue length, so a peer that lost a reply is no longer a denial of service
-against its peer's connection table. It does NOT resolve the entry.
+queue length, which is a different question -- an entry in flight is in the
+queue. Runs 6 and 7 measure it: three tap sessions, not seven; nine refused
+dials, not 9,479. It does NOT resolve the entry.
 
 Two more, unchanged from run 3: the TCPCLv4 image did not build on this
 commit, so that layer was not exercised at all; and `CAPABILITIES` still

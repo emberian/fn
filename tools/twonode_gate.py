@@ -812,9 +812,13 @@ echo TAP-TIMEOUT; cat {out}; exit 1
         way to tell what raised -- which is where gate `27cb717` stopped.
         `ACCEPT-FAULT` and `FEED-FAULT` both land in these logs.
         """
+        # No second `tail` and no `||`: with `set -o pipefail` that pair
+        # answered `NO-SERVER-LOG` on gate `0ec08bb` while the six log files
+        # were sitting there readable, so the one run that was supposed to
+        # capture the fault captured nothing.
         return self.sh("node {} server log ({})".format(node.upper, why),
-                       "tail -40 {}/server-{}-*.log 2>/dev/null | tail -40 || "
-                       "echo NO-SERVER-LOG".format(node.dir, node.name),
+                       "tail -n 40 {}/server-{}-*.log 2>&1; true".format(
+                           node.dir, node.name),
                        timeout=120, expect=None)
 
     def tap_mark(self, node: NodeSpec) -> int:
